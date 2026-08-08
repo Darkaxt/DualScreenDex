@@ -1,6 +1,5 @@
 package com.enrpau.dualscreendex.parser.cli
 
-import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import java.nio.file.Files
 import java.nio.file.Path
@@ -25,11 +24,11 @@ fun main(arguments: Array<String>) {
     val scanner = CorpusScanner()
     val inputs = scanner.scan(options.roots)
     val results = inputs.map { input ->
-        if (input.error != null || input.bytes == null) {
-            CorpusResult(input.displayName, input.source, input.archiveEntry, 0, error = input.error ?: "input has no bytes")
+        if (input.error != null || input.rom == null) {
+            CorpusResult(input.displayName, input.source, input.archiveEntry, 0, error = input.error ?: "input has no ROM image")
         } else {
             try {
-                val measured = measureTimedValue { ParserOrchestrator.analyze(RomImage(input.bytes)) }
+                val measured = measureTimedValue { ParserOrchestrator.analyze(input.rom) }
                 CorpusResult(
                     input.displayName,
                     input.source,

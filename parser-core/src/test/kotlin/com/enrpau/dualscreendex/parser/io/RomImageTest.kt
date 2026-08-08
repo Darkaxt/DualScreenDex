@@ -3,8 +3,21 @@ package com.enrpau.dualscreendex.parser.io
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.io.ByteArrayInputStream
 
 class RomImageTest {
+    @Test
+    fun streamsInputIntoImmutableRandomAccessImage() {
+        val source = byteArrayOf(0x12, 0x34, 0x56)
+
+        val rom = RomImage.from(ByteArrayInputStream(source))
+        source[0] = 0
+
+        assertEquals(3, rom.size)
+        assertEquals(0x12, rom.u8(0))
+        assertEquals(0x5634, rom.u16le(1))
+    }
+
     @Test
     fun convertsFixedGbAddressToRomOffset() {
         val rom = RomImage(ByteArray(0x20000))

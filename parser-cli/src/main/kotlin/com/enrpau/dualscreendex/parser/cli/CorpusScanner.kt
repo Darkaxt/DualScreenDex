@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.cli
 
+import com.enrpau.dualscreendex.parser.io.RomImage
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
@@ -9,7 +10,7 @@ data class CorpusInput(
     val displayName: String,
     val source: String,
     val archiveEntry: String? = null,
-    val bytes: ByteArray? = null,
+    val rom: RomImage? = null,
     val error: String? = null,
 )
 
@@ -39,7 +40,8 @@ class CorpusScanner {
     private fun scanDirect(file: Path, source: String): List<CorpusInput> {
         if (!isPokemonName(file.fileName.toString()) || isExcludedNonMainlineName(file.fileName.toString())) return emptyList()
         return try {
-            listOf(CorpusInput(file.fileName.toString(), source, bytes = Files.readAllBytes(file)))
+            val rom = Files.newInputStream(file).use(RomImage::from)
+            listOf(CorpusInput(file.fileName.toString(), source, rom = rom))
         } catch (failure: Exception) {
             listOf(error(file.fileName.toString(), source, readableMessage(failure)))
         }
@@ -59,8 +61,8 @@ class CorpusScanner {
                     .map { entry ->
                         val displayName = "${file.fileName}!${entry.name}"
                         try {
-                            val bytes = zip.getInputStream(entry).use { it.readBytes() }
-                            CorpusInput(displayName, source, archiveEntry = entry.name, bytes = bytes)
+                            val rom = zip.getInputStream(entry).use(RomImage::from)
+                            CorpusInput(displayName, source, archiveEntry = entry.name, rom = rom)
                         } catch (failure: Exception) {
                             error(displayName, source, readableMessage(failure), entry.name)
                         }

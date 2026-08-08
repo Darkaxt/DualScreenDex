@@ -35,6 +35,32 @@ class PokemonDatasetValidatorsTest {
     }
 
     @Test
+    fun acceptsGen1PokedexTableWithInternalMissingNoSlots() {
+        val bytes = ByteArray(0x10000)
+        repeat(4) { index -> putU16(bytes, 0x100 + index * 2, 0x4200 + index * 0x20) }
+        repeat(3) { index ->
+            val entry = 0x8200 + index * 0x20
+            putGbText(bytes, entry, "SEED")
+            var cursor = entry + 5
+            repeat(4) { bytes[cursor++] = 1 }
+            bytes[cursor++] = 0x17
+            putU16(bytes, cursor, 0x4300 + index * 0x20)
+            cursor += 2
+            bytes[cursor] = 2
+            bytes[0x8300 + index * 0x20] = 0
+            putGbText(bytes, 0x8301 + index * 0x20, "A SEED GROWS")
+        }
+
+        val result = PokemonDatasetValidators.gen1Descriptions(
+            RomImage(bytes), pointerTableOffset = 0x100, count = 4, entryBank = 2,
+            codec = PokemonTextCodec.gbEnglish,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(3, result.validRecords)
+    }
+
+    @Test
     fun acceptsGen2MultiBankDexEntryPointers() {
         val bytes = ByteArray(0x14000)
         putU16(bytes, 0x100, 0x4200)
@@ -157,6 +183,22 @@ class PokemonDatasetValidatorsTest {
     }
 
     @Test
+    fun acceptsGen3EvolutionSlotsWithAbiPadding() {
+        val bytes = ByteArray(3 * 5 * 8)
+        putU16(bytes, 5 * 8, 4)
+        putU16(bytes, 5 * 8 + 2, 16)
+        putU16(bytes, 5 * 8 + 4, 2)
+
+        val result = PokemonDatasetValidators.gen3Evolutions(
+            RomImage(bytes), offset = 0, speciesCount = 3, slotsPerSpecies = 5,
+            recordSize = 8,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(40, result.recordSize)
+    }
+
+    @Test
     fun acceptsGen3PackedLearnsetPointerTable() {
         val bytes = ByteArray(0x400)
         repeat(3) { index ->
@@ -184,6 +226,21 @@ class PokemonDatasetValidatorsTest {
         )
 
         assertFalse(result.compatible)
+    }
+
+    @Test
+    fun acceptsExpandedGen3TenBitMoveLearnsets() {
+        val bytes = ByteArray(0x200)
+        putU32(bytes, 0, 0x08000100)
+        putU16(bytes, 0x100, packedLearnset(level = 12, move = 700, moveBits = 10))
+        putU16(bytes, 0x102, 0xFFFF)
+
+        val result = PokemonDatasetValidators.gen3Learnsets(
+            RomImage(bytes), pointerTableOffset = 0, speciesCount = 1, moveCount = 800,
+            moveBits = 10,
+        )
+
+        assertTrue(result.compatible)
     }
 
     private fun putGen2DexEntry(bytes: ByteArray, offset: Int, category: String, first: String, second: String) {
@@ -234,5 +291,5 @@ class PokemonDatasetValidatorsTest {
         repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
     }
 
-    private fun packedLearnset(level: Int, move: Int): Int = (level shl 9) or move
+    private fun packedLearnset(level: Int, move: Int, moveBits: Int = 9): Int = (level shl moveBits) or move
 }

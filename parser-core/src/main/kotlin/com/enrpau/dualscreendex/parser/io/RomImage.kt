@@ -1,12 +1,15 @@
 package com.enrpau.dualscreendex.parser.io
 
 import java.security.MessageDigest
+import java.io.InputStream
 import java.util.zip.CRC32
 
 class RomBoundsException(message: String) : IllegalArgumentException(message)
 
-class RomImage(source: ByteArray) {
-    private val bytes = source.copyOf()
+class RomImage private constructor(source: ByteArray, copySource: Boolean) {
+    private val bytes = if (copySource) source.copyOf() else source
+
+    constructor(source: ByteArray) : this(source, copySource = true)
 
     val size: Int get() = bytes.size
 
@@ -84,5 +87,10 @@ class RomImage(source: ByteArray) {
         if (offset < 0 || length < 0 || offset.toLong() + length.toLong() > size.toLong()) {
             throw RomBoundsException("ROM read outside 0..${size - 1}: offset=$offset length=$length")
         }
+    }
+
+    companion object {
+        /** Consumes but does not close [input], leaving stream ownership with the caller. */
+        fun from(input: InputStream): RomImage = RomImage(input.readBytes(), copySource = false)
     }
 }

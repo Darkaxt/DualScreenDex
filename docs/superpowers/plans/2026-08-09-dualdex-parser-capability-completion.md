@@ -14,6 +14,7 @@
 
 - `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/model/RomModels.kt`: extend table layouts with pointer encoding and record-layout metadata only where validation needs it.
 - `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/io/RomImage.kt`: add bounds-safe Game Boy bank-address conversion.
+- `parser-cli/src/main/kotlin/com/enrpau/dualscreendex/parser/cli/CorpusScanner.kt`: stream direct and ZIP-entry input into the portable immutable ROM image without filesystem extraction.
 - `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/profile/KnownProfiles.kt`: add verified official offsets for descriptions, combined Gen I/II evolution/learnset pointers, Gen III evolutions/learnsets, and GB/GBC sprite references.
 - `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/validate/PokemonDatasetValidators.kt`: validate descriptions, evolution records, learnsets, and referenced IDs.
 - `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/validate/SpriteValidators.kt`: validate GB/GBC far pointers and bounded compressed streams, plus GBA LZ77 samples.
@@ -178,6 +179,8 @@ git commit -m "feat: validate Pokemon sprite tables"
 
 ## Task 5: Resolve official and relocated datasets
 
+Before dataset resolution, extend `RomImage` with an `InputStream` factory and make `CorpusScanner` use it for both direct files and ZIP entries. Parsing remains random-access after ingestion, but callers—including a future Android `ContentResolver` adapter—do not need to extract archives or pre-build a `ByteArray`. Cover chunked direct input and ZIP entry input in focused tests.
+
 **Files:**
 - Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/model/RomModels.kt`
 - Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/profile/KnownProfiles.kt`
@@ -315,4 +318,3 @@ For each capability, inspect implementation entry point, focused tests, and all 
 - [ ] **Step 4: Commit, push, and update the draft PR**
 
 Push `codex/dualdex-parser-spec` to `fork` and update draft PR #1 with the new named coverage, unresolved derived formats if any, test totals, and immutable-input evidence.
-

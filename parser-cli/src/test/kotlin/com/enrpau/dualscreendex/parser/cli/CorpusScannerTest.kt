@@ -55,7 +55,7 @@ class CorpusScannerTest {
         val result = CorpusScanner().scan(root).single()
 
         assertEquals("Pokemon Broken.zip", result.displayName)
-        assertEquals(null, result.bytes)
+        assertEquals(null, result.rom)
         assertEquals(true, result.error?.contains("ZipException"))
     }
 
