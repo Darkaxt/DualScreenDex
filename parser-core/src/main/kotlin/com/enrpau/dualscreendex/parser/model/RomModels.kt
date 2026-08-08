@@ -27,6 +27,8 @@ enum class RomCapability {
     ABILITIES,
 }
 
+enum class CapabilityStatus { AVAILABLE, NOT_FOUND, NOT_APPLICABLE }
+
 enum class SelectionStatus { SELECTED, AMBIGUOUS, NO_FAMILY_MATCH, ERROR }
 
 data class RomHeader(
@@ -91,6 +93,7 @@ data class CapabilityEvidence(
     val count: Int? = null,
     val recordSize: Int? = null,
     val reasons: List<String> = emptyList(),
+    val status: CapabilityStatus = if (compatible) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
 )
 
 data class ScoreEvidence(

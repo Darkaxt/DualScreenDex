@@ -197,7 +197,7 @@ There is no global “fully compatible” switch. The parser and runtime mapper 
 | Observed move frequency | `OPPONENT_SPECIES`, `EXECUTED_MOVE`, corresponding ROM move entry |
 | DV/IV quality | `OPPONENT_SPECIES`, `DV_IV_QUALITY` |
 
-Each capability carries internal validation evidence and diagnostics. The UI consumes only the boolean availability and a short reason when unavailable.
+Each capability carries internal validation evidence, diagnostics, and one of three states: `AVAILABLE` when its locator was found and validated, `NOT_FOUND` when the dataset applies to the engine but no trustworthy locator was established, and `NOT_APPLICABLE` when the engine does not contain that concept (for example, abilities in Generations I and II). The UI may render these as `yes`, `N/F`, and `N/A` respectively.
 
 ## 8. Parser competition and selection
 
@@ -210,6 +210,8 @@ An exact SHA-256 match against a supported official revision selects its profile
 For an unknown ROM, all platform-compatible family parsers run a read-only probe. A probe must not perform the complete extraction. It locates enough anchors to judge ancestry and dataset feasibility.
 
 The probe score is structural rather than raw byte similarity:
+
+This is an ancestry score, not a capability-completeness percentage. A score of 100 can therefore coexist with one or more `NOT_FOUND` capabilities.
 
 | Evidence | Maximum points |
 | --- | ---: |
@@ -397,7 +399,7 @@ Each ROM result contains:
 - every candidate parser score and failed hard gate;
 - selected family and runner-up margin;
 - discovered counts and offsets for each dataset;
-- capability flags with pass/fail evidence;
+- tri-state capability results (`AVAILABLE`, `NOT_FOUND`, or `NOT_APPLICABLE`) with validation evidence;
 - deterministic diagnostics and total processing duration.
 
 The Markdown summary groups results into official ancestry matches, derived ancestry matches, partial capability coverage, ambiguous ancestry, no mainline-family match, and malformed/unreadable input. The JSON report retains complete structured evidence.

@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -41,6 +42,7 @@ class ParserOrchestratorTest {
         assertEquals(RomCapability.entries.size, capabilities.size)
         assertEquals(true, capabilities.single { it.capability == RomCapability.SPECIES_NAMES }.compatible)
         assertEquals(false, capabilities.single { it.capability == RomCapability.BASE_STATS }.compatible)
+        assertEquals(CapabilityStatus.NOT_FOUND, capabilities.single { it.capability == RomCapability.BASE_STATS }.status)
     }
 
     @Test
@@ -56,6 +58,7 @@ class ParserOrchestratorTest {
             .single { it.capability == RomCapability.SPECIES_NAMES }
 
         assertEquals(false, capability.compatible)
+        assertEquals(CapabilityStatus.NOT_FOUND, capability.status)
         assertEquals(true, capability.reasons.any { it.contains("conflicting") })
     }
 

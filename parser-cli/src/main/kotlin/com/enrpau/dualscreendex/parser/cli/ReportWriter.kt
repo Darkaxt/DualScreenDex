@@ -1,13 +1,14 @@
 package com.enrpau.dualscreendex.parser.cli
 
 import com.enrpau.dualscreendex.parser.model.ParseResult
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.GsonBuilder
 
 data class CorpusReport(
-    val schemaVersion: Int = 2,
+    val schemaVersion: Int = 3,
     val minimumParserScore: Int = ParserOrchestrator.minimumScore,
     val minimumRunnerUpMargin: Int = ParserOrchestrator.minimumMargin,
     val roots: List<String>,
@@ -63,12 +64,22 @@ object ReportWriter {
         appendLine()
         appendLine("## Capability matrix")
         appendLine()
-        appendLine("| ROM | Status | Family | Profile | Score | Names | Types | Stats | Moves | Move data | Type chart | Sprites | Abilities |")
+        appendLine("- `yes` = found and validated")
+        appendLine("- `N/F` = applicable but not found or validated")
+        appendLine("- `N/A` = not applicable to that engine")
+        appendLine()
+        appendLine("| ROM | Status | Family | Profile | Ancestry score | Names | Types | Stats | Moves | Move data | Type chart | Sprites | Abilities |")
         appendLine("| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
         report.results.forEach { entry ->
             val parsed = entry.result
             val selectedProbe = parsed?.probes?.firstOrNull { it.family == parsed.selectedFamily }
-            fun capability(value: RomCapability): String = if (parsed?.capabilities?.firstOrNull { it.capability == value }?.compatible == true) "yes" else "-"
+            fun capability(value: RomCapability): String = when (
+                parsed?.capabilities?.firstOrNull { it.capability == value }?.status
+            ) {
+                CapabilityStatus.AVAILABLE -> "yes"
+                CapabilityStatus.NOT_APPLICABLE -> "N/A"
+                CapabilityStatus.NOT_FOUND, null -> "N/F"
+            }
             appendLine(
                 "| ${cell(entry.displayName)} | ${parsed?.status ?: "ERROR"} | ${parsed?.selectedFamily ?: "-"} | " +
                     "${cell(parsed?.selectedProfile ?: "-")} | ${selectedProbe?.score ?: "-"} | " +
@@ -103,7 +114,12 @@ object ReportWriter {
                     evidence.recordSize?.let { "recordSize=$it" },
                 ).joinToString(", ")
                 val reason = evidence.reasons.joinToString("; ")
-                appendLine("  - ${evidence.capability}: ${if (evidence.compatible) "compatible" else "unavailable"}; confidence=${formatConfidence(evidence.confidence)}${if (location.isEmpty()) "" else "; $location"}${if (reason.isEmpty()) "" else "; $reason"}")
+                val status = when (evidence.status) {
+                    CapabilityStatus.AVAILABLE -> "available"
+                    CapabilityStatus.NOT_FOUND -> "not found"
+                    CapabilityStatus.NOT_APPLICABLE -> "not applicable"
+                }
+                appendLine("  - ${evidence.capability}: $status; confidence=${formatConfidence(evidence.confidence)}${if (location.isEmpty()) "" else "; $location"}${if (reason.isEmpty()) "" else "; $reason"}")
             }
         }
     }

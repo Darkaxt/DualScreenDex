@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -89,9 +90,11 @@ private class ConfiguredFamilyParser(
         } else {
             missing("sprite pointer validation is only implemented for GBA")
         }
-        val abilities = if (generation == 3 && tables.abilities != null) {
-            val count = inferAbilityCount(rom, tables.abilities, codec, baseProfile)
-            validateNames(rom, tables.abilities, count, codec)
+        val abilities = if (generation == 3) {
+            tables.abilities?.let {
+                val count = inferAbilityCount(rom, it, codec, baseProfile)
+                validateNames(rom, it, count, codec)
+            } ?: missing("ability-name table not resolved")
         } else {
             missing("abilities are not part of this engine")
         }
@@ -277,9 +280,13 @@ private class ConfiguredFamilyParser(
         sprites: ValidationEvidence,
         abilities: ValidationEvidence,
     ): List<CapabilityEvidence> {
-        fun evidence(capability: RomCapability, value: ValidationEvidence) = CapabilityEvidence(
+        fun evidence(
+            capability: RomCapability,
+            value: ValidationEvidence,
+            status: CapabilityStatus = if (value.compatible) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
+        ) = CapabilityEvidence(
             capability, value.compatible, value.confidence, value.offset,
-            value.totalRecords.takeIf { it > 0 }, value.recordSize, value.reasons,
+            value.totalRecords.takeIf { it > 0 }, value.recordSize, value.reasons, status,
         )
         val catalog = ValidationEvidence(
             names.compatible && stats.compatible,
@@ -302,7 +309,13 @@ private class ConfiguredFamilyParser(
             evidence(RomCapability.MOVE_CATALOG, moveNames),
             evidence(RomCapability.MOVE_DETAILS, moveData),
             evidence(RomCapability.LEARNSETS, missing("not implemented in parser POC")),
-            evidence(RomCapability.ABILITIES, abilities),
+            evidence(
+                RomCapability.ABILITIES,
+                abilities,
+                if (generationFor(family) < 3) CapabilityStatus.NOT_APPLICABLE
+                else if (abilities.compatible) CapabilityStatus.AVAILABLE
+                else CapabilityStatus.NOT_FOUND,
+            ),
         )
     }
 

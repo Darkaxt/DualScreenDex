@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
@@ -75,6 +76,7 @@ object ParserOrchestrator {
                         compatible = false,
                         confidence = compatible.maxOf { it.confidence },
                         reasons = listOf("conflicting validated locators across candidate families"),
+                        status = CapabilityStatus.NOT_FOUND,
                     )
                 }
             } else {
@@ -82,6 +84,7 @@ object ParserOrchestrator {
                     compatible = false,
                     reasons = (evidence.maxByOrNull { it.confidence }?.reasons.orEmpty() +
                         "no family-independent compatible evidence").distinct(),
+                    status = CapabilityStatus.NOT_FOUND,
                 ) ?: unavailable(capability)
             }
         }
@@ -97,6 +100,7 @@ object ParserOrchestrator {
         compatible = false,
         confidence = 0.0,
         reasons = listOf("no validated locator was found"),
+        status = CapabilityStatus.NOT_FOUND,
     )
 
     data class Selection(

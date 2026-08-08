@@ -37,22 +37,26 @@ This report contains structural parser evidence only. It contains no decoded Pok
 
 ## Capability matrix
 
-| ROM | Status | Family | Profile | Score | Names | Types | Stats | Moves | Move data | Type chart | Sprites | Abilities |
+- `yes` = found and validated
+- `N/F` = applicable but not found or validated
+- `N/A` = not applicable to that engine
+
+| ROM | Status | Family | Profile | Ancestry score | Names | Types | Stats | Moves | Move data | Type chart | Sprites | Abilities |
 | --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | - | yes | yes |
-| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | - | yes | yes |
-| Pokemon Unbound.zip!Pokemon Unbound.gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | - | yes | - |
-| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Blue (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | - | - |
-| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | SELECTED | CRYSTAL | Pokemon Crystal (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | - | - |
+| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | N/F | yes | yes |
+| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | N/F | yes | yes |
+| Pokemon Unbound.zip!Pokemon Unbound.gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | N/F | yes | N/F |
+| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Blue (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | N/F | N/A |
+| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | SELECTED | CRYSTAL | Pokemon Crystal (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | N/F | N/A |
 | Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes |
 | Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Gold (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | - | - |
+| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Gold (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | N/F | N/A |
 | Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon LeafGreen (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Red (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | - | - |
+| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Red (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | N/F | N/A |
 | Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Ruby (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes |
 | Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Sapphire (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Silver (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | - | - |
-| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | SELECTED | YELLOW | Pokemon Yellow (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | - | - |
+| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Silver (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | N/F | N/A |
+| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | SELECTED | YELLOW | Pokemon Yellow (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | N/F | N/A |
 
 ## Per-ROM evidence
 
@@ -63,18 +67,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family EMERALD; profile Pokemon Emerald (USA/Europe); margin 20
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=100/5 anchors, FIRERED_LEAFGREEN=80/4 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.998; offset=0x6DF474, count=462, recordSize=11
-  - SPECIES_NAMES: compatible; confidence=1.000; offset=0x6DF474, count=462, recordSize=11
-  - SPECIES_TYPES: compatible; confidence=0.998; offset=0x8DB99C, count=462, recordSize=40
-  - TYPE_CHART: unavailable; confidence=0.000; offset=0x31ACE8, recordSize=3; type chart lacks a valid terminator or enough entries
-  - BASE_STATS: compatible; confidence=0.998; offset=0x8DB99C, count=462, recordSize=40
-  - SPRITES: compatible; confidence=0.989; offset=0x6D0474, count=462, recordSize=8
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=0.987; offset=0x6E0850, count=378, recordSize=13
-  - MOVE_DETAILS: compatible; confidence=0.966; offset=0x8D6924, count=378, recordSize=12
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: compatible; confidence=0.988; offset=0x67F52C, count=82, recordSize=13
+  - SPECIES_CATALOG: available; confidence=0.998; offset=0x6DF474, count=462, recordSize=11
+  - SPECIES_NAMES: available; confidence=1.000; offset=0x6DF474, count=462, recordSize=11
+  - SPECIES_TYPES: available; confidence=0.998; offset=0x8DB99C, count=462, recordSize=40
+  - TYPE_CHART: not found; confidence=0.000; offset=0x31ACE8, recordSize=3; type chart lacks a valid terminator or enough entries
+  - BASE_STATS: available; confidence=0.998; offset=0x8DB99C, count=462, recordSize=40
+  - SPRITES: available; confidence=0.989; offset=0x6D0474, count=462, recordSize=8
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=0.987; offset=0x6E0850, count=378, recordSize=13
+  - MOVE_DETAILS: available; confidence=0.966; offset=0x8D6924, count=378, recordSize=12
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: available; confidence=0.988; offset=0x67F52C, count=82, recordSize=13
 
 ### Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba
 
@@ -83,18 +87,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family FIRERED_LEAFGREEN; profile Pokemon FireRed (USA) Rev 1; margin 20
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=80/4 anchors, FIRERED_LEAFGREEN=100/5 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.924; offset=0x16184B8, count=840, recordSize=11
-  - SPECIES_NAMES: compatible; confidence=0.999; offset=0x16184B8, count=840, recordSize=11
-  - SPECIES_TYPES: compatible; confidence=0.924; offset=0x19AFBEC, count=840, recordSize=28
-  - TYPE_CHART: unavailable; confidence=0.000; offset=0x24F0C0, count=3, recordSize=3; type chart lacks a valid terminator or enough entries
-  - BASE_STATS: compatible; confidence=0.924; offset=0x19AFBEC, count=840, recordSize=28
-  - SPRITES: compatible; confidence=1.000; offset=0x19EDB5C, count=840, recordSize=8
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=0.993; offset=0x14B2A3C, count=869, recordSize=13
-  - MOVE_DETAILS: compatible; confidence=0.964; offset=0x14BFA7C, count=869, recordSize=12
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: compatible; confidence=0.992; offset=0x14A9324, count=258, recordSize=13
+  - SPECIES_CATALOG: available; confidence=0.924; offset=0x16184B8, count=840, recordSize=11
+  - SPECIES_NAMES: available; confidence=0.999; offset=0x16184B8, count=840, recordSize=11
+  - SPECIES_TYPES: available; confidence=0.924; offset=0x19AFBEC, count=840, recordSize=28
+  - TYPE_CHART: not found; confidence=0.000; offset=0x24F0C0, count=3, recordSize=3; type chart lacks a valid terminator or enough entries
+  - BASE_STATS: available; confidence=0.924; offset=0x19AFBEC, count=840, recordSize=28
+  - SPRITES: available; confidence=1.000; offset=0x19EDB5C, count=840, recordSize=8
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=0.993; offset=0x14B2A3C, count=869, recordSize=13
+  - MOVE_DETAILS: available; confidence=0.964; offset=0x14BFA7C, count=869, recordSize=12
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: available; confidence=0.992; offset=0x14A9324, count=258, recordSize=13
 
 ### Pokemon Unbound.zip!Pokemon Unbound.gba
 
@@ -103,18 +107,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family FIRERED_LEAFGREEN; profile Pokemon FireRed (USA) Rev 1; margin 20
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=80/4 anchors, FIRERED_LEAFGREEN=100/5 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.926; offset=0x166A98C, count=840, recordSize=11
-  - SPECIES_NAMES: compatible; confidence=0.999; offset=0x166A98C, count=840, recordSize=11
-  - SPECIES_TYPES: compatible; confidence=0.926; offset=0x19E0C9C, count=840, recordSize=28
-  - TYPE_CHART: unavailable; confidence=0.000; offset=0x24F0C0, count=1, recordSize=3; type chart lacks a valid terminator or enough entries
-  - BASE_STATS: compatible; confidence=0.926; offset=0x19E0C9C, count=840, recordSize=28
-  - SPRITES: compatible; confidence=1.000; offset=0x1A1D5B4, count=840, recordSize=8
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=0.996; offset=0xA40A10, count=962, recordSize=13
-  - MOVE_DETAILS: compatible; confidence=0.931; offset=0xA769AF, count=962, recordSize=12
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: unavailable; confidence=0.594; offset=0xA36398, count=64, recordSize=13; valid fixed names 38/64 below 0.85
+  - SPECIES_CATALOG: available; confidence=0.926; offset=0x166A98C, count=840, recordSize=11
+  - SPECIES_NAMES: available; confidence=0.999; offset=0x166A98C, count=840, recordSize=11
+  - SPECIES_TYPES: available; confidence=0.926; offset=0x19E0C9C, count=840, recordSize=28
+  - TYPE_CHART: not found; confidence=0.000; offset=0x24F0C0, count=1, recordSize=3; type chart lacks a valid terminator or enough entries
+  - BASE_STATS: available; confidence=0.926; offset=0x19E0C9C, count=840, recordSize=28
+  - SPRITES: available; confidence=1.000; offset=0x1A1D5B4, count=840, recordSize=8
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=0.996; offset=0xA40A10, count=962, recordSize=13
+  - MOVE_DETAILS: available; confidence=0.931; offset=0xA769AF, count=962, recordSize=12
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: not found; confidence=0.594; offset=0xA36398, count=64, recordSize=13; valid fixed names 38/64 below 0.85
 
 ### Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb
 
@@ -123,18 +127,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family RED_BLUE; profile Pokemon Blue (USA/Europe); margin -
 - Candidate scores: RED_BLUE=100/5 anchors, YELLOW=32/2 anchors, GOLD_SILVER=10/1 anchors, CRYSTAL=10/1 anchors, RUBY_SAPPHIRE=0/0 anchors, EMERALD=0/0 anchors, FIRERED_LEAFGREEN=0/0 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.721; offset=0x1C21E, count=190, recordSize=10
-  - SPECIES_NAMES: compatible; confidence=0.721; offset=0x1C21E, count=190, recordSize=10
-  - SPECIES_TYPES: compatible; confidence=0.993; offset=0x383DE, count=151, recordSize=28
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x3E474, count=82, recordSize=3
-  - BASE_STATS: compatible; confidence=0.993; offset=0x383DE, count=151, recordSize=28
-  - SPRITES: unavailable; confidence=0.000; sprite pointer validation is only implemented for GBA
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0xB0000, count=165
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x38000, count=165, recordSize=6
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: unavailable; confidence=0.000; abilities are not part of this engine
+  - SPECIES_CATALOG: available; confidence=0.721; offset=0x1C21E, count=190, recordSize=10
+  - SPECIES_NAMES: available; confidence=0.721; offset=0x1C21E, count=190, recordSize=10
+  - SPECIES_TYPES: available; confidence=0.993; offset=0x383DE, count=151, recordSize=28
+  - TYPE_CHART: available; confidence=1.000; offset=0x3E474, count=82, recordSize=3
+  - BASE_STATS: available; confidence=0.993; offset=0x383DE, count=151, recordSize=28
+  - SPRITES: not found; confidence=0.000; sprite pointer validation is only implemented for GBA
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0xB0000, count=165
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x38000, count=165, recordSize=6
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
 
 ### Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc
 
@@ -143,18 +147,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family CRYSTAL; profile Pokemon Crystal (USA/Europe) Rev 1; margin -
 - Candidate scores: RED_BLUE=10/1 anchors, YELLOW=10/1 anchors, GOLD_SILVER=10/1 anchors, CRYSTAL=100/5 anchors, RUBY_SAPPHIRE=0/0 anchors, EMERALD=0/0 anchors, FIRERED_LEAFGREEN=0/0 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.928; offset=0x53384, count=251, recordSize=10
-  - SPECIES_NAMES: compatible; confidence=0.928; offset=0x53384, count=251, recordSize=10
-  - SPECIES_TYPES: compatible; confidence=1.000; offset=0x51424, count=251, recordSize=32
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x34BB1, count=108, recordSize=3
-  - BASE_STATS: compatible; confidence=1.000; offset=0x51424, count=251, recordSize=32
-  - SPRITES: unavailable; confidence=0.000; sprite pointer validation is only implemented for GBA
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0x1C9F29, count=251
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x41AFB, count=251, recordSize=7
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: unavailable; confidence=0.000; abilities are not part of this engine
+  - SPECIES_CATALOG: available; confidence=0.928; offset=0x53384, count=251, recordSize=10
+  - SPECIES_NAMES: available; confidence=0.928; offset=0x53384, count=251, recordSize=10
+  - SPECIES_TYPES: available; confidence=1.000; offset=0x51424, count=251, recordSize=32
+  - TYPE_CHART: available; confidence=1.000; offset=0x34BB1, count=108, recordSize=3
+  - BASE_STATS: available; confidence=1.000; offset=0x51424, count=251, recordSize=32
+  - SPRITES: not found; confidence=0.000; sprite pointer validation is only implemented for GBA
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0x1C9F29, count=251
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x41AFB, count=251, recordSize=7
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
 
 ### Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba
 
@@ -163,18 +167,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family EMERALD; profile Pokemon Emerald (USA/Europe); margin -
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=100/5 anchors, FIRERED_LEAFGREEN=80/4 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.998; offset=0x3185C8, count=412, recordSize=11
-  - SPECIES_NAMES: compatible; confidence=1.000; offset=0x3185C8, count=412, recordSize=11
-  - SPECIES_TYPES: compatible; confidence=0.998; offset=0x3203CC, count=412, recordSize=28
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x31ACE8, count=108, recordSize=3
-  - BASE_STATS: compatible; confidence=0.998; offset=0x3203CC, count=412, recordSize=28
-  - SPRITES: compatible; confidence=1.000; offset=0x30A18C, count=412, recordSize=8
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0x31977C, count=355, recordSize=13
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x31C898, count=355, recordSize=12
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: compatible; confidence=1.000; offset=0x31B6DB, count=78, recordSize=13
+  - SPECIES_CATALOG: available; confidence=0.998; offset=0x3185C8, count=412, recordSize=11
+  - SPECIES_NAMES: available; confidence=1.000; offset=0x3185C8, count=412, recordSize=11
+  - SPECIES_TYPES: available; confidence=0.998; offset=0x3203CC, count=412, recordSize=28
+  - TYPE_CHART: available; confidence=1.000; offset=0x31ACE8, count=108, recordSize=3
+  - BASE_STATS: available; confidence=0.998; offset=0x3203CC, count=412, recordSize=28
+  - SPRITES: available; confidence=1.000; offset=0x30A18C, count=412, recordSize=8
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0x31977C, count=355, recordSize=13
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x31C898, count=355, recordSize=12
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: available; confidence=1.000; offset=0x31B6DB, count=78, recordSize=13
 
 ### Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba
 
@@ -183,18 +187,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family FIRERED_LEAFGREEN; profile Pokemon FireRed (USA) Rev 1; margin -
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=80/4 anchors, FIRERED_LEAFGREEN=100/5 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.998; offset=0x245F50, count=412, recordSize=11
-  - SPECIES_NAMES: compatible; confidence=1.000; offset=0x245F50, count=412, recordSize=11
-  - SPECIES_TYPES: compatible; confidence=0.998; offset=0x2547F4, count=412, recordSize=28
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x24F0C0, count=108, recordSize=3
-  - BASE_STATS: compatible; confidence=0.998; offset=0x2547F4, count=412, recordSize=28
-  - SPRITES: compatible; confidence=1.000; offset=0x23511C, count=412, recordSize=8
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0x247104, count=355, recordSize=13
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x250C74, count=355, recordSize=12
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: compatible; confidence=1.000; offset=0x24FCB0, count=78, recordSize=13
+  - SPECIES_CATALOG: available; confidence=0.998; offset=0x245F50, count=412, recordSize=11
+  - SPECIES_NAMES: available; confidence=1.000; offset=0x245F50, count=412, recordSize=11
+  - SPECIES_TYPES: available; confidence=0.998; offset=0x2547F4, count=412, recordSize=28
+  - TYPE_CHART: available; confidence=1.000; offset=0x24F0C0, count=108, recordSize=3
+  - BASE_STATS: available; confidence=0.998; offset=0x2547F4, count=412, recordSize=28
+  - SPRITES: available; confidence=1.000; offset=0x23511C, count=412, recordSize=8
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0x247104, count=355, recordSize=13
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x250C74, count=355, recordSize=12
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: available; confidence=1.000; offset=0x24FCB0, count=78, recordSize=13
 
 ### Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc
 
@@ -203,18 +207,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family GOLD_SILVER; profile Pokemon Gold (USA/Europe); margin -
 - Candidate scores: RED_BLUE=10/1 anchors, YELLOW=10/1 anchors, GOLD_SILVER=100/5 anchors, CRYSTAL=10/1 anchors, RUBY_SAPPHIRE=0/0 anchors, EMERALD=0/0 anchors, FIRERED_LEAFGREEN=0/0 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.928; offset=0x1B0B74, count=251, recordSize=10
-  - SPECIES_NAMES: compatible; confidence=0.928; offset=0x1B0B74, count=251, recordSize=10
-  - SPECIES_TYPES: compatible; confidence=1.000; offset=0x51B0B, count=251, recordSize=32
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x34D01, count=108, recordSize=3
-  - BASE_STATS: compatible; confidence=1.000; offset=0x51B0B, count=251, recordSize=32
-  - SPRITES: unavailable; confidence=0.000; sprite pointer validation is only implemented for GBA
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0x1B1574, count=251
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x41AFE, count=251, recordSize=7
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: unavailable; confidence=0.000; abilities are not part of this engine
+  - SPECIES_CATALOG: available; confidence=0.928; offset=0x1B0B74, count=251, recordSize=10
+  - SPECIES_NAMES: available; confidence=0.928; offset=0x1B0B74, count=251, recordSize=10
+  - SPECIES_TYPES: available; confidence=1.000; offset=0x51B0B, count=251, recordSize=32
+  - TYPE_CHART: available; confidence=1.000; offset=0x34D01, count=108, recordSize=3
+  - BASE_STATS: available; confidence=1.000; offset=0x51B0B, count=251, recordSize=32
+  - SPRITES: not found; confidence=0.000; sprite pointer validation is only implemented for GBA
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0x1B1574, count=251
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x41AFE, count=251, recordSize=7
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
 
 ### Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba
 
@@ -223,18 +227,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family FIRERED_LEAFGREEN; profile Pokemon LeafGreen (USA/Europe) Rev 1; margin -
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=80/4 anchors, FIRERED_LEAFGREEN=100/5 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.998; offset=0x245F2C, count=412, recordSize=11
-  - SPECIES_NAMES: compatible; confidence=1.000; offset=0x245F2C, count=412, recordSize=11
-  - SPECIES_TYPES: compatible; confidence=0.998; offset=0x2547D0, count=412, recordSize=28
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x24F09C, count=108, recordSize=3
-  - BASE_STATS: compatible; confidence=0.998; offset=0x2547D0, count=412, recordSize=28
-  - SPRITES: compatible; confidence=1.000; offset=0x2350F8, count=412, recordSize=8
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0x2470E0, count=355, recordSize=13
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x250C50, count=355, recordSize=12
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: compatible; confidence=1.000; offset=0x24FC8C, count=78, recordSize=13
+  - SPECIES_CATALOG: available; confidence=0.998; offset=0x245F2C, count=412, recordSize=11
+  - SPECIES_NAMES: available; confidence=1.000; offset=0x245F2C, count=412, recordSize=11
+  - SPECIES_TYPES: available; confidence=0.998; offset=0x2547D0, count=412, recordSize=28
+  - TYPE_CHART: available; confidence=1.000; offset=0x24F09C, count=108, recordSize=3
+  - BASE_STATS: available; confidence=0.998; offset=0x2547D0, count=412, recordSize=28
+  - SPRITES: available; confidence=1.000; offset=0x2350F8, count=412, recordSize=8
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0x2470E0, count=355, recordSize=13
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x250C50, count=355, recordSize=12
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: available; confidence=1.000; offset=0x24FC8C, count=78, recordSize=13
 
 ### Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb
 
@@ -243,18 +247,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family RED_BLUE; profile Pokemon Red (USA/Europe); margin -
 - Candidate scores: RED_BLUE=100/5 anchors, YELLOW=32/2 anchors, GOLD_SILVER=10/1 anchors, CRYSTAL=10/1 anchors, RUBY_SAPPHIRE=0/0 anchors, EMERALD=0/0 anchors, FIRERED_LEAFGREEN=0/0 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.721; offset=0x1C21E, count=190, recordSize=10
-  - SPECIES_NAMES: compatible; confidence=0.721; offset=0x1C21E, count=190, recordSize=10
-  - SPECIES_TYPES: compatible; confidence=0.993; offset=0x383DE, count=151, recordSize=28
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x3E474, count=82, recordSize=3
-  - BASE_STATS: compatible; confidence=0.993; offset=0x383DE, count=151, recordSize=28
-  - SPRITES: unavailable; confidence=0.000; sprite pointer validation is only implemented for GBA
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0xB0000, count=165
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x38000, count=165, recordSize=6
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: unavailable; confidence=0.000; abilities are not part of this engine
+  - SPECIES_CATALOG: available; confidence=0.721; offset=0x1C21E, count=190, recordSize=10
+  - SPECIES_NAMES: available; confidence=0.721; offset=0x1C21E, count=190, recordSize=10
+  - SPECIES_TYPES: available; confidence=0.993; offset=0x383DE, count=151, recordSize=28
+  - TYPE_CHART: available; confidence=1.000; offset=0x3E474, count=82, recordSize=3
+  - BASE_STATS: available; confidence=0.993; offset=0x383DE, count=151, recordSize=28
+  - SPRITES: not found; confidence=0.000; sprite pointer validation is only implemented for GBA
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0xB0000, count=165
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x38000, count=165, recordSize=6
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
 
 ### Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba
 
@@ -263,18 +267,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family RUBY_SAPPHIRE; profile Pokemon Ruby (USA/Europe) Rev 2; margin -
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=100/5 anchors, EMERALD=10/1 anchors, FIRERED_LEAFGREEN=10/1 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.998; offset=0x1F7184, count=412, recordSize=11
-  - SPECIES_NAMES: compatible; confidence=1.000; offset=0x1F7184, count=412, recordSize=11
-  - SPECIES_TYPES: compatible; confidence=0.998; offset=0x1FEC30, count=412, recordSize=28
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x1F9738, count=108, recordSize=3
-  - BASE_STATS: compatible; confidence=0.998; offset=0x1FEC30, count=412, recordSize=28
-  - SPRITES: compatible; confidence=1.000; offset=0x1E836C, count=412, recordSize=8
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0x1F8338, count=355, recordSize=13
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x1FB144, count=355, recordSize=12
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: compatible; confidence=1.000; offset=0x1FA260, count=78, recordSize=13
+  - SPECIES_CATALOG: available; confidence=0.998; offset=0x1F7184, count=412, recordSize=11
+  - SPECIES_NAMES: available; confidence=1.000; offset=0x1F7184, count=412, recordSize=11
+  - SPECIES_TYPES: available; confidence=0.998; offset=0x1FEC30, count=412, recordSize=28
+  - TYPE_CHART: available; confidence=1.000; offset=0x1F9738, count=108, recordSize=3
+  - BASE_STATS: available; confidence=0.998; offset=0x1FEC30, count=412, recordSize=28
+  - SPRITES: available; confidence=1.000; offset=0x1E836C, count=412, recordSize=8
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0x1F8338, count=355, recordSize=13
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x1FB144, count=355, recordSize=12
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: available; confidence=1.000; offset=0x1FA260, count=78, recordSize=13
 
 ### Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba
 
@@ -283,18 +287,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family RUBY_SAPPHIRE; profile Pokemon Sapphire (USA/Europe) Rev 2; margin -
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=100/5 anchors, EMERALD=10/1 anchors, FIRERED_LEAFGREEN=10/1 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.998; offset=0x1F7114, count=412, recordSize=11
-  - SPECIES_NAMES: compatible; confidence=1.000; offset=0x1F7114, count=412, recordSize=11
-  - SPECIES_TYPES: compatible; confidence=0.998; offset=0x1FEBC0, count=412, recordSize=28
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x1F96C8, count=108, recordSize=3
-  - BASE_STATS: compatible; confidence=0.998; offset=0x1FEBC0, count=412, recordSize=28
-  - SPRITES: compatible; confidence=1.000; offset=0x1E82FC, count=412, recordSize=8
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0x1F82C8, count=355, recordSize=13
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x1FB0D4, count=355, recordSize=12
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: compatible; confidence=1.000; offset=0x1FA1F0, count=78, recordSize=13
+  - SPECIES_CATALOG: available; confidence=0.998; offset=0x1F7114, count=412, recordSize=11
+  - SPECIES_NAMES: available; confidence=1.000; offset=0x1F7114, count=412, recordSize=11
+  - SPECIES_TYPES: available; confidence=0.998; offset=0x1FEBC0, count=412, recordSize=28
+  - TYPE_CHART: available; confidence=1.000; offset=0x1F96C8, count=108, recordSize=3
+  - BASE_STATS: available; confidence=0.998; offset=0x1FEBC0, count=412, recordSize=28
+  - SPRITES: available; confidence=1.000; offset=0x1E82FC, count=412, recordSize=8
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0x1F82C8, count=355, recordSize=13
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x1FB0D4, count=355, recordSize=12
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: available; confidence=1.000; offset=0x1FA1F0, count=78, recordSize=13
 
 ### Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc
 
@@ -303,18 +307,18 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family GOLD_SILVER; profile Pokemon Silver (USA/Europe); margin -
 - Candidate scores: RED_BLUE=10/1 anchors, YELLOW=10/1 anchors, GOLD_SILVER=100/5 anchors, CRYSTAL=10/1 anchors, RUBY_SAPPHIRE=0/0 anchors, EMERALD=0/0 anchors, FIRERED_LEAFGREEN=0/0 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.928; offset=0x1B0B74, count=251, recordSize=10
-  - SPECIES_NAMES: compatible; confidence=0.928; offset=0x1B0B74, count=251, recordSize=10
-  - SPECIES_TYPES: compatible; confidence=1.000; offset=0x51B0B, count=251, recordSize=32
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x34D01, count=108, recordSize=3
-  - BASE_STATS: compatible; confidence=1.000; offset=0x51B0B, count=251, recordSize=32
-  - SPRITES: unavailable; confidence=0.000; sprite pointer validation is only implemented for GBA
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0x1B1574, count=251
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x41AFE, count=251, recordSize=7
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: unavailable; confidence=0.000; abilities are not part of this engine
+  - SPECIES_CATALOG: available; confidence=0.928; offset=0x1B0B74, count=251, recordSize=10
+  - SPECIES_NAMES: available; confidence=0.928; offset=0x1B0B74, count=251, recordSize=10
+  - SPECIES_TYPES: available; confidence=1.000; offset=0x51B0B, count=251, recordSize=32
+  - TYPE_CHART: available; confidence=1.000; offset=0x34D01, count=108, recordSize=3
+  - BASE_STATS: available; confidence=1.000; offset=0x51B0B, count=251, recordSize=32
+  - SPRITES: not found; confidence=0.000; sprite pointer validation is only implemented for GBA
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0x1B1574, count=251
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x41AFE, count=251, recordSize=7
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
 
 ### Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb
 
@@ -323,15 +327,15 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family YELLOW; profile Pokemon Yellow (USA/Europe); margin -
 - Candidate scores: RED_BLUE=32/2 anchors, YELLOW=100/5 anchors, GOLD_SILVER=10/1 anchors, CRYSTAL=10/1 anchors, RUBY_SAPPHIRE=0/0 anchors, EMERALD=0/0 anchors, FIRERED_LEAFGREEN=0/0 anchors
 - Capabilities:
-  - SPECIES_CATALOG: compatible; confidence=0.721; offset=0xE8000, count=190, recordSize=10
-  - SPECIES_NAMES: compatible; confidence=0.721; offset=0xE8000, count=190, recordSize=10
-  - SPECIES_TYPES: compatible; confidence=1.000; offset=0x383DE, count=151, recordSize=28
-  - TYPE_CHART: compatible; confidence=1.000; offset=0x3E5FA, count=82, recordSize=3
-  - BASE_STATS: compatible; confidence=1.000; offset=0x383DE, count=151, recordSize=28
-  - SPRITES: unavailable; confidence=0.000; sprite pointer validation is only implemented for GBA
-  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - EVOLUTIONS: unavailable; confidence=0.000; not implemented in parser POC
-  - MOVE_CATALOG: compatible; confidence=1.000; offset=0xBC000, count=165
-  - MOVE_DETAILS: compatible; confidence=1.000; offset=0x38000, count=165, recordSize=6
-  - LEARNSETS: unavailable; confidence=0.000; not implemented in parser POC
-  - ABILITIES: unavailable; confidence=0.000; abilities are not part of this engine
+  - SPECIES_CATALOG: available; confidence=0.721; offset=0xE8000, count=190, recordSize=10
+  - SPECIES_NAMES: available; confidence=0.721; offset=0xE8000, count=190, recordSize=10
+  - SPECIES_TYPES: available; confidence=1.000; offset=0x383DE, count=151, recordSize=28
+  - TYPE_CHART: available; confidence=1.000; offset=0x3E5FA, count=82, recordSize=3
+  - BASE_STATS: available; confidence=1.000; offset=0x383DE, count=151, recordSize=28
+  - SPRITES: not found; confidence=0.000; sprite pointer validation is only implemented for GBA
+  - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
+  - EVOLUTIONS: not found; confidence=0.000; not implemented in parser POC
+  - MOVE_CATALOG: available; confidence=1.000; offset=0xBC000, count=165
+  - MOVE_DETAILS: available; confidence=1.000; offset=0x38000, count=165, recordSize=6
+  - LEARNSETS: not found; confidence=0.000; not implemented in parser POC
+  - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
