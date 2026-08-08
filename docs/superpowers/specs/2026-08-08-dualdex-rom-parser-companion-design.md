@@ -236,6 +236,8 @@ Capability evidence may be retained from a non-winning probe only when that prob
 
 Resolved table pointers do not imply vanilla record shapes. For fixed-width Gen 3 tables, the parser infers counts from aligned neighboring tables when possible and competes plausible record widths using whole-table validation. This supports common source-derived extensions while preserving offsets, counts, widths, and confidence as auditable evidence. Extended but structurally valid type IDs, including Fairy, are accepted.
 
+Relocated Gen 3 type charts are discovered from their sparse three-byte matchup-record structure and validated through an explicit terminator instead of trusting the ancestor's fixed offset. Canonical prefixes are preferred. When a hack changes the opening matchups, the fallback requires at least 80 consecutive valid records and broad coverage of at least 12 attacking and 12 defending type IDs, bounded to the extended five-bit type space. This resolves Unbound's non-canonical 128-record chart without treating short incidental byte runs as charts. A ROM may contain multiple valid chart variants. The POC records the first compiled variant and reports the candidate count; the production parser profile must retain every variant, while the runtime mapper reads the game's active chart selector where one exists. Modern Emerald 3.5, for example, compiles both its custom modern chart and a Gen-VI chart selected by save-state configuration.
+
 Raw binary similarity may be recorded as secondary evidence but never decides the parser. Expanded ROMs, recompiled code, unchanged artwork, or large text replacements can make byte similarity misleading.
 
 ### 8.3 Full extraction

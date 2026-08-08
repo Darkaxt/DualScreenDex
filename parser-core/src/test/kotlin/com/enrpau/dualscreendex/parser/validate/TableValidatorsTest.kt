@@ -114,4 +114,111 @@ class TableValidatorsTest {
         assertEquals(width, inferred)
         assertTrue(TableValidators.baseStats(rom, offset, count, inferred!!, generation = 3).compatible)
     }
+
+    @Test
+    fun locatesRelocatedGen3TypeCharts() {
+        val firstOffset = 37
+        val secondOffset = 200
+        val chart = byteArrayOf(
+            0, 5, 5,
+            0, 8, 5,
+            10, 10, 5,
+            10, 11, 5,
+            10, 12, 20,
+            10, 15, 20,
+            10, 6, 20,
+            10, 5, 5,
+            10, 16, 5,
+            10, 8, 20,
+            11, 10, 20,
+            11, 11, 5,
+            0xFF.toByte(), 0xFF.toByte(), 0,
+        )
+        val bytes = ByteArray(300) { 0x7F }
+        chart.copyInto(bytes, firstOffset)
+        chart.copyInto(bytes, secondOffset)
+
+        val offsets = TableValidators.locateGen3TypeCharts(RomImage(bytes)).mapNotNull { it.offset }
+
+        assertEquals(listOf(firstOffset, secondOffset), offsets)
+    }
+
+    @Test
+    fun validatesFairyEntriesInGen3TypeCharts() {
+        val records = mutableListOf<Byte>()
+        repeat(10) { index ->
+            records += (index % 18).toByte()
+            records += ((index + 1) % 18).toByte()
+            records += if (index % 2 == 0) 5 else 20
+        }
+        records += 18
+        records += 1
+        records += 20
+        records += 16
+        records += 18
+        records += 0
+        records += 0xFF.toByte()
+        records += 0xFF.toByte()
+        records += 0
+
+        val result = TableValidators.typeChart(RomImage(records.toByteArray()), 0, generation = 3)
+
+        assertTrue(result.compatible)
+        assertEquals(12, result.validRecords)
+        assertEquals(12, result.totalRecords)
+    }
+
+    @Test
+    fun resolvesRelocatedGen3TypeChartWhenInheritedOffsetIsInvalid() {
+        val relocatedOffset = 37
+        val chart = byteArrayOf(
+            0, 5, 5,
+            0, 8, 5,
+            10, 10, 5,
+            10, 11, 5,
+            10, 12, 20,
+            10, 15, 20,
+            10, 6, 20,
+            10, 5, 5,
+            10, 16, 5,
+            10, 8, 20,
+            11, 10, 20,
+            11, 11, 5,
+            0xFF.toByte(), 0xFF.toByte(), 0,
+        )
+        val bytes = ByteArray(128) { 0x7F }
+        chart.copyInto(bytes, relocatedOffset)
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = 0)
+
+        assertTrue(result.compatible)
+        assertEquals(relocatedOffset, result.offset)
+    }
+
+    @Test
+    fun locatesNonCanonicalExtendedGen3TypeChart() {
+        val chartOffset = 41
+        val records = mutableListOf<Byte>()
+        repeat(96) { index ->
+            records += (index % 24).toByte()
+            records += ((index * 7 + 3) % 24).toByte()
+            records += when (index % 4) {
+                0 -> 0
+                1 -> 5
+                2 -> 10
+                else -> 20
+            }
+        }
+        records += 0xFE.toByte()
+        records += 0xFE.toByte()
+        records += 0
+        val bytes = ByteArray(400) { 0x7F }
+        records.toByteArray().copyInto(bytes, chartOffset)
+
+        val charts = TableValidators.locateGen3TypeCharts(RomImage(bytes))
+
+        assertEquals(1, charts.size)
+        assertEquals(chartOffset, charts.single().offset)
+        assertEquals(96, charts.single().validRecords)
+    }
 }

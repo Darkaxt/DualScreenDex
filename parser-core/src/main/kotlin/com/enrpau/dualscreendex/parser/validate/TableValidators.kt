@@ -195,31 +195,97 @@ object TableValidators {
         offset: Int,
         generation: Int,
         maximumEntries: Int = 256,
+        maximumType: Int = if (generation == 3) 18 else 27,
     ): ValidationEvidence = safely(offset, 3, maximumEntries) {
         var cursor = offset
         var valid = 0
+        var entries = 0
         var terminated = false
-        val maxType = if (generation == 3) 17 else 27
-        repeat(maximumEntries) {
+        while (entries < maximumEntries) {
             val attacker = rom.u8(cursor)
             if (attacker == 0xFE || attacker == 0xFF) {
                 terminated = true
-                return@repeat
+                break
             }
             val defender = rom.u8(cursor + 1)
             val multiplier = rom.u8(cursor + 2)
-            if (attacker in 0..maxType && defender in 0..maxType && multiplier in setOf(0, 5, 10, 20)) {
+            if (attacker in 0..maximumType && defender in 0..maximumType && multiplier in TYPE_MULTIPLIERS) {
                 valid++
             }
+            entries++
             cursor += 3
         }
-        val compatible = terminated && valid >= 10
+        val confidence = valid.toDouble() / entries.coerceAtLeast(1)
+        val compatible = terminated && entries >= 10 && valid == entries
         ValidationEvidence(
-            compatible, valid, valid, if (compatible) 1.0 else 0.0,
+            compatible, valid, entries, confidence,
             if (compatible) emptyList() else listOf("type chart lacks a valid terminator or enough entries"),
             offset, 3,
         )
     }
+
+    fun locateGen3TypeCharts(rom: RomImage): List<ValidationEvidence> {
+        val canonical = rom.findAll(GEN3_TYPE_CHART_PREFIX)
+            .map { offset -> typeChart(rom, offset, generation = 3) }
+            .filter { it.compatible }
+        if (canonical.isNotEmpty()) return canonical
+
+        return rom.findAll(GEN3_TYPE_CHART_TERMINATOR).mapNotNull { terminatorOffset ->
+            var cursor = terminatorOffset - 3
+            var records = 0
+            val attackers = mutableSetOf<Int>()
+            val defenders = mutableSetOf<Int>()
+            while (cursor >= 0 && records < 256) {
+                val attacker = rom.u8(cursor)
+                val defender = rom.u8(cursor + 1)
+                val multiplier = rom.u8(cursor + 2)
+                if (attacker !in 0..31 || defender !in 0..31 || multiplier !in TYPE_MULTIPLIERS) break
+                attackers += attacker
+                defenders += defender
+                records++
+                cursor -= 3
+            }
+            val offset = cursor + 3
+            if (records < 80 || attackers.size < 12 || defenders.size < 12) {
+                null
+            } else {
+                typeChart(rom, offset, generation = 3, maximumType = 31).takeIf { it.compatible }
+            }
+        }
+    }
+
+    fun resolveGen3TypeChart(rom: RomImage, inheritedOffset: Int?): ValidationEvidence {
+        val inherited = inheritedOffset?.let { typeChart(rom, it, generation = 3) }
+        if (inherited?.compatible == true) return inherited
+
+        val relocated = locateGen3TypeCharts(rom)
+        return relocated.firstOrNull()?.copy(
+            reasons = if (relocated.size > 1) {
+                listOf("found ${relocated.size} valid relocated type charts; selected the lowest offset")
+            } else {
+                listOf("resolved relocated Gen 3 type chart")
+            },
+        ) ?: inherited ?: ValidationEvidence(
+            compatible = false,
+            validRecords = 0,
+            totalRecords = 0,
+            confidence = 0.0,
+            reasons = listOf("type-chart table not resolved"),
+        )
+    }
+
+    private val GEN3_TYPE_CHART_PREFIX = byteArrayOf(
+        0, 5, 5,
+        0, 8, 5,
+        10, 10, 5,
+        10, 11, 5,
+        10, 12, 20,
+        10, 15, 20,
+    )
+
+    private val GEN3_TYPE_CHART_TERMINATOR = byteArrayOf(0xFE.toByte(), 0xFE.toByte(), 0)
+
+    private val TYPE_MULTIPLIERS = setOf(0, 5, 10, 20)
 
     private inline fun safely(
         offset: Int,

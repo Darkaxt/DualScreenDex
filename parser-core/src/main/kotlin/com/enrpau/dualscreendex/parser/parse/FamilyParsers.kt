@@ -80,9 +80,13 @@ private class ConfiguredFamilyParser(
         val moveData = tables.moveData?.let {
             TableValidators.moveData(rom, it.offset, moveCount ?: it.count, it.recordSize, generation)
         } ?: missing("move-data table not resolved")
-        val typeChart = tables.typeChart?.let {
-            TableValidators.typeChart(rom, it.offset, generation)
-        } ?: missing("type-chart table not resolved")
+        val typeChart = if (generation == 3) {
+            TableValidators.resolveGen3TypeChart(rom, tables.typeChart?.offset)
+        } else {
+            tables.typeChart?.let {
+                TableValidators.typeChart(rom, it.offset, generation)
+            } ?: missing("type-chart table not resolved")
+        }
         val sprites = if (generation == 3 && tables.sprites != null) {
             TableValidators.gbaPointerTable(
                 rom, tables.sprites.offset, speciesCount ?: tables.sprites.count, tables.sprites.recordSize,

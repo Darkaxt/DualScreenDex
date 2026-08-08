@@ -6,8 +6,8 @@ This report contains structural parser evidence only. It contains no decoded Pok
 
 - Inputs evaluated: 14
 - Selected: 14 (11 exact official, 3 structurally selected derivatives)
-- Complete for implemented core datasets: 11
-- Selected with partial core datasets: 3
+- Complete for implemented core datasets: 14
+- Selected with partial core datasets: 0
 - Ambiguous: 0
 - Read/parse errors: 0
 - Selection rule: score >= 75, runner-up margin >= 10, and at least two validated anchors
@@ -43,9 +43,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
 
 | ROM | Status | Family | Profile | Ancestry score | Names | Types | Stats | Moves | Move data | Type chart | Sprites | Abilities |
 | --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | N/F | yes | yes |
-| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | N/F | yes | yes |
-| Pokemon Unbound.zip!Pokemon Unbound.gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | N/F | yes | N/F |
+| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes |
+| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes |
+| Pokemon Unbound.zip!Pokemon Unbound.gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | N/F |
 | Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Blue (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | N/F | N/A |
 | Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | SELECTED | CRYSTAL | Pokemon Crystal (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | N/F | N/A |
 | Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes |
@@ -70,7 +70,7 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - SPECIES_CATALOG: available; confidence=0.998; offset=0x6DF474, count=462, recordSize=11
   - SPECIES_NAMES: available; confidence=1.000; offset=0x6DF474, count=462, recordSize=11
   - SPECIES_TYPES: available; confidence=0.998; offset=0x8DB99C, count=462, recordSize=40
-  - TYPE_CHART: not found; confidence=0.000; offset=0x31ACE8, recordSize=3; type chart lacks a valid terminator or enough entries
+  - TYPE_CHART: available; confidence=1.000; offset=0x67E8F4, count=116, recordSize=3; found 2 valid relocated type charts; selected the lowest offset
   - BASE_STATS: available; confidence=0.998; offset=0x8DB99C, count=462, recordSize=40
   - SPRITES: available; confidence=0.989; offset=0x6D0474, count=462, recordSize=8
   - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
@@ -90,7 +90,7 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - SPECIES_CATALOG: available; confidence=0.924; offset=0x16184B8, count=840, recordSize=11
   - SPECIES_NAMES: available; confidence=0.999; offset=0x16184B8, count=840, recordSize=11
   - SPECIES_TYPES: available; confidence=0.924; offset=0x19AFBEC, count=840, recordSize=28
-  - TYPE_CHART: not found; confidence=0.000; offset=0x24F0C0, count=3, recordSize=3; type chart lacks a valid terminator or enough entries
+  - TYPE_CHART: available; confidence=1.000; offset=0x24F050, count=108, recordSize=3; resolved relocated Gen 3 type chart
   - BASE_STATS: available; confidence=0.924; offset=0x19AFBEC, count=840, recordSize=28
   - SPRITES: available; confidence=1.000; offset=0x19EDB5C, count=840, recordSize=8
   - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC
@@ -110,7 +110,7 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - SPECIES_CATALOG: available; confidence=0.926; offset=0x166A98C, count=840, recordSize=11
   - SPECIES_NAMES: available; confidence=0.999; offset=0x166A98C, count=840, recordSize=11
   - SPECIES_TYPES: available; confidence=0.926; offset=0x19E0C9C, count=840, recordSize=28
-  - TYPE_CHART: not found; confidence=0.000; offset=0x24F0C0, count=1, recordSize=3; type chart lacks a valid terminator or enough entries
+  - TYPE_CHART: available; confidence=1.000; offset=0x9619C0, count=128, recordSize=3; resolved relocated Gen 3 type chart
   - BASE_STATS: available; confidence=0.926; offset=0x19E0C9C, count=840, recordSize=28
   - SPRITES: available; confidence=1.000; offset=0x1A1D5B4, count=840, recordSize=8
   - POKEDEX_DESCRIPTIONS: not found; confidence=0.000; not implemented in parser POC

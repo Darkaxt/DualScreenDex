@@ -12,7 +12,7 @@
       "displayName": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
       "source": "Hacks/Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip",
       "archiveEntry": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
-      "durationMillis": 256,
+      "durationMillis": 418,
       "result": {
         "header": {
           "platform": "GBA",
@@ -180,15 +180,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2070328,
-                "count": 3,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 6809844,
+                "count": 116,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "found 2 valid relocated type charts; selected the lowest offset"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -366,14 +366,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 3255528,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 6809844,
+                "count": 116,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "found 2 valid relocated type charts; selected the lowest offset"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -543,14 +544,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2420928,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 6809844,
+                "count": 116,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "found 2 valid relocated type charts; selected the lowest offset"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -672,14 +674,15 @@
           },
           {
             "capability": "TYPE_CHART",
-            "compatible": false,
-            "confidence": 0.0,
-            "offset": 3255528,
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 6809844,
+            "count": 116,
             "recordSize": 3,
             "reasons": [
-              "type chart lacks a valid terminator or enough entries"
+              "found 2 valid relocated type charts; selected the lowest offset"
             ],
-            "status": "NOT_FOUND"
+            "status": "AVAILABLE"
           },
           {
             "capability": "BASE_STATS",
@@ -766,7 +769,7 @@
       "displayName": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
       "source": "Hacks/Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip",
       "archiveEntry": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
-      "durationMillis": 125,
+      "durationMillis": 300,
       "result": {
         "header": {
           "platform": "GBA",
@@ -934,15 +937,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2070328,
-                "count": 36,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2420816,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -1120,15 +1123,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 3255528,
-                "count": 2,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2420816,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -1297,15 +1300,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2420928,
-                "count": 3,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2420816,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -1426,15 +1429,15 @@
           },
           {
             "capability": "TYPE_CHART",
-            "compatible": false,
-            "confidence": 0.0,
-            "offset": 2420928,
-            "count": 3,
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2420816,
+            "count": 108,
             "recordSize": 3,
             "reasons": [
-              "type chart lacks a valid terminator or enough entries"
+              "resolved relocated Gen 3 type chart"
             ],
-            "status": "NOT_FOUND"
+            "status": "AVAILABLE"
           },
           {
             "capability": "BASE_STATS",
@@ -1521,7 +1524,7 @@
       "displayName": "Pokemon Unbound.zip!Pokemon Unbound.gba",
       "source": "Hacks/Pokemon Unbound.zip",
       "archiveEntry": "Pokemon Unbound.gba",
-      "durationMillis": 125,
+      "durationMillis": 385,
       "result": {
         "header": {
           "platform": "GBA",
@@ -1689,15 +1692,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2070328,
-                "count": 256,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 9836992,
+                "count": 128,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -1875,15 +1878,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 3255528,
-                "count": 4,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 9836992,
+                "count": 128,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -2054,15 +2057,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2420928,
-                "count": 1,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 9836992,
+                "count": 128,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -2185,15 +2188,15 @@
           },
           {
             "capability": "TYPE_CHART",
-            "compatible": false,
-            "confidence": 0.0,
-            "offset": 2420928,
-            "count": 1,
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 9836992,
+            "count": 128,
             "recordSize": 3,
             "reasons": [
-              "type chart lacks a valid terminator or enough entries"
+              "resolved relocated Gen 3 type chart"
             ],
-            "status": "NOT_FOUND"
+            "status": "AVAILABLE"
           },
           {
             "capability": "BASE_STATS",
@@ -2555,6 +2558,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 255482,
+                "count": 70,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -2736,6 +2740,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 216321,
+                "count": 17,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -2921,6 +2926,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 215985,
+                "count": 2,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -3189,7 +3195,7 @@
       "displayName": "Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc",
       "source": "Pokemon - Crystal Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc",
-      "durationMillis": 10,
+      "durationMillis": 13,
       "result": {
         "header": {
           "platform": "GBC",
@@ -3296,6 +3302,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 255092,
+                "count": 21,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -3481,6 +3488,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 255482,
+                "count": 121,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -3666,6 +3674,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 216321,
+                "count": 7,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -4103,7 +4112,7 @@
       "displayName": "Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba",
       "source": "Pokemon - Emerald Version (USA, Europe).zip",
       "archiveEntry": "Pokemon - Emerald Version (USA, Europe).gba",
-      "durationMillis": 87,
+      "durationMillis": 149,
       "result": {
         "header": {
           "platform": "GBA",
@@ -4270,14 +4279,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2070328,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 3255528,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -4627,14 +4637,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2420928,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 3255528,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -4848,7 +4859,7 @@
       "displayName": "Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - FireRed Version (USA).zip",
       "archiveEntry": "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 59,
+      "durationMillis": 106,
       "result": {
         "header": {
           "platform": "GBA",
@@ -5015,15 +5026,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2070328,
-                "count": 256,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2420928,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -5201,15 +5212,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 3255528,
-                "count": 2,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2420928,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -5595,7 +5606,7 @@
       "displayName": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 6,
+      "durationMillis": 9,
       "result": {
         "header": {
           "platform": "GBC",
@@ -5700,9 +5711,9 @@
               {
                 "capability": "TYPE_CHART",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.007575757575757576,
                 "offset": 255092,
-                "count": 1,
+                "count": 132,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -5888,6 +5899,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 255482,
+                "count": 2,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -6242,6 +6254,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 215985,
+                "count": 50,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -6510,7 +6523,7 @@
       "displayName": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 68,
+      "durationMillis": 108,
       "result": {
         "header": {
           "platform": "GBA",
@@ -6677,15 +6690,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2070328,
-                "count": 256,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2420892,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -6863,15 +6876,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 3255528,
-                "count": 4,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2420892,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -7257,7 +7270,7 @@
       "displayName": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb",
       "source": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb",
-      "durationMillis": 3,
+      "durationMillis": 4,
       "result": {
         "header": {
           "platform": "GB",
@@ -7530,6 +7543,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 255482,
+                "count": 70,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -7711,6 +7725,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 216321,
+                "count": 17,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -7896,6 +7911,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 215985,
+                "count": 2,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -8164,7 +8180,7 @@
       "displayName": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 65,
+      "durationMillis": 107,
       "result": {
         "header": {
           "platform": "GBA",
@@ -8512,10 +8528,12 @@
                 "capability": "TYPE_CHART",
                 "compatible": true,
                 "confidence": 1.0,
-                "offset": 3255528,
-                "count": 24,
+                "offset": 2070328,
+                "count": 108,
                 "recordSize": 3,
-                "reasons": [],
+                "reasons": [
+                  "resolved relocated Gen 3 type chart"
+                ],
                 "status": "AVAILABLE"
               },
               {
@@ -8701,14 +8719,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2420928,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2070328,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -8931,7 +8950,7 @@
       "displayName": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 66,
+      "durationMillis": 107,
       "result": {
         "header": {
           "platform": "GBA",
@@ -9277,15 +9296,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 3255528,
-                "count": 1,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2070216,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -9470,14 +9489,15 @@
               },
               {
                 "capability": "TYPE_CHART",
-                "compatible": false,
-                "confidence": 0.0,
-                "offset": 2420928,
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2070216,
+                "count": 108,
                 "recordSize": 3,
                 "reasons": [
-                  "type chart lacks a valid terminator or enough entries"
+                  "resolved relocated Gen 3 type chart"
                 ],
-                "status": "NOT_FOUND"
+                "status": "AVAILABLE"
               },
               {
                 "capability": "BASE_STATS",
@@ -9700,7 +9720,7 @@
       "displayName": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 6,
+      "durationMillis": 5,
       "result": {
         "header": {
           "platform": "GBC",
@@ -9805,9 +9825,9 @@
               {
                 "capability": "TYPE_CHART",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.007575757575757576,
                 "offset": 255092,
-                "count": 1,
+                "count": 132,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -9993,6 +10013,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 255482,
+                "count": 2,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -10347,6 +10368,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 215985,
+                "count": 50,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -10719,6 +10741,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 255092,
+                "count": 34,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -11069,6 +11092,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 216321,
+                "count": 182,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"
@@ -11254,6 +11278,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "offset": 215985,
+                "count": 256,
                 "recordSize": 3,
                 "reasons": [
                   "type chart lacks a valid terminator or enough entries"

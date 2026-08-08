@@ -5,7 +5,9 @@ import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.ParserProbe
+import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -72,6 +74,35 @@ class ParserOrchestratorTest {
         val yellow = result.probes.single { it.family == EngineFamily.YELLOW }
 
         assertEquals(true, yellow.hardGatePassed)
+    }
+
+    @Test
+    fun emeraldProbeUsesRelocatedTypeChart() {
+        val chartOffset = 300
+        val chart = byteArrayOf(
+            0, 5, 5,
+            0, 8, 5,
+            10, 10, 5,
+            10, 11, 5,
+            10, 12, 20,
+            10, 15, 20,
+            10, 6, 20,
+            10, 5, 5,
+            10, 16, 5,
+            10, 8, 20,
+            11, 10, 20,
+            11, 11, 5,
+            0xFF.toByte(), 0xFF.toByte(), 0,
+        )
+        val bytes = ByteArray(512) { 0x7F }
+        chart.copyInto(bytes, chartOffset)
+        val parser = FamilyParsers.all.single { it.family == EngineFamily.EMERALD }
+
+        val probe = parser.probe(RomImage(bytes), RomHeader(Platform.GBA, "POKEMON EMER", "BPEE"))
+        val typeChart = probe.capabilities.single { it.capability == RomCapability.TYPE_CHART }
+
+        assertEquals(true, typeChart.compatible)
+        assertEquals(chartOffset, typeChart.offset)
     }
 
     private fun probe(family: EngineFamily, score: Int) = ParserProbe(
