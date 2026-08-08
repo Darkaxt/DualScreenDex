@@ -139,6 +139,20 @@ object PokemonDatasetValidators {
         result(valid, speciesCount, pointerTableOffset, 4, "valid Gen 3 learnsets", 0.90)
     }
 
+    fun gen3ExpandedLearnsets(
+        rom: RomImage,
+        pointerTableOffset: Int,
+        speciesCount: Int,
+        moveCount: Int,
+    ): ValidationEvidence = safely(pointerTableOffset, 4, speciesCount) {
+        var valid = 0
+        repeat(speciesCount) { index ->
+            val offset = rom.gbaPointer(pointerTableOffset + index * 4)
+            if (offset != null && validGen3ExpandedLearnset(rom, offset, moveCount)) valid++
+        }
+        result(valid, speciesCount, pointerTableOffset, 4, "valid CFRU/DPE Gen 3 learnsets", 0.90)
+    }
+
     private fun validGen1Description(rom: RomImage, offset: Int, codec: PokemonTextCodec): Boolean {
         val categoryEnd = terminatorOffset(rom, offset, 24, codec.terminator) ?: return false
         val metadata = categoryEnd + 1
@@ -151,7 +165,7 @@ object PokemonDatasetValidators {
         val categoryEnd = terminatorOffset(rom, offset, 24, codec.terminator) ?: return false
         val description = categoryEnd + 5
         return decodeAt(rom, offset, 24, codec, 0.70) &&
-            decodeAt(rom, description, 512, codec, 0.10)
+            terminatorOffset(rom, description, 512, codec.terminator) != null
     }
 
     private fun validateGen12SpeciesRecord(
@@ -225,6 +239,23 @@ object PokemonDatasetValidators {
             if (move !in 1..moveCount || level !in previousLevel.coerceAtLeast(1)..100) return false
             previousLevel = level
             cursor += 2
+        }
+        return false
+    }
+
+    private fun validGen3ExpandedLearnset(rom: RomImage, offset: Int, moveCount: Int): Boolean {
+        var cursor = offset
+        var previousLevel = 0
+        repeat(MAX_LEARNSET_ENTRIES) {
+            val move = rom.u16le(cursor)
+            val level = rom.u8(cursor + 2)
+            if (move == 0 && level == 0xFF) return true
+            if (move !in 1..moveCount || level !in 0..100) return false
+            if (level > 0) {
+                if (level < previousLevel.coerceAtLeast(1)) return false
+                previousLevel = level
+            }
+            cursor += 3
         }
         return false
     }

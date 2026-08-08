@@ -38,12 +38,15 @@ object ReportWriter {
         val ambiguous = report.results.count { it.result?.status == SelectionStatus.AMBIGUOUS }
         val noFamilyMatch = report.results.count { it.result?.status == SelectionStatus.NO_FAMILY_MATCH }
         val errors = report.results.count { it.error != null || it.result?.status == SelectionStatus.ERROR }
-        val completeCore = report.results.count { entry ->
-            entry.result?.status == SelectionStatus.SELECTED && CORE_CAPABILITIES.all { capability ->
-                entry.result.capabilities.firstOrNull { it.capability == capability }?.compatible == true
+        val completeStatic = report.results.count { entry ->
+            entry.result?.status == SelectionStatus.SELECTED && RomCapability.entries.all { capability ->
+                when (entry.result.capabilities.firstOrNull { it.capability == capability }?.status) {
+                    CapabilityStatus.AVAILABLE, CapabilityStatus.NOT_APPLICABLE -> true
+                    CapabilityStatus.NOT_FOUND, null -> false
+                }
             }
         }
-        val partialCore = selected - completeCore
+        val partialStatic = selected - completeStatic
 
         appendLine("# DualDex ROM parser compatibility")
         appendLine()
@@ -53,8 +56,8 @@ object ReportWriter {
         appendLine()
         appendLine("- Inputs evaluated: ${report.results.size}")
         appendLine("- Selected: $selected ($exact exact official, $derived structurally selected derivatives)")
-        appendLine("- Complete for implemented core datasets: $completeCore")
-        appendLine("- Selected with partial core datasets: $partialCore")
+        appendLine("- Complete for all applicable static datasets: $completeStatic")
+        appendLine("- Selected with partial static datasets: $partialStatic")
         appendLine("- Ambiguous: $ambiguous")
         if (noFamilyMatch > 0) appendLine("- No mainline-family match: $noFamilyMatch")
         appendLine("- Read/parse errors: $errors")
@@ -68,8 +71,8 @@ object ReportWriter {
         appendLine("- `N/F` = applicable but not found or validated")
         appendLine("- `N/A` = not applicable to that engine")
         appendLine()
-        appendLine("| ROM | Status | Family | Profile | Ancestry score | Names | Types | Stats | Moves | Move data | Type chart | Sprites | Abilities |")
-        appendLine("| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+        appendLine("| ROM | Status | Family | Profile | Ancestry score | Catalog | Names | Types | Type chart | Stats | Sprites | Descriptions | Evolutions | Moves | Move data | Learnsets | Abilities |")
+        appendLine("| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
         report.results.forEach { entry ->
             val parsed = entry.result
             val selectedProbe = parsed?.probes?.firstOrNull { it.family == parsed.selectedFamily }
@@ -83,10 +86,12 @@ object ReportWriter {
             appendLine(
                 "| ${cell(entry.displayName)} | ${parsed?.status ?: "ERROR"} | ${parsed?.selectedFamily ?: "-"} | " +
                     "${cell(parsed?.selectedProfile ?: "-")} | ${selectedProbe?.score ?: "-"} | " +
-                    "${capability(RomCapability.SPECIES_NAMES)} | ${capability(RomCapability.SPECIES_TYPES)} | " +
-                    "${capability(RomCapability.BASE_STATS)} | ${capability(RomCapability.MOVE_CATALOG)} | " +
-                    "${capability(RomCapability.MOVE_DETAILS)} | ${capability(RomCapability.TYPE_CHART)} | " +
-                    "${capability(RomCapability.SPRITES)} | ${capability(RomCapability.ABILITIES)} |",
+                    "${capability(RomCapability.SPECIES_CATALOG)} | ${capability(RomCapability.SPECIES_NAMES)} | " +
+                    "${capability(RomCapability.SPECIES_TYPES)} | ${capability(RomCapability.TYPE_CHART)} | " +
+                    "${capability(RomCapability.BASE_STATS)} | ${capability(RomCapability.SPRITES)} | " +
+                    "${capability(RomCapability.POKEDEX_DESCRIPTIONS)} | ${capability(RomCapability.EVOLUTIONS)} | " +
+                    "${capability(RomCapability.MOVE_CATALOG)} | ${capability(RomCapability.MOVE_DETAILS)} | " +
+                    "${capability(RomCapability.LEARNSETS)} | ${capability(RomCapability.ABILITIES)} |",
             )
         }
 
@@ -164,13 +169,4 @@ object ReportWriter {
         }
         appendLine()
     }
-
-    private val CORE_CAPABILITIES = setOf(
-        RomCapability.SPECIES_NAMES,
-        RomCapability.SPECIES_TYPES,
-        RomCapability.BASE_STATS,
-        RomCapability.MOVE_CATALOG,
-        RomCapability.MOVE_DETAILS,
-        RomCapability.TYPE_CHART,
-    )
 }

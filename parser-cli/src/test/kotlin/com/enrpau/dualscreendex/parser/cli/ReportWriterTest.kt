@@ -74,6 +74,27 @@ class ReportWriterTest {
     }
 
     @Test
+    fun markdownReportsEveryStaticCapabilityAndFullCompleteness() {
+        val capabilities = RomCapability.entries.map { capability ->
+            if (capability == RomCapability.ABILITIES) {
+                CapabilityEvidence(capability, false, 0.0, status = CapabilityStatus.NOT_APPLICABLE)
+            } else {
+                CapabilityEvidence(capability, true, 1.0, offset = 0x100, count = 10)
+            }
+        }
+        val result = sampleResult().copy(capabilities = capabilities)
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(CorpusResult("Pokemon Test.gba", "Pokemon Test.gba", durationMillis = 1, result = result)),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("Complete for all applicable static datasets: 1"))
+        assertTrue(markdown.contains("| Catalog | Names | Types | Type chart | Stats | Sprites | Descriptions | Evolutions | Moves | Move data | Learnsets | Abilities |"))
+    }
+
+    @Test
     fun markdownNamesEveryNoFamilyMatchInput() {
         val result = sampleResult().copy(
             status = SelectionStatus.NO_FAMILY_MATCH,

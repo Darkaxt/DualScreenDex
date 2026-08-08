@@ -54,7 +54,7 @@ object DatasetResolvers {
 
         val candidates = mutableListOf<ValidationEvidence>()
         for (recordSize in listOf(8, 6)) {
-            for (slots in 5..10) {
+            for (slots in listOf(5, 8, 16)) {
                 val stride = slots * recordSize
                 val anchor = ByteArray(stride * 2 + recordSize).also { bytes ->
                     bytes[stride] = 4
@@ -106,7 +106,26 @@ object DatasetResolvers {
             }
             offset += 4
         }
-        return choose(candidates, inherited?.offset, "Gen 3 learnset pointer table")
+        if (candidates.isNotEmpty()) {
+            return choose(candidates, inherited?.offset, "Gen 3 packed learnset pointer table")
+        }
+
+        offset = 0
+        while (offset <= last) {
+            try {
+                val empty = rom.gbaPointer(offset)
+                if (empty != null && rom.u16le(empty) == 0 && rom.u8(empty + 2) == 0xFF) {
+                    val evidence = PokemonDatasetValidators.gen3ExpandedLearnsets(
+                        rom, offset, speciesCount, moveCount,
+                    )
+                    if (evidence.compatible) candidates += evidence
+                }
+            } catch (_: RomBoundsException) {
+                break
+            }
+            offset += 4
+        }
+        return choose(candidates, inherited?.offset, "Gen 3 CFRU/DPE learnset pointer table")
     }
 
     private fun validateDescription(

@@ -243,6 +243,22 @@ class PokemonDatasetValidatorsTest {
         assertTrue(result.compatible)
     }
 
+    @Test
+    fun acceptsCfruThreeByteLevelUpMoveRecords() {
+        val bytes = ByteArray(0x200)
+        putU32(bytes, 0, 0x08000100)
+        putU16(bytes, 0x100, 700)
+        bytes[0x102] = 12
+        putU16(bytes, 0x103, 0)
+        bytes[0x105] = 0xFF.toByte()
+
+        val result = PokemonDatasetValidators.gen3ExpandedLearnsets(
+            RomImage(bytes), pointerTableOffset = 0, speciesCount = 1, moveCount = 800,
+        )
+
+        assertTrue(result.compatible)
+    }
+
     private fun putGen2DexEntry(bytes: ByteArray, offset: Int, category: String, first: String, second: String) {
         var cursor = putGbText(bytes, offset, category)
         repeat(4) { bytes[cursor++] = 1 }

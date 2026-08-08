@@ -152,8 +152,7 @@ private class ConfiguredFamilyParser(
         }
         val abilities = if (generation == 3) {
             tables.abilities?.let {
-                val count = inferAbilityCount(rom, it, codec, baseProfile)
-                validateNames(rom, it, count, codec)
+                resolveAbilities(rom, it, codec, baseProfile, exact != null)
             } ?: missing("ability-name table not resolved")
         } else {
             missing("abilities are not part of this engine")
@@ -316,6 +315,26 @@ private class ConfiguredFamilyParser(
         TableValidators.inferFixedNameCount(rom, layout.offset, layout.recordSize, codec, 10, 512)
             ?: profile?.tables?.abilities?.count
             ?: layout.count
+    }
+
+    private fun resolveAbilities(
+        rom: RomImage,
+        layout: TableLayout,
+        codec: PokemonTextCodec,
+        profile: RomProfile?,
+        exact: Boolean,
+    ): ValidationEvidence {
+        val inherited = validateNames(rom, layout, inferAbilityCount(rom, layout, codec, profile), codec)
+        if (exact || inherited.compatible) return inherited
+
+        return (8..32).mapNotNull { recordSize ->
+            val count = TableValidators.inferFixedNameCount(
+                rom, layout.offset, recordSize, codec, minimumCount = 10, maximumCount = 512,
+            ) ?: return@mapNotNull null
+            TableValidators.fixedNames(rom, layout.offset, count, recordSize, codec)
+        }.filter { it.compatible }
+            .maxWithOrNull(compareBy<ValidationEvidence> { it.validRecords }.thenBy { it.confidence })
+            ?: inherited
     }
 
     private fun validateNames(

@@ -69,6 +69,31 @@ class DatasetResolversTest {
         assertEquals(0x200, result.offset)
     }
 
+    @Test
+    fun resolvesCfruExpandedLearnsetPointerTable() {
+        val bytes = ByteArray(0x1000)
+        repeat(3) { index ->
+            val target = 0x800 + index * 0x20
+            putU32(bytes, 0x200 + index * 4, 0x08000000 + target)
+            if (index == 0) {
+                putU16(bytes, target, 0)
+                bytes[target + 2] = 0xFF.toByte()
+            } else {
+                putU16(bytes, target, 600 + index)
+                bytes[target + 2] = (10 + index).toByte()
+                putU16(bytes, target + 3, 0)
+                bytes[target + 5] = 0xFF.toByte()
+            }
+        }
+
+        val result = DatasetResolvers.gen3Learnsets(
+            RomImage(bytes), speciesCount = 3, moveCount = 800, inherited = null,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(0x200, result.offset)
+    }
+
     private fun putGbaText(bytes: ByteArray, offset: Int, value: String) {
         value.forEachIndexed { index, character ->
             bytes[offset + index] = when (character) {
