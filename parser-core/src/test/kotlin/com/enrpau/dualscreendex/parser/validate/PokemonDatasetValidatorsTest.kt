@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.validate
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -92,6 +93,99 @@ class PokemonDatasetValidatorsTest {
         assertFalse(result.compatible)
     }
 
+    @Test
+    fun acceptsGen1CombinedEvolutionAndLearnsetRecords() {
+        val bytes = ByteArray(0x10000)
+        putU16(bytes, 0x100, 0x4200)
+        putU16(bytes, 0x102, 0x4210)
+        byteArrayOf(1, 16, 2, 0, 1, 10, 7, 20, 0).copyInto(bytes, 0x8200)
+        byteArrayOf(0, 1, 10, 0).copyInto(bytes, 0x8210)
+
+        val result = PokemonDatasetValidators.gen12EvolutionsAndLearnsets(
+            RomImage(bytes), pointerTableOffset = 0x100, speciesCount = 2,
+            tableBank = 2, moveCount = 30, generation = 1,
+        )
+
+        assertTrue(result.evolutions.compatible)
+        assertTrue(result.learnsets.compatible)
+        assertEquals(2, result.evolutions.validRecords)
+    }
+
+    @Test
+    fun acceptsGen2VariableWidthEvolutionRecords() {
+        val bytes = ByteArray(0x10000)
+        putU16(bytes, 0x100, 0x4200)
+        putU16(bytes, 0x102, 0x4210)
+        byteArrayOf(5, 20, 1, 2, 0, 1, 10, 0).copyInto(bytes, 0x8200)
+        byteArrayOf(0, 1, 10, 0).copyInto(bytes, 0x8210)
+
+        val result = PokemonDatasetValidators.gen12EvolutionsAndLearnsets(
+            RomImage(bytes), pointerTableOffset = 0x100, speciesCount = 2,
+            tableBank = 2, moveCount = 30, generation = 2,
+        )
+
+        assertTrue(result.evolutions.compatible)
+        assertTrue(result.learnsets.compatible)
+    }
+
+    @Test
+    fun rejectsGen12LearnsetsWithUnknownMoveIds() {
+        val bytes = ByteArray(0x10000)
+        putU16(bytes, 0x100, 0x4200)
+        byteArrayOf(0, 1, 31, 0).copyInto(bytes, 0x8200)
+
+        val result = PokemonDatasetValidators.gen12EvolutionsAndLearnsets(
+            RomImage(bytes), pointerTableOffset = 0x100, speciesCount = 1,
+            tableBank = 2, moveCount = 30, generation = 1,
+        )
+
+        assertFalse(result.learnsets.compatible)
+    }
+
+    @Test
+    fun acceptsGen3FixedEvolutionSlots() {
+        val bytes = ByteArray(3 * 5 * 6)
+        putU16(bytes, 5 * 6, 4)
+        putU16(bytes, 5 * 6 + 2, 16)
+        putU16(bytes, 5 * 6 + 4, 2)
+
+        val result = PokemonDatasetValidators.gen3Evolutions(
+            RomImage(bytes), offset = 0, speciesCount = 3, slotsPerSpecies = 5,
+        )
+
+        assertTrue(result.compatible)
+    }
+
+    @Test
+    fun acceptsGen3PackedLearnsetPointerTable() {
+        val bytes = ByteArray(0x400)
+        repeat(3) { index ->
+            putU32(bytes, index * 4, 0x08000100 + index * 0x20)
+            putU16(bytes, 0x100 + index * 0x20, packedLearnset(level = 1, move = 10 + index))
+            putU16(bytes, 0x102 + index * 0x20, 0xFFFF)
+        }
+
+        val result = PokemonDatasetValidators.gen3Learnsets(
+            RomImage(bytes), pointerTableOffset = 0, speciesCount = 3, moveCount = 50,
+        )
+
+        assertTrue(result.compatible)
+    }
+
+    @Test
+    fun rejectsGen3LearnsetsWithUnknownMoveIds() {
+        val bytes = ByteArray(0x200)
+        putU32(bytes, 0, 0x08000100)
+        putU16(bytes, 0x100, packedLearnset(level = 1, move = 51))
+        putU16(bytes, 0x102, 0xFFFF)
+
+        val result = PokemonDatasetValidators.gen3Learnsets(
+            RomImage(bytes), pointerTableOffset = 0, speciesCount = 1, moveCount = 50,
+        )
+
+        assertFalse(result.compatible)
+    }
+
     private fun putGen2DexEntry(bytes: ByteArray, offset: Int, category: String, first: String, second: String) {
         var cursor = putGbText(bytes, offset, category)
         repeat(4) { bytes[cursor++] = 1 }
@@ -139,4 +233,6 @@ class PokemonDatasetValidatorsTest {
     private fun putU32(bytes: ByteArray, offset: Int, value: Int) {
         repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
     }
+
+    private fun packedLearnset(level: Int, move: Int): Int = (level shl 9) or move
 }

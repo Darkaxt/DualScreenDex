@@ -5,6 +5,11 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
+data class CombinedEvolutionLearnsetEvidence(
+    val evolutions: ValidationEvidence,
+    val learnsets: ValidationEvidence,
+)
+
 object PokemonDatasetValidators {
     fun gen1Descriptions(
         rom: RomImage,
@@ -59,6 +64,76 @@ object PokemonDatasetValidators {
         result(valid, count, offset, recordSize, "valid Gen 3 Pokédex entries")
     }
 
+    fun gen12EvolutionsAndLearnsets(
+        rom: RomImage,
+        pointerTableOffset: Int,
+        speciesCount: Int,
+        tableBank: Int,
+        moveCount: Int,
+        generation: Int,
+    ): CombinedEvolutionLearnsetEvidence = try {
+        var validEvolutions = 0
+        var validLearnsets = 0
+        repeat(speciesCount) { index ->
+            val offset = rom.gbBankAddress(tableBank, rom.u16le(pointerTableOffset + index * 2))
+            if (offset != null) {
+                val parsed = validateGen12SpeciesRecord(rom, offset, speciesCount, moveCount, generation)
+                if (parsed.evolutions) validEvolutions++
+                if (parsed.learnset) validLearnsets++
+            }
+        }
+        CombinedEvolutionLearnsetEvidence(
+            result(validEvolutions, speciesCount, pointerTableOffset, 2, "valid Gen $generation evolution records", 0.90),
+            result(validLearnsets, speciesCount, pointerTableOffset, 2, "valid Gen $generation learnsets", 0.90),
+        )
+    } catch (error: RomBoundsException) {
+        val failed = ValidationEvidence(
+            false, 0, speciesCount, 0.0,
+            listOf(error.message ?: "out-of-bounds table"), pointerTableOffset, 2,
+        )
+        CombinedEvolutionLearnsetEvidence(failed, failed)
+    }
+
+    fun gen3Evolutions(
+        rom: RomImage,
+        offset: Int,
+        speciesCount: Int,
+        slotsPerSpecies: Int,
+        maximumMethod: Int = 255,
+    ): ValidationEvidence = safely(offset, slotsPerSpecies * 6, speciesCount) {
+        var valid = 0
+        repeat(speciesCount) { species ->
+            val base = offset + species * slotsPerSpecies * 6
+            val slotsValid = (0 until slotsPerSpecies).all { slot ->
+                val record = base + slot * 6
+                val method = rom.u16le(record)
+                val parameter = rom.u16le(record + 2)
+                val target = rom.u16le(record + 4)
+                if (method == 0) {
+                    parameter == 0 && target == 0
+                } else {
+                    method in 1..maximumMethod && target in 1 until speciesCount
+                }
+            }
+            if (slotsValid) valid++
+        }
+        result(valid, speciesCount, offset, slotsPerSpecies * 6, "valid Gen 3 evolution records", 0.90)
+    }
+
+    fun gen3Learnsets(
+        rom: RomImage,
+        pointerTableOffset: Int,
+        speciesCount: Int,
+        moveCount: Int,
+    ): ValidationEvidence = safely(pointerTableOffset, 4, speciesCount) {
+        var valid = 0
+        repeat(speciesCount) { index ->
+            val offset = rom.gbaPointer(pointerTableOffset + index * 4)
+            if (offset != null && validGen3Learnset(rom, offset, moveCount)) valid++
+        }
+        result(valid, speciesCount, pointerTableOffset, 4, "valid Gen 3 learnsets", 0.90)
+    }
+
     private fun validGen1Description(rom: RomImage, offset: Int, codec: PokemonTextCodec): Boolean {
         val categoryEnd = terminatorOffset(rom, offset, 24, codec.terminator) ?: return false
         val metadata = categoryEnd + 1
@@ -75,6 +150,80 @@ object PokemonDatasetValidators {
         return decodeAt(rom, offset, 24, codec, 0.70) &&
             decodeAt(rom, first, 512, codec, 0.55) &&
             decodeAt(rom, second, 512, codec, 0.55)
+    }
+
+    private fun validateGen12SpeciesRecord(
+        rom: RomImage,
+        offset: Int,
+        speciesCount: Int,
+        moveCount: Int,
+        generation: Int,
+    ): Gen12SpeciesValidation {
+        var cursor = offset
+        var evolutionsValid = generation in 1..2
+        var evolutionEntries = 0
+        while (evolutionsValid && evolutionEntries < MAX_EVOLUTIONS_PER_SPECIES) {
+            val method = rom.u8(cursor)
+            if (method == 0) break
+            val width = evolutionWidth(generation, method)
+            if (width == null) {
+                evolutionsValid = false
+            } else {
+                val target = rom.u8(cursor + width - 1)
+                if (target !in 1..speciesCount) evolutionsValid = false
+                cursor += width
+                evolutionEntries++
+            }
+        }
+        if (!evolutionsValid || rom.u8(cursor) != 0) return Gen12SpeciesValidation(false, false)
+        cursor++
+
+        var previousLevel = 0
+        var learnsetValid = true
+        var learnsetEntries = 0
+        while (learnsetEntries < MAX_LEARNSET_ENTRIES) {
+            val level = rom.u8(cursor)
+            if (level == 0) break
+            val move = rom.u8(cursor + 1)
+            if (level !in previousLevel.coerceAtLeast(1)..100 || move !in 1..moveCount) {
+                learnsetValid = false
+                break
+            }
+            previousLevel = level
+            cursor += 2
+            learnsetEntries++
+        }
+        if (rom.u8(cursor) != 0) learnsetValid = false
+        return Gen12SpeciesValidation(true, learnsetValid)
+    }
+
+    private fun evolutionWidth(generation: Int, method: Int): Int? = when (generation) {
+        1 -> when (method) {
+            1, 3 -> 3
+            2 -> 4
+            else -> null
+        }
+        2 -> when (method) {
+            in 1..4 -> 3
+            5 -> 4
+            else -> null
+        }
+        else -> null
+    }
+
+    private fun validGen3Learnset(rom: RomImage, offset: Int, moveCount: Int): Boolean {
+        var cursor = offset
+        var previousLevel = 0
+        repeat(MAX_LEARNSET_ENTRIES) {
+            val packed = rom.u16le(cursor)
+            if (packed == GEN3_LEARNSET_END) return true
+            val move = packed and GEN3_MOVE_MASK
+            val level = packed ushr GEN3_LEVEL_SHIFT
+            if (move !in 1..moveCount || level !in previousLevel.coerceAtLeast(1)..100) return false
+            previousLevel = level
+            cursor += 2
+        }
+        return false
     }
 
     private fun decodeAt(
@@ -134,4 +283,14 @@ object PokemonDatasetValidators {
     }
 
     private const val GEN1_TEXT_FAR = 0x17
+    private const val MAX_EVOLUTIONS_PER_SPECIES = 16
+    private const val MAX_LEARNSET_ENTRIES = 128
+    private const val GEN3_LEARNSET_END = 0xFFFF
+    private const val GEN3_MOVE_MASK = 0x1FF
+    private const val GEN3_LEVEL_SHIFT = 9
+
+    private data class Gen12SpeciesValidation(
+        val evolutions: Boolean,
+        val learnset: Boolean,
+    )
 }
