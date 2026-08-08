@@ -8,6 +8,8 @@
 
 **Tech Stack:** Kotlin/JVM 2.3.10, Java 17, Gradle 9.1, JUnit 4, immutable `RomImage`, public pret Gen I–III disassembly/decompilation formats, read-only private ROM corpus.
 
+**Status (2026-08-09):** Completed. All 14 in-scope ROMs expose every applicable static capability; GB/GBC correctly report abilities as `N/A`. Direct files and ZIP entries share the streaming input adapter, repeated reports are deterministic apart from measured duration, and all source archives remained byte-identical.
+
 ---
 
 ## File map

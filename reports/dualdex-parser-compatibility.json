@@ -12,7 +12,7 @@
       "displayName": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
       "source": "Hacks/Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip",
       "archiveEntry": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
-      "durationMillis": 418,
+      "durationMillis": 6014,
       "result": {
         "header": {
           "platform": "GBA",
@@ -142,7 +142,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "valid GBA pointers 8/412 below 90%"
+                "reason": "valid Gen 3 sprite references 8/412 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -210,27 +210,30 @@
                 "count": 412,
                 "recordSize": 8,
                 "reasons": [
-                  "valid GBA pointers 8/412 below 90%"
+                  "valid Gen 3 sprite references 8/412 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 9227416,
+                "count": 411,
+                "recordSize": 32,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9416058394160584,
+                "offset": 9330796,
+                "count": 411,
+                "recordSize": 64,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -258,12 +261,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 9362212,
+                "count": 411,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -398,21 +402,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9458874458874459,
+                "offset": 9227416,
+                "count": 462,
+                "recordSize": 32,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 9330796,
+                "count": 462,
+                "recordSize": 64,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -436,12 +442,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 9362212,
+                "count": 462,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -576,21 +583,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9458874458874459,
+                "offset": 9227416,
+                "count": 462,
+                "recordSize": 32,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 9330796,
+                "count": 462,
+                "recordSize": 64,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -614,12 +623,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 9362212,
+                "count": 462,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -706,21 +716,23 @@
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9458874458874459,
+            "offset": 9227416,
+            "count": 462,
+            "recordSize": 32,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 9330796,
+            "count": 462,
+            "recordSize": 64,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -744,12 +756,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 9362212,
+            "count": 462,
+            "recordSize": 4,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -769,7 +782,7 @@
       "displayName": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
       "source": "Hacks/Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip",
       "archiveEntry": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
-      "durationMillis": 300,
+      "durationMillis": 4971,
       "result": {
         "header": {
           "platform": "GBA",
@@ -899,7 +912,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "valid GBA pointers 8/412 below 90%"
+                "reason": "valid Gen 3 sprite references 8/412 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -967,27 +980,30 @@
                 "count": 412,
                 "recordSize": 8,
                 "reasons": [
-                  "valid GBA pointers 8/412 below 90%"
+                  "valid Gen 3 sprite references 8/412 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 27282696,
+                "count": 411,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2463572,
+                "count": 411,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -1015,12 +1031,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2480052,
+                "count": 411,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -1155,21 +1172,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 27282696,
+                "count": 840,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9202380952380952,
+                "offset": 27012102,
+                "count": 840,
+                "recordSize": 128,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -1193,12 +1212,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 27217304,
+                "count": 840,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -1332,21 +1352,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 27282696,
+                "count": 840,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9202380952380952,
+                "offset": 27012102,
+                "count": 840,
+                "recordSize": 128,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -1370,12 +1392,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 27217304,
+                "count": 840,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -1461,21 +1484,23 @@
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 27282696,
+            "count": 840,
+            "recordSize": 36,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9202380952380952,
+            "offset": 27012102,
+            "count": 840,
+            "recordSize": 128,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -1499,12 +1524,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 27217304,
+            "count": 840,
+            "recordSize": 4,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -1524,7 +1550,7 @@
       "displayName": "Pokemon Unbound.zip!Pokemon Unbound.gba",
       "source": "Hacks/Pokemon Unbound.zip",
       "archiveEntry": "Pokemon Unbound.gba",
-      "durationMillis": 385,
+      "durationMillis": 6175,
       "result": {
         "header": {
           "platform": "GBA",
@@ -1654,7 +1680,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "valid GBA pointers 8/412 below 90%"
+                "reason": "valid Gen 3 sprite references 8/412 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -1722,25 +1748,27 @@
                 "count": 412,
                 "recordSize": 8,
                 "reasons": [
-                  "valid GBA pointers 8/412 below 90%"
+                  "valid Gen 3 sprite references 8/412 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 27482060,
+                "count": 411,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
                 "confidence": 0.0,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "Gen 3 evolution table not resolved by structural validation"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -1773,7 +1801,7 @@
                 "compatible": false,
                 "confidence": 0.0,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "Gen 3 CFRU/DPE learnset pointer table not resolved by structural validation"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -1910,21 +1938,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 27482060,
+                "count": 840,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9202380952380952,
+                "offset": 27212410,
+                "count": 840,
+                "recordSize": 128,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -1948,24 +1978,23 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 27411836,
+                "count": 840,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
-                "compatible": false,
-                "confidence": 0.59375,
+                "compatible": true,
+                "confidence": 0.9713375796178344,
                 "offset": 10707864,
-                "count": 64,
-                "recordSize": 13,
-                "reasons": [
-                  "valid fixed names 38/64 below 0.85"
-                ],
-                "status": "NOT_FOUND"
+                "count": 314,
+                "recordSize": 17,
+                "reasons": [],
+                "status": "AVAILABLE"
               }
             ],
             "profileName": "Pokemon Emerald (USA/Europe)",
@@ -2089,21 +2118,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 27482060,
+                "count": 840,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9202380952380952,
+                "offset": 27212410,
+                "count": 840,
+                "recordSize": 128,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -2127,24 +2158,23 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 27411836,
+                "count": 840,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
-                "compatible": false,
-                "confidence": 0.59375,
+                "compatible": true,
+                "confidence": 0.9713375796178344,
                 "offset": 10707864,
-                "count": 64,
-                "recordSize": 13,
-                "reasons": [
-                  "valid fixed names 38/64 below 0.85"
-                ],
-                "status": "NOT_FOUND"
+                "count": 314,
+                "recordSize": 17,
+                "reasons": [],
+                "status": "AVAILABLE"
               }
             ],
             "profileName": "Pokemon FireRed (USA) Rev 1",
@@ -2220,21 +2250,23 @@
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 27482060,
+            "count": 840,
+            "recordSize": 36,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9202380952380952,
+            "offset": 27212410,
+            "count": 840,
+            "recordSize": 128,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -2258,24 +2290,23 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 27411836,
+            "count": 840,
+            "recordSize": 4,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
-            "compatible": false,
-            "confidence": 0.59375,
+            "compatible": true,
+            "confidence": 0.9713375796178344,
             "offset": 10707864,
-            "count": 64,
-            "recordSize": 13,
-            "reasons": [
-              "valid fixed names 38/64 below 0.85"
-            ],
-            "status": "NOT_FOUND"
+            "count": 314,
+            "recordSize": 17,
+            "reasons": [],
+            "status": "AVAILABLE"
           }
         ],
         "diagnostics": []
@@ -2285,7 +2316,7 @@
       "displayName": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb",
       "source": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb",
-      "durationMillis": 12,
+      "durationMillis": 14,
       "result": {
         "header": {
           "platform": "GB",
@@ -2344,9 +2375,9 @@
               },
               {
                 "category": "sprites",
-                "points": 0,
+                "points": 10,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "150/151 valid at 0x383DE"
               }
             ],
             "capabilities": [
@@ -2402,30 +2433,33 @@
               },
               {
                 "capability": "SPRITES",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9933774834437086,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.7947368421052632,
+                "offset": 263294,
+                "count": 190,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -2448,12 +2482,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -2471,7 +2506,7 @@
           },
           {
             "family": "YELLOW",
-            "score": 32,
+            "score": 42,
             "hardGatePassed": true,
             "anchors": 2,
             "scoreEvidence": [
@@ -2513,9 +2548,9 @@
               },
               {
                 "category": "sprites",
-                "points": 0,
+                "points": 10,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "150/151 valid at 0x383DE"
               }
             ],
             "capabilities": [
@@ -2577,28 +2612,35 @@
               },
               {
                 "capability": "SPRITES",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9933774834437086,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 263435,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 Pokédex entries 0/190 below 0.75"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.010526315789473684,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 evolution records 2/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -2626,9 +2668,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.005263157894736842,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 learnsets 1/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -2694,7 +2739,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 2 sprite references 2/251 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -2762,9 +2807,13 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 294912,
+                "count": 251,
+                "recordSize": 6,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 2 sprite references 2/251 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -2772,17 +2821,23 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 279392,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 Pokédex entries 0/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 evolution records 2/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -2812,9 +2867,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 learnsets 2/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -2880,7 +2938,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "ROM read outside 0..1048575: offset=1179648 length=1"
               }
             ],
             "capabilities": [
@@ -2949,8 +3007,11 @@
                 "capability": "SPRITES",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 1179648,
+                "count": 251,
+                "recordSize": 6,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "ROM read outside 0..1048575: offset=1179648 length=1"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -2958,17 +3019,23 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 279416,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 Pokédex entries 0/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.0199203187250996,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 evolution records 5/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -2998,9 +3065,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.0199203187250996,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 learnsets 5/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -3125,30 +3195,33 @@
           },
           {
             "capability": "SPRITES",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "sprite pointer validation is only implemented for GBA"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9933774834437086,
+            "offset": 230366,
+            "count": 151,
+            "recordSize": 28,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.7947368421052632,
+            "offset": 263294,
+            "count": 190,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 241756,
+            "count": 190,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -3171,12 +3244,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 241756,
+            "count": 190,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -3195,7 +3269,7 @@
       "displayName": "Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc",
       "source": "Pokemon - Crystal Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc",
-      "durationMillis": 13,
+      "durationMillis": 11,
       "result": {
         "header": {
           "platform": "GBC",
@@ -3256,7 +3330,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 1 sprite references 2/151 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -3324,9 +3398,13 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.013245033112582781,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 1 sprite references 2/151 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -3334,17 +3412,23 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 263294,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 Pokédex entries 0/190 below 0.75"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.07894736842105263,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 evolution records 15/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -3374,9 +3458,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.03684210526315789,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 learnsets 7/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -3442,7 +3529,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 1 sprite references 2/151 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -3510,9 +3597,13 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.013245033112582781,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 1 sprite references 2/151 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -3520,17 +3611,23 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 263435,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 Pokédex entries 0/190 below 0.75"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.031578947368421054,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 evolution records 6/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -3560,9 +3657,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.015789473684210527,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 learnsets 3/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -3628,7 +3728,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 2 sprite references 2/251 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -3696,27 +3796,37 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 294912,
+                "count": 251,
+                "recordSize": 6,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 2 sprite references 2/251 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 279392,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 Pokédex entries 2/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 evolution records 2/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -3746,9 +3856,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00398406374501992,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 learnsets 1/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -3812,9 +3925,9 @@
               },
               {
                 "category": "sprites",
-                "points": 0,
+                "points": 10,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "250/251 valid at 0x120000"
               }
             ],
             "capabilities": [
@@ -3870,30 +3983,33 @@
               },
               {
                 "capability": "SPRITES",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9960159362549801,
+                "offset": 1179648,
+                "count": 251,
+                "recordSize": 6,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 279416,
+                "count": 251,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -3916,12 +4032,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9960159362549801,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -4042,30 +4159,33 @@
           },
           {
             "capability": "SPRITES",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "sprite pointer validation is only implemented for GBA"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9960159362549801,
+            "offset": 1179648,
+            "count": 251,
+            "recordSize": 6,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 279416,
+            "count": 251,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 271793,
+            "count": 251,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -4088,12 +4208,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9960159362549801,
+            "offset": 271793,
+            "count": 251,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -4112,7 +4233,7 @@
       "displayName": "Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba",
       "source": "Pokemon - Emerald Version (USA, Europe).zip",
       "archiveEntry": "Pokemon - Emerald Version (USA, Europe).gba",
-      "durationMillis": 149,
+      "durationMillis": 3729,
       "result": {
         "header": {
           "platform": "GBA",
@@ -4241,7 +4362,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "valid GBA pointers 15/412 below 90%"
+                "reason": "valid Gen 3 sprite references 15/412 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -4309,27 +4430,30 @@
                 "count": 412,
                 "recordSize": 8,
                 "reasons": [
-                  "valid GBA pointers 15/412 below 90%"
+                  "valid Gen 3 sprite references 15/412 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9416058394160584,
+                "offset": 5682608,
+                "count": 411,
+                "recordSize": 32,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 3298076,
+                "count": 411,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -4357,12 +4481,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 3314556,
+                "count": 411,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -4495,21 +4620,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 5682608,
+                "count": 387,
+                "recordSize": 32,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 3298076,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -4533,12 +4660,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 3314556,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -4669,21 +4797,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9393203883495146,
+                "offset": 5682608,
+                "count": 412,
+                "recordSize": 32,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 3298076,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -4707,12 +4837,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 3314556,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -4796,21 +4927,23 @@
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 5682608,
+            "count": 387,
+            "recordSize": 32,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 3298076,
+            "count": 412,
+            "recordSize": 40,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -4834,12 +4967,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 3314556,
+            "count": 412,
+            "recordSize": 4,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -4859,7 +4993,7 @@
       "displayName": "Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - FireRed Version (USA).zip",
       "archiveEntry": "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 106,
+      "durationMillis": 1739,
       "result": {
         "header": {
           "platform": "GBA",
@@ -4988,7 +5122,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "valid GBA pointers 6/412 below 90%"
+                "reason": "valid Gen 3 sprite references 6/412 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -5056,27 +5190,30 @@
                 "count": 412,
                 "recordSize": 8,
                 "reasons": [
-                  "valid GBA pointers 6/412 below 90%"
+                  "valid Gen 3 sprite references 6/412 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9416058394160584,
+                "offset": 4516016,
+                "count": 411,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2463684,
+                "count": 411,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -5104,12 +5241,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2480164,
+                "count": 411,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -5244,21 +5382,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9393203883495146,
+                "offset": 4516016,
+                "count": 412,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2463684,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -5282,12 +5422,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2480164,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -5419,21 +5560,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 4516016,
+                "count": 387,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2463684,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -5457,12 +5600,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2480164,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -5543,21 +5687,23 @@
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 4516016,
+            "count": 387,
+            "recordSize": 36,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2463684,
+            "count": 412,
+            "recordSize": 40,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -5581,12 +5727,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2480164,
+            "count": 412,
+            "recordSize": 4,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -5606,7 +5753,7 @@
       "displayName": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 9,
+      "durationMillis": 11,
       "result": {
         "header": {
           "platform": "GBC",
@@ -5667,7 +5814,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 1 sprite references 2/151 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -5735,9 +5882,13 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.013245033112582781,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 1 sprite references 2/151 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -5745,17 +5896,23 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 263294,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 Pokédex entries 0/190 below 0.75"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.005263157894736842,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 evolution records 1/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -5785,9 +5942,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.005263157894736842,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 learnsets 1/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -5853,7 +6013,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 1 sprite references 2/151 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -5921,9 +6081,13 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.013245033112582781,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 1 sprite references 2/151 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -5931,8 +6095,11 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 263435,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 Pokédex entries 0/190 below 0.75"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -5940,8 +6107,11 @@
                 "capability": "EVOLUTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 evolution records 0/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -5972,8 +6142,11 @@
                 "capability": "LEARNSETS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 learnsets 0/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -6037,9 +6210,9 @@
               },
               {
                 "category": "sprites",
-                "points": 0,
+                "points": 10,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "250/251 valid at 0x48000"
               }
             ],
             "capabilities": [
@@ -6095,30 +6268,33 @@
               },
               {
                 "capability": "SPRITES",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9960159362549801,
+                "offset": 294912,
+                "count": 251,
+                "recordSize": 6,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.8804780876494024,
+                "offset": 279392,
+                "count": 251,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -6141,12 +6317,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9960159362549801,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -6208,7 +6385,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 2 sprite references 13/251 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -6276,27 +6453,37 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.05179282868525897,
+                "offset": 1179648,
+                "count": 251,
+                "recordSize": 6,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 2 sprite references 13/251 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.13545816733067728,
+                "offset": 279416,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 Pokédex entries 34/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 evolution records 2/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -6326,9 +6513,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 learnsets 2/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -6453,30 +6643,33 @@
           },
           {
             "capability": "SPRITES",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "sprite pointer validation is only implemented for GBA"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9960159362549801,
+            "offset": 294912,
+            "count": 251,
+            "recordSize": 6,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.8804780876494024,
+            "offset": 279392,
+            "count": 251,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 272317,
+            "count": 251,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -6499,12 +6692,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9960159362549801,
+            "offset": 272317,
+            "count": 251,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -6523,7 +6717,7 @@
       "displayName": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 108,
+      "durationMillis": 2074,
       "result": {
         "header": {
           "platform": "GBA",
@@ -6652,7 +6846,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "valid GBA pointers 3/412 below 90%"
+                "reason": "valid Gen 3 sprite references 3/412 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -6720,27 +6914,30 @@
                 "count": 412,
                 "recordSize": 8,
                 "reasons": [
-                  "valid GBA pointers 3/412 below 90%"
+                  "valid Gen 3 sprite references 3/412 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9416058394160584,
+                "offset": 4514528,
+                "count": 411,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2463652,
+                "count": 411,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -6768,12 +6965,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2480132,
+                "count": 411,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -6908,21 +7106,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9393203883495146,
+                "offset": 4514528,
+                "count": 412,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2463652,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -6946,12 +7146,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2480132,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -7083,21 +7284,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 4514528,
+                "count": 387,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2463652,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -7121,12 +7324,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2480132,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -7207,21 +7411,23 @@
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 4514528,
+            "count": 387,
+            "recordSize": 36,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2463652,
+            "count": 412,
+            "recordSize": 40,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -7245,12 +7451,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2480132,
+            "count": 412,
+            "recordSize": 4,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -7270,7 +7477,7 @@
       "displayName": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb",
       "source": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb",
-      "durationMillis": 4,
+      "durationMillis": 7,
       "result": {
         "header": {
           "platform": "GB",
@@ -7329,9 +7536,9 @@
               },
               {
                 "category": "sprites",
-                "points": 0,
+                "points": 10,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "150/151 valid at 0x383DE"
               }
             ],
             "capabilities": [
@@ -7387,30 +7594,33 @@
               },
               {
                 "capability": "SPRITES",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9933774834437086,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.7947368421052632,
+                "offset": 263294,
+                "count": 190,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -7433,12 +7643,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -7456,7 +7667,7 @@
           },
           {
             "family": "YELLOW",
-            "score": 32,
+            "score": 42,
             "hardGatePassed": true,
             "anchors": 2,
             "scoreEvidence": [
@@ -7498,9 +7709,9 @@
               },
               {
                 "category": "sprites",
-                "points": 0,
+                "points": 10,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "150/151 valid at 0x383DE"
               }
             ],
             "capabilities": [
@@ -7562,28 +7773,35 @@
               },
               {
                 "capability": "SPRITES",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9933774834437086,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 263435,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 Pokédex entries 0/190 below 0.75"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.010526315789473684,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 evolution records 2/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -7611,9 +7829,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.005263157894736842,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 learnsets 1/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -7679,7 +7900,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 2 sprite references 2/251 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -7747,9 +7968,13 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 294912,
+                "count": 251,
+                "recordSize": 6,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 2 sprite references 2/251 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -7757,17 +7982,23 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 279392,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 Pokédex entries 0/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 evolution records 2/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -7797,9 +8028,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 learnsets 2/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -7865,7 +8099,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "ROM read outside 0..1048575: offset=1179648 length=1"
               }
             ],
             "capabilities": [
@@ -7934,8 +8168,11 @@
                 "capability": "SPRITES",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 1179648,
+                "count": 251,
+                "recordSize": 6,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "ROM read outside 0..1048575: offset=1179648 length=1"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -7943,17 +8180,23 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 279416,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 Pokédex entries 0/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.027888446215139442,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 evolution records 7/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -7983,9 +8226,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.027888446215139442,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 learnsets 7/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -8110,30 +8356,33 @@
           },
           {
             "capability": "SPRITES",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "sprite pointer validation is only implemented for GBA"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9933774834437086,
+            "offset": 230366,
+            "count": 151,
+            "recordSize": 28,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.7947368421052632,
+            "offset": 263294,
+            "count": 190,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 241756,
+            "count": 190,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -8156,12 +8405,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 241756,
+            "count": 190,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -8180,7 +8430,7 @@
       "displayName": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 107,
+      "durationMillis": 1553,
       "result": {
         "header": {
           "platform": "GBA",
@@ -8375,21 +8625,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 3872884,
+                "count": 387,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2112384,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -8413,12 +8665,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2128864,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -8483,7 +8736,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "valid GBA pointers 0/412 below 90%"
+                "reason": "valid Gen 3 sprite references 0/412 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -8556,27 +8809,30 @@
                 "count": 412,
                 "recordSize": 8,
                 "reasons": [
-                  "valid GBA pointers 0/412 below 90%"
+                  "valid Gen 3 sprite references 0/412 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9393203883495146,
+                "offset": 3872884,
+                "count": 412,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2112384,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -8604,12 +8860,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2128864,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -8676,7 +8933,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "valid GBA pointers 1/412 below 90%"
+                "reason": "valid Gen 3 sprite references 1/412 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -8749,27 +9006,30 @@
                 "count": 412,
                 "recordSize": 8,
                 "reasons": [
-                  "valid GBA pointers 1/412 below 90%"
+                  "valid Gen 3 sprite references 1/412 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9393203883495146,
+                "offset": 3872884,
+                "count": 412,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2112384,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -8797,12 +9057,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2128864,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -8887,21 +9148,23 @@
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 3872884,
+            "count": 387,
+            "recordSize": 36,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2112384,
+            "count": 412,
+            "recordSize": 40,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -8925,12 +9188,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2128864,
+            "count": 412,
+            "recordSize": 4,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -8950,7 +9214,7 @@
       "displayName": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 107,
+      "durationMillis": 1733,
       "result": {
         "header": {
           "platform": "GBA",
@@ -9145,21 +9409,23 @@
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 3872976,
+                "count": 387,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2112272,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -9183,12 +9449,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2128752,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -9253,7 +9520,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "valid GBA pointers 0/412 below 90%"
+                "reason": "valid Gen 3 sprite references 0/412 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -9326,27 +9593,30 @@
                 "count": 412,
                 "recordSize": 8,
                 "reasons": [
-                  "valid GBA pointers 0/412 below 90%"
+                  "valid Gen 3 sprite references 0/412 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9393203883495146,
+                "offset": 3872976,
+                "count": 412,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2112272,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -9374,12 +9644,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2128752,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -9446,7 +9717,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "valid GBA pointers 1/412 below 90%"
+                "reason": "valid Gen 3 sprite references 1/412 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -9519,27 +9790,30 @@
                 "count": 412,
                 "recordSize": 8,
                 "reasons": [
-                  "valid GBA pointers 1/412 below 90%"
+                  "valid Gen 3 sprite references 1/412 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9393203883495146,
+                "offset": 3872976,
+                "count": 412,
+                "recordSize": 36,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2112272,
+                "count": 412,
+                "recordSize": 40,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -9567,12 +9841,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 2128752,
+                "count": 412,
+                "recordSize": 4,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -9657,21 +9932,23 @@
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 3872976,
+            "count": 387,
+            "recordSize": 36,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2112272,
+            "count": 412,
+            "recordSize": 40,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -9695,12 +9972,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2128752,
+            "count": 412,
+            "recordSize": 4,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -9720,7 +9998,7 @@
       "displayName": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 5,
+      "durationMillis": 7,
       "result": {
         "header": {
           "platform": "GBC",
@@ -9781,7 +10059,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 1 sprite references 2/151 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -9849,9 +10127,13 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.013245033112582781,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 1 sprite references 2/151 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -9859,17 +10141,23 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 263294,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 Pokédex entries 0/190 below 0.75"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.005263157894736842,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 evolution records 1/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -9899,9 +10187,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.005263157894736842,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 learnsets 1/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -9967,7 +10258,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 1 sprite references 2/151 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -10035,9 +10326,13 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.013245033112582781,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 1 sprite references 2/151 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -10045,8 +10340,11 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 263435,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 Pokédex entries 0/190 below 0.75"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -10054,8 +10352,11 @@
                 "capability": "EVOLUTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 evolution records 0/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -10086,8 +10387,11 @@
                 "capability": "LEARNSETS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 learnsets 0/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -10151,9 +10455,9 @@
               },
               {
                 "category": "sprites",
-                "points": 0,
+                "points": 10,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "250/251 valid at 0x48000"
               }
             ],
             "capabilities": [
@@ -10209,30 +10513,33 @@
               },
               {
                 "capability": "SPRITES",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9960159362549801,
+                "offset": 294912,
+                "count": 251,
+                "recordSize": 6,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9123505976095617,
+                "offset": 279392,
+                "count": 251,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -10255,12 +10562,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9960159362549801,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -10322,7 +10630,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 2 sprite references 13/251 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -10390,27 +10698,37 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.05179282868525897,
+                "offset": 1179648,
+                "count": 251,
+                "recordSize": 6,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 2 sprite references 13/251 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.09163346613545817,
+                "offset": 279416,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 Pokédex entries 23/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 evolution records 2/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -10440,9 +10758,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 learnsets 2/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -10567,30 +10888,33 @@
           },
           {
             "capability": "SPRITES",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "sprite pointer validation is only implemented for GBA"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9960159362549801,
+            "offset": 294912,
+            "count": 251,
+            "recordSize": 6,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9123505976095617,
+            "offset": 279392,
+            "count": 251,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 272317,
+            "count": 251,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -10613,12 +10937,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9960159362549801,
+            "offset": 272317,
+            "count": 251,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
@@ -10637,7 +10962,7 @@
       "displayName": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb",
       "source": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb",
-      "durationMillis": 2,
+      "durationMillis": 4,
       "result": {
         "header": {
           "platform": "GBC",
@@ -10654,7 +10979,7 @@
         "probes": [
           {
             "family": "RED_BLUE",
-            "score": 32,
+            "score": 42,
             "hardGatePassed": true,
             "anchors": 2,
             "scoreEvidence": [
@@ -10696,9 +11021,9 @@
               },
               {
                 "category": "sprites",
-                "points": 0,
+                "points": 10,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "151/151 valid at 0x383DE"
               }
             ],
             "capabilities": [
@@ -10760,28 +11085,35 @@
               },
               {
                 "capability": "SPRITES",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.010526315789473684,
+                "offset": 263294,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 Pokédex entries 2/190 below 0.75"
                 ],
                 "status": "NOT_FOUND"
               },
               {
                 "capability": "EVOLUTIONS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.021052631578947368,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 evolution records 4/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -10809,9 +11141,12 @@
               {
                 "capability": "LEARNSETS",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.010526315789473684,
+                "offset": 241756,
+                "count": 190,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 1 learnsets 2/190 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -10875,9 +11210,9 @@
               },
               {
                 "category": "sprites",
-                "points": 0,
+                "points": 10,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "151/151 valid at 0x383DE"
               }
             ],
             "capabilities": [
@@ -10933,30 +11268,33 @@
               },
               {
                 "capability": "SPRITES",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 230366,
+                "count": 151,
+                "recordSize": 28,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.7947368421052632,
+                "offset": 263435,
+                "count": 190,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "EVOLUTIONS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 1.0,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "MOVE_CATALOG",
@@ -10979,12 +11317,13 @@
               },
               {
                 "capability": "LEARNSETS",
-                "compatible": false,
-                "confidence": 0.0,
-                "reasons": [
-                  "not implemented in parser POC"
-                ],
-                "status": "NOT_FOUND"
+                "compatible": true,
+                "confidence": 0.9947368421052631,
+                "offset": 242149,
+                "count": 190,
+                "recordSize": 2,
+                "reasons": [],
+                "status": "AVAILABLE"
               },
               {
                 "capability": "ABILITIES",
@@ -11046,7 +11385,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "valid Gen 2 sprite references 2/251 below 0.9; valid representative compressed sprite samples 0/16 below 0.65"
               }
             ],
             "capabilities": [
@@ -11114,9 +11453,13 @@
               {
                 "capability": "SPRITES",
                 "compatible": false,
-                "confidence": 0.0,
+                "confidence": 0.00796812749003984,
+                "offset": 294912,
+                "count": 251,
+                "recordSize": 6,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "valid Gen 2 sprite references 2/251 below 0.9",
+                  "valid representative compressed sprite samples 0/16 below 0.65"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -11124,8 +11467,11 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 279392,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 Pokédex entries 0/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -11133,8 +11479,11 @@
                 "capability": "EVOLUTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 evolution records 0/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -11165,8 +11514,11 @@
                 "capability": "LEARNSETS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 272317,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 learnsets 0/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -11232,7 +11584,7 @@
                 "category": "sprites",
                 "points": 0,
                 "maximum": 10,
-                "reason": "sprite pointer validation is only implemented for GBA"
+                "reason": "ROM read outside 0..1048575: offset=1179648 length=1"
               }
             ],
             "capabilities": [
@@ -11301,8 +11653,11 @@
                 "capability": "SPRITES",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 1179648,
+                "count": 251,
+                "recordSize": 6,
                 "reasons": [
-                  "sprite pointer validation is only implemented for GBA"
+                  "ROM read outside 0..1048575: offset=1179648 length=1"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -11310,8 +11665,11 @@
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 279416,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 Pokédex entries 0/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -11319,8 +11677,11 @@
                 "capability": "EVOLUTIONS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 evolution records 0/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -11351,8 +11712,11 @@
                 "capability": "LEARNSETS",
                 "compatible": false,
                 "confidence": 0.0,
+                "offset": 271793,
+                "count": 251,
+                "recordSize": 2,
                 "reasons": [
-                  "not implemented in parser POC"
+                  "valid Gen 2 learnsets 0/251 below 0.9"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -11477,30 +11841,33 @@
           },
           {
             "capability": "SPRITES",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "sprite pointer validation is only implemented for GBA"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 230366,
+            "count": 151,
+            "recordSize": 28,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "POKEDEX_DESCRIPTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.7947368421052632,
+            "offset": 263435,
+            "count": 190,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "EVOLUTIONS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 242149,
+            "count": 190,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "MOVE_CATALOG",
@@ -11523,12 +11890,13 @@
           },
           {
             "capability": "LEARNSETS",
-            "compatible": false,
-            "confidence": 0.0,
-            "reasons": [
-              "not implemented in parser POC"
-            ],
-            "status": "NOT_FOUND"
+            "compatible": true,
+            "confidence": 0.9947368421052631,
+            "offset": 242149,
+            "count": 190,
+            "recordSize": 2,
+            "reasons": [],
+            "status": "AVAILABLE"
           },
           {
             "capability": "ABILITIES",
