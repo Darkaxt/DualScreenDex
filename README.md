@@ -1,115 +1,225 @@
-# DualScreenDex
+# DualDex
 
-**DualScreenDex** is a companion Pokedex app designed specifically for dual-screen Android gaming handhelds (like the Ayn Thor). It uses live OCR screen scanning to automatically detect the Pokémon currently on your screen and display their stats, weaknesses, and resistances instantly.
+DualDex is becoming a passive second-screen Pokédex companion for mainline-family Pokémon games running in RetroArch on dual-screen Android handhelds.
 
----
+The game remains on the primary display. DualDex parses the user's active GB, GBC, or GBA ROM into a local Pokédex, observes battle state through RetroArch's read-only memory interface, and presents the currently targeted opponent on the companion screen—without OCR, screenshots, cheats, memory writes, or per-ROM profiles.
 
-## New in v2.0
+> [!IMPORTANT]
+> The pure-Kotlin ROM parser proof of concept is implemented and validated. The passive runtime mapper and replacement companion UI are specified but not implemented yet. The inherited `app` module is still the abandoned OCR/accessibility prototype and is not representative of the new v1 architecture. There is no new companion APK release at this stage.
 
-* **Modular Architecture:** Complete internal refactor replacing the previous monolithic system with a cleaner, more scalable modular structure.
-* **Custom ROM Profiles:**
-  * Built-in profiles for:
-    * Vanilla Pokémon (Gen 1)
-    * Vanilla Pokémon (Gen 2–5)
-    * Vanilla Pokémon (Gen 6+)
-    * Luminescent Platinum
-    * Radical Red
-  * Create fully custom profiles by uploading your own `.csv` files:
-    * Custom Pokédex data
-    * Regional variants
-    * Type matchup logic
-    * Designed to support any ROM hack or custom game.
-* **Advanced Screen Scanning:**
-  * Choose whether to scan the **top or bottom screen**.
-  * Select scanning orientation (**left side or right side**) depending on how your game displays enemy Pokémon.
-  * Ideal for different emulator layouts and custom ROM UI designs.
+## Why this fork is different
 
----
+The upstream project attempted to identify Pokémon from screenshots and supply game data through bundled databases or user-authored CSV profiles. This fork treats the ROM and live game state as authoritative.
 
-## Features
+| Concern | Previous OCR approach | DualDex direction |
+| --- | --- | --- |
+| Opponent detection | Repeated screenshots and text recognition | Validated species/form ID from RetroArch memory |
+| Game data | Bundled database and imported CSV profiles | Parsed directly from the active ROM |
+| ROM hacks | User creates and maintains a profile | Family competition, structural inference, and automatic generated mapping |
+| Type mechanics | Selected external generation chart | Type chart and move mechanics extracted from the ROM |
+| Double battles | Infer names from screen regions | Follow the game's selected target cursor |
+| Opponent moves | OCR or generic expectations | Only moves actually observed, frequency-ranked per species/form |
+| Permissions | Accessibility and screenshot access | Localhost RetroArch Network Commands and user-selected ROM access |
+| Failure behavior | OCR/profile tuning | Independent capability flags; static Pokédex remains usable |
 
-* **Live Battle Scanner:** Uses Android's AccessibilityService and Google ML Kit to scan the selected screen region for Pokémon names in real-time.
-* **Themes (introduced in v1.1):**
-  * **OLED Mode:** True black background for OLED screens.
-  * **Pokedex Red:** Classic green-tinted aesthetic with scanlines.
-  * **Pastel Magic:** Pastel gradients with floating stars.
-  * **Dynamic:** Adapts UI colours based on the detected Pokémon's type.
-* **Smart Multitasking:**
-    * **Battle Mode:** Automatically displays data for the Pokémon detected on screen (supports multi-Pokémon battles e.g. 2v2, 3v3).
-    * **Pokedex Mode:** Browse the full database manually.
-    * **"Battle Tab":** Minimises active battle data to a small tab at the bottom while you browse, allowing you to multitask without losing your place.
-* **Generation Selector:** Dynamic type system allows you to switch between logic for Gen 1, Gen 2–5, and Gen 6+ (e.g. retrofitting Fairy types back to Normal for older games).
-* **Battery Optimised:**
-    * Scanner automatically sleeps (`onPause`) when the app is backgrounded.
-    * Uses a dynamic polling rate (2000ms) to minimise CPU usage and heat.
-    * Crops image processing to the selected game window region to save resources.
- 
-* **Database Features**
-   * **Regional Variants:** Full support for **Alolan, Galarian and Hisuian** forms.
-   * **Form Switching:** A toggle button appears automatically when a Pokémon has multiple forms.
-   * **Offline Ready:** Includes a complete database of all 1,025 Pokémon.
+The product contract is simple: a player may need to enable RetroArch Network Commands once, but must never have to enter memory addresses, import cheat codes, prepare CSV files, or create a profile for every mod.
 
----
+## Planned v1 experience
 
-## Roadmap
+### Full Pokédex
 
-* [x] **Custom ROM Support:** Import `.csv` files to support ROM hacks.
-* [x] **Custom Matchup Logic:** User-defined type effectiveness charts (e.g. changing Fire to be weak against Ice).
-* [x] **v1.1:** Themes, regional variants, and improved scanning.
-* [x] **v2.0:** Modular architecture, custom ROM profiles, advanced screen scanning controls.
-* [ ] **Language Support:** Support for non-English languages that have different Pokémon names (e.g. Japanese).
-* [ ] **TTS:** Have the app read out Pokémon entries in a Pokédex-robot voice.
+Outside battle, DualDex is a fully navigable Pokédex built from the active ROM. It can expose every validated species, form, type, stat, sprite, description, evolution, move, learnset, ability, and type-chart entry that exists in that game.
 
----
+### Automatic battle target
 
-## Demo Video
+In battle, the companion opens the current opponent automatically. In double battles, opponent chips represent every target and the selected chip follows the game's move-target cursor. The user may browse the full Pokédex at any time; a persistent live-target rail returns to battle context in one action.
 
-<a href="https://www.youtube.com/watch?v=JMTiW8wY358">
-  <video src="https://github.com/user-attachments/assets/7e5c7c09-2865-4e57-9b8e-76198134f4fb" width="400" controls muted autoplay loop>
-  </video>
-</a>
+The hybrid target page has four focused tabs:
 
----
+1. **Entry** — ROM-derived Pokédex information filtered by seen/caught knowledge.
+2. **Matchup** — selected-attack effectiveness against the current target.
+3. **Rarity** — a qualitative recruitment signal based on relative level and average DV/IV quality.
+4. **Moves** — previously observed moves, frequency-ranked with complete ROM-derived move details.
 
-## Screenshots
+The current opponent's unrevealed four-move loadout is never read into the presentation model.
 
-| Dynamic Theme | OLED Theme | Pokemon Red Theme | Pastel Magic Theme |
-|:---:|:---:|:---:|:---:|
-| <img src="https://github.com/user-attachments/assets/098a89e0-bafb-48f0-b330-0c7fb881911e" width="200" /> | <img src="https://github.com/user-attachments/assets/7f922481-6fd7-4688-b9da-d0dc99cf9177" width="200" /> | <img src="https://github.com/user-attachments/assets/21c2bafa-c446-4ed8-93bb-4437cdc17adf" width="200" /> | <img src="https://github.com/user-attachments/assets/f5a0858e-13ab-48e0-88c7-0ef487a65850" width="200" /> |
-| <img src="https://github.com/user-attachments/assets/35895897-4248-483e-89e6-0b6a5c1dbf07" width="200" /> | <img src="https://github.com/user-attachments/assets/e16ea13b-265e-4cec-9111-a7290afd43ac" width="200" /> | <img src="https://github.com/user-attachments/assets/bb7c675f-f7b5-4631-a6f2-9dfac91a92a3" width="200" /> | <img src="https://github.com/user-attachments/assets/2e147b3d-0f34-4632-97fb-20150ed458ab" width="200" /> |
+### Information policies
 
----
+The parser knows the complete ROM, but the UI controls how much of that truth it reveals.
 
-## CSV Formats
-- **Pokedex CSV:** `id,name,type1,type2` [e.g. vanilla pokedex](https://github.com/enrique-paulino/DualScreenDex/blob/master/app/src/main/assets/dex/vanilla_pokedex.csv)
-- **Regional Forms CSV:** `id,region,type1,type2` [e.g. vanilla regional](https://github.com/enrique-paulino/DualScreenDex/blob/master/app/src/main/assets/dex/vanilla_regional.csv)
-- **Matchup CSV:** [Standard matchup chart](https://github.com/enrique-paulino/DualScreenDex/blob/master/app/src/main/assets/dex/vanilla_matchup.csv) 
+| Policy | Behavior |
+| --- | --- |
+| `Discovered` | Show all validated static ROM information and deterministic matchups immediately. |
+| `Organic` (default) | Withhold uncaught information, remember facts learned through battle, and unlock complete static species knowledge after capture. |
+| `Hidden` | Keep manual Pokédex access but hide battle assistance beyond minimal target identity and caught state. |
 
----
+In Organic mode, testing an attack against an uncaught species records the matchup only when the move reaches a qualifying interaction. DualDex computes the result from the parsed move, active type chart, and validated live battler context; it does not try to infer effectiveness from HP loss. Once that species is captured, its static Pokédex becomes omniscient.
 
-## Installation
+### Recruitment-oriented rarity
 
-1. Download the latest APK from the [Releases](../../releases) page.
-2. Install the APK on your Android device.
-3. You will be prompted to enable **DualScreenDex** in your Android **Accessibility Settings**.
-    * *Note: This permission is used strictly to read the screen content for local text recognition. No images are saved or transmitted off-device.*
+The Rarity tab is intended to answer a practical question: **is this individual worth capturing?** It does not expose exact DVs/IVs and does not include EVs, Stat Experience, encounter rate, capture probability, or trainer importance.
 
----
+Its label has two independent parts:
 
-## Tech Stack
+- a contextual level prefix relative to the median level of the player's party; and
+- a stable innate tier derived from average IVs, or normalized DVs in Generations I/II.
 
-* **Language:** Kotlin
-* **UI:** XML Layouts / Material Design
-* **OCR:** Google ML Kit (On-Device Text Recognition)
-* **Database:** SQLite (Pre-populated asset)
-* **Architecture (v2.0):** Modular structure using `AccessibilityService` and Global `BroadcastReceiver`
+Examples include `WEAK ACE`, `ORDINARY TRAINED`, and `STRONG STANDARD`—an under-levelled Pokémon can still have exceptional innate potential.
 
----
+| Relative level | Prefix |
+| ---: | --- |
+| `-3` or lower | `WEAK` |
+| `-2` through `+1` | `ORDINARY` |
+| `+2` through `+3` | `COMPETENT` |
+| `+4` through `+5` | `STRONG` |
+| `+6` or higher | `MAJOR` |
 
-## License
+| Average Gen III IV | Innate tier |
+| ---: | --- |
+| `0–9` | `FODDER` |
+| `10–17` | `STANDARD` |
+| `18–23` | `TRAINED` |
+| `24–27` | `VETERAN` |
+| `28–29` | `ELITE` |
+| `30–31` | `ACE` |
 
-This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
+The qualitative label is deliberately visible before capture in Organic mode because it exists to support recruitment decisions.
 
----
+### Readable, configurable lower screen
 
-*Disclaimer: DualScreenDex is an unofficial, free fan-made app and is NOT affiliated, endorsed, or supported by Nintendo, Game Freak, or The Pokémon Company in any way. Pokémon and Pokémon character names are trademarks of Nintendo.*
+The selected UI direction is a hybrid of full Pokédex navigation and automatic battle context. Each tab has one job instead of cramming every detail onto one screen.
+
+Planned settings include:
+
+- `Discovered`, `Organic`, and `Hidden` information policies;
+- independent Matchup, Rarity, and Observed Moves switches;
+- game-matching and accessible themes;
+- font-size controls;
+- `Auto` density by default, with `Comfortable` and `Compact` overrides;
+- `Auto`, `Handheld`, and `External` display targeting where supported;
+- automatic target opening and caught-marker switches;
+- optional last-tab memory and controller-trigger navigation; and
+- local discovery reset, cache rebuild, remapping, and sanitized diagnostics.
+
+Auto density responds to usable display size and Android font scale. It may wrap or scroll secondary content, but it may not make target identity, caught state, or the selected-attack result unreadably small.
+
+## Zero-profile architecture
+
+```mermaid
+flowchart TD
+    C[Cocoon launches both apps] --> RA[RetroArch]
+    C --> DD[DualDex]
+    RA -->|GET_STATUS| S[Session Monitor]
+    S --> R[ROM Resolver]
+    R --> P[Competitive ROM Parser]
+    P --> CAT[Local Parsed Catalog]
+    P --> SR[ROM-derived Symbol Resolver]
+    RA -->|READ_CORE_MEMORY| M[Read-only Memory Transport]
+    SR --> RM[Runtime Mapper Competition]
+    M --> RM
+    RM --> B[Validated Battle Snapshot]
+    B --> K[Per-save Knowledge Ledger]
+    CAT --> K
+    K --> UI[Hybrid Companion UI]
+```
+
+Official layouts provide fast paths, not a compatibility ceiling. For a derived ROM, DualDex locates battle references from ROM code, competes plausible family-compatible structures, validates candidates against live battle invariants, and caches the successful mapping by ROM hash and core-memory fingerprint.
+
+An internal generated mapping is not a player profile. It is automatically produced, revalidated, and discarded when the ROM, core, or schema changes.
+
+If a modified engine exposes only part of its familiar structure, capabilities degrade independently:
+
+- a parsed Pokédex can work without battle mapping;
+- opponent identity can work without automatic double-battle targeting;
+- innate rarity can work without matchup context; and
+- unknown or conflicting values are withheld rather than guessed.
+
+There is no OCR fallback.
+
+## What is implemented now
+
+The current proof of concept contains:
+
+- `parser-core`: a pure-Kotlin, Android-portable ROM parser;
+- `parser-cli`: a read-only corpus scanner and report generator;
+- competitive family parsers for Red/Blue, Yellow, Gold/Silver, Crystal, Ruby/Sapphire, Emerald, and FireRed/LeafGreen;
+- dynamic structural resolution for common relocated and expanded Gen III layouts;
+- direct ROM and streamed ZIP-entry inputs through the same parser contract;
+- independent tri-state capability evidence (`AVAILABLE`, `NOT_FOUND`, `NOT_APPLICABLE`); and
+- human-readable and machine-readable compatibility reports.
+
+The private in-scope corpus result is:
+
+- **14 inputs evaluated**;
+- **11 exact official matches**;
+- **3 structurally selected derivatives**: Modern Emerald 3.5, Sword and Shield Ultimate Plus, and Pokémon Unbound;
+- **14 complete for every applicable static dataset**;
+- **0 partial, 0 ambiguous, and 0 parse errors**; and
+- **67 automated tests with no failures, errors, or skips**.
+
+Abilities are correctly `N/A` for GB/GBC rather than reported as missing. Spin-offs such as Pinball, Trading Card Game, Puzzle Challenge, and Mystery Dungeon are excluded from the v1 mainline-family report.
+
+Read the named evidence in the [Markdown compatibility report](reports/dualdex-parser-compatibility.md) or inspect the complete [JSON report](reports/dualdex-parser-compatibility.json). Reports contain structural evidence and hashes, but no decoded Pokédex text, sprites, or ROM bytes.
+
+## Project status
+
+| Area | Status |
+| --- | --- |
+| Static GB/GBC/GBA ROM parser | Implemented and corpus-validated |
+| Direct and streamed ZIP input | Implemented |
+| Runtime memory transport | Specified, not implemented |
+| Dynamic battle-memory mapper | Specified, not implemented |
+| Organic discovery ledger | Specified, not implemented |
+| Hybrid companion UI and settings | Specified, not implemented |
+| Replacement of inherited OCR Android app | Not implemented |
+| Public v1 APK | Not released |
+
+## Parser development
+
+Requirements:
+
+- JDK 17
+- the included Gradle wrapper
+
+Run the parser tests and install the CLI distribution on Windows:
+
+```powershell
+.\gradlew.bat :parser-core:test :parser-cli:test :parser-cli:installDist
+```
+
+Scan one or more user-owned ROM directories read-only:
+
+```powershell
+.\parser-cli\build\install\parser-cli\bin\parser-cli.bat `
+  "D:\path\to\roms" `
+  --json "D:\path\to\report.json" `
+  --markdown "D:\path\to\report.md"
+```
+
+The scanner accepts `.gb`, `.gbc`, and `.gba` files plus matching entries inside ZIP archives. ZIP contents are decompressed directly into the parser without extracting temporary ROM files.
+
+## Design documents
+
+- [DualDex v1 passive companion specification](docs/superpowers/specs/2026-08-09-dualdex-v1-passive-companion-design.md)
+- [ROM parser and passive companion foundation](docs/superpowers/specs/2026-08-08-dualdex-rom-parser-companion-design.md)
+- [Parser compatibility report](reports/dualdex-parser-compatibility.md)
+
+## Relationship to Kanto Gear
+
+[Kanto Gear](https://github.com/AverageConsumer/kanto-gear) demonstrates how well a contextual companion can use a handheld's second screen. DualDex takes inspiration from its single-purpose pages, automatic battle context, return-to-browsing flow, themes, information levels, display selection, and optional controller navigation.
+
+The architecture is different. Kanto Gear integrates deeply with Gen1Recomp and can move game controls and UI between displays. DualDex is a separate passive Android companion for RetroArch, targets multiple GB/GBC/GBA engine families, and never controls the game. No Kanto Gear code or artwork is included here.
+
+## Privacy and safety
+
+- ROM parsing, memory reads, catalogs, generated mappings, and discovery history remain local.
+- DualDex uses only status and read-memory commands on localhost.
+- It does not upload ROMs, saves, screenshots, extracted assets, or memory samples.
+- It never sends write-memory, cheat, input, save-state, or content-control commands.
+- Sanitized diagnostic exports contain structural metadata and validation outcomes, not ROM bytes or private save content.
+
+## Project lineage and license
+
+This work is based on [Enrique Paulino's original DualScreenDex project](https://github.com/enrique-paulino/DualScreenDex). The repository remains available under the [MIT License](LICENSE).
+
+DualDex is an unofficial, free fan project. It is not affiliated with or endorsed by Nintendo, Game Freak, The Pokémon Company, RetroArch, Libretro, Kanto Gear, or the referenced ROM-hack projects. Pokémon and related names belong to their respective owners.
