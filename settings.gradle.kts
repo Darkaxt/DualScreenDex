@@ -20,4 +20,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "DualScreenDex"
-include(":app")
+include(":app", ":parser-core", ":parser-cli")
