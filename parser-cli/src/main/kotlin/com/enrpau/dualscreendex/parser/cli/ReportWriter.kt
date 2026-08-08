@@ -37,6 +37,12 @@ object ReportWriter {
         val ambiguous = report.results.count { it.result?.status == SelectionStatus.AMBIGUOUS }
         val unsupported = report.results.count { it.result?.status == SelectionStatus.UNSUPPORTED }
         val errors = report.results.count { it.error != null || it.result?.status == SelectionStatus.ERROR }
+        val completeCore = report.results.count { entry ->
+            entry.result?.status == SelectionStatus.SELECTED && CORE_CAPABILITIES.all { capability ->
+                entry.result.capabilities.firstOrNull { it.capability == capability }?.compatible == true
+            }
+        }
+        val partialCore = selected - completeCore
 
         appendLine("# DualDex ROM parser compatibility")
         appendLine()
@@ -46,6 +52,8 @@ object ReportWriter {
         appendLine()
         appendLine("- Inputs evaluated: ${report.results.size}")
         appendLine("- Selected: $selected ($exact exact official, $derived structurally selected derivatives)")
+        appendLine("- Complete for implemented core datasets: $completeCore")
+        appendLine("- Selected with partial core datasets: $partialCore")
         appendLine("- Ambiguous: $ambiguous")
         appendLine("- Unsupported: $unsupported")
         appendLine("- Read/parse errors: $errors")
@@ -103,4 +111,13 @@ object ReportWriter {
     private fun cell(value: String): String = value.replace("|", "\\|").replace("\r", " ").replace("\n", " ")
 
     private fun heading(value: String): String = value.replace("\r", " ").replace("\n", " ")
+
+    private val CORE_CAPABILITIES = setOf(
+        RomCapability.SPECIES_NAMES,
+        RomCapability.SPECIES_TYPES,
+        RomCapability.BASE_STATS,
+        RomCapability.MOVE_CATALOG,
+        RomCapability.MOVE_DETAILS,
+        RomCapability.TYPE_CHART,
+    )
 }

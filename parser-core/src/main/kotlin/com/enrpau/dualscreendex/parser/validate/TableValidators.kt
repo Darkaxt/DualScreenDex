@@ -93,10 +93,10 @@ object TableValidators {
         var valid = 0
         repeat(count) { index ->
             val base = offset + index * recordSize
-            val statStart = if (generation == 1) 1 else 0
+            val statStart = if (generation <= 2) 1 else 0
             val statCount = if (generation == 1) 5 else 6
             val statsValid = (0 until statCount).all { rom.u8(base + statStart + it) in 1..255 }
-            val typeOffset = if (generation == 1) 6 else 6
+            val typeOffset = if (generation == 1) 6 else if (generation == 2) 7 else 6
             val maxType = if (generation == 3) 17 else 27
             val typesValid = rom.u8(base + typeOffset) in 0..maxType && rom.u8(base + typeOffset + 1) in 0..maxType
             if (statsValid && typesValid) valid++

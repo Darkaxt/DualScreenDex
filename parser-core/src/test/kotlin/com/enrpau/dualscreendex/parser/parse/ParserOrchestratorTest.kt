@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
@@ -24,6 +25,18 @@ class ParserOrchestratorTest {
     fun requiresTwoIndependentAnchors() {
         val weak = probe(EngineFamily.EMERALD, 100).copy(anchors = 1)
         assertEquals(SelectionStatus.UNSUPPORTED, ParserOrchestrator.select(listOf(weak)).status)
+    }
+
+    @Test
+    fun colorEnhancedGenOneRomPassesYellowPlatformGate() {
+        val bytes = ByteArray(0x100000)
+        "POKEMON YELLOW".toByteArray().copyInto(bytes, 0x134)
+        bytes[0x143] = 0x80.toByte()
+
+        val result = ParserOrchestrator.analyze(RomImage(bytes))
+        val yellow = result.probes.single { it.family == EngineFamily.YELLOW }
+
+        assertEquals(true, yellow.hardGatePassed)
     }
 
     private fun probe(family: EngineFamily, score: Int) = ParserProbe(

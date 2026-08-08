@@ -32,7 +32,7 @@ private class ConfiguredFamilyParser(
     override fun probe(rom: RomImage, header: RomHeader): ParserProbe {
         val expectedPlatform = platformFor(family)
         val platformPassed = when (expectedPlatform) {
-            Platform.GB -> header.platform == Platform.GB
+            Platform.GB -> header.platform == Platform.GB || header.platform == Platform.GBC
             Platform.GBC -> header.platform == Platform.GBC || header.platform == Platform.GB
             else -> header.platform == expectedPlatform
         }
@@ -62,7 +62,8 @@ private class ConfiguredFamilyParser(
 
         val names = validateNames(rom, tables.speciesNames, speciesCount, codec)
         val stats = tables.baseStats?.let {
-            TableValidators.baseStats(rom, it.offset, speciesCount ?: it.count, it.recordSize, generation)
+            val validationCount = if (generation == 1) it.count else speciesCount ?: it.count
+            TableValidators.baseStats(rom, it.offset, validationCount, it.recordSize, generation)
         } ?: missing("species base-stat table not resolved")
         val moveNames = validateNames(rom, tables.moveNames, moveCount, codec)
         val moveData = tables.moveData?.let {
@@ -233,7 +234,8 @@ private class ConfiguredFamilyParser(
         return if (layout.variableLength) {
             TableValidators.variableNames(rom, layout.offset, inferredCount, codec)
         } else {
-            TableValidators.fixedNames(rom, layout.offset, inferredCount, layout.recordSize, codec)
+            val minimumRatio = if (generationFor(family) == 1) 0.70 else 0.85
+            TableValidators.fixedNames(rom, layout.offset, inferredCount, layout.recordSize, codec, minimumRatio)
         }
     }
 

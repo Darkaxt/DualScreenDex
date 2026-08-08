@@ -35,6 +35,24 @@ class TableValidatorsTest {
     }
 
     @Test
+    fun acceptsGen2StatsWithLeadingSpeciesId() {
+        val record = ByteArray(32)
+        record[0] = 1
+        record[1] = 45
+        record[2] = 49
+        record[3] = 49
+        record[4] = 45
+        record[5] = 65
+        record[6] = 65
+        record[7] = 22
+        record[8] = 3
+
+        val result = TableValidators.baseStats(RomImage(record), 0, 1, 32, generation = 2)
+
+        assertTrue(result.compatible)
+    }
+
+    @Test
     fun acceptsGbaPointerTable() {
         val bytes = ByteArray(64)
         repeat(4) { index ->
