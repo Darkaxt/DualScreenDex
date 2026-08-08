@@ -85,6 +85,20 @@ class SpriteValidatorsTest {
     }
 
     @Test
+    fun acceptsGbaSpriteWhoseCompressedSheetContainsTwoFrames() {
+        val bytes = ByteArray(0x200)
+        putU32(bytes, 0, 0x08000100)
+        putU16(bytes, 4, 4)
+        byteArrayOf(0x10, 8, 0, 0, 0, 1, 2, 3, 4, 0, 5, 6, 7, 8).copyInto(bytes, 0x100)
+
+        val result = SpriteValidators.gen3(
+            RomImage(bytes), pointerTableOffset = 0, speciesCount = 1, recordSize = 8,
+        )
+
+        assertTrue(result.compatible)
+    }
+
+    @Test
     fun rejectsGbaLz77BackReferenceBeforeOutputStart() {
         val bytes = ByteArray(0x200)
         putU32(bytes, 0, 0x08000100)

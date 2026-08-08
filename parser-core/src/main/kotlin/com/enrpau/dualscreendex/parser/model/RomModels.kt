@@ -44,6 +44,11 @@ data class TableLayout(
     val count: Int,
     val recordSize: Int,
     val variableLength: Boolean = false,
+    val bank: Int? = null,
+    val banks: List<Int> = emptyList(),
+    val pointerOffsets: List<Int> = emptyList(),
+    val elementSize: Int? = null,
+    val bankAdjustment: Int = 0,
 )
 
 data class ProfileTables(

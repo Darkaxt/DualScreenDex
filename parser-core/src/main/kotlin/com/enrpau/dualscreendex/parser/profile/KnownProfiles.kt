@@ -19,6 +19,8 @@ object KnownProfiles {
             moveNames = 0xB0000,
             moveData = 0x38000,
             typeChart = 0x3E474,
+            descriptions = 0x4047E,
+            evolutions = 0x3B05C,
         ),
         gbProfile(
             name = "Pokemon Blue (USA/Europe)",
@@ -31,6 +33,8 @@ object KnownProfiles {
             moveNames = 0xB0000,
             moveData = 0x38000,
             typeChart = 0x3E474,
+            descriptions = 0x4047E,
+            evolutions = 0x3B05C,
         ),
         gbProfile(
             name = "Pokemon Yellow (USA/Europe)",
@@ -43,6 +47,8 @@ object KnownProfiles {
             moveNames = 0xBC000,
             moveData = 0x38000,
             typeChart = 0x3E5FA,
+            descriptions = 0x4050B,
+            evolutions = 0x3B1E5,
         ),
         gbcProfile(
             name = "Pokemon Gold (USA/Europe)",
@@ -56,6 +62,10 @@ object KnownProfiles {
             moveNames = 0x1B1574,
             moveData = 0x41AFE,
             typeChart = 0x34D01,
+            descriptions = 0x44360,
+            descriptionBanks = listOf(0x6C, 0x6C, 0x6A, 0x6C),
+            evolutions = 0x427BD,
+            sprites = 0x48000,
         ),
         gbcProfile(
             name = "Pokemon Silver (USA/Europe)",
@@ -69,6 +79,10 @@ object KnownProfiles {
             moveNames = 0x1B1574,
             moveData = 0x41AFE,
             typeChart = 0x34D01,
+            descriptions = 0x44360,
+            descriptionBanks = listOf(0x68, 0x6C, 0x6A, 0x6C),
+            evolutions = 0x427BD,
+            sprites = 0x48000,
         ),
         gbcProfile(
             name = "Pokemon Crystal (USA/Europe) Rev 1",
@@ -82,6 +96,11 @@ object KnownProfiles {
             moveNames = 0x1C9F29,
             moveData = 0x41AFB,
             typeChart = 0x34BB1,
+            descriptions = 0x44378,
+            descriptionBanks = listOf(0x60, 0x6E, 0x73, 0x74),
+            evolutions = 0x425B1,
+            sprites = 0x120000,
+            spriteBankAdjustment = 0x36,
         ),
         gbaProfile(
             name = "Pokemon Ruby (USA/Europe) Rev 2",
@@ -97,6 +116,11 @@ object KnownProfiles {
             abilities = 0x1FA260,
             sprites = 0x1E836C,
             typeChart = 0x1F9738,
+            descriptions = 0x3B1874,
+            descriptionRecordSize = 36,
+            descriptionPointers = listOf(16, 20),
+            evolutions = 0x203B80,
+            learnsets = 0x207BE0,
         ),
         gbaProfile(
             name = "Pokemon Sapphire (USA/Europe) Rev 2",
@@ -112,6 +136,11 @@ object KnownProfiles {
             abilities = 0x1FA1F0,
             sprites = 0x1E82FC,
             typeChart = 0x1F96C8,
+            descriptions = 0x3B18D0,
+            descriptionRecordSize = 36,
+            descriptionPointers = listOf(16, 20),
+            evolutions = 0x203B10,
+            learnsets = 0x207B70,
         ),
         gbaProfile(
             name = "Pokemon Emerald (USA/Europe)",
@@ -128,6 +157,11 @@ object KnownProfiles {
             abilities = 0x31B6DB,
             sprites = 0x30A18C,
             typeChart = 0x31ACE8,
+            descriptions = 0x56B5B0,
+            descriptionRecordSize = 32,
+            descriptionPointers = listOf(16),
+            evolutions = 0x32531C,
+            learnsets = 0x32937C,
         ),
         gbaProfile(
             name = "Pokemon FireRed (USA) Rev 1",
@@ -144,6 +178,11 @@ object KnownProfiles {
             abilities = 0x24FCB0,
             sprites = 0x23511C,
             typeChart = 0x24F0C0,
+            descriptions = 0x44E8B0,
+            descriptionRecordSize = 36,
+            descriptionPointers = listOf(16),
+            evolutions = 0x2597C4,
+            learnsets = 0x25D824,
         ),
         gbaProfile(
             name = "Pokemon LeafGreen (USA/Europe) Rev 1",
@@ -160,6 +199,11 @@ object KnownProfiles {
             abilities = 0x24FC8C,
             sprites = 0x2350F8,
             typeChart = 0x24F09C,
+            descriptions = 0x44E2E0,
+            descriptionRecordSize = 36,
+            descriptionPointers = listOf(16),
+            evolutions = 0x2597A4,
+            learnsets = 0x25D804,
         ),
     )
 
@@ -180,6 +224,8 @@ object KnownProfiles {
         moveNames: Int,
         moveData: Int,
         typeChart: Int,
+        descriptions: Int,
+        evolutions: Int,
     ) = RomProfile(
         name, sha, crc, family, Platform.GB, title, revision = 0,
         romSize = 0x100000, dexSpeciesCount = 151, internalSpeciesCount = 190, moveCount = 165,
@@ -189,6 +235,10 @@ object KnownProfiles {
             moveNames = TableLayout(moveNames, 165, 0, variableLength = true),
             moveData = TableLayout(moveData, 165, 6),
             typeChart = TableLayout(typeChart, 0, 3, variableLength = true),
+            descriptions = TableLayout(descriptions, 190, 2, bank = 0x10),
+            evolutions = TableLayout(evolutions, 190, 2, variableLength = true, bank = 0x0E),
+            learnsets = TableLayout(evolutions, 190, 2, variableLength = true, bank = 0x0E),
+            sprites = TableLayout(stats, 151, 28, banks = (9..13).toList()),
         ),
     )
 
@@ -204,6 +254,11 @@ object KnownProfiles {
         moveNames: Int,
         moveData: Int,
         typeChart: Int,
+        descriptions: Int,
+        descriptionBanks: List<Int>,
+        evolutions: Int,
+        sprites: Int,
+        spriteBankAdjustment: Int = 0,
     ) = RomProfile(
         name, sha, crc, family, Platform.GBC, title, revision = revision,
         romSize = 0x200000, dexSpeciesCount = 251, internalSpeciesCount = 251, moveCount = 251,
@@ -213,6 +268,10 @@ object KnownProfiles {
             moveNames = TableLayout(moveNames, 251, 0, variableLength = true),
             moveData = TableLayout(moveData, 251, 7),
             typeChart = TableLayout(typeChart, 0, 3, variableLength = true),
+            descriptions = TableLayout(descriptions, 251, 2, banks = descriptionBanks),
+            evolutions = TableLayout(evolutions, 251, 2, variableLength = true, bank = 0x10),
+            learnsets = TableLayout(evolutions, 251, 2, variableLength = true, bank = 0x10),
+            sprites = TableLayout(sprites, 251, 6, bankAdjustment = spriteBankAdjustment),
         ),
     )
 
@@ -231,6 +290,11 @@ object KnownProfiles {
         abilities: Int,
         sprites: Int,
         typeChart: Int,
+        descriptions: Int,
+        descriptionRecordSize: Int,
+        descriptionPointers: List<Int>,
+        evolutions: Int,
+        learnsets: Int,
     ) = RomProfile(
         name, sha, crc, family, Platform.GBA, title, code, revision,
         romSize = 0x1000000, dexSpeciesCount = 386, internalSpeciesCount = 411, moveCount = 354,
@@ -242,6 +306,9 @@ object KnownProfiles {
             abilities = TableLayout(abilities, 78, 13),
             sprites = TableLayout(sprites, 412, 8),
             typeChart = TableLayout(typeChart, 0, 3, variableLength = true),
+            descriptions = TableLayout(descriptions, 387, descriptionRecordSize, pointerOffsets = descriptionPointers),
+            evolutions = TableLayout(evolutions, 412, 40, elementSize = 8),
+            learnsets = TableLayout(learnsets, 412, 4),
         ),
     )
 }

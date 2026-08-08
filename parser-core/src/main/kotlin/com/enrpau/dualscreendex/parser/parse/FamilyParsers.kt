@@ -17,6 +17,8 @@ import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.validate.TableValidators
+import com.enrpau.dualscreendex.parser.validate.PokemonDatasetValidators
+import com.enrpau.dualscreendex.parser.validate.SpriteValidators
 
 interface FamilyParser {
     val family: EngineFamily
@@ -87,12 +89,66 @@ private class ConfiguredFamilyParser(
                 TableValidators.typeChart(rom, it.offset, generation)
             } ?: missing("type-chart table not resolved")
         }
-        val sprites = if (generation == 3 && tables.sprites != null) {
-            TableValidators.gbaPointerTable(
-                rom, tables.sprites.offset, speciesCount ?: tables.sprites.count, tables.sprites.recordSize,
+        val sprites = when (generation) {
+            1 -> tables.sprites?.let {
+                SpriteValidators.gen1(rom, it.offset, it.count, it.recordSize, it.banks.toIntArray())
+            } ?: missing("Gen 1 sprite references not resolved")
+            2 -> tables.sprites?.let {
+                SpriteValidators.gen2(rom, it.offset, it.count, it.bankAdjustment)
+            } ?: missing("Gen 2 sprite pointer table not resolved")
+            else -> tables.sprites?.let {
+                SpriteValidators.gen3(rom, it.offset, speciesCount ?: it.count, it.recordSize)
+            } ?: missing("Gen 3 sprite pointer table not resolved")
+        }
+        val descriptions = when (generation) {
+            1 -> tables.descriptions?.let {
+                PokemonDatasetValidators.gen1Descriptions(
+                    rom, it.offset, it.count, it.bank ?: 0, codec,
+                )
+            } ?: missing("Gen 1 Pokédex description table not resolved")
+            2 -> tables.descriptions?.let {
+                PokemonDatasetValidators.gen2Descriptions(
+                    rom, it.offset, it.count, it.banks.toIntArray(), codec = codec,
+                )
+            } ?: missing("Gen 2 Pokédex description table not resolved")
+            else -> DatasetResolvers.gen3Descriptions(
+                rom,
+                if (exact != null) tables.descriptions?.count ?: 387 else speciesCount ?: baseProfile?.internalSpeciesCount ?: 412,
+                tables.descriptions,
+                codec,
+            )
+        }
+        val evolutionAndLearnset = if (generation < 3) {
+            val layout = tables.evolutions ?: tables.learnsets
+            layout?.let {
+                PokemonDatasetValidators.gen12EvolutionsAndLearnsets(
+                    rom,
+                    it.offset,
+                    it.count,
+                    it.bank ?: 0,
+                    moveCount ?: baseProfile?.moveCount ?: it.count,
+                    generation,
+                )
+            }
+        } else {
+            null
+        }
+        val evolutions = evolutionAndLearnset?.evolutions ?: if (generation == 3) {
+            DatasetResolvers.gen3Evolutions(
+                rom, speciesCount ?: baseProfile?.internalSpeciesCount ?: 412, tables.evolutions,
             )
         } else {
-            missing("sprite pointer validation is only implemented for GBA")
+            missing("combined evolution/learnset table not resolved")
+        }
+        val learnsets = evolutionAndLearnset?.learnsets ?: if (generation == 3) {
+            DatasetResolvers.gen3Learnsets(
+                rom,
+                speciesCount ?: baseProfile?.internalSpeciesCount ?: 412,
+                moveCount ?: baseProfile?.moveCount?.plus(1) ?: 355,
+                tables.learnsets,
+            )
+        } else {
+            missing("combined evolution/learnset table not resolved")
         }
         val abilities = if (generation == 3) {
             tables.abilities?.let {
@@ -116,7 +172,9 @@ private class ConfiguredFamilyParser(
         score += ScoreEvidence("cross-table integrity", crossPoints, 15, "species=${names.compatible && stats.compatible}, moves=${moveNames.compatible && moveData.compatible}")
         score += ScoreEvidence("sprites", if (sprites.compatible) 10 else 0, 10, sprites.summary())
 
-        val capabilities = buildCapabilities(names, stats, moveNames, moveData, typeChart, sprites, abilities)
+        val capabilities = buildCapabilities(
+            names, stats, moveNames, moveData, typeChart, sprites, descriptions, evolutions, learnsets, abilities,
+        )
         val anchors = listOf(
             identityMatched,
             tables.speciesNames != null,
@@ -282,6 +340,9 @@ private class ConfiguredFamilyParser(
         moveData: ValidationEvidence,
         typeChart: ValidationEvidence,
         sprites: ValidationEvidence,
+        descriptions: ValidationEvidence,
+        evolutions: ValidationEvidence,
+        learnsets: ValidationEvidence,
         abilities: ValidationEvidence,
     ): List<CapabilityEvidence> {
         fun evidence(
@@ -308,11 +369,11 @@ private class ConfiguredFamilyParser(
             evidence(RomCapability.TYPE_CHART, typeChart),
             evidence(RomCapability.BASE_STATS, stats),
             evidence(RomCapability.SPRITES, sprites),
-            evidence(RomCapability.POKEDEX_DESCRIPTIONS, missing("not implemented in parser POC")),
-            evidence(RomCapability.EVOLUTIONS, missing("not implemented in parser POC")),
+            evidence(RomCapability.POKEDEX_DESCRIPTIONS, descriptions),
+            evidence(RomCapability.EVOLUTIONS, evolutions),
             evidence(RomCapability.MOVE_CATALOG, moveNames),
             evidence(RomCapability.MOVE_DETAILS, moveData),
-            evidence(RomCapability.LEARNSETS, missing("not implemented in parser POC")),
+            evidence(RomCapability.LEARNSETS, learnsets),
             evidence(
                 RomCapability.ABILITIES,
                 abilities,

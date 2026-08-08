@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.profile
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KnownProfilesTest {
@@ -18,5 +19,19 @@ class KnownProfilesTest {
     fun containsAllOfficialEnglishEntries() {
         assertEquals(11, KnownProfiles.all.size)
         assertEquals(11, KnownProfiles.all.map { it.sha256 }.distinct().size)
+    }
+
+    @Test
+    fun everyOfficialProfileDefinesAllApplicableStaticDatasets() {
+        KnownProfiles.all.forEach { profile ->
+            with(profile.tables) {
+                assertNotNull("${profile.name} descriptions", descriptions)
+                assertNotNull("${profile.name} evolutions", evolutions)
+                assertNotNull("${profile.name} learnsets", learnsets)
+                assertNotNull("${profile.name} sprites", sprites)
+                if (profile.platform.name == "GBA") assertNotNull("${profile.name} abilities", abilities)
+                else assertTrue("${profile.name} must not invent abilities", abilities == null)
+            }
+        }
     }
 }

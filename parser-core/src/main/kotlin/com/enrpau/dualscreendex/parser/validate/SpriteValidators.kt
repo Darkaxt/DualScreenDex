@@ -24,7 +24,8 @@ object SpriteValidators {
                 validPointers++
             }
         }
-        val samplesValid = sampleIndices(speciesCount).all { index ->
+        val samples = sampleIndices(speciesCount)
+        val validSamples = samples.count { index ->
             val base = baseStatsOffset + index * recordSize
             val dimensions = rom.u8(base + GEN1_DIMENSIONS_OFFSET)
             val front = rom.u16le(base + GEN1_FRONT_POINTER_OFFSET)
@@ -32,7 +33,7 @@ object SpriteValidators {
                 rom.gbBankAddress(bank, front)?.let { validGen1Stream(rom, it, dimensions) } == true
             }
         }
-        result(validPointers, speciesCount, samplesValid, baseStatsOffset, recordSize, "Gen 1 sprite references")
+        result(validPointers, speciesCount, validSamples, samples.size, baseStatsOffset, recordSize, "Gen 1 sprite references")
     }
 
     fun gen2(
@@ -46,12 +47,13 @@ object SpriteValidators {
             val base = pointerTableOffset + index * GEN2_POINTER_RECORD_SIZE
             if (gen2Pointers(rom, base, bankAdjustment).all { it != null }) validPointers++
         }
-        val samplesValid = sampleIndices(speciesCount).all { index ->
+        val samples = sampleIndices(speciesCount)
+        val validSamples = samples.count { index ->
             val base = pointerTableOffset + index * GEN2_POINTER_RECORD_SIZE
             gen2Pointers(rom, base, bankAdjustment).all { offset -> offset != null && validLz3Stream(rom, offset) }
         }
         result(
-            validPointers, speciesCount, samplesValid, pointerTableOffset,
+            validPointers, speciesCount, validSamples, samples.size, pointerTableOffset,
             GEN2_POINTER_RECORD_SIZE, "Gen 2 sprite references",
         )
     }
@@ -69,13 +71,14 @@ object SpriteValidators {
             val size = rom.u16le(base + 4)
             if (pointer != null && size in 1..MAX_SPRITE_OUTPUT) validPointers++
         }
-        val samplesValid = sampleIndices(speciesCount).all { index ->
+        val samples = sampleIndices(speciesCount)
+        val validSamples = samples.count { index ->
             val base = pointerTableOffset + index * recordSize
             val pointer = rom.gbaPointer(base)
             val size = rom.u16le(base + 4)
             pointer != null && validGbaLz77Stream(rom, pointer, size)
         }
-        result(validPointers, speciesCount, samplesValid, pointerTableOffset, recordSize, "Gen 3 sprite references")
+        result(validPointers, speciesCount, validSamples, samples.size, pointerTableOffset, recordSize, "Gen 3 sprite references")
     }
 
     private fun gen2Pointers(rom: RomImage, base: Int, bankAdjustment: Int): List<Int?> = listOf(
@@ -168,7 +171,7 @@ object SpriteValidators {
     private fun validGbaLz77Stream(rom: RomImage, offset: Int, expectedSize: Int): Boolean = try {
         if (rom.u8(offset) != GBA_LZ77_HEADER) return false
         val declaredSize = rom.u24le(offset + 1)
-        if (declaredSize != expectedSize || declaredSize !in 1..MAX_SPRITE_OUTPUT) return false
+        if (declaredSize !in 1..MAX_SPRITE_OUTPUT || declaredSize < expectedSize || declaredSize % expectedSize != 0) return false
         var cursor = offset + 4
         var output = 0
         while (output < declaredSize) {
@@ -203,16 +206,20 @@ object SpriteValidators {
     private fun result(
         validPointers: Int,
         count: Int,
-        samplesValid: Boolean,
+        validSamples: Int,
+        totalSamples: Int,
         offset: Int,
         recordSize: Int,
         label: String,
     ): ValidationEvidence {
         val confidence = validPointers.toDouble() / count.coerceAtLeast(1)
-        val compatible = count > 0 && confidence >= MINIMUM_POINTER_RATIO && samplesValid
+        val sampleConfidence = validSamples.toDouble() / totalSamples.coerceAtLeast(1)
+        val compatible = count > 0 && confidence >= MINIMUM_POINTER_RATIO && sampleConfidence >= MINIMUM_SAMPLE_RATIO
         val reasons = buildList {
             if (confidence < MINIMUM_POINTER_RATIO) add("valid $label $validPointers/$count below $MINIMUM_POINTER_RATIO")
-            if (!samplesValid) add("representative compressed sprite sample failed")
+            if (sampleConfidence < MINIMUM_SAMPLE_RATIO) {
+                add("valid representative compressed sprite samples $validSamples/$totalSamples below $MINIMUM_SAMPLE_RATIO")
+            }
         }
         return ValidationEvidence(compatible, validPointers, count, confidence, reasons, offset, recordSize)
     }
@@ -258,6 +265,7 @@ object SpriteValidators {
     private const val MAX_LZ_COMMANDS = 4096
     private const val MAX_SPRITE_OUTPUT = 0x10000
     private const val MINIMUM_POINTER_RATIO = 0.90
+    private const val MINIMUM_SAMPLE_RATIO = 0.65
     private const val LZ3_LITERAL = 0
     private const val LZ3_ITERATE = 1
     private const val LZ3_ALTERNATE = 2

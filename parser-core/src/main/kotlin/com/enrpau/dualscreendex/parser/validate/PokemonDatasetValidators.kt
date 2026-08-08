@@ -149,12 +149,9 @@ object PokemonDatasetValidators {
 
     private fun validGen2Description(rom: RomImage, offset: Int, codec: PokemonTextCodec): Boolean {
         val categoryEnd = terminatorOffset(rom, offset, 24, codec.terminator) ?: return false
-        val first = categoryEnd + 5
-        val firstEnd = terminatorOffset(rom, first, 512, codec.terminator) ?: return false
-        val second = firstEnd + 1
+        val description = categoryEnd + 5
         return decodeAt(rom, offset, 24, codec, 0.70) &&
-            decodeAt(rom, first, 512, codec, 0.55) &&
-            decodeAt(rom, second, 512, codec, 0.55)
+            decodeAt(rom, description, 512, codec, 0.10)
     }
 
     private fun validateGen12SpeciesRecord(
