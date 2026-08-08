@@ -37,7 +37,7 @@ class CorpusScanner {
     }
 
     private fun scanDirect(file: Path, source: String): List<CorpusInput> {
-        if (!isPokemonName(file.fileName.toString())) return emptyList()
+        if (!isPokemonName(file.fileName.toString()) || isExcludedNonMainlineName(file.fileName.toString())) return emptyList()
         return try {
             listOf(CorpusInput(file.fileName.toString(), source, bytes = Files.readAllBytes(file)))
         } catch (failure: Exception) {
@@ -46,6 +46,7 @@ class CorpusScanner {
     }
 
     private fun scanZip(file: Path, source: String): List<CorpusInput> {
+        if (isExcludedNonMainlineName(file.fileName.toString())) return emptyList()
         val outerMatches = isPokemonName(file.fileName.toString())
         return try {
             ZipFile(file.toFile()).use { zip ->
@@ -53,6 +54,7 @@ class CorpusScanner {
                     .filterNot { it.isDirectory }
                     .filter { supportedRomExtension(it.name) }
                     .filter { outerMatches || isPokemonName(Path.of(it.name).fileName.toString()) }
+                    .filterNot { isExcludedNonMainlineName(Path.of(it.name).fileName.toString()) }
                     .sortedBy { it.name.lowercase(Locale.ROOT) }
                     .map { entry ->
                         val displayName = "${file.fileName}!${entry.name}"
@@ -87,6 +89,11 @@ class CorpusScanner {
         return "pokemon" in normalized || "pokémon" in normalized
     }
 
+    private fun isExcludedNonMainlineName(name: String): Boolean {
+        val normalized = name.lowercase(Locale.ROOT)
+        return EXCLUDED_NON_MAINLINE_TITLES.any { it in normalized }
+    }
+
     private fun error(displayName: String, source: String, message: String, archiveEntry: String? = null) = CorpusInput(
         displayName = displayName,
         source = source,
@@ -99,5 +106,11 @@ class CorpusScanner {
 
     private companion object {
         val ROM_EXTENSIONS = setOf("gb", "gbc", "gba")
+        val EXCLUDED_NON_MAINLINE_TITLES = setOf(
+            "mystery dungeon",
+            "pinball",
+            "puzzle challenge",
+            "trading card game",
+        )
     }
 }

@@ -53,6 +53,38 @@ object TableValidators {
         return lastGood.takeIf { it >= minimumCount }
     }
 
+    fun inferCountFromFollowingTable(
+        offset: Int,
+        recordSize: Int,
+        followingOffsets: List<Int>,
+        minimumCount: Int,
+        maximumCount: Int,
+        maximumAlignmentPadding: Int = 3,
+    ): Int? {
+        if (offset < 0 || recordSize <= 0) return null
+        val following = followingOffsets.filter { it > offset }.minOrNull() ?: return null
+        val distance = following - offset
+        val count = distance / recordSize
+        val padding = distance % recordSize
+        return count.takeIf {
+            it in minimumCount..maximumCount && padding <= maximumAlignmentPadding
+        }
+    }
+
+    fun inferBaseStatsRecordSize(
+        rom: RomImage,
+        offset: Int,
+        count: Int,
+        generation: Int,
+        candidateSizes: IntRange = 20..64,
+    ): Int? = candidateSizes.asSequence()
+        .filter { it % 2 == 0 }
+        .map { size -> size to baseStats(rom, offset, count, size, generation) }
+        .filter { (_, evidence) -> evidence.compatible }
+        .sortedWith(compareByDescending<Pair<Int, ValidationEvidence>> { it.second.confidence }.thenBy { it.first })
+        .firstOrNull()
+        ?.first
+
     fun variableNames(
         rom: RomImage,
         offset: Int,
@@ -97,7 +129,7 @@ object TableValidators {
             val statCount = if (generation == 1) 5 else 6
             val statsValid = (0 until statCount).all { rom.u8(base + statStart + it) in 1..255 }
             val typeOffset = if (generation == 1) 6 else if (generation == 2) 7 else 6
-            val maxType = if (generation == 3) 17 else 27
+            val maxType = if (generation == 3) 18 else 27
             val typesValid = rom.u8(base + typeOffset) in 0..maxType && rom.u8(base + typeOffset + 1) in 0..maxType
             if (statsValid && typesValid) valid++
         }

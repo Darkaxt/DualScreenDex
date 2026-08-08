@@ -40,6 +40,7 @@ class ReportWriterTest {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
         assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 2"))
+        assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
     }
 
     @Test

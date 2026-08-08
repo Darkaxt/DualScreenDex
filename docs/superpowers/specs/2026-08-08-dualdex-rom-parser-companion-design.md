@@ -37,7 +37,7 @@ The parser is not expected to accept or reject a ROM as one indivisible result. 
 
 - Modifying, patching, rewriting, or redistributing ROMs.
 - Bundling Pokémon ROM data, sprites, descriptions, or proprietary databases in the APK or repository.
-- Adding dedicated engine parsers for Pokémon spin-offs such as Pinball, Mystery Dungeon, Puzzle Challenge, and Trading Card Game in the first milestone. The harness must still scan them, report that no mainline family matched, and retain any independently validated capability flags.
+- Adding dedicated engine parsers for non-mainline games such as Pinball, Mystery Dungeon, Puzzle Challenge, and Trading Card Game in the first milestone. These titles are excluded from the current compatibility report because they do not exercise the shared mainline engine families. Mystery Dungeon is a possible v2 engine; the other sampled spin-offs are intentionally out of scope.
 - Promising compatibility with every ROM hack. Major engine rewrites may expose only some capabilities or none.
 - Reading an opponent's unrevealed moves. Move history contains only moves observed being executed.
 - Controlling RetroArch, enabling cheats, injecting input, writing memory, changing saves, or manipulating save states.
@@ -65,7 +65,7 @@ The supported Pokémon RPG engine families are:
 
 Each official revision has a fingerprint/profile inside its family parser. Closely derived hacks use the same family logic but must rediscover and validate relocated structures.
 
-The current local corpus contains all 11 English mainline entries, three in-scope 32 MiB GBA derivatives—Modern Emerald, Sword and Shield Ultimate Plus, and Unbound—and six Pokémon spin-offs with no dedicated parser in the first milestone. The spin-offs remain valid scan inputs: they are expected not to receive a false mainline-family label, while capability detection remains independent. There are no GB or GBC ROM-hack samples in the current library, so compatibility claims for derived GB/GBC games require later fixtures.
+The current local corpus contains all 11 English mainline entries and three in-scope 32 MiB GBA derivatives—Modern Emerald, Sword and Shield Ultimate Plus, and Unbound. Six non-mainline games in the same folders are excluded from the current report. There are no GB or GBC ROM-hack samples in the current library, so compatibility claims for derived GB/GBC games require later fixtures.
 
 ## 5. User experience
 
@@ -232,6 +232,8 @@ If no candidate satisfies all ancestry rules, the ROM is reported as having no m
 
 Capability evidence may be retained from a non-winning probe only when that probe passed the platform gate and established at least two independent structural anchors. If multiple probes validate the same capability at conflicting locations, that capability remains unavailable with a conflict diagnostic rather than selecting one silently.
 
+Resolved table pointers do not imply vanilla record shapes. For fixed-width Gen 3 tables, the parser infers counts from aligned neighboring tables when possible and competes plausible record widths using whole-table validation. This supports common source-derived extensions while preserving offsets, counts, widths, and confidence as auditable evidence. Extended but structurally valid type IDs, including Fairy, are accepted.
+
 Raw binary similarity may be recorded as secondary evidence but never decides the parser. Expanded ROMs, recompiled code, unchanged artwork, or large text replacements can make byte similarity misleading.
 
 ### 8.3 Full extraction
@@ -382,7 +384,7 @@ The harness scans these roots recursively and read-only:
 - `H:\My Drive\Roms\Nintendo - Game Boy Color`
 - `H:\My Drive\Roms\Nintendo - Game Boy Advance`
 
-It evaluates direct ROM files and ROM entries inside ZIP archives. Pokémon-named spin-offs are included to prove that ancestry detection does not produce false mainline matches and that capability flags remain populated independently. Non-ROM artwork, videos, manuals, saves, and save states are ignored.
+It evaluates direct ROM files and ROM entries inside ZIP archives. Known non-mainline titles—Mystery Dungeon, Pinball, Puzzle Challenge, and Trading Card Game—are excluded from this milestone's report. Non-ROM artwork, videos, manuals, saves, and save states are ignored.
 
 ### 14.3 Report contents
 
@@ -405,7 +407,7 @@ The Markdown summary groups results into official ancestry matches, derived ance
 - Every official English mainline sample selects its correct family and revision.
 - Every official sample enables all capabilities that genuinely exist in that engine.
 - Every derived sample either selects the correct ancestor with independently validated capabilities or returns ambiguous/no-family-match ancestry while retaining explicit capability flags; false confident matches are release-blocking defects.
-- Every spin-off sample is scanned without crashing or being mislabeled as a mainline engine; every capability is reported explicitly, including capabilities that were not detected.
+- Known non-mainline samples do not appear in the current report.
 - Repeated runs against unchanged files produce identical parser selection, counts, capability flags, and diagnostics apart from processing duration.
 - No input ROM, ZIP, save, or sidecar file is modified.
 - The parser report is sufficient to decide which family and dataset locators should be implemented or strengthened next.
@@ -456,3 +458,4 @@ The parser-first milestone succeeds when the compatibility report answers, with 
 - [Libretro memory-monitoring compatibility](https://docs.libretro.com/guides/memorymonitoring/)
 - [Universal Pokémon Randomizer ZX](https://github.com/Ajarmar/universal-pokemon-randomizer-zx)
 - [pret Pokémon disassembly/decompilation projects](https://github.com/pret)
+- [Modern Emerald source, Release 3.5](https://github.com/resetes12/pokeemerald/tree/Release3.5)

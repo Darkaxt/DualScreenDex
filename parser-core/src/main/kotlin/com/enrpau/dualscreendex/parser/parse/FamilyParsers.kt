@@ -57,11 +57,21 @@ private class ConfiguredFamilyParser(
         val tables = resolveTables(rom, baseProfile)
         val generation = generationFor(family)
         val codec = if (generation == 3) PokemonTextCodec.gbaEnglish else PokemonTextCodec.gbEnglish
-        val speciesCount = inferSpeciesCount(rom, tables.speciesNames, codec, baseProfile)
+        val speciesCount = inferSpeciesCount(rom, tables, codec, baseProfile)
         val moveCount = inferMoveCount(rom, tables.moveNames, codec, baseProfile)
+        val baseStatsLayout = tables.baseStats?.let { layout ->
+            if (generation == 3 && speciesCount != null) {
+                val inferredSize = TableValidators.inferBaseStatsRecordSize(
+                    rom, layout.offset, speciesCount, generation,
+                )
+                if (inferredSize != null) layout.copy(recordSize = inferredSize) else layout
+            } else {
+                layout
+            }
+        }
 
         val names = validateNames(rom, tables.speciesNames, speciesCount, codec)
-        val stats = tables.baseStats?.let {
+        val stats = baseStatsLayout?.let {
             val validationCount = if (generation == 1) it.count else speciesCount ?: it.count
             TableValidators.baseStats(rom, it.offset, validationCount, it.recordSize, generation)
         } ?: missing("species base-stat table not resolved")
@@ -123,6 +133,9 @@ private class ConfiguredFamilyParser(
                 if (exact == null && baseProfile != null) add("using ${baseProfile.name} as structural ancestor")
                 if (generation == 3 && tables.speciesNames?.offset != baseProfile?.tables?.speciesNames?.offset) {
                     add("resolved relocated GBA table pointers")
+                }
+                if (baseStatsLayout != null && baseStatsLayout.recordSize != baseProfile?.tables?.baseStats?.recordSize) {
+                    add("inferred base-stat record size ${baseStatsLayout.recordSize}")
                 }
             },
         )
@@ -186,14 +199,30 @@ private class ConfiguredFamilyParser(
 
     private fun inferSpeciesCount(
         rom: RomImage,
-        layout: TableLayout?,
+        tables: ProfileTables,
         codec: PokemonTextCodec,
         profile: RomProfile?,
     ): Int? {
+        val layout = tables.speciesNames
         if (layout == null) return null
         if (KnownProfiles.bySha256(rom.sha256) != null) return layout.count
         if (generationFor(family) != 3) return layout.count
-        return TableValidators.inferFixedNameCount(rom, layout.offset, layout.recordSize, codec, 300, 2048)
+        val boundaryCount = TableValidators.inferCountFromFollowingTable(
+            offset = layout.offset,
+            recordSize = layout.recordSize,
+            followingOffsets = listOfNotNull(
+                tables.baseStats?.offset,
+                tables.moveNames?.offset,
+                tables.moveData?.offset,
+                tables.typeChart?.offset,
+                tables.sprites?.offset,
+                tables.abilities?.offset,
+            ),
+            minimumCount = 300,
+            maximumCount = 2048,
+        )
+        return boundaryCount
+            ?: TableValidators.inferFixedNameCount(rom, layout.offset, layout.recordSize, codec, 300, 2048)
             ?: profile?.internalSpeciesCount
             ?: layout.count
     }

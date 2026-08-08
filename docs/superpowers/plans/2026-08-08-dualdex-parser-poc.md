@@ -401,7 +401,7 @@ Run a PowerShell read-only manifest over Pokémon `.zip/.gb/.gbc/.gba` inputs in
 ./gradlew.bat :parser-cli:run --args='"H:\My Drive\Roms\Nintendo - Game Boy" "H:\My Drive\Roms\Nintendo - Game Boy Color" "H:\My Drive\Roms\Nintendo - Game Boy Advance" --json reports/dualdex-parser-compatibility.json --markdown reports/dualdex-parser-compatibility.md'
 ```
 
-Expected: the CLI evaluates every Pokémon candidate, reports spin-offs as having no mainline-family match while preserving granular capability evidence, and exits 0 even when individual ROMs have partial or no detected capabilities.
+Expected: the CLI evaluates the 11 official mainline games and three in-scope derivatives, excludes known non-mainline titles, and exits 0 even when individual ROMs have partial capabilities.
 
 - [ ] **Step 4: Fix only evidence-backed parser defects**
 
@@ -449,4 +449,4 @@ Expected: clean worktree, implementation commits present, and both reports track
 
 - [ ] **Step 3: Summarize actual compatibility**
 
-Report official coverage, derived-ROM capability coverage, ambiguous/no-family-match cases, spin-off capability flags, test counts, and exact report paths. Distinguish parser POC evidence from unimplemented runtime-memory support.
+Report named official coverage, named derived-ROM capability coverage, ambiguous/no-family-match cases among in-scope games, test counts, and exact report paths. Distinguish parser POC evidence from unimplemented runtime-memory support. Note Mystery Dungeon only as a possible v2 engine outside the current report.

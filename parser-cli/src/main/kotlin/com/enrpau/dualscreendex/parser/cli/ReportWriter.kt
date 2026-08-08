@@ -55,7 +55,7 @@ object ReportWriter {
         appendLine("- Complete for implemented core datasets: $completeCore")
         appendLine("- Selected with partial core datasets: $partialCore")
         appendLine("- Ambiguous: $ambiguous")
-        appendLine("- No mainline-family match: $noFamilyMatch")
+        if (noFamilyMatch > 0) appendLine("- No mainline-family match: $noFamilyMatch")
         appendLine("- Read/parse errors: $errors")
         appendLine("- Selection rule: score >= ${report.minimumParserScore}, runner-up margin >= ${report.minimumRunnerUpMargin}, and at least two validated anchors")
         appendLine()
@@ -129,7 +129,7 @@ object ReportWriter {
         appendLine()
         appendNamedGroup("Exact official matches", exact) { entry -> entry.result?.selectedFamily?.name ?: "-" }
         appendNamedGroup("Structurally selected derivatives", derived) { entry -> entry.result?.selectedFamily?.name ?: "-" }
-        appendNamedGroup("No mainline-family match", noFamily) { "capability flags retained below" }
+        if (noFamily.isNotEmpty()) appendNamedGroup("No mainline-family match", noFamily) { "capability flags retained below" }
         if (ambiguous.isNotEmpty()) appendNamedGroup("Ambiguous ancestry", ambiguous) { "no family selected" }
         if (errors.isNotEmpty()) appendNamedGroup("Read or parse errors", errors) { it.error ?: "parser error" }
     }

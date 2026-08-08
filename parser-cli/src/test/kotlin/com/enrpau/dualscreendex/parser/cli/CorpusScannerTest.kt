@@ -58,4 +58,20 @@ class CorpusScannerTest {
         assertEquals(null, result.bytes)
         assertEquals(true, result.error?.contains("ZipException"))
     }
+
+    @Test
+    fun excludesNonMainlineOfficialGamesFromCurrentStudy() {
+        val root = temporaryFolder.newFolder("non-mainline").toPath()
+        Files.write(root.resolve("Pokemon Pinball.gbc"), ByteArray(0x150))
+        Files.write(root.resolve("Pokemon Puzzle Challenge.gbc"), ByteArray(0x150))
+        Files.write(root.resolve("Pokemon Trading Card Game.gbc"), ByteArray(0x150))
+        val archive = root.resolve("Pokemon Mystery Dungeon.zip")
+        ZipOutputStream(Files.newOutputStream(archive)).use { zip ->
+            zip.putNextEntry(ZipEntry("Pokemon Mystery Dungeon.gba"))
+            zip.write(ByteArray(0xC0))
+            zip.closeEntry()
+        }
+
+        assertEquals(emptyList<CorpusInput>(), CorpusScanner().scan(root))
+    }
 }

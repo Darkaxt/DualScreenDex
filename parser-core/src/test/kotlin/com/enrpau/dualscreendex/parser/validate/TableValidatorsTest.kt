@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.validate
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -74,5 +75,43 @@ class TableValidatorsTest {
             RomImage(bytes), 0, 11, PokemonTextCodec.gbaEnglish, minimumCount = 3, maximumCount = 4,
         )
         assertTrue(count == 3)
+    }
+
+    @Test
+    fun infersCountFromNextAlignedTable() {
+        val count = TableValidators.inferCountFromFollowingTable(
+            offset = 0x1000,
+            recordSize = 11,
+            followingOffsets = listOf(0x1000 + 462 * 11 + 2, 0x9000),
+            minimumCount = 300,
+            maximumCount = 2048,
+        )
+
+        assertEquals(462, count)
+    }
+
+    @Test
+    fun infersExtendedGen3BaseStatRecordWidth() {
+        val offset = 32
+        val count = 462
+        val width = 40
+        val bytes = ByteArray(offset + count * width)
+        for (index in 1 until count) {
+            val base = offset + index * width
+            bytes[base] = 45
+            bytes[base + 1] = 49
+            bytes[base + 2] = 49
+            bytes[base + 3] = 45
+            bytes[base + 4] = 65
+            bytes[base + 5] = 65
+            bytes[base + 6] = if (index == 100) 18 else 12
+            bytes[base + 7] = 4
+        }
+        val rom = RomImage(bytes)
+
+        val inferred = TableValidators.inferBaseStatsRecordSize(rom, offset, count, generation = 3)
+
+        assertEquals(width, inferred)
+        assertTrue(TableValidators.baseStats(rom, offset, count, inferred!!, generation = 3).compatible)
     }
 }
