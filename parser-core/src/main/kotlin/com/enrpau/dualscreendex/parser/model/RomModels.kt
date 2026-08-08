@@ -27,7 +27,7 @@ enum class RomCapability {
     ABILITIES,
 }
 
-enum class SelectionStatus { SELECTED, AMBIGUOUS, UNSUPPORTED, ERROR }
+enum class SelectionStatus { SELECTED, AMBIGUOUS, NO_FAMILY_MATCH, ERROR }
 
 data class RomHeader(
     val platform: Platform,

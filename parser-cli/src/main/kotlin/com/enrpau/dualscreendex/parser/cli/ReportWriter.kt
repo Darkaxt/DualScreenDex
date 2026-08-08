@@ -7,7 +7,7 @@ import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.GsonBuilder
 
 data class CorpusReport(
-    val schemaVersion: Int = 1,
+    val schemaVersion: Int = 2,
     val minimumParserScore: Int = ParserOrchestrator.minimumScore,
     val minimumRunnerUpMargin: Int = ParserOrchestrator.minimumMargin,
     val roots: List<String>,
@@ -35,7 +35,7 @@ object ReportWriter {
             entry.result?.status == SelectionStatus.SELECTED && entry.result.probes.none { it.exactProfile }
         }
         val ambiguous = report.results.count { it.result?.status == SelectionStatus.AMBIGUOUS }
-        val unsupported = report.results.count { it.result?.status == SelectionStatus.UNSUPPORTED }
+        val noFamilyMatch = report.results.count { it.result?.status == SelectionStatus.NO_FAMILY_MATCH }
         val errors = report.results.count { it.error != null || it.result?.status == SelectionStatus.ERROR }
         val completeCore = report.results.count { entry ->
             entry.result?.status == SelectionStatus.SELECTED && CORE_CAPABILITIES.all { capability ->
@@ -55,9 +55,11 @@ object ReportWriter {
         appendLine("- Complete for implemented core datasets: $completeCore")
         appendLine("- Selected with partial core datasets: $partialCore")
         appendLine("- Ambiguous: $ambiguous")
-        appendLine("- Unsupported: $unsupported")
+        appendLine("- No mainline-family match: $noFamilyMatch")
         appendLine("- Read/parse errors: $errors")
         appendLine("- Selection rule: score >= ${report.minimumParserScore}, runner-up margin >= ${report.minimumRunnerUpMargin}, and at least two validated anchors")
+        appendLine()
+        appendNamedOutcomes(report)
         appendLine()
         appendLine("## Capability matrix")
         appendLine()
@@ -111,6 +113,41 @@ object ReportWriter {
     private fun cell(value: String): String = value.replace("|", "\\|").replace("\r", " ").replace("\n", " ")
 
     private fun heading(value: String): String = value.replace("\r", " ").replace("\n", " ")
+
+    private fun StringBuilder.appendNamedOutcomes(report: CorpusReport) {
+        val exact = report.results.filter { entry ->
+            entry.result?.status == SelectionStatus.SELECTED && entry.result.probes.any { it.exactProfile }
+        }
+        val derived = report.results.filter { entry ->
+            entry.result?.status == SelectionStatus.SELECTED && entry.result.probes.none { it.exactProfile }
+        }
+        val noFamily = report.results.filter { it.result?.status == SelectionStatus.NO_FAMILY_MATCH }
+        val ambiguous = report.results.filter { it.result?.status == SelectionStatus.AMBIGUOUS }
+        val errors = report.results.filter { it.error != null || it.result?.status == SelectionStatus.ERROR }
+
+        appendLine("## Named outcomes")
+        appendLine()
+        appendNamedGroup("Exact official matches", exact) { entry -> entry.result?.selectedFamily?.name ?: "-" }
+        appendNamedGroup("Structurally selected derivatives", derived) { entry -> entry.result?.selectedFamily?.name ?: "-" }
+        appendNamedGroup("No mainline-family match", noFamily) { "capability flags retained below" }
+        if (ambiguous.isNotEmpty()) appendNamedGroup("Ambiguous ancestry", ambiguous) { "no family selected" }
+        if (errors.isNotEmpty()) appendNamedGroup("Read or parse errors", errors) { it.error ?: "parser error" }
+    }
+
+    private fun StringBuilder.appendNamedGroup(
+        title: String,
+        entries: List<CorpusResult>,
+        suffix: (CorpusResult) -> String,
+    ) {
+        appendLine("### $title (${entries.size})")
+        appendLine()
+        if (entries.isEmpty()) {
+            appendLine("- None")
+        } else {
+            entries.forEach { appendLine("- ${heading(it.displayName)} — ${suffix(it)}") }
+        }
+        appendLine()
+    }
 
     private val CORE_CAPABILITIES = setOf(
         RomCapability.SPECIES_NAMES,

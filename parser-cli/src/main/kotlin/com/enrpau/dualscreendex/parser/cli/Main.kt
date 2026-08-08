@@ -56,10 +56,10 @@ fun main(arguments: Array<String>) {
     write(options.markdown, ReportWriter.markdown(report))
 
     val selected = results.count { it.result?.status?.name == "SELECTED" }
-    val unsupported = results.count { it.result?.status?.name == "UNSUPPORTED" }
+    val noFamilyMatch = results.count { it.result?.status?.name == "NO_FAMILY_MATCH" }
     val ambiguous = results.count { it.result?.status?.name == "AMBIGUOUS" }
     val errors = results.count { it.error != null }
-    println("Evaluated ${results.size} inputs: $selected selected, $ambiguous ambiguous, $unsupported unsupported, $errors errors")
+    println("Evaluated ${results.size} inputs: $selected selected, $ambiguous ambiguous, $noFamilyMatch with no mainline-family match, $errors errors")
     println("JSON: ${options.json.toAbsolutePath()}")
     println("Markdown: ${options.markdown.toAbsolutePath()}")
 }

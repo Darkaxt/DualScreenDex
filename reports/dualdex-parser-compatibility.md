@@ -9,9 +9,41 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Complete for implemented core datasets: 11
 - Selected with partial core datasets: 3
 - Ambiguous: 0
-- Unsupported: 6
+- No mainline-family match: 6
 - Read/parse errors: 0
 - Selection rule: score >= 75, runner-up margin >= 10, and at least two validated anchors
+
+## Named outcomes
+
+### Exact official matches (11)
+
+- Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb — RED_BLUE
+- Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc — CRYSTAL
+- Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba — EMERALD
+- Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba — FIRERED_LEAFGREEN
+- Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc — GOLD_SILVER
+- Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba — FIRERED_LEAFGREEN
+- Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb — RED_BLUE
+- Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba — RUBY_SAPPHIRE
+- Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba — RUBY_SAPPHIRE
+- Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc — GOLD_SILVER
+- Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb — YELLOW
+
+### Structurally selected derivatives (3)
+
+- Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba — EMERALD
+- Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba — FIRERED_LEAFGREEN
+- Pokemon Unbound.zip!Pokemon Unbound.gba — FIRERED_LEAFGREEN
+
+### No mainline-family match (6)
+
+- Pokemon Mystery Dungeon - Red Rescue Team EX (USA, Australia).zip!Pokemon Mystery Dungeon - Red Rescue Team EX (USA, Australia).gba — capability flags retained below
+- Pokemon Mystery Dungeon - Red Rescue Team (USA, Australia).zip!Pokemon Mystery Dungeon - Red Rescue Team (USA, Australia).gba — capability flags retained below
+- Pokemon Pinball (USA, Australia) (Rumble Version) (SGB Enhanced) (GB Compatible).zip!Pokemon Pinball (USA, Australia) (Rumble Version) (SGB Enhanced) (GB Compatible).gbc — capability flags retained below
+- Pokemon Pinball - Ruby & Sapphire (USA).zip!Pokemon Pinball - Ruby & Sapphire (USA).gba — capability flags retained below
+- Pokemon Puzzle Challenge (USA, Australia).zip!Pokemon Puzzle Challenge (USA, Australia).gbc — capability flags retained below
+- Pokemon Trading Card Game (USA, Australia) (SGB Enhanced) (GB Compatible).zip!Pokemon Trading Card Game (USA, Australia) (SGB Enhanced) (GB Compatible).gbc — capability flags retained below
+
 
 ## Capability matrix
 
@@ -19,7 +51,7 @@ This report contains structural parser evidence only. It contains no decoded Pok
 | --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 75 | yes | - | - | yes | yes | - | yes | yes |
 | Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | - | yes | yes |
-| Pokemon Mystery Dungeon - Red Rescue Team EX (USA, Australia).zip!Pokemon Mystery Dungeon - Red Rescue Team EX (USA, Australia).gba | UNSUPPORTED | - | - | - | - | - | - | - | - | - | - | - |
+| Pokemon Mystery Dungeon - Red Rescue Team EX (USA, Australia).zip!Pokemon Mystery Dungeon - Red Rescue Team EX (USA, Australia).gba | NO_FAMILY_MATCH | - | - | - | - | - | - | - | - | - | - | - |
 | Pokemon Unbound.zip!Pokemon Unbound.gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | - | yes | - |
 | Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Blue (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | - | - |
 | Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | SELECTED | CRYSTAL | Pokemon Crystal (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | - | - |
@@ -32,11 +64,11 @@ This report contains structural parser evidence only. It contains no decoded Pok
 | Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Sapphire (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes |
 | Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Silver (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | - | - |
 | Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | SELECTED | YELLOW | Pokemon Yellow (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | - | - |
-| Pokemon Mystery Dungeon - Red Rescue Team (USA, Australia).zip!Pokemon Mystery Dungeon - Red Rescue Team (USA, Australia).gba | UNSUPPORTED | - | - | - | - | - | - | - | - | - | - | - |
-| Pokemon Pinball (USA, Australia) (Rumble Version) (SGB Enhanced) (GB Compatible).zip!Pokemon Pinball (USA, Australia) (Rumble Version) (SGB Enhanced) (GB Compatible).gbc | UNSUPPORTED | - | - | - | - | - | - | - | - | - | - | - |
-| Pokemon Pinball - Ruby & Sapphire (USA).zip!Pokemon Pinball - Ruby & Sapphire (USA).gba | UNSUPPORTED | - | - | - | - | - | - | - | - | - | - | - |
-| Pokemon Puzzle Challenge (USA, Australia).zip!Pokemon Puzzle Challenge (USA, Australia).gbc | UNSUPPORTED | - | - | - | - | - | - | - | - | - | - | - |
-| Pokemon Trading Card Game (USA, Australia) (SGB Enhanced) (GB Compatible).zip!Pokemon Trading Card Game (USA, Australia) (SGB Enhanced) (GB Compatible).gbc | UNSUPPORTED | - | - | - | - | - | - | - | - | - | - | - |
+| Pokemon Mystery Dungeon - Red Rescue Team (USA, Australia).zip!Pokemon Mystery Dungeon - Red Rescue Team (USA, Australia).gba | NO_FAMILY_MATCH | - | - | - | - | - | - | - | - | - | - | - |
+| Pokemon Pinball (USA, Australia) (Rumble Version) (SGB Enhanced) (GB Compatible).zip!Pokemon Pinball (USA, Australia) (Rumble Version) (SGB Enhanced) (GB Compatible).gbc | NO_FAMILY_MATCH | - | - | - | - | - | - | - | - | - | - | - |
+| Pokemon Pinball - Ruby & Sapphire (USA).zip!Pokemon Pinball - Ruby & Sapphire (USA).gba | NO_FAMILY_MATCH | - | - | - | - | - | - | - | - | - | - | - |
+| Pokemon Puzzle Challenge (USA, Australia).zip!Pokemon Puzzle Challenge (USA, Australia).gbc | NO_FAMILY_MATCH | - | - | - | - | - | - | - | - | - | - | - |
+| Pokemon Trading Card Game (USA, Australia) (SGB Enhanced) (GB Compatible).zip!Pokemon Trading Card Game (USA, Australia) (SGB Enhanced) (GB Compatible).gbc | NO_FAMILY_MATCH | - | - | - | - | - | - | - | - | - | - | - |
 
 ## Per-ROM evidence
 
@@ -84,10 +116,22 @@ This report contains structural parser evidence only. It contains no decoded Pok
 
 - Identity: `005b1c7dd52ea30f07e98059e8d0575aed2e8f7182f9270225e58a8dd78c3d3d` (SHA-256), `0A8C6648` (CRC32), 33554432 bytes
 - Header: GBA, title `POKE DUNGEON`, code `B24E`, revision 0
-- Decision: UNSUPPORTED; family -; profile -; margin -
-- Diagnostics: no parser passed score and anchor requirements
+- Decision: NO_FAMILY_MATCH; family -; profile -; margin -
+- Diagnostics: no mainline-family parser passed score and anchor requirements
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=10/1 anchors, FIRERED_LEAFGREEN=10/1 anchors
 - Capabilities:
+  - SPECIES_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_NAMES: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_TYPES: unavailable; confidence=0.000; no validated locator was found
+  - TYPE_CHART: unavailable; confidence=0.000; no validated locator was found
+  - BASE_STATS: unavailable; confidence=0.000; no validated locator was found
+  - SPRITES: unavailable; confidence=0.000; no validated locator was found
+  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; no validated locator was found
+  - EVOLUTIONS: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_DETAILS: unavailable; confidence=0.000; no validated locator was found
+  - LEARNSETS: unavailable; confidence=0.000; no validated locator was found
+  - ABILITIES: unavailable; confidence=0.000; no validated locator was found
 
 ### Pokemon Unbound.zip!Pokemon Unbound.gba
 
@@ -333,43 +377,103 @@ This report contains structural parser evidence only. It contains no decoded Pok
 
 - Identity: `ad316814c77ed083734d816ebcde2ece390efae8d15bcb6c66d7c2862d82eb68` (SHA-256), `DD0AC86C` (CRC32), 33554432 bytes
 - Header: GBA, title `POKE DUNGEON`, code `B24E`, revision 0
-- Decision: UNSUPPORTED; family -; profile -; margin -
-- Diagnostics: no parser passed score and anchor requirements
+- Decision: NO_FAMILY_MATCH; family -; profile -; margin -
+- Diagnostics: no mainline-family parser passed score and anchor requirements
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=10/1 anchors, FIRERED_LEAFGREEN=10/1 anchors
 - Capabilities:
+  - SPECIES_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_NAMES: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_TYPES: unavailable; confidence=0.000; no validated locator was found
+  - TYPE_CHART: unavailable; confidence=0.000; no validated locator was found
+  - BASE_STATS: unavailable; confidence=0.000; no validated locator was found
+  - SPRITES: unavailable; confidence=0.000; no validated locator was found
+  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; no validated locator was found
+  - EVOLUTIONS: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_DETAILS: unavailable; confidence=0.000; no validated locator was found
+  - LEARNSETS: unavailable; confidence=0.000; no validated locator was found
+  - ABILITIES: unavailable; confidence=0.000; no validated locator was found
 
 ### Pokemon Pinball (USA, Australia) (Rumble Version) (SGB Enhanced) (GB Compatible).zip!Pokemon Pinball (USA, Australia) (Rumble Version) (SGB Enhanced) (GB Compatible).gbc
 
 - Identity: `7672001d4710272009df6a41e3cbada65decd56e0eb2f185cb3d59c08d33ea0e` (SHA-256), `03CE8D9A` (CRC32), 1048576 bytes
 - Header: GBC, title `POKEPINBALLVPHE`, code `-`, revision 0
-- Decision: UNSUPPORTED; family -; profile -; margin -
-- Diagnostics: no parser passed score and anchor requirements
+- Decision: NO_FAMILY_MATCH; family -; profile -; margin -
+- Diagnostics: no mainline-family parser passed score and anchor requirements
 - Candidate scores: RED_BLUE=10/1 anchors, YELLOW=10/1 anchors, GOLD_SILVER=10/1 anchors, CRYSTAL=10/1 anchors, RUBY_SAPPHIRE=0/0 anchors, EMERALD=0/0 anchors, FIRERED_LEAFGREEN=0/0 anchors
 - Capabilities:
+  - SPECIES_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_NAMES: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_TYPES: unavailable; confidence=0.000; no validated locator was found
+  - TYPE_CHART: unavailable; confidence=0.000; no validated locator was found
+  - BASE_STATS: unavailable; confidence=0.000; no validated locator was found
+  - SPRITES: unavailable; confidence=0.000; no validated locator was found
+  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; no validated locator was found
+  - EVOLUTIONS: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_DETAILS: unavailable; confidence=0.000; no validated locator was found
+  - LEARNSETS: unavailable; confidence=0.000; no validated locator was found
+  - ABILITIES: unavailable; confidence=0.000; no validated locator was found
 
 ### Pokemon Pinball - Ruby & Sapphire (USA).zip!Pokemon Pinball - Ruby & Sapphire (USA).gba
 
 - Identity: `1a2bbb845456873de0e50ba01383977d7b3500f85dceac929c5fb0111389d9a1` (SHA-256), `B992A3C0` (CRC32), 8388608 bytes
 - Header: GBA, title `POKEPIN R/S`, code `BPPE`, revision 0
-- Decision: UNSUPPORTED; family -; profile -; margin -
-- Diagnostics: no parser passed score and anchor requirements
+- Decision: NO_FAMILY_MATCH; family -; profile -; margin -
+- Diagnostics: no mainline-family parser passed score and anchor requirements
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=10/1 anchors, FIRERED_LEAFGREEN=10/1 anchors
 - Capabilities:
+  - SPECIES_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_NAMES: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_TYPES: unavailable; confidence=0.000; no validated locator was found
+  - TYPE_CHART: unavailable; confidence=0.000; no validated locator was found
+  - BASE_STATS: unavailable; confidence=0.000; no validated locator was found
+  - SPRITES: unavailable; confidence=0.000; no validated locator was found
+  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; no validated locator was found
+  - EVOLUTIONS: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_DETAILS: unavailable; confidence=0.000; no validated locator was found
+  - LEARNSETS: unavailable; confidence=0.000; no validated locator was found
+  - ABILITIES: unavailable; confidence=0.000; no validated locator was found
 
 ### Pokemon Puzzle Challenge (USA, Australia).zip!Pokemon Puzzle Challenge (USA, Australia).gbc
 
 - Identity: `42e6bf3b26f186f1ddf23d2ab0e78dea423c55562119f1988ffab906e8f86fe6` (SHA-256), `D06BBA96` (CRC32), 2097152 bytes
 - Header: GBC, title `POKEMONPC`, code `-`, revision 0
-- Decision: UNSUPPORTED; family -; profile -; margin -
-- Diagnostics: no parser passed score and anchor requirements
+- Decision: NO_FAMILY_MATCH; family -; profile -; margin -
+- Diagnostics: no mainline-family parser passed score and anchor requirements
 - Candidate scores: RED_BLUE=10/1 anchors, YELLOW=10/1 anchors, GOLD_SILVER=10/1 anchors, CRYSTAL=10/1 anchors, RUBY_SAPPHIRE=0/0 anchors, EMERALD=0/0 anchors, FIRERED_LEAFGREEN=0/0 anchors
 - Capabilities:
+  - SPECIES_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_NAMES: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_TYPES: unavailable; confidence=0.000; no validated locator was found
+  - TYPE_CHART: unavailable; confidence=0.000; no validated locator was found
+  - BASE_STATS: unavailable; confidence=0.000; no validated locator was found
+  - SPRITES: unavailable; confidence=0.000; no validated locator was found
+  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; no validated locator was found
+  - EVOLUTIONS: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_DETAILS: unavailable; confidence=0.000; no validated locator was found
+  - LEARNSETS: unavailable; confidence=0.000; no validated locator was found
+  - ABILITIES: unavailable; confidence=0.000; no validated locator was found
 
 ### Pokemon Trading Card Game (USA, Australia) (SGB Enhanced) (GB Compatible).zip!Pokemon Trading Card Game (USA, Australia) (SGB Enhanced) (GB Compatible).gbc
 
 - Identity: `a54515bb6b3e364964d3c0226f5a6b0c8c0f7318c9296ef2e321df0bbb8541ce` (SHA-256), `81069D53` (CRC32), 1048576 bytes
 - Header: GBC, title `POKECARD`, code `-`, revision 0
-- Decision: UNSUPPORTED; family -; profile -; margin -
-- Diagnostics: no parser passed score and anchor requirements
+- Decision: NO_FAMILY_MATCH; family -; profile -; margin -
+- Diagnostics: no mainline-family parser passed score and anchor requirements
 - Candidate scores: RED_BLUE=10/1 anchors, YELLOW=10/1 anchors, GOLD_SILVER=10/1 anchors, CRYSTAL=10/1 anchors, RUBY_SAPPHIRE=0/0 anchors, EMERALD=0/0 anchors, FIRERED_LEAFGREEN=0/0 anchors
 - Capabilities:
+  - SPECIES_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_NAMES: unavailable; confidence=0.000; no validated locator was found
+  - SPECIES_TYPES: unavailable; confidence=0.000; no validated locator was found
+  - TYPE_CHART: unavailable; confidence=0.000; no validated locator was found
+  - BASE_STATS: unavailable; confidence=0.000; no validated locator was found
+  - SPRITES: unavailable; confidence=0.000; no validated locator was found
+  - POKEDEX_DESCRIPTIONS: unavailable; confidence=0.000; no validated locator was found
+  - EVOLUTIONS: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_CATALOG: unavailable; confidence=0.000; no validated locator was found
+  - MOVE_DETAILS: unavailable; confidence=0.000; no validated locator was found
+  - LEARNSETS: unavailable; confidence=0.000; no validated locator was found
+  - ABILITIES: unavailable; confidence=0.000; no validated locator was found

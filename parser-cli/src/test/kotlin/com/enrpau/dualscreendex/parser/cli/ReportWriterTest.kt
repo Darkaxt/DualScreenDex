@@ -39,6 +39,27 @@ class ReportWriterTest {
     fun jsonIsDeterministicForSameReport() {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 2"))
+    }
+
+    @Test
+    fun markdownNamesEveryNoFamilyMatchInput() {
+        val result = sampleResult().copy(
+            status = SelectionStatus.NO_FAMILY_MATCH,
+            selectedFamily = null,
+            selectedProfile = null,
+            capabilities = RomCapability.entries.map { CapabilityEvidence(it, false, 0.0) },
+        )
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(CorpusResult("Pokemon Pinball.gbc", "Pokemon Pinball.gbc", durationMillis = 1, result = result)),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("No mainline-family match (1)"))
+        assertTrue(markdown.contains("Pokemon Pinball.gbc"))
+        assertFalse(markdown.contains("Unsupported"))
     }
 
     private fun sampleResult(): ParseResult {

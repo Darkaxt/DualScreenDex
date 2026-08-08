@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "minimumParserScore": 75,
   "minimumRunnerUpMargin": 10,
   "roots": [
@@ -12,7 +12,7 @@
       "displayName": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
       "source": "Hacks/Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip",
       "archiveEntry": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
-      "durationMillis": 331,
+      "durationMillis": 330,
       "result": {
         "header": {
           "platform": "GBA",
@@ -734,7 +734,7 @@
       "displayName": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
       "source": "Hacks/Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip",
       "archiveEntry": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
-      "durationMillis": 199,
+      "durationMillis": 161,
       "result": {
         "header": {
           "platform": "GBA",
@@ -1441,7 +1441,7 @@
       "displayName": "Pokemon Mystery Dungeon - Red Rescue Team EX (USA, Australia).zip!Pokemon Mystery Dungeon - Red Rescue Team EX (USA, Australia).gba",
       "source": "Hacks/Pokemon Mystery Dungeon - Red Rescue Team EX (USA, Australia).zip",
       "archiveEntry": "Pokemon Mystery Dungeon - Red Rescue Team EX (USA, Australia).gba",
-      "durationMillis": 204,
+      "durationMillis": 151,
       "result": {
         "header": {
           "platform": "GBA",
@@ -1452,7 +1452,7 @@
         "sha256": "005b1c7dd52ea30f07e98059e8d0575aed2e8f7182f9270225e58a8dd78c3d3d",
         "crc32": "0A8C6648",
         "size": 33554432,
-        "status": "UNSUPPORTED",
+        "status": "NO_FAMILY_MATCH",
         "probes": [
           {
             "family": "RED_BLUE",
@@ -2059,9 +2059,106 @@
             ]
           }
         ],
-        "capabilities": [],
+        "capabilities": [
+          {
+            "capability": "SPECIES_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_NAMES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_TYPES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "TYPE_CHART",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "BASE_STATS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPRITES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "POKEDEX_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "EVOLUTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_DETAILS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "LEARNSETS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          }
+        ],
         "diagnostics": [
-          "no parser passed score and anchor requirements"
+          "no mainline-family parser passed score and anchor requirements"
         ]
       }
     },
@@ -2069,7 +2166,7 @@
       "displayName": "Pokemon Unbound.zip!Pokemon Unbound.gba",
       "source": "Hacks/Pokemon Unbound.zip",
       "archiveEntry": "Pokemon Unbound.gba",
-      "durationMillis": 193,
+      "durationMillis": 170,
       "result": {
         "header": {
           "platform": "GBA",
@@ -2782,7 +2879,7 @@
       "displayName": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb",
       "source": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb",
-      "durationMillis": 18,
+      "durationMillis": 21,
       "result": {
         "header": {
           "platform": "GB",
@@ -4483,7 +4580,7 @@
       "displayName": "Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba",
       "source": "Pokemon - Emerald Version (USA, Europe).zip",
       "archiveEntry": "Pokemon - Emerald Version (USA, Europe).gba",
-      "durationMillis": 98,
+      "durationMillis": 80,
       "result": {
         "header": {
           "platform": "GBA",
@@ -5180,7 +5277,7 @@
       "displayName": "Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - FireRed Version (USA).zip",
       "archiveEntry": "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 103,
+      "durationMillis": 82,
       "result": {
         "header": {
           "platform": "GBA",
@@ -5879,7 +5976,7 @@
       "displayName": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 9,
+      "durationMillis": 8,
       "result": {
         "header": {
           "platform": "GBC",
@@ -6734,7 +6831,7 @@
       "displayName": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 114,
+      "durationMillis": 77,
       "result": {
         "header": {
           "platform": "GBA",
@@ -8280,7 +8377,7 @@
       "displayName": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 100,
+      "durationMillis": 77,
       "result": {
         "header": {
           "platform": "GBA",
@@ -8999,7 +9096,7 @@
       "displayName": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 103,
+      "durationMillis": 87,
       "result": {
         "header": {
           "platform": "GBA",
@@ -9720,7 +9817,7 @@
       "displayName": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 7,
+      "durationMillis": 6,
       "result": {
         "header": {
           "platform": "GBC",
@@ -11422,7 +11519,7 @@
       "displayName": "Pokemon Mystery Dungeon - Red Rescue Team (USA, Australia).zip!Pokemon Mystery Dungeon - Red Rescue Team (USA, Australia).gba",
       "source": "Pokemon Mystery Dungeon - Red Rescue Team (USA, Australia).zip",
       "archiveEntry": "Pokemon Mystery Dungeon - Red Rescue Team (USA, Australia).gba",
-      "durationMillis": 156,
+      "durationMillis": 150,
       "result": {
         "header": {
           "platform": "GBA",
@@ -11433,7 +11530,7 @@
         "sha256": "ad316814c77ed083734d816ebcde2ece390efae8d15bcb6c66d7c2862d82eb68",
         "crc32": "DD0AC86C",
         "size": 33554432,
-        "status": "UNSUPPORTED",
+        "status": "NO_FAMILY_MATCH",
         "probes": [
           {
             "family": "RED_BLUE",
@@ -12040,9 +12137,106 @@
             ]
           }
         ],
-        "capabilities": [],
+        "capabilities": [
+          {
+            "capability": "SPECIES_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_NAMES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_TYPES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "TYPE_CHART",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "BASE_STATS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPRITES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "POKEDEX_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "EVOLUTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_DETAILS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "LEARNSETS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          }
+        ],
         "diagnostics": [
-          "no parser passed score and anchor requirements"
+          "no mainline-family parser passed score and anchor requirements"
         ]
       }
     },
@@ -12061,7 +12255,7 @@
         "sha256": "7672001d4710272009df6a41e3cbada65decd56e0eb2f185cb3d59c08d33ea0e",
         "crc32": "03CE8D9A",
         "size": 1048576,
-        "status": "UNSUPPORTED",
+        "status": "NO_FAMILY_MATCH",
         "probes": [
           {
             "family": "RED_BLUE",
@@ -12809,9 +13003,106 @@
             "diagnostics": []
           }
         ],
-        "capabilities": [],
+        "capabilities": [
+          {
+            "capability": "SPECIES_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_NAMES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_TYPES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "TYPE_CHART",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "BASE_STATS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPRITES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "POKEDEX_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "EVOLUTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_DETAILS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "LEARNSETS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          }
+        ],
         "diagnostics": [
-          "no parser passed score and anchor requirements"
+          "no mainline-family parser passed score and anchor requirements"
         ]
       }
     },
@@ -12819,7 +13110,7 @@
       "displayName": "Pokemon Pinball - Ruby & Sapphire (USA).zip!Pokemon Pinball - Ruby & Sapphire (USA).gba",
       "source": "Pokemon Pinball - Ruby & Sapphire (USA).zip",
       "archiveEntry": "Pokemon Pinball - Ruby & Sapphire (USA).gba",
-      "durationMillis": 37,
+      "durationMillis": 42,
       "result": {
         "header": {
           "platform": "GBA",
@@ -12830,7 +13121,7 @@
         "sha256": "1a2bbb845456873de0e50ba01383977d7b3500f85dceac929c5fb0111389d9a1",
         "crc32": "B992A3C0",
         "size": 8388608,
-        "status": "UNSUPPORTED",
+        "status": "NO_FAMILY_MATCH",
         "probes": [
           {
             "family": "RED_BLUE",
@@ -13438,9 +13729,106 @@
             ]
           }
         ],
-        "capabilities": [],
+        "capabilities": [
+          {
+            "capability": "SPECIES_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_NAMES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_TYPES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "TYPE_CHART",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "BASE_STATS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPRITES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "POKEDEX_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "EVOLUTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_DETAILS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "LEARNSETS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          }
+        ],
         "diagnostics": [
-          "no parser passed score and anchor requirements"
+          "no mainline-family parser passed score and anchor requirements"
         ]
       }
     },
@@ -13448,7 +13836,7 @@
       "displayName": "Pokemon Puzzle Challenge (USA, Australia).zip!Pokemon Puzzle Challenge (USA, Australia).gbc",
       "source": "Pokemon Puzzle Challenge (USA, Australia).zip",
       "archiveEntry": "Pokemon Puzzle Challenge (USA, Australia).gbc",
-      "durationMillis": 4,
+      "durationMillis": 8,
       "result": {
         "header": {
           "platform": "GBC",
@@ -13459,7 +13847,7 @@
         "sha256": "42e6bf3b26f186f1ddf23d2ab0e78dea423c55562119f1988ffab906e8f86fe6",
         "crc32": "D06BBA96",
         "size": 2097152,
-        "status": "UNSUPPORTED",
+        "status": "NO_FAMILY_MATCH",
         "probes": [
           {
             "family": "RED_BLUE",
@@ -14207,9 +14595,106 @@
             "diagnostics": []
           }
         ],
-        "capabilities": [],
+        "capabilities": [
+          {
+            "capability": "SPECIES_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_NAMES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_TYPES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "TYPE_CHART",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "BASE_STATS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPRITES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "POKEDEX_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "EVOLUTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_DETAILS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "LEARNSETS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          }
+        ],
         "diagnostics": [
-          "no parser passed score and anchor requirements"
+          "no mainline-family parser passed score and anchor requirements"
         ]
       }
     },
@@ -14228,7 +14713,7 @@
         "sha256": "a54515bb6b3e364964d3c0226f5a6b0c8c0f7318c9296ef2e321df0bbb8541ce",
         "crc32": "81069D53",
         "size": 1048576,
-        "status": "UNSUPPORTED",
+        "status": "NO_FAMILY_MATCH",
         "probes": [
           {
             "family": "RED_BLUE",
@@ -14976,9 +15461,106 @@
             "diagnostics": []
           }
         ],
-        "capabilities": [],
+        "capabilities": [
+          {
+            "capability": "SPECIES_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_NAMES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPECIES_TYPES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "TYPE_CHART",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "BASE_STATS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "SPRITES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "POKEDEX_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "EVOLUTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_CATALOG",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "MOVE_DETAILS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "LEARNSETS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          },
+          {
+            "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "no validated locator was found"
+            ]
+          }
+        ],
         "diagnostics": [
-          "no parser passed score and anchor requirements"
+          "no mainline-family parser passed score and anchor requirements"
         ]
       }
     }

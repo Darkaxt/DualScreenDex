@@ -276,7 +276,7 @@ Each of the seven family parsers must:
 - report every evidence component rather than only a total;
 - extract capabilities independently from the best validated table candidates.
 
-`ParserOrchestrator` runs every platform-compatible parser, sorts deterministically by score then family, requires score `>= 75` and margin `>= 10`, and returns `SELECTED`, `AMBIGUOUS`, or `UNSUPPORTED`. Exact known hashes bypass the margin but still run dataset validators.
+`ParserOrchestrator` runs every platform-compatible parser, sorts deterministically by score then family, requires score `>= 75` and margin `>= 10`, and returns `SELECTED`, `AMBIGUOUS`, or `NO_FAMILY_MATCH`. Exact known hashes bypass the margin but still run dataset validators. Capability evidence is resolved independently and is never cleared solely because no family won.
 
 - [ ] **Step 4: Run tests**
 
@@ -401,7 +401,7 @@ Run a PowerShell read-only manifest over Pokémon `.zip/.gb/.gbc/.gba` inputs in
 ./gradlew.bat :parser-cli:run --args='"H:\My Drive\Roms\Nintendo - Game Boy" "H:\My Drive\Roms\Nintendo - Game Boy Color" "H:\My Drive\Roms\Nintendo - Game Boy Advance" --json reports/dualdex-parser-compatibility.json --markdown reports/dualdex-parser-compatibility.md'
 ```
 
-Expected: the CLI evaluates every Pokémon candidate, reports spin-offs as unsupported, and exits 0 even when individual ROMs are partial or unsupported.
+Expected: the CLI evaluates every Pokémon candidate, reports spin-offs as having no mainline-family match while preserving granular capability evidence, and exits 0 even when individual ROMs have partial or no detected capabilities.
 
 - [ ] **Step 4: Fix only evidence-backed parser defects**
 
@@ -449,4 +449,4 @@ Expected: clean worktree, implementation commits present, and both reports track
 
 - [ ] **Step 3: Summarize actual compatibility**
 
-Report official coverage, derived-ROM capability coverage, ambiguous/unsupported cases, spin-off rejection, test counts, and exact report paths. Distinguish parser POC evidence from unimplemented runtime-memory support.
+Report official coverage, derived-ROM capability coverage, ambiguous/no-family-match cases, spin-off capability flags, test counts, and exact report paths. Distinguish parser POC evidence from unimplemented runtime-memory support.

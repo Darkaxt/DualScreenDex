@@ -37,7 +37,7 @@ The parser is not expected to accept or reject a ROM as one indivisible result. 
 
 - Modifying, patching, rewriting, or redistributing ROMs.
 - Bundling Pokémon ROM data, sprites, descriptions, or proprietary databases in the APK or repository.
-- Supporting Pokémon spin-offs that use unrelated engines, including Pinball, Mystery Dungeon, Puzzle Challenge, and Trading Card Game. The harness must still scan and report them as intentionally unsupported rather than fail or misclassify them.
+- Adding dedicated engine parsers for Pokémon spin-offs such as Pinball, Mystery Dungeon, Puzzle Challenge, and Trading Card Game in the first milestone. The harness must still scan them, report that no mainline family matched, and retain any independently validated capability flags.
 - Promising compatibility with every ROM hack. Major engine rewrites may expose only some capabilities or none.
 - Reading an opponent's unrevealed moves. Move history contains only moves observed being executed.
 - Controlling RetroArch, enabling cheats, injecting input, writing memory, changing saves, or manipulating save states.
@@ -65,7 +65,7 @@ The supported Pokémon RPG engine families are:
 
 Each official revision has a fingerprint/profile inside its family parser. Closely derived hacks use the same family logic but must rediscover and validate relocated structures.
 
-The current local corpus contains all 11 English mainline entries, three in-scope 32 MiB GBA derivatives—Modern Emerald, Sword and Shield Ultimate Plus, and Unbound—and six Pokémon spin-offs expected to be reported as out of scope. There are no GB or GBC ROM-hack samples in the current library, so compatibility claims for derived GB/GBC games require later fixtures.
+The current local corpus contains all 11 English mainline entries, three in-scope 32 MiB GBA derivatives—Modern Emerald, Sword and Shield Ultimate Plus, and Unbound—and six Pokémon spin-offs with no dedicated parser in the first milestone. The spin-offs remain valid scan inputs: they are expected not to receive a false mainline-family label, while capability detection remains independent. There are no GB or GBC ROM-hack samples in the current library, so compatibility claims for derived GB/GBC games require later fixtures.
 
 ## 5. User experience
 
@@ -228,7 +228,9 @@ A candidate is selectable only when it:
 - scores at least 75 out of 100; and
 - leads the runner-up by at least 10 points.
 
-If no candidate satisfies all rules, the ROM is reported as unsupported. If candidates are too close, the result is ambiguous and no parser is selected automatically. Thresholds are versioned parser configuration and must appear in the compatibility report so later empirical changes remain auditable.
+If no candidate satisfies all ancestry rules, the ROM is reported as having no mainline-family match. If candidates are too close, ancestry is ambiguous and no family is selected automatically. Neither condition clears independently validated capability evidence. Thresholds are versioned parser configuration and must appear in the compatibility report so later empirical changes remain auditable.
+
+Capability evidence may be retained from a non-winning probe only when that probe passed the platform gate and established at least two independent structural anchors. If multiple probes validate the same capability at conflicting locations, that capability remains unavailable with a conflict diagnostic rather than selecting one silently.
 
 Raw binary similarity may be recorded as secondary evidence but never decides the parser. Expanded ROMs, recompiled code, unchanged artwork, or large text replacements can make byte similarity misleading.
 
@@ -380,7 +382,7 @@ The harness scans these roots recursively and read-only:
 - `H:\My Drive\Roms\Nintendo - Game Boy Color`
 - `H:\My Drive\Roms\Nintendo - Game Boy Advance`
 
-It evaluates direct ROM files and ROM entries inside ZIP archives. Pokémon-named spin-offs are included in the report to prove correct rejection. Non-ROM artwork, videos, manuals, saves, and save states are ignored.
+It evaluates direct ROM files and ROM entries inside ZIP archives. Pokémon-named spin-offs are included to prove that ancestry detection does not produce false mainline matches and that capability flags remain populated independently. Non-ROM artwork, videos, manuals, saves, and save states are ignored.
 
 ### 14.3 Report contents
 
@@ -396,14 +398,14 @@ Each ROM result contains:
 - capability flags with pass/fail evidence;
 - deterministic diagnostics and total processing duration.
 
-The Markdown summary groups results into official success, derived success, partial compatibility, ambiguous, expected spin-off rejection, and malformed/unreadable input. The JSON report retains complete structured evidence.
+The Markdown summary groups results into official ancestry matches, derived ancestry matches, partial capability coverage, ambiguous ancestry, no mainline-family match, and malformed/unreadable input. The JSON report retains complete structured evidence.
 
 ### 14.4 Acceptance criteria
 
 - Every official English mainline sample selects its correct family and revision.
 - Every official sample enables all capabilities that genuinely exist in that engine.
-- Every derived sample either selects the correct ancestor with independently validated capabilities or returns ambiguous/unsupported; false confident matches are release-blocking defects.
-- Every spin-off sample is rejected without crashing or being mislabeled as a mainline engine.
+- Every derived sample either selects the correct ancestor with independently validated capabilities or returns ambiguous/no-family-match ancestry while retaining explicit capability flags; false confident matches are release-blocking defects.
+- Every spin-off sample is scanned without crashing or being mislabeled as a mainline engine; every capability is reported explicitly, including capabilities that were not detected.
 - Repeated runs against unchanged files produce identical parser selection, counts, capability flags, and diagnostics apart from processing duration.
 - No input ROM, ZIP, save, or sidecar file is modified.
 - The parser report is sufficient to decide which family and dataset locators should be implemented or strengthened next.
