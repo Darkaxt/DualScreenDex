@@ -46,6 +46,15 @@ class RomImage(source: ByteArray) {
         }
     }
 
+    fun gbBankAddress(bank: Int, address: Int): Int? {
+        val offset = when {
+            bank == 0 && address in 0x0000..0x3FFF -> address.toLong()
+            bank > 0 && address in 0x4000..0x7FFF -> bank.toLong() * 0x4000L + address - 0x4000L
+            else -> return null
+        }
+        return offset.toInt().takeIf { offset in 0 until size.toLong() }
+    }
+
     fun slice(offset: Int, length: Int): ByteArray {
         requireRange(offset, length)
         return bytes.copyOfRange(offset, offset + length)
