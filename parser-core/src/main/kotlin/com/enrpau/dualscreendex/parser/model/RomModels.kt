@@ -52,6 +52,7 @@ data class TableLayout(
     val pointerOffsets: List<Int> = emptyList(),
     val elementSize: Int? = null,
     val bankAdjustment: Int = 0,
+    val bankRemap: Map<Int, Int> = emptyMap(),
 )
 
 data class ProfileTables(

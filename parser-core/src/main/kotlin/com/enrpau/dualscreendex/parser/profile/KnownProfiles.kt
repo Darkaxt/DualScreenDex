@@ -271,7 +271,17 @@ object KnownProfiles {
             descriptions = TableLayout(descriptions, 251, 2, banks = descriptionBanks),
             evolutions = TableLayout(evolutions, 251, 2, variableLength = true, bank = 0x10),
             learnsets = TableLayout(evolutions, 251, 2, variableLength = true, bank = 0x10),
-            sprites = TableLayout(sprites, 251, 6, bankAdjustment = spriteBankAdjustment),
+            sprites = TableLayout(
+                sprites,
+                251,
+                6,
+                bankAdjustment = spriteBankAdjustment,
+                bankRemap = if (family == EngineFamily.GOLD_SILVER) {
+                    mapOf(0x13 to 0x1F, 0x14 to 0x20, 0x1F to 0x2E)
+                } else {
+                    emptyMap()
+                },
+            ),
         ),
     )
 

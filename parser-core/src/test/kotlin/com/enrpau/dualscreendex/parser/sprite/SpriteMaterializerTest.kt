@@ -68,6 +68,94 @@ class SpriteMaterializerTest {
     }
 
     @Test
+    fun genTwoUsesRomDimensionsAndOnlyTheFirstAnimationFrame() {
+        val bytes = ByteArray(0x8000)
+        bytes[0] = 1
+        putU16(bytes, 1, 0x4020)
+        bytes[0x40 + 17] = 0x11
+        val raw = ByteArray(32)
+        raw[0] = 0x80.toByte()
+        val compressed = byteArrayOf(0x1F) + raw + byteArrayOf(0xFF.toByte())
+        compressed.copyInto(bytes, 0x4020)
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.CRYSTAL,
+            generation = 2,
+            platform = Platform.GBC,
+            speciesCount = 1,
+            moveCount = 0,
+            tables = ProfileTables(
+                baseStats = TableLayout(0x40, 1, 32),
+                sprites = TableLayout(0, 1, 6),
+            ),
+        )
+
+        val sprite = SpriteMaterializer.pokemon(RomImage(bytes), layout).getValue(1)
+
+        assertEquals(8, sprite.width)
+        assertEquals(8, sprite.height)
+        assertEquals(true, sprite.argb[0] != 0)
+    }
+
+    @Test
+    fun genTwoAppliesRomFamilySpriteBankRemapping() {
+        val bytes = ByteArray(0xC000)
+        bytes[0] = 1
+        putU16(bytes, 1, 0x4020)
+        val raw = ByteArray(16).also { it[0] = 0x80.toByte() }
+        (byteArrayOf(0x0F) + raw + byteArrayOf(0xFF.toByte())).copyInto(bytes, 0x8020)
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.GOLD_SILVER,
+            generation = 2,
+            platform = Platform.GBC,
+            speciesCount = 1,
+            moveCount = 0,
+            tables = ProfileTables(sprites = TableLayout(0, 1, 6, bankRemap = mapOf(1 to 2))),
+        )
+
+        val sprite = SpriteMaterializer.pokemon(RomImage(bytes), layout).getValue(1)
+
+        assertEquals(8, sprite.width)
+        assertEquals(true, sprite.argb[0] != 0)
+    }
+
+    @Test
+    fun genTwoFindsUnownFormTableWhenMainSpeciesPointerIsEmpty() {
+        val bytes = ByteArray(0xC000)
+        val spriteTable = 0x100
+        val unownEntry = spriteTable + 200 * 6
+        bytes[unownEntry] = 0xFF.toByte()
+        putU16(bytes, unownEntry + 1, 0xFFFF)
+        val unownTable = 0x4100
+        repeat(26) { form ->
+            val entry = unownTable + form * 6
+            bytes[entry] = 2
+            putU16(bytes, entry + 1, 0x4200)
+            bytes[entry + 3] = 2
+            putU16(bytes, entry + 4, 0x4200)
+        }
+        val raw = ByteArray(16).also { it[0] = 0x80.toByte() }
+        (byteArrayOf(0x0F) + raw + byteArrayOf(0xFF.toByte())).copyInto(bytes, 0x8200)
+        val stats = 0x1000
+        bytes[stats + 200 * 32 + 17] = 0x11
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.CRYSTAL,
+            generation = 2,
+            platform = Platform.GBC,
+            speciesCount = 251,
+            moveCount = 0,
+            tables = ProfileTables(
+                baseStats = TableLayout(stats, 251, 32),
+                sprites = TableLayout(spriteTable, 251, 6),
+            ),
+        )
+
+        val sprite = SpriteMaterializer.pokemon(RomImage(bytes), layout).getValue(201)
+
+        assertEquals(8, sprite.width)
+        assertEquals(true, sprite.argb[0] != 0)
+    }
+
+    @Test
     fun decodesGenOneFrontSpriteFromBaseStatsPointer() {
         val bytes = ByteArray(0x8000)
         bytes[10] = 0x11

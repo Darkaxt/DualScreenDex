@@ -51,16 +51,77 @@ object SpriteMaterializer {
             repeat(table.count) { index ->
                 val sprite = runCatching {
                     val entry = table.offset + index * table.recordSize
-                    val bank = rom.u8(entry) + table.bankAdjustment
-                    val pointer = rom.gbBankAddress(bank, rom.u16le(entry + 1)) ?: error("invalid Gen 2 sprite pointer")
+                    val dimensions = gen2Dimensions(rom, layout, index)
+                    val pointer = gen2FrontPointer(rom, table, entry, index, dimensions)
+                        ?: error("invalid Gen 2 sprite pointer")
                     val bankEnd = minOf(rom.size, (pointer / 0x4000 + 1) * 0x4000)
                     val decoded = Lz3Decoder.decode(rom.slice(pointer, bankEnd - pointer))
-                    val tiles = squareTileWidth(decoded.size, 16)
-                    TileRenderer.applyArgbPalette(TileRenderer.gameBoy2Bpp(decoded, tiles, tiles), GB_GRAYSCALE)
+                    val tileDimensions = dimensions ?: squareTileWidth(decoded.size, 16)
+                    val firstFrameSize = tileDimensions * tileDimensions * 16
+                    require(decoded.size >= firstFrameSize) { "truncated Gen 2 front sprite" }
+                    val firstFrame = decoded.copyOf(firstFrameSize)
+                    TileRenderer.applyArgbPalette(
+                        TileRenderer.gameBoy2Bpp(firstFrame, tileDimensions, tileDimensions),
+                        GB_GRAYSCALE,
+                    )
                 }.getOrNull()
                 if (sprite != null) put(index + 1, sprite)
             }
         }
+    }
+
+    private fun gen2FrontPointer(
+        rom: RomImage,
+        table: com.enrpau.dualscreendex.parser.model.TableLayout,
+        entry: Int,
+        index: Int,
+        dimensions: Int?,
+    ): Int? = directGen2Pointer(rom, table, entry)
+        ?: if (index == 200) locateGen2UnownTable(rom, table, dimensions) else null
+
+    private fun directGen2Pointer(
+        rom: RomImage,
+        table: com.enrpau.dualscreendex.parser.model.TableLayout,
+        entry: Int,
+    ): Int? {
+        val storedBank = rom.u8(entry)
+        val bank = table.bankRemap[storedBank] ?: storedBank + table.bankAdjustment
+        return rom.gbBankAddress(bank, rom.u16le(entry + 1))
+    }
+
+    private fun locateGen2UnownTable(
+        rom: RomImage,
+        table: com.enrpau.dualscreendex.parser.model.TableLayout,
+        dimensions: Int?,
+    ): Int? {
+        val bankLocalOffset = table.offset % 0x4000
+        val samples = listOf(0, 1, 12, 25)
+        var bank = 0
+        while (bank * 0x4000 + bankLocalOffset + 26 * 6 <= rom.size) {
+            val candidate = bank * 0x4000 + bankLocalOffset
+            if (candidate != table.offset && samples.all { form ->
+                    val pointer = directGen2Pointer(rom, table, candidate + form * 6) ?: return@all false
+                    val bankEnd = minOf(rom.size, (pointer / 0x4000 + 1) * 0x4000)
+                    runCatching {
+                        val decoded = Lz3Decoder.decode(rom.slice(pointer, bankEnd - pointer))
+                        decoded.size >= (dimensions ?: 1) * (dimensions ?: 1) * 16
+                    }.getOrDefault(false)
+                }
+            ) {
+                return directGen2Pointer(rom, table, candidate)
+            }
+            bank++
+        }
+        return null
+    }
+
+    private fun gen2Dimensions(rom: RomImage, layout: ResolvedRomLayout, index: Int): Int? {
+        val stats = layout.tables.baseStats ?: return null
+        if (index !in 0 until stats.count || stats.recordSize < 18) return null
+        val packed = rom.u8(stats.offset + index * stats.recordSize + 17)
+        val width = packed ushr 4
+        val height = packed and 0x0F
+        return width.takeIf { it == height && it in 1..15 }
     }
 
     private fun gen1(rom: RomImage, layout: ResolvedRomLayout): Map<Int, RgbaSprite> {
