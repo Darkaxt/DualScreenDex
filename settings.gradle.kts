@@ -26,6 +26,7 @@ include(
     ":parser-cli",
     ":companion-core",
     ":catalog-store",
+    ":retroarch-session",
     ":companion-simulator",
     ":companion-server",
 )

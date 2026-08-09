@@ -25,6 +25,24 @@ describe('production settings copy', () => {
     expect(screen.queryByText('Encounter feed')).toBeNull();
     expect(screen.queryByText('GENERATE ENCOUNTER')).toBeNull();
   });
+
+  it('opens the RetroArch connection wizard from production settings', () => {
+    const send = vi.fn();
+    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'RETROARCH SETUP' }));
+
+    expect(send).toHaveBeenCalledWith('SCREEN', { screen: 'SETUP' });
+  });
+
+  it('offers docked and overlay display modes without enabling overlay automatically', () => {
+    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
+
+    expect(screen.getByRole('link', { name: 'DOCKED' }).getAttribute('href')).toBe('dualdex://overlay/dock');
+    expect(screen.getByRole('link', { name: 'OVERLAY' }).getAttribute('href')).toBe('dualdex://overlay/show');
+    expect(screen.getByRole('link', { name: 'DOCKED' }).getAttribute('data-active')).toBe('true');
+    expect(screen.getByText(/fixed 4:3 panel/i)).toBeTruthy();
+  });
 });
 
 const catalog = {

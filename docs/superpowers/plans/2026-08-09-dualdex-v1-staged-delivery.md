@@ -156,7 +156,7 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 
 ## Stage 3: Automate RetroArch setup and active-content resolution
 
-**Core deliverable:** The wizard obtains public-folder access, safely edits/verifies the public RetroArch configuration, detects an active ROM through Network Commands, and opens its catalog without depending on Cocoon or a PID.
+**Core deliverable:** The wizard obtains public-folder access, safely edits/verifies the public RetroArch configuration, detects an active ROM through Network Commands, and opens its catalog without depending on Cocoon or a PID. Settings also provides the user-requested Docked/Overlay mode so RetroArch can remain focused while the same companion is visible in a fixed 4:3 panel.
 
 **Primary files:**
 
@@ -167,16 +167,17 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 
 **Delivery checklist:**
 
-- [ ] Request persistent read/write access to the public RetroArch tree and read-only access to the smallest required ROM-library tree.
-- [ ] Patch only exact approved keys, preserve unrelated bytes/line endings, verify replacement, and clean the contextual recovery document.
-- [ ] Ask for a normal RetroArch restart and prove the candidate config is effective through NCI; a successful write alone is not success.
-- [ ] Implement lifecycle heartbeats without PID dependence or cancellation timeouts.
-- [ ] Resolve active content by system/basename/CRC32 against the granted direct/ZIP index, then verify SHA-256 before cache association.
-- [ ] Retain manual ROM selection and last-cache browsing when NCI is disabled, empty, or ambiguous.
-- [ ] Show exact setup state and manual RetroArch breadcrumbs when automatic verification fails.
-- [ ] Validate separate-launch and Cocoon-launch flows without reading Cocoon state.
+- [x] Request persistent read/write access to the public RetroArch tree and read-only access to the smallest required ROM-library tree.
+- [x] Patch only exact approved keys, preserve unrelated bytes/line endings, verify replacement, and clean the contextual recovery document.
+- [x] Ask for a normal RetroArch restart and prove the candidate config is effective through NCI; a successful write alone is not success.
+- [x] Implement lifecycle heartbeats without PID dependence or cancellation timeouts.
+- [x] Resolve active content by system/basename/optional CRC32 against the granted direct/ZIP index, then verify SHA-256 before cache association.
+- [x] Retain manual ROM selection and last-cache browsing when NCI is disabled, empty, or ambiguous.
+- [x] Show exact setup state and manual RetroArch breadcrumbs when automatic verification fails.
+- [x] Default to Docked; opt into a foreground-service overlay with a draggable ROM-derived Poké Ball, fixed 4:3 panel, and a working return-to-Docked path.
+- [x] Validate independent launch without reading Cocoon or process state; Cocoon or another launcher may start both apps but is not a Stage 3 dependency.
 
-**Gate evidence:** before/after config diff, runtime GET_STATUS/config evidence, automatic Modern Emerald activation on the AVD, manual fallback capture, and failure-path tests.
+**Gate evidence:** before/after config diff, runtime GET_STATUS/config evidence, automatic Modern Emerald activation on the AVD, manual fallback capture, failure-path tests, and a simultaneous RetroArch `PLAYING` plus DualDex `ACTIVE` overlay capture.
 
 **Specification audit:** Sections 7–8.1, 14.4, 15, and acceptance criteria 4–6 and 12.
 

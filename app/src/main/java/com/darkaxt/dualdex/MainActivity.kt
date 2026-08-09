@@ -1,8 +1,11 @@
 package com.darkaxt.dualdex
 
 import android.graphics.Color
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.content.pm.ApplicationInfo
+import android.provider.Settings
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
@@ -12,19 +15,39 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.darkaxt.dualdex.overlay.FloatingCompanionService
 import com.darkaxt.dualdex.rom.RomDocumentPicker
+import com.darkaxt.dualdex.setup.SetupDocumentPicker
 import com.darkaxt.dualdex.web.DualDexWebView
+import com.darkaxt.dualdex.web.NativeSetupRoute
 
 class MainActivity : AppCompatActivity() {
     private lateinit var picker: RomDocumentPicker
+    private lateinit var setupPicker: SetupDocumentPicker
     private var companionWebView: DualDexWebView? = null
+    private val overlayPermission = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val application = application as DualDexApplication
+        if (Settings.canDrawOverlays(this)) {
+            application.updateDisplayMode("OVERLAY")
+            FloatingCompanionService.show(this)
+            moveTaskToBack(true)
+        } else {
+            application.updateDisplayMode("DOCKED")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WebView.setWebContentsDebuggingEnabled((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0)
         picker = RomDocumentPicker(this)
+        setupPicker = SetupDocumentPicker(
+            this,
+            onConfigTree = { uri -> (application as DualDexApplication).retroArchSetup?.applyConfigTree(uri) },
+            onRomTree = { uri -> (application as DualDexApplication).retroArchSetup?.applyRomTree(uri) },
+        )
         showCompanionOrRecovery()
     }
 
@@ -42,7 +65,24 @@ class MainActivity : AppCompatActivity() {
             showRecovery(application.startupFailure)
             return
         }
-        val webView = DualDexWebView(this, origin, picker) { reason -> showRecovery(IllegalStateException(reason)) }
+        val webView = DualDexWebView(
+            this,
+            origin,
+            picker,
+            onNativeSetupRoute = { route ->
+                when (route) {
+                    NativeSetupRoute.GRANT_RETROARCH -> setupPicker.openConfigTree()
+                    NativeSetupRoute.GRANT_ROMS -> setupPicker.openRomTree()
+                    NativeSetupRoute.OPEN_RETROARCH -> application.retroArchSetup?.launchRetroArch()
+                    NativeSetupRoute.SHOW_OVERLAY -> showOverlay()
+                    NativeSetupRoute.DOCK_OVERLAY -> {
+                        FloatingCompanionService.dock(this)
+                        application.updateDisplayMode("DOCKED")
+                    }
+                }
+            },
+            onMainFrameFailure = { reason -> showRecovery(IllegalStateException(reason)) },
+        )
         companionWebView = webView
         val host = FrameLayout(this).apply {
             setBackgroundColor(Color.rgb(7, 30, 24))
@@ -54,6 +94,18 @@ class MainActivity : AppCompatActivity() {
         setContentView(host)
         keepContentInsideSystemBars(host)
         webView.open()
+    }
+
+    private fun showOverlay() {
+        if (Settings.canDrawOverlays(this)) {
+            (application as DualDexApplication).updateDisplayMode("OVERLAY")
+            FloatingCompanionService.show(this)
+            moveTaskToBack(true)
+            return
+        }
+        overlayPermission.launch(
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")),
+        )
     }
 
     private fun showRecovery(failure: Throwable?) {

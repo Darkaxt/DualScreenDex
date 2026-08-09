@@ -1,10 +1,11 @@
 package com.enrpau.dualscreendex.companion.model
 
 enum class KnowledgeMode { DISCOVERED, ORGANIC, HIDDEN }
-enum class AppScreen { POKEDEX, DETAIL, BATTLE, SETTINGS }
+enum class AppScreen { POKEDEX, DETAIL, BATTLE, SETTINGS, SETUP }
 enum class PokedexFilter { ALL, CAUGHT, SEEN, TEAM, AREA }
 enum class BattleTab { ENTRY, ATTACK, RARITY, MOVES }
 enum class Density { AUTO, COMFORTABLE, COMPACT }
+enum class DisplayMode { DOCKED, OVERLAY }
 
 data class CompanionSettings(
     val knowledgeMode: KnowledgeMode = KnowledgeMode.ORGANIC,
@@ -16,6 +17,7 @@ data class CompanionSettings(
     val highContrast: Boolean = false,
     val autoOpenTarget: Boolean = true,
     val ruleset: String = "AUTO",
+    val displayMode: DisplayMode = DisplayMode.DOCKED,
 )
 
 data class OwnedPokemon(

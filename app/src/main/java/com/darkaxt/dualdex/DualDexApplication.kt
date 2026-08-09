@@ -5,6 +5,7 @@ import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
+import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
 import java.io.FileNotFoundException
 import java.io.File
 
@@ -13,9 +14,17 @@ class DualDexApplication : Application() {
         private set
     @Volatile var startupFailure: Throwable? = null
         private set
+    @Volatile var retroArchSetup: RetroArchSetupCoordinator? = null
+        private set
 
     val localOrigin: String?
         get() = loopbackServer?.address?.let { "http://${AndroidLoopbackServer.LOOPBACK_HOST}:${it.port}" }
+
+    fun ballSpritePng(id: Int): ByteArray? = loopbackServer?.ballSpritePng(id)
+
+    fun updateDisplayMode(mode: String) {
+        loopbackServer?.updateDisplayMode(mode)
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -37,14 +46,19 @@ class DualDexApplication : Application() {
             },
         )
         val candidate = AndroidLoopbackServer(runtime, assetLoader = ::loadWebAsset)
+        var setupCandidate: RetroArchSetupCoordinator? = null
         return try {
             candidate.start()
-            loopbackServer = candidate
-            startupFailure = null
             preferences.getString(LAST_CATALOG_HASH, null)?.let(runtime::restoreCatalogAsync)
+            setupCandidate = RetroArchSetupCoordinator(this, runtime)
+            loopbackServer = candidate
+            retroArchSetup = setupCandidate
+            startupFailure = null
             true
         } catch (failure: Throwable) {
+            setupCandidate?.close()
             candidate.close()
+            retroArchSetup = null
             startupFailure = failure
             false
         }

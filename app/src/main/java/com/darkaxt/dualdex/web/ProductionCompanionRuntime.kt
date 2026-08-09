@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.companion.CompanionGateway
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
 import com.enrpau.dualscreendex.companion.api.BootstrapView
 import com.enrpau.dualscreendex.companion.api.DiagnosticView
+import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.StateView
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
@@ -14,6 +15,7 @@ import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
 import com.enrpau.dualscreendex.companion.model.CompanionAction
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
 import com.enrpau.dualscreendex.companion.model.Density
+import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
@@ -37,6 +39,7 @@ class ProductionCompanionRuntime(
     private val onCatalogCommitted: (sha256: String, displayName: String) -> Unit = { _, _ -> },
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
+    @Volatile private var retroArch = RetroArchView()
     private val loadGeneration = AtomicLong()
     val gateway = CompanionGateway(
         AppSnapshot(
@@ -52,7 +55,15 @@ class ProductionCompanionRuntime(
         return bootstrap()
     }
 
+    fun load(source: LoadedRom, onComplete: (Result<Unit>) -> Unit) {
+        loadInternal(source.displayName, source.rom, onComplete)
+    }
+
     fun load(name: String, rom: RomImage) {
+        loadInternal(name, rom, null)
+    }
+
+    private fun loadInternal(name: String, rom: RomImage, onComplete: ((Result<Unit>) -> Unit)?) {
         val generation = loadGeneration.incrementAndGet()
         val header = RomHeaderReader.read(rom)
         val source = CatalogSourceMetadata.fromDisplayName(name, rom.size, header.title)
@@ -68,26 +79,36 @@ class ProductionCompanionRuntime(
             try {
                 val cached = catalogRepository?.readComplete(rom.sha256)
                 if (cached != null) {
-                    if (generation != loadGeneration.get()) return@execute
+                    if (generation != loadGeneration.get()) {
+                        notifyCompletion(onComplete, Result.failure(IllegalStateException("catalog load was superseded")))
+                        return@execute
+                    }
                     catalogRepository.write(cached.catalog, source, CatalogWriteProgress.complete())
                     publishReopened(generation, name, cached.catalog)
                     onCatalogCommitted(cached.catalog.romSha256, name)
+                    notifyCompletion(onComplete, Result.success(Unit))
                     return@execute
                 }
                 val parsed = CatalogParser.parse(rom) { progress -> publishProgress(generation, progress, source) }.catalog
                     ?: error("ROM did not produce a supported mainline-family catalog")
-                if (generation != loadGeneration.get()) return@execute
+                if (generation != loadGeneration.get()) {
+                    notifyCompletion(onComplete, Result.failure(IllegalStateException("catalog load was superseded")))
+                    return@execute
+                }
                 synchronized(this) { catalog = parsed }
                 gateway.dispatch(CompanionAction.CatalogLoaded(name))
                 onCatalogCommitted(parsed.romSha256, name)
+                notifyCompletion(onComplete, Result.success(Unit))
             } catch (failure: Exception) {
-                if (generation != loadGeneration.get()) return@execute
-                gateway.dispatch(CompanionAction.Failure(failure.message ?: failure.javaClass.simpleName))
-                gateway.dispatch(
-                    CompanionAction.CatalogLoadingChanged(
-                        CatalogLoadingState(active = false, phase = "FAILED", completedUnits = 0, totalUnits = 5),
-                    ),
-                )
+                if (generation == loadGeneration.get()) {
+                    gateway.dispatch(CompanionAction.Failure(failure.message ?: failure.javaClass.simpleName))
+                    gateway.dispatch(
+                        CompanionAction.CatalogLoadingChanged(
+                            CatalogLoadingState(active = false, phase = "FAILED", completedUnits = 0, totalUnits = 5),
+                        ),
+                    )
+                }
+                notifyCompletion(onComplete, Result.failure(failure))
             }
         }
     }
@@ -140,7 +161,12 @@ class ProductionCompanionRuntime(
             catalog,
             activeRulesetId = active?.id,
             rulesetAssumed = snapshot.settings.ruleset == "AUTO",
+            retroArch = retroArch,
         )
+    }
+
+    fun updateRetroArch(state: RetroArchView) {
+        retroArch = state
     }
 
     fun action(type: String, values: Map<String, String?>): StateView {
@@ -212,6 +238,7 @@ class ProductionCompanionRuntime(
                     highContrast = values["highContrast"]?.toBooleanStrictOrNull() ?: current.highContrast,
                     autoOpenTarget = values["autoOpenTarget"]?.toBooleanStrictOrNull() ?: current.autoOpenTarget,
                     ruleset = ruleset,
+                    displayMode = values["displayMode"]?.let { DisplayMode.valueOf(it.uppercase()) } ?: current.displayMode,
                 ),
             ),
         )
@@ -284,4 +311,8 @@ class ProductionCompanionRuntime(
 
     private fun requireInt(values: Map<String, String?>, key: String): Int =
         requireNotNull(values[key]?.toIntOrNull()) { "$key is required" }
+
+    private fun notifyCompletion(callback: ((Result<Unit>) -> Unit)?, result: Result<Unit>) {
+        if (callback != null) runCatching { callback(result) }
+    }
 }

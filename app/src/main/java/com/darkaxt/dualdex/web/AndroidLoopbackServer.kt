@@ -51,6 +51,12 @@ class AndroidLoopbackServer(
         acceptor.execute { acceptConnections(bound) }
     }
 
+    fun ballSpritePng(id: Int): ByteArray? = runtime.ballSprite(id)?.let(PngEncoder::encode)
+
+    fun updateDisplayMode(mode: String) {
+        runtime.action("SETTINGS", mapOf("displayMode" to mode))
+    }
+
     override fun close() {
         val bound = synchronized(this) {
             val current = socket

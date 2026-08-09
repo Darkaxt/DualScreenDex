@@ -1,5 +1,5 @@
 export type KnowledgeMode = 'DISCOVERED' | 'ORGANIC' | 'HIDDEN';
-export type Screen = 'POKEDEX' | 'DETAIL' | 'BATTLE' | 'SETTINGS';
+export type Screen = 'POKEDEX' | 'DETAIL' | 'BATTLE' | 'SETTINGS' | 'SETUP';
 
 export interface Species {
   id: number;
@@ -69,6 +69,7 @@ export interface Settings {
   highContrast: boolean;
   autoOpenTarget: boolean;
   ruleset: string;
+  displayMode?: 'DOCKED' | 'OVERLAY';
 }
 
 export interface SpeciesState {
@@ -76,6 +77,21 @@ export interface SpeciesState {
   caught: boolean;
   team: boolean;
   ballId: number | null;
+}
+
+export interface RetroArchState {
+  configGrant: string;
+  romGrant: string;
+  configState: string;
+  restartRequired: boolean;
+  connection: string;
+  systemId: string | null;
+  gameBasename: string | null;
+  contentCrc32: string | null;
+  resolution: string;
+  activeSource: string | null;
+  indexedRoms: number;
+  message: string | null;
 }
 
 export interface State {
@@ -103,6 +119,7 @@ export interface State {
   activeRulesetId: string | null;
   rulesetAssumed: boolean;
   loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number };
+  retroArch?: RetroArchState;
 }
 
 export interface Bootstrap {

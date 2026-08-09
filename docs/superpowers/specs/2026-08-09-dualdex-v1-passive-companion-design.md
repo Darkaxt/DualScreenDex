@@ -9,7 +9,7 @@
 
 ## 1. Summary
 
-DualDex v1 is a passive second-screen companion for mainline-family Pokémon games running in RetroArch on a dual-screen Android handheld. Cocoon launches RetroArch and DualDex together. DualDex detects the active GB, GBC, or GBA ROM, parses the user's own content into a complete local catalog, derives the game's live battle-memory layout automatically, and shows contextual information for the currently targeted opponent.
+DualDex v1 is a passive companion for mainline-family Pokémon games running in RetroArch on an Android handheld. RetroArch and DualDex may be launched independently or together by Cocoon or another launcher; DualDex has no launcher API dependency. It detects the active GB, GBC, or GBA ROM, parses the user's own content into a complete local catalog, derives the game's live battle-memory layout automatically, and shows contextual information for the currently targeted opponent.
 
 The central product requirement is zero per-ROM configuration. Players do not provide addresses, cheat codes, CSV files, or hand-authored profiles. Exact official layouts may be used as fast paths, but modified games must be handled by ROM-derived address discovery, structural inference, and live validation. A successful derived layout may be cached internally by content hash; it never becomes work the user must perform.
 
@@ -87,6 +87,7 @@ The live target view contains four independently configurable tabs:
 - Independent enable/disable switches for Attack, Rarity, and Observed Moves; Entry remains the battle anchor.
 - Theme and game-matching presentation.
 - Font size and density override, with `Auto` density as the default.
+- Display mode: `Docked` or `Overlay`, with Docked as the default.
 - Companion display targeting: `Auto`, `Handheld`, or `External` where the Android host exposes those choices.
 - Automatic target opening, caught marker, last-tab behavior, and optional controller-trigger tab navigation.
 - Local reset/export controls for discovery history, parser cache, runtime mapping, and diagnostics.
@@ -106,9 +107,9 @@ The live target view contains four independently configurable tabs:
 
 Mystery Dungeon remains a possible later engine family, but it does not influence the v1 architecture or compatibility report.
 
-### 4.1 Deferred v1.1 single-screen overlay
+### 4.1 Optional v1 single-screen overlay
 
-Phones without a second display may later reuse the same companion snapshots and controls through an optional Android overlay. The v1.1 host may request the system `Display over other apps` permission, show a draggable ROM-derived Poké Ball bubble above RetroArch, and use that bubble to show or hide a compact floating DualDex panel. The overlay must remain passive: it cannot inject game input, intercept RetroArch controls outside its visible bounds, or change the ROM or emulator state. This is explicitly excluded from the v1 browser POC and first dual-screen Android host so that it does not expand their permission, lifecycle, or window-management scope.
+Phones without a second display reuse the same companion snapshots and controls through an optional Android overlay. The host requests the system `Display over other apps` permission only when the user selects Overlay, shows a draggable ROM-derived Poké Ball above RetroArch, and uses that ball to show or hide a fixed 4:3 DualDex panel. RetroArch remains focused while the panel is visible. Selecting Docked removes both overlay windows and returns to the normal DualDex activity. The overlay remains passive: it cannot inject game input, intercept RetroArch controls outside its visible bounds, or change the ROM or emulator state.
 
 ## 5. User experience
 
@@ -120,7 +121,7 @@ The setup check establishes transport availability only. It does not ask for ROM
 
 ### 5.2 Launch and content activation
 
-1. Cocoon launches RetroArch and DualDex.
+1. The user, Android, Cocoon, or another launcher starts RetroArch and DualDex; no launcher state is queried.
 2. DualDex sends `GET_STATUS` on localhost and waits passively for supported content.
 3. The content basename and CRC resolve a direct ROM or ROM entry inside a ZIP/content URI.
 4. A matching parser-schema cache opens immediately; otherwise parser competition runs from the supplied stream.

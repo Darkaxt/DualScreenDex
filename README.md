@@ -1,11 +1,11 @@
 # DualDex
 
-DualDex is becoming a passive second-screen Pokédex companion for mainline-family Pokémon games running in RetroArch on dual-screen Android handhelds.
+DualDex is becoming a passive Pokédex companion for mainline-family Pokémon games running in RetroArch on Android handhelds. It supports a normal docked activity for dual-screen devices and an optional floating overlay for single-screen play.
 
 The game remains on the primary display. DualDex parses the user's active GB, GBC, or GBA ROM into a local Pokédex, observes battle state through RetroArch's read-only memory interface, and presents the currently targeted opponent on the companion screen—without OCR, screenshots, cheats, memory writes, or per-ROM profiles.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized catalog, loopback web server, state gateway, deterministic encounter simulator, and Thor-first browser UI are implemented as a working POC. Only the live RetroArch memory transport/mapper and Android packaging remain outside the demonstrated flow. The inherited `app` module is still the abandoned OCR/accessibility prototype and is not representative of the new architecture. There is no new companion APK release at this stage.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, loopback web server, state gateway, Thor-first UI, replacement Android host, passive RetroArch session activation, and optional 4:3 overlay are implemented. The inherited OCR/accessibility application has been replaced. SaveRAM-backed knowledge, the isolated memory-mapper lab, final convergence, and a GitHub-signed public release remain staged work; no public companion APK has been released yet.
 
 ## Thor-first UI direction
 
@@ -119,9 +119,10 @@ The POC settings currently include:
 - `Auto` density by default, with `Comfortable` and `Compact` overrides;
 - high contrast;
 - automatic target opening; and
-- independent Attack, Rarity, and Observed Moves tabs.
+- independent Attack, Rarity, and Observed Moves tabs; and
+- `Docked` or `Overlay` display mode, with Docked as the default.
 
-Android display targeting, controller navigation, persistent per-save discovery, cache controls, and diagnostics remain APK/runtime integration work.
+Android multi-display targeting, controller navigation, persistent per-save discovery, cache controls, and diagnostics remain APK/runtime integration work.
 
 Auto density responds to usable display size and Android font scale. It may wrap or scroll secondary content, but it may not make target identity, caught state, or the selected-attack result unreadably small.
 
@@ -129,7 +130,7 @@ Auto density responds to usable display size and Android font scale. It may wrap
 
 ```mermaid
 flowchart TD
-    C[Cocoon launches both apps] --> RA[RetroArch]
+    C[Android launcher starts both apps] --> RA[RetroArch]
     C --> DD[DualDex]
     RA -->|GET_STATUS| S[Session Monitor]
     S --> R[ROM Resolver]
@@ -168,6 +169,8 @@ The current proof of concept contains:
 - `companion-simulator`: deterministic one- or two-opponent battles using only level-plausible moves from the parsed learnsets;
 - `companion-server`: a loopback-only HTTP/SSE gateway with direct-ROM and streaming-ZIP loading plus on-demand ROM sprite PNGs;
 - `companion-web`: the implemented Preact/TypeScript Thor UI and desktop simulator controls;
+- `retroarch-session`: passive Network Command status monitoring, safe configuration editing, ROM-library indexing, and active-content resolution;
+- `app`: the replacement Android host with packaged web assets, per-ROM SQLite catalogs, setup wizard, normal Docked mode, and an opt-in floating Poké Ball that toggles the same UI in a fixed 4:3 overlay;
 - competitive family parsers for Red/Blue, Yellow, Gold/Silver, Crystal, Ruby/Sapphire, Emerald, and FireRed/LeafGreen;
 - dynamic structural resolution for common relocated and expanded Gen III layouts;
 - direct ROM and streamed ZIP-entry inputs through the same parser contract;
@@ -202,7 +205,7 @@ Read the named evidence in the [Markdown compatibility report](reports/dualdex-p
 | Direct and streamed ZIP input | Implemented |
 | Decoded `ParsedCatalog` materialization | Implemented |
 | Progressive partial-catalog loading | Implemented in the loopback POC |
-| Per-ROM SQLite catalog cache | Specified for Android; browser POC remains in-memory |
+| Per-ROM SQLite catalog cache | Implemented and reopen-validated on Android |
 | Species and capture-ball sprite decoding | Implemented without AWT/Android dependencies |
 | Area encounters, type colors, and type chart | Implemented and reported independently |
 | Ability descriptions and focused detail pages | Implemented for validated ROMs |
@@ -213,7 +216,9 @@ Read the named evidence in the [Markdown compatibility report](reports/dualdex-p
 | Dynamic battle-memory mapper | Specified, not implemented |
 | Organic discovery ledger | Implemented in-memory; per-save persistence remains |
 | Thor-first companion UI and settings | Implemented in the browser POC |
-| Replacement of inherited OCR Android app | Not implemented |
+| Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses |
+| Optional Docked / 4:3 Overlay Android display modes | Implemented and dedicated-AVD validated |
+| Replacement of inherited OCR Android app | Implemented through the current staged Android host |
 | Public v1 APK | Not released |
 
 ## Parser development
@@ -268,9 +273,9 @@ Start the passive loopback server with a direct ROM or ZIP path:
 
 Open `http://127.0.0.1:47831`. The left side panel persistently shows the complete loaded archive/inner-ROM name, detected family, and CRC32, and generates deterministic plausible encounters. ROM selection, all displayed catalog data, sprite endpoints, settings, battle targeting, and UI state use the same contracts intended for the APK. The browser POC never writes to the ROM.
 
-## Deferred v1.1 single-screen mode
+## Android display modes
 
-For phones without a second display, the proposed v1.1 Android shell may add a user-enabled “display over other apps” mode. A small draggable Poké Ball bubble, using artwork parsed from the active ROM, would show or hide the same compact panel above RetroArch. It remains explicitly out of v1 and out of the browser POC so overlay permissions and lifecycle work cannot delay the passive dual-screen release.
+Settings exposes `Docked` and `Overlay`. Docked is the default and uses the normal Android activity. Overlay is explicitly user-enabled, requests Android's `Display over other apps` permission, and moves DualDex into a foreground service with a draggable Poké Ball rendered from the active ROM. Tapping the ball shows or hides the same companion in a fixed 4:3 panel while RetroArch remains focused; choosing Docked removes both overlay windows and returns to the normal activity. The overlay remains passive and never injects input or changes emulator state.
 
 ## Design documents
 

@@ -144,6 +144,21 @@ data class StateView(
     val activeRulesetId: String?,
     val rulesetAssumed: Boolean,
     val loading: CatalogLoadingView,
+    val retroArch: RetroArchView = RetroArchView(),
+)
+data class RetroArchView(
+    val configGrant: String = "MISSING",
+    val romGrant: String = "MISSING",
+    val configState: String = "NOT_CONFIGURED",
+    val restartRequired: Boolean = false,
+    val connection: String = "DISCONNECTED",
+    val systemId: String? = null,
+    val gameBasename: String? = null,
+    val contentCrc32: String? = null,
+    val resolution: String = "NO_CONTENT",
+    val activeSource: String? = null,
+    val indexedRoms: Int = 0,
+    val message: String? = null,
 )
 data class CatalogLoadingView(
     val active: Boolean,
@@ -301,6 +316,7 @@ object ApiViewBuilder {
         truth: Effectiveness? = null,
         activeRulesetId: String? = null,
         rulesetAssumed: Boolean = true,
+        retroArch: RetroArchView = RetroArchView(),
     ): StateView {
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
@@ -375,6 +391,7 @@ object ApiViewBuilder {
                 snapshot.catalogLoading.completedUnits,
                 snapshot.catalogLoading.totalUnits,
             ),
+            retroArch,
         )
     }
 

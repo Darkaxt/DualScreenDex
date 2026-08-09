@@ -525,6 +525,7 @@ Settings includes:
 - ruleset: Auto or a validated manual variant;
 - font size and density: Auto, Comfortable, Compact;
 - theme and game-matching presentation;
+- display mode: Docked or Overlay, with Docked as the default;
 - companion display target: Auto, Handheld, External when Android exposes those displays;
 - RetroArch folder and ROM-library grants;
 - verified configuration and Network Command status;
@@ -534,6 +535,12 @@ Settings includes:
 - release version, production package identity, and signing-certificate fingerprint.
 
 Reset actions are scoped and explicit. Clearing a catalog cache does not touch ROMs or SaveRAM, and clearing mapper sessions does not affect catalogs or save-derived state. DualDex offers no control that purports to reset the save's seen or caught flags.
+
+### 11.4 Docked and overlay display modes
+
+Docked is the default and renders DualDex as the normal Android activity. Overlay is an explicit opt-in for testing beside RetroArch and for handhelds without a second display. Selecting it requests `Display over other apps` only when needed, starts a foreground service, backgrounds the normal activity, and shows a draggable Poké Ball using the active ROM's parsed ball artwork when available. Tapping the ball toggles the same companion UI in a fixed 4:3 panel while RetroArch remains the focused application.
+
+Selecting Docked from the floating panel removes the panel and ball and returns to the normal DualDex activity. The overlay does not cover the whole display, intercept controls outside its visible bounds, inject input, or modify RetroArch state. Permission denial or service failure reverts the setting to Docked and cannot affect the parsed catalog, save polling, or manual Pokédex.
 
 ## 12. Application identity, signing, and releases
 
@@ -777,6 +784,7 @@ DualDex 1.0.0 is ready for publication only when all of the following are true:
 13. The Memory Mapper Lab is disabled by default, performs only read-only operations when enabled, never feeds production state, and can fail or be disabled without changing the Pokédex.
 14. No OCR, screenshot capture, Accessibility service, CSV profile flow, cheat, input injection, ROM write, SaveRAM write, or core-memory write remains reachable.
 15. Automated tests pass, the named private corpus report contains only in-scope mainline-family ROMs, and the GitHub-signed candidate passes dedicated-emulator and physical-Thor validation.
+16. Settings defaults to Docked and can opt into a draggable ROM-derived Poké Ball that toggles a fixed 4:3 overlay while RetroArch remains focused; returning to Docked removes the overlay and restores the normal activity.
 
 ## 18. Deferred after 1.0.0
 
@@ -788,7 +796,6 @@ The following remain explicit later milestones:
 - live opponent IV/DV rarity and relative-level prefix;
 - dynamic active-ruleset selection from memory;
 - generated runtime profiles promoted from validated mapper evidence;
-- single-screen floating overlay and Poké Ball bubble; and
 - Mystery Dungeon or other non-mainline engine families.
 
 The first live-memory milestone must consume validated normalized events and knowledge interfaces; it may not bypass the isolation boundaries established here.

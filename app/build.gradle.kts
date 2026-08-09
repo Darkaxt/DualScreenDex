@@ -69,6 +69,7 @@ tasks.named("preBuild").configure { dependsOn(packageCompanionWeb) }
 dependencies {
     implementation(project(":catalog-store"))
     implementation(project(":companion-core"))
+    implementation(project(":retroarch-session"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

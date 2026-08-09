@@ -18,7 +18,8 @@ import com.darkaxt.dualdex.rom.RomDocumentPicker
 class DualDexWebView(
     context: Context,
     private val origin: String,
-    picker: RomDocumentPicker,
+    picker: RomDocumentPicker?,
+    private val onNativeSetupRoute: (NativeSetupRoute) -> Unit,
     onMainFrameFailure: (String) -> Unit,
 ) : WebView(context) {
     private val trustedOrigin = Uri.parse(origin)
@@ -35,7 +36,12 @@ class DualDexWebView(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,
                 fileChooserParams: FileChooserParams?,
-            ): Boolean = filePathCallback?.let(picker::open) ?: false
+            ): Boolean = if (picker != null && filePathCallback != null) {
+                picker.open(filePathCallback)
+                true
+            } else {
+                false
+            }
 
             override fun onConsoleMessage(message: ConsoleMessage): Boolean {
                 val rendered = "${message.sourceId()}:${message.lineNumber()} ${message.message()}"
@@ -48,8 +54,11 @@ class DualDexWebView(
             }
         }
         webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-                !isTrusted(request.url)
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                if (isTrusted(request.url)) return false
+                NativeSetupRoute.parse(request.url.toString())?.let(onNativeSetupRoute)
+                return true
+            }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: android.webkit.WebResourceError) {
                 if (request.isForMainFrame) onMainFrameFailure(error.description.toString())
