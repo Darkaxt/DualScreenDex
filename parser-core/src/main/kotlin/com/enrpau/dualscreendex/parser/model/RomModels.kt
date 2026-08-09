@@ -25,6 +25,9 @@ enum class RomCapability {
     MOVE_DETAILS,
     LEARNSETS,
     ABILITIES,
+    AREA_ENCOUNTERS,
+    TYPE_PRESENTATION,
+    BALL_CATALOG,
 }
 
 enum class CapabilityStatus { AVAILABLE, NOT_FOUND, NOT_APPLICABLE }
