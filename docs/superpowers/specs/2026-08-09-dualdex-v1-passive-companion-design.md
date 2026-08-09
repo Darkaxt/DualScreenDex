@@ -52,23 +52,22 @@ The parser is omniscient; the player experience does not have to be. Organic mod
 
 ### 2.6 Readability before density
 
-Each battle tab performs one task. Auto density adapts to usable display size and Android font scale. Secondary content may wrap or scroll, but target identity, caught state, and the selected-attack result never shrink below the accessibility floor.
+The reference surface is the AYN Thor's physically small 3.92-inch lower screen. Browsing and species detail are separate pages, each battle tab performs one task, and the UI has no redundant global bottom bar. Auto density adapts to usable display size and Android font scale. Secondary content may wrap or scroll, but target identity, caught state, and the selected-attack result never shrink below the accessibility floor.
 
 ## 3. v1 goals
 
 ### 3.1 General Pokédex
 
-- Browse every species and form available in the active parsed ROM.
+- In Discovered mode, browse every species and form available in the active parsed ROM; in Organic mode, list only species already seen or captured.
 - Search and navigate by the ROM's identifiers and names.
+- Filter by All, Caught, Seen, current Team, or current Area when the relevant capabilities validate.
 - Show every validated static dataset permitted by the active knowledge policy.
-- Preserve the current battle context while the user browses elsewhere.
 
 ### 3.2 Live target context
 
 - Open the current opponent automatically when battle begins.
 - Represent every opponent in multi-battler combat.
 - Follow the opponent selected by the game's move-target cursor.
-- Return to the current target in one action after manual Pokédex browsing.
 - Fall back to touch selection between known opponents if automatic target mapping is unavailable.
 
 ### 3.3 Target tabs
@@ -76,14 +75,14 @@ Each battle tab performs one task. Auto density adapts to usable display size an
 The live target view contains four independently configurable tabs:
 
 1. **Entry:** species/form identity, sprite, seen/caught state, types, and the ROM's Pokédex information subject to knowledge policy.
-2. **Matchup:** the selected player move and its effectiveness against the current target, using the active type chart and battle state.
+2. **Attack:** globally known metadata for the selected player move plus its effectiveness against the current target, using the active type chart and battle state.
 3. **Rarity:** an at-a-glance two-part recruitment label combining contextual level strength with an average DV/IV quality tier, without exposing exact hidden values.
 4. **Moves:** moves previously observed from this exact species/form, ordered by encounter frequency, with ROM-derived move details.
 
 ### 3.4 Settings
 
 - Information policy: `Discovered`, `Organic`, or `Hidden`.
-- Independent enable/disable switches for Matchup, Rarity, and Observed Moves; Entry remains the battle anchor.
+- Independent enable/disable switches for Attack, Rarity, and Observed Moves; Entry remains the battle anchor.
 - Theme and game-matching presentation.
 - Font size and density override, with `Auto` density as the default.
 - Companion display targeting: `Auto`, `Handheld`, or `External` where the Android host exposes those choices.
@@ -126,11 +125,11 @@ ZIP entries are decompressed directly into the parser without extracting a perma
 
 ### 5.3 Outside battle
 
-The lower screen is a normal, fully navigable Pokédex. If no game is active, DualDex may retain the most recently selected locally cached catalog. The app clearly identifies when the displayed catalog is not associated with a current RetroArch session.
+The lower screen is a normal, fully navigable Pokédex. Its list and detail views are separate screens. Organic mode excludes completely unseen species, while Discovered mode may show them with a slashed-eye marker. All, Caught, Seen, Team, and Area filters are available when their data dependencies validate. If no game is active, DualDex may retain the most recently selected locally cached catalog. The app clearly identifies when the displayed catalog is not associated with a current RetroArch session.
 
 ### 5.4 Single battle
 
-When a validated battle begins, the companion opens the opponent's Entry tab. The target rail identifies the live target and provides a stable return point if the user navigates to the general Pokédex.
+When a validated battle begins, the companion opens the opponent's Entry tab. Battle is a dedicated screen rather than a rail layered over the Pokédex.
 
 ### 5.5 Multiple opponents
 
@@ -140,7 +139,7 @@ If opponent slots validate but the target cursor does not, DualDex shows the opp
 
 ### 5.6 Battle end
 
-The live target rail closes and the companion returns to the last manually browsed Pokédex location. Observations already committed to the knowledge ledger remain available in future encounters.
+The battle screen closes and the companion returns to the last browsed Pokédex location. Observations already committed to the knowledge ledger remain available in future encounters.
 
 ## 6. Information policies
 
@@ -148,9 +147,9 @@ The active policy filters a complete parsed catalog and validated live snapshot.
 
 | Policy | Uncaught species | Captured species | Battle assistance |
 | --- | --- | --- | --- |
-| `Discovered` | Show all validated static ROM information immediately | Show all validated static ROM information | Show every enabled deterministic matchup immediately; individual move slots remain observation-only |
-| `Organic` (default) | Show identity, seen/caught state, appearance-derived rarity, and facts learned through qualifying encounters | Unlock all validated static information and deterministic matchups | Unknown facts remain hidden until learned; learned facts persist per save and species/form |
-| `Hidden` | Show only minimal target identity and caught state | General Pokédex remains manually accessible | Hide Matchup, Rarity, and Observed Moves assistance regardless of available memory |
+| `Discovered` | Include the full ROM index, mark unseen species with a slashed eye, and show validated static ROM information immediately | Show all validated static ROM information | Show every enabled deterministic matchup immediately; individual move slots remain observation-only |
+| `Organic` (default) | Exclude completely unseen species from the Pokédex; show seen identity, recruitment rarity, and facts learned through qualifying encounters | Unlock all validated static information and deterministic matchups | Unknown facts remain hidden until learned; learned facts persist per save and species/form |
+| `Hidden` | Show only minimal target identity and caught state | General Pokédex remains manually accessible | Hide Attack, Rarity, and Observed Moves assistance regardless of available memory |
 
 ### 6.1 Static omniscience after capture
 
@@ -214,6 +213,8 @@ total encountered individuals of this species/form
 
 Moves are ordered by descending frequency, then most recently observed. Each row joins the observed move ID to the ROM-derived move catalog for name, type, power, accuracy, PP, effect, and other available details. An unseen move never appears merely because it exists in the species learnset.
 
+Move characteristics are global within a ROM. Once a captured/player Pokémon knows a move, a captured species' unlocked learnset exposes it, the player selects it, or another qualifying observation reveals it, its static name, type, category, power, precision, PP, priority, and decoded effect metadata become available anywhere that move appears. This global `moveId` knowledge does not reveal an opponent's hidden slots. Frequency and recency remain keyed to the exact opponent species/form.
+
 ### 6.6 Qualitative rarity
 
 Rarity is a recruitment aid: it helps the player choose which wild individuals are worth capturing. Its stable tier describes innate individual quality, while its separate prefix describes current level relative to the player's party. Neither signal measures encounter rate, capture probability, trainer importance, EV investment, or Stat Experience.
@@ -259,16 +260,18 @@ The combined label is deliberately available before capture in Organic mode as a
 
 ## 7. Companion UI
 
-### 7.1 Hybrid navigation
+### 7.1 Thor-first navigation
 
-The selected design combines Kanto Gear's single-purpose page rhythm with a persistent DualDex battle context:
+The selected design combines Kanto Gear's single-purpose page rhythm with automatic DualDex battle context:
 
-- The general Pokédex remains available throughout play.
-- Battle start automatically opens the current target.
-- Four horizontal tabs divide target information by task.
-- Browsing away leaves a compact live-target rail with a one-action return.
-- Multi-opponent chips sit above the tabs and follow the game's target cursor.
-- Disabled or unavailable features remove their tab instead of leaving an empty panel.
+- The general Pokédex is the out-of-combat home screen.
+- Pokédex browse and species detail are separate screens.
+- Battle start automatically opens the current target; battle end restores the prior browse location.
+- Four horizontal tabs divide target information by task and render only one task at a time.
+- Large multi-opponent buttons follow the game's target cursor.
+- There is no persistent target rail or global bottom navigation bar.
+- Settings remain available from the header.
+- Disabled or unavailable features remove their tab or filter instead of leaving an empty panel.
 
 The companion borrows interaction principles from Kanto Gear but does not copy its code, assets, or Gen1Recomp integration.
 
@@ -277,16 +280,16 @@ The companion borrows interaction principles from Kanto Gear but does not copy i
 Priority order:
 
 1. Species/form name and sprite.
-2. Seen/caught state.
+2. Seen/caught state represented by an open/slashed eye and colored/gray Poké Ball rather than text badges.
 3. Types when permitted.
 4. Pokédex description and static details when permitted.
 5. Secondary navigation into evolutions, learnset, and the full move reference.
 
 The Entry tab remains present even when every assistance feature is disabled.
 
-### 7.3 Matchup tab
+### 7.3 Attack tab
 
-The primary row contains selected move, effective type, and knowledge-filtered result. The result uses both a multiplier where meaningful and a plain-language label. Status and fixed-damage moves display a mechanic-appropriate state rather than a fictitious multiplier.
+The primary row contains selected move, effective type, and knowledge-filtered result. A known move also exposes its global ROM-derived power, precision, PP, physical/special/status category, priority, and effect metadata as space permits or through a move-detail drill-down. The target-specific result uses both a multiplier where meaningful and a plain-language label. Status and fixed-damage moves display a mechanic-appropriate state rather than a fictitious multiplier.
 
 The UI distinguishes:
 
@@ -309,7 +312,7 @@ Settings are divided into focused groups.
 **Information**
 
 - Policy: `Discovered`, `Organic`, `Hidden`; default `Organic`.
-- Matchup tab: on by default.
+- Attack tab: on by default.
 - Rarity tab: on by default.
 - Observed Moves tab: on by default.
 - Caught marker: on by default.
@@ -339,6 +342,12 @@ Settings are divided into focused groups.
 Auto density chooses a compact or comfortable layout from usable width, height, display density, system font scale, and enabled feature count. It may change spacing, card arrangement, and whether secondary text scrolls. It may not reduce required touch targets or primary text below accessibility minimums.
 
 The UI test matrix covers dual-screen landscape displays, external displays, and large Android font scales. No layout assumes that the reference handheld's physical size is universal.
+
+### 7.8 Type presentation and recruitment filters
+
+Type chips use a validated ROM-extracted presentation palette when available, then a detected official-family palette, then a deterministic accessible fallback for hack-defined types. Palette source is capability evidence and never affects type mechanics.
+
+The Pokédex filter row contains All, Caught, Seen, Team, and Area. Team depends on a validated current player party. Area intersects parsed encounter tables with the validated current map/area so the player can see which local captures remain. Unsupported Team or Area capabilities are omitted or disabled rather than guessed.
 
 ## 8. Architecture
 
@@ -471,6 +480,8 @@ The ledger records facts and their evidence per local save and species/form. The
 - `CURRENT_ABILITY_CONTEXT`
 - `OPPONENT_LEVEL`
 - `PLAYER_LEVEL_REFERENCE`
+- `PLAYER_PARTY`
+- `CURRENT_AREA`
 - `OPPONENT_HP_STATUS`
 - `DV_IV_QUALITY`
 
@@ -493,6 +504,9 @@ The ledger records facts and their evidence per local save and species/form. The
 | Feature | Required capabilities |
 | --- | --- |
 | General Pokédex | static `SPECIES_CATALOG` and whichever static fields the active page renders |
+| Team filter | `PLAYER_PARTY` plus static species catalog |
+| Area filter | static `AREA_ENCOUNTERS` plus `CURRENT_AREA` |
+| ROM-colored type chips | static `TYPE_PRESENTATION`, with detected-family or accessible fallback |
 | Automatic target page | `BATTLE_ACTIVE`, `BATTLER_LAYOUT`, `OPPONENT_SPECIES_FORM` |
 | Automatic double-battle target | automatic target page plus `MULTIPLE_OPPONENTS`, `SELECTED_TARGET` |
 | Organic caught gating | `SAVE_IDENTITY`, `SEEN_FLAGS`, `CAUGHT_FLAGS` |
@@ -511,6 +525,7 @@ Every runtime capability has `AVAILABLE`, `NOT_FOUND`, or `NOT_APPLICABLE` state
 RuntimeSession
   contentIdentity, coreIdentity, state
   staticCatalog, generatedRuntimeProfile
+  currentArea, playerParty
   capabilities, diagnostics
 
 BattleSnapshot
@@ -529,6 +544,7 @@ Battler
 KnowledgeLedger
   romHash, saveIdentity
   speciesKnowledge[(speciesId, formId)]
+  knownMoves[moveId]
 
 SpeciesKnowledge
   seen, caught
@@ -629,9 +645,12 @@ Clear live state immediately, retain safe static caches by content hash, and beg
 ### 13.6 UI tests
 
 - Auto, Comfortable, and Compact density.
-- Small landscape companion screens, external displays, and large font scales.
+- Exact AYN Thor lower-screen aspect, other small companion screens, external displays, and large font scales.
+- No horizontal or unintended vertical overflow; only designated lists/text regions may scroll.
 - Every combination of enabled/disabled tabs and unavailable capabilities.
 - Long ROM-derived names and descriptions without clipping primary information.
+- All, Caught, Seen, Team, and Area filter degradation.
+- Global known-move metadata with independently unknown target effectiveness.
 - Automatic and manual multi-opponent selection.
 - Actual Cocoon + RetroArch + DualDex dual-display launch flow.
 
@@ -645,14 +664,16 @@ At minimum, end-to-end validation covers one title from every supported official
 2. During a mapped single battle, the correct opponent opens automatically.
 3. During a mapped double battle, the companion follows the game's selected target.
 4. Selected-attack effectiveness uses the active ROM chart and validated live context.
-5. Organic mode withholds unknown uncaught facts, remembers qualifying discoveries, and becomes statically omniscient after capture.
+5. Organic mode excludes completely unseen species from its Pokédex, withholds unknown uncaught facts, remembers qualifying discoveries, and becomes statically omniscient after capture.
 6. Rarity is visible before capture as a recruitment aid: its contextual prefix uses only relative level, while its stable quality tier uses only validated average DVs/IVs.
 7. The Moves tab contains only observed opponent moves and orders them by encounter frequency.
-8. A compatible derived ROM can generate and cache its mapping without user-created profiles.
-9. A partial or failed runtime mapping leaves the static Pokédex usable and never falls back to OCR.
-10. All operation remains local, passive, and read-only.
-11. Auto density keeps primary information readable across the supported display/font matrix.
-12. The real Cocoon dual-launch flow passes on the reference Android handheld; a cold app launch alone is insufficient evidence.
+8. A known move exposes global ROM-derived power, precision, PP, category, priority, and effect metadata without revealing opponent move slots.
+9. Team and Area filters appear only when their party and encounter/location dependencies validate.
+10. A compatible derived ROM can generate and cache its mapping without user-created profiles.
+11. A partial or failed runtime mapping leaves the static Pokédex usable and never falls back to OCR.
+12. All operation remains local, passive, and read-only.
+13. Auto density keeps primary information readable across the supported display/font matrix.
+14. The real Cocoon dual-launch flow passes on the reference Android handheld; a cold app launch alone is insufficient evidence.
 
 ## 15. Relationship to Kanto Gear
 
@@ -673,13 +694,15 @@ The implementation model is intentionally different. Kanto Gear is deeply integr
 | Pure-Kotlin static parser | Implemented |
 | Direct ROM and streamed ZIP input | Implemented |
 | Static compatibility report | 14/14 complete for all applicable datasets |
+| Decoded catalog materialization | Designed, not implemented |
+| Area encounter-table and type-presentation capabilities | Newly specified, outside the current compatibility report |
 | Runtime memory transport | Designed, not implemented |
 | Dynamic runtime symbol resolver | Designed, not implemented |
 | Knowledge ledger and policies | Designed, not implemented |
-| Hybrid companion UI | Designed, not implemented |
+| Thor-first companion UI and web simulator | Designed, not implemented |
 | Android replacement of OCR prototype | Not implemented |
 
-This document authorizes no implementation by itself. After written-spec review, the next conversation should choose and plan the smallest runtime-mapping proof that validates the architecture before rebuilding the Android UI.
+The approved sequencing leaves memory mapping until after the rest of the product can be exercised. After written-spec review, the next implementation plan should begin with catalog materialization and the browser-hosted UI/simulator described in [DualDex Web UI and Plausible Simulator POC Design](2026-08-09-dualdex-web-ui-simulator-poc-design.md). Runtime mapping and the thin Android host follow only after that POC is accepted.
 
 ## 17. References
 

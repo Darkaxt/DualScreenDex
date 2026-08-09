@@ -7,6 +7,18 @@ The game remains on the primary display. DualDex parses the user's active GB, GB
 > [!IMPORTANT]
 > The pure-Kotlin ROM parser proof of concept is implemented and validated. The passive runtime mapper and replacement companion UI are specified but not implemented yet. The inherited `app` module is still the abandoned OCR/accessibility prototype and is not representative of the new v1 architecture. There is no new companion APK release at this stage.
 
+## Thor-first UI direction
+
+DualDex targets the AYN Thor's 3.92-inch lower display as a physically small companion surface, not as a high-resolution tablet. Browsing and species details are separate pages, battle tabs show one question at a time, and redundant global bottom navigation is omitted. Settings stay in the header; battle context opens and closes automatically.
+
+<p align="center">
+  <img src="docs/images/dualdex-pokedex-browse-mockup.png" width="31%" alt="Thor-sized out-of-combat Pokédex browser mockup">
+  <img src="docs/images/dualdex-pokedex-detail-mockup.png" width="31%" alt="Thor-sized captured Pokémon detail mockup">
+  <img src="docs/images/dualdex-battle-mockup.png" width="31%" alt="Thor-sized battle Attack tab mockup">
+</p>
+
+These are browser-rendered design artifacts, not screenshots of an implemented APK. Sprites are synthetic placeholders and the shown type colors illustrate the ROM/family-palette direction; production data will come from the user's parsed ROM.
+
 ## Why this fork is different
 
 The upstream project attempted to identify Pokémon from screenshots and supply game data through bundled databases or user-authored CSV profiles. This fork treats the ROM and live game state as authoritative.
@@ -28,16 +40,16 @@ The product contract is simple: a player may need to enable RetroArch Network Co
 
 ### Full Pokédex
 
-Outside battle, DualDex is a fully navigable Pokédex built from the active ROM. It can expose every validated species, form, type, stat, sprite, description, evolution, move, learnset, ability, and type-chart entry that exists in that game.
+Outside battle, DualDex is a fully navigable Pokédex built from the active ROM. It can expose every validated species, form, type, stat, sprite, description, evolution, move, learnset, ability, and type-chart entry that exists in that game. Organic mode lists only species the player has seen or captured; Discovered mode may expose the complete ROM index with unseen entries clearly marked. Capability-gated Team and Area filters help the player inspect the current party and track uncaptured species available at the current location.
 
 ### Automatic battle target
 
-In battle, the companion opens the current opponent automatically. In double battles, opponent chips represent every target and the selected chip follows the game's move-target cursor. The user may browse the full Pokédex at any time; a persistent live-target rail returns to battle context in one action.
+In battle, the companion opens the current opponent automatically. In double battles, large opponent buttons represent every target and the selected button follows the game's move-target cursor. When battle ends, the companion returns to out-of-combat Pokédex navigation.
 
 The hybrid target page has four focused tabs:
 
 1. **Entry** — ROM-derived Pokédex information filtered by seen/caught knowledge.
-2. **Matchup** — selected-attack effectiveness against the current target.
+2. **Attack** — the selected move's globally known metadata plus its discovered effectiveness against the current target.
 3. **Rarity** — a qualitative recruitment signal based on relative level and average DV/IV quality.
 4. **Moves** — previously observed moves, frequency-ranked with complete ROM-derived move details.
 
@@ -49,8 +61,8 @@ The parser knows the complete ROM, but the UI controls how much of that truth it
 
 | Policy | Behavior |
 | --- | --- |
-| `Discovered` | Show all validated static ROM information and deterministic matchups immediately. |
-| `Organic` (default) | Withhold uncaught information, remember facts learned through battle, and unlock complete static species knowledge after capture. |
+| `Discovered` | Expose the complete validated ROM index, clearly mark unseen species, and show deterministic static information immediately. |
+| `Organic` (default) | List only seen/caught species, remember facts learned through battle, and unlock complete static species knowledge after capture. |
 | `Hidden` | Keep manual Pokédex access but hide battle assistance beyond minimal target identity and caught state. |
 
 In Organic mode, testing an attack against an uncaught species records the matchup only when the move reaches a qualifying interaction. DualDex computes the result from the parsed move, active type chart, and validated live battler context; it does not try to infer effectiveness from HP loss. Once that species is captured, its static Pokédex becomes omniscient.
@@ -92,7 +104,7 @@ The selected UI direction is a hybrid of full Pokédex navigation and automatic 
 Planned settings include:
 
 - `Discovered`, `Organic`, and `Hidden` information policies;
-- independent Matchup, Rarity, and Observed Moves switches;
+- independent Attack, Rarity, and Observed Moves switches;
 - game-matching and accessible themes;
 - font-size controls;
 - `Auto` density by default, with `Comfortable` and `Compact` overrides;
@@ -167,10 +179,13 @@ Read the named evidence in the [Markdown compatibility report](reports/dualdex-p
 | --- | --- |
 | Static GB/GBC/GBA ROM parser | Implemented and corpus-validated |
 | Direct and streamed ZIP input | Implemented |
+| Decoded `ParsedCatalog` materialization | Designed, not implemented |
+| Area encounter-table and type-palette capabilities | Newly specified, not part of the current 14-capability report |
+| Browser-hosted UI and plausible simulator | Designed, not implemented |
 | Runtime memory transport | Specified, not implemented |
 | Dynamic battle-memory mapper | Specified, not implemented |
 | Organic discovery ledger | Specified, not implemented |
-| Hybrid companion UI and settings | Specified, not implemented |
+| Thor-first companion UI and settings | Specified, not implemented |
 | Replacement of inherited OCR Android app | Not implemented |
 | Public v1 APK | Not released |
 
@@ -201,6 +216,7 @@ The scanner accepts `.gb`, `.gbc`, and `.gba` files plus matching entries inside
 ## Design documents
 
 - [DualDex v1 passive companion specification](docs/superpowers/specs/2026-08-09-dualdex-v1-passive-companion-design.md)
+- [Web UI and plausible simulator POC specification](docs/superpowers/specs/2026-08-09-dualdex-web-ui-simulator-poc-design.md)
 - [ROM parser and passive companion foundation](docs/superpowers/specs/2026-08-08-dualdex-rom-parser-companion-design.md)
 - [Parser compatibility report](reports/dualdex-parser-compatibility.md)
 
