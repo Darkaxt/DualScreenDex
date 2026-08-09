@@ -278,8 +278,8 @@ unless the specific content region is intentionally scrollable.
 - Back returns to the prior list position and filter.
 - Header contains the Back action and species identity; it has no unimplemented decorative actions.
 - ROM sprite and core identity remain visible.
-- Entry, Stats, Moves, and More are separate tabs; only one tab body is mounted visibly.
-- Stats is explicitly titled `Base stats`, includes the base-stat total, and explains that the values precede level, IV/DV, EV/stat-experience, and generation-specific nature modifiers.
+- Entry, Stats, Moves, and More are separate tabs; only one tab body is mounted visibly. In Organic mode, a seen-only species keeps Entry and observed Moves available while Stats and More remain visibly disabled. Capture enables all four tabs. If a policy change locks the selected tab, the detail page falls back to Entry rather than rendering a duplicate locked body.
+- Stats includes the ROM base-stat total and a compact Level 50 projection of IV/DV impact. Each row retains the parsed base value, shows the zero-to-perfect innate range numerically, and uses a blue typical reference with red below-typical and green above-typical overlay lines. The projection assumes zero EVs/stat experience and a neutral nature where natures apply; it does not expose an owned individual's exact hidden values.
 - Moves shows one row per move with distinct acquisition labels. Selecting a move opens the shared move-detail page instead of expanding dense metadata inside the list.
 - More contains implemented capability-gated sections for abilities, decoded evolutions, and wild locations. Ability ID `0` is a no-ability sentinel and must never render as an empty row. A valid ability row opens the shared ability-detail page. Locations preserve encounter method, minimum/maximum level, and weight. More never contains implementation disclaimers.
 - There is no previous/next bottom bar. Swiping may be added later, but Back plus list navigation is sufficient for v1.

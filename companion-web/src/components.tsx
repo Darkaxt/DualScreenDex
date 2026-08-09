@@ -61,8 +61,8 @@ export function Header({ title, kicker, onBack, onSettings }: { title: string; k
   );
 }
 
-export function Segmented({ values, active, onSelect, label }: { values: string[]; active: string; onSelect: (value: string) => void; label: string }) {
+export function Segmented({ values, active, onSelect, label, disabledValues = [] }: { values: string[]; active: string; onSelect: (value: string) => void; label: string; disabledValues?: string[] }) {
   return <div class="segmented" role="tablist" aria-label={label}>{values.map(value => (
-    <button key={value} role="tab" aria-selected={active === value} class={active === value ? 'active' : ''} onClick={() => onSelect(value)}>{value}</button>
+    <button key={value} role="tab" aria-selected={active === value} class={active === value ? 'active' : ''} disabled={disabledValues.includes(value)} onClick={() => onSelect(value)}>{value}</button>
   ))}</div>;
 }

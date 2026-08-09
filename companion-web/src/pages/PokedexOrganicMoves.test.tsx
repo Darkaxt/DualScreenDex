@@ -6,6 +6,31 @@ import { PokedexDetail } from './PokedexDetail';
 afterEach(cleanup);
 
 describe('Organic Pokédex move knowledge', () => {
+  it('disables static-detail tabs before capture while keeping observed moves available', () => {
+    renderDetail(uncaughtState);
+
+    expect((screen.getByRole('tab', { name: 'STATS' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('tab', { name: 'MORE' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('tab', { name: 'MOVES' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('enables static-detail tabs after capture', () => {
+    renderDetail({
+      ...uncaughtState,
+      speciesState: { 4: { seen: true, caught: true, team: false, ballId: null } },
+    });
+
+    expect((screen.getByRole('tab', { name: 'STATS' }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('tab', { name: 'MORE' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('falls back to Entry when Organic mode locks the selected Stats tab', () => {
+    renderDetail(uncaughtState, 'STATS');
+
+    expect(screen.getByRole('tab', { name: 'ENTRY' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByText('KNOWLEDGE WITHHELD')).toBeTruthy();
+  });
+
   it('shows only witnessed moves without their ROM acquisition levels before capture', () => {
     renderDetail(uncaughtState);
 
@@ -27,12 +52,12 @@ describe('Organic Pokédex move knowledge', () => {
   });
 });
 
-function renderDetail(state: State) {
+function renderDetail(state: State, tab: 'ENTRY' | 'STATS' | 'MOVES' | 'MORE' = 'MOVES') {
   render(<PokedexDetail
     catalog={catalog}
     state={state}
     send={vi.fn()}
-    tab="MOVES"
+    tab={tab}
     setTab={vi.fn()}
     openMove={vi.fn()}
     openAbility={vi.fn()}
