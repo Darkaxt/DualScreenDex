@@ -210,6 +210,14 @@ Species-specific history remains separate. The Moves tab records how often that 
 
 For a selected known player move, the Attack tab always shows its global metadata. Organic policy may still show `EFFECT ?` against an uncaptured target until a qualifying interaction records that matchup. This separates knowledge of the move from knowledge of the opponent.
 
+### Runtime-selectable ROM rulesets
+
+A ROM may contain more than one structurally valid static table and select the active table from save or runtime state. Modern Emerald, for example, contains separate original and modern level-up learnsets. The parser must retain every independently validated variant rather than silently choosing the table closest to the inherited official layout.
+
+Each variant records a stable generated ID, source offset, validation evidence, entry count, and neutral presentation label. The browser POC exposes detected variants in the laboratory controls because it has no live save-state reader. The Android runtime selects the active variant automatically from validated memory state; players never provide a profile or memory address. If the active variant cannot be determined, normal UI identifies the catalog as unresolved instead of presenting one variant as authoritative.
+
+Level-up records remain lossless in parser diagnostics but are normalized for presentation. A move that appears as both a level-1 entry and a later level is shown once with `Initial` plus every distinct later acquisition level. `Initial` means initial/relearnable availability; it is not an Egg Move. Actual Egg, TM/HM, and tutor acquisition methods remain separate and use their own ROM-derived compatibility tables.
+
 ## 7. Thor-first UI contract
 
 The reference companion surface is the AYN Thor's 3.92-inch, 1080×1240 lower display. High pixel density does not make it a tablet. Every production page is designed for its physical size and near-square aspect first.
@@ -241,7 +249,7 @@ unless the specific content region is intentionally scrollable.
 - Search: one large name/number control.
 - Filters: All, Caught, Seen, Team, and Area. Team reflects the validated current player party. Area intersects parsed encounter tables with the validated current map/area. Either capability-gated filter is disabled or omitted when its required data is unavailable.
 - List: four rows in the reference viewport, with further entries scrolling vertically.
-- Status: ROM-derived capture/generic ball art and open/slashed eye according to policy. A CSS grayscale treatment communicates seen-only state without substituting an emoji.
+- Status: ROM-derived capture/generic ball art and an accessible inline-SVG open/slashed eye according to policy. A CSS grayscale treatment communicates seen-only state without substituting an emoji. The eye silhouette must remain recognizable at the rendered size and cannot be approximated by a rotated rounded rectangle.
 - Organic mode never renders an unseen row.
 
 ### Species detail page
@@ -250,8 +258,14 @@ unless the specific content region is intentionally scrollable.
 - Header contains the Back action and species identity; it has no unimplemented decorative actions.
 - ROM sprite and core identity remain visible.
 - Entry, Stats, Moves, and More are separate tabs; only one tab body is mounted visibly.
-- Evolution and Matchups may live under More if four primary tabs are already present.
+- Stats is explicitly titled `Base stats`, includes the base-stat total, and explains that the values precede level, IV/DV, EV/stat-experience, and generation-specific nature modifiers.
+- Moves shows one row per move with distinct acquisition labels. Selecting a move opens the shared move-detail page instead of expanding dense metadata inside the list.
+- More contains implemented capability-gated sections for abilities, decoded evolutions, and wild locations. Locations preserve encounter method, minimum/maximum level, and weight. It never contains implementation disclaimers.
 - There is no previous/next bottom bar. Swiping may be added later, but Back plus list navigation is sufficient for v1.
+
+### Move detail page
+
+The move-detail page is shared by species learnsets, selected player attacks, captured-team moves, and observed opponent moves. It shows ROM-derived name, type, category, power, accuracy, PP, priority, description/effect text, and the acquisition context of the originating species when applicable. Zero power or zero accuracy used as an engine sentinel renders as an em dash rather than `0` or `0%`. Back returns to the exact species tab or battle tab that opened it.
 
 ### Battle page
 
@@ -354,6 +368,8 @@ The normal feedback loop is:
 6. Run focused frontend and Kotlin tests.
 7. Capture deterministic screenshots for review.
 
+The development side panel also exposes structured diagnostics. A copyable diagnostic snapshot contains ROM name and hash, selected family, detected ruleset variants, active ruleset, capability evidence, table offsets and record sizes, and raw-versus-normalized records for the selected species or move. It contains no ROM bytes and is not a profile editor. Normal operation logs only lifecycle summaries and warnings; detailed records are opt-in through the lab diagnostics view.
+
 The browser must display a clear development banner when simulator data is active. Production components may not import simulator modules.
 
 ## 11. Failure and privacy behavior
@@ -377,6 +393,10 @@ The server binds to loopback, accepts requests only from its configured local or
 - Catalog materialization for every supported family and tri-state field.
 - Direct file and streamed ZIP parity.
 - Stable ROM-native IDs and cross-table joins.
+- Multiple validated ruleset discovery and deterministic active-variant selection.
+- Lossless raw learnsets and normalized initial/level acquisition groups.
+- Move descriptions plus distinct level-up, Egg, TM/HM, and tutor acquisition methods when their tables validate.
+- Encounter method, level range, and weight preservation through the server contract.
 - Global move knowledge and species-specific observation separation.
 - Every information-policy transition.
 - Rarity boundaries.
@@ -389,7 +409,11 @@ The server binds to loopback, accepts requests only from its configured local or
 - Snapshot reducers and gateway adapters.
 - Organic exclusion of unseen species.
 - Discovered slashed-eye rows.
+- Recognizable SVG eye and eye-off status marks.
 - Colored/gray Poké Ball semantics.
+- Base-stat labels, total, and generation-aware clarification.
+- Grouped acquisition labels and shared move-detail navigation.
+- Capability-gated abilities, evolutions, and location sections without implementation disclaimers.
 - Known move metadata with unknown target effectiveness.
 - Separate list/detail navigation and restored list position.
 - One active battle/detail tab at a time.
@@ -411,13 +435,14 @@ The server binds to loopback, accepts requests only from its configured local or
 2. The out-of-combat Pokédex and species-detail pages render real catalog records.
 3. Organic mode excludes completely unseen species; Discovered can represent them with a slashed eye.
 4. A fixed seed creates reproducible one- and two-opponent plausible encounters.
-5. Simulated histories contain only level-up moves eligible at the generated level.
+5. Simulated histories contain only distinct active-ruleset level-up moves eligible at the generated level.
 6. Captured/seen state, matchup discovery, rarity, and observed moves respond through production state interfaces.
-7. Known moves expose global power, precision, PP, category, and effect metadata across species.
+7. Known moves expose global power, precision, PP, category, priority, and decoded effect text through a shared move-detail page.
 8. Type chips use ROM/family-derived presentation with explicit fallback evidence.
 9. Every production screen fits the Thor reference viewport without horizontal or unintended vertical overflow.
 10. Simulator controls never appear inside the production companion surface or production bundle.
 11. No APK compilation is required for normal UI iteration.
+12. Every detected ROM ruleset remains inspectable, the POC selection is explicit, and diagnostics show the raw records that produced each normalized view.
 12. The compiled web bundle can be loaded unchanged by a minimal WebView proof after the web POC is accepted.
 
 ## 14. Mockups
