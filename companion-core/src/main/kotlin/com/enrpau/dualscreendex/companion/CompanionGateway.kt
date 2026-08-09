@@ -36,10 +36,11 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             selectedSpeciesId = action.speciesId,
         )
         CompanionAction.BackToPokedex -> state.copy(screen = AppScreen.POKEDEX)
-        is CompanionAction.SetScreen -> state.copy(
-            screen = action.screen,
-            priorScreen = if (action.screen == AppScreen.BATTLE) state.screen else state.priorScreen,
-        )
+        is CompanionAction.SetScreen -> if (action.screen == AppScreen.SETTINGS && state.screen != AppScreen.SETTINGS) {
+            state.copy(screen = action.screen, settingsReturnScreen = state.screen)
+        } else {
+            state.copy(screen = action.screen)
+        }
         is CompanionAction.SetFilter -> state.copy(filter = action.filter, selectedAreaId = action.areaId)
         is CompanionAction.SetBattleTab -> state.copy(battleTab = action.tab)
         is CompanionAction.UpdateSettings -> state.copy(settings = action.settings)

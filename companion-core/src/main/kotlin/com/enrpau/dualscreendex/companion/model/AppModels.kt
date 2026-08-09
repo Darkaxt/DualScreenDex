@@ -52,7 +52,8 @@ data class KnowledgeLedger(
 data class OpponentState(
     val speciesId: Int,
     val level: Int,
-    val ivs: List<Int>,
+    val ivs: List<Int> = emptyList(),
+    val dvs: List<Int> = emptyList(),
     val moveHistory: List<MoveObservation>,
     val capturable: Boolean = true,
 )
@@ -68,6 +69,7 @@ data class AppSnapshot(
     val version: Long = 0,
     val screen: AppScreen = AppScreen.POKEDEX,
     val priorScreen: AppScreen = AppScreen.POKEDEX,
+    val settingsReturnScreen: AppScreen = AppScreen.POKEDEX,
     val selectedSpeciesId: Int? = null,
     val filter: PokedexFilter = PokedexFilter.ALL,
     val selectedAreaId: Int? = null,

@@ -28,7 +28,24 @@ class EncounterSimulatorTest {
         assertTrue(first.battle.opponents.all { opponent -> opponent.moveHistory.all { it.moveId == 1 } })
     }
 
-    private fun catalog(): ParsedCatalog {
+    @Test
+    fun usesGenerationSpecificInnateValues() {
+        val generationOne = EncounterSimulator(catalog(Platform.GB)).generate(
+            SimulationRequest(seed = 8, captured = true),
+        )
+        val generationThree = EncounterSimulator(catalog(Platform.GBA)).generate(
+            SimulationRequest(seed = 8, captured = true),
+        )
+
+        assertEquals(4, generationOne.battle.opponents.single().dvs.size)
+        assertTrue(generationOne.battle.opponents.single().ivs.isEmpty())
+        assertEquals(6, generationThree.battle.opponents.single().ivs.size)
+        assertTrue(generationThree.battle.opponents.single().dvs.isEmpty())
+        assertEquals(generationOne.battle.opponents.single().dvs, generationOne.ledger.owned.first().dvs)
+        assertEquals(generationThree.battle.opponents.single().ivs, generationThree.ledger.owned.first().ivs)
+    }
+
+    private fun catalog(platform: Platform = Platform.GBA): ParsedCatalog {
         val sprite = RgbaSprite(1, 1, intArrayOf(0xFFFFFFFF.toInt()))
         val species = (1..3).associateWith { id ->
             SpeciesRecord(
@@ -52,6 +69,6 @@ class EncounterSimulatorTest {
                 CatalogField.available(35),
             )
         }
-        return ParsedCatalog("hash", EngineFamily.EMERALD, Platform.GBA, speciesById = species, movesById = moves)
+        return ParsedCatalog("hash", EngineFamily.EMERALD, platform, speciesById = species, movesById = moves)
     }
 }

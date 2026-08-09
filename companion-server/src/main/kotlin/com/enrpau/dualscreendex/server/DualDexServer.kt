@@ -1,6 +1,6 @@
 package com.enrpau.dualscreendex.server
 
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
@@ -18,7 +18,7 @@ class DualDexServer(
     private val webRoot: Path,
     port: Int = 47831,
 ) : AutoCloseable {
-    private val gson = Gson()
+    private val gson = GsonBuilder().serializeNulls().create()
     private val server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0)
     val address: InetSocketAddress get() = server.address
 

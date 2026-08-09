@@ -18,6 +18,10 @@ class ServerContractTest {
             val connection = URI("http://127.0.0.1:${server.address.port}/api/health").toURL().openConnection() as HttpURLConnection
             assertEquals(200, connection.responseCode)
             assertTrue(connection.inputStream.reader().readText().contains("true"))
+
+            val bootstrap = URI("http://127.0.0.1:${server.address.port}/api/bootstrap").toURL().readText()
+            assertTrue(bootstrap.contains("\"battle\":null"))
+            assertTrue(bootstrap.contains("\"selectedSpeciesId\":null"))
         } finally {
             server.close()
             Files.deleteIfExists(root)

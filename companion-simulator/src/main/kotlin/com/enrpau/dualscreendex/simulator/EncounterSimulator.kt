@@ -32,6 +32,7 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
             catalog.navigableSpecies().filter { it.sprite.value != null }
         }
         require(pool.isNotEmpty()) { "catalog contains no encounter-ready species" }
+        val generation = generation()
 
         val opponents = List(request.opponentCount) { index ->
             val species = pool[random.nextInt(pool.size)]
@@ -46,7 +47,8 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
             OpponentState(
                 speciesId = species.id,
                 level = level,
-                ivs = List(6) { random.nextInt(32) },
+                ivs = if (generation == 3) List(6) { random.nextInt(32) } else emptyList(),
+                dvs = if (generation < 3) List(4) { random.nextInt(16) } else emptyList(),
                 moveHistory = observed.sortedWith(
                     compareByDescending<MoveObservation> { it.encounterCount }.thenByDescending { it.lastSeenSequence },
                 ),
@@ -60,12 +62,14 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
                     owned += OwnedPokemon(
                         stableKey = "sim-${request.seed}-${opponent.speciesId}-$copy",
                         speciesId = opponent.speciesId,
-                        generation = generation(),
+                        generation = generation,
                         level = opponent.level + copy,
-                        ivs = if (generation() == 3) {
+                        ivs = if (generation == 3) {
                             if (copy == 0) opponent.ivs else List(6) { random.nextInt(32) }
                         } else emptyList(),
-                        dvs = if (generation() < 3) List(4) { random.nextInt(16) } else emptyList(),
+                        dvs = if (generation < 3) {
+                            if (copy == 0) opponent.dvs else List(4) { random.nextInt(16) }
+                        } else emptyList(),
                         captureBallId = catalog.captureBallsById.keys.sorted().takeIf { it.isNotEmpty() }
                             ?.let { ids -> ids[random.nextInt(ids.size)] },
                     )

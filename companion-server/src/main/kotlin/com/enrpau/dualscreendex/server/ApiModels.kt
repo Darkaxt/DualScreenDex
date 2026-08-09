@@ -52,6 +52,7 @@ data class StateView(
     val version: Long,
     val screen: String,
     val priorScreen: String,
+    val settingsReturnScreen: String,
     val selectedSpeciesId: Int?,
     val filter: String,
     val selectedAreaId: Int?,
@@ -162,6 +163,7 @@ object ApiViewBuilder {
             snapshot.version,
             snapshot.screen.name,
             snapshot.priorScreen.name,
+            snapshot.settingsReturnScreen.name,
             snapshot.selectedSpeciesId,
             snapshot.filter.name,
             snapshot.selectedAreaId,
@@ -171,8 +173,18 @@ object ApiViewBuilder {
             snapshot.battle?.let { battle ->
                 BattleView(
                     opponents = battle.opponents.map { opponent ->
+                        val generation = when (catalog?.platform?.name) {
+                            "GBA" -> 3
+                            "GBC" -> 2
+                            else -> 1
+                        }
                         val individual = com.enrpau.dualscreendex.companion.model.OwnedPokemon(
-                            "battle", opponent.speciesId, 3, opponent.level, ivs = opponent.ivs,
+                            "battle",
+                            opponent.speciesId,
+                            generation,
+                            opponent.level,
+                            ivs = opponent.ivs,
+                            dvs = opponent.dvs,
                         )
                         val prefix = PreferredIndividualSelector.levelPrefix(opponent.level, battle.playerReferenceLevel)
                         val tier = PreferredIndividualSelector.tier(individual)
