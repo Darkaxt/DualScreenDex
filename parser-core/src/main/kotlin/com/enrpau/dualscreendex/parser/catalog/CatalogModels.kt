@@ -111,6 +111,13 @@ data class EvolutionEdge(
 
 data class AbilityRecord(val id: Int, val name: CatalogField<String>)
 
+data class DescriptionRecord(
+    val text: String,
+    val height: Int? = null,
+    val weight: Int? = null,
+    val category: String? = null,
+)
+
 data class EncounterSlot(
     val speciesId: Int,
     val minimumLevel: Int,
