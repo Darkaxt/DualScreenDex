@@ -11,6 +11,7 @@ import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.RomProfile
+import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.ScoreEvidence
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
@@ -174,6 +175,18 @@ private class ConfiguredFamilyParser(
         val capabilities = buildCapabilities(
             names, stats, moveNames, moveData, typeChart, sprites, descriptions, evolutions, learnsets, abilities,
         )
+        val resolvedTables = ProfileTables(
+            speciesNames = resolvedLayout(tables.speciesNames, names),
+            baseStats = resolvedLayout(baseStatsLayout, stats),
+            moveNames = resolvedLayout(tables.moveNames, moveNames),
+            moveData = resolvedLayout(tables.moveData, moveData),
+            typeChart = resolvedLayout(tables.typeChart, typeChart, variableLength = true),
+            evolutions = resolvedLayout(tables.evolutions, evolutions),
+            learnsets = resolvedLayout(tables.learnsets, learnsets),
+            sprites = resolvedLayout(tables.sprites, sprites),
+            descriptions = resolvedLayout(tables.descriptions, descriptions),
+            abilities = resolvedLayout(tables.abilities, abilities),
+        )
         val anchors = listOf(
             identityMatched,
             tables.speciesNames != null,
@@ -202,6 +215,35 @@ private class ConfiguredFamilyParser(
                     add("inferred base-stat record size ${baseStatsLayout.recordSize}")
                 }
             },
+            resolvedLayout = ResolvedRomLayout(
+                family = family,
+                generation = generation,
+                platform = header.platform,
+                speciesCount = speciesCount,
+                moveCount = moveCount,
+                tables = resolvedTables,
+            ),
+        )
+    }
+
+    private fun resolvedLayout(
+        inherited: TableLayout?,
+        evidence: ValidationEvidence,
+        variableLength: Boolean = inherited?.variableLength ?: false,
+    ): TableLayout? {
+        if (!evidence.compatible || evidence.offset == null) return inherited
+        val count = evidence.totalRecords.takeIf { it > 0 } ?: inherited?.count ?: 0
+        val recordSize = evidence.recordSize ?: inherited?.recordSize ?: 0
+        return inherited?.copy(
+            offset = evidence.offset,
+            count = count,
+            recordSize = recordSize,
+            variableLength = variableLength,
+        ) ?: TableLayout(
+            offset = evidence.offset,
+            count = count,
+            recordSize = recordSize,
+            variableLength = variableLength,
         )
     }
 

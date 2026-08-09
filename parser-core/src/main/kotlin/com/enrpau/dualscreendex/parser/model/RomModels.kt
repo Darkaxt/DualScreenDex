@@ -64,6 +64,15 @@ data class ProfileTables(
     val abilities: TableLayout? = null,
 )
 
+data class ResolvedRomLayout(
+    val family: EngineFamily,
+    val generation: Int,
+    val platform: Platform,
+    val speciesCount: Int?,
+    val moveCount: Int?,
+    val tables: ProfileTables,
+)
+
 data class RomProfile(
     val name: String,
     val sha256: String,
@@ -118,6 +127,7 @@ data class ParserProbe(
     val profileName: String? = null,
     val exactProfile: Boolean = false,
     val diagnostics: List<String> = emptyList(),
+    val resolvedLayout: ResolvedRomLayout? = null,
 )
 
 data class ParseResult(
