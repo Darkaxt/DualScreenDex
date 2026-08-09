@@ -15,3 +15,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+/companion-web/node_modules/
+/companion-web/dist/
+/companion-web/tsconfig.tsbuildinfo
+/.playwright-cli/
+/output/

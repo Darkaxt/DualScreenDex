@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | Draft for final written-spec review |
+| Status | Implemented and verified as a browser POC |
 | Date | 2026-08-09 |
 | Scope | ROM catalog materialization, web-first companion UI, knowledge policy, and development simulator |
 | Excludes | RetroArch memory transport and dynamic battle-memory mapping |
@@ -30,7 +30,7 @@ The POC deliberately stops at the boundary where a real `BattleSnapshot` would a
 - Present separate species list and species-detail pages sized for the AYN Thor lower screen.
 - Present single- and double-opponent battle screens with Entry, Attack, Rarity, and Moves tabs.
 - Apply Discovered, Organic, and Hidden information policies.
-- Persist a local knowledge ledger for seen, caught, matchup, and move discoveries.
+- Maintain a local in-process knowledge ledger for seen, caught, matchup, and move discoveries. Save-backed persistence attaches after the runtime mapper can identify the active save.
 - Generate deterministic, plausible encounters using only the active ROM catalog.
 - Exercise all v1 UI settings without repeatedly compiling an APK.
 - Produce browser tests and fixed-seed screenshots suitable for review and README documentation.

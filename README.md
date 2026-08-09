@@ -5,19 +5,25 @@ DualDex is becoming a passive second-screen Pokédex companion for mainline-fami
 The game remains on the primary display. DualDex parses the user's active GB, GBC, or GBA ROM into a local Pokédex, observes battle state through RetroArch's read-only memory interface, and presents the currently targeted opponent on the companion screen—without OCR, screenshots, cheats, memory writes, or per-ROM profiles.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser proof of concept is implemented and validated. The passive runtime mapper and replacement companion UI are specified but not implemented yet. The inherited `app` module is still the abandoned OCR/accessibility prototype and is not representative of the new v1 architecture. There is no new companion APK release at this stage.
+> The pure-Kotlin ROM parser, materialized catalog, loopback web server, state gateway, deterministic encounter simulator, and Thor-first browser UI are implemented as a working POC. Only the live RetroArch memory transport/mapper and Android packaging remain outside the demonstrated flow. The inherited `app` module is still the abandoned OCR/accessibility prototype and is not representative of the new architecture. There is no new companion APK release at this stage.
 
 ## Thor-first UI direction
 
 DualDex targets the AYN Thor's 3.92-inch lower display as a physically small companion surface, not as a high-resolution tablet. Browsing and species details are separate pages, battle tabs show one question at a time, and redundant global bottom navigation is omitted. Settings stay in the header; battle context opens and closes automatically.
 
 <p align="center">
-  <img src="docs/images/dualdex-pokedex-browse-mockup.png" width="31%" alt="Thor-sized out-of-combat Pokédex browser mockup">
-  <img src="docs/images/dualdex-pokedex-detail-mockup.png" width="31%" alt="Thor-sized captured Pokémon detail mockup">
-  <img src="docs/images/dualdex-battle-mockup.png" width="31%" alt="Thor-sized battle Attack tab mockup">
+  <img src="docs/images/dualdex-pokedex-browse-poc.png" width="31%" alt="Working Thor-sized out-of-combat ROM Pokédex browser">
+  <img src="docs/images/dualdex-pokedex-detail-poc.png" width="31%" alt="Working ROM-derived Charizard Pokédex detail page">
+  <img src="docs/images/dualdex-battle-attack-poc.png" width="31%" alt="Working battle Attack tab with ROM-derived move metadata">
 </p>
 
-These are browser-rendered design artifacts, not screenshots of an implemented APK. Sprites are synthetic placeholders and the shown type colors illustrate the ROM/family-palette direction; production data will come from the user's parsed ROM.
+<p align="center">
+  <img src="docs/images/dualdex-battle-entry-poc.png" width="31%" alt="Working double-battle Entry tab">
+  <img src="docs/images/dualdex-battle-rarity-poc.png" width="31%" alt="Working recruitment rarity tab">
+  <img src="docs/images/dualdex-settings-poc.png" width="31%" alt="Working compact settings page">
+</p>
+
+These are screenshots of the implemented browser POC running against a streamed Modern Emerald 3.5 ZIP. Every shown Pokémon name, sprite, Pokédex entry, type, type color, move, and matchup comes from the loaded ROM catalog; the encounter feed is the only simulated input. No emoji, bundled Pokédex database, or synthetic Pokémon artwork is used.
 
 ## Why this fork is different
 
@@ -36,7 +42,7 @@ The upstream project attempted to identify Pokémon from screenshots and supply 
 
 The product contract is simple: a player may need to enable RetroArch Network Commands once, but must never have to enter memory addresses, import cheat codes, prepare CSV files, or create a profile for every mod.
 
-## Planned v1 experience
+## v1 experience
 
 ### Full Pokédex
 
@@ -101,17 +107,17 @@ The qualitative label is deliberately visible before capture in Organic mode bec
 
 The selected UI direction is a hybrid of full Pokédex navigation and automatic battle context. Each tab has one job instead of cramming every detail onto one screen.
 
-Planned settings include:
+The POC settings currently include:
 
 - `Discovered`, `Organic`, and `Hidden` information policies;
 - independent Attack, Rarity, and Observed Moves switches;
-- game-matching and accessible themes;
 - font-size controls;
 - `Auto` density by default, with `Comfortable` and `Compact` overrides;
-- `Auto`, `Handheld`, and `External` display targeting where supported;
-- automatic target opening and caught-marker switches;
-- optional last-tab memory and controller-trigger navigation; and
-- local discovery reset, cache rebuild, remapping, and sanitized diagnostics.
+- high contrast;
+- automatic target opening; and
+- independent Attack, Rarity, and Observed Moves tabs.
+
+Android display targeting, controller navigation, persistent per-save discovery, cache controls, and diagnostics remain APK/runtime integration work.
 
 Auto density responds to usable display size and Android font scale. It may wrap or scroll secondary content, but it may not make target identity, caught state, or the selected-attack result unreadably small.
 
@@ -154,10 +160,16 @@ The current proof of concept contains:
 
 - `parser-core`: a pure-Kotlin, Android-portable ROM parser;
 - `parser-cli`: a read-only corpus scanner and report generator;
+- `companion-core`: immutable UI state, knowledge policies, recruitment ranking, and best-owned-individual selection;
+- `companion-simulator`: deterministic one- or two-opponent battles using only level-plausible moves from the parsed learnsets;
+- `companion-server`: a loopback-only HTTP/SSE gateway with direct-ROM and streaming-ZIP loading plus on-demand ROM sprite PNGs;
+- `companion-web`: the implemented Preact/TypeScript Thor UI and desktop simulator controls;
 - competitive family parsers for Red/Blue, Yellow, Gold/Silver, Crystal, Ruby/Sapphire, Emerald, and FireRed/LeafGreen;
 - dynamic structural resolution for common relocated and expanded Gen III layouts;
 - direct ROM and streamed ZIP-entry inputs through the same parser contract;
-- independent tri-state capability evidence (`AVAILABLE`, `NOT_FOUND`, `NOT_APPLICABLE`); and
+- materialized species, forms, types, stats, sprites, descriptions, evolutions, moves, learnsets, abilities, encounters, type presentation, type matchups, and capture-ball artwork;
+- independent tri-state capability evidence (`AVAILABLE`, `NOT_FOUND`, `NOT_APPLICABLE`);
+- Discovered, Organic, and Hidden presentation policies; and
 - human-readable and machine-readable compatibility reports.
 
 The private in-scope corpus result is:
@@ -167,7 +179,7 @@ The private in-scope corpus result is:
 - **3 structurally selected derivatives**: Modern Emerald 3.5, Sword and Shield Ultimate Plus, and Pokémon Unbound;
 - **14 complete for every applicable static dataset**;
 - **0 partial, 0 ambiguous, and 0 parse errors**; and
-- **67 automated tests with no failures, errors, or skips**.
+- **122 Kotlin tests and 5 browser-component tests with no failures, errors, or skips**.
 
 Abilities are correctly `N/A` for GB/GBC rather than reported as missing. Spin-offs such as Pinball, Trading Card Game, Puzzle Challenge, and Mystery Dungeon are excluded from the v1 mainline-family report.
 
@@ -179,13 +191,15 @@ Read the named evidence in the [Markdown compatibility report](reports/dualdex-p
 | --- | --- |
 | Static GB/GBC/GBA ROM parser | Implemented and corpus-validated |
 | Direct and streamed ZIP input | Implemented |
-| Decoded `ParsedCatalog` materialization | Designed, not implemented |
-| Area encounter-table and type-palette capabilities | Newly specified, not part of the current 14-capability report |
-| Browser-hosted UI and plausible simulator | Designed, not implemented |
+| Decoded `ParsedCatalog` materialization | Implemented |
+| Species and capture-ball sprite decoding | Implemented without AWT/Android dependencies |
+| Area encounters, type colors, and type chart | Implemented and reported independently |
+| Browser-hosted UI and plausible simulator | Implemented and real-browser validated |
+| Loopback HTTP/SSE companion server | Implemented |
 | Runtime memory transport | Specified, not implemented |
 | Dynamic battle-memory mapper | Specified, not implemented |
-| Organic discovery ledger | Specified, not implemented |
-| Thor-first companion UI and settings | Specified, not implemented |
+| Organic discovery ledger | Implemented in-memory; per-save persistence remains |
+| Thor-first companion UI and settings | Implemented in the browser POC |
 | Replacement of inherited OCR Android app | Not implemented |
 | Public v1 APK | Not released |
 
@@ -212,6 +226,38 @@ Scan one or more user-owned ROM directories read-only:
 ```
 
 The scanner accepts `.gb`, `.gbc`, and `.gba` files plus matching entries inside ZIP archives. ZIP contents are decompressed directly into the parser without extracting temporary ROM files.
+
+## Run the browser POC
+
+Requirements:
+
+- JDK 17
+- Node.js 20 or newer
+
+Build the web client and install the local server distribution:
+
+```powershell
+Set-Location companion-web
+npm install
+npm test
+npm run build
+Set-Location ..
+.\gradlew.bat :companion-server:test :companion-server:installDist
+```
+
+Start the passive loopback server with a direct ROM or ZIP path:
+
+```powershell
+.\companion-server\build\install\companion-server\bin\companion-server.bat `
+  --rom "D:\path\to\pokemon-rom.zip" `
+  --web-root "companion-web\dist"
+```
+
+Open `http://127.0.0.1:47831`. The side panel generates deterministic plausible encounters; ROM selection, all displayed catalog data, sprite endpoints, settings, battle targeting, and UI state use the same contracts intended for the APK. The browser POC never writes to the ROM.
+
+## Deferred v1.1 single-screen mode
+
+For phones without a second display, the proposed v1.1 Android shell may add a user-enabled “display over other apps” mode. A small draggable Poké Ball bubble, using artwork parsed from the active ROM, would show or hide the same compact panel above RetroArch. It remains explicitly out of v1 and out of the browser POC so overlay permissions and lifecycle work cannot delay the passive dual-screen release.
 
 ## Design documents
 
