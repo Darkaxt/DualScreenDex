@@ -280,7 +280,7 @@ The companion borrows interaction principles from Kanto Gear but does not copy i
 Priority order:
 
 1. Species/form name and sprite.
-2. Seen/caught state represented by an open/slashed eye and colored/gray Poké Ball rather than text badges.
+2. Seen/caught state represented by an open/slashed eye and a ROM-derived ball icon rather than text badges. When the save format preserves the capture ball, the caught icon belongs to the best innate-quality owned individual of that species/form; otherwise the game's generic Poké Ball art is used.
 3. Types when permitted.
 4. Pokédex description and static details when permitted.
 5. Secondary navigation into evolutions, learnset, and the full move reference.
@@ -498,6 +498,8 @@ The ledger records facts and their evidence per local save and species/form. The
 
 - `SEEN_FLAGS`
 - `CAUGHT_FLAGS`
+- `OWNED_INDIVIDUALS`
+- `CAPTURE_BALL_ID`
 
 ### 9.5 Feature dependencies
 
@@ -510,6 +512,7 @@ The ledger records facts and their evidence per local save and species/form. The
 | Automatic target page | `BATTLE_ACTIVE`, `BATTLER_LAYOUT`, `OPPONENT_SPECIES_FORM` |
 | Automatic double-battle target | automatic target page plus `MULTIPLE_OPPONENTS`, `SELECTED_TARGET` |
 | Organic caught gating | `SAVE_IDENTITY`, `SEEN_FLAGS`, `CAUGHT_FLAGS` |
+| Per-species capture-ball marker | static `BALL_CATALOG`, `OWNED_INDIVIDUALS`, `DV_IV_QUALITY`, and `CAPTURE_BALL_ID`; otherwise static generic ball art |
 | Immediate static matchup | static move/types/chart plus `PLAYER_SELECTED_MOVE`, `OPPONENT_SPECIES_FORM` |
 | Accurate dynamic matchup | immediate matchup plus every required current-type, ability, chart, and move-context capability |
 | Organic matchup discovery | accurate matchup plus `EXECUTED_MOVE`, `MOVE_RESOLUTION_GATE` |
@@ -519,13 +522,17 @@ The ledger records facts and their evidence per local save and species/form. The
 
 Every runtime capability has `AVAILABLE`, `NOT_FOUND`, or `NOT_APPLICABLE` state plus evidence. UI dependency resolution occurs after both static and runtime states are known.
 
+Generation III's individual Pokémon record preserves a capture-ball field, so compatible GBA games and structurally matching hacks can provide `CAPTURE_BALL_ID`. The official Generation I and II records do not preserve the ball used to catch an individual; this capability is `NOT_APPLICABLE` there unless a hack's extended structure can be independently validated. DualDex must not infer a missing ball from inventory, animation state, met location, or species.
+
+For each owned species/form, the presentation selector scans every validated party and storage individual. It ranks Generation III records by exact six-IV sum and Generation I/II records by the exact normalized five-value DV sum defined in section 6.4. The highest score supplies the caught marker. Ties resolve by stable storage identity, with party slots followed by box and slot order, so the chosen marker is deterministic. Level, EVs, Stat Experience, and current calculated stats never affect this selection.
+
 ## 10. Normalized runtime model
 
 ```text
 RuntimeSession
   contentIdentity, coreIdentity, state
   staticCatalog, generatedRuntimeProfile
-  currentArea, playerParty
+  currentArea, playerParty, ownedIndividuals
   capabilities, diagnostics
 
 BattleSnapshot

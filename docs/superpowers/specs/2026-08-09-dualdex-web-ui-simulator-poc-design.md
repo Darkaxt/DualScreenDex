@@ -106,6 +106,7 @@ ParsedCatalog
   abilitiesById
   typeChart
   encounterAreas
+  captureBallsById
   presentation
 
 SpeciesRecord
@@ -127,6 +128,13 @@ TypeRecord
 TypePresentation
   source: ROM_EXTRACTED | FAMILY_FALLBACK | NEUTRAL
   foreground, background, border
+
+CaptureBallRecord
+  id, name, sprite
+
+OwnedIndividual
+  storageKey, speciesId, formId
+  innateQualityScore, captureBallId
 ```
 
 Every optional decoded field retains the parser's tri-state capability and evidence. A species with a valid name and types remains navigable even if its description is unavailable. Materialization must never convert `NOT_FOUND` into an empty but apparently valid value.
@@ -174,9 +182,13 @@ KnowledgeLedger
   knownMoves[moveId]
 ```
 
+Owned individuals are runtime/save state rather than knowledge-ledger facts. The presentation layer selects the highest innate-quality owned individual for each species/form and displays that individual's recorded capture ball when the runtime format provides one. Selection uses exact six-IV sum in Generation III or the exact normalized DV sum in Generations I/II, followed by stable party/box slot order as the tie-break. Current level, EVs, Stat Experience, and calculated battle stats do not participate.
+
+Official Generation III records preserve a capture-ball identifier. Official Generation I and II records do not, so their capture-ball capability is `NOT_APPLICABLE` and their caught state uses generic ROM-derived Poké Ball artwork. A hack may enable the capability only after its extended individual structure validates; the POC never guesses.
+
 ### Species knowledge
 
-- **Organic:** the out-of-combat list contains only seen or captured species. A completely unseen species does not appear. Seen-only species use an open-eye marker and gray Poké Ball. Captured species use an open eye and colored Poké Ball. Capture unlocks the complete static species record.
+- **Organic:** the out-of-combat list contains only seen or captured species. A completely unseen species does not appear. Seen-only species use an open-eye marker and grayscale generic ROM ball art. Captured species use an open eye and, when available, the ROM sprite for the selected best individual's recorded capture ball; otherwise they use colored generic ROM Poké Ball art. Capture unlocks the complete static species record.
 - **Discovered:** the ROM index may contain unseen species. Those rows use a slashed-eye marker and withhold facts not permitted by policy.
 - **Hidden:** manual browsing remains available, while contextual assistance is reduced to the configured minimum.
 
@@ -229,7 +241,7 @@ unless the specific content region is intentionally scrollable.
 - Search: one large name/number control.
 - Filters: All, Caught, Seen, Team, and Area. Team reflects the validated current player party. Area intersects parsed encounter tables with the validated current map/area. Either capability-gated filter is disabled or omitted when its required data is unavailable.
 - List: four rows in the reference viewport, with further entries scrolling vertically.
-- Status: colored/gray Poké Ball and open/slashed eye according to policy.
+- Status: ROM-derived capture/generic ball art and open/slashed eye according to policy. A CSS grayscale treatment communicates seen-only state without substituting an emoji.
 - Organic mode never renders an unseen row.
 
 ### Species detail page
@@ -301,6 +313,7 @@ The simulator is a development adapter, not a game emulator. It is rendered outs
 - opponent level range;
 - simulated current area when area encounters are available;
 - a seeded synthetic player party, including the move IDs needed to exercise Team and global move knowledge;
+- seeded owned individuals, including two same-species records with different innate scores and ROM-valid ball IDs when the format supports them;
 - captured or seen-only state; and
 - selected known player move.
 
@@ -312,7 +325,8 @@ The simulator is a development adapter, not a game emulator. It is rendered outs
 4. If the pool is empty, generate no history rather than inventing a move.
 5. Generate seeded observation counts and recency only from that eligible pool.
 6. Compute the recruitment prefix and IV/DV tier from seeded synthetic individual values.
-7. Compute matchup truth from the parsed move, opponent types, and active type chart, then pass it through the selected disclosure policy.
+7. Select each captured species' presentation individual by exact innate score, then stable storage key, and use its capture-ball ID when supported.
+8. Compute matchup truth from the parsed move, opponent types, and active type chart, then pass it through the selected disclosure policy.
 
 When a simulated current area is selected, opponent candidates may be constrained to that area's parsed encounter species. This remains plausible rather than encounter-rate-authentic unless the simulator explicitly exercises encounter-slot weighting.
 
