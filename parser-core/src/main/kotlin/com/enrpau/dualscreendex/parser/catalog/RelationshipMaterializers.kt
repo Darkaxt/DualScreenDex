@@ -61,6 +61,14 @@ object RelationshipMaterializers {
     fun learnsets(rom: RomImage, layout: ResolvedRomLayout): Map<Int, List<LearnsetEntry>> {
         val table = layout.tables.learnsets ?: return emptyMap()
         if (layout.generation < 3) return gen12Relationships(rom, layout, table).second
+        if (table.elementSize == 3) {
+            return buildMap {
+                repeat(table.count) { speciesId ->
+                    val offset = rom.gbaPointer(table.offset + speciesId * table.recordSize) ?: return@repeat
+                    put(speciesId, readGen3ExpandedLearnset(rom, offset))
+                }
+            }
+        }
         val moveBits = if ((layout.moveCount ?: 0) > 511) 10 else 9
         val moveMask = (1 shl moveBits) - 1
         return buildMap {
@@ -71,14 +79,23 @@ object RelationshipMaterializers {
         }
     }
 
+    private fun readGen3ExpandedLearnset(rom: RomImage, offset: Int): List<LearnsetEntry> = buildList {
+        var cursor = offset
+        repeat(128) {
+            val move = rom.u16le(cursor)
+            val level = rom.u8(cursor + 2)
+            if (move == 0 && level == 0xFF) return@buildList
+            add(LearnsetEntry(level = level, moveId = move))
+            cursor += 3
+        }
+    }
+
     private fun readGen3Learnset(
         rom: RomImage,
         offset: Int,
         moveBits: Int,
         moveMask: Int,
     ): List<LearnsetEntry> {
-        val expanded = rom.u16le(offset) == 0 && rom.u8(offset + 2) == 0xFF
-        if (expanded) return emptyList()
         return buildList {
             var cursor = offset
             repeat(128) {

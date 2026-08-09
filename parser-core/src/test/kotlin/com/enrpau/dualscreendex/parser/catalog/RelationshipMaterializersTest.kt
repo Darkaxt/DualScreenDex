@@ -62,6 +62,25 @@ class RelationshipMaterializersTest {
     }
 
     @Test
+    fun materializesExpandedGbaLevelUpLearnset() {
+        val bytes = ByteArray(256)
+        putGbaPointer(bytes, 0, 128)
+        putU16(bytes, 128, 600)
+        bytes[130] = 5
+        putU16(bytes, 131, 700)
+        bytes[133] = 10
+        putU16(bytes, 134, 0)
+        bytes[136] = 0xFF.toByte()
+        val layout = layout(
+            learnsets = TableLayout(0, 1, 4, elementSize = 3),
+        ).copy(moveCount = 800)
+
+        val entries = RelationshipMaterializers.learnsets(RomImage(bytes), layout).getValue(0)
+
+        assertEquals(listOf(LearnsetEntry(5, 600), LearnsetEntry(10, 700)), entries)
+    }
+
+    @Test
     fun materializesCombinedGenTwoEvolutionAndLearnsetStream() {
         val bytes = ByteArray(0x8000)
         putU16(bytes, 0, 0x4020)

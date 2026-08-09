@@ -137,6 +137,7 @@ object PokemonDatasetValidators {
             if (offset != null && validGen3Learnset(rom, offset, moveCount, moveBits)) valid++
         }
         result(valid, speciesCount, pointerTableOffset, 4, "valid Gen 3 learnsets", 0.90)
+            .copy(elementSize = 2)
     }
 
     fun gen3ExpandedLearnsets(
@@ -151,6 +152,7 @@ object PokemonDatasetValidators {
             if (offset != null && validGen3ExpandedLearnset(rom, offset, moveCount)) valid++
         }
         result(valid, speciesCount, pointerTableOffset, 4, "valid CFRU/DPE Gen 3 learnsets", 0.90)
+            .copy(elementSize = 3)
     }
 
     private fun validGen1Description(rom: RomImage, offset: Int, codec: PokemonTextCodec): Boolean {

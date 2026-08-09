@@ -92,6 +92,7 @@ class DatasetResolversTest {
 
         assertTrue(result.compatible)
         assertEquals(0x200, result.offset)
+        assertEquals(3, result.elementSize)
     }
 
     private fun putGbaText(bytes: ByteArray, offset: Int, value: String) {

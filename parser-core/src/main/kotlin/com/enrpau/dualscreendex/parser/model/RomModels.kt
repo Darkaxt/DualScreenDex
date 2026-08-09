@@ -101,6 +101,7 @@ data class ValidationEvidence(
     val reasons: List<String>,
     val offset: Int? = null,
     val recordSize: Int? = null,
+    val elementSize: Int? = null,
 )
 
 data class CapabilityEvidence(

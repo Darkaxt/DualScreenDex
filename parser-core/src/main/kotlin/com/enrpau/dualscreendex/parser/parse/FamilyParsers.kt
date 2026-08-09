@@ -239,11 +239,13 @@ private class ConfiguredFamilyParser(
             count = count,
             recordSize = recordSize,
             variableLength = variableLength,
+            elementSize = evidence.elementSize ?: inherited.elementSize,
         ) ?: TableLayout(
             offset = evidence.offset,
             count = count,
             recordSize = recordSize,
             variableLength = variableLength,
+            elementSize = evidence.elementSize,
         )
     }
 
