@@ -214,7 +214,7 @@ For a selected known player move, the Attack tab always shows its global metadat
 
 A ROM may contain more than one structurally valid static table and select the active table from save or runtime state. Modern Emerald, for example, contains separate original and modern level-up learnsets. The parser must retain every independently validated variant rather than silently choosing the table closest to the inherited official layout.
 
-Each variant records a stable generated ID, source offset, validation evidence, entry count, and neutral presentation label. The browser POC exposes detected variants in the laboratory controls because it has no live save-state reader. The Android runtime selects the active variant automatically from validated memory state; players never provide a profile or memory address. If the active variant cannot be determined, normal UI identifies the catalog as unresolved instead of presenting one variant as authoritative.
+Each variant records a stable generated ID, source offset, validation evidence, entry count, and neutral presentation label. The browser POC exposes `Auto` plus every detected variant in Settings because it has no live save-state reader. `Auto` uses the parser's primary validated table and identifies the result as assumed; a manual selection is an explicit POC override. The Android runtime resolves `Auto` from validated memory state, while the manual choices remain diagnostic overrides. Players never provide a profile or memory address. If the active variant cannot be determined, normal UI identifies the catalog as unresolved instead of presenting one variant as authoritative.
 
 Level-up records remain lossless in parser diagnostics but are normalized for presentation. A move that appears as both a level-1 entry and a later level is shown once with `Initial` plus every distinct later acquisition level. `Initial` means initial/relearnable availability; it is not an Egg Move. Actual Egg, TM/HM, and tutor acquisition methods remain separate and use their own ROM-derived compatibility tables.
 
@@ -297,6 +297,7 @@ The move-detail page is shared by species learnsets, selected player attacks, ca
 
 - Information policy and feature switches.
 - Font size and Auto/Comfortable/Compact density.
+- Ruleset selection uses `Auto` by default and lists every detected ROM variant. The browser POC identifies Auto as assumed; the Android runtime resolves it from live memory.
 - Game-matching, accessible, and contrast themes.
 - Display targeting for the later Android host.
 - Simulator controls are absent from production Settings.
@@ -443,7 +444,7 @@ The server binds to loopback, accepts requests only from its configured local or
 10. Simulator controls never appear inside the production companion surface or production bundle.
 11. No APK compilation is required for normal UI iteration.
 12. Every detected ROM ruleset remains inspectable, the POC selection is explicit, and diagnostics show the raw records that produced each normalized view.
-12. The compiled web bundle can be loaded unchanged by a minimal WebView proof after the web POC is accepted.
+13. The compiled web bundle can be loaded unchanged by a minimal WebView proof after the web POC is accepted.
 
 ## 14. Mockups
 
