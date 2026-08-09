@@ -21,6 +21,7 @@ const state: State = {
     1: { seen: true, caught: false, team: false, ballId: null },
     4: { seen: false, caught: false, team: false, ballId: null },
   },
+  observedMoves: {},
   battle: null, catalogReady: true, catalogName: 'fixture.gba', error: null, activeRulesetId: null, rulesetAssumed: true,
   loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
 };

@@ -59,6 +59,7 @@ The reference surface is the AYN Thor's physically small 3.92-inch lower screen.
 ### 3.1 General Pokédex
 
 - In Discovered mode, browse every species and form available in the active parsed ROM; in Organic mode, list only species already seen or captured.
+- In Organic mode, an uncaptured species' Moves tab lists only moves actually observed from that species/form, ordered by frequency and recency. It does not reveal learn levels or acquisition methods; capture unlocks the complete parsed move catalog for that species/form.
 - Search and navigate by the ROM's identifiers and names.
 - Filter by All, Caught, Seen, current Team, or current Area when the relevant capabilities validate.
 - Show every validated static dataset permitted by the active knowledge policy.
@@ -66,6 +67,7 @@ The reference surface is the AYN Thor's physically small 3.92-inch lower screen.
 ### 3.2 Live target context
 
 - Open the current opponent automatically when battle begins.
+- Provide a compact Pokédex shortcut beside the target name. It opens the target's full species Entry page; Back restores the active battle.
 - Represent every opponent in multi-battler combat.
 - Follow the opponent selected by the game's move-target cursor.
 - Fall back to touch selection between known opponents if automatic target mapping is unavailable.
@@ -711,15 +713,17 @@ The implementation model is intentionally different. Kanto Gear is deeply integr
 | Pure-Kotlin static parser | Implemented |
 | Direct ROM and streamed ZIP input | Implemented |
 | Static compatibility report | 14/14 complete for all applicable datasets |
-| Decoded catalog materialization | Designed, not implemented |
-| Area encounter-table and type-presentation capabilities | Newly specified, outside the current compatibility report |
+| Decoded catalog materialization | Implemented |
+| Area encounters, type presentation, sprites, descriptions, and move acquisition | Implemented and included in the compatibility report |
+| Progressive loopback loading | Implemented in the browser POC |
 | Runtime memory transport | Designed, not implemented |
 | Dynamic runtime symbol resolver | Designed, not implemented |
-| Knowledge ledger and policies | Designed, not implemented |
-| Thor-first companion UI and web simulator | Designed, not implemented |
+| Knowledge ledger and policies | Implemented in-memory; save-backed persistence remains Android integration work |
+| Thor-first companion UI and web simulator | Implemented |
+| Loopback companion server | Implemented |
 | Android replacement of OCR prototype | Not implemented |
 
-The approved sequencing leaves memory mapping until after the rest of the product can be exercised. After written-spec review, the next implementation plan should begin with catalog materialization and the browser-hosted UI/simulator described in [DualDex Web UI and Plausible Simulator POC Design](2026-08-09-dualdex-web-ui-simulator-poc-design.md). Runtime mapping and the thin Android host follow only after that POC is accepted.
+The approved sequencing leaves memory mapping until after the rest of the product can be exercised. Catalog materialization, the browser-hosted UI, the plausible simulator, and the loopback server are now implemented. Runtime mapping and the thin Android host are the remaining integration phases after parser and browser-POC acceptance.
 
 ## 17. References
 

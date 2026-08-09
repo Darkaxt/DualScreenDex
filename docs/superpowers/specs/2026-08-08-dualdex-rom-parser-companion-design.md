@@ -442,13 +442,11 @@ Recorded, sanitized memory-transition fixtures will test battle start/end, singl
 
 ## 16. Delivery sequence
 
-1. **Parser study:** pure Kotlin parser core, CLI harness, local corpus scan, and compatibility report.
-2. **Parser hardening:** strengthen locators and validators based on report evidence until official coverage is complete and hack results are honest.
-3. **Runtime mapper:** passive RetroArch session monitor, core memory capability probe, and per-family live battle adapters.
-4. **Companion UI:** replace OCR/accessibility plumbing with catalog navigation and battle context.
-5. **Integrated device validation:** Cocoon launches RetroArch and DualDex; validate supported ROM detection, double-battle targeting, observations, and failure recovery on the actual handheld.
-
-Only step 1 is authorized as the next implementation task.
+1. **Parser study — complete:** pure Kotlin parser core, CLI harness, local corpus scan, and compatibility report.
+2. **Parser hardening — complete for the current corpus:** official coverage is complete, derivative locators are independently validated, and non-applicable datasets are distinct from missing ones.
+3. **Browser companion POC — complete:** catalog navigation, battle presentation, one- or two-target simulation, and loopback loading exercise the product without APK build friction.
+4. **Runtime mapper — remaining:** passive RetroArch session monitor, core memory capability probe, and per-family live battle adapters.
+5. **Android integration and device validation — remaining:** replace the inherited OCR shell, then validate the actual Cocoon plus RetroArch dual-screen flow, target changes, observations, and recovery on the handheld.
 
 ## 17. Success definition
 

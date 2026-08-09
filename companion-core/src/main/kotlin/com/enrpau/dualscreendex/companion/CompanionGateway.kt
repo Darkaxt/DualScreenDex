@@ -45,7 +45,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             priorScreen = state.screen.takeUnless { it == AppScreen.DETAIL } ?: state.priorScreen,
             selectedSpeciesId = action.speciesId,
         )
-        CompanionAction.BackToPokedex -> state.copy(screen = AppScreen.POKEDEX)
+        CompanionAction.BackToPokedex -> state.copy(screen = state.priorScreen)
         is CompanionAction.SetScreen -> if (action.screen == AppScreen.SETTINGS && state.screen != AppScreen.SETTINGS) {
             state.copy(screen = action.screen, settingsReturnScreen = state.screen)
         } else {

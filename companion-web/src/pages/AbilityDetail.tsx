@@ -12,6 +12,7 @@ export function AbilityDetail({ catalog, state, abilityId, onBack }: { catalog: 
     <div class="ability-detail-content" data-scroll-region>
       <div class="ability-hero"><strong>{ability.name}</strong><span>ROM ABILITY #{ability.id}</span></div>
       <div class="paper-panel"><p class="eyebrow">EFFECT</p><p class="entry-copy">{ability.description || 'No compatible ability description was resolved from this ROM.'}</p></div>
+      {ability.mechanics.length > 0 && <div class="paper-panel"><p class="eyebrow">ROM-VALIDATED VALUES</p><div class="ability-mechanics">{ability.mechanics.map(mechanic => <div class="ability-mechanic" key={`${mechanic.kind}-${mechanic.label}`}><span>{mechanic.label}</span><strong>{mechanic.value}</strong></div>)}</div></div>}
       {recruited.length > 0 && <div class="paper-panel"><p class="eyebrow">KNOWN ON YOUR CAPTURES</p><div class="known-species">{recruited.map(species => <span key={species.id}>{species.name}</span>)}</div></div>}
     </div>
   </section>;

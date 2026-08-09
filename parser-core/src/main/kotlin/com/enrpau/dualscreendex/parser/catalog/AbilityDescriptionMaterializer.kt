@@ -24,7 +24,12 @@ object AbilityDescriptionMaterializer {
         val searchEnd = minOf(rom.size - tableBytes, expectedOffset + SEARCH_RADIUS)
         if (searchEnd < searchStart) return null
 
-        return generateSequence(searchStart) { current -> (current + 4).takeIf { it <= searchEnd } }
+        val candidates = linkedSetOf<Int>()
+        generateSequence(searchStart) { current -> (current + 4).takeIf { it <= searchEnd } }
+            .forEach(candidates::add)
+        pointerTableOffsets(rom, names.count).forEach(candidates::add)
+
+        return candidates.asSequence()
             .mapNotNull { offset -> decodeCandidate(rom, offset, names.count) }
             .maxWithOrNull(
                 compareBy<AbilityDescriptionResult> { it.confidence }
@@ -52,9 +57,38 @@ object AbilityDescriptionMaterializer {
             }
         }
         val expectedDescriptions = count - 1
-        val confidence = descriptions.size.toDouble() / expectedDescriptions
+        val decodedRatio = descriptions.size.toDouble() / expectedDescriptions
+        val naturalRatio = descriptions.values.count(::looksLikeNaturalDescription).toDouble() / descriptions.size.coerceAtLeast(1)
+        val confidence = minOf(decodedRatio, naturalRatio)
         val minimum = maxOf(2, (expectedDescriptions * 0.8).toInt())
-        return if (descriptions.size >= minimum) AbilityDescriptionResult(offset, confidence, descriptions) else null
+        return if (descriptions.size >= minimum && naturalRatio >= 0.75) {
+            AbilityDescriptionResult(offset, confidence, descriptions)
+        } else {
+            null
+        }
+    }
+
+    private fun pointerTableOffsets(rom: RomImage, pointerCount: Int): Sequence<Int> = sequence {
+        val tableBytes = pointerCount * 4
+        var cursor = 0
+        while (cursor + 4 <= rom.size) {
+            if (rom.gbaPointer(cursor) == null) {
+                cursor += 4
+                continue
+            }
+            val start = cursor
+            while (cursor + 4 <= rom.size && rom.gbaPointer(cursor) != null) cursor += 4
+            var candidate = start
+            while (candidate + tableBytes <= cursor) {
+                yield(candidate)
+                candidate += 4
+            }
+        }
+    }
+
+    private fun looksLikeNaturalDescription(value: String): Boolean {
+        val words = value.split(Regex("\\s+")).count { it.any(Char::isLetter) }
+        return value.length >= 8 && words >= 2
     }
 
     private fun align4(value: Int): Int = (value + 3) and 3.inv()

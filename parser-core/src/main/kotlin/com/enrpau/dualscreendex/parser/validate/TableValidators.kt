@@ -47,7 +47,7 @@ object TableValidators {
                 consecutiveInvalid = 0
             } else {
                 consecutiveInvalid++
-                if (consecutiveInvalid >= 3 && index + 1 >= minimumCount) break
+                if (consecutiveInvalid >= 2 && index + 1 >= minimumCount) break
             }
         }
         return lastGood.takeIf { it >= minimumCount }

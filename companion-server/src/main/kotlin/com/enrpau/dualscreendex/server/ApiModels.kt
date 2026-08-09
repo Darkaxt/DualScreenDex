@@ -52,7 +52,19 @@ data class RulesetView(
     val primary: Boolean,
 )
 data class MoveAcquisitionView(val moveId: Int, val method: String, val sourceId: Int?)
-data class AbilityView(val id: Int, val name: String, val description: String?)
+data class AbilityMechanicView(
+    val kind: String,
+    val label: String,
+    val value: String,
+    val numerator: Int,
+    val denominator: Int,
+)
+data class AbilityView(
+    val id: Int,
+    val name: String,
+    val description: String?,
+    val mechanics: List<AbilityMechanicView>,
+)
 data class EvolutionView(
     val targetSpeciesId: Int,
     val targetName: String,
@@ -124,6 +136,7 @@ data class StateView(
     val battleTab: String,
     val settings: Any,
     val speciesState: Map<Int, SpeciesStateView>,
+    val observedMoves: Map<Int, List<ObservedMoveView>>,
     val battle: BattleView?,
     val catalogReady: Boolean,
     val catalogName: String?,
@@ -214,7 +227,20 @@ object ApiViewBuilder {
                     val ability = catalog.abilitiesById[abilityId]
                     val name = ability?.name?.value
                     if (abilityId == 0 || name.isNullOrBlank()) null
-                    else AbilityView(abilityId, name, ability.description.value)
+                    else AbilityView(
+                        abilityId,
+                        name,
+                        ability.description.value,
+                        ability.mechanics.value.orEmpty().map { mechanic ->
+                            AbilityMechanicView(
+                                mechanic.kind.name,
+                                mechanic.label,
+                                mechanic.value,
+                                mechanic.numerator,
+                                mechanic.denominator,
+                            )
+                        },
+                    )
                 },
                 evolutions = species.evolutionEdges.value.orEmpty().map { edge ->
                     EvolutionView(
@@ -304,6 +330,9 @@ object ApiViewBuilder {
             snapshot.battleTab.name,
             snapshot.settings,
             speciesState,
+            snapshot.ledger.observedMoves.mapValues { (_, observations) ->
+                observations.map { ObservedMoveView(it.moveId, it.encounterCount, it.lastSeenSequence) }
+            },
             snapshot.battle?.let { battle ->
                 BattleView(
                     opponents = battle.opponents.map { opponent ->

@@ -81,7 +81,19 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
             }
         }
         val observed = previous.observedMoves.toMutableMap()
-        opponents.forEach { opponent -> observed[opponent.speciesId] = opponent.moveHistory }
+        opponents.forEach { opponent ->
+            val merged = (observed[opponent.speciesId].orEmpty() + opponent.moveHistory)
+                .groupBy { it.moveId }
+                .map { (moveId, history) ->
+                    MoveObservation(
+                        moveId = moveId,
+                        encounterCount = history.sumOf { it.encounterCount },
+                        lastSeenSequence = history.maxOf { it.lastSeenSequence },
+                    )
+                }
+                .sortedWith(compareByDescending<MoveObservation> { it.encounterCount }.thenByDescending { it.lastSeenSequence })
+            observed[opponent.speciesId] = merged
+        }
         val playerReference = (request.minimumLevel + request.maximumLevel) / 2
         val selectedMove = catalog.movesById.values.firstOrNull { move ->
             (move.power.value ?: 0) > 0 && move.typeId.value != null

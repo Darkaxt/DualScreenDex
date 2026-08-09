@@ -10,7 +10,7 @@ import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.GsonBuilder
 
 data class CorpusReport(
-    val schemaVersion: Int = 5,
+    val schemaVersion: Int = 6,
     val minimumParserScore: Int = ParserOrchestrator.minimumScore,
     val minimumRunnerUpMargin: Int = ParserOrchestrator.minimumMargin,
     val roots: List<String>,
@@ -47,6 +47,7 @@ data class CatalogMetrics(
     val typeMatchups: Int,
     val abilities: Int,
     val abilitiesWithDescriptions: Int,
+    val abilitiesWithMechanics: Int,
     val captureBalls: Int,
     val encounterAreas: Int = 0,
 ) {
@@ -82,6 +83,7 @@ data class CatalogMetrics(
             typeMatchups = catalog.typeChart.size,
             abilities = abilities.size,
             abilitiesWithDescriptions = abilities.count { it.description.status == CapabilityStatus.AVAILABLE },
+            abilitiesWithMechanics = abilities.count { it.mechanics.status == CapabilityStatus.AVAILABLE },
             captureBalls = catalog.captureBallsById.values.count { it.sprite.status == CapabilityStatus.AVAILABLE },
             encounterAreas = catalog.encounterAreas.size,
         )
@@ -97,6 +99,7 @@ object ReportWriter {
         RomCapability.MACHINE_MOVES,
         RomCapability.TUTOR_MOVES,
         RomCapability.ABILITY_DESCRIPTIONS,
+        RomCapability.ABILITY_MECHANICS,
     )
     private val coreCapabilities = RomCapability.entries.filterNot(extendedCapabilities::contains)
 
@@ -149,8 +152,8 @@ object ReportWriter {
         appendLine("- `N/F` = applicable but not found or validated")
         appendLine("- `N/A` = not applicable to that engine")
         appendLine()
-        appendLine("| ROM | Status | Family | Profile | Ancestry score | Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Areas | Type colors | Balls |")
-        appendLine("| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+        appendLine("| ROM | Status | Family | Profile | Ancestry score | Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Ability values | Areas | Type colors | Balls |")
+        appendLine("| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
         report.results.forEach { entry ->
             val parsed = entry.result
             val selectedProbe = parsed?.probes?.firstOrNull { it.family == parsed.selectedFamily }
@@ -173,7 +176,7 @@ object ReportWriter {
                     "${if (entry.catalog?.learnsetRulesets?.let { it > 0 } == true) "yes" else "N/F"} | " +
                     "${capability(RomCapability.EGG_MOVES)} | ${capability(RomCapability.MACHINE_MOVES)} | " +
                     "${capability(RomCapability.TUTOR_MOVES)} | ${capability(RomCapability.ABILITIES)} | " +
-                    "${capability(RomCapability.ABILITY_DESCRIPTIONS)} | " +
+                    "${capability(RomCapability.ABILITY_DESCRIPTIONS)} | ${capability(RomCapability.ABILITY_MECHANICS)} | " +
                     "${capability(RomCapability.AREA_ENCOUNTERS)} | ${capability(RomCapability.TYPE_PRESENTATION)} | " +
                     "${capability(RomCapability.BALL_CATALOG)} |",
             )
@@ -245,12 +248,12 @@ object ReportWriter {
         appendLine()
         appendLine("Counts prove records were decoded and joined; the report intentionally contains no copyrighted ROM text or pixels.")
         appendLine()
-        appendLine("| ROM | Species | Named | Stats | Sprites | Dex text | Evolutions | Learnsets | Rulesets | Moves | Move data | Move text | Egg links | Machine links | Tutor links | Types | Matchups | Abilities | Ability text | Balls | Areas |")
-        appendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        appendLine("| ROM | Species | Named | Stats | Sprites | Dex text | Evolutions | Learnsets | Rulesets | Moves | Move data | Move text | Egg links | Machine links | Tutor links | Types | Matchups | Abilities | Ability text | Ability values | Balls | Areas |")
+        appendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         report.results.forEach { entry ->
             val value = entry.catalog
             if (value == null) {
-                appendLine("| ${cell(entry.displayName)} | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |")
+                appendLine("| ${cell(entry.displayName)} | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |")
             } else {
                 appendLine(
                     "| ${cell(entry.displayName)} | ${value.species} | ${value.namedSpecies} | ${value.speciesWithStats} | " +
@@ -258,7 +261,7 @@ object ReportWriter {
                         "${value.learnsetEntries} | ${value.learnsetRulesets} | ${value.moves} | ${value.movesWithDetails} | " +
                         "${value.movesWithDescriptions} | ${value.eggMoveLinks} | ${value.machineMoveLinks} | " +
                         "${value.tutorMoveLinks} | ${value.types} | ${value.typeMatchups} | ${value.abilities} | " +
-                        "${value.abilitiesWithDescriptions} | ${value.captureBalls} | ${value.encounterAreas} |",
+                        "${value.abilitiesWithDescriptions} | ${value.abilitiesWithMechanics} | ${value.captureBalls} | ${value.encounterAreas} |",
                 )
             }
         }

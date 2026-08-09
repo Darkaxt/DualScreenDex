@@ -33,4 +33,16 @@ class CompanionGatewayTest {
         assertEquals(AppScreen.BATTLE, returned.screen)
         assertEquals(AppScreen.POKEDEX, ended.screen)
     }
+
+    @Test
+    fun detailShortcutReturnsToTheActiveBattle() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
+        val detail = gateway.dispatch(CompanionAction.OpenSpecies(25))
+
+        val returned = gateway.dispatch(CompanionAction.BackToPokedex)
+
+        assertEquals(AppScreen.BATTLE, detail.priorScreen)
+        assertEquals(AppScreen.BATTLE, returned.screen)
+    }
 }

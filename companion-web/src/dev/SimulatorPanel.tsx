@@ -27,6 +27,7 @@ export function SimulatorPanel({ catalog, state, onUpload, send }: { catalog: Ca
     <label class="sim-check"><input type="checkbox" checked={captured} onChange={event => setCaptured(event.currentTarget.checked)} /><i /><span>Already recruited</span></label>
     <label class="sim-area">AREA<select value={areaId ?? ''} onChange={event => setArea(event.currentTarget.value ? Number(event.currentTarget.value) : null)}><option value="">Any parsed area</option>{catalog?.areas.map(area => <option key={area.id} value={area.id}>{area.name}</option>)}</select></label>
     <button class="generate-button" disabled={!catalog || state.loading.active} onClick={() => send('GENERATE', { seed, count, minimumLevel, maximumLevel, captured, areaId })}>GENERATE ENCOUNTER</button>
+    {catalog && state.battle && <label class="sim-area sim-attack">ATTACK REFERENCE<select value={state.battle.selectedMoveId ?? ''} onChange={event => send('MOVE', { moveId: Number(event.currentTarget.value) })}>{catalog.moves.filter(move => (move.power ?? 0) > 0).map(move => <option key={move.id} value={move.id}>{move.name}</option>)}</select></label>}
     {state.battle && <button class="end-button" onClick={() => send('END_BATTLE')}>END BATTLE</button>}
     {catalog && <button class="diagnostic-button" onClick={copyDiagnostics}>COPY DIAGNOSTICS</button>}
     {diagnosticStatus && <small class="diagnostic-status" role="status">{diagnosticStatus}</small>}

@@ -19,7 +19,7 @@ const emptyState: State = {
   selectedAreaId: null,
   battleTab: 'ENTRY',
   settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
-  speciesState: {}, battle: null, catalogReady: false, catalogName: null, error: null,
+  speciesState: {}, observedMoves: {}, battle: null, catalogReady: false, catalogName: null, error: null,
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'IDLE', completedUnits: 0, totalUnits: 0 }
 };
 
@@ -70,7 +70,10 @@ export function App() {
     if (abilityDetailId != null) return <AbilityDetail catalog={catalog} state={state} abilityId={abilityDetailId} onBack={() => setAbilityDetailId(null)} />;
     switch (state.screen) {
       case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={setMoveDetailId} openAbility={setAbilityDetailId} />;
-      case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={setMoveDetailId} /> : <PokedexBrowse catalog={catalog} state={state} send={send} />;
+      case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={setMoveDetailId} openSpecies={speciesId => {
+        setDetailTab('ENTRY');
+        void send('OPEN_SPECIES', { speciesId });
+      }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} />;
       case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} />;
     }

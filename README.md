@@ -50,11 +50,11 @@ The product contract is simple: a player may need to enable RetroArch Network Co
 
 ### Full Pokédex
 
-Outside battle, DualDex is a fully navigable Pokédex built from the active ROM. It can expose every validated species, form, type, stat, sprite, description, evolution, move, learnset, ability, ability description, and type-chart entry that exists in that game. Moves and abilities open focused detail pages instead of making the small lower-screen layout dense. Organic mode lists only species the player has seen or captured; Discovered mode may expose the complete ROM index with unseen entries clearly marked. Capability-gated Team and Area filters help the player inspect the current party and track uncaptured species available at the current location. Where the save format records it, a captured marker uses the ROM's artwork for the ball belonging to the best-IV/DV owned individual of that species; otherwise it uses the game's generic Poké Ball artwork without claiming a capture-ball type.
+Outside battle, DualDex is a fully navigable Pokédex built from the active ROM. It can expose every validated species, form, type, stat, sprite, description, evolution, move, learnset, ability, ability description, and type-chart entry that exists in that game. Moves and abilities open focused detail pages instead of making the small lower-screen layout dense. Organic mode lists only species the player has seen or captured; an uncaptured species' Moves tab contains only attacks it has actually used against the player, frequency-ranked without revealing ROM learn levels or acquisition methods. Capture unlocks the complete learnset. Discovered mode may expose the complete ROM index with unseen entries clearly marked. Capability-gated Team and Area filters help the player inspect the current party and track uncaptured species available at the current location. Where the save format records it, a captured marker uses the ROM's artwork for the ball belonging to the best-IV/DV owned individual of that species; otherwise it uses the game's generic Poké Ball artwork without claiming a capture-ball type.
 
 ### Automatic battle target
 
-In battle, the companion opens the current opponent automatically. In double battles, large opponent buttons represent every target and the selected button follows the game's move-target cursor. When battle ends, the companion returns to out-of-combat Pokédex navigation.
+In battle, the companion opens the current opponent automatically. A compact Pokédex control beside the target name opens that species' full Entry page, and Back returns to the active battle. In double battles, large opponent buttons represent every target and the selected button follows the game's move-target cursor. When battle ends, the companion returns to out-of-combat Pokédex navigation.
 
 The hybrid target page has four focused tabs:
 
@@ -184,12 +184,13 @@ The private in-scope corpus result is:
 - **11 exact official matches**;
 - **3 structurally selected derivatives**: Modern Emerald 3.5, Sword and Shield Ultimate Plus, and Pokémon Unbound;
 - **14 complete core catalogs**;
+- **14 complete for every applicable extended dataset**;
 - **0 ambiguous and 0 parse errors**; and
-- explicit per-ROM `N/F` flags for extended datasets that have not yet validated instead of folding them into an ancestry score.
+- no applicable `N/F` capability cells in the current corpus report.
 
-Move descriptions validate for every sampled GBA ROM and are correctly `N/A` on GB/GBC. Ability descriptions validate for all six official GBA entries and Modern Emerald; Sword/Shield Ultimate Plus and Unbound remain `N/F`. Egg moves validate for all sampled GBA ROMs. Machine and tutor compatibility, plus Generation II egg moves, remain honestly `N/F` in the current report and are not counted as complete extended coverage. Abilities themselves are correctly `N/A` for GB/GBC rather than reported as missing. Spin-offs such as Pinball, Trading Card Game, Puzzle Challenge, and Mystery Dungeon are excluded from the v1 mainline-family report.
+Move and ability descriptions validate for every sampled GBA ROM and are correctly `N/A` where the older engine does not contain those tables. Egg moves validate for Generations II and III, and machine compatibility validates for all 14 samples. Tutor compatibility validates for Crystal, Emerald, FireRed/LeafGreen, and the three derivatives; it is correctly `N/A` for Generation I, Gold/Silver, and Ruby/Sapphire, whose move relearner is already represented by the level-up learnset rather than a separate tutor-compatibility table. Spin-offs such as Pinball, Trading Card Game, Puzzle Challenge, and Mystery Dungeon are excluded from the v1 mainline-family report.
 
-Numeric ability mechanics are deliberately tracked separately from descriptions. Exact values such as activation threshold, affected move type or stat, multiplier, probability, duration, and target may be shown when a code resolver validates the routine and constants in that ROM. Source-level validation confirms that Modern Emerald's Blaze uses `HP <= 1/3` and `x1.5` Fire move power, but the general `ABILITY_MECHANICS` ROM-code resolver is specified rather than implemented; DualDex will not substitute familiar series values for unresolved hack behavior.
+Numeric ability mechanics are tracked separately from descriptions. The implemented ROM-code resolver validates the compiled threshold, multiplier, ability IDs, and type IDs for Overgrow, Blaze, Torrent, and Swarm before exposing `HP <= 1/3` and `x1.5` type-matched move power. It resolves those four abilities in every sampled GBA ROM, including the three derivatives. Other abilities remain description-only unless their exact mechanics are independently resolved; DualDex never substitutes familiar series values for unvalidated ROM behavior.
 
 Read the named evidence in the [Markdown compatibility report](reports/dualdex-parser-compatibility.md) or inspect the complete [JSON report](reports/dualdex-parser-compatibility.json). Reports contain structural evidence and hashes, but no decoded Pokédex text, sprites, or ROM bytes.
 
@@ -205,7 +206,7 @@ Read the named evidence in the [Markdown compatibility report](reports/dualdex-p
 | Species and capture-ball sprite decoding | Implemented without AWT/Android dependencies |
 | Area encounters, type colors, and type chart | Implemented and reported independently |
 | Ability descriptions and focused detail pages | Implemented for validated ROMs |
-| Numeric ability mechanics | Specified; general ROM-code resolver not implemented |
+| Numeric ability mechanics | Implemented for four code-validated pinch abilities; unresolved abilities remain description-only |
 | Browser-hosted UI and plausible simulator | Implemented and real-browser validated |
 | Loopback HTTP/SSE companion server | Implemented |
 | Runtime memory transport | Specified, not implemented |

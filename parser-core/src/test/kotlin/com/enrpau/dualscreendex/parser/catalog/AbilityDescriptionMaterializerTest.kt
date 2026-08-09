@@ -31,6 +31,23 @@ class AbilityDescriptionMaterializerTest {
     }
 
     @Test
+    fun decodesAValidatedPointerTableOutsideTheNamesSearchRadius() {
+        val bytes = ByteArray(0x24000) { 0xFF.toByte() }
+        val descriptionsOffset = 0x22000
+        listOf("NO SPECIAL ABILITY", "HELPS REPEL WILD POKEMON", "SUMMONS RAIN IN BATTLE", "BOOSTS SPEED EACH TURN")
+            .forEachIndexed { id, description ->
+                val textOffset = 0x23000 + id * 0x40
+                putGbaPointer(bytes, descriptionsOffset + id * 4, textOffset)
+                encodeGbaText(bytes, textOffset, description)
+            }
+
+        val result = AbilityDescriptionMaterializer.materialize(RomImage(bytes), layout(0x100))
+
+        assertEquals(descriptionsOffset, result?.sourceOffset)
+        assertEquals("SUMMONS RAIN IN BATTLE", result?.descriptions?.get(2))
+    }
+
+    @Test
     fun rejectsAPointerTableWithUndecodableDescriptions() {
         val bytes = ByteArray(0x1000)
         val descriptionsOffset = 0x134

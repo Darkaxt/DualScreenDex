@@ -14,7 +14,12 @@ export interface Species {
   learnsets: Record<string, { level: number; moveId: number }[]>;
   normalizedLearnsets: Record<string, { moveId: number; initial: boolean; levels: number[]; label: string }[]>;
   moveAcquisitions: { moveId: number; method: 'EGG' | 'MACHINE' | 'TUTOR'; sourceId: number | null }[];
-  abilities: { id: number; name: string; description: string | null }[];
+  abilities: {
+    id: number;
+    name: string;
+    description: string | null;
+    mechanics: { kind: string; label: string; value: string; numerator: number; denominator: number }[];
+  }[];
   evolutions: { targetSpeciesId: number; targetName: string; methodId: number; parameter: number; condition: string }[];
   hasSprite: boolean;
 }
@@ -84,6 +89,7 @@ export interface State {
   battleTab: 'ENTRY' | 'ATTACK' | 'RARITY' | 'MOVES';
   settings: Settings;
   speciesState: Record<number, SpeciesState>;
+  observedMoves: Record<number, { moveId: number; encounters: number; lastSeen: number }[]>;
   battle: null | {
     opponents: { speciesId: number; level: number; rarity: string; moves: { moveId: number; encounters: number; lastSeen: number }[] }[];
     targetIndex: number;

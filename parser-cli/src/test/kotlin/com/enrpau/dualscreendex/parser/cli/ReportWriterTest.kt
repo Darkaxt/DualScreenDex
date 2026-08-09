@@ -40,7 +40,7 @@ class ReportWriterTest {
     fun jsonIsDeterministicForSameReport() {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
-        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 5"))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 6"))
         assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
     }
 
@@ -73,6 +73,7 @@ class ReportWriterTest {
                         typeMatchups = 112,
                         abilities = 78,
                         abilitiesWithDescriptions = 77,
+                        abilitiesWithMechanics = 4,
                         captureBalls = 12,
                     ),
                 ),
@@ -84,7 +85,7 @@ class ReportWriterTest {
         assertTrue(markdown.contains("## Materialized catalog counts"))
         assertTrue(markdown.contains("Pokemon Emerald.gba"))
         assertTrue(markdown.contains("| Pokemon Emerald.gba | 412 | 412 | 412 | 411 | 386 | 219 | 4211 | 2 | 355 |"))
-        assertTrue(markdown.contains("| 355 | 354 | 900 | 5000 | 200 | 18 | 112 | 78 | 77 | 12 |"))
+        assertTrue(markdown.contains("| 355 | 354 | 900 | 5000 | 200 | 18 | 112 | 78 | 77 | 4 | 12 |"))
         assertFalse(markdown.contains("BULBASAUR"))
     }
 
@@ -136,7 +137,7 @@ class ReportWriterTest {
 
         assertTrue(markdown.contains("Complete core catalogs: 1"))
         assertTrue(markdown.contains("Complete for every applicable extended dataset: 1"))
-        assertTrue(markdown.contains("| Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Areas | Type colors | Balls |"))
+        assertTrue(markdown.contains("| Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Ability values | Areas | Type colors | Balls |"))
     }
 
     @Test
@@ -147,6 +148,7 @@ class ReportWriterTest {
             RomCapability.MACHINE_MOVES,
             RomCapability.TUTOR_MOVES,
             RomCapability.ABILITY_DESCRIPTIONS,
+            RomCapability.ABILITY_MECHANICS,
         )
         val capabilities = RomCapability.entries.map { capability ->
             if (capability in extended) CapabilityEvidence(capability, false, 0.0, status = CapabilityStatus.NOT_FOUND)

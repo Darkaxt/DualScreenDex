@@ -1,5 +1,8 @@
 package com.enrpau.dualscreendex.server
 
+import com.enrpau.dualscreendex.companion.model.AppSnapshot
+import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
@@ -21,6 +24,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ApiViewBuilderTest {
+    @Test
+    fun exposesPersistentObservedMoveHistoryOutsideBattle() {
+        val view = ApiViewBuilder.state(
+            AppSnapshot(
+                ledger = KnowledgeLedger(
+                    observedMoves = mapOf(4 to listOf(MoveObservation(10, 3, 8))),
+                ),
+            ),
+            null,
+        )
+
+        assertEquals(10, view.observedMoves.getValue(4).single().moveId)
+        assertEquals(3, view.observedMoves.getValue(4).single().encounters)
+    }
+
     @Test
     fun exposesCompleteCatalogRelationshipsAndEveryResidentRuleset() {
         val species = SpeciesRecord(

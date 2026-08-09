@@ -78,6 +78,28 @@ class TableValidatorsTest {
     }
 
     @Test
+    fun stopsFixedNameCountBeforeReadableAdjacentProseFragments() {
+        val width = 13
+        val bytes = ByteArray(width * 10)
+        repeat(5) { index ->
+            bytes[index * width] = (0xBB + index).toByte()
+            bytes[index * width + 1] = 0xFF.toByte()
+        }
+        // The real Modern Emerald move-name table is followed by prose. Two
+        // unterminated chunks precede another readable, terminated fragment.
+        // A fixed-record resolver must not resume after that boundary.
+        repeat(width * 2) { index -> bytes[width * 5 + index] = 0xD5.toByte() }
+        bytes[width * 7] = 0xD5.toByte()
+        bytes[width * 7 + 1] = 0xFF.toByte()
+
+        val count = TableValidators.inferFixedNameCount(
+            RomImage(bytes), 0, width, PokemonTextCodec.gbaEnglish, minimumCount = 5, maximumCount = 10,
+        )
+
+        assertEquals(5, count)
+    }
+
+    @Test
     fun infersCountFromNextAlignedTable() {
         val count = TableValidators.inferCountFromFollowingTable(
             offset = 0x1000,

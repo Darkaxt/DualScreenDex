@@ -121,6 +121,7 @@ object CatalogMaterializer {
         val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
         val moveDescriptions = MoveDescriptionMaterializer.materialize(rom, layout)
         val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
+        val abilityMechanics = AbilityMechanicsMaterializer.materialize(rom, layout, abilities, types)
         val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
         val species = relationshipSpecies.mapValues { (id, record) ->
             record.copy(
@@ -151,6 +152,12 @@ object CatalogMaterializer {
                     layout.generation < 3 -> CatalogField.notApplicable("abilities are not part of this engine")
                     else -> CatalogField.notFound("ability description was not resolved from the ROM")
                 },
+                mechanics = abilityMechanics?.mechanicsByAbility?.get(id)?.let(CatalogField.Companion::available)
+                    ?: if (layout.generation < 3) {
+                        CatalogField.notApplicable("abilities are not part of this engine")
+                    } else {
+                        CatalogField.notFound("ability mechanics were not resolved from ROM code")
+                    },
             )
         }
         val balls = if (layout.generation == 3) BallSpriteMaterializer.captureBalls(rom) else emptyMap()
@@ -195,6 +202,28 @@ object CatalogMaterializer {
                 reasons = listOf(
                     if (layout.generation < 3) "abilities are not part of this engine"
                     else "ability-description pointer table was not resolved",
+                ),
+                status = if (layout.generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
+            )
+        }
+        capabilities[RomCapability.ABILITY_MECHANICS] = if (abilityMechanics != null) {
+            CapabilityEvidence(
+                capability = RomCapability.ABILITY_MECHANICS,
+                compatible = true,
+                confidence = abilityMechanics.confidence,
+                offset = abilityMechanics.sourceOffset,
+                count = abilityMechanics.mechanicsByAbility.size,
+                reasons = listOf("validated structured ability values against compiled Thumb battle code"),
+                status = CapabilityStatus.AVAILABLE,
+            )
+        } else {
+            CapabilityEvidence(
+                capability = RomCapability.ABILITY_MECHANICS,
+                compatible = false,
+                confidence = 0.0,
+                reasons = listOf(
+                    if (layout.generation < 3) "abilities are not part of this engine"
+                    else "structured ability values were not resolved from compiled battle code",
                 ),
                 status = if (layout.generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
             )
@@ -252,6 +281,13 @@ object CatalogMaterializer {
                     add(
                         "ability descriptions: offset=0x${it.sourceOffset.toString(16)} " +
                             "confidence=${"%.3f".format(java.util.Locale.ROOT, it.confidence)}",
+                    )
+                }
+                abilityMechanics?.let {
+                    add(
+                        "ability mechanics: offset=0x${it.sourceOffset.toString(16)} " +
+                            "confidence=${"%.3f".format(java.util.Locale.ROOT, it.confidence)} " +
+                            "abilities=${it.mechanicsByAbility.size}",
                     )
                 }
                 learnsetRulesets.forEach {

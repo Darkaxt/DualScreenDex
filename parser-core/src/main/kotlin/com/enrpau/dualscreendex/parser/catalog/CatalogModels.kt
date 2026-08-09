@@ -138,6 +138,8 @@ data class AbilityRecord(
     val id: Int,
     val name: CatalogField<String>,
     val description: CatalogField<String> = CatalogField.notFound("ability description was not resolved from the ROM"),
+    val mechanics: CatalogField<List<AbilityMechanic>> =
+        CatalogField.notFound("ability mechanics were not resolved from ROM code"),
 )
 
 data class DescriptionRecord(

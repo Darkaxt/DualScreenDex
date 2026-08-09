@@ -76,6 +76,21 @@ class EncounterSimulatorTest {
         assertTrue(expanded.battle.opponents.single().moveHistory.all { it.moveId == 2 })
     }
 
+    @Test
+    fun accumulatesObservedMoveFrequencyAcrossEncounters() {
+        val source = catalog()
+        val singleSpeciesCatalog = source.copy(speciesById = mapOf(1 to source.speciesById.getValue(1)))
+        val simulator = EncounterSimulator(singleSpeciesCatalog)
+        val request = SimulationRequest(seed = 44, minimumLevel = 10, maximumLevel = 10)
+
+        val first = simulator.generate(request)
+        val second = simulator.generate(request, first.ledger)
+
+        val firstObservation = first.ledger.observedMoves.getValue(1).single()
+        val accumulated = second.ledger.observedMoves.getValue(1).single()
+        assertEquals(firstObservation.encounterCount * 2, accumulated.encounterCount)
+    }
+
     private fun catalog(platform: Platform = Platform.GBA): ParsedCatalog {
         val sprite = RgbaSprite(1, 1, intArrayOf(0xFFFFFFFF.toInt()))
         val species = (1..3).associateWith { id ->

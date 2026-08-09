@@ -14,7 +14,7 @@ class MoveDescriptionMaterializerTest {
     fun decodesAValidatedGbaMoveDescriptionPointerTable() {
         val bytes = ByteArray(0x1000)
         val tableOffset = 0x100
-        listOf("A SMALL FLAME", "RAISES DEFENSE", "LOWERS ACCURACY").forEachIndexed { index, text ->
+        listOf("A small flame attack.", "Raises the user's Defense.", "Lowers the foe's accuracy.").forEachIndexed { index, text ->
             val textOffset = 0x400 + index * 0x40
             putGbaPointer(bytes, tableOffset + index * 4, textOffset)
             encodeGbaText(bytes, textOffset, text)
@@ -23,14 +23,26 @@ class MoveDescriptionMaterializerTest {
         val result = MoveDescriptionMaterializer.materialize(RomImage(bytes), layout(moveCount = 4))
 
         assertEquals(tableOffset, result?.sourceOffset)
-        assertEquals("A SMALL FLAME", result?.descriptions?.get(1))
-        assertEquals("LOWERS ACCURACY", result?.descriptions?.get(3))
+        assertEquals("A small flame attack.", result?.descriptions?.get(1))
+        assertEquals("Lowers the foe's accuracy.", result?.descriptions?.get(3))
     }
 
     @Test
     fun rejectsPointerTablesWithUndecodableText() {
         val bytes = ByteArray(0x800)
         repeat(3) { index -> putGbaPointer(bytes, 0x100 + index * 4, 0x400 + index * 0x40) }
+
+        assertNull(MoveDescriptionMaterializer.materialize(RomImage(bytes), layout(moveCount = 4)))
+    }
+
+    @Test
+    fun rejectsReadableMusicIdentifierPointerTable() {
+        val bytes = ByteArray(0x1000)
+        listOf("MUS-PL-TY-BROADCAST", "MUS-HG-NEW-BARK", "BW-SEQ-BGM-PALPARK").forEachIndexed { index, text ->
+            val textOffset = 0x400 + index * 0x40
+            putGbaPointer(bytes, 0x100 + index * 4, textOffset)
+            encodeGbaText(bytes, textOffset, text)
+        }
 
         assertNull(MoveDescriptionMaterializer.materialize(RomImage(bytes), layout(moveCount = 4)))
     }
@@ -49,6 +61,10 @@ class MoveDescriptionMaterializerTest {
             target[offset + index] = when (char) {
                 ' ' -> 0
                 in 'A'..'Z' -> (0xBB + char.code - 'A'.code).toByte()
+                in 'a'..'z' -> (0xD5 + char.code - 'a'.code).toByte()
+                '-' -> 0xAE.toByte()
+                '.' -> 0xAD.toByte()
+                '\'' -> 0xB4.toByte()
                 else -> error("unsupported fixture character")
             }
         }

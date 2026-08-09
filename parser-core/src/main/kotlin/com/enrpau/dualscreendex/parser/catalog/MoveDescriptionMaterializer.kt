@@ -62,9 +62,21 @@ object MoveDescriptionMaterializer {
                 descriptions[index + 1] = normalized
             }
         }
-        val confidence = descriptions.size.toDouble() / pointerCount
+        val decodedRatio = descriptions.size.toDouble() / pointerCount
+        val descriptionLike = descriptions.values.count(::looksLikeNaturalDescription)
+        val naturalLanguageRatio = descriptionLike.toDouble() / descriptions.size.coerceAtLeast(1)
+        val confidence = minOf(decodedRatio, naturalLanguageRatio)
         val minimum = maxOf(3, (pointerCount * 0.8).toInt())
-        return if (descriptions.size >= minimum) MoveDescriptionResult(offset, confidence, descriptions) else null
+        return if (descriptions.size >= minimum && naturalLanguageRatio >= 0.75) {
+            MoveDescriptionResult(offset, confidence, descriptions)
+        } else {
+            null
+        }
+    }
+
+    private fun looksLikeNaturalDescription(value: String): Boolean {
+        val words = value.split(Regex("\\s+")).count { it.any(Char::isLetter) }
+        return value.length >= 12 && words >= 3 && value.any(Char::isLowerCase)
     }
 
     private data class PointerRun(val offset: Int, val length: Int)
