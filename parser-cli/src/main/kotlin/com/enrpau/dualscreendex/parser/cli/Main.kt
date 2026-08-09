@@ -1,6 +1,8 @@
 package com.enrpau.dualscreendex.parser.cli
 
+import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializer
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
+import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.system.exitProcess
@@ -28,13 +30,24 @@ fun main(arguments: Array<String>) {
             CorpusResult(input.displayName, input.source, input.archiveEntry, 0, error = input.error ?: "input has no ROM image")
         } else {
             try {
-                val measured = measureTimedValue { ParserOrchestrator.analyze(input.rom) }
+                val measured = measureTimedValue {
+                    val analysis = ParserOrchestrator.analyze(input.rom)
+                    val layout = analysis.probes.singleOrNull { it.family == analysis.selectedFamily }?.resolvedLayout
+                    val catalog = if (analysis.status == SelectionStatus.SELECTED && layout != null) {
+                        runCatching { CatalogMaterializer.materialize(input.rom, analysis, layout) }
+                    } else {
+                        null
+                    }
+                    CatalogAttempt(analysis, catalog)
+                }
                 CorpusResult(
                     input.displayName,
                     input.source,
                     input.archiveEntry,
                     measured.duration.inWholeMilliseconds,
-                    result = measured.value,
+                    result = measured.value.analysis,
+                    catalog = measured.value.catalog?.getOrNull()?.let(CatalogMetrics.Companion::from),
+                    catalogError = measured.value.catalog?.exceptionOrNull()?.let(::readableFailure),
                 )
             } catch (failure: Exception) {
                 CorpusResult(
@@ -62,6 +75,14 @@ fun main(arguments: Array<String>) {
     println("JSON: ${options.json.toAbsolutePath()}")
     println("Markdown: ${options.markdown.toAbsolutePath()}")
 }
+
+private data class CatalogAttempt(
+    val analysis: com.enrpau.dualscreendex.parser.model.ParseResult,
+    val catalog: Result<com.enrpau.dualscreendex.parser.catalog.ParsedCatalog>?,
+)
+
+private fun readableFailure(failure: Throwable): String =
+    "${failure.javaClass.simpleName}: ${failure.message ?: "catalog materialization failure"}"
 
 private fun write(path: Path, content: String) {
     path.toAbsolutePath().parent?.let(Files::createDirectories)

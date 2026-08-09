@@ -40,8 +40,46 @@ class ReportWriterTest {
     fun jsonIsDeterministicForSameReport() {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
-        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 3"))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 4"))
         assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
+    }
+
+    @Test
+    fun markdownNamesRomAndReportsMaterializedCatalogCounts() {
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(
+                CorpusResult(
+                    displayName = "Pokemon Emerald.gba",
+                    source = "Pokemon Emerald.gba",
+                    durationMillis = 12,
+                    result = sampleResult(),
+                    catalog = CatalogMetrics(
+                        species = 412,
+                        namedSpecies = 412,
+                        speciesWithStats = 412,
+                        speciesWithSprites = 411,
+                        speciesWithDescriptions = 386,
+                        evolutionEdges = 219,
+                        learnsetEntries = 4211,
+                        moves = 355,
+                        movesWithDetails = 355,
+                        types = 18,
+                        typeMatchups = 112,
+                        abilities = 78,
+                        captureBalls = 12,
+                    ),
+                ),
+            ),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("## Materialized catalog counts"))
+        assertTrue(markdown.contains("Pokemon Emerald.gba"))
+        assertTrue(markdown.contains("| Pokemon Emerald.gba | 412 | 412 | 412 | 411 | 386 | 219 | 4211 | 355 |"))
+        assertTrue(markdown.contains("| 355 | 18 | 112 | 78 | 12 |"))
+        assertFalse(markdown.contains("BULBASAUR"))
     }
 
     @Test

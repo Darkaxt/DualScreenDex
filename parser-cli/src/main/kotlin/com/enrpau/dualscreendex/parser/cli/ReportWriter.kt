@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.cli
 
+import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -8,7 +9,7 @@ import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.GsonBuilder
 
 data class CorpusReport(
-    val schemaVersion: Int = 3,
+    val schemaVersion: Int = 4,
     val minimumParserScore: Int = ParserOrchestrator.minimumScore,
     val minimumRunnerUpMargin: Int = ParserOrchestrator.minimumMargin,
     val roots: List<String>,
@@ -21,8 +22,49 @@ data class CorpusResult(
     val archiveEntry: String? = null,
     val durationMillis: Long,
     val result: ParseResult? = null,
+    val catalog: CatalogMetrics? = null,
+    val catalogError: String? = null,
     val error: String? = null,
 )
+
+data class CatalogMetrics(
+    val species: Int,
+    val namedSpecies: Int,
+    val speciesWithStats: Int,
+    val speciesWithSprites: Int,
+    val speciesWithDescriptions: Int,
+    val evolutionEdges: Int,
+    val learnsetEntries: Int,
+    val moves: Int,
+    val movesWithDetails: Int,
+    val types: Int,
+    val typeMatchups: Int,
+    val abilities: Int,
+    val captureBalls: Int,
+) {
+    companion object {
+        fun from(catalog: ParsedCatalog) = CatalogMetrics(
+            species = catalog.speciesById.size,
+            namedSpecies = catalog.speciesById.values.count { it.name.status == CapabilityStatus.AVAILABLE },
+            speciesWithStats = catalog.speciesById.values.count { it.baseStats.status == CapabilityStatus.AVAILABLE },
+            speciesWithSprites = catalog.speciesById.values.count { it.sprite.status == CapabilityStatus.AVAILABLE },
+            speciesWithDescriptions = catalog.speciesById.values.count { it.description.status == CapabilityStatus.AVAILABLE },
+            evolutionEdges = catalog.speciesById.values.sumOf { it.evolutionEdges.value?.size ?: 0 },
+            learnsetEntries = catalog.speciesById.values.sumOf { it.learnset.value?.size ?: 0 },
+            moves = catalog.movesById.size,
+            movesWithDetails = catalog.movesById.values.count { move ->
+                move.typeId.status == CapabilityStatus.AVAILABLE &&
+                    move.power.status == CapabilityStatus.AVAILABLE &&
+                    move.accuracy.status == CapabilityStatus.AVAILABLE &&
+                    move.pp.status == CapabilityStatus.AVAILABLE
+            },
+            types = catalog.typesById.size,
+            typeMatchups = catalog.typeChart.size,
+            abilities = catalog.abilitiesById.size,
+            captureBalls = catalog.captureBallsById.values.count { it.sprite.status == CapabilityStatus.AVAILABLE },
+        )
+    }
+}
 
 object ReportWriter {
     private val gson = GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()
@@ -64,6 +106,8 @@ object ReportWriter {
         appendLine("- Selection rule: score >= ${report.minimumParserScore}, runner-up margin >= ${report.minimumRunnerUpMargin}, and at least two validated anchors")
         appendLine()
         appendNamedOutcomes(report)
+        appendLine()
+        appendCatalogCounts(report)
         appendLine()
         appendLine("## Capability matrix")
         appendLine()
@@ -110,6 +154,7 @@ object ReportWriter {
             appendLine("- Header: ${parsed.header.platform}, title `${cell(parsed.header.title)}`, code `${parsed.header.gameCode ?: "-"}`, revision ${parsed.header.revision}")
             appendLine("- Decision: ${parsed.status}; family ${parsed.selectedFamily ?: "-"}; profile ${parsed.selectedProfile ?: "-"}; margin ${parsed.runnerUpMargin ?: "-"}")
             if (parsed.diagnostics.isNotEmpty()) appendLine("- Diagnostics: ${parsed.diagnostics.joinToString("; ")}")
+            if (entry.catalogError != null) appendLine("- Catalog materialization error: ${entry.catalogError}")
             appendLine("- Candidate scores: ${parsed.probes.joinToString(", ") { "${it.family}=${it.score}/${it.anchors} anchors" }}")
             appendLine("- Capabilities:")
             parsed.capabilities.forEach { evidence ->
@@ -153,6 +198,28 @@ object ReportWriter {
         if (noFamily.isNotEmpty()) appendNamedGroup("No mainline-family match", noFamily) { "capability flags retained below" }
         if (ambiguous.isNotEmpty()) appendNamedGroup("Ambiguous ancestry", ambiguous) { "no family selected" }
         if (errors.isNotEmpty()) appendNamedGroup("Read or parse errors", errors) { it.error ?: "parser error" }
+    }
+
+    private fun StringBuilder.appendCatalogCounts(report: CorpusReport) {
+        appendLine("## Materialized catalog counts")
+        appendLine()
+        appendLine("Counts prove records were decoded and joined; the report intentionally contains no copyrighted ROM text or pixels.")
+        appendLine()
+        appendLine("| ROM | Species | Named | Stats | Sprites | Descriptions | Evolutions | Learnsets | Moves | Move details | Types | Matchups | Abilities | Balls |")
+        appendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        report.results.forEach { entry ->
+            val value = entry.catalog
+            if (value == null) {
+                appendLine("| ${cell(entry.displayName)} | - | - | - | - | - | - | - | - | - | - | - | - | - |")
+            } else {
+                appendLine(
+                    "| ${cell(entry.displayName)} | ${value.species} | ${value.namedSpecies} | ${value.speciesWithStats} | " +
+                        "${value.speciesWithSprites} | ${value.speciesWithDescriptions} | ${value.evolutionEdges} | " +
+                        "${value.learnsetEntries} | ${value.moves} | ${value.movesWithDetails} | ${value.types} | " +
+                        "${value.typeMatchups} | ${value.abilities} | ${value.captureBalls} |",
+                )
+            }
+        }
     }
 
     private fun StringBuilder.appendNamedGroup(
