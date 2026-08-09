@@ -41,18 +41,18 @@ Counts prove records were decoded and joined; the report intentionally contains 
 
 | ROM | Species | Named | Stats | Sprites | Descriptions | Evolutions | Learnsets | Moves | Move details | Types | Matchups | Abilities | Balls | Areas |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | 460 | 460 | 460 | 455 | 456 | 216 | 4622 | 377 | 377 | 26 | 116 | 82 | 12 | 231 |
-| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | 1267 | 1267 | 1267 | 1267 | 898 | 728 | 19879 | 868 | 868 | 19 | 108 | 258 | 12 | 97 |
-| Pokemon Unbound.zip!Pokemon Unbound.gba | 1296 | 1296 | 1296 | 1293 | 905 | 780 | 21874 | 961 | 961 | 41 | 128 | 329 | 12 | 339 |
+| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | 428 | 428 | 428 | 428 | 428 | 217 | 4559 | 377 | 377 | 26 | 116 | 82 | 12 | 231 |
+| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | 1242 | 1242 | 1242 | 1242 | 873 | 728 | 19879 | 868 | 868 | 19 | 108 | 258 | 12 | 97 |
+| Pokemon Unbound.zip!Pokemon Unbound.gba | 1273 | 1273 | 1273 | 1270 | 882 | 780 | 21874 | 961 | 961 | 41 | 128 | 329 | 12 | 339 |
 | Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | 151 | 151 | 151 | 150 | 151 | 72 | 728 | 165 | 165 | 15 | 82 | 0 | 0 | 58 |
 | Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2215 | 251 | 251 | 18 | 108 | 0 | 0 | 335 |
-| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | 411 | 411 | 411 | 411 | 386 | 184 | 3972 | 354 | 354 | 18 | 108 | 78 | 12 | 201 |
-| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | 411 | 411 | 411 | 411 | 386 | 184 | 4036 | 354 | 354 | 18 | 108 | 78 | 12 | 219 |
+| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | 386 | 386 | 386 | 386 | 386 | 184 | 3947 | 354 | 354 | 18 | 108 | 78 | 12 | 201 |
+| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | 386 | 386 | 386 | 386 | 386 | 184 | 4011 | 354 | 354 | 18 | 108 | 78 | 12 | 219 |
 | Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2207 | 251 | 251 | 18 | 108 | 0 | 0 | 335 |
-| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | 411 | 411 | 411 | 411 | 386 | 184 | 4038 | 354 | 354 | 18 | 108 | 78 | 12 | 219 |
+| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | 386 | 386 | 386 | 386 | 386 | 184 | 4013 | 354 | 354 | 18 | 108 | 78 | 12 | 219 |
 | Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | 151 | 151 | 151 | 150 | 151 | 72 | 728 | 165 | 165 | 15 | 82 | 0 | 0 | 58 |
-| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | 411 | 411 | 411 | 411 | 386 | 184 | 3972 | 354 | 354 | 18 | 108 | 78 | 12 | 179 |
-| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | 411 | 411 | 411 | 411 | 386 | 184 | 3972 | 354 | 354 | 18 | 108 | 78 | 12 | 179 |
+| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | 386 | 386 | 386 | 386 | 386 | 184 | 3947 | 354 | 354 | 18 | 108 | 78 | 12 | 179 |
+| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | 386 | 386 | 386 | 386 | 386 | 184 | 3947 | 354 | 354 | 18 | 108 | 78 | 12 | 179 |
 | Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2207 | 251 | 251 | 18 | 108 | 0 | 0 | 335 |
 | Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | 151 | 151 | 151 | 151 | 151 | 72 | 755 | 165 | 165 | 15 | 82 | 0 | 0 | 63 |
 
@@ -145,7 +145,7 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - MOVE_CATALOG: available; confidence=0.996; offset=0xA40A10, count=962, recordSize=13
   - MOVE_DETAILS: available; confidence=0.931; offset=0xA769AF, count=962, recordSize=12
   - LEARNSETS: available; confidence=0.998; offset=0x1A2457C, count=1297, recordSize=4
-  - ABILITIES: available; confidence=0.945; offset=0xA36398, count=329, recordSize=17
+  - ABILITIES: available; confidence=0.948; offset=0xA36398, count=329, recordSize=17
   - AREA_ENCOUNTERS: available; confidence=1.000; count=339; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=41; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables

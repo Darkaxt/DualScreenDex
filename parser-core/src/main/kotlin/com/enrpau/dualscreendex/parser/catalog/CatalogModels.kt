@@ -163,6 +163,6 @@ data class ParsedCatalog(
     val diagnostics: List<String> = emptyList(),
 ) {
     fun navigableSpecies(): List<SpeciesRecord> = speciesById.values.filter { species ->
-        (species.dexNumber.value ?: 0) > 0 && !species.name.value.isNullOrBlank()
+        (species.dexNumber.value ?: 0) > 0 && species.name.value?.any(Char::isLetterOrDigit) == true
     }
 }

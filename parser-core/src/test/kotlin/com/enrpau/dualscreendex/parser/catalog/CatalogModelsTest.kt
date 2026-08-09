@@ -50,10 +50,10 @@ class CatalogModelsTest {
 
     @Test
     fun navigableSpeciesExcludesNoneAndReservedInternalSlots() {
-        fun species(id: Int, dex: Int) = SpeciesRecord(
+        fun species(id: Int, dex: Int, name: String = if (dex == 0) "RESERVED" else "MON$dex") = SpeciesRecord(
             id = id,
             dexNumber = CatalogField.available(dex),
-            name = CatalogField.available(if (dex == 0) "RESERVED" else "MON$dex"),
+            name = CatalogField.available(name),
             typeIds = CatalogField.available(listOf(0)),
             baseStats = CatalogField.notFound("fixture"),
             sprite = CatalogField.notFound("fixture"),
@@ -62,7 +62,12 @@ class CatalogModelsTest {
             romSha256 = "abc",
             family = EngineFamily.EMERALD,
             platform = Platform.GBA,
-            speciesById = mapOf(0 to species(0, 0), 1 to species(1, 1), 252 to species(252, 0)),
+            speciesById = mapOf(
+                0 to species(0, 0),
+                1 to species(1, 1),
+                252 to species(252, 0),
+                440 to species(440, 437, "?"),
+            ),
         )
 
         assertEquals(listOf(1), catalog.navigableSpecies().map { it.id })

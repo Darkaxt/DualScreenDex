@@ -40,6 +40,14 @@ class DatasetResolversTest {
             putU32(bytes, base + 16, 0x08000800 + index * 0x20)
             putGbaText(bytes, 0x800 + index * 0x20, "POKEMON TEXT")
         }
+        repeat(6) { index ->
+            val base = 0x400 + index * 32
+            putGbaText(bytes, base, if (index == 1) "SEED" else "OTHER")
+            putU16(bytes, base + 12, 7)
+            putU16(bytes, base + 14, 69)
+            putU32(bytes, base + 16, 0x08000900 + index * 0x10)
+            putGbaText(bytes, 0x900 + index * 0x10, "DECOY TEXT")
+        }
 
         val result = DatasetResolvers.gen3Descriptions(
             RomImage(bytes), speciesCount = 8, inherited = null,
@@ -48,6 +56,7 @@ class DatasetResolversTest {
 
         assertTrue(result.compatible)
         assertEquals(4, result.totalRecords)
+        assertEquals(0x200, result.offset)
     }
 
     @Test

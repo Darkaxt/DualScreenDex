@@ -30,7 +30,7 @@ object SpeciesIndexResolver {
         val speciesCount = layout.speciesCount ?: return emptyMap()
         val storedCount = speciesCount - 1
         if (storedCount <= 0) return mapOf(0 to 0)
-        val candidates = mutableListOf<Pair<Int, IntArray>>()
+        val candidates = mutableListOf<Gen3IndexCandidate>()
         val prefixPattern = if (storedCount == 1) byteArrayOf(1, 0) else byteArrayOf(1, 0, 2, 0)
         val lastTableStart = rom.size - storedCount * 2
         rom.findAll(prefixPattern).asSequence()
@@ -44,14 +44,17 @@ object SpeciesIndexResolver {
                     val positive = values.filter { it > 0 }
                     val distinctRatio = positive.distinct().size.toDouble() / positive.size.coerceAtLeast(1)
                     if (prefix >= minOf(2, storedCount) && distinctRatio >= 0.75) {
-                        candidates += prefix to values
+                        val canonicalBoundary = if (values.size >= 277 && values[276] == 252) 1 else 0
+                        candidates += Gen3IndexCandidate(prefix, distinctRatio, canonicalBoundary, values)
                     }
                 }
             }
         val values = candidates.maxWithOrNull(
-            compareBy<Pair<Int, IntArray>> { it.first }
-                .thenBy { candidate -> candidate.second.count { it > 0 } },
-        )?.second ?: return identity(0, speciesCount - 1)
+            compareBy<Gen3IndexCandidate> { it.canonicalBoundary }
+                .thenBy { it.distinctRatio }
+                .thenBy { it.prefix }
+                .thenBy { candidate -> candidate.values.count { it > 0 } },
+        )?.values ?: return identity(0, speciesCount - 1)
         return buildMap {
             put(0, 0)
             values.forEachIndexed { index, dex -> put(index + 1, dex) }
@@ -59,4 +62,11 @@ object SpeciesIndexResolver {
     }
 
     private fun identity(first: Int, last: Int): Map<Int, Int> = (first..last).associateWith { it }
+
+    private data class Gen3IndexCandidate(
+        val prefix: Int,
+        val distinctRatio: Double,
+        val canonicalBoundary: Int,
+        val values: IntArray,
+    )
 }

@@ -12,7 +12,7 @@
       "displayName": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
       "source": "Hacks/Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip",
       "archiveEntry": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
-      "durationMillis": 10637,
+      "durationMillis": 16172,
       "result": {
         "header": {
           "platform": "GBA",
@@ -1137,13 +1137,13 @@
         "diagnostics": []
       },
       "catalog": {
-        "species": 460,
-        "namedSpecies": 460,
-        "speciesWithStats": 460,
-        "speciesWithSprites": 455,
-        "speciesWithDescriptions": 456,
-        "evolutionEdges": 216,
-        "learnsetEntries": 4622,
+        "species": 428,
+        "namedSpecies": 428,
+        "speciesWithStats": 428,
+        "speciesWithSprites": 428,
+        "speciesWithDescriptions": 428,
+        "evolutionEdges": 217,
+        "learnsetEntries": 4559,
         "moves": 377,
         "movesWithDetails": 377,
         "types": 26,
@@ -1157,7 +1157,7 @@
       "displayName": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
       "source": "Hacks/Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip",
       "archiveEntry": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
-      "durationMillis": 8610,
+      "durationMillis": 13423,
       "result": {
         "header": {
           "platform": "GBA",
@@ -1383,12 +1383,12 @@
               {
                 "capability": "MOVE_CATALOG",
                 "compatible": false,
-                "confidence": 0.016901408450704224,
+                "confidence": 0.022535211267605635,
                 "offset": 2065208,
                 "count": 355,
                 "recordSize": 13,
                 "reasons": [
-                  "valid fixed names 6/355 below 0.85"
+                  "valid fixed names 8/355 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -2280,11 +2280,11 @@
         "diagnostics": []
       },
       "catalog": {
-        "species": 1267,
-        "namedSpecies": 1267,
-        "speciesWithStats": 1267,
-        "speciesWithSprites": 1267,
-        "speciesWithDescriptions": 898,
+        "species": 1242,
+        "namedSpecies": 1242,
+        "speciesWithStats": 1242,
+        "speciesWithSprites": 1242,
+        "speciesWithDescriptions": 873,
         "evolutionEdges": 728,
         "learnsetEntries": 19879,
         "moves": 868,
@@ -2300,7 +2300,7 @@
       "displayName": "Pokemon Unbound.zip!Pokemon Unbound.gba",
       "source": "Hacks/Pokemon Unbound.zip",
       "archiveEntry": "Pokemon Unbound.gba",
-      "durationMillis": 7079,
+      "durationMillis": 9878,
       "result": {
         "header": {
           "platform": "GBA",
@@ -2841,7 +2841,7 @@
               {
                 "capability": "ABILITIES",
                 "compatible": true,
-                "confidence": 0.9452887537993921,
+                "confidence": 0.9483282674772037,
                 "offset": 10707864,
                 "count": 329,
                 "recordSize": 17,
@@ -3134,7 +3134,7 @@
               {
                 "capability": "ABILITIES",
                 "compatible": true,
-                "confidence": 0.9452887537993921,
+                "confidence": 0.9483282674772037,
                 "offset": 10707864,
                 "count": 329,
                 "recordSize": 17,
@@ -3379,7 +3379,7 @@
           {
             "capability": "ABILITIES",
             "compatible": true,
-            "confidence": 0.9452887537993921,
+            "confidence": 0.9483282674772037,
             "offset": 10707864,
             "count": 329,
             "recordSize": 17,
@@ -3420,11 +3420,11 @@
         "diagnostics": []
       },
       "catalog": {
-        "species": 1296,
-        "namedSpecies": 1296,
-        "speciesWithStats": 1296,
-        "speciesWithSprites": 1293,
-        "speciesWithDescriptions": 905,
+        "species": 1273,
+        "namedSpecies": 1273,
+        "speciesWithStats": 1273,
+        "speciesWithSprites": 1270,
+        "speciesWithDescriptions": 882,
         "evolutionEdges": 780,
         "learnsetEntries": 21874,
         "moves": 961,
@@ -3440,7 +3440,7 @@
       "displayName": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb",
       "source": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb",
-      "durationMillis": 516,
+      "durationMillis": 554,
       "result": {
         "header": {
           "platform": "GB",
@@ -4870,7 +4870,7 @@
       "displayName": "Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc",
       "source": "Pokemon - Crystal Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc",
-      "durationMillis": 858,
+      "durationMillis": 959,
       "result": {
         "header": {
           "platform": "GBC",
@@ -6311,7 +6311,7 @@
       "displayName": "Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba",
       "source": "Pokemon - Emerald Version (USA, Europe).zip",
       "archiveEntry": "Pokemon - Emerald Version (USA, Europe).gba",
-      "durationMillis": 6997,
+      "durationMillis": 6050,
       "result": {
         "header": {
           "platform": "GBA",
@@ -7426,13 +7426,13 @@
         "diagnostics": []
       },
       "catalog": {
-        "species": 411,
-        "namedSpecies": 411,
-        "speciesWithStats": 411,
-        "speciesWithSprites": 411,
+        "species": 386,
+        "namedSpecies": 386,
+        "speciesWithStats": 386,
+        "speciesWithSprites": 386,
         "speciesWithDescriptions": 386,
         "evolutionEdges": 184,
-        "learnsetEntries": 3972,
+        "learnsetEntries": 3947,
         "moves": 354,
         "movesWithDetails": 354,
         "types": 18,
@@ -7446,7 +7446,7 @@
       "displayName": "Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - FireRed Version (USA).zip",
       "archiveEntry": "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 3165,
+      "durationMillis": 3624,
       "result": {
         "header": {
           "platform": "GBA",
@@ -8561,13 +8561,13 @@
         "diagnostics": []
       },
       "catalog": {
-        "species": 411,
-        "namedSpecies": 411,
-        "speciesWithStats": 411,
-        "speciesWithSprites": 411,
+        "species": 386,
+        "namedSpecies": 386,
+        "speciesWithStats": 386,
+        "speciesWithSprites": 386,
         "speciesWithDescriptions": 386,
         "evolutionEdges": 184,
-        "learnsetEntries": 4036,
+        "learnsetEntries": 4011,
         "moves": 354,
         "movesWithDetails": 354,
         "types": 18,
@@ -8581,7 +8581,7 @@
       "displayName": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 742,
+      "durationMillis": 983,
       "result": {
         "header": {
           "platform": "GBC",
@@ -9620,12 +9620,12 @@
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
-                "confidence": 0.13545816733067728,
+                "confidence": 0.14342629482071714,
                 "offset": 279416,
                 "count": 251,
                 "recordSize": 2,
                 "reasons": [
-                  "valid Gen 2 Pokédex entries 34/251 below 0.85"
+                  "valid Gen 2 Pokédex entries 36/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -10022,7 +10022,7 @@
       "displayName": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 3471,
+      "durationMillis": 3918,
       "result": {
         "header": {
           "platform": "GBA",
@@ -11137,13 +11137,13 @@
         "diagnostics": []
       },
       "catalog": {
-        "species": 411,
-        "namedSpecies": 411,
-        "speciesWithStats": 411,
-        "speciesWithSprites": 411,
+        "species": 386,
+        "namedSpecies": 386,
+        "speciesWithStats": 386,
+        "speciesWithSprites": 386,
         "speciesWithDescriptions": 386,
         "evolutionEdges": 184,
-        "learnsetEntries": 4038,
+        "learnsetEntries": 4013,
         "moves": 354,
         "movesWithDetails": 354,
         "types": 18,
@@ -11157,7 +11157,7 @@
       "displayName": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb",
       "source": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb",
-      "durationMillis": 502,
+      "durationMillis": 545,
       "result": {
         "header": {
           "platform": "GB",
@@ -12587,7 +12587,7 @@
       "displayName": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 3548,
+      "durationMillis": 3727,
       "result": {
         "header": {
           "platform": "GBA",
@@ -12983,7 +12983,7 @@
                 "category": "species names",
                 "points": 0,
                 "maximum": 15,
-                "reason": "valid fixed names 14/412 below 0.85"
+                "reason": "valid fixed names 16/412 below 0.85"
               },
               {
                 "category": "base stats",
@@ -13019,7 +13019,7 @@
                 "count": 412,
                 "recordSize": 11,
                 "reasons": [
-                  "valid fixed names 14/412 below 0.85",
+                  "valid fixed names 16/412 below 0.85",
                   "plausible base stats 2/412 below 90%"
                 ],
                 "status": "NOT_FOUND"
@@ -13027,12 +13027,12 @@
               {
                 "capability": "SPECIES_NAMES",
                 "compatible": false,
-                "confidence": 0.03398058252427184,
+                "confidence": 0.038834951456310676,
                 "offset": 3245512,
                 "count": 412,
                 "recordSize": 11,
                 "reasons": [
-                  "valid fixed names 14/412 below 0.85"
+                  "valid fixed names 16/412 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -13737,13 +13737,13 @@
         "diagnostics": []
       },
       "catalog": {
-        "species": 411,
-        "namedSpecies": 411,
-        "speciesWithStats": 411,
-        "speciesWithSprites": 411,
+        "species": 386,
+        "namedSpecies": 386,
+        "speciesWithStats": 386,
+        "speciesWithSprites": 386,
         "speciesWithDescriptions": 386,
         "evolutionEdges": 184,
-        "learnsetEntries": 3972,
+        "learnsetEntries": 3947,
         "moves": 354,
         "movesWithDetails": 354,
         "types": 18,
@@ -13757,7 +13757,7 @@
       "displayName": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 2349,
+      "durationMillis": 4377,
       "result": {
         "header": {
           "platform": "GBA",
@@ -14153,7 +14153,7 @@
                 "category": "species names",
                 "points": 0,
                 "maximum": 15,
-                "reason": "valid fixed names 14/412 below 0.85"
+                "reason": "valid fixed names 15/412 below 0.85"
               },
               {
                 "category": "base stats",
@@ -14189,7 +14189,7 @@
                 "count": 412,
                 "recordSize": 11,
                 "reasons": [
-                  "valid fixed names 14/412 below 0.85",
+                  "valid fixed names 15/412 below 0.85",
                   "plausible base stats 3/412 below 90%"
                 ],
                 "status": "NOT_FOUND"
@@ -14197,12 +14197,12 @@
               {
                 "capability": "SPECIES_NAMES",
                 "compatible": false,
-                "confidence": 0.03398058252427184,
+                "confidence": 0.03640776699029126,
                 "offset": 3245512,
                 "count": 412,
                 "recordSize": 11,
                 "reasons": [
-                  "valid fixed names 14/412 below 0.85"
+                  "valid fixed names 15/412 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -14907,13 +14907,13 @@
         "diagnostics": []
       },
       "catalog": {
-        "species": 411,
-        "namedSpecies": 411,
-        "speciesWithStats": 411,
-        "speciesWithSprites": 411,
+        "species": 386,
+        "namedSpecies": 386,
+        "speciesWithStats": 386,
+        "speciesWithSprites": 386,
         "speciesWithDescriptions": 386,
         "evolutionEdges": 184,
-        "learnsetEntries": 3972,
+        "learnsetEntries": 3947,
         "moves": 354,
         "movesWithDetails": 354,
         "types": 18,
@@ -14927,7 +14927,7 @@
       "displayName": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 594,
+      "durationMillis": 831,
       "result": {
         "header": {
           "platform": "GBC",
@@ -15966,12 +15966,12 @@
               {
                 "capability": "POKEDEX_DESCRIPTIONS",
                 "compatible": false,
-                "confidence": 0.09163346613545817,
+                "confidence": 0.099601593625498,
                 "offset": 279416,
                 "count": 251,
                 "recordSize": 2,
                 "reasons": [
-                  "valid Gen 2 Pokédex entries 23/251 below 0.85"
+                  "valid Gen 2 Pokédex entries 25/251 below 0.85"
                 ],
                 "status": "NOT_FOUND"
               },
@@ -16368,7 +16368,7 @@
       "displayName": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb",
       "source": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb",
-      "durationMillis": 686,
+      "durationMillis": 1090,
       "result": {
         "header": {
           "platform": "GBC",

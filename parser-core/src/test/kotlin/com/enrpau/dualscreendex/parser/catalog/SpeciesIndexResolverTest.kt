@@ -53,4 +53,46 @@ class SpeciesIndexResolverTest {
             SpeciesIndexResolver.resolve(RomImage(bytes), layout),
         )
     }
+
+    @Test
+    fun distinguishesSpeciesToDexTableFromItsReverseAtGenThreeBoundary() {
+        val count = 413
+        val bytes = ByteArray(2200) { 0x7F }
+        val speciesToDex = IntArray(count) { index ->
+            val id = index + 1
+            when (id) {
+                in 1..251 -> id
+                in 252..276 -> 185 + id
+                else -> id - 25
+            }
+        }
+        val dexToSpecies = IntArray(count) { index ->
+            val id = index + 1
+            when (id) {
+                in 1..251 -> id
+                in 252..388 -> id + 25
+                else -> id - 137
+            }
+        }
+        speciesToDex.forEachIndexed { index, value -> putU16(bytes, index * 2, value) }
+        dexToSpecies.forEachIndexed { index, value -> putU16(bytes, 1000 + index * 2, value) }
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = count + 1,
+            moveCount = 1,
+            tables = ProfileTables(),
+        )
+
+        val result = SpeciesIndexResolver.resolve(RomImage(bytes), layout)
+
+        assertEquals(252, result[277])
+        assertEquals(279, result[304])
+    }
+
+    private fun putU16(bytes: ByteArray, offset: Int, value: Int) {
+        bytes[offset] = value.toByte()
+        bytes[offset + 1] = (value ushr 8).toByte()
+    }
 }

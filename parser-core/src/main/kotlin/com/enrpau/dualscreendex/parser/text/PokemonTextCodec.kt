@@ -34,7 +34,7 @@ class PokemonTextCodec private constructor(
                 valid++
             }
         }
-        return DecodedText(output.toString().trim(), terminated, valid, content)
+        return DecodedText(output.toString().replace(WHITESPACE, " ").trim(), terminated, valid, content)
     }
 
     companion object {
@@ -44,6 +44,7 @@ class PokemonTextCodec private constructor(
                 in 0xA0..0xB9 -> ('a'.code + value - 0xA0).toChar()
                 in 0xF6..0xFF -> ('0'.code + value - 0xF6).toChar()
                 0x7F -> ' '
+                in 0x4B..0x4F -> ' '
                 0xE0 -> '\''
                 0xE3 -> '-'
                 0xE6 -> '?'
@@ -122,8 +123,11 @@ class PokemonTextCodec private constructor(
                 0xB8 -> ','
                 0xB9 -> '×'
                 0xBA -> '/'
+                0xFA, 0xFB, 0xFE -> ' '
                 else -> null
             }
         }
+
+        private val WHITESPACE = Regex("\\s+")
     }
 }

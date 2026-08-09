@@ -24,7 +24,7 @@ object DatasetResolvers {
             DESCRIPTION_ANCHORS.forEach { anchor ->
                 rom.findAll(anchor).forEach { seedOffset ->
                     val tableOffset = seedOffset - layout.recordSize
-                    if (tableOffset >= 0 && tableOffset % 4 == 0) {
+                    if (tableOffset >= 0 && tableOffset % 4 == 0 && validDescriptionStart(rom, tableOffset, codec)) {
                         validateDescription(
                             rom,
                             speciesCount,
@@ -172,6 +172,11 @@ object DatasetResolvers {
             codec = codec,
         )
     }
+
+    private fun validDescriptionStart(rom: RomImage, offset: Int, codec: PokemonTextCodec): Boolean = runCatching {
+        codec.decode(rom.slice(offset, 12)).equals("Unknown", ignoreCase = true) &&
+            rom.u16le(offset + 12) == 0 && rom.u16le(offset + 14) == 0
+    }.getOrDefault(false)
 
     private fun validateEvolution(rom: RomImage, count: Int, layout: TableLayout): ValidationEvidence {
         val elementSize = layout.elementSize ?: 6

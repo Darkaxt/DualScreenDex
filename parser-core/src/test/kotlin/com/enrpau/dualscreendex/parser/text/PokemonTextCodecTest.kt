@@ -29,6 +29,26 @@ class PokemonTextCodecTest {
     }
 
     @Test
+    fun turnsGameTextLineControlsIntoWordBoundaries() {
+        assertEquals(
+            "that has power. It wins",
+            PokemonTextCodec.gbaEnglish.decode(
+                byteArrayOf(
+                    0xE8.toByte(), 0xDC.toByte(), 0xD5.toByte(), 0xE8.toByte(), 0xFE.toByte(),
+                    0xDC.toByte(), 0xD5.toByte(), 0xE7.toByte(), 0x00, 0xE4.toByte(), 0xE3.toByte(), 0xEB.toByte(), 0xD9.toByte(), 0xE6.toByte(), 0xAD.toByte(),
+                    0xFE.toByte(), 0xC3.toByte(), 0xE8.toByte(), 0x00, 0xEB.toByte(), 0xDD.toByte(), 0xE2.toByte(), 0xE7.toByte(), 0xFF.toByte(),
+                ),
+            ),
+        )
+        assertEquals(
+            "Ab cd",
+            PokemonTextCodec.gbEnglish.decode(
+                byteArrayOf(0x80.toByte(), 0xA1.toByte(), 0x4E, 0xA2.toByte(), 0xA3.toByte(), 0x50),
+            ),
+        )
+    }
+
+    @Test
     fun decodesGbTerminatedText() {
         assertEquals(
             "Ab0",
