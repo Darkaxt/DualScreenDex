@@ -65,6 +65,34 @@ object PokemonDatasetValidators {
         result(valid, count, offset, recordSize, "valid Gen 3 Pokédex entries")
     }
 
+    fun inferGen3DescriptionCount(
+        rom: RomImage,
+        offset: Int,
+        maximumCount: Int,
+        minimumCount: Int,
+        recordSize: Int,
+        descriptionPointerOffsets: IntArray,
+        codec: PokemonTextCodec,
+    ): ValidationEvidence = safely(offset, recordSize, maximumCount) {
+        var valid = 0
+        var lastValid = 0
+        var consecutiveInvalid = 0
+        repeat(maximumCount) { index ->
+            val base = offset + index * recordSize
+            if (validGen3DescriptionRecord(rom, base, descriptionPointerOffsets, codec)) {
+                valid++
+                lastValid = index + 1
+                consecutiveInvalid = 0
+            } else {
+                consecutiveInvalid++
+                if (lastValid >= minimumCount && consecutiveInvalid >= 4) {
+                    return@safely result(valid, lastValid, offset, recordSize, "valid Gen 3 Pokédex prefix")
+                }
+            }
+        }
+        result(valid, lastValid, offset, recordSize, "valid Gen 3 Pokédex prefix")
+    }
+
     fun gen12EvolutionsAndLearnsets(
         rom: RomImage,
         pointerTableOffset: Int,
@@ -260,6 +288,20 @@ object PokemonDatasetValidators {
             cursor += 3
         }
         return false
+    }
+
+    private fun validGen3DescriptionRecord(
+        rom: RomImage,
+        base: Int,
+        descriptionPointerOffsets: IntArray,
+        codec: PokemonTextCodec,
+    ): Boolean {
+        val category = decodeAt(rom, base, 12, codec, 0.70)
+        val dimensions = rom.u16le(base + 12) in 0..10000 && rom.u16le(base + 14) in 0..100000
+        val descriptions = descriptionPointerOffsets.all { fieldOffset ->
+            rom.gbaPointer(base + fieldOffset)?.let { decodeAt(rom, it, 512, codec, 0.65) } == true
+        }
+        return category && dimensions && descriptions
     }
 
     private fun decodeAt(

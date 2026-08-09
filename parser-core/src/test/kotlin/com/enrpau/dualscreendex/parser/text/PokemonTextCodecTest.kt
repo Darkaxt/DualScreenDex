@@ -16,6 +16,19 @@ class PokemonTextCodecTest {
     }
 
     @Test
+    fun decodesGbaSpeciesNameCharacters() {
+        assertEquals(
+            "Flabébé ♂♀",
+            PokemonTextCodec.gbaEnglish.decode(
+                byteArrayOf(
+                    0xC0.toByte(), 0xE0.toByte(), 0xD5.toByte(), 0xD6.toByte(), 0x1B,
+                    0xD6.toByte(), 0x1B, 0x00, 0xB5.toByte(), 0xB6.toByte(), 0xFF.toByte(),
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun decodesGbTerminatedText() {
         assertEquals(
             "Ab0",

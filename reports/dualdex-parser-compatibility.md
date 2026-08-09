@@ -35,28 +35,49 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Pokemon Unbound.zip!Pokemon Unbound.gba — FIRERED_LEAFGREEN
 
 
+## Materialized catalog counts
+
+Counts prove records were decoded and joined; the report intentionally contains no copyrighted ROM text or pixels.
+
+| ROM | Species | Named | Stats | Sprites | Descriptions | Evolutions | Learnsets | Moves | Move details | Types | Matchups | Abilities | Balls | Areas |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | 460 | 460 | 460 | 455 | 456 | 216 | 4622 | 377 | 377 | 26 | 116 | 82 | 12 | 231 |
+| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | 1267 | 1267 | 1267 | 1267 | 898 | 728 | 19879 | 868 | 868 | 19 | 108 | 258 | 12 | 97 |
+| Pokemon Unbound.zip!Pokemon Unbound.gba | 1296 | 1296 | 1296 | 1293 | 905 | 780 | 21874 | 961 | 961 | 41 | 128 | 329 | 12 | 339 |
+| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | 151 | 151 | 151 | 150 | 151 | 72 | 728 | 165 | 165 | 15 | 82 | 0 | 0 | 58 |
+| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2215 | 251 | 251 | 18 | 108 | 0 | 0 | 335 |
+| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | 411 | 411 | 411 | 411 | 386 | 184 | 3972 | 354 | 354 | 18 | 108 | 78 | 12 | 201 |
+| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | 411 | 411 | 411 | 411 | 386 | 184 | 4036 | 354 | 354 | 18 | 108 | 78 | 12 | 219 |
+| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2207 | 251 | 251 | 18 | 108 | 0 | 0 | 335 |
+| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | 411 | 411 | 411 | 411 | 386 | 184 | 4038 | 354 | 354 | 18 | 108 | 78 | 12 | 219 |
+| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | 151 | 151 | 151 | 150 | 151 | 72 | 728 | 165 | 165 | 15 | 82 | 0 | 0 | 58 |
+| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | 411 | 411 | 411 | 411 | 386 | 184 | 3972 | 354 | 354 | 18 | 108 | 78 | 12 | 179 |
+| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | 411 | 411 | 411 | 411 | 386 | 184 | 3972 | 354 | 354 | 18 | 108 | 78 | 12 | 179 |
+| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2207 | 251 | 251 | 18 | 108 | 0 | 0 | 335 |
+| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | 151 | 151 | 151 | 151 | 151 | 72 | 755 | 165 | 165 | 15 | 82 | 0 | 0 | 63 |
+
 ## Capability matrix
 
 - `yes` = found and validated
 - `N/F` = applicable but not found or validated
 - `N/A` = not applicable to that engine
 
-| ROM | Status | Family | Profile | Ancestry score | Catalog | Names | Types | Type chart | Stats | Sprites | Descriptions | Evolutions | Moves | Move data | Learnsets | Abilities |
-| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon Unbound.zip!Pokemon Unbound.gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Blue (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A |
-| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | SELECTED | CRYSTAL | Pokemon Crystal (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A |
-| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Gold (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A |
-| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon LeafGreen (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Red (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A |
-| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Ruby (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Sapphire (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Silver (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A |
-| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | SELECTED | YELLOW | Pokemon Yellow (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A |
+| ROM | Status | Family | Profile | Ancestry score | Catalog | Names | Types | Type chart | Stats | Sprites | Descriptions | Evolutions | Moves | Move data | Learnsets | Abilities | Areas | Type colors | Balls |
+| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Pokemon Unbound.zip!Pokemon Unbound.gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Blue (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
+| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | SELECTED | CRYSTAL | Pokemon Crystal (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
+| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Gold (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
+| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon LeafGreen (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Red (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
+| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Ruby (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Sapphire (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
+| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Silver (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
+| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | SELECTED | YELLOW | Pokemon Yellow (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
 
 ## Per-ROM evidence
 
@@ -79,6 +100,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=0.966; offset=0x8D6924, count=378, recordSize=12
   - LEARNSETS: available; confidence=1.000; offset=0x8EDB24, count=462, recordSize=4
   - ABILITIES: available; confidence=0.988; offset=0x67F52C, count=82, recordSize=13
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=231; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=26; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
 
 ### Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba
 
@@ -87,18 +111,21 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family FIRERED_LEAFGREEN; profile Pokemon FireRed (USA) Rev 1; margin 20
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=80/4 anchors, FIRERED_LEAFGREEN=100/5 anchors
 - Capabilities:
-  - SPECIES_CATALOG: available; confidence=0.924; offset=0x16184B8, count=840, recordSize=11
-  - SPECIES_NAMES: available; confidence=0.999; offset=0x16184B8, count=840, recordSize=11
-  - SPECIES_TYPES: available; confidence=0.924; offset=0x19AFBEC, count=840, recordSize=28
+  - SPECIES_CATALOG: available; confidence=0.906; offset=0x16184B8, count=1268, recordSize=11
+  - SPECIES_NAMES: available; confidence=1.000; offset=0x16184B8, count=1268, recordSize=11
+  - SPECIES_TYPES: available; confidence=0.906; offset=0x19AFBEC, count=1268, recordSize=28
   - TYPE_CHART: available; confidence=1.000; offset=0x24F050, count=108, recordSize=3; resolved relocated Gen 3 type chart
-  - BASE_STATS: available; confidence=0.924; offset=0x19AFBEC, count=840, recordSize=28
-  - SPRITES: available; confidence=1.000; offset=0x19EDB5C, count=840, recordSize=8
-  - POKEDEX_DESCRIPTIONS: available; confidence=1.000; offset=0x1A04D08, count=840, recordSize=36
-  - EVOLUTIONS: available; confidence=0.920; offset=0x19C2C06, count=840, recordSize=128
-  - MOVE_CATALOG: available; confidence=0.993; offset=0x14B2A3C, count=869, recordSize=13
+  - BASE_STATS: available; confidence=0.906; offset=0x19AFBEC, count=1268, recordSize=28
+  - SPRITES: available; confidence=1.000; offset=0x19EDB5C, count=1268, recordSize=8
+  - POKEDEX_DESCRIPTIONS: available; confidence=1.000; offset=0x1A04D08, count=899, recordSize=36
+  - EVOLUTIONS: available; confidence=0.998; offset=0x19C2C06, count=1268, recordSize=128
+  - MOVE_CATALOG: available; confidence=0.995; offset=0x14B2A3C, count=869, recordSize=13
   - MOVE_DETAILS: available; confidence=0.964; offset=0x14BFA7C, count=869, recordSize=12
-  - LEARNSETS: available; confidence=1.000; offset=0x19F4D98, count=840, recordSize=4
+  - LEARNSETS: available; confidence=1.000; offset=0x19F4D98, count=1268, recordSize=4
   - ABILITIES: available; confidence=0.992; offset=0x14A9324, count=258, recordSize=13
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=97; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=19; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
 
 ### Pokemon Unbound.zip!Pokemon Unbound.gba
 
@@ -107,18 +134,21 @@ This report contains structural parser evidence only. It contains no decoded Pok
 - Decision: SELECTED; family FIRERED_LEAFGREEN; profile Pokemon FireRed (USA) Rev 1; margin 20
 - Candidate scores: RED_BLUE=0/0 anchors, YELLOW=0/0 anchors, GOLD_SILVER=0/0 anchors, CRYSTAL=0/0 anchors, RUBY_SAPPHIRE=10/0 anchors, EMERALD=80/4 anchors, FIRERED_LEAFGREEN=100/5 anchors
 - Capabilities:
-  - SPECIES_CATALOG: available; confidence=0.926; offset=0x166A98C, count=840, recordSize=11
-  - SPECIES_NAMES: available; confidence=0.999; offset=0x166A98C, count=840, recordSize=11
-  - SPECIES_TYPES: available; confidence=0.926; offset=0x19E0C9C, count=840, recordSize=28
+  - SPECIES_CATALOG: available; confidence=0.906; offset=0x166A98C, count=1297, recordSize=11
+  - SPECIES_NAMES: available; confidence=0.998; offset=0x166A98C, count=1297, recordSize=11
+  - SPECIES_TYPES: available; confidence=0.906; offset=0x19E0C9C, count=1297, recordSize=28
   - TYPE_CHART: available; confidence=1.000; offset=0x9619C0, count=128, recordSize=3; resolved relocated Gen 3 type chart
-  - BASE_STATS: available; confidence=0.926; offset=0x19E0C9C, count=840, recordSize=28
-  - SPRITES: available; confidence=1.000; offset=0x1A1D5B4, count=840, recordSize=8
-  - POKEDEX_DESCRIPTIONS: available; confidence=1.000; offset=0x1A357CC, count=840, recordSize=36
-  - EVOLUTIONS: available; confidence=0.920; offset=0x19F3A7A, count=840, recordSize=128
+  - BASE_STATS: available; confidence=0.906; offset=0x19E0C9C, count=1297, recordSize=28
+  - SPRITES: available; confidence=1.000; offset=0x1A1D5B4, count=1297, recordSize=8
+  - POKEDEX_DESCRIPTIONS: available; confidence=1.000; offset=0x1A357CC, count=906, recordSize=36
+  - EVOLUTIONS: available; confidence=0.998; offset=0x19F3A7A, count=1297, recordSize=128
   - MOVE_CATALOG: available; confidence=0.996; offset=0xA40A10, count=962, recordSize=13
   - MOVE_DETAILS: available; confidence=0.931; offset=0xA769AF, count=962, recordSize=12
-  - LEARNSETS: available; confidence=1.000; offset=0x1A2457C, count=840, recordSize=4
-  - ABILITIES: available; confidence=0.971; offset=0xA36398, count=314, recordSize=17
+  - LEARNSETS: available; confidence=0.998; offset=0x1A2457C, count=1297, recordSize=4
+  - ABILITIES: available; confidence=0.945; offset=0xA36398, count=329, recordSize=17
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=339; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=41; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
 
 ### Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb
 
@@ -139,6 +169,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x38000, count=165, recordSize=6
   - LEARNSETS: available; confidence=1.000; offset=0x3B05C, count=190, recordSize=2
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=58; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=15; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record
 
 ### Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc
 
@@ -159,6 +192,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x41AFB, count=251, recordSize=7
   - LEARNSETS: available; confidence=0.996; offset=0x425B1, count=251, recordSize=2
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=335; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record
 
 ### Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba
 
@@ -179,6 +215,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x31C898, count=355, recordSize=12
   - LEARNSETS: available; confidence=1.000; offset=0x32937C, count=412, recordSize=4
   - ABILITIES: available; confidence=1.000; offset=0x31B6DB, count=78, recordSize=13
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=201; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
 
 ### Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba
 
@@ -199,6 +238,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x250C74, count=355, recordSize=12
   - LEARNSETS: available; confidence=1.000; offset=0x25D824, count=412, recordSize=4
   - ABILITIES: available; confidence=1.000; offset=0x24FCB0, count=78, recordSize=13
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=219; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
 
 ### Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc
 
@@ -219,6 +261,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x41AFE, count=251, recordSize=7
   - LEARNSETS: available; confidence=0.996; offset=0x427BD, count=251, recordSize=2
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=335; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record
 
 ### Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba
 
@@ -239,6 +284,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x250C50, count=355, recordSize=12
   - LEARNSETS: available; confidence=1.000; offset=0x25D804, count=412, recordSize=4
   - ABILITIES: available; confidence=1.000; offset=0x24FC8C, count=78, recordSize=13
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=219; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
 
 ### Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb
 
@@ -259,6 +307,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x38000, count=165, recordSize=6
   - LEARNSETS: available; confidence=1.000; offset=0x3B05C, count=190, recordSize=2
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=58; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=15; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record
 
 ### Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba
 
@@ -279,6 +330,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x1FB144, count=355, recordSize=12
   - LEARNSETS: available; confidence=1.000; offset=0x207BE0, count=412, recordSize=4
   - ABILITIES: available; confidence=1.000; offset=0x1FA260, count=78, recordSize=13
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=179; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
 
 ### Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba
 
@@ -299,6 +353,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x1FB0D4, count=355, recordSize=12
   - LEARNSETS: available; confidence=1.000; offset=0x207B70, count=412, recordSize=4
   - ABILITIES: available; confidence=1.000; offset=0x1FA1F0, count=78, recordSize=13
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=179; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
 
 ### Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc
 
@@ -319,6 +376,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x41AFE, count=251, recordSize=7
   - LEARNSETS: available; confidence=0.996; offset=0x427BD, count=251, recordSize=2
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=335; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record
 
 ### Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb
 
@@ -339,3 +399,6 @@ This report contains structural parser evidence only. It contains no decoded Pok
   - MOVE_DETAILS: available; confidence=1.000; offset=0x38000, count=165, recordSize=6
   - LEARNSETS: available; confidence=0.995; offset=0x3B1E5, count=190, recordSize=2
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - AREA_ENCOUNTERS: available; confidence=1.000; count=63; structurally decoded encounter areas
+  - TYPE_PRESENTATION: available; confidence=1.000; count=15; family type colors with explicit accessible fallback for custom IDs
+  - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record

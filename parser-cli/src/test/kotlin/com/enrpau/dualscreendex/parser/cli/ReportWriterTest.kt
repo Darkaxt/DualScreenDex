@@ -129,7 +129,7 @@ class ReportWriterTest {
         val markdown = ReportWriter.markdown(report)
 
         assertTrue(markdown.contains("Complete for all applicable static datasets: 1"))
-        assertTrue(markdown.contains("| Catalog | Names | Types | Type chart | Stats | Sprites | Descriptions | Evolutions | Moves | Move data | Learnsets | Abilities |"))
+        assertTrue(markdown.contains("| Catalog | Names | Types | Type chart | Stats | Sprites | Descriptions | Evolutions | Moves | Move data | Learnsets | Abilities | Areas | Type colors | Balls |"))
     }
 
     @Test

@@ -36,11 +36,22 @@ object DatasetResolvers {
                             ),
                             codec,
                         ).takeIf { it.compatible }?.let(candidates::add)
+                            ?: inferDescription(
+                                rom,
+                                speciesCount,
+                                TableLayout(
+                                    tableOffset,
+                                    speciesCount,
+                                    layout.recordSize,
+                                    pointerOffsets = layout.pointerOffsets,
+                                ),
+                                codec,
+                            ).takeIf { it.compatible }?.let(candidates::add)
                     }
                 }
             }
         }
-        return choose(candidates, inherited?.offset, "Gen 3 Pokédex description table")
+        return choose(candidates, inherited?.offset, "Gen 3 Pokédex description table", coverageFirst = true)
     }
 
     fun gen3Evolutions(
@@ -142,6 +153,26 @@ object DatasetResolvers {
         )
     }
 
+    private fun inferDescription(
+        rom: RomImage,
+        maximumCount: Int,
+        layout: TableLayout,
+        codec: PokemonTextCodec,
+    ): ValidationEvidence {
+        val pointerOffsets = layout.pointerOffsets.ifEmpty {
+            if (layout.recordSize >= 36) listOf(16, 20) else listOf(16)
+        }
+        return PokemonDatasetValidators.inferGen3DescriptionCount(
+            rom = rom,
+            offset = layout.offset,
+            maximumCount = maximumCount,
+            minimumCount = minOf(300, maxOf(2, maximumCount / 4)),
+            recordSize = layout.recordSize,
+            descriptionPointerOffsets = pointerOffsets.toIntArray(),
+            codec = codec,
+        )
+    }
+
     private fun validateEvolution(rom: RomImage, count: Int, layout: TableLayout): ValidationEvidence {
         val elementSize = layout.elementSize ?: 6
         if (layout.recordSize <= 0 || layout.recordSize % elementSize != 0) {
@@ -160,14 +191,26 @@ object DatasetResolvers {
         candidates: List<ValidationEvidence>,
         inheritedOffset: Int?,
         label: String,
+        coverageFirst: Boolean = false,
     ): ValidationEvidence {
         val unique = candidates.distinctBy { it.offset to it.recordSize }
         if (unique.isEmpty()) return missing("$label not resolved by structural validation")
-        val ranked = unique.sortedWith(
-            compareByDescending<ValidationEvidence> { it.confidence }
-                .thenByDescending { it.validRecords }
-                .thenBy { evidence -> inheritedOffset?.let { abs((evidence.offset ?: 0) - it) } ?: (evidence.offset ?: 0) },
-        )
+        val distance: (ValidationEvidence) -> Int = { evidence ->
+            inheritedOffset?.let { abs((evidence.offset ?: 0) - it) } ?: (evidence.offset ?: 0)
+        }
+        val ranked = if (coverageFirst) {
+            unique.sortedWith(
+                compareByDescending<ValidationEvidence> { it.validRecords }
+                    .thenByDescending { it.confidence }
+                    .thenBy(distance),
+            )
+        } else {
+            unique.sortedWith(
+                compareByDescending<ValidationEvidence> { it.confidence }
+                    .thenByDescending { it.validRecords }
+                    .thenBy(distance),
+            )
+        }
         if (ranked.size > 1) {
             val first = ranked[0]
             val second = ranked[1]

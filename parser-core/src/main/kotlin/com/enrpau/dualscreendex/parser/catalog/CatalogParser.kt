@@ -63,8 +63,22 @@ object CatalogMaterializer {
         }
         val moves = RecordMaterializers.moves(rom, layout)
         val chart = RecordMaterializers.typeChart(rom, layout)
+        val types = TypePresentationMaterializer.apply(RecordMaterializers.types(layout, species, chart, moves))
+        val encounters = EncounterMaterializer.materialize(rom, layout)
         val balls = if (layout.generation == 3) BallSpriteMaterializer.captureBalls(rom) else emptyMap()
         val capabilities = analysis.capabilities.associateBy { it.capability }.toMutableMap()
+        capabilities[RomCapability.AREA_ENCOUNTERS] = collectionCapability(
+            RomCapability.AREA_ENCOUNTERS,
+            encounters.size,
+            "structurally decoded encounter areas",
+            "encounter tables were not located",
+        )
+        capabilities[RomCapability.TYPE_PRESENTATION] = collectionCapability(
+            RomCapability.TYPE_PRESENTATION,
+            types.values.count { it.presentation.status == CapabilityStatus.AVAILABLE },
+            "family type colors with explicit accessible fallback for custom IDs",
+            "no materialized types were available for presentation",
+        )
         capabilities[RomCapability.BALL_CATALOG] = if (balls.values.any { it.sprite.status == CapabilityStatus.AVAILABLE }) {
             CapabilityEvidence(
                 capability = RomCapability.BALL_CATALOG,
@@ -92,11 +106,26 @@ object CatalogMaterializer {
             platform = layout.platform,
             speciesById = species,
             movesById = moves,
-            typesById = RecordMaterializers.types(layout, species, chart, moves),
+            typesById = types,
             abilitiesById = RecordMaterializers.abilities(rom, layout),
             typeChart = chart,
+            encounterAreas = encounters,
             captureBallsById = balls,
             capabilities = capabilities,
         )
     }
+
+    private fun collectionCapability(
+        capability: RomCapability,
+        count: Int,
+        availableReason: String,
+        unavailableReason: String,
+    ) = CapabilityEvidence(
+        capability = capability,
+        compatible = count > 0,
+        confidence = if (count > 0) 1.0 else 0.0,
+        count = count.takeIf { it > 0 },
+        reasons = listOf(if (count > 0) availableReason else unavailableReason),
+        status = if (count > 0) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
+    )
 }

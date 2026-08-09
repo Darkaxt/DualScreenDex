@@ -41,18 +41,22 @@ data class CatalogMetrics(
     val typeMatchups: Int,
     val abilities: Int,
     val captureBalls: Int,
+    val encounterAreas: Int = 0,
 ) {
     companion object {
-        fun from(catalog: ParsedCatalog) = CatalogMetrics(
-            species = catalog.speciesById.size,
-            namedSpecies = catalog.speciesById.values.count { it.name.status == CapabilityStatus.AVAILABLE },
-            speciesWithStats = catalog.speciesById.values.count { it.baseStats.status == CapabilityStatus.AVAILABLE },
-            speciesWithSprites = catalog.speciesById.values.count { it.sprite.status == CapabilityStatus.AVAILABLE },
-            speciesWithDescriptions = catalog.speciesById.values.count { it.description.status == CapabilityStatus.AVAILABLE },
-            evolutionEdges = catalog.speciesById.values.sumOf { it.evolutionEdges.value?.size ?: 0 },
-            learnsetEntries = catalog.speciesById.values.sumOf { it.learnset.value?.size ?: 0 },
-            moves = catalog.movesById.size,
-            movesWithDetails = catalog.movesById.values.count { move ->
+        fun from(catalog: ParsedCatalog): CatalogMetrics {
+            val species = catalog.navigableSpecies()
+            val moves = catalog.movesById.values.filter { it.id > 0 }
+            return CatalogMetrics(
+            species = species.size,
+            namedSpecies = species.count { it.name.status == CapabilityStatus.AVAILABLE },
+            speciesWithStats = species.count { it.baseStats.status == CapabilityStatus.AVAILABLE },
+            speciesWithSprites = species.count { it.sprite.status == CapabilityStatus.AVAILABLE },
+            speciesWithDescriptions = species.count { it.description.status == CapabilityStatus.AVAILABLE },
+            evolutionEdges = species.sumOf { it.evolutionEdges.value?.size ?: 0 },
+            learnsetEntries = species.sumOf { it.learnset.value?.size ?: 0 },
+            moves = moves.size,
+            movesWithDetails = moves.count { move ->
                 move.typeId.status == CapabilityStatus.AVAILABLE &&
                     move.power.status == CapabilityStatus.AVAILABLE &&
                     move.accuracy.status == CapabilityStatus.AVAILABLE &&
@@ -62,7 +66,9 @@ data class CatalogMetrics(
             typeMatchups = catalog.typeChart.size,
             abilities = catalog.abilitiesById.size,
             captureBalls = catalog.captureBallsById.values.count { it.sprite.status == CapabilityStatus.AVAILABLE },
+            encounterAreas = catalog.encounterAreas.size,
         )
+        }
     }
 }
 
@@ -115,8 +121,8 @@ object ReportWriter {
         appendLine("- `N/F` = applicable but not found or validated")
         appendLine("- `N/A` = not applicable to that engine")
         appendLine()
-        appendLine("| ROM | Status | Family | Profile | Ancestry score | Catalog | Names | Types | Type chart | Stats | Sprites | Descriptions | Evolutions | Moves | Move data | Learnsets | Abilities |")
-        appendLine("| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+        appendLine("| ROM | Status | Family | Profile | Ancestry score | Catalog | Names | Types | Type chart | Stats | Sprites | Descriptions | Evolutions | Moves | Move data | Learnsets | Abilities | Areas | Type colors | Balls |")
+        appendLine("| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
         report.results.forEach { entry ->
             val parsed = entry.result
             val selectedProbe = parsed?.probes?.firstOrNull { it.family == parsed.selectedFamily }
@@ -135,7 +141,9 @@ object ReportWriter {
                     "${capability(RomCapability.BASE_STATS)} | ${capability(RomCapability.SPRITES)} | " +
                     "${capability(RomCapability.POKEDEX_DESCRIPTIONS)} | ${capability(RomCapability.EVOLUTIONS)} | " +
                     "${capability(RomCapability.MOVE_CATALOG)} | ${capability(RomCapability.MOVE_DETAILS)} | " +
-                    "${capability(RomCapability.LEARNSETS)} | ${capability(RomCapability.ABILITIES)} |",
+                    "${capability(RomCapability.LEARNSETS)} | ${capability(RomCapability.ABILITIES)} | " +
+                    "${capability(RomCapability.AREA_ENCOUNTERS)} | ${capability(RomCapability.TYPE_PRESENTATION)} | " +
+                    "${capability(RomCapability.BALL_CATALOG)} |",
             )
         }
 
@@ -205,18 +213,18 @@ object ReportWriter {
         appendLine()
         appendLine("Counts prove records were decoded and joined; the report intentionally contains no copyrighted ROM text or pixels.")
         appendLine()
-        appendLine("| ROM | Species | Named | Stats | Sprites | Descriptions | Evolutions | Learnsets | Moves | Move details | Types | Matchups | Abilities | Balls |")
-        appendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+        appendLine("| ROM | Species | Named | Stats | Sprites | Descriptions | Evolutions | Learnsets | Moves | Move details | Types | Matchups | Abilities | Balls | Areas |")
+        appendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         report.results.forEach { entry ->
             val value = entry.catalog
             if (value == null) {
-                appendLine("| ${cell(entry.displayName)} | - | - | - | - | - | - | - | - | - | - | - | - | - |")
+                appendLine("| ${cell(entry.displayName)} | - | - | - | - | - | - | - | - | - | - | - | - | - | - |")
             } else {
                 appendLine(
                     "| ${cell(entry.displayName)} | ${value.species} | ${value.namedSpecies} | ${value.speciesWithStats} | " +
                         "${value.speciesWithSprites} | ${value.speciesWithDescriptions} | ${value.evolutionEdges} | " +
                         "${value.learnsetEntries} | ${value.moves} | ${value.movesWithDetails} | ${value.types} | " +
-                        "${value.typeMatchups} | ${value.abilities} | ${value.captureBalls} |",
+                        "${value.typeMatchups} | ${value.abilities} | ${value.captureBalls} | ${value.encounterAreas} |",
                 )
             }
         }

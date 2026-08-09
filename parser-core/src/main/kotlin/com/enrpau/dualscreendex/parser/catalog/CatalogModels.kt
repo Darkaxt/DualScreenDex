@@ -161,4 +161,8 @@ data class ParsedCatalog(
     val captureBallsById: Map<Int, CaptureBallRecord> = emptyMap(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),
-)
+) {
+    fun navigableSpecies(): List<SpeciesRecord> = speciesById.values.filter { species ->
+        (species.dexNumber.value ?: 0) > 0 && !species.name.value.isNullOrBlank()
+    }
+}

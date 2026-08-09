@@ -45,7 +45,11 @@ fun main(arguments: Array<String>) {
                     input.source,
                     input.archiveEntry,
                     measured.duration.inWholeMilliseconds,
-                    result = measured.value.analysis,
+                    result = measured.value.catalog?.getOrNull()?.let { catalog ->
+                        measured.value.analysis.copy(
+                            capabilities = catalog.capabilities.values.sortedBy { it.capability.ordinal },
+                        )
+                    } ?: measured.value.analysis,
                     catalog = measured.value.catalog?.getOrNull()?.let(CatalogMetrics.Companion::from),
                     catalogError = measured.value.catalog?.exceptionOrNull()?.let(::readableFailure),
                 )

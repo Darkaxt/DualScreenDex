@@ -47,4 +47,24 @@ class CatalogModelsTest {
         assertEquals(true, RomCapability.entries.contains(RomCapability.TYPE_PRESENTATION))
         assertEquals(true, RomCapability.entries.contains(RomCapability.BALL_CATALOG))
     }
+
+    @Test
+    fun navigableSpeciesExcludesNoneAndReservedInternalSlots() {
+        fun species(id: Int, dex: Int) = SpeciesRecord(
+            id = id,
+            dexNumber = CatalogField.available(dex),
+            name = CatalogField.available(if (dex == 0) "RESERVED" else "MON$dex"),
+            typeIds = CatalogField.available(listOf(0)),
+            baseStats = CatalogField.notFound("fixture"),
+            sprite = CatalogField.notFound("fixture"),
+        )
+        val catalog = ParsedCatalog(
+            romSha256 = "abc",
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = mapOf(0 to species(0, 0), 1 to species(1, 1), 252 to species(252, 0)),
+        )
+
+        assertEquals(listOf(1), catalog.navigableSpecies().map { it.id })
+    }
 }
