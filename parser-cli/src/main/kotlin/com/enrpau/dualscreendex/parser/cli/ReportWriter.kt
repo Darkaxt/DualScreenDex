@@ -10,7 +10,7 @@ import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.GsonBuilder
 
 data class CorpusReport(
-    val schemaVersion: Int = 6,
+    val schemaVersion: Int = 7,
     val minimumParserScore: Int = ParserOrchestrator.minimumScore,
     val minimumRunnerUpMargin: Int = ParserOrchestrator.minimumMargin,
     val roots: List<String>,
@@ -25,7 +25,17 @@ data class CorpusResult(
     val result: ParseResult? = null,
     val catalog: CatalogMetrics? = null,
     val catalogError: String? = null,
+    val persistence: CatalogPersistenceMetrics? = null,
+    val persistenceError: String? = null,
     val error: String? = null,
+)
+
+data class CatalogPersistenceMetrics(
+    val fileName: String,
+    val bytes: Long,
+    val writeMillis: Long,
+    val reopenMillis: Long,
+    val sections: Int,
 )
 
 data class CatalogMetrics(
@@ -103,7 +113,9 @@ object ReportWriter {
     )
     private val coreCapabilities = RomCapability.entries.filterNot(extendedCapabilities::contains)
 
-    fun json(report: CorpusReport): String = gson.toJson(report) + "\n"
+    fun json(report: CorpusReport): String = gson.toJson(
+        report.copy(roots = report.roots.map(::publicRootLabel).distinct()),
+    ) + "\n"
 
     fun markdown(report: CorpusReport): String = buildString {
         val selected = report.results.count { it.result?.status == SelectionStatus.SELECTED }
@@ -114,6 +126,8 @@ object ReportWriter {
         val ambiguous = report.results.count { it.result?.status == SelectionStatus.AMBIGUOUS }
         val noFamilyMatch = report.results.count { it.result?.status == SelectionStatus.NO_FAMILY_MATCH }
         val errors = report.results.count { it.error != null || it.result?.status == SelectionStatus.ERROR }
+        val persisted = report.results.count { it.persistence != null }
+        val persistenceErrors = report.results.count { it.persistenceError != null }
         fun complete(entry: CorpusResult, capabilities: Iterable<RomCapability>) =
             entry.result?.status == SelectionStatus.SELECTED && RomCapability.entries.all { capability ->
                 if (capability !in capabilities) return@all true
@@ -140,11 +154,15 @@ object ReportWriter {
         appendLine("- Ambiguous: $ambiguous")
         if (noFamilyMatch > 0) appendLine("- No mainline-family match: $noFamilyMatch")
         appendLine("- Read/parse errors: $errors")
+        appendLine("- Persisted and reopened SQLite catalogs: $persisted")
+        appendLine("- SQLite persistence errors: $persistenceErrors")
         appendLine("- Selection rule: score >= ${report.minimumParserScore}, runner-up margin >= ${report.minimumRunnerUpMargin}, and at least two validated anchors")
         appendLine()
         appendNamedOutcomes(report)
         appendLine()
         appendCatalogCounts(report)
+        appendLine()
+        appendPersistence(report)
         appendLine()
         appendLine("## Capability matrix")
         appendLine()
@@ -219,6 +237,12 @@ object ReportWriter {
 
     private fun formatConfidence(value: Double): String = String.format(java.util.Locale.ROOT, "%.3f", value)
 
+    private fun publicRootLabel(value: String): String = value
+        .replace('\\', '/')
+        .trimEnd('/')
+        .substringAfterLast('/')
+        .ifBlank { "ROM library" }
+
     private fun cell(value: String): String = value.replace("|", "\\|").replace("\r", " ").replace("\n", " ")
 
     private fun heading(value: String): String = value.replace("\r", " ").replace("\n", " ")
@@ -262,6 +286,26 @@ object ReportWriter {
                         "${value.movesWithDescriptions} | ${value.eggMoveLinks} | ${value.machineMoveLinks} | " +
                         "${value.tutorMoveLinks} | ${value.types} | ${value.typeMatchups} | ${value.abilities} | " +
                         "${value.abilitiesWithDescriptions} | ${value.abilitiesWithMechanics} | ${value.captureBalls} | ${value.encounterAreas} |",
+                )
+            }
+        }
+    }
+
+    private fun StringBuilder.appendPersistence(report: CorpusReport) {
+        appendLine("## SQLite catalog persistence")
+        appendLine()
+        appendLine("Each row is a complete SHA-256-keyed database that was written, closed, reopened, and decoded back into the production catalog model.")
+        appendLine()
+        appendLine("| ROM | SHA-256 prefix | Bytes | Sections | Write ms | Reopen ms |")
+        appendLine("| --- | --- | ---: | ---: | ---: | ---: |")
+        report.results.forEach { entry ->
+            val value = entry.persistence
+            if (value == null) {
+                appendLine("| ${cell(entry.displayName)} | ${entry.persistenceError?.let(::cell) ?: "-"} | - | - | - | - |")
+            } else {
+                appendLine(
+                    "| ${cell(entry.displayName)} | ${value.fileName.substringBefore('.').take(12)} | ${value.bytes} | " +
+                        "${value.sections} | ${value.writeMillis} | ${value.reopenMillis} |",
                 )
             }
         }

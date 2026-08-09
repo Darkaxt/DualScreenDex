@@ -139,14 +139,14 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 
 **Delivery checklist:**
 
-- [ ] Persist catalog identity, capabilities, provenance, species/forms, sprites, types/charts, stats, entries, moves/mechanics, rulesets, acquisition, abilities, evolutions, encounters, and ball artwork in transactional SQLite.
-- [ ] Store SHA-256 as authority and CRC32/size/title/family as lookup evidence; never join caches by basename alone.
-- [ ] Publish phased loading state and make only committed catalog sections visible.
-- [ ] Reopen a completed cache without rereading the ROM; invalidate or migrate it when the parser schema changes.
-- [ ] Keep every ruleset in the same database and make Auto/manual switching instantaneous.
-- [ ] Index user-granted direct files and ZIP central-directory entries without permanent extraction.
-- [ ] Run the complete in-scope private ROM corpus and publish a names-first report with explicit Available/Not Found/Not Applicable states; exclude spin-offs and Mystery Dungeon.
-- [ ] Confirm all focused page links and parser diagnostics use persisted data, not the in-memory simulator.
+- [x] Persist catalog identity, capabilities, provenance, species/forms, sprites, types/charts, stats, entries, moves/mechanics, rulesets, acquisition, abilities, evolutions, encounters, and ball artwork in transactional SQLite.
+- [x] Store SHA-256 as authority and CRC32/size/title/family as lookup evidence; never join caches by basename alone.
+- [x] Publish phased loading state and make only committed catalog sections visible.
+- [x] Reopen a completed cache without rereading the ROM; invalidate or migrate it when the parser schema changes.
+- [x] Keep every ruleset in the same database and make Auto/manual switching instantaneous.
+- [x] Index user-granted direct files and ZIP central-directory entries without permanent extraction.
+- [x] Run the complete in-scope private ROM corpus and publish a names-first report with explicit Available/Not Found/Not Applicable states; exclude spin-offs and Mystery Dungeon.
+- [x] Confirm all focused page links and parser diagnostics use persisted data, not the in-memory simulator.
 
 **Gate evidence:** cold-parse versus cache-reopen timings, database identity/header dump, direct/ZIP equivalence tests, corpus report, and AVD UI capture.
 

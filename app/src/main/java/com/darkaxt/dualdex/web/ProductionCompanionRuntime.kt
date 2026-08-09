@@ -1,5 +1,8 @@
 package com.darkaxt.dualdex.web
 
+import com.darkaxt.dualdex.catalog.CatalogRepository
+import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
+import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.enrpau.dualscreendex.companion.CompanionGateway
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
 import com.enrpau.dualscreendex.companion.api.BootstrapView
@@ -16,6 +19,7 @@ import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
@@ -29,6 +33,8 @@ class ProductionCompanionRuntime(
     private val parserWorker: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "dualdex-parser").apply { isDaemon = true }
     },
+    private val catalogRepository: CatalogRepository? = null,
+    private val onCatalogCommitted: (sha256: String, displayName: String) -> Unit = { _, _ -> },
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
     private val loadGeneration = AtomicLong()
@@ -48,6 +54,8 @@ class ProductionCompanionRuntime(
 
     fun load(name: String, rom: RomImage) {
         val generation = loadGeneration.incrementAndGet()
+        val header = RomHeaderReader.read(rom)
+        val source = CatalogSourceMetadata.fromDisplayName(name, rom.size, header.title)
         synchronized(this) { catalog = null }
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
         gateway.dispatch(
@@ -58,11 +66,20 @@ class ProductionCompanionRuntime(
         )
         parserWorker.execute {
             try {
-                val parsed = CatalogParser.parse(rom) { progress -> publishProgress(generation, progress) }.catalog
+                val cached = catalogRepository?.readComplete(rom.sha256)
+                if (cached != null) {
+                    if (generation != loadGeneration.get()) return@execute
+                    catalogRepository.write(cached.catalog, source, CatalogWriteProgress.complete())
+                    publishReopened(generation, name, cached.catalog)
+                    onCatalogCommitted(cached.catalog.romSha256, name)
+                    return@execute
+                }
+                val parsed = CatalogParser.parse(rom) { progress -> publishProgress(generation, progress, source) }.catalog
                     ?: error("ROM did not produce a supported mainline-family catalog")
                 if (generation != loadGeneration.get()) return@execute
                 synchronized(this) { catalog = parsed }
                 gateway.dispatch(CompanionAction.CatalogLoaded(name))
+                onCatalogCommitted(parsed.romSha256, name)
             } catch (failure: Exception) {
                 if (generation != loadGeneration.get()) return@execute
                 gateway.dispatch(CompanionAction.Failure(failure.message ?: failure.javaClass.simpleName))
@@ -82,6 +99,31 @@ class ProductionCompanionRuntime(
         catalog = parsed
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
         gateway.dispatch(CompanionAction.CatalogLoaded(name))
+    }
+
+    fun restoreCatalog(sha256: String): Boolean {
+        val stored = catalogRepository?.readComplete(sha256) ?: return false
+        val generation = loadGeneration.incrementAndGet()
+        publishReopened(generation, stored.source.displayName, stored.catalog)
+        onCatalogCommitted(stored.catalog.romSha256, stored.source.displayName)
+        return true
+    }
+
+    fun restoreCatalogAsync(sha256: String) {
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(active = true, phase = "CACHE_REOPEN", completedUnits = 0, totalUnits = 5),
+            ),
+        )
+        parserWorker.execute {
+            if (!restoreCatalog(sha256)) {
+                gateway.dispatch(
+                    CompanionAction.CatalogLoadingChanged(
+                        CatalogLoadingState(active = false, phase = "IDLE", completedUnits = 0, totalUnits = 0),
+                    ),
+                )
+            }
+        }
     }
 
     @Synchronized
@@ -180,8 +222,23 @@ class ProductionCompanionRuntime(
         else rulesets.firstOrNull { it.id == selection }
     }
 
-    private fun publishProgress(generation: Long, progress: CatalogMaterializationProgress) {
+    private fun publishProgress(
+        generation: Long,
+        progress: CatalogMaterializationProgress,
+        source: CatalogSourceMetadata,
+    ) {
         if (generation != loadGeneration.get()) return
+        catalogRepository?.write(
+            progress.catalog,
+            source,
+            CatalogWriteProgress(
+                phase = progress.phase.name,
+                completedUnits = progress.completedUnits,
+                totalUnits = progress.totalUnits,
+                complete = progress.completedUnits == progress.totalUnits,
+                changedSections = changedCatalogSections(progress.phase.name),
+            ),
+        )
         synchronized(this) { catalog = progress.catalog }
         gateway.dispatch(
             CompanionAction.CatalogLoadingChanged(
@@ -193,6 +250,36 @@ class ProductionCompanionRuntime(
                 ),
             ),
         )
+    }
+
+    private fun publishReopened(generation: Long, name: String, reopened: ParsedCatalog) {
+        if (generation != loadGeneration.get()) return
+        synchronized(this) { catalog = reopened }
+        gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 5, totalUnits = 5),
+                name,
+            ),
+        )
+        gateway.dispatch(CompanionAction.CatalogLoaded(name))
+    }
+
+    private fun changedCatalogSections(phase: String): Set<String> = when (phase) {
+        "ESSENTIAL" -> com.darkaxt.dualdex.catalog.CatalogSchema.requiredSections
+        "SPECIES_MEDIA" -> setOf("species")
+        "RELATIONSHIPS" -> setOf("species", "encounters")
+        "EXTENDED" -> setOf(
+            "species",
+            "moves",
+            "abilities",
+            "capture_balls",
+            "learnset_rulesets",
+            "capabilities",
+            "diagnostics",
+        )
+        "COMPLETE" -> emptySet()
+        else -> com.darkaxt.dualdex.catalog.CatalogSchema.requiredSections
     }
 
     private fun requireInt(values: Map<String, String?>, key: String): Int =

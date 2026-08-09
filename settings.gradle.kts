@@ -25,6 +25,7 @@ include(
     ":parser-core",
     ":parser-cli",
     ":companion-core",
+    ":catalog-store",
     ":companion-simulator",
     ":companion-server",
 )

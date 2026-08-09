@@ -40,8 +40,56 @@ class ReportWriterTest {
     fun jsonIsDeterministicForSameReport() {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
-        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 6"))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 7"))
         assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
+    }
+
+    @Test
+    fun jsonPublishesRootLabelsWithoutPrivateAbsolutePaths() {
+        val report = CorpusReport(
+            roots = listOf(
+                "H:/Private/Roms/Nintendo - Game Boy",
+                "H:\\Private\\Roms\\Nintendo - Game Boy Advance",
+            ),
+            results = emptyList(),
+        )
+
+        val json = ReportWriter.json(report)
+
+        assertTrue(json.contains("\"Nintendo - Game Boy\""))
+        assertTrue(json.contains("\"Nintendo - Game Boy Advance\""))
+        assertFalse(json.contains("H:/"))
+        assertFalse(json.contains("H:\\\\"))
+        assertFalse(json.contains("Private"))
+    }
+
+    @Test
+    fun markdownNamesEveryPersistedSqliteCatalogAndItsReopenEvidence() {
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(
+                CorpusResult(
+                    displayName = "Pokemon Emerald.gba",
+                    source = "Pokemon Emerald.gba",
+                    durationMillis = 12,
+                    result = sampleResult(),
+                    persistence = CatalogPersistenceMetrics(
+                        fileName = "${"0".repeat(64)}.sqlite",
+                        bytes = 640_000,
+                        writeMillis = 80,
+                        reopenMillis = 12,
+                        sections = 10,
+                    ),
+                ),
+            ),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("Persisted and reopened SQLite catalogs: 1"))
+        assertTrue(markdown.contains("## SQLite catalog persistence"))
+        assertTrue(markdown.contains("| Pokemon Emerald.gba | 000000000000"))
+        assertTrue(markdown.contains("| 640000 | 10 | 80 | 12 |"))
     }
 
     @Test

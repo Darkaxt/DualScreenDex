@@ -1,18 +1,18 @@
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "minimumParserScore": 75,
   "minimumRunnerUpMargin": 10,
   "roots": [
-    "H:/My Drive/Roms/Nintendo - Game Boy",
-    "H:/My Drive/Roms/Nintendo - Game Boy Color",
-    "H:/My Drive/Roms/Nintendo - Game Boy Advance"
+    "Nintendo - Game Boy",
+    "Nintendo - Game Boy Color",
+    "Nintendo - Game Boy Advance"
   ],
   "results": [
     {
       "displayName": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
       "source": "Hacks/Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip",
       "archiveEntry": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
-      "durationMillis": 8060,
+      "durationMillis": 9682,
       "result": {
         "header": {
           "platform": "GBA",
@@ -1224,13 +1224,20 @@
         "abilitiesWithMechanics": 4,
         "captureBalls": 12,
         "encounterAreas": 231
+      },
+      "persistence": {
+        "fileName": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895.sqlite",
+        "bytes": 659456,
+        "writeMillis": 1008,
+        "reopenMillis": 480,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
       "source": "Hacks/Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip",
       "archiveEntry": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
-      "durationMillis": 6497,
+      "durationMillis": 6748,
       "result": {
         "header": {
           "platform": "GBA",
@@ -2440,13 +2447,20 @@
         "abilitiesWithMechanics": 4,
         "captureBalls": 12,
         "encounterAreas": 97
+      },
+      "persistence": {
+        "fileName": "f6d2e7092831b983318b685132a19567ff5e6428665255738c4e5a63371bcce3.sqlite",
+        "bytes": 1822720,
+        "writeMillis": 978,
+        "reopenMillis": 500,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon Unbound.zip!Pokemon Unbound.gba",
       "source": "Hacks/Pokemon Unbound.zip",
       "archiveEntry": "Pokemon Unbound.gba",
-      "durationMillis": 7523,
+      "durationMillis": 7930,
       "result": {
         "header": {
           "platform": "GBA",
@@ -3653,13 +3667,20 @@
         "abilitiesWithMechanics": 4,
         "captureBalls": 12,
         "encounterAreas": 339
+      },
+      "persistence": {
+        "fileName": "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7.sqlite",
+        "bytes": 1847296,
+        "writeMillis": 967,
+        "reopenMillis": 453,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb",
       "source": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb",
-      "durationMillis": 754,
+      "durationMillis": 850,
       "result": {
         "header": {
           "platform": "GB",
@@ -5146,13 +5167,20 @@
         "abilitiesWithMechanics": 0,
         "captureBalls": 0,
         "encounterAreas": 58
+      },
+      "persistence": {
+        "fileName": "2a951313c2640e8c2cb21f25d1db019ae6245d9c7121f754fa61afd7bee6452d.sqlite",
+        "bytes": 176128,
+        "writeMillis": 98,
+        "reopenMillis": 44,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc",
       "source": "Pokemon - Crystal Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc",
-      "durationMillis": 813,
+      "durationMillis": 954,
       "result": {
         "header": {
           "platform": "GBC",
@@ -6654,13 +6682,20 @@
         "abilitiesWithMechanics": 0,
         "captureBalls": 0,
         "encounterAreas": 335
+      },
+      "persistence": {
+        "fileName": "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2.sqlite",
+        "bytes": 282624,
+        "writeMillis": 154,
+        "reopenMillis": 61,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba",
       "source": "Pokemon - Emerald Version (USA, Europe).zip",
       "archiveEntry": "Pokemon - Emerald Version (USA, Europe).gba",
-      "durationMillis": 6045,
+      "durationMillis": 7007,
       "result": {
         "header": {
           "platform": "GBA",
@@ -7862,13 +7897,20 @@
         "abilitiesWithMechanics": 4,
         "captureBalls": 12,
         "encounterAreas": 201
+      },
+      "persistence": {
+        "fileName": "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af.sqlite",
+        "bytes": 565248,
+        "writeMillis": 418,
+        "reopenMillis": 178,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - FireRed Version (USA).zip",
       "archiveEntry": "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 2365,
+      "durationMillis": 2673,
       "result": {
         "header": {
           "platform": "GBA",
@@ -9070,13 +9112,20 @@
         "abilitiesWithMechanics": 4,
         "captureBalls": 12,
         "encounterAreas": 219
+      },
+      "persistence": {
+        "fileName": "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059.sqlite",
+        "bytes": 548864,
+        "writeMillis": 345,
+        "reopenMillis": 156,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 862,
+      "durationMillis": 1004,
       "result": {
         "header": {
           "platform": "GBC",
@@ -10576,13 +10625,20 @@
         "abilitiesWithMechanics": 0,
         "captureBalls": 0,
         "encounterAreas": 335
+      },
+      "persistence": {
+        "fileName": "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e.sqlite",
+        "bytes": 274432,
+        "writeMillis": 143,
+        "reopenMillis": 58,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 2611,
+      "durationMillis": 2691,
       "result": {
         "header": {
           "platform": "GBA",
@@ -11784,13 +11840,20 @@
         "abilitiesWithMechanics": 4,
         "captureBalls": 12,
         "encounterAreas": 219
+      },
+      "persistence": {
+        "fileName": "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825.sqlite",
+        "bytes": 548864,
+        "writeMillis": 296,
+        "reopenMillis": 133,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb",
       "source": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb",
-      "durationMillis": 714,
+      "durationMillis": 931,
       "result": {
         "header": {
           "platform": "GB",
@@ -13277,13 +13340,20 @@
         "abilitiesWithMechanics": 0,
         "captureBalls": 0,
         "encounterAreas": 58
+      },
+      "persistence": {
+        "fileName": "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b.sqlite",
+        "bytes": 176128,
+        "writeMillis": 119,
+        "reopenMillis": 39,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 2139,
+      "durationMillis": 2024,
       "result": {
         "header": {
           "platform": "GBA",
@@ -14518,13 +14588,20 @@
         "abilitiesWithMechanics": 4,
         "captureBalls": 12,
         "encounterAreas": 179
+      },
+      "persistence": {
+        "fileName": "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c.sqlite",
+        "bytes": 540672,
+        "writeMillis": 340,
+        "reopenMillis": 131,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 2258,
+      "durationMillis": 2751,
       "result": {
         "header": {
           "platform": "GBA",
@@ -15759,13 +15836,20 @@
         "abilitiesWithMechanics": 4,
         "captureBalls": 12,
         "encounterAreas": 179
+      },
+      "persistence": {
+        "fileName": "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb.sqlite",
+        "bytes": 540672,
+        "writeMillis": 375,
+        "reopenMillis": 148,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 751,
+      "durationMillis": 876,
       "result": {
         "header": {
           "platform": "GBC",
@@ -17265,13 +17349,20 @@
         "abilitiesWithMechanics": 0,
         "captureBalls": 0,
         "encounterAreas": 335
+      },
+      "persistence": {
+        "fileName": "72b190859a59623cbef6c49d601f8de52c1d2331b4f08a8d2acc17274fc19a8c.sqlite",
+        "bytes": 274432,
+        "writeMillis": 153,
+        "reopenMillis": 60,
+        "sections": 10
       }
     },
     {
       "displayName": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb",
       "source": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb",
-      "durationMillis": 1057,
+      "durationMillis": 1023,
       "result": {
         "header": {
           "platform": "GBC",
@@ -18758,6 +18849,13 @@
         "abilitiesWithMechanics": 0,
         "captureBalls": 0,
         "encounterAreas": 63
+      },
+      "persistence": {
+        "fileName": "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf.sqlite",
+        "bytes": 176128,
+        "writeMillis": 98,
+        "reopenMillis": 43,
+        "sections": 10
       }
     }
   ]

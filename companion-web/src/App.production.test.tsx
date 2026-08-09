@@ -24,7 +24,7 @@ vi.mock('./gateway', () => ({
   uploadRom: vi.fn(async () => fixture)
 }));
 
-import { App } from './App';
+import { App, loadingPercentage } from './App';
 
 describe('production application shell', () => {
   beforeEach(() => document.body.replaceChildren());
@@ -37,5 +37,11 @@ describe('production application shell', () => {
     expect(screen.queryByText('Encounter feed')).toBeNull();
     expect(screen.queryByText('GENERATE ENCOUNTER')).toBeNull();
     expect(screen.queryByText(/Generate an encounter/i)).toBeNull();
+  });
+
+  it('reports only truthful committed loading progress', () => {
+    expect(loadingPercentage({ active: true, phase: 'RELATIONSHIPS', completedUnits: 3, totalUnits: 5 })).toBe(60);
+    expect(loadingPercentage({ active: true, phase: 'IDENTIFYING', completedUnits: 0, totalUnits: 5 })).toBe(0);
+    expect(loadingPercentage({ active: true, phase: 'IDLE', completedUnits: 0, totalUnits: 0 })).toBeNull();
   });
 });
