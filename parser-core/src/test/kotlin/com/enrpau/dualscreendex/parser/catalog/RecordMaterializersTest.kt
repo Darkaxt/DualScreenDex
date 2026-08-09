@@ -119,6 +119,45 @@ class RecordMaterializersTest {
         assertEquals("OVERGROW", abilities.getValue(1).name.value)
     }
 
+    @Test
+    fun joinsGenOneInternalNamesToDexOrderedStats() {
+        val bytes = ByteArray(512)
+        byteArrayOf(1, 0, 3, 2).copyInto(bytes, 50)
+        encodeGbFixedName(bytes, 100, "BULBA")
+        encodeGbFixedName(bytes, 110, "MISSING")
+        encodeGbFixedName(bytes, 120, "VENU")
+        encodeGbFixedName(bytes, 130, "IVY")
+        repeat(3) { dexIndex ->
+            val base = 200 + dexIndex * 28
+            bytes[base + 1] = ((dexIndex + 1) * 10).toByte()
+            bytes[base + 2] = 20
+            bytes[base + 3] = 20
+            bytes[base + 4] = 20
+            bytes[base + 5] = 20
+            bytes[base + 6] = 0
+            bytes[base + 7] = 0
+        }
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.RED_BLUE,
+            generation = 1,
+            platform = Platform.GB,
+            speciesCount = 4,
+            moveCount = 1,
+            tables = ProfileTables(
+                speciesNames = TableLayout(100, 4, 10),
+                baseStats = TableLayout(200, 3, 28),
+            ),
+        )
+
+        val records = RecordMaterializers.species(RomImage(bytes), layout)
+
+        assertEquals("IVY", records.getValue(4).name.value)
+        assertEquals(2, records.getValue(4).dexNumber.value)
+        assertEquals(20, records.getValue(4).baseStats.value?.hp)
+        assertEquals(0, records.getValue(2).dexNumber.value)
+        assertEquals(null, records.getValue(2).baseStats.value)
+    }
+
     private fun gbaLayout(statsOffset: Int) = ResolvedRomLayout(
         family = EngineFamily.EMERALD,
         generation = 3,
@@ -141,5 +180,12 @@ class RecordMaterializersTest {
             }
         }
         target[offset + value.length] = 0xFF.toByte()
+    }
+
+    private fun encodeGbFixedName(target: ByteArray, offset: Int, value: String) {
+        value.forEachIndexed { index, char ->
+            target[offset + index] = (0x80 + char.code - 'A'.code).toByte()
+        }
+        target[offset + value.length] = 0x50
     }
 }

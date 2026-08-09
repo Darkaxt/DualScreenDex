@@ -11,10 +11,16 @@ object RecordMaterializers {
         val stats = layout.tables.baseStats
         val codec = codecFor(layout.generation)
         val firstId = if (layout.generation == 3) 0 else 1
+        val dexNumbers = SpeciesIndexResolver.resolve(rom, layout)
         return (0 until names.count).associate { nameIndex ->
             val id = firstId + nameIndex
+            val dexNumber = dexNumbers[id] ?: id
             val name = readName(rom, names, nameIndex, codec)
-            val statsIndex = if (layout.generation == 3) id else id - 1
+            val statsIndex = when (layout.generation) {
+                1 -> dexNumber - 1
+                2 -> id - 1
+                else -> id
+            }
             val baseStats = stats?.takeIf { statsIndex in 0 until it.count }?.let {
                 readBaseStats(rom, it.offset + statsIndex * it.recordSize, layout.generation)
             }
@@ -31,7 +37,7 @@ object RecordMaterializers {
             }
             id to SpeciesRecord(
                 id = id,
-                dexNumber = CatalogField.available(id),
+                dexNumber = CatalogField.available(dexNumber),
                 name = CatalogField.available(name),
                 typeIds = typeIds?.let(CatalogField.Companion::available)
                     ?: CatalogField.notFound("base stats were not resolved for species $id"),
