@@ -6,6 +6,8 @@
 
 **Architecture:** `parser-core` retains lossless raw records, independently validated level-up rulesets, move descriptions, acquisition methods, and provenance. `companion-server` exposes every detected variant while `CompanionSettings.ruleset` selects `AUTO` or a manual override for the simulator; the future memory mapper resolves `AUTO`. `companion-web` normalizes duplicate acquisition rows for presentation, uses one shared move-detail route, and exposes copyable diagnostics outside the production device frame.
 
+The browser POC holds one immutable catalog containing all variants. The Android implementation will serialize the same model into a SHA-256-keyed, parser-schema-versioned SQLite database (with CRC32 stored for quick identification), so reopening a ROM skips parsing and switching rulesets only changes an active ID.
+
 **Tech Stack:** Kotlin/JVM 17, JUnit 4, Preact, TypeScript, Vite, Vitest/Testing Library, Playwright, loopback HTTP/SSE.
 
 ---
@@ -164,6 +166,8 @@ Run: `./gradlew :companion-server:test :companion-simulator:test`.
 
 Add `RulesetView`, `NormalizedMoveView`, `AbilityView`, `EvolutionView`, `EncounterSlotView`, `MoveAcquisitionView`, and `DiagnosticView`. Use capability status to omit unsupported sections rather than rendering implementation prose.
 
+Add `CatalogLoadingView` with phase, completed units, total units, and active state. On a cache miss, runtime publishes the minimum navigable catalog first and merges later versioned materialization phases without blocking actions. A cache hit publishes the complete catalog immediately. Capability state distinguishes `LOADING` from `NOT_FOUND`.
+
 - [ ] **Step 5: Add the temporary Settings override**
 
 `CompanionSettings.ruleset` defaults to `AUTO`. Runtime resolves Auto to the parser-primary ruleset and reports `rulesetAssumed=true`; a valid manual ID is used directly. Rebuild the simulator when selection changes. Invalid IDs return a clear 400 response and preserve the prior selection.
@@ -221,6 +225,8 @@ Lift species-detail tab state into `App`, retain battle tab state in the gateway
 - [ ] **Step 6: Add ruleset and diagnostics controls**
 
 Settings lists Auto plus detected variants. The lab panel shows active/assumed state, fetches selected-record diagnostics, and provides a Clipboard API copy action with a visible copied/error status.
+
+Render a compact translucent header loading indicator while `CatalogLoadingView.active` is true. Animate only the trailing dots (`Loading` through `Loading...`) without changing geometry; respect reduced-motion and never block navigation.
 
 - [ ] **Step 7: Run GREEN and production build**
 

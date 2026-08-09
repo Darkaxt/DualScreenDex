@@ -218,6 +218,27 @@ Each variant records a stable generated ID, source offset, validation evidence, 
 
 Level-up records remain lossless in parser diagnostics but are normalized for presentation. A move that appears as both a level-1 entry and a later level is shown once with `Initial` plus every distinct later acquisition level. `Initial` means initial/relearnable availability; it is not an Egg Move. Actual Egg, TM/HM, and tutor acquisition methods remain separate and use their own ROM-derived compatibility tables.
 
+### Parsed-catalog cache
+
+The eventual companion persists one SQLite catalog per distinct ROM digest. SHA-256 is the authoritative cache key and CRC32 is retained as a short, emulator-friendly identifier; CRC32 alone is not trusted for identity because collisions are possible. The cache header also stores the parser-schema version, ROM size, platform, and family so incompatible parser changes invalidate a catalog cleanly.
+
+All independently validated rulesets live in the same database and share species, move, type, encounter, and sprite rows. A ruleset change updates only the active ruleset ID in runtime state. It never rereads the ROM, recreates sprite blobs, or creates a second database. The browser POC keeps the equivalent immutable catalog in memory; SQLite is the Android persistence boundary rather than a prerequisite for UI iteration.
+
+### Progressive first-load behavior
+
+A cache miss must not hold the entire UI behind the slowest parser capability. Parsing publishes versioned catalog snapshots in dependency order:
+
+1. ROM identity, family, and capability plan;
+2. species names, types, base stats, and move names/data—the minimum navigable Pokédex;
+3. Pokédex entries and sprites;
+4. evolutions, abilities, and encounter areas;
+5. ruleset variants, move descriptions, and independent acquisition methods;
+6. completed SQLite transaction and cache-ready state.
+
+Each snapshot distinguishes `LOADING`, `AVAILABLE`, `NOT_FOUND`, and `NOT_APPLICABLE` per capability. Pages remain usable with the latest consistent snapshot, and controls whose dependencies are still loading remain visibly pending rather than disappearing or claiming `N/F` prematurely. The server streams phase, completed units, and total units through the existing state channel. It never uses a parsing timeout as cancellation.
+
+While any background phase is active, the device header shows a compact translucent status whose animated text cycles `Loading`, `Loading.`, `Loading..`, and `Loading...`. It must not cover page controls, change header height, trap input, or cause layout movement. Reduced-motion mode keeps the text static. A parse failure changes the indicator to a short actionable error while preserving every already-published capability.
+
 ## 7. Thor-first UI contract
 
 The reference companion surface is the AYN Thor's 3.92-inch, 1080×1240 lower display. High pixel density does not make it a tablet. Every production page is designed for its physical size and near-square aspect first.
