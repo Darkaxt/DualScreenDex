@@ -177,6 +177,7 @@ data class ParsedCatalog(
     val romSha256: String,
     val family: EngineFamily,
     val platform: Platform,
+    val romCrc32: String = "",
     val speciesById: Map<Int, SpeciesRecord> = emptyMap(),
     val movesById: Map<Int, MoveRecord> = emptyMap(),
     val typesById: Map<Int, TypeRecord> = emptyMap(),

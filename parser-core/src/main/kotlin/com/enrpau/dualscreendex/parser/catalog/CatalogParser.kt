@@ -36,6 +36,7 @@ object CatalogMaterializer {
         val learnsets = RelationshipMaterializers.learnsets(rom, layout)
         val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
         val moveDescriptions = MoveDescriptionMaterializer.materialize(rom, layout)
+        val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
         val sprites = SpriteMaterializer.pokemon(rom, layout)
         val baseSpecies = RecordMaterializers.species(rom, layout)
         val species = baseSpecies.mapValues { (id, record) ->
@@ -61,6 +62,11 @@ object CatalogMaterializer {
                 } else {
                     CatalogField.notFound("learnset table was not resolved")
                 },
+                moveAcquisitions = if (moveAcquisitions.evidence.values.any { it.compatible }) {
+                    CatalogField.available(moveAcquisitions.acquisitionsBySpecies[id].orEmpty())
+                } else {
+                    CatalogField.notFound("non-level move acquisition tables were not resolved")
+                },
             )
         }
         val moves = RecordMaterializers.moves(rom, layout).mapValues { (id, move) ->
@@ -80,6 +86,29 @@ object CatalogMaterializer {
         val encounters = EncounterMaterializer.materialize(rom, layout)
         val balls = if (layout.generation == 3) BallSpriteMaterializer.captureBalls(rom) else emptyMap()
         val capabilities = analysis.capabilities.associateBy { it.capability }.toMutableMap()
+        capabilities[RomCapability.MOVE_DESCRIPTIONS] = if (moveDescriptions != null) {
+            CapabilityEvidence(
+                capability = RomCapability.MOVE_DESCRIPTIONS,
+                compatible = true,
+                confidence = moveDescriptions.confidence,
+                offset = moveDescriptions.sourceOffset,
+                count = moveDescriptions.descriptions.size,
+                reasons = listOf("decoded a validated move-description pointer table"),
+                status = CapabilityStatus.AVAILABLE,
+            )
+        } else {
+            CapabilityEvidence(
+                capability = RomCapability.MOVE_DESCRIPTIONS,
+                compatible = false,
+                confidence = 0.0,
+                reasons = listOf(
+                    if (layout.generation < 3) "this engine has no compatible move-description pointer table"
+                    else "move-description pointer table was not resolved",
+                ),
+                status = if (layout.generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
+            )
+        }
+        moveAcquisitions.evidence.values.forEach { evidence -> capabilities[evidence.capability] = evidence }
         capabilities[RomCapability.AREA_ENCOUNTERS] = collectionCapability(
             RomCapability.AREA_ENCOUNTERS,
             encounters.size,
@@ -117,6 +146,7 @@ object CatalogMaterializer {
             romSha256 = analysis.sha256,
             family = layout.family,
             platform = layout.platform,
+            romCrc32 = analysis.crc32,
             speciesById = species,
             movesById = moves,
             typesById = types,
