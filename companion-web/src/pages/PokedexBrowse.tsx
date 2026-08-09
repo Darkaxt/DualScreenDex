@@ -37,7 +37,7 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
         <strong>{species.name}</strong>
         <StatusMarks state={state.speciesState[species.id]} catalog={catalog} />
       </button>)}
-      {visible.length === 0 && <div class="empty-state"><strong>NO DISCOVERIES YET</strong><p>Generate an encounter, change the information policy, or select a different filter.</p></div>}
+      {visible.length === 0 && <div class="empty-state"><strong>NO DISCOVERIES YET</strong><p>Change the information policy or select a different filter.</p></div>}
     </div>
   </section>;
 }

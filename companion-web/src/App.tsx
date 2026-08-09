@@ -1,3 +1,4 @@
+import type { ComponentType } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { action, bootstrap, events, uploadRom } from './gateway';
 import type { Bootstrap, Catalog, State } from './models';
@@ -7,7 +8,13 @@ import { BattlePage } from './pages/BattlePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { MoveDetail } from './pages/MoveDetail';
 import { AbilityDetail } from './pages/AbilityDetail';
-import { SimulatorPanel } from './dev/SimulatorPanel';
+
+export interface DevelopmentToolsProps {
+  catalog: Catalog | null;
+  state: State;
+  onUpload: (file: File) => void;
+  send: (type: string, values?: Record<string, string | number | boolean | null>) => void;
+}
 
 const emptyState: State = {
   version: 0,
@@ -23,7 +30,8 @@ const emptyState: State = {
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'IDLE', completedUnits: 0, totalUnits: 0 }
 };
 
-export function App() {
+export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<DevelopmentToolsProps> } = {}) {
+  const showDevelopmentTools = DevelopmentTools != null;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [state, setState] = useState<State>(emptyState);
   const [error, setError] = useState<string | null>(null);
@@ -74,16 +82,20 @@ export function App() {
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
       }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} />;
-      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} />;
+      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} />;
     }
   }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab]);
 
-  return <main class="lab-shell">
-    <SimulatorPanel catalog={catalog} state={state} onUpload={onUpload} send={send} />
-    <div class="device-shell" style={{ '--font-scale': state.settings.fontScale }} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'}>
-      <div class="device-sensor" />
-      <div class="device-screen">{screen}{state.loading.active && <div class="loading-indicator" role="status" aria-label={`Loading ${state.loading.phase}`}><span>Loading</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}</div>
+  return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
+    {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
+    <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={{ '--font-scale': state.settings.fontScale }} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'}>
+      {showDevelopmentTools && <div class="device-sensor" />}
+      <div class="device-screen">
+        {catalog && <div class="rom-status" title={state.catalogName ?? undefined}><strong>{state.catalogName ?? 'Unnamed ROM'}</strong><span>{catalog.family.replaceAll('_', ' ')} · CRC32 {catalog.crc32 || 'N/F'}</span></div>}
+        <div class={catalog ? 'screen-host with-rom-status' : 'screen-host'}>{screen}</div>
+        {state.loading.active && <div class="loading-indicator" role="status" aria-label={`Loading ${state.loading.phase}`}><span>Loading</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
+      </div>
     </div>
   </main>;
 }

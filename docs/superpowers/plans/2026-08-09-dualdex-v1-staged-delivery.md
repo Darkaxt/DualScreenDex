@@ -80,14 +80,14 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 
 **Delivery checklist:**
 
-- [ ] Set production `applicationId` to `com.darkaxt.dualdex` and debug suffix to `.debug`; retain one source tree rather than a forked debug app.
-- [ ] Generate the single long-lived release key once, export only its public certificate/fingerprint, create the protected GitHub `release-signing` environment secrets, and record a recovery bundle with explicit restoration context.
-- [ ] Configure local debug builds to use only the Android debug keystore; a local `assembleRelease` cannot silently produce a production-signed artifact.
-- [ ] Add CI for Kotlin tests, web tests/build, debug APK assembly, dependency/build validation, and `git diff --check`; CI receives no signing secrets.
-- [ ] Add a release workflow skeleton that fails closed until the protected secrets, tag/version, package ID, and expected fingerprint agree.
-- [ ] Create `DualDex_RA_API35` with persistent storage on `D:`, install a pinned RetroArch build, and capture its clean/configured AVD snapshots without symlinks.
-- [ ] Prove `resolve-dualdex-device.ps1` selects the new AVD while `emulator-5554` remains byte-for-byte outside all deployment commands.
-- [ ] Assemble/install the debug APK on the dedicated AVD and verify `com.darkaxt.dualdex.debug` can coexist with RetroArch.
+- [x] Set production `applicationId` to `com.darkaxt.dualdex` and debug suffix to `.debug`; retain one source tree rather than a forked debug app.
+- [x] Generate the single long-lived release key once, export only its public certificate/fingerprint, create the protected GitHub `release-signing` environment secrets, and record a recovery bundle with explicit restoration context.
+- [x] Configure local debug builds to use only the Android debug keystore; a local `assembleRelease` cannot silently produce a production-signed artifact.
+- [x] Add CI for Kotlin tests, web tests/build, debug APK assembly, dependency/build validation, and `git diff --check`; CI receives no signing secrets.
+- [x] Add a release workflow skeleton that fails closed until the protected secrets, tag/version, package ID, and expected fingerprint agree.
+- [x] Create `DualDex_RA_API35` with persistent storage on `D:`, install a pinned RetroArch build, and capture its clean/configured AVD snapshots without symlinks.
+- [x] Prove `resolve-dualdex-device.ps1` selects the new AVD while `emulator-5554` remains byte-for-byte outside all deployment commands.
+- [x] Assemble/install the debug APK on the dedicated AVD and verify `com.darkaxt.dualdex.debug` can coexist with RetroArch.
 
 **Gate evidence:** CI URL, signer fingerprint, AVD name/serial evidence, installed package list, and an unchanged-state check for `emulator-5554` recorded in the ledger.
 
@@ -109,13 +109,13 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 
 **Delivery checklist:**
 
-- [ ] Package the production Vite bundle into the APK and start an Android-compatible server bound only to `127.0.0.1`; show a native recovery page if it cannot start.
-- [ ] Use SAF to select a direct GB/GBC/GBA ROM or ZIP and pass its stream to the existing parser without creating a permanent extracted ROM.
-- [ ] Replace simulator data with a production runtime backed by `ParsedCatalog`; exclude generator, seed, attack-reference, and simulated-battle controls from production assets.
-- [ ] Render browse, species Entry/Stats/Moves/More, move detail, ability detail, evolution navigation, settings shell, ROM sprites, ball sprites, and ROM type colors.
-- [ ] Preserve the approved Thor layout: no global bottom bar, no emoji, no body overflow, and explicit Back behavior.
-- [ ] Remove ML Kit, Accessibility service, media-projection permissions, bundled CSV profiles, profile creation, screenshot capture, and inherited SQLite seeding.
-- [ ] Exercise one direct official ROM and the Modern Emerald ZIP on the dedicated AVD.
+- [x] Package the production Vite bundle into the APK and start an Android-compatible server bound only to `127.0.0.1`; show a native recovery page if it cannot start.
+- [x] Use SAF to select a direct GB/GBC/GBA ROM or ZIP and pass its stream to the existing parser without creating a permanent extracted ROM.
+- [x] Replace simulator data with a production runtime backed by `ParsedCatalog`; exclude generator, seed, attack-reference, and simulated-battle controls from production assets.
+- [x] Render browse, species Entry/Stats/Moves/More, move detail, ability detail, evolution navigation, settings shell, ROM sprites, ball sprites, and ROM type colors.
+- [x] Preserve the approved Thor layout: no global bottom bar, no emoji, no body overflow, and explicit Back behavior.
+- [x] Remove ML Kit, Accessibility service, media-projection permissions, bundled CSV profiles, profile creation, screenshot capture, and inherited SQLite seeding.
+- [x] Exercise one direct official ROM and the Modern Emerald ZIP on the dedicated AVD.
 
 **Gate evidence:** Screen recording or screenshots of a real ROM catalog, loopback-only listener evidence, package permission dump, zero WebView console errors, and focused test results.
 

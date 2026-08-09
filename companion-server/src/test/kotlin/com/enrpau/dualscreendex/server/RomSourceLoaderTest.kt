@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.server
 
+import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.ByteArrayInputStream

@@ -1,6 +1,10 @@
 package com.enrpau.dualscreendex.server
 
 import com.enrpau.dualscreendex.companion.CompanionGateway
+import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
+import com.enrpau.dualscreendex.companion.api.BootstrapView
+import com.enrpau.dualscreendex.companion.api.DiagnosticView
+import com.enrpau.dualscreendex.companion.api.StateView
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.BattleTab
 import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
@@ -15,6 +19,8 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.io.LoadedRom
+import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.simulator.EncounterSimulator
 import com.enrpau.dualscreendex.simulator.SimulationRequest
 import java.nio.file.Path

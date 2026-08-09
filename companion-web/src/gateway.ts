@@ -35,7 +35,16 @@ export async function diagnostics(speciesId?: number | null, moveId?: number | n
 }
 
 export function events(onState: (state: State) => void): () => void {
-  const stream = new EventSource('/api/events');
-  stream.onmessage = event => onState(JSON.parse(event.data));
-  return () => stream.close();
+  let inFlight = false;
+  const timer = window.setInterval(async () => {
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      const response = await fetch('/api/state');
+      if (response.ok) onState(await response.json());
+    } finally {
+      inFlight = false;
+    }
+  }, 750);
+  return () => window.clearInterval(timer);
 }

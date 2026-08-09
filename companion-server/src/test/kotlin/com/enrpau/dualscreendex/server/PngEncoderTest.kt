@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.server
 
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Test

@@ -1,0 +1,46 @@
+.lab-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; gap: 28px; padding: 20px; }
+.device-shell { --font-scale: 1; position: relative; width: min(560px, calc(100vw - 390px)); height: min(680px, calc(100vh - 40px)); min-height: 500px; border: 12px solid #283239; border-radius: 30px; background: #1a2125; padding: 8px; box-shadow: 0 24px 70px #000a, inset 0 0 0 2px #465057; }
+.device-shell::before { content: ""; position: absolute; inset: -5px; border: 2px solid #0a0d0e; border-radius: 22px; pointer-events: none; }
+.device-sensor { position: absolute; top: -7px; left: 50%; translate: -50% 0; width: 82px; height: 4px; border-radius: 3px; background: #0b0f10; }
+.device-shell .loading-indicator:only-child { top: 7px; }
+
+.simulator-panel { width: 320px; max-height: calc(100vh - 40px); overflow: auto; padding: 20px; border: 1px solid #39433e; border-top: 5px solid var(--acid-deep); background: #151b18; color: #dce4d8; box-shadow: 0 18px 50px #0007; }
+.simulator-panel > div:first-child small { color: var(--acid); font-weight: 900; letter-spacing: .16em; }
+.simulator-panel h2 { margin: 5px 0 8px; font: 700 1.75em/1 Georgia, serif; }
+.simulator-panel p { margin-top: 0; color: #9fa9a1; font-size: .78em; line-height: 1.5; }
+.file-picker { margin: 17px 0; border-color: #657368; color: #e2e8dc; background: #202824; }
+.sim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.sim-grid label, .sim-area { display: grid; gap: 5px; color: #9fac9f; font-size: .65em; font-weight: 900; letter-spacing: .08em; }
+.sim-grid input, .sim-grid select, .sim-area select { width: 100%; min-width: 0; height: 35px; padding: 0 8px; border: 1px solid #4a5750; background: #0d1210; color: #eef2e9; }
+.sim-check { display: flex; align-items: center; gap: 9px; margin: 14px 0; font-size: .77em; }
+.sim-check input { position: absolute; opacity: 0; }
+.sim-check i { width: 18px; height: 18px; border: 1px solid #657368; }
+.sim-check input:checked + i { background: var(--acid-deep); box-shadow: inset 0 0 0 4px #151b18; }
+.sim-area { margin-bottom: 14px; }
+.generate-button, .end-button { width: 100%; min-height: 44px; }
+.generate-button { border: 0; background: var(--acid); color: var(--forest-950); font-weight: 950; letter-spacing: .055em; }
+.generate-button:disabled { opacity: .35; cursor: not-allowed; }
+.end-button { margin-top: 7px; border: 1px solid #814145; background: transparent; color: #e79794; font-size: .72em; font-weight: 900; letter-spacing: .08em; }
+.simulator-panel footer { display: flex; align-items: center; gap: 7px; margin-top: 16px; color: #89968e; font-size: .68em; }
+.simulator-panel footer span { width: 7px; height: 7px; border-radius: 50%; background: #6f7772; }
+.simulator-panel footer .ready-dot { background: #9bd262; box-shadow: 0 0 9px #9bd262; }
+.loaded-rom { display: grid; gap: 4px; margin: 13px 0 0; padding: 10px; border-left: 3px solid var(--acid-deep); background: #202824; }
+.loaded-rom small { color: var(--acid); font-size: .61em; font-weight: 900; letter-spacing: .12em; }
+.loaded-rom strong { overflow-wrap: anywhere; color: #eef2e9; font-size: .74em; line-height: 1.35; }
+.loaded-rom span { color: #93a098; font-size: .61em; letter-spacing: .04em; }
+.diagnostic-button { width: 100%; min-height: 36px; margin-top: 12px; border: 1px solid #58675f; color: #dce4d8; background: #202824; font-size: .68em; font-weight: 900; letter-spacing: .08em; }
+.diagnostic-status { display: block; margin-top: 6px; color: #aabaad; font-size: .65em; }
+.sim-attack { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid #39433e; }
+
+@media (max-width: 850px) {
+  .lab-shell { align-items: stretch; gap: 12px; padding: 10px; }
+  .simulator-panel { width: 270px; max-height: calc(100vh - 20px); }
+  .device-shell { width: calc(100vw - 302px); height: calc(100vh - 20px); min-height: 460px; }
+}
+
+@media (max-width: 650px) {
+  body { overflow: auto; }
+  .lab-shell { flex-direction: column-reverse; align-items: center; }
+  .device-shell { width: min(100%, 560px); height: 640px; }
+  .simulator-panel { width: min(100%, 560px); max-height: none; }
+}
