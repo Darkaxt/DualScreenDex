@@ -1,5 +1,8 @@
 package com.enrpau.dualscreendex.server
 
+import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -22,6 +25,28 @@ class ServerContractTest {
             val bootstrap = URI("http://127.0.0.1:${server.address.port}/api/bootstrap").toURL().readText()
             assertTrue(bootstrap.contains("\"battle\":null"))
             assertTrue(bootstrap.contains("\"selectedSpeciesId\":null"))
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun servesCopyableCatalogDiagnosticsWithoutRomBytes() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val runtime = DualDexRuntime()
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog("sha256", EngineFamily.EMERALD, Platform.GBA, romCrc32 = "89ABCDEF"),
+        )
+        val server = DualDexServer(runtime, root, 0)
+        try {
+            server.start()
+            val diagnostics = URI("http://127.0.0.1:${server.address.port}/api/diagnostics").toURL().readText()
+            assertTrue(diagnostics.contains("\"romName\":\"fixture.gba\""))
+            assertTrue(diagnostics.contains("\"sha256\":\"sha256\""))
+            assertTrue(diagnostics.contains("\"crc32\":\"89ABCDEF\""))
+            assertTrue(!diagnostics.contains("romBytes"))
         } finally {
             server.close()
             Files.deleteIfExists(root)

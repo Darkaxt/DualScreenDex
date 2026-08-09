@@ -309,7 +309,13 @@ The combined level prefix and innate tier dominate the page and are readable wit
 
 The default view lists frequency, encounter count, last-seen recency, move name, and type. Selecting a move opens the complete ROM-derived move detail. An empty state says that no move has been observed from this species/form yet.
 
-### 7.6 Settings page
+### 7.6 Ability detail
+
+A valid ability listed in a captured species' More tab opens a focused detail page. It shows the ROM-derived name, nonzero ID, description, and captured species known to have that ability. Ability ID `0` represents no ability and is excluded at the parser boundary.
+
+Optional structured mechanics—activation threshold, affected type/stat, multiplier, probability, duration, immunity, and target—may be shown even when the original prose omits their numbers, but only when `ABILITY_MECHANICS` validates the exact compiled battle routine and constants. This capability is independent from ability names and descriptions. Family defaults and modern-series reference values must not be presented as ROM truth. In Organic mode these complete static details unlock with capture, consistent with the omniscient captured Pokédex policy.
+
+### 7.7 Settings page
 
 Settings are divided into focused groups.
 
@@ -341,13 +347,13 @@ Settings are divided into focused groups.
 - Re-run runtime mapping.
 - Export a sanitized diagnostic bundle.
 
-### 7.7 Auto density
+### 7.8 Auto density
 
 Auto density chooses a compact or comfortable layout from usable width, height, display density, system font scale, and enabled feature count. It may change spacing, card arrangement, and whether secondary text scrolls. It may not reduce required touch targets or primary text below accessibility minimums.
 
 The UI test matrix covers dual-screen landscape displays, external displays, and large Android font scales. No layout assumes that the reference handheld's physical size is universal.
 
-### 7.8 Type presentation and recruitment filters
+### 7.9 Type presentation and recruitment filters
 
 Type chips use a validated ROM-extracted presentation palette when available, then a detected official-family palette, then a deterministic accessible fallback for hack-defined types. Palette source is capability evidence and never affects type mechanics.
 

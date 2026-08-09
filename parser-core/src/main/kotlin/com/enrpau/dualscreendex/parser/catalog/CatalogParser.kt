@@ -17,29 +17,67 @@ data class CatalogParseResult(
     val catalog: ParsedCatalog?,
 )
 
+enum class CatalogMaterializationPhase { ESSENTIAL, SPECIES_MEDIA, RELATIONSHIPS, EXTENDED, COMPLETE }
+
+data class CatalogMaterializationProgress(
+    val phase: CatalogMaterializationPhase,
+    val completedUnits: Int,
+    val totalUnits: Int,
+    val catalog: ParsedCatalog,
+)
+
 object CatalogParser {
-    fun parse(rom: RomImage): CatalogParseResult {
+    fun parse(
+        rom: RomImage,
+        onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+    ): CatalogParseResult {
         val analysis = ParserOrchestrator.analyze(rom)
         if (analysis.status != SelectionStatus.SELECTED || analysis.selectedFamily == null) {
             return CatalogParseResult(analysis, null, null)
         }
         val layout = analysis.probes.singleOrNull { it.family == analysis.selectedFamily }?.resolvedLayout
             ?: return CatalogParseResult(analysis, null, null)
-        return CatalogParseResult(analysis, layout, CatalogMaterializer.materialize(rom, analysis, layout))
+        return CatalogParseResult(analysis, layout, CatalogMaterializer.materialize(rom, analysis, layout, onProgress))
     }
 }
 
 object CatalogMaterializer {
-    fun materialize(rom: RomImage, analysis: ParseResult, layout: ResolvedRomLayout): ParsedCatalog {
-        val descriptions = RelationshipMaterializers.descriptions(rom, layout)
-        val evolutions = RelationshipMaterializers.evolutions(rom, layout)
-        val learnsets = RelationshipMaterializers.learnsets(rom, layout)
-        val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
-        val moveDescriptions = MoveDescriptionMaterializer.materialize(rom, layout)
-        val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
-        val sprites = SpriteMaterializer.pokemon(rom, layout)
+    fun materialize(
+        rom: RomImage,
+        analysis: ParseResult,
+        layout: ResolvedRomLayout,
+        onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+    ): ParsedCatalog {
         val baseSpecies = RecordMaterializers.species(rom, layout)
-        val species = baseSpecies.mapValues { (id, record) ->
+        val rawMoves = RecordMaterializers.moves(rom, layout)
+        val chart = RecordMaterializers.typeChart(rom, layout)
+        val types = TypePresentationMaterializer.apply(RecordMaterializers.types(layout, baseSpecies, chart, rawMoves))
+        val abilities = RecordMaterializers.abilities(rom, layout)
+        val initialCapabilities = analysis.capabilities.associateBy { it.capability }.toMutableMap().also { capabilities ->
+            capabilities[RomCapability.TYPE_PRESENTATION] = collectionCapability(
+                RomCapability.TYPE_PRESENTATION,
+                types.values.count { it.presentation.status == CapabilityStatus.AVAILABLE },
+                "family type colors with explicit accessible fallback for custom IDs",
+                "no materialized types were available for presentation",
+            )
+        }
+        val essentialCatalog = ParsedCatalog(
+            romSha256 = analysis.sha256,
+            family = layout.family,
+            platform = layout.platform,
+            romCrc32 = analysis.crc32,
+            speciesById = baseSpecies,
+            movesById = rawMoves,
+            typesById = types,
+            abilitiesById = abilities,
+            typeChart = chart,
+            capabilities = initialCapabilities,
+        )
+        onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, essentialCatalog))
+
+        val descriptions = RelationshipMaterializers.descriptions(rom, layout)
+        val sprites = SpriteMaterializer.pokemon(rom, layout)
+        val mediaSpecies = baseSpecies.mapValues { (id, record) ->
             val dex = record.dexNumber.value ?: id
             val description = descriptions[if (layout.generation == 3) dex else id]
             val sprite = sprites[if (layout.generation == 1) dex else id]
@@ -52,6 +90,16 @@ object CatalogMaterializer {
                     ?: CatalogField.notFound("height could not be decoded for species $id"),
                 weight = description?.weight?.let(CatalogField.Companion::available)
                     ?: CatalogField.notFound("weight could not be decoded for species $id"),
+            )
+        }
+        val mediaCatalog = essentialCatalog.copy(speciesById = mediaSpecies)
+        onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.SPECIES_MEDIA, 2, 5, mediaCatalog))
+
+        val evolutions = RelationshipMaterializers.evolutions(rom, layout)
+        val learnsets = RelationshipMaterializers.learnsets(rom, layout)
+        val encounters = EncounterMaterializer.materialize(rom, layout)
+        val relationshipSpecies = mediaSpecies.mapValues { (id, record) ->
+            record.copy(
                 evolutionEdges = if (layout.tables.evolutions != null) {
                     CatalogField.available(evolutions[id].orEmpty())
                 } else {
@@ -62,6 +110,20 @@ object CatalogMaterializer {
                 } else {
                     CatalogField.notFound("learnset table was not resolved")
                 },
+            )
+        }
+        val relationshipCatalog = mediaCatalog.copy(
+            speciesById = relationshipSpecies,
+            encounterAreas = encounters,
+        )
+        onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.RELATIONSHIPS, 3, 5, relationshipCatalog))
+
+        val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
+        val moveDescriptions = MoveDescriptionMaterializer.materialize(rom, layout)
+        val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
+        val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
+        val species = relationshipSpecies.mapValues { (id, record) ->
+            record.copy(
                 moveAcquisitions = if (moveAcquisitions.evidence.values.any { it.compatible }) {
                     CatalogField.available(moveAcquisitions.acquisitionsBySpecies[id].orEmpty())
                 } else {
@@ -69,7 +131,7 @@ object CatalogMaterializer {
                 },
             )
         }
-        val moves = RecordMaterializers.moves(rom, layout).mapValues { (id, move) ->
+        val moves = rawMoves.mapValues { (id, move) ->
             val effectText = moveDescriptions?.descriptions?.get(id)
             move.copy(
                 effectText = when {
@@ -81,11 +143,18 @@ object CatalogMaterializer {
                 },
             )
         }
-        val chart = RecordMaterializers.typeChart(rom, layout)
-        val types = TypePresentationMaterializer.apply(RecordMaterializers.types(layout, species, chart, moves))
-        val encounters = EncounterMaterializer.materialize(rom, layout)
+        val enrichedAbilities = abilities.mapValues { (id, ability) ->
+            val description = abilityDescriptions?.descriptions?.get(id)
+            ability.copy(
+                description = when {
+                    description != null -> CatalogField.available(description)
+                    layout.generation < 3 -> CatalogField.notApplicable("abilities are not part of this engine")
+                    else -> CatalogField.notFound("ability description was not resolved from the ROM")
+                },
+            )
+        }
         val balls = if (layout.generation == 3) BallSpriteMaterializer.captureBalls(rom) else emptyMap()
-        val capabilities = analysis.capabilities.associateBy { it.capability }.toMutableMap()
+        val capabilities = initialCapabilities.toMutableMap()
         capabilities[RomCapability.MOVE_DESCRIPTIONS] = if (moveDescriptions != null) {
             CapabilityEvidence(
                 capability = RomCapability.MOVE_DESCRIPTIONS,
@@ -108,18 +177,34 @@ object CatalogMaterializer {
                 status = if (layout.generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
             )
         }
+        capabilities[RomCapability.ABILITY_DESCRIPTIONS] = if (abilityDescriptions != null) {
+            CapabilityEvidence(
+                capability = RomCapability.ABILITY_DESCRIPTIONS,
+                compatible = true,
+                confidence = abilityDescriptions.confidence,
+                offset = abilityDescriptions.sourceOffset,
+                count = abilityDescriptions.descriptions.size,
+                reasons = listOf("decoded a validated ability-description pointer table"),
+                status = CapabilityStatus.AVAILABLE,
+            )
+        } else {
+            CapabilityEvidence(
+                capability = RomCapability.ABILITY_DESCRIPTIONS,
+                compatible = false,
+                confidence = 0.0,
+                reasons = listOf(
+                    if (layout.generation < 3) "abilities are not part of this engine"
+                    else "ability-description pointer table was not resolved",
+                ),
+                status = if (layout.generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
+            )
+        }
         moveAcquisitions.evidence.values.forEach { evidence -> capabilities[evidence.capability] = evidence }
         capabilities[RomCapability.AREA_ENCOUNTERS] = collectionCapability(
             RomCapability.AREA_ENCOUNTERS,
             encounters.size,
             "structurally decoded encounter areas",
             "encounter tables were not located",
-        )
-        capabilities[RomCapability.TYPE_PRESENTATION] = collectionCapability(
-            RomCapability.TYPE_PRESENTATION,
-            types.values.count { it.presentation.status == CapabilityStatus.AVAILABLE },
-            "family type colors with explicit accessible fallback for custom IDs",
-            "no materialized types were available for presentation",
         )
         capabilities[RomCapability.BALL_CATALOG] = if (balls.values.any { it.sprite.status == CapabilityStatus.AVAILABLE }) {
             CapabilityEvidence(
@@ -142,7 +227,7 @@ object CatalogMaterializer {
                 status = if (layout.generation == 3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
             )
         }
-        return ParsedCatalog(
+        val catalog = ParsedCatalog(
             romSha256 = analysis.sha256,
             family = layout.family,
             platform = layout.platform,
@@ -150,7 +235,7 @@ object CatalogMaterializer {
             speciesById = species,
             movesById = moves,
             typesById = types,
-            abilitiesById = RecordMaterializers.abilities(rom, layout),
+            abilitiesById = enrichedAbilities,
             typeChart = chart,
             encounterAreas = encounters,
             captureBallsById = balls,
@@ -163,6 +248,12 @@ object CatalogMaterializer {
                             "confidence=${"%.3f".format(java.util.Locale.ROOT, it.confidence)}",
                     )
                 }
+                abilityDescriptions?.let {
+                    add(
+                        "ability descriptions: offset=0x${it.sourceOffset.toString(16)} " +
+                            "confidence=${"%.3f".format(java.util.Locale.ROOT, it.confidence)}",
+                    )
+                }
                 learnsetRulesets.forEach {
                     add(
                         "learnset ruleset ${it.id}: offset=0x${it.sourceOffset.toString(16)} " +
@@ -171,6 +262,9 @@ object CatalogMaterializer {
                 }
             },
         )
+        onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.EXTENDED, 4, 5, catalog))
+        onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, catalog))
+        return catalog
     }
 
     private fun collectionCapability(

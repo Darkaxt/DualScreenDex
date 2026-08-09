@@ -11,6 +11,11 @@ export interface Species {
   height: number | null;
   weight: number | null;
   learnset: { level: number; moveId: number }[];
+  learnsets: Record<string, { level: number; moveId: number }[]>;
+  normalizedLearnsets: Record<string, { moveId: number; initial: boolean; levels: number[]; label: string }[]>;
+  moveAcquisitions: { moveId: number; method: 'EGG' | 'MACHINE' | 'TUTOR'; sourceId: number | null }[];
+  abilities: { id: number; name: string; description: string | null }[];
+  evolutions: { targetSpeciesId: number; targetName: string; methodId: number; parameter: number; condition: string }[];
   hasSprite: boolean;
 }
 
@@ -23,6 +28,8 @@ export interface Move {
   accuracy: number | null;
   pp: number | null;
   priority: number | null;
+  effectId: number | null;
+  description: string | null;
 }
 
 export interface TypeInfo {
@@ -35,12 +42,14 @@ export interface TypeInfo {
 
 export interface Catalog {
   hash: string;
+  crc32: string;
   family: string;
   platform: string;
+  rulesets: { id: string; label: string; sourceOffset: number; confidence: number; primary: boolean }[];
   species: Species[];
   moves: Move[];
   types: TypeInfo[];
-  areas: { id: number; name: string; speciesIds: number[] }[];
+  areas: { id: number; name: string; methodId: number; speciesIds: number[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
   capabilities: Record<string, string>;
 }
@@ -54,6 +63,7 @@ export interface Settings {
   density: 'AUTO' | 'COMFORTABLE' | 'COMPACT';
   highContrast: boolean;
   autoOpenTarget: boolean;
+  ruleset: string;
 }
 
 export interface SpeciesState {
@@ -84,6 +94,9 @@ export interface State {
   catalogReady: boolean;
   catalogName: string | null;
   error: string | null;
+  activeRulesetId: string | null;
+  rulesetAssumed: boolean;
+  loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number };
 }
 
 export interface Bootstrap {

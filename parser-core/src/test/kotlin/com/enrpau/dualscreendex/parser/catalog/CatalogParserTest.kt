@@ -11,6 +11,7 @@ import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogParserTest {
@@ -67,6 +68,50 @@ class CatalogParserTest {
         assertEquals(SelectionStatus.NO_FAMILY_MATCH, result.analysis.status)
         assertNull(result.catalog)
         assertNull(result.layout)
+    }
+
+    @Test
+    fun materializerPublishesANavigableEssentialCatalogBeforeCompletion() {
+        val bytes = ByteArray(256) { 0xFF.toByte() }
+        encodeGbaText(bytes, 0, "NONE")
+        encodeGbaText(bytes, 11, "BULBA")
+        val stats = 64
+        repeat(6) { bytes[stats + 28 + it] = (40 + it).toByte() }
+        bytes[stats + 34] = 12
+        bytes[stats + 35] = 3
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD,
+            3,
+            Platform.GBA,
+            2,
+            0,
+            ProfileTables(
+                speciesNames = TableLayout(0, 2, 11),
+                baseStats = TableLayout(stats, 2, 28),
+            ),
+        )
+        val rom = RomImage(bytes)
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"),
+            rom.sha256,
+            rom.crc32,
+            rom.size,
+            SelectionStatus.SELECTED,
+            EngineFamily.EMERALD,
+            null,
+            20,
+            emptyList(),
+            emptyList(),
+        )
+        val updates = mutableListOf<CatalogMaterializationProgress>()
+
+        val final = CatalogMaterializer.materialize(rom, analysis, layout, updates::add)
+
+        assertEquals(CatalogMaterializationPhase.ESSENTIAL, updates.first().phase)
+        assertEquals("BULBA", updates.first().catalog.navigableSpecies().single().name.value)
+        assertTrue(updates.first().catalog.navigableSpecies().single().description.value == null)
+        assertEquals(CatalogMaterializationPhase.COMPLETE, updates.last().phase)
+        assertEquals(final, updates.last().catalog)
     }
 
     private fun encodeGbaText(target: ByteArray, offset: Int, value: String) {

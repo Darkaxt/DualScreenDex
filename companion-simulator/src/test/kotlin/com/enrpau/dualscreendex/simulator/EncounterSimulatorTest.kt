@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.simulator
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.LearnsetEntry
+import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
@@ -43,6 +44,36 @@ class EncounterSimulatorTest {
         assertTrue(generationThree.battle.opponents.single().dvs.isEmpty())
         assertEquals(generationOne.battle.opponents.single().dvs, generationOne.ledger.owned.first().dvs)
         assertEquals(generationThree.battle.opponents.single().ivs, generationThree.ledger.owned.first().ivs)
+    }
+
+    @Test
+    fun usesTheSelectedResidentRulesetWithoutRebuildingTheCatalog() {
+        val base = catalog()
+        val variants = listOf(
+            LearnsetRuleset(
+                id = "base",
+                label = "Base",
+                sourceOffset = 100,
+                confidence = 1.0,
+                entriesBySpecies = base.speciesById.mapValues { listOf(LearnsetEntry(5, 1)) },
+                primary = true,
+            ),
+            LearnsetRuleset(
+                id = "expanded",
+                label = "Expanded",
+                sourceOffset = 200,
+                confidence = 1.0,
+                entriesBySpecies = base.speciesById.mapValues { listOf(LearnsetEntry(5, 2)) },
+            ),
+        )
+        val simulator = EncounterSimulator(base.copy(learnsetRulesets = variants))
+        val request = SimulationRequest(seed = 44, minimumLevel = 10, maximumLevel = 10)
+
+        val original = simulator.generate(request, activeRulesetId = "base")
+        val expanded = simulator.generate(request, activeRulesetId = "expanded")
+
+        assertTrue(original.battle.opponents.single().moveHistory.all { it.moveId == 1 })
+        assertTrue(expanded.battle.opponents.single().moveHistory.all { it.moveId == 2 })
     }
 
     private fun catalog(platform: Platform = Platform.GBA): ParsedCatalog {

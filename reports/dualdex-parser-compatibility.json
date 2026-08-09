@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "minimumParserScore": 75,
   "minimumRunnerUpMargin": 10,
   "roots": [
@@ -12,7 +12,7 @@
       "displayName": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
       "source": "Hacks/Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip",
       "archiveEntry": "Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
-      "durationMillis": 16172,
+      "durationMillis": 18767,
       "result": {
         "header": {
           "platform": "GBA",
@@ -1084,6 +1084,17 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 7233972,
+            "count": 377,
+            "reasons": [
+              "decoded a validated move-description pointer table"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 1.0,
@@ -1094,6 +1105,35 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 7221856,
+            "count": 1384,
+            "reasons": [
+              "validated sentinel-delimited ROM egg-move list"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
             "compatible": true,
             "confidence": 0.9878048780487805,
@@ -1101,6 +1141,17 @@
             "count": 82,
             "recordSize": 13,
             "reasons": [],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 6814040,
+            "count": 81,
+            "reasons": [
+              "decoded a validated ability-description pointer table"
+            ],
             "status": "AVAILABLE"
           },
           {
@@ -1144,11 +1195,17 @@
         "speciesWithDescriptions": 428,
         "evolutionEdges": 217,
         "learnsetEntries": 4559,
+        "learnsetRulesets": 2,
         "moves": 377,
         "movesWithDetails": 377,
+        "movesWithDescriptions": 377,
+        "eggMoveLinks": 1382,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 26,
         "typeMatchups": 116,
-        "abilities": 82,
+        "abilities": 81,
+        "abilitiesWithDescriptions": 81,
         "captureBalls": 12,
         "encounterAreas": 231
       }
@@ -1157,7 +1214,7 @@
       "displayName": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
       "source": "Hacks/Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip",
       "archiveEntry": "Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba",
-      "durationMillis": 13423,
+      "durationMillis": 19735,
       "result": {
         "header": {
           "platform": "GBA",
@@ -2227,6 +2284,17 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 0.9354838709677419,
+            "offset": 21192628,
+            "count": 812,
+            "reasons": [
+              "decoded a validated move-description pointer table"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 1.0,
@@ -2237,6 +2305,35 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": true,
+            "confidence": 0.5205047318611987,
+            "offset": 2486028,
+            "count": 973,
+            "reasons": [
+              "validated sentinel-delimited ROM egg-move list"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
             "compatible": true,
             "confidence": 0.9922480620155039,
@@ -2245,6 +2342,15 @@
             "recordSize": 13,
             "reasons": [],
             "status": "AVAILABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "ability-description pointer table was not resolved"
+            ],
+            "status": "NOT_FOUND"
           },
           {
             "capability": "AREA_ENCOUNTERS",
@@ -2287,11 +2393,17 @@
         "speciesWithDescriptions": 873,
         "evolutionEdges": 728,
         "learnsetEntries": 19879,
+        "learnsetRulesets": 1,
         "moves": 868,
         "movesWithDetails": 868,
+        "movesWithDescriptions": 812,
+        "eggMoveLinks": 973,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 19,
         "typeMatchups": 108,
-        "abilities": 258,
+        "abilities": 257,
+        "abilitiesWithDescriptions": 0,
         "captureBalls": 12,
         "encounterAreas": 97
       }
@@ -2300,7 +2412,7 @@
       "displayName": "Pokemon Unbound.zip!Pokemon Unbound.gba",
       "source": "Hacks/Pokemon Unbound.zip",
       "archiveEntry": "Pokemon Unbound.gba",
-      "durationMillis": 9878,
+      "durationMillis": 21566,
       "result": {
         "header": {
           "platform": "GBA",
@@ -3367,6 +3479,17 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 0.9053069719042663,
+            "offset": 10088844,
+            "count": 870,
+            "reasons": [
+              "decoded a validated move-description pointer table"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 0.9976869699306091,
@@ -3377,6 +3500,35 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 27202420,
+            "count": 3954,
+            "reasons": [
+              "validated sentinel-delimited ROM egg-move list"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
             "compatible": true,
             "confidence": 0.9483282674772037,
@@ -3385,6 +3537,15 @@
             "recordSize": 17,
             "reasons": [],
             "status": "AVAILABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "ability-description pointer table was not resolved"
+            ],
+            "status": "NOT_FOUND"
           },
           {
             "capability": "AREA_ENCOUNTERS",
@@ -3427,11 +3588,17 @@
         "speciesWithDescriptions": 882,
         "evolutionEdges": 780,
         "learnsetEntries": 21874,
+        "learnsetRulesets": 1,
         "moves": 961,
         "movesWithDetails": 961,
+        "movesWithDescriptions": 870,
+        "eggMoveLinks": 3954,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 41,
         "typeMatchups": 128,
-        "abilities": 329,
+        "abilities": 328,
+        "abilitiesWithDescriptions": 0,
         "captureBalls": 12,
         "encounterAreas": 339
       }
@@ -3440,7 +3607,7 @@
       "displayName": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb",
       "source": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb",
-      "durationMillis": 554,
+      "durationMillis": 1545,
       "result": {
         "header": {
           "platform": "GB",
@@ -4799,6 +4966,15 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "this engine has no compatible move-description pointer table"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 1.0,
@@ -4809,7 +4985,43 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "breeding is not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "move tutors are not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
             "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "abilities are not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
             "compatible": false,
             "confidence": 0.0,
             "reasons": [
@@ -4857,11 +5069,17 @@
         "speciesWithDescriptions": 151,
         "evolutionEdges": 72,
         "learnsetEntries": 728,
+        "learnsetRulesets": 1,
         "moves": 165,
         "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 15,
         "typeMatchups": 82,
         "abilities": 0,
+        "abilitiesWithDescriptions": 0,
         "captureBalls": 0,
         "encounterAreas": 58
       }
@@ -4870,7 +5088,7 @@
       "displayName": "Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc",
       "source": "Pokemon - Crystal Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc",
-      "durationMillis": 959,
+      "durationMillis": 4773,
       "result": {
         "header": {
           "platform": "GBC",
@@ -6240,6 +6458,15 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "this engine has no compatible move-description pointer table"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 0.9960159362549801,
@@ -6250,7 +6477,43 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "egg-move table was not resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "abilities are not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
             "compatible": false,
             "confidence": 0.0,
             "reasons": [
@@ -6298,11 +6561,17 @@
         "speciesWithDescriptions": 251,
         "evolutionEdges": 122,
         "learnsetEntries": 2215,
+        "learnsetRulesets": 1,
         "moves": 251,
         "movesWithDetails": 251,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 18,
         "typeMatchups": 108,
         "abilities": 0,
+        "abilitiesWithDescriptions": 0,
         "captureBalls": 0,
         "encounterAreas": 335
       }
@@ -6311,7 +6580,7 @@
       "displayName": "Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba",
       "source": "Pokemon - Emerald Version (USA, Europe).zip",
       "archiveEntry": "Pokemon - Emerald Version (USA, Europe).gba",
-      "durationMillis": 6050,
+      "durationMillis": 9421,
       "result": {
         "header": {
           "platform": "GBA",
@@ -7373,6 +7642,17 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 6407460,
+            "count": 354,
+            "reasons": [
+              "decoded a validated move-description pointer table"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 1.0,
@@ -7383,6 +7663,35 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 3321304,
+            "count": 973,
+            "reasons": [
+              "validated sentinel-delimited ROM egg-move list"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
             "compatible": true,
             "confidence": 1.0,
@@ -7390,6 +7699,17 @@
             "count": 78,
             "recordSize": 13,
             "reasons": [],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 3259092,
+            "count": 77,
+            "reasons": [
+              "decoded a validated ability-description pointer table"
+            ],
             "status": "AVAILABLE"
           },
           {
@@ -7433,11 +7753,17 @@
         "speciesWithDescriptions": 386,
         "evolutionEdges": 184,
         "learnsetEntries": 3947,
+        "learnsetRulesets": 1,
         "moves": 354,
         "movesWithDetails": 354,
+        "movesWithDescriptions": 354,
+        "eggMoveLinks": 973,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 18,
         "typeMatchups": 108,
-        "abilities": 78,
+        "abilities": 77,
+        "abilitiesWithDescriptions": 77,
         "captureBalls": 12,
         "encounterAreas": 201
       }
@@ -7446,7 +7772,7 @@
       "displayName": "Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - FireRed Version (USA).zip",
       "archiveEntry": "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 3624,
+      "durationMillis": 5311,
       "result": {
         "header": {
           "platform": "GBA",
@@ -8508,6 +8834,17 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 4753224,
+            "count": 354,
+            "reasons": [
+              "decoded a validated move-description pointer table"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 1.0,
@@ -8518,6 +8855,35 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2486140,
+            "count": 973,
+            "reasons": [
+              "validated sentinel-delimited ROM egg-move list"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
             "compatible": true,
             "confidence": 1.0,
@@ -8525,6 +8891,17 @@
             "count": 78,
             "recordSize": 13,
             "reasons": [],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2423672,
+            "count": 77,
+            "reasons": [
+              "decoded a validated ability-description pointer table"
+            ],
             "status": "AVAILABLE"
           },
           {
@@ -8568,11 +8945,17 @@
         "speciesWithDescriptions": 386,
         "evolutionEdges": 184,
         "learnsetEntries": 4011,
+        "learnsetRulesets": 1,
         "moves": 354,
         "movesWithDetails": 354,
+        "movesWithDescriptions": 354,
+        "eggMoveLinks": 973,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 18,
         "typeMatchups": 108,
-        "abilities": 78,
+        "abilities": 77,
+        "abilitiesWithDescriptions": 77,
         "captureBalls": 12,
         "encounterAreas": 219
       }
@@ -8581,7 +8964,7 @@
       "displayName": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 983,
+      "durationMillis": 3333,
       "result": {
         "header": {
           "platform": "GBC",
@@ -9951,6 +10334,15 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "this engine has no compatible move-description pointer table"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 0.9960159362549801,
@@ -9961,7 +10353,43 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "egg-move table was not resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "abilities are not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
             "compatible": false,
             "confidence": 0.0,
             "reasons": [
@@ -10009,11 +10437,17 @@
         "speciesWithDescriptions": 251,
         "evolutionEdges": 122,
         "learnsetEntries": 2207,
+        "learnsetRulesets": 1,
         "moves": 251,
         "movesWithDetails": 251,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 18,
         "typeMatchups": 108,
         "abilities": 0,
+        "abilitiesWithDescriptions": 0,
         "captureBalls": 0,
         "encounterAreas": 335
       }
@@ -10022,7 +10456,7 @@
       "displayName": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
       "source": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip",
       "archiveEntry": "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
-      "durationMillis": 3918,
+      "durationMillis": 4686,
       "result": {
         "header": {
           "platform": "GBA",
@@ -11084,6 +11518,17 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 4751412,
+            "count": 354,
+            "reasons": [
+              "decoded a validated move-description pointer table"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 1.0,
@@ -11094,6 +11539,35 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2486108,
+            "count": 973,
+            "reasons": [
+              "validated sentinel-delimited ROM egg-move list"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
             "compatible": true,
             "confidence": 1.0,
@@ -11101,6 +11575,17 @@
             "count": 78,
             "recordSize": 13,
             "reasons": [],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2423636,
+            "count": 77,
+            "reasons": [
+              "decoded a validated ability-description pointer table"
+            ],
             "status": "AVAILABLE"
           },
           {
@@ -11144,11 +11629,17 @@
         "speciesWithDescriptions": 386,
         "evolutionEdges": 184,
         "learnsetEntries": 4013,
+        "learnsetRulesets": 1,
         "moves": 354,
         "movesWithDetails": 354,
+        "movesWithDescriptions": 354,
+        "eggMoveLinks": 973,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 18,
         "typeMatchups": 108,
-        "abilities": 78,
+        "abilities": 77,
+        "abilitiesWithDescriptions": 77,
         "captureBalls": 12,
         "encounterAreas": 219
       }
@@ -11157,7 +11648,7 @@
       "displayName": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb",
       "source": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb",
-      "durationMillis": 545,
+      "durationMillis": 1047,
       "result": {
         "header": {
           "platform": "GB",
@@ -12516,6 +13007,15 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "this engine has no compatible move-description pointer table"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 1.0,
@@ -12526,7 +13026,43 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "breeding is not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "move tutors are not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
             "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "abilities are not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
             "compatible": false,
             "confidence": 0.0,
             "reasons": [
@@ -12574,11 +13110,17 @@
         "speciesWithDescriptions": 151,
         "evolutionEdges": 72,
         "learnsetEntries": 728,
+        "learnsetRulesets": 1,
         "moves": 165,
         "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 15,
         "typeMatchups": 82,
         "abilities": 0,
+        "abilitiesWithDescriptions": 0,
         "captureBalls": 0,
         "encounterAreas": 58
       }
@@ -12587,7 +13129,7 @@
       "displayName": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Ruby Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 3727,
+      "durationMillis": 4231,
       "result": {
         "header": {
           "platform": "GBA",
@@ -13684,6 +14226,17 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 3934708,
+            "count": 354,
+            "reasons": [
+              "decoded a validated move-description pointer table"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 1.0,
@@ -13694,6 +14247,35 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2134516,
+            "count": 973,
+            "reasons": [
+              "validated sentinel-delimited ROM egg-move list"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
             "compatible": true,
             "confidence": 1.0,
@@ -13701,6 +14283,17 @@
             "count": 78,
             "recordSize": 13,
             "reasons": [],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2072872,
+            "count": 77,
+            "reasons": [
+              "decoded a validated ability-description pointer table"
+            ],
             "status": "AVAILABLE"
           },
           {
@@ -13744,11 +14337,17 @@
         "speciesWithDescriptions": 386,
         "evolutionEdges": 184,
         "learnsetEntries": 3947,
+        "learnsetRulesets": 1,
         "moves": 354,
         "movesWithDetails": 354,
+        "movesWithDescriptions": 354,
+        "eggMoveLinks": 973,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 18,
         "typeMatchups": 108,
-        "abilities": 78,
+        "abilities": 77,
+        "abilitiesWithDescriptions": 77,
         "captureBalls": 12,
         "encounterAreas": 179
       }
@@ -13757,7 +14356,7 @@
       "displayName": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
       "source": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip",
       "archiveEntry": "Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
-      "durationMillis": 4377,
+      "durationMillis": 4124,
       "result": {
         "header": {
           "platform": "GBA",
@@ -14854,6 +15453,17 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 3934800,
+            "count": 354,
+            "reasons": [
+              "decoded a validated move-description pointer table"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 1.0,
@@ -14864,6 +15474,35 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2134404,
+            "count": 973,
+            "reasons": [
+              "validated sentinel-delimited ROM egg-move list"
+            ],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
             "compatible": true,
             "confidence": 1.0,
@@ -14871,6 +15510,17 @@
             "count": 78,
             "recordSize": 13,
             "reasons": [],
+            "status": "AVAILABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
+            "compatible": true,
+            "confidence": 1.0,
+            "offset": 2072760,
+            "count": 77,
+            "reasons": [
+              "decoded a validated ability-description pointer table"
+            ],
             "status": "AVAILABLE"
           },
           {
@@ -14914,11 +15564,17 @@
         "speciesWithDescriptions": 386,
         "evolutionEdges": 184,
         "learnsetEntries": 3947,
+        "learnsetRulesets": 1,
         "moves": 354,
         "movesWithDetails": 354,
+        "movesWithDescriptions": 354,
+        "eggMoveLinks": 973,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 18,
         "typeMatchups": 108,
-        "abilities": 78,
+        "abilities": 77,
+        "abilitiesWithDescriptions": 77,
         "captureBalls": 12,
         "encounterAreas": 179
       }
@@ -14927,7 +15583,7 @@
       "displayName": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
       "source": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip",
       "archiveEntry": "Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc",
-      "durationMillis": 831,
+      "durationMillis": 2565,
       "result": {
         "header": {
           "platform": "GBC",
@@ -16297,6 +16953,15 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "this engine has no compatible move-description pointer table"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 0.9960159362549801,
@@ -16307,7 +16972,43 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "egg-move table was not resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "tutor move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
             "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "abilities are not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
             "compatible": false,
             "confidence": 0.0,
             "reasons": [
@@ -16355,11 +17056,17 @@
         "speciesWithDescriptions": 251,
         "evolutionEdges": 122,
         "learnsetEntries": 2207,
+        "learnsetRulesets": 1,
         "moves": 251,
         "movesWithDetails": 251,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 18,
         "typeMatchups": 108,
         "abilities": 0,
+        "abilitiesWithDescriptions": 0,
         "captureBalls": 0,
         "encounterAreas": 335
       }
@@ -16368,7 +17075,7 @@
       "displayName": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb",
       "source": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip",
       "archiveEntry": "Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb",
-      "durationMillis": 1090,
+      "durationMillis": 1454,
       "result": {
         "header": {
           "platform": "GBC",
@@ -17727,6 +18434,15 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "MOVE_DESCRIPTIONS",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "this engine has no compatible move-description pointer table"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
             "capability": "LEARNSETS",
             "compatible": true,
             "confidence": 0.9947368421052631,
@@ -17737,7 +18453,43 @@
             "status": "AVAILABLE"
           },
           {
+            "capability": "EGG_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "breeding is not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "capability": "MACHINE_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "machine-move list and compatibility flags were not jointly resolved"
+            ],
+            "status": "NOT_FOUND"
+          },
+          {
+            "capability": "TUTOR_MOVES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "move tutors are not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
             "capability": "ABILITIES",
+            "compatible": false,
+            "confidence": 0.0,
+            "reasons": [
+              "abilities are not part of this engine"
+            ],
+            "status": "NOT_APPLICABLE"
+          },
+          {
+            "capability": "ABILITY_DESCRIPTIONS",
             "compatible": false,
             "confidence": 0.0,
             "reasons": [
@@ -17785,11 +18537,17 @@
         "speciesWithDescriptions": 151,
         "evolutionEdges": 72,
         "learnsetEntries": 755,
+        "learnsetRulesets": 1,
         "moves": 165,
         "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
         "types": 15,
         "typeMatchups": 82,
         "abilities": 0,
+        "abilitiesWithDescriptions": 0,
         "captureBalls": 0,
         "encounterAreas": 63
       }

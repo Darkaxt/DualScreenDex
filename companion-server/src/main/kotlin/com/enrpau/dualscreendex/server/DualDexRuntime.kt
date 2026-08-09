@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.server
 import com.enrpau.dualscreendex.companion.CompanionGateway
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.BattleTab
+import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
 import com.enrpau.dualscreendex.companion.model.CompanionAction
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
 import com.enrpau.dualscreendex.companion.model.Density
@@ -11,32 +12,82 @@ import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.MatchupKey
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
+import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.simulator.EncounterSimulator
 import com.enrpau.dualscreendex.simulator.SimulationRequest
 import java.nio.file.Path
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
 
-class DualDexRuntime {
+class DualDexRuntime(
+    private val parserWorker: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "dualdex-parser").apply { isDaemon = true }
+    },
+) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
     private var simulator: EncounterSimulator? = null
+    private val loadGeneration = AtomicLong()
     val gateway = CompanionGateway()
 
-    @Synchronized
     fun load(path: Path) = load(RomSourceLoader.load(path))
 
-    @Synchronized
     fun load(source: LoadedRom) {
         load(source.displayName, source.rom)
     }
 
-    @Synchronized
     fun load(name: String, rom: RomImage) {
-        val parsed = CatalogParser.parse(rom).catalog
-            ?: error("ROM did not produce a selected mainline-family catalog")
+        val generation = loadGeneration.incrementAndGet()
+        synchronized(this) {
+            catalog = null
+            simulator = null
+        }
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(active = true, phase = "IDENTIFYING", completedUnits = 0, totalUnits = 5),
+                name,
+            ),
+        )
+        parserWorker.execute {
+            try {
+                val parsed = CatalogParser.parse(rom) { progress -> publishProgress(generation, progress) }.catalog
+                    ?: error("ROM did not produce a selected mainline-family catalog")
+                if (generation != loadGeneration.get()) return@execute
+                synchronized(this) {
+                    catalog = parsed
+                    simulator = EncounterSimulator(parsed)
+                }
+                gateway.dispatch(CompanionAction.CatalogLoaded(name))
+                gateway.dispatch(
+                    CompanionAction.CatalogLoadingChanged(
+                        CatalogLoadingState(false, "COMPLETE", 5, 5),
+                        name,
+                    ),
+                )
+            } catch (failure: Exception) {
+                if (generation != loadGeneration.get()) return@execute
+                gateway.dispatch(CompanionAction.Failure(failure.message ?: failure.javaClass.simpleName))
+                gateway.dispatch(
+                    CompanionAction.CatalogLoadingChanged(
+                        CatalogLoadingState(false, "FAILED", 0, 5),
+                        name,
+                    ),
+                )
+            }
+        }
+    }
+
+    @Synchronized
+    fun loadCatalog(name: String, parsed: ParsedCatalog) {
+        loadGeneration.incrementAndGet()
         catalog = parsed
         simulator = EncounterSimulator(parsed)
         gateway.dispatch(CompanionAction.CatalogLoaded(name))
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(CatalogLoadingState(false, "CACHE", 5, 5), name),
+        )
     }
 
     @Synchronized
@@ -54,7 +105,8 @@ class DualDexRuntime {
             val move = battle.selectedMoveId
             if (target != null && move != null) simulator?.effectiveness(move, target.speciesId) else null
         } else null
-        return ApiViewBuilder.state(snapshot, catalog, truth)
+        val resolved = resolveRuleset(snapshot.settings.ruleset)
+        return ApiViewBuilder.state(snapshot, catalog, truth, resolved?.id, snapshot.settings.ruleset == "AUTO")
     }
 
     @Synchronized
@@ -72,6 +124,7 @@ class DualDexRuntime {
                         areaId = values["areaId"]?.toIntOrNull(),
                     ),
                     gateway.bootstrap().ledger,
+                    activeRulesetId = resolveRuleset(gateway.bootstrap().settings.ruleset)?.id,
                 )
                 gateway.dispatch(CompanionAction.ReplaceLedger(result.ledger))
                 gateway.dispatch(CompanionAction.BattleStarted(result.battle))
@@ -102,6 +155,25 @@ class DualDexRuntime {
     @Synchronized
     fun catalogHash(): String? = catalog?.romSha256
 
+    override fun close() {
+        parserWorker.shutdown()
+    }
+
+    @Synchronized
+    fun diagnostics(speciesId: Int?, moveId: Int?): DiagnosticView {
+        val current = requireNotNull(catalog) { "load a ROM before requesting diagnostics" }
+        val snapshot = gateway.bootstrap()
+        val active = resolveRuleset(snapshot.settings.ruleset)
+        return ApiViewBuilder.diagnostics(
+            current,
+            snapshot.catalogName,
+            active?.id,
+            snapshot.settings.ruleset == "AUTO",
+            speciesId,
+            moveId,
+        )
+    }
+
     private fun discoverCurrentMatchup() {
         val snapshot = gateway.bootstrap()
         val battle = snapshot.battle ?: return
@@ -120,6 +192,15 @@ class DualDexRuntime {
 
     private fun updateSettings(values: Map<String, String?>) {
         val current = gateway.bootstrap().settings
+        val ruleset = values["ruleset"]?.let { requested ->
+            if (requested.equals("AUTO", ignoreCase = true)) {
+                "AUTO"
+            } else {
+                requireNotNull(catalog?.learnsetRulesets?.firstOrNull { it.id == requested }) {
+                    "unknown catalog ruleset: $requested"
+                }.id
+            }
+        } ?: current.ruleset
         val settings = CompanionSettings(
             knowledgeMode = values["knowledgeMode"]?.let { KnowledgeMode.valueOf(it.uppercase()) } ?: current.knowledgeMode,
             attackEnabled = values["attackEnabled"]?.toBooleanStrictOrNull() ?: current.attackEnabled,
@@ -129,8 +210,35 @@ class DualDexRuntime {
             density = values["density"]?.let { Density.valueOf(it.uppercase()) } ?: current.density,
             highContrast = values["highContrast"]?.toBooleanStrictOrNull() ?: current.highContrast,
             autoOpenTarget = values["autoOpenTarget"]?.toBooleanStrictOrNull() ?: current.autoOpenTarget,
+            ruleset = ruleset,
         )
         gateway.dispatch(CompanionAction.UpdateSettings(settings))
+    }
+
+    private fun resolveRuleset(selection: String) = catalog?.learnsetRulesets?.let { rulesets ->
+        if (selection == "AUTO") {
+            rulesets.firstOrNull { it.primary } ?: rulesets.firstOrNull()
+        } else {
+            rulesets.firstOrNull { it.id == selection }
+        }
+    }
+
+    private fun publishProgress(generation: Long, progress: CatalogMaterializationProgress) {
+        if (generation != loadGeneration.get()) return
+        synchronized(this) {
+            catalog = progress.catalog
+            simulator = EncounterSimulator(progress.catalog)
+        }
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(
+                    active = progress.completedUnits < progress.totalUnits,
+                    phase = progress.phase.name,
+                    completedUnits = progress.completedUnits,
+                    totalUnits = progress.totalUnits,
+                ),
+            ),
+        )
     }
 
     private fun requireInt(values: Map<String, String?>, key: String): Int =

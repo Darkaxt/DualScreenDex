@@ -6,8 +6,9 @@ This report contains structural parser evidence only. It contains no decoded Pok
 
 - Inputs evaluated: 14
 - Selected: 14 (11 exact official, 3 structurally selected derivatives)
-- Complete for all applicable static datasets: 14
-- Selected with partial static datasets: 0
+- Complete core catalogs: 14
+- Complete for every applicable extended dataset: 0
+- Selected with one or more applicable `N/F` extended datasets: 14
 - Ambiguous: 0
 - Read/parse errors: 0
 - Selection rule: score >= 75, runner-up margin >= 10, and at least two validated anchors
@@ -39,22 +40,22 @@ This report contains structural parser evidence only. It contains no decoded Pok
 
 Counts prove records were decoded and joined; the report intentionally contains no copyrighted ROM text or pixels.
 
-| ROM | Species | Named | Stats | Sprites | Descriptions | Evolutions | Learnsets | Moves | Move details | Types | Matchups | Abilities | Balls | Areas |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | 428 | 428 | 428 | 428 | 428 | 217 | 4559 | 377 | 377 | 26 | 116 | 82 | 12 | 231 |
-| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | 1242 | 1242 | 1242 | 1242 | 873 | 728 | 19879 | 868 | 868 | 19 | 108 | 258 | 12 | 97 |
-| Pokemon Unbound.zip!Pokemon Unbound.gba | 1273 | 1273 | 1273 | 1270 | 882 | 780 | 21874 | 961 | 961 | 41 | 128 | 329 | 12 | 339 |
-| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | 151 | 151 | 151 | 150 | 151 | 72 | 728 | 165 | 165 | 15 | 82 | 0 | 0 | 58 |
-| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2215 | 251 | 251 | 18 | 108 | 0 | 0 | 335 |
-| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | 386 | 386 | 386 | 386 | 386 | 184 | 3947 | 354 | 354 | 18 | 108 | 78 | 12 | 201 |
-| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | 386 | 386 | 386 | 386 | 386 | 184 | 4011 | 354 | 354 | 18 | 108 | 78 | 12 | 219 |
-| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2207 | 251 | 251 | 18 | 108 | 0 | 0 | 335 |
-| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | 386 | 386 | 386 | 386 | 386 | 184 | 4013 | 354 | 354 | 18 | 108 | 78 | 12 | 219 |
-| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | 151 | 151 | 151 | 150 | 151 | 72 | 728 | 165 | 165 | 15 | 82 | 0 | 0 | 58 |
-| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | 386 | 386 | 386 | 386 | 386 | 184 | 3947 | 354 | 354 | 18 | 108 | 78 | 12 | 179 |
-| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | 386 | 386 | 386 | 386 | 386 | 184 | 3947 | 354 | 354 | 18 | 108 | 78 | 12 | 179 |
-| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2207 | 251 | 251 | 18 | 108 | 0 | 0 | 335 |
-| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | 151 | 151 | 151 | 151 | 151 | 72 | 755 | 165 | 165 | 15 | 82 | 0 | 0 | 63 |
+| ROM | Species | Named | Stats | Sprites | Dex text | Evolutions | Learnsets | Rulesets | Moves | Move data | Move text | Egg links | Machine links | Tutor links | Types | Matchups | Abilities | Ability text | Balls | Areas |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | 428 | 428 | 428 | 428 | 428 | 217 | 4559 | 2 | 377 | 377 | 377 | 1382 | 0 | 0 | 26 | 116 | 81 | 81 | 12 | 231 |
+| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | 1242 | 1242 | 1242 | 1242 | 873 | 728 | 19879 | 1 | 868 | 868 | 812 | 973 | 0 | 0 | 19 | 108 | 257 | 0 | 12 | 97 |
+| Pokemon Unbound.zip!Pokemon Unbound.gba | 1273 | 1273 | 1273 | 1270 | 882 | 780 | 21874 | 1 | 961 | 961 | 870 | 3954 | 0 | 0 | 41 | 128 | 328 | 0 | 12 | 339 |
+| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | 151 | 151 | 151 | 150 | 151 | 72 | 728 | 1 | 165 | 165 | 0 | 0 | 0 | 0 | 15 | 82 | 0 | 0 | 0 | 58 |
+| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2215 | 1 | 251 | 251 | 0 | 0 | 0 | 0 | 18 | 108 | 0 | 0 | 0 | 335 |
+| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | 386 | 386 | 386 | 386 | 386 | 184 | 3947 | 1 | 354 | 354 | 354 | 973 | 0 | 0 | 18 | 108 | 77 | 77 | 12 | 201 |
+| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | 386 | 386 | 386 | 386 | 386 | 184 | 4011 | 1 | 354 | 354 | 354 | 973 | 0 | 0 | 18 | 108 | 77 | 77 | 12 | 219 |
+| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2207 | 1 | 251 | 251 | 0 | 0 | 0 | 0 | 18 | 108 | 0 | 0 | 0 | 335 |
+| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | 386 | 386 | 386 | 386 | 386 | 184 | 4013 | 1 | 354 | 354 | 354 | 973 | 0 | 0 | 18 | 108 | 77 | 77 | 12 | 219 |
+| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | 151 | 151 | 151 | 150 | 151 | 72 | 728 | 1 | 165 | 165 | 0 | 0 | 0 | 0 | 15 | 82 | 0 | 0 | 0 | 58 |
+| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | 386 | 386 | 386 | 386 | 386 | 184 | 3947 | 1 | 354 | 354 | 354 | 973 | 0 | 0 | 18 | 108 | 77 | 77 | 12 | 179 |
+| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | 386 | 386 | 386 | 386 | 386 | 184 | 3947 | 1 | 354 | 354 | 354 | 973 | 0 | 0 | 18 | 108 | 77 | 77 | 12 | 179 |
+| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | 251 | 251 | 251 | 251 | 251 | 122 | 2207 | 1 | 251 | 251 | 0 | 0 | 0 | 0 | 18 | 108 | 0 | 0 | 0 | 335 |
+| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | 151 | 151 | 151 | 151 | 151 | 72 | 755 | 1 | 165 | 165 | 0 | 0 | 0 | 0 | 15 | 82 | 0 | 0 | 0 | 63 |
 
 ## Capability matrix
 
@@ -62,22 +63,22 @@ Counts prove records were decoded and joined; the report intentionally contains 
 - `N/F` = applicable but not found or validated
 - `N/A` = not applicable to that engine
 
-| ROM | Status | Family | Profile | Ancestry score | Catalog | Names | Types | Type chart | Stats | Sprites | Descriptions | Evolutions | Moves | Move data | Learnsets | Abilities | Areas | Type colors | Balls |
-| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon Unbound.zip!Pokemon Unbound.gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Blue (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
-| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | SELECTED | CRYSTAL | Pokemon Crystal (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
-| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Gold (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
-| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon LeafGreen (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Red (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
-| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Ruby (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Sapphire (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes |
-| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Silver (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
-| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | SELECTED | YELLOW | Pokemon Yellow (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A |
+| ROM | Status | Family | Profile | Ancestry score | Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Areas | Type colors | Balls |
+| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/F | N/F | yes | yes | yes | yes | yes |
+| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/F | N/F | yes | N/F | yes | yes | yes |
+| Pokemon Unbound.zip!Pokemon Unbound.gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/F | N/F | yes | N/F | yes | yes | yes |
+| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Blue (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A | N/F | N/A | N/A | N/A | yes | yes | N/A |
+| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | SELECTED | CRYSTAL | Pokemon Crystal (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/F | N/F | N/F | N/A | N/A | yes | yes | N/A |
+| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | SELECTED | EMERALD | Pokemon Emerald (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/F | N/F | yes | yes | yes | yes | yes |
+| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon FireRed (USA) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/F | N/F | yes | yes | yes | yes | yes |
+| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Gold (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/F | N/F | N/F | N/A | N/A | yes | yes | N/A |
+| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | SELECTED | FIRERED_LEAFGREEN | Pokemon LeafGreen (USA/Europe) Rev 1 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/F | N/F | yes | yes | yes | yes | yes |
+| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | SELECTED | RED_BLUE | Pokemon Red (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A | N/F | N/A | N/A | N/A | yes | yes | N/A |
+| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Ruby (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/F | N/F | yes | yes | yes | yes | yes |
+| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | SELECTED | RUBY_SAPPHIRE | Pokemon Sapphire (USA/Europe) Rev 2 | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/F | N/F | yes | yes | yes | yes | yes |
+| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | SELECTED | GOLD_SILVER | Pokemon Silver (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/F | N/F | N/F | N/A | N/A | yes | yes | N/A |
+| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | SELECTED | YELLOW | Pokemon Yellow (USA/Europe) | 100 | yes | yes | yes | yes | yes | yes | yes | yes | yes | yes | N/A | yes | yes | N/A | N/F | N/A | N/A | N/A | yes | yes | N/A |
 
 ## Per-ROM evidence
 
@@ -98,8 +99,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x8E606C, count=462, recordSize=64
   - MOVE_CATALOG: available; confidence=0.987; offset=0x6E0850, count=378, recordSize=13
   - MOVE_DETAILS: available; confidence=0.966; offset=0x8D6924, count=378, recordSize=12
+  - MOVE_DESCRIPTIONS: available; confidence=1.000; offset=0x6E61B4, count=377; decoded a validated move-description pointer table
   - LEARNSETS: available; confidence=1.000; offset=0x8EDB24, count=462, recordSize=4
+  - EGG_MOVES: available; confidence=1.000; offset=0x6E3260, count=1384; validated sentinel-delimited ROM egg-move list
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: available; confidence=0.988; offset=0x67F52C, count=82, recordSize=13
+  - ABILITY_DESCRIPTIONS: available; confidence=1.000; offset=0x67F958, count=81; decoded a validated ability-description pointer table
   - AREA_ENCOUNTERS: available; confidence=1.000; count=231; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=26; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
@@ -121,8 +127,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=0.998; offset=0x19C2C06, count=1268, recordSize=128
   - MOVE_CATALOG: available; confidence=0.995; offset=0x14B2A3C, count=869, recordSize=13
   - MOVE_DETAILS: available; confidence=0.964; offset=0x14BFA7C, count=869, recordSize=12
+  - MOVE_DESCRIPTIONS: available; confidence=0.935; offset=0x1435FB4, count=812; decoded a validated move-description pointer table
   - LEARNSETS: available; confidence=1.000; offset=0x19F4D98, count=1268, recordSize=4
+  - EGG_MOVES: available; confidence=0.521; offset=0x25EF0C, count=973; validated sentinel-delimited ROM egg-move list
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: available; confidence=0.992; offset=0x14A9324, count=258, recordSize=13
+  - ABILITY_DESCRIPTIONS: not found; confidence=0.000; ability-description pointer table was not resolved
   - AREA_ENCOUNTERS: available; confidence=1.000; count=97; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=19; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
@@ -144,8 +155,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=0.998; offset=0x19F3A7A, count=1297, recordSize=128
   - MOVE_CATALOG: available; confidence=0.996; offset=0xA40A10, count=962, recordSize=13
   - MOVE_DETAILS: available; confidence=0.931; offset=0xA769AF, count=962, recordSize=12
+  - MOVE_DESCRIPTIONS: available; confidence=0.905; offset=0x99F18C, count=870; decoded a validated move-description pointer table
   - LEARNSETS: available; confidence=0.998; offset=0x1A2457C, count=1297, recordSize=4
+  - EGG_MOVES: available; confidence=1.000; offset=0x19F1374, count=3954; validated sentinel-delimited ROM egg-move list
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: available; confidence=0.948; offset=0xA36398, count=329, recordSize=17
+  - ABILITY_DESCRIPTIONS: not found; confidence=0.000; ability-description pointer table was not resolved
   - AREA_ENCOUNTERS: available; confidence=1.000; count=339; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=41; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
@@ -167,8 +183,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x3B05C, count=190, recordSize=2
   - MOVE_CATALOG: available; confidence=1.000; offset=0xB0000, count=165
   - MOVE_DETAILS: available; confidence=1.000; offset=0x38000, count=165, recordSize=6
+  - MOVE_DESCRIPTIONS: not applicable; confidence=0.000; this engine has no compatible move-description pointer table
   - LEARNSETS: available; confidence=1.000; offset=0x3B05C, count=190, recordSize=2
+  - EGG_MOVES: not applicable; confidence=0.000; breeding is not part of this engine
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not applicable; confidence=0.000; move tutors are not part of this engine
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - ABILITY_DESCRIPTIONS: not applicable; confidence=0.000; abilities are not part of this engine
   - AREA_ENCOUNTERS: available; confidence=1.000; count=58; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=15; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record
@@ -190,8 +211,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x425B1, count=251, recordSize=2
   - MOVE_CATALOG: available; confidence=1.000; offset=0x1C9F29, count=251
   - MOVE_DETAILS: available; confidence=1.000; offset=0x41AFB, count=251, recordSize=7
+  - MOVE_DESCRIPTIONS: not applicable; confidence=0.000; this engine has no compatible move-description pointer table
   - LEARNSETS: available; confidence=0.996; offset=0x425B1, count=251, recordSize=2
+  - EGG_MOVES: not found; confidence=0.000; egg-move table was not resolved
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - ABILITY_DESCRIPTIONS: not applicable; confidence=0.000; abilities are not part of this engine
   - AREA_ENCOUNTERS: available; confidence=1.000; count=335; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record
@@ -213,8 +239,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x32531C, count=412, recordSize=40
   - MOVE_CATALOG: available; confidence=1.000; offset=0x31977C, count=355, recordSize=13
   - MOVE_DETAILS: available; confidence=1.000; offset=0x31C898, count=355, recordSize=12
+  - MOVE_DESCRIPTIONS: available; confidence=1.000; offset=0x61C524, count=354; decoded a validated move-description pointer table
   - LEARNSETS: available; confidence=1.000; offset=0x32937C, count=412, recordSize=4
+  - EGG_MOVES: available; confidence=1.000; offset=0x32ADD8, count=973; validated sentinel-delimited ROM egg-move list
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: available; confidence=1.000; offset=0x31B6DB, count=78, recordSize=13
+  - ABILITY_DESCRIPTIONS: available; confidence=1.000; offset=0x31BAD4, count=77; decoded a validated ability-description pointer table
   - AREA_ENCOUNTERS: available; confidence=1.000; count=201; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
@@ -236,8 +267,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x2597C4, count=412, recordSize=40
   - MOVE_CATALOG: available; confidence=1.000; offset=0x247104, count=355, recordSize=13
   - MOVE_DETAILS: available; confidence=1.000; offset=0x250C74, count=355, recordSize=12
+  - MOVE_DESCRIPTIONS: available; confidence=1.000; offset=0x488748, count=354; decoded a validated move-description pointer table
   - LEARNSETS: available; confidence=1.000; offset=0x25D824, count=412, recordSize=4
+  - EGG_MOVES: available; confidence=1.000; offset=0x25EF7C, count=973; validated sentinel-delimited ROM egg-move list
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: available; confidence=1.000; offset=0x24FCB0, count=78, recordSize=13
+  - ABILITY_DESCRIPTIONS: available; confidence=1.000; offset=0x24FB78, count=77; decoded a validated ability-description pointer table
   - AREA_ENCOUNTERS: available; confidence=1.000; count=219; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
@@ -259,8 +295,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x427BD, count=251, recordSize=2
   - MOVE_CATALOG: available; confidence=1.000; offset=0x1B1574, count=251
   - MOVE_DETAILS: available; confidence=1.000; offset=0x41AFE, count=251, recordSize=7
+  - MOVE_DESCRIPTIONS: not applicable; confidence=0.000; this engine has no compatible move-description pointer table
   - LEARNSETS: available; confidence=0.996; offset=0x427BD, count=251, recordSize=2
+  - EGG_MOVES: not found; confidence=0.000; egg-move table was not resolved
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - ABILITY_DESCRIPTIONS: not applicable; confidence=0.000; abilities are not part of this engine
   - AREA_ENCOUNTERS: available; confidence=1.000; count=335; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record
@@ -282,8 +323,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x2597A4, count=412, recordSize=40
   - MOVE_CATALOG: available; confidence=1.000; offset=0x2470E0, count=355, recordSize=13
   - MOVE_DETAILS: available; confidence=1.000; offset=0x250C50, count=355, recordSize=12
+  - MOVE_DESCRIPTIONS: available; confidence=1.000; offset=0x488034, count=354; decoded a validated move-description pointer table
   - LEARNSETS: available; confidence=1.000; offset=0x25D804, count=412, recordSize=4
+  - EGG_MOVES: available; confidence=1.000; offset=0x25EF5C, count=973; validated sentinel-delimited ROM egg-move list
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: available; confidence=1.000; offset=0x24FC8C, count=78, recordSize=13
+  - ABILITY_DESCRIPTIONS: available; confidence=1.000; offset=0x24FB54, count=77; decoded a validated ability-description pointer table
   - AREA_ENCOUNTERS: available; confidence=1.000; count=219; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
@@ -305,8 +351,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x3B05C, count=190, recordSize=2
   - MOVE_CATALOG: available; confidence=1.000; offset=0xB0000, count=165
   - MOVE_DETAILS: available; confidence=1.000; offset=0x38000, count=165, recordSize=6
+  - MOVE_DESCRIPTIONS: not applicable; confidence=0.000; this engine has no compatible move-description pointer table
   - LEARNSETS: available; confidence=1.000; offset=0x3B05C, count=190, recordSize=2
+  - EGG_MOVES: not applicable; confidence=0.000; breeding is not part of this engine
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not applicable; confidence=0.000; move tutors are not part of this engine
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - ABILITY_DESCRIPTIONS: not applicable; confidence=0.000; abilities are not part of this engine
   - AREA_ENCOUNTERS: available; confidence=1.000; count=58; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=15; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record
@@ -328,8 +379,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x203B80, count=412, recordSize=40
   - MOVE_CATALOG: available; confidence=1.000; offset=0x1F8338, count=355, recordSize=13
   - MOVE_DETAILS: available; confidence=1.000; offset=0x1FB144, count=355, recordSize=12
+  - MOVE_DESCRIPTIONS: available; confidence=1.000; offset=0x3C09F4, count=354; decoded a validated move-description pointer table
   - LEARNSETS: available; confidence=1.000; offset=0x207BE0, count=412, recordSize=4
+  - EGG_MOVES: available; confidence=1.000; offset=0x2091F4, count=973; validated sentinel-delimited ROM egg-move list
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: available; confidence=1.000; offset=0x1FA260, count=78, recordSize=13
+  - ABILITY_DESCRIPTIONS: available; confidence=1.000; offset=0x1FA128, count=77; decoded a validated ability-description pointer table
   - AREA_ENCOUNTERS: available; confidence=1.000; count=179; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
@@ -351,8 +407,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x203B10, count=412, recordSize=40
   - MOVE_CATALOG: available; confidence=1.000; offset=0x1F82C8, count=355, recordSize=13
   - MOVE_DETAILS: available; confidence=1.000; offset=0x1FB0D4, count=355, recordSize=12
+  - MOVE_DESCRIPTIONS: available; confidence=1.000; offset=0x3C0A50, count=354; decoded a validated move-description pointer table
   - LEARNSETS: available; confidence=1.000; offset=0x207B70, count=412, recordSize=4
+  - EGG_MOVES: available; confidence=1.000; offset=0x209184, count=973; validated sentinel-delimited ROM egg-move list
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: available; confidence=1.000; offset=0x1FA1F0, count=78, recordSize=13
+  - ABILITY_DESCRIPTIONS: available; confidence=1.000; offset=0x1FA0B8, count=77; decoded a validated ability-description pointer table
   - AREA_ENCOUNTERS: available; confidence=1.000; count=179; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: available; confidence=1.000; count=12; located compressed ball graphics and palette tables
@@ -374,8 +435,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x427BD, count=251, recordSize=2
   - MOVE_CATALOG: available; confidence=1.000; offset=0x1B1574, count=251
   - MOVE_DETAILS: available; confidence=1.000; offset=0x41AFE, count=251, recordSize=7
+  - MOVE_DESCRIPTIONS: not applicable; confidence=0.000; this engine has no compatible move-description pointer table
   - LEARNSETS: available; confidence=0.996; offset=0x427BD, count=251, recordSize=2
+  - EGG_MOVES: not found; confidence=0.000; egg-move table was not resolved
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not found; confidence=0.000; tutor move list and compatibility flags were not jointly resolved
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - ABILITY_DESCRIPTIONS: not applicable; confidence=0.000; abilities are not part of this engine
   - AREA_ENCOUNTERS: available; confidence=1.000; count=335; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=18; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record
@@ -397,8 +463,13 @@ Counts prove records were decoded and joined; the report intentionally contains 
   - EVOLUTIONS: available; confidence=1.000; offset=0x3B1E5, count=190, recordSize=2
   - MOVE_CATALOG: available; confidence=1.000; offset=0xBC000, count=165
   - MOVE_DETAILS: available; confidence=1.000; offset=0x38000, count=165, recordSize=6
+  - MOVE_DESCRIPTIONS: not applicable; confidence=0.000; this engine has no compatible move-description pointer table
   - LEARNSETS: available; confidence=0.995; offset=0x3B1E5, count=190, recordSize=2
+  - EGG_MOVES: not applicable; confidence=0.000; breeding is not part of this engine
+  - MACHINE_MOVES: not found; confidence=0.000; machine-move list and compatibility flags were not jointly resolved
+  - TUTOR_MOVES: not applicable; confidence=0.000; move tutors are not part of this engine
   - ABILITIES: not applicable; confidence=0.000; abilities are not part of this engine
+  - ABILITY_DESCRIPTIONS: not applicable; confidence=0.000; abilities are not part of this engine
   - AREA_ENCOUNTERS: available; confidence=1.000; count=63; structurally decoded encounter areas
   - TYPE_PRESENTATION: available; confidence=1.000; count=15; family type colors with explicit accessible fallback for custom IDs
   - BALL_CATALOG: not applicable; confidence=0.000; per-ball capture artwork is not part of this engine's individual record

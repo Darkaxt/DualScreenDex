@@ -28,7 +28,7 @@ export function StatusMarks({ state, catalog }: { state?: SpeciesState; catalog:
   const ball = state?.ballId != null && catalog.balls.some(item => item.id === state.ballId && item.hasSprite);
   return (
     <span class="status-marks">
-      <span class={`eye-mark ${seen ? '' : 'eye-crossed'}`} aria-label={seen ? 'Seen' : 'Not seen'}><i /></span>
+      <EyeStatus seen={seen} />
       {caught && ball ? (
         <img class="ball-art" src={`/api/sprites/balls/${state!.ballId}.png`} alt="Caught" />
       ) : (
@@ -36,6 +36,14 @@ export function StatusMarks({ state, catalog }: { state?: SpeciesState; catalog:
       )}
     </span>
   );
+}
+
+export function EyeStatus({ seen }: { seen: boolean }) {
+  return <svg class="eye-icon" viewBox="0 0 24 24" role="img" aria-label={seen ? 'Seen' : 'Not seen'}>
+    <path d="M2.5 12s3.6-6 9.5-6 9.5 6 9.5 6-3.6 6-9.5 6-9.5-6-9.5-6Z" />
+    <circle cx="12" cy="12" r="2.7" />
+    {!seen && <line x1="4" y1="3.5" x2="20" y2="20.5" />}
+  </svg>;
 }
 
 export function Header({ title, kicker, onBack, onSettings }: { title: string; kicker?: string; onBack?: () => void; onSettings?: () => void }) {

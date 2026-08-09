@@ -36,6 +36,19 @@ class DualDexServer(
         server.createContext("/api/load") { exchange ->
             if (exchange.requestMethod != "POST") methodNotAllowed(exchange) else handleLoad(exchange)
         }
+        server.createContext("/api/diagnostics") { exchange ->
+            if (exchange.requestMethod != "GET") {
+                methodNotAllowed(exchange)
+            } else {
+                safely(exchange) {
+                    val values = query(exchange.requestURI.rawQuery)
+                    json(
+                        exchange,
+                        runtime.diagnostics(values["speciesId"]?.toIntOrNull(), values["moveId"]?.toIntOrNull()),
+                    )
+                }
+            }
+        }
         server.createContext("/api/events") { exchange ->
             if (exchange.requestMethod != "GET") methodNotAllowed(exchange) else handleEvents(exchange)
         }
@@ -49,6 +62,7 @@ class DualDexServer(
     override fun close() {
         server.stop(0)
         (server.executor as? java.util.concurrent.ExecutorService)?.shutdown()
+        runtime.close()
     }
 
     private fun handleAction(exchange: HttpExchange) = safely(exchange) {

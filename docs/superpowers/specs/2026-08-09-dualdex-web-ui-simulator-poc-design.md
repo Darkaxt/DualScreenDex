@@ -232,7 +232,7 @@ A cache miss must not hold the entire UI behind the slowest parser capability. P
 2. species names, types, base stats, and move names/data—the minimum navigable Pokédex;
 3. Pokédex entries and sprites;
 4. evolutions, abilities, and encounter areas;
-5. ruleset variants, move descriptions, and independent acquisition methods;
+5. ruleset variants, move and ability descriptions, and independent acquisition methods;
 6. completed SQLite transaction and cache-ready state.
 
 Each snapshot distinguishes `LOADING`, `AVAILABLE`, `NOT_FOUND`, and `NOT_APPLICABLE` per capability. Pages remain usable with the latest consistent snapshot, and controls whose dependencies are still loading remain visibly pending rather than disappearing or claiming `N/F` prematurely. The server streams phase, completed units, and total units through the existing state channel. It never uses a parsing timeout as cancellation.
@@ -281,12 +281,18 @@ unless the specific content region is intentionally scrollable.
 - Entry, Stats, Moves, and More are separate tabs; only one tab body is mounted visibly.
 - Stats is explicitly titled `Base stats`, includes the base-stat total, and explains that the values precede level, IV/DV, EV/stat-experience, and generation-specific nature modifiers.
 - Moves shows one row per move with distinct acquisition labels. Selecting a move opens the shared move-detail page instead of expanding dense metadata inside the list.
-- More contains implemented capability-gated sections for abilities, decoded evolutions, and wild locations. Locations preserve encounter method, minimum/maximum level, and weight. It never contains implementation disclaimers.
+- More contains implemented capability-gated sections for abilities, decoded evolutions, and wild locations. Ability ID `0` is a no-ability sentinel and must never render as an empty row. A valid ability row opens the shared ability-detail page. Locations preserve encounter method, minimum/maximum level, and weight. More never contains implementation disclaimers.
 - There is no previous/next bottom bar. Swiping may be added later, but Back plus list navigation is sufficient for v1.
 
 ### Move detail page
 
 The move-detail page is shared by species learnsets, selected player attacks, captured-team moves, and observed opponent moves. It shows ROM-derived name, type, category, power, accuracy, PP, priority, description/effect text, and the acquisition context of the originating species when applicable. Zero power or zero accuracy used as an engine sentinel renders as an em dash rather than `0` or `0%`. Back returns to the exact species tab or battle tab that opened it.
+
+### Ability detail page
+
+The ability-detail page is opened from a species' More tab and follows the same focused drill-down pattern as Move Detail. It shows the validated ROM ability ID, name, ROM-derived description, and captured species known to have it. Back returns to the exact More tab that opened it. A missing description is represented as unavailable and never replaced with external Pokédex prose.
+
+Numeric ability mechanics are a separate capability because Generation III commonly compiles thresholds and modifiers into battle code rather than the description table. A family-specific code resolver may expose structured fields such as trigger, affected move type/stat, multiplier, probability, duration, immunity, and target only after it validates the exact routine and constants in the loaded ROM. For example, a validated Modern Emerald Blaze routine can yield `HP <= 1/3`, `Fire move power`, and `x1.5`. Names or standard-series expectations are not sufficient evidence; unresolved mechanics remain absent.
 
 ### Battle page
 
@@ -390,7 +396,7 @@ The normal feedback loop is:
 6. Run focused frontend and Kotlin tests.
 7. Capture deterministic screenshots for review.
 
-The development side panel also exposes structured diagnostics. A copyable diagnostic snapshot contains ROM name and hash, selected family, detected ruleset variants, active ruleset, capability evidence, table offsets and record sizes, and raw-versus-normalized records for the selected species or move. It contains no ROM bytes and is not a profile editor. Normal operation logs only lifecycle summaries and warnings; detailed records are opt-in through the lab diagnostics view.
+The development side panel always identifies the loaded source at the left: complete archive/inner-ROM name, detected family, and CRC32. Long names wrap without widening the panel. It also exposes structured diagnostics. A copyable diagnostic snapshot contains ROM name and hashes, selected family, detected ruleset variants, active ruleset, capability evidence, table offsets and record sizes, and raw-versus-normalized records for the selected species, move, or ability. It contains no ROM bytes and is not a profile editor. Normal operation logs only lifecycle summaries and warnings; detailed records are opt-in through the lab diagnostics view.
 
 The browser must display a clear development banner when simulator data is active. Production components may not import simulator modules.
 

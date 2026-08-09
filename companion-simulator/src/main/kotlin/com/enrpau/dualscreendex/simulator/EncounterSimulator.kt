@@ -24,7 +24,11 @@ data class SimulationResult(
 )
 
 class EncounterSimulator(private val catalog: ParsedCatalog) {
-    fun generate(request: SimulationRequest, previous: KnowledgeLedger = KnowledgeLedger()): SimulationResult {
+    fun generate(
+        request: SimulationRequest,
+        previous: KnowledgeLedger = KnowledgeLedger(),
+        activeRulesetId: String? = null,
+    ): SimulationResult {
         require(request.opponentCount in 1..2) { "the POC supports one or two opponents" }
         require(request.minimumLevel in 1..100 && request.maximumLevel in request.minimumLevel..100)
         val random = SplitMix64(request.seed)
@@ -37,7 +41,7 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
         val opponents = List(request.opponentCount) { index ->
             val species = pool[random.nextInt(pool.size)]
             val level = request.minimumLevel + random.nextInt(request.maximumLevel - request.minimumLevel + 1)
-            val possibleMoves = species.learnset.value.orEmpty()
+            val possibleMoves = activeLearnset(species, activeRulesetId)
                 .filter { it.level <= level && it.moveId in catalog.movesById }
                 .map { it.moveId }
                 .distinct()
@@ -116,6 +120,18 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
         if (areaId == null) return catalog.navigableSpecies().filter { it.sprite.value != null }
         val ids = catalog.encounterAreas.filter { it.id == areaId }.flatMap { area -> area.slots.map { it.speciesId } }.toSet()
         return ids.mapNotNull(catalog.speciesById::get).filter { it.sprite.value != null && (it.dexNumber.value ?: 0) > 0 }
+    }
+
+    private fun activeLearnset(species: SpeciesRecord, activeRulesetId: String?): List<com.enrpau.dualscreendex.parser.catalog.LearnsetEntry> {
+        if (catalog.learnsetRulesets.isEmpty()) return species.learnset.value.orEmpty()
+        val ruleset = if (activeRulesetId == null) {
+            catalog.learnsetRulesets.firstOrNull { it.primary } ?: catalog.learnsetRulesets.first()
+        } else {
+            requireNotNull(catalog.learnsetRulesets.firstOrNull { it.id == activeRulesetId }) {
+                "unknown catalog ruleset: $activeRulesetId"
+            }
+        }
+        return ruleset.entriesBySpecies[species.id].orEmpty()
     }
 
     private fun generation(): Int = when (catalog.platform.name) {

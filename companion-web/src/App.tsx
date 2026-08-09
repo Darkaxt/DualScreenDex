@@ -5,6 +5,8 @@ import { PokedexBrowse } from './pages/PokedexBrowse';
 import { PokedexDetail } from './pages/PokedexDetail';
 import { BattlePage } from './pages/BattlePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { MoveDetail } from './pages/MoveDetail';
+import { AbilityDetail } from './pages/AbilityDetail';
 import { SimulatorPanel } from './dev/SimulatorPanel';
 
 const emptyState: State = {
@@ -16,8 +18,9 @@ const emptyState: State = {
   filter: 'ALL',
   selectedAreaId: null,
   battleTab: 'ENTRY',
-  settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true },
-  speciesState: {}, battle: null, catalogReady: false, catalogName: null, error: null
+  settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
+  speciesState: {}, battle: null, catalogReady: false, catalogName: null, error: null,
+  activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'IDLE', completedUnits: 0, totalUnits: 0 }
 };
 
 export function App() {
@@ -25,15 +28,23 @@ export function App() {
   const [state, setState] = useState<State>(emptyState);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
+  const [moveDetailId, setMoveDetailId] = useState<number | null>(null);
+  const [abilityDetailId, setAbilityDetailId] = useState<number | null>(null);
+  const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'MORE'>('ENTRY');
 
   useEffect(() => {
     bootstrap().then(applyBootstrap).catch(failure => setError(failure.message)).finally(() => setBusy(false));
-    return events(incoming => setState(current => incoming.version >= current.version ? incoming : current));
+    return events(incoming => {
+      setState(current => incoming.version >= current.version ? incoming : current);
+      if (incoming.loading.completedUnits > 0) {
+        bootstrap().then(applyBootstrap).catch(failure => setError(failure.message));
+      }
+    });
   }, []);
 
   const applyBootstrap = (value: Bootstrap) => {
     setCatalog(value.catalog);
-    setState(value.state);
+    setState(current => value.state.version >= current.version ? value.state : current);
     setError(null);
   };
 
@@ -54,20 +65,22 @@ export function App() {
   };
 
   const screen = useMemo(() => {
-    if (!catalog) return <Welcome busy={busy} error={error} onUpload={onUpload} />;
+    if (!catalog) return <Welcome busy={busy || state.loading.active} error={error} onUpload={onUpload} />;
+    if (moveDetailId != null) return <MoveDetail catalog={catalog} state={state} moveId={moveDetailId} onBack={() => setMoveDetailId(null)} />;
+    if (abilityDetailId != null) return <AbilityDetail catalog={catalog} state={state} abilityId={abilityDetailId} onBack={() => setAbilityDetailId(null)} />;
     switch (state.screen) {
-      case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} />;
-      case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} /> : <PokedexBrowse catalog={catalog} state={state} send={send} />;
-      case 'SETTINGS': return <SettingsPage state={state} send={send} />;
+      case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={setMoveDetailId} openAbility={setAbilityDetailId} />;
+      case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={setMoveDetailId} /> : <PokedexBrowse catalog={catalog} state={state} send={send} />;
+      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} />;
     }
-  }, [catalog, state, busy, error]);
+  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab]);
 
   return <main class="lab-shell">
     <SimulatorPanel catalog={catalog} state={state} onUpload={onUpload} send={send} />
     <div class="device-shell" style={{ '--font-scale': state.settings.fontScale }} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'}>
       <div class="device-sensor" />
-      <div class="device-screen">{screen}{error && catalog && <div class="error-toast" role="alert">{error}</div>}{busy && catalog && <div class="loading-wash"><i /></div>}</div>
+      <div class="device-screen">{screen}{state.loading.active && <div class="loading-indicator" role="status" aria-label={`Loading ${state.loading.phase}`}><span>Loading</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}</div>
     </div>
   </main>;
 }

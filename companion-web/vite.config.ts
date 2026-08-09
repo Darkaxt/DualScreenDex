@@ -9,6 +9,10 @@ export default defineConfig({
     }
   },
   test: {
-    environment: 'jsdom'
+    environment: 'jsdom',
+    pool: 'forks',
+    fileParallelism: false,
+    minWorkers: 1,
+    maxWorkers: 1
   }
 });

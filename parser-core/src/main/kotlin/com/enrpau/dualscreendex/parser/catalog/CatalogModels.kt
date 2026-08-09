@@ -134,7 +134,11 @@ data class EvolutionEdge(
         31 * (31 * (31 * targetSpeciesId + methodId) + parameter) + raw.contentHashCode()
 }
 
-data class AbilityRecord(val id: Int, val name: CatalogField<String>)
+data class AbilityRecord(
+    val id: Int,
+    val name: CatalogField<String>,
+    val description: CatalogField<String> = CatalogField.notFound("ability description was not resolved from the ROM"),
+)
 
 data class DescriptionRecord(
     val text: String,

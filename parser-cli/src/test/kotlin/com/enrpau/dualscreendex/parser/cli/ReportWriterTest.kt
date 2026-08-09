@@ -40,7 +40,7 @@ class ReportWriterTest {
     fun jsonIsDeterministicForSameReport() {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
-        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 4"))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 5"))
         assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
     }
 
@@ -62,11 +62,17 @@ class ReportWriterTest {
                         speciesWithDescriptions = 386,
                         evolutionEdges = 219,
                         learnsetEntries = 4211,
+                        learnsetRulesets = 2,
                         moves = 355,
                         movesWithDetails = 355,
+                        movesWithDescriptions = 354,
+                        eggMoveLinks = 900,
+                        machineMoveLinks = 5000,
+                        tutorMoveLinks = 200,
                         types = 18,
                         typeMatchups = 112,
                         abilities = 78,
+                        abilitiesWithDescriptions = 77,
                         captureBalls = 12,
                     ),
                 ),
@@ -77,8 +83,8 @@ class ReportWriterTest {
 
         assertTrue(markdown.contains("## Materialized catalog counts"))
         assertTrue(markdown.contains("Pokemon Emerald.gba"))
-        assertTrue(markdown.contains("| Pokemon Emerald.gba | 412 | 412 | 412 | 411 | 386 | 219 | 4211 | 355 |"))
-        assertTrue(markdown.contains("| 355 | 18 | 112 | 78 | 12 |"))
+        assertTrue(markdown.contains("| Pokemon Emerald.gba | 412 | 412 | 412 | 411 | 386 | 219 | 4211 | 2 | 355 |"))
+        assertTrue(markdown.contains("| 355 | 354 | 900 | 5000 | 200 | 18 | 112 | 78 | 77 | 12 |"))
         assertFalse(markdown.contains("BULBASAUR"))
     }
 
@@ -128,8 +134,40 @@ class ReportWriterTest {
 
         val markdown = ReportWriter.markdown(report)
 
-        assertTrue(markdown.contains("Complete for all applicable static datasets: 1"))
-        assertTrue(markdown.contains("| Catalog | Names | Types | Type chart | Stats | Sprites | Descriptions | Evolutions | Moves | Move data | Learnsets | Abilities | Areas | Type colors | Balls |"))
+        assertTrue(markdown.contains("Complete core catalogs: 1"))
+        assertTrue(markdown.contains("Complete for every applicable extended dataset: 1"))
+        assertTrue(markdown.contains("| Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Areas | Type colors | Balls |"))
+    }
+
+    @Test
+    fun markdownSeparatesCoreCatalogCompletenessFromMissingExtendedMetadata() {
+        val extended = setOf(
+            RomCapability.MOVE_DESCRIPTIONS,
+            RomCapability.EGG_MOVES,
+            RomCapability.MACHINE_MOVES,
+            RomCapability.TUTOR_MOVES,
+            RomCapability.ABILITY_DESCRIPTIONS,
+        )
+        val capabilities = RomCapability.entries.map { capability ->
+            if (capability in extended) CapabilityEvidence(capability, false, 0.0, status = CapabilityStatus.NOT_FOUND)
+            else CapabilityEvidence(capability, true, 1.0, offset = 0x100, count = 10)
+        }
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(
+                CorpusResult(
+                    "Pokemon Test.gba",
+                    "Pokemon Test.gba",
+                    durationMillis = 1,
+                    result = sampleResult().copy(capabilities = capabilities),
+                ),
+            ),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("Complete core catalogs: 1"))
+        assertTrue(markdown.contains("Complete for every applicable extended dataset: 0"))
     }
 
     @Test

@@ -15,6 +15,7 @@ data class CompanionSettings(
     val density: Density = Density.AUTO,
     val highContrast: Boolean = false,
     val autoOpenTarget: Boolean = true,
+    val ruleset: String = "AUTO",
 )
 
 data class OwnedPokemon(
@@ -65,6 +66,13 @@ data class BattleState(
     val playerReferenceLevel: Int? = null,
 )
 
+data class CatalogLoadingState(
+    val active: Boolean = false,
+    val phase: String = "IDLE",
+    val completedUnits: Int = 0,
+    val totalUnits: Int = 0,
+)
+
 data class AppSnapshot(
     val version: Long = 0,
     val screen: AppScreen = AppScreen.POKEDEX,
@@ -80,10 +88,12 @@ data class AppSnapshot(
     val catalogReady: Boolean = false,
     val catalogName: String? = null,
     val error: String? = null,
+    val catalogLoading: CatalogLoadingState = CatalogLoadingState(),
 )
 
 sealed interface CompanionAction {
     data class CatalogLoaded(val name: String) : CompanionAction
+    data class CatalogLoadingChanged(val loading: CatalogLoadingState, val name: String? = null) : CompanionAction
     data class OpenSpecies(val speciesId: Int) : CompanionAction
     data object BackToPokedex : CompanionAction
     data class SetScreen(val screen: AppScreen) : CompanionAction

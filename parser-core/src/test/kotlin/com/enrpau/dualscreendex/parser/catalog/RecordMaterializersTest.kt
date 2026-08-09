@@ -38,6 +38,20 @@ class RecordMaterializersTest {
     }
 
     @Test
+    fun excludesTheAbilityNoneSentinelFromSpeciesAbilities() {
+        val bytes = ByteArray(256) { 0xFF.toByte() }
+        encodeGbaName(bytes, 0, "??????????")
+        encodeGbaName(bytes, 11, "CHARIZARD")
+        val stats = 64
+        bytes[stats + 28 + 22] = 66
+        bytes[stats + 28 + 23] = 0
+
+        val charizard = RecordMaterializers.species(RomImage(bytes), gbaLayout(stats)).getValue(1)
+
+        assertEquals(listOf(66), charizard.abilityIds.value)
+    }
+
+    @Test
     fun materializesMoveMetadataAndSignedPriority() {
         val bytes = ByteArray(128) { 0xFF.toByte() }
         encodeGbaName(bytes, 0, "-")

@@ -23,6 +23,10 @@ DualDex targets the AYN Thor's 3.92-inch lower display as a physically small com
   <img src="docs/images/dualdex-settings-poc.png" width="31%" alt="Working compact settings page">
 </p>
 
+<p align="center">
+  <img src="docs/images/dualdex-ability-detail-poc.png" width="48%" alt="Working ROM-derived ability detail page with loaded-ROM identity">
+</p>
+
 These are screenshots of the implemented browser POC running against a streamed Modern Emerald 3.5 ZIP. Every shown Pokémon name, sprite, Pokédex entry, type, type color, move, and matchup comes from the loaded ROM catalog; the encounter feed is the only simulated input. No emoji, bundled Pokédex database, or synthetic Pokémon artwork is used.
 
 ## Why this fork is different
@@ -46,7 +50,7 @@ The product contract is simple: a player may need to enable RetroArch Network Co
 
 ### Full Pokédex
 
-Outside battle, DualDex is a fully navigable Pokédex built from the active ROM. It can expose every validated species, form, type, stat, sprite, description, evolution, move, learnset, ability, and type-chart entry that exists in that game. Organic mode lists only species the player has seen or captured; Discovered mode may expose the complete ROM index with unseen entries clearly marked. Capability-gated Team and Area filters help the player inspect the current party and track uncaptured species available at the current location. Where the save format records it, a captured marker uses the ROM's artwork for the ball belonging to the best-IV/DV owned individual of that species; otherwise it uses the game's generic Poké Ball artwork without claiming a capture-ball type.
+Outside battle, DualDex is a fully navigable Pokédex built from the active ROM. It can expose every validated species, form, type, stat, sprite, description, evolution, move, learnset, ability, ability description, and type-chart entry that exists in that game. Moves and abilities open focused detail pages instead of making the small lower-screen layout dense. Organic mode lists only species the player has seen or captured; Discovered mode may expose the complete ROM index with unseen entries clearly marked. Capability-gated Team and Area filters help the player inspect the current party and track uncaptured species available at the current location. Where the save format records it, a captured marker uses the ROM's artwork for the ball belonging to the best-IV/DV owned individual of that species; otherwise it uses the game's generic Poké Ball artwork without claiming a capture-ball type.
 
 ### Automatic battle target
 
@@ -167,7 +171,9 @@ The current proof of concept contains:
 - competitive family parsers for Red/Blue, Yellow, Gold/Silver, Crystal, Ruby/Sapphire, Emerald, and FireRed/LeafGreen;
 - dynamic structural resolution for common relocated and expanded Gen III layouts;
 - direct ROM and streamed ZIP-entry inputs through the same parser contract;
-- materialized species, forms, types, stats, sprites, descriptions, evolutions, moves, learnsets, abilities, encounters, type presentation, type matchups, and capture-ball artwork;
+- progressive background materialization that publishes navigable catalog snapshots before slower extended datasets complete;
+- resident runtime-selectable learnset variants, with `Auto` plus diagnostic manual selection and no ROM reparse when switching;
+- materialized species, forms, types, stats, sprites, descriptions, evolutions, moves, move descriptions, normalized learnsets, abilities, ability descriptions, encounters, type presentation, type matchups, and capture-ball artwork;
 - independent tri-state capability evidence (`AVAILABLE`, `NOT_FOUND`, `NOT_APPLICABLE`);
 - Discovered, Organic, and Hidden presentation policies; and
 - human-readable and machine-readable compatibility reports.
@@ -177,11 +183,13 @@ The private in-scope corpus result is:
 - **14 inputs evaluated**;
 - **11 exact official matches**;
 - **3 structurally selected derivatives**: Modern Emerald 3.5, Sword and Shield Ultimate Plus, and Pokémon Unbound;
-- **14 complete for every applicable static dataset**;
-- **0 partial, 0 ambiguous, and 0 parse errors**; and
-- **122 Kotlin tests and 5 browser-component tests with no failures, errors, or skips**.
+- **14 complete core catalogs**;
+- **0 ambiguous and 0 parse errors**; and
+- explicit per-ROM `N/F` flags for extended datasets that have not yet validated instead of folding them into an ancestry score.
 
-Abilities are correctly `N/A` for GB/GBC rather than reported as missing. Spin-offs such as Pinball, Trading Card Game, Puzzle Challenge, and Mystery Dungeon are excluded from the v1 mainline-family report.
+Move descriptions validate for every sampled GBA ROM and are correctly `N/A` on GB/GBC. Ability descriptions validate for all six official GBA entries and Modern Emerald; Sword/Shield Ultimate Plus and Unbound remain `N/F`. Egg moves validate for all sampled GBA ROMs. Machine and tutor compatibility, plus Generation II egg moves, remain honestly `N/F` in the current report and are not counted as complete extended coverage. Abilities themselves are correctly `N/A` for GB/GBC rather than reported as missing. Spin-offs such as Pinball, Trading Card Game, Puzzle Challenge, and Mystery Dungeon are excluded from the v1 mainline-family report.
+
+Numeric ability mechanics are deliberately tracked separately from descriptions. Exact values such as activation threshold, affected move type or stat, multiplier, probability, duration, and target may be shown when a code resolver validates the routine and constants in that ROM. Source-level validation confirms that Modern Emerald's Blaze uses `HP <= 1/3` and `x1.5` Fire move power, but the general `ABILITY_MECHANICS` ROM-code resolver is specified rather than implemented; DualDex will not substitute familiar series values for unresolved hack behavior.
 
 Read the named evidence in the [Markdown compatibility report](reports/dualdex-parser-compatibility.md) or inspect the complete [JSON report](reports/dualdex-parser-compatibility.json). Reports contain structural evidence and hashes, but no decoded Pokédex text, sprites, or ROM bytes.
 
@@ -192,8 +200,12 @@ Read the named evidence in the [Markdown compatibility report](reports/dualdex-p
 | Static GB/GBC/GBA ROM parser | Implemented and corpus-validated |
 | Direct and streamed ZIP input | Implemented |
 | Decoded `ParsedCatalog` materialization | Implemented |
+| Progressive partial-catalog loading | Implemented in the loopback POC |
+| Per-ROM SQLite catalog cache | Specified for Android; browser POC remains in-memory |
 | Species and capture-ball sprite decoding | Implemented without AWT/Android dependencies |
 | Area encounters, type colors, and type chart | Implemented and reported independently |
+| Ability descriptions and focused detail pages | Implemented for validated ROMs |
+| Numeric ability mechanics | Specified; general ROM-code resolver not implemented |
 | Browser-hosted UI and plausible simulator | Implemented and real-browser validated |
 | Loopback HTTP/SSE companion server | Implemented |
 | Runtime memory transport | Specified, not implemented |
@@ -253,7 +265,7 @@ Start the passive loopback server with a direct ROM or ZIP path:
   --web-root "companion-web\dist"
 ```
 
-Open `http://127.0.0.1:47831`. The side panel generates deterministic plausible encounters; ROM selection, all displayed catalog data, sprite endpoints, settings, battle targeting, and UI state use the same contracts intended for the APK. The browser POC never writes to the ROM.
+Open `http://127.0.0.1:47831`. The left side panel persistently shows the complete loaded archive/inner-ROM name, detected family, and CRC32, and generates deterministic plausible encounters. ROM selection, all displayed catalog data, sprite endpoints, settings, battle targeting, and UI state use the same contracts intended for the APK. The browser POC never writes to the ROM.
 
 ## Deferred v1.1 single-screen mode
 

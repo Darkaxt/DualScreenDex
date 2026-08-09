@@ -24,6 +24,16 @@ export async function uploadRom(file: File): Promise<Bootstrap> {
   return payload;
 }
 
+export async function diagnostics(speciesId?: number | null, moveId?: number | null): Promise<unknown> {
+  const query = new URLSearchParams();
+  if (speciesId != null) query.set('speciesId', String(speciesId));
+  if (moveId != null) query.set('moveId', String(moveId));
+  const response = await fetch(`/api/diagnostics?${query}`);
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error ?? `Diagnostics failed (${response.status})`);
+  return payload;
+}
+
 export function events(onState: (state: State) => void): () => void {
   const stream = new EventSource('/api/events');
   stream.onmessage = event => onState(JSON.parse(event.data));

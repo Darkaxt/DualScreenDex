@@ -6,22 +6,23 @@ import { PokedexBrowse } from './PokedexBrowse';
 afterEach(cleanup);
 
 const catalog: Catalog = {
-  hash: 'fixture', family: 'EMERALD', platform: 'GBA', moves: [], types: [], areas: [], balls: [], capabilities: {},
+  hash: 'fixture', crc32: '12345678', family: 'EMERALD', platform: 'GBA', rulesets: [], moves: [], types: [], areas: [], balls: [], capabilities: {},
   species: [
-    { id: 1, dex: 1, name: 'Bulbasaur', typeIds: [], stats: null, description: null, height: null, weight: null, learnset: [], hasSprite: false },
-    { id: 4, dex: 4, name: 'Charmander', typeIds: [], stats: null, description: null, height: null, weight: null, learnset: [], hasSprite: false },
+    { id: 1, dex: 1, name: 'Bulbasaur', typeIds: [], stats: null, description: null, height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
+    { id: 4, dex: 4, name: 'Charmander', typeIds: [], stats: null, description: null, height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
   ],
 };
 
 const state: State = {
   version: 1, screen: 'POKEDEX', priorScreen: 'POKEDEX', settingsReturnScreen: 'POKEDEX', selectedSpeciesId: null, filter: 'ALL', selectedAreaId: null,
   battleTab: 'ENTRY',
-  settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true },
+  settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
   speciesState: {
     1: { seen: true, caught: false, team: false, ballId: null },
     4: { seen: false, caught: false, team: false, ballId: null },
   },
-  battle: null, catalogReady: true, catalogName: 'fixture.gba', error: null,
+  battle: null, catalogReady: true, catalogName: 'fixture.gba', error: null, activeRulesetId: null, rulesetAssumed: true,
+  loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
 };
 
 describe('Pokédex knowledge modes', () => {

@@ -28,7 +28,7 @@ object RecordMaterializers {
             val abilities = if (layout.generation == 3 && stats != null && statsIndex in 0 until stats.count) {
                 val offset = stats.offset + statsIndex * stats.recordSize
                 if (stats.recordSize >= 24) {
-                    CatalogField.available(listOf(rom.u8(offset + 22), rom.u8(offset + 23)).distinct())
+                    CatalogField.available(listOf(rom.u8(offset + 22), rom.u8(offset + 23)).filter { it != 0 }.distinct())
                 } else {
                     CatalogField.notFound("base-stat record has no ability fields")
                 }
