@@ -104,6 +104,10 @@ The live target view contains four independently configurable tabs:
 
 Mystery Dungeon remains a possible later engine family, but it does not influence the v1 architecture or compatibility report.
 
+### 4.1 Deferred v1.1 single-screen overlay
+
+Phones without a second display may later reuse the same companion snapshots and controls through an optional Android overlay. The v1.1 host may request the system `Display over other apps` permission, show a draggable ROM-derived Poké Ball bubble above RetroArch, and use that bubble to show or hide a compact floating DualDex panel. The overlay must remain passive: it cannot inject game input, intercept RetroArch controls outside its visible bounds, or change the ROM or emulator state. This is explicitly excluded from the v1 browser POC and first dual-screen Android host so that it does not expand their permission, lifecycle, or window-management scope.
+
 ## 5. User experience
 
 ### 5.1 First run
