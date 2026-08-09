@@ -34,6 +34,8 @@ object CatalogMaterializer {
         val descriptions = RelationshipMaterializers.descriptions(rom, layout)
         val evolutions = RelationshipMaterializers.evolutions(rom, layout)
         val learnsets = RelationshipMaterializers.learnsets(rom, layout)
+        val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
+        val moveDescriptions = MoveDescriptionMaterializer.materialize(rom, layout)
         val sprites = SpriteMaterializer.pokemon(rom, layout)
         val baseSpecies = RecordMaterializers.species(rom, layout)
         val species = baseSpecies.mapValues { (id, record) ->
@@ -61,7 +63,18 @@ object CatalogMaterializer {
                 },
             )
         }
-        val moves = RecordMaterializers.moves(rom, layout)
+        val moves = RecordMaterializers.moves(rom, layout).mapValues { (id, move) ->
+            val effectText = moveDescriptions?.descriptions?.get(id)
+            move.copy(
+                effectText = when {
+                    effectText != null -> CatalogField.available(effectText)
+                    layout.generation < 3 -> CatalogField.notApplicable(
+                        "this engine does not expose a compatible move-description pointer table",
+                    )
+                    else -> CatalogField.notFound("move description was not resolved from the ROM")
+                },
+            )
+        }
         val chart = RecordMaterializers.typeChart(rom, layout)
         val types = TypePresentationMaterializer.apply(RecordMaterializers.types(layout, species, chart, moves))
         val encounters = EncounterMaterializer.materialize(rom, layout)
@@ -111,7 +124,22 @@ object CatalogMaterializer {
             typeChart = chart,
             encounterAreas = encounters,
             captureBallsById = balls,
+            learnsetRulesets = learnsetRulesets,
             capabilities = capabilities,
+            diagnostics = buildList {
+                moveDescriptions?.let {
+                    add(
+                        "move descriptions: offset=0x${it.sourceOffset.toString(16)} " +
+                            "confidence=${"%.3f".format(java.util.Locale.ROOT, it.confidence)}",
+                    )
+                }
+                learnsetRulesets.forEach {
+                    add(
+                        "learnset ruleset ${it.id}: offset=0x${it.sourceOffset.toString(16)} " +
+                            "confidence=${"%.3f".format(java.util.Locale.ROOT, it.confidence)} primary=${it.primary}",
+                    )
+                }
+            },
         )
     }
 
