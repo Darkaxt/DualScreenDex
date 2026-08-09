@@ -12,6 +12,7 @@ const disconnected: RetroArchState = {
   contentCrc32: null,
   resolution: 'NO_CONTENT',
   activeSource: null,
+  savefileDirectory: null,
   indexedRoms: 0,
   message: null,
 };
@@ -27,13 +28,15 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
         <p>DualDex watches RetroArch directly. Cocoon and process-ID access are not required.</p>
       </div>
 
-      <SetupStep number="1" title="NETWORK COMMANDS" status={retroArch.configState}>
-        <p>Fully close RetroArch before selecting its public folder. DualDex changes only the approved Network Command keys and preserves a contextual recovery copy until read-back succeeds.</p>
+      <SetupStep number="1" title="RETROARCH ACCESS" status={retroArch.configState}>
+        <p>Fully close RetroArch before selecting its public folder. DualDex enables Network Commands and a 10-second SaveRAM autosave interval, then verifies the edited file without changing unrelated settings.</p>
         <a class="setup-action" href="dualdex://grant/retroarch">SELECT RETROARCH FOLDER</a>
-        <small>A written config is not considered active until DualDex verifies the Network Command Interface after a full restart.</small>
+        <small>The command interface is not considered active until DualDex verifies it after a full RetroArch restart.</small>
         {retroArch.configState !== 'VERIFIED' && <div class="setup-manual-path">
           <strong>MANUAL RETROARCH PATH</strong>
           <p>Settings → Network → Network Commands: enable Network Commands and keep port 55355.</p>
+          <p>Settings → Saving → SaveRAM Autosave Interval: set 10 seconds.</p>
+          <p>Settings → Directory → Save Files: select a public RetroArch/saves folder DualDex can read.</p>
           <p>Main Menu → Configuration File → Save Current Configuration, then fully restart RetroArch.</p>
         </div>}
       </SetupStep>
@@ -49,6 +52,7 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
           <span><small>CONTENT</small><strong>{retroArch.gameBasename ?? 'None'}</strong></span>
           <span><small>MATCH</small><strong>{retroArch.activeSource ?? retroArch.resolution.replaceAll('_', ' ')}</strong></span>
         </div>
+        {retroArch.savefileDirectory && <p class="setup-directory"><small>EFFECTIVE SAVE DIRECTORY</small><strong>{retroArch.savefileDirectory}</strong></p>}
         <a class="setup-action setup-action-primary" href="dualdex://open/retroarch">OPEN RETROARCH</a>
       </SetupStep>
 

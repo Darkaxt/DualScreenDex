@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import com.darkaxt.dualdex.retroarch.ConfigInstallResult
 import com.darkaxt.dualdex.retroarch.NetworkCommandClient
 import com.darkaxt.dualdex.retroarch.RetroArchConfigInstaller
@@ -15,16 +16,27 @@ import com.darkaxt.dualdex.retroarch.RomSessionResolver
 import com.darkaxt.dualdex.retroarch.SessionMonitor
 import com.darkaxt.dualdex.retroarch.SessionResolution
 import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
+import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
+import com.darkaxt.dualdex.catalog.SaveSnapshotStore
+import com.darkaxt.dualdex.save.AndroidSaveDocumentResolver
+import com.darkaxt.dualdex.save.SaveAssociationStore
+import com.darkaxt.dualdex.save.SaveDocumentSource
+import com.darkaxt.dualdex.save.SaveMonitorResult
+import com.darkaxt.dualdex.save.SaveMonitorStatus
+import com.darkaxt.dualdex.save.SavePollingMonitor
 import com.darkaxt.dualdex.storage.AndroidRomLibraryIndexer
 import com.darkaxt.dualdex.storage.RomIndexStore
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.enrpau.dualscreendex.companion.api.RetroArchView
+import com.enrpau.dualscreendex.companion.api.SaveCandidateView
+import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
 
 class RetroArchSetupCoordinator(
     private val context: Context,
@@ -33,6 +45,10 @@ class RetroArchSetupCoordinator(
 ) : AutoCloseable {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val indexStore = RomIndexStore(File(context.filesDir, "retroarch/rom-index.json"))
+    private val saveMonitor = SavePollingMonitor(
+        SaveAssociationStore(File(context.filesDir, "retroarch/save-associations.json")),
+        SaveSnapshotStore(File(context.filesDir, "catalogs"), AndroidCatalogDatabaseFactory),
+    )
     private val worker = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "dualdex-retroarch-setup").apply { isDaemon = true }
     }
@@ -44,6 +60,11 @@ class RetroArchSetupCoordinator(
     private val entries = AtomicReference(loadStoredIndex())
     private val view = AtomicReference(initialView())
     private val activating = AtomicReference<String?>(null)
+    private val pollingSave = AtomicBoolean(false)
+    private val activeEntry = AtomicReference<RomIndexEntry?>(null)
+    private val lastSaveCandidates = AtomicReference<List<SaveDocumentSource>>(emptyList())
+    private val discoveredSaveRom = AtomicReference<String?>(null)
+    private val restoredSaveRom = AtomicReference<String?>(null)
     @Volatile private var lastActivatedSha: String? = null
 
     init {
@@ -72,7 +93,7 @@ class RetroArchSetupCoordinator(
                     it.copy(
                         configState = "RESTART_REQUIRED",
                         restartRequired = true,
-                        message = "Network Commands were written and verified. Fully restart RetroArch, then return here.",
+                        message = "Network Commands and 10-second SaveRAM autosave were written and verified. Fully restart RetroArch, then return here.",
                     )
                 }
                 ConfigInstallResult.AlreadyConfigured -> update {
@@ -80,7 +101,7 @@ class RetroArchSetupCoordinator(
                     it.copy(
                         configState = "RESTART_REQUIRED",
                         restartRequired = true,
-                        message = "The selected config already enables Network Commands. Fully restart RetroArch so DualDex can verify it.",
+                        message = "The selected config already enables Network Commands and 10-second SaveRAM autosave. Fully restart RetroArch so DualDex can verify it.",
                     )
                 }
                 is ConfigInstallResult.Failed -> update {
@@ -125,6 +146,20 @@ class RetroArchSetupCoordinator(
 
     fun snapshot(): RetroArchView = view.get()
 
+    fun selectSave(documentId: String): Boolean {
+        val entry = activeEntry.get() ?: return false
+        if (lastSaveCandidates.get().none { it.id == documentId }) return false
+        saveMonitor.select(entry.sha256, documentId)
+        runtime.updateSaveRam(
+            SaveRamView(
+                status = "LOCATING",
+                autosaveStatus = readAutosaveStatus(),
+                message = "Validating the selected SaveRAM…",
+            ),
+        )
+        return true
+    }
+
     fun launchRetroArch(): Boolean {
         val intent = RETROARCH_PACKAGES.firstNotNullOfOrNull { packageName ->
             context.packageManager.getLaunchIntentForPackage(packageName)
@@ -142,6 +177,7 @@ class RetroArchSetupCoordinator(
     }
 
     private fun monitorHeartbeat() {
+        restorePersistedSave()
         runCatching { monitor().heartbeat() }
             .onSuccess { session ->
                 val status = session.lastStatus as? RetroArchStatus.Running
@@ -154,6 +190,7 @@ class RetroArchSetupCoordinator(
                     resolvedEntry.sha256 == lastActivatedSha &&
                     runtime.catalogHash() == resolvedEntry.sha256
                 val loading = resolvedEntry?.sourceId == activating.get()
+                activeEntry.set(resolvedEntry)
                 update { current ->
                     current.copy(
                         configState = if (connected && restartVerified) "VERIFIED" else current.configState,
@@ -162,6 +199,7 @@ class RetroArchSetupCoordinator(
                         systemId = status?.systemId,
                         gameBasename = status?.gameBasename,
                         contentCrc32 = status?.crc32,
+                        savefileDirectory = session.savefileDirectory,
                         resolution = when (resolution) {
                             SessionResolution.NoContent -> "NO_CONTENT"
                             is SessionResolution.Resolved -> when {
@@ -184,6 +222,7 @@ class RetroArchSetupCoordinator(
                     )
                 }
                 if (resolution is SessionResolution.Resolved) activate(resolution.entry)
+                if (active) pollSave(requireNotNull(resolvedEntry))
             }
             .onFailure { failure -> update { it.copy(connection = "DISCONNECTED", message = failure.message) } }
     }
@@ -222,6 +261,91 @@ class RetroArchSetupCoordinator(
             }
         }
     }
+
+    private fun pollSave(entry: RomIndexEntry) {
+        if (!pollingSave.compareAndSet(false, true)) return
+        worker.execute {
+            try {
+                val parseContext = runtime.saveParseContext()
+                if (parseContext == null || !parseContext.romIdentity.equals(entry.sha256, ignoreCase = true)) return@execute
+                val configTree = preferences.getString(CONFIG_TREE_URI, null)?.let(Uri::parse)?.takeIf(::hasReadGrant)
+                val romTree = preferences.getString(ROM_TREE_URI, null)?.let(Uri::parse)?.takeIf(::hasReadGrant)
+                val resolver = AndroidSaveDocumentResolver(context.contentResolver)
+                val cachedCandidates = lastSaveCandidates.get().takeIf {
+                    discoveredSaveRom.get().equals(entry.sha256, ignoreCase = true) && it.isNotEmpty()
+                }
+                val candidates = cachedCandidates?.let(resolver::refresh)
+                    ?: resolver.discover(entry, configTree, romTree).also { discoveredSaveRom.set(entry.sha256) }
+                lastSaveCandidates.set(candidates)
+                val result = saveMonitor.poll(parseContext, candidates, readAutosaveStatus())
+                val saveView = result.toView()
+                if (result.snapshot != null) runtime.applySaveSnapshot(result.snapshot, saveView)
+                else runtime.updateSaveRam(saveView)
+            } catch (failure: Exception) {
+                runtime.updateSaveRam(
+                    SaveRamView(
+                        status = "UNAVAILABLE",
+                        autosaveStatus = readAutosaveStatus(),
+                        message = failure.message ?: failure.javaClass.simpleName,
+                    ),
+                )
+            } finally {
+                pollingSave.set(false)
+            }
+        }
+    }
+
+    private fun restorePersistedSave() {
+        val parseContext = runtime.saveParseContext() ?: return
+        if (restoredSaveRom.get().equals(parseContext.romIdentity, ignoreCase = true)) return
+        val autosaveStatus = readAutosaveStatus()
+        val restored = try {
+            saveMonitor.restore(parseContext, autosaveStatus)
+        } catch (failure: Exception) {
+            Log.e(LOG_TAG, "Could not restore the cached SaveRAM snapshot", failure)
+            runtime.updateSaveRam(
+                SaveRamView(
+                    status = "STALE",
+                    autosaveStatus = autosaveStatus,
+                    message = "The cached SaveRAM snapshot could not be reopened; live monitoring will retry.",
+                ),
+            )
+            return
+        }
+        val snapshot = restored?.snapshot ?: return
+        if (runtime.applySaveSnapshot(snapshot, restored.toView())) {
+            restoredSaveRom.set(parseContext.romIdentity)
+        }
+    }
+
+    private fun SaveMonitorResult.toView(): SaveRamView {
+        val stored = retained
+        val sourceDocument = source
+        return SaveRamView(
+            status = status.name,
+            sourceName = sourceDocument?.displayPath,
+            sourceLastModifiedEpochMs = sourceDocument?.lastModifiedEpochMs ?: stored?.sourceLastModifiedEpochMs,
+            refreshedAtEpochMs = refreshedAtEpochMs ?: stored?.refreshedAtEpochMs,
+            autosaveStatus = autosaveStatus,
+            capabilities = (snapshot ?: stored?.snapshot)?.capabilities.orEmpty()
+                .mapKeys { it.key.name }
+                .mapValues { it.value.status.name },
+            candidates = if (status == SaveMonitorStatus.AMBIGUOUS) candidates.map {
+                SaveCandidateView(it.id, it.displayPath, it.lastModifiedEpochMs)
+            } else emptyList(),
+            message = message,
+        )
+    }
+
+    private fun readAutosaveStatus(): String {
+        val uri = preferences.getString(CONFIG_TREE_URI, null)?.let(Uri::parse) ?: return "UNVERIFIED"
+        if (!hasReadGrant(uri)) return "UNVERIFIED"
+        return runCatching { SafRetroArchConfigStore(context.contentResolver, uri).readSaveSettings().autosaveStatus }
+            .getOrDefault("UNVERIFIED")
+    }
+
+    private fun hasReadGrant(uri: Uri): Boolean = context.contentResolver.persistedUriPermissions
+        .any { permission -> permission.uri == uri && permission.isReadPermission }
 
     private fun persistGrant(uri: Uri, write: Boolean) {
         val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
@@ -281,6 +405,7 @@ class RetroArchSetupCoordinator(
         const val CONFIG_TREE_URI = "config-tree-uri"
         const val ROM_TREE_URI = "rom-tree-uri"
         const val HEARTBEAT_INTERVAL_SECONDS = 2L
+        const val LOG_TAG = "DualDexSaveRAM"
         val RETROARCH_PACKAGES = listOf("com.retroarch", "com.retroarch.aarch64", "com.retroarch.ra32")
     }
 }

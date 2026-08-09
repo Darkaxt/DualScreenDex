@@ -47,6 +47,7 @@ export function PokedexDetail({
       {unlocked && displayTab === 'ENTRY' && <div class="paper-panel"><p class="eyebrow">POKÉDEX ENTRY</p><p class="entry-copy">{species.description || 'No Pokédex description was resolved from this ROM.'}</p><div class="fact-grid"><span><small>HEIGHT</small><strong>{formatHeight(species.height, catalog.platform)}</strong></span><span><small>WEIGHT</small><strong>{formatWeight(species.weight, catalog.platform)}</strong></span></div></div>}
       {unlocked && displayTab === 'STATS' && <div class="paper-panel">
         <div class="section-heading"><div><p class="eyebrow">BASE STATS + INNATE RANGE</p><p>Lv 50 projection · no EV/stat experience · neutral nature where applicable.</p></div><strong>BST {baseStatSummary(species.stats)}</strong></div>
+        {status?.innateTier && <p class="range-note">Preferred recruit: <strong>{status.innateTier}</strong>{status.preferredLevel ? ` · Lv ${status.preferredLevel}` : ''}</p>}
         <div class="stat-legend" aria-label="Stat projection legend"><span class="legend-low">LOW</span><span class="legend-typical">TYPICAL</span><span class="legend-high">HIGH</span></div>
         <div class="stat-list">{statRanges.map(item => <div key={item.name}>
           <span class="stat-label">{item.name}<small>BASE {item.value}</small></span>

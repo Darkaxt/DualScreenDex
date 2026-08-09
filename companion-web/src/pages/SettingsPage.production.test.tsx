@@ -43,6 +43,20 @@ describe('production settings copy', () => {
     expect(screen.getByRole('link', { name: 'DOCKED' }).getAttribute('data-active')).toBe('true');
     expect(screen.getByText(/fixed 4:3 panel/i)).toBeTruthy();
   });
+
+  it('shows SaveRAM health and lets an ambiguous match be selected', () => {
+    const send = vi.fn();
+    render(<SettingsPage catalog={catalog} state={{ ...state, saveRam: {
+      status: 'AMBIGUOUS', sourceName: null, sourceLastModifiedEpochMs: null, refreshedAtEpochMs: null,
+      autosaveStatus: 'UNVERIFIED', capabilities: {}, message: 'Choose one.',
+      candidates: [{ id: 'content://save/1', path: 'RetroArch/saves/game.srm', lastModifiedEpochMs: 10 }]
+    } }} send={send} onUpload={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /RetroArch\/saves\/game.srm/i }));
+
+    expect(send).toHaveBeenCalledWith('SELECT_SAVE', { documentId: 'content://save/1' });
+    expect(screen.getByText(/autosave is unverified/i)).toBeTruthy();
+  });
 });
 
 const catalog = {

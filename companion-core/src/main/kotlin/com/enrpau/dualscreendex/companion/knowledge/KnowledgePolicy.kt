@@ -7,14 +7,15 @@ import com.enrpau.dualscreendex.companion.model.MatchupKey
 
 object KnowledgePolicy {
     fun listSpecies(mode: KnowledgeMode, speciesId: Int, ledger: KnowledgeLedger): Boolean = when (mode) {
-        KnowledgeMode.DISCOVERED, KnowledgeMode.HIDDEN -> true
+        KnowledgeMode.DISCOVERED -> true
         KnowledgeMode.ORGANIC -> speciesId in ledger.seenSpecies || isCaught(speciesId, ledger)
+        KnowledgeMode.HIDDEN -> isCaught(speciesId, ledger)
     }
 
     fun staticDetails(mode: KnowledgeMode, speciesId: Int, ledger: KnowledgeLedger): Boolean = when (mode) {
         KnowledgeMode.DISCOVERED -> true
         KnowledgeMode.ORGANIC -> isCaught(speciesId, ledger)
-        KnowledgeMode.HIDDEN -> true
+        KnowledgeMode.HIDDEN -> isCaught(speciesId, ledger)
     }
 
     fun matchup(
@@ -31,5 +32,6 @@ object KnowledgePolicy {
 
     fun assistanceVisible(mode: KnowledgeMode): Boolean = mode != KnowledgeMode.HIDDEN
 
-    fun isCaught(speciesId: Int, ledger: KnowledgeLedger): Boolean = ledger.owned.any { it.speciesId == speciesId }
+    fun isCaught(speciesId: Int, ledger: KnowledgeLedger): Boolean =
+        speciesId in ledger.caughtSpecies || ledger.owned.any { it.speciesId == speciesId && !it.isEgg }
 }

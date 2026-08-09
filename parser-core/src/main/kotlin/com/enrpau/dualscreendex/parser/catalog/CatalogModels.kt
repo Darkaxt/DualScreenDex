@@ -72,6 +72,7 @@ data class SpeciesRecord(
     val moveAcquisitions: CatalogField<List<MoveAcquisition>> =
         CatalogField.notFound("non-level move acquisition was not materialized"),
     val abilityIds: CatalogField<List<Int>> = CatalogField.notApplicable("abilities are not part of this engine"),
+    val growthRate: CatalogField<Int> = CatalogField.notFound("growth rate was not materialized"),
 )
 
 data class MoveRecord(

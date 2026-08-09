@@ -1,5 +1,5 @@
 import type { ComponentType } from 'preact';
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { action, bootstrap, events, uploadRom } from './gateway';
 import type { Bootstrap, Catalog, State } from './models';
 import { PokedexBrowse } from './pages/PokedexBrowse';
@@ -29,7 +29,7 @@ const emptyState: State = {
   settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
   speciesState: {}, observedMoves: {}, battle: null, catalogReady: false, catalogName: null, error: null,
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'IDLE', completedUnits: 0, totalUnits: 0 },
-  retroArch: { configGrant: 'MISSING', romGrant: 'MISSING', configState: 'NOT_CONFIGURED', restartRequired: false, connection: 'DISCONNECTED', systemId: null, gameBasename: null, contentCrc32: null, resolution: 'NO_CONTENT', activeSource: null, indexedRoms: 0, message: null }
+  retroArch: { configGrant: 'MISSING', romGrant: 'MISSING', configState: 'NOT_CONFIGURED', restartRequired: false, connection: 'DISCONNECTED', systemId: null, gameBasename: null, contentCrc32: null, resolution: 'NO_CONTENT', activeSource: null, savefileDirectory: null, indexedRoms: 0, message: null }
 };
 
 export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<DevelopmentToolsProps> } = {}) {
@@ -41,13 +41,16 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [moveDetailId, setMoveDetailId] = useState<number | null>(null);
   const [abilityDetailId, setAbilityDetailId] = useState<number | null>(null);
   const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'MORE'>('ENTRY');
+  const lastCatalogRefresh = useRef('');
   const loadingPercent = loadingPercentage(state.loading);
 
   useEffect(() => {
     bootstrap().then(applyBootstrap).catch(failure => setError(failure.message)).finally(() => setBusy(false));
     return events(incoming => {
       setState(current => incoming.version >= current.version ? incoming : current);
-      if (incoming.loading.completedUnits > 0) {
+      const marker = catalogRefreshMarker(incoming);
+      if (marker && marker !== lastCatalogRefresh.current) {
+        lastCatalogRefresh.current = marker;
         bootstrap().then(applyBootstrap).catch(failure => setError(failure.message));
       }
     });
@@ -107,6 +110,11 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 export function loadingPercentage(loading: State['loading']): number | null {
   if (loading.totalUnits <= 0) return null;
   return Math.round(Math.min(1, Math.max(0, loading.completedUnits / loading.totalUnits)) * 100);
+}
+
+export function catalogRefreshMarker(state: Pick<State, 'catalogName' | 'loading'>): string {
+  if (state.loading.completedUnits <= 0) return '';
+  return `${state.catalogName ?? ''}:${state.loading.phase}:${state.loading.completedUnits}:${state.loading.totalUnits}`;
 }
 
 function Welcome({ busy, error, onUpload, openSetup }: { busy: boolean; error: string | null; onUpload: (file: File) => void; openSetup: () => void }) {

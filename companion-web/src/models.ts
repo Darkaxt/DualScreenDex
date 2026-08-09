@@ -77,6 +77,19 @@ export interface SpeciesState {
   caught: boolean;
   team: boolean;
   ballId: number | null;
+  preferredLevel?: number | null;
+  innateTier?: string | null;
+}
+
+export interface SaveRamState {
+  status: 'UNAVAILABLE' | 'LOCATING' | 'MATCHED' | 'AMBIGUOUS' | 'STALE' | string;
+  sourceName: string | null;
+  sourceLastModifiedEpochMs: number | null;
+  refreshedAtEpochMs: number | null;
+  autosaveStatus: 'VERIFIED' | 'DISABLED' | 'UNVERIFIED' | string;
+  capabilities: Record<string, string>;
+  candidates: { id: string; path: string; lastModifiedEpochMs: number }[];
+  message: string | null;
 }
 
 export interface RetroArchState {
@@ -90,6 +103,7 @@ export interface RetroArchState {
   contentCrc32: string | null;
   resolution: string;
   activeSource: string | null;
+  savefileDirectory: string | null;
   indexedRoms: number;
   message: string | null;
 }
@@ -102,6 +116,7 @@ export interface State {
   selectedSpeciesId: number | null;
   filter: 'ALL' | 'CAUGHT' | 'SEEN' | 'TEAM' | 'AREA';
   selectedAreaId: number | null;
+  currentAreaIds?: number[];
   battleTab: 'ENTRY' | 'ATTACK' | 'RARITY' | 'MOVES';
   settings: Settings;
   speciesState: Record<number, SpeciesState>;
@@ -120,6 +135,7 @@ export interface State {
   rulesetAssumed: boolean;
   loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number };
   retroArch?: RetroArchState;
+  saveRam?: SaveRamState;
 }
 
 export interface Bootstrap {

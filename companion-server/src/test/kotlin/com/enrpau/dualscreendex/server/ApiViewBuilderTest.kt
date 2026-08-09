@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.MoveObservation
+import com.enrpau.dualscreendex.companion.model.OwnedPokemon
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
@@ -111,5 +112,44 @@ class ApiViewBuilderTest {
         assertEquals(7, view.moves.single().effectId)
         assertEquals("Damages the target.", view.moves.single().description)
         assertTrue(pokemon.learnsets.getValue("modern").isNotEmpty())
+    }
+
+    @Test
+    fun exposesCaughtFlagsAndEveryEncounterMethodForTheSavedCurrentArea() {
+        val species = SpeciesRecord(
+            id = 25,
+            dexNumber = CatalogField.available(25),
+            name = CatalogField.available("PIKACHU"),
+            typeIds = CatalogField.available(emptyList()),
+            baseStats = CatalogField.notFound("fixture"),
+            sprite = CatalogField.notFound("fixture"),
+        )
+        val baseId = 0x0203
+        val catalog = ParsedCatalog(
+            romSha256 = "sha",
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = mapOf(25 to species),
+            encounterAreas = listOf(
+                EncounterArea(baseId * 10, CatalogField.available("AREA - GRASS"), 0, listOf(EncounterSlot(25, 3, 5, 20))),
+                EncounterArea(baseId * 10 + 1, CatalogField.available("AREA - SURF"), 1, listOf(EncounterSlot(25, 5, 7, 20))),
+            ),
+        )
+
+        val view = ApiViewBuilder.state(
+            AppSnapshot(
+                ledger = KnowledgeLedger(
+                    caughtSpecies = setOf(25),
+                    currentAreaBaseId = baseId,
+                    owned = listOf(OwnedPokemon("box-0", 25, 3, 31, ivs = List(6) { 30 })),
+                ),
+            ),
+            catalog,
+        )
+
+        assertTrue(view.speciesState.getValue(25).caught)
+        assertEquals(31, view.speciesState.getValue(25).preferredLevel)
+        assertEquals("ACE", view.speciesState.getValue(25).innateTier)
+        assertEquals(listOf(baseId * 10, baseId * 10 + 1), view.currentAreaIds)
     }
 }

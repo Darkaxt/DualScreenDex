@@ -5,6 +5,12 @@ import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.catalog.StoredCatalog
 import com.enrpau.dualscreendex.companion.api.RetroArchView
+import com.enrpau.dualscreendex.companion.api.SaveRamView
+import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.SaveSnapshot
+import com.darkaxt.dualdex.save.SavedArea
+import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -15,12 +21,24 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertSame
 import org.junit.Test
 import java.util.Collections
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.TimeUnit
 
 class ProductionCompanionRuntimeTest {
+    @Test
+    fun reusesAnUnchangedPresentationSnapshotForPollingClients() {
+        val runtime = ProductionCompanionRuntime(parserWorker = ImmediateExecutorService())
+        runtime.loadCatalog("fixture.gba", ParsedCatalog("sha", EngineFamily.EMERALD, Platform.GBA))
+
+        val first = runtime.stateView()
+        val second = runtime.stateView()
+
+        assertSame(first, second)
+        runtime.close()
+    }
     @Test
     fun exposesRealCatalogWithoutSimulatorActions() {
         val runtime = ProductionCompanionRuntime()
@@ -67,6 +85,39 @@ class ProductionCompanionRuntimeTest {
         assertEquals("Modern Emerald.gba", restored.state.catalogName)
         assertEquals("CACHE_REOPEN", restored.state.loading.phase)
         assertEquals(catalog.romSha256, restored.catalog?.hash)
+        runtime.close()
+    }
+
+    @Test
+    fun doesNotExposeSaveParsingContextWhileAStoredCatalogIsStillBeingPublished() {
+        val hash = "a".repeat(64)
+        val catalog = ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA)
+        val runtime = ProductionCompanionRuntime(
+            catalogRepository = FakeCatalogRepository(
+                StoredCatalog(
+                    catalog,
+                    CatalogSourceMetadata.direct("fixture.gba", 1, "FIXTURE"),
+                    CatalogWriteProgress.complete(),
+                    committedSections = emptySet(),
+                    writtenAtEpochMs = 1,
+                ),
+            ),
+        )
+        var observedPublication = false
+        var contextDuringPublication: com.darkaxt.dualdex.save.SaveParseContext? = null
+        val subscription = runtime.gateway.subscribe {
+            if (!observedPublication) {
+                observedPublication = true
+                contextDuringPublication = runtime.saveParseContext()
+            }
+        }
+
+        assertTrue(runtime.restoreCatalog(hash))
+
+        assertTrue(observedPublication)
+        assertNull(contextDuringPublication)
+        assertEquals(hash, runtime.saveParseContext()?.romIdentity)
+        subscription.close()
         runtime.close()
     }
 
@@ -135,6 +186,53 @@ class ProductionCompanionRuntimeTest {
         assertTrue(requireNotNull(completion).isSuccess)
         assertEquals(rom.sha256, runtime.catalogHash())
         assertEquals("Modern Emerald.gba", runtime.bootstrap().state.catalogName)
+        runtime.close()
+    }
+
+    @Test
+    fun exposesCatalogCoupledSaveContextAndPublishesOneValidatedSnapshot() {
+        val hash = "a".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(
+                    25 to SpeciesRecord(
+                        id = 25,
+                        dexNumber = CatalogField.available(25),
+                        name = CatalogField.available("PIKACHU"),
+                        typeIds = CatalogField.available(emptyList()),
+                        baseStats = CatalogField.notFound("fixture"),
+                        sprite = CatalogField.notFound("fixture"),
+                        growthRate = CatalogField.available(0),
+                    ),
+                ),
+            ),
+        )
+        val context = requireNotNull(runtime.saveParseContext())
+        assertEquals(25, context.speciesById.getValue(25).dexNumber)
+        val snapshot = SaveSnapshot(
+            romIdentity = hash,
+            saveIdentity = "save",
+            saveGeneration = 3,
+            saveCounter = 2,
+            currentArea = SavedArea(2, 3),
+            seenDexNumbers = setOf(25),
+            caughtDexNumbers = setOf(25),
+            party = listOf(OwnedIndividual("party-0", 25, level = 12, ivs = List(6) { 31 }, captureBallId = 4)),
+            storedIndividuals = emptyList(),
+            capabilities = emptyMap(),
+        )
+
+        assertTrue(runtime.applySaveSnapshot(snapshot, SaveRamView(status = "MATCHED", sourceName = "fixture.srm")))
+
+        val state = runtime.stateView()
+        assertTrue(state.speciesState.getValue(25).caught)
+        assertEquals("MATCHED", state.saveRam.status)
+        assertEquals("fixture.srm", state.saveRam.sourceName)
         runtime.close()
     }
 

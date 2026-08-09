@@ -3,6 +3,8 @@ package com.darkaxt.dualdex.setup
 import android.content.ContentResolver
 import android.net.Uri
 import com.darkaxt.dualdex.retroarch.ConfigDocumentStore
+import com.darkaxt.dualdex.retroarch.RetroArchSaveConfig
+import com.darkaxt.dualdex.retroarch.RetroArchSaveSettings
 import com.darkaxt.dualdex.storage.DocumentTreeAccess
 import com.darkaxt.dualdex.storage.LocatedTreeDocument
 import com.darkaxt.dualdex.storage.TreeDocument
@@ -39,6 +41,8 @@ class SafRetroArchConfigStore(
     override fun deleteRecovery() {
         recovery()?.let(access::delete)
     }
+
+    fun readSaveSettings(): RetroArchSaveSettings = RetroArchSaveConfig.read(readConfig())
 
     private fun recovery(): TreeDocument? = access.children(config.parent).singleOrNull { it.name == RECOVERY_NAME }
 

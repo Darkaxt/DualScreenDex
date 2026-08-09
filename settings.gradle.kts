@@ -27,6 +27,8 @@ include(
     ":companion-core",
     ":catalog-store",
     ":retroarch-session",
+    ":save-core",
+    ":save-cli",
     ":companion-simulator",
     ":companion-server",
 )

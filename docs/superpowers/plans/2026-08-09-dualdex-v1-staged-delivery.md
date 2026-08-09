@@ -196,14 +196,14 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 
 **Delivery checklist:**
 
-- [ ] Identify the newest complete checksum-valid Gen III save slot and decode sections without modifying the source file.
-- [ ] Decode seen/caught flags, party, boxes, current map, species/form, level, eggs, six IVs, and capture-ball ID as independent capabilities.
-- [ ] Match SaveRAM using effective RetroArch directory rules plus structural validation, not filename alone.
-- [ ] Poll on monitoring heartbeats; build a candidate snapshot off-state and atomically publish only after full validation.
-- [ ] Retain the last good snapshot across short/partial/corrupt reads and warn only when autosave is disabled/unverified, not merely because time passed.
-- [ ] Select the best owned individual deterministically and render its qualitative tier and ROM-derived ball marker.
-- [ ] Validate read-only against `Emerald Rogue`, `Modern Emerald 3.5`, and `Odyssey` samples in `H:\My Drive\Roms\Android\saves\mGBA`.
-- [ ] Use non-Pokémon saves only as negative family-detection fixtures and keep all private saves out of Git/artifacts.
+- [x] Identify the newest complete checksum-valid Gen III save slot and decode sections without modifying the source file.
+- [x] Decode seen/caught flags, party, boxes, current map, species/form, level, eggs, six IVs, and capture-ball ID as independent capabilities.
+- [x] Match SaveRAM using effective RetroArch directory rules plus structural validation, not filename alone.
+- [x] Poll on monitoring heartbeats; build a candidate snapshot off-state and atomically publish only after full validation.
+- [x] Retain the last good snapshot across short/partial/corrupt reads and warn only when autosave is disabled/unverified, not merely because time passed.
+- [x] Select the best owned individual deterministically and render its qualitative tier and ROM-derived ball marker.
+- [x] Validate read-only against `Emerald Rogue`, `Modern Emerald 3.5`, and `Odyssey` samples in `H:\My Drive\Roms\Android\saves\mGBA`.
+- [x] Use non-Pokémon saves only as negative family-detection fixtures and keep all private saves out of Git/artifacts.
 
 **Gate evidence:** named-save parse summaries without personal/raw data, corruption/partial-write tests, Modern Emerald Organic-mode AVD capture, and source-file hashes proving no writes.
 

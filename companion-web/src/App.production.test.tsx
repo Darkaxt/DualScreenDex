@@ -24,7 +24,7 @@ vi.mock('./gateway', () => ({
   uploadRom: vi.fn(async () => fixture)
 }));
 
-import { App, loadingPercentage } from './App';
+import { App, catalogRefreshMarker, loadingPercentage } from './App';
 
 describe('production application shell', () => {
   beforeEach(() => document.body.replaceChildren());
@@ -43,5 +43,14 @@ describe('production application shell', () => {
     expect(loadingPercentage({ active: true, phase: 'RELATIONSHIPS', completedUnits: 3, totalUnits: 5 })).toBe(60);
     expect(loadingPercentage({ active: true, phase: 'IDENTIFYING', completedUnits: 0, totalUnits: 5 })).toBe(0);
     expect(loadingPercentage({ active: true, phase: 'IDLE', completedUnits: 0, totalUnits: 0 })).toBeNull();
+  });
+});
+
+describe('catalog refresh marker', () => {
+  it('remains stable across ordinary state versions after one catalog phase', () => {
+    const loading = { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 };
+    expect(catalogRefreshMarker({ catalogName: 'game.gba', loading })).toBe(
+      catalogRefreshMarker({ catalogName: 'game.gba', loading }),
+    );
   });
 });

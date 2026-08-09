@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
 import com.enrpau.dualscreendex.companion.api.BootstrapView
 import com.enrpau.dualscreendex.companion.api.DiagnosticView
 import com.enrpau.dualscreendex.companion.api.RetroArchView
+import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.api.StateView
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
@@ -18,6 +19,10 @@ import com.enrpau.dualscreendex.companion.model.Density
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
+import com.enrpau.dualscreendex.companion.knowledge.SaveKnowledgeMapper
+import com.darkaxt.dualdex.save.SaveParseContext
+import com.darkaxt.dualdex.save.SaveSnapshot
+import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
@@ -40,11 +45,13 @@ class ProductionCompanionRuntime(
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
     @Volatile private var retroArch = RetroArchView()
+    @Volatile private var saveRam = SaveRamView()
+    private var catalogPublicationInProgress = false
+    private var cachedState: CachedState? = null
     private val loadGeneration = AtomicLong()
     val gateway = CompanionGateway(
         AppSnapshot(
-            // Until SaveRAM arrives in Stages 4 and 5, manual browsing opens the complete parsed index.
-            settings = CompanionSettings(knowledgeMode = KnowledgeMode.DISCOVERED),
+            settings = CompanionSettings(knowledgeMode = KnowledgeMode.ORGANIC),
         ),
     )
 
@@ -68,6 +75,8 @@ class ProductionCompanionRuntime(
         val header = RomHeaderReader.read(rom)
         val source = CatalogSourceMetadata.fromDisplayName(name, rom.size, header.title)
         synchronized(this) { catalog = null }
+        saveRam = SaveRamView()
+        gateway.dispatch(CompanionAction.ReplaceLedger(com.enrpau.dualscreendex.companion.model.KnowledgeLedger()))
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
         gateway.dispatch(
             CompanionAction.CatalogLoadingChanged(
@@ -118,6 +127,8 @@ class ProductionCompanionRuntime(
     fun loadCatalog(name: String, parsed: ParsedCatalog) {
         loadGeneration.incrementAndGet()
         catalog = parsed
+        saveRam = SaveRamView()
+        gateway.dispatch(CompanionAction.ReplaceLedger(com.enrpau.dualscreendex.companion.model.KnowledgeLedger()))
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
         gateway.dispatch(CompanionAction.CatalogLoaded(name))
     }
@@ -155,18 +166,56 @@ class ProductionCompanionRuntime(
 
     @Synchronized
     fun stateView(snapshot: AppSnapshot = gateway.bootstrap()): StateView {
+        val currentCatalog = catalog
+        cachedState?.let { cached ->
+            if (
+                cached.snapshotVersion == snapshot.version &&
+                cached.catalog === currentCatalog &&
+                cached.retroArch == retroArch &&
+                cached.saveRam == saveRam
+            ) return cached.view
+        }
         val active = resolveRuleset(snapshot.settings.ruleset)
         return ApiViewBuilder.state(
             snapshot,
-            catalog,
+            currentCatalog,
             activeRulesetId = active?.id,
             rulesetAssumed = snapshot.settings.ruleset == "AUTO",
             retroArch = retroArch,
-        )
+            saveRam = saveRam,
+        ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
     }
 
     fun updateRetroArch(state: RetroArchView) {
         retroArch = state
+    }
+
+    fun updateSaveRam(state: SaveRamView) {
+        saveRam = state
+    }
+
+    @Synchronized
+    fun saveParseContext(): SaveParseContext? {
+        if (catalogPublicationInProgress) return null
+        return catalog?.let { current ->
+            SaveParseContext(
+                romIdentity = current.romSha256,
+                speciesById = current.speciesById.mapValues { (id, species) ->
+                    SaveSpeciesContext(id, species.dexNumber.value, species.growthRate.value, species.formId)
+                },
+                captureBallIds = current.captureBallsById.keys.ifEmpty { (1..15).toSet() },
+            )
+        }
+    }
+
+    @Synchronized
+    fun applySaveSnapshot(snapshot: SaveSnapshot, state: SaveRamView): Boolean {
+        val current = catalog ?: return false
+        if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return false
+        val merged = SaveKnowledgeMapper.merge(gateway.bootstrap().ledger, current, snapshot)
+        saveRam = state
+        gateway.dispatch(CompanionAction.ReplaceLedger(merged))
+        return true
     }
 
     fun action(type: String, values: Map<String, String?>): StateView {
@@ -279,17 +328,25 @@ class ProductionCompanionRuntime(
         )
     }
 
+    @Synchronized
     private fun publishReopened(generation: Long, name: String, reopened: ParsedCatalog) {
         if (generation != loadGeneration.get()) return
-        synchronized(this) { catalog = reopened }
-        gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
-        gateway.dispatch(
-            CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 5, totalUnits = 5),
-                name,
-            ),
-        )
-        gateway.dispatch(CompanionAction.CatalogLoaded(name))
+        catalogPublicationInProgress = true
+        try {
+            saveRam = SaveRamView()
+            gateway.dispatch(CompanionAction.ReplaceLedger(com.enrpau.dualscreendex.companion.model.KnowledgeLedger()))
+            gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
+            gateway.dispatch(
+                CompanionAction.CatalogLoadingChanged(
+                    CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 5, totalUnits = 5),
+                    name,
+                ),
+            )
+            catalog = reopened
+            gateway.dispatch(CompanionAction.CatalogLoaded(name))
+        } finally {
+            catalogPublicationInProgress = false
+        }
     }
 
     private fun changedCatalogSections(phase: String): Set<String> = when (phase) {
@@ -315,4 +372,12 @@ class ProductionCompanionRuntime(
     private fun notifyCompletion(callback: ((Result<Unit>) -> Unit)?, result: Result<Unit>) {
         if (callback != null) runCatching { callback(result) }
     }
+
+    private data class CachedState(
+        val snapshotVersion: Long,
+        val catalog: ParsedCatalog?,
+        val retroArch: RetroArchView,
+        val saveRam: SaveRamView,
+        val view: StateView,
+    )
 }

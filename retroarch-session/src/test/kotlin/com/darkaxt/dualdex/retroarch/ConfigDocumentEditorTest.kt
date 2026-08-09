@@ -21,10 +21,11 @@ class ConfigDocumentEditorTest {
             "# network_cmd_enable = \"false\"\r\n" +
                 "video_driver = \"vulkan\"\r\n" +
                 "network_cmd_enable = \"true\"\r\n" +
-                "network_cmd_port = \"55355\"\r\n",
+                "network_cmd_port = \"55355\"\r\n" +
+                "autosave_interval = \"10\"\r\n",
             patch.updated.toString(Charsets.UTF_8),
         )
-        assertEquals(setOf("network_cmd_enable", "network_cmd_port"), patch.changedKeys)
+        assertEquals(setOf("network_cmd_enable", "network_cmd_port", "autosave_interval"), patch.changedKeys)
         assertTrue(ConfigDocumentEditor.verifyNetworkCommands(patch.updated, 55355).valid)
     }
 
@@ -33,7 +34,7 @@ class ConfigDocumentEditorTest {
         val patch = ConfigDocumentEditor.patchNetworkCommands("video_driver = \"gl\"\n".toByteArray(), 55355)
 
         assertEquals(
-            "video_driver = \"gl\"\nnetwork_cmd_enable = \"true\"\nnetwork_cmd_port = \"55355\"\n",
+            "video_driver = \"gl\"\nnetwork_cmd_enable = \"true\"\nnetwork_cmd_port = \"55355\"\nautosave_interval = \"10\"\n",
             patch.updated.toString(Charsets.UTF_8),
         )
     }

@@ -40,4 +40,22 @@ describe('Pokédex knowledge modes', () => {
     expect(screen.getByText('Bulbasaur')).toBeTruthy();
     expect(screen.getByText('Charmander')).toBeTruthy();
   });
+
+  it('lists only recruited species in Hidden mode', () => {
+    render(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      settings: { ...state.settings, knowledgeMode: 'HIDDEN' },
+      speciesState: { ...state.speciesState, 1: { ...state.speciesState[1], caught: true } }
+    }} send={vi.fn()} />);
+
+    expect(screen.getByText('Bulbasaur')).toBeTruthy();
+    expect(screen.queryByText('Charmander')).toBeNull();
+  });
+
+  it('disables save-backed filters when their capabilities are unavailable', () => {
+    render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'TEAM' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'AREA' }).hasAttribute('disabled')).toBe(true);
+  });
 });

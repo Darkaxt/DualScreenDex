@@ -34,6 +34,7 @@ class AndroidLoopbackServer(
     }
     private val activeSockets = Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<Socket, Boolean>())
     @Volatile private var socket: ServerSocket? = null
+    @Volatile private var nativeActionHandler: ((String, Map<String, String?>) -> Boolean)? = null
 
     val address: InetSocketAddress
         get() = socket?.localSocketAddress as? InetSocketAddress
@@ -55,6 +56,10 @@ class AndroidLoopbackServer(
 
     fun updateDisplayMode(mode: String) {
         runtime.action("SETTINGS", mapOf("displayMode" to mode))
+    }
+
+    fun setNativeActionHandler(handler: (String, Map<String, String?>) -> Boolean) {
+        nativeActionHandler = handler
     }
 
     override fun close() {
@@ -126,6 +131,7 @@ class AndroidLoopbackServer(
         val values = payload.entrySet().filter { it.key != "type" }.associate { entry ->
             entry.key to if (entry.value.isJsonNull) null else entry.value.asString
         }
+        if (nativeActionHandler?.invoke(type, values) == true) return jsonResponse(runtime.stateView())
         return jsonResponse(runtime.action(type, values))
     }
 

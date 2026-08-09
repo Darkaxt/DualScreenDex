@@ -16,6 +16,7 @@ object ConfigDocumentEditor {
     private val approvedKeys = linkedMapOf(
         "network_cmd_enable" to { _: Int -> "true" },
         "network_cmd_port" to { port: Int -> port.toString() },
+        "autosave_interval" to { _: Int -> "10" },
     )
 
     fun patchNetworkCommands(original: ByteArray, port: Int): ConfigPatch {
@@ -54,7 +55,11 @@ object ConfigDocumentEditor {
 
     fun verifyNetworkCommands(document: ByteArray, port: Int): ConfigVerification {
         require(port in 1..65535) { "network command port must be between 1 and 65535" }
-        val expected = mapOf("network_cmd_enable" to "true", "network_cmd_port" to port.toString())
+        val expected = mapOf(
+            "network_cmd_enable" to "true",
+            "network_cmd_port" to port.toString(),
+            "autosave_interval" to "10",
+        )
         val values = parseLines(document.toString(Charsets.UTF_8))
             .mapNotNull { parseAssignment(it.content) }
             .filter { it.key in expected }

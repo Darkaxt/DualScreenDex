@@ -25,6 +25,7 @@ class RecordMaterializersTest {
         bytes[stats + 33] = 65
         bytes[stats + 34] = 12
         bytes[stats + 35] = 3
+        bytes[stats + 28 + 19] = 4
         bytes[stats + 28 + 22] = 7
         bytes[stats + 28 + 23] = 9
 
@@ -34,6 +35,7 @@ class RecordMaterializersTest {
         assertEquals("BULBA", bulba.name.value)
         assertEquals(listOf(12, 3), bulba.typeIds.value)
         assertEquals(BaseStats(45, 49, 49, 45, 65, 65), bulba.baseStats.value)
+        assertEquals(4, bulba.growthRate.value)
         assertEquals(listOf(7, 9), bulba.abilityIds.value)
     }
 

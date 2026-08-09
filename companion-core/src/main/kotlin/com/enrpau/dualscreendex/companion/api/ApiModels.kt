@@ -133,6 +133,7 @@ data class StateView(
     val selectedSpeciesId: Int?,
     val filter: String,
     val selectedAreaId: Int?,
+    val currentAreaIds: List<Int>,
     val battleTab: String,
     val settings: Any,
     val speciesState: Map<Int, SpeciesStateView>,
@@ -145,6 +146,7 @@ data class StateView(
     val rulesetAssumed: Boolean,
     val loading: CatalogLoadingView,
     val retroArch: RetroArchView = RetroArchView(),
+    val saveRam: SaveRamView = SaveRamView(),
 )
 data class RetroArchView(
     val configGrant: String = "MISSING",
@@ -157,8 +159,24 @@ data class RetroArchView(
     val contentCrc32: String? = null,
     val resolution: String = "NO_CONTENT",
     val activeSource: String? = null,
+    val savefileDirectory: String? = null,
     val indexedRoms: Int = 0,
     val message: String? = null,
+)
+data class SaveRamView(
+    val status: String = "UNAVAILABLE",
+    val sourceName: String? = null,
+    val sourceLastModifiedEpochMs: Long? = null,
+    val refreshedAtEpochMs: Long? = null,
+    val autosaveStatus: String = "UNVERIFIED",
+    val capabilities: Map<String, String> = emptyMap(),
+    val candidates: List<SaveCandidateView> = emptyList(),
+    val message: String? = null,
+)
+data class SaveCandidateView(
+    val id: String,
+    val path: String,
+    val lastModifiedEpochMs: Long,
 )
 data class CatalogLoadingView(
     val active: Boolean,
@@ -167,7 +185,14 @@ data class CatalogLoadingView(
     val totalUnits: Int,
 )
 
-data class SpeciesStateView(val seen: Boolean, val caught: Boolean, val team: Boolean, val ballId: Int?)
+data class SpeciesStateView(
+    val seen: Boolean,
+    val caught: Boolean,
+    val team: Boolean,
+    val ballId: Int?,
+    val preferredLevel: Int? = null,
+    val innateTier: String? = null,
+)
 data class BattleView(
     val opponents: List<OpponentView>,
     val targetIndex: Int,
@@ -317,15 +342,22 @@ object ApiViewBuilder {
         activeRulesetId: String? = null,
         rulesetAssumed: Boolean = true,
         retroArch: RetroArchView = RetroArchView(),
+        saveRam: SaveRamView = SaveRamView(),
     ): StateView {
+        val currentAreaIds = snapshot.ledger.currentAreaBaseId?.let { baseId ->
+            catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }?.sorted()
+        }.orEmpty()
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
+            val preferred = PreferredIndividualSelector.select(owned)
             species.id to SpeciesStateView(
                 seen = species.id in snapshot.ledger.seenSpecies,
-                caught = owned.isNotEmpty(),
+                caught = KnowledgePolicy.isCaught(species.id, snapshot.ledger),
                 team = species.id in snapshot.ledger.teamSpecies,
-                ballId = PreferredIndividualSelector.select(owned)?.captureBallId
+                ballId = preferred?.captureBallId
                     ?.takeIf { it in catalog.captureBallsById },
+                preferredLevel = preferred?.level,
+                innateTier = preferred?.let(PreferredIndividualSelector::tier)?.takeUnless { it == "UNAVAILABLE" },
             )
         }.orEmpty()
         val activeBattle = snapshot.battle
@@ -343,6 +375,7 @@ object ApiViewBuilder {
             snapshot.selectedSpeciesId,
             snapshot.filter.name,
             snapshot.selectedAreaId,
+            currentAreaIds,
             snapshot.battleTab.name,
             snapshot.settings,
             speciesState,
@@ -392,6 +425,7 @@ object ApiViewBuilder {
                 snapshot.catalogLoading.totalUnits,
             ),
             retroArch,
+            saveRam,
         )
     }
 

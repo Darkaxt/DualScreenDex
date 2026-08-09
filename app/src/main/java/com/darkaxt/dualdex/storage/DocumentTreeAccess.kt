@@ -12,6 +12,8 @@ data class TreeDocument(
     val name: String,
     val mimeType: String,
     val flags: Int,
+    val size: Long,
+    val lastModifiedEpochMs: Long,
 )
 
 data class LocatedTreeDocument(
@@ -43,8 +45,8 @@ class DocumentTreeAccess(
         return matches
     }
 
-    fun filesRecursively(): Sequence<TreeDocument> = sequence {
-        val queue = ArrayDeque<TreeDocument>().apply { add(root) }
+    fun filesRecursively(parent: TreeDocument = root): Sequence<TreeDocument> = sequence {
+        val queue = ArrayDeque<TreeDocument>().apply { add(parent) }
         val visited = mutableSetOf<String>()
         while (queue.isNotEmpty()) {
             val parent = queue.removeFirst()
@@ -68,6 +70,8 @@ class DocumentTreeAccess(
                             cursor.getString(1),
                             cursor.getString(2),
                             cursor.getInt(3),
+                            cursor.getLong(4),
+                            cursor.getLong(5),
                         ),
                     )
                 }
@@ -103,7 +107,15 @@ class DocumentTreeAccess(
 
     private fun readDocument(uri: Uri): TreeDocument = resolver.query(uri, PROJECTION, null, null, null)?.use { cursor ->
         require(cursor.moveToFirst()) { "document provider returned no metadata for $uri" }
-        TreeDocument(uri, cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getInt(3))
+        TreeDocument(
+            uri,
+            cursor.getString(0),
+            cursor.getString(1),
+            cursor.getString(2),
+            cursor.getInt(3),
+            cursor.getLong(4),
+            cursor.getLong(5),
+        )
     } ?: error("document provider did not return metadata for $uri")
 
     private companion object {
@@ -112,6 +124,8 @@ class DocumentTreeAccess(
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
             DocumentsContract.Document.COLUMN_MIME_TYPE,
             DocumentsContract.Document.COLUMN_FLAGS,
+            DocumentsContract.Document.COLUMN_SIZE,
+            DocumentsContract.Document.COLUMN_LAST_MODIFIED,
         )
     }
 }

@@ -5,7 +5,7 @@ import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import kotlin.math.roundToInt
 
 object PreferredIndividualSelector {
-    fun select(individuals: Iterable<OwnedPokemon>): OwnedPokemon? = individuals.maxWithOrNull(
+    fun select(individuals: Iterable<OwnedPokemon>): OwnedPokemon? = individuals.filterNot(OwnedPokemon::isEgg).maxWithOrNull(
         compareBy<OwnedPokemon> { innateQuality(it) }.thenByDescending { it.stableKey },
     )
 

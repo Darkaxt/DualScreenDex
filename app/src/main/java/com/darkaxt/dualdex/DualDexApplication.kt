@@ -51,6 +51,10 @@ class DualDexApplication : Application() {
             candidate.start()
             preferences.getString(LAST_CATALOG_HASH, null)?.let(runtime::restoreCatalogAsync)
             setupCandidate = RetroArchSetupCoordinator(this, runtime)
+            candidate.setNativeActionHandler { type, values ->
+                type.equals("SELECT_SAVE", ignoreCase = true) &&
+                    values["documentId"]?.let(setupCandidate::selectSave) == true
+            }
             loopbackServer = candidate
             retroArchSetup = setupCandidate
             startupFailure = null

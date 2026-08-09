@@ -20,4 +20,12 @@ class PreferredIndividualSelectorTest {
         val b = a.copy(stableKey = "box-1", level = 50)
         assertEquals(b, PreferredIndividualSelector.select(listOf(a, b)))
     }
+
+    @Test
+    fun eggsAreNotConsideredRecruitablePreferredIndividuals() {
+        val egg = OwnedPokemon("party-0", 1, 3, 5, ivs = List(6) { 31 }, isEgg = true, party = true)
+        val recruit = OwnedPokemon("box-0", 1, 3, 5, ivs = List(6) { 20 })
+
+        assertEquals(recruit, PreferredIndividualSelector.select(listOf(egg, recruit)))
+    }
 }

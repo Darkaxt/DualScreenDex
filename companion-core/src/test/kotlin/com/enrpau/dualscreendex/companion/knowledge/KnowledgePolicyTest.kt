@@ -20,4 +20,21 @@ class KnowledgePolicyTest {
         assertTrue(KnowledgePolicy.staticDetails(KnowledgeMode.ORGANIC, 25, ledger))
         assertFalse(KnowledgePolicy.listSpecies(KnowledgeMode.ORGANIC, 99, ledger))
     }
+
+    @Test
+    fun caughtFlagsRemainAuthoritativeWhenNoOwnedRecordCanBeDecoded() {
+        val ledger = KnowledgeLedger(caughtSpecies = setOf(25))
+
+        assertTrue(KnowledgePolicy.isCaught(25, ledger))
+        assertTrue(KnowledgePolicy.staticDetails(KnowledgeMode.ORGANIC, 25, ledger))
+    }
+
+    @Test
+    fun hiddenListsOnlyCapturedSpecies() {
+        val ledger = KnowledgeLedger(caughtSpecies = setOf(25), seenSpecies = setOf(10, 25))
+
+        assertTrue(KnowledgePolicy.listSpecies(KnowledgeMode.HIDDEN, 25, ledger))
+        assertFalse(KnowledgePolicy.listSpecies(KnowledgeMode.HIDDEN, 10, ledger))
+        assertFalse(KnowledgePolicy.staticDetails(KnowledgeMode.HIDDEN, 10, ledger))
+    }
 }

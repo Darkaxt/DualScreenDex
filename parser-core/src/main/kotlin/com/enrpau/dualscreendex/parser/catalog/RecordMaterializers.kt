@@ -35,6 +35,13 @@ object RecordMaterializers {
             } else {
                 CatalogField.notApplicable("abilities are not part of this engine")
             }
+            val growthRate = if (layout.generation == 3 && stats != null && statsIndex in 0 until stats.count && stats.recordSize >= 20) {
+                CatalogField.available(rom.u8(stats.offset + statsIndex * stats.recordSize + 19))
+            } else if (layout.generation == 3) {
+                CatalogField.notFound("base-stat record has no growth-rate field")
+            } else {
+                CatalogField.notApplicable("this save generation does not use Gen III growth-rate IDs")
+            }
             id to SpeciesRecord(
                 id = id,
                 dexNumber = CatalogField.available(dexNumber),
@@ -45,6 +52,7 @@ object RecordMaterializers {
                     ?: CatalogField.notFound("base stats were not resolved for species $id"),
                 sprite = CatalogField.notFound("sprite was not materialized"),
                 abilityIds = abilities,
+                growthRate = growthRate,
             )
         }
     }

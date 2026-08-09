@@ -14,9 +14,12 @@ describe('RetroArch setup', () => {
     expect(screen.getByText(/fully close RetroArch before selecting/i)).toBeTruthy();
     expect(screen.getByText(/not considered active until DualDex verifies/i)).toBeTruthy();
     expect(screen.getByText(/Settings → Network → Network Commands/i)).toBeTruthy();
+    expect(screen.getByText(/Saving → SaveRAM Autosave Interval/i)).toBeTruthy();
+    expect(screen.getByText(/Directory → Save Files/i)).toBeTruthy();
     expect(screen.getByText(/Save Current Configuration/i)).toBeTruthy();
     expect(screen.getByText(/manual ROM loading remains available/i)).toBeTruthy();
     expect(screen.getByText(/12 ROM sources/i)).toBeTruthy();
+    expect(screen.getByText('/storage/emulated/0/RetroArch/saves')).toBeTruthy();
   });
 
   it('emits only the three native setup links', () => {
@@ -67,6 +70,7 @@ const state = {
     contentCrc32: null,
     resolution: 'NO_CONTENT',
     activeSource: null,
+    savefileDirectory: '/storage/emulated/0/RetroArch/saves',
     indexedRoms: 12,
     message: 'Fully restart RetroArch, then return here.',
   },

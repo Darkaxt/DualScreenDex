@@ -28,6 +28,7 @@ data class OwnedPokemon(
     val ivs: List<Int> = emptyList(),
     val dvs: List<Int> = emptyList(),
     val captureBallId: Int? = null,
+    val isEgg: Boolean = false,
     val party: Boolean = false,
 )
 
@@ -45,8 +46,10 @@ enum class Effectiveness(val multiplierPercent: Int) {
 
 data class KnowledgeLedger(
     val seenSpecies: Set<Int> = emptySet(),
+    val caughtSpecies: Set<Int> = emptySet(),
     val owned: List<OwnedPokemon> = emptyList(),
     val teamSpecies: Set<Int> = emptySet(),
+    val currentAreaBaseId: Int? = null,
     val observedMoves: Map<Int, List<MoveObservation>> = emptyMap(),
     val discoveredMatchups: Map<MatchupKey, Effectiveness> = emptyMap(),
     val knownMoves: Set<Int> = emptySet(),
