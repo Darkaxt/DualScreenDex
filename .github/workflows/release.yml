@@ -1,0 +1,47 @@
+name: Release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Signed candidate tag such as v1.0.0-rc.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  release-readiness-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Require the Stage 7 release marker
+        shell: bash
+        run: |
+          test -f release/v1-ready.json || {
+            echo "Stage 7 has not produced release/v1-ready.json; signing is intentionally disabled."
+            exit 1
+          }
+
+      - name: Validate candidate tag shape
+        shell: bash
+        env:
+          CANDIDATE_TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$CANDIDATE_TAG" =~ ^v1\.0\.0(-rc\.[1-9][0-9]*)?$ ]] || {
+            echo "Unsupported release tag: $CANDIDATE_TAG"
+            exit 1
+          }
+
+  signing-disabled-until-stage-8:
+    needs: release-readiness-guard
+    runs-on: ubuntu-latest
+    environment: release-signing
+    steps:
+      - name: Stop before production signing is implemented
+        run: |
+          echo "The protected environment is wired, but Stage 8 signing is not implemented yet."
+          exit 1

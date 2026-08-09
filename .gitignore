@@ -20,3 +20,8 @@ local.properties
 /companion-web/tsconfig.tsbuildinfo
 /.playwright-cli/
 /output/
+/signing/*.jks
+/signing/*.keystore
+/signing/*.p12
+/signing/*.properties
+/signing/*credentials*
