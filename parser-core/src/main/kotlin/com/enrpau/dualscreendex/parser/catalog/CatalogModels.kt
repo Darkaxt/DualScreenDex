@@ -69,6 +69,8 @@ data class SpeciesRecord(
     val weight: CatalogField<Int> = CatalogField.notFound("weight was not materialized"),
     val evolutionEdges: CatalogField<List<EvolutionEdge>> = CatalogField.notFound("evolutions were not materialized"),
     val learnset: CatalogField<List<LearnsetEntry>> = CatalogField.notFound("learnset was not materialized"),
+    val moveAcquisitions: CatalogField<List<MoveAcquisition>> =
+        CatalogField.notFound("non-level move acquisition was not materialized"),
     val abilityIds: CatalogField<List<Int>> = CatalogField.notApplicable("abilities are not part of this engine"),
 )
 
@@ -94,6 +96,29 @@ data class TypeRecord(
 data class TypeMatchup(val attackingTypeId: Int, val defendingTypeId: Int, val multiplierPercent: Int)
 
 data class LearnsetEntry(val level: Int, val moveId: Int, val methodId: Int = 0)
+
+data class NormalizedLevelUpMove(
+    val moveId: Int,
+    val initial: Boolean,
+    val levels: List<Int>,
+)
+
+data class LearnsetRuleset(
+    val id: String,
+    val label: String,
+    val sourceOffset: Int,
+    val confidence: Double,
+    val entriesBySpecies: Map<Int, List<LearnsetEntry>>,
+    val primary: Boolean = false,
+)
+
+enum class MoveAcquisitionMethod { EGG, MACHINE, TUTOR }
+
+data class MoveAcquisition(
+    val moveId: Int,
+    val method: MoveAcquisitionMethod,
+    val sourceId: Int? = null,
+)
 
 data class EvolutionEdge(
     val targetSpeciesId: Int,
@@ -159,6 +184,7 @@ data class ParsedCatalog(
     val typeChart: List<TypeMatchup> = emptyList(),
     val encounterAreas: List<EncounterArea> = emptyList(),
     val captureBallsById: Map<Int, CaptureBallRecord> = emptyMap(),
+    val learnsetRulesets: List<LearnsetRuleset> = emptyList(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),
 ) {
