@@ -586,7 +586,7 @@ Pull-request and ordinary branch workflows never receive these secrets. The rele
 6. signs the already-tested unsigned production APK handed off by the non-secret job;
 7. verifies package ID, version code/name, APK signature schemes, and signer fingerprint with Android build tools;
 8. generates SHA-256 checksums and build provenance;
-9. creates a new non-replacing draft/prerelease for an RC and attaches the signed APK, checksums, public certificate, compatibility report, provenance, and release notes; and
+9. creates a new non-replacing RC prerelease and attaches the signed APK, checksums, public certificate, compatibility report, provenance, and release notes; it may start as a draft for independent verification, then be published so the validation device can install it, but it is never marked stable or latest; and
 10. rejects the final tag until a committed authorization record proves the GitHub-signed candidate passed both dedicated-AVD and Thor validation.
 
 The ephemeral keystore is never uploaded as an artifact. Runner teardown removes it.
