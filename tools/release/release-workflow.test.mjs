@@ -68,6 +68,12 @@ test("reconstructs, verifies, signs, independently verifies, and publishes witho
   assert.match(signingJob, /zipalign -c -P 16 4/);
   assert.match(signingJob, /apksigner sign/);
   assert.match(signingJob, /apksigner verify --verbose --print-certs/);
+  assert.ok(
+    signingJob.includes(
+      "sed -n -E 's/^(Signer #[0-9]+|V[0-9.]+ Signer):? certificate SHA-256 digest: //p'",
+    ),
+    "certificate parsing must support both legacy and scheme-qualified apksigner labels",
+  );
   assert.match(signingJob, /aapt dump badging/);
   assert.match(signingJob, /gh release create/);
   assert.match(signingJob, /Refusing to replace/);

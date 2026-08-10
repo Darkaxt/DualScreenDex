@@ -263,7 +263,7 @@ jobs:
             "$unsigned_apk"
           apksigner verify --verbose --print-certs "$signed_apk" | tee "$verification_log"
 
-          signer_sha256="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$verification_log" | head -n 1 | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          signer_sha256="$(sed -n -E 's/^(Signer #[0-9]+|V[0-9.]+ Signer):? certificate SHA-256 digest: //p' "$verification_log" | head -n 1 | tr -d ':' | tr '[:lower:]' '[:upper:]')"
           [[ "$signer_sha256" == "$EXPECTED_CERTIFICATE_SHA256" ]] || {
             echo "Signed APK certificate does not match the pinned fingerprint."
             exit 1
