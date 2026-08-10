@@ -41,7 +41,8 @@ describe('production settings copy', () => {
     expect(screen.getByRole('link', { name: 'DOCKED' }).getAttribute('href')).toBe('dualdex://overlay/dock');
     expect(screen.getByRole('link', { name: 'OVERLAY' }).getAttribute('href')).toBe('dualdex://overlay/show');
     expect(screen.getByRole('link', { name: 'DOCKED' }).getAttribute('data-active')).toBe('true');
-    expect(screen.getByText(/fixed 4:3 panel/i)).toBeTruthy();
+    expect(screen.getByText(/resizable 4:3 panel/i)).toBeTruthy();
+    expect(screen.queryByText(/fixed 4:3 panel/i)).toBeNull();
   });
 
   it('exposes persisted theme and companion-display targeting', () => {
