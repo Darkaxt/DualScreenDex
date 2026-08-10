@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
+import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetEntry
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
@@ -29,6 +30,10 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import java.nio.file.Files
 import java.nio.file.Path
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import kotlin.io.path.listDirectoryEntries
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -38,6 +43,29 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogStoreTest {
+    @Test
+    fun `legacy encounter sections without windows reopen as unrestricted`() {
+        val catalog = completeCatalog("f".repeat(64))
+        val codec = CatalogSectionCodec()
+        val sections = codec.encode(catalog, CatalogSchema.requiredSections).toMutableMap()
+        val legacyJson = GZIPInputStream(ByteArrayInputStream(sections.getValue("encounters"))).use {
+            it.readBytes().toString(Charsets.UTF_8)
+        }.replace(Regex(""","windows":\[[^]]*]"""), "")
+        sections["encounters"] = ByteArrayOutputStream().also { output ->
+            GZIPOutputStream(output).use { it.write(legacyJson.toByteArray(Charsets.UTF_8)) }
+        }.toByteArray()
+
+        val reopened = codec.decode(
+            catalog.romSha256,
+            catalog.romCrc32,
+            catalog.family,
+            catalog.platform,
+            sections,
+        )
+
+        assertEquals(setOf(EncounterWindow.ANY), reopened.encounterAreas.single().windows)
+    }
+
     @Test
     fun clearingInactiveCatalogsPreservesTheActiveDatabaseAndUnrelatedFiles() {
         val root = Files.createTempDirectory("dualdex-catalog-clear")
@@ -77,6 +105,7 @@ class CatalogStoreTest {
 
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
+        assertEquals(setOf(EncounterWindow.NIGHT), reopened?.catalog?.encounterAreas?.single()?.windows)
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
     }
 
@@ -220,7 +249,13 @@ class CatalogStoreTest {
             abilitiesById = mapOf(66 to ability),
             typeChart = listOf(TypeMatchup(10, 12, 200)),
             encounterAreas = listOf(
-                EncounterArea(1, CatalogField.available("Route 1"), 0, listOf(EncounterSlot(6, 34, 36, 10))),
+                EncounterArea(
+                    1,
+                    CatalogField.available("Route 1"),
+                    0,
+                    listOf(EncounterSlot(6, 34, 36, 10)),
+                    setOf(EncounterWindow.NIGHT),
+                ),
             ),
             captureBallsById = mapOf(4 to CaptureBallRecord(4, CatalogField.available("Poké Ball"), CatalogField.available(sprite))),
             learnsetRulesets = listOf(

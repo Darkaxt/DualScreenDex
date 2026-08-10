@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.catalog
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
+import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
@@ -146,7 +147,13 @@ internal class CatalogSectionCodec {
         family: EngineFamily,
         platform: Platform,
         sections: Map<String, ByteArray>,
-    ) = ParsedCatalog(
+    ): ParsedCatalog {
+        val encounterAreas = decode<List<EncounterArea>>(sections.getValue("encounters"), encountersType)
+            .map { area ->
+                val windows = runCatching { area.windows }.getOrNull()
+                if (windows.isNullOrEmpty()) area.copy(windows = setOf(EncounterWindow.ANY)) else area
+            }
+        return ParsedCatalog(
         romSha256 = sha256,
         romCrc32 = crc32,
         family = family,
@@ -156,12 +163,13 @@ internal class CatalogSectionCodec {
         typesById = decode(sections.getValue("types"), typesType),
         abilitiesById = decode(sections.getValue("abilities"), abilitiesType),
         typeChart = decode(sections.getValue("type_chart"), chartType),
-        encounterAreas = decode(sections.getValue("encounters"), encountersType),
+        encounterAreas = encounterAreas,
         captureBallsById = decode(sections.getValue("capture_balls"), ballsType),
         learnsetRulesets = decode(sections.getValue("learnset_rulesets"), rulesetsType),
         capabilities = decode(sections.getValue("capabilities"), capabilitiesType),
         diagnostics = decode(sections.getValue("diagnostics"), diagnosticsType),
-    )
+        )
+    }
 
     private fun encode(value: Any, type: Type): ByteArray {
         val json = gson.toJson(value, type).toByteArray(Charsets.UTF_8)

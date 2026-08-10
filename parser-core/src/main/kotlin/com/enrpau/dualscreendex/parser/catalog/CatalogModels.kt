@@ -157,11 +157,14 @@ data class EncounterSlot(
     val weight: Int?,
 )
 
+enum class EncounterWindow { ANY, MORNING, DAY, NIGHT }
+
 data class EncounterArea(
     val id: Int,
     val name: CatalogField<String>,
     val methodId: Int,
     val slots: List<EncounterSlot>,
+    val windows: Set<EncounterWindow> = setOf(EncounterWindow.ANY),
 )
 
 enum class PresentationSource { ROM_EXTRACTED, FAMILY_FALLBACK, ACCESSIBLE_FALLBACK, NEUTRAL }

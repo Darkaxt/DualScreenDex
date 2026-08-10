@@ -98,6 +98,7 @@ data class AreaView(
     val methodId: Int,
     val speciesIds: List<Int>,
     val slots: List<EncounterSlotView>,
+    val windows: List<String>,
 )
 data class BallView(val id: Int, val name: String, val generic: Boolean, val hasSprite: Boolean)
 
@@ -329,6 +330,7 @@ object ApiViewBuilder {
                 it.slots.map { slot ->
                     EncounterSlotView(slot.speciesId, slot.minimumLevel, slot.maximumLevel, slot.weight)
                 },
+                it.windows.map { window -> window.name }.sorted(),
             )
         },
         balls = catalog.captureBallsById.values.sortedBy { it.id }.map {
