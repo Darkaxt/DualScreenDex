@@ -78,7 +78,10 @@ class Gen3BattleLayoutResolverTest {
             mon(252, 7, 11, 11, intArrayOf(10), intArrayOf(35)),
             mon(13, 3, 6, 3, intArrayOf(40), intArrayOf(35)),
         ), outcome = 1)
-        assertTrue(Gen3BattleLayoutResolver().resolve(completed, catalog) is LayoutResolution.NotFound)
+        putU16(completed, 0x1000 + 0x58 + 0x28, 0)
+        completed[0x1000 + 0x58 + 0x20] = 0
+        val terminal = Gen3BattleLayoutResolver().resolve(completed, catalog) as LayoutResolution.Resolved
+        assertEquals(1, terminal.sample.battleOutcome)
 
         val ambiguous = ByteArray(0x4000)
         fixture(ambiguous, 0x0800, listOf(

@@ -67,6 +67,7 @@ data class BattleMemorySample(
     val selectedMoveId: Int?,
     val target: BattleTarget,
     val capabilities: Map<BattleCapability, CapabilityState>,
+    val battleOutcome: Int = 0,
 )
 
 sealed interface LayoutResolution {

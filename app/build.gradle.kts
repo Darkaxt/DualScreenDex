@@ -76,6 +76,7 @@ dependencies {
     implementation(project(":companion-core"))
     implementation(project(":retroarch-session"))
     implementation(project(":memory-mapper-lab"))
+    implementation(project(":battle-memory"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

@@ -32,7 +32,7 @@ class Gen3BattleLayoutResolver {
         val count = bytes.u8(countOffset)
         if (count != 2 && count != 4) return null
         if (anchor + count * RECORD_SIZE > bytes.size) return null
-        if (bytes.u8(outcomeOffset) != 0) return null
+        val battleOutcome = bytes.u8(outcomeOffset)
 
         val positions = (0 until count).map { bytes.u8(positionsOffset + it) }
         if (positions.any { it !in 0 until MAX_BATTLERS } || positions.distinct().size != count) return null
@@ -74,6 +74,7 @@ class Gen3BattleLayoutResolver {
                 BattleCapability.OPPONENT_IVS to CapabilityState.AVAILABLE,
                 BattleCapability.OPPONENT_PP to CapabilityState.AVAILABLE,
             ),
+            battleOutcome = battleOutcome,
         )
     }
 
@@ -91,11 +92,14 @@ class Gen3BattleLayoutResolver {
         if (stats.any { it !in 1..4095 }) return null
         val moves = (0 until MOVE_SLOTS).map { bytes.u16(offset + MOVES_OFFSET + it * 2) }
         if (moves.none { it != 0 } || moves.any { it != 0 && it !in catalog.moves }) return null
+        val hp = bytes.u16(offset + HP_OFFSET)
+        val maxHp = bytes.u16(offset + MAX_HP_OFFSET)
+        if (maxHp !in 1..4095 || hp !in 0..maxHp) return null
         val ivBits = bytes.u32(offset + IVS_OFFSET)
         val ivs = (0 until 6).map { ((ivBits ushr (it * 5)) and 0x1F).toInt() }
         if ((0 until 8).any { bytes.u8(offset + STAT_STAGES_OFFSET + it) !in 0..12 }) return null
         val abilityId = bytes.u8(offset + ABILITY_OFFSET)
-        if (species.abilityIds.isNotEmpty() && abilityId !in species.abilityIds) return null
+        if (species.abilityIds.isNotEmpty() && abilityId !in species.abilityIds && !(hp == 0 && abilityId == 0)) return null
         val typeIds = listOf(bytes.u8(offset + TYPE1_OFFSET), bytes.u8(offset + TYPE2_OFFSET))
         if (typeIds.any { it !in catalog.typeIds }) return null
         if (species.typeIds.isNotEmpty() && typeIds.none { it in species.typeIds }) return null
@@ -105,9 +109,6 @@ class Gen3BattleLayoutResolver {
                 val currentPp = pp[slot]
                 move == 0 && currentPp != 0 || move != 0 && currentPp > requireNotNull(catalog.moves[move]).basePp * 8 / 5
             }) return null
-        val hp = bytes.u16(offset + HP_OFFSET)
-        val maxHp = bytes.u16(offset + MAX_HP_OFFSET)
-        if (maxHp !in 1..4095 || hp !in 0..maxHp) return null
         val level = bytes.u8(offset + LEVEL_OFFSET)
         if (level !in 1..100) return null
 

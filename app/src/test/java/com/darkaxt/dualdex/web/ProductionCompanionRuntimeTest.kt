@@ -17,6 +17,8 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.MoveRecord
+import com.enrpau.dualscreendex.parser.catalog.TypeRecord
 import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -31,8 +33,81 @@ import org.junit.Test
 import java.util.Collections
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.TimeUnit
+import com.darkaxt.dualdex.battle.BattleMemorySample
+import com.darkaxt.dualdex.battle.BattleMonSnapshot
+import com.darkaxt.dualdex.battle.BattleTarget
+import com.darkaxt.dualdex.battle.BattleTrackingUpdate
+import com.darkaxt.dualdex.battle.ResolvedBattleLayout
+import com.darkaxt.dualdex.battle.TargetMode
 
 class ProductionCompanionRuntimeTest {
+    @Test
+    fun publishesLiveBattleObservationsAndAcceptsProductionBattleActions() {
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog("fixture.gba", ParsedCatalog(
+            "sha", EngineFamily.EMERALD, Platform.GBA,
+            speciesById = mapOf(1 to SpeciesRecord(
+                id = 1, dexNumber = CatalogField.available(1), name = CatalogField.available("A"),
+                typeIds = CatalogField.available(listOf(0)), baseStats = CatalogField.notFound("fixture"),
+                sprite = CatalogField.notFound("fixture"), abilityIds = CatalogField.available(emptyList()),
+            )),
+            movesById = mapOf(1 to MoveRecord(
+                1, CatalogField.available("MOVE"), CatalogField.available(0), CatalogField.notFound("fixture"),
+                CatalogField.available(40), CatalogField.available(100), CatalogField.available(35),
+            )),
+            typesById = mapOf(0 to TypeRecord(0, CatalogField.available("NORMAL"))),
+        ))
+        val opponent = BattleMonSnapshot(
+            battlerIndex = 1, position = 1, speciesId = 13, level = 3, hp = 15, maxHp = 15,
+            ivs = listOf(10, 11, 12, 13, 14, 15), moves = listOf(40, 81, 0, 0), pp = listOf(34, 40, 0, 0),
+            typeIds = listOf(6, 3), abilityId = 19, personality = 200,
+        )
+        val sample = BattleMemorySample(
+            layout = ResolvedBattleLayout(0x143C, 0x1420, 0x142C, 0x16EE, 0x1874, 0x1878, 2),
+            battlers = listOf(opponent), opponents = listOf(opponent), selectedMoveId = 10,
+            target = BattleTarget(0, TargetMode.MANUAL_TARGET_FALLBACK), capabilities = emptyMap(),
+        )
+
+        runtime.applyBattleTracking(
+            BattleTrackingUpdate(true, sample, observations = mapOf(13 to mapOf(40 to 2))),
+        )
+
+        var snapshot = runtime.gateway.bootstrap()
+        assertEquals(13, snapshot.battle?.opponents?.single()?.speciesId)
+        assertEquals(2, snapshot.ledger.observedMoves.getValue(13).single().frequency)
+        assertEquals("MANUAL_TARGET_FALLBACK", snapshot.battle?.targetMode?.name)
+        runtime.action("BATTLE_TAB", mapOf("tab" to "MOVES"))
+        runtime.action("SELECT_TARGET", mapOf("index" to "0"))
+        snapshot = runtime.gateway.bootstrap()
+        assertEquals("MOVES", snapshot.battleTab.name)
+
+        runtime.applyBattleTracking(BattleTrackingUpdate(false, null, ended = true))
+        assertNull(runtime.gateway.bootstrap().battle)
+        runtime.close()
+    }
+
+    @Test
+    fun exposesOnlyGbaCatalogsAsProductionBattleContexts() {
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog("fixture.gba", ParsedCatalog(
+            "sha", EngineFamily.EMERALD, Platform.GBA,
+            speciesById = mapOf(1 to SpeciesRecord(
+                id = 1, dexNumber = CatalogField.available(1), name = CatalogField.available("A"),
+                typeIds = CatalogField.available(listOf(0)), baseStats = CatalogField.notFound("fixture"),
+                sprite = CatalogField.notFound("fixture"), abilityIds = CatalogField.available(emptyList()),
+            )),
+            movesById = mapOf(1 to MoveRecord(
+                1, CatalogField.available("MOVE"), CatalogField.available(0), CatalogField.notFound("fixture"),
+                CatalogField.available(40), CatalogField.available(100), CatalogField.available(35),
+            )),
+            typesById = mapOf(0 to TypeRecord(0, CatalogField.available("NORMAL"))),
+        ))
+        assertEquals("sha", runtime.battleCatalogContext()?.romIdentity)
+
+        runtime.loadCatalog("fixture.gbc", ParsedCatalog("gbc", EngineFamily.CRYSTAL, Platform.GBC))
+        assertNull(runtime.battleCatalogContext())
+        runtime.close()
+    }
     @Test
     fun reusesAnUnchangedPresentationSnapshotForPollingClients() {
         val runtime = ProductionCompanionRuntime(parserWorker = ImmediateExecutorService())

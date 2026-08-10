@@ -18,6 +18,7 @@ import com.darkaxt.dualdex.retroarch.SessionResolution
 import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.SaveSnapshotStore
+import com.darkaxt.dualdex.battle.BattleMemoryCoordinator
 import com.darkaxt.dualdex.save.AndroidSaveDocumentResolver
 import com.darkaxt.dualdex.save.DirectSaveDocumentResolver
 import com.darkaxt.dualdex.save.SaveAssociationStore
@@ -68,6 +69,11 @@ class RetroArchSetupCoordinator(
         Thread(runnable, "dualdex-retroarch-heartbeat").apply { isDaemon = true }
     }
     private val monitor = AtomicReference<SessionMonitor?>(null)
+    private val battleMemory = BattleMemoryCoordinator(
+        catalogProvider = runtime::battleCatalogContext,
+        publisher = runtime::applyBattleTracking,
+        transportFactory = { UdpNetworkCommandTransport(commandPort) },
+    )
     private val restartVerifier = RestartVerifier()
     private val cachedDirectEntries = if (sharedStorage.isGranted()) directIndexStore.read(ALL_FILES_INDEX_KEY) else emptyList()
     private val entries = AtomicReference(cachedDirectEntries.ifEmpty(::loadSafStoredIndex))
@@ -234,6 +240,7 @@ class RetroArchSetupCoordinator(
 
     override fun close() {
         heartbeat.shutdown()
+        battleMemory.close()
         worker.shutdown()
         indexWorker.shutdown()
         monitor.get()?.close()
@@ -373,6 +380,11 @@ class RetroArchSetupCoordinator(
                     runtime.catalogHash() == resolvedEntry.sha256
                 val loading = resolvedEntry?.sourceId == activating.get()
                 activeEntry.set(resolvedEntry)
+                battleMemory.updateSession(
+                    connected = connected && active,
+                    systemId = status?.systemId,
+                    romIdentity = resolvedEntry?.sha256,
+                )
                 update { current ->
                     current.copy(
                         configState = if (connected && restartVerified) "VERIFIED" else current.configState,
@@ -406,7 +418,10 @@ class RetroArchSetupCoordinator(
                 if (resolution is SessionResolution.Resolved) activate(resolution.entry)
                 if (active) pollSave(requireNotNull(resolvedEntry))
             }
-            .onFailure { failure -> update { it.copy(connection = "DISCONNECTED", message = failure.message) } }
+            .onFailure { failure ->
+                battleMemory.updateSession(false, null, null)
+                update { it.copy(connection = "DISCONNECTED", message = failure.message) }
+            }
     }
 
     private fun activate(entry: RomIndexEntry) {
