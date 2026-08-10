@@ -310,7 +310,7 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 - [ ] After a clean RC, tag `v1.0.0`, let GitHub rebuild/sign/verify the final artifact, repeat identity/checksum smoke validation, and publish the GitHub Release.
 - [ ] Confirm the public release is visibly distinct from local deployment and document the exact released commit, APK hash, signer fingerprint, and validation devices.
 
-**Release gate:** No public release exists until the signed GitHub artifact, not a local debug build, satisfies every acceptance criterion and the v1 ledger remains empty.
+**Release gate:** A GitHub-signed RC may be published as an explicitly labeled prerelease so it can be installed for live validation. Stable `v1.0.0` is not published until that signed artifact satisfies every acceptance criterion and the v1 ledger remains empty.
 
 **Checkpoint commits/tags:** `release: prepare DualDex 1.0.0`, signed `v1.0.0-rc.N`, then public `v1.0.0`.
 

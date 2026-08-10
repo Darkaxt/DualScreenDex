@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated Memory Mapper Lab can collect read-only evidence for future live battle mapping, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only Memory Mapper Lab are implemented. The inherited OCR/accessibility application has been replaced. GitHub-signed RC6 has passed the dedicated-AVD update and overlay gates; physical-Thor validation remains, and no public companion APK has been released yet.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only Memory Mapper Lab are implemented. The inherited OCR/accessibility application has been replaced. GitHub-signed RC6 has passed the dedicated-AVD update and overlay gates and is available as a public prerelease for Thor validation; stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
@@ -217,7 +217,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses |
 | Optional Docked / 4:3 Overlay Android display modes | Implemented and GitHub-signed RC6 validated on the dedicated AVD |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Public v1 APK | Not released |
+| Public signed candidate | [`v1.0.0-rc.6`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.6) prerelease; stable `v1.0.0` remains gated on Thor validation |
 
 ## Parser development
 
