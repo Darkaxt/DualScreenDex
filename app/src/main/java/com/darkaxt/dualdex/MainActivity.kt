@@ -92,6 +92,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         val application = application as DualDexApplication
         application.activityResumed(this)
+        application.retroArchSetup?.refreshStorageAccess()
         moveToDisplayTarget(application.currentDisplayTarget())
     }
 
@@ -119,6 +120,12 @@ class MainActivity : AppCompatActivity() {
             picker,
             onNativeSetupRoute = { route ->
                 when (route) {
+                    NativeSetupRoute.GRANT_ALL_FILES -> startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.parse("package:$packageName"),
+                        ),
+                    )
                     NativeSetupRoute.GRANT_RETROARCH -> setupPicker.openConfigTree()
                     NativeSetupRoute.GRANT_ROMS -> setupPicker.openRomTree()
                     NativeSetupRoute.OPEN_RETROARCH -> application.retroArchSetup?.launchRetroArch()

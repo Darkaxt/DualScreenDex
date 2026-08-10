@@ -88,7 +88,7 @@ class EncounterSimulatorTest {
 
         val firstObservation = first.ledger.observedMoves.getValue(1).single()
         val accumulated = second.ledger.observedMoves.getValue(1).single()
-        assertEquals(firstObservation.encounterCount * 2, accumulated.encounterCount)
+        assertEquals(firstObservation.frequency * 2, accumulated.frequency)
     }
 
     private fun catalog(platform: Platform = Platform.GBA): ParsedCatalog {

@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.companion.api
 import com.enrpau.dualscreendex.companion.knowledge.KnowledgePolicy
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.Effectiveness
+import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.owned.PreferredIndividualSelector
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
@@ -149,6 +150,7 @@ data class StateView(
     val saveRam: SaveRamView = SaveRamView(),
 )
 data class RetroArchView(
+    val storageGrant: String = "MISSING",
     val configGrant: String = "MISSING",
     val romGrant: String = "MISSING",
     val configState: String = "NOT_CONFIGURED",
@@ -206,7 +208,7 @@ data class OpponentView(
     val rarity: String,
     val moves: List<ObservedMoveView>,
 )
-data class ObservedMoveView(val moveId: Int, val encounters: Int, val lastSeen: Long)
+data class ObservedMoveView(val moveId: Int, val frequency: Int)
 
 object ApiViewBuilder {
     fun catalog(catalog: ParsedCatalog): CatalogView = CatalogView(
@@ -380,7 +382,7 @@ object ApiViewBuilder {
             snapshot.settings,
             speciesState,
             snapshot.ledger.observedMoves.mapValues { (_, observations) ->
-                observations.map { ObservedMoveView(it.moveId, it.encounterCount, it.lastSeenSequence) }
+                observations.toObservedMoveViews()
             },
             snapshot.battle?.let { battle ->
                 BattleView(
@@ -404,7 +406,7 @@ object ApiViewBuilder {
                             opponent.speciesId,
                             opponent.level,
                             listOfNotNull(prefix, tier).joinToString(" "),
-                            opponent.moveHistory.map { ObservedMoveView(it.moveId, it.encounterCount, it.lastSeenSequence) },
+                            opponent.moveHistory.toObservedMoveViews(),
                         )
                     },
                     targetIndex = battle.targetIndex,
@@ -470,6 +472,10 @@ object ApiViewBuilder {
         this and 0xFF,
         this ushr 24 and 0xFF,
     )
+
+    private fun List<MoveObservation>.toObservedMoveViews(): List<ObservedMoveView> =
+        sortedWith(compareByDescending<MoveObservation> { it.frequency }.thenBy { it.moveId })
+            .map { ObservedMoveView(it.moveId, it.frequency) }
 
     private fun evolutionCondition(catalog: ParsedCatalog, edge: EvolutionEdge): String {
         val generation = when (catalog.platform) {

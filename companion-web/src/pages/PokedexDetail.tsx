@@ -75,7 +75,7 @@ export function PokedexDetail({
         <div class="section-heading"><div><p class="eyebrow">OBSERVED MOVES</p><p>Only attacks this species has used against you.</p></div></div>
         {observedMoves.length > 0 ? <div class="move-table">{observedMoves.map(item => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
-          return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>OBSERVED · {item.encounters}×</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
+          return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>FREQUENCY · {item.frequency}×</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
         })}</div> : <div class="empty-state"><strong>NO MOVES OBSERVED</strong><p>This list grows when the species uses an attack against you.</p></div>}
       </div>}
       {unlocked && displayTab === 'MORE' && <div class="paper-panel more-sections">

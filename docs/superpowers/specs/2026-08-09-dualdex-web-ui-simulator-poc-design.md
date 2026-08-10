@@ -316,7 +316,8 @@ Numeric ability mechanics are a separate capability because Generation III commo
 
 ### Moves tab
 
-- Frequency-ranked observations for the exact species/form.
+- For uncaptured targets, frequency-ranked observations for the exact species/form; no recency or timestamp metric.
+- For captured targets, suppress observation frequency and rely on the unlocked ROM learnset in the linked Pokédex entry.
 - Empty state until that species/form uses a move.
 - Tapping a known move opens the same global `MoveRecord` presentation used by captured Pokémon learnsets.
 
@@ -365,7 +366,7 @@ The simulator is a development adapter, not a game emulator. It is rendered outs
 2. Choose levels inside the configured range and legal game bounds.
 3. Build each eligible move pool from level-up moves learnable at or below that level.
 4. If the pool is empty, generate no history rather than inventing a move.
-5. Generate seeded observation counts and recency only from that eligible pool.
+5. Generate seeded use-frequency counts only from that eligible pool.
 6. Compute the recruitment prefix and IV/DV tier from seeded synthetic individual values.
 7. Select each captured species' presentation individual by exact innate score, then stable storage key, and use its capture-ball ID when supported.
 8. Compute matchup truth from the parsed move, opponent types, and active type chart, then pass it through the selected disclosure policy.

@@ -11,7 +11,8 @@ describe('RetroArch setup', () => {
     render(<SetupPage state={state} send={send} />);
 
     expect(screen.getByText('RETROARCH CONNECTION')).toBeTruthy();
-    expect(screen.getByText(/fully close RetroArch before selecting/i)).toBeTruthy();
+    expect(screen.getByText(/automatically finds GB, GBC, GBA, ZIP, and RetroArch SaveRAM/i)).toBeTruthy();
+    expect(screen.getByText(/fully close RetroArch before setup/i)).toBeTruthy();
     expect(screen.getByText(/not considered active until DualDex verifies/i)).toBeTruthy();
     expect(screen.getByText(/Settings → Network → Network Commands/i)).toBeTruthy();
     expect(screen.getByText(/Saving → SaveRAM Autosave Interval/i)).toBeTruthy();
@@ -22,12 +23,19 @@ describe('RetroArch setup', () => {
     expect(screen.getByText('/storage/emulated/0/RetroArch/saves')).toBeTruthy();
   });
 
-  it('emits only the three native setup links', () => {
+  it('makes All Files Access primary while retaining the two folder fallbacks', () => {
     render(<SetupPage state={state} send={vi.fn()} />);
 
+    expect(screen.getByRole('link', { name: 'GRANT ALL FILES ACCESS' }).getAttribute('href')).toBe('dualdex://grant/files');
     expect(screen.getByRole('link', { name: 'SELECT RETROARCH FOLDER' }).getAttribute('href')).toBe('dualdex://grant/retroarch');
     expect(screen.getByRole('link', { name: 'SELECT ROM FOLDER' }).getAttribute('href')).toBe('dualdex://grant/roms');
     expect(screen.getByRole('link', { name: 'OPEN RETROARCH' }).getAttribute('href')).toBe('dualdex://open/retroarch');
+  });
+
+  it('explains why SaveRAM discovery is unavailable before storage access is granted', () => {
+    render(<SetupPage state={{ ...state, retroArch: { ...state.retroArch, storageGrant: 'MISSING' } }} send={vi.fn()} />);
+
+    expect(screen.getByText(/SaveRAM cannot be discovered across separate folders until storage access is granted/i)).toBeTruthy();
   });
 
   it('returns to the previous screen', () => {
@@ -60,6 +68,7 @@ const state = {
   rulesetAssumed: true,
   loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
   retroArch: {
+    storageGrant: 'GRANTED',
     configGrant: 'GRANTED',
     romGrant: 'GRANTED',
     configState: 'RESTART_REQUIRED',

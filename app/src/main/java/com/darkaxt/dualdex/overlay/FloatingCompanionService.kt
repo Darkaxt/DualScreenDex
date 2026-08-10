@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -188,6 +189,12 @@ class FloatingCompanionService : Service() {
         when (route) {
             NativeSetupRoute.SHOW_OVERLAY -> Unit
             NativeSetupRoute.DOCK_OVERLAY -> returnToDockedActivity()
+            NativeSetupRoute.GRANT_ALL_FILES -> startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:$packageName"),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
             NativeSetupRoute.OPEN_RETROARCH -> (application as DualDexApplication).retroArchSetup?.launchRetroArch()
             NativeSetupRoute.EXPORT_MAPPER -> startActivity(
                 Intent(this, MainActivity::class.java)

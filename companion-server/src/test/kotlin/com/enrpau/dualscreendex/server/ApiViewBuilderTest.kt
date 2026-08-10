@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.server
 
+import com.google.gson.Gson
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
@@ -22,6 +23,7 @@ import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,14 +33,38 @@ class ApiViewBuilderTest {
         val view = ApiViewBuilder.state(
             AppSnapshot(
                 ledger = KnowledgeLedger(
-                    observedMoves = mapOf(4 to listOf(MoveObservation(10, 3, 8))),
+                    observedMoves = mapOf(
+                        4 to listOf(
+                            MoveObservation(52, 1),
+                            MoveObservation(33, 3),
+                            MoveObservation(10, 3),
+                        ),
+                    ),
                 ),
             ),
             null,
         )
 
-        assertEquals(10, view.observedMoves.getValue(4).single().moveId)
-        assertEquals(3, view.observedMoves.getValue(4).single().encounters)
+        assertEquals(listOf(10, 33, 52), view.observedMoves.getValue(4).map { it.moveId })
+        assertEquals(listOf(3, 3, 1), view.observedMoves.getValue(4).map { it.frequency })
+    }
+
+    @Test
+    fun exposesOnlyMoveFrequencyWithoutARecencyMetric() {
+        val view = ApiViewBuilder.state(
+            AppSnapshot(
+                ledger = KnowledgeLedger(
+                    observedMoves = mapOf(4 to listOf(MoveObservation(10, 3))),
+                ),
+            ),
+            null,
+        )
+
+        val json = Gson().toJson(view.observedMoves.getValue(4).single())
+
+        assertTrue(json.contains("\"frequency\":3"))
+        assertFalse(json.contains("encounters"))
+        assertFalse(json.contains("lastSeen"))
     }
 
     @Test

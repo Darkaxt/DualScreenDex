@@ -7,6 +7,7 @@ import org.junit.Test
 class NativeSetupRouteTest {
     @Test
     fun acceptsOnlyTheExactNativeRoutes() {
+        assertEquals(NativeSetupRoute.GRANT_ALL_FILES, NativeSetupRoute.parse("dualdex://grant/files"))
         assertEquals(NativeSetupRoute.GRANT_RETROARCH, NativeSetupRoute.parse("dualdex://grant/retroarch"))
         assertEquals(NativeSetupRoute.GRANT_ROMS, NativeSetupRoute.parse("dualdex://grant/roms"))
         assertEquals(NativeSetupRoute.OPEN_RETROARCH, NativeSetupRoute.parse("dualdex://open/retroarch"))
@@ -16,6 +17,7 @@ class NativeSetupRouteTest {
 
         assertNull(NativeSetupRoute.parse("dualdex://grant/retroarch/extra"))
         assertNull(NativeSetupRoute.parse("dualdex://grant/roms?unexpected=true"))
+        assertNull(NativeSetupRoute.parse("dualdex://grant/files/extra"))
         assertNull(NativeSetupRoute.parse("dualdex://overlay/show/extra"))
         assertNull(NativeSetupRoute.parse("https://grant/retroarch"))
         assertNull(NativeSetupRoute.parse("javascript:alert(1)"))

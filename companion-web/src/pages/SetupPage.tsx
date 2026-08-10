@@ -2,6 +2,7 @@ import { Header } from '../components';
 import type { RetroArchState, State } from '../models';
 
 const disconnected: RetroArchState = {
+  storageGrant: 'MISSING',
   configGrant: 'MISSING',
   romGrant: 'MISSING',
   configState: 'NOT_CONFIGURED',
@@ -28,9 +29,21 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
         <p>DualDex watches RetroArch directly. Cocoon and process-ID access are not required.</p>
       </div>
 
-      <SetupStep number="1" title="RETROARCH ACCESS" status={retroArch.configState}>
-        <p>Fully close RetroArch before selecting its public folder. DualDex enables Network Commands and a 10-second SaveRAM autosave interval, then verifies the edited file without changing unrelated settings.</p>
-        <a class="setup-action" href="dualdex://grant/retroarch">SELECT RETROARCH FOLDER</a>
+      <SetupStep number="1" title="SHARED STORAGE" status={retroArch.storageGrant}>
+        <p>All Files Access automatically finds GB, GBC, GBA, ZIP, and RetroArch SaveRAM folders even when every console uses a separate directory.</p>
+        <a class="setup-action setup-action-primary" href="dualdex://grant/files">GRANT ALL FILES ACCESS</a>
+        <small>{retroArch.indexedRoms} ROM sources indexed. ROM and save data remain local.</small>
+        {retroArch.storageGrant === 'MISSING' && <p class="warning-note">SaveRAM cannot be discovered across separate folders until storage access is granted.</p>}
+        <div class="setup-manual-path">
+          <strong>FOLDER FALLBACK</strong>
+          <p>Use these only when All Files Access is unavailable.</p>
+          <a class="setup-action" href="dualdex://grant/retroarch">SELECT RETROARCH FOLDER</a>
+          <a class="setup-action" href="dualdex://grant/roms">SELECT ROM FOLDER</a>
+        </div>
+      </SetupStep>
+
+      <SetupStep number="2" title="RETROARCH CONFIG" status={retroArch.configState}>
+        <p>Fully close RetroArch before setup. DualDex enables Network Commands and a 10-second SaveRAM autosave interval in the public retroarch.cfg, then verifies the exact edit without changing unrelated settings.</p>
         <small>The command interface is not considered active until DualDex verifies it after a full RetroArch restart.</small>
         {retroArch.configState !== 'VERIFIED' && <div class="setup-manual-path">
           <strong>MANUAL RETROARCH PATH</strong>
@@ -39,12 +52,6 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
           <p>Settings → Directory → Save Files: select a public RetroArch/saves folder DualDex can read.</p>
           <p>Main Menu → Configuration File → Save Current Configuration, then fully restart RetroArch.</p>
         </div>}
-      </SetupStep>
-
-      <SetupStep number="2" title="ROM LIBRARY" status={retroArch.romGrant}>
-        <p>Grant the smallest folder containing the GB, GBC, GBA, or ZIP sources you want DualDex to match.</p>
-        <a class="setup-action" href="dualdex://grant/roms">SELECT ROM FOLDER</a>
-        <small>{retroArch.indexedRoms} ROM sources indexed. ROM data remains local.</small>
       </SetupStep>
 
       <SetupStep number="3" title="LIVE SESSION" status={retroArch.connection}>

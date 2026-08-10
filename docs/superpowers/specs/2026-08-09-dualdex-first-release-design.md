@@ -66,7 +66,7 @@ Save states are not used as the normal player-state source. DualDex reads ordina
 - ROMs, saves, parsed catalogs, settings, and diagnostics remain on the device.
 - DualDex never uploads ROM bytes, extracted assets, trainer data, saves, or memory dumps.
 - The normal app never writes to a ROM, SaveRAM file, core memory, or RetroArch input state.
-- Configuration changes are limited to explicit, user-approved RetroArch settings in a user-selected public folder.
+- Configuration changes are limited to explicit, user-approved RetroArch settings in the public `RetroArch/retroarch.cfg`; broad storage access does not authorize any other write.
 - Cocoon may launch RetroArch and DualDex together, but DualDex has no Cocoon API dependency and behaves the same with any launcher.
 
 ### 2.5 Main-path independence from memory mapping
@@ -210,9 +210,12 @@ A numeric family score cannot override a failed dataset validator. A `100` famil
 
 ```mermaid
 flowchart TD
-    SAF[Persisted folder grants] --> CFG[RetroArch configuration adapter]
-    SAF --> RI[ROM index]
-    SAF --> SD[Save discovery]
+    AF[Android All files access] --> CFG[Public RetroArch configuration adapter]
+    AF --> RI[Multi-folder ROM index]
+    AF --> SD[Save discovery]
+    SAF[Optional SAF folder fallbacks] --> CFG
+    SAF --> RI
+    SAF --> SD
     RA[RetroArch] -->|GET_STATUS only| SM[Session monitor]
     CFG -->|restart and verify| SM
     SM --> RR[ROM resolver]
@@ -272,21 +275,17 @@ The API remains transport-neutral so a later native UI can replace the WebView w
 
 ## 7. First-run setup and RetroArch configuration
 
-### 7.1 Folder grants
+### 7.1 Storage access
 
-The setup wizard requests persistent Storage Access Framework read/write access to the public RetroArch directory, normally:
+The setup wizard uses Android All files access as the primary v1 storage mode. One app-specific system grant lets DualDex discover sibling GB, GBC, and GBA ROM folders plus RetroArch SaveRAM without asking the player to select every console directory independently.
 
-```text
-/storage/emulated/0/RetroArch
-```
+DualDex recursively indexes only supported `.gb`, `.gbc`, `.gba`, and single-ROM `.zip` sources. It prunes protected `Android/data` and `Android/obb` trees. ROM and SaveRAM access is read-only. Existing Storage Access Framework RetroArch/ROM grants remain visible as fallbacks when broad access is unavailable or revoked.
 
-The grant covers public configuration, saves, playlists, and related RetroArch content under that tree. If the ROM library lives elsewhere, the wizard requests a second persistent read-only grant to the smallest useful ROM-library folder. It does not request broad storage, Accessibility, screenshot, root, ADB, or `Android/data` access.
-
-The setup page reports each grant and allows it to be replaced later.
+The setup page reports `MISSING`, `INDEXING`, `GRANTED`, or `FAILED`, shows the indexed source count, and keeps manual folder actions subordinate to the primary grant. It does not request Accessibility, screenshot, root, ADB, or `Android/data` access.
 
 ### 7.2 Public configuration editing
 
-DualDex discovers candidate public `retroarch.cfg` files inside the selected tree and presents the exact file it will update. With explicit setup consent, it changes only known keys required by the companion:
+With All files access, DualDex resolves the exact public `/storage/emulated/0/RetroArch/retroarch.cfg`. A manual SAF-selected config folder remains the fallback. With explicit setup consent, it changes only known keys required by the companion:
 
 - `network_cmd_enable = "true"`;
 - `network_cmd_port = "55355"` unless a supported custom port is already selected;
@@ -296,7 +295,7 @@ DualDex discovers candidate public `retroarch.cfg` files inside the selected tre
 
 The editor preserves comments, unknown keys, line endings, and unrelated values. It replaces the final effective occurrence of an exact key or appends a missing key. It does not translate legacy-looking names by guesswork or rewrite the entire file.
 
-Configuration writes use a recoverable sibling-document replacement supported by the selected document provider. The app retains the original bytes until the replacement verifies, then removes the transient recovery document. It does not accumulate undated backup files.
+Configuration writes use a recoverable sibling file/document. The app retains the original bytes until the replacement verifies and is synchronously read back, then removes the contextual recovery artifact. It does not accumulate undated backup files.
 
 ### 7.3 Effective-file verification
 
@@ -309,7 +308,7 @@ After updating the public file, the wizard asks the player to restart RetroArch 
 - queryable effective settings match the requested public save directory and port where supported; and
 - an active ROM can be identified when content is loaded.
 
-Successful verification records the selected configuration URI and a non-secret fingerprint. If verification fails, the wizard reports that the selected file was not proven active and shows the exact RetroArch menu breadcrumbs for the remaining manual setting. It never claims setup succeeded based only on a successful file write.
+Successful verification records the selected direct path or fallback configuration URI and a non-secret fingerprint. If verification fails, the wizard reports that the selected file was not proven active and shows the exact RetroArch menu breadcrumbs for the remaining manual setting. It never claims setup succeeded based only on a successful file write. An already-correct public config plus a responding Network Command Interface is immediately `VERIFIED`; it does not demand another restart on every DualDex launch.
 
 ### 7.4 Lifecycle detection
 
@@ -371,7 +370,7 @@ All validated rulesets and local ROM-derived images share the same database. A r
 
 ### 9.1 Save discovery
 
-The effective public save root is obtained from the verified RetroArch configuration when possible. DualDex supports ordinary RetroArch layouts including:
+The effective public save root is obtained from the live Network Command response and public configuration when possible. All files access searches that root and the active ROM's containing directory before falling back to persisted SAF grants. DualDex supports ordinary RetroArch layouts including:
 
 - one shared save directory;
 - saves sorted by core;
@@ -772,7 +771,7 @@ DualDex 1.0.0 is ready for publication only when all of the following are true:
 1. The production application ID is `com.darkaxt.dualdex`; local debug builds use `com.darkaxt.dualdex.debug`.
 2. The GitHub release workflow alone signs production APKs with the pinned certificate, and a signed candidate updates its predecessor in place.
 3. The existing `emulator-5554` remains untouched and all automated Android work uses the dedicated DualDex AVD by verified serial.
-4. A fresh user can grant the public RetroArch folder, approve the exact configuration edit, restart RetroArch, and see whether the edited file was proven effective.
+4. A fresh user can grant All files access once, index sibling console folders, approve the exact public configuration edit, restart RetroArch when the file changed, and see whether the edited file was proven effective; SAF folder selection remains a fallback.
 5. DualDex identifies an active supported ROM through RetroArch status plus user-granted content, or permits manual/cached browsing when status is unavailable.
 6. Direct and ZIP-contained supported ROMs produce the same validated catalog and reuse a SHA-256-keyed SQLite cache after first parse.
 7. Species sprites, ball artwork, entries, types, stats, moves, learnsets, abilities, evolutions, and encounters render from the ROM whenever their capabilities are available; no emoji or bundled fallback Pokédex is used.

@@ -35,7 +35,7 @@ describe('Organic Pokédex move knowledge', () => {
     renderDetail(uncaughtState);
 
     expect(screen.getByRole('button', { name: /Scratch/ })).toBeTruthy();
-    expect(screen.getByText('OBSERVED · 3×')).toBeTruthy();
+    expect(screen.getByText('FREQUENCY · 3×')).toBeTruthy();
     expect(screen.queryByText('Ember')).toBeNull();
     expect(screen.queryByText('Lv 7')).toBeNull();
   });
@@ -49,6 +49,7 @@ describe('Organic Pokédex move knowledge', () => {
     expect(screen.getByText('Scratch')).toBeTruthy();
     expect(screen.getByText('Ember')).toBeTruthy();
     expect(screen.getByText('Lv 7')).toBeTruthy();
+    expect(screen.queryByText(/OBSERVED|FREQUENCY/i)).toBeNull();
   });
 });
 
@@ -84,7 +85,7 @@ const catalog = {
 const uncaughtState = {
   version: 1, screen: 'DETAIL', priorScreen: 'BATTLE', settingsReturnScreen: 'DETAIL', selectedSpeciesId: 4,
   filter: 'ALL', selectedAreaId: null, battleTab: 'ENTRY', speciesState: { 4: { seen: true, caught: false, team: false, ballId: null } }, battle: null,
-  observedMoves: { 4: [{ moveId: 10, encounters: 3, lastSeen: 8 }] },
+  observedMoves: { 4: [{ moveId: 10, frequency: 3 }] },
   catalogReady: true, catalogName: 'fixture.gba', error: null, activeRulesetId: 'base', rulesetAssumed: false,
   loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
   settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },

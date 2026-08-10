@@ -64,11 +64,22 @@ class RomSessionResolverTest {
     }
 
     @Test
-    fun duplicateEvidenceRemainsAmbiguousUntilShaVerification() {
+    fun duplicateSourcesWithTheSameIndexedShaResolveDeterministically() {
         val second = emerald.copy(sourceId = "emerald-zip", archiveEntry = "Pokemon Emerald.gba")
         val result = RomSessionResolver.resolve(
             RetroArchStatus.Running(false, "Nintendo - Game Boy Advance", emerald.gameBasename, emerald.crc32),
-            listOf(emerald, second),
+            listOf(second, emerald),
+        )
+
+        assertEquals(SessionResolution.Resolved(emerald), result)
+    }
+
+    @Test
+    fun matchingEvidenceWithDifferentIndexedHashesRemainsAmbiguous() {
+        val second = emerald.copy(sourceId = "emerald-zip", sha256 = "b".repeat(64))
+        val result = RomSessionResolver.resolve(
+            RetroArchStatus.Running(false, "Nintendo - Game Boy Advance", emerald.gameBasename, emerald.crc32),
+            listOf(second, emerald),
         )
 
         assertEquals(SessionResolution.Ambiguous(listOf(emerald, second)), result)

@@ -32,6 +32,34 @@ describe('battle layout', () => {
     expect(container.querySelector('.battle-screen')?.classList.contains('battle-double')).toBe(true);
     expect(container.querySelectorAll('.target-switch button')).toHaveLength(2);
   });
+
+  it('shows frequency only while the targeted species is not captured', () => {
+    const { catalog, state } = fixture(1);
+    const battle = {
+      ...state.battle!,
+      opponents: [{ ...state.battle!.opponents[0], moves: [{ moveId: 1, frequency: 3 }] }],
+    };
+    const { rerender } = render(<BattlePage
+      catalog={catalog}
+      state={{ ...state, battleTab: 'MOVES', battle }}
+      send={vi.fn()}
+      openMove={vi.fn()}
+      openSpecies={vi.fn()}
+    />);
+
+    expect(screen.getByText('FREQUENCY · 3×')).toBeTruthy();
+
+    rerender(<BattlePage
+      catalog={catalog}
+      state={{ ...state, battleTab: 'MOVES', battle, speciesState: { 1: { seen: true, caught: true, team: false, ballId: null } } }}
+      send={vi.fn()}
+      openMove={vi.fn()}
+      openSpecies={vi.fn()}
+    />);
+
+    expect(screen.getByText('Pound')).toBeTruthy();
+    expect(screen.queryByText(/FREQUENCY|encounter/i)).toBeNull();
+  });
 });
 
 function fixture(opponentCount: number): { catalog: Catalog; state: State } {
