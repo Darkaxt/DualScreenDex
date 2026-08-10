@@ -36,7 +36,8 @@ test("tests and builds the unsigned APK before entering the signing environment"
   );
 
   assert.match(verifyJob, /node --test tools\/release\/\*\.test\.mjs/);
-  assert.match(verifyJob, /gradlew.*test.*lintDebug.*assembleRelease/s);
+  assert.match(verifyJob, /bash \.\/gradlew.*test.*lintDebug.*assembleRelease/s);
+  assert.doesNotMatch(verifyJob, /^\s*\.\/gradlew/m);
   assert.match(verifyJob, /upload-artifact@[a-f0-9]{40}/);
   assert.match(verifyJob, /app-release-unsigned\.apk/);
   assert.doesNotMatch(verifyJob, /secrets\./);

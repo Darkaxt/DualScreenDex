@@ -120,7 +120,7 @@ jobs:
       - name: Test all modules, lint, and build unsigned release APK
         shell: bash
         run: >-
-          ./gradlew test :app:lintDebug :app:assembleRelease
+          bash ./gradlew test :app:lintDebug :app:assembleRelease
           -PdualdexVersionName=${{ steps.metadata.outputs.version_name }}
           -PdualdexVersionCode=${{ steps.metadata.outputs.version_code }}
           --stacktrace
