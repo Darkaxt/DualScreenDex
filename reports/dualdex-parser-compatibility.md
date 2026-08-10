@@ -65,20 +65,20 @@ Each row is a complete SHA-256-keyed database that was written, closed, reopened
 
 | ROM | SHA-256 prefix | Bytes | Sections | Write ms | Reopen ms |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | 21a0306c4e5b | 659456 | 10 | 1008 | 480 |
-| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | f6d2e7092831 | 1822720 | 10 | 978 | 500 |
-| Pokemon Unbound.zip!Pokemon Unbound.gba | 7aa25bbf568f | 1847296 | 10 | 967 | 453 |
-| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | 2a951313c264 | 176128 | 10 | 98 | 44 |
-| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | fdcc3c8c4381 | 282624 | 10 | 154 | 61 |
-| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | a9dec84dfe7f | 565248 | 10 | 418 | 178 |
-| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | 729041b940af | 548864 | 10 | 345 | 156 |
-| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | fb0016d27b1e | 274432 | 10 | 143 | 58 |
-| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | 2f978f635b95 | 548864 | 10 | 296 | 133 |
-| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | 5ca7ba01642a | 176128 | 10 | 119 | 39 |
-| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | 0fdd36e92b75 | 540672 | 10 | 340 | 131 |
-| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | 02ca41513580 | 540672 | 10 | 375 | 148 |
-| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | 72b190859a59 | 274432 | 10 | 153 | 60 |
-| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | 8cbaa499397e | 176128 | 10 | 98 | 43 |
+| Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba | 21a0306c4e5b | 659456 | 10 | 1175 | 567 |
+| Pokemon - Sword and Shield Ultimate Plus (USA, Europe).zip!Pokemon - Sword and Shield Ultimate Plus (USA, Europe).gba | f6d2e7092831 | 1826816 | 10 | 1360 | 623 |
+| Pokemon Unbound.zip!Pokemon Unbound.gba | 7aa25bbf568f | 1851392 | 10 | 1343 | 655 |
+| Pokemon - Blue Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb | 2a951313c264 | 180224 | 10 | 143 | 64 |
+| Pokemon - Crystal Version (USA, Europe) (Rev 1).zip!Pokemon - Crystal Version (USA, Europe) (Rev 1).gbc | fdcc3c8c4381 | 286720 | 10 | 181 | 90 |
+| Pokemon - Emerald Version (USA, Europe).zip!Pokemon - Emerald Version (USA, Europe).gba | a9dec84dfe7f | 569344 | 10 | 470 | 251 |
+| Pokemon - FireRed Version (USA).zip!Pokemon - FireRed Version (USA, Europe) (Rev 1).gba | 729041b940af | 548864 | 10 | 370 | 227 |
+| Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | fb0016d27b1e | 278528 | 10 | 216 | 101 |
+| Pokemon - LeafGreen Version (USA, Europe) (Rev 1).zip!Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba | 2f978f635b95 | 548864 | 10 | 474 | 208 |
+| Pokemon - Red Version (USA, Europe) (SGB Enhanced).zip!Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb | 5ca7ba01642a | 180224 | 10 | 207 | 78 |
+| Pokemon - Ruby Version (USA, Europe) (Rev 2).zip!Pokemon - Ruby Version (USA, Europe) (Rev 2).gba | 0fdd36e92b75 | 544768 | 10 | 411 | 138 |
+| Pokemon - Sapphire Version (USA, Europe) (Rev 2).zip!Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba | 02ca41513580 | 544768 | 10 | 318 | 148 |
+| Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).zip!Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc | 72b190859a59 | 278528 | 10 | 213 | 62 |
+| Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).zip!Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb | 8cbaa499397e | 180224 | 10 | 170 | 70 |
 
 ## Capability matrix
 

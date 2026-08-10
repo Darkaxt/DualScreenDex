@@ -561,9 +561,9 @@ Private material is not committed. The repository contains only:
 
 - the exported public certificate;
 - its expected SHA-256 certificate fingerprint; and
-- signing/recovery instructions that do not contain secrets.
+- signing instructions that do not contain secrets.
 
-The user retains one encrypted recovery copy with enough context to identify the repository, application ID, alias, certificate fingerprint, and restoration procedure. This is a deliberate recovery artifact, not an unlabelled backup.
+The protected GitHub `release-signing` environment is the production signing authority and holds the keystore plus its credentials. A local administrative copy may exist outside the repository, but it is not a release prerequisite and must not introduce a second user-managed recovery phrase or a local production-signing path.
 
 ### 12.3 GitHub-only production signing
 
@@ -797,6 +797,7 @@ The following remain explicit later milestones:
 - dynamic active-ruleset selection from memory;
 - generated runtime profiles promoted from validated mapper evidence;
 - Area-filter encounter rows with ROM-styled sun/day-only or moon/night-only markers. No marker means both only when the ROM's time-slot capability is `Available`; `Not Found` or `Not Applicable` must remain distinguishable and no emoji artwork is permitted;
+- a user-resizable 4:3 overlay that defaults to the widest inferred letterbox or pillarbox edge instead of covering the game, uses core/screen aspect only as an initial hint, preserves readable and system-inset-aware limits, persists size and position per display, and provides an explicit reset action;
 - Mystery Dungeon or other non-mainline engine families.
 
 The first live-memory milestone must consume validated normalized events and knowledge interfaces; it may not bypass the isolation boundaries established here.

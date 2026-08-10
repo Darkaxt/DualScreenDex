@@ -276,19 +276,19 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 
 **Delivery checklist:**
 
-- [ ] Build a requirement matrix mapping every first-release specification section and acceptance criterion to implementation, tests, and device evidence.
-- [ ] Re-run the complete ROM parser corpus and save-family suites; investigate every Not Found that the release claims should be Available.
-- [ ] Close all `STOP-*`, `CONVERGENCE`, and `TUNING` ledger items tied to v1; only specification section 18 items may remain Post-v1.
-- [ ] Run full Kotlin, Android, web, Playwright, instrumentation, config, save-corruption, cache-migration, policy, mapper-isolation, and update-preservation suites.
-- [ ] Audit small-screen behavior on the exact Thor viewport and large font scales; fix every overflow, malformed icon, inaccessible route, misleading label, or simulator artifact.
-- [ ] Audit permissions, localhost binding, WebView navigation, secret exposure, raw diagnostic handling, dependency licenses, and absence of ROM/save/memory assets.
-- [ ] Verify OCR, Accessibility, screenshot, CSV profile, cheat, input, ROM write, SaveRAM write, and memory-write paths are absent from the final manifest/dependency graph.
-- [ ] Update README architecture, setup, screenshots, feature table, limitations, compatibility report, signing fingerprint, and explicit memory-mapper boundary.
-- [ ] Produce a clean debug candidate on the dedicated AVD and freeze the exact commit for release-candidate signing.
+- [x] Build a requirement matrix mapping every first-release specification section and acceptance criterion to implementation, tests, and device evidence.
+- [x] Re-run the complete ROM parser corpus and save-family suites; investigate every Not Found that the release claims should be Available.
+- [x] Close all `STOP-*`, `CONVERGENCE`, and `TUNING` ledger items tied to v1; only specification section 18 items may remain Post-v1.
+- [x] Run full Kotlin, Android, web, Playwright, instrumentation, config, save-corruption, cache-migration, policy, mapper-isolation, and update-preservation suites.
+- [x] Audit small-screen behavior on the exact Thor viewport and large font scales; fix every overflow, malformed icon, inaccessible route, misleading label, or simulator artifact.
+- [x] Audit permissions, localhost binding, WebView navigation, secret exposure, raw diagnostic handling, dependency licenses, and absence of ROM/save/memory assets.
+- [x] Verify OCR, Accessibility, screenshot, CSV profile, cheat, input, ROM write, SaveRAM write, and memory-write paths are absent from the final manifest/dependency graph.
+- [x] Update README architecture, setup, screenshots, feature table, limitations, compatibility report, signing fingerprint, and explicit memory-mapper boundary.
+- [x] Produce a clean debug candidate on the dedicated AVD and freeze the exact commit for release-candidate signing.
 
 **Gate evidence:** zero-open-v1 ledger, requirement matrix, complete test logs, final screenshots, manifest/dependency audit, corpus report, and frozen commit SHA.
 
-**Specification audit:** Entire `2026-08-09-dualdex-first-release-design.md`, especially all 15 acceptance criteria.
+**Specification audit:** Entire `2026-08-09-dualdex-first-release-design.md`, especially all 16 acceptance criteria.
 
 **Checkpoint commit:** `feat: converge DualDex v1 specification`
 

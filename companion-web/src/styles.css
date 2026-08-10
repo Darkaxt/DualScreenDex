@@ -32,7 +32,7 @@ button { cursor: pointer; }
 .rom-status { position: absolute; z-index: 12; inset: 0 0 auto; height: 25px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 0 9px; color: #dfe8d3; background: #071e18; border-bottom: 1px solid #466b57; font-size: .58em; letter-spacing: .04em; }
 .rom-status strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rom-status span { color: #aabaad; white-space: nowrap; }
-.screen { position: absolute; inset: 0; display: grid; min-width: 0; min-height: 0; background: var(--paper); animation: screen-in 170ms ease-out both; }
+.screen { position: absolute; inset: 0; display: grid; min-width: 0; min-height: 0; overflow: hidden; background: var(--paper); animation: screen-in 170ms ease-out both; }
 @keyframes screen-in { from { opacity: .65; translate: 0 5px; } }
 
 .app-header { min-height: 62px; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; background: var(--forest-800); color: var(--acid); border-bottom: 3px solid #87a84c; }

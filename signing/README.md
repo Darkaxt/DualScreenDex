@@ -16,4 +16,4 @@ The encrypted keystore and credentials are held as GitHub environment secrets:
 - `DUALDEX_RELEASE_KEY_ALIAS`
 - `DUALDEX_RELEASE_KEY_PASSWORD`
 
-The contextual recovery copy is outside the repository. It identifies this repository, package, alias, public fingerprint, and recovery limitations. Never commit a keystore, properties file, or credential export.
+The GitHub environment is the release-signing authority. A contextual current-user recovery copy exists outside the repository for emergency administration, but it is not a release prerequisite and does not introduce another user-managed passphrase. Never commit a keystore, properties file, or credential export.
