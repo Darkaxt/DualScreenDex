@@ -1,0 +1,267 @@
+package com.enrpau.dualscreendex.parser.cli
+
+import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.ParseResult
+import com.enrpau.dualscreendex.parser.model.ParserProbe
+import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.model.RomHeader
+import com.enrpau.dualscreendex.parser.model.SelectionStatus
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ReportWriterTest {
+    @Test
+    fun markdownIncludesCandidatesAndCapabilitiesWithoutExtractedText() {
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(
+                CorpusResult(
+                    displayName = "Pokemon Test.gba",
+                    source = "Pokemon Test.gba",
+                    durationMillis = 3,
+                    result = sampleResult(),
+                ),
+            ),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("FIRERED_LEAFGREEN"))
+        assertTrue(markdown.contains("SPECIES_NAMES"))
+        assertFalse(markdown.contains("BULBASAUR"))
+    }
+
+    @Test
+    fun jsonIsDeterministicForSameReport() {
+        val report = CorpusReport(roots = emptyList(), results = emptyList())
+        assertEquals(ReportWriter.json(report), ReportWriter.json(report))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 7"))
+        assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
+    }
+
+    @Test
+    fun jsonPublishesRootLabelsWithoutPrivateAbsolutePaths() {
+        val report = CorpusReport(
+            roots = listOf(
+                "H:/Private/Roms/Nintendo - Game Boy",
+                "H:\\Private\\Roms\\Nintendo - Game Boy Advance",
+            ),
+            results = emptyList(),
+        )
+
+        val json = ReportWriter.json(report)
+
+        assertTrue(json.contains("\"Nintendo - Game Boy\""))
+        assertTrue(json.contains("\"Nintendo - Game Boy Advance\""))
+        assertFalse(json.contains("H:/"))
+        assertFalse(json.contains("H:\\\\"))
+        assertFalse(json.contains("Private"))
+    }
+
+    @Test
+    fun markdownNamesEveryPersistedSqliteCatalogAndItsReopenEvidence() {
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(
+                CorpusResult(
+                    displayName = "Pokemon Emerald.gba",
+                    source = "Pokemon Emerald.gba",
+                    durationMillis = 12,
+                    result = sampleResult(),
+                    persistence = CatalogPersistenceMetrics(
+                        fileName = "${"0".repeat(64)}.sqlite",
+                        bytes = 640_000,
+                        writeMillis = 80,
+                        reopenMillis = 12,
+                        sections = 10,
+                    ),
+                ),
+            ),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("Persisted and reopened SQLite catalogs: 1"))
+        assertTrue(markdown.contains("## SQLite catalog persistence"))
+        assertTrue(markdown.contains("| Pokemon Emerald.gba | 000000000000"))
+        assertTrue(markdown.contains("| 640000 | 10 | 80 | 12 |"))
+    }
+
+    @Test
+    fun markdownNamesRomAndReportsMaterializedCatalogCounts() {
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(
+                CorpusResult(
+                    displayName = "Pokemon Emerald.gba",
+                    source = "Pokemon Emerald.gba",
+                    durationMillis = 12,
+                    result = sampleResult(),
+                    catalog = CatalogMetrics(
+                        species = 412,
+                        namedSpecies = 412,
+                        speciesWithStats = 412,
+                        speciesWithSprites = 411,
+                        speciesWithDescriptions = 386,
+                        evolutionEdges = 219,
+                        learnsetEntries = 4211,
+                        learnsetRulesets = 2,
+                        moves = 355,
+                        movesWithDetails = 355,
+                        movesWithDescriptions = 354,
+                        eggMoveLinks = 900,
+                        machineMoveLinks = 5000,
+                        tutorMoveLinks = 200,
+                        types = 18,
+                        typeMatchups = 112,
+                        abilities = 78,
+                        abilitiesWithDescriptions = 77,
+                        abilitiesWithMechanics = 4,
+                        captureBalls = 12,
+                    ),
+                ),
+            ),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("## Materialized catalog counts"))
+        assertTrue(markdown.contains("Pokemon Emerald.gba"))
+        assertTrue(markdown.contains("| Pokemon Emerald.gba | 412 | 412 | 412 | 411 | 386 | 219 | 4211 | 2 | 355 |"))
+        assertTrue(markdown.contains("| 355 | 354 | 900 | 5000 | 200 | 18 | 112 | 78 | 77 | 4 | 12 |"))
+        assertFalse(markdown.contains("BULBASAUR"))
+    }
+
+    @Test
+    fun markdownDistinguishesNotFoundFromNotApplicable() {
+        val unavailable = CapabilityEvidence(
+            RomCapability.TYPE_CHART,
+            compatible = false,
+            confidence = 0.0,
+            status = CapabilityStatus.NOT_FOUND,
+        )
+        val notApplicable = CapabilityEvidence(
+            RomCapability.ABILITIES,
+            compatible = false,
+            confidence = 0.0,
+            status = CapabilityStatus.NOT_APPLICABLE,
+        )
+        val result = sampleResult().copy(capabilities = sampleResult().capabilities + unavailable + notApplicable)
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(CorpusResult("Pokemon Test.gba", "Pokemon Test.gba", durationMillis = 1, result = result)),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("Ancestry score"))
+        assertTrue(markdown.contains("`N/F` = applicable but not found or validated"))
+        assertTrue(markdown.contains("`N/A` = not applicable to that engine"))
+        assertTrue(markdown.contains("| N/F |"))
+        assertTrue(markdown.contains("| N/A |"))
+    }
+
+    @Test
+    fun markdownReportsEveryStaticCapabilityAndFullCompleteness() {
+        val capabilities = RomCapability.entries.map { capability ->
+            if (capability == RomCapability.ABILITIES) {
+                CapabilityEvidence(capability, false, 0.0, status = CapabilityStatus.NOT_APPLICABLE)
+            } else {
+                CapabilityEvidence(capability, true, 1.0, offset = 0x100, count = 10)
+            }
+        }
+        val result = sampleResult().copy(capabilities = capabilities)
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(CorpusResult("Pokemon Test.gba", "Pokemon Test.gba", durationMillis = 1, result = result)),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("Complete core catalogs: 1"))
+        assertTrue(markdown.contains("Complete for every applicable extended dataset: 1"))
+        assertTrue(markdown.contains("| Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Ability values | Areas | Type colors | Balls |"))
+    }
+
+    @Test
+    fun markdownSeparatesCoreCatalogCompletenessFromMissingExtendedMetadata() {
+        val extended = setOf(
+            RomCapability.MOVE_DESCRIPTIONS,
+            RomCapability.EGG_MOVES,
+            RomCapability.MACHINE_MOVES,
+            RomCapability.TUTOR_MOVES,
+            RomCapability.ABILITY_DESCRIPTIONS,
+            RomCapability.ABILITY_MECHANICS,
+        )
+        val capabilities = RomCapability.entries.map { capability ->
+            if (capability in extended) CapabilityEvidence(capability, false, 0.0, status = CapabilityStatus.NOT_FOUND)
+            else CapabilityEvidence(capability, true, 1.0, offset = 0x100, count = 10)
+        }
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(
+                CorpusResult(
+                    "Pokemon Test.gba",
+                    "Pokemon Test.gba",
+                    durationMillis = 1,
+                    result = sampleResult().copy(capabilities = capabilities),
+                ),
+            ),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("Complete core catalogs: 1"))
+        assertTrue(markdown.contains("Complete for every applicable extended dataset: 0"))
+    }
+
+    @Test
+    fun markdownNamesEveryNoFamilyMatchInput() {
+        val result = sampleResult().copy(
+            status = SelectionStatus.NO_FAMILY_MATCH,
+            selectedFamily = null,
+            selectedProfile = null,
+            capabilities = RomCapability.entries.map { CapabilityEvidence(it, false, 0.0) },
+        )
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(CorpusResult("Pokemon Pinball.gbc", "Pokemon Pinball.gbc", durationMillis = 1, result = result)),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("No mainline-family match (1)"))
+        assertTrue(markdown.contains("Pokemon Pinball.gbc"))
+        assertFalse(markdown.contains("Unsupported"))
+    }
+
+    private fun sampleResult(): ParseResult {
+        val capability = CapabilityEvidence(RomCapability.SPECIES_NAMES, true, 1.0, 0x100, 411, 11, listOf("validated"))
+        val probe = ParserProbe(
+            family = EngineFamily.FIRERED_LEAFGREEN,
+            score = 92,
+            hardGatePassed = true,
+            anchors = 4,
+            scoreEvidence = emptyList(),
+            capabilities = listOf(capability),
+            profileName = "test profile",
+        )
+        return ParseResult(
+            header = RomHeader(Platform.GBA, "POKEMON FIRE", "BPRE", 1),
+            sha256 = "0".repeat(64),
+            crc32 = "00000000",
+            size = 1024,
+            status = SelectionStatus.SELECTED,
+            selectedFamily = EngineFamily.FIRERED_LEAFGREEN,
+            selectedProfile = "test profile",
+            runnerUpMargin = 20,
+            probes = listOf(probe),
+            capabilities = listOf(capability),
+        )
+    }
+}

@@ -1,0 +1,65 @@
+package com.darkaxt.dualdex.retroarch
+
+enum class RomPlatform { GB, GBC, GBA }
+
+data class RomIndexEntry(
+    val sourceId: String,
+    val sourceName: String,
+    val archiveEntry: String?,
+    val platform: RomPlatform,
+    val gameBasename: String,
+    val crc32: String,
+    val sha256: String,
+)
+
+sealed interface SessionResolution {
+    data object NoContent : SessionResolution
+    data class Resolved(val entry: RomIndexEntry) : SessionResolution
+    data class Ambiguous(val entries: List<RomIndexEntry>) : SessionResolution
+    data class NotFound(val reason: String) : SessionResolution
+}
+
+object RomSessionResolver {
+    fun resolve(status: RetroArchStatus, entries: List<RomIndexEntry>): SessionResolution = when (status) {
+        RetroArchStatus.Contentless -> SessionResolution.NoContent
+        is RetroArchStatus.Malformed -> SessionResolution.NotFound(status.reason)
+        is RetroArchStatus.Running -> resolveRunning(status, entries)
+    }
+
+    fun verifySha(entry: RomIndexEntry, actualSha256: String): Boolean =
+        entry.sha256.matches(Regex("[0-9a-fA-F]{64}")) && entry.sha256.equals(actualSha256, ignoreCase = true)
+
+    private fun resolveRunning(status: RetroArchStatus.Running, entries: List<RomIndexEntry>): SessionResolution {
+        val platforms = compatiblePlatforms(status.systemId)
+        if (platforms.isEmpty()) return SessionResolution.NotFound("unsupported RetroArch system: ${status.systemId}")
+        val compatible = entries.filter { it.platform in platforms }
+        val matches = if (status.crc32 != null) {
+            compatible.filter { it.crc32.equals(status.crc32, ignoreCase = true) }
+        } else {
+            val basename = normalizedBasename(status.gameBasename)
+            compatible.filter { normalizedBasename(it.gameBasename) == basename }
+        }
+        return when (matches.size) {
+            0 -> SessionResolution.NotFound(
+                if (status.crc32 != null) "no granted ROM has CRC32 ${status.crc32}"
+                else "no granted ROM matches ${status.gameBasename}",
+            )
+            1 -> SessionResolution.Resolved(matches.single())
+            else -> SessionResolution.Ambiguous(matches.sortedBy { it.sourceId })
+        }
+    }
+
+    private fun compatiblePlatforms(systemId: String): Set<RomPlatform> {
+        val value = systemId.lowercase().replace('_', ' ').replace('-', ' ')
+        return when {
+            "game boy advance" in value || value == "gba" -> setOf(RomPlatform.GBA)
+            "game boy" in value || value == "gb" || value == "gbc" -> setOf(RomPlatform.GB, RomPlatform.GBC)
+            else -> emptySet()
+        }
+    }
+
+    private fun normalizedBasename(value: String): String = value
+        .substringBeforeLast('.', value)
+        .lowercase()
+        .filter(Char::isLetterOrDigit)
+}

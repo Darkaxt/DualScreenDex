@@ -1,0 +1,60 @@
+import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { Catalog, State } from '../models';
+import { PokedexDetail } from './PokedexDetail';
+
+afterEach(cleanup);
+
+describe('Pokédex evolution navigation', () => {
+  it('opens the resolved target species on its entry tab', () => {
+    const send = vi.fn();
+    const setTab = vi.fn();
+
+    render(<PokedexDetail
+      catalog={catalog}
+      state={state}
+      send={send}
+      tab="MORE"
+      setTab={setTab}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Charizard Level 36' }));
+
+    expect(setTab).toHaveBeenCalledWith('ENTRY');
+    expect(send).toHaveBeenCalledWith('OPEN_SPECIES', { speciesId: 6 });
+  });
+});
+
+const baseSpecies = {
+  dex: 5,
+  typeIds: [10],
+  stats: null,
+  description: 'Entry',
+  height: null,
+  weight: null,
+  learnset: [],
+  learnsets: {},
+  normalizedLearnsets: {},
+  moveAcquisitions: [],
+  abilities: [],
+  hasSprite: false,
+};
+
+const catalog = {
+  hash: 'sha', crc32: '1234ABCD', family: 'EMERALD', platform: 'GBA', rulesets: [], moves: [], areas: [], balls: [], capabilities: {},
+  types: [{ id: 10, name: 'Fire', foreground: '#111', background: '#f80', border: '#b40' }],
+  species: [
+    { ...baseSpecies, id: 5, name: 'Charmeleon', evolutions: [{ targetSpeciesId: 6, targetName: 'Charizard', methodId: 1, parameter: 36, condition: 'Level 36' }] },
+    { ...baseSpecies, id: 6, dex: 6, name: 'Charizard', evolutions: [] },
+  ],
+} satisfies Catalog;
+
+const state = {
+  version: 1, screen: 'DETAIL', priorScreen: 'POKEDEX', settingsReturnScreen: 'DETAIL', selectedSpeciesId: 5,
+  filter: 'ALL', selectedAreaId: null, battleTab: 'ENTRY', speciesState: { 5: { seen: true, caught: true, team: false, ballId: null } }, observedMoves: {}, battle: null,
+  catalogReady: true, catalogName: 'fixture.gba', error: null, activeRulesetId: null, rulesetAssumed: true,
+  loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
+  settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
+} satisfies State;

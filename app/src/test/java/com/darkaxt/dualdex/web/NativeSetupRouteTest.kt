@@ -1,0 +1,23 @@
+package com.darkaxt.dualdex.web
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class NativeSetupRouteTest {
+    @Test
+    fun acceptsOnlyTheExactNativeRoutes() {
+        assertEquals(NativeSetupRoute.GRANT_RETROARCH, NativeSetupRoute.parse("dualdex://grant/retroarch"))
+        assertEquals(NativeSetupRoute.GRANT_ROMS, NativeSetupRoute.parse("dualdex://grant/roms"))
+        assertEquals(NativeSetupRoute.OPEN_RETROARCH, NativeSetupRoute.parse("dualdex://open/retroarch"))
+        assertEquals(NativeSetupRoute.EXPORT_MAPPER, NativeSetupRoute.parse("dualdex://mapper/export"))
+        assertEquals(NativeSetupRoute.SHOW_OVERLAY, NativeSetupRoute.parse("dualdex://overlay/show"))
+        assertEquals(NativeSetupRoute.DOCK_OVERLAY, NativeSetupRoute.parse("dualdex://overlay/dock"))
+
+        assertNull(NativeSetupRoute.parse("dualdex://grant/retroarch/extra"))
+        assertNull(NativeSetupRoute.parse("dualdex://grant/roms?unexpected=true"))
+        assertNull(NativeSetupRoute.parse("dualdex://overlay/show/extra"))
+        assertNull(NativeSetupRoute.parse("https://grant/retroarch"))
+        assertNull(NativeSetupRoute.parse("javascript:alert(1)"))
+    }
+}
