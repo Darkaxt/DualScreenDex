@@ -62,6 +62,7 @@ data class KnowledgeLedger(
 data class OpponentState(
     val speciesId: Int,
     val level: Int,
+    val typeIds: List<Int> = emptyList(),
     val ivs: List<Int> = emptyList(),
     val dvs: List<Int> = emptyList(),
     val moveHistory: List<MoveObservation>,

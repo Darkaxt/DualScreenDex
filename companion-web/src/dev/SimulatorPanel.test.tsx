@@ -34,7 +34,7 @@ describe('simulator ROM identity', () => {
     const state = {
       version: 1, screen: 'BATTLE', priorScreen: 'POKEDEX', settingsReturnScreen: 'BATTLE', selectedSpeciesId: null,
       filter: 'ALL', selectedAreaId: null, battleTab: 'ATTACK', speciesState: {}, observedMoves: {},
-      battle: { opponents: [], targetIndex: 0, selectedMoveId: 1, effectiveness: null, effectivenessKnown: false }, catalogReady: true,
+      battle: { opponents: [], targetIndex: 0, targetMode: 'AUTOMATIC', capabilities: {}, selectedMoveId: 1, effectiveness: null, effectivenessKnown: false }, catalogReady: true,
       catalogName: 'fixture.gba', error: null, activeRulesetId: null, rulesetAssumed: true,
       loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
       settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },

@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit
 
 data class BattleCatalogContext(
     val romIdentity: String,
+    val generation: Int,
     val catalog: BattleCatalogView,
 )
 
@@ -20,12 +21,14 @@ class BattleMemoryCoordinator(
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     autoStart: Boolean = true,
 ) : AutoCloseable {
-    private val resolver = Gen3BattleLayoutResolver()
+    private val gen1Resolver = Gen1BattleLayoutResolver()
+    private val gen3Resolver = Gen3BattleLayoutResolver()
     private val tracker = BattleObservationTracker()
     private val heartbeatExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "dualdex-battle-memory").apply { isDaemon = true }
     }
     private var sessionIdentity: String? = null
+    private var sessionGeneration = 0
     private var eligible = false
     private var transport: NetworkCommandTransport? = null
     private var reader: CoreMemoryReadSession? = null
@@ -46,17 +49,20 @@ class BattleMemoryCoordinator(
     fun updateSession(connected: Boolean, systemId: String?, romIdentity: String?) {
         val context = catalogProvider()
         val nextEligible = connected &&
-            systemId.equals(GBA_SYSTEM_ID, ignoreCase = true) &&
             romIdentity != null &&
-            context?.romIdentity.equals(romIdentity, ignoreCase = true)
+            context != null &&
+            context.romIdentity.equals(romIdentity, ignoreCase = true) &&
+            supports(context.generation, systemId)
         val nextIdentity = if (nextEligible) romIdentity else null
-        if (eligible == nextEligible && sessionIdentity == nextIdentity) return
+        val nextGeneration = if (nextEligible) context.generation else 0
+        if (eligible == nextEligible && sessionIdentity == nextIdentity && sessionGeneration == nextGeneration) return
 
         val hadBattle = tracker.missed().active
         resetReader()
         tracker.reset(nextIdentity)
         eligible = nextEligible
         sessionIdentity = nextIdentity
+        sessionGeneration = nextGeneration
         if (hadBattle && !nextEligible) publisher(BattleTrackingUpdate(active = false, sample = null, ended = true))
     }
 
@@ -78,7 +84,7 @@ class BattleMemoryCoordinator(
             is CoreMemoryReadState.Reading -> Unit
             is CoreMemoryReadState.Complete -> {
                 reader = null
-                process(state.regions.values.single(), context)
+                process(state.regions, context)
             }
             is CoreMemoryReadState.Failed -> {
                 reader = null
@@ -91,6 +97,28 @@ class BattleMemoryCoordinator(
     private fun startRead() {
         val connection = transport ?: transportFactory().also { transport = it }
         val session = CoreMemoryReadSession(connection::send, connection::poll, PRODUCTION_CHUNK_BYTES)
+        if (sessionGeneration == 1) {
+            val layout = cachedLayout
+            if (layout == null) {
+                readMode = ReadMode.DISCOVERY
+                session.start(listOf(CoreMemoryRegion("wram", GEN1_WRAM_BASE, GEN1_WRAM_BYTES)))
+            } else {
+                readMode = ReadMode.CACHED
+                cachedWindowStart = layout.moveCursorOffset
+                val cachedWindowBytes = layout.battlerCountOffset + GEN1_BATTLE_TYPE_DELTA + 1 - cachedWindowStart
+                session.start(
+                    listOf(
+                        CoreMemoryRegion(
+                            "battle-window",
+                            GEN1_WRAM_BASE + cachedWindowStart,
+                            cachedWindowBytes,
+                        ),
+                    ),
+                )
+            }
+            reader = session
+            return
+        }
         val layout = cachedLayout
         if (layout == null) {
             readMode = ReadMode.DISCOVERY
@@ -111,17 +139,32 @@ class BattleMemoryCoordinator(
         reader = session
     }
 
-    private fun process(bytes: ByteArray, context: BattleCatalogContext) {
-        val sample = when (readMode) {
-            ReadMode.DISCOVERY -> when (val result = resolver.resolve(bytes, context.catalog)) {
+    private fun process(regions: Map<String, ByteArray>, context: BattleCatalogContext) {
+        val sample = if (context.generation == 1) {
+            val source = requireNotNull(regions.values.singleOrNull())
+            if (readMode == ReadMode.CACHED) {
+                val absolute = requireNotNull(cachedLayout)
+                val rebased = absolute.rebased(-cachedWindowStart)
+                gen1Resolver.resolveKnown(source, rebased, context.catalog)?.copy(layout = absolute)
+                    .also { if (it == null && !knownGen1NonBattle(source)) cachedLayout = null }
+            } else {
+                when (val result = gen1Resolver.resolve(source, context.catalog)) {
+                    is LayoutResolution.Resolved -> result.sample.also { cachedLayout = it.layout }
+                    is LayoutResolution.Ambiguous,
+                    LayoutResolution.NotFound -> null
+                }
+            }
+        } else when (readMode) {
+            ReadMode.DISCOVERY -> when (val result = gen3Resolver.resolve(requireNotNull(regions.values.singleOrNull()), context.catalog)) {
                 is LayoutResolution.Resolved -> result.sample.also { cachedLayout = it.layout }
                 is LayoutResolution.Ambiguous,
                 LayoutResolution.NotFound -> null
             }
             ReadMode.CACHED -> {
+                val bytes = requireNotNull(regions.values.singleOrNull())
                 val absolute = requireNotNull(cachedLayout)
                 val rebased = absolute.rebased(-cachedWindowStart)
-                resolver.resolveKnown(bytes, rebased, context.catalog)?.copy(layout = absolute)
+                gen3Resolver.resolveKnown(bytes, rebased, context.catalog)?.copy(layout = absolute)
                     .also { if (it == null) cachedLayout = null }
             }
         }
@@ -129,13 +172,25 @@ class BattleMemoryCoordinator(
             val final = tracker.update(context.romIdentity, sample)
             tracker.reset(context.romIdentity)
             cachedLayout = null
-            BattleTrackingUpdate(active = false, sample = null, observations = final.observations, ended = true)
+            BattleTrackingUpdate(
+                active = false,
+                sample = null,
+                observations = final.observations,
+                discoveredMatchups = final.discoveredMatchups,
+                ended = true,
+            )
         } else if (sample != null) {
             tracker.update(context.romIdentity, sample)
         } else {
             tracker.validatedNoBattle(context.romIdentity)
         }
         if (update.active || update.ended) publisher(update)
+    }
+
+    private fun knownGen1NonBattle(bytes: ByteArray): Boolean {
+        val layout = cachedLayout ?: return false
+        val battleFlagOffset = layout.battlerCountOffset - cachedWindowStart
+        return battleFlagOffset in bytes.indices && bytes[battleFlagOffset].toInt() and 0xff == 0
     }
 
     private fun ResolvedBattleLayout.rebased(delta: Int): ResolvedBattleLayout = copy(
@@ -169,6 +224,7 @@ class BattleMemoryCoordinator(
             resetReader()
             eligible = false
             sessionIdentity = null
+            sessionGeneration = 0
             tracker.reset()
         }
     }
@@ -177,11 +233,22 @@ class BattleMemoryCoordinator(
 
     companion object {
         private const val GBA_SYSTEM_ID = "game_boy_advance"
+        private const val GB_SYSTEM_ID = "game_boy"
+        private const val GBC_SYSTEM_ID = "game_boy_color"
+        private const val GEN1_WRAM_BASE = 0xc000L
+        private const val GEN1_WRAM_BYTES = 0x2000
+        private const val GEN1_BATTLE_TYPE_DELTA = 3
         private const val EWRAM_BASE = 0x02000000L
         private const val EWRAM_BYTES = 0x40000
         private const val COUNT_DELTA = 0x1C
         private const val CACHED_WINDOW_BYTES = 0x45C
         private const val PRODUCTION_CHUNK_BYTES = 1024
         private const val HEARTBEAT_MILLIS = 20L
+    }
+
+    private fun supports(generation: Int, systemId: String?): Boolean = when (generation) {
+        1 -> systemId.equals(GB_SYSTEM_ID, ignoreCase = true) || systemId.equals(GBC_SYSTEM_ID, ignoreCase = true)
+        3 -> systemId.equals(GBA_SYSTEM_ID, ignoreCase = true)
+        else -> false
     }
 }

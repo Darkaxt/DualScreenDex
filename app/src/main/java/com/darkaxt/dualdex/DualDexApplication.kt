@@ -3,6 +3,7 @@ package com.darkaxt.dualdex
 import android.app.Application
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogCache
+import com.darkaxt.dualdex.knowledge.FileKnowledgeRepository
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
@@ -79,6 +80,7 @@ class DualDexApplication : Application() {
             catalogRepository = cache,
             initialSettings = settingsRepository.read(),
             onSettingsChanged = settingsRepository::write,
+            knowledgeRepository = FileKnowledgeRepository(File(filesDir, "knowledge")),
             onCatalogCommitted = { sha256, displayName ->
                 preferences.edit()
                     .putString(LAST_CATALOG_HASH, sha256)

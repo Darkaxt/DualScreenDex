@@ -128,8 +128,10 @@ export interface State {
   speciesState: Record<number, SpeciesState>;
   observedMoves: Record<number, { moveId: number; frequency: number }[]>;
   battle: null | {
-    opponents: { speciesId: number; level: number; rarity: string; moves: { moveId: number; frequency: number }[] }[];
+    opponents: { speciesId: number; level: number; typeIds: number[]; rarity: string; moves: { moveId: number; frequency: number }[] }[];
     targetIndex: number;
+    targetMode: 'AUTOMATIC' | 'MANUAL_TARGET_FALLBACK';
+    capabilities: Record<string, string>;
     selectedMoveId: number | null;
     effectiveness: string | null;
     effectivenessKnown: boolean;

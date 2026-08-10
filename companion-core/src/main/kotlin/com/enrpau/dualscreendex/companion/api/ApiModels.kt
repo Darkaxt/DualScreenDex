@@ -199,6 +199,8 @@ data class SpeciesStateView(
 data class BattleView(
     val opponents: List<OpponentView>,
     val targetIndex: Int,
+    val targetMode: String,
+    val capabilities: Map<String, String>,
     val selectedMoveId: Int?,
     val effectiveness: String?,
     val effectivenessKnown: Boolean,
@@ -206,6 +208,7 @@ data class BattleView(
 data class OpponentView(
     val speciesId: Int,
     val level: Int,
+    val typeIds: List<Int>,
     val rarity: String,
     val moves: List<ObservedMoveView>,
 )
@@ -407,11 +410,14 @@ object ApiViewBuilder {
                         OpponentView(
                             opponent.speciesId,
                             opponent.level,
+                            opponent.typeIds,
                             listOfNotNull(prefix, tier).joinToString(" "),
                             opponent.moveHistory.toObservedMoveViews(),
                         )
                     },
                     targetIndex = battle.targetIndex,
+                    targetMode = battle.targetMode.name,
+                    capabilities = battle.capabilities,
                     selectedMoveId = battle.selectedMoveId,
                     effectiveness = knownEffectiveness?.name,
                     effectivenessKnown = knownEffectiveness != null,

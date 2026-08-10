@@ -53,6 +53,7 @@ data class BattleMonSnapshot(
     val hp: Int,
     val maxHp: Int,
     val ivs: List<Int>,
+    val dvs: List<Int> = emptyList(),
     val moves: List<Int>,
     val pp: List<Int>,
     val typeIds: List<Int>,
@@ -68,6 +69,8 @@ data class BattleMemorySample(
     val target: BattleTarget,
     val capabilities: Map<BattleCapability, CapabilityState>,
     val battleOutcome: Int = 0,
+    val playerExecutedMoveId: Int? = null,
+    val opponentExecutedMoveId: Int? = null,
 )
 
 sealed interface LayoutResolution {

@@ -75,7 +75,7 @@ describe('production settings copy', () => {
     const onOpenMapper = vi.fn();
     render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} onOpenMapper={onOpenMapper} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'OPEN MEMORY MAPPER LAB' }));
+    fireEvent.click(screen.getByRole('button', { name: 'CAPTURE MEMORY REPORT' }));
     fireEvent.click(screen.getByRole('button', { name: 'CLEAR INACTIVE CATALOGS' }));
 
     expect(onOpenMapper).toHaveBeenCalledOnce();
