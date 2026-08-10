@@ -68,11 +68,15 @@ data class OpponentState(
     val capturable: Boolean = true,
 )
 
+enum class BattleTargetMode { AUTOMATIC, MANUAL_TARGET_FALLBACK }
+
 data class BattleState(
     val opponents: List<OpponentState>,
     val targetIndex: Int = 0,
     val selectedMoveId: Int? = null,
     val playerReferenceLevel: Int? = null,
+    val targetMode: BattleTargetMode = BattleTargetMode.AUTOMATIC,
+    val capabilities: Map<String, String> = emptyMap(),
 )
 
 data class CatalogLoadingState(
