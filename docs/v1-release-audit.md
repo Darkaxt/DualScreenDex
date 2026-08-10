@@ -43,8 +43,8 @@ The packaged Android loopback UI was inspected at the Thor's 1080 x 1240 display
 - The dedicated AVD indexed 15 supported sources across shared storage without per-console folder grants. Protected `Android/data` and `Android/obb` trees are pruned by the direct indexer.
 - Identical Modern Emerald ZIPs in two folders shared one valid SHA-256 and resolved deterministically; matches with different hashes remain ambiguous.
 - The direct public config was synchronously patched/read back and reported verified after the required RetroArch restart. A later DualDex restart did not request a redundant RetroArch restart.
-- `/storage/emulated/0/RetroArch/saves/mGBA/...srm` matched the active streamed ZIP and published all 12 supported save capabilities, 8 seen, 4 caught, and 2 Team.
-- Revoking broad access made Android restart the debug process. Relaunch degraded to `storageGrant=MISSING`/manual-SAF fallback while preserving the cached catalog, matched save snapshot, and 8/4/2 knowledge.
+- `/storage/emulated/0/RetroArch/saves/mGBA/...srm` matched the active streamed ZIP and published all 12 supported save capabilities. RC7's 8 seen / 4 caught presentation was later rejected by the Thor's in-game 6 seen / 2 owned ground truth and corrected for RC8.
+- Revoking broad access made Android restart the debug process. Relaunch degraded to `storageGrant=MISSING`/manual-SAF fallback while preserving the cached catalog and matched save snapshot.
 
 ## Dependency, source, and artifact audit
 
@@ -74,4 +74,4 @@ Production signing remains exclusively owned by the protected GitHub `release-si
 - SHA-256: `F26990AF356FB9B93CE42C156125DC5CEFCA8F0C1C3CEA79553D1FB7301C54FF`
 - Signer SHA-256: `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`
 
-All six assets were downloaded anonymously from the public release. Every checksum-manifest row, the provenance tag/commit/run, APK identity, and pinned signer were independently verified. The exact public APK passed the complete storage/catalog/save gate on `emulator-5556` and was then installed on the physical Thor `bfa98654`; no debug APK reached the Thor. Physical interaction and lifecycle acceptance remain the final RC gate.
+All six assets were downloaded anonymously from the public release. Every checksum-manifest row, the provenance tag/commit/run, APK identity, and pinned signer were independently verified. The exact public APK passed the storage/catalog discovery gates on `emulator-5556` and was then installed on the physical Thor `bfa98654`; no debug APK reached the Thor. The Thor cross-check exposed the Gen III expanded Pokédex-layout defect recorded as `V1-004`, so RC7 is superseded rather than accepted.

@@ -7,6 +7,7 @@ DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-fa
 - Direct and ZIP-based ROM parsing with SHA-256-keyed SQLite catalogs.
 - Gen I–III Pokédex data, ROM sprites, moves, abilities where applicable, evolutions, encounters, type charts, type colors, and ball artwork.
 - SaveRAM-backed Seen, Caught, Team, Area, preferred-owned-individual, qualitative IV/DV tier, and capture-ball state where applicable.
+- Structural Gen III Pokédex-layout discovery for derivatives that expand `SaveBlock2`, preventing shifted seen/caught flags without requiring a per-ROM profile.
 - Discovered, Organic, and Hidden information policies.
 - Passive RetroArch session detection plus manual ROM fallback.
 - Docked and fixed 4:3 overlay presentation.

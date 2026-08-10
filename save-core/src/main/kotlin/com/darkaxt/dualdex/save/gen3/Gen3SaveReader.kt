@@ -22,15 +22,16 @@ object Gen3SaveReader {
         val saveBlock1 = concatenate(newest.sections, 1..4, newest.chunkSize)
         val storage = concatenate(newest.sections, 5..13, newest.chunkSize)
         val flagBytes = (context.internalSpeciesCount + 7) / 8
-        if (OWNED_OFFSET + flagBytes * 2 > saveBlock2.size) {
+        if (DEFAULT_OWNED_OFFSET + flagBytes * 2 > saveBlock2.size) {
             return SaveParseResult.Unsupported(listOf("ROM species count does not fit the Gen III Pokédex save block"))
         }
-        val caught = decodeFlags(saveBlock2, OWNED_OFFSET, flagBytes, context.maximumDexNumber)
-        val seen = decodeFlags(saveBlock2, OWNED_OFFSET + flagBytes, flagBytes, context.maximumDexNumber) + caught
         val currentArea = readArea(saveBlock1)
         val partyResult = readParty(saveBlock1, context)
         val storageResult = readStorage(storage, newest.storageBoxCount, context)
         val individuals = partyResult.records + storageResult.records
+        val pokedex = resolvePokedexLayout(saveBlock2, flagBytes, context, partyResult.records)
+        val caught = pokedex.caught
+        val seen = pokedex.seen
         val capabilities = linkedMapOf(
             SaveCapability.SAVE_SLOT to available(SaveCapability.SAVE_SLOT, 14),
             SaveCapability.SEEN to available(SaveCapability.SEEN, seen.size),
@@ -210,6 +211,47 @@ object Gen3SaveReader {
         return DecodeResult(records, evidence)
     }
 
+    private fun resolvePokedexLayout(
+        saveBlock2: ByteArray,
+        flagBytes: Int,
+        context: SaveParseContext,
+        party: List<com.darkaxt.dualdex.save.OwnedIndividual>,
+    ): PokedexAttempt {
+        val ownedDexNumbers = party.mapNotNullTo(mutableSetOf()) { individual ->
+            context.speciesById[individual.speciesId]?.dexNumber
+        }
+        val maximumOffset = minOf(MAX_OWNED_OFFSET, saveBlock2.size - flagBytes * 2)
+        return (DEFAULT_OWNED_OFFSET..maximumOffset step POKEDEX_ALIGNMENT).map { ownedOffset ->
+            val caught = decodeFlags(saveBlock2, ownedOffset, flagBytes, context.maximumDexNumber)
+            val rawSeen = decodeFlags(saveBlock2, ownedOffset + flagBytes, flagBytes, context.maximumDexNumber)
+            val coveredOwned = ownedDexNumbers.count { it in caught }
+            val missingOwned = ownedDexNumbers.size - coveredOwned
+            val consistentFlags = caught.all { it in rawSeen }
+            val headerOffset = ownedOffset - POKEDEX_OWNED_FIELD_OFFSET
+            val headerConfidence = pokedexHeaderConfidence(saveBlock2, headerOffset)
+            val evidence = if (caught.isNotEmpty() || rawSeen.isNotEmpty()) 1 else 0
+            val distanceFromDefault = kotlin.math.abs(ownedOffset - DEFAULT_OWNED_OFFSET) / POKEDEX_ALIGNMENT
+            val score = coveredOwned * 10_000 - missingOwned * 10_000 +
+                (if (consistentFlags) 1_000 else -1_000) + headerConfidence * 100 + evidence * 10 - distanceFromDefault
+            PokedexAttempt(ownedOffset, rawSeen + caught, caught, score)
+        }.maxWithOrNull(compareBy<PokedexAttempt> { it.score }.thenBy { -it.ownedOffset })
+            ?: PokedexAttempt(DEFAULT_OWNED_OFFSET, emptySet(), emptySet(), Int.MIN_VALUE)
+    }
+
+    private fun pokedexHeaderConfidence(bytes: ByteArray, offset: Int): Int {
+        if (offset < 0 || offset + 2 >= bytes.size) return Int.MIN_VALUE / 100
+        val order = bytes[offset].toInt() and 0xFF
+        val mode = bytes[offset + 1].toInt() and 0xFF
+        val nationalMagic = bytes[offset + 2].toInt() and 0xFF
+        return (if (order in 0..3) 1 else -4) +
+            (if (mode in 0..1) 1 else -4) +
+            when (nationalMagic) {
+                NATIONAL_DEX_MAGIC -> 4
+                0 -> 2
+                else -> -8
+            }
+    }
+
     private fun decodeFlags(bytes: ByteArray, offset: Int, byteCount: Int, maximumDexNumber: Int): Set<Int> = buildSet {
         for (dex in 1..maximumDexNumber) {
             val index = dex - 1
@@ -282,6 +324,12 @@ object Gen3SaveReader {
         val records: List<com.darkaxt.dualdex.save.OwnedIndividual>,
         val evidence: SaveCapabilityEvidence,
     )
+    private data class PokedexAttempt(
+        val ownedOffset: Int,
+        val seen: Set<Int>,
+        val caught: Set<Int>,
+        val score: Int,
+    )
     private data class PartyLayout(val label: String, val countOffset: Int, val partyOffset: Int)
     private data class PartyAttempt(
         val layout: PartyLayout,
@@ -296,7 +344,11 @@ object Gen3SaveReader {
     private const val CHECKSUM_OFFSET = 0xFF6
     private const val SIGNATURE_OFFSET = 0xFF8
     private const val COUNTER_OFFSET = 0xFFC
-    private const val OWNED_OFFSET = 0x28
+    private const val DEFAULT_OWNED_OFFSET = 0x28
+    private const val MAX_OWNED_OFFSET = 0x200
+    private const val POKEDEX_OWNED_FIELD_OFFSET = 0x10
+    private const val POKEDEX_ALIGNMENT = 4
+    private const val NATIONAL_DEX_MAGIC = 0xDA
     private const val TRAINER_ID_OFFSET = 0x0A
     private const val TRAINER_ID_SIZE = 4
     private const val LOCATION_OFFSET = 0x04
