@@ -222,9 +222,9 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Thor-first companion UI and settings | Implemented in the packaged Android companion |
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses; identical SHA-256 copies resolve deterministically |
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
-| Optional Docked / resizable 4:3 Overlay Android display modes | Implemented; resizing awaits signed-candidate device acceptance |
+| Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in signed RC9; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Public signed candidate | [`v1.0.0-rc.8`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.8) prerelease; the current battle/resize source is not yet in a signed candidate |
+| Public signed candidate | [`v1.0.0-rc.9`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.9) prerelease; public artifact verified and Thor-installed, with physical live-battle/resize acceptance pending |
 
 ## Parser development
 
