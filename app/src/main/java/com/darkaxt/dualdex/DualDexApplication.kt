@@ -10,10 +10,11 @@ import com.darkaxt.dualdex.settings.SettingsRepository
 import com.darkaxt.dualdex.mapper.MapperSessionStore
 import com.darkaxt.dualdex.mapper.MemoryMapperCoordinator
 import com.darkaxt.dualdex.web.MapperHttpHandler
+import com.enrpau.dualscreendex.companion.model.DisplayMode
+import com.enrpau.dualscreendex.companion.model.DisplayTarget
 import java.io.FileNotFoundException
 import java.io.File
 import java.lang.ref.WeakReference
-import com.enrpau.dualscreendex.companion.model.DisplayTarget
 
 class DualDexApplication : Application() {
     @Volatile var loopbackServer: AndroidLoopbackServer? = null
@@ -37,6 +38,8 @@ class DualDexApplication : Application() {
     }
 
     fun currentDisplayTarget(): DisplayTarget = settingsStore?.read()?.displayTarget ?: DisplayTarget.AUTO
+
+    fun currentDisplayMode(): DisplayMode = settingsStore?.read()?.displayMode ?: DisplayMode.DOCKED
 
     fun activityResumed(activity: MainActivity) {
         resumedActivity = WeakReference(activity)
