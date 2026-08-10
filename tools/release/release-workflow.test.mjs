@@ -87,11 +87,17 @@ test("runs Android deployment safety checks in CI and before release signing", (
   assert.match(workflow.slice(0, workflow.indexOf("  sign-and-publish:")), command);
 });
 
-test("pins every action used by the release workflow to an immutable commit", () => {
-  const actionReferences = [...workflow.matchAll(/uses:\s*([^\s#]+)/g)].map((match) => match[1]);
-
-  assert.ok(actionReferences.length > 0);
-  for (const reference of actionReferences) {
-    assert.match(reference, /@[a-f0-9]{40}$/, `floating action reference: ${reference}`);
+test("pins every CI and release action to an immutable commit", () => {
+  for (const [name, source] of [
+    ["CI", continuousIntegrationWorkflow],
+    ["release", workflow],
+  ]) {
+    const actionReferences = [...source.matchAll(/uses:\s*([^\s#]+)/g)].map(
+      (match) => match[1],
+    );
+    assert.ok(actionReferences.length > 0);
+    for (const reference of actionReferences) {
+      assert.match(reference, /@[a-f0-9]{40}$/, `${name} floating action reference: ${reference}`);
+    }
   }
 });
