@@ -61,7 +61,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $actualCertificateSha256 = $null
 foreach ($line in $verification) {
-    if ([string]$line -match '^Signer #1 certificate SHA-256 digest:\s*([A-Fa-f0-9:]+)\s*$') {
+    if ([string]$line -match '^(?:Signer #[0-9]+|V[0-9.]+ Signer):? certificate SHA-256 digest:\s*([A-Fa-f0-9:]+)\s*$') {
         $actualCertificateSha256 = Normalize-Sha256 -Value $Matches[1] -Description 'APK signer fingerprint'
         break
     }
