@@ -25,6 +25,11 @@ class ServerContractTest {
             val bootstrap = URI("http://127.0.0.1:${server.address.port}/api/bootstrap").toURL().readText()
             assertTrue(bootstrap.contains("\"battle\":null"))
             assertTrue(bootstrap.contains("\"selectedSpeciesId\":null"))
+
+            val state = URI("http://127.0.0.1:${server.address.port}/api/state").toURL().readText()
+            assertTrue(state.contains("\"battle\":null"))
+            assertTrue(state.contains("\"selectedSpeciesId\":null"))
+            assertTrue(!state.contains("<!doctype html>"))
         } finally {
             server.close()
             Files.deleteIfExists(root)

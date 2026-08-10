@@ -224,14 +224,14 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 
 **Delivery checklist:**
 
-- [ ] Decode each official Gen I/II region/version shape through structural competition and applicable checksums.
-- [ ] Produce seen/caught, party, boxes, current area, eggs where applicable, and the normalized five-value DV quality vector.
-- [ ] Mark original capture-ball identity Not Applicable and use the ROM's generic ball artwork without implying provenance.
-- [ ] Generate minimal real SaveRAM integration samples through normal play in the dedicated AVD where private samples are unavailable; do not download or commit third-party saves.
-- [ ] Make Organic list only seen/caught entries, make uncaught Moves empty for 1.0.0, disable uncaught Stats/More, and unlock complete static truth after capture.
-- [ ] Make Hidden list only captured entries and Discovered expose the complete validated ROM index.
-- [ ] Gate Team and Area independently and prove unsupported joins disable only their own filter.
-- [ ] Verify manual ruleset selection does not reread ROM/SaveRAM or duplicate the database.
+- [x] Decode each official Gen I/II region/version shape through structural competition and applicable checksums.
+- [x] Produce seen/caught, party, boxes, current area, eggs where applicable, and the normalized five-value DV quality vector.
+- [x] Mark original capture-ball identity Not Applicable and use the ROM's generic ball artwork without implying provenance.
+- [x] Generate minimal real SaveRAM integration samples through normal play in the dedicated AVD where private samples are unavailable; do not download or commit third-party saves.
+- [x] Make Organic list only seen/caught entries, make uncaught Moves empty for 1.0.0, disable uncaught Stats/More, and unlock complete static truth after capture.
+- [x] Make Hidden list only captured entries and Discovered expose the complete validated ROM index.
+- [x] Gate Team and Area independently and prove unsupported joins disable only their own filter.
+- [x] Verify manual ruleset selection does not reread ROM/SaveRAM or duplicate the database.
 
 **Gate evidence:** Gen I/II checksum fixtures, AVD-produced save summaries, all knowledge-policy matrix tests, and UI captures for each mode/generation.
 

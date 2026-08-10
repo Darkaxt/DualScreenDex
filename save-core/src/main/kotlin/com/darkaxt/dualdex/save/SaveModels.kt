@@ -27,6 +27,7 @@ data class OwnedIndividual(
     val level: Int? = null,
     val isEgg: Boolean = false,
     val ivs: List<Int>? = null,
+    val dvs: List<Int>? = null,
     val captureBallId: Int? = null,
     val experience: Long? = null,
 )

@@ -29,7 +29,7 @@ fun main(arguments: Array<String>) {
     write(options.json, GsonBuilder().setPrettyPrinting().create().toJson(report) + "\n")
     write(options.markdown, SaveReportWriter.markdown(report))
     report.results.forEach { result ->
-        println("${result.saveName}: ${result.status}, slot ${result.saveCounter ?: "-"}, ${result.party ?: 0} party, ${result.stored ?: 0} stored")
+        println("${result.saveName}: ${result.status}, revision ${result.saveCounter ?: "-"}, ${result.party ?: 0} party, ${result.stored ?: 0} stored")
     }
     println("JSON: ${options.json.toAbsolutePath()}")
     println("Markdown: ${options.markdown.toAbsolutePath()}")

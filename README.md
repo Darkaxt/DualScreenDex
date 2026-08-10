@@ -5,7 +5,7 @@ DualDex is becoming a passive Pokédex companion for mainline-family Pokémon ga
 The game remains on the primary display. DualDex parses the user's active GB, GBC, or GBA ROM into a local Pokédex, observes battle state through RetroArch's read-only memory interface, and presents the currently targeted opponent on the companion screen—without OCR, screenshots, cheats, memory writes, or per-ROM profiles.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, loopback web server, state gateway, Thor-first UI, replacement Android host, passive RetroArch session activation, and optional 4:3 overlay are implemented. The inherited OCR/accessibility application has been replaced. SaveRAM-backed knowledge, the isolated memory-mapper lab, final convergence, and a GitHub-signed public release remain staged work; no public companion APK has been released yet.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web server, state gateway, Thor-first UI, replacement Android host, passive RetroArch session activation, and optional 4:3 overlay are implemented. The inherited OCR/accessibility application has been replaced. The isolated memory-mapper lab, final convergence, and a GitHub-signed public release remain staged work; no public companion APK has been released yet.
 
 ## Thor-first UI direction
 
@@ -122,7 +122,7 @@ The POC settings currently include:
 - independent Attack, Rarity, and Observed Moves tabs; and
 - `Docked` or `Overlay` display mode, with Docked as the default.
 
-Android multi-display targeting, controller navigation, persistent per-save discovery, cache controls, and diagnostics remain APK/runtime integration work.
+Android multi-display targeting, controller navigation, mapper-session controls, and final diagnostics remain APK/runtime integration work. Save-backed discovery, settings, catalog controls, and Docked/Overlay presentation are already hosted by the Android runtime.
 
 Auto density responds to usable display size and Android font scale. It may wrap or scroll secondary content, but it may not make target identity, caught state, or the selected-attack result unreadably small.
 
@@ -165,6 +165,7 @@ The current proof of concept contains:
 
 - `parser-core`: a pure-Kotlin, Android-portable ROM parser;
 - `parser-cli`: a read-only corpus scanner and report generator;
+- `save-core`: pure-Kotlin checksum competition and normalized SaveRAM snapshots for Generations I–III;
 - `companion-core`: immutable UI state, knowledge policies, recruitment ranking, and best-owned-individual selection;
 - `companion-simulator`: deterministic one- or two-opponent battles using only level-plausible moves from the parsed learnsets;
 - `companion-server`: a loopback-only HTTP/SSE gateway with direct-ROM and streaming-ZIP loading plus on-demand ROM sprite PNGs;
@@ -178,6 +179,7 @@ The current proof of concept contains:
 - resident runtime-selectable learnset variants, with `Auto` plus diagnostic manual selection and no ROM reparse when switching;
 - materialized species, forms, types, stats, sprites, descriptions, evolutions, moves, move descriptions, normalized learnsets, abilities, ability descriptions, encounters, type presentation, type matchups, and capture-ball artwork;
 - independent tri-state capability evidence (`AVAILABLE`, `NOT_FOUND`, `NOT_APPLICABLE`);
+- checksum-valid per-ROM SaveRAM snapshots persisted in the catalog database, including seen/caught, Team, Area, preferred individual, IV/DV quality, and capture-ball provenance where applicable;
 - Discovered, Organic, and Hidden presentation policies; and
 - human-readable and machine-readable compatibility reports.
 
@@ -197,6 +199,8 @@ Numeric ability mechanics are tracked separately from descriptions. The implemen
 
 Read the named evidence in the [Markdown compatibility report](reports/dualdex-parser-compatibility.md) or inspect the complete [JSON report](reports/dualdex-parser-compatibility.json). Reports contain structural evidence and hashes, but no decoded Pokédex text, sprites, or ROM bytes.
 
+SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1-gen2-saveram-compatibility.md) and [Generation III](docs/reports/gen3-saveram-compatibility.md). These reports contain no ROM/save bytes, trainer data, or private filesystem paths.
+
 ## Project status
 
 | Area | Status |
@@ -214,7 +218,7 @@ Read the named evidence in the [Markdown compatibility report](reports/dualdex-p
 | Loopback HTTP/SSE companion server | Implemented |
 | Runtime memory transport | Specified, not implemented |
 | Dynamic battle-memory mapper | Specified, not implemented |
-| Organic discovery ledger | Implemented in-memory; per-save persistence remains |
+| SaveRAM readers and Organic discovery ledger | Implemented and persisted per ROM/save for Generations I–III; live battle observations remain deferred |
 | Thor-first companion UI and settings | Implemented in the browser POC |
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses |
 | Optional Docked / 4:3 Overlay Android display modes | Implemented and dedicated-AVD validated |

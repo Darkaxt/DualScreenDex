@@ -29,7 +29,7 @@ object SaveReportWriter {
         appendLine()
         appendLine("Private files were read only. The report contains names and aggregate parser evidence, never trainer or raw save data.")
         appendLine()
-        appendLine("| ROM | SaveRAM | Result | Slot | Seen | Caught | Party | Stored | Area | Source |")
+        appendLine("| ROM | SaveRAM | Result | Revision token | Seen | Caught | Party | Stored | Area | Source |")
         appendLine("| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |")
         report.results.forEach { result ->
             appendLine(

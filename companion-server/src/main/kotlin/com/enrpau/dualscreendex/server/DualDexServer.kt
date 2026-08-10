@@ -32,6 +32,9 @@ class DualDexServer(
         server.createContext("/api/bootstrap") { exchange ->
             if (exchange.requestMethod != "GET") methodNotAllowed(exchange) else json(exchange, runtime.bootstrap())
         }
+        server.createContext("/api/state") { exchange ->
+            if (exchange.requestMethod != "GET") methodNotAllowed(exchange) else json(exchange, runtime.stateView())
+        }
         server.createContext("/api/actions") { exchange ->
             if (exchange.requestMethod != "POST") methodNotAllowed(exchange) else handleAction(exchange)
         }

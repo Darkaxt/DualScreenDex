@@ -22,14 +22,8 @@ object PreferredIndividualSelector {
 
     fun innateAverage(individual: OwnedPokemon): Int = when {
         individual.generation >= 3 && individual.ivs.size == 6 -> individual.ivs.sum() / 6
-        individual.dvs.size >= 4 -> {
-            val attack = individual.dvs[0]
-            val defense = individual.dvs[1]
-            val speed = individual.dvs[2]
-            val special = individual.dvs[3]
-            val hp = ((attack and 1) shl 3) or ((defense and 1) shl 2) or ((speed and 1) shl 1) or (special and 1)
-            listOf(hp, attack, defense, speed, special).sumOf { (it * 31.0 / 15.0).roundToInt() } / 5
-        }
+        individual.dvs.size >= 5 -> individual.dvs.take(5).sumOf { (it * 31.0 / 15.0).roundToInt() } / 5
+        individual.dvs.size == 4 -> normalizedLegacyDvs(individual.dvs).sumOf { (it * 31.0 / 15.0).roundToInt() } / 5
         else -> -1
     }
 
@@ -55,14 +49,17 @@ object PreferredIndividualSelector {
 
     private fun innateQuality(individual: OwnedPokemon): Int = when {
         individual.generation >= 3 && individual.ivs.size == 6 -> individual.ivs.sum() * 31
-        individual.dvs.size >= 4 -> {
-            val attack = individual.dvs[0]
-            val defense = individual.dvs[1]
-            val speed = individual.dvs[2]
-            val special = individual.dvs[3]
-            val hp = ((attack and 1) shl 3) or ((defense and 1) shl 2) or ((speed and 1) shl 1) or (special and 1)
-            listOf(hp, attack, defense, speed, special).sumOf { (it * 31.0 / 15.0).roundToInt() } * 6
-        }
+        individual.dvs.size >= 5 -> individual.dvs.take(5).sumOf { (it * 31.0 / 15.0).roundToInt() } * 6
+        individual.dvs.size == 4 -> normalizedLegacyDvs(individual.dvs).sumOf { (it * 31.0 / 15.0).roundToInt() } * 6
         else -> -1
+    }
+
+    private fun normalizedLegacyDvs(dvs: List<Int>): List<Int> {
+        val attack = dvs[0]
+        val defense = dvs[1]
+        val speed = dvs[2]
+        val special = dvs[3]
+        val hp = ((attack and 1) shl 3) or ((defense and 1) shl 2) or ((speed and 1) shl 1) or (special and 1)
+        return listOf(hp, attack, defense, speed, special)
     }
 }

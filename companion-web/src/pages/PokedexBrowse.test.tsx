@@ -58,4 +58,29 @@ describe('Pokédex knowledge modes', () => {
     expect(screen.getByRole('button', { name: 'TEAM' }).hasAttribute('disabled')).toBe(true);
     expect(screen.getByRole('button', { name: 'AREA' }).hasAttribute('disabled')).toBe(true);
   });
+
+  it('gates Team and Area independently', () => {
+    const { rerender } = render(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      saveRam: {
+        status: 'MATCHED', sourceName: 'fixture.srm', sourceLastModifiedEpochMs: null, refreshedAtEpochMs: null,
+        autosaveStatus: 'VERIFIED', capabilities: { PARTY: 'AVAILABLE', SPECIES: 'AVAILABLE' }, candidates: [], message: null,
+      },
+    }} send={vi.fn()} />);
+
+    expect((screen.getByRole('button', { name: 'TEAM' }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('button', { name: 'AREA' }) as HTMLButtonElement).disabled).toBe(true);
+
+    rerender(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      currentAreaIds: [1],
+      saveRam: {
+        status: 'MATCHED', sourceName: 'fixture.srm', sourceLastModifiedEpochMs: null, refreshedAtEpochMs: null,
+        autosaveStatus: 'VERIFIED', capabilities: { CURRENT_AREA: 'AVAILABLE' }, candidates: [], message: null,
+      },
+    }} send={vi.fn()} />);
+
+    expect((screen.getByRole('button', { name: 'TEAM' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'AREA' }) as HTMLButtonElement).disabled).toBe(false);
+  });
 });

@@ -10,6 +10,7 @@ import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SavedArea
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.io.LoadedRom
@@ -155,6 +156,35 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun switchingRulesetsReusesTheOpenCatalogAndSaveSnapshotWithoutDatabaseWrites() {
+        val repository = RecordingCatalogRepository()
+        val runtime = ProductionCompanionRuntime(catalogRepository = repository)
+        val hash = "a".repeat(64)
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                learnsetRulesets = listOf(
+                    LearnsetRuleset("base", "Base", 1, 1.0, emptyMap(), primary = true),
+                    LearnsetRuleset("alternate", "Alternate", 2, 0.9, emptyMap()),
+                ),
+            ),
+        )
+        runtime.updateSaveRam(SaveRamView(status = "MATCHED", sourceName = "fixture.srm"))
+
+        val state = runtime.action("SETTINGS", mapOf("ruleset" to "alternate"))
+
+        assertEquals(hash, runtime.catalogHash())
+        assertEquals("alternate", state.activeRulesetId)
+        assertEquals("MATCHED", state.saveRam.status)
+        assertEquals("fixture.srm", state.saveRam.sourceName)
+        assertEquals(0, repository.writeCalls)
+        runtime.close()
+    }
+
+    @Test
     fun reportsAutomaticCatalogActivationOnlyAfterTheVerifiedCatalogIsOpen() {
         val bytes = ByteArray(0xC0)
         "POKEMON EMER".toByteArray().copyInto(bytes, 0xA0)
@@ -244,6 +274,22 @@ class ProductionCompanionRuntimeTest {
         ) = Unit
 
         override fun readComplete(sha256: String): StoredCatalog? = stored.takeIf { it.catalog.romSha256 == sha256 }
+
+        override fun findCompleted(crc32: String, romSize: Int, romTitle: String?): List<StoredCatalog> = emptyList()
+    }
+
+    private class RecordingCatalogRepository : CatalogRepository {
+        var writeCalls = 0
+
+        override fun write(
+            catalog: ParsedCatalog,
+            source: CatalogSourceMetadata,
+            progress: CatalogWriteProgress,
+        ) {
+            writeCalls++
+        }
+
+        override fun readComplete(sha256: String): StoredCatalog? = null
 
         override fun findCompleted(crc32: String, romSize: Int, romTitle: String?): List<StoredCatalog> = emptyList()
     }

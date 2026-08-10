@@ -25,6 +25,7 @@ object SaveKnowledgeMapper {
                 generation = snapshot.saveGeneration,
                 level = individual.level ?: 0,
                 ivs = individual.ivs.orEmpty(),
+                dvs = individual.dvs.orEmpty(),
                 captureBallId = individual.captureBallId,
                 isEgg = individual.isEgg,
                 party = individual.stableLocation in partyKeys,
