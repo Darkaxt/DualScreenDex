@@ -45,6 +45,50 @@ class Gen3SaveReaderTest {
     }
 
     @Test
+    fun discoversExpandedPokedexLayoutFromOwnedPartyAndFlagInvariants() {
+        val modernContext = SaveParseContext(
+            romIdentity = "b".repeat(64),
+            speciesById = (1..462).associateWith { speciesId ->
+                val dexNumber = when (speciesId) {
+                    in 1..251 -> speciesId
+                    277 -> 252 // Treecko follows the 25 legacy Unown slots.
+                    280 -> 255 // Torchic
+                    286 -> 261 // Poochyena
+                    288 -> 263 // Zigzagoon
+                    290 -> 265 // Wurmple
+                    303 -> 278 // Wingull
+                    else -> null
+                }
+                SaveSpeciesContext(speciesId, dexNumber, 0)
+            },
+        )
+        val slot = fixtureSlot(
+            counter = 15,
+            species = 277,
+            context = modernContext,
+            ownedOffset = 0x2C,
+            flagBytes = 58,
+        )
+        val saveBlock2 = slot.sections.getValue(0)
+        setFlag(saveBlock2, 0x2C, 261)
+        listOf(255, 261, 263, 265, 278).forEach { setFlag(saveBlock2, 0x2C + 58, it) }
+        val saveBlock1 = concatenate(slot.sections, 1..4)
+        saveBlock1[0x234] = 2
+        pokemonRecord(286, level = 4, ball = 4, personality = 19).copyInto(
+            saveBlock1,
+            0x238 + Gen3PokemonCodec.PARTY_RECORD_SIZE,
+        )
+        split(saveBlock1, slot.sections, 1..4)
+        val save = ByteArray(128 * 1024).also { writeSlot(it, 0, slot, rotation = 4) }
+
+        val parsed = SaveParser.parse(save, modernContext) as SaveParseResult.Parsed
+
+        assertEquals(setOf(252, 261), parsed.snapshot.caughtDexNumbers)
+        assertEquals(setOf(252, 255, 261, 263, 265, 278), parsed.snapshot.seenDexNumbers)
+        assertEquals(listOf(277, 286), parsed.snapshot.party.map { it.speciesId })
+    }
+
+    @Test
     fun fallsBackToOlderSlotWhenNewestHasOneCorruptSector() {
         val save = ByteArray(128 * 1024).also {
             writeSlot(it, 0, fixtureSlot(counter = 9, species = 1), rotation = 0)
@@ -165,14 +209,20 @@ class Gen3SaveReaderTest {
         species: Int,
         partyLevel: Int = 20,
         boxSpecies: Int? = null,
+        context: SaveParseContext = this.context,
+        ownedOffset: Int = 0x28,
+        flagBytes: Int = (context.internalSpeciesCount + 7) / 8,
     ): FixtureSlot {
         val sections = (0 until 14).associateWith { ByteArray(Gen3Checksums.SECTOR_DATA_SIZE) }.toMutableMap()
         val sb2 = sections.getValue(0)
         sb2.putU32le(0x0A, 0x12345678)
-        val flagBytes = (context.internalSpeciesCount + 7) / 8
-        setFlag(sb2, 0x28, species)
-        setFlag(sb2, 0x28 + flagBytes, species)
-        if (boxSpecies != null) setFlag(sb2, 0x28 + flagBytes, boxSpecies)
+        val speciesDex = context.speciesById.getValue(species).dexNumber ?: species
+        setFlag(sb2, ownedOffset, speciesDex)
+        setFlag(sb2, ownedOffset + flagBytes, speciesDex)
+        if (boxSpecies != null) {
+            val boxDex = context.speciesById.getValue(boxSpecies).dexNumber ?: boxSpecies
+            setFlag(sb2, ownedOffset + flagBytes, boxDex)
+        }
 
         val sb1 = concatenate(sections, 1..4)
         sb1[4] = 2

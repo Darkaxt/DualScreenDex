@@ -15,7 +15,7 @@ This report covers the Pokémon SaveRAM samples used for the Generation III vert
 | Pokemon - Emerald Rogue | Structural | 2 | N/A | N/A | 1 | 0 | Decoded |
 | Pokemon - Odyssey (USA) | Structural | 5 | N/A | N/A | 6 | 26 | Decoded |
 
-Modern Emerald's two owned party species are authoritative caught/seen evidence in addition to its raw Pokédex flags. The production knowledge model therefore exposes 8 seen, 4 caught, and 2 Team species for this sample.
+Modern Emerald's two owned party species are the same Treecko and Poochyena represented by its caught flags. The production knowledge model therefore exposes 6 seen, 2 caught, and 2 Team species without double-counting party evidence.
 
 ## Capability evidence
 
@@ -36,8 +36,8 @@ Modern Emerald's two owned party species are authoritative caught/seen evidence 
 ## Android integration evidence
 
 - On the dedicated `DualDex_RA_API35` AVD, mGBA and Modern Emerald resolved through RetroArch to the SHA-256-keyed catalog and checksum-valid SaveRAM.
-- Organic mode exposed only the effective 8 seen / 4 caught species, identified both Team members, selected each preferred owned individual, and rendered ROM-derived capture-ball markers.
-- With RetroArch fully stopped, a process restart reopened the catalog and restored the last committed 8 seen / 4 caught / 2 Team snapshot from SQLite.
+- Organic mode exposed only the effective 6 seen / 2 caught species, identified both Team members, selected each preferred owned individual, and rendered ROM-derived capture-ball markers.
+- With RetroArch fully stopped, a process restart reopened the catalog and restored the last committed 6 seen / 2 caught / 2 Team snapshot from SQLite.
 - Replacing only the AVD copy with a 1 KiB partial file produced `STALE`, retained all last-good knowledge, and did not crash. Restoring the complete file returned the monitor to `MATCHED`.
 - The AVD save and all private source files had their original SHA-256 values after validation.
 
