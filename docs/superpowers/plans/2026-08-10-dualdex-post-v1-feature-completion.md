@@ -403,7 +403,7 @@ git commit -m "feat: render live battle capabilities"
 - Modify: `docs/reports/modern-emerald-memory-mapper-analysis.md`
 - Modify: `release/RELEASE_NOTES_1.0.0.md`
 
-- [ ] **Step 1: Run full local convergence**
+- [x] **Step 1: Run full local convergence**
 
 Run: `./gradlew.bat test :app:assembleDebug`
 
@@ -413,22 +413,22 @@ Run: `git diff --check`.
 
 Expected: all pass; no private ROM/save/dump/keystore artifacts are tracked.
 
-- [ ] **Step 2: Validate debug only on `emulator-5556`**
+- [x] **Step 2: Validate debug only on `emulator-5556`**
 
 Install `com.darkaxt.dualdex.debug`, verify time markers with a Generation II fixture/catalog, resize the overlay at wide and Thor-like bounds, and use fake-memory instrumentation to exercise single/double battle transitions. Do not address `emulator-5554`.
 
-- [ ] **Step 3: Push a draft PR and wait for CI**
+- [x] **Step 3: Push a draft PR and wait for CI**
 
 Push the feature branch, open the draft PR, mark ready after local evidence, and require all GitHub checks to pass before merge.
 
-- [ ] **Step 4: Publish the next monotonic GitHub-signed release candidate**
+- [x] **Step 4: Publish the next monotonic GitHub-signed release candidate**
 
 Create the next `v1.0.0-rc.N` tag from merged `master`, dispatch the protected release workflow, and independently verify package ID, version, SHA-256, and pinned signer fingerprint from the anonymous release asset.
 
-- [ ] **Step 5: Validate the signed candidate on the Thor**
+- [ ] **Step 5: Validate the signed candidate on the Thor** *(public RC9 installed; live play/resize checks pending)*
 
 Install only the verified GitHub-signed APK. With RetroArch focused, validate automatic single battle, inferred/manual double targeting, battle exit, Pokédex link, Organic frequency, resizable overlay, and unchanged ROM/SaveRAM hashes. Record unsupported or inferred capabilities honestly.
 
-- [ ] **Step 6: Update public documentation and publish the release**
+- [ ] **Step 6: Update public documentation and publish the release** *(RC9 public; stable release waits for Step 5)*
 
 Remove obsolete claims that all live battle features, time markers, and resize are deferred. Add exact coverage and limitations, attach compact screenshots only after the signed runtime passes, commit the evidence, merge the documentation PR, and make the GitHub release public.
