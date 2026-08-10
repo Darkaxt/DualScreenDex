@@ -2,10 +2,10 @@
 
 DualDex is a passive Pokédex companion for mainline-family Pokémon games running in RetroArch on Android handhelds. It supports a normal docked activity for dual-screen devices and an optional floating overlay for single-screen play.
 
-The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated Memory Mapper Lab can collect read-only evidence for future live battle mapping, but its dumps never feed the production Pokédex.
+The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. For validated Generation I and III layouts it also reads live battle state through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only Memory Mapper Lab are implemented. The inherited OCR/accessibility application has been replaced. GitHub-signed RC7 has passed the dedicated-AVD All-files, ROM-index, SaveRAM, update, and overlay gates and is installed on the physical Thor for final live acceptance; stable `v1.0.0` has not been released.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. The current source also contains dynamically resolved Generation I/III battle context, Area-filter time markers, and bounded overlay resizing; these additions still require a newer GitHub-signed candidate and physical-device acceptance. The inherited OCR/accessibility application has been replaced. Stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
@@ -30,7 +30,7 @@ The upstream project attempted to identify Pokémon from screenshots and supply 
 
 | Concern | Previous OCR approach | DualDex direction |
 | --- | --- | --- |
-| Opponent detection | Repeated screenshots and text recognition | Future validated species/form ID from isolated RetroArch memory mapping |
+| Opponent detection | Repeated screenshots and text recognition | Catalog-validated species/form ID from passive RetroArch memory reads |
 | Game data | Bundled database and imported CSV profiles | Parsed directly from the active ROM |
 | ROM hacks | User creates and maintains a profile | Family competition, structural inference, and automatic generated mapping |
 | Type mechanics | Selected external generation chart | Type chart and move mechanics extracted from the ROM |
@@ -47,9 +47,9 @@ The product contract is simple: a player may need to enable RetroArch Network Co
 
 Outside battle, DualDex is a fully navigable Pokédex built from the active ROM. It can expose every validated species, form, type, stat, sprite, description, evolution, move, learnset, ability, ability description, and type-chart entry that exists in that game. Moves and abilities open focused detail pages instead of making the small lower-screen layout dense. The Stats tab keeps each ROM base stat visible and adds a compact Level 50, zero-training IV/DV projection: a blue typical reference with red/green low/high variance and the resulting numeric range. Organic mode lists only species the player has seen or captured; for an uncaptured species, Entry explains the knowledge lock, Stats and More are disabled, and Moves contains only attacks that species has actually used against the player, frequency-ranked without revealing ROM learn levels or acquisition methods. Capture unlocks every static tab and the complete learnset. Discovered mode may expose the complete ROM index with unseen entries clearly marked. Capability-gated Team and Area filters help the player inspect the current party and track uncaptured species available at the current location. Where the save format records it, a captured marker uses the ROM's artwork for the ball belonging to the best-IV/DV owned individual of that species; otherwise it uses the game's generic Poké Ball artwork without claiming a capture-ball type.
 
-### Automatic battle target (after 1.0.0)
+### Automatic battle target
 
-The UI contract is already designed and exercised by the developer simulator, but live battle pages are deliberately not part of 1.0.0. The first release remains a complete ROM- and SaveRAM-backed Pokédex while the isolated mapper gathers evidence. Once a battle mapping is independently validated, the companion can open the current opponent automatically, follow the move-target cursor in double battles, and return to out-of-combat navigation when battle ends.
+When a supported structure is independently validated, DualDex opens the current opponent automatically and returns to out-of-combat navigation when the battle ends. Generation I Red/Blue/Yellow use a WRAM-shape resolver validated against the labeled Yellow export; Generation III uses catalog-coupled `BattlePokemon` structure discovery. Generation III double battles follow a uniquely resolved game target and expose a manual target fallback only when the cursor cannot be resolved. Generation II live layouts remain unsupported without affecting the ROM/SaveRAM Pokédex.
 
 The hybrid target page has four focused tabs:
 
@@ -70,11 +70,11 @@ The parser knows the complete ROM, but the UI controls how much of that truth it
 | `Organic` (default) | List only seen/caught species, remember facts learned through battle, and unlock complete static species knowledge after capture. |
 | `Hidden` | Keep manual Pokédex access but hide battle assistance beyond minimal target identity and caught state. |
 
-In 1.0.0, Organic knowledge comes from checksum-valid SaveRAM. The later battle mapper will add observed moves and matchup discoveries only after a qualifying interaction. DualDex will compute the result from the parsed move, active type chart, and validated live battler context; it will not infer effectiveness from HP loss. Once a species is captured, its static Pokédex becomes omniscient.
+Organic ownership comes from checksum-valid SaveRAM. On supported live layouts, opponent moves are remembered by species and ranked by frequency, while a player's consumed PP unlocks the selected move's intrinsic matchup against that target. DualDex computes the result from the parsed move, active type chart, and validated live battler types; it does not infer effectiveness from HP loss. Once a species is captured, its static Pokédex becomes omniscient. Battle discoveries are persisted locally by ROM SHA-256 and survive app restarts.
 
 ### Recruitment-oriented rarity
 
-The post-1.0.0 Rarity tab is intended to answer a practical question: **is this individual worth capturing?** It does not expose exact DVs/IVs and does not include EVs, Stat Experience, encounter rate, capture probability, or trainer importance. The same innate tier can already describe a save-owned individual when its validated DV/IV data is available.
+The Rarity tab is intended to answer a practical question: **is this individual worth capturing?** It does not expose exact DVs/IVs and does not include EVs, Stat Experience, encounter rate, capture probability, or trainer importance. The same innate tier describes a save-owned individual when its validated DV/IV data is available.
 
 Its label has two independent parts:
 
@@ -113,10 +113,10 @@ The production settings include:
 - font-size controls;
 - `Auto` density by default, with `Comfortable` and `Compact` overrides;
 - high contrast;
-- automatic target opening and independent Attack, Rarity, and Observed Moves switches for the later live mapper;
+- automatic target opening and independent Attack, Rarity, and Observed Moves switches for supported live layouts;
 - `Docked` or `Overlay` display mode, with Docked as the default.
 
-They also include Game/Dark/Light themes, Auto/Handheld/External display targeting, ruleset selection, scoped catalog maintenance, RetroArch setup/status, SaveRAM diagnostics, and mapper-session controls. Controller navigation and user-resizable overlay panels remain later work.
+They also include Game/Dark/Light themes, Auto/Handheld/External display targeting, ruleset selection, scoped catalog maintenance, RetroArch setup/status, SaveRAM diagnostics, issue-report controls, and a bounded overlay-size control. Controller navigation remains later work.
 
 Auto density responds to usable display size and Android font scale. It may wrap or scroll secondary content, but it may not make target identity, caught state, or the selected-attack result unreadably small.
 
@@ -134,11 +134,14 @@ flowchart TD
     SV --> K[Per-save knowledge]
     CAT --> UI[Production Pokédex]
     K --> UI
-    RA -->|Optional READ_CORE_MEMORY| LAB[Isolated mapper lab]
+    RA -->|Validated READ_CORE_MEMORY| BM[Production battle resolver]
+    BM --> K
+    BM --> UI
+    RA -->|Optional diagnostic reads| LAB[Issue report tool]
     LAB --> JSON[User-selected raw JSON export]
 ```
 
-Official layouts provide fast paths, not a compatibility ceiling. The production parser competes family-compatible ROM structures and independently validates each static dataset. Later, the battle mapper can apply the same principle to ROM references and live-memory invariants, caching only mappings supported by repeated evidence.
+Official layouts provide fast paths, not a compatibility ceiling. The production parser competes family-compatible ROM structures and independently validates each static dataset. The battle resolver applies the same principle to parsed ROM references and live-memory invariants, then caches only a mapping supported by the active catalog and battler shape.
 
 An internal generated mapping is not a player profile. It is automatically produced, revalidated, and discarded when the ROM, core, or schema changes.
 
@@ -163,8 +166,9 @@ The release candidate contains:
 - `companion-server`: a loopback-only HTTP/SSE gateway with direct-ROM and streaming-ZIP loading plus on-demand ROM sprite PNGs;
 - `companion-web`: the packaged Preact/TypeScript Thor UI plus a development-only plausible encounter simulator;
 - `retroarch-session`: passive Network Command status monitoring, safe configuration editing, ROM-library indexing, and active-content resolution;
-- `memory-mapper-lab`: an optional read-only snapshot/diff/export subsystem that has no production-state output;
-- `app`: the replacement Android host with packaged web assets, per-ROM SQLite catalogs, setup wizard, normal Docked mode, and an opt-in floating Poké Ball that toggles the same UI in an automatically fitted 4:3 overlay;
+- `battle-memory`: pure-Kotlin Generation I/III structure resolution, selected-target interpretation, PP/latch observation tracking, and independent capability states;
+- `memory-mapper-lab`: an optional read-only issue-report subsystem that has no production-state output;
+- `app`: the replacement Android host with packaged web assets, per-ROM SQLite catalogs and knowledge, setup wizard, normal Docked mode, and an opt-in floating Poké Ball that toggles the same UI in a bounded, resizable 4:3 overlay;
 - competitive family parsers for Red/Blue, Yellow, Gold/Silver, Crystal, Ruby/Sapphire, Emerald, and FireRed/LeafGreen;
 - dynamic structural resolution for common relocated and expanded Gen III layouts;
 - direct ROM and streamed ZIP-entry inputs through the same parser contract;
@@ -173,6 +177,8 @@ The release candidate contains:
 - materialized species, forms, types, stats, sprites, descriptions, evolutions, moves, move descriptions, normalized learnsets, abilities, ability descriptions, encounters, type presentation, type matchups, and capture-ball artwork;
 - independent tri-state capability evidence (`AVAILABLE`, `NOT_FOUND`, `NOT_APPLICABLE`);
 - checksum-valid per-ROM SaveRAM snapshots persisted in the catalog database, including seen/caught, Team, Area, preferred individual, IV/DV quality, and capture-ball provenance where applicable;
+- Area-filter sun/moon markers derived from the parsed encounter windows;
+- passive live battle context for validated Generation I and III structures, with frequency-only opponent move history and local discovery persistence;
 - Discovered, Organic, and Hidden presentation policies; and
 - human-readable and machine-readable compatibility reports.
 
@@ -210,15 +216,15 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Packaged production UI | Implemented and exact-viewport browser/WebView validated |
 | Browser-hosted plausible simulator | Retained as a development harness; absent from production assets |
 | Loopback HTTP companion server | Implemented and bound only to `127.0.0.1` |
-| Runtime memory transport | Implemented as an optional read-only RetroArch adapter; not consumed by the Pokédex |
-| Dynamic battle-memory mapper | Labeled capture/diff/export lab implemented; production battle mappings are deferred until separately validated |
-| SaveRAM readers and Organic discovery ledger | Implemented and persisted per ROM/save for Generations I–III; live battle observations remain deferred |
+| Runtime memory transport | Implemented as a shared read-only RetroArch adapter used by production battle reads and isolated issue reports |
+| Dynamic battle-memory resolver | Generation I and III production shapes implemented; Generation II remains unavailable; unsupported layouts degrade independently |
+| SaveRAM readers and Organic discovery ledger | Implemented and persisted per ROM for Generations I–III, including supported live battle observations |
 | Thor-first companion UI and settings | Implemented in the packaged Android companion |
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses; identical SHA-256 copies resolve deterministically |
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
-| Optional Docked / 4:3 Overlay Android display modes | Implemented and GitHub-signed RC7 validated on the dedicated AVD |
+| Optional Docked / resizable 4:3 Overlay Android display modes | Implemented; resizing awaits signed-candidate device acceptance |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Public signed candidate | [`v1.0.0-rc.7`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.7) prerelease; stable `v1.0.0` remains gated on final Thor validation |
+| Public signed candidate | [`v1.0.0-rc.8`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.8) prerelease; the current battle/resize source is not yet in a signed candidate |
 
 ## Parser development
 
@@ -280,17 +286,17 @@ Production uses package `com.darkaxt.dualdex`; debug builds use `com.darkaxt.dua
 
 ## Android display modes
 
-Settings exposes `Docked` and `Overlay`. Docked is the default and uses the normal Android activity. Overlay is explicitly user-enabled, requests Android's `Display over other apps` permission, and moves DualDex into a foreground service with a draggable Poké Ball rendered from the active ROM. Tapping the ball shows or hides the same companion in an automatically fitted 4:3 panel while RetroArch remains focused; choosing Docked removes both overlay windows and returns to the normal activity. The v1 panel is not user-resizable. The overlay remains passive and never injects input or changes emulator state.
+Settings exposes `Docked` and `Overlay`. Docked is the default and uses the normal Android activity. Overlay is explicitly user-enabled, requests Android's `Display over other apps` permission, and moves DualDex into a foreground service with a draggable Poké Ball rendered from the active ROM. Tapping the ball shows or hides the same companion in a 4:3 panel while RetroArch remains focused. A visible resize handle scales the panel between 45% and 100% of its gutter-aware fit without changing the aspect ratio; choosing Docked removes both overlay windows and returns to the normal activity. The overlay remains passive and never injects input or changes emulator state.
 
 Settings also persists the information policy, ruleset, font scale, density, theme, and companion-display target. `Auto` preserves the screen selected by the launcher; `Handheld` requests Android's default display and `External` requests a presentation/non-default display when one exists.
 
-## Optional Memory Mapper Lab
+## Optional memory issue report
 
-The debug lab starts disabled on every app process. Enabling it is the single privacy confirmation for that session, opens an independent localhost UDP client, and permits only RetroArch `READ_CORE_MEMORY` commands. Disabling or failing the lab cannot unload or mutate the active catalog, SaveRAM snapshot, or discovery ledger.
+The issue reporter starts disabled on every app process. Enabling it is the single export confirmation for that session, opens an independent localhost UDP client, and permits only RetroArch `READ_CORE_MEMORY` commands. Disabling or failing it cannot unload or mutate the active catalog, SaveRAM snapshot, production battle reader, or discovery ledger.
 
 Each session can label bounded snapshots as Overworld, Battle Start, Move Selected, Move Executed, Target Changed, Opponent Switched, Battle End, or a custom event. The user-selected JSON export includes core/content identity, descriptors, timestamps, region hashes, Base64 memory bytes, and bounded address-level before/after diffs. These are evidence—not automatically validated field mappings. A battle address becomes a generated mapping only after repeated captures and structural checks agree.
 
-The first labeled Modern Emerald battle analysis is recorded in [the battle-memory mapper report](docs/reports/modern-emerald-memory-mapper-analysis.md). It validates the single-opponent record, level and IV tier, highlighted player move, ROM-derived effectiveness, and Organic opponent move-frequency counts from PP decreases. Production consumption is still capability-gated and is not enabled in the 1.0 SaveRAM release; double-target hover and battle-exit detection need their own labeled evidence.
+The labeled [Modern Emerald analysis](docs/reports/modern-emerald-memory-mapper-analysis.md) validates the Generation III single-opponent record, level and IV tier, highlighted player move, ROM-derived effectiveness, and Organic opponent move counts from PP decreases. The [Pokémon Yellow analysis](docs/reports/2026-08-10-pokemon-yellow-memory-validation.md) validates shape-based Red/Blue/Yellow addressing, Pikachu acquisition, rival Eevee identity, player PP consumption, and Gen I's executed-move latch fallback. The exported bytes remain diagnostic evidence; production resolves the same structures independently from live memory and the parsed catalog.
 
 ## Design documents
 

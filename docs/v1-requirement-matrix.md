@@ -6,12 +6,12 @@ This matrix maps the authoritative first-release design to implementation, autom
 
 | Spec | Required outcome | Implementation | Automated evidence | Device/evidence record | Status |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Passive local GB–GBA Pokédex; live targeting deferred; optional isolated mapper | `parser-core`, `save-core`, `companion-core`, `memory-mapper-lab` | Full module suites; mapper boundary tests | Delivery ledger Stages 1–6 | Verified |
+| 1 | Passive local GB–GBA Pokédex; capability-gated live targeting; optional isolated issue reports | `parser-core`, `save-core`, `companion-core`, `battle-memory`, `memory-mapper-lab` | Full module suites; battle/mapper boundary tests | Delivery ledger Stages 1–6 plus named battle reports | Implemented; newer signed-device gate pending |
 | 2.1 | No per-ROM profiles or user-entered addresses | Parser-family competition and independent dataset validators | `ParserOrchestratorTest`, `DatasetResolversTest`, validator suites | Names-first corpus report | Verified |
 | 2.2 | ROM-authoritative catalog with explicit capability states | Parsed catalog models/materializers; no bundled fallback database | Catalog/materializer/validator suites | Official and derived ROM AVD checks | Verified |
 | 2.3 | Save-authoritative state; never modify SaveRAM | Gen I–III readers, save association/polling, immutable snapshots | Save-family, polling, corruption, and preferred-individual tests | Ledger Stages 4–5 | Verified |
 | 2.4 | Local/passive operation and explicitly scoped config edits | All-files read gateway, SAF fallback, loopback host, exact-key public config editor | Storage/config/session tests | Nightly NCI and direct public-config evidence | Verified |
-| 2.5 | Pokédex independent from memory mapping | Mapper in separate module/API/store; production runtime has no mapper dependency | `MapperIsolationBoundaryTest`, coordinator and instrumentation isolation tests | Mapper disabled/failure device checks | Verified |
+| 2.5 | Pokédex independent from memory mapping | Diagnostic mapper remains separate; production battle reader publishes only independently validated capabilities | `MapperIsolationBoundaryTest`, battle coordinator, and failure-isolation tests | Mapper disabled/failure device checks | Verified in code; signed live gate pending |
 | 3.1 | Search/filter/navigation, ROM sprites/balls/types, ROM identity, small display | Bundled Preact UI and ROM catalog endpoints | Browse/navigation/production UI tests | Exact 1080 x 1240 and 406 x 354 viewport audit | Verified |
 | 3.2 | Entry/Stats/Moves/More behavior and IV/DV visualization | `PokedexDetail`, learnset normalization and rulesets | Detail/navigation/Organic-moves tests | 100%/135% font and focused-route visual audit | Verified |
 | 3.3 | Focused move/ability pages; decoded mechanics; no raw identifiers or ability `#0` | Move/ability materializers and detail pages | Ability/move materializer and page tests | Modern Emerald visual checks | Verified |
@@ -28,25 +28,25 @@ This matrix maps the authoritative first-release design to implementation, autom
 | 7 | Primary All files access, SAF fallbacks, exact config edits, restart/effective-file verification, no PID/Cocoon dependency | Storage gateway/indexers, setup coordinator and `retroarch-session` | Storage policy/index/config/restart/session/route suites | Dedicated AVD grant, revocation and nightly NCI evidence | Verified |
 | 8 | Status-based ROM resolution and SHA-keyed transactional cache | ROM session resolver and catalog store | Session/cache/migration tests | Direct/ZIP cold/reopen evidence | Verified |
 | 9 | Direct plus SAF-fallback save discovery, heartbeat polling, Gen I–III parsing and gated filters | Direct/SAF save resolvers, monitor/readers and knowledge mapper | Direct refresh, save/checksum/corruption/association suites | Modern Emerald direct `RetroArch/saves/mGBA` match and named save reports | Verified |
-| 10 | Disabled read-only mapper, labeled captures/diffs/export, isolated failures | `memory-mapper-lab` and Android coordinator/private store | Mapper unit, boundary, HTTP, native-route and device fake-transport tests | Live current-nightly mGBA capture closed ledger `V1-002` | Verified |
-| 11 | Thor-first pages/settings, no bottom bar/simulator controls, Docked/Overlay | Production Preact UI, settings store, overlay service | Web production tests, sizer, display resolver, instrumentation | Exact-viewport/font audit and final AVD gate | Verified |
+| 10 | Disabled read-only issue reporter, labeled captures/diffs/export, isolated failures | `memory-mapper-lab` and Android coordinator/private store | Mapper unit, boundary, HTTP, native-route and device fake-transport tests | Live current-nightly mGBA and GB captures | Verified |
+| 11 | Thor-first pages/settings, no bottom bar/simulator controls, Docked/resizable Overlay | Production Preact UI, settings store, overlay service | Web production tests, sizer, resize handle, display resolver, instrumentation | Exact-viewport/font audit; resize signed-device gate pending | Implemented; newer signed-device gate pending |
 | 12.1 | Fixed production/debug application IDs | Android Gradle configuration | CI/release checks | Coexistence on dedicated AVD | Verified |
-| 12.2 | One long-lived RSA signer; private key and credentials owned by the protected GitHub workflow | `signing/` public material plus GitHub environment secrets | Public-fingerprint and workflow checks | RC7 signer matches the pinned certificate | Verified |
-| 12.3 | GitHub-only production signing, fail-closed workflow, safe assets | `.github/workflows/release.yml` | Workflow static validation and GitHub run `31378249357` | RC7 public assets, provenance, checksums and certificate independently verified | Verified |
-| 12.4 | Monotonic version/update with persistence | Gradle/workflow version gates and independent stores | Workflow checks; repository persistence tests | Signed RC5 through RC7 updates retained catalog, save, grants and settings on the dedicated AVD | Verified |
-| 13 | Dedicated AVD only; Thor reserved for signed live validation | Device-resolution script and explicit `adb -s` commands | Device selection checks | `emulator-5556` evidence; `5554` untouched; signed RC7 installed on Thor | Verified; Thor acceptance is Stage 8 |
+| 12.2 | One long-lived RSA signer; private key and credentials owned by the protected GitHub workflow | `signing/` public material plus GitHub environment secrets | Public-fingerprint and workflow checks | RC8 signer matches the pinned certificate | Verified |
+| 12.3 | GitHub-only production signing, fail-closed workflow, safe assets | `.github/workflows/release.yml` | Workflow static validation and GitHub release runs | RC8 public assets, provenance, checksums and certificate independently verified | Verified |
+| 12.4 | Monotonic version/update with persistence | Gradle/workflow version gates and independent stores | Workflow checks; repository persistence tests | Signed RC5 through RC8 updates retained catalog, save, grants and settings on the dedicated AVD | Verified |
+| 13 | Dedicated AVD only; Thor reserved for signed live validation | Device-resolution script and explicit `adb -s` commands | Device selection checks | `emulator-5556` evidence; `5554` untouched; signed RC8 installed on Thor | Verified; new battle candidate acceptance is Stage 8 |
 | 14 | Complete parser/save/catalog/setup/UI/release test strategy | Module, web, Playwright and instrumentation suites | 291 unit, 44 web, 13 release-policy, and 3 instrumentation tests plus Android lint | All-files debug candidate on dedicated AVD | Verified |
 | 15 | Safe, non-destructive fallback behavior | Runtime/setup/save/cache/mapper recovery paths | Corruption, disconnect, recovery and isolation tests | Dedicated AVD recovery and frozen-default checks | Verified |
 | 16 | Local-only, blocked navigation, no writes/telemetry/private assets, license compliance | Loopback/WebView/transport boundaries and repository policy | Final manifest/source/artifact/license audit | `docs/v1-release-audit.md` | Verified |
 | 17 | All publication gates satisfied | This matrix plus delivery ledger | Complete convergence pipeline | GitHub-signed AVD and Thor validation | Stage 8 |
-| 18 | Live battle features, day/night Area markers, and a gutter-aware resizable overlay remain after 1.0.0 | Explicit deferred list | Not part of the v1 gate | None required | Post-v1 |
+| 18 | Live battle features, day/night Area markers, and a gutter-aware resizable overlay | Gen I/III shape resolvers, observation ledger, encounter windows, Area markers, overlay sizer/handle | Resolver/coordinator/tracker/runtime/web/overlay suites | Yellow and Modern Emerald exports validated; new signed candidate pending | Implemented for Gen I/III; Gen II and signed-device gate pending |
 
 ## Acceptance criteria
 
 | AC | Gate | Evidence | Current result |
 | ---: | --- | --- | --- |
 | 1 | Production/debug package IDs | `app/build.gradle.kts`; Stage 0 coexistence | Pass |
-| 2 | GitHub-only pinned signing and signed in-place update | Release workflow, public fingerprint, signed RC5 through RC7 updates | Pass |
+| 2 | GitHub-only pinned signing and signed in-place update | Release workflow, public fingerprint, signed RC5 through RC8 updates | Pass |
 | 3 | Existing AVD untouched; dedicated serial only | Resolver checks and ledger command record | Pass through Stage 6 |
 | 4 | Fresh setup can grant broad storage once, index sibling folders, patch only the public config, restart when changed, and verify it | Storage/config/setup suites and dedicated-AVD grant/restart evidence | Pass |
 | 5 | Active supported ROM resolution plus manual/cache fallback | Session resolver/runtime tests and nightly AVD evidence | Pass |
@@ -59,10 +59,12 @@ This matrix maps the authoritative first-release design to implementation, autom
 | 12 | NCI/save/memory failures never block general Pokédex | Runtime recovery and mapper isolation suites | Pass |
 | 13 | Mapper disabled/read-only/isolated | Mapper suites, device fake transport, and verified live mGBA export | Pass |
 | 14 | Forbidden OCR/screenshot/Accessibility/CSV/cheat/input/write paths absent | Manifest/dependency/source/artifact audit | Pass |
-| 15 | Tests/corpus pass; signed candidate passes AVD and Thor | Full convergence run, GitHub RC, physical Thor | Signed RC7 AVD gate passed and exact public APK installed on Thor; live acceptance pending |
-| 16 | Docked/Overlay behavior with ROM ball and RetroArch focus | Overlay tests and dedicated AVD evidence | Signed RC7 AVD gate passed; physical Thor interaction pending |
+| 15 | Tests/corpus pass; signed candidate passes AVD and Thor | Full convergence run, GitHub RC, physical Thor | RC8 baseline passed; newer battle-capable candidate pending |
+| 16 | Docked/Overlay behavior with ROM ball and RetroArch focus | Overlay tests and dedicated AVD evidence | Fixed overlay passed; resizable candidate pending signed-device acceptance |
+| 17 | Supported live battle opens/closes, follows targets, preserves Organic facts, and never gates the Pokédex | Battle resolver/tracker/runtime/web suites and named exports | Automated Gen I/III pass; signed RetroArch live gate pending |
 
 ## Remaining release blockers
 
-1. Complete live RetroArch, SaveRAM, lower-screen, and lifecycle acceptance for the already installed public RC7 on the physical Thor.
-2. Build and smoke-check the final GitHub-signed `v1.0.0` artifact before publishing it.
+1. Publish and independently verify a newer GitHub-signed candidate containing the battle, time-marker, and overlay-resize work.
+2. Validate Gen I and III live battle lifecycle plus overlay resizing on the physical Thor; record Generation II live battle as unavailable until independently mapped.
+3. Build and smoke-check the final GitHub-signed `v1.0.0` artifact before publishing it.
