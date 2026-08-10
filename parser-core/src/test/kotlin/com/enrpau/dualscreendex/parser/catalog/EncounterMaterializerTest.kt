@@ -40,6 +40,8 @@ class EncounterMaterializerTest {
         assertEquals(10, water.slots.size)
         assertEquals(10, grass.slots.first().speciesId)
         assertEquals(20, water.slots.first().speciesId)
+        assertEquals(setOf(EncounterWindow.ANY), grass.windows)
+        assertEquals(setOf(EncounterWindow.ANY), water.windows)
     }
 
     @Test
@@ -74,8 +76,23 @@ class EncounterMaterializerTest {
         val areas = EncounterMaterializer.materialize(RomImage(bytes), layout(2, Platform.GBC, 251))
 
         assertEquals(20, areas.size)
-        assertEquals(7, areas.single { it.id == 0x101 * 10 + EncounterMethods.GRASS_MORNING }.slots.size)
-        assertEquals(3, areas.single { it.id == 0x101 * 10 + EncounterMethods.WATER }.slots.size)
+        assertEquals(
+            setOf(EncounterWindow.MORNING),
+            areas.single { it.id == 0x101 * 10 + EncounterMethods.GRASS_MORNING }.windows,
+        )
+        assertEquals(
+            setOf(EncounterWindow.DAY),
+            areas.single { it.id == 0x101 * 10 + EncounterMethods.GRASS_DAY }.windows,
+        )
+        assertEquals(
+            setOf(EncounterWindow.NIGHT),
+            areas.single { it.id == 0x101 * 10 + EncounterMethods.GRASS_NIGHT }.windows,
+        )
+        val morning = areas.single { it.id == 0x101 * 10 + EncounterMethods.GRASS_MORNING }
+        val water = areas.single { it.id == 0x101 * 10 + EncounterMethods.WATER }
+        assertEquals(7, morning.slots.size)
+        assertEquals(3, water.slots.size)
+        assertEquals(setOf(EncounterWindow.ANY), water.windows)
     }
 
     @Test
@@ -106,6 +123,7 @@ class EncounterMaterializerTest {
         assertEquals(12, first.slots.size)
         assertEquals(30, first.slots.first().speciesId)
         assertTrue(first.name.value!!.contains("1-1"))
+        assertEquals(setOf(EncounterWindow.ANY), first.windows)
     }
 
     @Test

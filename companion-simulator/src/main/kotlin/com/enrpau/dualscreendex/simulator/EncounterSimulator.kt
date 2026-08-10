@@ -51,6 +51,7 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
             OpponentState(
                 speciesId = species.id,
                 level = level,
+                typeIds = species.typeIds.value.orEmpty(),
                 ivs = if (generation == 3) List(6) { random.nextInt(32) } else emptyList(),
                 dvs = if (generation < 3) List(4) { random.nextInt(16) } else emptyList(),
                 moveHistory = observed.sortedWith(

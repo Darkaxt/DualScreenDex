@@ -3,12 +3,14 @@ package com.darkaxt.dualdex
 import android.app.Application
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogCache
+import com.darkaxt.dualdex.knowledge.FileKnowledgeRepository
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
 import com.darkaxt.dualdex.settings.SettingsRepository
 import com.darkaxt.dualdex.mapper.MapperSessionStore
 import com.darkaxt.dualdex.mapper.MemoryMapperCoordinator
+import com.darkaxt.dualdex.overlay.OverlaySizeStore
 import com.darkaxt.dualdex.web.MapperHttpHandler
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
@@ -26,6 +28,7 @@ class DualDexApplication : Application() {
     @Volatile var memoryMapper: MemoryMapperCoordinator? = null
         private set
     @Volatile private var settingsStore: SettingsRepository? = null
+    @Volatile private var overlaySizeStore: OverlaySizeStore? = null
     @Volatile private var resumedActivity: WeakReference<MainActivity>? = null
 
     val localOrigin: String?
@@ -40,6 +43,12 @@ class DualDexApplication : Application() {
     fun currentDisplayTarget(): DisplayTarget = settingsStore?.read()?.displayTarget ?: DisplayTarget.AUTO
 
     fun currentDisplayMode(): DisplayMode = settingsStore?.read()?.displayMode ?: DisplayMode.DOCKED
+
+    fun currentOverlayScale(): Double = overlaySizeStore?.readScale() ?: 1.0
+
+    fun updateOverlayScale(scale: Double) {
+        overlaySizeStore?.writeScale(scale)
+    }
 
     fun activityResumed(activity: MainActivity) {
         resumedActivity = WeakReference(activity)
@@ -65,11 +74,13 @@ class DualDexApplication : Application() {
         val preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
         val settingsRepository = SettingsRepository(preferences)
         settingsStore = settingsRepository
+        overlaySizeStore = OverlaySizeStore(settingsRepository::read, settingsRepository::write)
         val cache = CatalogCache(File(filesDir, "catalogs"), AndroidCatalogDatabaseFactory)
         val runtime = ProductionCompanionRuntime(
             catalogRepository = cache,
             initialSettings = settingsRepository.read(),
             onSettingsChanged = settingsRepository::write,
+            knowledgeRepository = FileKnowledgeRepository(File(filesDir, "knowledge")),
             onCatalogCommitted = { sha256, displayName ->
                 preferences.edit()
                     .putString(LAST_CATALOG_HASH, sha256)

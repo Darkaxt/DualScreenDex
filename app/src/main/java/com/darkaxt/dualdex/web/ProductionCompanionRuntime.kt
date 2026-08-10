@@ -3,6 +3,13 @@ package com.darkaxt.dualdex.web
 import com.darkaxt.dualdex.catalog.CatalogRepository
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
+import com.darkaxt.dualdex.knowledge.KnowledgeRepository
+import com.darkaxt.dualdex.battle.BattleCatalogContext
+import com.darkaxt.dualdex.battle.BattleCatalogView
+import com.darkaxt.dualdex.battle.BattleMove
+import com.darkaxt.dualdex.battle.BattleSpecies
+import com.darkaxt.dualdex.battle.BattleTrackingUpdate
+import com.darkaxt.dualdex.battle.TargetMode
 import com.enrpau.dualscreendex.companion.CompanionGateway
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
 import com.enrpau.dualscreendex.companion.api.BootstrapView
@@ -13,12 +20,20 @@ import com.enrpau.dualscreendex.companion.api.StateView
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
+import com.enrpau.dualscreendex.companion.model.BattleState
+import com.enrpau.dualscreendex.companion.model.BattleTab
+import com.enrpau.dualscreendex.companion.model.BattleTargetMode
 import com.enrpau.dualscreendex.companion.model.CompanionAction
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
 import com.enrpau.dualscreendex.companion.model.Density
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
+import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
+import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.companion.model.MatchupKey
+import com.enrpau.dualscreendex.companion.model.MoveObservation
+import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import com.enrpau.dualscreendex.companion.model.Theme
 import com.enrpau.dualscreendex.companion.knowledge.SaveKnowledgeMapper
@@ -46,6 +61,7 @@ class ProductionCompanionRuntime(
     private val onCatalogCommitted: (sha256: String, displayName: String) -> Unit = { _, _ -> },
     initialSettings: CompanionSettings = CompanionSettings(),
     private val onSettingsChanged: (CompanionSettings) -> Unit = {},
+    private val knowledgeRepository: KnowledgeRepository? = null,
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
     @Volatile private var retroArch = RetroArchView()
@@ -79,6 +95,7 @@ class ProductionCompanionRuntime(
         val header = RomHeaderReader.read(rom)
         val source = CatalogSourceMetadata.fromDisplayName(name, rom.size, header.title)
         synchronized(this) { catalog = null }
+        clearLiveBattle()
         saveRam = SaveRamView()
         gateway.dispatch(CompanionAction.ReplaceLedger(com.enrpau.dualscreendex.companion.model.KnowledgeLedger()))
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
@@ -109,6 +126,7 @@ class ProductionCompanionRuntime(
                     return@execute
                 }
                 synchronized(this) { catalog = parsed }
+                restoreKnowledge(parsed.romSha256)
                 gateway.dispatch(CompanionAction.CatalogLoaded(name))
                 onCatalogCommitted(parsed.romSha256, name)
                 notifyCompletion(onComplete, Result.success(Unit))
@@ -130,9 +148,10 @@ class ProductionCompanionRuntime(
     @Synchronized
     fun loadCatalog(name: String, parsed: ParsedCatalog) {
         loadGeneration.incrementAndGet()
+        clearLiveBattle()
         catalog = parsed
         saveRam = SaveRamView()
-        gateway.dispatch(CompanionAction.ReplaceLedger(com.enrpau.dualscreendex.companion.model.KnowledgeLedger()))
+        gateway.dispatch(CompanionAction.ReplaceLedger(readKnowledge(parsed.romSha256)))
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
         gateway.dispatch(CompanionAction.CatalogLoaded(name))
     }
@@ -183,6 +202,7 @@ class ProductionCompanionRuntime(
         return ApiViewBuilder.state(
             snapshot,
             currentCatalog,
+            truth = battleTruth(snapshot, currentCatalog),
             activeRulesetId = active?.id,
             rulesetAssumed = snapshot.settings.ruleset == "AUTO",
             retroArch = retroArch,
@@ -215,12 +235,138 @@ class ProductionCompanionRuntime(
     }
 
     @Synchronized
+    fun battleCatalogContext(): BattleCatalogContext? {
+        if (catalogPublicationInProgress) return null
+        val current = catalog ?: return null
+        val generation = when (current.platform.name) {
+            "GB" -> 1
+            "GBA" -> 3
+            else -> return null
+        }
+        val species = current.speciesById.mapNotNull { (id, record) ->
+            val types = record.typeIds.value ?: return@mapNotNull null
+            id to BattleSpecies(
+                id = id,
+                typeIds = types,
+                abilityIds = record.abilityIds.value.orEmpty().filterTo(mutableSetOf()) { it > 0 },
+            )
+        }.toMap()
+        val moves = current.movesById.mapNotNull { (id, record) ->
+            val pp = record.pp.value?.takeIf { it > 0 } ?: return@mapNotNull null
+            id to BattleMove(id, pp)
+        }.toMap()
+        if (species.isEmpty() || moves.isEmpty() || current.typesById.isEmpty()) return null
+        return BattleCatalogContext(
+            romIdentity = current.romSha256,
+            generation = generation,
+            catalog = BattleCatalogView(species, moves, current.typesById.keys),
+        )
+    }
+
+    @Synchronized
+    fun applyBattleTracking(update: BattleTrackingUpdate) {
+        val before = gateway.bootstrap()
+        val observed = before.ledger.observedMoves.toMutableMap()
+        update.observations.forEach { (speciesId, increments) ->
+            val frequencies = observed[speciesId].orEmpty().associate { it.moveId to it.frequency }.toMutableMap()
+            increments.forEach { (moveId, count) -> frequencies.merge(moveId, count, Int::plus) }
+            observed[speciesId] = frequencies.entries
+                .sortedWith(compareByDescending<Map.Entry<Int, Int>> { it.value }.thenBy { it.key })
+                .map { MoveObservation(it.key, it.value) }
+        }
+        val seen = before.ledger.seenSpecies + update.sample?.opponents.orEmpty().map { it.speciesId }
+        val discoveredMatchups = before.ledger.discoveredMatchups.toMutableMap()
+        val currentCatalog = catalog
+        update.discoveredMatchups.forEach { observation ->
+            effectivenessFor(currentCatalog, observation.moveId, observation.defendingTypeIds)?.let { effectiveness ->
+                discoveredMatchups[MatchupKey(observation.speciesId, observation.moveId)] = effectiveness
+            }
+        }
+        val mergedLedger = before.ledger.copy(
+            seenSpecies = seen,
+            observedMoves = observed,
+            discoveredMatchups = discoveredMatchups,
+        )
+        if (mergedLedger != before.ledger) {
+            gateway.dispatch(CompanionAction.ReplaceLedger(mergedLedger))
+            persistKnowledge(mergedLedger)
+        }
+
+        if (update.ended) {
+            clearLiveBattle()
+            return
+        }
+        val sample = update.sample ?: return
+        if (!update.active) return
+
+        val latestLedger = gateway.bootstrap().ledger
+        val opponents = sample.opponents.map { opponent ->
+            OpponentState(
+                speciesId = opponent.speciesId,
+                level = opponent.level,
+                typeIds = opponent.typeIds,
+                ivs = opponent.ivs,
+                dvs = opponent.dvs,
+                moveHistory = latestLedger.observedMoves[opponent.speciesId].orEmpty(),
+            )
+        }
+        val battle = BattleState(
+            opponents = opponents,
+            targetIndex = sample.target.opponentIndex.coerceIn(0, (opponents.size - 1).coerceAtLeast(0)),
+            selectedMoveId = sample.selectedMoveId,
+            playerReferenceLevel = sample.battlers.filter { it.position and 1 == 0 }.maxOfOrNull { it.level },
+            targetMode = when (sample.target.mode) {
+                TargetMode.AUTOMATIC -> BattleTargetMode.AUTOMATIC
+                TargetMode.MANUAL_TARGET_FALLBACK -> BattleTargetMode.MANUAL_TARGET_FALLBACK
+            },
+            capabilities = sample.capabilities.mapKeys { it.key.name }.mapValues { it.value.name },
+        )
+        gateway.dispatch(CompanionAction.BattleStarted(battle))
+    }
+
+    @Synchronized
+    fun clearLiveBattle() {
+        if (gateway.bootstrap().battle != null) gateway.dispatch(CompanionAction.BattleEnded)
+    }
+
+    private fun battleTruth(snapshot: AppSnapshot, currentCatalog: ParsedCatalog?): Effectiveness? {
+        val battle = snapshot.battle ?: return null
+        val target = battle.opponents.getOrNull(battle.targetIndex) ?: return null
+        val moveId = battle.selectedMoveId ?: return null
+        return effectivenessFor(currentCatalog, moveId, target.typeIds)
+    }
+
+    private fun effectivenessFor(
+        currentCatalog: ParsedCatalog?,
+        moveId: Int,
+        defendingTypeIds: List<Int>,
+    ): Effectiveness? {
+        val current = currentCatalog ?: return null
+        if (current.typeChart.isEmpty() || defendingTypeIds.isEmpty()) return null
+        val attackingTypeId = current.movesById[moveId]?.typeId?.value ?: return null
+        var multiplier = 100L
+        defendingTypeIds.distinct().forEach { defendingTypeId ->
+            val factor = current.typeChart.lastOrNull {
+                it.attackingTypeId == attackingTypeId && it.defendingTypeId == defendingTypeId
+            }?.multiplierPercent ?: 100
+            multiplier = multiplier * factor / 100
+        }
+        return when {
+            multiplier == 0L -> Effectiveness.NO_EFFECT
+            multiplier < 100L -> Effectiveness.RESISTED
+            multiplier == 100L -> Effectiveness.NEUTRAL
+            else -> Effectiveness.SUPER_EFFECTIVE
+        }
+    }
+
+    @Synchronized
     fun applySaveSnapshot(snapshot: SaveSnapshot, state: SaveRamView): Boolean {
         val current = catalog ?: return false
         if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return false
         val merged = SaveKnowledgeMapper.merge(gateway.bootstrap().ledger, current, snapshot)
         saveRam = state
         gateway.dispatch(CompanionAction.ReplaceLedger(merged))
+        persistKnowledge(merged)
         return true
     }
 
@@ -236,6 +382,8 @@ class ProductionCompanionRuntime(
                 ),
             )
             "SETTINGS" -> updateSettings(values)
+            "TAB", "BATTLE_TAB" -> gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.valueOf(requireNotNull(values["tab"]).uppercase())))
+            "TARGET", "SELECT_TARGET" -> gateway.dispatch(CompanionAction.SelectTarget(requireInt(values, "index")))
             else -> throw IllegalArgumentException("unknown production action: $type")
         }
         return stateView()
@@ -294,6 +442,7 @@ class ProductionCompanionRuntime(
                     displayMode = values["displayMode"]?.let { DisplayMode.valueOf(it.uppercase()) } ?: current.displayMode,
                     theme = values["theme"]?.let { Theme.valueOf(it.uppercase()) } ?: current.theme,
                     displayTarget = values["displayTarget"]?.let { DisplayTarget.valueOf(it.uppercase()) } ?: current.displayTarget,
+                    overlayScale = current.overlayScale,
                 )
         gateway.dispatch(
             CompanionAction.UpdateSettings(updated),
@@ -342,7 +491,8 @@ class ProductionCompanionRuntime(
         catalogPublicationInProgress = true
         try {
             saveRam = SaveRamView()
-            gateway.dispatch(CompanionAction.ReplaceLedger(com.enrpau.dualscreendex.companion.model.KnowledgeLedger()))
+            clearLiveBattle()
+            gateway.dispatch(CompanionAction.ReplaceLedger(readKnowledge(reopened.romSha256)))
             gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
             gateway.dispatch(
                 CompanionAction.CatalogLoadingChanged(
@@ -376,6 +526,18 @@ class ProductionCompanionRuntime(
 
     private fun requireInt(values: Map<String, String?>, key: String): Int =
         requireNotNull(values[key]?.toIntOrNull()) { "$key is required" }
+
+    private fun restoreKnowledge(romIdentity: String) {
+        gateway.dispatch(CompanionAction.ReplaceLedger(readKnowledge(romIdentity)))
+    }
+
+    private fun readKnowledge(romIdentity: String): KnowledgeLedger =
+        runCatching { knowledgeRepository?.read(romIdentity) }.getOrNull() ?: KnowledgeLedger()
+
+    private fun persistKnowledge(ledger: KnowledgeLedger) {
+        val romIdentity = catalog?.romSha256 ?: return
+        runCatching { knowledgeRepository?.write(romIdentity, ledger) }
+    }
 
     private fun notifyCompletion(callback: ((Result<Unit>) -> Unit)?, result: Result<Unit>) {
         if (callback != null) runCatching { callback(result) }

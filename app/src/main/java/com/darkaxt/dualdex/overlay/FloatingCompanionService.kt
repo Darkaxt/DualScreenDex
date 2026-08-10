@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -18,6 +19,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.WindowInsets
 import android.widget.FrameLayout
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -33,6 +35,7 @@ class FloatingCompanionService : Service() {
     private var bubble: PokeBallBubbleView? = null
     private var panel: FrameLayout? = null
     private var panelWebView: DualDexWebView? = null
+    private var panelLayout: WindowManager.LayoutParams? = null
     private var panelVisible = false
 
     override fun onCreate() {
@@ -58,11 +61,17 @@ class FloatingCompanionService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (panelVisible) refitPanel()
+    }
+
     override fun onDestroy() {
         panelWebView?.destroy()
         panelWebView = null
         panel?.let { runCatching { windowManager.removeView(it) } }
         panel = null
+        panelLayout = null
         bubble?.let { runCatching { windowManager.removeView(it) } }
         bubble = null
         running = false
@@ -140,20 +149,22 @@ class FloatingCompanionService : Service() {
         val origin = (application as DualDexApplication).localOrigin ?: return
         val host = panel ?: createPanel(origin).also { panel = it }
         if (host.parent == null) {
-            val bounds = windowManager.currentWindowMetrics.bounds
-            val size = OverlayPanelSizer.fit(bounds.width(), bounds.height())
-            windowManager.addView(
-                host,
-                WindowManager.LayoutParams(
-                    size.width,
-                    size.height,
+            val placement = fittedPanel()
+            val layout = WindowManager.LayoutParams(
+                    placement.width,
+                    placement.height,
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                     PixelFormat.TRANSLUCENT,
-                ).apply { gravity = Gravity.CENTER },
-            )
+                ).apply {
+                    gravity = Gravity.TOP or Gravity.START
+                    x = placement.x
+                    y = placement.y
+                }
+            panelLayout = layout
+            windowManager.addView(host, layout)
         }
         panelVisible = true
         panelWebView?.open()
@@ -162,6 +173,7 @@ class FloatingCompanionService : Service() {
 
     private fun hidePanel() {
         panel?.takeIf { it.parent != null }?.let { windowManager.removeView(it) }
+        panelLayout = null
         panelVisible = false
     }
 
@@ -182,6 +194,74 @@ class FloatingCompanionService : Service() {
                 cornerRadius = dp(10).toFloat()
             }
             addView(webView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            addView(
+                OverlayResizeHandle(this@FloatingCompanionService).apply {
+                    setOnTouchListener(PanelResizeListener())
+                },
+                FrameLayout.LayoutParams(dp(40), dp(40), Gravity.END or Gravity.BOTTOM),
+            )
+        }
+    }
+
+    private fun fittedPanel(scale: Double = (application as DualDexApplication).currentOverlayScale()): OverlayPanelPlacement {
+        val metrics = windowManager.currentWindowMetrics
+        val bounds = metrics.bounds
+        val systemInsets = metrics.windowInsets.getInsetsIgnoringVisibility(
+            WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout(),
+        )
+        return OverlayPanelSizer.fit(
+            screenWidth = bounds.width(),
+            screenHeight = bounds.height(),
+            insets = OverlayInsets(systemInsets.left, systemInsets.top, systemInsets.right, systemInsets.bottom),
+            scale = scale,
+            minimumWidth = dp(MINIMUM_PANEL_WIDTH_DP),
+        )
+    }
+
+    private fun refitPanel(scale: Double = (application as DualDexApplication).currentOverlayScale()) {
+        val host = panel?.takeIf { it.parent != null } ?: return
+        val layout = panelLayout ?: return
+        val placement = fittedPanel(scale)
+        layout.width = placement.width
+        layout.height = placement.height
+        layout.x = placement.x
+        layout.y = placement.y
+        windowManager.updateViewLayout(host, layout)
+    }
+
+    private inner class PanelResizeListener : View.OnTouchListener {
+        private var startWidth = 0
+        private var downX = 0f
+        private var downY = 0f
+        private var pendingScale = 1.0
+
+        override fun onTouch(view: View, event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    startWidth = panelLayout?.width ?: return false
+                    downX = event.rawX
+                    downY = event.rawY
+                    pendingScale = (application as DualDexApplication).currentOverlayScale()
+                    return true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val maximum = fittedPanel(OverlayPanelSizer.MAX_SCALE).width.toDouble()
+                    val diagonalDelta = maxOf(event.rawX - downX, (event.rawY - downY) * 4f / 3f)
+                    pendingScale = OverlayPanelSizer.clampScale((startWidth + diagonalDelta) / maximum)
+                    refitPanel(pendingScale)
+                    return true
+                }
+                MotionEvent.ACTION_UP -> {
+                    (application as DualDexApplication).updateOverlayScale(pendingScale)
+                    view.performClick()
+                    return true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    refitPanel()
+                    return true
+                }
+            }
+            return false
         }
     }
 
@@ -261,6 +341,7 @@ class FloatingCompanionService : Service() {
         private const val CHANNEL_ID = "dualdex-overlay"
         private const val NOTIFICATION_ID = 41
         private const val BUBBLE_DP = 64
+        private const val MINIMUM_PANEL_WIDTH_DP = 320
         private const val POKE_BALL_ID = 4
         private const val ACTION_SHOW = "com.darkaxt.dualdex.overlay.SHOW"
         private const val ACTION_DOCK = "com.darkaxt.dualdex.overlay.DOCK"

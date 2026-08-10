@@ -41,7 +41,8 @@ describe('production settings copy', () => {
     expect(screen.getByRole('link', { name: 'DOCKED' }).getAttribute('href')).toBe('dualdex://overlay/dock');
     expect(screen.getByRole('link', { name: 'OVERLAY' }).getAttribute('href')).toBe('dualdex://overlay/show');
     expect(screen.getByRole('link', { name: 'DOCKED' }).getAttribute('data-active')).toBe('true');
-    expect(screen.getByText(/fixed 4:3 panel/i)).toBeTruthy();
+    expect(screen.getByText(/resizable 4:3 panel/i)).toBeTruthy();
+    expect(screen.queryByText(/fixed 4:3 panel/i)).toBeNull();
   });
 
   it('exposes persisted theme and companion-display targeting', () => {
@@ -74,7 +75,7 @@ describe('production settings copy', () => {
     const onOpenMapper = vi.fn();
     render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} onOpenMapper={onOpenMapper} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'OPEN MEMORY MAPPER LAB' }));
+    fireEvent.click(screen.getByRole('button', { name: 'CAPTURE MEMORY REPORT' }));
     fireEvent.click(screen.getByRole('button', { name: 'CLEAR INACTIVE CATALOGS' }));
 
     expect(onOpenMapper).toHaveBeenCalledOnce();

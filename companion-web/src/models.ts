@@ -45,6 +45,8 @@ export interface TypeInfo {
   border: string | null;
 }
 
+export type EncounterWindow = 'ANY' | 'MORNING' | 'DAY' | 'NIGHT';
+
 export interface Catalog {
   hash: string;
   crc32: string;
@@ -54,7 +56,7 @@ export interface Catalog {
   species: Species[];
   moves: Move[];
   types: TypeInfo[];
-  areas: { id: number; name: string; methodId: number; speciesIds: number[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
+  areas: { id: number; name: string; methodId: number; speciesIds: number[]; windows: EncounterWindow[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
   capabilities: Record<string, string>;
 }
@@ -72,6 +74,7 @@ export interface Settings {
   displayMode?: 'DOCKED' | 'OVERLAY';
   theme?: 'GAME' | 'DARK' | 'LIGHT';
   displayTarget?: 'AUTO' | 'HANDHELD' | 'EXTERNAL';
+  overlayScale?: number;
 }
 
 export interface SpeciesState {
@@ -125,8 +128,10 @@ export interface State {
   speciesState: Record<number, SpeciesState>;
   observedMoves: Record<number, { moveId: number; frequency: number }[]>;
   battle: null | {
-    opponents: { speciesId: number; level: number; rarity: string; moves: { moveId: number; frequency: number }[] }[];
+    opponents: { speciesId: number; level: number; typeIds: number[]; rarity: string; moves: { moveId: number; frequency: number }[] }[];
     targetIndex: number;
+    targetMode: 'AUTOMATIC' | 'MANUAL_TARGET_FALLBACK';
+    capabilities: Record<string, string>;
     selectedMoveId: number | null;
     effectiveness: string | null;
     effectivenessKnown: boolean;

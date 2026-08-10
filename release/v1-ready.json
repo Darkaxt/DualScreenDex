@@ -7,10 +7,10 @@
   "status": "ready-for-github-signing",
   "verifiedDate": "2026-08-10",
   "openV1LedgerItems": 0,
-  "unitTests": 291,
-  "webTests": 44,
+  "unitTests": 322,
+  "webTests": 48,
   "instrumentationTests": 3,
   "corpusInputs": 14,
-  "debugApkSha256": "95039828897A0139C3D442EB3131B1393F69466180E164E670E9ED45A47CB7FA",
+  "debugApkSha256": "E7B5819881F29BB2C9F2AAAD319920B2B769F7C2285FE37C72132D43A37CD420",
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

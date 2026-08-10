@@ -27,6 +27,7 @@ class SettingsRepositoryTest {
             displayMode = DisplayMode.OVERLAY,
             theme = Theme.DARK,
             displayTarget = DisplayTarget.EXTERNAL,
+            overlayScale = 0.65,
         )
 
         repository.write(settings)
@@ -54,5 +55,15 @@ class SettingsRepositoryTest {
         assertEquals(DisplayMode.DOCKED, settings.displayMode)
         assertEquals(Theme.DARK, settings.theme)
         assertEquals(DisplayTarget.AUTO, settings.displayTarget)
+        assertEquals(1.0, settings.overlayScale, 0.0)
+    }
+
+    @Test
+    fun clampsPersistedOverlayScaleAndMigratesLegacyDocuments() {
+        val legacy = SettingsRepository({ "{}" }, {}).read()
+        val invalid = SettingsRepository({ """{"overlayScale":8}""" }, {}).read()
+
+        assertEquals(1.0, legacy.overlayScale, 0.0)
+        assertEquals(1.0, invalid.overlayScale, 0.0)
     }
 }

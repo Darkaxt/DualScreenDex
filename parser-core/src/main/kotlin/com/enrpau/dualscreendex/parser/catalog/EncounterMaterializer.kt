@@ -294,6 +294,12 @@ object EncounterMaterializer {
         name = CatalogField.available(name),
         methodId = method,
         slots = slots,
+        windows = when (method) {
+            EncounterMethods.GRASS_MORNING -> setOf(EncounterWindow.MORNING)
+            EncounterMethods.GRASS_DAY -> setOf(EncounterWindow.DAY)
+            EncounterMethods.GRASS_NIGHT -> setOf(EncounterWindow.NIGHT)
+            else -> setOf(EncounterWindow.ANY)
+        },
     )
 
     private fun groupMapId(group: Int, map: Int): Int = (group shl 8) or map

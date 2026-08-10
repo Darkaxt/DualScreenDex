@@ -98,6 +98,7 @@ data class AreaView(
     val methodId: Int,
     val speciesIds: List<Int>,
     val slots: List<EncounterSlotView>,
+    val windows: List<String>,
 )
 data class BallView(val id: Int, val name: String, val generic: Boolean, val hasSprite: Boolean)
 
@@ -198,6 +199,8 @@ data class SpeciesStateView(
 data class BattleView(
     val opponents: List<OpponentView>,
     val targetIndex: Int,
+    val targetMode: String,
+    val capabilities: Map<String, String>,
     val selectedMoveId: Int?,
     val effectiveness: String?,
     val effectivenessKnown: Boolean,
@@ -205,6 +208,7 @@ data class BattleView(
 data class OpponentView(
     val speciesId: Int,
     val level: Int,
+    val typeIds: List<Int>,
     val rarity: String,
     val moves: List<ObservedMoveView>,
 )
@@ -329,6 +333,7 @@ object ApiViewBuilder {
                 it.slots.map { slot ->
                     EncounterSlotView(slot.speciesId, slot.minimumLevel, slot.maximumLevel, slot.weight)
                 },
+                it.windows.map { window -> window.name }.sorted(),
             )
         },
         balls = catalog.captureBallsById.values.sortedBy { it.id }.map {
@@ -405,11 +410,14 @@ object ApiViewBuilder {
                         OpponentView(
                             opponent.speciesId,
                             opponent.level,
+                            opponent.typeIds,
                             listOfNotNull(prefix, tier).joinToString(" "),
                             opponent.moveHistory.toObservedMoveViews(),
                         )
                     },
                     targetIndex = battle.targetIndex,
+                    targetMode = battle.targetMode.name,
+                    capabilities = battle.capabilities,
                     selectedMoveId = battle.selectedMoveId,
                     effectiveness = knownEffectiveness?.name,
                     effectivenessKnown = knownEffectiveness != null,

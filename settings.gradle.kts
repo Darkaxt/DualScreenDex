@@ -30,6 +30,7 @@ include(
     ":save-core",
     ":save-cli",
     ":memory-mapper-lab",
+    ":battle-memory",
     ":companion-simulator",
     ":companion-server",
 )

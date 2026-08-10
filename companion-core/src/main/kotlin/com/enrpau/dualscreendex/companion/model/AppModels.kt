@@ -22,6 +22,7 @@ data class CompanionSettings(
     val displayMode: DisplayMode = DisplayMode.DOCKED,
     val theme: Theme = Theme.GAME,
     val displayTarget: DisplayTarget = DisplayTarget.AUTO,
+    val overlayScale: Double = 1.0,
 )
 
 data class OwnedPokemon(
@@ -61,17 +62,22 @@ data class KnowledgeLedger(
 data class OpponentState(
     val speciesId: Int,
     val level: Int,
+    val typeIds: List<Int> = emptyList(),
     val ivs: List<Int> = emptyList(),
     val dvs: List<Int> = emptyList(),
     val moveHistory: List<MoveObservation>,
     val capturable: Boolean = true,
 )
 
+enum class BattleTargetMode { AUTOMATIC, MANUAL_TARGET_FALLBACK }
+
 data class BattleState(
     val opponents: List<OpponentState>,
     val targetIndex: Int = 0,
     val selectedMoveId: Int? = null,
     val playerReferenceLevel: Int? = null,
+    val targetMode: BattleTargetMode = BattleTargetMode.AUTOMATIC,
+    val capabilities: Map<String, String> = emptyMap(),
 )
 
 data class CatalogLoadingState(

@@ -25,12 +25,26 @@ describe('battle layout', () => {
     expect(screen.queryByText('ATTACK REFERENCE')).toBeNull();
   });
 
-  it('preserves the target-switch row for a double encounter', () => {
+  it('offers both targets when a double encounter needs manual cursor fallback', () => {
     const { catalog, state } = fixture(2);
-    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+    state.battle!.targetMode = 'MANUAL_TARGET_FALLBACK';
+    const send = vi.fn();
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={send} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
     expect(container.querySelector('.battle-screen')?.classList.contains('battle-double')).toBe(true);
     expect(container.querySelectorAll('.target-switch button')).toHaveLength(2);
+    container.querySelectorAll('.target-switch button')[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(send).toHaveBeenCalledWith('TARGET', { index: 1 });
+  });
+
+  it('follows an automatic double target without showing manual target controls', () => {
+    const { catalog, state } = fixture(2);
+    state.battle = { ...state.battle!, targetIndex: 1, targetMode: 'AUTOMATIC' };
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByRole('heading', { name: 'Hitmonchan' })).toBeTruthy();
+    expect(screen.getByText('AUTOMATIC TARGET')).toBeTruthy();
+    expect(container.querySelector('.target-switch')).toBeNull();
   });
 
   it('shows frequency only while the targeted species is not captured', () => {
@@ -60,6 +74,17 @@ describe('battle layout', () => {
     expect(screen.getByText('Pound')).toBeTruthy();
     expect(screen.queryByText(/FREQUENCY|encounter/i)).toBeNull();
   });
+
+  it('does not expose a simulator resolve button when Organic effectiveness is still unknown', () => {
+    const { catalog, state } = fixture(1);
+    state.settings.knowledgeMode = 'ORGANIC';
+    state.battle = { ...state.battle!, effectiveness: null, effectivenessKnown: false };
+
+    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('UNKNOWN')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'RESOLVE ATTACK' })).toBeNull();
+  });
 });
 
 function fixture(opponentCount: number): { catalog: Catalog; state: State } {
@@ -72,12 +97,12 @@ function fixture(opponentCount: number): { catalog: Catalog; state: State } {
       { id: 2, dex: 2, name: 'Hitmonchan', typeIds: [1], stats: null, description: 'Entry', height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
     ],
   } satisfies Catalog;
-  const opponents = catalog.species.slice(0, opponentCount).map(species => ({ speciesId: species.id, level: 34, rarity: 'Ordinary Good', moves: [] }));
+  const opponents = catalog.species.slice(0, opponentCount).map(species => ({ speciesId: species.id, level: 34, typeIds: species.typeIds, rarity: 'Ordinary Good', moves: [] }));
   const state = {
     version: 1, screen: 'BATTLE', priorScreen: 'POKEDEX', settingsReturnScreen: 'BATTLE', selectedSpeciesId: null, filter: 'ALL', selectedAreaId: null, battleTab: 'ATTACK',
     settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
     speciesState: { 1: { seen: true, caught: false, team: false, ballId: null }, 2: { seen: true, caught: false, team: false, ballId: null } }, observedMoves: {},
-    battle: { opponents, targetIndex: 0, selectedMoveId: 1, effectiveness: 'NEUTRAL', effectivenessKnown: true },
+    battle: { opponents, targetIndex: 0, targetMode: 'AUTOMATIC', capabilities: {}, selectedMoveId: 1, effectiveness: 'NEUTRAL', effectivenessKnown: true },
     catalogReady: true, catalogName: 'fixture.gba', error: null, activeRulesetId: null, rulesetAssumed: true,
     loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
   } satisfies State;
