@@ -23,6 +23,38 @@ object SpriteMaterializer {
         requestedPaletteTable: Int?,
     ): Map<Int, RgbaSprite> {
         val table = layout.tables.sprites ?: return emptyMap()
+        layout.pokeemeraldExpansion?.let { expansion ->
+            val stride = table.stride ?: expansion.speciesRecordSize
+            val paletteDelta = expansion.normalPalettePointerOffset - expansion.frontSpritePointerOffset
+            return buildMap {
+                repeat(table.count) { id ->
+                    val sprite = runCatching {
+                        val entry = table.offset + id * stride
+                        val pointer = rom.gbaPointer(entry) ?: error("invalid expansion front-sprite pointer")
+                        val graphics = if (rom.u8(pointer) == 0x10 && rom.u24le(pointer + 1) >= 2048) {
+                            GbaRomCompression.decodeAt(rom, pointer)
+                        } else {
+                            rom.slice(pointer, 2048)
+                        }
+                        require(graphics.size >= 2048)
+                        val indexed = TileRenderer.gba4Bpp(graphics.copyOf(2048), 8, 8)
+                        val palettePointer = rom.gbaPointer(entry + paletteDelta)
+                            ?: error("invalid expansion normal-palette pointer")
+                        val paletteBytes = if (rom.u8(palettePointer) == 0x10 && rom.u24le(palettePointer + 1) >= 32) {
+                            GbaRomCompression.decodeAt(rom, palettePointer)
+                        } else {
+                            rom.slice(palettePointer, 32)
+                        }
+                        val palette = ShortArray(16) { index ->
+                            ((paletteBytes[index * 2].toInt() and 0xFF) or
+                                ((paletteBytes[index * 2 + 1].toInt() and 0xFF) shl 8)).toShort()
+                        }
+                        TileRenderer.applyBgr555Palette(indexed, palette)
+                    }.getOrNull()
+                    if (sprite != null) put(id, sprite)
+                }
+            }
+        }
         val paletteTable = requestedPaletteTable
             ?: headerPaletteTable(rom)
             ?: locateGbaPaletteTable(rom, table.count, table.offset)

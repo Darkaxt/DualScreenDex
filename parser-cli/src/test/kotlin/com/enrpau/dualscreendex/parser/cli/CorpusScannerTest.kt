@@ -74,4 +74,15 @@ class CorpusScannerTest {
 
         assertEquals(emptyList<CorpusInput>(), CorpusScanner().scan(root))
     }
+
+    @Test
+    fun explicitCorpusModeIncludesHackNamesWithoutPokemonButStillExcludesKnownSpinOffs() {
+        val root = temporaryFolder.newFolder("named-hacks").toPath()
+        Files.write(root.resolve("Gaia.gba"), ByteArray(0xC0))
+        Files.write(root.resolve("Pokemon Pinball.gbc"), ByteArray(0x150))
+
+        val found = CorpusScanner(includeAllRomNames = true).scan(root)
+
+        assertEquals(listOf("Gaia.gba"), found.map(CorpusInput::displayName))
+    }
 }

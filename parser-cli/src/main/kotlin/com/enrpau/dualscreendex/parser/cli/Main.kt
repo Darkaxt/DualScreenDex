@@ -12,7 +12,7 @@ import kotlin.system.exitProcess
 import kotlin.time.measureTimedValue
 import kotlin.time.measureTime
 
-private const val USAGE = "parser-cli <root> [<root> ...] --json <path> --markdown <path> [--cache-dir <path>]"
+private const val USAGE = "parser-cli <root> [<root> ...] --json <path> --markdown <path> [--cache-dir <path>] [--all-roms]"
 
 fun main(arguments: Array<String>) {
     if (arguments.any { it == "--help" || it == "-h" }) {
@@ -27,7 +27,7 @@ fun main(arguments: Array<String>) {
         exitProcess(2)
     }
 
-    val scanner = CorpusScanner()
+    val scanner = CorpusScanner(includeAllRomNames = options.includeAllRomNames)
     val inputs = scanner.scan(options.roots)
     val cache = options.cacheDirectory?.let { CatalogCache(it.toFile(), JdbcCatalogDatabaseFactory) }
     val results = inputs.mapIndexed { index, input ->
@@ -63,6 +63,7 @@ fun main(arguments: Array<String>) {
                         )
                     } ?: measured.value.analysis,
                     catalog = materialized?.let(CatalogMetrics.Companion::from),
+                    samples = materialized?.let(CatalogSamples.Companion::from),
                     catalogError = measured.value.catalog?.exceptionOrNull()?.let(::readableFailure),
                     persistence = persisted?.getOrNull(),
                     persistenceError = persisted?.exceptionOrNull()?.let(::readableFailure),
@@ -138,11 +139,12 @@ private fun write(path: Path, content: String) {
     Files.writeString(path, content)
 }
 
-private data class CliOptions(
+internal data class CliOptions(
     val roots: List<Path>,
     val json: Path,
     val markdown: Path,
     val cacheDirectory: Path?,
+    val includeAllRomNames: Boolean,
 ) {
     companion object {
         fun parse(arguments: Array<String>): CliOptions {
@@ -150,12 +152,14 @@ private data class CliOptions(
             var json: Path? = null
             var markdown: Path? = null
             var cacheDirectory: Path? = null
+            var includeAllRomNames = false
             var index = 0
             while (index < arguments.size) {
                 when (val argument = arguments[index]) {
                     "--json" -> json = valueAfter(arguments, ++index, argument)
                     "--markdown" -> markdown = valueAfter(arguments, ++index, argument)
                     "--cache-dir" -> cacheDirectory = valueAfter(arguments, ++index, argument)
+                    "--all-roms" -> includeAllRomNames = true
                     else -> {
                         require(!argument.startsWith("--")) { "unknown option: $argument" }
                         roots.add(Path.of(argument))
@@ -169,6 +173,7 @@ private data class CliOptions(
                 json = requireNotNull(json) { "--json is required" },
                 markdown = requireNotNull(markdown) { "--markdown is required" },
                 cacheDirectory = cacheDirectory,
+                includeAllRomNames = includeAllRomNames,
             )
         }
 

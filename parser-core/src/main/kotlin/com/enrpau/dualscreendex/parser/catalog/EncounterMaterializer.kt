@@ -11,15 +11,95 @@ object EncounterMethods {
     const val GRASS_MORNING = 5
     const val GRASS_DAY = 6
     const val GRASS_NIGHT = 7
+    const val HIDDEN = 8
 }
 
 object EncounterMaterializer {
-    fun materialize(rom: RomImage, layout: ResolvedRomLayout): List<EncounterArea> = when (layout.generation) {
+    fun materialize(rom: RomImage, layout: ResolvedRomLayout): List<EncounterArea> = when {
+        layout.pokeemeraldExpansion != null -> pokeemeraldExpansion(rom, layout.speciesCount ?: 0)
+        else -> when (layout.generation) {
         1 -> gen1(rom, layout.speciesCount ?: 190)
         2 -> gen2(rom, layout.speciesCount ?: 251)
         3 -> gen3(rom, layout.speciesCount ?: 412)
         else -> emptyList()
+        }
     }
+
+    private fun pokeemeraldExpansion(rom: RomImage, speciesCount: Int): List<EncounterArea> {
+        val table = findExpansionHeaderTable(rom, speciesCount) ?: return emptyList()
+        return buildList {
+            repeat(table.second) { index ->
+                val header = table.first + index * EXPANSION_HEADER_SIZE
+                val group = rom.u8(header)
+                val map = rom.u8(header + 1)
+                repeat(EXPANSION_TIME_COUNT) { time ->
+                    EXPANSION_METHODS.forEachIndexed { methodIndex, method ->
+                        val info = rom.gbaPointer(header + 4 + (time * EXPANSION_METHODS.size + methodIndex) * 4)
+                            ?: return@forEachIndexed
+                        val slots = rom.gbaPointer(info + 4) ?: return@forEachIndexed
+                        add(
+                            EncounterArea(
+                                id = groupMapId(group, map) * 100 + time * 10 + method,
+                                name = CatalogField.available(
+                                    "Map $group-$map - ${EXPANSION_TIME_LABELS[time]} ${EXPANSION_LABELS[methodIndex]}",
+                                ),
+                                methodId = method,
+                                slots = readGen3Slots(
+                                    rom,
+                                    slots,
+                                    EXPANSION_SLOT_COUNTS[methodIndex],
+                                    EXPANSION_WEIGHTS[methodIndex],
+                                ),
+                                windows = setOf(EXPANSION_WINDOWS[time]),
+                            ),
+                        )
+                    }
+                }
+            }
+        }.distinctBy { it.id }
+    }
+
+    private fun findExpansionHeaderTable(rom: RomImage, speciesCount: Int): Pair<Int, Int>? {
+        val candidates = mutableListOf<Pair<Int, Int>>()
+        var offset = 0
+        while (offset + EXPANSION_HEADER_SIZE <= rom.size) {
+            if (validExpansionHeader(rom, offset, speciesCount)) {
+                var count = 0
+                var cursor = offset
+                while (count < 2048 && cursor + EXPANSION_HEADER_SIZE <= rom.size &&
+                    validExpansionHeader(rom, cursor, speciesCount)
+                ) {
+                    count++
+                    cursor += EXPANSION_HEADER_SIZE
+                }
+                if (count >= 3 && cursor + 1 < rom.size && rom.u8(cursor) == 0xFF && rom.u8(cursor + 1) == 0xFF) {
+                    candidates += offset to count
+                }
+            }
+            offset += 4
+        }
+        val best = candidates.maxByOrNull { it.second } ?: return null
+        return best.takeIf { winner -> candidates.count { it.second == winner.second } == 1 }
+    }
+
+    private fun validExpansionHeader(rom: RomImage, offset: Int, speciesCount: Int): Boolean = runCatching {
+        if (!validGroupMap(rom.u8(offset), rom.u8(offset + 1)) || rom.u8(offset + 2) != 0 || rom.u8(offset + 3) != 0) {
+            return@runCatching false
+        }
+        var populated = 0
+        repeat(EXPANSION_TIME_COUNT * EXPANSION_METHODS.size) { index ->
+            val raw = rom.u32le(offset + 4 + index * 4)
+            if (raw != 0L) {
+                val info = rom.gbaPointer(offset + 4 + index * 4) ?: return@runCatching false
+                val methodIndex = index % EXPANSION_METHODS.size
+                if (!validGen3Info(rom, info, EXPANSION_SLOT_COUNTS[methodIndex], speciesCount)) {
+                    return@runCatching false
+                }
+                populated++
+            }
+        }
+        populated > 0
+    }.getOrDefault(false)
 
     private fun gen1(rom: RomImage, speciesCount: Int): List<EncounterArea> {
         val pointerCount = 248
@@ -313,6 +393,8 @@ object EncounterMaterializer {
     private const val GB_BANK_SIZE = 0x4000
     private val GB_SWITCHABLE_ADDRESS = 0x4000..0x7FFF
     private const val GEN3_HEADER_SIZE = 20
+    private const val EXPANSION_HEADER_SIZE = 84
+    private const val EXPANSION_TIME_COUNT = 4
     private const val CFRU_WILD_HEADER_POINTER = 0x82990
     private val GEN1_WEIGHTS = intArrayOf(20, 20, 15, 10, 10, 10, 5, 5, 4, 1)
     private val GEN2_GRASS_WEIGHTS = intArrayOf(30, 30, 20, 10, 5, 4, 1)
@@ -330,5 +412,28 @@ object EncounterMaterializer {
         intArrayOf(60, 30, 5, 4, 1),
         intArrayOf(60, 30, 5, 4, 1),
         intArrayOf(70, 30, 60, 20, 20, 40, 40, 15, 4, 1),
+    )
+    private val EXPANSION_METHODS = intArrayOf(
+        EncounterMethods.GRASS,
+        EncounterMethods.WATER,
+        EncounterMethods.ROCK_SMASH,
+        EncounterMethods.FISHING,
+        EncounterMethods.HIDDEN,
+    )
+    private val EXPANSION_LABELS = arrayOf("grass", "water", "rock smash", "fishing", "hidden")
+    private val EXPANSION_TIME_LABELS = arrayOf("morning", "day", "evening", "night")
+    private val EXPANSION_WINDOWS = arrayOf(
+        EncounterWindow.MORNING,
+        EncounterWindow.DAY,
+        EncounterWindow.DAY,
+        EncounterWindow.NIGHT,
+    )
+    private val EXPANSION_SLOT_COUNTS = intArrayOf(12, 5, 5, 10, 3)
+    private val EXPANSION_WEIGHTS = arrayOf(
+        GEN3_WEIGHTS[0],
+        GEN3_WEIGHTS[1],
+        GEN3_WEIGHTS[2],
+        GEN3_WEIGHTS[3],
+        intArrayOf(60, 30, 10),
     )
 }

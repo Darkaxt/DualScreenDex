@@ -59,7 +59,18 @@ data class TableLayout(
     val elementSize: Int? = null,
     val bankAdjustment: Int = 0,
     val bankRemap: Map<Int, Int> = emptyMap(),
+    /** Physical distance between records when [recordSize] describes only the exposed field. */
+    val stride: Int? = null,
+    /** Each record starts with a GBA pointer to the exposed value instead of inline bytes. */
+    val valuesArePointers: Boolean = false,
+    /** Byte-level record interpretation after structural validation. */
+    val format: TableRecordFormat = TableRecordFormat.STANDARD,
 )
+
+enum class TableRecordFormat {
+    STANDARD,
+    CFRU_MOVE_16,
+}
 
 data class ProfileTables(
     val speciesNames: TableLayout? = null,
@@ -81,6 +92,41 @@ data class ResolvedRomLayout(
     val speciesCount: Int?,
     val moveCount: Int?,
     val tables: ProfileTables,
+    val pokeemeraldExpansion: PokeemeraldExpansionMetadata? = null,
+)
+
+/**
+ * Layout fields published or structurally validated for pokeemerald-expansion ROMs.
+ *
+ * The expansion deliberately publishes stable table roots and counts, but compile-time options
+ * can change the size of its records. Keeping the validated offsets beside the resolved layout
+ * avoids treating a particular Battle Theater build as a hard-coded profile.
+ */
+data class PokeemeraldExpansionMetadata(
+    val headerOffset: Int,
+    val versionMajor: Int,
+    val versionMinor: Int,
+    val versionPatch: Int,
+    val speciesRecordSize: Int,
+    val speciesNameOffset: Int,
+    val speciesNameWidth: Int,
+    val categoryOffset: Int,
+    val nationalDexOffset: Int,
+    val heightOffset: Int,
+    val weightOffset: Int,
+    val descriptionPointerOffset: Int,
+    val frontSpritePointerOffset: Int,
+    val normalPalettePointerOffset: Int,
+    val abilitiesOffset: Int,
+    val growthRateOffset: Int,
+    val levelUpPointerOffset: Int,
+    val teachablePointerOffset: Int,
+    val eggMovePointerOffset: Int,
+    val evolutionPointerOffset: Int,
+    val moveRecordSize: Int,
+    val abilityRecordSize: Int,
+    val abilityNameWidth: Int,
+    val abilityDescriptionPointerOffset: Int,
 )
 
 data class RomProfile(

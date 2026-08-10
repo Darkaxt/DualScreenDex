@@ -9,7 +9,7 @@ object RomHeaderReader {
         if (rom.size >= 0xC0 && hasGbaLogoArea(rom)) {
             val title = ascii(rom.slice(0xA0, 12))
             val gameCode = ascii(rom.slice(0xAC, 4))
-            if (gameCode.length == 4 && gameCode.all { it.isLetterOrDigit() }) {
+            if (title.isNotBlank() && gameCode.length == 4 && gameCode.all { it.code in 0x20..0x7e }) {
                 return RomHeader(Platform.GBA, title, gameCode, rom.u8(0xBC))
             }
         }
@@ -27,8 +27,8 @@ object RomHeaderReader {
         return RomHeader(Platform.UNKNOWN, "")
     }
 
-    private fun hasGbaLogoArea(rom: RomImage): Boolean =
-        rom.size >= 0xC0 && rom.slice(0xB2, 2).all { (it.toInt() and 0xff) in 0..0xff }
+    private fun hasGbaLogoArea(rom: RomImage): Boolean = rom.slice(0x04, GBA_LOGO_PREFIX.size)
+        .contentEquals(GBA_LOGO_PREFIX)
 
     private fun ascii(bytes: ByteArray): String = bytes
         .takeWhile { it.toInt() != 0 }
@@ -36,4 +36,9 @@ object RomHeaderReader {
         .joinToString("")
         .trim()
         .filter { it.code in 0x20..0x7e }
+
+    private val GBA_LOGO_PREFIX = byteArrayOf(
+        0x24, 0xFF.toByte(), 0xAE.toByte(), 0x51, 0x69, 0x9A.toByte(), 0xA2.toByte(), 0x21,
+        0x3D, 0x84.toByte(), 0x82.toByte(), 0x0A,
+    )
 }

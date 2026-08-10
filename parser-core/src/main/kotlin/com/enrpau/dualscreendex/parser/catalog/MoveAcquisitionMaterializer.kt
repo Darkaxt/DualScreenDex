@@ -16,6 +16,7 @@ object MoveAcquisitionMaterializer {
     private const val EGG_SPECIES_OFFSET = 20_000
 
     fun materialize(rom: RomImage, layout: ResolvedRomLayout): MoveAcquisitionMaterialization {
+        if (layout.pokeemeraldExpansion != null) return expansionAcquisitions(rom, layout)
         val bySpecies = linkedMapOf<Int, MutableList<MoveAcquisition>>()
         val evidence = linkedMapOf<MoveAcquisitionMethod, CapabilityEvidence>()
         val gbaReferences = if (layout.generation == 3) referencedTargets(rom) else emptyMap()
@@ -30,8 +31,9 @@ object MoveAcquisitionMaterializer {
         } else {
             indirectEngineBitfieldPair(
                 rom, layout, gbaReferences, CFRU_MACHINE_MOVES_SLOT, CFRU_MACHINE_FLAGS_SLOT,
-                MoveAcquisitionMethod.MACHINE, requireMachinePrefix = true,
-            ) ?: referencedBitfieldPair(rom, layout, 58, MoveAcquisitionMethod.MACHINE, gbaReferences)
+                MoveAcquisitionMethod.MACHINE,
+            ) ?: runtimeReferencedMachinePair(rom, layout, gbaReferences)
+                ?: referencedBitfieldPair(rom, layout, 58, MoveAcquisitionMethod.MACHINE, gbaReferences)
         }
         merge(bySpecies, machines?.acquisitions.orEmpty())
         evidence[MoveAcquisitionMethod.MACHINE] = evidence(
@@ -71,6 +73,75 @@ object MoveAcquisitionMaterializer {
             if (tutorNotApplicable) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
         )
 
+        return MoveAcquisitionMaterialization(
+            acquisitionsBySpecies = bySpecies.mapValues { (_, values) -> values.distinct() },
+            evidence = evidence,
+        )
+    }
+
+    private fun expansionAcquisitions(rom: RomImage, layout: ResolvedRomLayout): MoveAcquisitionMaterialization {
+        val expansion = requireNotNull(layout.pokeemeraldExpansion)
+        val species = layout.tables.baseStats ?: return MoveAcquisitionMaterialization(emptyMap(), emptyMap())
+        val moveCount = layout.moveCount ?: return MoveAcquisitionMaterialization(emptyMap(), emptyMap())
+        val stride = species.stride ?: expansion.speciesRecordSize
+        val bySpecies = linkedMapOf<Int, MutableList<MoveAcquisition>>()
+
+        fun read(fieldOffset: Int, method: MoveAcquisitionMethod): Pair<Int, Int> {
+            var populatedSpecies = 0
+            var links = 0
+            repeat(species.count) { speciesId ->
+                val pointer = rom.gbaPointer(species.offset + speciesId * stride + fieldOffset) ?: return@repeat
+                val seen = mutableSetOf<Int>()
+                val moves = buildList {
+                    var cursor = pointer
+                    repeat(1024) {
+                        val move = rom.u16le(cursor)
+                        if (move == 0xFFFF) return@buildList
+                        if (move !in 1 until moveCount) return@buildList
+                        if (seen.add(move)) {
+                            add(MoveAcquisition(move, method))
+                        }
+                        cursor += 2
+                    }
+                }
+                if (moves.isNotEmpty()) {
+                    populatedSpecies++
+                    links += moves.size
+                    bySpecies.getOrPut(speciesId) { mutableListOf() }.addAll(moves)
+                }
+            }
+            return populatedSpecies to links
+        }
+
+        val (teachableSpecies, teachableLinks) = read(expansion.teachablePointerOffset, MoveAcquisitionMethod.MACHINE)
+        val (eggSpecies, eggLinks) = read(expansion.eggMovePointerOffset, MoveAcquisitionMethod.EGG)
+        val evidence = linkedMapOf<MoveAcquisitionMethod, CapabilityEvidence>()
+        evidence[MoveAcquisitionMethod.MACHINE] = CapabilityEvidence(
+            capability = RomCapability.MACHINE_MOVES,
+            compatible = teachableSpecies > 0,
+            confidence = if (teachableSpecies > 0) 1.0 else 0.0,
+            offset = species.offset + expansion.teachablePointerOffset,
+            count = teachableLinks,
+            reasons = listOf("decoded integrated expansion teachable-move lists; machine and tutor provenance is combined"),
+            status = if (teachableSpecies > 0) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
+        )
+        evidence[MoveAcquisitionMethod.EGG] = CapabilityEvidence(
+            capability = RomCapability.EGG_MOVES,
+            compatible = eggSpecies > 0,
+            confidence = if (eggSpecies > 0) 1.0 else 0.0,
+            offset = species.offset + expansion.eggMovePointerOffset,
+            count = eggLinks,
+            reasons = listOf("decoded integrated expansion egg-move lists"),
+            status = if (eggSpecies > 0) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
+        )
+        evidence[MoveAcquisitionMethod.TUTOR] = CapabilityEvidence(
+            capability = RomCapability.TUTOR_MOVES,
+            compatible = false,
+            confidence = 1.0,
+            offset = species.offset + expansion.teachablePointerOffset,
+            reasons = listOf("the expansion species record combines machine and tutor compatibility into one teachable list"),
+            status = CapabilityStatus.NOT_APPLICABLE,
+        )
         return MoveAcquisitionMaterialization(
             acquisitionsBySpecies = bySpecies.mapValues { (_, values) -> values.distinct() },
             evidence = evidence,
@@ -246,6 +317,7 @@ object MoveAcquisitionMaterializer {
             }
             var cursor = start
             var currentSpecies = 0
+            var acceptCurrentGroup = false
             var groups = 0
             var moves = 0
             var terminated = false
@@ -264,18 +336,18 @@ object MoveAcquisitionMaterializer {
                     value == 0xFFFF -> terminated = true
                     value in (EGG_SPECIES_OFFSET + 1)..(EGG_SPECIES_OFFSET + speciesCount) -> {
                         val species = value - EGG_SPECIES_OFFSET
-                        if (species in seenSpecies || (currentSpecies > 0 && acquisitions[currentSpecies].isNullOrEmpty())) {
-                            valid = false
-                        } else {
-                            currentSpecies = species
-                            seenSpecies += species
+                        currentSpecies = species
+                        acceptCurrentGroup = seenSpecies.add(species)
+                        if (acceptCurrentGroup) {
                             groups++
+                            acquisitions.getOrPut(species) { mutableListOf() }
                         }
                     }
                     currentSpecies > 0 && value in 1 until moveCount -> {
-                        acquisitions.getOrPut(currentSpecies) { mutableListOf() } +=
-                            MoveAcquisition(value, MoveAcquisitionMethod.EGG)
-                        moves++
+                        if (acceptCurrentGroup) {
+                            acquisitions.getValue(currentSpecies) += MoveAcquisition(value, MoveAcquisitionMethod.EGG)
+                            moves++
+                        }
                     }
                     else -> valid = false
                 }
@@ -307,6 +379,8 @@ object MoveAcquisitionMaterializer {
             rom, layout, references, CFRU_TUTOR_MOVES_SLOT, CFRU_TUTOR_FLAGS_SLOT,
             MoveAcquisitionMethod.TUTOR,
         )?.let { return it }
+        runtimeReferencedTutorPair(rom, layout, references)?.let { return it }
+        adjacentReferencedTutorPair(rom, layout, references)?.let { return it }
         val candidates = (GEN_THREE_TUTOR_PREFIX.size..MAX_STANDARD_TUTOR_COUNT).mapNotNull { count ->
             referencedBitfieldPair(
                 rom,
@@ -323,6 +397,226 @@ object MoveAcquisitionMaterializer {
         )
     }
 
+    private fun runtimeReferencedTutorPair(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        references: Map<Int, List<Int>>,
+    ): Candidate? {
+        val speciesCount = layout.speciesCount ?: return null
+        val moveCount = layout.moveCount ?: return null
+        val moveLists = references.mapNotNull { (offset, moveReferences) ->
+            val moves = decodeSentinelTutorMoves(rom, offset, moveCount) ?: return@mapNotNull null
+            Triple(offset, moves, moveReferences)
+        }
+        val flags = references.mapNotNull { (offset, flagReferences) ->
+            if (flagReferences.none { corroboratesTutorBitfieldIndexing(rom, it) }) return@mapNotNull null
+            offset to flagReferences
+        }
+        val pairs = moveLists.flatMap { (moveListOffset, moves, moveReferences) ->
+            flags.mapNotNull { (flagsOffset, flagReferences) ->
+                val proximity = referenceProximity(moveReferences, flagReferences)
+                if (proximity > NEAR_TUTOR_RUNTIME_REFERENCE_DISTANCE) return@mapNotNull null
+                val validation = validateRuntimeBitfield(rom, flagsOffset, speciesCount, moves.size)
+                    ?: return@mapNotNull null
+                RuntimeTutorPair(moveListOffset, moves, flagsOffset, validation, proximity)
+            }
+        }.distinctBy { it.moveListOffset to it.flagsOffset }
+        val best = pairs.minWithOrNull(
+            compareBy<RuntimeTutorPair> { it.proximity }
+                .thenByDescending { it.validation.confidence }
+                .thenByDescending { it.moves.size },
+        ) ?: return null
+        if (pairs.any { it !== best && it.proximity == best.proximity && it.validation.confidence == best.validation.confidence }) {
+            return null
+        }
+        val acquisitions = (0 until speciesCount).associate { species ->
+            val row = best.flagsOffset + species * best.validation.rowBytes
+            species to best.moves.mapIndexedNotNull { bit, moveId ->
+                val enabled = rom.u8(row + bit / 8) and (1 shl (bit % 8)) != 0
+                MoveAcquisition(moveId, MoveAcquisitionMethod.TUTOR, bit + 1).takeIf { enabled }
+            }
+        }
+        return Candidate(best.moveListOffset, best.validation.confidence, acquisitions)
+    }
+
+    private fun decodeSentinelTutorMoves(rom: RomImage, offset: Int, moveCount: Int): List<Int>? {
+        val moves = mutableListOf<Int>()
+        repeat(MAX_RUNTIME_TUTOR_COUNT + 1) { index ->
+            if (offset + index * 2 + 2 > rom.size) return null
+            val move = rom.u16le(offset + index * 2)
+            if (move == 0xFFFF) {
+                return moves.takeIf { it.size in MIN_TUTOR_COUNT..MAX_RUNTIME_TUTOR_COUNT && it.distinct().size == it.size }
+            }
+            if (move !in 1 until moveCount || move in moves) return null
+            moves += move
+        }
+        return null
+    }
+
+    private fun corroboratesTutorBitfieldIndexing(rom: RomImage, reference: Int): Boolean {
+        val start = maxOf(0, reference - TUTOR_BITFIELD_CODE_WINDOW) and 1.inv()
+        val end = minOf(rom.size - 2, reference + 8)
+        val instructions = generateSequence(start) { previous ->
+            (previous + 2).takeIf { it <= end }
+        }.map(rom::u16le).toList()
+        val shiftsSpeciesHigh = instructions.any { instruction ->
+            instruction and 0xF800 == 0 && (instruction ushr 6) and 0x1F == 16
+        }
+        val shiftsSpeciesDown = instructions.any { instruction ->
+            instruction and 0xF800 == 0x0800 && (instruction ushr 6) and 0x1F == 14
+        }
+        val shiftsMask = instructions.any { it and 0xFFC0 == 0x4080 }
+        val loadsWord = instructions.any { it and 0xF800 == 0x6800 }
+        val masksWord = instructions.any { it and 0xFFC0 == 0x4000 }
+        return shiftsSpeciesHigh && shiftsSpeciesDown && shiftsMask && loadsWord && masksWord
+    }
+
+    private fun runtimeReferencedMachinePair(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        references: Map<Int, List<Int>>,
+    ): Candidate? {
+        val speciesCount = layout.speciesCount ?: return null
+        val moveCount = layout.moveCount ?: return null
+        val machineCount = GEN_THREE_TM_PREFIX.size + 8
+        val flagCandidates = references.mapNotNull { (target, targetReferences) ->
+            val codeReferences = targetReferences.count { reference ->
+                corroboratesSplitWordBitfieldIndexing(rom, reference)
+            }
+            if (codeReferences < 2) return@mapNotNull null
+            validateRuntimeBitfield(rom, target, speciesCount, machineCount)?.let { validation ->
+                Triple(target, validation, codeReferences)
+            }
+        }
+        if (flagCandidates.size != 1) return null
+        val (flagsOffset, validation, _) = flagCandidates.single()
+
+        val moveLists = references.keys.mapNotNull { moveListOffset ->
+            if (moveListOffset + machineCount * 2 > rom.size) return@mapNotNull null
+            val moves = List(machineCount) { rom.u16le(moveListOffset + it * 2) }
+            if (moves.any { it !in 1 until moveCount } || moves.distinct().size != moves.size ||
+                !hasExactMoveListBoundary(rom, moveListOffset, moves, moveCount)
+            ) return@mapNotNull null
+            val prefixSimilarity = GEN_THREE_TM_PREFIX.indices.count { index ->
+                moves[index] == GEN_THREE_TM_PREFIX[index]
+            }.toDouble() / GEN_THREE_TM_PREFIX.size
+            if (prefixSimilarity < MIN_MACHINE_RUNTIME_PREFIX_SIMILARITY) return@mapNotNull null
+            moveListOffset to moves
+        }.distinctBy { it.second }
+        if (moveLists.size != 1) return null
+        val (moveListOffset, moves) = moveLists.single()
+        val acquisitions = (0 until speciesCount).associate { species ->
+            val row = flagsOffset + species * validation.rowBytes
+            species to moves.mapIndexedNotNull { bit, moveId ->
+                val enabled = rom.u8(row + bit / 8) and (1 shl (bit % 8)) != 0
+                MoveAcquisition(moveId, MoveAcquisitionMethod.MACHINE, bit + 1).takeIf { enabled }
+            }
+        }
+        return Candidate(moveListOffset, validation.confidence, acquisitions)
+    }
+
+    private fun corroboratesSplitWordBitfieldIndexing(rom: RomImage, reference: Int): Boolean {
+        val start = maxOf(0, reference - MACHINE_BITFIELD_CODE_WINDOW) and 1.inv()
+        val end = minOf(rom.size - 2, reference + 8)
+        val instructions = generateSequence(start) { previous ->
+            (previous + 2).takeIf { it <= end }
+        }.map(rom::u16le).toList()
+        val shiftsByThree = instructions.any { instruction ->
+            instruction and 0xF800 == 0 && (instruction ushr 6) and 0x1F == 3
+        }
+        val loadsWord = instructions.any { it and 0xF800 == 0x6800 }
+        val masksWord = instructions.any { it and 0xFFC0 == 0x4000 }
+        val comparesWordBoundary = instructions.any { it and 0xF800 == 0x2800 && it and 0xFF == 31 }
+        val subtractsWordBoundary = instructions.any { it and 0xF800 == 0x3800 && it and 0xFF == 32 }
+        return shiftsByThree && loadsWord && masksWord && comparesWordBoundary && subtractsWordBoundary
+    }
+
+    private fun validateRuntimeBitfield(
+        rom: RomImage,
+        offset: Int,
+        speciesCount: Int,
+        bitCount: Int,
+    ): BitfieldValidation? {
+        val rowBytes = (bitCount + 7) / 8
+        if (offset < 0 || offset.toLong() + speciesCount.toLong() * rowBytes > rom.size) return null
+        val usedBits = BooleanArray(bitCount)
+        var nonEmpty = 0
+        repeat(speciesCount) { species ->
+            val row = offset + species * rowBytes
+            var any = false
+            repeat(bitCount) { bit ->
+                if (rom.u8(row + bit / 8) and (1 shl (bit % 8)) != 0) {
+                    usedBits[bit] = true
+                    any = true
+                }
+            }
+            if (any) nonEmpty++
+        }
+        val speciesRatio = nonEmpty.toDouble() / speciesCount
+        val bitRatio = usedBits.count { it }.toDouble() / bitCount
+        if (speciesRatio !in 0.15..1.0 || bitRatio < 0.75) return null
+        return BitfieldValidation((speciesRatio + bitRatio) / 2.0, rowBytes)
+    }
+
+    private fun adjacentReferencedTutorPair(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        references: Map<Int, List<Int>>,
+    ): Candidate? {
+        val speciesCount = layout.speciesCount ?: return null
+        val moveCount = layout.moveCount ?: return null
+        val candidates = mutableListOf<AdjacentTutorCandidate>()
+        for (count in MIN_TUTOR_COUNT..MAX_STANDARD_TUTOR_COUNT) {
+            references.forEach { (moveListOffset, moveReferences) ->
+                if (moveReferences.size < 2 || moveListOffset + count * 2 > rom.size) return@forEach
+                val moves = List(count) { rom.u16le(moveListOffset + it * 2) }
+                if (moves.any { it !in 1 until moveCount } || moves.distinct().size != moves.size ||
+                    !hasExactMoveListBoundary(rom, moveListOffset, moves, moveCount)
+                ) return@forEach
+                val afterList = moveListOffset + count * 2
+                val possibleFlagOffsets = linkedSetOf(afterList, (afterList + 3) and 3.inv())
+                for (capacity in count + 1..MAX_STANDARD_TUTOR_COUNT) {
+                    val paddedEnd = moveListOffset + capacity * 2
+                    if ((afterList until paddedEnd).any { rom.u8(it) != 0 }) break
+                    possibleFlagOffsets += paddedEnd
+                    possibleFlagOffsets += (paddedEnd + 3) and 3.inv()
+                }
+                possibleFlagOffsets.forEach { flagsOffset ->
+                    val flagReferences = references[flagsOffset] ?: return@forEach
+                    val validation = validateBitfield(rom, flagsOffset, speciesCount, count) ?: return@forEach
+                    if ((0 until validation.rowBytes).any { rom.u8(flagsOffset + it) != 0 }) return@forEach
+                    val confidence = minOf(
+                        1.0,
+                        validation.confidence * 0.8 + 0.1 +
+                            minOf(0.05, moveReferences.size * 0.02) +
+                            minOf(0.05, flagReferences.size * 0.02),
+                    )
+                    candidates += AdjacentTutorCandidate(
+                        moveListOffset, flagsOffset, validation.rowBytes, moves, confidence,
+                        moveReferences.size + flagReferences.size,
+                    )
+                }
+            }
+        }
+        val distinct = candidates.distinctBy { it.moves to it.flagsOffset }
+        val best = distinct.maxWithOrNull(
+            compareBy<AdjacentTutorCandidate> { it.confidence }
+                .thenBy { it.referenceCount }
+                .thenBy { it.moves.size },
+        ) ?: return null
+        if (distinct.any { it !== best && best.confidence - it.confidence < 0.05 && it.referenceCount >= best.referenceCount }) {
+            return null
+        }
+        val acquisitions = (0 until speciesCount).associate { species ->
+            val row = best.flagsOffset + species * best.rowBytes
+            species to best.moves.mapIndexedNotNull { bit, moveId ->
+                val enabled = rom.u8(row + bit / 8) and (1 shl (bit % 8)) != 0
+                MoveAcquisition(moveId, MoveAcquisitionMethod.TUTOR, bit + 1).takeIf { enabled }
+            }
+        }
+        return Candidate(best.moveListOffset, best.confidence, acquisitions)
+    }
+
     private fun indirectEngineBitfieldPair(
         rom: RomImage,
         layout: ResolvedRomLayout,
@@ -335,18 +629,21 @@ object MoveAcquisitionMaterializer {
         val speciesCount = layout.speciesCount ?: return null
         val moveCount = layout.moveCount ?: return null
         if (movePointerSlot + 4 > rom.size || flagsPointerSlot + 4 > rom.size) return null
-        if (references[movePointerSlot].isNullOrEmpty() || references[flagsPointerSlot].isNullOrEmpty()) return null
         val moveListOffset = rom.gbaPointer(movePointerSlot) ?: return null
         val flagsOffset = rom.gbaPointer(flagsPointerSlot) ?: return null
-        val inferred = inferBitfieldLayout(rom, flagsOffset, speciesCount) ?: return null
-        if (moveListOffset + inferred.bitCount * 2 > rom.size) return null
+        val inferred = inferBitfieldLayouts(rom, flagsOffset, speciesCount)
+            .filter { candidate ->
+                if (moveListOffset + candidate.bitCount * 2 > rom.size) return@filter false
+                val candidateMoves = List(candidate.bitCount) { rom.u16le(moveListOffset + it * 2) }
+                candidateMoves.all { it in 1 until moveCount } &&
+                    (method != MoveAcquisitionMethod.TUTOR || candidateMoves.distinct().size == candidateMoves.size) &&
+                    (!requireMachinePrefix || GEN_THREE_TM_PREFIX.indices.count { index ->
+                        candidateMoves.getOrNull(index) == GEN_THREE_TM_PREFIX[index]
+                    }.toDouble() / GEN_THREE_TM_PREFIX.size >= MIN_MACHINE_PREFIX_SIMILARITY)
+            }
+            .maxWithOrNull(compareBy<InferredBitfieldLayout> { it.bitCount }.thenBy { it.confidence })
+            ?: return null
         val moves = List(inferred.bitCount) { rom.u16le(moveListOffset + it * 2) }
-        if (moves.any { it !in 1 until moveCount }) return null
-        if (method == MoveAcquisitionMethod.TUTOR && moves.distinct().size != moves.size) return null
-        if (requireMachinePrefix) {
-            val matchingPrefix = GEN_THREE_TM_PREFIX.indices.count { moves.getOrNull(it) == GEN_THREE_TM_PREFIX[it] }
-            if (matchingPrefix.toDouble() / GEN_THREE_TM_PREFIX.size < MIN_MACHINE_PREFIX_SIMILARITY) return null
-        }
         val acquisitions = (0 until speciesCount).associate { species ->
             val row = flagsOffset + species * inferred.rowBytes
             species to moves.mapIndexedNotNull { bit, moveId ->
@@ -357,9 +654,9 @@ object MoveAcquisitionMaterializer {
         return Candidate(moveListOffset, inferred.confidence, acquisitions)
     }
 
-    private fun inferBitfieldLayout(rom: RomImage, offset: Int, speciesCount: Int): InferredBitfieldLayout? {
+    private fun inferBitfieldLayouts(rom: RomImage, offset: Int, speciesCount: Int): List<InferredBitfieldLayout> {
         val candidates = mutableListOf<InferredBitfieldLayout>()
-        for (rowBytes in 4..MAX_INDIRECT_BITFIELD_ROW_BYTES step 4) {
+        for (rowBytes in 1..MAX_INDIRECT_BITFIELD_ROW_BYTES) {
             if (offset.toLong() + speciesCount.toLong() * rowBytes > rom.size) continue
             if ((0 until rowBytes).any { rom.u8(offset + it) != 0 }) continue
             val used = BooleanArray(rowBytes * 8)
@@ -387,7 +684,7 @@ object MoveAcquisitionMaterializer {
                 )
             }
         }
-        return candidates.maxWithOrNull(compareBy<InferredBitfieldLayout> { it.bitCount }.thenBy { it.confidence })
+        return candidates
     }
 
     private fun pointerIndexedTutorPair(
@@ -703,6 +1000,23 @@ object MoveAcquisitionMaterializer {
         val confidence: Double,
     )
 
+    private data class AdjacentTutorCandidate(
+        val moveListOffset: Int,
+        val flagsOffset: Int,
+        val rowBytes: Int,
+        val moves: List<Int>,
+        val confidence: Double,
+        val referenceCount: Int,
+    )
+
+    private data class RuntimeTutorPair(
+        val moveListOffset: Int,
+        val moves: List<Int>,
+        val flagsOffset: Int,
+        val validation: BitfieldValidation,
+        val proximity: Int,
+    )
+
     private data class BitfieldValidation(
         val confidence: Double,
         val rowBytes: Int,
@@ -738,10 +1052,14 @@ object MoveAcquisitionMaterializer {
     private const val NEAR_REFERENCE_LITERAL_WINDOW = 32
     private const val CORROBORATED_REFERENCE_LITERAL_WINDOW = 96
     private const val MACHINE_CODE_WINDOW = 64
+    private const val MACHINE_BITFIELD_CODE_WINDOW = 80
+    private const val TUTOR_BITFIELD_CODE_WINDOW = 48
+    private const val NEAR_TUTOR_RUNTIME_REFERENCE_DISTANCE = 64
     private const val MIN_ACTIVE_HMS = 6
     private const val MIN_TUTOR_COUNT = 4
     private const val MAX_TUTOR_COUNT = 128
     private const val MAX_STANDARD_TUTOR_COUNT = 40
+    private const val MAX_RUNTIME_TUTOR_COUNT = 32
     private const val MAX_TUTOR_MOVES_PER_SPECIES = 128
     private const val MIN_TUTOR_SPECIES_COVERAGE = 0.8
     private const val CFRU_MACHINE_FLAGS_SLOT = 0x043C68
@@ -751,6 +1069,7 @@ object MoveAcquisitionMaterializer {
     private const val MAX_INDIRECT_BITFIELD_ROW_BYTES = 32
     private const val MIN_INDIRECT_MOVE_COUNT = 4
     private const val MIN_MACHINE_PREFIX_SIMILARITY = 0.8
+    private const val MIN_MACHINE_RUNTIME_PREFIX_SIMILARITY = 0.65
     private const val MIN_TUTOR_PREFIX_SIMILARITY = 0.8
     private val GEN_THREE_TM_PREFIX = listOf(
         264, 337, 352, 347, 46, 92, 258, 339, 331, 237, 241, 269, 58, 59, 63, 113, 182,

@@ -3,7 +3,7 @@ package com.enrpau.dualscreendex.parser.catalog
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 
-enum class AbilityMechanicKind { ACTIVATION_THRESHOLD, MULTIPLIER }
+enum class AbilityMechanicKind { ACTIVATION_THRESHOLD, MULTIPLIER, AI_RATING, FLAG }
 
 data class AbilityMechanic(
     val kind: AbilityMechanicKind,
@@ -29,6 +29,28 @@ object AbilityMechanicsMaterializer {
         types: Map<Int, TypeRecord>,
     ): AbilityMechanicsResult? {
         if (layout.generation != 3) return null
+        layout.pokeemeraldExpansion?.let { expansion ->
+            val table = layout.tables.abilities ?: return null
+            val stride = table.stride ?: expansion.abilityRecordSize
+            val mechanics = abilities.keys.associateWith { id ->
+                val record = table.offset + id * stride
+                val rating = rom.u8(record + expansion.abilityDescriptionPointerOffset + 4).toByte().toInt()
+                val flags = rom.u8(record + expansion.abilityDescriptionPointerOffset + 5)
+                buildList {
+                    add(AbilityMechanic(AbilityMechanicKind.AI_RATING, "AI rating", rating.toString(), rating, 1))
+                    EXPANSION_FLAG_LABELS.forEachIndexed { bit, label ->
+                        if (flags and (1 shl bit) != 0) {
+                            add(AbilityMechanic(AbilityMechanicKind.FLAG, label, "Yes", 1, 1))
+                        }
+                    }
+                }
+            }
+            return AbilityMechanicsResult(
+                sourceOffset = table.offset + expansion.abilityDescriptionPointerOffset + 4,
+                confidence = 1.0,
+                mechanicsByAbility = mechanics,
+            )
+        }
         val abilityIds = PINCH_ABILITIES.associate { definition ->
             definition.abilityName to abilities.values.singleOrNull {
                 it.name.value.equals(definition.abilityName, ignoreCase = true)
@@ -153,5 +175,15 @@ object AbilityMechanicsMaterializer {
         PinchAbilityDefinition("Blaze", "Fire"),
         PinchAbilityDefinition("Torrent", "Water"),
         PinchAbilityDefinition("Swarm", "Bug"),
+    )
+
+    private val EXPANSION_FLAG_LABELS = listOf(
+        "Cannot be copied",
+        "Cannot be swapped",
+        "Cannot be traced",
+        "Cannot be suppressed",
+        "Cannot be overwritten",
+        "Breakable",
+        "Fails on Imposter",
     )
 }

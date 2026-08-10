@@ -13,6 +13,23 @@ data class MoveDescriptionResult(
 object MoveDescriptionMaterializer {
     fun materialize(rom: RomImage, layout: ResolvedRomLayout): MoveDescriptionResult? {
         if (layout.generation != 3) return null
+        layout.pokeemeraldExpansion?.let { expansion ->
+            val table = layout.tables.moveData ?: return null
+            val count = layout.moveCount ?: return null
+            val descriptions = buildMap {
+                repeat(count - 1) { index ->
+                    val id = index + 1
+                    val record = table.offset + id * (table.stride ?: expansion.moveRecordSize)
+                    val text = rom.gbaPointer(record + 4)?.let { decodeText(rom, it) } ?: return@repeat
+                    put(id, text)
+                }
+            }
+            val expected = count - 1
+            val confidence = descriptions.size.toDouble() / expected.coerceAtLeast(1)
+            return MoveDescriptionResult(table.offset, confidence, descriptions).takeIf {
+                descriptions.size >= maxOf(3, (expected * 0.8).toInt())
+            }
+        }
         val pointerCount = (layout.moveCount ?: return null) - 1
         if (pointerCount < 3) return null
         return pointerRuns(rom)
@@ -77,6 +94,14 @@ object MoveDescriptionMaterializer {
     private fun looksLikeNaturalDescription(value: String): Boolean {
         val words = value.split(Regex("\\s+")).count { it.any(Char::isLetter) }
         return value.length >= 12 && words >= 3 && value.any(Char::isLowerCase)
+    }
+
+    private fun decodeText(rom: RomImage, offset: Int): String? {
+        val length = minOf(256, rom.size - offset)
+        val decoded = runCatching { PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(offset, length)) }.getOrNull()
+            ?: return null
+        val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
+        return normalized.takeIf { decoded.terminated && decoded.validRatio >= 0.85 && looksLikeNaturalDescription(it) }
     }
 
     private data class PointerRun(val offset: Int, val length: Int)

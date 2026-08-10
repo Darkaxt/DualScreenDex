@@ -199,6 +199,69 @@ class PokemonDatasetValidatorsTest {
     }
 
     @Test
+    fun acceptsIgnoredPayloadInDisabledGen3EvolutionSlots() {
+        val bytes = ByteArray(3 * 5 * 8)
+        putU16(bytes, 5 * 8, 4)
+        putU16(bytes, 5 * 8 + 2, 16)
+        putU16(bytes, 5 * 8 + 4, 2)
+        putU16(bytes, 5 * 8 + 8 + 2, 99)
+        putU16(bytes, 5 * 8 + 8 + 4, 2)
+
+        val result = PokemonDatasetValidators.gen3Evolutions(
+            RomImage(bytes), offset = 0, speciesCount = 3, slotsPerSpecies = 5,
+            recordSize = 8,
+        )
+
+        assertTrue(result.compatible)
+    }
+
+    @Test
+    fun acceptsCustomSentinelDataInTheUnusedGen3SpeciesZeroRow() {
+        val bytes = ByteArray(3 * 5 * 8)
+        putU16(bytes, 0, 0xFF00)
+        putU16(bytes, 2, 16)
+        putU16(bytes, 4, 30)
+        putU16(bytes, 5 * 8, 4)
+        putU16(bytes, 5 * 8 + 2, 16)
+        putU16(bytes, 5 * 8 + 4, 2)
+
+        val result = PokemonDatasetValidators.gen3Evolutions(
+            RomImage(bytes), offset = 0, speciesCount = 3, slotsPerSpecies = 5,
+            recordSize = 8,
+        )
+
+        assertTrue(result.compatible)
+    }
+
+    @Test
+    fun trimsABoundedMissingTailFromGen3EvolutionTables() {
+        val stride = 5 * 6
+        val bytes = ByteArray(10 * stride)
+        putU16(bytes, 9 * stride, 1)
+
+        val result = PokemonDatasetValidators.gen3Evolutions(
+            RomImage(bytes), offset = 0, speciesCount = 10, slotsPerSpecies = 5,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(9, result.totalRecords)
+        assertTrue(result.reasons.any { it.contains("trailing") })
+    }
+
+    @Test
+    fun rejectsScatteredInvalidGen3EvolutionRows() {
+        val stride = 5 * 6
+        val bytes = ByteArray(10 * stride)
+        putU16(bytes, 5 * stride, 1)
+
+        val result = PokemonDatasetValidators.gen3Evolutions(
+            RomImage(bytes), offset = 0, speciesCount = 10, slotsPerSpecies = 5,
+        )
+
+        assertFalse(result.compatible)
+    }
+
+    @Test
     fun acceptsGen3PackedLearnsetPointerTable() {
         val bytes = ByteArray(0x400)
         repeat(3) { index ->

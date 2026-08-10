@@ -77,6 +77,18 @@ class ParserOrchestratorTest {
     }
 
     @Test
+    fun fireRedFamilyUsesTheEngineTitleWhenAHackChangesTheGameCode() {
+        val parser = FamilyParsers.all.single { it.family == EngineFamily.FIRERED_LEAFGREEN }
+
+        val probe = parser.probe(
+            RomImage(ByteArray(512)),
+            RomHeader(Platform.GBA, "POKEMON FIRE", "GOLD"),
+        )
+
+        assertEquals(20, probe.scoreEvidence.single { it.category == "engine identity" }.points)
+    }
+
+    @Test
     fun emeraldProbeUsesRelocatedTypeChart() {
         val chartOffset = 300
         val chart = byteArrayOf(

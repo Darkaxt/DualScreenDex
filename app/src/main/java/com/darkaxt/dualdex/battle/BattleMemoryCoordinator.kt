@@ -22,6 +22,7 @@ class BattleMemoryCoordinator(
     autoStart: Boolean = true,
 ) : AutoCloseable {
     private val gen1Resolver = Gen1BattleLayoutResolver()
+    private val gen2Resolver = Gen2BattleLayoutResolver()
     private val gen3Resolver = Gen3BattleLayoutResolver()
     private val tracker = BattleObservationTracker()
     private val heartbeatExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
@@ -119,6 +120,13 @@ class BattleMemoryCoordinator(
             reader = session
             return
         }
+        if (sessionGeneration == 2) {
+            readMode = if (cachedLayout == null) ReadMode.DISCOVERY else ReadMode.CACHED
+            cachedWindowStart = 0
+            session.start(listOf(CoreMemoryRegion("wram", GEN1_WRAM_BASE, GEN1_WRAM_BYTES)))
+            reader = session
+            return
+        }
         val layout = cachedLayout
         if (layout == null) {
             readMode = ReadMode.DISCOVERY
@@ -140,6 +148,7 @@ class BattleMemoryCoordinator(
     }
 
     private fun process(regions: Map<String, ByteArray>, context: BattleCatalogContext) {
+        val validatedGen2NoBattle = context.generation == 2 && knownGen2NonBattle(regions)
         val sample = if (context.generation == 1) {
             val source = requireNotNull(regions.values.singleOrNull())
             if (readMode == ReadMode.CACHED) {
@@ -153,6 +162,18 @@ class BattleMemoryCoordinator(
                     is LayoutResolution.Ambiguous,
                     LayoutResolution.NotFound -> null
                 }
+            }
+        } else if (context.generation == 2) {
+            val source = requireNotNull(regions.values.singleOrNull())
+            val layout = cachedLayout
+            if (layout == null) {
+                when (val result = gen2Resolver.resolve(source, context.catalog)) {
+                    is LayoutResolution.Resolved -> result.sample.also { cachedLayout = it.layout }
+                    is LayoutResolution.Ambiguous,
+                    LayoutResolution.NotFound -> null
+                }
+            } else {
+                gen2Resolver.resolveKnown(source, layout, context.catalog)
             }
         } else when (readMode) {
             ReadMode.DISCOVERY -> when (val result = gen3Resolver.resolve(requireNotNull(regions.values.singleOrNull()), context.catalog)) {
@@ -181,6 +202,8 @@ class BattleMemoryCoordinator(
             )
         } else if (sample != null) {
             tracker.update(context.romIdentity, sample)
+        } else if (context.generation == 2 && !validatedGen2NoBattle) {
+            tracker.missed()
         } else {
             tracker.validatedNoBattle(context.romIdentity)
         }
@@ -190,6 +213,13 @@ class BattleMemoryCoordinator(
     private fun knownGen1NonBattle(bytes: ByteArray): Boolean {
         val layout = cachedLayout ?: return false
         val battleFlagOffset = layout.battlerCountOffset - cachedWindowStart
+        return battleFlagOffset in bytes.indices && bytes[battleFlagOffset].toInt() and 0xff == 0
+    }
+
+    private fun knownGen2NonBattle(regions: Map<String, ByteArray>): Boolean {
+        val layout = cachedLayout ?: return false
+        val bytes = regions.values.singleOrNull() ?: return false
+        val battleFlagOffset = layout.battlerCountOffset
         return battleFlagOffset in bytes.indices && bytes[battleFlagOffset].toInt() and 0xff == 0
     }
 
@@ -248,6 +278,7 @@ class BattleMemoryCoordinator(
 
     private fun supports(generation: Int, systemId: String?): Boolean = when (generation) {
         1 -> systemId.equals(GB_SYSTEM_ID, ignoreCase = true) || systemId.equals(GBC_SYSTEM_ID, ignoreCase = true)
+        2 -> systemId.equals(GB_SYSTEM_ID, ignoreCase = true) || systemId.equals(GBC_SYSTEM_ID, ignoreCase = true)
         3 -> systemId.equals(GBA_SYSTEM_ID, ignoreCase = true)
         else -> false
     }

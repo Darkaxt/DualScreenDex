@@ -36,6 +36,30 @@ class BallSpriteMaterializerTest {
         assertEquals(true, balls.containsKey(12))
     }
 
+    @Test
+    fun acceptsAValidatedBallPaletteTableContainingAnUncompressedPalette() {
+        val bytes = ByteArray(4096)
+        val gfxRaw = ByteArray(384).also { it[0] = 1 }
+        val compressedGfx = gbaLiteral(gfxRaw)
+        val compressedPalette = gbaLiteral(ByteArray(32).also { it[2] = 0x1F })
+        repeat(12) { index ->
+            putGbaPointer(bytes, index * 8, 1024)
+            putU16(bytes, index * 8 + 4, 384)
+            putU16(bytes, index * 8 + 6, 55000 + index)
+            val paletteTarget = if (index == 9) 2048 else 1536
+            putGbaPointer(bytes, 128 + index * 8, paletteTarget)
+            putU16(bytes, 128 + index * 8 + 4, 55000 + index)
+        }
+        compressedGfx.copyInto(bytes, 1024)
+        compressedPalette.copyInto(bytes, 1536)
+        bytes[2048 + 2] = 0x1F
+
+        val balls = BallSpriteMaterializer.captureBalls(RomImage(bytes))
+
+        assertEquals(12, balls.size)
+        assertEquals(12, balls.values.count { it.sprite.value != null })
+    }
+
     private fun gbaLiteral(raw: ByteArray): ByteArray {
         val output = ArrayList<Byte>()
         output += 0x10

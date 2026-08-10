@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.catalog
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 object RecordMaterializers {
@@ -12,6 +13,7 @@ object RecordMaterializers {
         val codec = codecFor(layout.generation)
         val firstId = if (layout.generation == 3) 0 else 1
         val dexNumbers = SpeciesIndexResolver.resolve(rom, layout)
+        val expansion = layout.pokeemeraldExpansion
         return (0 until names.count).associate { nameIndex ->
             val id = firstId + nameIndex
             val dexNumber = dexNumbers[id] ?: id
@@ -22,12 +24,17 @@ object RecordMaterializers {
                 else -> id
             }
             val baseStats = stats?.takeIf { statsIndex in 0 until it.count }?.let {
-                readBaseStats(rom, it.offset + statsIndex * it.recordSize, layout.generation)
+                readBaseStats(rom, it.offset + statsIndex * (it.stride ?: it.recordSize), layout.generation)
             }
             val typeIds = baseStats?.second
             val abilities = if (layout.generation == 3 && stats != null && statsIndex in 0 until stats.count) {
-                val offset = stats.offset + statsIndex * stats.recordSize
-                if (stats.recordSize >= 24) {
+                val offset = stats.offset + statsIndex * (stats.stride ?: stats.recordSize)
+                if (expansion != null) {
+                    CatalogField.available(
+                        (0 until 3).map { rom.u16le(offset + expansion.abilitiesOffset + it * 2) }
+                            .filter { it != 0 }.distinct(),
+                    )
+                } else if (stats.recordSize >= 24) {
                     CatalogField.available(listOf(rom.u8(offset + 22), rom.u8(offset + 23)).filter { it != 0 }.distinct())
                 } else {
                     CatalogField.notFound("base-stat record has no ability fields")
@@ -36,7 +43,8 @@ object RecordMaterializers {
                 CatalogField.notApplicable("abilities are not part of this engine")
             }
             val growthRate = if (layout.generation == 3 && stats != null && statsIndex in 0 until stats.count && stats.recordSize >= 20) {
-                CatalogField.available(rom.u8(stats.offset + statsIndex * stats.recordSize + 19))
+                val offset = stats.offset + statsIndex * (stats.stride ?: stats.recordSize)
+                CatalogField.available(rom.u8(offset + (expansion?.growthRateOffset ?: 19)))
             } else if (layout.generation == 3) {
                 CatalogField.notFound("base-stat record has no growth-rate field")
             } else {
@@ -63,10 +71,54 @@ object RecordMaterializers {
         val count = minOf(names.count, data.count)
         val codec = codecFor(layout.generation)
         val firstId = if (layout.generation == 3) 0 else 1
+        val expansion = layout.pokeemeraldExpansion
         return (0 until count).associate { index ->
             val id = firstId + index
-            val base = data.offset + index * data.recordSize
+            val base = data.offset + index * (data.stride ?: data.recordSize)
             val gen3 = layout.generation == 3
+            if (expansion != null) {
+                val packed = rom.u16le(base + 10)
+                val category = when ((packed ushr 5) and 0x3) {
+                    0 -> MoveCategory.PHYSICAL
+                    1 -> MoveCategory.SPECIAL
+                    2 -> MoveCategory.STATUS
+                    else -> MoveCategory.UNKNOWN
+                }
+                val rawPriority = (rom.u32le(base + 16).toInt() and 0xF)
+                val priority = if (rawPriority >= 8) rawPriority - 16 else rawPriority
+                return@associate id to MoveRecord(
+                    id = id,
+                    name = CatalogField.available(readName(rom, names, index, codec)),
+                    typeId = CatalogField.available(packed and 0x1F),
+                    category = CatalogField.available(category),
+                    power = CatalogField.available(packed ushr 7),
+                    accuracy = CatalogField.available(rom.u16le(base + 12) and 0x7F),
+                    pp = CatalogField.available(rom.u8(base + 14)),
+                    priority = CatalogField.available(priority),
+                    effectId = CatalogField.available(rom.u16le(base + 8)),
+                )
+            }
+            if (data.format == TableRecordFormat.CFRU_MOVE_16) {
+                val typeId = rom.u8(base + 4)
+                val priority = rom.u8(base + 9).toByte().toInt()
+                val category = when (rom.u8(base + 10)) {
+                    0 -> MoveCategory.PHYSICAL
+                    1 -> MoveCategory.SPECIAL
+                    2 -> MoveCategory.STATUS
+                    else -> category(layout.generation, typeId, rom.u16le(base + 2))
+                }
+                return@associate id to MoveRecord(
+                    id = id,
+                    name = CatalogField.available(readName(rom, names, index, codec)),
+                    typeId = CatalogField.available(typeId),
+                    category = CatalogField.available(category),
+                    power = CatalogField.available(rom.u16le(base + 2)),
+                    accuracy = CatalogField.available(rom.u8(base + 5)),
+                    pp = CatalogField.available(rom.u8(base + 6)),
+                    priority = CatalogField.available(priority),
+                    effectId = CatalogField.available(rom.u16le(base)),
+                )
+            }
             val effectOffset = if (gen3) 0 else 1
             val powerOffset = if (gen3) 1 else 2
             val typeOffset = if (gen3) 2 else 3
@@ -102,6 +154,19 @@ object RecordMaterializers {
 
     fun typeChart(rom: RomImage, layout: ResolvedRomLayout): List<TypeMatchup> {
         val table = layout.tables.typeChart ?: return emptyList()
+        if (layout.pokeemeraldExpansion != null && table.elementSize == 4) {
+            val typeCount = table.recordSize / 4
+            return buildList {
+                repeat(typeCount) { attacker ->
+                    repeat(typeCount) { defender ->
+                        val raw = rom.u32le(table.offset + (attacker * typeCount + defender) * 4)
+                        if (raw != 4096L) {
+                            add(TypeMatchup(attacker, defender, (raw * 100L / 4096L).toInt()))
+                        }
+                    }
+                }
+            }
+        }
         val output = mutableListOf<TypeMatchup>()
         var cursor = table.offset
         repeat(table.count.takeIf { it > 0 } ?: 256) {
@@ -133,7 +198,7 @@ object RecordMaterializers {
         }
     }
 
-    private fun readBaseStats(rom: RomImage, offset: Int, generation: Int): Pair<BaseStats, List<Int>> {
+    private fun readBaseStats(rom: RomImage, offset: Int, generation: Int): Pair<BaseStats, List<Int>>? {
         val start = if (generation <= 2) 1 else 0
         val hp = rom.u8(offset + start)
         val attack = rom.u8(offset + start + 1)
@@ -146,8 +211,11 @@ object RecordMaterializers {
             2 -> 7
             else -> 6
         }
-        return BaseStats(hp, attack, defense, speed, specialAttack, specialDefense) to
-            listOf(rom.u8(offset + typeOffset), rom.u8(offset + typeOffset + 1))
+        val types = listOf(rom.u8(offset + typeOffset), rom.u8(offset + typeOffset + 1))
+        if (listOf(hp, attack, defense, speed, specialAttack, specialDefense).any { it !in 1..255 }) return null
+        val maximumType = if (generation == 3) 31 else 27
+        if (types.any { it !in 0..maximumType }) return null
+        return BaseStats(hp, attack, defense, speed, specialAttack, specialDefense) to types
     }
 
     private fun readName(
@@ -156,7 +224,15 @@ object RecordMaterializers {
         index: Int,
         codec: PokemonTextCodec,
     ): String {
-        if (!table.variableLength) return codec.decode(rom.slice(table.offset + index * table.recordSize, table.recordSize))
+        if (!table.variableLength) {
+            val record = table.offset + index * (table.stride ?: table.recordSize)
+            if (!table.valuesArePointers) return codec.decode(rom.slice(record, table.recordSize))
+            val value = rom.gbaPointer(record) ?: return ""
+            val length = (0 until minOf(64, rom.size - value))
+                .firstOrNull { rom.u8(value + it) == codec.terminator }
+                ?.plus(1) ?: minOf(64, rom.size - value)
+            return codec.decode(rom.slice(value, length))
+        }
         var cursor = table.offset
         repeat(index) {
             while (rom.u8(cursor++) != codec.terminator) {

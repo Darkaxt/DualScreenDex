@@ -15,4 +15,16 @@ class GbaLz77DecoderTest {
 
         assertArrayEquals("ABABAB".toByteArray(), GbaLz77Decoder.decode(compressed))
     }
+
+    @Test
+    fun truncatesALegalFinalBackReferenceAtTheDeclaredOutputSize() {
+        val compressed = byteArrayOf(
+            0x10, 5, 0, 0,
+            0x20,
+            'A'.code.toByte(), 'B'.code.toByte(),
+            0x10, 0x01,
+        )
+
+        assertArrayEquals("ABABA".toByteArray(), GbaLz77Decoder.decode(compressed))
+    }
 }

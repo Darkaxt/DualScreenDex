@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.Gen3LearnsetEncoding
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 
 object LearnsetRulesetMaterializer {
@@ -102,7 +103,7 @@ object LearnsetRulesetMaterializer {
                 } else {
                     val packed = rom.u16le(cursor)
                     if (packed == 0xFFFF) return output
-                    val moveBits = if (moveCount > 511) 10 else 9
+                    val moveBits = Gen3LearnsetEncoding.packedMoveBits(moveCount)
                     val move = packed and ((1 shl moveBits) - 1)
                     val level = packed ushr moveBits
                     require(move in 1 until moveCount && level in 0..100 && level >= previousLevel)

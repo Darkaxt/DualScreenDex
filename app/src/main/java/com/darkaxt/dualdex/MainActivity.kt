@@ -34,12 +34,18 @@ import com.darkaxt.dualdex.web.DualDexWebView
 import com.darkaxt.dualdex.web.NativeSetupRoute
 import com.darkaxt.dualdex.display.CompanionDisplay
 import com.darkaxt.dualdex.display.DisplayTargetController
+import com.darkaxt.dualdex.display.AndroidThorFocusBackend
+import com.darkaxt.dualdex.display.ThorFocusController
+import com.darkaxt.dualdex.display.ThorFocusResult
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
 
 class MainActivity : AppCompatActivity() {
     private lateinit var picker: RomDocumentPicker
     private lateinit var setupPicker: SetupDocumentPicker
     private var companionWebView: DualDexWebView? = null
+    private val thorFocusBackend by lazy { AndroidThorFocusBackend(this) }
+    private val thorFocusController by lazy { ThorFocusController(thorFocusBackend) }
+    private var thorFocusPermissionRequested = false
     private val mapperExportPicker = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) {
             runCatching {
@@ -82,6 +88,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        if (isFinishing && !isChangingConfigurations) {
+            thorFocusController.sync(enabled = false, docked = false, secondaryDisplay = false)
+        }
         picker.cancel()
         companionWebView?.destroy()
         companionWebView = null
@@ -94,6 +103,11 @@ class MainActivity : AppCompatActivity() {
         application.activityResumed(this)
         application.retroArchSetup?.refreshStorageAccess()
         moveToDisplayTarget(application.currentDisplayTarget())
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        syncThorFocus(requestPermission = true)
     }
 
     override fun onPause() {
@@ -134,6 +148,7 @@ class MainActivity : AppCompatActivity() {
                     NativeSetupRoute.DOCK_OVERLAY -> {
                         FloatingCompanionService.dock(this)
                         application.updateDisplayMode("DOCKED")
+                        syncThorFocus(requestPermission = true)
                     }
                 }
             },
@@ -153,6 +168,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showOverlay() {
+        thorFocusController.sync(enabled = false, docked = false, secondaryDisplay = false)
         if (Settings.canDrawOverlays(this)) {
             (application as DualDexApplication).updateDisplayMode("OVERLAY")
             FloatingCompanionService.show(this)
@@ -204,6 +220,26 @@ class MainActivity : AppCompatActivity() {
             options.toBundle(),
         )
         finish()
+    }
+
+    fun syncThorFocus(requestPermission: Boolean) {
+        val application = application as DualDexApplication
+        val result = thorFocusController.sync(
+            enabled = application.currentThorTopScreenFocus(),
+            docked = application.currentDisplayMode() == com.enrpau.dualscreendex.companion.model.DisplayMode.DOCKED,
+            secondaryDisplay = (display?.displayId ?: Display.DEFAULT_DISPLAY) != Display.DEFAULT_DISPLAY,
+        )
+        if (result == ThorFocusResult.PERMISSION_REQUIRED && requestPermission &&
+            thorFocusBackend.supported && !thorFocusPermissionRequested
+        ) {
+            thorFocusPermissionRequested = true
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                    Uri.parse("package:$packageName"),
+                ),
+            )
+        }
     }
 
     private fun showRecovery(failure: Throwable?) {

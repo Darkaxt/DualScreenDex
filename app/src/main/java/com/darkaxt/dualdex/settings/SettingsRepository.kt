@@ -42,6 +42,7 @@ class SettingsRepository(
             theme = enumOr(stored.theme, defaults.theme),
             displayTarget = enumOr(stored.displayTarget, defaults.displayTarget),
             overlayScale = stored.overlayScale?.takeIf(Double::isFinite)?.coerceIn(0.45, 1.0) ?: defaults.overlayScale,
+            thorTopScreenFocus = stored.thorTopScreenFocus ?: defaults.thorTopScreenFocus,
         )
     }
 
@@ -63,6 +64,7 @@ class SettingsRepository(
                     theme = settings.theme.name,
                     displayTarget = settings.displayTarget.name,
                     overlayScale = settings.overlayScale,
+                    thorTopScreenFocus = settings.thorTopScreenFocus,
                 ),
             ),
         )
@@ -87,6 +89,7 @@ class SettingsRepository(
         val theme: String? = null,
         val displayTarget: String? = null,
         val overlayScale: Double? = null,
+        val thorTopScreenFocus: Boolean? = null,
     )
 
     private companion object {

@@ -18,6 +18,28 @@ object AbilityDescriptionMaterializer {
         if (layout.generation != 3) return null
         val names = layout.tables.abilities ?: return null
         if (names.count < 2) return null
+        layout.pokeemeraldExpansion?.let { expansion ->
+            val descriptions = buildMap {
+                repeat(names.count - 1) { index ->
+                    val id = index + 1
+                    val record = names.offset + id * (names.stride ?: expansion.abilityRecordSize)
+                    val textOffset = rom.gbaPointer(record + expansion.abilityDescriptionPointerOffset) ?: return@repeat
+                    val length = minOf(192, rom.size - textOffset)
+                    val decoded = runCatching {
+                        PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(textOffset, length))
+                    }.getOrNull() ?: return@repeat
+                    val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
+                    if (decoded.terminated && decoded.validRatio >= 0.85 && looksLikeNaturalDescription(normalized)) {
+                        put(id, normalized)
+                    }
+                }
+            }
+            val expected = names.count - 1
+            val confidence = descriptions.size.toDouble() / expected.coerceAtLeast(1)
+            return AbilityDescriptionResult(names.offset, confidence, descriptions).takeIf {
+                descriptions.size >= maxOf(2, (expected * 0.8).toInt())
+            }
+        }
         val tableBytes = names.count * 4
         val expectedOffset = align4(names.offset + names.count * names.recordSize)
         val searchStart = align4(maxOf(0, names.offset - SEARCH_RADIUS))

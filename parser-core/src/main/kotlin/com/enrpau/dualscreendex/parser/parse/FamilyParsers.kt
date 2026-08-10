@@ -14,6 +14,7 @@ import com.enrpau.dualscreendex.parser.model.RomProfile
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.ScoreEvidence
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -58,13 +59,17 @@ private class ConfiguredFamilyParser(
             if (identityMatched) "title/game code matches $family" else "title/game code does not match $family",
         )
 
-        val tables = resolveTables(rom, baseProfile)
         val generation = generationFor(family)
+        val expansion = if (generation == 3 && identityMatched) PokeemeraldExpansionResolver.resolve(rom) else null
+        var tables = expansion?.tables ?: resolveTables(rom, baseProfile)
         val codec = if (generation == 3) PokemonTextCodec.gbaEnglish else PokemonTextCodec.gbEnglish
-        val speciesCount = inferSpeciesCount(rom, tables, codec, baseProfile)
-        val moveCount = inferMoveCount(rom, tables.moveNames, codec, baseProfile)
-        val baseStatsLayout = tables.baseStats?.let { layout ->
-            if (generation == 3 && speciesCount != null) {
+        val speciesCount = expansion?.speciesCount ?: inferSpeciesCount(rom, tables, codec, baseProfile)
+        val moveCount = expansion?.moveCount ?: inferMoveCount(rom, tables.moveNames, codec, baseProfile)
+        if (generation == 3 && expansion == null && speciesCount != null && moveCount != null) {
+            tables = Gen3DynamicTableResolver.resolve(rom, tables, speciesCount, moveCount)
+        }
+        var baseStatsLayout = tables.baseStats?.let { layout ->
+            if (generation == 3 && speciesCount != null && expansion == null) {
                 val inferredSize = TableValidators.inferBaseStatsRecordSize(
                     rom, layout.offset, speciesCount, generation,
                 )
@@ -74,16 +79,86 @@ private class ConfiguredFamilyParser(
             }
         }
 
-        val names = validateNames(rom, tables.speciesNames, speciesCount, codec)
-        val stats = baseStatsLayout?.let {
+        var speciesNamesLayout = tables.speciesNames
+        var names = validateNames(rom, speciesNamesLayout, speciesCount, codec)
+        if (generation == 2 && !names.compatible && speciesCount != null) {
+            TableValidators.locateFixedNameTable(
+                rom, speciesCount, 8..16, codec, preferredOffset = speciesNamesLayout?.offset,
+            )?.let { relocated ->
+                speciesNamesLayout = TableLayout(
+                    offset = requireNotNull(relocated.offset),
+                    count = speciesCount,
+                    recordSize = requireNotNull(relocated.recordSize),
+                )
+                names = relocated
+            }
+        }
+        var stats = baseStatsLayout?.let {
             val validationCount = if (generation == 1) it.count else speciesCount ?: it.count
             TableValidators.baseStats(rom, it.offset, validationCount, it.recordSize, generation)
         } ?: missing("species base-stat table not resolved")
-        val moveNames = validateNames(rom, tables.moveNames, moveCount, codec)
+        if (generation == 2 && !stats.compatible && speciesCount != null) {
+            TableValidators.locateBaseStatTable(rom, speciesCount, 28..64, generation)?.let { relocated ->
+                baseStatsLayout = TableLayout(
+                    offset = requireNotNull(relocated.offset),
+                    count = speciesCount,
+                    recordSize = requireNotNull(relocated.recordSize),
+                )
+                stats = relocated
+            }
+        }
+        var moveNamesLayout = tables.moveNames
+        var moveNames = validateNames(rom, moveNamesLayout, moveCount, codec)
+        if (
+            generation == 2 && exact == null && moveCount != null && moveNamesLayout?.variableLength == true &&
+            tables.moveData?.let { hasCanonicalGen2MovePrefix(rom, it) } == true
+        ) {
+            TableValidators.locateVariableNameSequenceNear(
+                rom = rom,
+                approximateOffset = moveNamesLayout.offset,
+                codec = codec,
+                expectedNames = listOf("POUND", "KARATE CHOP", "DOUBLESLAP"),
+            )?.let { relocatedOffset ->
+                val relocated = TableValidators.variableNames(rom, relocatedOffset, moveCount, codec)
+                if (relocated.compatible) {
+                    moveNamesLayout = moveNamesLayout.copy(offset = relocatedOffset)
+                    moveNames = relocated.copy(reasons = listOf("matched leading canonical Gen 2 move records"))
+                }
+            }
+        }
         val moveData = tables.moveData?.let {
-            TableValidators.moveData(rom, it.offset, moveCount ?: it.count, it.recordSize, generation)
+            if (expansion != null) {
+                TableValidators.pokeemeraldExpansionMoveData(rom, it, moveCount ?: it.count)
+            } else if (it.format == TableRecordFormat.CFRU_MOVE_16) {
+                TableValidators.cfruMoveData(rom, it.offset, moveCount ?: it.count)
+            } else {
+                TableValidators.moveData(rom, it.offset, moveCount ?: it.count, it.recordSize, generation)
+            }
         } ?: missing("move-data table not resolved")
-        val typeChart = if (generation == 3) {
+        var effectiveMoveCount = DatasetResolvers.reconciledMoveCount(moveCount, moveData)
+        if (effectiveMoveCount != moveCount && effectiveMoveCount != null && moveNamesLayout != null) {
+            val reconciledNames = validateNames(rom, moveNamesLayout, effectiveMoveCount, codec)
+            if (reconciledNames.compatible) {
+                moveNames = reconciledNames.copy(
+                    reasons = reconciledNames.reasons + "bounded the move catalog by the validated move-data prefix",
+                )
+            } else {
+                effectiveMoveCount = moveCount
+            }
+        }
+        val typeChart = if (expansion != null) {
+            val chart = requireNotNull(tables.typeChart)
+            ValidationEvidence(
+                compatible = true,
+                validRecords = chart.count,
+                totalRecords = chart.count,
+                confidence = 1.0,
+                reasons = listOf("validated expansion Q4.12 type-effectiveness matrix"),
+                offset = chart.offset,
+                recordSize = chart.recordSize,
+                elementSize = chart.elementSize,
+            )
+        } else if (generation == 3) {
             TableValidators.resolveGen3TypeChart(rom, tables.typeChart?.offset)
         } else {
             tables.typeChart?.let {
@@ -97,9 +172,13 @@ private class ConfiguredFamilyParser(
             2 -> tables.sprites?.let {
                 SpriteValidators.gen2(rom, it.offset, it.count, it.bankAdjustment)
             } ?: missing("Gen 2 sprite pointer table not resolved")
-            else -> tables.sprites?.let {
-                SpriteValidators.gen3(rom, it.offset, speciesCount ?: it.count, it.recordSize)
-            } ?: missing("Gen 3 sprite pointer table not resolved")
+            else -> if (expansion != null) {
+                PokeemeraldExpansionResolver.validateSprites(rom, expansion)
+            } else {
+                tables.sprites?.let {
+                    SpriteValidators.gen3(rom, it.offset, speciesCount ?: it.count, it.recordSize)
+                } ?: missing("Gen 3 sprite pointer table not resolved")
+            }
         }
         val descriptions = when (generation) {
             1 -> tables.descriptions?.let {
@@ -112,12 +191,16 @@ private class ConfiguredFamilyParser(
                     rom, it.offset, it.count, it.banks.toIntArray(), codec = codec,
                 )
             } ?: missing("Gen 2 Pokédex description table not resolved")
-            else -> DatasetResolvers.gen3Descriptions(
-                rom,
-                if (exact != null) tables.descriptions?.count ?: 387 else speciesCount ?: baseProfile?.internalSpeciesCount ?: 412,
-                tables.descriptions,
-                codec,
-            )
+            else -> if (expansion != null) {
+                PokeemeraldExpansionResolver.validateDescriptions(rom, expansion)
+            } else {
+                DatasetResolvers.gen3Descriptions(
+                    rom,
+                    if (exact != null) tables.descriptions?.count ?: 387 else speciesCount ?: baseProfile?.internalSpeciesCount ?: 412,
+                    tables.descriptions,
+                    codec,
+                )
+            }
         }
         val evolutionAndLearnset = if (generation < 3) {
             val layout = tables.evolutions ?: tables.learnsets
@@ -135,25 +218,37 @@ private class ConfiguredFamilyParser(
             null
         }
         val evolutions = evolutionAndLearnset?.evolutions ?: if (generation == 3) {
-            DatasetResolvers.gen3Evolutions(
-                rom, speciesCount ?: baseProfile?.internalSpeciesCount ?: 412, tables.evolutions,
-            )
+            if (expansion != null) {
+                PokeemeraldExpansionResolver.validateEvolutions(rom, expansion)
+            } else {
+                DatasetResolvers.gen3Evolutions(
+                    rom, speciesCount ?: baseProfile?.internalSpeciesCount ?: 412, tables.evolutions,
+                )
+            }
         } else {
             missing("combined evolution/learnset table not resolved")
         }
         val learnsets = evolutionAndLearnset?.learnsets ?: if (generation == 3) {
-            DatasetResolvers.gen3Learnsets(
-                rom,
-                speciesCount ?: baseProfile?.internalSpeciesCount ?: 412,
-                moveCount ?: baseProfile?.moveCount?.plus(1) ?: 355,
-                tables.learnsets,
-            )
+            if (expansion != null) {
+                PokeemeraldExpansionResolver.validateLearnsets(rom, expansion)
+            } else {
+                DatasetResolvers.gen3Learnsets(
+                    rom,
+                    speciesCount ?: baseProfile?.internalSpeciesCount ?: 412,
+                    effectiveMoveCount ?: baseProfile?.moveCount?.plus(1) ?: 355,
+                    tables.learnsets,
+                )
+            }
         } else {
             missing("combined evolution/learnset table not resolved")
         }
         val abilities = if (generation == 3) {
             tables.abilities?.let {
-                resolveAbilities(rom, it, codec, baseProfile, exact != null)
+                if (expansion != null) {
+                    TableValidators.names(rom, it, expansion.abilityCount, codec)
+                } else {
+                    resolveAbilities(rom, it, codec, baseProfile, exact != null)
+                }
             } ?: missing("ability-name table not resolved")
         } else {
             missing("abilities are not part of this engine")
@@ -176,9 +271,9 @@ private class ConfiguredFamilyParser(
             names, stats, moveNames, moveData, typeChart, sprites, descriptions, evolutions, learnsets, abilities,
         )
         val resolvedTables = ProfileTables(
-            speciesNames = resolvedLayout(tables.speciesNames, names),
+            speciesNames = resolvedLayout(speciesNamesLayout, names),
             baseStats = resolvedLayout(baseStatsLayout, stats),
-            moveNames = resolvedLayout(tables.moveNames, moveNames),
+            moveNames = resolvedLayout(moveNamesLayout, moveNames),
             moveData = resolvedLayout(tables.moveData, moveData),
             typeChart = resolvedLayout(tables.typeChart, typeChart, variableLength = true),
             evolutions = resolvedLayout(tables.evolutions, evolutions),
@@ -211,8 +306,25 @@ private class ConfiguredFamilyParser(
                 if (generation == 3 && tables.speciesNames?.offset != baseProfile?.tables?.speciesNames?.offset) {
                     add("resolved relocated GBA table pointers")
                 }
+                if (generation == 2 && speciesNamesLayout?.offset != baseProfile?.tables?.speciesNames?.offset) {
+                    add("resolved relocated Gen 2 species-name table")
+                }
+                if (generation == 2 && baseStatsLayout?.offset != baseProfile?.tables?.baseStats?.offset) {
+                    add("resolved relocated Gen 2 base-stat table")
+                }
+                if (generation == 2 && moveNamesLayout?.offset != baseProfile?.tables?.moveNames?.offset) {
+                    add("resolved relocated Gen 2 move-name table")
+                }
                 if (baseStatsLayout != null && baseStatsLayout.recordSize != baseProfile?.tables?.baseStats?.recordSize) {
                     add("inferred base-stat record size ${baseStatsLayout.recordSize}")
+                }
+                if (expansion != null) {
+                    add(
+                        "resolved pokeemerald-expansion ${expansion.metadata.versionMajor}." +
+                            "${expansion.metadata.versionMinor}.${expansion.metadata.versionPatch}; " +
+                            "first species=${expansion.firstRegisters.speciesName}/Dex ${expansion.firstRegisters.speciesNationalDex}, " +
+                            "move=${expansion.firstRegisters.moveName}, ability=${expansion.firstRegisters.abilityName}",
+                    )
                 }
             },
             resolvedLayout = ResolvedRomLayout(
@@ -220,8 +332,9 @@ private class ConfiguredFamilyParser(
                 generation = generation,
                 platform = header.platform,
                 speciesCount = speciesCount,
-                moveCount = moveCount,
+                moveCount = effectiveMoveCount,
                 tables = resolvedTables,
+                pokeemeraldExpansion = expansion?.metadata,
             ),
         )
     }
@@ -231,7 +344,7 @@ private class ConfiguredFamilyParser(
         evidence: ValidationEvidence,
         variableLength: Boolean = inherited?.variableLength ?: false,
     ): TableLayout? {
-        if (!evidence.compatible || evidence.offset == null) return inherited
+        if (!evidence.compatible || evidence.offset == null) return null
         val count = evidence.totalRecords.takeIf { it > 0 } ?: inherited?.count ?: 0
         val recordSize = evidence.recordSize ?: inherited?.recordSize ?: 0
         return inherited?.copy(
@@ -258,18 +371,34 @@ private class ConfiguredFamilyParser(
         } ?: candidates.firstOrNull()
     }
 
+    private fun hasCanonicalGen2MovePrefix(rom: RomImage, layout: TableLayout): Boolean {
+        if (layout.count < 3 || layout.recordSize < 7) return false
+        val expected = listOf(
+            intArrayOf(40, 0, 255, 35),
+            intArrayOf(50, 1, 255, 25),
+            intArrayOf(15, 0, 216, 10),
+        )
+        return expected.indices.all { index ->
+            val base = layout.offset + index * layout.recordSize
+            val values = intArrayOf(rom.u8(base + 2), rom.u8(base + 3), rom.u8(base + 4), rom.u8(base + 5))
+            values.contentEquals(expected[index])
+        }
+    }
+
     private fun identityMatches(header: RomHeader): Boolean = when (family) {
         EngineFamily.RED_BLUE -> header.title.startsWith("POKEMON RED") || header.title.startsWith("POKEMON BLUE")
         EngineFamily.YELLOW -> header.title.startsWith("POKEMON YELLOW")
         EngineFamily.GOLD_SILVER -> header.title.contains("GLD") || header.title.contains("SLV")
         EngineFamily.CRYSTAL -> header.title.contains("CRYSTAL")
-        EngineFamily.RUBY_SAPPHIRE -> header.gameCode in setOf("AXVE", "AXPE")
-        EngineFamily.EMERALD -> header.gameCode == "BPEE"
-        EngineFamily.FIRERED_LEAFGREEN -> header.gameCode in setOf("BPRE", "BPGE")
+        EngineFamily.RUBY_SAPPHIRE -> header.gameCode in setOf("AXVE", "AXPE") ||
+            header.title.startsWith("POKEMON RUBY") || header.title.startsWith("POKEMON SAPP")
+        EngineFamily.EMERALD -> header.gameCode == "BPEE" || header.title.startsWith("POKEMON EMER")
+        EngineFamily.FIRERED_LEAFGREEN -> header.gameCode in setOf("BPRE", "BPGE") ||
+            header.title.startsWith("POKEMON FIRE") || header.title.startsWith("POKEMON LEAF")
     }
 
     private fun resolveTables(rom: RomImage, profile: RomProfile?): ProfileTables {
-        val inherited = profile?.tables ?: ProfileTables()
+        var inherited = profile?.tables ?: ProfileTables()
         if (generationFor(family) != 3) return inherited
 
         val headerPointers = if (family == EngineFamily.EMERALD || family == EngineFamily.FIRERED_LEAFGREEN) {
@@ -282,7 +411,12 @@ private class ConfiguredFamilyParser(
                 moveData = rom.gbaPointerOrNull(0x1CC),
             )
         } else {
-            GbaHeaderPointers(speciesNames = locateRubySapphireNames(rom))
+            val locatedNames = locateRubySapphireNames(rom)
+            val expectedNames = inherited.speciesNames?.offset
+            if (locatedNames != null && expectedNames != null && locatedNames != expectedNames) {
+                inherited = inherited.relocatedBy(locatedNames - expectedNames)
+            }
+            GbaHeaderPointers(speciesNames = locatedNames)
         }
 
         return ProfileTables(
@@ -302,6 +436,22 @@ private class ConfiguredFamilyParser(
             descriptions = inherited.descriptions,
             abilities = headerPointers.abilities?.let { TableLayout(it, inherited.abilities?.count ?: 78, 13) }
                 ?: inherited.abilities,
+        )
+    }
+
+    private fun ProfileTables.relocatedBy(delta: Int): ProfileTables {
+        fun TableLayout?.relocated() = this?.copy(offset = offset + delta)
+        return copy(
+            speciesNames = speciesNames.relocated(),
+            baseStats = baseStats.relocated(),
+            moveNames = moveNames.relocated(),
+            moveData = moveData.relocated(),
+            typeChart = typeChart.relocated(),
+            evolutions = evolutions.relocated(),
+            learnsets = learnsets.relocated(),
+            sprites = sprites.relocated(),
+            descriptions = descriptions.relocated(),
+            abilities = abilities.relocated(),
         )
     }
 
@@ -388,12 +538,8 @@ private class ConfiguredFamilyParser(
         codec: PokemonTextCodec,
     ): ValidationEvidence {
         if (layout == null || inferredCount == null) return missing("name table not resolved")
-        return if (layout.variableLength) {
-            TableValidators.variableNames(rom, layout.offset, inferredCount, codec)
-        } else {
-            val minimumRatio = if (generationFor(family) == 1) 0.70 else 0.85
-            TableValidators.fixedNames(rom, layout.offset, inferredCount, layout.recordSize, codec, minimumRatio)
-        }
+        val minimumRatio = if (generationFor(family) == 1) 0.70 else 0.85
+        return TableValidators.names(rom, layout, inferredCount, codec, minimumRatio)
     }
 
     private fun buildCapabilities(
