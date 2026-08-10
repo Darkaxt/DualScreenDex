@@ -17,4 +17,3 @@ DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-fa
 Live battle targeting is not part of 1.0.0. The mapper only gathers evidence for that later feature; it does not modify ROMs, saves, emulator memory, or Pokédex state.
 
 The attached compatibility report identifies the tested official games and structurally selected derivatives without distributing ROM content.
-
