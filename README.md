@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated Memory Mapper Lab can collect read-only evidence for future live battle mapping, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only Memory Mapper Lab are implemented. The inherited OCR/accessibility application has been replaced, and the Stage 7 convergence gate has passed. GitHub-signed candidate and physical-device validation remain; no public companion APK has been released yet.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only Memory Mapper Lab are implemented. The inherited OCR/accessibility application has been replaced. GitHub-signed RC6 has passed the dedicated-AVD update and overlay gates; physical-Thor validation remains, and no public companion APK has been released yet.
 
 ## Thor-first UI direction
 
@@ -215,7 +215,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | SaveRAM readers and Organic discovery ledger | Implemented and persisted per ROM/save for Generations I–III; live battle observations remain deferred |
 | Thor-first companion UI and settings | Implemented in the packaged Android companion |
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses |
-| Optional Docked / 4:3 Overlay Android display modes | Implemented and dedicated-AVD validated |
+| Optional Docked / 4:3 Overlay Android display modes | Implemented and GitHub-signed RC6 validated on the dedicated AVD |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
 | Public v1 APK | Not released |
 
