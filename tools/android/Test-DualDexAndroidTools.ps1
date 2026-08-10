@@ -62,6 +62,7 @@ $candidateText = Get-Content -Raw (Join-Path $toolRoot 'validate-signed-candidat
 foreach ($requiredCandidatePattern in @(
     'Get-FileHash',
     'apksigner(?:\.bat)?\s+verify\s+--verbose\s+--print-certs',
+    '\(\?:Signer #\[0-9\]\+\|V\[0-9\.\]\+ Signer\):\?',
     'dualdex-release-cert\.sha256',
     'com\.darkaxt\.dualdex',
     'Resolve-DualDexDevice',
