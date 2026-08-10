@@ -75,6 +75,7 @@ export interface Settings {
   theme?: 'GAME' | 'DARK' | 'LIGHT';
   displayTarget?: 'AUTO' | 'HANDHELD' | 'EXTERNAL';
   overlayScale?: number;
+  thorTopScreenFocus?: boolean;
 }
 
 export interface SpeciesState {

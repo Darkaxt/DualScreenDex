@@ -135,7 +135,7 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
-    fun exposesGen1GbAndGen3GbaCatalogsAsProductionBattleContexts() {
+    fun exposesGen1Gen2AndGen3CatalogsAsProductionBattleContexts() {
         val runtime = ProductionCompanionRuntime()
         runtime.loadCatalog("fixture.gba", ParsedCatalog(
             "sha", EngineFamily.EMERALD, Platform.GBA,
@@ -153,8 +153,8 @@ class ProductionCompanionRuntimeTest {
         assertEquals("sha", runtime.battleCatalogContext()?.romIdentity)
         assertEquals(3, runtime.battleCatalogContext()?.generation)
 
-        runtime.loadCatalog("fixture.gb", ParsedCatalog(
-            "yellow", EngineFamily.YELLOW, Platform.GB,
+        runtime.loadCatalog("fixture.gbc", ParsedCatalog(
+            "yellow", EngineFamily.YELLOW, Platform.GBC,
             speciesById = mapOf(0x54 to SpeciesRecord(
                 id = 0x54, dexNumber = CatalogField.available(25), name = CatalogField.available("PIKACHU"),
                 typeIds = CatalogField.available(listOf(0x17)), baseStats = CatalogField.notFound("fixture"),
@@ -169,8 +169,21 @@ class ProductionCompanionRuntimeTest {
         assertEquals("yellow", runtime.battleCatalogContext()?.romIdentity)
         assertEquals(1, runtime.battleCatalogContext()?.generation)
 
-        runtime.loadCatalog("fixture.gbc", ParsedCatalog("gbc", EngineFamily.CRYSTAL, Platform.GBC))
-        assertNull(runtime.battleCatalogContext())
+        runtime.loadCatalog("fixture.gbc", ParsedCatalog(
+            "crystal", EngineFamily.CRYSTAL, Platform.GBC,
+            speciesById = mapOf(19 to SpeciesRecord(
+                id = 19, dexNumber = CatalogField.available(19), name = CatalogField.available("RATTATA"),
+                typeIds = CatalogField.available(listOf(0)), baseStats = CatalogField.notFound("fixture"),
+                sprite = CatalogField.notFound("fixture"), abilityIds = CatalogField.notApplicable("Gen 2"),
+            )),
+            movesById = mapOf(33 to MoveRecord(
+                33, CatalogField.available("TACKLE"), CatalogField.available(0), CatalogField.notFound("fixture"),
+                CatalogField.available(35), CatalogField.available(95), CatalogField.available(35),
+            )),
+            typesById = mapOf(0 to TypeRecord(0, CatalogField.available("NORMAL"))),
+        ))
+        assertEquals("crystal", runtime.battleCatalogContext()?.romIdentity)
+        assertEquals(2, runtime.battleCatalogContext()?.generation)
         runtime.close()
     }
 
@@ -319,9 +332,13 @@ class ProductionCompanionRuntimeTest {
     fun updatesTheOptionalDisplayModeThroughTheNormalSettingsContract() {
         val runtime = ProductionCompanionRuntime()
 
-        val state = runtime.action("SETTINGS", mapOf("displayMode" to "OVERLAY"))
+        val state = runtime.action(
+            "SETTINGS",
+            mapOf("displayMode" to "OVERLAY", "thorTopScreenFocus" to "true"),
+        )
 
         assertEquals("OVERLAY", state.settings.let { it as com.enrpau.dualscreendex.companion.model.CompanionSettings }.displayMode.name)
+        assertTrue((state.settings as CompanionSettings).thorTopScreenFocus)
         runtime.close()
     }
 

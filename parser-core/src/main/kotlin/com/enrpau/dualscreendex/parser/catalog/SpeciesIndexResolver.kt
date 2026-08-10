@@ -28,6 +28,13 @@ object SpeciesIndexResolver {
 
     private fun resolveGen3(rom: RomImage, layout: ResolvedRomLayout): Map<Int, Int> {
         val speciesCount = layout.speciesCount ?: return emptyMap()
+        layout.pokeemeraldExpansion?.let { expansion ->
+            val table = layout.tables.baseStats ?: return emptyMap()
+            val stride = table.stride ?: expansion.speciesRecordSize
+            return (0 until speciesCount).associateWith { id ->
+                rom.u16le(table.offset + id * stride + expansion.nationalDexOffset)
+            }
+        }
         val storedCount = speciesCount - 1
         if (storedCount <= 0) return mapOf(0 to 0)
         val candidates = mutableListOf<Gen3IndexCandidate>()
@@ -43,7 +50,7 @@ object SpeciesIndexResolver {
                     while (prefix < values.size && values[prefix] == prefix + 1) prefix++
                     val positive = values.filter { it > 0 }
                     val distinctRatio = positive.distinct().size.toDouble() / positive.size.coerceAtLeast(1)
-                    if (prefix >= minOf(2, storedCount) && distinctRatio >= 0.75) {
+                    if (prefix >= minOf(2, storedCount) && distinctRatio == 1.0) {
                         val canonicalBoundary = if (values.size >= 277 && values[276] == 252) 1 else 0
                         candidates += Gen3IndexCandidate(prefix, distinctRatio, canonicalBoundary, values)
                     }
@@ -54,11 +61,44 @@ object SpeciesIndexResolver {
                 .thenBy { it.distinctRatio }
                 .thenBy { it.prefix }
                 .thenBy { candidate -> candidate.values.count { it > 0 } },
-        )?.values ?: return identity(0, speciesCount - 1)
+        )?.values
+        if (values == null) {
+            findCompleteGen3Permutation(rom, speciesCount)?.let { permutation ->
+                return permutation.indices.associateWith { permutation[it] }
+            }
+            return identity(0, speciesCount - 1)
+        }
         return buildMap {
             put(0, 0)
             values.forEachIndexed { index, dex -> put(index + 1, dex) }
         }
+    }
+
+    /**
+     * Expanded Gen III projects commonly replace the historical Hoenn-era index layout with a
+     * complete internal-species -> Pokédex-number permutation. Unlike the stock table, its first
+     * live entry does not have to be Dex #1, so it cannot be found from a 1,2 prefix signature.
+     */
+    private fun findCompleteGen3Permutation(rom: RomImage, speciesCount: Int): IntArray? {
+        if (speciesCount <= 1 || speciesCount * 2 > rom.size) return null
+        val byteLength = speciesCount * 2
+        for (offset in 0..rom.size - byteLength step 2) {
+            if (rom.u16le(offset) != 0) continue
+            val seen = BooleanArray(speciesCount)
+            val values = IntArray(speciesCount)
+            var compatible = true
+            for (index in 0 until speciesCount) {
+                val value = rom.u16le(offset + index * 2)
+                if (value !in 0 until speciesCount || seen[value]) {
+                    compatible = false
+                    break
+                }
+                seen[value] = true
+                values[index] = value
+            }
+            if (compatible) return values
+        }
+        return null
     }
 
     private fun identity(first: Int, last: Int): Map<Int, Int> = (first..last).associateWith { it }

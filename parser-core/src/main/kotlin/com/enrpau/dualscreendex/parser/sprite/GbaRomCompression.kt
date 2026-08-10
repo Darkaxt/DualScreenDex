@@ -25,7 +25,7 @@ internal object GbaRomCompression {
                 }
             }
         }
-        require(output == declared)
+        require(output >= declared)
         return input - offset
     }
 }

@@ -99,6 +99,20 @@ class SpriteValidatorsTest {
     }
 
     @Test
+    fun acceptsGbaSpriteWithAFinalBackReferencePastTheDeclaredBoundary() {
+        val bytes = ByteArray(0x200)
+        putU32(bytes, 0, 0x08000100)
+        putU16(bytes, 4, 5)
+        byteArrayOf(0x10, 5, 0, 0, 0x20, 1, 2, 0x10, 0x01).copyInto(bytes, 0x100)
+
+        val result = SpriteValidators.gen3(
+            RomImage(bytes), pointerTableOffset = 0, speciesCount = 1, recordSize = 8,
+        )
+
+        assertTrue(result.compatible)
+    }
+
+    @Test
     fun rejectsGbaLz77BackReferenceBeforeOutputStart() {
         val bytes = ByteArray(0x200)
         putU32(bytes, 0, 0x08000100)
@@ -110,6 +124,24 @@ class SpriteValidatorsTest {
         )
 
         assertFalse(result.compatible)
+    }
+
+    @Test
+    fun reportsDecodedGbaStreamsInsteadOfOnlyPlausiblePointers() {
+        val bytes = ByteArray(0x300)
+        repeat(2) { index ->
+            putU32(bytes, index * 8, 0x08000100 + index * 0x40)
+            putU16(bytes, index * 8 + 4, 4)
+        }
+        byteArrayOf(0x10, 4, 0, 0, 0, 1, 2, 3, 4).copyInto(bytes, 0x100)
+        byteArrayOf(0x10, 4, 0, 0, 0x80.toByte(), 0x10, 0).copyInto(bytes, 0x140)
+
+        val result = SpriteValidators.gen3(
+            RomImage(bytes), pointerTableOffset = 0, speciesCount = 2, recordSize = 8,
+        )
+
+        assertFalse(result.compatible)
+        assertTrue(result.validRecords == 1)
     }
 
     private fun gen1ZeroSprite(width: Int): ByteArray {

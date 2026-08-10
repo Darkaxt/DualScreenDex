@@ -43,6 +43,7 @@ import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -238,10 +239,10 @@ class ProductionCompanionRuntime(
     fun battleCatalogContext(): BattleCatalogContext? {
         if (catalogPublicationInProgress) return null
         val current = catalog ?: return null
-        val generation = when (current.platform.name) {
-            "GB" -> 1
-            "GBA" -> 3
-            else -> return null
+        val generation = when (current.family) {
+            EngineFamily.RED_BLUE, EngineFamily.YELLOW -> 1
+            EngineFamily.GOLD_SILVER, EngineFamily.CRYSTAL -> 2
+            EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN -> 3
         }
         val species = current.speciesById.mapNotNull { (id, record) ->
             val types = record.typeIds.value ?: return@mapNotNull null
@@ -443,6 +444,7 @@ class ProductionCompanionRuntime(
                     theme = values["theme"]?.let { Theme.valueOf(it.uppercase()) } ?: current.theme,
                     displayTarget = values["displayTarget"]?.let { DisplayTarget.valueOf(it.uppercase()) } ?: current.displayTarget,
                     overlayScale = current.overlayScale,
+                    thorTopScreenFocus = values["thorTopScreenFocus"]?.toBooleanStrictOrNull() ?: current.thorTopScreenFocus,
                 )
         gateway.dispatch(
             CompanionAction.UpdateSettings(updated),

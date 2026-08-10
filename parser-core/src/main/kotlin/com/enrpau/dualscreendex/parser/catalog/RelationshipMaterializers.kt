@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.Gen3LearnsetEncoding
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
@@ -8,6 +9,29 @@ object RelationshipMaterializers {
     fun descriptions(rom: RomImage, layout: ResolvedRomLayout): Map<Int, DescriptionRecord> {
         val table = layout.tables.descriptions ?: return emptyMap()
         if (layout.generation < 3) return gen12Descriptions(rom, layout)
+        layout.pokeemeraldExpansion?.let { expansion ->
+            val stride = table.stride ?: expansion.speciesRecordSize
+            return buildMap {
+                repeat(table.count) { id ->
+                    val base = table.offset + id * stride
+                    val description = rom.gbaPointer(base + expansion.descriptionPointerOffset) ?: return@repeat
+                    put(
+                        id,
+                        DescriptionRecord(
+                            text = decodeTerminated(rom, description, 512, PokemonTextCodec.gbaEnglish),
+                            height = rom.u16le(base + expansion.heightOffset),
+                            weight = rom.u16le(base + expansion.weightOffset),
+                            category = decodeTerminated(
+                                rom,
+                                base + expansion.categoryOffset,
+                                expansion.speciesNameOffset - expansion.categoryOffset,
+                                PokemonTextCodec.gbaEnglish,
+                            ),
+                        ),
+                    )
+                }
+            }
+        }
         val codec = PokemonTextCodec.gbaEnglish
         val pointerFields = table.pointerOffsets.ifEmpty {
             if (table.recordSize >= 36) listOf(16, 20) else listOf(16)
@@ -33,6 +57,16 @@ object RelationshipMaterializers {
     fun evolutions(rom: RomImage, layout: ResolvedRomLayout): Map<Int, List<EvolutionEdge>> {
         val table = layout.tables.evolutions ?: return emptyMap()
         if (layout.generation < 3) return gen12Relationships(rom, layout, table).first
+        if (layout.pokeemeraldExpansion != null) {
+            val stride = table.stride ?: layout.pokeemeraldExpansion.speciesRecordSize
+            return buildMap {
+                repeat(table.count) { speciesId ->
+                    val pointer = rom.gbaPointer(table.offset + speciesId * stride)
+                    val edges = if (pointer == null) emptyList() else readExpansionEvolutions(rom, pointer)
+                    put(speciesId, edges)
+                }
+            }
+        }
         val elementSize = table.elementSize ?: 6
         val slots = table.recordSize / elementSize
         return buildMap {
@@ -61,6 +95,15 @@ object RelationshipMaterializers {
     fun learnsets(rom: RomImage, layout: ResolvedRomLayout): Map<Int, List<LearnsetEntry>> {
         val table = layout.tables.learnsets ?: return emptyMap()
         if (layout.generation < 3) return gen12Relationships(rom, layout, table).second
+        if (layout.pokeemeraldExpansion != null) {
+            val stride = table.stride ?: layout.pokeemeraldExpansion.speciesRecordSize
+            return buildMap {
+                repeat(table.count) { speciesId ->
+                    val offset = rom.gbaPointer(table.offset + speciesId * stride) ?: return@repeat
+                    put(speciesId, readExpansionLearnset(rom, offset))
+                }
+            }
+        }
         if (table.elementSize == 3) {
             return buildMap {
                 repeat(table.count) { speciesId ->
@@ -69,7 +112,7 @@ object RelationshipMaterializers {
                 }
             }
         }
-        val moveBits = if ((layout.moveCount ?: 0) > 511) 10 else 9
+        val moveBits = Gen3LearnsetEncoding.packedMoveBits(layout.moveCount ?: 0)
         val moveMask = (1 shl moveBits) - 1
         return buildMap {
             repeat(table.count) { speciesId ->
@@ -87,6 +130,34 @@ object RelationshipMaterializers {
             if (move == 0 && level == 0xFF) return@buildList
             add(LearnsetEntry(level = level, moveId = move))
             cursor += 3
+        }
+    }
+
+    private fun readExpansionLearnset(rom: RomImage, offset: Int): List<LearnsetEntry> = buildList {
+        var cursor = offset
+        repeat(256) {
+            val move = rom.u16le(cursor)
+            if (move == 0xFFFF) return@buildList
+            add(LearnsetEntry(level = rom.u16le(cursor + 2), moveId = move))
+            cursor += 4
+        }
+    }
+
+    private fun readExpansionEvolutions(rom: RomImage, offset: Int): List<EvolutionEdge> = buildList {
+        var cursor = offset
+        repeat(32) {
+            val method = rom.u16le(cursor)
+            if (method == 0xFFFF) return@buildList
+            val raw = rom.slice(cursor, 12)
+            add(
+                EvolutionEdge(
+                    targetSpeciesId = rom.u16le(cursor + 4),
+                    methodId = method,
+                    parameter = rom.u16le(cursor + 2),
+                    raw = raw,
+                ),
+            )
+            cursor += 12
         }
     }
 

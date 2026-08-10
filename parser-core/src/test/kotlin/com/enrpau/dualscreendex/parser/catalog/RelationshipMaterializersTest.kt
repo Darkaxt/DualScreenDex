@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.catalog
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
@@ -62,6 +63,21 @@ class RelationshipMaterializersTest {
     }
 
     @Test
+    fun materializesNineBitPackedLearnsetWithExactly512MoveDefinitions() {
+        val bytes = ByteArray(256)
+        putGbaPointer(bytes, 0, 128)
+        putU16(bytes, 128, (20 shl 9) or 489)
+        putU16(bytes, 130, 0xFFFF)
+        val layout = layout(
+            learnsets = TableLayout(0, 1, 4),
+        ).copy(moveCount = 512)
+
+        val entries = RelationshipMaterializers.learnsets(RomImage(bytes), layout).getValue(0)
+
+        assertEquals(listOf(LearnsetEntry(20, 489)), entries)
+    }
+
+    @Test
     fun materializesExpandedGbaLevelUpLearnset() {
         val bytes = ByteArray(256)
         putGbaPointer(bytes, 0, 128)
@@ -78,6 +94,55 @@ class RelationshipMaterializersTest {
         val entries = RelationshipMaterializers.learnsets(RomImage(bytes), layout).getValue(0)
 
         assertEquals(listOf(LearnsetEntry(5, 600), LearnsetEntry(10, 700)), entries)
+    }
+
+    @Test
+    fun materializesIntegratedPokeemeraldExpansionRelationships() {
+        val bytes = ByteArray(1024)
+        val species = 32
+        val stride = 180
+        val first = species + stride
+        encodeGbaText(bytes, first + 31, "SEED")
+        putU16(bytes, first + 62, 7)
+        putU16(bytes, first + 64, 69)
+        putGbaPointer(bytes, first + 76, 700)
+        encodeGbaText(bytes, 700, "A STRANGE SEED")
+        putGbaPointer(bytes, first + 148, 760)
+        putU16(bytes, 760, 33)
+        putU16(bytes, 762, 5)
+        putU16(bytes, 764, 0xFFFF)
+        putGbaPointer(bytes, first + 160, 800)
+        putU16(bytes, 800, 1)
+        putU16(bytes, 802, 16)
+        putU16(bytes, 804, 2)
+        putU16(bytes, 812, 0xFFFF)
+        val metadata = expansionMetadata(stride)
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.EMERALD,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = 2,
+            moveCount = 100,
+            tables = ProfileTables(
+                descriptions = TableLayout(species, 2, stride, stride = stride, pointerOffsets = listOf(76)),
+                evolutions = TableLayout(species + 160, 2, 4, stride = stride, valuesArePointers = true, elementSize = 12),
+                learnsets = TableLayout(species + 148, 2, 4, stride = stride, valuesArePointers = true, elementSize = 4),
+            ),
+            pokeemeraldExpansion = metadata,
+        )
+
+        val description = RelationshipMaterializers.descriptions(RomImage(bytes), layout).getValue(1)
+        val learnsets = RelationshipMaterializers.learnsets(RomImage(bytes), layout).getValue(1)
+        val evolutions = RelationshipMaterializers.evolutions(RomImage(bytes), layout).getValue(1)
+
+        assertEquals("SEED", description.category)
+        assertEquals("A STRANGE SEED", description.text)
+        assertEquals(7, description.height)
+        assertEquals(69, description.weight)
+        assertEquals(listOf(LearnsetEntry(5, 33)), learnsets)
+        assertEquals(2, evolutions.single().targetSpeciesId)
+        assertEquals(1, evolutions.single().methodId)
+        assertEquals(16, evolutions.single().parameter)
     }
 
     @Test
@@ -185,4 +250,31 @@ class RelationshipMaterializersTest {
         val value = 0x08000000 + targetOffset
         repeat(4) { index -> target[offset + index] = (value ushr (index * 8)).toByte() }
     }
+
+    private fun expansionMetadata(speciesStride: Int) = PokeemeraldExpansionMetadata(
+        headerOffset = 0x204,
+        versionMajor = 1,
+        versionMinor = 15,
+        versionPatch = 3,
+        speciesRecordSize = speciesStride,
+        speciesNameOffset = 44,
+        speciesNameWidth = 13,
+        categoryOffset = 31,
+        nationalDexOffset = 60,
+        heightOffset = 62,
+        weightOffset = 64,
+        descriptionPointerOffset = 76,
+        frontSpritePointerOffset = 88,
+        normalPalettePointerOffset = 96,
+        abilitiesOffset = 24,
+        growthRateOffset = 21,
+        levelUpPointerOffset = 148,
+        teachablePointerOffset = 152,
+        eggMovePointerOffset = 156,
+        evolutionPointerOffset = 160,
+        moveRecordSize = 64,
+        abilityRecordSize = 28,
+        abilityNameWidth = 20,
+        abilityDescriptionPointerOffset = 20,
+    )
 }

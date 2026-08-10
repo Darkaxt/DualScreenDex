@@ -28,6 +28,7 @@ class SettingsRepositoryTest {
             theme = Theme.DARK,
             displayTarget = DisplayTarget.EXTERNAL,
             overlayScale = 0.65,
+            thorTopScreenFocus = true,
         )
 
         repository.write(settings)
@@ -56,6 +57,7 @@ class SettingsRepositoryTest {
         assertEquals(Theme.DARK, settings.theme)
         assertEquals(DisplayTarget.AUTO, settings.displayTarget)
         assertEquals(1.0, settings.overlayScale, 0.0)
+        assertEquals(false, settings.thorTopScreenFocus)
     }
 
     @Test

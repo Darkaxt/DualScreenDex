@@ -65,20 +65,36 @@ object SpriteValidators {
         recordSize: Int,
     ): ValidationEvidence = safely(pointerTableOffset, recordSize, speciesCount) {
         var validPointers = 0
+        var validStreams = 0
         repeat(speciesCount) { index ->
             val base = pointerTableOffset + index * recordSize
             val pointer = rom.gbaPointer(base)
             val size = rom.u16le(base + 4)
-            if (pointer != null && size in 1..MAX_SPRITE_OUTPUT) validPointers++
+            if (pointer != null && size in 1..MAX_SPRITE_OUTPUT) {
+                validPointers++
+                if (validGbaLz77Stream(rom, pointer, size)) validStreams++
+            }
         }
-        val samples = sampleIndices(speciesCount)
-        val validSamples = samples.count { index ->
-            val base = pointerTableOffset + index * recordSize
-            val pointer = rom.gbaPointer(base)
-            val size = rom.u16le(base + 4)
-            pointer != null && validGbaLz77Stream(rom, pointer, size)
-        }
-        result(validPointers, speciesCount, validSamples, samples.size, pointerTableOffset, recordSize, "Gen 3 sprite references")
+        val pointerConfidence = validPointers.toDouble() / speciesCount.coerceAtLeast(1)
+        val streamConfidence = validStreams.toDouble() / speciesCount.coerceAtLeast(1)
+        val compatible = speciesCount > 0 &&
+            pointerConfidence >= MINIMUM_POINTER_RATIO && streamConfidence >= MINIMUM_POINTER_RATIO
+        ValidationEvidence(
+            compatible = compatible,
+            validRecords = validStreams,
+            totalRecords = speciesCount,
+            confidence = streamConfidence,
+            reasons = buildList {
+                if (pointerConfidence < MINIMUM_POINTER_RATIO) {
+                    add("valid Gen 3 sprite pointers $validPointers/$speciesCount below $MINIMUM_POINTER_RATIO")
+                }
+                if (streamConfidence < MINIMUM_POINTER_RATIO) {
+                    add("decoded Gen 3 sprite streams $validStreams/$speciesCount below $MINIMUM_POINTER_RATIO")
+                }
+            },
+            offset = pointerTableOffset,
+            recordSize = recordSize,
+        )
     }
 
     private fun gen2Pointers(rom: RomImage, base: Int, bankAdjustment: Int): List<Int?> = listOf(
@@ -186,8 +202,8 @@ object SpriteValidators {
                     val second = rom.u8(cursor++)
                     val length = (first ushr 4) + 3
                     val distance = ((first and 0x0F) shl 8 or second) + 1
-                    if (distance > output || output + length > declaredSize) return false
-                    output += length
+                    if (distance > output) return false
+                    output = minOf(declaredSize, output + length)
                 }
             }
         }

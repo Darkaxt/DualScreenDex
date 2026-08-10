@@ -132,23 +132,45 @@ object PokemonDatasetValidators {
         recordSize: Int = 6,
     ): ValidationEvidence = safely(offset, slotsPerSpecies * recordSize, speciesCount) {
         require(recordSize >= 6) { "evolution record size must contain three u16 fields" }
-        var valid = 0
+        val validRows = BooleanArray(speciesCount)
         repeat(speciesCount) { species ->
             val base = offset + species * slotsPerSpecies * recordSize
             val slotsValid = (0 until slotsPerSpecies).all { slot ->
                 val record = base + slot * recordSize
                 val method = rom.u16le(record)
-                val parameter = rom.u16le(record + 2)
                 val target = rom.u16le(record + 4)
-                if (method == 0) {
-                    parameter == 0 && target == 0
-                } else {
-                    method in 1..maximumMethod && target in 1 until speciesCount
-                }
+                species == 0 || method == 0 ||
+                    (method in 1..maximumMethod && target in 1 until speciesCount)
             }
-            if (slotsValid) valid++
+            validRows[species] = slotsValid
         }
-        result(valid, speciesCount, offset, slotsPerSpecies * recordSize, "valid Gen 3 evolution records", 0.90)
+        val valid = validRows.count { it }
+        val firstInvalid = validRows.indexOfFirst { !it }
+        val boundedTrailingOmission = firstInvalid >= 0 &&
+            validRows.drop(firstInvalid).none { it } &&
+            firstInvalid.toDouble() / speciesCount.coerceAtLeast(1) >= 0.90
+        if (boundedTrailingOmission) {
+            ValidationEvidence(
+                compatible = true,
+                validRecords = firstInvalid,
+                totalRecords = firstInvalid,
+                confidence = firstInvalid.toDouble() / speciesCount,
+                reasons = listOf("trimmed ${speciesCount - firstInvalid} invalid trailing evolution rows"),
+                offset = offset,
+                recordSize = slotsPerSpecies * recordSize,
+            )
+        } else {
+            val compatible = valid == speciesCount
+            ValidationEvidence(
+                compatible = compatible,
+                validRecords = valid,
+                totalRecords = speciesCount,
+                confidence = valid.toDouble() / speciesCount.coerceAtLeast(1),
+                reasons = if (compatible) emptyList() else listOf("valid Gen 3 evolution records $valid/$speciesCount are not a contiguous complete table"),
+                offset = offset,
+                recordSize = slotsPerSpecies * recordSize,
+            )
+        }
     }
 
     fun gen3Learnsets(

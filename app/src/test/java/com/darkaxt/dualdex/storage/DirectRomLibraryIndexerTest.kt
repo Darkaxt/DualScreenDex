@@ -68,6 +68,10 @@ class DirectRomLibraryIndexerTest {
     private fun temporaryRoot(): File = Files.createTempDirectory("dualdex-direct-rom-").toFile().also(roots::add)
 
     private fun gameBoyAdvanceRom(): ByteArray = ByteArray(0xC0).also { bytes ->
+        byteArrayOf(
+            0x24, 0xFF.toByte(), 0xAE.toByte(), 0x51, 0x69, 0x9A.toByte(), 0xA2.toByte(), 0x21,
+            0x3D, 0x84.toByte(), 0x82.toByte(), 0x0A,
+        ).copyInto(bytes, 0x04)
         "POKEMON EMER".toByteArray().copyInto(bytes, 0xA0)
         "BPEE".toByteArray().copyInto(bytes, 0xAC)
     }

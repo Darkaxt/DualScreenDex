@@ -56,6 +56,16 @@ describe('production settings copy', () => {
     expect(send).toHaveBeenCalledWith('SETTINGS', { displayTarget: 'EXTERNAL' });
   });
 
+  it('offers opt-in Thor top-screen controller focus', () => {
+    const send = vi.fn();
+    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Keep controls on top screen' }));
+
+    expect(send).toHaveBeenCalledWith('SETTINGS', { thorTopScreenFocus: true });
+    expect(screen.getByText(/restores the prior focus mode/i)).toBeTruthy();
+  });
+
   it('shows SaveRAM health and lets an ambiguous match be selected', () => {
     const send = vi.fn();
     render(<SettingsPage catalog={catalog} state={{ ...state, saveRam: {

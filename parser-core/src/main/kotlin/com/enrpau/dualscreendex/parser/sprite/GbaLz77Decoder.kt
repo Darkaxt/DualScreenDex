@@ -24,8 +24,8 @@ object GbaLz77Decoder {
                     val second = source[input++].toInt() and 0xFF
                     val length = (first ushr 4) + 3
                     val distance = ((first and 0x0F) shl 8 or second) + 1
-                    require(distance <= written && written + length <= size) { "invalid GBA LZ77 reference" }
-                    repeat(length) {
+                    require(distance <= written) { "invalid GBA LZ77 reference" }
+                    repeat(minOf(length, size - written)) {
                         output[written] = output[written - distance]
                         written++
                     }

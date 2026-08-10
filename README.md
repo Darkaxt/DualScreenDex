@@ -49,7 +49,7 @@ Outside battle, DualDex is a fully navigable Pokédex built from the active ROM.
 
 ### Automatic battle target
 
-When a supported structure is independently validated, DualDex opens the current opponent automatically and returns to out-of-combat navigation when the battle ends. Generation I Red/Blue/Yellow use a WRAM-shape resolver validated against the labeled Yellow export; Generation III uses catalog-coupled `BattlePokemon` structure discovery. Generation III double battles follow a uniquely resolved game target and expose a manual target fallback only when the cursor cannot be resolved. Generation II live layouts remain unsupported without affecting the ROM/SaveRAM Pokédex.
+When a supported structure is independently validated, DualDex opens the current opponent automatically and returns to out-of-combat navigation when the battle ends. Generation I Red/Blue/Yellow use a WRAM-shape resolver validated against the labeled Yellow export; Generation II Gold/Silver/Crystal use a catalog-coupled WRAM resolver validated against the labeled Crystal Rev 1 export; and Generation III uses catalog-coupled `BattlePokemon` structure discovery. Generation III double battles follow a uniquely resolved game target and expose a manual target fallback only when the cursor cannot be resolved. Generation II correctly exposes a single opponent because those games do not contain double battles.
 
 The hybrid target page has four focused tabs:
 
@@ -217,7 +217,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Browser-hosted plausible simulator | Retained as a development harness; absent from production assets |
 | Loopback HTTP companion server | Implemented and bound only to `127.0.0.1` |
 | Runtime memory transport | Implemented as a shared read-only RetroArch adapter used by production battle reads and isolated issue reports |
-| Dynamic battle-memory resolver | Generation I and III production shapes implemented; Generation II remains unavailable; unsupported layouts degrade independently |
+| Dynamic battle-memory resolver | Generation I–III production shapes implemented; Generation III double targets are inferred where possible; unsupported layouts degrade independently |
 | SaveRAM readers and Organic discovery ledger | Implemented and persisted per ROM for Generations I–III, including supported live battle observations |
 | Thor-first companion UI and settings | Implemented in the packaged Android companion |
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses; identical SHA-256 copies resolve deterministically |
@@ -296,7 +296,7 @@ The issue reporter starts disabled on every app process. Enabling it is the sing
 
 Each session can label bounded snapshots as Overworld, Battle Start, Move Selected, Move Executed, Target Changed, Opponent Switched, Battle End, or a custom event. The user-selected JSON export includes core/content identity, descriptors, timestamps, region hashes, Base64 memory bytes, and bounded address-level before/after diffs. These are evidence—not automatically validated field mappings. A battle address becomes a generated mapping only after repeated captures and structural checks agree.
 
-The labeled [Modern Emerald analysis](docs/reports/modern-emerald-memory-mapper-analysis.md) validates the Generation III single-opponent record, level and IV tier, highlighted player move, ROM-derived effectiveness, and Organic opponent move counts from PP decreases. The [Pokémon Yellow analysis](docs/reports/2026-08-10-pokemon-yellow-memory-validation.md) validates shape-based Red/Blue/Yellow addressing, Pikachu acquisition, rival Eevee identity, player PP consumption, and Gen I's executed-move latch fallback. The exported bytes remain diagnostic evidence; production resolves the same structures independently from live memory and the parsed catalog.
+The labeled [Modern Emerald analysis](docs/reports/modern-emerald-memory-mapper-analysis.md) validates the Generation III single-opponent record, level and IV tier, highlighted player move, ROM-derived effectiveness, and Organic opponent move counts from PP decreases. The [Pokémon Yellow analysis](docs/reports/2026-08-10-pokemon-yellow-memory-validation.md) validates shape-based Red/Blue/Yellow addressing, Pikachu acquisition, rival Eevee identity, player PP consumption, and Gen I's executed-move latch fallback. The [Pokémon Crystal Rev 1 analysis](docs/reports/2026-08-10-pokemon-crystal-memory-validation.md) validates Gen II battle identity, selected and executed moves, PP/HP transitions, DV rarity, and automatic exit. The exported bytes remain diagnostic evidence; production resolves the same structures independently from live memory and the parsed catalog.
 
 ## Design documents
 

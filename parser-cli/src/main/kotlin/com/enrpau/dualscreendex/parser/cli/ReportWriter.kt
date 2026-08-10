@@ -10,7 +10,7 @@ import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.GsonBuilder
 
 data class CorpusReport(
-    val schemaVersion: Int = 7,
+    val schemaVersion: Int = 9,
     val minimumParserScore: Int = ParserOrchestrator.minimumScore,
     val minimumRunnerUpMargin: Int = ParserOrchestrator.minimumMargin,
     val roots: List<String>,
@@ -24,11 +24,185 @@ data class CorpusResult(
     val durationMillis: Long,
     val result: ParseResult? = null,
     val catalog: CatalogMetrics? = null,
+    val samples: CatalogSamples? = null,
     val catalogError: String? = null,
     val persistence: CatalogPersistenceMetrics? = null,
     val persistenceError: String? = null,
     val error: String? = null,
+    val dataCompatibility: DataStructureCompatibility = assessDataCompatibility(
+        result, catalog, samples, catalogError, error,
+    ),
 )
+
+enum class DataStructureCompatibility { COMPLETE, PARTIAL, UNRESOLVED, ERROR }
+
+private fun assessDataCompatibility(
+    result: ParseResult?,
+    catalog: CatalogMetrics?,
+    samples: CatalogSamples?,
+    catalogError: String?,
+    error: String?,
+): DataStructureCompatibility {
+    if (error != null || result?.status == SelectionStatus.ERROR) return DataStructureCompatibility.ERROR
+    if (result == null) return DataStructureCompatibility.UNRESOLVED
+    val byCapability = result.capabilities.associateBy { it.capability }
+    val allApplicableResolved = RomCapability.entries.all { capability ->
+        when (byCapability[capability]?.status) {
+            CapabilityStatus.AVAILABLE, CapabilityStatus.NOT_APPLICABLE -> true
+            CapabilityStatus.NOT_FOUND, null -> false
+        }
+    }
+    if (
+        allApplicableResolved && catalog != null && samples != null &&
+        samples.referenceErrors.isEmpty() && catalogError == null
+    ) {
+        return DataStructureCompatibility.COMPLETE
+    }
+    return if (result.capabilities.any { it.status == CapabilityStatus.AVAILABLE } || catalog != null) {
+        DataStructureCompatibility.PARTIAL
+    } else {
+        DataStructureCompatibility.UNRESOLVED
+    }
+}
+
+data class CatalogSamples(
+    val species: List<String>,
+    val moves: List<String>,
+    val types: List<String>,
+    val typeChart: List<String>,
+    val evolutions: List<String>,
+    val learnsets: List<String>,
+    val abilities: List<String>,
+    val encounters: List<String>,
+    val balls: List<String>,
+    val referenceErrors: List<String>,
+    val speciesByDex: List<String> = emptyList(),
+    val eggMoves: List<String> = emptyList(),
+    val machineMoves: List<String> = emptyList(),
+    val tutorMoves: List<String> = emptyList(),
+) {
+    companion object {
+        fun from(catalog: ParsedCatalog, limit: Int = 3): CatalogSamples {
+            val speciesRecords = catalog.navigableSpecies().sortedBy { it.id }
+            val moves = catalog.movesById.values.filter { it.id > 0 }.sortedBy { it.id }
+            val types = catalog.typesById.values.sortedBy { it.id }
+            val abilities = catalog.abilitiesById.values.filter { it.id > 0 }.sortedBy { it.id }
+            val balls = catalog.captureBallsById.values.filter { it.id > 0 }.sortedBy { it.id }
+            val referenceErrors = buildList {
+                speciesRecords.forEach { species ->
+                    species.typeIds.value.orEmpty().forEach { typeId ->
+                        if (typeId !in catalog.typesById) add("species ${species.id} references missing type $typeId")
+                    }
+                    species.abilityIds.value.orEmpty().forEach { abilityId ->
+                        if (abilityId > 0 && abilityId !in catalog.abilitiesById) {
+                            add("species ${species.id} references missing ability $abilityId")
+                        }
+                    }
+                    species.evolutionEdges.value.orEmpty().forEach { edge ->
+                        if (edge.targetSpeciesId !in catalog.speciesById) {
+                            add("species ${species.id} evolves to missing species ${edge.targetSpeciesId}")
+                        }
+                    }
+                    species.learnset.value.orEmpty().forEach { entry ->
+                        if (entry.moveId !in catalog.movesById) {
+                            add("species ${species.id} learns missing move ${entry.moveId}")
+                        }
+                    }
+                }
+                moves.forEach { move ->
+                    move.typeId.value?.let { typeId ->
+                        if (typeId !in catalog.typesById) add("move ${move.id} references missing type $typeId")
+                    }
+                }
+                catalog.typeChart.forEach { matchup ->
+                    if (matchup.attackingTypeId !in catalog.typesById) {
+                        add("type chart references missing attacking type ${matchup.attackingTypeId}")
+                    }
+                    if (matchup.defendingTypeId !in catalog.typesById) {
+                        add("type chart references missing defending type ${matchup.defendingTypeId}")
+                    }
+                }
+                catalog.encounterAreas.flatMap { it.slots }.forEach { slot ->
+                    if (slot.speciesId !in catalog.speciesById) {
+                        add("encounter references missing species ${slot.speciesId}")
+                    }
+                }
+            }.distinct().sorted()
+            fun formatSpecies(species: com.enrpau.dualscreendex.parser.catalog.SpeciesRecord): String {
+                val stats = species.baseStats.value?.let {
+                    "${it.hp}/${it.attack}/${it.defense}/${it.speed}/${it.specialAttack}/${it.specialDefense}"
+                } ?: "-"
+                val sprite = species.sprite.value?.let {
+                    "${it.width}x${it.height}#${it.argb.contentHashCode().toUInt().toString(16).uppercase()}"
+                } ?: "-"
+                return "id=${species.id}; dex=${species.dexNumber.value ?: "-"}; name=${species.name.value ?: "-"}; " +
+                    "types=${species.typeIds.value.orEmpty()}; stats=$stats; sprite=$sprite"
+            }
+            fun acquisitionSamples(method: MoveAcquisitionMethod): List<String> = speciesRecords.asSequence()
+                .flatMap { species ->
+                    species.moveAcquisitions.value.orEmpty().asSequence()
+                        .filter { it.method == method }
+                        .map { acquisition ->
+                            "species=${species.id}; move=${acquisition.moveId}; source=${acquisition.sourceId ?: "-"}"
+                        }
+                }
+                .take(limit)
+                .toList()
+            return CatalogSamples(
+                species = speciesRecords.take(limit).map(::formatSpecies),
+                moves = moves.take(limit).map { move ->
+                    "id=${move.id}; name=${move.name.value ?: "-"}; type=${move.typeId.value ?: "-"}; " +
+                        "category=${move.category.value ?: "-"}; power=${move.power.value ?: "-"}; " +
+                        "accuracy=${move.accuracy.value ?: "-"}; pp=${move.pp.value ?: "-"}; " +
+                        "priority=${move.priority.value ?: "-"}; effect=${move.effectId.value ?: "-"}"
+                },
+                types = types.take(limit).map { type ->
+                    val colors = type.presentation.value?.let {
+                        "${it.foregroundArgb.toUInt().toString(16)}/${it.backgroundArgb.toUInt().toString(16)}/${it.borderArgb.toUInt().toString(16)}"
+                    } ?: "-"
+                    "id=${type.id}; name=${type.name.value ?: "-"}; colors=$colors"
+                },
+                typeChart = catalog.typeChart.take(limit).map {
+                    "attack=${it.attackingTypeId}; defend=${it.defendingTypeId}; multiplier=${it.multiplierPercent}%"
+                },
+                evolutions = speciesRecords.asSequence().flatMap { species ->
+                    species.evolutionEdges.value.orEmpty().asSequence().map { edge ->
+                        "species=${species.id}; target=${edge.targetSpeciesId}; method=${edge.methodId}; parameter=${edge.parameter}"
+                    }
+                }.take(limit).toList(),
+                learnsets = speciesRecords.asSequence().flatMap { species ->
+                    species.learnset.value.orEmpty().asSequence().map { entry ->
+                        "species=${species.id}; level=${entry.level}; move=${entry.moveId}; method=${entry.methodId}"
+                    }
+                }.take(limit).toList(),
+                abilities = abilities.take(limit).map { ability ->
+                    val mechanics = ability.mechanics.value.orEmpty().joinToString(",") { "${it.label}=${it.value}" }
+                    "id=${ability.id}; name=${ability.name.value ?: "-"}; mechanics=${mechanics.ifBlank { "-" }}"
+                },
+                encounters = catalog.encounterAreas.asSequence().flatMap { area ->
+                    area.slots.asSequence().map { slot ->
+                        "area=${area.id}; method=${area.methodId}; windows=${area.windows}; species=${slot.speciesId}; " +
+                            "levels=${slot.minimumLevel}-${slot.maximumLevel}; weight=${slot.weight ?: "-"}"
+                    }
+                }.take(limit).toList(),
+                balls = balls.take(limit).map { ball ->
+                    val sprite = ball.sprite.value?.let {
+                        "${it.width}x${it.height}#${it.argb.contentHashCode().toUInt().toString(16).uppercase()}"
+                    } ?: "-"
+                    "id=${ball.id}; name=${ball.name.value ?: "-"}; sprite=$sprite"
+                },
+                referenceErrors = referenceErrors,
+                speciesByDex = speciesRecords
+                    .sortedWith(compareBy({ it.dexNumber.value ?: Int.MAX_VALUE }, { it.id }))
+                    .take(limit)
+                    .map(::formatSpecies),
+                eggMoves = acquisitionSamples(MoveAcquisitionMethod.EGG),
+                machineMoves = acquisitionSamples(MoveAcquisitionMethod.MACHINE),
+                tutorMoves = acquisitionSamples(MoveAcquisitionMethod.TUTOR),
+            )
+        }
+    }
+}
 
 data class CatalogPersistenceMetrics(
     val fileName: String,
@@ -118,18 +292,16 @@ object ReportWriter {
     ) + "\n"
 
     fun markdown(report: CorpusReport): String = buildString {
-        val selected = report.results.count { it.result?.status == SelectionStatus.SELECTED }
         val exact = report.results.count { entry -> entry.result?.probes?.any { it.exactProfile } == true }
-        val derived = report.results.count { entry ->
-            entry.result?.status == SelectionStatus.SELECTED && entry.result.probes.none { it.exactProfile }
-        }
-        val ambiguous = report.results.count { it.result?.status == SelectionStatus.AMBIGUOUS }
-        val noFamilyMatch = report.results.count { it.result?.status == SelectionStatus.NO_FAMILY_MATCH }
-        val errors = report.results.count { it.error != null || it.result?.status == SelectionStatus.ERROR }
+        val completeData = report.results.count { it.dataCompatibility == DataStructureCompatibility.COMPLETE }
+        val partialData = report.results.count { it.dataCompatibility == DataStructureCompatibility.PARTIAL }
+        val unresolvedData = report.results.count { it.dataCompatibility == DataStructureCompatibility.UNRESOLVED }
+        val errors = report.results.count { it.dataCompatibility == DataStructureCompatibility.ERROR }
         val persisted = report.results.count { it.persistence != null }
         val persistenceErrors = report.results.count { it.persistenceError != null }
+        val referenceErrors = report.results.sumOf { it.samples?.referenceErrors?.size ?: 0 }
         fun complete(entry: CorpusResult, capabilities: Iterable<RomCapability>) =
-            entry.result?.status == SelectionStatus.SELECTED && RomCapability.entries.all { capability ->
+            entry.result != null && entry.catalog != null && entry.samples?.referenceErrors?.isEmpty() != false && RomCapability.entries.all { capability ->
                 if (capability !in capabilities) return@all true
                 when (entry.result.capabilities.firstOrNull { it.capability == capability }?.status) {
                     CapabilityStatus.AVAILABLE, CapabilityStatus.NOT_APPLICABLE -> true
@@ -138,7 +310,6 @@ object ReportWriter {
             }
         val completeCore = report.results.count { complete(it, coreCapabilities) }
         val completeExtended = report.results.count { complete(it, RomCapability.entries) }
-        val partialExtended = selected - completeExtended
 
         appendLine("# DualDex ROM parser compatibility")
         appendLine()
@@ -147,16 +318,17 @@ object ReportWriter {
         appendLine("## Summary")
         appendLine()
         appendLine("- Inputs evaluated: ${report.results.size}")
-        appendLine("- Selected: $selected ($exact exact official, $derived structurally selected derivatives)")
+        appendLine("- Complete ROM data parsers: $completeData")
+        appendLine("- Partial ROM data parsers: $partialData")
+        appendLine("- Unresolved ROM data structures: $unresolvedData")
+        appendLine("- Exact official ROM profiles encountered: $exact")
         appendLine("- Complete core catalogs: $completeCore")
         appendLine("- Complete for every applicable extended dataset: $completeExtended")
-        appendLine("- Selected with one or more applicable `N/F` extended datasets: $partialExtended")
-        appendLine("- Ambiguous: $ambiguous")
-        if (noFamilyMatch > 0) appendLine("- No mainline-family match: $noFamilyMatch")
         appendLine("- Read/parse errors: $errors")
         appendLine("- Persisted and reopened SQLite catalogs: $persisted")
         appendLine("- SQLite persistence errors: $persistenceErrors")
-        appendLine("- Selection rule: score >= ${report.minimumParserScore}, runner-up margin >= ${report.minimumRunnerUpMargin}, and at least two validated anchors")
+        appendLine("- Decoded cross-reference errors: $referenceErrors")
+        appendLine("- Family scores are internal layout-routing evidence and do not determine ROM data compatibility")
         appendLine()
         appendNamedOutcomes(report)
         appendLine()
@@ -170,8 +342,8 @@ object ReportWriter {
         appendLine("- `N/F` = applicable but not found or validated")
         appendLine("- `N/A` = not applicable to that engine")
         appendLine()
-        appendLine("| ROM | Status | Family | Profile | Ancestry score | Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Ability values | Areas | Type colors | Balls |")
-        appendLine("| --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+        appendLine("| ROM | Data parser | Routing status | Family hint | Profile hint | Routing score | Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Ability values | Areas | Type colors | Balls |")
+        appendLine("| --- | --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
         report.results.forEach { entry ->
             val parsed = entry.result
             val selectedProbe = parsed?.probes?.firstOrNull { it.family == parsed.selectedFamily }
@@ -183,7 +355,7 @@ object ReportWriter {
                 CapabilityStatus.NOT_FOUND, null -> "N/F"
             }
             appendLine(
-                "| ${cell(entry.displayName)} | ${parsed?.status ?: "ERROR"} | ${parsed?.selectedFamily ?: "-"} | " +
+                "| ${cell(entry.displayName)} | ${entry.dataCompatibility} | ${parsed?.status ?: "ERROR"} | ${parsed?.selectedFamily ?: "-"} | " +
                     "${cell(parsed?.selectedProfile ?: "-")} | ${selectedProbe?.score ?: "-"} | " +
                     "${capability(RomCapability.SPECIES_CATALOG)} | ${capability(RomCapability.SPECIES_NAMES)} | " +
                     "${capability(RomCapability.SPECIES_TYPES)} | ${capability(RomCapability.TYPE_CHART)} | " +
@@ -232,7 +404,28 @@ object ReportWriter {
                 }
                 appendLine("  - ${evidence.capability}: $status; confidence=${formatConfidence(evidence.confidence)}${if (location.isEmpty()) "" else "; $location"}${if (reason.isEmpty()) "" else "; $reason"}")
             }
+            entry.samples?.let { samples ->
+                appendLine("- Leading decoded records:")
+                appendSampleGroup("Species", samples.species)
+                appendSampleGroup("Moves", samples.moves)
+                appendSampleGroup("Types", samples.types)
+                appendSampleGroup("Type chart", samples.typeChart)
+                appendSampleGroup("Evolutions", samples.evolutions)
+                appendSampleGroup("Learnsets", samples.learnsets)
+                appendSampleGroup("Abilities", samples.abilities)
+                appendSampleGroup("Encounters", samples.encounters)
+                appendSampleGroup("Balls", samples.balls)
+                if (samples.referenceErrors.isEmpty()) {
+                    appendLine("  - Cross-references: validated")
+                } else {
+                    appendLine("  - Cross-reference errors: ${samples.referenceErrors.joinToString("; ")}")
+                }
+            }
         }
+    }
+
+    private fun StringBuilder.appendSampleGroup(label: String, values: List<String>) {
+        appendLine("  - $label: ${if (values.isEmpty()) "-" else values.joinToString(" | ") { "`${it.replace("`", "'")}`" }}")
     }
 
     private fun formatConfidence(value: Double): String = String.format(java.util.Locale.ROOT, "%.3f", value)
@@ -248,22 +441,16 @@ object ReportWriter {
     private fun heading(value: String): String = value.replace("\r", " ").replace("\n", " ")
 
     private fun StringBuilder.appendNamedOutcomes(report: CorpusReport) {
-        val exact = report.results.filter { entry ->
-            entry.result?.status == SelectionStatus.SELECTED && entry.result.probes.any { it.exactProfile }
-        }
-        val derived = report.results.filter { entry ->
-            entry.result?.status == SelectionStatus.SELECTED && entry.result.probes.none { it.exactProfile }
-        }
-        val noFamily = report.results.filter { it.result?.status == SelectionStatus.NO_FAMILY_MATCH }
-        val ambiguous = report.results.filter { it.result?.status == SelectionStatus.AMBIGUOUS }
-        val errors = report.results.filter { it.error != null || it.result?.status == SelectionStatus.ERROR }
+        val complete = report.results.filter { it.dataCompatibility == DataStructureCompatibility.COMPLETE }
+        val partial = report.results.filter { it.dataCompatibility == DataStructureCompatibility.PARTIAL }
+        val unresolved = report.results.filter { it.dataCompatibility == DataStructureCompatibility.UNRESOLVED }
+        val errors = report.results.filter { it.dataCompatibility == DataStructureCompatibility.ERROR }
 
         appendLine("## Named outcomes")
         appendLine()
-        appendNamedGroup("Exact official matches", exact) { entry -> entry.result?.selectedFamily?.name ?: "-" }
-        appendNamedGroup("Structurally selected derivatives", derived) { entry -> entry.result?.selectedFamily?.name ?: "-" }
-        if (noFamily.isNotEmpty()) appendNamedGroup("No mainline-family match", noFamily) { "capability flags retained below" }
-        if (ambiguous.isNotEmpty()) appendNamedGroup("Ambiguous ancestry", ambiguous) { "no family selected" }
+        appendNamedGroup("Complete ROM data parsing", complete) { "all applicable structures decoded and sample-validated" }
+        if (partial.isNotEmpty()) appendNamedGroup("Partial ROM data parsing", partial) { "one or more applicable structures remain N/F" }
+        if (unresolved.isNotEmpty()) appendNamedGroup("Unresolved ROM data structures", unresolved) { "no materializable catalog yet" }
         if (errors.isNotEmpty()) appendNamedGroup("Read or parse errors", errors) { it.error ?: "parser error" }
     }
 

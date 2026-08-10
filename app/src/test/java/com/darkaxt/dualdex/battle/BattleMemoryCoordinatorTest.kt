@@ -104,6 +104,73 @@ class BattleMemoryCoordinatorTest {
         coordinator.close()
     }
 
+    @Test
+    fun readsGen2ThroughTheGameBoyCoreIdentityAndPublishesCrystalBattles() {
+        val wram = ByteArray(0x2000)
+        gen2Mon(wram, 0x062c, 155, 5, 20, 20, 20, listOf(33, 43), listOf(35, 30), 0x51, 0x43)
+        gen2Mon(wram, 0x1206, 19, 2, 13, 0, 0, listOf(33, 39), listOf(35, 30), 0x58, 0x9a)
+        wram[0x122d] = 1
+        wram[0x1230] = 0
+        wram[0x06e3] = 33
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(wram, 0xc000)
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { gen2Context() },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+
+        coordinator.updateSession(connected = true, systemId = "game_boy", romIdentity = "rom")
+        coordinator.heartbeat()
+        coordinator.heartbeat()
+
+        assertEquals(19, updates.last().sample?.opponents?.single()?.speciesId)
+        assertEquals(33, updates.last().sample?.selectedMoveId)
+        assertTrue(transport.commands.all { it.startsWith("READ_CORE_MEMORY ") })
+
+        wram[0x120e] = 34
+        wram[0x071c] = 33
+        repeat(2) { coordinator.heartbeat() }
+        assertEquals(mapOf(19 to mapOf(33 to 1)), updates.last().observations)
+
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.last().observations.isEmpty())
+
+        wram[0x122d] = 0
+        repeat(4) { coordinator.heartbeat() }
+        assertTrue(updates.last().ended)
+        assertTrue(!updates.last().active)
+        coordinator.close()
+    }
+
+    @Test
+    fun keepsGen2BattleActiveAcrossTransientInvalidBankReads() {
+        val wram = ByteArray(0x2000)
+        gen2Mon(wram, 0x062c, 155, 5, 20, 20, 20, listOf(33, 43), listOf(35, 30), 0x51, 0x43)
+        gen2Mon(wram, 0x1206, 19, 2, 13, 0, 0, listOf(33, 39), listOf(35, 30), 0x58, 0x9a)
+        wram[0x122d] = 1
+        wram[0x1230] = 0
+        wram[0x06e3] = 33
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { gen2Context() },
+            publisher = updates::add,
+            transportFactory = { MemoryTransport(wram, 0xc000) },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_color", romIdentity = "rom")
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.last().active)
+
+        wram[0x062c] = 0
+        repeat(4) { coordinator.heartbeat() }
+
+        assertTrue(updates.last().active)
+        assertTrue(!updates.last().ended)
+        coordinator.close()
+    }
+
     private fun context() = BattleCatalogContext(
         romIdentity = "rom",
         generation = 3,
@@ -130,6 +197,21 @@ class BattleMemoryCoordinatorTest {
                 0x2d to BattleMove(0x2d, 40), 0x54 to BattleMove(0x54, 30),
             ),
             typeIds = setOf(0, 0x17),
+        ),
+    )
+
+    private fun gen2Context() = BattleCatalogContext(
+        romIdentity = "rom",
+        generation = 2,
+        catalog = BattleCatalogView(
+            species = mapOf(
+                155 to BattleSpecies(155, listOf(20, 20)),
+                19 to BattleSpecies(19, listOf(0, 0)),
+            ),
+            moves = mapOf(
+                33 to BattleMove(33, 35), 39 to BattleMove(39, 30), 43 to BattleMove(43, 30),
+            ),
+            typeIds = setOf(0, 20),
         ),
     )
 
@@ -177,6 +259,28 @@ class BattleMemoryCoordinatorTest {
         bytes[offset + 15] = (hp ushr 8).toByte()
         bytes[offset + 16] = hp.toByte()
         pp.forEachIndexed { index, value -> bytes[offset + 25 + index] = value.toByte() }
+    }
+
+    private fun gen2Mon(
+        bytes: ByteArray, offset: Int, species: Int, level: Int, hp: Int, type1: Int, type2: Int,
+        moves: List<Int>, pp: List<Int>, dv1: Int, dv2: Int,
+    ) {
+        bytes[offset] = species.toByte()
+        moves.forEachIndexed { index, move -> bytes[offset + 2 + index] = move.toByte() }
+        bytes[offset + 6] = dv1.toByte()
+        bytes[offset + 7] = dv2.toByte()
+        pp.forEachIndexed { index, value -> bytes[offset + 8 + index] = value.toByte() }
+        bytes[offset + 13] = level.toByte()
+        bytes[offset + 16] = (hp ushr 8).toByte()
+        bytes[offset + 17] = hp.toByte()
+        bytes[offset + 18] = (hp ushr 8).toByte()
+        bytes[offset + 19] = hp.toByte()
+        repeat(5) {
+            bytes[offset + 20 + it * 2] = 0
+            bytes[offset + 21 + it * 2] = 10
+        }
+        bytes[offset + 30] = type1.toByte()
+        bytes[offset + 31] = type2.toByte()
     }
 
     private class MemoryTransport(private val memory: ByteArray, private val baseAddress: Long = 0x02000000) : NetworkCommandTransport {

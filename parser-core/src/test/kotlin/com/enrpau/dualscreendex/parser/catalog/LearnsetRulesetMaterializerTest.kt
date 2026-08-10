@@ -60,6 +60,21 @@ class LearnsetRulesetMaterializerTest {
         assertEquals(listOf(primaryOffset), result.map { it.sourceOffset })
     }
 
+    @Test
+    fun discoversNineBitRulesetsWithExactly512MoveDefinitions() {
+        val bytes = ByteArray(0x1000)
+        val primaryOffset = 0x100
+        val alternateOffset = 0x140
+        writeRuleset(bytes, primaryOffset, List(4) { listOf(20 to 489) }, 0x300)
+        writeRuleset(bytes, alternateOffset, List(4) { listOf(21 to 490) }, 0x500)
+        val layout = layout(primaryOffset).copy(moveCount = 512)
+        val primary = mapOf(0 to listOf(LearnsetEntry(20, 489)))
+
+        val result = LearnsetRulesetMaterializer.materialize(RomImage(bytes), layout, primary)
+
+        assertEquals(listOf(primaryOffset, alternateOffset), result.map { it.sourceOffset }.sorted())
+    }
+
     private fun layout(primaryOffset: Int) = ResolvedRomLayout(
         family = EngineFamily.EMERALD,
         generation = 3,

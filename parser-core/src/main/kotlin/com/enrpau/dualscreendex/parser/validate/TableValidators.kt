@@ -3,9 +3,76 @@ package com.enrpau.dualscreendex.parser.validate
 import com.enrpau.dualscreendex.parser.io.RomBoundsException
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
+import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import kotlin.math.abs
 
 object TableValidators {
+    fun names(
+        rom: RomImage,
+        table: TableLayout,
+        count: Int,
+        codec: PokemonTextCodec,
+        minimumRatio: Double = 0.85,
+    ): ValidationEvidence {
+        if (table.variableLength) return variableNames(rom, table.offset, count, codec)
+        if (table.stride == null && !table.valuesArePointers) {
+            return fixedNames(rom, table.offset, count, table.recordSize, codec, minimumRatio)
+        }
+        return safely(table.offset, table.recordSize, count) {
+            var valid = 0
+            repeat(count) { index ->
+                val record = table.offset + index * (table.stride ?: table.recordSize)
+                val value = if (table.valuesArePointers) rom.gbaPointer(record) else record
+                if (value != null) {
+                    val width = if (table.valuesArePointers) minOf(64, rom.size - value) else table.recordSize
+                    val decoded = codec.decodeDetailed(rom.slice(value, width))
+                    if (decoded.text.isNotBlank() && decoded.validRatio >= 0.8 && decoded.terminated) valid++
+                }
+            }
+            val confidence = valid.toDouble() / count.coerceAtLeast(1)
+            ValidationEvidence(
+                compatible = confidence >= minimumRatio,
+                validRecords = valid,
+                totalRecords = count,
+                confidence = confidence,
+                reasons = if (confidence >= minimumRatio) emptyList() else listOf("valid strided names $valid/$count below $minimumRatio"),
+                offset = table.offset,
+                recordSize = table.recordSize,
+            )
+        }
+    }
+
+    fun pokeemeraldExpansionMoveData(
+        rom: RomImage,
+        table: TableLayout,
+        count: Int,
+    ): ValidationEvidence = safely(table.offset, table.recordSize, count) {
+        var valid = 0
+        repeat(count) { index ->
+            val base = table.offset + index * (table.stride ?: table.recordSize)
+            val packed = rom.u16le(base + 10)
+            val category = (packed ushr 5) and 0x3
+            val power = packed ushr 7
+            val accuracy = rom.u16le(base + 12) and 0x7F
+            val pp = rom.u8(base + 14)
+            val reserved = (0 until minOf(table.recordSize, 16)).all { rom.u8(base + it) == 0 }
+            if (index == 0 || reserved || (category in 0..2 && power in 0..511 && accuracy in 0..100 && pp in 0..64)) {
+                valid++
+            }
+        }
+        val confidence = valid.toDouble() / count.coerceAtLeast(1)
+        ValidationEvidence(
+            compatible = confidence >= 0.98,
+            validRecords = valid,
+            totalRecords = count,
+            confidence = confidence,
+            reasons = if (confidence >= 0.98) emptyList() else listOf("plausible expansion move records $valid/$count below 98%"),
+            offset = table.offset,
+            recordSize = table.recordSize,
+        )
+    }
+
     fun fixedNames(
         rom: RomImage,
         offset: Int,
@@ -18,7 +85,7 @@ object TableValidators {
         val reasons = mutableListOf<String>()
         repeat(count) { index ->
             val decoded = codec.decodeDetailed(rom.slice(offset + index * width, width))
-            val plausible = decoded.terminated && decoded.text.isNotBlank() && decoded.validRatio >= minimumRatio
+            val plausible = plausibleFixedName(decoded, width, codec, minimumRatio)
             if (plausible) valid++
         }
         val confidence = valid.toDouble() / count.coerceAtLeast(1)
@@ -41,7 +108,7 @@ object TableValidators {
             val recordOffset = offset.toLong() + index.toLong() * width
             if (recordOffset + width > rom.size) break
             val decoded = codec.decodeDetailed(rom.slice(recordOffset.toInt(), width))
-            val valid = decoded.terminated && decoded.text.isNotBlank() && decoded.validRatio >= 0.8
+            val valid = plausibleFixedName(decoded, width, codec, minimumRatio = 0.8)
             if (valid) {
                 lastGood = index + 1
                 consecutiveInvalid = 0
@@ -51,6 +118,181 @@ object TableValidators {
             }
         }
         return lastGood.takeIf { it >= minimumCount }
+    }
+
+    fun locateFixedNameTable(
+        rom: RomImage,
+        count: Int,
+        candidateWidths: IntRange,
+        codec: PokemonTextCodec,
+        preferredOffset: Int? = null,
+    ): ValidationEvidence? = locateFixedTable(rom, count, candidateWidths, preferredOffset) { offset, width ->
+        val decoded = codec.decodeDetailed(rom.slice(offset, width))
+        plausibleFixedName(decoded, width, codec, minimumRatio = 0.8)
+    }
+
+    fun locateFixedNameSequenceNear(
+        rom: RomImage,
+        approximateOffset: Int,
+        candidateWidths: IntRange,
+        codec: PokemonTextCodec,
+        expectedNames: List<String>,
+        searchRadius: Int = 0x10000,
+    ): ValidationEvidence? {
+        if (expectedNames.isEmpty()) return null
+        val start = maxOf(0, approximateOffset - searchRadius)
+        return candidateWidths.filter { it > 0 }.asSequence().flatMap { width ->
+            val end = minOf(rom.size - expectedNames.size * width, approximateOffset + searchRadius)
+            if (end < start) emptySequence() else (start..end).asSequence().mapNotNull { offset ->
+                val matches = expectedNames.indices.all { index ->
+                    codec.decode(rom.slice(offset + index * width, width)).equals(expectedNames[index], ignoreCase = true)
+                }
+                if (!matches) null else ValidationEvidence(
+                    compatible = true,
+                    validRecords = expectedNames.size,
+                    totalRecords = expectedNames.size,
+                    confidence = 1.0,
+                    reasons = listOf("matched leading canonical records"),
+                    offset = offset,
+                    recordSize = width,
+                )
+            }
+        }.minWithOrNull(compareBy<ValidationEvidence> { abs(requireNotNull(it.offset) - approximateOffset) }.thenBy { it.offset })
+    }
+
+    fun locateVariableNameSequenceNear(
+        rom: RomImage,
+        approximateOffset: Int,
+        codec: PokemonTextCodec,
+        expectedNames: List<String>,
+        searchRadius: Int = 0x10000,
+        maximumWidth: Int = 24,
+    ): Int? {
+        if (expectedNames.isEmpty()) return null
+        val start = maxOf(0, approximateOffset - searchRadius)
+        val end = minOf(rom.size - 1, approximateOffset + searchRadius)
+        return (start..end).asSequence().filter { offset ->
+            offset == 0 || rom.u8(offset - 1) == codec.terminator
+        }.filter { offset ->
+            var cursor = offset
+            expectedNames.all { expected ->
+                val bytes = ArrayList<Byte>()
+                var terminated = false
+                repeat(maximumWidth) {
+                    if (!terminated && cursor < rom.size) {
+                        val value = rom.u8(cursor++)
+                        bytes += value.toByte()
+                        terminated = value == codec.terminator
+                    }
+                }
+                terminated && codec.decode(bytes.toByteArray()).equals(expected, ignoreCase = true)
+            }
+        }.minWithOrNull(compareBy<Int> { abs(it - approximateOffset) }.thenBy { it })
+    }
+
+    private fun plausibleFixedName(
+        decoded: com.enrpau.dualscreendex.parser.text.DecodedText,
+        width: Int,
+        codec: PokemonTextCodec,
+        minimumRatio: Double,
+    ): Boolean {
+        if (decoded.text.isBlank() || decoded.validRatio < minimumRatio) return false
+        if (decoded.terminated) return true
+        return codec.name == PokemonTextCodec.gbEnglish.name &&
+            decoded.contentBytes == width && decoded.validBytes == width
+    }
+
+    fun locateBaseStatTable(
+        rom: RomImage,
+        count: Int,
+        candidateSizes: IntRange,
+        generation: Int,
+    ): ValidationEvidence? {
+        if (generation == 2 && count in 1..255) {
+            val candidates = mutableListOf<ValidationEvidence>()
+            candidateSizes.filter { it > 0 && it % 2 == 0 }.forEach { size ->
+                val finalStart = rom.size - count * size
+                for (offset in 0..finalStart.coerceAtLeast(-1)) {
+                    if (rom.u8(offset) != 1) continue
+                    if ((0 until count).any { index -> rom.u8(offset + index * size) != index + 1 }) continue
+                    baseStats(rom, offset, count, size, generation)
+                        .takeIf { it.compatible }
+                        ?.let(candidates::add)
+                }
+            }
+            return candidates.singleOrNull()?.copy(reasons = listOf("resolved relocated Gen 2 base-stat table"))
+        }
+        return locateFixedTable(rom, count, candidateSizes) { offset, _ ->
+        val statStart = if (generation <= 2) 1 else 0
+        val statCount = if (generation == 1) 5 else 6
+        val statsValid = (0 until statCount).all { rom.u8(offset + statStart + it) in 1..255 }
+        val typeOffset = if (generation == 1) 6 else if (generation == 2) 7 else 6
+        val maxType = if (generation == 3) 31 else 27
+        statsValid && rom.u8(offset + typeOffset) in 0..maxType && rom.u8(offset + typeOffset + 1) in 0..maxType
+        }
+    }
+
+    private fun locateFixedTable(
+        rom: RomImage,
+        count: Int,
+        candidateSizes: IntRange,
+        preferredOffset: Int? = null,
+        recordIsValid: (offset: Int, size: Int) -> Boolean,
+    ): ValidationEvidence? {
+        if (count <= 0) return null
+        val candidates = mutableListOf<ValidationEvidence>()
+        candidateSizes.filter { it > 0 }.forEach { size ->
+            var best = 0
+            val bestOffsets = mutableListOf<Int>()
+            for (alignment in 0 until size) {
+                val records = (rom.size - alignment) / size
+                if (records < count) continue
+                val valid = BooleanArray(records) { index -> recordIsValid(alignment + index * size, size) }
+                var window = (0 until count).count { valid[it] }
+                for (start in 0..records - count) {
+                    if (window > best) {
+                        best = window
+                        bestOffsets.clear()
+                        bestOffsets += alignment + start * size
+                    } else if (window == best) {
+                        bestOffsets += alignment + start * size
+                    }
+                    if (start < records - count) {
+                        if (valid[start]) window--
+                        if (valid[start + count]) window++
+                    }
+                }
+            }
+            val confidence = best.toDouble() / count
+            if (confidence >= 0.90) {
+                bestOffsets.distinct().forEach { offset ->
+                    candidates += ValidationEvidence(
+                        compatible = true,
+                        validRecords = best,
+                        totalRecords = count,
+                        confidence = confidence,
+                        reasons = listOf("resolved relocated fixed table"),
+                        offset = offset,
+                        recordSize = size,
+                    )
+                }
+            }
+        }
+        val ordered = candidates.sortedWith(
+            compareByDescending<ValidationEvidence> { it.validRecords }
+                .thenByDescending { it.confidence }
+                .thenBy { if (preferredOffset == null) 0 else abs(requireNotNull(it.offset) - preferredOffset) }
+                .thenBy { it.recordSize }
+                .thenBy { it.offset },
+        )
+        val winner = ordered.firstOrNull() ?: return null
+        val runnerUp = ordered.drop(1).firstOrNull()
+        return winner.takeIf {
+            runnerUp == null || runnerUp.validRecords < winner.validRecords ||
+                (preferredOffset != null && abs(requireNotNull(winner.offset) - preferredOffset) <
+                    abs(requireNotNull(runnerUp.offset) - preferredOffset)) ||
+                (runnerUp.offset == winner.offset && runnerUp.recordSize == winner.recordSize)
+        }
     }
 
     fun inferCountFromFollowingTable(
@@ -129,15 +371,16 @@ object TableValidators {
             val statCount = if (generation == 1) 5 else 6
             val statsValid = (0 until statCount).all { rom.u8(base + statStart + it) in 1..255 }
             val typeOffset = if (generation == 1) 6 else if (generation == 2) 7 else 6
-            val maxType = if (generation == 3) 18 else 27
+            val maxType = if (generation == 3) 31 else 27
             val typesValid = rom.u8(base + typeOffset) in 0..maxType && rom.u8(base + typeOffset + 1) in 0..maxType
             if (statsValid && typesValid) valid++
         }
         val confidence = valid.toDouble() / count.coerceAtLeast(1)
-        val compatible = confidence >= 0.90
+        val minimumRatio = if (generation == 3 && count >= 1_000) 0.895 else 0.90
+        val compatible = confidence >= minimumRatio
         ValidationEvidence(
             compatible, valid, count, confidence,
-            if (compatible) emptyList() else listOf("plausible base stats $valid/$count below 90%"),
+            if (compatible) emptyList() else listOf("plausible base stats $valid/$count below ${minimumRatio * 100}%"),
             offset, recordSize,
         )
     }
@@ -150,24 +393,156 @@ object TableValidators {
         generation: Int,
     ): ValidationEvidence = safely(offset, recordSize, count) {
         var valid = 0
+        var populated = 0
+        val plausibleRecords = BooleanArray(count)
+        var consecutiveInvalid = 0
+        var invalidRunStart = -1
         repeat(count) { index ->
             val base = offset + index * recordSize
-            if (generation == 3 && index == 0) {
-                valid++
+            val plausible = if (generation == 3) {
+                val power = rom.u8(base + 1)
+                val type = rom.u8(base + 2)
+                val accuracy = rom.u8(base + 3)
+                val pp = rom.u8(base + 4)
+                val reserved = (0 until recordSize).all { rom.u8(base + it) == 0 }
+                if (!reserved) populated++
+                index == 0 || reserved || (
+                    type in 0..31 &&
+                        pp in 0..64 &&
+                        (accuracy == 0 || accuracy in 10..100) &&
+                        power in 0..255
+                    )
             } else {
-                val type = rom.u8(base + if (generation == 1) 3 else if (generation == 2) 3 else 2)
-                val pp = rom.u8(base + if (generation == 3) 4 else 5)
-                val accuracy = rom.u8(base + if (generation == 3) 3 else 4)
-                val maxType = if (generation == 3) 17 else 27
-                if (type in 0..maxType && pp in 1..64 && accuracy in 0..255) valid++
+                val type = rom.u8(base + 3)
+                val pp = rom.u8(base + 5)
+                type in 0..27 && pp in 1..64
+            }
+            if (plausible) {
+                plausibleRecords[index] = true
+                valid++
+                consecutiveInvalid = 0
+                invalidRunStart = -1
+            } else {
+                if (consecutiveInvalid == 0) invalidRunStart = index
+                consecutiveInvalid++
+                if (
+                    generation == 3 &&
+                    consecutiveInvalid >= 8 &&
+                    invalidRunStart >= maxOf(3, count / 2) &&
+                    valid == invalidRunStart
+                ) {
+                    return@safely ValidationEvidence(
+                        compatible = true,
+                        validRecords = invalidRunStart,
+                        totalRecords = invalidRunStart,
+                        confidence = 1.0,
+                        reasons = listOf("trimmed adjacent non-move data after a complete Gen 3 move-record prefix"),
+                        offset = offset,
+                        recordSize = recordSize,
+                    )
+                }
+            }
+        }
+        var prefixIsComplete = true
+        val windowSize = 16
+        for (start in 0..count - windowSize) {
+            if (start > 0 && !plausibleRecords[start - 1]) prefixIsComplete = false
+            if (start >= maxOf(3, count / 2) && prefixIsComplete && !plausibleRecords[start]) {
+                val invalidInWindow = (start until start + windowSize).count { !plausibleRecords[it] }
+                if (invalidInWindow >= 8) {
+                    return@safely ValidationEvidence(
+                        compatible = true,
+                        validRecords = start,
+                        totalRecords = start,
+                        confidence = 1.0,
+                        reasons = listOf("trimmed adjacent non-move data after a complete Gen 3 move-record prefix"),
+                        offset = offset,
+                        recordSize = recordSize,
+                    )
+                }
+            }
+        }
+        if (generation == 3) {
+            val firstInvalid = plausibleRecords.indexOfFirst { !it }
+            val suffixSize = if (firstInvalid >= 0) count - firstInvalid else 0
+            val invalidInSuffix = if (firstInvalid >= 0) {
+                (firstInvalid until count).count { !plausibleRecords[it] }
+            } else {
+                0
+            }
+            if (
+                firstInvalid >= maxOf(3, count / 2) &&
+                suffixSize >= 8 &&
+                invalidInSuffix * 5 >= suffixSize * 2
+            ) {
+                return@safely ValidationEvidence(
+                    compatible = true,
+                    validRecords = firstInvalid,
+                    totalRecords = firstInvalid,
+                    confidence = 1.0,
+                    reasons = listOf("trimmed a mostly invalid trailing suffix after a complete Gen 3 move-record prefix"),
+                    offset = offset,
+                    recordSize = recordSize,
+                )
             }
         }
         val confidence = valid.toDouble() / count.coerceAtLeast(1)
-        val compatible = confidence >= 0.90
+        val populatedRatio = populated.toDouble() / (count - 1).coerceAtLeast(1)
+        val compatible = if (generation == 3) {
+            valid == count && (count <= 1 || populatedRatio >= 0.80)
+        } else {
+            confidence >= 0.90
+        }
         ValidationEvidence(
             compatible, valid, count, confidence,
-            if (compatible) emptyList() else listOf("plausible move records $valid/$count below 90%"),
+            if (compatible) emptyList() else listOf(
+                "plausible move records $valid/$count do not form a complete populated table; populated $populated/${(count - 1).coerceAtLeast(1)}",
+            ),
             offset, recordSize,
+        )
+    }
+
+    /**
+     * Validates the 16-byte move records used by CFRU/DPE forks that widened both the effect and
+     * power fields to 16 bits. Zero is the reserved move row; sparse reserved rows are tolerated,
+     * but an empty allocation is not evidence of a move table.
+     */
+    fun cfruMoveData(
+        rom: RomImage,
+        offset: Int,
+        count: Int,
+    ): ValidationEvidence = safely(offset, 16, count) {
+        var valid = 0
+        var populated = 0
+        repeat(count) { index ->
+            val base = offset + index * 16
+            val reserved = (0 until 16).all { rom.u8(base + it) == 0 }
+            val accuracy = rom.u8(base + 5)
+            val plausible = reserved || (
+                rom.u8(base + 4) in 0..31 &&
+                    (accuracy in 0..100 || accuracy == 0xFF) &&
+                    rom.u8(base + 6) in 0..64 &&
+                    rom.u8(base + 9).toByte().toInt() in -8..7 &&
+                    (12 until 16).all { rom.u8(base + it) == 0 }
+                )
+            if (plausible) valid++
+            if (!reserved) populated++
+        }
+        val confidence = valid.toDouble() / count.coerceAtLeast(1)
+        val populatedRatio = populated.toDouble() / (count - 1).coerceAtLeast(1)
+        val compatible = valid == count && populatedRatio >= 0.80
+        ValidationEvidence(
+            compatible = compatible,
+            validRecords = valid,
+            totalRecords = count,
+            confidence = minOf(confidence, populatedRatio),
+            reasons = if (compatible) {
+                listOf("validated widened 16-byte CFRU/DPE move records")
+            } else {
+                listOf("plausible CFRU/DPE move records $valid/$count; populated $populated/${(count - 1).coerceAtLeast(1)}")
+            },
+            offset = offset,
+            recordSize = 16,
         )
     }
 

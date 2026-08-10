@@ -14,7 +14,9 @@ data class CorpusInput(
     val error: String? = null,
 )
 
-class CorpusScanner {
+class CorpusScanner(
+    private val includeAllRomNames: Boolean = false,
+) {
     fun scan(roots: List<Path>): List<CorpusInput> = roots
         .flatMap { root -> scan(root) }
         .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.source + "!" + (it.archiveEntry ?: "") })
@@ -38,7 +40,9 @@ class CorpusScanner {
     }
 
     private fun scanDirect(file: Path, source: String): List<CorpusInput> {
-        if (!isPokemonName(file.fileName.toString()) || isExcludedNonMainlineName(file.fileName.toString())) return emptyList()
+        if ((!includeAllRomNames && !isPokemonName(file.fileName.toString())) ||
+            isExcludedNonMainlineName(file.fileName.toString())
+        ) return emptyList()
         return try {
             val rom = Files.newInputStream(file).use(RomImage::from)
             listOf(CorpusInput(file.fileName.toString(), source, rom = rom))
@@ -55,7 +59,7 @@ class CorpusScanner {
                 zip.entries().asSequence()
                     .filterNot { it.isDirectory }
                     .filter { supportedRomExtension(it.name) }
-                    .filter { outerMatches || isPokemonName(Path.of(it.name).fileName.toString()) }
+                    .filter { includeAllRomNames || outerMatches || isPokemonName(Path.of(it.name).fileName.toString()) }
                     .filterNot { isExcludedNonMainlineName(Path.of(it.name).fileName.toString()) }
                     .sortedBy { it.name.lowercase(Locale.ROOT) }
                     .map { entry ->

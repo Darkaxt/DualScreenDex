@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomBoundsException
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.Gen3LearnsetEncoding
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -9,6 +10,12 @@ import com.enrpau.dualscreendex.parser.validate.PokemonDatasetValidators
 import kotlin.math.abs
 
 object DatasetResolvers {
+    fun reconciledMoveCount(inferredNameCount: Int?, moveData: ValidationEvidence): Int? = when {
+        !moveData.compatible || moveData.totalRecords <= 0 -> inferredNameCount
+        inferredNameCount == null -> moveData.totalRecords
+        else -> minOf(inferredNameCount, moveData.totalRecords)
+    }
+
     fun gen3Descriptions(
         rom: RomImage,
         speciesCount: Int,
@@ -64,24 +71,27 @@ object DatasetResolvers {
         }
 
         val candidates = mutableListOf<ValidationEvidence>()
+        val levelEvolutionMethods = rom.findAll(byteArrayOf(4, 0))
         for (recordSize in listOf(8, 6)) {
-            for (slots in listOf(5, 8, 16)) {
+            for (slots in listOf(5, 8, 16, 32)) {
                 val stride = slots * recordSize
-                val anchor = ByteArray(stride * 2 + recordSize).also { bytes ->
-                    bytes[stride] = 4
-                    bytes[stride + 2] = 16
-                    bytes[stride + 4] = 2
-                    bytes[stride * 2] = 4
-                    bytes[stride * 2 + 2] = 32
-                    bytes[stride * 2 + 4] = 3
-                }
-                rom.findAll(anchor).forEach { tableOffset ->
+                levelEvolutionMethods.asSequence().map { firstSpeciesOffset -> firstSpeciesOffset - stride }
+                    .filter { tableOffset -> tableOffset >= 0 && tableOffset % 2 == 0 }
+                    .filter { tableOffset ->
+                        val first = tableOffset + stride
+                        val second = tableOffset + stride * 2
+                        second + 6 <= rom.size &&
+                            rom.u16le(first + 2) in 1..100 && rom.u16le(first + 4) == 2 &&
+                            rom.u16le(second) == 4 && rom.u16le(second + 2) in 1..100 && rom.u16le(second + 4) == 3
+                    }
+                    .distinct()
+                    .forEach { tableOffset ->
                     validateEvolution(
                         rom,
                         speciesCount,
                         TableLayout(tableOffset, speciesCount, stride, elementSize = recordSize),
                     ).takeIf { it.compatible }?.let(candidates::add)
-                }
+                    }
             }
         }
         return choose(candidates, inherited?.offset, "Gen 3 evolution table")
@@ -93,7 +103,7 @@ object DatasetResolvers {
         moveCount: Int,
         inherited: TableLayout?,
     ): ValidationEvidence {
-        val moveBits = if (moveCount > 511) 10 else 9
+        val moveBits = Gen3LearnsetEncoding.packedMoveBits(moveCount)
         inherited?.let { layout ->
             PokemonDatasetValidators.gen3Learnsets(
                 rom, layout.offset, speciesCount, moveCount, moveBits,
@@ -106,7 +116,12 @@ object DatasetResolvers {
         while (offset <= last) {
             try {
                 val none = rom.u32le(offset)
-                if (none == rom.u32le(offset + 4) && none in 0x08000000L..0x09FFFFFFL) {
+                val firstTarget = rom.gbaPointer(offset)
+                val firstIsEmpty = firstTarget != null && firstTarget <= rom.size - 2 &&
+                    rom.u16le(firstTarget) == 0xFFFF
+                val noneReusesFirstSpecies =
+                    none == rom.u32le(offset + 4) && none in 0x08000000L..0x09FFFFFFL
+                if (firstIsEmpty || noneReusesFirstSpecies) {
                     val evidence = PokemonDatasetValidators.gen3Learnsets(
                         rom, offset, speciesCount, moveCount, moveBits,
                     )
@@ -136,7 +151,43 @@ object DatasetResolvers {
             }
             offset += 4
         }
+        if (candidates.isEmpty()) {
+            val referencedTargets = linkedSetOf<Int>()
+            offset = 0
+            while (offset <= rom.size - 4) {
+                rom.gbaPointer(offset)?.let { target ->
+                    if (target % 4 == 0 && target <= last) referencedTargets += target
+                }
+                offset += 4
+            }
+            referencedTargets.forEach { tableOffset ->
+                val firstLearnset = rom.gbaPointer(tableOffset) ?: return@forEach
+                if (!looksLikeExpandedLearnset(rom, firstLearnset, moveCount)) return@forEach
+                val evidence = PokemonDatasetValidators.gen3ExpandedLearnsets(
+                    rom, tableOffset, speciesCount, moveCount,
+                )
+                if (evidence.compatible) candidates += evidence
+            }
+        }
         return choose(candidates, inherited?.offset, "Gen 3 CFRU/DPE learnset pointer table")
+    }
+
+    private fun looksLikeExpandedLearnset(rom: RomImage, start: Int, moveCount: Int): Boolean {
+        var offset = start
+        var previousLevel = 0
+        repeat(256) {
+            if (offset + 3 > rom.size) return false
+            val move = rom.u16le(offset)
+            val level = rom.u8(offset + 2)
+            if (move == 0 && level == 0xFF) return true
+            if (move !in 1..moveCount || level !in 0..100) return false
+            if (level > 0) {
+                if (level < previousLevel.coerceAtLeast(1)) return false
+                previousLevel = level
+            }
+            offset += 3
+        }
+        return false
     }
 
     private fun validateDescription(
@@ -219,8 +270,8 @@ object DatasetResolvers {
         if (ranked.size > 1) {
             val first = ranked[0]
             val second = ranked[1]
-            val firstDistance = inheritedOffset?.let { abs((first.offset ?: 0) - it) }
-            val secondDistance = inheritedOffset?.let { abs((second.offset ?: 0) - it) }
+            val firstDistance = distance(first)
+            val secondDistance = distance(second)
             if (first.confidence == second.confidence && first.validRecords == second.validRecords && firstDistance == secondDistance) {
                 return missing("$label has conflicting structural candidates")
             }
