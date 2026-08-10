@@ -81,6 +81,6 @@
 - [x] Run all Gradle tests, all 42+ web tests, production web build, Android lint, release-policy tests, and Android deployment-safety tests.
 - [x] Install the debug build only on `emulator-5556`, grant All files access, and prove multi-folder ROM indexing plus Modern Emerald SaveRAM matching.
 - [x] Verify `emulator-5554` remains unchanged and no debug package reaches `bfa98654`.
-- [ ] Record the Stage 8 defect and correction, commit, push, merge after CI, and tag a monotonically newer `v1.0.0-rc.7`.
-- [ ] Let GitHub build/sign RC7, publish it as a prerelease, anonymously revalidate hash/package/version/signer, and install/update it on the Thor with `validate-signed-candidate.ps1 -Target Thor -Install`.
+- [x] Record the Stage 8 defect and correction, commit, push, merge after CI, and tag a monotonically newer `v1.0.0-rc.7`.
+- [x] Let GitHub build/sign RC7, publish it as a prerelease, anonymously revalidate hash/package/version/signer, and install/update it on the Thor with `validate-signed-candidate.ps1 -Target Thor -Install`.
 - [ ] Prove the Thor reports the existing Modern Emerald discoveries, catalog remains usable without mapper data, and complete the remaining live acceptance gates.

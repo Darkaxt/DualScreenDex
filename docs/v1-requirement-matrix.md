@@ -31,10 +31,10 @@ This matrix maps the authoritative first-release design to implementation, autom
 | 10 | Disabled read-only mapper, labeled captures/diffs/export, isolated failures | `memory-mapper-lab` and Android coordinator/private store | Mapper unit, boundary, HTTP, native-route and device fake-transport tests | Live current-nightly mGBA capture closed ledger `V1-002` | Verified |
 | 11 | Thor-first pages/settings, no bottom bar/simulator controls, Docked/Overlay | Production Preact UI, settings store, overlay service | Web production tests, sizer, display resolver, instrumentation | Exact-viewport/font audit and final AVD gate | Verified |
 | 12.1 | Fixed production/debug application IDs | Android Gradle configuration | CI/release checks | Coexistence on dedicated AVD | Verified |
-| 12.2 | One long-lived RSA signer; private key and credentials owned by the protected GitHub workflow | `signing/` public material plus GitHub environment secrets | Public-fingerprint and workflow checks | RC6 signer matches the pinned certificate | Verified |
-| 12.3 | GitHub-only production signing, fail-closed workflow, safe assets | `.github/workflows/release.yml` | Workflow static validation and GitHub run `31354309237` | RC6 draft assets, provenance, checksums and certificate independently verified | Verified |
-| 12.4 | Monotonic version/update with persistence | Gradle/workflow version gates and independent stores | Workflow checks; repository persistence tests | Signed RC5 to RC6 update retained catalog, save, grants and settings on the dedicated AVD | Verified |
-| 13 | Dedicated AVD only; Thor reserved for signed live validation | Device-resolution script and explicit `adb -s` commands | Device selection checks | `emulator-5556` evidence; `5554` untouched | Verified; Thor is Stage 8 |
+| 12.2 | One long-lived RSA signer; private key and credentials owned by the protected GitHub workflow | `signing/` public material plus GitHub environment secrets | Public-fingerprint and workflow checks | RC7 signer matches the pinned certificate | Verified |
+| 12.3 | GitHub-only production signing, fail-closed workflow, safe assets | `.github/workflows/release.yml` | Workflow static validation and GitHub run `31378249357` | RC7 public assets, provenance, checksums and certificate independently verified | Verified |
+| 12.4 | Monotonic version/update with persistence | Gradle/workflow version gates and independent stores | Workflow checks; repository persistence tests | Signed RC5 through RC7 updates retained catalog, save, grants and settings on the dedicated AVD | Verified |
+| 13 | Dedicated AVD only; Thor reserved for signed live validation | Device-resolution script and explicit `adb -s` commands | Device selection checks | `emulator-5556` evidence; `5554` untouched; signed RC7 installed on Thor | Verified; Thor acceptance is Stage 8 |
 | 14 | Complete parser/save/catalog/setup/UI/release test strategy | Module, web, Playwright and instrumentation suites | 291 unit, 44 web, 13 release-policy, and 3 instrumentation tests plus Android lint | All-files debug candidate on dedicated AVD | Verified |
 | 15 | Safe, non-destructive fallback behavior | Runtime/setup/save/cache/mapper recovery paths | Corruption, disconnect, recovery and isolation tests | Dedicated AVD recovery and frozen-default checks | Verified |
 | 16 | Local-only, blocked navigation, no writes/telemetry/private assets, license compliance | Loopback/WebView/transport boundaries and repository policy | Final manifest/source/artifact/license audit | `docs/v1-release-audit.md` | Verified |
@@ -46,7 +46,7 @@ This matrix maps the authoritative first-release design to implementation, autom
 | AC | Gate | Evidence | Current result |
 | ---: | --- | --- | --- |
 | 1 | Production/debug package IDs | `app/build.gradle.kts`; Stage 0 coexistence | Pass |
-| 2 | GitHub-only pinned signing and signed in-place update | Release workflow, public fingerprint, signed RC5 to RC6 update | Pass |
+| 2 | GitHub-only pinned signing and signed in-place update | Release workflow, public fingerprint, signed RC5 through RC7 updates | Pass |
 | 3 | Existing AVD untouched; dedicated serial only | Resolver checks and ledger command record | Pass through Stage 6 |
 | 4 | Fresh setup can grant broad storage once, index sibling folders, patch only the public config, restart when changed, and verify it | Storage/config/setup suites and dedicated-AVD grant/restart evidence | Pass |
 | 5 | Active supported ROM resolution plus manual/cache fallback | Session resolver/runtime tests and nightly AVD evidence | Pass |
@@ -59,10 +59,10 @@ This matrix maps the authoritative first-release design to implementation, autom
 | 12 | NCI/save/memory failures never block general Pokédex | Runtime recovery and mapper isolation suites | Pass |
 | 13 | Mapper disabled/read-only/isolated | Mapper suites, device fake transport, and verified live mGBA export | Pass |
 | 14 | Forbidden OCR/screenshot/Accessibility/CSV/cheat/input/write paths absent | Manifest/dependency/source/artifact audit | Pass |
-| 15 | Tests/corpus pass; signed candidate passes AVD and Thor | Full convergence run, GitHub RC, physical Thor | Signed AVD gate passed; physical Thor pending |
-| 16 | Docked/Overlay behavior with ROM ball and RetroArch focus | Overlay tests and dedicated AVD evidence | Signed RC6 AVD gate passed; physical Thor pending |
+| 15 | Tests/corpus pass; signed candidate passes AVD and Thor | Full convergence run, GitHub RC, physical Thor | Signed RC7 AVD gate passed and exact public APK installed on Thor; live acceptance pending |
+| 16 | Docked/Overlay behavior with ROM ball and RetroArch focus | Overlay tests and dedicated AVD evidence | Signed RC7 AVD gate passed; physical Thor interaction pending |
 
 ## Remaining release blockers
 
-1. Publish and independently verify the GitHub-signed RC7 storage correction, then install it on the physical Thor and complete live acceptance.
+1. Complete live RetroArch, SaveRAM, lower-screen, and lifecycle acceptance for the already installed public RC7 on the physical Thor.
 2. Build and smoke-check the final GitHub-signed `v1.0.0` artifact before publishing it.

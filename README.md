@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated Memory Mapper Lab can collect read-only evidence for future live battle mapping, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only Memory Mapper Lab are implemented. The inherited OCR/accessibility application has been replaced. GitHub-signed RC6 has passed the dedicated-AVD update and overlay gates and is available as a public prerelease for Thor validation; stable `v1.0.0` has not been released.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only Memory Mapper Lab are implemented. The inherited OCR/accessibility application has been replaced. GitHub-signed RC7 has passed the dedicated-AVD All-files, ROM-index, SaveRAM, update, and overlay gates and is installed on the physical Thor for final live acceptance; stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
@@ -216,9 +216,9 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Thor-first companion UI and settings | Implemented in the packaged Android companion |
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses; identical SHA-256 copies resolve deterministically |
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
-| Optional Docked / 4:3 Overlay Android display modes | Implemented and GitHub-signed RC6 validated on the dedicated AVD |
+| Optional Docked / 4:3 Overlay Android display modes | Implemented and GitHub-signed RC7 validated on the dedicated AVD |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Public signed candidate | [`v1.0.0-rc.6`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.6) prerelease; stable `v1.0.0` remains gated on Thor validation |
+| Public signed candidate | [`v1.0.0-rc.7`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.7) prerelease; stable `v1.0.0` remains gated on final Thor validation |
 
 ## Parser development
 
