@@ -22,6 +22,7 @@ data class CompanionSettings(
     val displayMode: DisplayMode = DisplayMode.DOCKED,
     val theme: Theme = Theme.GAME,
     val displayTarget: DisplayTarget = DisplayTarget.AUTO,
+    val overlayScale: Double = 1.0,
 )
 
 data class OwnedPokemon(

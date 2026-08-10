@@ -41,6 +41,7 @@ class SettingsRepository(
             displayMode = enumOr(stored.displayMode, defaults.displayMode),
             theme = enumOr(stored.theme, defaults.theme),
             displayTarget = enumOr(stored.displayTarget, defaults.displayTarget),
+            overlayScale = stored.overlayScale?.takeIf(Double::isFinite)?.coerceIn(0.45, 1.0) ?: defaults.overlayScale,
         )
     }
 
@@ -61,6 +62,7 @@ class SettingsRepository(
                     displayMode = settings.displayMode.name,
                     theme = settings.theme.name,
                     displayTarget = settings.displayTarget.name,
+                    overlayScale = settings.overlayScale,
                 ),
             ),
         )
@@ -84,6 +86,7 @@ class SettingsRepository(
         val displayMode: String? = null,
         val theme: String? = null,
         val displayTarget: String? = null,
+        val overlayScale: Double? = null,
     )
 
     private companion object {
