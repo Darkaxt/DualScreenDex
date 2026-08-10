@@ -83,4 +83,47 @@ describe('Pokédex knowledge modes', () => {
     expect((screen.getByRole('button', { name: 'TEAM' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'AREA' }) as HTMLButtonElement).disabled).toBe(false);
   });
+
+  it('shows ROM-derived day and night markers only while the Area filter is active', () => {
+    const windowCatalog: Catalog = {
+      ...catalog,
+      areas: [
+        { id: 10, name: 'Route 1', methodId: 1, speciesIds: [1], windows: ['DAY'], slots: [] },
+        { id: 11, name: 'Route 1', methodId: 2, speciesIds: [4], windows: ['NIGHT'], slots: [] },
+      ],
+    };
+    const areaState: State = {
+      ...state,
+      filter: 'AREA',
+      currentAreaIds: [10, 11],
+      settings: { ...state.settings, knowledgeMode: 'DISCOVERED' },
+    };
+
+    const { rerender } = render(<PokedexBrowse catalog={windowCatalog} state={areaState} send={vi.fn()} />);
+
+    expect(screen.getByLabelText('Day encounter')).toBeTruthy();
+    expect(screen.getByLabelText('Night encounter')).toBeTruthy();
+
+    rerender(<PokedexBrowse catalog={windowCatalog} state={{ ...areaState, filter: 'ALL' }} send={vi.fn()} />);
+    expect(screen.queryByLabelText('Day encounter')).toBeNull();
+    expect(screen.queryByLabelText('Night encounter')).toBeNull();
+  });
+
+  it('shows no marker when a species is available both day and night or without a time restriction', () => {
+    const windowCatalog: Catalog = {
+      ...catalog,
+      areas: [
+        { id: 20, name: 'Route 2', methodId: 1, speciesIds: [1], windows: ['DAY', 'NIGHT'], slots: [] },
+        { id: 21, name: 'Route 2 water', methodId: 2, speciesIds: [4], windows: ['ANY'], slots: [] },
+      ],
+    };
+    render(<PokedexBrowse catalog={windowCatalog} state={{
+      ...state,
+      filter: 'AREA',
+      currentAreaIds: [20, 21],
+      settings: { ...state.settings, knowledgeMode: 'DISCOVERED' },
+    }} send={vi.fn()} />);
+
+    expect(screen.queryByTestId('encounter-window-icon')).toBeNull();
+  });
 });

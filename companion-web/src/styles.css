@@ -63,6 +63,11 @@ button { cursor: pointer; }
 .species-row:hover, .species-row:focus-visible { background: #e5eacb; outline: 2px solid var(--forest-700); outline-offset: -2px; }
 .species-row strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; letter-spacing: .035em; }
 .species-number { color: #647062; font-size: .72em; font-weight: 800; }
+.species-row-meta { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.encounter-window-icon { width: 19px; height: 19px; flex: 0 0 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.encounter-window-icon.day { color: #c88612; }
+.encounter-window-icon.day circle { fill: currentColor; stroke: none; }
+.encounter-window-icon.night { color: #53618a; fill: currentColor; stroke: none; }
 
 .sprite-frame { width: 48px; height: 48px; display: grid; place-items: center; background: linear-gradient(135deg, #faf7e4, #d8dec6); border: 1px solid #9ca589; overflow: hidden; image-rendering: pixelated; }
 .sprite-frame img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }

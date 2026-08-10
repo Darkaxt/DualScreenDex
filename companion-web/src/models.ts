@@ -45,6 +45,8 @@ export interface TypeInfo {
   border: string | null;
 }
 
+export type EncounterWindow = 'ANY' | 'MORNING' | 'DAY' | 'NIGHT';
+
 export interface Catalog {
   hash: string;
   crc32: string;
@@ -54,7 +56,7 @@ export interface Catalog {
   species: Species[];
   moves: Move[];
   types: TypeInfo[];
-  areas: { id: number; name: string; methodId: number; speciesIds: number[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
+  areas: { id: number; name: string; methodId: number; speciesIds: number[]; windows: EncounterWindow[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
   capabilities: Record<string, string>;
 }
