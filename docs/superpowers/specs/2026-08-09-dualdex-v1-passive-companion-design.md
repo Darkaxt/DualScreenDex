@@ -59,7 +59,7 @@ The reference surface is the AYN Thor's physically small 3.92-inch lower screen.
 ### 3.1 General Pokédex
 
 - In Discovered mode, browse every species and form available in the active parsed ROM; in Organic mode, list only species already seen or captured.
-- In Organic mode, an uncaptured species' Moves tab lists only moves actually observed from that species/form, ordered by frequency and recency. It does not reveal learn levels or acquisition methods; capture unlocks the complete parsed move catalog for that species/form.
+- In Organic mode, an uncaptured species' Moves tab lists only moves actually observed from that species/form, ordered by use frequency. It does not retain recency, reveal learn levels or acquisition methods, or show frequency after capture; capture unlocks the complete parsed move catalog for that species/form.
 - Search and navigate by the ROM's identifiers and names.
 - Filter by All, Caught, Seen, current Team, or current Area when the relevant capabilities validate.
 - Show every validated static dataset permitted by the active knowledge policy.
@@ -210,17 +210,15 @@ The local save identity is derived from stable in-memory save metadata such as t
 
 ### 6.5 Observed moves
 
-The Moves tab stores only moves that an opponent actually executes. An encounter contributes at most once to a given move's numerator:
+For an uncaptured species/form, the Moves tab stores only moves that an opponent actually executes. Every validated execution increments that move's use-frequency count:
 
 ```text
-encountered individuals of this species/form observed using the move
---------------------------------------------------------------------
-total encountered individuals of this species/form
+validated executions of this move by the exact species/form
 ```
 
-Moves are ordered by descending frequency, then most recently observed. Each row joins the observed move ID to the ROM-derived move catalog for name, type, power, accuracy, PP, effect, and other available details. An unseen move never appears merely because it exists in the species learnset.
+Moves are ordered by descending frequency, then move ID for a deterministic tie. No timestamp, ordering, or last-seen metric is required. Each row joins the observed move ID to the ROM-derived move catalog for name, type, power, accuracy, PP, effect, and other available details. An unseen move never appears merely because it exists in the species learnset.
 
-Move characteristics are global within a ROM. Once a captured/player Pokémon knows a move, a captured species' unlocked learnset exposes it, the player selects it, or another qualifying observation reveals it, its static name, type, category, power, precision, PP, priority, and decoded effect metadata become available anywhere that move appears. This global `moveId` knowledge does not reveal an opponent's hidden slots. Frequency and recency remain keyed to the exact opponent species/form.
+Move characteristics are global within a ROM. Once a captured/player Pokémon knows a move, a captured species' unlocked learnset exposes it, the player selects it, or another qualifying observation reveals it, its static name, type, category, power, precision, PP, priority, and decoded effect metadata become available anywhere that move appears. This global `moveId` knowledge does not reveal an opponent's hidden slots. Frequency remains keyed to the exact uncaptured opponent species/form. After capture, the UI suppresses observation frequency and uses the unlocked ROM catalog instead.
 
 ### 6.6 Qualitative rarity
 
@@ -310,7 +308,7 @@ The combined level prefix and innate tier dominate the page and are readable wit
 
 ### 7.5 Moves tab
 
-The default view lists frequency, encounter count, last-seen recency, move name, and type. Selecting a move opens the complete ROM-derived move detail. An empty state says that no move has been observed from this species/form yet.
+For an uncaptured target, the default view lists use frequency, move name, and type. Selecting a move opens the complete ROM-derived move detail. An empty state says that no move has been observed from this species/form yet. Captured targets do not show frequency metrics; their linked Pokédex entry exposes the complete validated learnset.
 
 ### 7.6 Ability detail
 

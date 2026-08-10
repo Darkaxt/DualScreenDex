@@ -27,7 +27,7 @@ class SaveKnowledgeMapperTest {
                 25 to species(25, 25),
             ),
         )
-        val prior = KnowledgeLedger(observedMoves = mapOf(6 to listOf(MoveObservation(52, 2, 9))))
+        val prior = KnowledgeLedger(observedMoves = mapOf(6 to listOf(MoveObservation(52, 2))))
         val snapshot = SaveSnapshot(
             romIdentity = catalog.romSha256,
             saveIdentity = "save",

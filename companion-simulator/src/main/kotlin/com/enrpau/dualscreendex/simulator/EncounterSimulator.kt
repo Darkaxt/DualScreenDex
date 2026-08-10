@@ -45,8 +45,8 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
                 .filter { it.level <= level && it.moveId in catalog.movesById }
                 .map { it.moveId }
                 .distinct()
-            val observed = possibleMoves.shuffledWith(random).take(minOf(4, possibleMoves.size)).mapIndexed { moveIndex, moveId ->
-                MoveObservation(moveId, 1 + random.nextInt(4), index.toLong() * 10 + moveIndex)
+            val observed = possibleMoves.shuffledWith(random).take(minOf(4, possibleMoves.size)).map { moveId ->
+                MoveObservation(moveId, 1 + random.nextInt(4))
             }
             OpponentState(
                 speciesId = species.id,
@@ -54,7 +54,7 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
                 ivs = if (generation == 3) List(6) { random.nextInt(32) } else emptyList(),
                 dvs = if (generation < 3) List(4) { random.nextInt(16) } else emptyList(),
                 moveHistory = observed.sortedWith(
-                    compareByDescending<MoveObservation> { it.encounterCount }.thenByDescending { it.lastSeenSequence },
+                    compareByDescending<MoveObservation> { it.frequency }.thenBy { it.moveId },
                 ),
             )
         }
@@ -87,11 +87,10 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
                 .map { (moveId, history) ->
                     MoveObservation(
                         moveId = moveId,
-                        encounterCount = history.sumOf { it.encounterCount },
-                        lastSeenSequence = history.maxOf { it.lastSeenSequence },
+                        frequency = history.sumOf { it.frequency },
                     )
                 }
-                .sortedWith(compareByDescending<MoveObservation> { it.encounterCount }.thenByDescending { it.lastSeenSequence })
+                .sortedWith(compareByDescending<MoveObservation> { it.frequency }.thenBy { it.moveId })
             observed[opponent.speciesId] = merged
         }
         val playerReference = (request.minimumLevel + request.maximumLevel) / 2

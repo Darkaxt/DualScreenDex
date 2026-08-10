@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.web
 import java.net.URI
 
 enum class NativeSetupRoute {
+    GRANT_ALL_FILES,
     GRANT_RETROARCH,
     GRANT_ROMS,
     OPEN_RETROARCH,
@@ -17,6 +18,7 @@ enum class NativeSetupRoute {
                 return null
             }
             when (uri.host to uri.path) {
+                "grant" to "/files" -> GRANT_ALL_FILES
                 "grant" to "/retroarch" -> GRANT_RETROARCH
                 "grant" to "/roms" -> GRANT_ROMS
                 "open" to "/retroarch" -> OPEN_RETROARCH

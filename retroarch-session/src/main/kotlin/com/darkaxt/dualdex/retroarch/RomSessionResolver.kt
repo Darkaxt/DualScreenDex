@@ -45,7 +45,15 @@ object RomSessionResolver {
                 else "no granted ROM matches ${status.gameBasename}",
             )
             1 -> SessionResolution.Resolved(matches.single())
-            else -> SessionResolution.Ambiguous(matches.sortedBy { it.sourceId })
+            else -> {
+                val sorted = matches.sortedBy { it.sourceId }
+                val hashes = sorted.map { it.sha256.lowercase() }.distinct()
+                if (hashes.size == 1 && hashes.single().matches(SHA_256)) {
+                    SessionResolution.Resolved(sorted.first())
+                } else {
+                    SessionResolution.Ambiguous(sorted)
+                }
+            }
         }
     }
 
@@ -62,4 +70,6 @@ object RomSessionResolver {
         .substringBeforeLast('.', value)
         .lowercase()
         .filter(Char::isLetterOrDigit)
+
+    private val SHA_256 = Regex("[0-9a-f]{64}")
 }

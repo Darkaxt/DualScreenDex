@@ -144,15 +144,13 @@ The interpreter converts memory snapshots into domain events such as battle star
 
 ### 6.7 Observation Ledger
 
-The ledger stores observations per ROM hash and exact species/form identifier. For each encountered individual, a particular move contributes at most once. The displayed frequency is:
+The ledger stores observations per ROM hash and exact species/form identifier. Every validated execution increments the move's use-frequency count. The displayed frequency is:
 
 ```text
-individuals of this species observed using the move
----------------------------------------------------
-total encountered individuals of this species
+validated executions of this move by the exact species/form
 ```
 
-An unseen species has no inferred moves. Its list begins after the first executed move is observed.
+An unseen species has no inferred moves. Its list begins after the first executed move is observed. No timestamp, action order, or last-seen metric is retained. Captured species use the unlocked ROM learnset and do not display observation frequency.
 
 ## 7. Capability contract
 

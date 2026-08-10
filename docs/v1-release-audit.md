@@ -9,11 +9,11 @@ This record covers the frozen debug candidate used to authorize GitHub-only prod
 | Gate | Result |
 | --- | --- |
 | Complete Gradle run | 91/91 tasks executed; build, lint, and tests passed |
-| JVM/Android unit tests | 275 passed; 0 failed, errors, or skipped |
-| Browser unit/component tests | 15 files and 42 tests passed |
+| JVM/Android unit tests | 291 passed; 0 failed, errors, or skipped |
+| Browser unit/component tests | 15 files and 44 tests passed |
 | Android instrumentation | 3 classes and 3 tests passed explicitly on `emulator-5556` |
 | Private mainline-family ROM corpus | 14/14 selected; 14/14 SQLite reopen-equivalent; 0 ambiguous, no-family, errors, or applicable `N/F` cells |
-| Live mapper evidence | Current nightly RetroArch + mGBA exported 262,144-byte EWRAM and 32,768-byte IWRAM regions; both decoded hashes verified; raw evidence then removed |
+| Live mapper evidence | Three labeled Modern Emerald snapshots each exported 262,144-byte EWRAM and 32,768-byte IWRAM regions; all decoded hashes verified; the sanitized field analysis is committed without raw memory |
 
 The instrumentation classes were `MainActivityInstrumentedTest`, `AndroidCatalogDatabaseInstrumentedTest`, and `MemoryMapperIsolationInstrumentedTest`. No install or instrumentation command addressed the existing `emulator-5554`.
 
@@ -31,12 +31,20 @@ The packaged Android loopback UI was inspected at the Thor's 1080 x 1240 display
 
 - Debug identity: `com.darkaxt.dualdex.debug`, version code 1, version `1.0.0-debug`, minimum API 30, target API 36.
 - Production identity remains `com.darkaxt.dualdex` and has no local release-signing configuration.
-- Declared functional permissions are Internet, display-over-other-apps, foreground service, and foreground-service special use. The only additional merged permission is AndroidX's package-scoped, signature-level non-exported receiver permission.
+- Declared functional permissions are Internet, Android All files access, display-over-other-apps, foreground service, and foreground-service special use. All files access is the user-approved primary ROM/config/SaveRAM discovery mode; ROM and SaveRAM paths are read-only, and only the exact public RetroArch config plus its verified recovery sibling are writable. The only additional merged permission is AndroidX's package-scoped, signature-level non-exported receiver permission.
 - The sole app service is the non-exported floating companion service. No Accessibility, OCR, media-projection, screenshot, input-injection, or content-control service exists.
 - Android backup is disabled for private catalogs, save-derived knowledge, and mapper sessions.
 - Cleartext is denied by default and allowed only for `127.0.0.1` by the Android network-security policy.
 - The app-owned HTTP listener was observed only at the IPv4-mapped loopback address. The WebView disables file/content access, rejects mixed content, and blocks navigation outside its exact local origin and approved native routes.
 - Mapper capture begins disabled after process restart; the frozen default state was Organic, Game theme, Auto density/display targeting, Docked mode, zero mapper snapshots.
+
+## All-files storage audit
+
+- The dedicated AVD indexed 15 supported sources across shared storage without per-console folder grants. Protected `Android/data` and `Android/obb` trees are pruned by the direct indexer.
+- Identical Modern Emerald ZIPs in two folders shared one valid SHA-256 and resolved deterministically; matches with different hashes remain ambiguous.
+- The direct public config was synchronously patched/read back and reported verified after the required RetroArch restart. A later DualDex restart did not request a redundant RetroArch restart.
+- `/storage/emulated/0/RetroArch/saves/mGBA/...srm` matched the active streamed ZIP and published all 12 supported save capabilities, 8 seen, 4 caught, and 2 Team.
+- Revoking broad access made Android restart the debug process. Relaunch degraded to `storageGrant=MISSING`/manual-SAF fallback while preserving the cached catalog, matched save snapshot, and 8/4/2 knowledge.
 
 ## Dependency, source, and artifact audit
 
@@ -49,8 +57,8 @@ The packaged Android loopback UI was inspected at the Thor's 1080 x 1240 display
 ## Frozen debug artifact
 
 - File: `app/build/outputs/apk/debug/app-debug.apk`
-- Size: 13,735,378 bytes
-- SHA-256: `D00B66532B01525C8455082C3EC33E33CDC3BD8AC8C3B56C6E4D33FC5C287E22`
+- Size: 14,106,117 bytes
+- SHA-256: `95039828897A0139C3D442EB3131B1393F69466180E164E670E9ED45A47CB7FA`
 - Deployment: installed only on the dedicated `DualDex_RA_API35` AVD (`emulator-5556`)
 - Publication: local debug artifact only; not a GitHub release
 

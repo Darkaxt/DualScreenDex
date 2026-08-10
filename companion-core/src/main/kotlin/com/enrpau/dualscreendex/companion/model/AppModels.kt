@@ -38,8 +38,7 @@ data class OwnedPokemon(
 
 data class MoveObservation(
     val moveId: Int,
-    val encounterCount: Int,
-    val lastSeenSequence: Long,
+    val frequency: Int,
 )
 
 data class MatchupKey(val speciesId: Int, val moveId: Int)

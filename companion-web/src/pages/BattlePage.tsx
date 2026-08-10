@@ -33,7 +33,7 @@ export function BattlePage({ catalog, state, send, openMove, openSpecies }: { ca
       {(hidden || state.battleTab === 'ENTRY') && <Entry catalog={catalog} species={species} unlocked={state.settings.knowledgeMode === 'DISCOVERED' || status?.caught} />}
       {!hidden && state.battleTab === 'ATTACK' && <Attack catalog={catalog} move={selectedMove} state={state} send={send} openMove={openMove} />}
       {!hidden && state.battleTab === 'RARITY' && <Rarity label={opponent.rarity} />}
-      {!hidden && state.battleTab === 'MOVES' && <Moves catalog={catalog} moves={opponent.moves} openMove={openMove} />}
+      {!hidden && state.battleTab === 'MOVES' && <Moves catalog={catalog} moves={opponent.moves} showFrequency={!status?.caught} openMove={openMove} />}
     </div>
   </section>;
 }
@@ -58,10 +58,10 @@ function Rarity({ label }: { label: string }) {
   return <div class="rarity-card"><small>RECRUITMENT IMPRESSION</small><strong>{tier}</strong><span>{prefix} FOR YOUR CURRENT PARTY</span><p>Innate quality uses the complete IV or DV vector. Exact hidden values, EVs, and encounter rate are not exposed.</p></div>;
 }
 
-function Moves({ catalog, moves, openMove }: { catalog: Catalog; moves: { moveId: number; encounters: number; lastSeen: number }[]; openMove: (moveId: number) => void }) {
+function Moves({ catalog, moves, showFrequency, openMove }: { catalog: Catalog; moves: { moveId: number; frequency: number }[]; showFrequency: boolean; openMove: (moveId: number) => void }) {
   if (moves.length === 0) return <div class="empty-state"><strong>NO MOVES OBSERVED</strong><p>History begins after this species uses an attack.</p></div>;
   return <div class="observed-list">{moves.map(item => {
     const move = catalog.moves.find(candidate => candidate.id === item.moveId);
-    return <button key={item.moveId} onClick={() => openMove(item.moveId)}><TypeChip type={catalog.types.find(type => type.id === move?.typeId)} /><strong>{move?.name ?? `MOVE ${item.moveId}`}</strong><span>{item.encounters} encounter{item.encounters === 1 ? '' : 's'}</span><small>{move?.power ? `${move.power} power · ${move.accuracy}% precision` : move?.category}</small></button>;
+    return <button key={item.moveId} onClick={() => openMove(item.moveId)}><TypeChip type={catalog.types.find(type => type.id === move?.typeId)} /><strong>{move?.name ?? `MOVE ${item.moveId}`}</strong>{showFrequency && <span>FREQUENCY · {item.frequency}×</span>}<small>{move?.power ? `${move.power} power · ${move.accuracy}% precision` : move?.category}</small></button>;
   })}</div>;
 }

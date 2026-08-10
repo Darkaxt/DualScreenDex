@@ -131,6 +131,7 @@ class ProductionCompanionRuntimeTest {
         val runtime = ProductionCompanionRuntime()
         runtime.updateRetroArch(
             RetroArchView(
+                storageGrant = "GRANTED",
                 configGrant = "GRANTED",
                 romGrant = "GRANTED",
                 configState = "RESTART_REQUIRED",
@@ -143,6 +144,7 @@ class ProductionCompanionRuntimeTest {
 
         val state = runtime.stateView()
 
+        assertEquals("GRANTED", state.retroArch.storageGrant)
         assertEquals("GRANTED", state.retroArch.configGrant)
         assertEquals(14, state.retroArch.indexedRoms)
         assertTrue(state.retroArch.restartRequired)

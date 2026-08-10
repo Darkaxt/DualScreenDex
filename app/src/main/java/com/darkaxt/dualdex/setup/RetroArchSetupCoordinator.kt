@@ -19,19 +19,26 @@ import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.SaveSnapshotStore
 import com.darkaxt.dualdex.save.AndroidSaveDocumentResolver
+import com.darkaxt.dualdex.save.DirectSaveDocumentResolver
 import com.darkaxt.dualdex.save.SaveAssociationStore
 import com.darkaxt.dualdex.save.SaveDocumentSource
 import com.darkaxt.dualdex.save.SaveMonitorResult
 import com.darkaxt.dualdex.save.SaveMonitorStatus
 import com.darkaxt.dualdex.save.SavePollingMonitor
 import com.darkaxt.dualdex.storage.AndroidRomLibraryIndexer
+import com.darkaxt.dualdex.storage.DirectRomLibraryIndexer
 import com.darkaxt.dualdex.storage.RomIndexStore
+import com.darkaxt.dualdex.storage.RomSourceInput
+import com.darkaxt.dualdex.storage.SharedStorageGateway
+import com.darkaxt.dualdex.storage.StorageAccessPolicy
+import com.darkaxt.dualdex.storage.StorageIndexAction
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveCandidateView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import java.io.File
+import java.net.URI
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -45,6 +52,8 @@ class RetroArchSetupCoordinator(
 ) : AutoCloseable {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val indexStore = RomIndexStore(File(context.filesDir, "retroarch/rom-index.json"))
+    private val directIndexStore = RomIndexStore(File(context.filesDir, "retroarch/direct-rom-index.json"))
+    private val sharedStorage = SharedStorageGateway.android(context)
     private val saveMonitor = SavePollingMonitor(
         SaveAssociationStore(File(context.filesDir, "retroarch/save-associations.json")),
         SaveSnapshotStore(File(context.filesDir, "catalogs"), AndroidCatalogDatabaseFactory),
@@ -52,15 +61,24 @@ class RetroArchSetupCoordinator(
     private val worker = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "dualdex-retroarch-setup").apply { isDaemon = true }
     }
+    private val indexWorker = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "dualdex-storage-index").apply { isDaemon = true }
+    }
     private val heartbeat: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "dualdex-retroarch-heartbeat").apply { isDaemon = true }
     }
     private val monitor = AtomicReference<SessionMonitor?>(null)
     private val restartVerifier = RestartVerifier()
-    private val entries = AtomicReference(loadStoredIndex())
+    private val cachedDirectEntries = if (sharedStorage.isGranted()) directIndexStore.read(ALL_FILES_INDEX_KEY) else emptyList()
+    private val entries = AtomicReference(cachedDirectEntries.ifEmpty(::loadSafStoredIndex))
+    private val directIndexReady = AtomicBoolean(cachedDirectEntries.isNotEmpty())
     private val view = AtomicReference(initialView())
     private val activating = AtomicReference<String?>(null)
     private val pollingSave = AtomicBoolean(false)
+    private val directIndexing = AtomicBoolean(false)
+    private val directRefreshStarted = AtomicBoolean(false)
+    private val directConfigAttempt = AtomicReference<String?>(null)
+    private val lastStorageAccess = AtomicBoolean(sharedStorage.isGranted())
     private val activeEntry = AtomicReference<RomIndexEntry?>(null)
     private val lastSaveCandidates = AtomicReference<List<SaveDocumentSource>>(emptyList())
     private val discoveredSaveRom = AtomicReference<String?>(null)
@@ -69,6 +87,7 @@ class RetroArchSetupCoordinator(
 
     init {
         publish(view.get())
+        refreshStorageAccess()
         heartbeat.scheduleWithFixedDelay(::monitorHeartbeat, 0, HEARTBEAT_INTERVAL_SECONDS, TimeUnit.SECONDS)
     }
 
@@ -125,13 +144,14 @@ class RetroArchSetupCoordinator(
         worker.execute {
             val result = runCatching { AndroidRomLibraryIndexer(context.contentResolver).index(uri) }
             result.onSuccess { indexed ->
-                entries.set(indexed.entries)
                 indexStore.write(uri.toString(), indexed.entries)
+                if (!sharedStorage.isGranted()) entries.set(indexed.entries)
                 update {
                     it.copy(
-                        romGrant = "GRANTED",
-                        indexedRoms = indexed.entries.size,
+                        romGrant = if (sharedStorage.isGranted()) it.romGrant else "GRANTED",
+                        indexedRoms = if (sharedStorage.isGranted()) it.indexedRoms else indexed.entries.size,
                         message = when {
+                            sharedStorage.isGranted() -> "The selected ROM folder is retained as a fallback; All files access remains the active library source."
                             indexed.entries.isEmpty() -> "No GB, GBC, GBA, or single-ROM ZIP sources were found in the selected folder."
                             indexed.warnings.isEmpty() -> "Indexed ${indexed.entries.size} ROM sources."
                             else -> "Indexed ${indexed.entries.size} sources; ${indexed.warnings.size} unreadable sources were skipped."
@@ -140,6 +160,48 @@ class RetroArchSetupCoordinator(
                 }
             }.onFailure { failure ->
                 update { it.copy(romGrant = "FAILED", message = failure.message ?: failure.javaClass.simpleName) }
+            }
+        }
+    }
+
+    fun refreshStorageAccess() {
+        val granted = sharedStorage.isGranted()
+        lastStorageAccess.set(granted)
+        when (StorageAccessPolicy.resolve(granted, directIndexReady.get())) {
+            StorageIndexAction.USE_SAF -> {
+                directIndexReady.set(false)
+                directRefreshStarted.set(false)
+                directConfigAttempt.set(null)
+                entries.set(loadSafStoredIndex())
+                lastSaveCandidates.set(emptyList())
+                discoveredSaveRom.set(null)
+                val romGranted = storedRomTree()?.let(::hasReadGrant) == true
+                val configGranted = storedConfigTree()?.let(::hasConfigGrant) == true
+                update {
+                    it.copy(
+                        storageGrant = "MISSING",
+                        configGrant = if (configGranted) "GRANTED" else "MISSING",
+                        romGrant = if (romGranted) "GRANTED" else "MISSING",
+                        indexedRoms = entries.get().size,
+                        message = "Grant All files access for automatic multi-folder ROM and SaveRAM discovery; folder selection remains available as a fallback.",
+                    )
+                }
+            }
+
+            StorageIndexAction.USE_DIRECT -> {
+                update {
+                    it.copy(
+                        storageGrant = "GRANTED",
+                        romGrant = "GRANTED",
+                        indexedRoms = entries.get().size,
+                    )
+                }
+                if (directRefreshStarted.compareAndSet(false, true)) indexSharedStorage()
+                else worker.execute { configureDirectRetroArch(sharedStorage.roots()) }
+            }
+
+            StorageIndexAction.INDEX_DIRECT -> {
+                if (directRefreshStarted.compareAndSet(false, true)) indexSharedStorage()
             }
         }
     }
@@ -173,10 +235,130 @@ class RetroArchSetupCoordinator(
     override fun close() {
         heartbeat.shutdown()
         worker.shutdown()
+        indexWorker.shutdown()
         monitor.get()?.close()
     }
 
+    private fun indexSharedStorage() {
+        if (!directIndexing.compareAndSet(false, true)) return
+        val retainedDirectIndex = directIndexReady.get()
+        update {
+            it.copy(
+                storageGrant = "INDEXING",
+                romGrant = "INDEXING",
+                message = "Indexing GB, GBC, GBA, and ZIP sources across shared storage…",
+            )
+        }
+        indexWorker.execute {
+            try {
+                val roots = sharedStorage.roots()
+                require(roots.isNotEmpty()) { "All files access is granted, but no mounted shared-storage root is readable" }
+                val indexed = DirectRomLibraryIndexer().index(roots)
+                if (!sharedStorage.isGranted()) return@execute
+                entries.set(indexed.entries)
+                directIndexStore.write(ALL_FILES_INDEX_KEY, indexed.entries)
+                directIndexReady.set(true)
+                update {
+                    it.copy(
+                        storageGrant = "GRANTED",
+                        romGrant = "GRANTED",
+                        indexedRoms = indexed.entries.size,
+                        message = when {
+                            indexed.entries.isEmpty() -> "All files access is active, but no supported GB, GBC, GBA, or single-ROM ZIP source was found."
+                            indexed.warnings.isEmpty() -> "Indexed ${indexed.entries.size} ROM sources across shared storage."
+                            else -> "Indexed ${indexed.entries.size} sources; ${indexed.warnings.size} unreadable sources were skipped."
+                        },
+                    )
+                }
+                configureDirectRetroArch(roots)
+            } catch (failure: Exception) {
+                directIndexReady.set(retainedDirectIndex)
+                directRefreshStarted.set(false)
+                update {
+                    it.copy(
+                        storageGrant = when {
+                            !sharedStorage.isGranted() -> "MISSING"
+                            retainedDirectIndex -> "GRANTED"
+                            else -> "FAILED"
+                        },
+                        romGrant = when {
+                            retainedDirectIndex -> "GRANTED"
+                            storedRomTree()?.let(::hasReadGrant) == true -> "GRANTED"
+                            else -> "FAILED"
+                        },
+                        message = failure.message ?: failure.javaClass.simpleName,
+                    )
+                }
+            } finally {
+                directIndexing.set(false)
+            }
+        }
+    }
+
+    private fun configureDirectRetroArch(roots: List<File>) {
+        if (!sharedStorage.isGranted()) return
+        val config = FileRetroArchConfigStore.findPublic(roots)
+        if (config == null) {
+            val fallbackGranted = storedConfigTree()?.let(::hasConfigGrant) == true
+            update {
+                it.copy(
+                    configGrant = if (fallbackGranted) "GRANTED" else "MISSING",
+                    configState = if (fallbackGranted) it.configState else "NOT_FOUND",
+                    message = if (fallbackGranted) it.message
+                    else "Shared storage is available, but RetroArch/retroarch.cfg was not found. The manual config-folder fallback remains available.",
+                )
+            }
+            return
+        }
+        val configPath = config.path
+        if (directConfigAttempt.getAndSet(configPath) == configPath) return
+        update {
+            it.copy(
+                configGrant = "GRANTED",
+                configState = "PATCHING",
+                restartRequired = false,
+                message = "Updating the public RetroArch config…",
+            )
+        }
+        when (val result = RetroArchConfigInstaller.install(FileRetroArchConfigStore(config), commandPort)) {
+            is ConfigInstallResult.Installed -> update {
+                restartVerifier.requireRestart(connectionOf(it.connection))
+                it.copy(
+                    configState = "RESTART_REQUIRED",
+                    restartRequired = true,
+                    message = "Network Commands and 10-second SaveRAM autosave were written and verified. Fully restart RetroArch, then return here.",
+                )
+            }
+
+            ConfigInstallResult.AlreadyConfigured -> update {
+                val connected = connectionOf(it.connection) != RetroArchConnection.DISCONNECTED
+                it.copy(
+                    configState = if (connected) "VERIFIED" else "UNVERIFIED",
+                    restartRequired = false,
+                    message = if (connected) {
+                        "The public config and RetroArch Network Commands are verified."
+                    } else {
+                        "The public config already enables Network Commands and 10-second SaveRAM autosave. Open RetroArch so DualDex can verify the live connection."
+                    },
+                )
+            }
+
+            is ConfigInstallResult.Failed -> {
+                directConfigAttempt.compareAndSet(configPath, null)
+                update {
+                    it.copy(
+                        configState = "FAILED",
+                        restartRequired = false,
+                        message = result.message,
+                    )
+                }
+            }
+        }
+    }
+
     private fun monitorHeartbeat() {
+        val storageGranted = sharedStorage.isGranted()
+        if (lastStorageAccess.getAndSet(storageGranted) != storageGranted) refreshStorageAccess()
         restorePersistedSave()
         runCatching { monitor().heartbeat() }
             .onSuccess { session ->
@@ -233,9 +415,12 @@ class RetroArchSetupCoordinator(
         update { it.copy(resolution = "LOADING", message = "Verifying the active ROM before opening its catalog…") }
         worker.execute {
             try {
-                val loaded = context.contentResolver.openInputStream(Uri.parse(entry.sourceId))?.use {
+                val sourceInput = RomSourceInput { sourceId ->
+                    context.contentResolver.openInputStream(Uri.parse(sourceId))
+                }
+                val loaded = sourceInput.open(entry.sourceId).use {
                     RomSourceLoader.load(entry.sourceName.substringBefore('!'), it)
-                } ?: error("the matched ROM source is no longer readable")
+                }
                 require(RomSessionResolver.verifySha(entry, loaded.rom.sha256)) {
                     "the matched ROM changed after indexing; reselect the ROM library"
                 }
@@ -268,14 +453,12 @@ class RetroArchSetupCoordinator(
             try {
                 val parseContext = runtime.saveParseContext()
                 if (parseContext == null || !parseContext.romIdentity.equals(entry.sha256, ignoreCase = true)) return@execute
-                val configTree = preferences.getString(CONFIG_TREE_URI, null)?.let(Uri::parse)?.takeIf(::hasReadGrant)
-                val romTree = preferences.getString(ROM_TREE_URI, null)?.let(Uri::parse)?.takeIf(::hasReadGrant)
                 val resolver = AndroidSaveDocumentResolver(context.contentResolver)
                 val cachedCandidates = lastSaveCandidates.get().takeIf {
                     discoveredSaveRom.get().equals(entry.sha256, ignoreCase = true) && it.isNotEmpty()
                 }
-                val candidates = cachedCandidates?.let(resolver::refresh)
-                    ?: resolver.discover(entry, configTree, romTree).also { discoveredSaveRom.set(entry.sha256) }
+                val candidates = cachedCandidates?.let { refreshSaveCandidates(it, resolver) }
+                    ?: discoverSaveCandidates(entry, resolver).also { discoveredSaveRom.set(entry.sha256) }
                 lastSaveCandidates.set(candidates)
                 val result = saveMonitor.poll(parseContext, candidates, readAutosaveStatus())
                 val saveView = result.toView()
@@ -293,6 +476,53 @@ class RetroArchSetupCoordinator(
                 pollingSave.set(false)
             }
         }
+    }
+
+    private fun discoverSaveCandidates(
+        entry: RomIndexEntry,
+        safResolver: AndroidSaveDocumentResolver,
+    ): List<SaveDocumentSource> {
+        if (sharedStorage.isGranted()) {
+            val direct = DirectSaveDocumentResolver.discover(entry, directSaveDirectories(entry))
+            if (direct.isNotEmpty()) return direct
+        }
+        return safResolver.discover(entry, storedConfigTree()?.takeIf(::hasReadGrant), storedRomTree()?.takeIf(::hasReadGrant))
+    }
+
+    private fun refreshSaveCandidates(
+        sources: List<SaveDocumentSource>,
+        safResolver: AndroidSaveDocumentResolver,
+    ): List<SaveDocumentSource> {
+        val (direct, saf) = sources.partition { source ->
+            runCatching { URI(source.id).scheme.equals("file", ignoreCase = true) }.getOrDefault(false)
+        }
+        return buildList {
+            if (sharedStorage.isGranted()) addAll(DirectSaveDocumentResolver.refresh(direct))
+            addAll(safResolver.refresh(saf))
+        }.distinctBy { it.id }
+    }
+
+    private fun directSaveDirectories(entry: RomIndexEntry): List<File> = buildList {
+        view.get().savefileDirectory?.let(::absoluteDirectory)?.let(::add)
+        runCatching { directConfigStore()?.readSaveSettings()?.savefileDirectory }
+            .getOrNull()
+            ?.let(::absoluteDirectory)
+            ?.let(::add)
+        sharedStorage.roots().mapTo(this) { File(it, "RetroArch/saves") }
+        runCatching { URI(entry.sourceId) }.getOrNull()
+            ?.takeIf { it.scheme.equals("file", ignoreCase = true) }
+            ?.let(::File)
+            ?.parentFile
+            ?.let(::add)
+    }.mapNotNull { runCatching { it.canonicalFile }.getOrNull()?.takeIf(File::isDirectory) }
+        .distinctBy { it.path }
+
+    private fun absoluteDirectory(path: String): File? = File(path)
+        .takeIf { it.isAbsolute && it.isDirectory }
+
+    private fun directConfigStore(): FileRetroArchConfigStore? {
+        if (!sharedStorage.isGranted()) return null
+        return FileRetroArchConfigStore.findPublic(sharedStorage.roots())?.let(::FileRetroArchConfigStore)
     }
 
     private fun restorePersistedSave() {
@@ -338,14 +568,24 @@ class RetroArchSetupCoordinator(
     }
 
     private fun readAutosaveStatus(): String {
-        val uri = preferences.getString(CONFIG_TREE_URI, null)?.let(Uri::parse) ?: return "UNVERIFIED"
+        directConfigStore()?.let { store ->
+            return runCatching { store.readSaveSettings().autosaveStatus }.getOrDefault("UNVERIFIED")
+        }
+        val uri = storedConfigTree() ?: return "UNVERIFIED"
         if (!hasReadGrant(uri)) return "UNVERIFIED"
         return runCatching { SafRetroArchConfigStore(context.contentResolver, uri).readSaveSettings().autosaveStatus }
             .getOrDefault("UNVERIFIED")
     }
 
+    private fun storedConfigTree(): Uri? = preferences.getString(CONFIG_TREE_URI, null)?.let(Uri::parse)
+
+    private fun storedRomTree(): Uri? = preferences.getString(ROM_TREE_URI, null)?.let(Uri::parse)
+
     private fun hasReadGrant(uri: Uri): Boolean = context.contentResolver.persistedUriPermissions
         .any { permission -> permission.uri == uri && permission.isReadPermission }
+
+    private fun hasConfigGrant(uri: Uri): Boolean = context.contentResolver.persistedUriPermissions
+        .any { permission -> permission.uri == uri && permission.isReadPermission && permission.isWritePermission }
 
     private fun persistGrant(uri: Uri, write: Boolean) {
         val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
@@ -365,22 +605,31 @@ class RetroArchSetupCoordinator(
         }
     }
 
-    private fun loadStoredIndex(): List<RomIndexEntry> {
+    private fun loadSafStoredIndex(): List<RomIndexEntry> {
         val uri = preferences.getString(ROM_TREE_URI, null) ?: return emptyList()
         return indexStore.read(uri)
     }
 
     private fun initialView(): RetroArchView {
+        val storageGranted = sharedStorage.isGranted()
         val configUri = preferences.getString(CONFIG_TREE_URI, null)
         val romUri = preferences.getString(ROM_TREE_URI, null)
         val persisted = context.contentResolver.persistedUriPermissions.associateBy { it.uri.toString() }
-        val configGranted = configUri != null && persisted[configUri]?.isReadPermission == true && persisted[configUri]?.isWritePermission == true
-        val romGranted = romUri != null && persisted[romUri]?.isReadPermission == true
+        val directConfigFound = storageGranted && FileRetroArchConfigStore.findPublic(sharedStorage.roots()) != null
+        val configGranted = directConfigFound ||
+            (configUri != null && persisted[configUri]?.isReadPermission == true && persisted[configUri]?.isWritePermission == true)
+        val safRomGranted = romUri != null && persisted[romUri]?.isReadPermission == true
         return RetroArchView(
+            storageGrant = if (storageGranted) "GRANTED" else "MISSING",
             configGrant = if (configGranted) "GRANTED" else "MISSING",
-            romGrant = if (romGranted) "GRANTED" else "MISSING",
+            romGrant = when {
+                storageGranted && directIndexReady.get() -> "GRANTED"
+                storageGranted -> "INDEXING"
+                safRomGranted -> "GRANTED"
+                else -> "MISSING"
+            },
             configState = if (configGranted) "UNVERIFIED" else "NOT_CONFIGURED",
-            indexedRoms = if (romGranted) entries.get().size else 0,
+            indexedRoms = if (storageGranted || safRomGranted) entries.get().size else 0,
             message = "DualDex remains usable with manual ROM selection while RetroArch is disconnected.",
         )
     }
@@ -404,6 +653,7 @@ class RetroArchSetupCoordinator(
         const val PREFERENCES_NAME = "dualdex-retroarch"
         const val CONFIG_TREE_URI = "config-tree-uri"
         const val ROM_TREE_URI = "rom-tree-uri"
+        const val ALL_FILES_INDEX_KEY = "all-files://shared-storage"
         const val HEARTBEAT_INTERVAL_SECONDS = 2L
         const val LOG_TAG = "DualDexSaveRAM"
         val RETROARCH_PACKAGES = listOf("com.retroarch", "com.retroarch.aarch64", "com.retroarch.ra32")

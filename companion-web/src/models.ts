@@ -95,6 +95,7 @@ export interface SaveRamState {
 }
 
 export interface RetroArchState {
+  storageGrant: string;
   configGrant: string;
   romGrant: string;
   configState: string;
@@ -122,9 +123,9 @@ export interface State {
   battleTab: 'ENTRY' | 'ATTACK' | 'RARITY' | 'MOVES';
   settings: Settings;
   speciesState: Record<number, SpeciesState>;
-  observedMoves: Record<number, { moveId: number; encounters: number; lastSeen: number }[]>;
+  observedMoves: Record<number, { moveId: number; frequency: number }[]>;
   battle: null | {
-    opponents: { speciesId: number; level: number; rarity: string; moves: { moveId: number; encounters: number; lastSeen: number }[] }[];
+    opponents: { speciesId: number; level: number; rarity: string; moves: { moveId: number; frequency: number }[] }[];
     targetIndex: number;
     selectedMoveId: number | null;
     effectiveness: string | null;

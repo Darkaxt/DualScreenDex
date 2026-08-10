@@ -35,8 +35,8 @@ The upstream project attempted to identify Pokémon from screenshots and supply 
 | ROM hacks | User creates and maintains a profile | Family competition, structural inference, and automatic generated mapping |
 | Type mechanics | Selected external generation chart | Type chart and move mechanics extracted from the ROM |
 | Double battles | Infer names from screen regions | Follow the game's selected target cursor |
-| Opponent moves | OCR or generic expectations | Only moves actually observed, frequency-ranked per species/form |
-| Permissions | Accessibility and screenshot access | Localhost RetroArch Network Commands and user-selected ROM access |
+| Opponent moves | OCR or generic expectations | For uncaught species/forms, only moves actually observed, ranked by use frequency; captured entries need no observation metric |
+| Permissions | Accessibility and screenshot access | Localhost RetroArch Network Commands plus one Android All files access grant for multi-folder ROM and SaveRAM discovery |
 | Failure behavior | OCR/profile tuning | Independent capability flags; static Pokédex remains usable |
 
 The product contract is simple: a player may need to enable RetroArch Network Commands once, but must never have to enter memory addresses, import cheat codes, prepare CSV files, or create a profile for every mod.
@@ -56,7 +56,7 @@ The hybrid target page has four focused tabs:
 1. **Entry** — ROM-derived Pokédex information filtered by seen/caught knowledge.
 2. **Attack** — the selected move's globally known metadata plus its discovered effectiveness against the current target.
 3. **Rarity** — a qualitative recruitment signal based on relative level and average DV/IV quality.
-4. **Moves** — previously observed moves, frequency-ranked with complete ROM-derived move details.
+4. **Moves** — for an uncaught target, previously observed moves ranked by use frequency with complete ROM-derived move details. Once captured, the frequency metric disappears and the linked Pokédex supplies the complete ROM learnset.
 
 The current opponent's unrevealed four-move loadout is never read into the presentation model.
 
@@ -214,7 +214,8 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Dynamic battle-memory mapper | Labeled capture/diff/export lab implemented; production battle mappings are deferred until separately validated |
 | SaveRAM readers and Organic discovery ledger | Implemented and persisted per ROM/save for Generations I–III; live battle observations remain deferred |
 | Thor-first companion UI and settings | Implemented in the packaged Android companion |
-| Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses |
+| Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses; identical SHA-256 copies resolve deterministically |
+| Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / 4:3 Overlay Android display modes | Implemented and GitHub-signed RC6 validated on the dedicated AVD |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
 | Public signed candidate | [`v1.0.0-rc.6`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.6) prerelease; stable `v1.0.0` remains gated on Thor validation |
@@ -273,7 +274,7 @@ Open `http://127.0.0.1:47831`. Opening `companion-web/index.html` directly is no
 
 ## Android setup and release identity
 
-The in-app **RetroArch Setup** page requests access to the user-selected public RetroArch folder, explains the exact Network Commands and 10-second SaveRAM autosave settings, edits only those approved configuration keys, verifies the saved file, and then asks RetroArch to restart. If automatic activation is unavailable, manual ROM selection and the last valid cached catalog remain usable.
+The in-app **RetroArch Setup** page requests Android All files access once so sibling GB/GBC/GBA folders and RetroArch SaveRAM can be discovered without selecting every console directory. It locates the public `RetroArch/retroarch.cfg`, explains the exact Network Commands and 10-second SaveRAM autosave settings, edits only those approved keys, verifies the saved file, and requests one RetroArch restart only when the file changed. Existing Storage Access Framework folder actions remain available as fallbacks. ROMs and saves are read-only; the public config and its short-lived verified recovery sibling are the only storage writes. If automatic activation is unavailable, manual ROM selection and the last valid cached catalog remain usable.
 
 Production uses package `com.darkaxt.dualdex`; debug builds use `com.darkaxt.dualdex.debug` so they can coexist. Production APKs are signed only by the protected GitHub release workflow. The pinned certificate SHA-256 is [`C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`](signing/dualdex-release-cert.sha256); the repository contains the public certificate but no keystore or credentials.
 
@@ -288,6 +289,8 @@ Settings also persists the information policy, ruleset, font scale, density, the
 The debug lab starts disabled on every app process. Enabling it is the single privacy confirmation for that session, opens an independent localhost UDP client, and permits only RetroArch `READ_CORE_MEMORY` commands. Disabling or failing the lab cannot unload or mutate the active catalog, SaveRAM snapshot, or discovery ledger.
 
 Each session can label bounded snapshots as Overworld, Battle Start, Move Selected, Move Executed, Target Changed, Opponent Switched, Battle End, or a custom event. The user-selected JSON export includes core/content identity, descriptors, timestamps, region hashes, Base64 memory bytes, and bounded address-level before/after diffs. These are evidence—not automatically validated field mappings. A battle address becomes a generated mapping only after repeated captures and structural checks agree.
+
+The first labeled Modern Emerald battle analysis is recorded in [the battle-memory mapper report](docs/reports/modern-emerald-memory-mapper-analysis.md). It validates the single-opponent record, level and IV tier, highlighted player move, ROM-derived effectiveness, and Organic opponent move-frequency counts from PP decreases. Production consumption is still capability-gated and is not enabled in the 1.0 SaveRAM release; double-target hover and battle-exit detection need their own labeled evidence.
 
 ## Design documents
 
