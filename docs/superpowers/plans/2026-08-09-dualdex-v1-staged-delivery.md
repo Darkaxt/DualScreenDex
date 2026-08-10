@@ -308,7 +308,7 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 - [ ] Install only that GitHub-signed candidate on the Thor, then validate public-folder setup, RetroArch/mGBA integration, lower-screen presentation, dual launch, lifecycle, and user acceptance.
 - [x] If validation finds a defect, classify it in the ledger, return to Stage 7, fix and re-run convergence, then create a new monotonically versioned signed RC. Never replace an existing signed asset in place.
 - [ ] After a clean RC, tag `v1.0.0`, let GitHub rebuild/sign/verify the final artifact, repeat identity/checksum smoke validation, and publish the GitHub Release.
-- [ ] Confirm the public release is visibly distinct from local deployment and document the exact released commit, APK hash, signer fingerprint, and validation devices.
+- [x] Confirm the public RC is visibly distinct from local deployment and document the exact released commit, APK hash, signer fingerprint, and validation devices.
 
 **Release gate:** A GitHub-signed RC may be published as an explicitly labeled prerelease so it can be installed for live validation. Stable `v1.0.0` is not published until that signed artifact satisfies every acceptance criterion and the v1 ledger remains empty.
 

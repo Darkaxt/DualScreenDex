@@ -62,4 +62,16 @@ The packaged Android loopback UI was inspected at the Thor's 1080 x 1240 display
 - Deployment: installed only on the dedicated `DualDex_RA_API35` AVD (`emulator-5556`)
 - Publication: local debug artifact only; not a GitHub release
 
-Production signing remains exclusively owned by the protected GitHub `release-signing` environment. Stage 8 must rebuild, sign, verify, and publish its own artifact from the frozen source commit; this debug hash is evidence, not a release payload.
+Production signing remains exclusively owned by the protected GitHub `release-signing` environment. The debug hash above is evidence, not a release payload.
+
+## GitHub-signed RC7 artifact
+
+- Workflow: successful protected run [`31378249357`](https://github.com/Darkaxt/DualScreenDex/actions/runs/31378249357)
+- Source: tag `v1.0.0-rc.7`, peeled to merged commit `8abee2e89e11ca0b98f43ac034de01594a9dd5d2`
+- Release: public prerelease [`v1.0.0-rc.7`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.7)
+- File: `DualDex-v1.0.0-rc.7.apk`, 11,496,926 bytes
+- Identity: package `com.darkaxt.dualdex`, version `1.0.0-rc.7`, code `1000007`
+- SHA-256: `F26990AF356FB9B93CE42C156125DC5CEFCA8F0C1C3CEA79553D1FB7301C54FF`
+- Signer SHA-256: `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`
+
+All six assets were downloaded anonymously from the public release. Every checksum-manifest row, the provenance tag/commit/run, APK identity, and pinned signer were independently verified. The exact public APK passed the complete storage/catalog/save gate on `emulator-5556` and was then installed on the physical Thor `bfa98654`; no debug APK reached the Thor. Physical interaction and lifecycle acceptance remain the final RC gate.
