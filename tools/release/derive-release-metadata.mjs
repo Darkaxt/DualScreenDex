@@ -139,6 +139,7 @@ export function deriveReleaseMetadata({
     .filter((existingTag) => existingTag !== tag)
     .map((existingTag) => parseReleaseTag(existingTag))
     .filter(Boolean)
+    .filter((existingTag) => existingTag.versionName === parsedTag.versionName)
     .find((existingTag) => existingTag.versionCode >= parsedTag.versionCode);
   if (newerOrEqualTag) {
     throw new Error(
