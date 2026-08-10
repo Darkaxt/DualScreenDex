@@ -16,4 +16,6 @@ The encrypted keystore and credentials are held as GitHub environment secrets:
 - `DUALDEX_RELEASE_KEY_ALIAS`
 - `DUALDEX_RELEASE_KEY_PASSWORD`
 
-The GitHub environment is the release-signing authority. A contextual current-user recovery copy exists outside the repository for emergency administration, but it is not a release prerequisite and does not introduce another user-managed passphrase. Never commit a keystore, properties file, or credential export.
+The GitHub environment is the release-signing authority. There is no user recovery phrase and no local production-signing path. Never commit a keystore, properties file, or credential export.
+
+The release workflow must be dispatched from a new `v1.*` source tag. It runs all tests and creates an unsigned APK before entering the protected environment, reconstructs the keystore only in that protected job, verifies the pinned fingerprint, signs and verifies the APK, and creates a new GitHub Release without replacing an existing one. RC releases remain draft prereleases until the downloaded artifact passes the dedicated AVD and physical Thor gates.

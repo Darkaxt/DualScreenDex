@@ -5,6 +5,11 @@ plugins {
 val companionWebDirectory = rootProject.layout.projectDirectory.dir("companion-web")
 val companionWebDist = companionWebDirectory.dir("dist")
 val generatedWebAssets = layout.buildDirectory.dir("generated/dualdexWebAssets")
+val dualDexVersionName = providers.gradleProperty("dualdexVersionName").getOrElse("1.0.0")
+val dualDexVersionCode = providers.gradleProperty("dualdexVersionCode").orNull?.let { value ->
+    value.toIntOrNull()?.takeIf { it > 0 }
+        ?: error("dualdexVersionCode must be a positive integer")
+} ?: 1
 
 val buildCompanionWeb by tasks.registering(Exec::class) {
     workingDir(companionWebDirectory)
@@ -38,8 +43,8 @@ android {
         applicationId = "com.darkaxt.dualdex"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = dualDexVersionCode
+        versionName = dualDexVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

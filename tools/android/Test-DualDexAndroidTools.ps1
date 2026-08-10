@@ -5,7 +5,8 @@ $required = @(
     'create-dualdex-avd.ps1',
     'start-dualdex-avd.ps1',
     'resolve-dualdex-device.ps1',
-    'install-debug.ps1'
+    'install-debug.ps1',
+    'validate-signed-candidate.ps1'
 )
 
 foreach ($name in $required) {
@@ -55,6 +56,30 @@ if ($startText -match 'emulator-5554') {
 }
 if ($startText -notmatch 'sys\.boot_completed') {
     throw 'start-dualdex-avd.ps1 must wait for Android boot completion'
+}
+
+$candidateText = Get-Content -Raw (Join-Path $toolRoot 'validate-signed-candidate.ps1')
+foreach ($requiredCandidatePattern in @(
+    'Get-FileHash',
+    'apksigner(?:\.bat)?\s+verify\s+--verbose\s+--print-certs',
+    'dualdex-release-cert\.sha256',
+    'com\.darkaxt\.dualdex',
+    'Resolve-DualDexDevice',
+    "ValidateSet\('DedicatedAvd',\s*'Thor'\)",
+    '\$Install\.IsPresent'
+)) {
+    if ($candidateText -notmatch $requiredCandidatePattern) {
+        throw "validate-signed-candidate.ps1 is missing policy pattern: $requiredCandidatePattern"
+    }
+}
+if ($candidateText -match 'com\.darkaxt\.dualdex\.debug') {
+    throw 'Signed candidate validation must never target the debug package'
+}
+if ($candidateText -match '(?m)^\s*&\s*\$adb\s+(?!-s\b)') {
+    throw 'validate-signed-candidate.ps1 contains an adb invocation without -s'
+}
+if ($candidateText -match '(?m)^\s*&\s*\$adb\s+-s\s+[^\r\n]+\sinstall\s+[^\r\n]*(?:^|\s)-d(?:\s|$)') {
+    throw 'Signed candidate installation must not permit version downgrade'
 }
 
 Write-Output 'DualDex Android tool tests passed.'

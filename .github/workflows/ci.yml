@@ -41,6 +41,12 @@ jobs:
         working-directory: companion-web
         run: npm ci
 
+      - name: Test release policy
+        run: node --test tools/release/*.test.mjs
+
+      - name: Test Android deployment safety
+        run: pwsh -File tools/android/Test-DualDexAndroidTools.ps1
+
       - name: Run Kotlin tests
         run: .\gradlew.bat :parser-core:test :parser-cli:test :companion-core:test :companion-simulator:test :companion-server:test --stacktrace
 

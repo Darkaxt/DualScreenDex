@@ -4,44 +4,364 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Signed candidate tag such as v1.0.0-rc.1
+        description: New signed tag, such as v1.0.0-rc.1 or v1.0.0
         required: true
         type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: dualdex-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
 jobs:
-  release-readiness-guard:
+  verify-and-build:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.metadata.outputs.tag }}
+      version_name: ${{ steps.metadata.outputs.version_name }}
+      version_code: ${{ steps.metadata.outputs.version_code }}
+      release_kind: ${{ steps.metadata.outputs.release_kind }}
+      draft: ${{ steps.metadata.outputs.draft }}
+      prerelease: ${{ steps.metadata.outputs.prerelease }}
+      application_id: ${{ steps.metadata.outputs.application_id }}
+      certificate_sha256: ${{ steps.metadata.outputs.certificate_sha256 }}
     steps:
-      - name: Check out source
-        uses: actions/checkout@v4
+      - name: Check out exact source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
-      - name: Require the Stage 7 release marker
-        shell: bash
-        run: |
-          test -f release/v1-ready.json || {
-            echo "Stage 7 has not produced release/v1-ready.json; signing is intentionally disabled."
-            exit 1
-          }
-
-      - name: Validate candidate tag shape
+      - name: Require exact protected source tag
         shell: bash
         env:
-          CANDIDATE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          WORKFLOW_REF_NAME: ${{ github.ref_name }}
+          WORKFLOW_REF_TYPE: ${{ github.ref_type }}
         run: |
-          [[ "$CANDIDATE_TAG" =~ ^v1\.0\.0(-rc\.[1-9][0-9]*)?$ ]] || {
-            echo "Unsupported release tag: $CANDIDATE_TAG"
+          set -euo pipefail
+          [[ "$WORKFLOW_REF_TYPE" == "tag" ]] || {
+            echo "Release signing must be dispatched from a v1.* tag, not a branch."
+            exit 1
+          }
+          [[ "$WORKFLOW_REF_NAME" == "$RELEASE_TAG" ]] || {
+            echo "Input tag $RELEASE_TAG does not match workflow tag $WORKFLOW_REF_NAME."
+            exit 1
+          }
+          [[ "$(git rev-parse "$RELEASE_TAG^{commit}")" == "$GITHUB_SHA" ]]
+          git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null
+
+      - name: Set up Java 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: zulu
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: companion-web/package-lock.json
+
+      - name: Install locked web dependencies
+        working-directory: companion-web
+        run: npm ci
+
+      - name: Test release policy
+        run: node --test tools/release/*.test.mjs
+
+      - name: Test Android deployment safety
+        run: pwsh -File tools/android/Test-DualDexAndroidTools.ps1
+
+      - name: Derive and validate release identity
+        id: metadata
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          git tag --list 'v*' > "$RUNNER_TEMP/existing-release-tags.txt"
+          args=(
+            --tag "$RELEASE_TAG"
+            --ready release/v1-ready.json
+            --certificate-fingerprint signing/dualdex-release-cert.sha256
+            --existing-tags "$RUNNER_TEMP/existing-release-tags.txt"
+          )
+          if [[ -f release/v1-final-authorization.json ]]; then
+            args+=(--final-authorization release/v1-final-authorization.json)
+          fi
+          node tools/release/derive-release-metadata.mjs "${args[@]}"
+
+      - name: Refuse an existing release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.metadata.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Refusing to replace existing release $RELEASE_TAG. Use a new monotonically versioned RC."
+            exit 1
+          fi
+
+      - name: Test web UI
+        working-directory: companion-web
+        run: npm test -- --run
+
+      - name: Build web UI
+        working-directory: companion-web
+        run: npm run build
+
+      - name: Test all modules, lint, and build unsigned release APK
+        shell: bash
+        run: >-
+          ./gradlew test :app:lintDebug :app:assembleRelease
+          -PdualdexVersionName=${{ steps.metadata.outputs.version_name }}
+          -PdualdexVersionCode=${{ steps.metadata.outputs.version_code }}
+          --stacktrace
+
+      - name: Verify unsigned package identity
+        shell: bash
+        env:
+          EXPECTED_APPLICATION_ID: ${{ steps.metadata.outputs.application_id }}
+          EXPECTED_VERSION_NAME: ${{ steps.metadata.outputs.version_name }}
+          EXPECTED_VERSION_CODE: ${{ steps.metadata.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          unsigned_apk=app/build/outputs/apk/release/app-release-unsigned.apk
+          test -f "$unsigned_apk"
+          aapt="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          badging="$("$aapt" dump badging "$unsigned_apk" | head -n 1)"
+          [[ "$badging" == *"name='$EXPECTED_APPLICATION_ID'"* ]]
+          [[ "$badging" == *"versionCode='$EXPECTED_VERSION_CODE'"* ]]
+          [[ "$badging" == *"versionName='$EXPECTED_VERSION_NAME'"* ]]
+
+      - name: Stage unsigned build handoff
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.metadata.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dualdex-unsigned"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk \
+            "$RUNNER_TEMP/dualdex-unsigned/DualDex-$RELEASE_TAG-unsigned.apk"
+
+      - name: Upload unsigned build handoff
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dualdex-unsigned-${{ steps.metadata.outputs.tag }}
+          path: ${{ runner.temp }}/dualdex-unsigned/DualDex-${{ steps.metadata.outputs.tag }}-unsigned.apk
+          if-no-files-found: error
+          retention-days: 1
+
+  sign-and-publish:
+    needs: verify-and-build
+    runs-on: ubuntu-latest
+    environment: release-signing
+    permissions:
+      contents: write
+    steps:
+      - name: Check out exact verified source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: zulu
+          java-version: "21"
+
+      - name: Download unsigned build handoff
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dualdex-unsigned-${{ needs.verify-and-build.outputs.tag }}
+          path: ${{ runner.temp }}/dualdex-unsigned
+
+      - name: Refuse to replace an existing signed asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.verify-and-build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Refusing to replace existing release $RELEASE_TAG. Use a new monotonically versioned RC."
+            exit 1
+          fi
+
+      - name: Reconstruct key, verify signer, sign, and verify APK
+        id: signing
+        shell: bash
+        env:
+          DUALDEX_RELEASE_KEYSTORE_B64: ${{ secrets.DUALDEX_RELEASE_KEYSTORE_B64 }}
+          DUALDEX_RELEASE_STORE_PASSWORD: ${{ secrets.DUALDEX_RELEASE_STORE_PASSWORD }}
+          DUALDEX_RELEASE_KEY_ALIAS: ${{ secrets.DUALDEX_RELEASE_KEY_ALIAS }}
+          DUALDEX_RELEASE_KEY_PASSWORD: ${{ secrets.DUALDEX_RELEASE_KEY_PASSWORD }}
+          EXPECTED_APPLICATION_ID: ${{ needs.verify-and-build.outputs.application_id }}
+          EXPECTED_CERTIFICATE_SHA256: ${{ needs.verify-and-build.outputs.certificate_sha256 }}
+          EXPECTED_VERSION_CODE: ${{ needs.verify-and-build.outputs.version_code }}
+          EXPECTED_VERSION_NAME: ${{ needs.verify-and-build.outputs.version_name }}
+          RELEASE_TAG: ${{ needs.verify-and-build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          keystore="$RUNNER_TEMP/dualdex-release.jks"
+          certificate_der="$RUNNER_TEMP/dualdex-release.der"
+          verification_log="$RUNNER_TEMP/apksigner-verification.txt"
+          cleanup() {
+            rm -f "$keystore" "$certificate_der"
+          }
+          trap cleanup EXIT
+
+          for required in \
+            DUALDEX_RELEASE_KEYSTORE_B64 \
+            DUALDEX_RELEASE_STORE_PASSWORD \
+            DUALDEX_RELEASE_KEY_ALIAS \
+            DUALDEX_RELEASE_KEY_PASSWORD; do
+            [[ -n "${!required:-}" ]] || {
+              echo "Protected signing secret $required is unavailable."
+              exit 1
+            }
+          done
+
+          printf '%s' "$DUALDEX_RELEASE_KEYSTORE_B64" | base64 --decode > "$keystore"
+          keytool -list \
+            -keystore "$keystore" \
+            -storepass:env DUALDEX_RELEASE_STORE_PASSWORD \
+            -alias "$DUALDEX_RELEASE_KEY_ALIAS" >/dev/null
+          keytool -exportcert \
+            -keystore "$keystore" \
+            -storepass:env DUALDEX_RELEASE_STORE_PASSWORD \
+            -alias "$DUALDEX_RELEASE_KEY_ALIAS" \
+            -file "$certificate_der"
+
+          actual_certificate_sha256="$(sha256sum "$certificate_der" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')"
+          [[ "$actual_certificate_sha256" == "$EXPECTED_CERTIFICATE_SHA256" ]] || {
+            echo "Protected keystore certificate does not match the pinned public certificate."
             exit 1
           }
 
-  signing-disabled-until-stage-8:
-    needs: release-readiness-guard
-    runs-on: ubuntu-latest
-    environment: release-signing
-    steps:
-      - name: Stop before production signing is implemented
+          apksigner_path="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          export PATH="$(dirname "$apksigner_path"):$PATH"
+          unsigned_apk="$RUNNER_TEMP/dualdex-unsigned/DualDex-$RELEASE_TAG-unsigned.apk"
+          assets="$RUNNER_TEMP/release-assets"
+          signed_apk="$assets/DualDex-$RELEASE_TAG.apk"
+          mkdir -p "$assets"
+
+          zipalign -c -P 16 4 "$unsigned_apk"
+          apksigner sign \
+            --ks "$keystore" \
+            --ks-key-alias "$DUALDEX_RELEASE_KEY_ALIAS" \
+            --ks-pass env:DUALDEX_RELEASE_STORE_PASSWORD \
+            --key-pass env:DUALDEX_RELEASE_KEY_PASSWORD \
+            --out "$signed_apk" \
+            "$unsigned_apk"
+          apksigner verify --verbose --print-certs "$signed_apk" | tee "$verification_log"
+
+          signer_sha256="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$verification_log" | head -n 1 | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          [[ "$signer_sha256" == "$EXPECTED_CERTIFICATE_SHA256" ]] || {
+            echo "Signed APK certificate does not match the pinned fingerprint."
+            exit 1
+          }
+          badging="$(aapt dump badging "$signed_apk" | head -n 1)"
+          [[ "$badging" == *"name='$EXPECTED_APPLICATION_ID'"* ]]
+          [[ "$badging" == *"versionCode='$EXPECTED_VERSION_CODE'"* ]]
+          [[ "$badging" == *"versionName='$EXPECTED_VERSION_NAME'"* ]]
+
+          echo "assets=$assets" >> "$GITHUB_OUTPUT"
+          echo "apk=$signed_apk" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release checksums and provenance
+        shell: bash
+        env:
+          ASSETS: ${{ steps.signing.outputs.assets }}
+          APK: ${{ steps.signing.outputs.apk }}
+          CERTIFICATE_SHA256: ${{ needs.verify-and-build.outputs.certificate_sha256 }}
+          RELEASE_KIND: ${{ needs.verify-and-build.outputs.release_kind }}
+          RELEASE_TAG: ${{ needs.verify-and-build.outputs.tag }}
+          VERSION_CODE: ${{ needs.verify-and-build.outputs.version_code }}
+          VERSION_NAME: ${{ needs.verify-and-build.outputs.version_name }}
         run: |
-          echo "The protected environment is wired, but Stage 8 signing is not implemented yet."
-          exit 1
+          set -euo pipefail
+          cp signing/dualdex-release-cert.pem "$ASSETS/dualdex-release-cert.pem"
+          cp reports/dualdex-parser-compatibility.md "$ASSETS/dualdex-parser-compatibility.md"
+          cp release/RELEASE_NOTES_1.0.0.md "$ASSETS/RELEASE_NOTES.md"
+
+          apk_sha256="$(sha256sum "$APK" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')"
+          jq -n \
+            --arg schema "1" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg commit "$GITHUB_SHA" \
+            --arg workflowRunId "$GITHUB_RUN_ID" \
+            --arg tag "$RELEASE_TAG" \
+            --arg releaseKind "$RELEASE_KIND" \
+            --arg versionName "$VERSION_NAME" \
+            --arg versionCode "$VERSION_CODE" \
+            --arg applicationId "com.darkaxt.dualdex" \
+            --arg apkSha256 "$apk_sha256" \
+            --arg certificateSha256 "$CERTIFICATE_SHA256" \
+            '{
+              schema: ($schema | tonumber),
+              repository: $repository,
+              commit: $commit,
+              workflowRunId: $workflowRunId,
+              tag: $tag,
+              releaseKind: $releaseKind,
+              versionName: $versionName,
+              versionCode: ($versionCode | tonumber),
+              applicationId: $applicationId,
+              apkSha256: $apkSha256,
+              certificateSha256: $certificateSha256,
+              signingAuthority: "GitHub protected environment: release-signing"
+            }' > "$ASSETS/provenance.json"
+
+          (
+            cd "$ASSETS"
+            sha256sum \
+              "$(basename "$APK")" \
+              dualdex-release-cert.pem \
+              dualdex-parser-compatibility.md \
+              RELEASE_NOTES.md \
+              provenance.json > SHA256SUMS.txt
+          )
+
+      - name: Create non-replacing GitHub release
+        shell: bash
+        env:
+          ASSETS: ${{ steps.signing.outputs.assets }}
+          DRAFT: ${{ needs.verify-and-build.outputs.draft }}
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ needs.verify-and-build.outputs.prerelease }}
+          RELEASE_KIND: ${{ needs.verify-and-build.outputs.release_kind }}
+          RELEASE_TAG: ${{ needs.verify-and-build.outputs.tag }}
+          VERSION_NAME: ${{ needs.verify-and-build.outputs.version_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Refusing to replace existing release $RELEASE_TAG."
+            exit 1
+          fi
+
+          flags=()
+          if [[ "$DRAFT" == "true" ]]; then flags+=(--draft); fi
+          if [[ "$PRERELEASE" == "true" ]]; then flags+=(--prerelease); fi
+          title="DualDex $VERSION_NAME"
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "$title" \
+            --notes-file "$ASSETS/RELEASE_NOTES.md" \
+            "${flags[@]}" \
+            "$ASSETS/DualDex-$RELEASE_TAG.apk" \
+            "$ASSETS/SHA256SUMS.txt" \
+            "$ASSETS/provenance.json" \
+            "$ASSETS/dualdex-release-cert.pem" \
+            "$ASSETS/dualdex-parser-compatibility.md" \
+            "$ASSETS/RELEASE_NOTES.md"
+
+          echo "GitHub created the non-replacing $RELEASE_KIND release for $RELEASE_TAG." >> "$GITHUB_STEP_SUMMARY"

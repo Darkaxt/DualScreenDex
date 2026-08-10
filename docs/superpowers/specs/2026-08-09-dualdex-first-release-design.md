@@ -563,7 +563,7 @@ Private material is not committed. The repository contains only:
 - its expected SHA-256 certificate fingerprint; and
 - signing instructions that do not contain secrets.
 
-The protected GitHub `release-signing` environment is the production signing authority and holds the keystore plus its credentials. A local administrative copy may exist outside the repository, but it is not a release prerequisite and must not introduce a second user-managed recovery phrase or a local production-signing path.
+The protected GitHub `release-signing` environment is the production signing authority and holds the keystore plus its credentials. DualDex does not require a user-managed recovery phrase and provides no local production-signing path.
 
 ### 12.3 GitHub-only production signing
 
@@ -578,24 +578,24 @@ Base64 is transport encoding; secrecy comes from GitHub environment-secret encry
 
 Pull-request and ordinary branch workflows never receive these secrets. The release workflow:
 
-1. checks out the exact approved commit;
+1. runs only from a pre-created `v1.*` source tag that matches the requested release identity and protected-environment tag policy;
 2. runs the complete non-secret test/build pipeline;
 3. enters the protected signing environment only after tests pass;
 4. reconstructs the keystore in the ephemeral runner workspace;
 5. verifies alias and expected certificate fingerprint before signing;
-6. builds/signs the production APK;
+6. signs the already-tested unsigned production APK handed off by the non-secret job;
 7. verifies package ID, version code/name, APK signature schemes, and signer fingerprint with Android build tools;
 8. generates SHA-256 checksums and build provenance;
-9. creates or updates a draft GitHub Release and attaches the signed APK, checksums, public certificate, compatibility report, and release notes; and
-10. leaves publication gated on signed-artifact device validation.
+9. creates a new non-replacing draft/prerelease for an RC and attaches the signed APK, checksums, public certificate, compatibility report, provenance, and release notes; and
+10. rejects the final tag until a committed authorization record proves the GitHub-signed candidate passed both dedicated-AVD and Thor validation.
 
 The ephemeral keystore is never uploaded as an artifact. Runner teardown removes it.
 
 ### 12.4 Version and update contract
 
-- Release tags use `vMAJOR.MINOR.PATCH`.
+- Release tags use `vMAJOR.MINOR.PATCH-rc.N` for candidates and `vMAJOR.MINOR.PATCH` for the final release.
 - `versionName` matches the tag without `v`.
-- `versionCode` increases monotonically for every signed artifact offered as an update.
+- `versionCode` is derived as `major * 1,000,000 + minor * 10,000 + patch * 100 + qualifier`; RC qualifiers are 1–98 and the final qualifier is 99, so every accepted candidate-to-final update is monotonic.
 - The workflow rejects a mismatched tag, reused/lower version code, wrong package ID, or wrong signer.
 - A signed release candidate must update the previous production-signed candidate in place while preserving settings, folder grants where Android permits, catalog caches, and save associations.
 
