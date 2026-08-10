@@ -277,3 +277,36 @@ git push
 ```
 
 Generate the signed release only through the existing GitHub release workflow. Verify the published APK signer, version, SHA-256, and the Settings > Debug user flow before declaring the release complete.
+
+## Task 6: Refresh the existing GAFT listing after release
+
+**External repository:** `https://github.com/andreyvelsk/GAFT`
+
+GAFT already contains an older `Pokemon game + DualScreenDex` listing. Update that entry instead of adding a duplicate.
+
+### Step 1: Inspect the existing content slug after the release is public
+
+Fork/refresh GAFT, locate the existing DualScreenDex `content/<slug>/index.md`, and create a narrowly scoped update branch. Do not start this step before the signed GitHub release passes runtime verification.
+
+### Step 2: Replace stale project information
+
+Update the existing frontmatter and body with:
+
+- the current one-line companion description;
+- category `companion`;
+- direct URLs for verified current screenshots or video;
+- the signed GitHub release/download link;
+- the actual RetroArch and DualDex setup flow;
+- AYN Thor docked/top-screen focus guidance;
+- current supported generations and parser-capability behavior; and
+- truthful known limitations from the release evidence.
+
+Do not claim unverified ROM compatibility or live-memory behavior.
+
+### Step 3: Preview and validate the GAFT contribution
+
+Run GAFT's local preview/build commands, confirm the existing project page renders without broken media or duplicate slugs, and verify every public link resolves.
+
+### Step 4: Commit, push, and open the GAFT pull request
+
+Use the GAFT contribution contract: commit the existing content-page update, push the update branch, and open a PR explaining that it refreshes the already-listed DualScreenDex project for the new signed release. Publication remains controlled by the GAFT maintainer's review and deployment.
