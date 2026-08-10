@@ -106,6 +106,17 @@ test("rejects a candidate whose versionCode is not newer than an existing releas
   assert.equal(newerCandidate.outputs.version_code, "1000004");
 });
 
+test("ignores semantic tags from a different application version lineage", () => {
+  const result = runMetadata(
+    "v1.0.0-rc.1",
+    undefined,
+    ["v2.0.1", "v1.1.0", "v0.9.9"],
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.outputs.version_code, "1000001");
+});
+
 test("refuses a final release without signed-candidate device authorization", () => {
   const result = runMetadata("v1.0.0");
 
