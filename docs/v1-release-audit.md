@@ -87,3 +87,15 @@ All six assets were downloaded anonymously from the public release. Every checks
 - Signer SHA-256: `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`
 
 The public assets matched the checksum manifest and provenance through anonymous release URLs. The exact APK updated RC7 in place on the Thor; the installed base APK hash matched the public artifact. With RetroArch on display 0 and DualDex on display 4, Modern Emerald was `PLAYING`/`ACTIVE`, SaveRAM was `MATCHED`, and DualDex reported the in-game ground truth of 6 seen / 2 caught / 2 Team. The SaveRAM remained byte-identical after the read.
+
+## GitHub-signed RC9 live-battle candidate
+
+- Workflow: successful protected run [`31395205876`](https://github.com/Darkaxt/DualScreenDex/actions/runs/31395205876)
+- Source: tag `v1.0.0-rc.9`, peeled to merged commit `c3356d51e72fff73787c2c7cda6ba5de9a1a6058`
+- Release: public prerelease [`v1.0.0-rc.9`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.9)
+- File: `DualDex-v1.0.0-rc.9.apk`, 11,652,632 bytes
+- Identity: package `com.darkaxt.dualdex`, version `1.0.0-rc.9`, code `1000009`
+- SHA-256: `B05B61150D82F56945A1B88734DD082B653E58C0D19FD0AB4E30AD13527AF644`
+- Signer SHA-256: `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`
+
+The exact public release URL was used for an independent download. The APK matched `SHA256SUMS.txt`; provenance named the same commit, tag, workflow run, version, package, APK hash, and signer. The signed APK installed on `emulator-5556`, where RetroArch remained visible in 4:3 and the DualDex floating Poké Ball rendered without taking over the game area. The same public artifact then updated the production package on Thor serial `bfa98654`; its pulled installed `base.apk` reproduced the public SHA-256. No debug APK was installed on the Thor, and `emulator-5554` was not addressed. Live Generation I/III battle and physical resize acceptance remain pending, so RC9 is a prerelease rather than stable `v1.0.0`.

@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. For validated Generation I and III layouts it also reads live battle state through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. The current source also contains dynamically resolved Generation I/III battle context, Area-filter time markers, and bounded overlay resizing; these additions still require a newer GitHub-signed candidate and physical-device acceptance. The inherited OCR/accessibility application has been replaced. Stable `v1.0.0` has not been released.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Public prerelease [`v1.0.0-rc.9`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.9) adds dynamically resolved Generation I/III battle context, Area-filter time markers, and bounded overlay resizing. Its public APK has passed independent hash, identity, signer, dedicated-AVD overlay, and Thor installation checks; physical live-battle acceptance is still pending. The inherited OCR/accessibility application has been replaced. Stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
@@ -222,9 +222,9 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Thor-first companion UI and settings | Implemented in the packaged Android companion |
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses; identical SHA-256 copies resolve deterministically |
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
-| Optional Docked / resizable 4:3 Overlay Android display modes | Implemented; resizing awaits signed-candidate device acceptance |
+| Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in signed RC9; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Public signed candidate | [`v1.0.0-rc.8`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.8) prerelease; the current battle/resize source is not yet in a signed candidate |
+| Public signed candidate | [`v1.0.0-rc.9`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.9) prerelease; public artifact verified and Thor-installed, with physical live-battle/resize acceptance pending |
 
 ## Parser development
 
