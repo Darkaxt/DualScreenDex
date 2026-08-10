@@ -26,6 +26,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.darkaxt.dualdex.overlay.FloatingCompanionService
+import com.darkaxt.dualdex.overlay.OverlayStartupAction
+import com.darkaxt.dualdex.overlay.OverlayStartupPolicy
 import com.darkaxt.dualdex.rom.RomDocumentPicker
 import com.darkaxt.dualdex.setup.SetupDocumentPicker
 import com.darkaxt.dualdex.web.DualDexWebView
@@ -72,7 +74,11 @@ class MainActivity : AppCompatActivity() {
             onRomTree = { uri -> (application as DualDexApplication).retroArchSetup?.applyRomTree(uri) },
         )
         showCompanionOrRecovery()
-        if (intent.getBooleanExtra(EXTRA_EXPORT_MAPPER, false)) exportMapper()
+        if (intent.getBooleanExtra(EXTRA_EXPORT_MAPPER, false)) {
+            exportMapper()
+        } else {
+            restoreOverlayMode()
+        }
     }
 
     override fun onDestroy() {
@@ -149,6 +155,19 @@ class MainActivity : AppCompatActivity() {
         overlayPermission.launch(
             Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")),
         )
+    }
+
+    private fun restoreOverlayMode() {
+        if (FloatingCompanionService.running) return
+        val application = application as DualDexApplication
+        when (OverlayStartupPolicy.resolve(application.currentDisplayMode(), Settings.canDrawOverlays(this))) {
+            OverlayStartupAction.STAY_DOCKED -> Unit
+            OverlayStartupAction.START_OVERLAY -> {
+                FloatingCompanionService.show(this)
+                moveTaskToBack(true)
+            }
+            OverlayStartupAction.REVERT_TO_DOCKED -> application.updateDisplayMode("DOCKED")
+        }
     }
 
     private fun exportMapper() {
