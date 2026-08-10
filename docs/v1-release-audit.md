@@ -75,3 +75,15 @@ Production signing remains exclusively owned by the protected GitHub `release-si
 - Signer SHA-256: `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`
 
 All six assets were downloaded anonymously from the public release. Every checksum-manifest row, the provenance tag/commit/run, APK identity, and pinned signer were independently verified. The exact public APK passed the storage/catalog discovery gates on `emulator-5556` and was then installed on the physical Thor `bfa98654`; no debug APK reached the Thor. The Thor cross-check exposed the Gen III expanded Pokédex-layout defect recorded as `V1-004`, so RC7 is superseded rather than accepted.
+
+## GitHub-signed RC8 correction
+
+- Workflow: successful protected run [`31384341785`](https://github.com/Darkaxt/DualScreenDex/actions/runs/31384341785)
+- Source: tag `v1.0.0-rc.8`, peeled to merged commit `b83eb4b4e59fcfafaa20091a37d814a0c6cb2374`
+- Release: public prerelease [`v1.0.0-rc.8`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.8)
+- File: `DualDex-v1.0.0-rc.8.apk`, 11,501,022 bytes
+- Identity: package `com.darkaxt.dualdex`, version `1.0.0-rc.8`, code `1000008`
+- SHA-256: `5817168C093683E73AE0070D782B625EE4AF5369EAFCAC649B49BB657344437A`
+- Signer SHA-256: `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`
+
+The public assets matched the checksum manifest and provenance through anonymous release URLs. The exact APK updated RC7 in place on the Thor; the installed base APK hash matched the public artifact. With RetroArch on display 0 and DualDex on display 4, Modern Emerald was `PLAYING`/`ACTIVE`, SaveRAM was `MATCHED`, and DualDex reported the in-game ground truth of 6 seen / 2 caught / 2 Team. The SaveRAM remained byte-identical after the read.
