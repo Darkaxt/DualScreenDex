@@ -70,6 +70,8 @@ export interface Settings {
   autoOpenTarget: boolean;
   ruleset: string;
   displayMode?: 'DOCKED' | 'OVERLAY';
+  theme?: 'GAME' | 'DARK' | 'LIGHT';
+  displayTarget?: 'AUTO' | 'HANDHELD' | 'EXTERNAL';
 }
 
 export interface SpeciesState {

@@ -53,4 +53,25 @@ class CatalogCache(
         require(sha256.matches(Regex("[0-9a-fA-F]{64}"))) { "catalog SHA-256 is invalid" }
         return File(directory, "${sha256.lowercase()}.sqlite")
     }
+
+    /** Removes only inactive parser databases. SaveRAM snapshots and knowledge records are not in this namespace. */
+    @Synchronized
+    fun clearInactive(activeSha256: String?): Int {
+        val active = activeSha256?.also {
+            require(it.matches(Regex("[0-9a-fA-F]{64}"))) { "active catalog SHA-256 is invalid" }
+        }?.lowercase()
+        val root = directory.canonicalFile
+        val candidates = directory.listFiles().orEmpty().filter { file ->
+            CACHE_FILE.matches(file.name) && file.name.substringBefore(".sqlite").lowercase() != active
+        }
+        candidates.forEach { file ->
+            check(file.canonicalFile.parentFile == root) { "refusing to clear a cache outside its directory" }
+            check(file.delete() || !file.exists()) { "inactive catalog cache could not be removed: $file" }
+        }
+        return candidates.count { !it.exists() }
+    }
+
+    private companion object {
+        val CACHE_FILE = Regex("[0-9a-fA-F]{64}\\.sqlite(?:-wal|-shm)?")
+    }
 }

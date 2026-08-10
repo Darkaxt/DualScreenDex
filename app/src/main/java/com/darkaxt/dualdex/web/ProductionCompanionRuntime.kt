@@ -17,8 +17,10 @@ import com.enrpau.dualscreendex.companion.model.CompanionAction
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
 import com.enrpau.dualscreendex.companion.model.Density
 import com.enrpau.dualscreendex.companion.model.DisplayMode
+import com.enrpau.dualscreendex.companion.model.DisplayTarget
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
+import com.enrpau.dualscreendex.companion.model.Theme
 import com.enrpau.dualscreendex.companion.knowledge.SaveKnowledgeMapper
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveSnapshot
@@ -42,6 +44,8 @@ class ProductionCompanionRuntime(
     },
     private val catalogRepository: CatalogRepository? = null,
     private val onCatalogCommitted: (sha256: String, displayName: String) -> Unit = { _, _ -> },
+    initialSettings: CompanionSettings = CompanionSettings(),
+    private val onSettingsChanged: (CompanionSettings) -> Unit = {},
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
     @Volatile private var retroArch = RetroArchView()
@@ -51,7 +55,7 @@ class ProductionCompanionRuntime(
     private val loadGeneration = AtomicLong()
     val gateway = CompanionGateway(
         AppSnapshot(
-            settings = CompanionSettings(knowledgeMode = KnowledgeMode.ORGANIC),
+            settings = initialSettings,
         ),
     )
 
@@ -190,6 +194,8 @@ class ProductionCompanionRuntime(
         retroArch = state
     }
 
+    fun retroArchState(): RetroArchView = retroArch
+
     fun updateSaveRam(state: SaveRamView) {
         saveRam = state
     }
@@ -275,9 +281,7 @@ class ProductionCompanionRuntime(
                 }.id
             }
         } ?: current.ruleset
-        gateway.dispatch(
-            CompanionAction.UpdateSettings(
-                CompanionSettings(
+        val updated = CompanionSettings(
                     knowledgeMode = values["knowledgeMode"]?.let { KnowledgeMode.valueOf(it.uppercase()) } ?: current.knowledgeMode,
                     attackEnabled = values["attackEnabled"]?.toBooleanStrictOrNull() ?: current.attackEnabled,
                     rarityEnabled = values["rarityEnabled"]?.toBooleanStrictOrNull() ?: current.rarityEnabled,
@@ -288,9 +292,13 @@ class ProductionCompanionRuntime(
                     autoOpenTarget = values["autoOpenTarget"]?.toBooleanStrictOrNull() ?: current.autoOpenTarget,
                     ruleset = ruleset,
                     displayMode = values["displayMode"]?.let { DisplayMode.valueOf(it.uppercase()) } ?: current.displayMode,
-                ),
-            ),
+                    theme = values["theme"]?.let { Theme.valueOf(it.uppercase()) } ?: current.theme,
+                    displayTarget = values["displayTarget"]?.let { DisplayTarget.valueOf(it.uppercase()) } ?: current.displayTarget,
+                )
+        gateway.dispatch(
+            CompanionAction.UpdateSettings(updated),
         )
+        onSettingsChanged(updated)
     }
 
     private fun resolveRuleset(selection: String) = catalog?.learnsetRulesets?.let { rulesets ->

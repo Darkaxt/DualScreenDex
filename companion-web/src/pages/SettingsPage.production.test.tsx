@@ -44,6 +44,17 @@ describe('production settings copy', () => {
     expect(screen.getByText(/fixed 4:3 panel/i)).toBeTruthy();
   });
 
+  it('exposes persisted theme and companion-display targeting', () => {
+    const send = vi.fn();
+    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'DARK' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'EXTERNAL' }));
+
+    expect(send).toHaveBeenCalledWith('SETTINGS', { theme: 'DARK' });
+    expect(send).toHaveBeenCalledWith('SETTINGS', { displayTarget: 'EXTERNAL' });
+  });
+
   it('shows SaveRAM health and lets an ambiguous match be selected', () => {
     const send = vi.fn();
     render(<SettingsPage catalog={catalog} state={{ ...state, saveRam: {
@@ -56,6 +67,19 @@ describe('production settings copy', () => {
 
     expect(send).toHaveBeenCalledWith('SELECT_SAVE', { documentId: 'content://save/1' });
     expect(screen.getByText(/autosave is unverified/i)).toBeTruthy();
+  });
+
+  it('opens the isolated mapper and clears only inactive catalog caches', () => {
+    const send = vi.fn();
+    const onOpenMapper = vi.fn();
+    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} onOpenMapper={onOpenMapper} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'OPEN MEMORY MAPPER LAB' }));
+    fireEvent.click(screen.getByRole('button', { name: 'CLEAR INACTIVE CATALOGS' }));
+
+    expect(onOpenMapper).toHaveBeenCalledOnce();
+    expect(send).toHaveBeenCalledWith('CLEAR_INACTIVE_CATALOGS');
+    expect(screen.getByText(/never resets seen, caught, team, or move knowledge/i)).toBeTruthy();
   });
 });
 

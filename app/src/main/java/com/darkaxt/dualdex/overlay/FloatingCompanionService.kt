@@ -189,6 +189,11 @@ class FloatingCompanionService : Service() {
             NativeSetupRoute.SHOW_OVERLAY -> Unit
             NativeSetupRoute.DOCK_OVERLAY -> returnToDockedActivity()
             NativeSetupRoute.OPEN_RETROARCH -> (application as DualDexApplication).retroArchSetup?.launchRetroArch()
+            NativeSetupRoute.EXPORT_MAPPER -> startActivity(
+                Intent(this, MainActivity::class.java)
+                    .putExtra(MainActivity.EXTRA_EXPORT_MAPPER, true)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            )
             NativeSetupRoute.GRANT_RETROARCH,
             NativeSetupRoute.GRANT_ROMS -> startActivity(
                 Intent(this, MainActivity::class.java)

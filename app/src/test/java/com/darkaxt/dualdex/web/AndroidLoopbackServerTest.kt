@@ -36,4 +36,34 @@ class AndroidLoopbackServerTest {
             server.close()
         }
     }
+
+    @Test
+    fun mapperRoutesRemainSeparateFromProductionActionsAndExportTheAcknowledgedSession() {
+        val runtime = ProductionCompanionRuntime()
+        val server = AndroidLoopbackServer(runtime) { if (it == "index.html") byteArrayOf() else null }
+        server.setMapperHandler(object : MapperHttpHandler {
+            override fun state(): Any = mapOf("enabled" to false)
+            override fun action(type: String, values: Map<String, String?>): Any = mapOf("action" to type, "values" to values)
+            override fun exportRaw(): ByteArray = "{\"containsRawMemory\":true}".toByteArray()
+        })
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+            assertTrue(URI("$base/api/mapper/state").toURL().readText().contains("\"enabled\":false"))
+            assertTrue(post("$base/api/mapper/actions", "{\"type\":\"ENABLE\",\"privacyAcknowledged\":true}").contains("\"action\":\"ENABLE\""))
+            assertTrue(post("$base/api/mapper/export", "{}").contains("\"containsRawMemory\":true"))
+        } finally {
+            server.close()
+        }
+    }
+
+    private fun post(url: String, body: String): String {
+        val connection = URI(url).toURL().openConnection() as HttpURLConnection
+        connection.requestMethod = "POST"
+        connection.doOutput = true
+        connection.setRequestProperty("Content-Type", "application/json")
+        connection.outputStream.use { it.write(body.toByteArray()) }
+        assertEquals(200, connection.responseCode)
+        return connection.inputStream.reader().readText()
+    }
 }

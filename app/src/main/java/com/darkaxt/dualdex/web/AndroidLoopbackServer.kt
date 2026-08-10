@@ -19,6 +19,12 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+interface MapperHttpHandler {
+    fun state(): Any
+    fun action(type: String, values: Map<String, String?>): Any
+    fun exportRaw(): ByteArray
+}
+
 /** Small HTTP/1.1 host for the bundled WebView. It never binds outside 127.0.0.1. */
 class AndroidLoopbackServer(
     private val runtime: ProductionCompanionRuntime,
@@ -35,6 +41,7 @@ class AndroidLoopbackServer(
     private val activeSockets = Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<Socket, Boolean>())
     @Volatile private var socket: ServerSocket? = null
     @Volatile private var nativeActionHandler: ((String, Map<String, String?>) -> Boolean)? = null
+    @Volatile private var mapperHandler: MapperHttpHandler? = null
 
     val address: InetSocketAddress
         get() = socket?.localSocketAddress as? InetSocketAddress
@@ -60,6 +67,10 @@ class AndroidLoopbackServer(
 
     fun setNativeActionHandler(handler: (String, Map<String, String?>) -> Boolean) {
         nativeActionHandler = handler
+    }
+
+    fun setMapperHandler(handler: MapperHttpHandler) {
+        mapperHandler = handler
     }
 
     override fun close() {
@@ -110,6 +121,9 @@ class AndroidLoopbackServer(
         request.method == "GET" && request.path == "/api/bootstrap" -> jsonResponse(runtime.bootstrap())
         request.method == "GET" && request.path == "/api/state" -> jsonResponse(runtime.stateView())
         request.method == "POST" && request.path == "/api/actions" -> handleAction(request)
+        request.method == "GET" && request.path == "/api/mapper/state" -> jsonResponse(requireNotNull(mapperHandler) { "mapper is unavailable" }.state())
+        request.method == "POST" && request.path == "/api/mapper/actions" -> handleMapperAction(request)
+        request.method == "POST" && request.path == "/api/mapper/export" -> handleMapperExport(request)
         request.method == "POST" && request.path == "/api/load" -> handleLoad(request)
         request.method == "GET" && request.path == "/api/diagnostics" -> jsonResponse(
             runtime.diagnostics(request.query["speciesId"]?.toIntOrNull(), request.query["moveId"]?.toIntOrNull()),
@@ -126,13 +140,31 @@ class AndroidLoopbackServer(
     }
 
     private fun handleAction(request: Request): Response {
+        val (type, values) = parseAction(request)
+        if (nativeActionHandler?.invoke(type, values) == true) return jsonResponse(runtime.stateView())
+        return jsonResponse(runtime.action(type, values))
+    }
+
+    private fun handleMapperAction(request: Request): Response {
+        val (type, values) = parseAction(request)
+        return jsonResponse(requireNotNull(mapperHandler) { "mapper is unavailable" }.action(type, values))
+    }
+
+    private fun handleMapperExport(request: Request): Response {
+        val bytes = requireNotNull(mapperHandler) { "mapper is unavailable" }.exportRaw()
+        return Response(
+            200, "application/json; charset=utf-8", bytes,
+            mapOf("Cache-Control" to "no-store", "Content-Disposition" to "attachment; filename=dualdex-memory-session.json"),
+        )
+    }
+
+    private fun parseAction(request: Request): Pair<String, Map<String, String?>> {
         val payload = gson.fromJson(request.body.toString(Charsets.UTF_8), JsonObject::class.java)
         val type = payload.get("type")?.asString ?: error("action type is required")
         val values = payload.entrySet().filter { it.key != "type" }.associate { entry ->
             entry.key to if (entry.value.isJsonNull) null else entry.value.asString
         }
-        if (nativeActionHandler?.invoke(type, values) == true) return jsonResponse(runtime.stateView())
-        return jsonResponse(runtime.action(type, values))
+        return type to values
     }
 
     private fun handleLoad(request: Request): Response {

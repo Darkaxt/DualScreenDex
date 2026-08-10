@@ -29,6 +29,7 @@ include(
     ":retroarch-session",
     ":save-core",
     ":save-cli",
+    ":memory-mapper-lab",
     ":companion-simulator",
     ":companion-server",
 )

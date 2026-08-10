@@ -253,14 +253,14 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 
 **Delivery checklist:**
 
-- [ ] Persist information policy, ruleset, font/density, theme, display target, folder grants, and verified RetroArch/save associations.
-- [ ] Expose scoped catalog-cache and mapper-session controls; no control claims to reset save-backed seen/caught state.
-- [ ] Keep the mapper toggle off on fresh install and require a privacy acknowledgement before first enable.
-- [ ] Issue no memory command while disabled; when enabled, permit only read commands through an API that cannot represent writes.
-- [ ] Capture labeled Overworld/Battle Start/Move Selected/Move Executed/Target Changed/Opponent Switched/Battle End snapshots and bounded diffs.
-- [ ] Store mapper data in a separate namespace; raw export requires explicit confirmation and never enters CI diagnostics.
-- [ ] Enforce that catalog, save, knowledge, ruleset, and production API modules cannot import mapper address/snapshot models.
-- [ ] Kill/fail/disable mapper sessions during tests and prove the Pokédex state/database hashes remain unchanged.
+- [x] Persist information policy, ruleset, font/density, theme, display target, folder grants, and verified RetroArch/save associations.
+- [x] Expose scoped catalog-cache and mapper-session controls; no control claims to reset save-backed seen/caught state.
+- [x] Keep the mapper toggle off on every app launch and use one confirmation when it is enabled for the session.
+- [x] Issue no memory command while disabled; when enabled, permit only read commands through an API that cannot represent writes.
+- [x] Capture labeled Overworld/Battle Start/Move Selected/Move Executed/Target Changed/Opponent Switched/Battle End snapshots and bounded diffs.
+- [x] Store mapper data in a separate namespace; enabling the lab acknowledges raw export for that session and no raw data enters CI diagnostics.
+- [x] Enforce that catalog, save, knowledge, ruleset, and production API modules cannot import mapper address/snapshot models.
+- [x] Kill/fail/disable mapper sessions during tests and prove the Pokédex state/database hashes remain unchanged.
 
 **Gate evidence:** no-read-while-disabled transport trace, read-only command API test, before/after production database hashes, mapper export sample held locally, and AVD isolation recording.
 

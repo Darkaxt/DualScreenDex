@@ -6,6 +6,10 @@ import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.catalog.StoredCatalog
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
+import com.enrpau.dualscreendex.companion.model.CompanionSettings
+import com.enrpau.dualscreendex.companion.model.DisplayTarget
+import com.enrpau.dualscreendex.companion.model.KnowledgeMode
+import com.enrpau.dualscreendex.companion.model.Theme
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SavedArea
@@ -152,6 +156,28 @@ class ProductionCompanionRuntimeTest {
         val state = runtime.action("SETTINGS", mapOf("displayMode" to "OVERLAY"))
 
         assertEquals("OVERLAY", state.settings.let { it as com.enrpau.dualscreendex.companion.model.CompanionSettings }.displayMode.name)
+        runtime.close()
+    }
+
+    @Test
+    fun startsFromAndPersistsTheCompleteSettingsDocument() {
+        var persisted: CompanionSettings? = null
+        val runtime = ProductionCompanionRuntime(
+            initialSettings = CompanionSettings(knowledgeMode = KnowledgeMode.DISCOVERED, theme = Theme.DARK),
+            onSettingsChanged = { persisted = it },
+        )
+
+        val state = runtime.action(
+            "SETTINGS",
+            mapOf("displayTarget" to "EXTERNAL", "theme" to "LIGHT", "fontScale" to "1.2"),
+        )
+
+        val settings = state.settings as CompanionSettings
+        assertEquals(KnowledgeMode.DISCOVERED, settings.knowledgeMode)
+        assertEquals(DisplayTarget.EXTERNAL, settings.displayTarget)
+        assertEquals(Theme.LIGHT, settings.theme)
+        assertEquals(1.2, settings.fontScale, 0.0)
+        assertEquals(settings, persisted)
         runtime.close()
     }
 

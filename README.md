@@ -216,10 +216,10 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Numeric ability mechanics | Implemented for four code-validated pinch abilities; unresolved abilities remain description-only |
 | Browser-hosted UI and plausible simulator | Implemented and real-browser validated |
 | Loopback HTTP/SSE companion server | Implemented |
-| Runtime memory transport | Specified, not implemented |
-| Dynamic battle-memory mapper | Specified, not implemented |
+| Runtime memory transport | Implemented as an optional read-only RetroArch adapter; not consumed by the Pokédex |
+| Dynamic battle-memory mapper | Labeled capture/diff/export lab implemented; validated battle addresses remain a convergence task |
 | SaveRAM readers and Organic discovery ledger | Implemented and persisted per ROM/save for Generations I–III; live battle observations remain deferred |
-| Thor-first companion UI and settings | Implemented in the browser POC |
+| Thor-first companion UI and settings | Implemented in the packaged Android companion |
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses |
 | Optional Docked / 4:3 Overlay Android display modes | Implemented and dedicated-AVD validated |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
@@ -281,6 +281,14 @@ Open `http://127.0.0.1:47831`. The left side panel persistently shows the comple
 
 Settings exposes `Docked` and `Overlay`. Docked is the default and uses the normal Android activity. Overlay is explicitly user-enabled, requests Android's `Display over other apps` permission, and moves DualDex into a foreground service with a draggable Poké Ball rendered from the active ROM. Tapping the ball shows or hides the same companion in a fixed 4:3 panel while RetroArch remains focused; choosing Docked removes both overlay windows and returns to the normal activity. The overlay remains passive and never injects input or changes emulator state.
 
+Settings also persists the information policy, ruleset, font scale, density, theme, and companion-display target. `Auto` preserves the screen selected by the launcher; `Handheld` requests Android's default display and `External` requests a presentation/non-default display when one exists.
+
+## Optional Memory Mapper Lab
+
+The debug lab starts disabled on every app process. Enabling it presents one concise confirmation, opens an independent localhost UDP client, and permits only RetroArch `READ_CORE_MEMORY` commands. Disabling or failing the lab cannot unload or mutate the active catalog, SaveRAM snapshot, or discovery ledger.
+
+Each session can label bounded snapshots as Overworld, Battle Start, Move Selected, Move Executed, Target Changed, Opponent Switched, Battle End, or a custom event. The user-selected JSON export includes core/content identity, descriptors, timestamps, region hashes, Base64 memory bytes, and bounded address-level before/after diffs. These are evidence—not automatically validated field mappings. A battle address becomes a generated mapping only after repeated captures and structural checks agree.
+
 ## Design documents
 
 - [DualDex v1 passive companion specification](docs/superpowers/specs/2026-08-09-dualdex-v1-passive-companion-design.md)
@@ -300,7 +308,8 @@ The architecture is different. Kanto Gear integrates deeply with Gen1Recomp and 
 - DualDex uses only status and read-memory commands on localhost.
 - It does not upload ROMs, saves, screenshots, extracted assets, or memory samples.
 - It never sends write-memory, cheat, input, save-state, or content-control commands.
-- Sanitized diagnostic exports contain structural metadata and validation outcomes, not ROM bytes or private save content.
+- Sanitized parser diagnostics contain structural metadata and validation outcomes, not ROM bytes or private save content.
+- Raw mapper sessions are exported only through an explicit user-selected document after the lab has been enabled; they are never attached to CI reports or releases.
 
 ## Project lineage and license
 

@@ -796,6 +796,7 @@ The following remain explicit later milestones:
 - live opponent IV/DV rarity and relative-level prefix;
 - dynamic active-ruleset selection from memory;
 - generated runtime profiles promoted from validated mapper evidence;
+- Area-filter encounter rows with ROM-styled sun/day-only or moon/night-only markers. No marker means both only when the ROM's time-slot capability is `Available`; `Not Found` or `Not Applicable` must remain distinguishable and no emoji artwork is permitted;
 - Mystery Dungeon or other non-mainline engine families.
 
 The first live-memory milestone must consume validated normalized events and knowledge interfaces; it may not bypass the isolation boundaries established here.

@@ -9,6 +9,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { MoveDetail } from './pages/MoveDetail';
 import { AbilityDetail } from './pages/AbilityDetail';
 import { SetupPage } from './pages/SetupPage';
+import { MemoryMapperPage } from './pages/MemoryMapperPage';
 
 export interface DevelopmentToolsProps {
   catalog: Catalog | null;
@@ -26,7 +27,7 @@ const emptyState: State = {
   filter: 'ALL',
   selectedAreaId: null,
   battleTab: 'ENTRY',
-  settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
+  settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', theme: 'GAME', displayTarget: 'AUTO' },
   speciesState: {}, observedMoves: {}, battle: null, catalogReady: false, catalogName: null, error: null,
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'IDLE', completedUnits: 0, totalUnits: 0 },
   retroArch: { configGrant: 'MISSING', romGrant: 'MISSING', configState: 'NOT_CONFIGURED', restartRequired: false, connection: 'DISCONNECTED', systemId: null, gameBasename: null, contentCrc32: null, resolution: 'NO_CONTENT', activeSource: null, savefileDirectory: null, indexedRoms: 0, message: null }
@@ -41,6 +42,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [moveDetailId, setMoveDetailId] = useState<number | null>(null);
   const [abilityDetailId, setAbilityDetailId] = useState<number | null>(null);
   const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'MORE'>('ENTRY');
+  const [mapperOpen, setMapperOpen] = useState(false);
   const lastCatalogRefresh = useRef('');
   const loadingPercent = loadingPercentage(state.loading);
 
@@ -79,6 +81,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   };
 
   const screen = useMemo(() => {
+    if (mapperOpen) return <MemoryMapperPage onBack={() => setMapperOpen(false)} />;
     if (state.screen === 'SETUP') return <SetupPage state={state} send={send} />;
     if (!catalog) return <Welcome busy={busy || state.loading.active} error={error} onUpload={onUpload} openSetup={() => void send('SCREEN', { screen: 'SETUP' })} />;
     if (moveDetailId != null) return <MoveDetail catalog={catalog} state={state} moveId={moveDetailId} onBack={() => setMoveDetailId(null)} />;
@@ -89,14 +92,14 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
       }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} />;
-      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} />;
+      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenMapper={() => setMapperOpen(true)} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} />;
     }
-  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab]);
+  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen]);
 
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
-    <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={{ '--font-scale': state.settings.fontScale }} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'}>
+    <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={{ '--font-scale': state.settings.fontScale }} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>
       {showDevelopmentTools && <div class="device-sensor" />}
       <div class="device-screen">
         {catalog && <div class="rom-status" title={state.catalogName ?? undefined}><strong>{state.catalogName ?? 'Unnamed ROM'}</strong><span>{catalog.family.replaceAll('_', ' ')} · CRC32 {catalog.crc32 || 'N/F'}</span></div>}

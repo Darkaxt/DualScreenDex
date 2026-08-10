@@ -38,6 +38,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogStoreTest {
+    @Test
+    fun clearingInactiveCatalogsPreservesTheActiveDatabaseAndUnrelatedFiles() {
+        val root = Files.createTempDirectory("dualdex-catalog-clear")
+        val active = "a".repeat(64)
+        val stale = "b".repeat(64)
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        cache.fileFor(active).writeBytes(byteArrayOf(1))
+        cache.fileFor(stale).writeBytes(byteArrayOf(2))
+        root.resolve("knowledge.json").toFile().writeText("keep")
+
+        assertEquals(1, cache.clearInactive(active))
+        assertTrue(cache.fileFor(active).isFile)
+        assertFalse(cache.fileFor(stale).exists())
+        assertTrue(root.resolve("knowledge.json").toFile().isFile)
+    }
+
     private val roots = mutableListOf<Path>()
 
     @After

@@ -6,6 +6,8 @@ enum class PokedexFilter { ALL, CAUGHT, SEEN, TEAM, AREA }
 enum class BattleTab { ENTRY, ATTACK, RARITY, MOVES }
 enum class Density { AUTO, COMFORTABLE, COMPACT }
 enum class DisplayMode { DOCKED, OVERLAY }
+enum class Theme { GAME, DARK, LIGHT }
+enum class DisplayTarget { AUTO, HANDHELD, EXTERNAL }
 
 data class CompanionSettings(
     val knowledgeMode: KnowledgeMode = KnowledgeMode.ORGANIC,
@@ -18,6 +20,8 @@ data class CompanionSettings(
     val autoOpenTarget: Boolean = true,
     val ruleset: String = "AUTO",
     val displayMode: DisplayMode = DisplayMode.DOCKED,
+    val theme: Theme = Theme.GAME,
+    val displayTarget: DisplayTarget = DisplayTarget.AUTO,
 )
 
 data class OwnedPokemon(
