@@ -300,13 +300,13 @@ The inherited OCR/CSV/Accessibility implementation under `app/src/main/java/com/
 
 **Delivery checklist:**
 
-- [ ] Trigger a protected `v1.0.0-rc.N` workflow from the frozen commit; run all non-secret tests before entering the signing environment.
-- [ ] Reconstruct the keystore only on the ephemeral runner, verify the pinned fingerprint, sign, run `apksigner verify --print-certs`, and generate checksums/provenance.
-- [ ] Attach the APK, checksum, public certificate, compatibility report, and release notes to a draft/prerelease; never attach secrets, ROMs, saves, corpus paths, or memory dumps.
-- [ ] Download the GitHub asset and independently verify package ID, version, SHA-256, and signer before installation.
-- [ ] Install/update the signed candidate on the dedicated AVD and validate setup, catalog cache, SaveRAM refresh, settings persistence, and mapper isolation.
+- [x] Trigger a protected `v1.0.0-rc.N` workflow from the frozen commit; run all non-secret tests before entering the signing environment.
+- [x] Reconstruct the keystore only on the ephemeral runner, verify the pinned fingerprint, sign, run `apksigner verify --print-certs`, and generate checksums/provenance.
+- [x] Attach the APK, checksum, public certificate, compatibility report, and release notes to a draft/prerelease; never attach secrets, ROMs, saves, corpus paths, or memory dumps.
+- [x] Download the GitHub asset and independently verify package ID, version, SHA-256, and signer before installation.
+- [x] Install/update the signed candidate on the dedicated AVD and validate setup, catalog cache, SaveRAM refresh, settings persistence, and mapper isolation.
 - [ ] Install only that GitHub-signed candidate on the Thor, then validate public-folder setup, RetroArch/mGBA integration, lower-screen presentation, dual launch, lifecycle, and user acceptance.
-- [ ] If validation finds a defect, classify it in the ledger, return to Stage 7, fix and re-run convergence, then create a new monotonically versioned signed RC. Never replace an existing signed asset in place.
+- [x] If validation finds a defect, classify it in the ledger, return to Stage 7, fix and re-run convergence, then create a new monotonically versioned signed RC. Never replace an existing signed asset in place.
 - [ ] After a clean RC, tag `v1.0.0`, let GitHub rebuild/sign/verify the final artifact, repeat identity/checksum smoke validation, and publish the GitHub Release.
 - [ ] Confirm the public release is visibly distinct from local deployment and document the exact released commit, APK hash, signer fingerprint, and validation devices.
 
