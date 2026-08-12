@@ -86,6 +86,7 @@ class CatalogModelsTest {
         assertEquals(true, RomCapability.entries.contains(RomCapability.AREA_ENCOUNTERS))
         assertEquals(true, RomCapability.entries.contains(RomCapability.TYPE_PRESENTATION))
         assertEquals(true, RomCapability.entries.contains(RomCapability.BALL_CATALOG))
+        assertEquals(true, RomCapability.entries.contains(RomCapability.WORLD_MAP))
     }
 
     @Test

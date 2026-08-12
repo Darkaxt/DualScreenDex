@@ -9,6 +9,7 @@ import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
+import com.enrpau.dualscreendex.parser.parse.Gen3WorldMapResolution
 import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3RuntimeMemoryLayoutResolver
 import com.enrpau.dualscreendex.parser.sprite.BallSpriteMaterializer
@@ -35,13 +36,24 @@ object CatalogParser {
         rom: RomImage,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
     ): CatalogParseResult {
-        val analysis = ParserOrchestrator.analyze(rom)
+        val context = ParserOrchestrator.analyzeForCatalog(rom)
+        val analysis = context.analysis
         if (analysis.status != SelectionStatus.SELECTED || analysis.selectedFamily == null) {
             return CatalogParseResult(analysis, null, null)
         }
         val layout = analysis.probes.singleOrNull { it.family == analysis.selectedFamily }?.resolvedLayout
             ?: return CatalogParseResult(analysis, null, null)
-        return CatalogParseResult(analysis, layout, CatalogMaterializer.materialize(rom, analysis, layout, onProgress))
+        return CatalogParseResult(
+            analysis,
+            layout,
+            CatalogMaterializer.materialize(
+                rom = rom,
+                analysis = analysis,
+                layout = layout,
+                onProgress = onProgress,
+                resolveGen3WorldMap = context.resolveGen3WorldMap,
+            ),
+        )
     }
 }
 
@@ -51,6 +63,7 @@ object CatalogMaterializer {
         analysis: ParseResult,
         layout: ResolvedRomLayout,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+        resolveGen3WorldMap: ((Set<Int>) -> Gen3WorldMapResolution)? = null,
     ): ParsedCatalog {
         val rawSpecies = RecordMaterializers.species(rom, layout)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
@@ -314,6 +327,44 @@ object CatalogMaterializer {
                 status = if (layout.generation == 3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
             )
         }
+        val worldMapResolution = if (layout.generation == 3 && resolveGen3WorldMap != null) {
+            resolveGen3WorldMap(encounters.mapTo(linkedSetOf(), EncounterArea::baseAreaId))
+        } else {
+            Gen3WorldMapResolution.Unavailable("generation-specific world-map resolver is not yet available")
+        }
+        val worldMaps = (worldMapResolution as? Gen3WorldMapResolution.Resolved)?.catalog ?: WorldMapCatalog()
+        capabilities[RomCapability.WORLD_MAP] = when (worldMapResolution) {
+            is Gen3WorldMapResolution.Resolved -> CapabilityEvidence(
+                capability = RomCapability.WORLD_MAP,
+                compatible = true,
+                confidence = 1.0,
+                count = worldMapResolution.catalog.regions.sumOf { it.locations.size },
+                reasons = worldMapResolution.reasons,
+                status = CapabilityStatus.AVAILABLE,
+            )
+            is Gen3WorldMapResolution.Ambiguous -> CapabilityEvidence(
+                capability = RomCapability.WORLD_MAP,
+                compatible = false,
+                confidence = 0.0,
+                reasons = listOf(worldMapResolution.reason),
+                status = CapabilityStatus.AMBIGUOUS,
+                reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
+            )
+            is Gen3WorldMapResolution.BudgetExceeded -> CapabilityEvidence(
+                capability = RomCapability.WORLD_MAP,
+                compatible = false,
+                confidence = 0.0,
+                reasons = listOf(worldMapResolution.reason),
+                status = CapabilityStatus.NOT_FOUND,
+            )
+            is Gen3WorldMapResolution.Unavailable -> CapabilityEvidence(
+                capability = RomCapability.WORLD_MAP,
+                compatible = false,
+                confidence = 0.0,
+                reasons = listOf(worldMapResolution.reason),
+                status = if (layout.generation == 3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
+            )
+        }
         val catalog = ParsedCatalog(
             romSha256 = analysis.sha256,
             family = layout.family,
@@ -328,6 +379,7 @@ object CatalogMaterializer {
             captureBallsById = balls,
             learnsetRulesets = learnsetRulesets,
             runtimeMetadata = runtimeMetadata,
+            worldMaps = worldMaps,
             capabilities = capabilities,
             diagnostics = buildList {
                 moveDescriptions?.let {
