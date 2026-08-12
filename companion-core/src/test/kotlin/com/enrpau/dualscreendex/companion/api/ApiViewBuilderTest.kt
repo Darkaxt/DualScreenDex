@@ -117,7 +117,7 @@ class ApiViewBuilderTest {
     }
 
     @Test
-    fun withholdsAreaRarityWhenSaveRamIsNotMatched() {
+    fun usesAUniqueCapableEncounterTableWhenSaveRamIsNotMatched() {
         val catalog = ParsedCatalog(
             romSha256 = "a".repeat(64),
             family = EngineFamily.EMERALD,
@@ -143,9 +143,44 @@ class ApiViewBuilderTest {
         val rarity = ApiViewBuilder.state(snapshot, catalog, saveRam = SaveRamView(status = "STALE"))
             .battle!!.opponents.single().rarity
 
-        assertEquals(null, rarity.relativeTier)
-        assertEquals(null, rarity.areaAdjustment)
+        assertEquals("ORDINARY", rarity.relativeTier)
+        assertEquals(0.0, rarity.areaAdjustment)
+        assertEquals("APPLIED_UNIQUE_ENCOUNTER", rarity.areaOutcome)
         assertEquals("VETERAN", rarity.innateTier)
         assertEquals(3.0, rarity.stars)
+    }
+
+    @Test
+    fun preservesTheRawSaveAreaAndUsesTheOnlyCapableRomEncounterTable() {
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            encounterAreas = listOf(
+                EncounterArea(
+                    id = 0x0203 * 10 + 1,
+                    name = CatalogField.available("Test grass"),
+                    methodId = 1,
+                    slots = listOf(EncounterSlot(1, 14, 14, 100)),
+                ),
+            ),
+        )
+        val snapshot = AppSnapshot(
+            ledger = KnowledgeLedger(currentAreaBaseId = 0x0202),
+            battle = BattleState(
+                opponents = listOf(OpponentState(1, 14, ivs = List(6) { 24 }, moveHistory = emptyList())),
+            ),
+        )
+
+        val state = ApiViewBuilder.state(snapshot, catalog, saveRam = SaveRamView(status = "MATCHED"))
+        val rarity = state.battle!!.opponents.single().rarity
+
+        assertEquals(0x0202, state.currentAreaBaseId)
+        assertEquals(emptyList<Int>(), state.currentAreaIds)
+        assertEquals("APPLIED_UNIQUE_ENCOUNTER", rarity.areaOutcome)
+        assertEquals(0x0202, rarity.currentAreaBaseId)
+        assertEquals(0, rarity.matchingAreaCount)
+        assertEquals(1, rarity.candidateAreaCount)
+        assertEquals("ORDINARY", rarity.relativeTier)
     }
 }

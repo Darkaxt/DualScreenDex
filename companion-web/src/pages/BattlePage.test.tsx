@@ -121,12 +121,39 @@ describe('battle layout', () => {
     state.battleTab = 'RARITY';
     state.battle!.opponents[0].rarity = {
       relativeTier: null, innateTier: 'TRAINED', baseStars: 2, areaAdjustment: null, stars: 2,
+      areaOutcome: 'AREA_NOT_IN_CATALOG', currentAreaBaseId: 0x0202, matchingAreaCount: 0, candidateAreaCount: 0,
     };
 
     render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
-    expect(screen.getByText('UNKNOWN TRAINED')).toBeTruthy();
+    expect(screen.getByText('TRAINED')).toBeTruthy();
+    expect(screen.queryByText(/UNKNOWN TRAINED/)).toBeNull();
     expect(screen.getByLabelText('2 of 5 stars; TRAINED innate quality; area comparison unavailable')).toBeTruthy();
+    expect(screen.getByText('Saved area 0x0202 is not present in this ROM encounter catalog. SaveRAM may not reflect the live battle location.')).toBeTruthy();
+  });
+
+  it('uses the same generic fallback for a missing Battle Target Entry', () => {
+    const { catalog, state } = fixture(1);
+    catalog.species[0].description = null;
+    state.battleTab = 'ENTRY';
+
+    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
+  });
+
+  it('explains when relative rarity uses the only capable ROM encounter table instead of SaveRAM', () => {
+    const { catalog, state } = fixture(1);
+    state.battleTab = 'RARITY';
+    state.battle!.opponents[0].rarity = {
+      relativeTier: 'ORDINARY', innateTier: 'TRAINED', baseStars: 2, areaAdjustment: 0, stars: 2,
+      areaOutcome: 'APPLIED_UNIQUE_ENCOUNTER', currentAreaBaseId: 0x0202, matchingAreaCount: 0, candidateAreaCount: 1,
+    };
+
+    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('ORDINARY TRAINED')).toBeTruthy();
+    expect(screen.getByText('SaveRAM area did not match. This tier uses the only ROM encounter table capable of producing this species at this level.')).toBeTruthy();
   });
 
   it('reports unavailable rarity without inventing stars when innate data is missing', () => {

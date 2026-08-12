@@ -23,6 +23,12 @@ internal data class EncounterMaterializationResult(
     val reasons: List<String>,
     val reviewStatus: CapabilityReviewStatus = CapabilityReviewStatus.NONE,
     val probeStats: EncounterProbeStats = EncounterProbeStats(),
+    val selectedRootOffset: Int? = null,
+    val headerSize: Int? = null,
+    val headerCount: Int? = null,
+    val populatedMethodCount: Int? = null,
+    val referenceCount: Int? = null,
+    val candidateCount: Int = 0,
 )
 
 internal data class EncounterProbeStats(val emptyClassicShellWalks: Int = 0)
@@ -298,7 +304,22 @@ object EncounterMaterializer {
         val areas = decoded.groupBy { it.id }.values.map { variants ->
             variants.first().copy(slots = variants.flatMap { it.slots }.distinct())
         }
-        return availableOrNotFound(areas).copy(probeStats = resolved.probeStats)
+        val reason = "selected Gen 3 encounter root=0x${table.offset.toString(16)} " +
+            "ABI=${table.abi.headerSize}-byte headers=${table.count} populatedMethods=${table.populatedCount} " +
+            "areas=${areas.size} references=${table.referenceCount} candidates=${resolved.candidateCount} " +
+            "authority=${resolved.selectionAuthority}"
+        return EncounterMaterializationResult(
+            areas = areas,
+            status = if (areas.isNotEmpty()) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
+            reasons = listOf(reason),
+            probeStats = resolved.probeStats,
+            selectedRootOffset = table.offset,
+            headerSize = table.abi.headerSize,
+            headerCount = table.count,
+            populatedMethodCount = table.populatedCount,
+            referenceCount = table.referenceCount,
+            candidateCount = resolved.candidateCount,
+        )
     }
 
     private fun resolveGen3HeaderTable(rom: RomImage, speciesCount: Int): Gen3HeaderResolution {
@@ -368,7 +389,14 @@ object EncounterMaterializer {
         val winner = eligible.singleOrNull { candidate ->
             eligible.all { other -> candidate === other || candidate.dominates(other) }
         }
-        return winner?.let { Gen3HeaderResolution(table = it, probeStats = probeStats) }
+        return winner?.let {
+            Gen3HeaderResolution(
+                table = it,
+                probeStats = probeStats,
+                candidateCount = withReferences.size,
+                selectionAuthority = "compiled-reference-and-structural-dominance",
+            )
+        }
             ?: ambiguousGen3Resolution(
                 "multiple structurally credible Gen 3 encounter roots remain ambiguous",
                 probeStats,
@@ -464,9 +492,7 @@ object EncounterMaterializer {
         offset: Int,
         abi: Gen3EncounterAbi,
     ): Boolean = runCatching {
-        if (!validGroupMap(rom.u8(offset), rom.u8(offset + 1)) ||
-            rom.u8(offset + 2) != 0 || rom.u8(offset + 3) != 0
-        ) {
+        if (!validGroupMap(rom.u8(offset), rom.u8(offset + 1))) {
             return@runCatching false
         }
         abi.methods.indices.all { method ->
@@ -527,7 +553,7 @@ object EncounterMaterializer {
     ): Int? = runCatching {
         val group = rom.u8(offset)
         val map = rom.u8(offset + 1)
-        if (!validGroupMap(group, map) || rom.u8(offset + 2) != 0 || rom.u8(offset + 3) != 0) return@runCatching null
+        if (!validGroupMap(group, map)) return@runCatching null
         var populated = 0
         abi.methods.indices.forEach { method ->
             val raw = rom.u32le(offset + 4 + method * 4)
@@ -556,8 +582,7 @@ object EncounterMaterializer {
         speciesCount: Int,
         hidden: Boolean = false,
     ): Boolean = runCatching {
-        if (rom.u8(offset) !in if (hidden) 0..1 else 0..100) return@runCatching false
-        if ((1..3).any { rom.u8(offset + it) != 0 }) return@runCatching false
+        if (hidden && rom.u8(offset) !in 0..1) return@runCatching false
         val slots = rom.gbaPointer(offset + 4) ?: return@runCatching false
         repeat(slotCount) { slot ->
             val entry = slots + slot * 4
@@ -650,6 +675,8 @@ object EncounterMaterializer {
         val reason: String = "structurally decoded encounter areas",
         val reviewStatus: CapabilityReviewStatus = CapabilityReviewStatus.NONE,
         val probeStats: EncounterProbeStats = EncounterProbeStats(),
+        val candidateCount: Int = 0,
+        val selectionAuthority: String = "structural-evidence",
     )
     private data class Gen3ReferenceScan(
         val counts: Map<Int, Int> = emptyMap(),

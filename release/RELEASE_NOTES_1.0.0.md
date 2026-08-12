@@ -2,6 +2,12 @@
 
 DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
+## RC14 update
+
+- Corrects Gen III encounter parsing by treating struct padding as opaque and accepting the full non-hidden `u8` encounter-rate domain. Modern Emerald now selects its referenced 272-header overworld table, and Blazed Glazed selects its referenced 195-header overworld table instead of seven-header facility data.
+- Keeps area-relative rarity useful when persisted SaveRAM location is stale: an opponent is compared with the weighted expected level of the only ROM encounter table capable of producing that exact species and level. Ambiguous or missing evidence still fails closed with an explicit reason.
+- Exposes encounter-root and runtime area evidence in capability/API diagnostics, and replaces mode-specific missing-entry text with a generic Pokédex fallback.
+
 ## RC13 update
 
 - Removes the unsupported AYN Thor controller-focus setting, its obsolete persisted value, the Shizuku/Sui integration, and the privileged Android settings permission. DualDex no longer offers or requests this feature.

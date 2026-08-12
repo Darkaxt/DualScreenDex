@@ -141,6 +141,7 @@ data class StateView(
     val filter: String,
     val selectedAreaId: Int?,
     val currentAreaIds: List<Int>,
+    val currentAreaBaseId: Int?,
     val battleTab: String,
     val settings: Any,
     val speciesState: Map<Int, SpeciesStateView>,
@@ -223,6 +224,10 @@ data class RarityView(
     val baseStars: Int?,
     val areaAdjustment: Double?,
     val stars: Double?,
+    val areaOutcome: String,
+    val currentAreaBaseId: Int?,
+    val matchingAreaCount: Int,
+    val candidateAreaCount: Int,
 )
 data class ObservedMoveView(val moveId: Int, val frequency: Int)
 
@@ -395,6 +400,7 @@ object ApiViewBuilder {
             snapshot.filter.name,
             snapshot.selectedAreaId,
             currentAreaIds,
+            snapshot.ledger.currentAreaBaseId,
             snapshot.battleTab.name,
             snapshot.settings,
             speciesState,
@@ -432,6 +438,10 @@ object ApiViewBuilder {
                                 baseStars = rarity.baseStars,
                                 areaAdjustment = rarity.areaAdjustment,
                                 stars = rarity.stars,
+                                areaOutcome = rarity.areaOutcome.name,
+                                currentAreaBaseId = rarity.currentAreaBaseId,
+                                matchingAreaCount = rarity.matchingAreaCount,
+                                candidateAreaCount = rarity.candidateAreaCount,
                             ),
                             opponent.moveHistory.toObservedMoveViews(),
                         )

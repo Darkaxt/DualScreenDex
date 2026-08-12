@@ -63,7 +63,6 @@ class Gen3EncounterCodec : EncounterTableDecoder {
         val offset = layout.offset.toIndexedInt() ?: return false
         if (offset.toLong() + layout.abi.headerSize > session.rom.size.toLong()) return false
         if (!validGroupMap(session.rom.u8(offset), session.rom.u8(offset + 1))) return false
-        if (session.rom.u8(offset + 2) != 0 || session.rom.u8(offset + 3) != 0) return false
         return specs(layout.abi).all { spec -> session.rom.u32le(offset + spec.pointerOffset) == 0L }
     }
 
@@ -89,9 +88,7 @@ class Gen3EncounterCodec : EncounterTableDecoder {
             meter.work()
             val group = session.rom.u8(header)
             val map = session.rom.u8(header + 1)
-            if (!validGroupMap(group, map) ||
-                session.rom.u8(header + 2) != 0 || session.rom.u8(header + 3) != 0
-            ) {
+            if (!validGroupMap(group, map)) {
                 return false
             }
             var populated = false
@@ -160,9 +157,6 @@ class Gen3EncounterCodec : EncounterTableDecoder {
             val map = session.rom.u8(header + 1)
             val reasons = mutableListOf<String>()
             if (!validGroupMap(group, map)) reasons += "encounter header has invalid group/map bytes"
-            if (session.rom.u8(header + 2) != 0 || session.rom.u8(header + 3) != 0) {
-                reasons += "encounter header reserved bytes are not zero"
-            }
             val methods = mutableListOf<DecodedEncounterMethod>()
             specs(layout.abi).forEach { spec ->
                 meter.work()
@@ -274,12 +268,6 @@ class Gen3EncounterCodec : EncounterTableDecoder {
         val rate = session.rom.u8(info)
         if (spec.hidden && rate !in 0..1) {
             return MethodDecode.Malformed("hidden encounter environment byte is not land/water")
-        }
-        if (!spec.hidden && rate !in 0..100) {
-            return MethodDecode.Malformed("${spec.label} encounter rate is outside 0..100")
-        }
-        if ((1..3).any { session.rom.u8(info + it) != 0 }) {
-            return MethodDecode.Malformed("${spec.label} encounter info reserved bytes are not zero")
         }
         val slots = session.rom.gbaPointer(info + 4)
             ?: return MethodDecode.Malformed("${spec.label} encounter slot pointer is outside the ROM")

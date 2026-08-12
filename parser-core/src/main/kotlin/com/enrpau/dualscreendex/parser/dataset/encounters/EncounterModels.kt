@@ -82,7 +82,7 @@ class DecodedEncounterMethod(
     init {
         require(methodId > 0) { "encounter method ID must be positive" }
         require(label.isNotBlank()) { "encounter method label must not be blank" }
-        require(encounterRate in 0..100) { "encounter rate/environment byte must be within 0..100" }
+        require(encounterRate in 0..255) { "encounter rate/environment byte must fit an unsigned byte" }
         require(this.windows.isNotEmpty()) { "encounter method must publish at least one time window" }
         require(this.slots.isNotEmpty()) { "encounter method must publish at least one slot" }
         require(this.slots.all { it.weight >= 0 }) { "encounter slot weights must not be negative" }

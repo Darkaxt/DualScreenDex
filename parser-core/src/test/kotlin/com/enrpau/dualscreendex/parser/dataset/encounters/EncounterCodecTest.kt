@@ -12,10 +12,12 @@ class EncounterCodecTest {
         val bytes = ByteArray(0x3000)
         putStandardEncounterTable(bytes, 0x100, maps = 1..4, emptyRows = setOf(1))
 
-        val result = codec.decode(
+        val outcome = codec.decode(
             encounterSession(bytes),
             Gen3EncounterTableLayout(0x100, Gen3EncounterAbi.STANDARD_20, speciesCount = 100),
-        ) as EncounterTableOutcome.Decoded
+        )
+        assertTrue(outcome.toString(), outcome is EncounterTableOutcome.Decoded)
+        val result = outcome as EncounterTableOutcome.Decoded
 
         assertEquals(4, result.rows.size)
         assertTrue(result.rows[1] is EncounterHeaderOutcome.StructuralEmpty)
@@ -24,6 +26,27 @@ class EncounterCodecTest {
         assertEquals(setOf(EncounterTimeWindow.ANY), grass.windows)
         assertEquals(12, grass.slots.size)
         assertEquals(DecodedEncounterSlot(10, 5, 7, 20), grass.slots.first())
+    }
+
+    @Test
+    fun ignoresOpaqueStructPaddingAndAcceptsTheFullNonHiddenRateByteDomain() {
+        val bytes = ByteArray(0x3000)
+        putStandardEncounterTable(bytes, 0x100, maps = 1..4)
+        bytes[0x102] = 0x7A
+        bytes[0x103] = 0x55
+        bytes[0x300] = 205.toByte()
+        bytes[0x301] = 0x0F
+        bytes[0x302] = 0xD5.toByte()
+
+        val outcome = codec.decode(
+            encounterSession(bytes),
+            Gen3EncounterTableLayout(0x100, Gen3EncounterAbi.STANDARD_20, speciesCount = 100),
+        )
+        assertTrue(outcome.toString(), outcome is EncounterTableOutcome.Decoded)
+        val result = outcome as EncounterTableOutcome.Decoded
+
+        assertEquals(4, result.rows.size)
+        assertTrue(result.rows[0] is EncounterHeaderOutcome.Decoded)
     }
 
     @Test

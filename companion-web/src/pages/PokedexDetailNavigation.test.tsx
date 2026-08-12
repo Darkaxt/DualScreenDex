@@ -6,6 +6,21 @@ import { maskEvolutionName, PokedexDetail } from './PokedexDetail';
 afterEach(cleanup);
 
 describe('Pokédex evolution navigation', () => {
+  it('uses a generic Pokédex Entry fallback when compatible text is unavailable', () => {
+    render(<PokedexDetail
+      catalog={{ ...catalog, species: catalog.species.map(species => species.id === 5 ? { ...species, description: null } : species) }}
+      state={state}
+      send={vi.fn()}
+      tab="ENTRY"
+      setTab={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+    />);
+
+    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
+    expect(screen.queryByText(/resolved from this ROM/i)).toBeNull();
+  });
+
   it('masks every name character while preserving spacing', () => {
     expect(maskEvolutionName('Mr Mime')).toBe('?? ????');
     expect(maskEvolutionName('Farfetch’d')).toBe('??????????');

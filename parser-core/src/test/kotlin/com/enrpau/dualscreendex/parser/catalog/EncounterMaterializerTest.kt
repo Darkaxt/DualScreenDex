@@ -129,6 +129,38 @@ class EncounterMaterializerTest {
     }
 
     @Test
+    fun prefersTheMainReferencedGenThreeTableWhenAnEncounterRateExceedsOneHundred() {
+        val bytes = ByteArray(0x4000)
+        val main = 0x100
+        val facility = 0x300
+        putGenThreeInfo(bytes, 0x500, 150, 0x1000, 12, 20)
+        putGenThreeInfo(bytes, 0x508, 20, 0x1100, 12, 40)
+        putStandardGenThreeTable(bytes, main, 0x500)
+        putStandardGenThreeTable(bytes, facility, 0x508)
+        bytes[0x501] = 0x0F
+        bytes[0x502] = 0xD5.toByte()
+        bytes[main + 2] = 0x7A
+        bytes[main + 3] = 0x55
+        repeat(3) { bytes[main + it * 20] = 2 }
+        repeat(3) { index -> putGbaPointer(bytes, 0x20 + index * 4, main) }
+        repeat(2) { index -> putGbaPointer(bytes, 0x30 + index * 4, facility) }
+
+        val result = EncounterMaterializer.materializeWithEvidence(
+            RomImage(bytes),
+            layout(3, Platform.GBA, 100),
+        )
+
+        assertEquals(listOf(0x201, 0x202, 0x203), result.areas.map { it.id / 10 })
+        assertEquals(main, result.selectedRootOffset)
+        assertEquals(20, result.headerSize)
+        assertEquals(3, result.headerCount)
+        assertEquals(3, result.populatedMethodCount)
+        assertEquals(3, result.referenceCount)
+        assertEquals(2, result.candidateCount)
+        assertTrue(result.reasons.single().contains("root=0x100"))
+    }
+
+    @Test
     fun discoversReferencedTwentyFourByteGenThreeHeadersWithHiddenEncounters() {
         val bytes = ByteArray(0x4000)
         val table = 0x100
@@ -480,15 +512,21 @@ class EncounterMaterializerTest {
         }
     }
 
-    private fun putStandardGenThreeTable(target: ByteArray, offset: Int, infoOffset: Int) {
-        repeat(3) { map ->
+    private fun putStandardGenThreeTable(
+        target: ByteArray,
+        offset: Int,
+        infoOffset: Int,
+        mapCount: Int = 3,
+        group: Int = 1,
+    ) {
+        repeat(mapCount) { map ->
             val header = offset + map * 20
-            target[header] = 1
+            target[header] = group.toByte()
             target[header + 1] = (map + 1).toByte()
             putGbaPointer(target, header + 4, infoOffset)
         }
-        target[offset + 60] = 0xFF.toByte()
-        target[offset + 61] = 0xFF.toByte()
+        target[offset + mapCount * 20] = 0xFF.toByte()
+        target[offset + mapCount * 20 + 1] = 0xFF.toByte()
     }
 
     private fun putLeadingEmptyTwentyFourByteTable(target: ByteArray, offset: Int) {

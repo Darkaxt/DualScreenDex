@@ -121,6 +121,10 @@ export interface Rarity {
   baseStars: number | null;
   areaAdjustment: number | null;
   stars: number | null;
+  areaOutcome?: 'AREA_UNAVAILABLE' | 'AREA_NOT_IN_CATALOG' | 'SPECIES_LEVEL_NOT_IN_AREA' | 'INVALID_WEIGHTS' | 'AMBIGUOUS_TIER' | 'APPLIED' | 'APPLIED_UNIQUE_ENCOUNTER';
+  currentAreaBaseId?: number | null;
+  matchingAreaCount?: number;
+  candidateAreaCount?: number;
 }
 
 export interface State {
@@ -132,6 +136,7 @@ export interface State {
   filter: 'ALL' | 'CAUGHT' | 'SEEN' | 'TEAM' | 'AREA';
   selectedAreaId: number | null;
   currentAreaIds?: number[];
+  currentAreaBaseId?: number | null;
   battleTab: 'ENTRY' | 'ATTACK' | 'RARITY' | 'MOVES';
   settings: Settings;
   speciesState: Record<number, SpeciesState>;

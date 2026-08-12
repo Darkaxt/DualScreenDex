@@ -40,7 +40,7 @@ export function BattlePage({ catalog, state, send, openMove, openSpecies }: { ca
 }
 
 function Entry({ catalog, species, unlocked }: { catalog: Catalog; species: Catalog['species'][number]; unlocked?: boolean }) {
-  return <div class="paper-panel"><p class="eyebrow">TARGET ENTRY</p>{unlocked ? <p class="entry-copy">{species.description || 'No Pokédex description was resolved from this ROM.'}</p> : <div class="withheld"><strong>OBSERVE OR RECRUIT</strong><p>The target is identified. Organic mode keeps its full Pokédex entry hidden until capture.</p></div>}</div>;
+  return <div class="paper-panel"><p class="eyebrow">TARGET ENTRY</p>{unlocked ? <p class="entry-copy">{species.description || 'No compatible Pokédex entry is available for this species.'}</p> : <div class="withheld"><strong>OBSERVE OR RECRUIT</strong><p>The target is identified. Organic mode keeps its full Pokédex entry hidden until capture.</p></div>}</div>;
 }
 
 function Attack({ catalog, move, state, openMove }: { catalog: Catalog; move?: Move; state: State; openMove: (moveId: number) => void }) {
@@ -73,8 +73,32 @@ function RarityStars({ rarity }: { rarity: RarityModel }) {
 function Rarity({ rarity }: { rarity: RarityModel }) {
   const title = rarity.innateTier == null
     ? 'RARITY UNAVAILABLE'
-    : `${rarity.relativeTier ?? 'UNKNOWN'} ${rarity.innateTier}`;
-  return <div class="rarity-card"><small>RECRUITMENT IMPRESSION</small><strong>{title}</strong><p>The first word describes level relative to the current encounter table. The second describes normalized IV/DV quality. Exact hidden values, EVs, and encounter rate are not exposed.</p></div>;
+    : [rarity.relativeTier, rarity.innateTier].filter(Boolean).join(' ');
+  const explanation = rarity.areaOutcome === 'APPLIED_UNIQUE_ENCOUNTER'
+    ? 'SaveRAM area did not match. This tier uses the only ROM encounter table capable of producing this species at this level.'
+    : rarity.relativeTier == null
+      ? areaFailureMessage(rarity)
+      : 'The first word describes level relative to the current encounter table. The second describes normalized IV/DV quality. Exact hidden values, EVs, and encounter rate are not exposed.';
+  return <div class="rarity-card"><small>RECRUITMENT IMPRESSION</small><strong>{title}</strong><p>{explanation}</p></div>;
+}
+
+function areaFailureMessage(rarity: RarityModel): string {
+  switch (rarity.areaOutcome) {
+    case 'AREA_NOT_IN_CATALOG': {
+      const area = rarity.currentAreaBaseId == null
+        ? 'unknown'
+        : `0x${rarity.currentAreaBaseId.toString(16).toUpperCase().padStart(4, '0')}`;
+      return `Saved area ${area} is not present in this ROM encounter catalog. SaveRAM may not reflect the live battle location.`;
+    }
+    case 'SPECIES_LEVEL_NOT_IN_AREA':
+      return 'The current area was found, but this opponent and level are not present in its encounter table.';
+    case 'INVALID_WEIGHTS':
+      return 'The current encounter table does not provide valid weights for an area-relative comparison.';
+    case 'AMBIGUOUS_TIER':
+      return 'Multiple encounter methods produce conflicting relative-level tiers for this opponent.';
+    default:
+      return 'No matched area evidence is available for an area-relative comparison.';
+  }
 }
 
 function formatStars(stars: number): string {

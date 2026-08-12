@@ -266,7 +266,9 @@ object CatalogMaterializer {
             capability = RomCapability.AREA_ENCOUNTERS,
             compatible = encounters.isNotEmpty(),
             confidence = if (encounters.isNotEmpty()) 1.0 else 0.0,
+            offset = encounterMaterialization.selectedRootOffset,
             count = encounters.size.takeIf { it > 0 },
+            recordSize = encounterMaterialization.headerSize,
             reasons = encounterMaterialization.reasons,
             status = encounterMaterialization.status,
             reviewStatus = encounterMaterialization.reviewStatus,
@@ -330,6 +332,16 @@ object CatalogMaterializer {
                     add(
                         "learnset ruleset ${it.id}: offset=0x${it.sourceOffset.toString(16)} " +
                             "confidence=${"%.3f".format(java.util.Locale.ROOT, it.confidence)} primary=${it.primary}",
+                    )
+                }
+                encounterMaterialization.selectedRootOffset?.let { root ->
+                    add(
+                        "area encounters: root=0x${root.toString(16)} " +
+                            "headerSize=${encounterMaterialization.headerSize} " +
+                            "headers=${encounterMaterialization.headerCount} " +
+                            "populatedMethods=${encounterMaterialization.populatedMethodCount} " +
+                            "areas=${encounters.size} references=${encounterMaterialization.referenceCount} " +
+                            "candidates=${encounterMaterialization.candidateCount}",
                     )
                 }
             },

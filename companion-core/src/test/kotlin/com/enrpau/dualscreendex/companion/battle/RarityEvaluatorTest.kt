@@ -148,9 +148,13 @@ class RarityEvaluatorTest {
     @Test
     fun leavesAreaAdjustmentUnavailableWithoutExactCurrentAreaEvidence() {
         val candidate = area(slots = listOf(slot(1, 10, 12, 100)))
+        val multipleCapableAreas = listOf(
+            candidate,
+            area(methodId = 2, slots = listOf(slot(1, 10, 12, 100))),
+        )
         val cases = listOf(
-            RarityEvaluator.evaluate(individual(level = 11), null, listOf(candidate)),
-            RarityEvaluator.evaluate(individual(level = 11), AREA_BASE_ID + 1, listOf(candidate)),
+            RarityEvaluator.evaluate(individual(level = 11), null, multipleCapableAreas),
+            RarityEvaluator.evaluate(individual(level = 11), AREA_BASE_ID + 1, multipleCapableAreas),
             RarityEvaluator.evaluate(individual(speciesId = 2, level = 11), AREA_BASE_ID, listOf(candidate)),
             RarityEvaluator.evaluate(individual(level = 13), AREA_BASE_ID, listOf(candidate)),
         )
@@ -160,6 +164,81 @@ class RarityEvaluatorTest {
             assertNull(result.areaAdjustment)
             assertEquals(3.0, result.stars)
         }
+    }
+
+    @Test
+    fun reportsWhyAreaRelativeRarityCouldNotBeApplied() {
+        val matchingArea = area(slots = listOf(slot(1, 10, 12, 100)))
+
+        val unavailable = RarityEvaluator.evaluate(
+            individual(level = 11),
+            null,
+            listOf(matchingArea, area(methodId = 2, slots = listOf(slot(1, 10, 12, 100)))),
+        )
+        assertEquals(AreaRarityOutcome.AREA_UNAVAILABLE, unavailable.areaOutcome)
+        assertNull(unavailable.currentAreaBaseId)
+
+        val missingArea = RarityEvaluator.evaluate(
+            individual(level = 11),
+            0x0202,
+            listOf(matchingArea, area(methodId = 2, slots = listOf(slot(1, 10, 12, 100)))),
+        )
+        assertEquals(AreaRarityOutcome.AREA_NOT_IN_CATALOG, missingArea.areaOutcome)
+        assertEquals(0x0202, missingArea.currentAreaBaseId)
+        assertEquals(0, missingArea.matchingAreaCount)
+
+        val missingSpecies = RarityEvaluator.evaluate(individual(speciesId = 2, level = 11), AREA_BASE_ID, listOf(matchingArea))
+        assertEquals(AreaRarityOutcome.SPECIES_LEVEL_NOT_IN_AREA, missingSpecies.areaOutcome)
+        assertEquals(1, missingSpecies.matchingAreaCount)
+        assertEquals(0, missingSpecies.candidateAreaCount)
+
+        val invalidWeights = RarityEvaluator.evaluate(
+            individual(level = 11),
+            AREA_BASE_ID,
+            listOf(area(slots = listOf(slot(1, 10, 12, null)))),
+        )
+        assertEquals(AreaRarityOutcome.INVALID_WEIGHTS, invalidWeights.areaOutcome)
+        assertEquals(1, invalidWeights.candidateAreaCount)
+
+        val disagreeing = listOf(
+            area(methodId = 1, slots = listOf(slot(1, 13, 13, 1), slot(2, 10, 10, 1_000))),
+            area(methodId = 2, slots = listOf(slot(1, 13, 13, 1), slot(2, 14, 14, 1_000))),
+        )
+        val ambiguous = RarityEvaluator.evaluate(individual(level = 13), AREA_BASE_ID, disagreeing)
+        assertEquals(AreaRarityOutcome.AMBIGUOUS_TIER, ambiguous.areaOutcome)
+        assertEquals(2, ambiguous.candidateAreaCount)
+
+        val applied = RarityEvaluator.evaluate(individual(level = 11), AREA_BASE_ID, listOf(matchingArea))
+        assertEquals(AreaRarityOutcome.APPLIED, applied.areaOutcome)
+        assertEquals(1, applied.matchingAreaCount)
+        assertEquals(1, applied.candidateAreaCount)
+    }
+
+    @Test
+    fun usesTheOnlyRomEncounterTableThatCanProduceTheOpponentWhenSaveAreaIsStale() {
+        val uniqueCandidate = area(
+            slots = listOf(
+                slot(1, 14, 14, 1),
+                slot(2, 10, 10, 1_000),
+            ),
+        )
+        val unrelated = EncounterArea(
+            id = 0x0301 * 10 + 1,
+            name = CatalogField.available("Other area"),
+            methodId = 1,
+            slots = listOf(slot(3, 5, 5, 100)),
+        )
+
+        val result = RarityEvaluator.evaluate(
+            individual(speciesId = 1, level = 14),
+            currentAreaBaseId = 0x0202,
+            encounterAreas = listOf(uniqueCandidate, unrelated),
+        )
+
+        assertEquals(AreaRarityOutcome.APPLIED_UNIQUE_ENCOUNTER, result.areaOutcome)
+        assertEquals(RelativeTier.STRONG, result.relativeTier)
+        assertEquals(0, result.matchingAreaCount)
+        assertEquals(1, result.candidateAreaCount)
     }
 
     @Test

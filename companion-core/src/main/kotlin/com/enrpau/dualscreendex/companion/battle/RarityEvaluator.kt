@@ -22,12 +22,26 @@ enum class InnateTier(val baseStars: Int) {
     ACE(5),
 }
 
+enum class AreaRarityOutcome {
+    AREA_UNAVAILABLE,
+    AREA_NOT_IN_CATALOG,
+    SPECIES_LEVEL_NOT_IN_AREA,
+    INVALID_WEIGHTS,
+    AMBIGUOUS_TIER,
+    APPLIED,
+    APPLIED_UNIQUE_ENCOUNTER,
+}
+
 data class RarityAssessment(
     val relativeTier: RelativeTier?,
     val innateTier: InnateTier?,
     val baseStars: Int?,
     val areaAdjustment: Double?,
     val stars: Double?,
+    val areaOutcome: AreaRarityOutcome,
+    val currentAreaBaseId: Int?,
+    val matchingAreaCount: Int,
+    val candidateAreaCount: Int,
 )
 
 object RarityEvaluator {
@@ -37,7 +51,8 @@ object RarityEvaluator {
         encounterAreas: List<EncounterArea>,
     ): RarityAssessment {
         val innateTier = innateTier(individual)
-        val relativeTier = relativeTier(individual, currentAreaBaseId, encounterAreas)
+        val area = relativeAssessment(individual, currentAreaBaseId, encounterAreas)
+        val relativeTier = area.tier
         val areaAdjustment = relativeTier?.adjustment
         val baseStars = innateTier?.baseStars
         return RarityAssessment(
@@ -46,6 +61,10 @@ object RarityEvaluator {
             baseStars = baseStars,
             areaAdjustment = areaAdjustment,
             stars = baseStars?.let { (it + (areaAdjustment ?: 0.0)).coerceIn(0.0, 5.0) },
+            areaOutcome = area.outcome,
+            currentAreaBaseId = currentAreaBaseId,
+            matchingAreaCount = area.matchingAreaCount,
+            candidateAreaCount = area.candidateAreaCount,
         )
     }
 
@@ -59,24 +78,90 @@ object RarityEvaluator {
         else -> null
     }
 
-    private fun relativeTier(
+    private fun relativeAssessment(
         individual: OwnedPokemon,
         currentAreaBaseId: Int?,
         encounterAreas: List<EncounterArea>,
-    ): RelativeTier? {
-        if (currentAreaBaseId == null) return null
-        val candidates = encounterAreas.filter { area ->
-            area.id / 10 == currentAreaBaseId && area.slots.any { slot ->
+    ): RelativeAssessment {
+        if (encounterAreas.isEmpty()) {
+            return RelativeAssessment(outcome = AreaRarityOutcome.AREA_UNAVAILABLE)
+        }
+        val capableAreas = encounterAreas.filter { area ->
+            area.slots.any { slot ->
                 slot.speciesId == individual.speciesId && individual.level in slot.minimumLevel..slot.maximumLevel
             }
         }
-        if (candidates.isEmpty()) return null
+        val matchingAreas = currentAreaBaseId?.let { baseId ->
+            encounterAreas.filter { area -> area.id / 10 == baseId }
+        }.orEmpty()
+        val localCandidates = matchingAreas.filter(capableAreas::contains)
+        if (localCandidates.isNotEmpty()) {
+            return assessCandidates(
+                individual = individual,
+                candidates = localCandidates,
+                matchingAreaCount = matchingAreas.size,
+                successOutcome = AreaRarityOutcome.APPLIED,
+            )
+        }
+        if (capableAreas.size == 1) {
+            return assessCandidates(
+                individual = individual,
+                candidates = capableAreas,
+                matchingAreaCount = matchingAreas.size,
+                successOutcome = AreaRarityOutcome.APPLIED_UNIQUE_ENCOUNTER,
+            )
+        }
+        if (currentAreaBaseId == null) {
+            return RelativeAssessment(
+                outcome = AreaRarityOutcome.AREA_UNAVAILABLE,
+                candidateAreaCount = capableAreas.size,
+            )
+        }
+        if (matchingAreas.isEmpty()) {
+            return RelativeAssessment(
+                outcome = AreaRarityOutcome.AREA_NOT_IN_CATALOG,
+                candidateAreaCount = capableAreas.size,
+            )
+        }
+        return RelativeAssessment(
+            outcome = AreaRarityOutcome.SPECIES_LEVEL_NOT_IN_AREA,
+            matchingAreaCount = matchingAreas.size,
+            candidateAreaCount = capableAreas.size,
+        )
+    }
+
+    private fun assessCandidates(
+        individual: OwnedPokemon,
+        candidates: List<EncounterArea>,
+        matchingAreaCount: Int,
+        successOutcome: AreaRarityOutcome,
+    ): RelativeAssessment {
+        if (candidates.isEmpty()) {
+            return RelativeAssessment(
+                outcome = AreaRarityOutcome.SPECIES_LEVEL_NOT_IN_AREA,
+                matchingAreaCount = matchingAreaCount,
+            )
+        }
 
         val tiers = candidates.map { area ->
-            val referenceLevel = weightedReferenceLevel(area) ?: return null
+            val referenceLevel = weightedReferenceLevel(area) ?: return RelativeAssessment(
+                outcome = AreaRarityOutcome.INVALID_WEIGHTS,
+                matchingAreaCount = matchingAreaCount,
+                candidateAreaCount = candidates.size,
+            )
             classifyRelativeLevel(individual.level - referenceLevel)
         }
-        return tiers.distinct().singleOrNull()
+        val tier = tiers.distinct().singleOrNull() ?: return RelativeAssessment(
+            outcome = AreaRarityOutcome.AMBIGUOUS_TIER,
+            matchingAreaCount = matchingAreaCount,
+            candidateAreaCount = candidates.size,
+        )
+        return RelativeAssessment(
+            tier = tier,
+            outcome = successOutcome,
+            matchingAreaCount = matchingAreaCount,
+            candidateAreaCount = candidates.size,
+        )
     }
 
     private fun weightedReferenceLevel(area: EncounterArea): Int? {
@@ -100,4 +185,11 @@ object RarityEvaluator {
         in 4..5 -> RelativeTier.STRONG
         else -> RelativeTier.MAJOR
     }
+
+    private data class RelativeAssessment(
+        val tier: RelativeTier? = null,
+        val outcome: AreaRarityOutcome,
+        val matchingAreaCount: Int = 0,
+        val candidateAreaCount: Int = 0,
+    )
 }
