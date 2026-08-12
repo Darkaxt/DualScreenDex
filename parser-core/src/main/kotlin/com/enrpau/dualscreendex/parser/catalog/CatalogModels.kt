@@ -36,7 +36,9 @@ data class RgbaSprite(
 ) {
     init {
         require(width > 0 && height > 0) { "sprite dimensions must be positive" }
-        require(argb.size == width * height) { "sprite pixel count must equal width * height" }
+        require(argb.size.toLong() == width.toLong() * height.toLong()) {
+            "sprite pixel count must equal width * height"
+        }
     }
 
     override fun equals(other: Any?): Boolean =
@@ -214,7 +216,61 @@ data class CatalogRuntimeMetadata(
 
 data class WorldMapCatalog(
     val regions: List<WorldMapRegion> = emptyList(),
-)
+    val assets: Map<String, RgbaSprite> = emptyMap(),
+) {
+    init {
+        validate()
+    }
+
+    fun validate(): WorldMapCatalog = apply {
+        require(regions.map(WorldMapRegion::key).toSet().size == regions.size) {
+            "world-map region keys must be unique"
+        }
+        val referencedAssetKeys = regions.map(WorldMapRegion::imageAssetKey).toSet()
+        require(assets.keys == referencedAssetKeys) {
+            "world-map assets must exactly match region asset keys"
+        }
+        regions.forEach { region ->
+            require(region.key.isNotBlank()) { "world-map region keys must not be blank" }
+            require(region.pixelWidth > 0 && region.pixelHeight > 0) {
+                "world-map pixel dimensions must be positive"
+            }
+            require(region.gridWidth > 0 && region.gridHeight > 0) {
+                "world-map grid dimensions must be positive"
+            }
+            val raster = requireNotNull(assets[region.imageAssetKey]) {
+                "world-map region ${region.key} has no raster"
+            }
+            require(raster.width == region.pixelWidth && raster.height == region.pixelHeight) {
+                "world-map region ${region.key} raster dimensions do not match metadata"
+            }
+            require(region.locations.isNotEmpty()) { "world-map regions must contain resolved locations" }
+            require(region.locations.map(WorldMapLocation::key).toSet().size == region.locations.size) {
+                "world-map location keys must be unique within a region"
+            }
+            region.locations.forEach { location ->
+                require(location.key.isNotBlank() && location.displayName.isNotBlank()) {
+                    "world-map location identity must not be blank"
+                }
+                require(location.baseAreaIds.isNotEmpty()) {
+                    "world-map locations must bind at least one base area"
+                }
+                require(location.geometry.isNotEmpty()) {
+                    "world-map locations must contain geometry"
+                }
+                location.geometry.forEach { cell ->
+                    require(cell.x >= 0 && cell.y >= 0 && cell.width > 0 && cell.height > 0) {
+                        "world-map cells must have non-negative origins and positive dimensions"
+                    }
+                    require(
+                        cell.x.toLong() + cell.width <= region.gridWidth.toLong() &&
+                            cell.y.toLong() + cell.height <= region.gridHeight.toLong(),
+                    ) { "world-map cells must remain inside the region grid" }
+                }
+            }
+        }
+    }
+}
 
 data class WorldMapRegion(
     val key: String,

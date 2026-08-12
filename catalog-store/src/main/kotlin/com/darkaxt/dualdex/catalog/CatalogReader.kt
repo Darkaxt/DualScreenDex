@@ -173,7 +173,7 @@ internal class CatalogSectionCodec {
         captureBallsById = decode(sections.getValue("capture_balls"), ballsType),
         learnsetRulesets = decode(sections.getValue("learnset_rulesets"), rulesetsType),
         runtimeMetadata = decode(sections.getValue("runtime_metadata"), runtimeMetadataType),
-        worldMaps = decode(sections.getValue("world_maps"), worldMapsType),
+        worldMaps = decode<WorldMapCatalog>(sections.getValue("world_maps"), worldMapsType).validate(),
         capabilities = decode(sections.getValue("capabilities"), capabilitiesType),
         diagnostics = decode(sections.getValue("diagnostics"), diagnosticsType),
         )

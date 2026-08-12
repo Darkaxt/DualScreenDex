@@ -170,7 +170,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(8, CatalogSchema.parserSchemaVersion)
+        assertEquals(9, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -204,11 +204,15 @@ class CatalogStoreTest {
         val region = reopened?.catalog?.worldMaps?.regions?.single()
         assertEquals("hoenn-overview", region?.key)
         assertEquals("Hoenn", region?.displayName)
-        assertEquals(240, region?.pixelWidth)
-        assertEquals(160, region?.pixelHeight)
+        assertEquals(2, region?.pixelWidth)
+        assertEquals(2, region?.pixelHeight)
         assertEquals(30, region?.gridWidth)
         assertEquals(20, region?.gridHeight)
         assertEquals("world/hoenn-overview", region?.imageAssetKey)
+        assertEquals(
+            RgbaSprite(2, 2, intArrayOf(0x00000000, 0xffff0000.toInt(), 0xff00ff00.toInt(), 0xff0000ff.toInt())),
+            reopened?.catalog?.worldMaps?.assets?.get("world/hoenn-overview"),
+        )
         assertEquals(setOf(0x0010, 0x0011), region?.locations?.single()?.baseAreaIds)
         assertEquals(
             listOf(WorldMapCell(4, 7, 2, 1), WorldMapCell(6, 7, 1, 2)),
@@ -408,8 +412,8 @@ class CatalogStoreTest {
                     WorldMapRegion(
                         key = "hoenn-overview",
                         displayName = "Hoenn",
-                        pixelWidth = 240,
-                        pixelHeight = 160,
+                        pixelWidth = 2,
+                        pixelHeight = 2,
                         gridWidth = 30,
                         gridHeight = 20,
                         imageAssetKey = "world/hoenn-overview",
@@ -426,6 +430,7 @@ class CatalogStoreTest {
                         ),
                     ),
                 ),
+                assets = mapOf("world/hoenn-overview" to sprite),
             ),
             capabilities = mapOf(
                 RomCapability.SPECIES_CATALOG to CapabilityEvidence(
