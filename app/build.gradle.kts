@@ -66,6 +66,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    buildFeatures {
+        aidl = true
+    }
     sourceSets.getByName("main").assets.srcDir(generatedWebAssets.get().asFile)
 }
 
@@ -81,6 +84,8 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
