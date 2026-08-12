@@ -372,7 +372,9 @@ object ApiViewBuilder {
     ): StateView {
         val liveAreaBaseId = snapshot.liveAreaBaseId
         val effectiveAreaBaseId = liveAreaBaseId
-            ?: snapshot.ledger.currentAreaBaseId.takeIf { saveRam.status == "MATCHED" }
+            ?: snapshot.ledger.currentAreaBaseId.takeIf {
+                !retroArch.connection.equals("CONNECTED", ignoreCase = true) && saveRam.status == "MATCHED"
+            }
         val currentAreaIds = effectiveAreaBaseId?.let { baseId ->
             catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }?.sorted()
         }.orEmpty()

@@ -5,6 +5,7 @@ import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.knowledge.KnowledgeRepository
 import com.darkaxt.dualdex.battle.BattleCatalogContext
+import com.darkaxt.dualdex.battle.liveAreaMemoryLayout
 import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.darkaxt.dualdex.battle.BattleMove
 import com.darkaxt.dualdex.battle.BattleSpecies
@@ -269,6 +270,7 @@ class ProductionCompanionRuntime(
             generation = generation,
             catalog = BattleCatalogView(species, moves, current.typesById.keys),
             gen3SaveBlock1PointerAddress = current.runtimeMetadata.gen3SaveBlock1PointerAddress,
+            liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),
         )
     }
 

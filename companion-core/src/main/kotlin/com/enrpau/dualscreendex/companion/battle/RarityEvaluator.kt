@@ -103,14 +103,6 @@ object RarityEvaluator {
                 successOutcome = AreaRarityOutcome.APPLIED,
             )
         }
-        if (capableAreas.size == 1) {
-            return assessCandidates(
-                individual = individual,
-                candidates = capableAreas,
-                matchingAreaCount = matchingAreas.size,
-                successOutcome = AreaRarityOutcome.APPLIED_UNIQUE_ENCOUNTER,
-            )
-        }
         if (currentAreaBaseId == null) {
             return RelativeAssessment(
                 outcome = AreaRarityOutcome.AREA_UNAVAILABLE,

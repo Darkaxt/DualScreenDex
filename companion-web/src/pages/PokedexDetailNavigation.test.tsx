@@ -17,7 +17,7 @@ describe('Pokédex evolution navigation', () => {
       openAbility={vi.fn()}
     />);
 
-    expect(screen.getByText('Pokédex data not available.')).toBeTruthy();
+    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
     expect(screen.queryByText(/resolved from this ROM/i)).toBeNull();
   });
 

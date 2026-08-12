@@ -341,7 +341,7 @@ function Write-DualDexAtomicText([string] $Path, [string] $Value) {
 
 function ConvertTo-DualDexMarkdown([object] $Document) {
     $lines = [System.Collections.Generic.List[string]]::new()
-    $lines.Add('# DualDex ROM compatibility and properties')
+    $lines.Add('# DualDex ROM Hacks Compatibility')
     $lines.Add('')
     $lines.Add("Generated from parser report schema $($Document.reportSchemaVersion) and completed review for APK version $($Document.apkVersionCode).")
     $lines.Add('')

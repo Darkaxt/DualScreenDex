@@ -82,20 +82,20 @@ jobs:
           for document in \
             reports/dualdex-parser-compatibility.json \
             reports/dualdex-parser-compatibility.md \
-            reports/dualdex-rom-properties.json \
-            reports/dualdex-rom-properties.md \
+            reports/dualdex-rom-hacks-compatibility.json \
+            reports/dualdex-rom-hacks-compatibility.md \
             release/POST_RELEASE_CHECKLIST.md; do
             test -s "$document"
           done
           jq -e '.schemaVersion == 11 and (.results | length) == 50' \
             reports/dualdex-parser-compatibility.json >/dev/null
           jq -e '.schemaVersion == 1 and .reportSchemaVersion == 11 and .romCount == 50' \
-            reports/dualdex-rom-properties.json >/dev/null
+            reports/dualdex-rom-hacks-compatibility.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
             reports/dualdex-parser-compatibility.md \
-            reports/dualdex-rom-properties.json \
-            reports/dualdex-rom-properties.md; then
+            reports/dualdex-rom-hacks-compatibility.json \
+            reports/dualdex-rom-hacks-compatibility.md; then
             echo 'Compatibility documentation contains a private path.'
             exit 1
           fi
@@ -316,8 +316,8 @@ jobs:
           cp signing/dualdex-release-cert.pem "$ASSETS/dualdex-release-cert.pem"
           cp reports/dualdex-parser-compatibility.json "$ASSETS/dualdex-parser-compatibility.json"
           cp reports/dualdex-parser-compatibility.md "$ASSETS/dualdex-parser-compatibility.md"
-          cp reports/dualdex-rom-properties.json "$ASSETS/dualdex-rom-properties.json"
-          cp reports/dualdex-rom-properties.md "$ASSETS/dualdex-rom-properties.md"
+          cp reports/dualdex-rom-hacks-compatibility.json "$ASSETS/dualdex-rom-hacks-compatibility.json"
+          cp reports/dualdex-rom-hacks-compatibility.md "$ASSETS/dualdex-rom-hacks-compatibility.md"
           cp release/RELEASE_NOTES_1.0.0.md "$ASSETS/RELEASE_NOTES.md"
 
           apk_sha256="$(sha256sum "$APK" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')"
@@ -355,8 +355,8 @@ jobs:
               dualdex-release-cert.pem \
               dualdex-parser-compatibility.json \
               dualdex-parser-compatibility.md \
-              dualdex-rom-properties.json \
-              dualdex-rom-properties.md \
+              dualdex-rom-hacks-compatibility.json \
+              dualdex-rom-hacks-compatibility.md \
               RELEASE_NOTES.md \
               provenance.json > SHA256SUMS.txt
           )
@@ -394,8 +394,8 @@ jobs:
             "$ASSETS/dualdex-release-cert.pem" \
             "$ASSETS/dualdex-parser-compatibility.json" \
             "$ASSETS/dualdex-parser-compatibility.md" \
-            "$ASSETS/dualdex-rom-properties.json" \
-            "$ASSETS/dualdex-rom-properties.md" \
+            "$ASSETS/dualdex-rom-hacks-compatibility.json" \
+            "$ASSETS/dualdex-rom-hacks-compatibility.md" \
             "$ASSETS/RELEASE_NOTES.md"
 
           echo "GitHub created the non-replacing $RELEASE_KIND release for $RELEASE_TAG." >> "$GITHUB_STEP_SUMMARY"

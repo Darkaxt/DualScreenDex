@@ -196,7 +196,7 @@ Move and ability descriptions validate for every sampled GBA ROM and are correct
 
 Numeric ability mechanics are tracked separately from descriptions. The implemented ROM-code resolver validates the compiled threshold, multiplier, ability IDs, and type IDs for Overgrow, Blaze, Torrent, and Swarm before exposing `HP <= 1/3` and `x1.5` type-matched move power. It resolves those four abilities in every sampled GBA ROM, including the three derivatives. Other abilities remain description-only unless their exact mechanics are independently resolved; DualDex never substitutes familiar series values for unvalidated ROM behavior.
 
-Read the first-50 summary in the [Markdown compatibility report](reports/dualdex-parser-compatibility.md) or inspect its [schema-11 JSON evidence](reports/dualdex-parser-compatibility.json). The grouped engine lineage, ABI, ruleset, mechanic, encounter, gap, integrity, and provenance fields are available as [Markdown ROM properties](reports/dualdex-rom-properties.md) and [machine-readable JSON](reports/dualdex-rom-properties.json). Reports contain structural evidence and hashes, but no decoded bulk tables, sprites, ROM bytes, saves, trainer data, or private paths.
+Read the player-facing [ROM Hacks Compatibility report](reports/dualdex-rom-hacks-compatibility.md), with its [machine-readable JSON](reports/dualdex-rom-hacks-compatibility.json), for the reviewed first 50 ROMs grouped by generation and engine family. The separate [Parser Compatibility report](reports/dualdex-parser-compatibility.md) and [schema-11 JSON evidence](reports/dualdex-parser-compatibility.json) contain the deeper engine lineage, ABI, ruleset, mechanic, encounter, gap, integrity, and provenance evidence. Reports contain structural evidence and hashes, but no decoded bulk tables, sprites, ROM bytes, saves, trainer data, or private paths.
 
 SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1-gen2-saveram-compatibility.md) and [Generation III](docs/reports/gen3-saveram-compatibility.md). These reports contain no ROM/save bytes, trainer data, or private filesystem paths.
 
@@ -305,8 +305,8 @@ The labeled [Modern Emerald analysis](docs/reports/modern-emerald-memory-mapper-
 - [v1 requirement matrix](docs/v1-requirement-matrix.md)
 - [Web UI and plausible simulator POC specification](docs/superpowers/specs/2026-08-09-dualdex-web-ui-simulator-poc-design.md)
 - [ROM parser and passive companion foundation](docs/superpowers/specs/2026-08-08-dualdex-rom-parser-companion-design.md)
-- [Parser compatibility report](reports/dualdex-parser-compatibility.md)
-- [Grouped ROM compatibility and properties](reports/dualdex-rom-properties.md)
+- [ROM Hacks Compatibility](reports/dualdex-rom-hacks-compatibility.md)
+- [Parser Compatibility](reports/dualdex-parser-compatibility.md)
 
 ## Relationship to Kanto Gear
 

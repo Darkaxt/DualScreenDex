@@ -57,4 +57,4 @@ Verification scope: Indices 1-33 and the three worst later offenders were rerun 
 | 49 | Dreams (v1.5.3).gba | SELECTED | FIRERED_LEAFGREEN | 80.88% | 1139 | 0 | 254 | 0 | BASE_RUN_WITH_REVIEWED_NON_IMPACT | PARTIAL_ACCEPTED |
 | 50 | Dreamstone Mysteries.gba | NO_FAMILY_MATCH |  | 13.36% |  |  |  | 0 | BASE_RUN_WITH_REVIEWED_NON_IMPACT | EXCLUDED_BY_SCOPE |
 
-The grouped ABI, ruleset, mechanic, encounter, gap, integrity, and provenance fields are published separately in `dualdex-rom-properties.json` and `dualdex-rom-properties.md`.
+The player-facing ROM-hack matrix is published separately in `dualdex-rom-hacks-compatibility.json` and `dualdex-rom-hacks-compatibility.md`.

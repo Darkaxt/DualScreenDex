@@ -215,7 +215,7 @@ class RarityEvaluatorTest {
     }
 
     @Test
-    fun usesTheOnlyRomEncounterTableThatCanProduceTheOpponentWhenSaveAreaIsStale() {
+    fun doesNotGuessTheCurrentAreaFromTheOpponentSpeciesAndLevel() {
         val uniqueCandidate = area(
             slots = listOf(
                 slot(1, 14, 14, 1),
@@ -235,8 +235,8 @@ class RarityEvaluatorTest {
             encounterAreas = listOf(uniqueCandidate, unrelated),
         )
 
-        assertEquals(AreaRarityOutcome.APPLIED_UNIQUE_ENCOUNTER, result.areaOutcome)
-        assertEquals(RelativeTier.STRONG, result.relativeTier)
+        assertEquals(AreaRarityOutcome.AREA_NOT_IN_CATALOG, result.areaOutcome)
+        assertNull(result.relativeTier)
         assertEquals(0, result.matchingAreaCount)
         assertEquals(1, result.candidateAreaCount)
     }

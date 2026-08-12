@@ -5,6 +5,7 @@ import com.darkaxt.dualdex.retroarch.CoreMemoryReadState
 import com.darkaxt.dualdex.retroarch.CoreMemoryRegion
 import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -14,13 +15,29 @@ data class BattleCatalogContext(
     val generation: Int,
     val catalog: BattleCatalogView,
     val gen3SaveBlock1PointerAddress: Long? = null,
+    val liveAreaMemoryLayout: LiveAreaMemoryLayout? = null,
 )
+
+data class LiveAreaMemoryLayout(val wramOffset: Int, val byteCount: Int) {
+    init {
+        require(wramOffset in 0 until 0x2000)
+        require(byteCount in 1..2 && wramOffset + byteCount <= 0x2000)
+    }
+}
+
+internal fun liveAreaMemoryLayout(family: EngineFamily): LiveAreaMemoryLayout? = when (family) {
+    EngineFamily.RED_BLUE -> LiveAreaMemoryLayout(0x135E, 1)
+    EngineFamily.YELLOW -> LiveAreaMemoryLayout(0x135D, 1)
+    EngineFamily.GOLD_SILVER -> LiveAreaMemoryLayout(0x1A00, 2)
+    EngineFamily.CRYSTAL -> LiveAreaMemoryLayout(0x1CB5, 2)
+    else -> null
+}
 
 internal fun battleHeartbeatDelayMillis(
     eligible: Boolean,
     discovering: Boolean,
     pollingIntervalMs: Int,
-): Long = if (eligible && discovering) pollingIntervalMs.coerceIn(1, 20).toLong() else 20L
+): Long = if (eligible) pollingIntervalMs.coerceIn(1, 20).toLong() else 20L
 
 class BattleMemoryCoordinator(
     private val catalogProvider: () -> BattleCatalogContext?,
@@ -33,6 +50,7 @@ class BattleMemoryCoordinator(
     private val gen1Resolver = Gen1BattleLayoutResolver()
     private val gen2Resolver = Gen2BattleLayoutResolver()
     private val gen3Resolver = Gen3BattleLayoutResolver()
+    private val gen3MainResolver = Gen3MainStateResolver()
     private val tracker = BattleObservationTracker()
     private val heartbeatExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "dualdex-battle-memory").apply { isDaemon = true }
@@ -47,6 +65,8 @@ class BattleMemoryCoordinator(
     private var cachedWindowStart = 0
     private var cachedSaveBlock1Address: Long? = null
     private var requestedSaveBlock1Address: Long? = null
+    private var cachedGen3MainLayout: Gen3MainLayout? = null
+    private var observedOverworldCallbacks: Gen3MainCallbacks? = null
     @Volatile private var closed = false
 
     init {
@@ -115,15 +135,18 @@ class BattleMemoryCoordinator(
                 readMode = ReadMode.CACHED
                 cachedWindowStart = layout.moveCursorOffset
                 val cachedWindowBytes = layout.battlerCountOffset + GEN1_BATTLE_TYPE_DELTA + 1 - cachedWindowStart
-                session.start(
-                    listOf(
+                session.start(buildList {
+                    add(
                         CoreMemoryRegion(
                             "battle-window",
                             GEN1_WRAM_BASE + cachedWindowStart,
                             cachedWindowBytes,
                         ),
-                    ),
-                )
+                    )
+                    catalogProvider()?.liveAreaMemoryLayout?.let { location ->
+                        add(CoreMemoryRegion("live-location", GEN1_WRAM_BASE + location.wramOffset, location.byteCount))
+                    }
+                })
             }
             reader = session
             return
@@ -131,7 +154,22 @@ class BattleMemoryCoordinator(
         if (sessionGeneration == 2) {
             readMode = if (cachedLayout == null) ReadMode.DISCOVERY else ReadMode.CACHED
             cachedWindowStart = 0
-            session.start(listOf(CoreMemoryRegion("wram", GEN1_WRAM_BASE, GEN1_WRAM_BYTES)))
+            val layout = cachedLayout
+            if (layout == null) {
+                session.start(listOf(CoreMemoryRegion("wram", GEN1_WRAM_BASE, GEN1_WRAM_BYTES)))
+            } else {
+                val playerStart = gen2PlayerWindowStart(layout)
+                val playerEnd = gen2PlayerWindowEnd(layout)
+                val enemyStart = gen2EnemyWindowStart(layout)
+                val enemyEnd = gen2EnemyWindowEnd(layout)
+                session.start(buildList {
+                    add(CoreMemoryRegion("player-state", GEN1_WRAM_BASE + playerStart, playerEnd - playerStart))
+                    add(CoreMemoryRegion("enemy-state", GEN1_WRAM_BASE + enemyStart, enemyEnd - enemyStart))
+                    catalogProvider()?.liveAreaMemoryLayout?.let { location ->
+                        add(CoreMemoryRegion("live-location", GEN1_WRAM_BASE + location.wramOffset, location.byteCount))
+                    }
+                })
+            }
             reader = session
             return
         }
@@ -142,6 +180,7 @@ class BattleMemoryCoordinator(
             requestedSaveBlock1Address = null
             session.start(buildList {
                 add(CoreMemoryRegion("ewram", EWRAM_BASE, EWRAM_BYTES))
+                add(CoreMemoryRegion("iwram", IWRAM_BASE, IWRAM_BYTES))
                 pointerGlobal?.let { add(CoreMemoryRegion("save-block-pointer", it, 4)) }
             })
         } else {
@@ -154,6 +193,13 @@ class BattleMemoryCoordinator(
                         EWRAM_BASE + cachedWindowStart,
                         CACHED_WINDOW_BYTES,
                     ))
+                cachedGen3MainLayout?.let { mainLayout ->
+                    add(CoreMemoryRegion(
+                        "main-state",
+                        IWRAM_BASE + mainLayout.offset,
+                        Gen3MainStateResolver.HEADER_BYTES,
+                    ))
+                }
                 pointerGlobal?.let { add(CoreMemoryRegion("save-block-pointer", it, 4)) }
                 requestedSaveBlock1Address?.let { add(CoreMemoryRegion("save-block-location", it, 6)) }
             })
@@ -164,7 +210,7 @@ class BattleMemoryCoordinator(
     private fun process(regions: Map<String, ByteArray>, context: BattleCatalogContext) {
         val validatedGen2NoBattle = context.generation == 2 && knownGen2NonBattle(regions)
         val resolvedSample = if (context.generation == 1) {
-            val source = requireNotNull(regions.values.singleOrNull())
+            val source = requireNotNull(regions["wram"] ?: regions["battle-window"])
             if (readMode == ReadMode.CACHED) {
                 val absolute = requireNotNull(cachedLayout)
                 val rebased = absolute.rebased(-cachedWindowStart)
@@ -178,7 +224,11 @@ class BattleMemoryCoordinator(
                 }
             }
         } else if (context.generation == 2) {
-            val source = requireNotNull(regions.values.singleOrNull())
+            val source = if (readMode == ReadMode.DISCOVERY) {
+                requireNotNull(regions["wram"])
+            } else {
+                reconstructGen2Wram(regions)
+            }
             val layout = cachedLayout
             if (layout == null) {
                 when (val result = gen2Resolver.resolve(source, context.catalog)) {
@@ -203,10 +253,21 @@ class BattleMemoryCoordinator(
                     .also { if (it == null && !knownGen3NonBattle(bytes, rebased)) cachedLayout = null }
             }
         }
-        resolveCurrentGen3Area(regions, context)?.let(locationPublisher)
+        val mainState = resolveGen3MainState(regions, context)
+        val wasActive = tracker.missed().active
+        if (context.generation == 3 && !wasActive && resolvedSample == null && mainState != null) {
+            observedOverworldCallbacks = mainState.callbacks
+        }
+        val lifecycleEnded = context.generation == 3 &&
+            wasActive &&
+            mainState != null &&
+            mainState.callbacks == observedOverworldCallbacks
+        if (supportsLiveArea(context)) {
+            locationPublisher(resolveCurrentArea(regions, context))
+        }
         val sample = resolvedSample
-        val update = if (sample != null && sample.battleOutcome != 0) {
-            val final = tracker.update(context.romIdentity, sample)
+        val update = if (lifecycleEnded || sample != null && sample.battleOutcome != 0) {
+            val final = sample?.let { tracker.update(context.romIdentity, it) } ?: tracker.missed()
             tracker.reset(context.romIdentity)
             BattleTrackingUpdate(
                 active = false,
@@ -225,6 +286,19 @@ class BattleMemoryCoordinator(
         if (update.active || update.ended) publisher(update)
     }
 
+    private fun resolveGen3MainState(
+        regions: Map<String, ByteArray>,
+        context: BattleCatalogContext,
+    ): Gen3MainState? {
+        if (context.generation != 3) return null
+        regions["main-state"]?.let { bytes ->
+            val absolute = cachedGen3MainLayout ?: return null
+            return gen3MainResolver.resolveKnown(bytes, Gen3MainLayout(0))?.copy(layout = absolute)
+        }
+        val bytes = regions["iwram"] ?: return null
+        return gen3MainResolver.resolve(bytes)?.also { cachedGen3MainLayout = it.layout }
+    }
+
     private fun knownGen1NonBattle(bytes: ByteArray): Boolean {
         val layout = cachedLayout ?: return false
         val battleFlagOffset = layout.battlerCountOffset - cachedWindowStart
@@ -233,8 +307,12 @@ class BattleMemoryCoordinator(
 
     private fun knownGen2NonBattle(regions: Map<String, ByteArray>): Boolean {
         val layout = cachedLayout ?: return false
-        val bytes = regions.values.singleOrNull() ?: return false
-        val battleFlagOffset = layout.battlerCountOffset
+        val bytes = regions["wram"] ?: regions["enemy-state"] ?: return false
+        val battleFlagOffset = if (regions.containsKey("wram")) {
+            layout.battlerCountOffset
+        } else {
+            layout.battlerCountOffset - gen2EnemyWindowStart(layout)
+        }
         return battleFlagOffset in bytes.indices && bytes[battleFlagOffset].toInt() and 0xff == 0
     }
 
@@ -243,8 +321,38 @@ class BattleMemoryCoordinator(
         return offset in bytes.indices && bytes[offset].toInt() and 0xff == 0
     }
 
+    private fun resolveCurrentArea(regions: Map<String, ByteArray>, context: BattleCatalogContext): Int? = when (context.generation) {
+        1 -> resolveCurrentGen1Area(regions)
+        2 -> resolveCurrentGen2Area(regions)
+        3 -> resolveCurrentGen3Area(regions, context)
+        else -> null
+    }
+
+    private fun supportsLiveArea(context: BattleCatalogContext): Boolean = when (context.generation) {
+        1, 2 -> context.liveAreaMemoryLayout != null
+        3 -> context.gen3SaveBlock1PointerAddress != null
+        else -> false
+    }
+
+    private fun resolveCurrentGen1Area(regions: Map<String, ByteArray>): Int? {
+        val offset = contextLiveAreaOffset(generation = 1) ?: return null
+        val value = regions["live-location"]?.singleOrNull()?.toInt()?.and(0xFF)
+            ?: regions["wram"]?.getOrNull(offset)?.toInt()?.and(0xFF)
+            ?: return null
+        return value.takeUnless { it == 0xFF }
+    }
+
+    private fun resolveCurrentGen2Area(regions: Map<String, ByteArray>): Int? {
+        val offset = contextLiveAreaOffset(generation = 2) ?: return null
+        val bytes = regions["live-location"] ?: regions["wram"]?.copyOfRange(offset, offset + 2) ?: return null
+        if (bytes.size != 2) return null
+        val group = bytes[0].toInt() and 0xFF
+        val map = bytes[1].toInt() and 0xFF
+        return if (group in 0..63 && map != 0xFF) (group shl 8) or map else null
+    }
+
     private fun resolveCurrentGen3Area(regions: Map<String, ByteArray>, context: BattleCatalogContext): Int? {
-        if (context.generation != 3 || context.gen3SaveBlock1PointerAddress == null) return null
+        if (context.gen3SaveBlock1PointerAddress == null) return null
         val pointerBytes = regions["save-block-pointer"] ?: return null
         if (pointerBytes.size != 4) return null
         val pointer = pointerBytes.foldIndexed(0L) { index, value, byte ->
@@ -271,6 +379,34 @@ class BattleMemoryCoordinator(
         val map = location[SAVE_LOCATION_NUMBER_OFFSET].toInt() and 0xFF
         return (group shl 8) or map
     }
+
+    private fun contextLiveAreaOffset(generation: Int): Int? = catalogProvider()
+        ?.liveAreaMemoryLayout
+        ?.takeIf { it.byteCount == generation.coerceAtMost(2) }
+        ?.wramOffset
+
+    private fun reconstructGen2Wram(regions: Map<String, ByteArray>): ByteArray {
+        val layout = requireNotNull(cachedLayout)
+        return ByteArray(GEN1_WRAM_BYTES).also { wram ->
+            regions["player-state"]?.copyInto(wram, gen2PlayerWindowStart(layout))
+            regions["enemy-state"]?.copyInto(wram, gen2EnemyWindowStart(layout))
+        }
+    }
+
+    private fun gen2PlayerWindowStart(layout: ResolvedBattleLayout): Int =
+        minOf(layout.battleMonsOffset, layout.moveCursorOffset)
+
+    private fun gen2PlayerWindowEnd(layout: ResolvedBattleLayout): Int = maxOf(
+        layout.battleMonsOffset + GEN2_BATTLE_MON_BYTES,
+        layout.outcomeOffset + 1,
+        layout.targetCursorOffset + 1,
+    )
+
+    private fun gen2EnemyWindowStart(layout: ResolvedBattleLayout): Int =
+        layout.battlerCountOffset - GEN2_ENEMY_FROM_BATTLE_FLAG_DELTA
+
+    private fun gen2EnemyWindowEnd(layout: ResolvedBattleLayout): Int =
+        layout.battlerCountOffset + GEN1_BATTLE_TYPE_DELTA + 1
 
     private fun ResolvedBattleLayout.rebased(delta: Int): ResolvedBattleLayout = copy(
         battleMonsOffset = battleMonsOffset + delta,
@@ -310,6 +446,8 @@ class BattleMemoryCoordinator(
         cachedLayout = null
         cachedSaveBlock1Address = null
         requestedSaveBlock1Address = null
+        cachedGen3MainLayout = null
+        observedOverworldCallbacks = null
         closeTransport()
     }
 
@@ -339,8 +477,12 @@ class BattleMemoryCoordinator(
         private const val GEN1_WRAM_BASE = 0xc000L
         private const val GEN1_WRAM_BYTES = 0x2000
         private const val GEN1_BATTLE_TYPE_DELTA = 3
+        private const val GEN2_ENEMY_FROM_BATTLE_FLAG_DELTA = 0x27
+        private const val GEN2_BATTLE_MON_BYTES = 32
         private const val EWRAM_BASE = 0x02000000L
         private const val EWRAM_BYTES = 0x40000
+        private const val IWRAM_BASE = 0x03000000L
+        private const val IWRAM_BYTES = 0x8000
         private const val SAVE_LOCATION_BYTES = 6
         private const val SAVE_LOCATION_GROUP_OFFSET = 4
         private const val SAVE_LOCATION_NUMBER_OFFSET = 5

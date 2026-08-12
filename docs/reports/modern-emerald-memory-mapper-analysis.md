@@ -2,7 +2,7 @@
 
 ## Evidence scope
 
-This report analyzes one local raw mapper session captured from Pokémon Modern Emerald 3.5 while Treecko Lv7 fought Weedle Lv3. The session contains `BATTLE_START`, `MOVE_SELECTED`, and `BATTLE_END` snapshots of the complete mGBA EWRAM and IWRAM regions. Raw bytes, trainer identifiers, personalities, and the export itself are not stored in this repository.
+This report analyzes two local raw mapper sessions captured from Pokémon Modern Emerald 3.5. The original session covers a Treecko Lv7 versus Weedle Lv3 battle. A later six-snapshot session covers `OVERWORLD`, `BATTLE_START`, `MOVE_SELECTED`, `MOVE_EXECUTED`, `BATTLE_END`, and the following `OVERWORLD`, closing the previously missing teardown boundary. Raw bytes, trainer identifiers, personalities, and the exports themselves are not stored in this repository.
 
 | Identity | Value |
 | --- | --- |
@@ -12,7 +12,7 @@ This report analyzes one local raw mapper session captured from Pokémon Modern 
 | Core system | `game_boy_advance` |
 | Captured regions | EWRAM `0x02000000..0x0203FFFF`; IWRAM `0x03000000..0x03007FFF` |
 
-All six exported regions decoded to their declared sizes and matched their stored SHA-256 hashes.
+Every exported region in both sessions decoded to its declared size and matched its stored SHA-256 hash.
 
 ## Confirmed live structure
 
@@ -85,6 +85,22 @@ For this source shape, the useful relative offsets are:
 
 These deltas must compete as a validated layout shape. They are not accepted merely because a ROM resembles Emerald.
 
+## Battle-exit lifecycle
+
+The later dump proves that the battle records are intentionally stale after the game has returned to the overworld. `gBattlersCount` remains `2`, battler positions remain `0, 1, 0xFF, 0xFF`, both `BattlePokemon` records still validate, and the known outcome byte remains zero in the final overworld snapshot. Those fields therefore cannot be used as the sole active-battle latch.
+
+IWRAM contains one structurally valid main-loop state record at `0x03001574` in every snapshot. Its callback pair changes with the actual lifecycle:
+
+| State | callback1 | callback2 |
+| --- | ---: | ---: |
+| Overworld | `0x0816086D` | `0x08160D3D` |
+| Active battle | `0x0807B025` | `0x08078E01` |
+| Battle end / returned overworld | `0x0816086D` | `0x08160D3D` |
+
+The record is selected generically by pointer shape, equal nonzero VBlank counters, valid key masks, and uniqueness; the callback addresses are observed values, not embedded ROM-specific constants. Once the resolver has learned the current session's overworld callback pair, returning to that pair is immediate positive teardown evidence even while EWRAM battle structures remain populated.
+
+The coordinator therefore reads only the bounded resolved main-state record after discovery. A missing UDP response retries the same idempotent read on the next heartbeat instead of leaving the reader permanently pending, and the configured polling interval applies to cached as well as discovery reads.
+
 ## Capability verdict
 
 | Capability | Current evidence |
@@ -95,15 +111,14 @@ These deltas must compete as a validated layout shape. They are not accepted mer
 | Parsed-ROM effectiveness for highlighted move | **Available once highlighted move and target validate** |
 | Double-battle live target | **Not yet validated**; the live hover uses `gMultiUsePlayerCursor`, while the remembered target fields update only under specific cursor-memory behavior |
 | Organic opponent move discovery and frequency | **Validated** through PP decreases: Poison Sting ×1 and String Shot ×2. Ordering and timestamps are not product requirements |
-| Battle enter/leave boundary | **Partially validated**; the final snapshot was captured while battle data was still resident and before `gBattleOutcome` changed |
+| Battle enter/leave boundary | **Validated**; the main-loop callback pair returns to the learned overworld state while stale battle records remain resident |
 | Active ruleset selector | **Not evaluated by this session** |
 
 ## Fastest safe path to live battle UI
 
-The current evidence is sufficient to implement a catalog-coupled battle-array locator, highlighted-move reader, and Organic opponent-move frequency tracking through PP deltas behind exact capability flags. Double-target switching and reliable battle-exit detection still require a denser labeled capture containing:
+The current evidence is sufficient to implement a catalog-coupled battle-array locator, highlighted-move reader, Organic opponent-move frequency tracking through PP deltas, and reliable single-battle exit detection behind exact capability flags. Double-target switching still requires a denser labeled capture containing:
 
-- overworld immediately before and after battle;
 - double battle while hovering each opposing target;
 - target change without confirming the move.
 
-Until those remaining event boundaries validate, DualDex can safely render identity, level, rarity, highlighted attack, effectiveness, and PP-delta-observed opponent move frequencies for single battles. It must not expose unchanged hidden opponent moves or claim automatic double-target tracking.
+Until the remaining target event validates, DualDex can safely render identity, level, rarity, highlighted attack, effectiveness, PP-delta-observed opponent move frequencies, and automatic single-battle teardown. It must not expose unchanged hidden opponent moves or claim fully validated double-target tracking.

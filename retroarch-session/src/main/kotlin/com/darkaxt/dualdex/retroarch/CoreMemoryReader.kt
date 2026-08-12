@@ -28,7 +28,8 @@ private data class CoreMemoryRequest(
 
 /**
  * Heartbeat-driven, read-only RetroArch core-memory transport. There is deliberately no write operation
- * and absence of a UDP reply leaves the state pending rather than cancelling it by elapsed time.
+ * and absence of a UDP reply retries the same idempotent request on the next heartbeat rather than
+ * cancelling it by elapsed time.
  */
 class CoreMemoryReadSession(
     private val sender: (ByteArray) -> Unit,
@@ -63,9 +64,11 @@ class CoreMemoryReadSession(
     fun heartbeat(): CoreMemoryReadState {
         terminal?.let { return it }
         if (requestIndex < 0) return CoreMemoryReadState.Idle
+        var advanced = false
         while (true) {
             val response = poller() ?: break
             val request = requests[requestIndex]
+            if (replyAddress(response) != request.address) continue
             val bytes = runCatching { parse(request, response) }.getOrElse { failure ->
                 return CoreMemoryReadState.Failed(failure.message ?: failure.javaClass.simpleName).also { terminal = it }
             }
@@ -73,11 +76,13 @@ class CoreMemoryReadSession(
             bytes.copyInto(requireNotNull(buffers[request.region.id]), offset)
             completedBytes += bytes.size
             requestIndex++
+            advanced = true
             if (requestIndex >= requests.size) {
                 return CoreMemoryReadState.Complete(buffers.mapValues { it.value.copyOf() }).also { terminal = it }
             }
             sendCurrent()
         }
+        if (!advanced) sendCurrent()
         return state()
     }
 
@@ -97,11 +102,7 @@ class CoreMemoryReadSession(
     }
 
     private fun parse(request: CoreMemoryRequest, response: ByteArray): ByteArray {
-        val parts = response.toString(Charsets.US_ASCII)
-            .trim()
-            .trimEnd('\u0000')
-            .split(Regex("\\s+"))
-            .filter(String::isNotEmpty)
+        val parts = responseParts(response)
         require(parts.size >= 3 && parts[0] == "READ_CORE_MEMORY") { "invalid READ_CORE_MEMORY reply" }
         require(parts[1].toLongOrNull(16) == request.address) { "READ_CORE_MEMORY reply address did not match the request" }
         require(!parts[2].equals("ERROR", ignoreCase = true)) {
@@ -117,6 +118,17 @@ class CoreMemoryReadSession(
             value.toInt(16).toByte()
         }
     }
+
+    private fun replyAddress(response: ByteArray): Long? {
+        val parts = responseParts(response)
+        return parts.takeIf { it.size >= 2 && it[0] == "READ_CORE_MEMORY" }?.get(1)?.toLongOrNull(16)
+    }
+
+    private fun responseParts(response: ByteArray): List<String> = response.toString(Charsets.US_ASCII)
+        .trim()
+        .trimEnd('\u0000')
+        .split(Regex("\\s+"))
+        .filter(String::isNotEmpty)
 
     private fun state(): CoreMemoryReadState = terminal
         ?: CoreMemoryReadState.Reading(completedBytes, regions.sumOf(CoreMemoryRegion::size))

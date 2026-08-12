@@ -1,11 +1,28 @@
 import { cleanup, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
-import { BattlePage } from './BattlePage';
+import { BattlePage, rarityAssessment } from './BattlePage';
+
+const rarityAssessments = [
+  [0.5, 'Probably not worth catching. It seems quite weak and may only serve as a stepping stone.'],
+  [1, 'Probably not worth catching. It seems quite weak and may only serve as a stepping stone.'],
+  [1.5, 'A modest find. It could help for a while, but you may soon outgrow it.'],
+  [2, 'A modest find. It could help for a while, but you may soon outgrow it.'],
+  [2.5, 'A solid catch. It should be a dependable addition to your team.'],
+  [3, 'A solid catch. It should be a dependable addition to your team.'],
+  [3.5, 'An impressive catch. It looks strong enough to become a lasting team member.'],
+  [4, 'An impressive catch. It looks strong enough to become a lasting team member.'],
+  [4.5, 'An exceptional catch. This one has the makings of a standout partner.'],
+  [5, 'An exceptional catch. This one has the makings of a standout partner.'],
+] as const;
 
 afterEach(cleanup);
 
 describe('battle layout', () => {
+  it.each(rarityAssessments)('uses the approved recruitment assessment at %s stars', (stars, assessment) => {
+    expect(rarityAssessment(stars)).toBe(assessment);
+  });
+
   it('opens the targeted species in the full Pokédex from the identity header', () => {
     const { catalog, state } = fixture(1);
     const send = vi.fn();
@@ -101,7 +118,7 @@ describe('battle layout', () => {
     expect(identityChildren?.[2].classList.contains('battle-dex-link')).toBe(true);
     expect(container.querySelectorAll('.rarity-star')).toHaveLength(5);
     expect(container.querySelectorAll('.rarity-star-fill[style="width: 50%;"]')).toHaveLength(1);
-    expect(screen.getByLabelText('0.5 of 5 stars; STANDARD innate quality; WEAK for this encounter table')).toBeTruthy();
+    expect(screen.getByLabelText('0.5 of 5 stars; WEAK STANDARD')).toBeTruthy();
   });
 
   it('combines both tiers in the rarity title', () => {
@@ -117,7 +134,7 @@ describe('battle layout', () => {
     expect(screen.queryByText(/CURRENT PARTY/)).toBeNull();
   });
 
-  it('labels unavailable area evidence without changing innate stars', () => {
+  it('uses final stars for recruitment advice without inventing an unknown tier', () => {
     const { catalog, state } = fixture(1);
     state.battleTab = 'RARITY';
     state.battle!.opponents[0].rarity = {
@@ -129,9 +146,9 @@ describe('battle layout', () => {
 
     expect(screen.getByText('TRAINED')).toBeTruthy();
     expect(screen.queryByText(/UNKNOWN TRAINED/)).toBeNull();
-    expect(screen.getByLabelText('2 of 5 stars; TRAINED innate quality; area comparison unavailable')).toBeTruthy();
-    expect(screen.getByText('Area comparison not available.')).toBeTruthy();
-    expect(screen.queryByText(/0x0202|SaveRAM|encounter catalog/i)).toBeNull();
+    expect(screen.getByLabelText('2 of 5 stars; TRAINED')).toBeTruthy();
+    expect(screen.getByText('A modest find. It could help for a while, but you may soon outgrow it.')).toBeTruthy();
+    expect(screen.queryByText(/UNKNOWN|area|SaveRAM|encounter|formula/i)).toBeNull();
   });
 
   it('uses the same generic fallback for a missing Battle Target Entry', () => {
@@ -141,10 +158,10 @@ describe('battle layout', () => {
 
     render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
-    expect(screen.getByText('Pokédex data not available.')).toBeTruthy();
+    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
   });
 
-  it('uses a concise fallback when a unique matching encounter table supplies rarity', () => {
+  it('renders only organic recruitment advice even when technical evidence is present', () => {
     const { catalog, state } = fixture(1);
     state.battleTab = 'RARITY';
     state.battle!.opponents[0].rarity = {
@@ -152,24 +169,11 @@ describe('battle layout', () => {
       areaOutcome: 'APPLIED_UNIQUE_ENCOUNTER', currentAreaBaseId: 0x0202, matchingAreaCount: 0, candidateAreaCount: 1,
     };
 
-    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
     expect(screen.getByText('ORDINARY TRAINED')).toBeTruthy();
-    expect(screen.getByText('Compared with matching wild encounters. First word: level. Second: innate quality.')).toBeTruthy();
-    expect(screen.queryByText(/SaveRAM|0x0202/)).toBeNull();
-  });
-
-  it('uses the resolved road or city name in the rarity explanation', () => {
-    const { catalog, state } = fixture(1);
-    state.battleTab = 'RARITY';
-    state.battle!.opponents[0].rarity = {
-      relativeTier: 'ORDINARY', innateTier: 'TRAINED', baseStars: 2, areaAdjustment: 0, stars: 2,
-      currentAreaName: 'Route 101',
-    };
-
-    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
-
-    expect(screen.getByText('Compared with Route 101 wild encounters. First word: level. Second: innate quality.')).toBeTruthy();
+    expect(screen.getByText('A modest find. It could help for a while, but you may soon outgrow it.')).toBeTruthy();
+    expect(container.querySelector('.rarity-card')?.textContent).not.toMatch(/Compared with|encounter table|First word|Second|Route 101|SaveRAM|0x0202|UNKNOWN/i);
   });
 
   it('reports unavailable rarity without inventing stars when innate data is missing', () => {
@@ -183,6 +187,7 @@ describe('battle layout', () => {
 
     expect(screen.getByText('RARITY UNAVAILABLE')).toBeTruthy();
     expect(container.querySelector('.rarity-stars')).toBeNull();
+    expect(container.querySelector('.rarity-card p')).toBeNull();
   });
 });
 

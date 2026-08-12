@@ -1,4 +1,4 @@
-# DualDex ROM compatibility and properties
+# DualDex ROM Hacks Compatibility
 
 Generated from parser report schema 11 and completed review for APK version 1000011.
 

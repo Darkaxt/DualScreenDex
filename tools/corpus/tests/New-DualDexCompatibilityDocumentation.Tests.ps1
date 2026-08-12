@@ -472,7 +472,8 @@ Describe 'DualDex release documentation and registry handoff contract' {
     $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
     $releaseWorkflow = Join-Path $repoRoot '.github\workflows\release.yml'
     $compatibilityJson = Join-Path $repoRoot 'reports\dualdex-parser-compatibility.json'
-    $propertyJson = Join-Path $repoRoot 'reports\dualdex-rom-properties.json'
+    $propertyJson = Join-Path $repoRoot 'reports\dualdex-rom-hacks-compatibility.json'
+    $propertyMarkdown = Join-Path $repoRoot 'reports\dualdex-rom-hacks-compatibility.md'
     $postReleaseChecklist = Join-Path $repoRoot 'release\POST_RELEASE_CHECKLIST.md'
 
     It 'ships both raw compatibility and grouped property documents in both formats' {
@@ -480,8 +481,8 @@ Describe 'DualDex release documentation and registry handoff contract' {
         foreach ($asset in @(
             'dualdex-parser-compatibility.json',
             'dualdex-parser-compatibility.md',
-            'dualdex-rom-properties.json',
-            'dualdex-rom-properties.md'
+            'dualdex-rom-hacks-compatibility.json',
+            'dualdex-rom-hacks-compatibility.md'
         )) {
             ([regex]::Matches($workflow, [regex]::Escape($asset))).Count | Should BeGreaterThan 2
         }
@@ -492,6 +493,7 @@ Describe 'DualDex release documentation and registry handoff contract' {
         @($compatibility.results).Count | Should Be 50
         $properties.schemaVersion | Should Be 1
         $properties.romCount | Should Be 50
+        (Get-Content -LiteralPath $propertyMarkdown -Raw) | Should Match '^# DualDex ROM Hacks Compatibility'
     }
 
     It 'keeps the physical Thor verification before the existing GAFT registry update' {

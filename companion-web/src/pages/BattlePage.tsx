@@ -58,10 +58,8 @@ function Attack({ catalog, move, state, openMove }: { catalog: Catalog; move?: M
 function RarityStars({ rarity }: { rarity: RarityModel }) {
   if (rarity.stars == null || rarity.innateTier == null) return null;
   const rating = formatStars(rarity.stars);
-  const areaDescription = rarity.relativeTier == null
-    ? 'area comparison unavailable'
-    : `${rarity.relativeTier} for this encounter table`;
-  return <div class="rarity-stars" role="img" aria-label={`${rating} of 5 stars; ${rarity.innateTier} innate quality; ${areaDescription}`}>
+  const title = [rarity.relativeTier, rarity.innateTier].filter(Boolean).join(' ');
+  return <div class="rarity-stars" role="img" aria-label={`${rating} of 5 stars; ${title}`}>
     {[0, 1, 2, 3, 4].map(index => {
       const fill = Math.max(0, Math.min(1, rarity.stars! - index));
       return <span class="rarity-star" aria-hidden="true" key={index}>
@@ -76,10 +74,15 @@ function Rarity({ rarity }: { rarity: RarityModel }) {
   const title = rarity.innateTier == null
     ? 'RARITY UNAVAILABLE'
     : [rarity.relativeTier, rarity.innateTier].filter(Boolean).join(' ');
-  const explanation = rarity.relativeTier == null
-    ? gameplayCopy.areaUnavailable
-    : `Compared with ${rarity.currentAreaName ? `${rarity.currentAreaName} wild encounters` : 'matching wild encounters'}. First word: level. Second: innate quality.`;
-  return <div class="rarity-card"><small>RECRUITMENT IMPRESSION</small><strong>{title}</strong><p>{explanation}</p></div>;
+  return <div class="rarity-card"><small>RECRUITMENT IMPRESSION</small><strong>{title}</strong>{rarity.stars != null && <p>{rarityAssessment(rarity.stars)}</p>}</div>;
+}
+
+export function rarityAssessment(stars: number): string {
+  if (stars <= 1) return 'Probably not worth catching. It seems quite weak and may only serve as a stepping stone.';
+  if (stars <= 2) return 'A modest find. It could help for a while, but you may soon outgrow it.';
+  if (stars <= 3) return 'A solid catch. It should be a dependable addition to your team.';
+  if (stars <= 4) return 'An impressive catch. It looks strong enough to become a lasting team member.';
+  return 'An exceptional catch. This one has the makings of a standout partner.';
 }
 
 function formatStars(stars: number): string {
