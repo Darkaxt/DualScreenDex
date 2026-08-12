@@ -539,9 +539,11 @@ Expected: metadata, ETag, MIME, missing, and traversal cases pass.
 - Modify: `companion-web/src/pages/PokemonDetail.test.tsx`
 - Modify: `companion-web/src/styles.css`
 
-- [ ] **Step 1: Write RED interaction tests**
+- [ ] **Step 1: Write RED presentation and interaction tests**
 
-Assert fit-to-view, zoom controls, pinch scale, bounded pan, pan-not-tap discrimination, current outline, Organic masking of art/labels/hit targets, Discovered reveal, location tap dispatching a validated Area selection, and unavailable-map fallback. Assert an accessible top-right `Open Map` icon in Pokédex and `Open Pokédex` icon in Map, including tooltips and a visibly disabled Map shortcut when no structural map is available. Assert every bound Pokémon Detail Area row offers `Show on Map`, centers/highlights the selected location, and retains the species and Area tab after a Map → Pokédex return.
+Assert the full-screen ROM raster and existing left-aligned two-line `Region` / active-place header, including a `CURRENT` badge only when the active area matches validated current memory. Assert that centered or inline titles, a floating place card, instructional copy, a permanent place rail, and a bottom toolbar are absent. Assert fixed, visible, unclipped zoom out/in/recenter controls and the global Pokédex shortcut at upper right; `Layers`/legend at upper left; and the contextual existing-Pokédex-icon Area action directly below Layers only when a revealed current/selected place is active. Entity-layer controls must be absent without structurally proven entity data.
+
+Assert fit-to-view, pinch scale, bounded pan, pan-not-tap discrimination, an independently highlighted selection plus persistent current-location ring, Discovered reveal, and unavailable-map fallback. Organic fog must be solid black at every outer edge with a natural inward gradient; unrevealed art, labels, and hit targets must not exist interactively. Assert location selection followed by the contextual Area Pokédex action dispatches a validated semantic key and activates Area. Assert an accessible top-right `Open Map` icon in Pokédex and global `Open Pokédex` icon in Map, including tooltips and a visibly disabled Map shortcut when no structural map is available. Assert every bound Pokémon Detail Area row offers `Show on Map`, centers/highlights the selected location, and retains the species and Area tab after a Map → Pokédex return.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -551,11 +553,11 @@ Expected: page and models are missing.
 
 - [ ] **Step 3: Implement the one-canvas overview**
 
-Use pointer events with one transform state, pixelated raster rendering, a semantic overlay layer, and an opaque Organic fog layer. A pointer sequence that pans cannot dispatch selection. Unrevealed locations render neither labels nor interactive buttons.
+Use pointer events with one transform state, pixelated raster rendering, a semantic overlay layer, and an opaque Organic fog layer whose outer boundary remains fully black. A pointer sequence that pans cannot dispatch selection. Unrevealed locations render neither art nor labels nor interactive buttons. Keep fixed controls outside the transformed canvas and respect their measured bounds so zoom and pan cannot clip them.
 
 - [ ] **Step 4: Wire map selection to Area**
 
-Dispatch the catalog-owned location key, let the backend validate/resolve it, then route to Pokédex with Area active. Do not send arbitrary base-ID arrays from the browser.
+Selecting a revealed place highlights and recenters it without hiding the independent current ring. The contextual Pokédex icon dispatches the catalog-owned location key, lets the backend validate/resolve it, then routes to Pokédex with Area active. Do not send arbitrary base-ID arrays from the browser. Omit the contextual action when no revealed current/selected semantic place exists.
 
 - [ ] **Step 5: Add symmetric navigation without clearing context**
 
@@ -564,6 +566,8 @@ Extend the shared header end-action slot using the established icon-button styli
 - [ ] **Step 6: Add Pokémon Detail Area-to-map navigation**
 
 Resolve each Area row to a catalog-owned semantic location key on the backend. The row action stores a map focus request while retaining the open species/detail tab, opens Map, centers/highlights the location, and restores that species context through the reverse shortcut. Invalid or absent bindings fail closed.
+
+Pending explicit presentation approval, a later replacement for this row-action presentation embeds the same ROM-derived map in every Pokémon detail `AREA` tab and highlights every location actually observed for that species. Before implementing it, add RED tests for simultaneous `seenSpeciesByArea` highlights, caught-only/starter/gift/trade exclusion, observation-implied reveal under Organic fog, selection/centering with preserved Pokémon context, contextual Area Pokédex handoff and back-state restoration, and the exact zero-result copy `No known locations yet.` Do not expose parsed potential encounters in Discovered mode without separate semantic approval.
 
 - [ ] **Step 7: Run and verify GREEN**
 

@@ -22,6 +22,19 @@ DualDex uses one `WorldMapPage` rather than separate region and local-map pages.
 
 The map keeps DualDex's current dense, retro-instrument visual language: ROM pixels stay crisp, controls use the existing forest/acid/paper palette, and labels remain compact and legible. Map art is the memorable surface; the surrounding chrome stays restrained.
 
+### Map First presentation contract
+
+The region raster fills the page below the existing left-aligned two-line header. The first line is the ROM-derived region title and the second is the active current or selected place. The page must not replace that header with a centered or inline title, a floating location card, instructional copy, a permanent place rail, or a bottom toolbar.
+
+- `CURRENT` appears beside the place subtitle only when the active place matches the validated live or offline current area. A separately selected place remains highlighted while the current-location ring stays visible at its own location.
+- Visible zoom out, zoom in, recenter, and the global Pokédex shortcut remain fixed and unclipped at the upper right. Recenter targets the active selected place, falling back to current location and then fit-to-region.
+- `Layers` and its compact legend remain fixed and unclipped at the upper left. Optional entity layer types and their controls are present only when structurally proven ROM data exists; unsupported trainers, items, or facilities are omitted rather than shown empty or inferred.
+- The contextual Area Pokédex action uses the existing Pokédex icon directly below `Layers`, has an accessible `Open Area Pokédex` label and tooltip, and appears only when a revealed current or selected place is active. It is not a text button, toolbar, or card.
+- The global Pokédex shortcut at upper right changes screens without changing Area state. The contextual Area Pokédex action validates the active semantic location, opens Pokédex with `AREA` active, and preserves map viewport and selection.
+- Organic fog is solid black at every outer edge and falls away through a natural inward gradient around visited semantic cells. Unvisited art, labels, and hit targets are unavailable, not merely dimmed or made transparent. Discovered mode shows all structurally resolved locations.
+
+These placements and absences are part of the user-facing contract. Centered or inline titles, bottom toolbars, floating location cards, instructional copy, clipped fixed controls, translucent outer fog, and controls for unproven entity layers are regressions.
+
 ### Area selection and the Pokédex
 
 Every selectable map location carries one or more explicit encounter `baseAreaId` values. Tapping a revealed, resolved location:
@@ -37,6 +50,8 @@ The Pokédex browse toolbar shows an Area context chip whenever the Area filter 
 Map and Pokédex expose a symmetric top-right shortcut using the existing compact icon-action language. Pokédex shows a map icon with an accessible `Open Map` label and tooltip; Map shows a Pokédex icon with an accessible `Open Pokédex` label and tooltip. These shortcuts change only the visible screen. They must not clear `selectedAreaId`, change the Area filter, replace the active/current base IDs, or reset the map viewport, so a map-selected Area survives Map → Pokédex → Map and Pokédex → Map → Pokédex round trips. The Map shortcut remains visibly disabled with an explanatory tooltip when no structurally resolved map is available, while the ordinary Pokédex Area experience remains usable.
 
 Every location row in a Pokémon Detail Area tab also exposes an accessible `Show on Map` action. It sends only the catalog-owned semantic location key, preserves the open species as detail context, and opens the same `WorldMapPage` centered on and highlighting that location. Returning to the Pokédex restores the same species detail tab and Area context. Rows without a structurally proven location binding omit or disable the action rather than guessing from their label.
+
+> Pending presentation approval: replace the location-row-only presentation with the same ROM-derived world map embedded in every Pokémon detail `AREA` tab. It would simultaneously highlight only base areas present in per-area observation knowledge for that species, apply Organic fog while treating an observation as proof that its area is revealed, preserve Pokémon context while an area is selected/centered, and let the contextual Pokédex icon open that selected Area filter. Caught state and inferred starter, gift, or trade provenance would never add a highlight. With no observed areas the map would remain visible with the exact copy `No known locations yet.` Potential parsed encounters in Discovered mode remain excluded unless separately approved. Do not implement this paragraph until that presentation approval is explicit.
 
 Map availability is independent of the Area filter. A ROM whose map art cannot be resolved still gets the normal Area filter and Area context chip whenever its encounter/current-location data is valid.
 
