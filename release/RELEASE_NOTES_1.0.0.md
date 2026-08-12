@@ -2,7 +2,15 @@
 
 DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
-## RC10 update
+## RC12 update
+
+- Makes live-battle discovery polling device-configurable from 1–20 ms (5 ms by default), while retaining the one-request-at-a-time RetroArch network protocol and using a lower-frequency cached battle window after discovery.
+- Keeps a validated battle-memory layout across normal battle exits so the next encounter can be detected without repeating a full memory scan.
+- Prevents repeated battle samples from forcing the companion back to Combat after the user opens the Pokédex or another manual view.
+- Replaces the single rarity word with a two-part area-relative and innate title, plus a five-star display with half-star level adjustments. The relative tier uses the weighted expected level of the exact current-area encounter table capable of producing the observed Pokémon.
+- Repairs the AYN Thor WRITE_SETTINGS permission return flow and reports whether top-screen controller focus is active, requires permission, or is unavailable.
+
+## Earlier RC updates
 
 - Adds catalog-validated Generation II single-battle detection from Gold/Silver/Crystal WRAM, including selected attacks, automatic targets, DV rarity, effectiveness, opponent move-frequency learning, and automatic battle exit.
 - Adds an optional AYN Thor setting that keeps controller focus on the top screen while DualDex is docked on the secondary display and restores the prior focus mode when released.
