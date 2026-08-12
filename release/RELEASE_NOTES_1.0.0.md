@@ -2,6 +2,16 @@
 
 DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
+## RC20 map update
+
+- Adds a full-screen, ROM-derived Map First view with zoom, pan, recenter, region selection where applicable, and a compact route into the Area Pokédex.
+- Adds Organic fog of war driven by validated visited-area knowledge. Unknown map cells, labels, and hit targets remain concealed, with fully black outer boundaries.
+- Adds symmetric Map-to-Pokédex and Pokédex-to-Map navigation while preserving the selected or current area context.
+- Adds a Pokémon Area map showing the locations where that species has actually been observed.
+- Changes the Organic Area Pokédex roster to use parsed encounter slots: unseen encounter species appear as non-interactive black silhouettes with masked names and Pokédex numbers, while gifts and starters absent from the encounter table do not leak into the area.
+- Materializes validated ROM map rasters and geometry for supported Generation I, II, and III layouts and fails closed when map authority is unavailable or ambiguous.
+- Excludes the experimental ARM7TDMI/THUMB ability-mechanics work. Its Modern-only proof did not pass the required first-50 generalization gate and is documented separately rather than shipped.
+
 ## RC19 update
 
 - Decodes the absolute Generation III main-state address, live combat byte, and one-bit lifecycle mask from matched ROM Thumb set/clear operations. Runtime polling now reads that parser-proven byte directly instead of rediscovering a callback-shaped RAM structure or assuming a fixed field offset.
