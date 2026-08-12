@@ -79,7 +79,6 @@ class ProductionCompanionRuntime(
     @Volatile private var settingsWritesEnabled = true
     @Volatile private var retroArch = RetroArchView()
     @Volatile private var saveRam = SaveRamView()
-    @Volatile private var thorFocusStatus = "UNAVAILABLE"
     private var detectedLevelUpRulesetId: String? = null
     private var levelUpRulesetDetectionResolved = false
     private var catalogPublicationInProgress = false
@@ -206,7 +205,6 @@ class ProductionCompanionRuntime(
             rulesetAssumed = snapshot.settings.ruleset == "AUTO" && !levelUpRulesetDetectionResolved,
             retroArch = retroArch,
             saveRam = saveRam,
-            thorFocusStatus = thorFocusStatus,
         ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
     }
 
@@ -218,14 +216,6 @@ class ProductionCompanionRuntime(
 
     fun updateSaveRam(state: SaveRamView) {
         saveRam = state
-    }
-
-    @Synchronized
-    fun updateThorFocusStatus(status: String) {
-        require(status in THOR_FOCUS_STATUSES) { "unknown Thor focus status: $status" }
-        if (thorFocusStatus == status) return
-        thorFocusStatus = status
-        cachedState = null
     }
 
     fun updateOverlayScale(scale: Double) {
@@ -477,7 +467,6 @@ class ProductionCompanionRuntime(
                     theme = values["theme"]?.let { Theme.valueOf(it.uppercase()) } ?: current.theme,
                     displayTarget = values["displayTarget"]?.let { DisplayTarget.valueOf(it.uppercase()) } ?: current.displayTarget,
                     overlayScale = current.overlayScale,
-                    thorTopScreenFocus = values["thorTopScreenFocus"]?.toBooleanStrictOrNull() ?: current.thorTopScreenFocus,
                     battlePollingIntervalMs = values["battlePollingIntervalMs"]?.toIntOrNull()?.coerceIn(1, 20)
                         ?: current.battlePollingIntervalMs,
                 )
@@ -682,7 +671,4 @@ class ProductionCompanionRuntime(
         val view: StateView,
     )
 
-    private companion object {
-        val THOR_FOCUS_STATUSES = setOf("ACTIVE", "PERMISSION REQUIRED", "UNAVAILABLE")
-    }
 }

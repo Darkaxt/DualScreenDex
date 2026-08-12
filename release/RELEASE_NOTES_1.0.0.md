@@ -8,12 +8,11 @@ DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-fa
 - Keeps a validated battle-memory layout across normal battle exits so the next encounter can be detected without repeating a full memory scan.
 - Prevents repeated battle samples from forcing the companion back to Combat after the user opens the Pokédex or another manual view.
 - Replaces the single rarity word with a two-part area-relative and innate title, plus a five-star display with half-star level adjustments. The relative tier uses the weighted expected level of the exact current-area encounter table capable of producing the observed Pokémon.
-- Repairs the AYN Thor WRITE_SETTINGS permission return flow and reports whether top-screen controller focus is active, requires permission, or is unavailable.
+- Removes the unsupported AYN Thor controller-focus override and its privileged permission request after live firmware classified the vendor setting as secure.
 
 ## Earlier RC updates
 
 - Adds catalog-validated Generation II single-battle detection from Gold/Silver/Crystal WRAM, including selected attacks, automatic targets, DV rarity, effectiveness, opponent move-frequency learning, and automatic battle exit.
-- Adds an optional AYN Thor setting that keeps controller focus on the top screen while DualDex is docked on the secondary display and restores the prior focus mode when released.
 - Hardens zero-profile ROM parsing for relocated and expanded Gen III tables, move-acquisition variants, sprites, descriptions, and ROM-native record widths.
 - Publishes a reviewed first-50 compatibility report plus grouped ROM-property documents. Indices 1-33 and the three worst later offenders were rerun with the final parser; the other 14 later observations retain the exact base run after reviewed non-impact proof, matching the explicitly bounded review strategy.
 

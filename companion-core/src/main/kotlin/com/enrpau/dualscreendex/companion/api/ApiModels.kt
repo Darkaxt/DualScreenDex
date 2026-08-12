@@ -154,7 +154,6 @@ data class StateView(
     val loading: CatalogLoadingView,
     val retroArch: RetroArchView = RetroArchView(),
     val saveRam: SaveRamView = SaveRamView(),
-    val thorFocusStatus: String = "UNAVAILABLE",
 )
 data class RetroArchView(
     val storageGrant: String = "MISSING",
@@ -363,7 +362,6 @@ object ApiViewBuilder {
         rulesetAssumed: Boolean = true,
         retroArch: RetroArchView = RetroArchView(),
         saveRam: SaveRamView = SaveRamView(),
-        thorFocusStatus: String = "UNAVAILABLE",
     ): StateView {
         val currentAreaIds = snapshot.ledger.currentAreaBaseId?.let { baseId ->
             catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }?.sorted()
@@ -459,7 +457,6 @@ object ApiViewBuilder {
             ),
             retroArch,
             saveRam,
-            thorFocusStatus,
         )
     }
 

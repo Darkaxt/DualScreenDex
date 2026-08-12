@@ -34,7 +34,6 @@ class SettingsRepositoryTest {
             theme = Theme.DARK,
             displayTarget = DisplayTarget.EXTERNAL,
             overlayScale = 0.65,
-            thorTopScreenFocus = true,
             battlePollingIntervalMs = 1,
         )
 
@@ -64,7 +63,6 @@ class SettingsRepositoryTest {
         assertEquals(Theme.DARK, settings.theme)
         assertEquals(DisplayTarget.AUTO, settings.displayTarget)
         assertEquals(1.0, settings.overlayScale, 0.0)
-        assertEquals(false, settings.thorTopScreenFocus)
     }
 
     @Test
@@ -114,7 +112,6 @@ class SettingsRepositoryTest {
                 theme = Theme.DARK,
                 displayTarget = DisplayTarget.EXTERNAL,
                 overlayScale = 0.7,
-                thorTopScreenFocus = true,
             ),
         )
         repository.writeForRom(
@@ -133,7 +130,6 @@ class SettingsRepositoryTest {
                 theme = Theme.LIGHT,
                 displayTarget = DisplayTarget.HANDHELD,
                 overlayScale = 0.9,
-                thorTopScreenFocus = false,
             ),
         )
 
@@ -165,8 +161,6 @@ class SettingsRepositoryTest {
         assertEquals(settingsA.displayTarget, settingsB.displayTarget)
         assertEquals(0.9, settingsA.overlayScale, 0.0)
         assertEquals(settingsA.overlayScale, settingsB.overlayScale, 0.0)
-        assertFalse(settingsA.thorTopScreenFocus)
-        assertEquals(settingsA.thorTopScreenFocus, settingsB.thorTopScreenFocus)
     }
 
     @Test
@@ -238,7 +232,7 @@ class SettingsRepositoryTest {
         assertEquals(Theme.DARK, global.theme)
         assertEquals(DisplayTarget.EXTERNAL, global.displayTarget)
         assertEquals(0.65, global.overlayScale, 0.0)
-        assertTrue(global.thorTopScreenFocus)
+        assertFalse(requireNotNull(document).contains("thorTopScreenFocus"))
         assertEquals(global.copy(ruleset = "modern"), lastRom)
         val migratedDocument = document
 

@@ -350,11 +350,10 @@ class ProductionCompanionRuntimeTest {
 
         val state = runtime.action(
             "SETTINGS",
-            mapOf("displayMode" to "OVERLAY", "thorTopScreenFocus" to "true"),
+            mapOf("displayMode" to "OVERLAY"),
         )
 
         assertEquals("OVERLAY", state.settings.let { it as com.enrpau.dualscreendex.companion.model.CompanionSettings }.displayMode.name)
-        assertTrue((state.settings as CompanionSettings).thorTopScreenFocus)
         runtime.close()
     }
 

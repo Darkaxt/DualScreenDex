@@ -23,7 +23,6 @@ data class CompanionSettings(
     val theme: Theme = Theme.GAME,
     val displayTarget: DisplayTarget = DisplayTarget.AUTO,
     val overlayScale: Double = 1.0,
-    val thorTopScreenFocus: Boolean = false,
     val battlePollingIntervalMs: Int = 5,
 )
 

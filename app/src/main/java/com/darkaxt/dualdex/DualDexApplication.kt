@@ -50,8 +50,6 @@ class DualDexApplication : Application() {
 
     fun currentDisplayMode(): DisplayMode = settingsStore?.readForRom(activeCatalogSha256)?.displayMode ?: DisplayMode.DOCKED
 
-    fun currentThorTopScreenFocus(): Boolean = settingsStore?.readGlobal()?.thorTopScreenFocus ?: false
-
     fun currentOverlayScale(): Double = overlaySizeStore?.readScale() ?: 1.0
 
     fun updateOverlayScale(scale: Double) {
@@ -66,16 +64,6 @@ class DualDexApplication : Application() {
 
     fun activityPaused(activity: MainActivity) {
         if (resumedActivity?.get() === activity) resumedActivity = null
-    }
-
-    fun requestThorFocusSync(requestPermission: Boolean, allowPermissionRequest: Boolean = false) {
-        resumedActivity?.get()?.runOnUiThread {
-            resumedActivity?.get()?.syncThorFocus(requestPermission, allowPermissionRequest)
-        }
-    }
-
-    fun updateThorFocusStatus(status: String) {
-        loopbackServer?.updateThorFocusStatus(status)
     }
 
     private fun requestDisplayTarget(target: String) {
@@ -164,16 +152,9 @@ class DualDexApplication : Application() {
                         cache.clearInactive(runtime.catalogHash())
                         true
                     }
-                    type.equals("SETTINGS", ignoreCase = true) &&
-                        (values["displayTarget"] != null || values["thorTopScreenFocus"] != null) -> {
+                    type.equals("SETTINGS", ignoreCase = true) && values["displayTarget"] != null -> {
                         runtime.action(type, values)
                         values["displayTarget"]?.let(::requestDisplayTarget)
-                        if (values["thorTopScreenFocus"] != null) {
-                            requestThorFocusSync(
-                                requestPermission = true,
-                                allowPermissionRequest = true,
-                            )
-                        }
                         true
                     }
                     else -> false

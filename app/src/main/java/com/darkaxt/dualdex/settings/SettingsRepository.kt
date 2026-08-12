@@ -73,7 +73,6 @@ class SettingsRepository(
         val globals = state.globalDefaults.copy(
             displayTarget = sanitized.displayTarget,
             overlayScale = sanitized.overlayScale,
-            thorTopScreenFocus = sanitized.thorTopScreenFocus,
             battlePollingIntervalMs = sanitized.battlePollingIntervalMs,
         )
         val override = StoredSettings.difference(sanitized, globals)
@@ -192,7 +191,6 @@ class SettingsRepository(
         } else {
             null
         },
-        thorTopScreenFocus = if (includeDeviceFields) objectValue.booleanValue("thorTopScreenFocus") else null,
         battlePollingIntervalMs = if (includeDeviceFields) objectValue.intValue("battlePollingIntervalMs")?.coerceIn(1, 20) else null,
     )
 
@@ -265,7 +263,6 @@ class SettingsRepository(
         val theme: String? = null,
         val displayTarget: String? = null,
         val overlayScale: Double? = null,
-        val thorTopScreenFocus: Boolean? = null,
         val battlePollingIntervalMs: Int? = null,
     ) {
         fun applyTo(fallback: CompanionSettings): CompanionSettings = CompanionSettings(
@@ -282,7 +279,6 @@ class SettingsRepository(
             theme = theme?.let(Theme::valueOf) ?: fallback.theme,
             displayTarget = displayTarget?.let(DisplayTarget::valueOf) ?: fallback.displayTarget,
             overlayScale = overlayScale ?: fallback.overlayScale,
-            thorTopScreenFocus = thorTopScreenFocus ?: fallback.thorTopScreenFocus,
             battlePollingIntervalMs = battlePollingIntervalMs ?: fallback.battlePollingIntervalMs,
         )
 
@@ -303,7 +299,6 @@ class SettingsRepository(
                 theme = settings.theme.name,
                 displayTarget = settings.displayTarget.name,
                 overlayScale = settings.overlayScale,
-                thorTopScreenFocus = settings.thorTopScreenFocus,
                 battlePollingIntervalMs = settings.battlePollingIntervalMs,
             )
 

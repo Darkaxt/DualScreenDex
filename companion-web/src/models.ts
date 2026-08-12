@@ -75,7 +75,6 @@ export interface Settings {
   theme?: 'GAME' | 'DARK' | 'LIGHT';
   displayTarget?: 'AUTO' | 'HANDHELD' | 'EXTERNAL';
   overlayScale?: number;
-  thorTopScreenFocus?: boolean;
   battlePollingIntervalMs?: number;
 }
 
@@ -154,7 +153,6 @@ export interface State {
   loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number };
   retroArch?: RetroArchState;
   saveRam?: SaveRamState;
-  thorFocusStatus?: 'ACTIVE' | 'PERMISSION REQUIRED' | 'UNAVAILABLE';
 }
 
 export interface Bootstrap {
