@@ -12,11 +12,24 @@ data class Arm7MemoryTrace(
     val value: Long,
 )
 
-class Arm7Memory(romBytes: ByteArray) {
+data class Arm7HostMemoryRegion(
+    val name: String,
+    val start: Long,
+    val bytes: ByteArray,
+    val writable: Boolean,
+) {
+    init { require(bytes.isNotEmpty()) }
+}
+
+class Arm7Memory(
+    romBytes: ByteArray,
+    hostRegions: List<Arm7HostMemoryRegion> = emptyList(),
+) {
     private val rom = romBytes.copyOf()
     private val ewram = ByteArray(EWRAM_SIZE)
     private val iwram = ByteArray(IWRAM_SIZE)
     private val trace = mutableListOf<Arm7MemoryTrace>()
+    private val hostRegions = hostRegions.map { it.copy(bytes = it.bytes.copyOf()) }
     private var sequence = 0L
 
     val romImage: RomImage = RomImage(rom)
@@ -92,8 +105,16 @@ class Arm7Memory(romBytes: ByteArray) {
             if (write) throw Arm7MemoryAccessException("write to immutable ROM at 0x${address.toString(16)}")
             return rom to offset
         }
-        within(EWRAM_START, ewram.size)?.let { return ewram to it }
-        within(IWRAM_START, iwram.size)?.let { return iwram to it }
+        if (address ushr 24 == 0x02L) return ewram to ((address - EWRAM_START).toInt() and (EWRAM_SIZE - 1))
+        if (address ushr 24 == 0x03L) return iwram to ((address - IWRAM_START).toInt() and (IWRAM_SIZE - 1))
+        hostRegions.forEach { region ->
+            within(region.start, region.bytes.size)?.let { offset ->
+                if (write && !region.writable) {
+                    throw Arm7MemoryAccessException("write to read-only host region ${region.name} at 0x${address.toString(16)}")
+                }
+                return region.bytes to offset
+            }
+        }
         throw Arm7MemoryAccessException("unmapped ARM7 memory at 0x${address.toString(16)} length=$length")
     }
 

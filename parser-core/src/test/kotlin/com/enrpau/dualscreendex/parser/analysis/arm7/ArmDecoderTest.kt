@@ -182,8 +182,8 @@ class ArmDecoderTest {
         assertUndefined(decode(0xE00F0291), "PC") // MUL writes PC
         assertUndefined(decode(0xE0810F12), "shift") // register shift using PC as Rs
         assertUndefined(decode(0xE3A10002 or (1L shl 16)), "reserved Rn") // MOV with nonzero Rn field
-        assertUndefined(decode(0xE4900004), "writeback") // LDR r0,[r0],#4
-        assertUndefined(decode(0xE8B00003), "base") // LDMIA r0!,{r0,r1}
+        assertTrue(decode(0xE4900004) is Arm7DecodeResult.Decoded) // ARM7 keeps the loaded value.
+        assertTrue(decode(0xE8B00003) is Arm7DecodeResult.Decoded) // ARM7 keeps the loaded base value.
     }
 
     @Test

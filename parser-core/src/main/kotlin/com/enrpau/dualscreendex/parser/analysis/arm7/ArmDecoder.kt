@@ -167,7 +167,7 @@ object ArmDecoder {
         val rn = register(bits(raw, 16, 4))
         val rd = register(bits(raw, 12, 4))
         val compare = opcode in 8..11
-        if (compare && (!setFlags || rd != Arm7Register.R0)) {
+        if (compare && (!setFlags || rd !in setOf(Arm7Register.R0, Arm7Register.PC))) {
             return undefined(offset, raw, "test/compare encoding requires S=1 and reserved Rd=0")
         }
         if (opcode in setOf(13, 15) && rn != Arm7Register.R0) {
@@ -218,7 +218,8 @@ object ArmDecoder {
                 10 -> Arm7CompareOperation.COMPARE
                 else -> Arm7CompareOperation.COMPARE_NEGATIVE
             }
-            val flags = if (opcode in 8..9) NZC else NZCV
+            val restoresStatus = rd == Arm7Register.PC
+            val flags = if (restoresStatus) Arm7Flag.entries.toSet() else if (opcode in 8..9) NZC else NZCV
             return decoded(
                 Arm7Compare(
                     offset, 4, raw, Arm7InstructionSet.ARM,
@@ -227,6 +228,7 @@ object ArmDecoder {
                     first = registerOperand(rn, if (registerShift) 12 else 8),
                     second = operand2,
                     flagsWritten = flags,
+                    restoresStatusFromSpsr = restoresStatus,
                 ),
             )
         }
@@ -251,6 +253,7 @@ object ArmDecoder {
                 second = operand2,
                 flagsWritten = flags,
                 additionalFlagsRead = additionalFlagsRead,
+                restoresStatusFromSpsr = setFlags && rd == Arm7Register.PC,
             ),
         )
     }
@@ -265,12 +268,6 @@ object ArmDecoder {
         val base = register(bits(raw, 16, 4))
         val value = register(bits(raw, 12, 4))
         val writeBack = explicitWriteBack || !preIndexed
-        if (load && writeBack && base == value) {
-            return undefined(offset, raw, "load writeback cannot use the same base and destination")
-        }
-        if (!load && writeBack && base == value) {
-            return undefined(offset, raw, "store writeback base/value alias is architecturally unpredictable")
-        }
         if (byte && value == Arm7Register.PC) {
             return undefined(offset, raw, "byte transfer cannot use PC as the value register")
         }
@@ -340,8 +337,6 @@ object ArmDecoder {
         val sh = bits(raw, 5, 2)
         val writeBack = explicitWriteBack || !preIndexed
         if (value == Arm7Register.PC) return undefined(offset, raw, "halfword/signed transfer cannot use PC as destination/source")
-        if (load && writeBack && base == value) return undefined(offset, raw, "load writeback cannot use the same base and destination")
-        if (!load && writeBack && base == value) return undefined(offset, raw, "store writeback base/value alias is architecturally unpredictable")
         if (!load && sh != 1) return undefined(offset, raw, "signed halfword/byte store encoding is undefined")
         val signed = load && sh in 2..3
         val width = if (sh == 2) Arm7MemoryWidth.BYTE else Arm7MemoryWidth.HALFWORD
@@ -390,9 +385,6 @@ object ArmDecoder {
         if (base == Arm7Register.PC) return undefined(offset, raw, "block transfer cannot use PC as base")
         val mask = bits(raw, 0, 16)
         val encodedRegisters = (0..15).filter { mask and (1 shl it) != 0 }.map(::register)
-        if (load && writeBack && base in encodedRegisters) {
-            return undefined(offset, raw, "LDM writeback with base in register list is architecturally unpredictable")
-        }
         val empty = encodedRegisters.isEmpty()
         return decoded(
             Arm7BlockTransfer(
@@ -449,7 +441,6 @@ object ArmDecoder {
         immediate: Arm7RotatedImmediate?,
     ): Arm7DecodeResult {
         val fieldMask = bits(raw, 16, 4)
-        if (fieldMask == 0) return undefined(offset, raw, "MSR requires at least one status field")
         return decoded(
             Arm7StatusTransfer(
                 offset, 4, raw, Arm7InstructionSet.ARM, condition,

@@ -35,7 +35,9 @@ data class Arm7DataProcessing(
     val second: Arm7Operand,
     override val flagsWritten: Set<Arm7Flag> = emptySet(),
     val additionalFlagsRead: Set<Arm7Flag> = emptySet(),
+    val restoresStatusFromSpsr: Boolean = false,
 ) : Arm7Instruction {
+    init { require(!restoresStatusFromSpsr || destination == Arm7Register.PC) }
     override val registersRead: Set<Arm7Register> =
         (first?.registersRead ?: emptySet()) + second.registersRead
     override val registersWritten: Set<Arm7Register> = setOf(destination)
@@ -61,6 +63,7 @@ data class Arm7Compare(
     val first: Arm7Operand,
     val second: Arm7Operand,
     override val flagsWritten: Set<Arm7Flag>,
+    val restoresStatusFromSpsr: Boolean = false,
 ) : Arm7Instruction {
     override val registersRead: Set<Arm7Register> = first.registersRead + second.registersRead
     override val registersWritten: Set<Arm7Register> = emptySet()

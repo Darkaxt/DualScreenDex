@@ -54,14 +54,7 @@ class Arm7Machine(
                         )
                     }
                 }
-                is Arm7StatusTransfer -> return Arm7ExecutionResult.UnsupportedInstruction(
-                    executed,
-                    state.copy(),
-                    Arm7DecodeResult.UnsupportedArchitecture(
-                        instruction.offset, instruction.size, instruction.raw,
-                        "status register execution is not available in bounded user-mode analysis",
-                    ),
-                )
+                is Arm7StatusTransfer -> executeStatus(instruction)
             }
             executed++
             Arm7ExecutionResult.Stepped(instruction, executed, state.copy())
@@ -107,11 +100,20 @@ class Arm7Machine(
             Arm7DataOperation.BIT_CLEAR -> ValueWithCarry(a and b.inv(), second.carry)
             Arm7DataOperation.MULTIPLY -> ValueWithCarry((a * b) and MASK, null)
         }
-        writeResult(instruction.destination, result.value, instruction.instructionSet)
-        updateFlags(instruction.flagsWritten, result)
+        if (instruction.restoresStatusFromSpsr) {
+            state.restoreCpsrFromSpsr()
+            writeResult(instruction.destination, result.value, state.instructionSet)
+        } else {
+            writeResult(instruction.destination, result.value, instruction.instructionSet)
+            updateFlags(instruction.flagsWritten, result)
+        }
     }
 
     private fun executeCompare(instruction: Arm7Compare, pc: Long) {
+        if (instruction.restoresStatusFromSpsr) {
+            state.restoreCpsrFromSpsr()
+            return
+        }
         val first = operand(instruction.first, pc).value
         val second = operand(instruction.second, pc)
         val result = when (instruction.operation) {
@@ -147,7 +149,7 @@ class Arm7Machine(
         val resolved = resolveAddress(instruction.address, pc)
         if (instruction.load) {
             val value = when (instruction.width) {
-                Arm7MemoryWidth.BYTE -> memory.read8(resolved.effective)
+                Arm7MemoryWidth.BYTE -> memory.read8(resolved.effective).let { if (instruction.signed) signExtend(it, 8) else it }
                 Arm7MemoryWidth.HALFWORD -> loadHalfword(resolved.effective, instruction.signed, instruction.unalignedPolicy)
                 Arm7MemoryWidth.WORD -> loadWord(resolved.effective, instruction.unalignedPolicy)
             }
@@ -161,7 +163,9 @@ class Arm7Machine(
                 Arm7MemoryWidth.WORD -> memory.write32(resolved.effective and -4L, value)
             }
         }
-        resolved.writeBack?.let { (register, value) -> state[register] = value }
+        resolved.writeBack?.let { (register, value) ->
+            if (!instruction.load || register != instruction.valueRegister) state[register] = value
+        }
     }
 
     private fun executeSwap(instruction: Arm7Swap) {
@@ -178,8 +182,8 @@ class Arm7Machine(
             instruction.registers.forEach { register ->
                 val value = memory.read32(address and -4L)
                 if (register == Arm7Register.PC) {
-                    state.instructionSet = if (value and 1L != 0L) Arm7InstructionSet.THUMB else Arm7InstructionSet.ARM
-                    state.pc = if (state.instructionSet == Arm7InstructionSet.THUMB) value and -2L else value and -4L
+                    state.instructionSet = Arm7InstructionSet.THUMB
+                    state.pc = value and -2L
                 } else {
                     state[register] = value
                 }
@@ -200,6 +204,11 @@ class Arm7Machine(
     private fun executeBlock(instruction: Arm7BlockTransfer) {
         val count = if (instruction.emptyListArm7Quirk) 16 else instruction.registers.size
         val base = state[instruction.base]
+        val finalBase = when (instruction.addressing) {
+            Arm7BlockAddressing.INCREMENT_AFTER, Arm7BlockAddressing.INCREMENT_BEFORE -> base + count * 4L
+            Arm7BlockAddressing.DECREMENT_AFTER, Arm7BlockAddressing.DECREMENT_BEFORE -> base - count * 4L
+        }
+        val lowestRegister = instruction.registers.minBy { it.index }
         var address = when (instruction.addressing) {
             Arm7BlockAddressing.INCREMENT_AFTER -> base
             Arm7BlockAddressing.INCREMENT_BEFORE -> base + 4
@@ -209,18 +218,22 @@ class Arm7Machine(
         instruction.registers.forEach { register ->
             if (instruction.load) {
                 val value = memory.read32(address and -4L)
-                if (register == Arm7Register.PC) state.pc = value and -4L else state[register] = value
+                if (register == Arm7Register.PC) state.pc = value and -4L
+                else if (instruction.userModeRegisters) state.setUserRegister(register, value)
+                else state[register] = value
             } else {
-                val value = if (register == Arm7Register.PC) state.pc - 4 + instruction.pcStoreBias else state[register]
+                val value = when {
+                    register == Arm7Register.PC -> state.pc - 4 + instruction.pcStoreBias
+                    register == instruction.base && instruction.writeBack && register != lowestRegister -> finalBase
+                    instruction.userModeRegisters -> state.userRegister(register)
+                    else -> state[register]
+                }
                 memory.write32(address and -4L, value)
             }
             address += 4
         }
-        if (instruction.writeBack) {
-            state[instruction.base] = when (instruction.addressing) {
-                Arm7BlockAddressing.INCREMENT_AFTER, Arm7BlockAddressing.INCREMENT_BEFORE -> base + count * 4L
-                Arm7BlockAddressing.DECREMENT_AFTER, Arm7BlockAddressing.DECREMENT_BEFORE -> base - count * 4L
-            }
+        if (instruction.writeBack && !(instruction.load && instruction.base in instruction.registers)) {
+            state[instruction.base] = finalBase
         }
     }
 
@@ -236,6 +249,21 @@ class Arm7Machine(
         if (instruction.link) state[Arm7Register.LR] = state.pc or 1L
         if (instruction.exchange) state.instructionSet = if (target and 1L != 0L) Arm7InstructionSet.THUMB else Arm7InstructionSet.ARM
         state.pc = if (state.instructionSet == Arm7InstructionSet.THUMB) target and -2L else target and -4L
+    }
+
+    private fun executeStatus(instruction: Arm7StatusTransfer) {
+        if (instruction.toStatus) {
+            val value = instruction.immediate?.value
+                ?: state[requireNotNull(instruction.valueRegister)]
+            if (instruction.statusRegister == Arm7StatusRegister.SPSR) {
+                state.writeSpsr(value, instruction.fieldMask)
+            } else {
+                state.writeCpsr(value, instruction.fieldMask)
+            }
+        } else {
+            state[requireNotNull(instruction.valueRegister)] =
+                if (instruction.statusRegister == Arm7StatusRegister.SPSR) state.spsr() else state.cpsr()
+        }
     }
 
     private fun operand(operand: Arm7Operand, pc: Long): ValueWithCarry = when (operand) {
@@ -403,6 +431,5 @@ class Arm7Machine(
 
     private data class ValueWithCarry(val value: Long, val carry: Boolean?, val overflow: Boolean? = null)
     private data class ResolvedAddress(val effective: Long, val writeBack: Pair<Arm7Register, Long>?)
-
     private companion object { const val MASK = 0xFFFF_FFFFL }
 }
