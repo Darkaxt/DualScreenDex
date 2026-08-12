@@ -527,13 +527,18 @@ Expected: metadata, ETag, MIME, missing, and traversal cases pass.
 **Files:**
 - Create: `companion-web/src/pages/WorldMapPage.tsx`
 - Create: `companion-web/src/pages/WorldMapPage.test.tsx`
+- Modify: `companion-web/src/components.tsx`
+- Modify: `companion-web/src/components.test.ts`
 - Modify: `companion-web/src/models.ts`
 - Modify: `companion-web/src/App.tsx`
+- Modify: `companion-web/src/App.production.test.tsx`
+- Modify: `companion-web/src/pages/PokedexBrowse.tsx`
+- Modify: `companion-web/src/pages/PokedexBrowse.test.tsx`
 - Modify: `companion-web/src/styles.css`
 
 - [ ] **Step 1: Write RED interaction tests**
 
-Assert fit-to-view, zoom controls, pinch scale, bounded pan, pan-not-tap discrimination, current outline, Organic masking of art/labels/hit targets, Discovered reveal, location tap dispatching a validated Area selection, and unavailable-map fallback.
+Assert fit-to-view, zoom controls, pinch scale, bounded pan, pan-not-tap discrimination, current outline, Organic masking of art/labels/hit targets, Discovered reveal, location tap dispatching a validated Area selection, and unavailable-map fallback. Assert an accessible top-right `Open Map` icon in Pokédex and `Open Pokédex` icon in Map, including tooltips and a visibly disabled Map shortcut when no structural map is available.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -549,11 +554,15 @@ Use pointer events with one transform state, pixelated raster rendering, a seman
 
 Dispatch the catalog-owned location key, let the backend validate/resolve it, then route to Pokédex with Area active. Do not send arbitrary base-ID arrays from the browser.
 
-- [ ] **Step 5: Run and verify GREEN**
+- [ ] **Step 5: Add symmetric navigation without clearing context**
 
-Run: `npm test -- --run src/pages/WorldMapPage.test.tsx src/pages/PokedexBrowse.test.tsx`
+Extend the shared header end-action slot using the established icon-button styling. Map/Pokédex shortcut actions may change only `screen`; they must preserve `selectedAreaId`, `filter`, current/active Area fields, and the in-memory map viewport. Add round-trip tests for Map → Pokédex → Map and Pokédex → Map → Pokédex with a selected non-current Area, plus a current-Area control.
 
-Expected: map interactions and Area handoff pass.
+- [ ] **Step 6: Run and verify GREEN**
+
+Run: `npm test -- --run src/pages/WorldMapPage.test.tsx src/pages/PokedexBrowse.test.tsx src/App.production.test.tsx src/components.test.ts`
+
+Expected: map interactions, Area handoff, accessible shortcuts, disabled fallback, and context-preserving round trips pass.
 
 ### Task 13: Verify Stage 1 live contract
 
@@ -570,7 +579,7 @@ Compare parsed dimensions, cells, names, and raster pixels against symbol-backed
 
 - [ ] **Step 3: Validate the target-device flow**
 
-Install only when explicitly authorized for this stage. Verify route transition outline, visit persistence after cold restart, Organic unrevealed cells, cell-to-Area navigation, and Treecko absence without a local observation.
+Install only when explicitly authorized for this stage. Verify route transition outline, visit persistence after cold restart, Organic unrevealed cells, cell-to-Area navigation, both shortcut directions without Area-context loss, and Treecko absence without a local observation.
 
 - [ ] **Step 4: Record exact evidence and commit Stage 1**
 

@@ -34,6 +34,8 @@ Every selectable map location carries one or more explicit encounter `baseAreaId
 
 The Pokédex browse toolbar shows an Area context chip whenever the Area filter is active. The chip contains a map-pin icon, the ROM-derived Route/Town/Area display name, and `CURRENT` only when the active selection is the live or valid offline current location. A selected non-current location shows its name without the marker. Clearing the selection returns Area to the current location.
 
+Map and Pokédex expose a symmetric top-right shortcut using the existing compact icon-action language. Pokédex shows a map icon with an accessible `Open Map` label and tooltip; Map shows a Pokédex icon with an accessible `Open Pokédex` label and tooltip. These shortcuts change only the visible screen. They must not clear `selectedAreaId`, change the Area filter, replace the active/current base IDs, or reset the map viewport, so a map-selected Area survives Map → Pokédex → Map and Pokédex → Map → Pokédex round trips. The Map shortcut remains visibly disabled with an explanatory tooltip when no structurally resolved map is available, while the ordinary Pokédex Area experience remains usable.
+
 Map availability is independent of the Area filter. A ROM whose map art cannot be resolved still gets the normal Area filter and Area context chip whenever its encounter/current-location data is valid.
 
 ### Area knowledge correctness
@@ -204,7 +206,7 @@ Any absent, truncated, invalid, or non-unique dependency fails closed. The UI om
 - Add normalized world-map catalog models, capability evidence, cache section, PNG endpoint, and 8bpp compositor.
 - Expand the Gen III structural resolver.
 - Add `visitedAreaBaseIds` and Organic semantic-cell fog.
-- Add the combined overview page, zoom/pan, current outline, and tap-to-Area navigation.
+- Add the combined overview page, zoom/pan, current outline, tap-to-Area navigation, and symmetric Map/Pokédex shortcuts that preserve Area context.
 
 ### Stage 2: Gen I and Gen II overview
 
@@ -230,7 +232,7 @@ Map stages require:
 - catalog round-trip and parser-schema invalidation tests;
 - knowledge persistence and area-transition-without-battle tests;
 - API tests that prevent unvisited labels, species, or hit targets from leaking in Organic mode;
-- UI tests for pinch/pan versus tap, current/selected labels, unavailable maps, and multi-region switching; and
+- UI tests for pinch/pan versus tap, current/selected labels, unavailable maps, symmetric Map/Pokédex navigation with preserved Area context, and multi-region switching; and
 - live controls on official Gen I, II, and III ROMs plus structurally compatible hacks.
 
-Live acceptance verifies the user-facing flow on the target device: a route transition updates the current outline, the visit survives a cold restart, tapping a revealed location opens the correct Area filter, and Treecko remains absent from a location unless it was observed there. Pixel hashes and successful builds alone are not sufficient.
+Live acceptance verifies the user-facing flow on the target device: a route transition updates the current outline, the visit survives a cold restart, tapping a revealed location opens the correct Area filter, both top-right shortcuts preserve that Area context and map viewport, and Treecko remains absent from a location unless it was observed there. Pixel hashes and successful builds alone are not sufficient.
