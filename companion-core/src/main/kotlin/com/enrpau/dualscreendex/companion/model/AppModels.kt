@@ -1,7 +1,7 @@
 package com.enrpau.dualscreendex.companion.model
 
 enum class KnowledgeMode { DISCOVERED, ORGANIC, HIDDEN }
-enum class AppScreen { POKEDEX, DETAIL, BATTLE, SETTINGS, SETUP }
+enum class AppScreen { POKEDEX, DETAIL, MAP, BATTLE, SETTINGS, SETUP }
 enum class PokedexFilter { ALL, CAUGHT, SEEN, TEAM, AREA }
 enum class BattleTab { ENTRY, ATTACK, RARITY, MOVES }
 enum class Density { AUTO, COMFORTABLE, COMPACT }
@@ -55,6 +55,7 @@ data class KnowledgeLedger(
     val owned: List<OwnedPokemon> = emptyList(),
     val teamSpecies: Set<Int> = emptySet(),
     val currentAreaBaseId: Int? = null,
+    val visitedAreaBaseIds: Set<Int> = emptySet(),
     val seenSpeciesByArea: Map<Int, Set<Int>> = emptyMap(),
     val observedMoves: Map<Int, List<MoveObservation>> = emptyMap(),
     val discoveredMatchups: Map<MatchupKey, Effectiveness> = emptyMap(),
@@ -116,6 +117,7 @@ sealed interface CompanionAction {
     data object BackToPokedex : CompanionAction
     data class SetScreen(val screen: AppScreen) : CompanionAction
     data class SetFilter(val filter: PokedexFilter, val areaId: Int? = null) : CompanionAction
+    data class OpenAreaPokedex(val areaId: Int) : CompanionAction
     data class SetBattleTab(val tab: BattleTab) : CompanionAction
     data class UpdateSettings(val settings: CompanionSettings) : CompanionAction
     data class BattleStarted(val battle: BattleState) : CompanionAction

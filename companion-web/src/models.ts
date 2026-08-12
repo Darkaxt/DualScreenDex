@@ -1,5 +1,5 @@
 export type KnowledgeMode = 'DISCOVERED' | 'ORGANIC' | 'HIDDEN';
-export type Screen = 'POKEDEX' | 'DETAIL' | 'BATTLE' | 'SETTINGS' | 'SETUP';
+export type Screen = 'POKEDEX' | 'DETAIL' | 'MAP' | 'BATTLE' | 'SETTINGS' | 'SETUP';
 
 export interface Species {
   id: number;
@@ -58,7 +58,19 @@ export interface Catalog {
   types: TypeInfo[];
   areas: { id: number; baseAreaId: number; name: string; methodId: number; speciesIds: number[]; windows: EncounterWindow[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
+  worldMaps?: WorldMapRegion[];
   capabilities: Record<string, string>;
+}
+
+export interface WorldMapRegion {
+  key: string;
+  displayName: string | null;
+  pixelWidth: number;
+  pixelHeight: number;
+  gridWidth: number;
+  gridHeight: number;
+  assetUrl: string;
+  locations: { key: string; displayName: string; baseAreaIds: number[]; geometry: { x: number; y: number; width: number; height: number }[] }[];
 }
 
 export interface Settings {
@@ -144,7 +156,10 @@ export interface State {
   activeAreaBaseId?: number | null;
   activeAreaName?: string | null;
   activeAreaSpeciesIds?: number[];
+  activeAreaRoster?: { speciesId: number; methodIds: number[]; windows: EncounterWindow[]; identityKnown: boolean }[];
   activeAreaIsCurrent?: boolean;
+  visitedAreaBaseIds?: number[];
+  observedAreaBaseIdsBySpecies?: Record<number, number[]>;
   battleTab: 'ENTRY' | 'ATTACK' | 'RARITY' | 'MOVES';
   settings: Settings;
   speciesState: Record<number, SpeciesState>;

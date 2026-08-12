@@ -49,13 +49,23 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             priorScreen = state.screen.takeUnless { it == AppScreen.DETAIL } ?: state.priorScreen,
             selectedSpeciesId = action.speciesId,
         )
-        CompanionAction.BackToPokedex -> state.copy(screen = state.priorScreen)
+        CompanionAction.BackToPokedex -> if (state.screen == AppScreen.POKEDEX && state.priorScreen != AppScreen.POKEDEX) {
+            state.copy(screen = state.priorScreen, priorScreen = AppScreen.POKEDEX)
+        } else {
+            state.copy(screen = state.priorScreen)
+        }
         is CompanionAction.SetScreen -> if (action.screen == AppScreen.SETTINGS && state.screen != AppScreen.SETTINGS) {
             state.copy(screen = action.screen, settingsReturnScreen = state.screen)
         } else {
             state.copy(screen = action.screen)
         }
         is CompanionAction.SetFilter -> state.copy(filter = action.filter, selectedAreaId = action.areaId)
+        is CompanionAction.OpenAreaPokedex -> state.copy(
+            screen = AppScreen.POKEDEX,
+            priorScreen = state.screen,
+            filter = com.enrpau.dualscreendex.companion.model.PokedexFilter.AREA,
+            selectedAreaId = action.areaId,
+        )
         is CompanionAction.SetBattleTab -> state.copy(battleTab = action.tab)
         is CompanionAction.UpdateSettings -> state.copy(settings = action.settings)
         is CompanionAction.BattleStarted -> state.copy(

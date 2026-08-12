@@ -368,6 +368,15 @@ class ProductionCompanionRuntime(
         if (gateway.bootstrap().liveAreaBaseId != areaBaseId) {
             gateway.dispatch(CompanionAction.LiveAreaChanged(areaBaseId))
         }
+        val validArea = areaBaseId?.takeIf { candidate ->
+            catalog?.encounterAreas?.any { it.baseAreaId == candidate } == true
+        } ?: return
+        val before = gateway.bootstrap().ledger
+        if (validArea !in before.visitedAreaBaseIds) {
+            val updated = before.copy(visitedAreaBaseIds = before.visitedAreaBaseIds + validArea)
+            gateway.dispatch(CompanionAction.ReplaceLedger(updated))
+            persistKnowledge(updated)
+        }
     }
 
     private fun battleTruth(snapshot: AppSnapshot, currentCatalog: ParsedCatalog?): Effectiveness? {
@@ -433,6 +442,15 @@ class ProductionCompanionRuntime(
                     values["areaId"]?.toIntOrNull(),
                 ),
             )
+            "MAP_AREA" -> {
+                val locationKey = requireNotNull(values["locationKey"])
+                val location = catalog?.worldMaps?.regions?.asSequence()?.flatMap { it.locations.asSequence() }
+                    ?.singleOrNull { it.key == locationKey }
+                    ?: error("map location is unavailable")
+                val areaId = catalog?.encounterAreas?.firstOrNull { it.baseAreaId in location.baseAreaIds }?.id
+                    ?: error("map location has no encounter Area")
+                gateway.dispatch(CompanionAction.OpenAreaPokedex(areaId))
+            }
             "SETTINGS" -> updateSettings(values)
             "TAB", "BATTLE_TAB" -> gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.valueOf(requireNotNull(values["tab"]).uppercase())))
             "TARGET", "SELECT_TARGET" -> gateway.dispatch(CompanionAction.SelectTarget(requireInt(values, "index")))
@@ -446,6 +464,8 @@ class ProductionCompanionRuntime(
 
     @Synchronized
     fun ballSprite(id: Int) = catalog?.captureBallsById?.get(id)?.sprite?.value
+
+    fun worldMapAsset(key: String) = catalog?.worldMaps?.assets?.get(key)
 
     @Synchronized
     fun catalogHash(): String? = catalog?.romSha256

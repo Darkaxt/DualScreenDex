@@ -11,6 +11,7 @@ import { AbilityDetail } from './pages/AbilityDetail';
 import { SetupPage } from './pages/SetupPage';
 import { MemoryMapperPage } from './pages/MemoryMapperPage';
 import { CapabilityReportPage } from './pages/CapabilityReportPage';
+import { WorldMapPage } from './pages/WorldMapPage';
 
 export interface DevelopmentToolsProps {
   catalog: Catalog | null;
@@ -42,7 +43,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [busy, setBusy] = useState(true);
   const [moveDetailId, setMoveDetailId] = useState<number | null>(null);
   const [abilityDetailId, setAbilityDetailId] = useState<number | null>(null);
-  const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'MORE'>('ENTRY');
+  const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'AREA' | 'MORE'>('ENTRY');
   const [mapperOpen, setMapperOpen] = useState(false);
   const [capabilityReportOpen, setCapabilityReportOpen] = useState(false);
   const lastCatalogRefresh = useRef('');
@@ -90,6 +91,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     if (abilityDetailId != null) return <AbilityDetail catalog={catalog} state={state} abilityId={abilityDetailId} onBack={() => setAbilityDetailId(null)} />;
     switch (state.screen) {
       case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={setMoveDetailId} openAbility={setAbilityDetailId} />;
+      case 'MAP': return <WorldMapPage catalog={{ ...catalog, worldMaps: catalog.worldMaps ?? [] }} state={state} send={send} />;
       case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={setMoveDetailId} openSpecies={speciesId => {
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });

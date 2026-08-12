@@ -71,4 +71,37 @@ class CompanionGatewayTest {
 
         assertEquals(0x0010, ended.liveAreaBaseId)
     }
+
+    @Test
+    fun areaDexRoundTripReturnsToPokemonDetailAndRestoresNormalDetailBack() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.OpenSpecies(25))
+
+        val browse = gateway.dispatch(CompanionAction.OpenAreaPokedex(101))
+        val detail = gateway.dispatch(CompanionAction.BackToPokedex)
+        val returned = gateway.dispatch(CompanionAction.BackToPokedex)
+
+        assertEquals(AppScreen.POKEDEX, browse.screen)
+        assertEquals(AppScreen.DETAIL, browse.priorScreen)
+        assertEquals(101, browse.selectedAreaId)
+        assertEquals(25, browse.selectedSpeciesId)
+        assertEquals(AppScreen.DETAIL, detail.screen)
+        assertEquals(AppScreen.POKEDEX, detail.priorScreen)
+        assertEquals(AppScreen.POKEDEX, returned.screen)
+    }
+
+    @Test
+    fun areaDexRoundTripReturnsToMapWithoutDroppingAreaFilter() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.SetScreen(AppScreen.MAP))
+
+        val browse = gateway.dispatch(CompanionAction.OpenAreaPokedex(202))
+        val map = gateway.dispatch(CompanionAction.BackToPokedex)
+
+        assertEquals(AppScreen.POKEDEX, browse.screen)
+        assertEquals(AppScreen.MAP, browse.priorScreen)
+        assertEquals(202, browse.selectedAreaId)
+        assertEquals(AppScreen.MAP, map.screen)
+        assertEquals(202, map.selectedAreaId)
+    }
 }

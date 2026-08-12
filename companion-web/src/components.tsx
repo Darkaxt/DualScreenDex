@@ -1,11 +1,15 @@
 import type { Catalog, SpeciesState, TypeInfo } from './models';
 
-export function Sprite({ speciesId, name, available, large = false }: { speciesId: number; name: string; available: boolean; large?: boolean }) {
+export function Sprite({ speciesId, name, available, large = false, silhouette = false }: { speciesId: number; name: string; available: boolean; large?: boolean; silhouette?: boolean }) {
   return (
     <div class={`sprite-frame ${large ? 'sprite-large' : ''}`}>
-      {available ? <img src={`/api/sprites/species/${speciesId}.png`} alt={`${name} sprite`} /> : <span class="sprite-missing" aria-label="Sprite unavailable" />}
+      {available ? <img class={silhouette ? 'identity-silhouette' : ''} src={`/api/sprites/species/${speciesId}.png`} alt={silhouette ? 'Unidentified Pokémon' : `${name} sprite`} /> : <span class="sprite-missing" aria-label="Sprite unavailable" />}
     </div>
   );
+}
+
+export function maskIdentityName(name: string): string {
+  return Array.from(name).map(character => /\s/u.test(character) ? character : '?').join('');
 }
 
 export function TypeChip({ type }: { type?: TypeInfo }) {
@@ -46,17 +50,17 @@ export function EyeStatus({ seen }: { seen: boolean }) {
   </svg>;
 }
 
-export function Header({ title, kicker, onBack, onSettings }: { title: string; kicker?: string; onBack?: () => void; onSettings?: () => void }) {
+export function Header({ title, kicker, onBack, onSettings, endAction }: { title: string; kicker?: string; onBack?: () => void; onSettings?: () => void; endAction?: { label: string; title?: string; onClick: () => void; icon: string; disabled?: boolean } }) {
   return (
     <header class="app-header">
       {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
       <div class="header-title"><strong>{title}</strong>{kicker && <small>{kicker}</small>}</div>
-      {onSettings ? <button class="header-action settings-action" onClick={onSettings} aria-label="Settings">
+      {endAction || onSettings ? <span class="header-end-actions">{endAction && <button class="header-action header-icon-action" onClick={endAction.onClick} aria-label={endAction.label} title={endAction.title ?? endAction.label} disabled={endAction.disabled}>{endAction.icon}</button>}{onSettings && <button class="header-action settings-action" onClick={onSettings} aria-label="Settings">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.64 5.64l1.42 1.42M16.94 16.94l1.42 1.42M18.36 5.64l-1.42 1.42M7.06 16.94l-1.42 1.42" />
           <circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" />
         </svg>
-      </button> : <span class="header-spacer" />}
+      </button>}</span> : <span class="header-spacer" />}
     </header>
   );
 }

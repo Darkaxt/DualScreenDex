@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/preact';
+import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
 import { PokedexBrowse } from './PokedexBrowse';
@@ -174,7 +174,7 @@ describe('Pokédex knowledge modes', () => {
     expect(screen.queryByTestId('encounter-window-icon')).toBeNull();
   });
 
-  it('shows only species observed in the resolved area even when another species is caught', () => {
+  it('shows the parsed roster in Discovered mode regardless of local observation or caught state', () => {
     const areaCatalog: Catalog = {
       ...catalog,
       areas: [
@@ -196,13 +196,55 @@ describe('Pokédex knowledge modes', () => {
     const { rerender } = render(<PokedexBrowse catalog={areaCatalog} state={areaState} send={vi.fn()} />);
 
     expect(screen.getByText('Bulbasaur')).toBeTruthy();
-    expect(screen.queryByText('Charmander')).toBeNull();
+    expect(screen.getByText('Charmander')).toBeTruthy();
 
     rerender(<PokedexBrowse catalog={areaCatalog} state={{
       ...areaState,
       speciesState: { ...areaState.speciesState, 4: { ...areaState.speciesState[4], caught: true } },
     }} send={vi.fn()} />);
+    expect(screen.getByText('Charmander')).toBeTruthy();
+  });
+
+  it('masks an unseen parsed encounter in Organic Area without leaking it to search', () => {
+    const areaCatalog: Catalog = { ...catalog, areas: [{ id: 10, baseAreaId: 1, name: 'Route 1', methodId: 1, speciesIds: [1, 4], windows: ['NIGHT'], slots: [] }] };
+    const organic: State = { ...state, filter: 'AREA', activeAreaIds: [10], activeAreaBaseId: 1, activeAreaName: 'Route 1', activeAreaSpeciesIds: [1], settings: { ...state.settings, knowledgeMode: 'ORGANIC' }, speciesState: { 1: { seen: true, caught: false, team: false, ballId: null }, 4: { seen: false, caught: false, team: false, ballId: null } } };
+    const { container } = render(<PokedexBrowse catalog={areaCatalog} state={organic} send={vi.fn()} />);
+
+    expect(screen.getByText('??????????')).toBeTruthy();
+    expect(screen.getByText('#???')).toBeTruthy();
+    expect((screen.getByLabelText('Unidentified encounter') as HTMLButtonElement).disabled).toBe(true);
+    expect(container.querySelector('.identity-hidden')).toBeTruthy();
+    expect(screen.getAllByLabelText('Night encounter')).toHaveLength(2);
+
+    fireEvent.input(screen.getByPlaceholderText('NAME OR NUMBER'), { target: { value: 'Charmander' } });
+    expect(screen.queryByText('??????????')).toBeNull();
     expect(screen.queryByText('Charmander')).toBeNull();
+  });
+
+  it('reveals a globally caught roster member but never inserts a caught gift outside the parsed roster', () => {
+    const areaCatalog: Catalog = { ...catalog, areas: [{ id: 10, baseAreaId: 1, name: 'Route 1', methodId: 1, speciesIds: [1], windows: ['ANY'], slots: [{ speciesId: 1, minimumLevel: 2, maximumLevel: 3, weight: 100 }] }] };
+    render(<PokedexBrowse catalog={areaCatalog} state={{
+      ...state,
+      filter: 'AREA',
+      activeAreaIds: [10],
+      activeAreaRoster: [{ speciesId: 1, methodIds: [1], windows: ['ANY'], identityKnown: true }],
+      speciesState: {
+        1: { seen: false, caught: true, team: false, ballId: null },
+        4: { seen: false, caught: true, team: false, ballId: null },
+      },
+    }} send={vi.fn()} />);
+
+    expect(screen.getByText('Bulbasaur')).toBeTruthy();
+    expect(screen.queryByText('Charmander')).toBeNull();
+  });
+
+  it('offers a state-preserving back action after Map or Pokemon Area handoff', () => {
+    const send = vi.fn();
+    render(<PokedexBrowse catalog={catalog} state={{ ...state, priorScreen: 'DETAIL' }} send={send} />);
+
+    fireEvent.click(screen.getByLabelText('Back'));
+
+    expect(send).toHaveBeenCalledWith('BACK');
   });
 
   it('labels the live Area context with the ROM-derived location and Current marker', () => {

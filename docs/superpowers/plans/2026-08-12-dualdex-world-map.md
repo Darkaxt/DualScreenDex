@@ -523,6 +523,31 @@ Run the Step 2 command.
 
 Expected: metadata, ETag, MIME, missing, and traversal cases pass.
 
+### Task 11A: Project the Organic Area encounter roster
+
+**Files:**
+- Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/api/ApiModels.kt`
+- Modify: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/api/ApiViewBuilderTest.kt`
+- Modify: `companion-web/src/pages/PokedexBrowse.tsx`
+- Modify: `companion-web/src/pages/PokedexBrowse.test.tsx`
+- Modify: the existing shared evolution identity-mask/silhouette component and its tests
+
+- [ ] **Step 1: Write RED API roster tests**
+
+Cover an unseen parsed encounter included and marked hidden, a globally seen reveal, a globally caught reveal only when present in a parsed slot, a caught gift absent when not in any active base's slots, deduplication across encounter rows, retained method/time metadata, and selected-versus-current explicit base-area selection. Assert `seenSpeciesByArea` remains unchanged.
+
+- [ ] **Step 2: Write RED web identity tests**
+
+In `ORGANIC`, assert the shared black silhouette, character-for-character non-space name mask, `#???`, generic non-identifying accessible text, disabled interaction, search isolation from the hidden source name, and visible encounter method/time metadata. Assert seen and caught roster members render normally and both non-Organic modes reveal the full parsed roster.
+
+- [ ] **Step 3: Implement a bounded roster projection and shared identity mask**
+
+Join only active semantic location `baseAreaIds` to explicit `EncounterArea.baseAreaId`, dedupe by species, and aggregate method/windows without unioning caught/party state into the roster or local observations. Reuse one name-mask/silhouette primitive for evolution and Area rows.
+
+- [ ] **Step 4: Verify focused and full suites**
+
+Run the focused API/web tests above, then complete companion-core and web suites. Expected: all roster, secrecy, accessibility, and regression controls pass.
+
 ### Task 12: Build the combined Gen III overview page
 
 **Files:**
@@ -567,7 +592,7 @@ Extend the shared header end-action slot using the established icon-button styli
 
 Resolve each Area row to a catalog-owned semantic location key on the backend. The row action stores a map focus request while retaining the open species/detail tab, opens Map, centers/highlights the location, and restores that species context through the reverse shortcut. Invalid or absent bindings fail closed.
 
-Pending explicit presentation approval, a later replacement for this row-action presentation embeds the same ROM-derived map in every Pokémon detail `AREA` tab and highlights every location actually observed for that species. Before implementing it, add RED tests for simultaneous `seenSpeciesByArea` highlights, caught-only/starter/gift/trade exclusion, observation-implied reveal under Organic fog, selection/centering with preserved Pokémon context, contextual Area Pokédex handoff and back-state restoration, and the exact zero-result copy `No known locations yet.` Do not expose parsed potential encounters in Discovered mode without separate semantic approval.
+Embed the same ROM-derived map in every Pokémon detail `AREA` tab and highlight every location actually observed for that species. Add RED tests for simultaneous `seenSpeciesByArea` highlights, caught-only/starter/gift/trade exclusion, observation-implied reveal under Organic fog, selection/centering with preserved Pokémon context, contextual Area Pokédex handoff and back-state restoration, and the exact zero-result copy `No known locations yet.` Do not expose parsed potential encounters in Discovered mode.
 
 - [ ] **Step 7: Run and verify GREEN**
 

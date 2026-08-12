@@ -51,7 +51,7 @@ Map and Pokédex expose a symmetric top-right shortcut using the existing compac
 
 Every location row in a Pokémon Detail Area tab also exposes an accessible `Show on Map` action. It sends only the catalog-owned semantic location key, preserves the open species as detail context, and opens the same `WorldMapPage` centered on and highlighting that location. Returning to the Pokédex restores the same species detail tab and Area context. Rows without a structurally proven location binding omit or disable the action rather than guessing from their label.
 
-> Pending presentation approval: replace the location-row-only presentation with the same ROM-derived world map embedded in every Pokémon detail `AREA` tab. It would simultaneously highlight only base areas present in per-area observation knowledge for that species, apply Organic fog while treating an observation as proof that its area is revealed, preserve Pokémon context while an area is selected/centered, and let the contextual Pokédex icon open that selected Area filter. Caught state and inferred starter, gift, or trade provenance would never add a highlight. With no observed areas the map would remain visible with the exact copy `No known locations yet.` Potential parsed encounters in Discovered mode remain excluded unless separately approved. Do not implement this paragraph until that presentation approval is explicit.
+Every Pokémon detail has an `AREA` tab containing the same ROM-derived map. It simultaneously highlights only base areas present in per-area observation knowledge for that species, applies Organic fog while treating an observation as proof that its area is revealed, preserves Pokémon context while an area is selected and centered, and lets the contextual Pokédex icon open that selected Area filter. Caught state and inferred starter, gift, or trade provenance never add a highlight. With no observed areas the map remains visible with the exact copy `No known locations yet.` Potential parsed encounters in Discovered mode remain excluded.
 
 Map availability is independent of the Area filter. A ROM whose map art cannot be resolved still gets the normal Area filter and Area context chip whenever its encounter/current-location data is valid.
 
@@ -68,6 +68,18 @@ Consequently:
 This fixes the current Treecko path. Save mapping correctly marks party/owned Treecko as caught, but `ApiViewBuilder` currently unions every caught species into `currentAreaSpeciesIds`. Removing that union prevents Treecko from appearing in a starting-area result unless a Treecko observation was actually persisted for that base area.
 
 This design does not silently change the Area policy in Discovered mode to the full parsed encounter table. Such a policy change requires separate approval because the established Area contract is locally observed species.
+
+### Organic Area encounter roster
+
+The approved Area roster is derived only from ROM-parsed encounter slots belonging to the active current or selected location's explicit `baseAreaId` set. Species are deduplicated while their encounter method/time metadata remains available. A starter, gift, trade, party member, or globally caught species that is absent from those parsed slots never gains a row.
+
+In `ORGANIC`, every structurally parsed encounter species has a row, but identity depends on global knowledge rather than local observation history:
+
+- a species seen or caught anywhere renders with its normal sprite, name, dex number, and interaction;
+- a globally unseen species uses the existing evolution black-silhouette treatment, masks every non-space name character while preserving spaces (`Mr Mime` becomes `?? ????`), shows `#???`, exposes only generic non-identifying accessible text, cannot be clicked, and cannot be found by searching its hidden name;
+- encounter method/time indicators may remain visible because they describe the ROM-derived encounter context, not the hidden identity.
+
+Non-Organic modes show the full parsed Area roster normally. This roster contract does not change `seenSpeciesByArea`, observation history, visited-area fog, or Pokémon-map highlights. In particular, globally caught state reveals the identity only when that species already belongs to the parsed encounter roster; it never adds a species to an Area and never becomes a local observation.
 
 ## Data Model
 
