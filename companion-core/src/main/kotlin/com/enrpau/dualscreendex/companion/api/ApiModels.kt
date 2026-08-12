@@ -143,6 +143,7 @@ data class StateView(
     val currentAreaIds: List<Int>,
     val currentAreaBaseId: Int?,
     val currentAreaName: String?,
+    val currentAreaSpeciesIds: List<Int>,
     val battleTab: String,
     val settings: Any,
     val speciesState: Map<Int, SpeciesStateView>,
@@ -379,6 +380,13 @@ object ApiViewBuilder {
             catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }?.sorted()
         }.orEmpty()
         val currentAreaName = effectiveAreaBaseId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
+        val currentAreaSpeciesIds = effectiveAreaBaseId?.let { baseId ->
+            val navigableIds = catalog?.navigableSpecies()?.mapTo(mutableSetOf()) { it.id }.orEmpty()
+            val captured = navigableIds.filterTo(mutableSetOf()) { KnowledgePolicy.isCaught(it, snapshot.ledger) }
+            (snapshot.ledger.seenSpeciesByArea[baseId].orEmpty() + captured)
+                .filter { it in navigableIds }
+                .sorted()
+        }.orEmpty()
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
@@ -410,6 +418,7 @@ object ApiViewBuilder {
             currentAreaIds,
             effectiveAreaBaseId,
             currentAreaName,
+            currentAreaSpeciesIds,
             snapshot.battleTab.name,
             snapshot.settings,
             speciesState,

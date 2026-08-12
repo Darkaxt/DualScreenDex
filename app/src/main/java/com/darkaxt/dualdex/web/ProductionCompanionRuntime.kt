@@ -10,6 +10,7 @@ import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.darkaxt.dualdex.battle.BattleMove
 import com.darkaxt.dualdex.battle.BattleSpecies
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
+import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
 import com.darkaxt.dualdex.battle.TargetMode
 import com.enrpau.dualscreendex.companion.CompanionGateway
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
@@ -270,6 +271,16 @@ class ProductionCompanionRuntime(
             generation = generation,
             catalog = BattleCatalogView(species, moves, current.typesById.keys),
             gen3SaveBlock1PointerAddress = current.runtimeMetadata.gen3SaveBlock1PointerAddress,
+            gen3RuntimeMemoryLayout = current.runtimeMetadata.gen3RuntimeMemoryLayout?.let { layout ->
+                Gen3RuntimeMemoryLayout(
+                    mainStructSize = layout.mainStructSize,
+                    inBattleByteOffset = layout.inBattleByteOffset,
+                    inBattleMask = layout.inBattleMask,
+                    saveBlock1MapGroupOffset = layout.saveBlock1MapGroupOffset,
+                    saveBlock1MapNumberOffset = layout.saveBlock1MapNumberOffset,
+                    multiUsePlayerCursorOffsetFromMain = layout.multiUsePlayerCursorOffsetFromMain,
+                )
+            },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),
         )
     }
@@ -286,6 +297,13 @@ class ProductionCompanionRuntime(
                 .map { MoveObservation(it.key, it.value) }
         }
         val seen = before.ledger.seenSpecies + update.sample?.opponents.orEmpty().map { it.speciesId }
+        val seenSpeciesByArea = before.ledger.seenSpeciesByArea.toMutableMap()
+        before.liveAreaBaseId?.let { areaBaseId ->
+            val observedHere = update.sample?.opponents.orEmpty().mapTo(mutableSetOf()) { it.speciesId }
+            if (observedHere.isNotEmpty()) {
+                seenSpeciesByArea[areaBaseId] = seenSpeciesByArea[areaBaseId].orEmpty() + observedHere
+            }
+        }
         val discoveredMatchups = before.ledger.discoveredMatchups.toMutableMap()
         val currentCatalog = catalog
         update.discoveredMatchups.forEach { observation ->
@@ -295,6 +313,7 @@ class ProductionCompanionRuntime(
         }
         val mergedLedger = before.ledger.copy(
             seenSpecies = seen,
+            seenSpeciesByArea = seenSpeciesByArea,
             observedMoves = observed,
             discoveredMatchups = discoveredMatchups,
         )

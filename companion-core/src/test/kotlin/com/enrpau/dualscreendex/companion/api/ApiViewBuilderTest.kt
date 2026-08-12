@@ -251,4 +251,47 @@ class ApiViewBuilderTest {
         assertNull(state.currentAreaName)
         assertEquals(emptyList<Int>(), state.currentAreaIds)
     }
+
+    @Test
+    fun areaSpeciesAreObservedLocallyWithACapturedSpeciesOverride() {
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = listOf(1, 2, 3, 4).associateWith { speciesId ->
+                com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
+                    id = speciesId,
+                    dexNumber = CatalogField.available(speciesId),
+                    name = CatalogField.available("SPECIES $speciesId"),
+                    typeIds = CatalogField.available(emptyList()),
+                    baseStats = CatalogField.notFound("fixture"),
+                    sprite = CatalogField.notFound("fixture"),
+                    abilityIds = CatalogField.available(emptyList()),
+                )
+            },
+            encounterAreas = listOf(
+                EncounterArea(
+                    id = 0x0010 * 10 + 1,
+                    name = CatalogField.available("Route 101 grass"),
+                    methodId = 1,
+                    slots = listOf(EncounterSlot(1, 2, 3, 100)),
+                ),
+            ),
+        )
+        val snapshot = AppSnapshot(
+            liveAreaBaseId = 0x0010,
+            ledger = KnowledgeLedger(
+                seenSpecies = setOf(1, 2, 3),
+                caughtSpecies = setOf(4),
+                seenSpeciesByArea = mapOf(
+                    0x0010 to setOf(1, 2),
+                    0x0011 to setOf(3),
+                ),
+            ),
+        )
+
+        val state = ApiViewBuilder.state(snapshot, catalog)
+
+        assertEquals(listOf(1, 2, 4), state.currentAreaSpeciesIds)
+    }
 }

@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
+import com.enrpau.dualscreendex.parser.parse.Gen3RuntimeMemoryLayoutResolver
 import com.enrpau.dualscreendex.parser.sprite.BallSpriteMaterializer
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 import java.util.Locale
@@ -125,6 +126,7 @@ object CatalogMaterializer {
         val runtimeMetadata = if (layout.generation == 3) {
             CatalogRuntimeMetadata(
                 gen3SaveBlock1PointerAddress = Gen3SaveBlock1PointerResolver.resolve(rom),
+                gen3RuntimeMemoryLayout = Gen3RuntimeMemoryLayoutResolver.resolve(rom),
                 areaNamesByBaseId = if (layout.pokeemeraldExpansion == null) {
                     Gen3MapLocationResolver.resolve(
                         rom,

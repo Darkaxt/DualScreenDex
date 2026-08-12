@@ -25,6 +25,7 @@ class FileKnowledgeRepositoryTest {
             ),
             teamSpecies = setOf(25),
             currentAreaBaseId = 1,
+            seenSpeciesByArea = mapOf(1 to setOf(25, 133), 2 to setOf(7)),
             observedMoves = mapOf(133 to listOf(MoveObservation(33, 3), MoveObservation(39, 1))),
             discoveredMatchups = mapOf(MatchupKey(133, 84) to Effectiveness.NEUTRAL),
             knownMoves = setOf(33, 39, 84),
