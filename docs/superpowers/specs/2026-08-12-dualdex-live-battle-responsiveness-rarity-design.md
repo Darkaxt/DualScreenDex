@@ -4,13 +4,12 @@ Date: 2026-08-12
 
 ## Objective
 
-Improve the live companion experience without introducing ROM-specific battle addresses or speculative data. This change covers five user-visible problems:
+Improve the live companion experience without introducing ROM-specific battle addresses or speculative data. This change covers four user-visible problems:
 
 1. Initial battle detection takes about five seconds.
-2. AYN Thor controller-focus automation does not react correctly when enabled.
-3. Opening the Pokédex from Combat is immediately overridden by the next battle sample.
-4. Combat needs a five-star rarity indicator between the Pokémon name and Pokédex shortcut.
-5. The rarity message must combine the agreed area-relative level word with the agreed IV/DV quality word.
+2. Opening the Pokédex from Combat is immediately overridden by the next battle sample.
+3. Combat needs a five-star rarity indicator between the Pokémon name and Pokédex shortcut.
+4. The rarity message must combine the agreed area-relative level word with the agreed IV/DV quality word.
 
 The implementation must preserve the current parser, catalog, compatibility-document, and GAFT registry contracts. It changes live companion behavior and presentation only.
 
@@ -117,20 +116,9 @@ The Rarity tab title displays both tiers together, such as `WEAK STANDARD`. The 
 
 The explanatory copy states that the first word describes level relative to the current encounter table and the second word describes normalized IV/DV quality. Exact IVs, DVs, EVs, and encounter probabilities remain hidden.
 
-### AYN Thor focus permission and synchronization
+### AYN Thor controller focus
 
-The existing device-global `thorTopScreenFocus` preference remains the user's desired state. A settings change is delivered immediately from the production runtime to the active Android activity.
-
-When focus is requested on a dynamically detected non-default display:
-
-1. Check `Settings.System.canWrite(context)`.
-2. If permission is missing and no permission request is already in flight, open `Settings.ACTION_MANAGE_WRITE_SETTINGS` for the DualDex package.
-3. When the activity-result callback returns, clear the in-flight marker, recheck permission, and synchronize focus once.
-4. Do not loop or repeatedly reopen the permission page after denial.
-
-The Settings screen exposes a truthful status: `ACTIVE`, `PERMISSION REQUIRED`, or `UNAVAILABLE`. The controller-focus value remains `Settings.System["screen_focus_lock"] = 1` for Top screen. Display detection uses `displayId != Display.DEFAULT_DISPLAY`; the observed device display ID is never hardcoded.
-
-DualDex records the prior global focus value only when it successfully acquires ownership. It restores that value only when ownership genuinely ends, not during transient permission activities, overlays, or ordinary pauses.
+Controller-focus automation is not shipped. Live firmware classifies the vendor setting as secure, so DualDex exposes no focus preference, provider, status, or permission request. Docked and Overlay display selection remain independent of controller focus.
 
 ## Component Boundaries
 
@@ -146,18 +134,12 @@ A companion-core unit owns innate tiering, candidate encounter-table selection, 
 
 The production runtime decides whether a sample begins or updates a battle. The reducer owns the screen-transition contract. Repeated samples cannot steal navigation.
 
-### Thor focus bridge
-
-The Android activity owns permission UI and lifecycle synchronization. The focus controller owns global-setting acquisition/restoration. Web settings express desired state and display status but never write Android system settings directly.
-
 ## Failure Handling
 
 - A failed or ambiguous memory read retains the last active sample only under the existing bounded tracker policy; it does not fabricate a new battle.
 - An invalid polling setting is clamped, and a persisted missing value migrates to 5 ms.
 - Missing or stale area evidence produces no relative tier or half-star adjustment.
 - Missing IV/DV evidence produces no innate tier or star rating.
-- Missing Thor permission preserves the requested preference but does not claim focus is active.
-- Permission denial does not create an activity loop.
 - Manual navigation always wins over background battle refreshes.
 
 ## Test Strategy
@@ -181,9 +163,8 @@ Implementation follows test-driven development.
 - Live setting changes affect the next discovery heartbeat without restart.
 - No overlapping UDP requests.
 - Validated non-battle retains the cached layout; ROM/session change or structural mismatch clears it.
-- Focus setting changes notify the activity immediately.
-- Permission request is single-flight; activity result rechecks and applies once.
-- Denial does not loop; ownership-aware restoration remains intact.
+- The packaged manifest has no controller-focus privileged permission or provider.
+- Legacy persisted controller-focus fields are ignored and scrubbed during migration.
 
 ### Web tests
 
@@ -215,5 +196,5 @@ Device authorization is limited to installing the exact published APK. The permi
 - Stars are IV/DV-based with at most a half-star area-level adjustment.
 - The rarity title combines the two agreed tiers.
 - Area comparison uses only weighted evidence from an exact current-area candidate table and fails closed on ambiguity.
-- Thor focus permission is requested and rechecked through the supported Android flow without loops or hardcoded display IDs.
+- No controller-focus setting, provider, status, or privileged permission is shipped.
 - The public prerelease APK is installed, and no other device interaction occurs.

@@ -2,9 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver configurable fast battle discovery, stable in-battle navigation, area-relative half-star rarity, and working AYN Thor focus permission flow in a public signed prerelease installed without any other device interaction.
+> **Supersession note:** Task 6 is retired. Live firmware classified the controller-focus setting as secure, so the setting, provider integration, persisted field, status, and privileged permission were removed before RC13.
 
-**Architecture:** Keep platform-independent policy in companion-core, memory scheduling in the Android battle coordinator, and permission ownership in the Android activity. Publish structured rarity data to a presentation-only web component. Persist polling as a device-global setting and retain the existing one-request-at-a-time UDP transport.
+**Goal:** Deliver configurable fast battle discovery, stable in-battle navigation, and area-relative half-star rarity in a public signed prerelease installed without any other device interaction.
+
+**Architecture:** Keep platform-independent policy in companion-core and memory scheduling in the Android battle coordinator. Publish structured rarity data to a presentation-only web component. Persist polling as a device-global setting and retain the existing one-request-at-a-time UDP transport.
 
 **Tech Stack:** Kotlin/JVM, AndroidX Activity Result APIs, JUnit 4, Preact/TypeScript, Vitest, Gradle, GitHub Actions, GitHub CLI, ADB.
 
@@ -15,19 +17,17 @@
 - `companion-core/.../model/AppModels.kt`: settings, battle lifecycle actions, and internal battle-return state.
 - `companion-core/.../owned/PreferredIndividualSelector.kt`: existing IV/DV normalization and tier boundaries.
 - `companion-core/.../battle/RarityEvaluator.kt`: new weighted area-level and star policy.
-- `companion-core/.../api/ApiModels.kt`: structured rarity and native focus status projection.
+- `companion-core/.../api/ApiModels.kt`: structured rarity projection.
 - `companion-core/.../CompanionGateway.kt`: edge-triggered battle navigation.
 - `app/.../settings/SettingsRepository.kt`: schema-compatible global polling persistence.
 - `app/.../battle/BattleMemoryCoordinator.kt`: adaptive scheduling and cached-layout retention.
 - `app/.../setup/RetroArchSetupCoordinator.kt`: inject live polling setting.
-- `app/.../web/ProductionCompanionRuntime.kt`: parse polling setting, dispatch start/update, and expose focus status.
-- `app/.../DualDexApplication.kt`: native setting callbacks and runtime focus-status bridge.
-- `app/.../MainActivity.kt`: single-flight WRITE_SETTINGS permission launcher and result recheck.
+- `app/.../web/ProductionCompanionRuntime.kt`: parse polling setting and dispatch start/update.
 - `companion-web/src/models.ts`: structured API types.
 - `companion-web/src/pages/BattlePage.tsx`: star strip and combined title.
-- `companion-web/src/pages/SettingsPage.tsx`: device-global 1–20 ms control and focus status.
+- `companion-web/src/pages/SettingsPage.tsx`: device-global 1–20 ms control.
 - `companion-web/src/styles.css`: whole/half-star and settings presentation.
-- `release/RELEASE_NOTES_1.0.0.md`, `README.md`, `release/v1-ready.json`: RC12 user-facing metadata and verified test totals.
+- `release/RELEASE_NOTES_1.0.0.md`, `README.md`, `release/v1-ready.json`: RC13 user-facing metadata and verified test totals.
 
 ### Task 1: Persist and expose the battle polling interval
 
@@ -409,72 +409,13 @@ git commit -m "feat: show area-adjusted battle rarity stars"
 
 Expected: all web tests and production build pass.
 
-### Task 6: Repair AYN Thor focus permission and status flow
+### Task 6: Retire unsupported AYN Thor controller-focus automation
 
-**Files:**
-- Modify: `app/src/main/java/com/darkaxt/dualdex/MainActivity.kt`
-- Modify: `app/src/main/java/com/darkaxt/dualdex/DualDexApplication.kt`
-- Modify: `app/src/main/java/com/darkaxt/dualdex/web/ProductionCompanionRuntime.kt`
-- Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/api/ApiModels.kt`
-- Modify: `app/src/test/java/com/darkaxt/dualdex/display/ThorFocusControllerTest.kt`
-- Create: `app/src/test/java/com/darkaxt/dualdex/display/ThorFocusPermissionPolicyTest.kt`
-- Modify: `companion-web/src/models.ts`
-- Modify: `companion-web/src/pages/SettingsPage.tsx`
-- Modify: `companion-web/src/pages/SettingsPage.production.test.tsx`
-
-- [ ] **Step 1: Write permission-policy and status tests RED**
-
-Extract a pure single-flight policy and assert: first permission-required result launches, repeated sync while in-flight does not launch, callback clears in-flight and syncs once without relaunch, denial remains `PERMISSION REQUIRED`, unsupported/write-failed is `UNAVAILABLE`, and enforced/no-change while owned is `ACTIVE`.
-
-```kotlin
-assertEquals(RequestPermission, policy.afterSync(PERMISSION_REQUIRED, requestPermission = true))
-assertEquals(NoAction, policy.afterSync(PERMISSION_REQUIRED, requestPermission = true))
-policy.permissionResultReturned()
-assertEquals(SyncWithoutRequest, policy.nextAction())
-```
-
-- [ ] **Step 2: Run RED**
-
-```powershell
-.\gradlew.bat :app:testDebugUnitTest --tests com.darkaxt.dualdex.display.ThorFocusPermissionPolicyTest --rerun-tasks
-```
-
-Expected: compilation fails because the policy is absent.
-
-- [ ] **Step 3: Implement Activity Result permission handling**
-
-Register a launcher:
-
-```kotlin
-private val thorFocusPermission = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-    thorFocusPermissionRequested = false
-    syncThorFocus(requestPermission = false)
-}
-```
-
-Replace `startActivity(ACTION_MANAGE_WRITE_SETTINGS)` with `thorFocusPermission.launch(...)`. Every sync reports its result to `DualDexApplication`, which updates a `thorFocusStatus` property in `ProductionCompanionRuntime` and invalidates its cached state view.
-
-Do not change the existing controller ownership/restoration algebra and do not hardcode a display ID.
-
-- [ ] **Step 4: Render truthful status and run GREEN**
-
-Show the status text next to the focus toggle only when focus is requested. Use exactly `ACTIVE`, `PERMISSION REQUIRED`, or `UNAVAILABLE`.
-
-```powershell
-.\gradlew.bat :app:testDebugUnitTest --tests "com.darkaxt.dualdex.display.*" --rerun-tasks
-Push-Location companion-web
-npm test -- --run src/pages/SettingsPage.production.test.tsx
-Pop-Location
-```
-
-Expected: selected Android and web tests pass.
-
-- [ ] **Step 5: Commit**
-
-```powershell
-git add app/src/main app/src/test companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/api/ApiModels.kt companion-web/src
-git commit -m "fix: synchronize Thor focus permission immediately"
-```
+- [x] Remove the settings control, API field, native lifecycle bridge, and persisted setting.
+- [x] Remove the Shizuku/Sui provider and service integration.
+- [x] Remove `WRITE_SETTINGS` and do not replace it with another privileged permission.
+- [x] Preserve Docked/Overlay display selection and the compatibility-document and GAFT registry contracts.
+- [x] Add migration and UI regressions proving the legacy field is scrubbed and the control is absent.
 
 ### Task 7: Full verification, public prerelease, and install-only handoff
 
@@ -502,16 +443,16 @@ Expected: every command succeeds. Local release APK remains unsigned and is not 
 
 - [ ] **Step 2: Update release notes and readiness evidence**
 
-Document configurable discovery polling, cache reuse, manual-navigation preservation, weighted area rarity, and focus permission flow. Update actual test totals in `release/v1-ready.json`; do not change the compatibility documents or GAFT registry artifacts.
+Document configurable discovery polling, cache reuse, manual-navigation preservation, weighted area rarity, and removal of the unsupported controller-focus feature. Update actual test totals in `release/v1-ready.json`; do not change the compatibility documents or GAFT registry artifacts.
 
 - [ ] **Step 3: Commit and push the release source**
 
 ```powershell
 git add README.md release/RELEASE_NOTES_1.0.0.md release/v1-ready.json
-git commit -m "release: prepare DualDex 1.0.0 rc12"
+git commit -m "release: prepare DualDex 1.0.0 rc13"
 git push origin codex/dualdex-parser-spec
-git tag -a v1.0.0-rc.12 -m "DualDex 1.0.0 rc12"
-git push origin v1.0.0-rc.12
+git tag -a v1.0.0-rc.13 -m "DualDex 1.0.0 rc13"
+git push origin v1.0.0-rc.13
 ```
 
 Expected: branch and new non-replacing tag are present on origin.
@@ -519,7 +460,7 @@ Expected: branch and new non-replacing tag are present on origin.
 - [ ] **Step 4: Dispatch and wait for the protected release workflow**
 
 ```powershell
-gh workflow run release.yml --repo Darkaxt/DualScreenDex --ref v1.0.0-rc.12 -f tag=v1.0.0-rc.12
+gh workflow run release.yml --repo Darkaxt/DualScreenDex --ref v1.0.0-rc.13 -f tag=v1.0.0-rc.13
 gh run list --repo Darkaxt/DualScreenDex --workflow release.yml --limit 1 --json databaseId,status,conclusion,headSha,url
 ```
 
@@ -527,11 +468,11 @@ Monitor the single run to completion without cancellation. Expected: conclusion 
 
 - [ ] **Step 5: Download and verify the public artifact locally**
 
-Use `D:\Temp\dualdex-rc12-install` for the bounded download. Verify the release metadata, SHA256SUMS, APK SHA, package ID, version `1.0.0-rc.12`, version code, and pinned signer locally with `aapt` and `apksigner`. Do not contact the Android device during verification.
+Use `D:\Temp\dualdex-rc13-install` for the bounded download. Verify the release metadata, SHA256SUMS, APK SHA, package ID, version `1.0.0-rc.13`, version code, and pinned signer locally with `aapt` and `apksigner`. Do not contact the Android device during verification.
 
 ```powershell
-gh release view v1.0.0-rc.12 --repo Darkaxt/DualScreenDex --json isDraft,isPrerelease,tagName,url
-gh release download v1.0.0-rc.12 --repo Darkaxt/DualScreenDex --dir D:\Temp\dualdex-rc12-install
+gh release view v1.0.0-rc.13 --repo Darkaxt/DualScreenDex --json isDraft,isPrerelease,tagName,url
+gh release download v1.0.0-rc.13 --repo Darkaxt/DualScreenDex --dir D:\Temp\dualdex-rc13-install
 ```
 
 - [ ] **Step 6: Perform the sole authorized device action**
@@ -539,7 +480,7 @@ gh release download v1.0.0-rc.12 --repo Darkaxt/DualScreenDex --dir D:\Temp\dual
 Do not use `validate-signed-candidate.ps1 -Install`, because it performs forbidden device queries. Run only the install/update command against the previously authorized Thor serial:
 
 ```powershell
-& 'C:\Users\darka\AppData\Local\Android\Sdk\platform-tools\adb.exe' -s bfa98654 install -r 'D:\Temp\dualdex-rc12-install\DualDex-v1.0.0-rc.12.apk'
+& 'C:\Users\darka\AppData\Local\Android\Sdk\platform-tools\adb.exe' -s bfa98654 install -r 'D:\Temp\dualdex-rc13-install\DualDex-v1.0.0-rc.13.apk'
 ```
 
 Expected: ADB itself returns `Success`. Do not run `adb devices`, `get-state`, `getprop`, `pm`, `dumpsys`, `am start`, `input`, `logcat`, screenshots, permission grants, or settings commands.

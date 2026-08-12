@@ -2,13 +2,16 @@
 
 DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
+## RC13 update
+
+- Removes the unsupported AYN Thor controller-focus setting, its obsolete persisted value, the Shizuku/Sui integration, and the privileged Android settings permission. DualDex no longer offers or requests this feature.
+
 ## RC12 update
 
 - Makes live-battle discovery polling device-configurable from 1–20 ms (5 ms by default), while retaining the one-request-at-a-time RetroArch network protocol and using a lower-frequency cached battle window after discovery.
 - Keeps a validated battle-memory layout across normal battle exits so the next encounter can be detected without repeating a full memory scan.
 - Prevents repeated battle samples from forcing the companion back to Combat after the user opens the Pokédex or another manual view.
 - Replaces the single rarity word with a two-part area-relative and innate title, plus a five-star display with half-star level adjustments. The relative tier uses the weighted expected level of the exact current-area encounter table capable of producing the observed Pokémon.
-- Removes the unsupported AYN Thor controller-focus override and its privileged permission request after live firmware classified the vendor setting as secure.
 
 ## Earlier RC updates
 
