@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.validate
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
@@ -39,6 +40,43 @@ class TableValidatorsTest {
         )
 
         assertTrue(result.compatible)
+    }
+
+    @Test
+    fun acceptsFullWidthGbaNamesWithoutATerminatorWhenEveryByteDecodes() {
+        val width = 13
+        val bytes = ByteArray(width) { index ->
+            if (index == 4) 0 else (0xBB + index % 26).toByte()
+        }
+
+        val result = TableValidators.fixedNames(
+            RomImage(bytes),
+            offset = 0,
+            count = 1,
+            width = width,
+            codec = PokemonTextCodec.gbaEnglish,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(1, result.validRecords)
+    }
+
+    @Test
+    fun rejectsUnterminatedFullWidthGbaNamesContainingAnInvalidByte() {
+        val width = 13
+        val bytes = ByteArray(width) { (0xBB + it % 26).toByte() }
+        bytes[7] = 0x7F
+
+        val result = TableValidators.fixedNames(
+            RomImage(bytes),
+            offset = 0,
+            count = 1,
+            width = width,
+            codec = PokemonTextCodec.gbaEnglish,
+        )
+
+        assertFalse(result.compatible)
+        assertEquals(0, result.validRecords)
     }
 
     @Test
@@ -384,6 +422,61 @@ class TableValidatorsTest {
     }
 
     @Test
+    fun stopsFixedNameCountBeforeMixedCaseAdjacentProse() {
+        val width = 13
+        val bytes = ByteArray(width * 10) { 0xFF.toByte() }
+        listOf("Stench", "Drizzle", "Speed Boost", "Overgrow", "Pastel Veil")
+            .forEachIndexed { index, name -> writeGbaFixedName(bytes, index * width, name, width) }
+
+        // Aesthetic Red places battle-message prose immediately after its
+        // ability names. These first two chunks are valid, full-width text,
+        // while the third is a terminated continuation of the same sentence.
+        writeGbaFixedName(bytes, width * 5, "The effects  ", width, terminate = false)
+        writeGbaFixedName(bytes, width * 6, "of weather di", width, terminate = false)
+        writeGbaFixedName(bytes, width * 7, "sappeared.", width)
+
+        val count = TableValidators.inferFixedNameCount(
+            RomImage(bytes), 0, width, PokemonTextCodec.gbaEnglish, minimumCount = 5, maximumCount = 10,
+        )
+
+        assertEquals(5, count)
+    }
+
+    @Test
+    fun stopsAbilityNamesBeforeFullWidthProseAndPunctuation() {
+        val width = 17
+        val bytes = ByteArray(width * 12) { 0xFF.toByte() }
+        listOf("Stench", "Drizzle", "Speed Boost", "Pastel Veil", "Zero to Hero")
+            .forEachIndexed { index, name -> writeGbaFixedName(bytes, index * width, name, width) }
+
+        writeGbaFixedName(bytes, width * 5, "The effects of we", width, terminate = false)
+        writeGbaFixedName(bytes, width * 6, "ather disappeared", width, terminate = false)
+        writeGbaFixedName(bytes, width * 7, ".", width)
+        writeGbaFixedName(bytes, width * 8, "its pressure.", width)
+
+        val count = TableValidators.inferFixedNameCount(
+            RomImage(bytes), 0, width, PokemonTextCodec.gbaEnglish, minimumCount = 5, maximumCount = 12,
+        )
+
+        assertEquals(5, count)
+    }
+
+    @Test
+    fun retainsInternalFullWidthNameWhenFollowedByTerminatedName() {
+        val width = 13
+        val bytes = ByteArray(width * 5) { 0xFF.toByte() }
+        writeGbaFixedName(bytes, 0, "Stench", width)
+        writeGbaFixedName(bytes, width, "Mega Launcher", width, terminate = false)
+        writeGbaFixedName(bytes, width * 2, "Overgrow", width)
+
+        val count = TableValidators.inferFixedNameCount(
+            RomImage(bytes), 0, width, PokemonTextCodec.gbaEnglish, minimumCount = 3, maximumCount = 5,
+        )
+
+        assertEquals(3, count)
+    }
+
+    @Test
     fun infersCountFromNextAlignedTable() {
         val count = TableValidators.inferCountFromFollowingTable(
             offset = 0x1000,
@@ -394,6 +487,26 @@ class TableValidatorsTest {
         )
 
         assertEquals(462, count)
+    }
+
+    private fun writeGbaFixedName(
+        bytes: ByteArray,
+        offset: Int,
+        name: String,
+        width: Int,
+        terminate: Boolean = true,
+    ) {
+        require(name.length <= width)
+        name.forEachIndexed { index, character ->
+            bytes[offset + index] = when (character) {
+                ' ' -> 0x00
+                in 'A'..'Z' -> 0xBB + character.code - 'A'.code
+                in 'a'..'z' -> 0xD5 + character.code - 'a'.code
+                '.' -> 0xAD
+                else -> error("unsupported test character $character")
+            }.toByte()
+        }
+        if (terminate && name.length < width) bytes[offset + name.length] = 0xFF.toByte()
     }
 
     @Test
@@ -526,5 +639,686 @@ class TableValidatorsTest {
         assertEquals(1, charts.size)
         assertEquals(chartOffset, charts.single().offset)
         assertEquals(96, charts.single().validRecords)
+    }
+
+    @Test
+    fun resolvesReferencedQ412SquareTypeChartWithoutExpansionMetadata() {
+        val pointerOffset = 4
+        val chartOffset = 64
+        val typeCount = 20
+        val bytes = ByteArray(chartOffset + typeCount * typeCount * 4 + 4) { 0x7F }
+        writeU32le(bytes, pointerOffset, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + chartOffset + typeCount * typeCount * 4)
+        repeat(typeCount * typeCount) { index -> writeU32le(bytes, chartOffset + index * 4, 4096) }
+        val nonNeutral = listOf(0L, 819L, 2048L, 8192L, 20480L)
+        repeat(typeCount) { index ->
+            val multiplier = nonNeutral[index % nonNeutral.size]
+            writeU32le(bytes, chartOffset + (index * typeCount + (index + 1) % typeCount) * 4, multiplier)
+        }
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = null, activeTypeLowerBound = 19)
+
+        assertTrue(result.compatible)
+        assertEquals(chartOffset, result.offset)
+        assertEquals(typeCount * typeCount, result.totalRecords)
+        assertEquals(typeCount * 4, result.recordSize)
+        assertEquals(4, result.elementSize)
+    }
+
+    @Test
+    fun doesNotTreatUnreferencedQ412ValuesAsATypeChart() {
+        val chartOffset = 64
+        val typeCount = 20
+        val bytes = ByteArray(chartOffset + typeCount * typeCount * 4 + 4) { 0x7F }
+        repeat(typeCount * typeCount) { index -> writeU32le(bytes, chartOffset + index * 4, 4096) }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset + typeCount * typeCount * 4)
+        writeU32le(bytes, chartOffset, 0)
+        writeU32le(bytes, chartOffset + 4, 2048)
+        writeU32le(bytes, chartOffset + 8, 8192)
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = null, activeTypeLowerBound = typeCount)
+
+        assertFalse(result.compatible)
+    }
+
+    @Test
+    fun rejectsPlausibleUnreferencedQ412MatrixEvenWhenInherited() {
+        val chartOffset = 64
+        val typeCount = 20
+        val bytes = ByteArray(chartOffset + typeCount * typeCount * 4 + 4) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset + typeCount * typeCount * 4)
+        repeat(typeCount * typeCount) { index -> writeU32le(bytes, chartOffset + index * 4, 4096) }
+        val nonNeutral = listOf(0L, 819L, 2048L, 8192L, 20480L)
+        repeat(typeCount) { index ->
+            val multiplier = nonNeutral[index % nonNeutral.size]
+            writeU32le(bytes, chartOffset + (index * typeCount + (index + 1) % typeCount) * 4, multiplier)
+        }
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = chartOffset, activeTypeLowerBound = typeCount)
+
+        assertFalse(result.compatible)
+        assertEquals(chartOffset, result.offset)
+        assertEquals(3, result.recordSize)
+    }
+
+    @Test
+    fun resolvesQ412SquareBeforeTrailingLowPaddingWord() {
+        val pointerOffset = 4
+        val chartOffset = 64
+        val typeCount = 20
+        val bytes = ByteArray(chartOffset + typeCount * typeCount * 4 + 8) { 0x7F }
+        writeU32le(bytes, pointerOffset, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + chartOffset + typeCount * typeCount * 4)
+        writePlausibleQ412Matrix(bytes, chartOffset, typeCount)
+        writeU32le(bytes, chartOffset + typeCount * typeCount * 4, 0)
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = null, activeTypeLowerBound = 19)
+
+        assertTrue(result.compatible)
+        assertEquals(chartOffset, result.offset)
+        assertEquals(typeCount * typeCount, result.totalRecords)
+    }
+
+    @Test
+    fun doesNotInflateQ412SquareWhenLowPaddingReachesNextSquare() {
+        val pointerOffset = 4
+        val chartOffset = 64
+        val typeCount = 20
+        val paddedTypeCount = typeCount + 1
+        val bytes = ByteArray(chartOffset + paddedTypeCount * paddedTypeCount * 4 + 4) { 0x7F }
+        writeU32le(bytes, pointerOffset, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + chartOffset + typeCount * typeCount * 4)
+        writePlausibleQ412Matrix(bytes, chartOffset, typeCount)
+        val padding = listOf(0L, 819L, 2048L, 4096L, 8192L)
+        repeat(paddedTypeCount * paddedTypeCount - typeCount * typeCount) { index ->
+            writeU32le(bytes, chartOffset + (typeCount * typeCount + index) * 4, padding[index % padding.size])
+        }
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = null, activeTypeLowerBound = 19)
+
+        assertTrue(result.compatible)
+        assertEquals(typeCount * typeCount, result.totalRecords)
+        assertEquals(typeCount * 4, result.recordSize)
+    }
+
+    @Test
+    fun resolvesMaximumSupportedQ412SquareWithInvalidFollower() {
+        val pointerOffset = 4
+        val chartOffset = 64
+        val typeCount = 64
+        val bytes = ByteArray(chartOffset + typeCount * typeCount * 4 + 4) { 0x7F }
+        writeU32le(bytes, pointerOffset, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + chartOffset + typeCount * typeCount * 4)
+        writePlausibleQ412Matrix(bytes, chartOffset, typeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = null, activeTypeLowerBound = typeCount)
+
+        assertTrue(result.compatible)
+        assertEquals(typeCount * typeCount, result.totalRecords)
+        assertEquals(typeCount * 4, result.recordSize)
+    }
+
+    @Test
+    fun enclosingQ412MatrixOutranksMoreFrequentlyReferencedInteriorSuffix() {
+        val rootPointer = 4
+        val interiorPointers = listOf(8, 12, 16)
+        val chartOffset = 64
+        val typeCount = 32
+        val interiorOffset = chartOffset + 14 * typeCount * 4
+        val bytes = ByteArray(chartOffset + typeCount * typeCount * 4 + 4) { 0x7F }
+        writeU32le(bytes, rootPointer, 0x08000000L + chartOffset)
+        interiorPointers.forEach { writeU32le(bytes, it, 0x08000000L + interiorOffset) }
+        writeU32le(bytes, 20, 0x08000000L + chartOffset + typeCount * typeCount * 4)
+        writePlausibleQ412Matrix(bytes, chartOffset, typeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = null, activeTypeLowerBound = 18)
+
+        assertTrue(result.compatible)
+        assertEquals(chartOffset, result.offset)
+        assertEquals(typeCount * typeCount, result.totalRecords)
+    }
+
+    @Test
+    fun acceptsQ412MatrixWithDenseNonNeutralColumnWhenTypeCountIsKnown() {
+        val pointerOffset = 4
+        val chartOffset = 64
+        val typeCount = 20
+        val bytes = ByteArray(chartOffset + typeCount * typeCount * 4 + 4) { 0x7F }
+        writeU32le(bytes, pointerOffset, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + chartOffset + typeCount * typeCount * 4)
+        writePlausibleQ412Matrix(bytes, chartOffset, typeCount)
+        repeat(typeCount) { row -> writeU32le(bytes, chartOffset + row * typeCount * 4, 2048) }
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = 19,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(typeCount * typeCount, result.totalRecords)
+    }
+
+    @Test
+    fun infersQ412DimensionFromReferencedBoundaryWithoutActiveTypeLowerBound() {
+        val pointerOffset = 4
+        val chartOffset = 64
+        val typeCount = 20
+        val bytes = ByteArray(chartOffset + typeCount * typeCount * 4 + 4) { 0x7F }
+        writeU32le(bytes, pointerOffset, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + chartOffset + typeCount * typeCount * 4)
+        writePlausibleQ412Matrix(bytes, chartOffset, typeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = null)
+
+        assertTrue(result.compatible)
+        assertEquals(typeCount * typeCount, result.totalRecords)
+    }
+
+    @Test
+    fun rejectsReferencedQ412RootWithoutReferencedEndBoundary() {
+        val chartOffset = 64
+        val typeCount = 20
+        val bytes = ByteArray(chartOffset + typeCount * typeCount * 4 + 4) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writePlausibleQ412Matrix(bytes, chartOffset, typeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = null, activeTypeLowerBound = 19)
+
+        assertFalse(result.compatible)
+    }
+
+    @Test
+    fun rejectsAmbiguousNonOverlappingReferencedQ412Roots() {
+        val typeCount = 20
+        val first = 64
+        val second = first + typeCount * typeCount * 4 + 128
+        val secondEnd = second + typeCount * typeCount * 4
+        val bytes = ByteArray(secondEnd + 4) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + first)
+        writeU32le(bytes, 8, 0x08000000L + first + typeCount * typeCount * 4)
+        writeU32le(bytes, 12, 0x08000000L + second)
+        writeU32le(bytes, 16, 0x08000000L + secondEnd)
+        writePlausibleQ412Matrix(bytes, first, typeCount)
+        writePlausibleQ412Matrix(bytes, second, typeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(RomImage(bytes), inheritedOffset = null, activeTypeLowerBound = 19)
+
+        assertFalse(result.compatible)
+        assertTrue(result.reasons.single().contains("ambiguous"))
+        assertTrue(result.ambiguous)
+        assertTrue(result.reviewRecommended)
+    }
+
+    @Test
+    fun rejectsAmbiguousReferencedBoundariesForTheSameQ412Root() {
+        val chartOffset = 64
+        val smallerTypeCount = 20
+        val largerTypeCount = 21
+        val smallerEnd = chartOffset + smallerTypeCount * smallerTypeCount * 4
+        val largerEnd = chartOffset + largerTypeCount * largerTypeCount * 4
+        val bytes = ByteArray(largerEnd + 4) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + smallerEnd)
+        writeU32le(bytes, 12, 0x08000000L + largerEnd)
+        writePlausibleQ412Matrix(bytes, chartOffset, smallerTypeCount)
+        val padding = listOf(0L, 819L, 2048L, 4096L, 8192L)
+        repeat(largerTypeCount * largerTypeCount - smallerTypeCount * smallerTypeCount) { index ->
+            writeU32le(bytes, smallerEnd + index * 4, padding[index % padding.size])
+        }
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = 19,
+        )
+
+        assertFalse(result.compatible)
+        assertTrue(result.reasons.single().contains("ambiguous"))
+        assertTrue(result.ambiguous)
+        assertTrue(result.reviewRecommended)
+    }
+
+    @Test
+    fun resolvesReferencedU16Q412TypeChartFromInverseCrossTableBoundary() {
+        val chartOffset = 66
+        val typeCount = 19
+        val pairEnd = chartOffset + typeCount * typeCount * 4
+        val bytes = ByteArray(pairEnd + 8) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + pairEnd)
+        writePlausibleU16Q412TypeChartPair(bytes, chartOffset, typeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = typeCount,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(chartOffset, result.offset)
+        assertEquals(typeCount * typeCount, result.totalRecords)
+        assertEquals(typeCount * 2, result.recordSize)
+        assertEquals(2, result.elementSize)
+    }
+
+    @Test
+    fun rejectsUnreferencedU16Q412TypeChartPair() {
+        val chartOffset = 66
+        val typeCount = 19
+        val pairEnd = chartOffset + typeCount * typeCount * 4
+        val bytes = ByteArray(pairEnd + 8) { 0x7F }
+        writePlausibleU16Q412TypeChartPair(bytes, chartOffset, typeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = typeCount,
+        )
+
+        assertFalse(result.compatible)
+    }
+
+    @Test
+    fun rejectsReferencedU16Q412DisplayDecoyWithoutCrossTableBoundary() {
+        val chartOffset = 66
+        val typeCount = 19
+        val bytes = ByteArray(chartOffset + typeCount * typeCount * 2 + 8) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writePlausibleU16Q412Matrix(bytes, chartOffset, typeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = typeCount,
+        )
+
+        assertFalse(result.compatible)
+    }
+
+    @Test
+    fun enclosingU16Q412PairOutranksShiftedInteriorPair() {
+        val chartOffset = 66
+        val typeCount = 19
+        val pairSize = typeCount * typeCount * 4
+        val bytes = ByteArray(chartOffset + pairSize + 8) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + chartOffset + pairSize)
+        writeU32le(bytes, 12, 0x08000000L + chartOffset + 2)
+        writeU32le(bytes, 16, 0x08000000L + chartOffset + pairSize + 2)
+        writePlausibleU16Q412TypeChartPair(bytes, chartOffset, typeCount)
+        writeU16le(bytes, chartOffset + pairSize, 4096)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = typeCount,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(chartOffset, result.offset)
+    }
+
+    @Test
+    fun resolvesU16Q412DimensionAboveActiveTypeLowerBound() {
+        val chartOffset = 66
+        val activeTypeCount = 19
+        val chartTypeCount = 20
+        val matrixWords = chartTypeCount * chartTypeCount
+        val pairEnd = chartOffset + matrixWords * 4
+        val bytes = ByteArray(pairEnd + 8) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + pairEnd)
+        writePlausibleU16Q412TypeChartPair(bytes, chartOffset, chartTypeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = activeTypeCount,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(chartTypeCount * chartTypeCount, result.totalRecords)
+        assertEquals(chartTypeCount * 2, result.recordSize)
+    }
+
+    @Test
+    fun doesNotInflateU16Q412PairWithoutReferencedLargerBoundary() {
+        val chartOffset = 66
+        val typeCount = 19
+        val largerTypeCount = 20
+        val pairEnd = chartOffset + typeCount * typeCount * 4
+        val bytes = ByteArray(chartOffset + largerTypeCount * largerTypeCount * 4 + 8) { 0 }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + pairEnd)
+        writePlausibleU16Q412TypeChartPair(bytes, chartOffset, typeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = typeCount,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(typeCount * typeCount, result.totalRecords)
+    }
+
+    @Test
+    fun rejectsAmbiguousNonOverlappingReferencedU16Q412Pairs() {
+        val typeCount = 19
+        val pairSize = typeCount * typeCount * 4
+        val first = 66
+        val second = first + pairSize + 64
+        val bytes = ByteArray(second + pairSize + 8) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + first)
+        writeU32le(bytes, 8, 0x08000000L + first + pairSize)
+        writeU32le(bytes, 12, 0x08000000L + second)
+        writeU32le(bytes, 16, 0x08000000L + second + pairSize)
+        writePlausibleU16Q412TypeChartPair(bytes, first, typeCount)
+        writePlausibleU16Q412TypeChartPair(bytes, second, typeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = typeCount,
+        )
+
+        assertFalse(result.compatible)
+        assertTrue(result.ambiguous)
+        assertTrue(result.reviewRecommended)
+    }
+
+    @Test
+    fun rejectsAmbiguousReferencedU16Q412DimensionsAtTheSameRoot() {
+        val chartOffset = 66
+        val smallerTypeCount = 18
+        val largerTypeCount = 22
+        val largerPairEnd = chartOffset + largerTypeCount * largerTypeCount * 4
+        val bytes = ByteArray(largerPairEnd + 8) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + chartOffset + smallerTypeCount * smallerTypeCount * 4)
+        writeU32le(bytes, 12, 0x08000000L + largerPairEnd)
+        writeAmbiguousU16Q412Pairs(bytes, chartOffset, smallerTypeCount, largerTypeCount)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = smallerTypeCount,
+        )
+
+        assertFalse(result.compatible)
+        assertEquals(2, result.totalRecords)
+        assertTrue(result.ambiguous)
+        assertTrue(result.reviewRecommended)
+    }
+
+    @Test
+    fun enclosingU16Q412PairPrunesCandidateBeginningAtInverseMatrix() {
+        val chartOffset = 66
+        val typeCount = 19
+        val matrixBytes = typeCount * typeCount * 2
+        val pairBytes = matrixBytes * 2
+        val interiorOffset = chartOffset + matrixBytes
+        val bytes = ByteArray(chartOffset + matrixBytes * 3 + 8) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + chartOffset + pairBytes)
+        writeU32le(bytes, 12, 0x08000000L + interiorOffset)
+        writeU32le(bytes, 16, 0x08000000L + interiorOffset + pairBytes)
+        writeConsecutiveInverseU16Q412Matrices(bytes, chartOffset, typeCount, matrixCount = 3)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = typeCount,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(chartOffset, result.offset)
+    }
+
+    @Test
+    fun prunedInteriorU16Q412PairDoesNotHideLaterIndependentRoot() {
+        val chartOffset = 66
+        val typeCount = 19
+        val matrixBytes = typeCount * typeCount * 2
+        val pairBytes = matrixBytes * 2
+        val interiorOffset = chartOffset + matrixBytes
+        val independentOffset = chartOffset + pairBytes
+        val bytes = ByteArray(chartOffset + matrixBytes * 4 + 8) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + interiorOffset)
+        writeU32le(bytes, 12, 0x08000000L + independentOffset)
+        writeU32le(bytes, 16, 0x08000000L + independentOffset + matrixBytes)
+        writeU32le(bytes, 20, 0x08000000L + independentOffset + pairBytes)
+        writeConsecutiveInverseU16Q412Matrices(bytes, chartOffset, typeCount, matrixCount = 4)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = typeCount,
+        )
+
+        assertFalse(result.compatible)
+        assertEquals(2, result.totalRecords)
+        assertTrue(result.ambiguous)
+        assertTrue(result.reasons.single().contains("0x${chartOffset.toString(16)}"))
+        assertFalse(result.reasons.single().contains("0x${interiorOffset.toString(16)}"))
+        assertTrue(result.reasons.single().contains("0x${independentOffset.toString(16)}"))
+    }
+
+    @Test
+    fun rejectsReferencedU16Q412PairWithOneCorruptInverseWord() {
+        val chartOffset = 66
+        val typeCount = 19
+        val matrixBytes = typeCount * typeCount * 2
+        val pairEnd = chartOffset + matrixBytes * 2
+        val bytes = ByteArray(pairEnd + 8) { 0x7F }
+        writeU32le(bytes, 4, 0x08000000L + chartOffset)
+        writeU32le(bytes, 8, 0x08000000L + pairEnd)
+        writePlausibleU16Q412TypeChartPair(bytes, chartOffset, typeCount)
+        writeU16le(bytes, chartOffset + matrixBytes, 2048)
+
+        val result = TableValidators.resolveGen3TypeChart(
+            RomImage(bytes),
+            inheritedOffset = null,
+            activeTypeLowerBound = typeCount,
+        )
+
+        assertFalse(result.compatible)
+    }
+
+    @Test
+    fun derivesOfficialGen3TypeCountFromPlausibleBaseStats() {
+        val typeCount = 18
+        val bytes = ByteArray(typeCount * 28)
+        repeat(typeCount) { index -> writePlausibleBaseStats(bytes, index * 28, index, (index + 1) % typeCount) }
+
+        val result = TableValidators.inferGen3ActiveTypeCount(
+            RomImage(bytes),
+            TableLayout(0, typeCount, 28),
+            typeCount,
+        )
+
+        assertEquals(18, result)
+    }
+
+    @Test
+    fun derivesExpandedGen3TypeCountFromPlausibleBaseStats() {
+        val typeCount = 34
+        val bytes = ByteArray(typeCount * 28)
+        repeat(typeCount) { index -> writePlausibleBaseStats(bytes, index * 28, index, (index + 1) % typeCount) }
+
+        val result = TableValidators.inferGen3ActiveTypeCount(
+            RomImage(bytes),
+            TableLayout(0, typeCount, 28),
+            typeCount,
+        )
+
+        assertEquals(34, result)
+    }
+
+    @Test
+    fun derivesTypesAbove31EvenWhenLegacyBaseStatsValidatorRejectsThem() {
+        val count = 20
+        val bytes = ByteArray(count * 28)
+        repeat(count) { index -> writePlausibleBaseStats(bytes, index * 28, 33, 33) }
+        val rom = RomImage(bytes)
+
+        val legacyValidation = TableValidators.baseStats(rom, 0, count, 28, generation = 3)
+        val activeLowerBound = TableValidators.inferGen3ActiveTypeCount(
+            rom,
+            TableLayout(0, count, 28),
+            count,
+        )
+
+        assertFalse(legacyValidation.compatible)
+        assertEquals(34, activeLowerBound)
+    }
+
+    @Test
+    fun ignoresCorruptPlaceholderTypeByteWhenBaseStatsAreImplausible() {
+        val count = 19
+        val bytes = ByteArray(count * 28)
+        repeat(18) { index -> writePlausibleBaseStats(bytes, index * 28, index, (index + 1) % 18) }
+        bytes[18 * 28 + 6] = 63
+        bytes[18 * 28 + 7] = 63
+
+        val result = TableValidators.inferGen3ActiveTypeCount(
+            RomImage(bytes),
+            TableLayout(0, count, 28),
+            count,
+        )
+
+        assertEquals(18, result)
+    }
+
+    private fun writePlausibleQ412Matrix(bytes: ByteArray, offset: Int, typeCount: Int) {
+        repeat(typeCount * typeCount) { index -> writeU32le(bytes, offset + index * 4, 4096) }
+        val nonNeutral = listOf(0L, 819L, 2048L, 8192L, 20480L)
+        repeat(typeCount) { row ->
+            repeat(4) { variant ->
+                writeU32le(
+                    bytes,
+                    offset + (row * typeCount + (row + variant + 1) % typeCount) * 4,
+                    nonNeutral[(row + variant) % nonNeutral.size],
+                )
+            }
+        }
+    }
+
+    private fun writePlausibleU16Q412TypeChartPair(bytes: ByteArray, offset: Int, typeCount: Int) {
+        writePlausibleU16Q412Matrix(bytes, offset, typeCount)
+        val values = typeCount * typeCount
+        writeInverseU16Q412Matrix(bytes, offset, offset + values * 2, values)
+    }
+
+    private fun writeConsecutiveInverseU16Q412Matrices(
+        bytes: ByteArray,
+        offset: Int,
+        typeCount: Int,
+        matrixCount: Int,
+    ) {
+        val values = typeCount * typeCount
+        val matrixBytes = values * 2
+        writePlausibleU16Q412Matrix(bytes, offset, typeCount)
+        repeat(matrixCount - 1) { index ->
+            val sourceOffset = offset + index * matrixBytes
+            writeInverseU16Q412Matrix(bytes, sourceOffset, sourceOffset + matrixBytes, values)
+        }
+    }
+
+    private fun writeAmbiguousU16Q412Pairs(
+        bytes: ByteArray,
+        offset: Int,
+        smallerTypeCount: Int,
+        largerTypeCount: Int,
+    ) {
+        val smallerValues = smallerTypeCount * smallerTypeCount
+        val largerValues = largerTypeCount * largerTypeCount
+        val words = IntArray(largerValues * 2) { 4096 }
+        val assigned = BooleanArray(words.size)
+
+        fun paintComponent(seed: Int) {
+            val pending = ArrayDeque<Pair<Int, Int>>()
+            pending.add(seed to 2048)
+            while (pending.isNotEmpty()) {
+                val (index, value) = pending.removeFirst()
+                if (index !in words.indices) continue
+                if (assigned[index]) {
+                    check(words[index] == value)
+                    continue
+                }
+                assigned[index] = true
+                words[index] = value
+                val inverse = if (value == 2048) 8192 else 2048
+                intArrayOf(
+                    index - smallerValues,
+                    index + smallerValues,
+                    index - largerValues,
+                    index + largerValues,
+                ).forEach { neighbor ->
+                    if (neighbor in words.indices) pending.add(neighbor to inverse)
+                }
+            }
+        }
+
+        var seed = 0
+        while (
+            words.take(smallerValues).count { it != 4096 } < smallerTypeCount ||
+            words.take(largerValues).count { it != 4096 } < largerTypeCount
+        ) {
+            while (assigned[seed]) seed++
+            paintComponent(seed)
+        }
+        check(words.take(smallerValues).count { it == 4096 } * 5 >= smallerValues * 2)
+        check(words.take(largerValues).count { it == 4096 } * 5 >= largerValues * 2)
+        words.forEachIndexed { index, value -> writeU16le(bytes, offset + index * 2, value) }
+    }
+
+    private fun writePlausibleU16Q412Matrix(bytes: ByteArray, offset: Int, typeCount: Int) {
+        repeat(typeCount * typeCount) { index -> writeU16le(bytes, offset + index * 2, 4096) }
+        repeat(typeCount) { row ->
+            writeU16le(bytes, offset + (row * typeCount + (row + 1) % typeCount) * 2, 0)
+            writeU16le(bytes, offset + (row * typeCount + (row + 2) % typeCount) * 2, 2048)
+            writeU16le(bytes, offset + (row * typeCount + (row + 3) % typeCount) * 2, 8192)
+        }
+    }
+
+    private fun writeInverseU16Q412Matrix(
+        bytes: ByteArray,
+        sourceOffset: Int,
+        inverseOffset: Int,
+        values: Int,
+    ) {
+        repeat(values) { index ->
+            val source = bytes[sourceOffset + index * 2].toInt() and 0xFF or
+                ((bytes[sourceOffset + index * 2 + 1].toInt() and 0xFF) shl 8)
+            val inverse = when {
+                source < 4096 -> 8192
+                source > 4096 -> 2048
+                else -> 4096
+            }
+            writeU16le(bytes, inverseOffset + index * 2, inverse)
+        }
+    }
+
+    private fun writePlausibleBaseStats(
+        bytes: ByteArray,
+        offset: Int,
+        primaryType: Int,
+        secondaryType: Int,
+    ) {
+        repeat(6) { bytes[offset + it] = 50 }
+        bytes[offset + 6] = primaryType.toByte()
+        bytes[offset + 7] = secondaryType.toByte()
+    }
+
+    private fun writeU32le(bytes: ByteArray, offset: Int, value: Long) {
+        repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
+    }
+
+    private fun writeU16le(bytes: ByteArray, offset: Int, value: Int) {
+        bytes[offset] = value.toByte()
+        bytes[offset + 1] = (value ushr 8).toByte()
     }
 }

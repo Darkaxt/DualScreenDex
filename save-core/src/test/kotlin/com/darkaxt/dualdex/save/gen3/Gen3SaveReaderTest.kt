@@ -6,6 +6,8 @@ import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveParseResult
 import com.darkaxt.dualdex.save.SaveParser
 import com.darkaxt.dualdex.save.SaveSpeciesContext
+import com.darkaxt.dualdex.save.SaveByteSelector
+import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -202,6 +204,50 @@ class Gen3SaveReaderTest {
         assertEquals(37, parsed.snapshot.party.single().level)
         assertEquals(listOf(31, 30, 29, 28, 27, 26), parsed.snapshot.party.single().ivs)
         assertEquals(4, parsed.snapshot.party.single().captureBallId)
+    }
+
+    @Test
+    fun detectsTheActiveLevelUpRulesetFromAReconstructedSaveBlock1Selector() {
+        val selectorContext = context.copy(
+            levelUpRulesetSelectors = listOf(
+                SaveByteSelector("original", 0x3DA6, 0x02, 0x00),
+                SaveByteSelector("modern", 0x3DA6, 0x02, 0x02),
+            ),
+        )
+        val slot = fixtureSlot(counter = 16, species = 6, context = selectorContext)
+        val saveBlock1 = concatenate(slot.sections, 1..4)
+        saveBlock1[0x3DA6] = 0x0F
+        split(saveBlock1, slot.sections, 1..4)
+        slot.sections.getValue(1)[0xF90] = 1 // Distinguish the full 0xFF4 chunk ABI from the legacy 0xF80 ABI.
+        val save = ByteArray(128 * 1024).also { writeSlot(it, 0, slot, rotation = 8) }
+
+        val parsed = SaveParser.parse(save, selectorContext) as SaveParseResult.Parsed
+
+        assertEquals("modern", parsed.snapshot.detectedLevelUpRulesetId)
+        assertTrue(parsed.snapshot.levelUpRulesetDetectionResolved)
+        assertEquals(
+            LevelUpRulesetDetectionFingerprint.create(selectorContext.levelUpRulesetSelectors, "modern"),
+            parsed.snapshot.levelUpRulesetDetectionFingerprint,
+        )
+    }
+
+    @Test
+    fun leavesLevelUpAutoUnresolvedWhenSelectorDescriptorsConflict() {
+        val selectorContext = context.copy(
+            levelUpRulesetSelectors = listOf(
+                SaveByteSelector("one", 0x3DA6, 0x02, 0x00),
+                SaveByteSelector("two", 0x3DA6, 0x02, 0x00),
+            ),
+        )
+        val save = ByteArray(128 * 1024).also {
+            writeSlot(it, 0, fixtureSlot(counter = 17, species = 6, context = selectorContext), rotation = 8)
+        }
+
+        val parsed = SaveParser.parse(save, selectorContext) as SaveParseResult.Parsed
+
+        assertEquals(null, parsed.snapshot.detectedLevelUpRulesetId)
+        assertFalse(parsed.snapshot.levelUpRulesetDetectionResolved)
+        assertEquals(null, parsed.snapshot.levelUpRulesetDetectionFingerprint)
     }
 
     private fun fixtureSlot(

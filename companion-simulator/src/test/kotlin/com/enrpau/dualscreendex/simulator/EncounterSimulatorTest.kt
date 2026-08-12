@@ -12,6 +12,7 @@ import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -49,23 +50,7 @@ class EncounterSimulatorTest {
     @Test
     fun usesTheSelectedResidentRulesetWithoutRebuildingTheCatalog() {
         val base = catalog()
-        val variants = listOf(
-            LearnsetRuleset(
-                id = "base",
-                label = "Base",
-                sourceOffset = 100,
-                confidence = 1.0,
-                entriesBySpecies = base.speciesById.mapValues { listOf(LearnsetEntry(5, 1)) },
-                primary = true,
-            ),
-            LearnsetRuleset(
-                id = "expanded",
-                label = "Expanded",
-                sourceOffset = 200,
-                confidence = 1.0,
-                entriesBySpecies = base.speciesById.mapValues { listOf(LearnsetEntry(5, 2)) },
-            ),
-        )
+        val variants = rulesets(base)
         val simulator = EncounterSimulator(base.copy(learnsetRulesets = variants))
         val request = SimulationRequest(seed = 44, minimumLevel = 10, maximumLevel = 10)
 
@@ -74,6 +59,45 @@ class EncounterSimulatorTest {
 
         assertTrue(original.battle.opponents.single().moveHistory.all { it.moveId == 1 })
         assertTrue(expanded.battle.opponents.single().moveHistory.all { it.moveId == 2 })
+    }
+
+    @Test
+    fun rejectsUnresolvedMultipleRulesetsRegardlessOfOrdering() {
+        val base = catalog()
+        val variants = rulesets(base)
+        val request = SimulationRequest(seed = 44, minimumLevel = 10, maximumLevel = 10)
+
+        listOf(variants, variants.reversed()).forEach { ordered ->
+            val failure = assertThrows(IllegalArgumentException::class.java) {
+                EncounterSimulator(base.copy(learnsetRulesets = ordered)).generate(request)
+            }
+
+            assertEquals("level-up ruleset is unresolved for this multi-table catalog", failure.message)
+        }
+    }
+
+    @Test
+    fun nullRulesetUsesTheOrdinaryLearnsetOrTheSoleResidentTableOnly() {
+        val base = catalog()
+        val request = SimulationRequest(seed = 44, minimumLevel = 10, maximumLevel = 10)
+
+        val ordinary = EncounterSimulator(base).generate(request)
+        val sole = EncounterSimulator(base.copy(learnsetRulesets = listOf(rulesets(base).last()))).generate(request)
+
+        assertTrue(ordinary.battle.opponents.single().moveHistory.all { it.moveId == 1 })
+        assertTrue(sole.battle.opponents.single().moveHistory.all { it.moveId == 2 })
+    }
+
+    @Test
+    fun explicitRulesetRequiresAnExactResidentId() {
+        val base = catalog()
+        val simulator = EncounterSimulator(base.copy(learnsetRulesets = rulesets(base)))
+
+        val failure = assertThrows(IllegalArgumentException::class.java) {
+            simulator.generate(SimulationRequest(seed = 44), activeRulesetId = "missing")
+        }
+
+        assertEquals("unknown catalog ruleset: missing", failure.message)
     }
 
     @Test
@@ -117,4 +141,22 @@ class EncounterSimulatorTest {
         }
         return ParsedCatalog("hash", EngineFamily.EMERALD, platform, speciesById = species, movesById = moves)
     }
+
+    private fun rulesets(catalog: ParsedCatalog) = listOf(
+        LearnsetRuleset(
+            id = "base",
+            label = "Base",
+            sourceOffset = 100,
+            confidence = 1.0,
+            entriesBySpecies = catalog.speciesById.mapValues { listOf(LearnsetEntry(5, 1)) },
+            primary = true,
+        ),
+        LearnsetRuleset(
+            id = "expanded",
+            label = "Expanded",
+            sourceOffset = 200,
+            confidence = 1.0,
+            entriesBySpecies = catalog.speciesById.mapValues { listOf(LearnsetEntry(5, 2)) },
+        ),
+    )
 }

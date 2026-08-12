@@ -37,7 +37,11 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
                 action.loading.phase == "FAILED" -> state.catalogReady
                 else -> action.loading.completedUnits > 0
             },
-            catalogName = action.name ?: state.catalogName,
+            catalogName = when {
+                action.loading.phase == "FAILED" -> null
+                action.loading.phase == "IDLE" && action.loading.totalUnits == 0 -> null
+                else -> action.name ?: state.catalogName
+            },
             error = if (action.loading.phase == "FAILED") state.error else null,
         )
         is CompanionAction.OpenSpecies -> state.copy(

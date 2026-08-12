@@ -38,6 +38,8 @@ import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import com.enrpau.dualscreendex.companion.model.Theme
 import com.enrpau.dualscreendex.companion.knowledge.SaveKnowledgeMapper
 import com.darkaxt.dualdex.save.SaveParseContext
+import com.darkaxt.dualdex.save.SaveByteSelector
+import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
@@ -62,11 +64,23 @@ class ProductionCompanionRuntime(
     private val onCatalogCommitted: (sha256: String, displayName: String) -> Unit = { _, _ -> },
     initialSettings: CompanionSettings = CompanionSettings(),
     private val onSettingsChanged: (CompanionSettings) -> Unit = {},
+    private val settingsForRom: ((String) -> CompanionSettings)? = null,
+    private val globalSettings: (() -> CompanionSettings)? = null,
+    private val onRomSettingsChanged: (String?, CompanionSettings) -> Unit = { _, settings -> onSettingsChanged(settings) },
+    private val onRomDisplayModeChanged: (DisplayMode) -> Unit = {},
+    private val onCatalogCleared: () -> Unit = {},
     private val knowledgeRepository: KnowledgeRepository? = null,
+    private val parseCatalog: (RomImage, (CatalogMaterializationProgress) -> Unit) -> ParsedCatalog? = { rom, progress ->
+        CatalogParser.parse(rom, progress).catalog
+    },
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
+    @Volatile private var settingsRomSha256: String? = null
+    @Volatile private var settingsWritesEnabled = true
     @Volatile private var retroArch = RetroArchView()
     @Volatile private var saveRam = SaveRamView()
+    private var detectedLevelUpRulesetId: String? = null
+    private var levelUpRulesetDetectionResolved = false
     private var catalogPublicationInProgress = false
     private var cachedState: CachedState? = null
     private val loadGeneration = AtomicLong()
@@ -92,20 +106,9 @@ class ProductionCompanionRuntime(
     }
 
     private fun loadInternal(name: String, rom: RomImage, onComplete: ((Result<Unit>) -> Unit)?) {
-        val generation = loadGeneration.incrementAndGet()
         val header = RomHeaderReader.read(rom)
         val source = CatalogSourceMetadata.fromDisplayName(name, rom.size, header.title)
-        synchronized(this) { catalog = null }
-        clearLiveBattle()
-        saveRam = SaveRamView()
-        gateway.dispatch(CompanionAction.ReplaceLedger(com.enrpau.dualscreendex.companion.model.KnowledgeLedger()))
-        gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
-        gateway.dispatch(
-            CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(active = true, phase = "IDENTIFYING", completedUnits = 0, totalUnits = 5),
-                name,
-            ),
-        )
+        val generation = beginCatalogTransition(rom.sha256, name, "IDENTIFYING")
         parserWorker.execute {
             try {
                 val cached = catalogRepository?.readComplete(rom.sha256)
@@ -116,30 +119,19 @@ class ProductionCompanionRuntime(
                     }
                     catalogRepository.write(cached.catalog, source, CatalogWriteProgress.complete())
                     publishReopened(generation, name, cached.catalog)
-                    onCatalogCommitted(cached.catalog.romSha256, name)
                     notifyCompletion(onComplete, Result.success(Unit))
                     return@execute
                 }
-                val parsed = CatalogParser.parse(rom) { progress -> publishProgress(generation, progress, source) }.catalog
+                val parsed = parseCatalog(rom) { progress -> publishProgress(generation, progress, source) }
                     ?: error("ROM did not produce a supported mainline-family catalog")
                 if (generation != loadGeneration.get()) {
                     notifyCompletion(onComplete, Result.failure(IllegalStateException("catalog load was superseded")))
                     return@execute
                 }
-                synchronized(this) { catalog = parsed }
-                restoreKnowledge(parsed.romSha256)
-                gateway.dispatch(CompanionAction.CatalogLoaded(name))
-                onCatalogCommitted(parsed.romSha256, name)
+                publishParsed(generation, name, parsed)
                 notifyCompletion(onComplete, Result.success(Unit))
             } catch (failure: Exception) {
-                if (generation == loadGeneration.get()) {
-                    gateway.dispatch(CompanionAction.Failure(failure.message ?: failure.javaClass.simpleName))
-                    gateway.dispatch(
-                        CompanionAction.CatalogLoadingChanged(
-                            CatalogLoadingState(active = false, phase = "FAILED", completedUnits = 0, totalUnits = 5),
-                        ),
-                    )
-                }
+                publishTransitionFailure(generation, "FAILED", failure.message ?: failure.javaClass.simpleName)
                 notifyCompletion(onComplete, Result.failure(failure))
             }
         }
@@ -148,36 +140,41 @@ class ProductionCompanionRuntime(
     /** Test and cache-reopen seam; Stage 2 will use this for persisted catalogs. */
     @Synchronized
     fun loadCatalog(name: String, parsed: ParsedCatalog) {
-        loadGeneration.incrementAndGet()
-        clearLiveBattle()
+        beginCatalogTransition(parsed.romSha256, name, "CACHE_REOPEN")
+        applyWinningCatalogSettings(parsed.romSha256)
         catalog = parsed
-        saveRam = SaveRamView()
+        settingsWritesEnabled = true
         gateway.dispatch(CompanionAction.ReplaceLedger(readKnowledge(parsed.romSha256)))
-        gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 5, totalUnits = 5),
+                name,
+            ),
+        )
         gateway.dispatch(CompanionAction.CatalogLoaded(name))
     }
 
+    @Synchronized
     fun restoreCatalog(sha256: String): Boolean {
-        val stored = catalogRepository?.readComplete(sha256) ?: return false
-        val generation = loadGeneration.incrementAndGet()
+        val stored = catalogRepository?.readComplete(sha256)
+        if (stored == null) {
+            val generation = beginCatalogTransition(null, phase = "CACHE_REOPEN")
+            publishTransitionFailure(generation, "IDLE")
+            return false
+        }
+        val generation = beginCatalogTransition(stored.catalog.romSha256, stored.source.displayName, "CACHE_REOPEN")
         publishReopened(generation, stored.source.displayName, stored.catalog)
-        onCatalogCommitted(stored.catalog.romSha256, stored.source.displayName)
         return true
     }
 
     fun restoreCatalogAsync(sha256: String) {
-        gateway.dispatch(
-            CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(active = true, phase = "CACHE_REOPEN", completedUnits = 0, totalUnits = 5),
-            ),
-        )
+        val generation = beginCatalogTransition(sha256, null, "CACHE_REOPEN")
         parserWorker.execute {
-            if (!restoreCatalog(sha256)) {
-                gateway.dispatch(
-                    CompanionAction.CatalogLoadingChanged(
-                        CatalogLoadingState(active = false, phase = "IDLE", completedUnits = 0, totalUnits = 0),
-                    ),
-                )
+            val stored = catalogRepository?.readComplete(sha256)
+            if (stored == null) {
+                publishTransitionFailure(generation, "IDLE")
+            } else {
+                publishReopened(generation, stored.source.displayName, stored.catalog)
             }
         }
     }
@@ -205,7 +202,7 @@ class ProductionCompanionRuntime(
             currentCatalog,
             truth = battleTruth(snapshot, currentCatalog),
             activeRulesetId = active?.id,
-            rulesetAssumed = snapshot.settings.ruleset == "AUTO",
+            rulesetAssumed = snapshot.settings.ruleset == "AUTO" && !levelUpRulesetDetectionResolved,
             retroArch = retroArch,
             saveRam = saveRam,
         ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
@@ -221,6 +218,15 @@ class ProductionCompanionRuntime(
         saveRam = state
     }
 
+    fun updateOverlayScale(scale: Double) {
+        val current = gateway.bootstrap().settings
+        gateway.dispatch(
+            CompanionAction.UpdateSettings(
+                current.copy(overlayScale = scale.takeIf(Double::isFinite)?.coerceIn(0.45, 1.0) ?: 1.0),
+            ),
+        )
+    }
+
     @Synchronized
     fun saveParseContext(): SaveParseContext? {
         if (catalogPublicationInProgress) return null
@@ -231,6 +237,7 @@ class ProductionCompanionRuntime(
                     SaveSpeciesContext(id, species.dexNumber.value, species.growthRate.value, species.formId)
                 },
                 captureBallIds = current.captureBallsById.keys.ifEmpty { (1..15).toSet() },
+                levelUpRulesetSelectors = completeLevelUpRulesetSelectors(current),
             )
         }
     }
@@ -365,7 +372,18 @@ class ProductionCompanionRuntime(
         val current = catalog ?: return false
         if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return false
         val merged = SaveKnowledgeMapper.merge(gateway.bootstrap().ledger, current, snapshot)
+        val selectors = completeLevelUpRulesetSelectors(current)
+        val detected = snapshot.detectedLevelUpRulesetId?.takeIf { id ->
+            val expectedFingerprint = LevelUpRulesetDetectionFingerprint.create(selectors, id)
+            snapshot.levelUpRulesetDetectionResolved &&
+                selectors.size == current.learnsetRulesets.size &&
+                snapshot.levelUpRulesetDetectionFingerprint != null &&
+                snapshot.levelUpRulesetDetectionFingerprint == expectedFingerprint
+        }
+        detectedLevelUpRulesetId = detected
+        levelUpRulesetDetectionResolved = detected != null
         saveRam = state
+        cachedState = null
         gateway.dispatch(CompanionAction.ReplaceLedger(merged))
         persistKnowledge(merged)
         return true
@@ -408,14 +426,14 @@ class ProductionCompanionRuntime(
             current,
             snapshot.catalogName,
             active?.id,
-            snapshot.settings.ruleset == "AUTO",
+            snapshot.settings.ruleset == "AUTO" && !levelUpRulesetDetectionResolved,
             speciesId,
             moveId,
         )
     }
 
     override fun close() {
-        loadGeneration.incrementAndGet()
+        synchronized(this) { loadGeneration.incrementAndGet() }
         parserWorker.shutdown()
     }
 
@@ -449,14 +467,19 @@ class ProductionCompanionRuntime(
         gateway.dispatch(
             CompanionAction.UpdateSettings(updated),
         )
-        onSettingsChanged(updated)
+        if (settingsWritesEnabled) onRomSettingsChanged(settingsRomSha256, updated)
     }
 
     private fun resolveRuleset(selection: String) = catalog?.learnsetRulesets?.let { rulesets ->
-        if (selection == "AUTO") rulesets.firstOrNull { it.primary } ?: rulesets.firstOrNull()
-        else rulesets.firstOrNull { it.id == selection }
+        if (selection == "AUTO") {
+            detectedLevelUpRulesetId
+                ?.takeIf { levelUpRulesetDetectionResolved }
+                ?.let { detected -> rulesets.firstOrNull { it.id == detected } }
+                ?: rulesets.singleOrNull()
+        } else rulesets.firstOrNull { it.id == selection }
     }
 
+    @Synchronized
     private fun publishProgress(
         generation: Long,
         progress: CatalogMaterializationProgress,
@@ -474,17 +497,6 @@ class ProductionCompanionRuntime(
                 changedSections = changedCatalogSections(progress.phase.name),
             ),
         )
-        synchronized(this) { catalog = progress.catalog }
-        gateway.dispatch(
-            CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(
-                    active = progress.completedUnits < progress.totalUnits,
-                    phase = progress.phase.name,
-                    completedUnits = progress.completedUnits,
-                    totalUnits = progress.totalUnits,
-                ),
-            ),
-        )
     }
 
     @Synchronized
@@ -493,16 +505,20 @@ class ProductionCompanionRuntime(
         catalogPublicationInProgress = true
         try {
             saveRam = SaveRamView()
+            clearLevelUpRulesetDetection()
             clearLiveBattle()
+            applyWinningCatalogSettings(reopened.romSha256)
             gateway.dispatch(CompanionAction.ReplaceLedger(readKnowledge(reopened.romSha256)))
             gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
+            catalog = reopened
+            settingsWritesEnabled = true
+            onCatalogCommitted(reopened.romSha256, name)
             gateway.dispatch(
                 CompanionAction.CatalogLoadingChanged(
                     CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 5, totalUnits = 5),
                     name,
                 ),
             )
-            catalog = reopened
             gateway.dispatch(CompanionAction.CatalogLoaded(name))
         } finally {
             catalogPublicationInProgress = false
@@ -543,6 +559,102 @@ class ProductionCompanionRuntime(
 
     private fun notifyCompletion(callback: ((Result<Unit>) -> Unit)?, result: Result<Unit>) {
         if (callback != null) runCatching { callback(result) }
+    }
+
+    @Synchronized
+    private fun beginCatalogTransition(romSha256: String?, name: String? = null, phase: String): Long {
+        val generation = loadGeneration.incrementAndGet()
+        catalog = null
+        settingsRomSha256 = null
+        settingsWritesEnabled = false
+        clearLevelUpRulesetDetection()
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(active = true, phase = phase, completedUnits = 0, totalUnits = 5),
+                name,
+            ),
+        )
+        clearLiveBattle()
+        saveRam = SaveRamView()
+        gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
+        gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
+        return generation
+    }
+
+    private fun restoreGlobalSettings() {
+        settingsRomSha256 = null
+        globalSettings?.invoke()?.let(::applySettings)
+        settingsWritesEnabled = true
+    }
+
+    @Synchronized
+    private fun publishTransitionFailure(generation: Long, phase: String, failure: String? = null) {
+        if (generation != loadGeneration.get()) return
+        restoreGlobalSettings()
+        onCatalogCleared()
+        if (failure != null) gateway.dispatch(CompanionAction.Failure(failure))
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(
+                    active = false,
+                    phase = phase,
+                    completedUnits = 0,
+                    totalUnits = if (phase == "IDLE") 0 else 5,
+                ),
+            ),
+        )
+    }
+
+    @Synchronized
+    private fun publishParsed(generation: Long, name: String, parsed: ParsedCatalog) {
+        if (generation != loadGeneration.get()) return
+        applyWinningCatalogSettings(parsed.romSha256)
+        catalog = parsed
+        settingsWritesEnabled = true
+        restoreKnowledge(parsed.romSha256)
+        onCatalogCommitted(parsed.romSha256, name)
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(active = false, phase = "COMPLETE", completedUnits = 5, totalUnits = 5),
+                name,
+            ),
+        )
+        gateway.dispatch(CompanionAction.CatalogLoaded(name))
+    }
+
+    private fun applySettingsForRom(romSha256: String) {
+        settingsForRom?.invoke(romSha256)?.let(::applySettings)
+    }
+
+    private fun applyWinningCatalogSettings(romSha256: String) {
+        settingsRomSha256 = romSha256
+        applySettingsForRom(romSha256)
+    }
+
+    private fun applySettings(settings: CompanionSettings) {
+        val previousMode = gateway.bootstrap().settings.displayMode
+        gateway.dispatch(CompanionAction.UpdateSettings(settings))
+        if (settings.displayMode != previousMode) onRomDisplayModeChanged(settings.displayMode)
+    }
+
+    private fun clearLevelUpRulesetDetection() {
+        detectedLevelUpRulesetId = null
+        levelUpRulesetDetectionResolved = false
+        cachedState = null
+    }
+
+    private fun completeLevelUpRulesetSelectors(current: ParsedCatalog): List<SaveByteSelector> {
+        val rulesets = current.learnsetRulesets
+        if (rulesets.isEmpty() || rulesets.map { it.id }.distinct().size != rulesets.size) return emptyList()
+        return rulesets.map { ruleset ->
+            val selector = ruleset.levelUpSelector ?: return emptyList()
+            SaveByteSelector(
+                rulesetId = ruleset.id,
+                saveBlock1ByteOffset = selector.saveBlock1ByteOffset,
+                mask = selector.mask,
+                expectedValue = selector.expectedValue,
+            )
+        }
     }
 
     private data class CachedState(

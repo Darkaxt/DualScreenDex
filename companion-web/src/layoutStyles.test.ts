@@ -11,4 +11,13 @@ describe('screen layout containment', () => {
     expect(screenRule).toBeDefined()
     expect(screenRule).toMatch(/overflow\s*:\s*hidden/)
   })
+
+  it('gives the capability page one bounded scrolling column', () => {
+    const screenRule = styles.match(/\.capability-screen\s*\{([^}]*)\}/)?.[1]
+    const contentRule = styles.match(/\.capability-content\s*\{([^}]*)\}/)?.[1]
+
+    expect(screenRule).toMatch(/grid-template-rows\s*:\s*auto 1fr/)
+    expect(contentRule).toMatch(/min-height\s*:\s*0/)
+    expect(contentRule).toMatch(/overflow\s*:\s*auto/)
+  })
 })

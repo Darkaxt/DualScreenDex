@@ -1,29 +1,49 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.RelationshipMaterializers
+import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
+import com.enrpau.dualscreendex.parser.family.FamilyProbeCoordinator
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
+import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.model.RomHeader
+import com.enrpau.dualscreendex.parser.model.RomProfile
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
+import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 
 object ParserOrchestrator {
     const val minimumScore = 75
     const val minimumMargin = 10
+    private val familyProbeCoordinator = FamilyProbeCoordinator()
 
-    fun analyze(rom: RomImage): ParseResult {
+    fun analyze(rom: RomImage): ParseResult = analyze(rom, ::newSession)
+
+    internal fun analyze(
+        rom: RomImage,
+        sessionFactory: (RomImage, RomHeader, RomProfile?) -> RomAnalysisSession,
+    ): ParseResult {
         val header = RomHeaderReader.read(rom)
-        val probes = FamilyParsers.all.map { parser -> parser.probe(rom, header) }
         val exact = KnownProfiles.bySha256(rom.sha256)
+        val session = sessionFactory(rom, header, exact)
+        val probes = familyProbeCoordinator.probeAll(session)
         val selection = if (exact != null) {
             val probe = probes.first { it.family == exact.family }
             Selection(SelectionStatus.SELECTED, probe, null)
         } else {
             select(probes)
         }
+        val capabilities = applySpeciesSemanticDomain(
+            rom,
+            selection.winner?.resolvedLayout,
+            resolveCapabilities(selection, probes),
+        )
         return ParseResult(
             header = header,
             sha256 = rom.sha256,
@@ -34,7 +54,7 @@ object ParserOrchestrator {
             selectedProfile = selection.winner?.profileName,
             runnerUpMargin = selection.margin,
             probes = probes,
-            capabilities = resolveCapabilities(selection, probes),
+            capabilities = capabilities,
             diagnostics = when (selection.status) {
                 SelectionStatus.AMBIGUOUS -> listOf("top parser did not lead by $minimumMargin points")
                 SelectionStatus.NO_FAMILY_MATCH -> listOf("no mainline-family parser passed score and anchor requirements")
@@ -42,6 +62,155 @@ object ParserOrchestrator {
             },
         )
     }
+
+    private fun newSession(
+        rom: RomImage,
+        header: RomHeader,
+        exactProfile: RomProfile?,
+    ): RomAnalysisSession = RomAnalysisSession(
+        rom = rom,
+        header = header,
+        exactProfile = exactProfile,
+    )
+
+    internal fun applySpeciesSemanticDomain(
+        rom: RomImage,
+        layout: com.enrpau.dualscreendex.parser.model.ResolvedRomLayout?,
+        capabilities: List<CapabilityEvidence>,
+    ): List<CapabilityEvidence> {
+        if (layout?.generation != 3 || layout.tables.speciesNames == null || layout.tables.baseStats == null) {
+            return capabilities
+        }
+        val domain = when (val resolution = SpeciesSemanticDomainResolver.resolveWithEvidence(rom, layout)) {
+            is SpeciesSemanticDomainResolution.Resolved -> resolution.domain
+            is SpeciesSemanticDomainResolution.Unavailable -> {
+                return speciesIndexUnavailableCapabilities(
+                    capabilities,
+                    resolution.reason,
+                    resolution.ambiguous,
+                )
+            }
+            is SpeciesSemanticDomainResolution.BudgetExceeded -> {
+                return speciesIndexUnavailableCapabilities(
+                    capabilities,
+                    "budget kind: ${resolution.budgetKind.name}; " +
+                        "budget observation: at least ${resolution.observed} units (limit ${resolution.limit}); " +
+                        resolution.reason,
+                    ambiguous = false,
+                )
+            }
+        }
+        val byCapability = capabilities.associateBy { it.capability }
+        val expansion = layout.pokeemeraldExpansion != null
+        val names = byCapability[RomCapability.SPECIES_NAMES]?.toValidationEvidence()?.let { evidence ->
+            domain.applyToNames(evidence, authoritativeFallback = expansion)
+        }
+            ?: return capabilities
+        val stats = byCapability[RomCapability.BASE_STATS]?.toValidationEvidence()?.let { evidence ->
+            domain.applyToStats(evidence, authoritativeFallback = expansion)
+        }
+            ?: return capabilities
+        val learnsets = byCapability[RomCapability.LEARNSETS]?.toValidationEvidence()?.let { evidence ->
+            domain.applyToLearnsets(
+                evidence,
+                if (expansion) {
+                    RelationshipMaterializers.learnsets(rom, layout).keys
+                } else {
+                    layout.resolvedDatasets.learnsets?.catalogPrimaryEntries()?.keys.orEmpty()
+                },
+                authoritativeFallback = expansion,
+            )
+        }
+        val descriptions = when {
+            expansion -> byCapability[RomCapability.POKEDEX_DESCRIPTIONS]?.toValidationEvidence()?.let { evidence ->
+                domain.applyToDescriptions(
+                    evidence,
+                    RelationshipMaterializers.descriptions(rom, layout).keys,
+                    authoritativeFallback = true,
+                )
+            }
+            domain.source == SpeciesSemanticDomainSource.STRONGLY_REFERENCED_REGIONAL_ORDER ||
+                domain.source == SpeciesSemanticDomainSource.COMPILED_SPECIES_TO_DEX_MAP -> {
+                byCapability[RomCapability.POKEDEX_DESCRIPTIONS]?.toValidationEvidence()?.let { evidence ->
+                    val byDex = layout.resolvedDatasets.descriptions?.catalogDescriptions().orEmpty()
+                    val coveredSpeciesIds = RecordMaterializers.species(rom, layout).values
+                        .filter { species -> species.dexNumber.value in byDex }
+                        .mapTo(linkedSetOf()) { it.id }
+                    domain.applyToDescriptions(evidence, coveredSpeciesIds)
+                }
+            }
+            else -> null
+        }
+        val sprites = if (expansion) {
+            byCapability[RomCapability.SPRITES]?.toValidationEvidence()?.let { evidence ->
+                domain.applyToSprites(
+                    evidence,
+                    SpriteMaterializer.pokemon(rom, layout).keys,
+                    authoritativeFallback = true,
+                )
+            }
+        } else {
+            null
+        }
+        val replacements = mapOf(
+            RomCapability.SPECIES_NAMES to capabilityEvidence(RomCapability.SPECIES_NAMES, names),
+            RomCapability.SPECIES_TYPES to capabilityEvidence(RomCapability.SPECIES_TYPES, stats),
+            RomCapability.BASE_STATS to capabilityEvidence(RomCapability.BASE_STATS, stats),
+            RomCapability.SPECIES_CATALOG to capabilityEvidence(
+                RomCapability.SPECIES_CATALOG,
+                speciesCatalogEvidence(names, stats),
+            ),
+        ) + buildMap {
+            learnsets?.let { put(RomCapability.LEARNSETS, capabilityEvidence(RomCapability.LEARNSETS, it)) }
+            descriptions?.let {
+                put(
+                    RomCapability.POKEDEX_DESCRIPTIONS,
+                    capabilityEvidence(RomCapability.POKEDEX_DESCRIPTIONS, it),
+                )
+            }
+            sprites?.let { put(RomCapability.SPRITES, capabilityEvidence(RomCapability.SPRITES, it)) }
+        }
+        return capabilities.map { replacements[it.capability] ?: it }
+    }
+
+    private fun speciesIndexUnavailableCapabilities(
+        capabilities: List<CapabilityEvidence>,
+        reason: String,
+        ambiguous: Boolean,
+    ): List<CapabilityEvidence> = capabilities.map { evidence ->
+        if (evidence.capability != RomCapability.SPECIES_CATALOG) return@map evidence
+        evidence.copy(
+            compatible = false,
+            confidence = 0.0,
+            reasons = (evidence.reasons + listOf(
+                "species-to-Dex resolution unavailable; semantic species domain was not applied",
+                reason,
+            )).distinct(),
+            status = if (ambiguous) CapabilityStatus.AMBIGUOUS else CapabilityStatus.NOT_FOUND,
+            reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
+            coveredRecords = null,
+            expectedRecords = null,
+            incompleteRecords = null,
+            validatorReviewRecommended = true,
+        )
+    }
+
+    private fun CapabilityEvidence.toValidationEvidence() =
+        com.enrpau.dualscreendex.parser.model.ValidationEvidence(
+            compatible = compatible,
+            validRecords = validRecords ?: count ?: 0,
+            totalRecords = totalRecords ?: count ?: 0,
+            confidence = confidence,
+            reasons = reasons,
+            offset = offset,
+            recordSize = recordSize,
+            elementSize = elementSize,
+            ambiguous = status == CapabilityStatus.AMBIGUOUS,
+            reviewRecommended = validatorReviewRecommended,
+            coveredRecords = coveredRecords,
+            expectedRecords = expectedRecords,
+            incompleteRecords = incompleteRecords,
+        )
 
     fun select(probes: List<ParserProbe>): Selection {
         val eligible = probes
@@ -69,14 +238,37 @@ object ParserOrchestrator {
             if (compatible.isNotEmpty()) {
                 val locations = compatible.map { Triple(it.offset, it.count, it.recordSize) }.distinct()
                 if (locations.size == 1) {
-                    compatible.maxBy { it.confidence }
+                    val strongest = compatible.maxBy { it.confidence }
+                    val ambiguous = compatible.any { it.status == CapabilityStatus.AMBIGUOUS }
+                    val validatorReviewRecommended = compatible.any { it.validatorReviewRecommended }
+                    strongest.copy(
+                        reasons = (listOf(strongest) + compatible)
+                            .distinct()
+                            .flatMap { it.reasons }
+                            .distinct(),
+                        status = if (ambiguous) CapabilityStatus.AMBIGUOUS else strongest.status,
+                        reviewStatus = if (
+                            ambiguous || validatorReviewRecommended ||
+                            compatible.any { it.reviewStatus == CapabilityReviewStatus.MANUAL_REVIEW }
+                        ) {
+                            CapabilityReviewStatus.MANUAL_REVIEW
+                        } else {
+                            strongest.reviewStatus
+                        },
+                        validatorReviewRecommended = validatorReviewRecommended,
+                    )
                 } else {
                     CapabilityEvidence(
                         capability = capability,
                         compatible = false,
                         confidence = compatible.maxOf { it.confidence },
-                        reasons = listOf("conflicting validated locators across candidate families"),
-                        status = CapabilityStatus.NOT_FOUND,
+                        reasons = buildList {
+                            add("conflicting validated locators across candidate families")
+                            compatible.flatMapTo(this) { it.reasons }
+                        }.distinct(),
+                        status = CapabilityStatus.AMBIGUOUS,
+                        reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
+                        validatorReviewRecommended = compatible.any { it.validatorReviewRecommended },
                     )
                 }
             } else {

@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. For validated Generation I and III layouts it also reads live battle state through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Public prerelease [`v1.0.0-rc.9`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.9) adds dynamically resolved Generation I/III battle context, Area-filter time markers, and bounded overlay resizing. Its public APK has passed independent hash, identity, signer, dedicated-AVD overlay, and Thor installation checks; physical live-battle acceptance is still pending. The inherited OCR/accessibility application has been replaced. Stable `v1.0.0` has not been released.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Public prerelease [`v1.0.0-rc.11`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.11) adds ROM-scoped settings, loaded-ROM capability reporting, the reviewed first-50 parser evidence, and the targeted parser fixes described below. Its signed APK must pass the repository's independent hash, identity, signer, and physical AYN Thor handoff before the GAFT registry update is submitted. The inherited OCR/accessibility application has been replaced. Stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
@@ -196,7 +196,7 @@ Move and ability descriptions validate for every sampled GBA ROM and are correct
 
 Numeric ability mechanics are tracked separately from descriptions. The implemented ROM-code resolver validates the compiled threshold, multiplier, ability IDs, and type IDs for Overgrow, Blaze, Torrent, and Swarm before exposing `HP <= 1/3` and `x1.5` type-matched move power. It resolves those four abilities in every sampled GBA ROM, including the three derivatives. Other abilities remain description-only unless their exact mechanics are independently resolved; DualDex never substitutes familiar series values for unvalidated ROM behavior.
 
-Read the named evidence in the [Markdown compatibility report](reports/dualdex-parser-compatibility.md) or inspect the complete [JSON report](reports/dualdex-parser-compatibility.json). Reports contain structural evidence and hashes, but no decoded Pokédex text, sprites, or ROM bytes.
+Read the first-50 summary in the [Markdown compatibility report](reports/dualdex-parser-compatibility.md) or inspect its [schema-11 JSON evidence](reports/dualdex-parser-compatibility.json). The grouped engine lineage, ABI, ruleset, mechanic, encounter, gap, integrity, and provenance fields are available as [Markdown ROM properties](reports/dualdex-rom-properties.md) and [machine-readable JSON](reports/dualdex-rom-properties.json). Reports contain structural evidence and hashes, but no decoded bulk tables, sprites, ROM bytes, saves, trainer data, or private paths.
 
 SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1-gen2-saveram-compatibility.md) and [Generation III](docs/reports/gen3-saveram-compatibility.md). These reports contain no ROM/save bytes, trainer data, or private filesystem paths.
 
@@ -224,7 +224,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in signed RC9; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Public signed candidate | [`v1.0.0-rc.9`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.9) prerelease; public artifact verified and Thor-installed, with physical live-battle/resize acceptance pending |
+| Public signed candidate | [`v1.0.0-rc.11`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.11) prerelease; protected signing, public-asset verification, and physical AYN Thor validation are mandatory before the GAFT handoff |
 
 ## Parser development
 
@@ -306,6 +306,7 @@ The labeled [Modern Emerald analysis](docs/reports/modern-emerald-memory-mapper-
 - [Web UI and plausible simulator POC specification](docs/superpowers/specs/2026-08-09-dualdex-web-ui-simulator-poc-design.md)
 - [ROM parser and passive companion foundation](docs/superpowers/specs/2026-08-08-dualdex-rom-parser-companion-design.md)
 - [Parser compatibility report](reports/dualdex-parser-compatibility.md)
+- [Grouped ROM compatibility and properties](reports/dualdex-rom-properties.md)
 
 ## Relationship to Kanto Gear
 

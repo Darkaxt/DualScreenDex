@@ -37,6 +37,7 @@ import com.darkaxt.dualdex.display.DisplayTargetController
 import com.darkaxt.dualdex.display.AndroidThorFocusBackend
 import com.darkaxt.dualdex.display.ThorFocusController
 import com.darkaxt.dualdex.display.ThorFocusResult
+import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
 
 class MainActivity : AppCompatActivity() {
@@ -178,6 +179,16 @@ class MainActivity : AppCompatActivity() {
         overlayPermission.launch(
             Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")),
         )
+    }
+
+    fun applyRomDisplayMode(mode: DisplayMode) {
+        when (mode) {
+            DisplayMode.OVERLAY -> showOverlay()
+            DisplayMode.DOCKED -> {
+                FloatingCompanionService.dock(this)
+                syncThorFocus(requestPermission = true)
+            }
+        }
     }
 
     private fun restoreOverlayMode() {

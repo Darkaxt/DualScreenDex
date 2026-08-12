@@ -360,5 +360,15 @@ class FloatingCompanionService : Service() {
         fun dock(context: Context) {
             context.stopService(Intent(context, FloatingCompanionService::class.java))
         }
+
+        fun dockAndSurface(context: Context) {
+            when (HeadlessDockPolicy.resolve(running)) {
+                HeadlessDockAction.REQUEST_SERVICE_DOCK_AND_SURFACE -> ContextCompat.startForegroundService(
+                    context,
+                    Intent(context, FloatingCompanionService::class.java).setAction(ACTION_DOCK),
+                )
+                HeadlessDockAction.NO_ACTION -> Unit
+            }
+        }
     }
 }

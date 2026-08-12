@@ -12,6 +12,7 @@ import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetEntry
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
+import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisition
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
@@ -24,6 +25,7 @@ import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.TypePresentation
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
+import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -67,6 +69,64 @@ class CatalogStoreTest {
     }
 
     @Test
+    fun `legacy learnset rulesets without selectors reopen without inventing save detection`() {
+        val catalog = completeCatalog("9".repeat(64))
+        val codec = CatalogSectionCodec()
+        val sections = codec.encode(catalog, CatalogSchema.requiredSections).toMutableMap()
+        val currentJson = GZIPInputStream(ByteArrayInputStream(sections.getValue("learnset_rulesets"))).use {
+            it.readBytes().toString(Charsets.UTF_8)
+        }
+        val legacyJson = currentJson.replace(
+            Regex(",\"levelUpSelector\":\\{[^}]*}"),
+            "",
+        )
+        assertTrue(legacyJson != currentJson)
+        sections["learnset_rulesets"] = ByteArrayOutputStream().also { output ->
+            GZIPOutputStream(output).use { it.write(legacyJson.toByteArray(Charsets.UTF_8)) }
+        }.toByteArray()
+
+        val reopened = codec.decode(
+            catalog.romSha256,
+            catalog.romCrc32,
+            catalog.family,
+            catalog.platform,
+            sections,
+        )
+
+        assertNull(reopened.learnsetRulesets.single().levelUpSelector)
+    }
+
+    @Test
+    fun `schema two cache without validator review provenance is invalidated`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("e".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Legacy.gba", 16_777_216, "POKEMON EMER"),
+            CatalogWriteProgress.complete(),
+        )
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            val payload = database.query(
+                "SELECT payload FROM catalog_sections WHERE name = 'capabilities'",
+            ) { row -> requireNotNull(row.bytes("payload")) }.single()
+            val legacyJson = GZIPInputStream(ByteArrayInputStream(payload)).use {
+            it.readBytes().toString(Charsets.UTF_8)
+            }.replace(Regex(",\"validatorReviewRecommended\":true"), "")
+            val legacyPayload = ByteArrayOutputStream().also { output ->
+                GZIPOutputStream(output).use { it.write(legacyJson.toByteArray(Charsets.UTF_8)) }
+            }.toByteArray()
+            database.execute(
+                "UPDATE catalog_sections SET payload = ? WHERE name = 'capabilities'",
+                listOf(legacyPayload),
+            )
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 2 WHERE id = 1")
+        }
+
+        assertNull(cache.readComplete(catalog.romSha256))
+    }
+
+    @Test
     fun clearingInactiveCatalogsPreservesTheActiveDatabaseAndUnrelatedFiles() {
         val root = Files.createTempDirectory("dualdex-catalog-clear")
         val active = "a".repeat(64)
@@ -103,8 +163,21 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
+        assertEquals(3, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
+        assertEquals(
+            LevelUpRulesetSelector(0x3DA6, 0x02, 0x02),
+            reopened?.catalog?.learnsetRulesets?.single()?.levelUpSelector,
+        )
+        assertTrue(
+            reopened?.catalog?.capabilities?.getValue(RomCapability.SPECIES_CATALOG)
+                ?.validatorReviewRecommended == true,
+        )
+        assertEquals(
+            23,
+            reopened?.catalog?.speciesById?.get(6)?.evolutionEdges?.value?.single()?.conditionValue,
+        )
         assertEquals(setOf(EncounterWindow.NIGHT), reopened?.catalog?.encounterAreas?.single()?.windows)
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
     }
@@ -161,21 +234,23 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun `parser schema changes invalidate stale content instead of reopening it`() {
+    fun `parser schema changes invalidate stale content so a current reparse can replace it`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("d".repeat(64))
-        cache.write(
-            catalog,
-            CatalogSourceMetadata.direct("Yellow.gb", 1_048_576, "POKEMON YELLOW"),
-            CatalogWriteProgress.complete(),
-        )
+        val source = CatalogSourceMetadata.direct("Yellow.gb", 1_048_576, "POKEMON YELLOW")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
 
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
             database.execute("UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1", listOf(-1))
         }
 
         assertNull(cache.readComplete(catalog.romSha256))
+
+        val reparsed = catalog.copy(diagnostics = listOf("reparsed with the current schema"))
+        cache.write(reparsed, source, CatalogWriteProgress.complete())
+
+        assertEquals(reparsed, cache.readComplete(catalog.romSha256)?.catalog)
     }
 
     @Test
@@ -225,7 +300,17 @@ class CatalogStoreTest {
             description = CatalogField.available("Spits fire hot enough to melt boulders."),
             height = CatalogField.available(17),
             weight = CatalogField.available(905),
-            evolutionEdges = CatalogField.available(listOf(EvolutionEdge(7, 4, 36, byteArrayOf(4, 36, 7, 0)))),
+            evolutionEdges = CatalogField.available(
+                listOf(
+                    EvolutionEdge(
+                        targetSpeciesId = 7,
+                        methodId = 4,
+                        parameter = 36,
+                        raw = byteArrayOf(4, 0, 36, 0, 7, 0, 23, 0),
+                        conditionValue = 23,
+                    ),
+                ),
+            ),
             learnset = CatalogField.available(listOf(LearnsetEntry(46, 53))),
             moveAcquisitions = CatalogField.available(listOf(MoveAcquisition(53, MoveAcquisitionMethod.MACHINE, 35))),
             abilityIds = CatalogField.available(listOf(66)),
@@ -259,7 +344,15 @@ class CatalogStoreTest {
             ),
             captureBallsById = mapOf(4 to CaptureBallRecord(4, CatalogField.available("Poké Ball"), CatalogField.available(sprite))),
             learnsetRulesets = listOf(
-                LearnsetRuleset("modern", "Modern", 0x1234, 0.99, mapOf(6 to listOf(LearnsetEntry(46, 53))), primary = true),
+                LearnsetRuleset(
+                    "modern",
+                    "Modern",
+                    0x1234,
+                    0.99,
+                    mapOf(6 to listOf(LearnsetEntry(46, 53))),
+                    primary = true,
+                    levelUpSelector = LevelUpRulesetSelector(0x3DA6, 0x02, 0x02),
+                ),
             ),
             capabilities = mapOf(
                 RomCapability.SPECIES_CATALOG to CapabilityEvidence(
@@ -270,6 +363,8 @@ class CatalogStoreTest {
                     count = 1,
                     reasons = listOf("test fixture"),
                     status = CapabilityStatus.AVAILABLE,
+                    reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
+                    validatorReviewRecommended = true,
                 ),
             ),
             diagnostics = listOf("fixture diagnostic"),

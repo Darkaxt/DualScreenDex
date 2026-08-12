@@ -12,6 +12,22 @@ import org.junit.Test
 
 class DescriptionResolverCompatibilityTest {
     @Test
+    fun selectedLayoutIsDecodedDirectlyWithoutRunningCandidateDiscovery() {
+        val bytes = ByteArray(0x1200)
+        val selected = DescriptionTableLayout(0x200, 3, 32, listOf(16))
+        putDescriptionTable(bytes, 0x200, 3, 32, listOf(16), 0x900)
+
+        val result = DescriptionResolver().resolve(
+            session = descriptionSession(bytes),
+            expectedSpeciesCount = 3,
+            selectedLayout = selected,
+        ) as DatasetResolution.Resolved<ResolvedDescriptionLayout>
+
+        assertEquals(selected, result.candidate.layout.table)
+        assertEquals(CandidateSource.INHERITED_FAMILY_LAYOUT, result.candidate.source)
+    }
+
+    @Test
     fun discoversARelocatedThirtyTwoByteTableFromItsInternalSeedAnchor() {
         val bytes = ByteArray(0x1200)
         putDescriptionTable(bytes, 0x200, 3, 32, listOf(16), 0x900)

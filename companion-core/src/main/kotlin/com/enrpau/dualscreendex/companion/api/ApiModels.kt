@@ -110,6 +110,10 @@ data class DiagnosticCapabilityView(
     val count: Int?,
     val recordSize: Int?,
     val reasons: List<String>,
+    val validRecords: Int? = null,
+    val totalRecords: Int? = null,
+    val elementSize: Int? = null,
+    val reviewStatus: String = "NONE",
 )
 
 data class DiagnosticView(
@@ -458,14 +462,23 @@ object ApiViewBuilder {
             rulesetAssumed = rulesetAssumed,
             rulesets = view.rulesets,
             capabilities = catalog.capabilities.values.sortedBy { it.capability.ordinal }.map {
+                val validRecords = it.validRecords
+                val totalRecords = it.totalRecords
                 DiagnosticCapabilityView(
                     it.capability.name,
-                    it.status.name,
+                    if (
+                        it.status == com.enrpau.dualscreendex.parser.model.CapabilityStatus.AVAILABLE &&
+                        validRecords != null && totalRecords != null && validRecords < totalRecords
+                    ) "PARTIAL" else it.status.name,
                     it.confidence,
                     it.offset,
                     it.count,
                     it.recordSize,
                     it.reasons,
+                    validRecords,
+                    totalRecords,
+                    it.elementSize,
+                    it.reviewStatus.name,
                 )
             },
             parserDiagnostics = catalog.diagnostics,

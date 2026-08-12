@@ -135,11 +135,13 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
     }
 
     private fun activeLearnset(species: SpeciesRecord, activeRulesetId: String?): List<com.enrpau.dualscreendex.parser.catalog.LearnsetEntry> {
-        if (catalog.learnsetRulesets.isEmpty()) return species.learnset.value.orEmpty()
+        val rulesets = catalog.learnsetRulesets
+        if (rulesets.isEmpty()) return species.learnset.value.orEmpty()
         val ruleset = if (activeRulesetId == null) {
-            catalog.learnsetRulesets.firstOrNull { it.primary } ?: catalog.learnsetRulesets.first()
+            require(rulesets.size == 1) { "level-up ruleset is unresolved for this multi-table catalog" }
+            rulesets.single()
         } else {
-            requireNotNull(catalog.learnsetRulesets.firstOrNull { it.id == activeRulesetId }) {
+            requireNotNull(rulesets.firstOrNull { it.id == activeRulesetId }) {
                 "unknown catalog ruleset: $activeRulesetId"
             }
         }

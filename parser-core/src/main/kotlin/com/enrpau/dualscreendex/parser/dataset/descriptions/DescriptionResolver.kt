@@ -30,6 +30,7 @@ class DescriptionResolver(
         expectedSpeciesCount: Int,
         profileLayout: DescriptionTableLayout? = null,
         structuralCandidates: Collection<DescriptionTableLayout> = emptyList(),
+        selectedLayout: DescriptionTableLayout? = null,
     ): DatasetResolution<ResolvedDescriptionLayout> {
         if (expectedSpeciesCount <= 0) {
             return DatasetResolution.Unavailable(
@@ -37,6 +38,34 @@ class DescriptionResolver(
                 observedCandidates = 0,
                 reason = "Gen III description resolution requires a positive species count",
             )
+        }
+
+        if (selectedLayout != null) {
+            val source = if (matchesExactProfileLayout(session, selectedLayout)) {
+                CandidateSource.EXACT_PROFILE
+            } else {
+                CandidateSource.INHERITED_FAMILY_LAYOUT
+            }
+            return when (
+                val selected = assess(
+                    session = session,
+                    expectedSpeciesCount = expectedSpeciesCount,
+                    probe = DescriptionProbe(selectedLayout, source),
+                    allowPrefixTrim = false,
+                )
+            ) {
+                is Assessment.Candidate -> CandidateSelector.select(
+                    session,
+                    DatasetKind.POKEDEX_DESCRIPTIONS,
+                    sequenceOf(selected.value),
+                )
+                is Assessment.ExtentBudget -> selected.toResolution()
+                Assessment.Rejected -> DatasetResolution.Unavailable(
+                    DatasetKind.POKEDEX_DESCRIPTIONS,
+                    1,
+                    "selected description layout failed its typed codec",
+                )
+            }
         }
 
         val exactProbe = profileLayout

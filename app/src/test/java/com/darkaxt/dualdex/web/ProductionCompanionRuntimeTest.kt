@@ -5,19 +5,26 @@ import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.catalog.StoredCatalog
 import com.darkaxt.dualdex.knowledge.KnowledgeRepository
+import com.darkaxt.dualdex.settings.SettingsRepository
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
+import com.enrpau.dualscreendex.companion.model.Density
+import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.Theme
 import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SavedArea
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
+import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
+import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
@@ -261,12 +268,14 @@ class ProductionCompanionRuntimeTest {
         val runtime = ProductionCompanionRuntime(catalogRepository = repository)
 
         assertTrue(runtime.restoreCatalog(catalog.romSha256))
-        assertFalse(runtime.restoreCatalog("b".repeat(64)))
         val restored = runtime.bootstrap()
 
         assertEquals("Modern Emerald.gba", restored.state.catalogName)
         assertEquals("CACHE_REOPEN", restored.state.loading.phase)
         assertEquals(catalog.romSha256, restored.catalog?.hash)
+        assertFalse(runtime.restoreCatalog("b".repeat(64)))
+        assertNull(runtime.bootstrap().catalog)
+        assertFalse(runtime.bootstrap().state.catalogReady)
         runtime.close()
     }
 
@@ -390,6 +399,602 @@ class ProductionCompanionRuntimeTest {
         assertEquals("MATCHED", state.saveRam.status)
         assertEquals("fixture.srm", state.saveRam.sourceName)
         assertEquals(0, repository.writeCalls)
+        runtime.close()
+    }
+
+    @Test
+    fun catalogSwitchesPublishAndPersistEachRomsEffectiveSettingsBeforeReady() {
+        val hashA = "a".repeat(64)
+        val hashB = "b".repeat(64)
+        val persisted = mutableMapOf(
+            hashA to CompanionSettings(ruleset = "original", theme = Theme.DARK),
+            hashB to CompanionSettings(ruleset = "modern", theme = Theme.LIGHT),
+        )
+        val writes = mutableListOf<Pair<String?, CompanionSettings>>()
+        val runtime = ProductionCompanionRuntime(
+            initialSettings = persisted.getValue(hashA),
+            settingsForRom = { hash -> persisted.getValue(hash) },
+            onRomSettingsChanged = { hash, settings ->
+                writes += hash to settings
+                if (hash != null) persisted[hash] = settings
+            },
+        )
+        val publications = mutableListOf<com.enrpau.dualscreendex.companion.model.AppSnapshot>()
+        val subscription = runtime.gateway.subscribe(publications::add)
+
+        runtime.loadCatalog("a.gba", levelUpRulesetCatalog(hashA))
+        assertEquals(Theme.DARK, runtime.gateway.bootstrap().settings.theme)
+        assertEquals("original", runtime.gateway.bootstrap().settings.ruleset)
+        assertEquals("original", runtime.stateView().activeRulesetId)
+        runtime.action("SETTINGS", mapOf("theme" to "GAME", "ruleset" to "modern"))
+
+        publications.clear()
+        runtime.loadCatalog("b.gba", levelUpRulesetCatalog(hashB))
+        assertEquals(Theme.LIGHT, runtime.gateway.bootstrap().settings.theme)
+        assertEquals("modern", runtime.gateway.bootstrap().settings.ruleset)
+        assertEquals(Theme.LIGHT, publications.first { it.catalogReady }.settings.theme)
+        runtime.action("SETTINGS", mapOf("theme" to "DARK", "ruleset" to "original"))
+
+        runtime.loadCatalog("a.gba", levelUpRulesetCatalog(hashA))
+        assertEquals(Theme.GAME, runtime.gateway.bootstrap().settings.theme)
+        assertEquals("modern", runtime.gateway.bootstrap().settings.ruleset)
+        assertEquals(listOf(hashA, hashB), writes.map { it.first })
+        subscription.close()
+        runtime.close()
+    }
+
+    @Test
+    fun unavailableStoredManualRulesetFailsClosedWithoutBeingErased() {
+        val hash = "c".repeat(64)
+        val stored = CompanionSettings(ruleset = "temporarily-missing", theme = Theme.DARK)
+        val writes = mutableListOf<Pair<String?, CompanionSettings>>()
+        val runtime = ProductionCompanionRuntime(
+            settingsForRom = { stored },
+            onRomSettingsChanged = { rom, settings -> writes += rom to settings },
+        )
+
+        runtime.loadCatalog("missing.gba", levelUpRulesetCatalog(hash))
+
+        assertEquals("temporarily-missing", runtime.gateway.bootstrap().settings.ruleset)
+        assertNull(runtime.stateView().activeRulesetId)
+        assertTrue(writes.isEmpty())
+        runtime.close()
+    }
+
+    @Test
+    fun runtimeWritesKeepDeviceOwnedFieldsSharedAcrossRomProfiles() {
+        val hashA = "d".repeat(64)
+        val hashB = "e".repeat(64)
+        var document: String? = null
+        val repository = SettingsRepository({ document }, { document = it })
+        repository.writeGlobal(CompanionSettings(displayTarget = DisplayTarget.EXTERNAL, overlayScale = 0.7))
+        repository.writeForRom(hashA, repository.readForRom(hashA).copy(theme = Theme.DARK))
+        repository.writeForRom(hashB, repository.readForRom(hashB).copy(theme = Theme.LIGHT))
+        val runtime = ProductionCompanionRuntime(
+            initialSettings = repository.readForRom(hashA),
+            settingsForRom = repository::readForRom,
+            onRomSettingsChanged = repository::writeForRom,
+        )
+
+        runtime.loadCatalog("a.gba", levelUpRulesetCatalog(hashA))
+        runtime.action("SETTINGS", mapOf("displayTarget" to "HANDHELD"))
+        runtime.loadCatalog("b.gba", levelUpRulesetCatalog(hashB))
+
+        assertEquals(DisplayTarget.HANDHELD, runtime.gateway.bootstrap().settings.displayTarget)
+        assertEquals(0.7, runtime.gateway.bootstrap().settings.overlayScale, 0.0)
+        assertEquals(Theme.LIGHT, runtime.gateway.bootstrap().settings.theme)
+        runtime.close()
+    }
+
+    @Test
+    fun asyncCatalogTransitionDoesNotApplyOrPersistIncomingSettingsUntilItWins() {
+        val hashA = "a".repeat(64)
+        val bytes = ByteArray(0xC0)
+        "POKEMON EMER".toByteArray().copyInto(bytes, 0xA0)
+        "BPEE".toByteArray().copyInto(bytes, 0xAC)
+        val incomingRom = RomImage(bytes)
+        val writes = mutableListOf<Pair<String?, CompanionSettings>>()
+        val executor = HoldingExecutorService()
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = executor,
+            initialSettings = CompanionSettings(theme = Theme.DARK),
+            settingsForRom = { sha ->
+                if (sha == incomingRom.sha256) CompanionSettings(theme = Theme.LIGHT)
+                else CompanionSettings(theme = Theme.DARK)
+            },
+            onRomSettingsChanged = { sha, settings -> writes += sha to settings },
+        )
+        runtime.loadCatalog("a.gba", ParsedCatalog(hashA, EngineFamily.EMERALD, Platform.GBA))
+        val publications = mutableListOf<com.enrpau.dualscreendex.companion.model.AppSnapshot>()
+        val subscription = runtime.gateway.subscribe(publications::add)
+
+        runtime.load("b.gba", incomingRom)
+
+        assertTrue(publications.isNotEmpty())
+        assertTrue(publications.none { it.catalogReady })
+        assertEquals(Theme.DARK, runtime.gateway.bootstrap().settings.theme)
+        runtime.action("SETTINGS", mapOf("theme" to "GAME"))
+        assertTrue(writes.isEmpty())
+        assertEquals(1, executor.pendingCount)
+        subscription.close()
+        runtime.close()
+    }
+
+    @Test
+    fun progressiveParseFailureNeverPublishesOrLeavesAPartialCatalogReady() {
+        val hashA = "a".repeat(64)
+        val incoming = ParsedCatalog("b".repeat(64), EngineFamily.EMERALD, Platform.GBA)
+        val writes = RecordingCatalogRepository()
+        val executor = HoldingExecutorService()
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = executor,
+            catalogRepository = writes,
+            parseCatalog = { _, progress ->
+                progress(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, incoming))
+                error("synthetic parse failure")
+            },
+        )
+        runtime.loadCatalog("a.gba", ParsedCatalog(hashA, EngineFamily.EMERALD, Platform.GBA))
+        val publications = mutableListOf<Pair<Boolean, String?>>()
+        val subscription = runtime.gateway.subscribe { snapshot ->
+            publications += snapshot.catalogReady to runtime.catalogHash()
+        }
+
+        runtime.load("incoming.gba", RomImage(ByteArray(0xC0)))
+        executor.runNext()
+
+        assertEquals(1, writes.writeCalls)
+        assertTrue(publications.none { (ready, hash) -> ready || hash == incoming.romSha256 })
+        assertNull(runtime.catalogHash())
+        assertFalse(runtime.gateway.bootstrap().catalogReady)
+        subscription.close()
+        runtime.close()
+    }
+
+    @Test
+    fun supersededProgressNeverReplacesTheWinningCatalogOrItsSettings() {
+        val hashA = "a".repeat(64)
+        val winner = ParsedCatalog("b".repeat(64), EngineFamily.EMERALD, Platform.GBA)
+        val stale = ParsedCatalog("c".repeat(64), EngineFamily.EMERALD, Platform.GBA)
+        val executor = HoldingExecutorService()
+        lateinit var runtime: ProductionCompanionRuntime
+        runtime = ProductionCompanionRuntime(
+            parserWorker = executor,
+            settingsForRom = { sha -> CompanionSettings(theme = if (sha == winner.romSha256) Theme.LIGHT else Theme.DARK) },
+            parseCatalog = { _, progress ->
+                progress(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, stale))
+                runtime.loadCatalog("winner.gba", winner)
+                stale
+            },
+        )
+        runtime.loadCatalog("a.gba", ParsedCatalog(hashA, EngineFamily.EMERALD, Platform.GBA))
+        val publications = mutableListOf<Pair<Boolean, String?>>()
+        val subscription = runtime.gateway.subscribe { snapshot -> publications += snapshot.catalogReady to runtime.catalogHash() }
+
+        runtime.load("stale.gba", RomImage(ByteArray(0xC0)))
+        executor.runNext()
+
+        assertEquals(winner.romSha256, runtime.catalogHash())
+        assertEquals(Theme.LIGHT, runtime.gateway.bootstrap().settings.theme)
+        assertTrue(publications.none { (ready, hash) -> ready && hash == stale.romSha256 })
+        subscription.close()
+        runtime.close()
+    }
+
+    @Test
+    fun directCacheReopenNeverPublishesReadyWithThePreviousCatalogIdentity() {
+        val hashA = "a".repeat(64)
+        val hashB = "b".repeat(64)
+        val reopened = ParsedCatalog(hashB, EngineFamily.EMERALD, Platform.GBA)
+        val runtime = ProductionCompanionRuntime(
+            catalogRepository = FakeCatalogRepository(
+                StoredCatalog(
+                    reopened,
+                    CatalogSourceMetadata.direct("b.gba", 1, "B"),
+                    CatalogWriteProgress.complete(),
+                    committedSections = emptySet(),
+                    writtenAtEpochMs = 1,
+                ),
+            ),
+            initialSettings = CompanionSettings(theme = Theme.DARK),
+            settingsForRom = { sha ->
+                if (sha == hashB) CompanionSettings(theme = Theme.LIGHT)
+                else CompanionSettings(theme = Theme.DARK)
+            },
+        )
+        runtime.loadCatalog("a.gba", ParsedCatalog(hashA, EngineFamily.EMERALD, Platform.GBA))
+        val readyPublications = mutableListOf<Pair<com.enrpau.dualscreendex.companion.model.AppSnapshot, String?>>()
+        val subscription = runtime.gateway.subscribe { snapshot ->
+            if (snapshot.catalogReady) readyPublications += snapshot to runtime.catalogHash()
+        }
+
+        assertTrue(runtime.restoreCatalog(hashB))
+
+        assertTrue(readyPublications.isNotEmpty())
+        assertTrue(readyPublications.all { (snapshot, hash) ->
+            hash == hashB && snapshot.settings.theme == Theme.LIGHT
+        })
+        subscription.close()
+        runtime.close()
+    }
+
+    @Test
+    fun supersededAsyncRestoreNeverCommitsTheStaleCatalog() {
+        val hashA = "a".repeat(64)
+        val hashB = "b".repeat(64)
+        val executor = HoldingExecutorService()
+        val committed = mutableListOf<String>()
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = executor,
+            catalogRepository = FakeCatalogRepository(
+                StoredCatalog(
+                    ParsedCatalog(hashA, EngineFamily.EMERALD, Platform.GBA),
+                    CatalogSourceMetadata.direct("a.gba", 1, "A"),
+                    CatalogWriteProgress.complete(),
+                    committedSections = emptySet(),
+                    writtenAtEpochMs = 1,
+                ),
+            ),
+            onCatalogCommitted = { sha, _ -> committed += sha },
+        )
+
+        runtime.restoreCatalogAsync(hashA)
+        runtime.loadCatalog("b.gba", ParsedCatalog(hashB, EngineFamily.EMERALD, Platform.GBA))
+        executor.runNext()
+
+        assertTrue(committed.isEmpty())
+        assertEquals(hashB, runtime.catalogHash())
+        runtime.close()
+    }
+
+    @Test
+    fun missingAsyncRestoreRestoresGlobalSettingsBeforeGlobalEdits() {
+        val hashA = "a".repeat(64)
+        val hashB = "b".repeat(64)
+        var document: String? = null
+        val repository = SettingsRepository({ document }, { document = it })
+        val globals = CompanionSettings(theme = Theme.DARK)
+        repository.writeGlobal(globals)
+        repository.writeForRom(hashA, globals.copy(theme = Theme.LIGHT, attackEnabled = false))
+        val executor = HoldingExecutorService()
+        var cleared = 0
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = executor,
+            catalogRepository = FakeCatalogRepository(
+                StoredCatalog(
+                    ParsedCatalog(hashB, EngineFamily.EMERALD, Platform.GBA),
+                    CatalogSourceMetadata.direct("b.gba", 1, "B"),
+                    CatalogWriteProgress.complete(),
+                    committedSections = emptySet(),
+                    writtenAtEpochMs = 1,
+                ),
+            ),
+            initialSettings = repository.readGlobal(),
+            settingsForRom = repository::readForRom,
+            globalSettings = repository::readGlobal,
+            onRomSettingsChanged = repository::writeForRom,
+            onCatalogCleared = { cleared++ },
+        )
+
+        runtime.restoreCatalogAsync(hashA)
+        assertEquals(Theme.DARK, runtime.gateway.bootstrap().settings.theme)
+        executor.runNext()
+        assertEquals(Theme.DARK, runtime.gateway.bootstrap().settings.theme)
+        assertEquals(1, cleared)
+        runtime.action("SETTINGS", mapOf("density" to "COMPACT"))
+
+        assertEquals(Theme.DARK, repository.readGlobal().theme)
+        assertEquals(Density.COMPACT, repository.readGlobal().density)
+        assertEquals(Theme.LIGHT, repository.readForRom(hashA).theme)
+        assertFalse(repository.readForRom(hashA).attackEnabled)
+        runtime.close()
+    }
+
+    @Test
+    fun failedRomParseRestoresGlobalSettingsBeforeGlobalEdits() {
+        val rom = RomImage(ByteArray(0xC0))
+        var document: String? = null
+        val repository = SettingsRepository({ document }, { document = it })
+        val globals = CompanionSettings(theme = Theme.DARK)
+        repository.writeGlobal(globals)
+        repository.writeForRom(rom.sha256, globals.copy(theme = Theme.LIGHT, attackEnabled = false))
+        var cleared = 0
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            initialSettings = repository.readGlobal(),
+            settingsForRom = repository::readForRom,
+            globalSettings = repository::readGlobal,
+            onRomSettingsChanged = repository::writeForRom,
+            onCatalogCleared = { cleared++ },
+        )
+
+        runtime.load("unsupported.gba", rom)
+        assertEquals(Theme.DARK, runtime.gateway.bootstrap().settings.theme)
+        assertNull(runtime.gateway.bootstrap().catalogName)
+        assertEquals(1, cleared)
+        runtime.action("SETTINGS", mapOf("density" to "COMPACT"))
+
+        assertEquals(Theme.DARK, repository.readGlobal().theme)
+        assertEquals(Density.COMPACT, repository.readGlobal().density)
+        assertEquals(Theme.LIGHT, repository.readForRom(rom.sha256).theme)
+        assertFalse(repository.readForRom(rom.sha256).attackEnabled)
+        runtime.close()
+    }
+
+    @Test
+    fun synchronousMissingRestoreClearsCatalogProfileAndPublishesNoRomState() {
+        val hashA = "a".repeat(64)
+        val hashMissing = "b".repeat(64)
+        var document: String? = null
+        val repository = SettingsRepository({ document }, { document = it })
+        val globals = CompanionSettings(theme = Theme.DARK)
+        repository.writeGlobal(globals)
+        repository.writeForRom(hashA, globals.copy(theme = Theme.LIGHT))
+        var cleared = 0
+        val runtime = ProductionCompanionRuntime(
+            catalogRepository = FakeCatalogRepository(
+                StoredCatalog(
+                    ParsedCatalog(hashA, EngineFamily.EMERALD, Platform.GBA),
+                    CatalogSourceMetadata.direct("a.gba", 1, "A"),
+                    CatalogWriteProgress.complete(),
+                    committedSections = emptySet(),
+                    writtenAtEpochMs = 1,
+                ),
+            ),
+            initialSettings = repository.readGlobal(),
+            settingsForRom = repository::readForRom,
+            globalSettings = repository::readGlobal,
+            onRomSettingsChanged = repository::writeForRom,
+            onCatalogCleared = { cleared++ },
+        )
+        runtime.loadCatalog("a.gba", ParsedCatalog(hashA, EngineFamily.EMERALD, Platform.GBA))
+
+        assertFalse(runtime.restoreCatalog(hashMissing))
+
+        assertNull(runtime.catalogHash())
+        assertFalse(runtime.gateway.bootstrap().catalogReady)
+        assertNull(runtime.gateway.bootstrap().catalogName)
+        assertEquals(Theme.DARK, runtime.gateway.bootstrap().settings.theme)
+        assertEquals(1, cleared)
+        runtime.action("SETTINGS", mapOf("density" to "COMPACT"))
+        assertEquals(Density.COMPACT, repository.readGlobal().density)
+        assertEquals(Theme.LIGHT, repository.readForRom(hashA).theme)
+        runtime.close()
+    }
+
+    @Test
+    fun romDisplayModeSwitchInvokesNativeCallbackWithoutLoopingOnUserActions() {
+        val hashA = "a".repeat(64)
+        val hashB = "b".repeat(64)
+        val nativeModes = mutableListOf<DisplayMode>()
+        val runtime = ProductionCompanionRuntime(
+            settingsForRom = { sha ->
+                CompanionSettings(displayMode = if (sha == hashA) DisplayMode.OVERLAY else DisplayMode.DOCKED)
+            },
+            onRomDisplayModeChanged = nativeModes::add,
+        )
+
+        runtime.loadCatalog("a.gba", ParsedCatalog(hashA, EngineFamily.EMERALD, Platform.GBA))
+        runtime.loadCatalog("b.gba", ParsedCatalog(hashB, EngineFamily.EMERALD, Platform.GBA))
+        runtime.action("SETTINGS", mapOf("displayMode" to "OVERLAY"))
+
+        assertEquals(listOf(DisplayMode.OVERLAY, DisplayMode.DOCKED), nativeModes)
+        runtime.close()
+    }
+
+    @Test
+    fun externalOverlayResizeCannotBeOverwrittenByAnUnrelatedRomSetting() {
+        val hash = "a".repeat(64)
+        var document: String? = null
+        val repository = SettingsRepository({ document }, { document = it })
+        val runtime = ProductionCompanionRuntime(
+            settingsForRom = repository::readForRom,
+            onRomSettingsChanged = repository::writeForRom,
+        )
+        runtime.loadCatalog("a.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
+        repository.writeGlobal(repository.readGlobal().copy(overlayScale = 0.7))
+
+        runtime.updateOverlayScale(0.7)
+        runtime.action("SETTINGS", mapOf("theme" to "DARK"))
+
+        assertEquals(0.7, repository.readGlobal().overlayScale, 0.0)
+        assertEquals(Theme.DARK, repository.readForRom(hash).theme)
+        runtime.close()
+    }
+
+    @Test
+    fun firstCatalogWriteAfterStartupWithoutLastHashKeepsLegacyRulesetRomLocal() {
+        val bytes = ByteArray(0xC0)
+        "POKEMON EMER".toByteArray().copyInto(bytes, 0xA0)
+        "BPEE".toByteArray().copyInto(bytes, 0xAC)
+        val rom = RomImage(bytes)
+        val hash = rom.sha256
+        val stored = StoredCatalog(
+            levelUpRulesetCatalog(hash),
+            CatalogSourceMetadata.direct("first.gba", bytes.size, "POKEMON EMER"),
+            CatalogWriteProgress.complete(),
+            committedSections = emptySet(),
+            writtenAtEpochMs = 1,
+        )
+        var document: String? = """{"schema":1,"ruleset":"modern","theme":"DARK"}"""
+        val repository = SettingsRepository({ document }, { document = it })
+        var lastCatalogSha: String? = null
+        repository.migrateLegacyRuleset(null)
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = FakeCatalogRepository(stored),
+            initialSettings = repository.readForRom(null),
+            settingsForRom = repository::readForRom,
+            onRomSettingsChanged = repository::writeForRom,
+            onCatalogCommitted = { committedSha, _ ->
+                repository.migrateLegacyRuleset(committedSha)
+                lastCatalogSha = committedSha
+            },
+        )
+
+        runtime.load("first.gba", rom)
+        runtime.action("SETTINGS", mapOf("theme" to "LIGHT"))
+
+        assertEquals(hash, lastCatalogSha)
+        assertEquals("AUTO", repository.readGlobal().ruleset)
+        assertEquals("modern", repository.readForRom(hash).ruleset)
+        assertEquals(Theme.LIGHT, repository.readForRom(hash).theme)
+        assertEquals("AUTO", repository.readForRom("b".repeat(64)).ruleset)
+        runtime.close()
+    }
+
+    @Test
+    fun autoUsesOnlyTheLevelUpRulesetDetectedFromTheCurrentSave() {
+        val hash = "b".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "modern.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                learnsetRulesets = listOf(
+                    LearnsetRuleset(
+                        "original", "Original", 1, 1.0, emptyMap(),
+                        levelUpSelector = LevelUpRulesetSelector(0x3DA6, 0x02, 0x00),
+                    ),
+                    LearnsetRuleset(
+                        "modern", "Modern", 2, 1.0, emptyMap(),
+                        levelUpSelector = LevelUpRulesetSelector(0x3DA6, 0x02, 0x02),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(setOf("original", "modern"), requireNotNull(runtime.saveParseContext()).levelUpRulesetSelectors.map { it.rulesetId }.toSet())
+        assertNull(runtime.stateView().activeRulesetId)
+        assertTrue(runtime.stateView().rulesetAssumed)
+
+        assertTrue(
+            runtime.applySaveSnapshot(
+                SaveSnapshot(
+                    romIdentity = hash,
+                    saveIdentity = "save",
+                    saveGeneration = 3,
+                    saveCounter = 3,
+                    currentArea = null,
+                    seenDexNumbers = emptySet(),
+                    caughtDexNumbers = emptySet(),
+                    party = emptyList(),
+                    storedIndividuals = emptyList(),
+                    capabilities = emptyMap(),
+                    detectedLevelUpRulesetId = "modern",
+                    levelUpRulesetDetectionResolved = true,
+                    levelUpRulesetDetectionFingerprint = LevelUpRulesetDetectionFingerprint.create(
+                        requireNotNull(runtime.saveParseContext()).levelUpRulesetSelectors,
+                        "modern",
+                    ),
+                ),
+                SaveRamView(status = "MATCHED", sourceName = "modern.srm"),
+            ),
+        )
+
+        assertEquals("modern", runtime.stateView().activeRulesetId)
+        assertFalse(runtime.stateView().rulesetAssumed)
+        assertEquals("original", runtime.action("SETTINGS", mapOf("ruleset" to "original")).activeRulesetId)
+        assertFalse(runtime.stateView().rulesetAssumed)
+        runtime.close()
+    }
+
+    @Test
+    fun autoRejectsForgedAndLegacyDetectionProvenanceButManualRecoveryStillWorks() {
+        val hash = "d".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog("modern.gba", levelUpRulesetCatalog(hash))
+
+        listOf("0".repeat(64), null).forEachIndexed { index, fingerprint ->
+            assertTrue(
+                runtime.applySaveSnapshot(
+                    levelUpSnapshot(hash, "modern", fingerprint, counter = index.toLong() + 1),
+                    SaveRamView(status = "MATCHED", sourceName = "modern.srm"),
+                ),
+            )
+            assertNull(runtime.stateView().activeRulesetId)
+            assertTrue(runtime.stateView().rulesetAssumed)
+        }
+
+        assertEquals("modern", runtime.action("SETTINGS", mapOf("ruleset" to "modern")).activeRulesetId)
+        assertFalse(runtime.stateView().rulesetAssumed)
+        runtime.close()
+    }
+
+    @Test
+    fun autoRejectsDetectionFingerprintFromPreviousSelectorDescriptors() {
+        val hash = "e".repeat(64)
+        val oldCatalog = levelUpRulesetCatalog(hash, selectorOffset = 0x3DA6)
+        val oldSelectors = oldCatalog.learnsetRulesets.map { ruleset ->
+            val selector = requireNotNull(ruleset.levelUpSelector)
+            com.darkaxt.dualdex.save.SaveByteSelector(
+                ruleset.id,
+                selector.saveBlock1ByteOffset,
+                selector.mask,
+                selector.expectedValue,
+            )
+        }
+        val staleFingerprint = requireNotNull(LevelUpRulesetDetectionFingerprint.create(oldSelectors, "modern"))
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog("modern-changed.gba", levelUpRulesetCatalog(hash, selectorOffset = 0x3DA7))
+
+        assertTrue(
+            runtime.applySaveSnapshot(
+                levelUpSnapshot(hash, "modern", staleFingerprint),
+                SaveRamView(status = "MATCHED", sourceName = "modern.srm"),
+            ),
+        )
+
+        assertNull(runtime.stateView().activeRulesetId)
+        assertTrue(runtime.stateView().rulesetAssumed)
+        runtime.close()
+    }
+
+    @Test
+    fun autoRejectsPersistedDetectionWhenCatalogSelectorCoverageIsIncomplete() {
+        val hash = "c".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "partial-selector.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                learnsetRulesets = listOf(
+                    LearnsetRuleset("original", "Original", 1, 1.0, emptyMap()),
+                    LearnsetRuleset(
+                        "modern", "Modern", 2, 1.0, emptyMap(),
+                        levelUpSelector = LevelUpRulesetSelector(0x3DA6, 0x02, 0x02),
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue(requireNotNull(runtime.saveParseContext()).levelUpRulesetSelectors.isEmpty())
+        assertTrue(
+            runtime.applySaveSnapshot(
+                SaveSnapshot(
+                    romIdentity = hash,
+                    saveIdentity = "save",
+                    saveGeneration = 3,
+                    saveCounter = 3,
+                    currentArea = null,
+                    seenDexNumbers = emptySet(),
+                    caughtDexNumbers = emptySet(),
+                    party = emptyList(),
+                    storedIndividuals = emptyList(),
+                    capabilities = emptyMap(),
+                    detectedLevelUpRulesetId = "modern",
+                    levelUpRulesetDetectionResolved = true,
+                ),
+                SaveRamView(status = "MATCHED", sourceName = "partial-selector.srm"),
+            ),
+        )
+
+        assertNull(runtime.stateView().activeRulesetId)
+        assertTrue(runtime.stateView().rulesetAssumed)
         runtime.close()
     }
 
@@ -536,4 +1141,70 @@ class ProductionCompanionRuntimeTest {
 
         override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean = closed
     }
+
+    private class HoldingExecutorService : AbstractExecutorService() {
+        private var closed = false
+        private val pending = mutableListOf<Runnable>()
+        val pendingCount: Int get() = pending.size
+
+        override fun execute(command: Runnable) {
+            pending += command
+        }
+
+        fun runNext() {
+            pending.removeAt(0).run()
+        }
+
+        override fun shutdown() {
+            closed = true
+        }
+
+        override fun shutdownNow(): MutableList<Runnable> {
+            closed = true
+            return pending.toMutableList().also { pending.clear() }
+        }
+
+        override fun isShutdown(): Boolean = closed
+
+        override fun isTerminated(): Boolean = closed
+
+        override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean = closed
+    }
+
+    private fun levelUpRulesetCatalog(hash: String, selectorOffset: Int = 0x3DA6) = ParsedCatalog(
+        hash,
+        EngineFamily.EMERALD,
+        Platform.GBA,
+        learnsetRulesets = listOf(
+            LearnsetRuleset(
+                "original", "Original", 1, 1.0, emptyMap(),
+                levelUpSelector = LevelUpRulesetSelector(selectorOffset, 0x02, 0x00),
+            ),
+            LearnsetRuleset(
+                "modern", "Modern", 2, 1.0, emptyMap(),
+                levelUpSelector = LevelUpRulesetSelector(selectorOffset, 0x02, 0x02),
+            ),
+        ),
+    )
+
+    private fun levelUpSnapshot(
+        hash: String,
+        detectedId: String,
+        fingerprint: String?,
+        counter: Long = 1,
+    ) = SaveSnapshot(
+        romIdentity = hash,
+        saveIdentity = "save-$counter",
+        saveGeneration = 3,
+        saveCounter = counter,
+        currentArea = null,
+        seenDexNumbers = emptySet(),
+        caughtDexNumbers = emptySet(),
+        party = emptyList(),
+        storedIndividuals = emptyList(),
+        capabilities = emptyMap(),
+        detectedLevelUpRulesetId = detectedId,
+        levelUpRulesetDetectionResolved = true,
+        levelUpRulesetDetectionFingerprint = fingerprint,
+    )
 }

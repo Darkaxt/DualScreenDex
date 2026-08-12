@@ -151,3 +151,32 @@ export interface Bootstrap {
   catalog: Catalog | null;
   state: State;
 }
+
+export interface DiagnosticCapability {
+  capability: string;
+  status: string;
+  confidence: number;
+  offset: number | null;
+  count: number | null;
+  recordSize: number | null;
+  elementSize?: number | null;
+  validRecords?: number | null;
+  totalRecords?: number | null;
+  reviewStatus?: string | null;
+  reasons: string[];
+}
+
+export interface DiagnosticView {
+  romName: string | null;
+  sha256: string;
+  crc32: string;
+  family: string;
+  platform: string;
+  activeRulesetId: string | null;
+  rulesetAssumed: boolean;
+  rulesets: Catalog['rulesets'];
+  capabilities: DiagnosticCapability[];
+  parserDiagnostics: string[];
+  species: Species | null;
+  move: Move | null;
+}

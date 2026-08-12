@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/preact';
+import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bootstrap } from './models';
 
@@ -19,9 +19,14 @@ const fixture: Bootstrap = {
 
 vi.mock('./gateway', () => ({
   bootstrap: vi.fn(async () => fixture),
-  action: vi.fn(async () => fixture.state),
+  action: vi.fn(async (type: string, values: Record<string, unknown> = {}) => ({ ...fixture.state, screen: type === 'SCREEN' ? values.screen : fixture.state.screen })),
   events: vi.fn(() => () => undefined),
-  uploadRom: vi.fn(async () => fixture)
+  uploadRom: vi.fn(async () => fixture),
+  diagnostics: vi.fn(async () => ({
+    romName: fixture.state.catalogName, sha256: fixture.catalog!.hash, crc32: fixture.catalog!.crc32,
+    family: fixture.catalog!.family, platform: fixture.catalog!.platform, activeRulesetId: 'default', rulesetAssumed: true,
+    rulesets: fixture.catalog!.rulesets, capabilities: [], parserDiagnostics: [], species: null, move: null,
+  }))
 }));
 
 import { App, catalogRefreshMarker, loadingPercentage } from './App';
@@ -43,6 +48,16 @@ describe('production application shell', () => {
     expect(loadingPercentage({ active: true, phase: 'RELATIONSHIPS', completedUnits: 3, totalUnits: 5 })).toBe(60);
     expect(loadingPercentage({ active: true, phase: 'IDENTIFYING', completedUnits: 0, totalUnits: 5 })).toBe(0);
     expect(loadingPercentage({ active: true, phase: 'IDLE', completedUnits: 0, totalUnits: 0 })).toBeNull();
+  });
+
+  it('opens the capability report from Settings without opening memory capture', async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'CAPABILITY REPORT' }));
+
+    expect(await screen.findByText('LOADED ROM · READ ONLY')).toBeTruthy();
+    expect(screen.queryByText('ISSUE REPORT MEMORY CAPTURE')).toBeNull();
   });
 });
 

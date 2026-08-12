@@ -27,8 +27,10 @@ export function PokedexDetail({
   const observedMoves = state.observedMoves[species.id] ?? [];
   const displayTab = !unlocked && (tab === 'STATS' || tab === 'MORE') ? 'ENTRY' : tab;
   const observedOnly = !unlocked && displayTab === 'MOVES';
-  const rulesetId = state.activeRulesetId ?? catalog.rulesets.find(item => item.primary)?.id ?? 'default';
-  const moves = species.normalizedLearnsets[rulesetId] ?? [];
+  const activeRuleset = state.activeRulesetId == null
+    ? null
+    : catalog.rulesets.find(item => item.id === state.activeRulesetId) ?? null;
+  const moves = activeRuleset == null ? [] : species.normalizedLearnsets[activeRuleset.id] ?? [];
   const statRanges = Object.entries(species.stats ?? {}).map(([name, value]) => ({ name, value, ...projectedStatRange(value, name, catalog.platform) }));
   const statScale = Math.max(1, ...statRanges.map(item => item.high));
   const locations = catalog.areas.flatMap(area => {
@@ -61,11 +63,13 @@ export function PokedexDetail({
         {locations.length > 0 && <p class="range-note">Wild encounters in this ROM: <strong>{wildLevelRange(locations.flatMap(item => item.slots))}</strong></p>}
       </div>}
       {unlocked && displayTab === 'MOVES' && <div class="paper-panel move-sections">
-        <div class="section-heading"><div><p class="eyebrow">LEVEL-UP MOVES</p><p>{catalog.rulesets.find(item => item.id === rulesetId)?.label ?? 'Default'} ruleset</p></div></div>
-        <div class="move-table">{moves.map(item => {
+        <div class="section-heading"><div><p class="eyebrow">LEVEL-UP MOVES</p><p>{activeRuleset == null ? 'Save-detected table unresolved' : `${activeRuleset.label} ruleset`}</p></div></div>
+        {activeRuleset == null && catalog.rulesets.length > 1
+          ? <div class="empty-state"><strong>LEVEL-UP RULESET REQUIRED</strong><p>Load a supported SaveRAM snapshot or choose a manual recovery/debug override in Settings.</p></div>
+          : <div class="move-table">{moves.map(item => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
           return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>{item.label}</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
-        })}</div>
+        })}</div>}
         {species.moveAcquisitions.length > 0 && <><p class="eyebrow acquisition-heading">OTHER METHODS</p><div class="move-table">{species.moveAcquisitions.map((item, index) => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
           return move && <button key={`${item.method}-${item.moveId}-${index}`} onClick={() => openMove(item.moveId)}><span>{item.method}{item.sourceId ? ` ${item.sourceId}` : ''}</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
@@ -81,13 +85,28 @@ export function PokedexDetail({
       {unlocked && displayTab === 'MORE' && <div class="paper-panel more-sections">
         {species.abilities.length > 0 && <section><p class="eyebrow">ABILITIES</p>{species.abilities.map(ability => <button class="data-row data-link" key={ability.id} onClick={() => openAbility(ability.id)}><strong>{ability.name}</strong><span>#{ability.id}</span></button>)}</section>}
         {species.evolutions.length > 0 && <section><p class="eyebrow">EVOLUTIONS</p>{species.evolutions.map((evolution, index) => {
-          const targetAvailable = catalog.species.some(candidate => candidate.id === evolution.targetSpeciesId);
-          return targetAvailable
-            ? <button class="data-row data-link" key={`${evolution.targetSpeciesId}-${index}`} onClick={() => {
+          const target = catalog.species.find(candidate => candidate.id === evolution.targetSpeciesId);
+          const targetStatus = state.speciesState[evolution.targetSpeciesId];
+          const knowledge = state.settings.knowledgeMode !== 'ORGANIC' || targetStatus?.caught
+            ? 'captured'
+            : targetStatus?.seen ? 'seen' : 'unknown';
+          const resolvedTargetName = target?.name ?? evolution.targetName;
+          const targetName = knowledge === 'unknown' ? maskEvolutionName(resolvedTargetName) : resolvedTargetName;
+          const sprite = <span class="evolution-sprite-frame">{target?.hasSprite
+            ? <img
+                src={`/api/sprites/species/${evolution.targetSpeciesId}.png`}
+                alt={knowledge === 'unknown' ? 'Unknown evolution sprite' : `${targetName} evolution sprite`}
+                aria-hidden="true"
+                class={knowledge === 'unknown' ? 'evolution-silhouette' : knowledge === 'seen' ? 'evolution-seen' : ''}
+              />
+            : <span class="evolution-sprite-missing" aria-label="Evolution sprite unavailable" />}</span>;
+          const content = <>{sprite}<strong>{targetName}</strong><span>{evolution.condition}</span></>;
+          return target && knowledge !== 'unknown'
+            ? <button class="evolution-row evolution-link" key={`${evolution.targetSpeciesId}-${index}`} onClick={() => {
               setTab('ENTRY');
               send('OPEN_SPECIES', { speciesId: evolution.targetSpeciesId });
-            }}><strong>{evolution.targetName}</strong><span>{evolution.condition}</span></button>
-            : <div class="data-row" key={`${evolution.targetSpeciesId}-${index}`}><strong>{evolution.targetName}</strong><span>{evolution.condition}</span></div>;
+            }}>{content}</button>
+            : <div class="evolution-row" key={`${evolution.targetSpeciesId}-${index}`}>{content}</div>;
         })}</section>}
         {locations.length > 0 && <section><p class="eyebrow">LOCATIONS</p>{locations.map(({ area, slots }) => <div class="data-row location-row" key={area.id}><strong>{area.name}</strong><span>{wildLevelRange(slots)}{slots.some(slot => slot.weight != null) ? ` · ${Math.max(...slots.map(slot => slot.weight ?? 0))}%` : ''}</span></div>)}</section>}
         {species.abilities.length === 0 && species.evolutions.length === 0 && locations.length === 0 && <div class="empty-state">No additional compatible ROM records were found for this species.</div>}
@@ -98,6 +117,10 @@ export function PokedexDetail({
 
 export function baseStatSummary(stats: Record<string, number> | null): number {
   return Object.values(stats ?? {}).reduce((total, value) => total + value, 0);
+}
+
+export function maskEvolutionName(name: string): string {
+  return Array.from(name).map(character => /\s/u.test(character) ? character : '?').join('');
 }
 
 export function projectedStatRange(base: number, name: string, platform: string, level = 50): { low: number; typical: number; high: number } {

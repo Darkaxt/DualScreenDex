@@ -120,6 +120,7 @@ class DualDexRuntime(
         when (type.uppercase()) {
             "GENERATE" -> {
                 val active = requireNotNull(simulator) { "load a ROM before generating an encounter" }
+                val snapshot = gateway.bootstrap()
                 val result = active.generate(
                     SimulationRequest(
                         seed = values["seed"]?.toLongOrNull() ?: 1,
@@ -129,8 +130,8 @@ class DualDexRuntime(
                         captured = values["captured"].toBoolean(),
                         areaId = values["areaId"]?.toIntOrNull(),
                     ),
-                    gateway.bootstrap().ledger,
-                    activeRulesetId = resolveRuleset(gateway.bootstrap().settings.ruleset)?.id,
+                    snapshot.ledger,
+                    activeRulesetId = generationRulesetId(snapshot.settings.ruleset),
                 )
                 gateway.dispatch(CompanionAction.ReplaceLedger(result.ledger))
                 gateway.dispatch(CompanionAction.BattleStarted(result.battle))
@@ -223,10 +224,23 @@ class DualDexRuntime(
 
     private fun resolveRuleset(selection: String) = catalog?.learnsetRulesets?.let { rulesets ->
         if (selection == "AUTO") {
-            rulesets.firstOrNull { it.primary } ?: rulesets.firstOrNull()
+            rulesets.singleOrNull()
         } else {
             rulesets.firstOrNull { it.id == selection }
         }
+    }
+
+    private fun generationRulesetId(selection: String): String? {
+        val rulesets = catalog?.learnsetRulesets.orEmpty()
+        if (rulesets.isEmpty()) return null
+        val resolved = resolveRuleset(selection)
+        if (selection == "AUTO") {
+            require(rulesets.size == 1 && resolved != null) {
+                "level-up ruleset is unresolved for this multi-table catalog"
+            }
+            return resolved.id
+        }
+        return requireNotNull(resolved) { "unknown catalog ruleset: $selection" }.id
     }
 
     private fun publishProgress(generation: Long, progress: CatalogMaterializationProgress) {

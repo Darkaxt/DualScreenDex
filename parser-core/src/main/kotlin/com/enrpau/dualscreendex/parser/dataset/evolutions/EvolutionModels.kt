@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.evolutions
 
+import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.resolution.CandidateLayoutIdentity
 import com.enrpau.dualscreendex.parser.resolution.ImmutableDatasetLayout
 import java.util.Collections
@@ -131,11 +132,33 @@ class ResolvedEvolutionLayout(
     }
 
     override fun immutableSnapshot(): ResolvedEvolutionLayout = this
+
+    /** Pure catalog projection. Physical row zero is always the structural species-none sentinel. */
+    fun catalogEvolutions(): Map<Int, List<EvolutionEdge>> = Collections.unmodifiableMap(
+        rows.associate { row ->
+            row.rowIndex to Collections.unmodifiableList(
+                when (row) {
+                    is EvolutionRowOutcome.Decoded -> row.edges.map(EvolutionEdgeValue::toCatalogEdge)
+                    is EvolutionRowOutcome.Malformed -> row.edges.map(EvolutionEdgeValue::toCatalogEdge)
+                    is EvolutionRowOutcome.StructuralEmpty -> emptyList()
+                },
+            )
+        },
+    )
+
     override fun equals(other: Any?): Boolean = other is ResolvedEvolutionLayout &&
         table == other.table && rows == other.rows
     override fun hashCode(): Int = 31 * table.hashCode() + rows.hashCode()
     override fun toString(): String = "ResolvedEvolutionLayout(table=$table, rows=$rows)"
 }
+
+private fun EvolutionEdgeValue.toCatalogEdge(): EvolutionEdge = EvolutionEdge(
+    targetSpeciesId = targetSpeciesId,
+    methodId = methodId,
+    parameter = parameter,
+    raw = raw,
+    conditionValue = conditionValue,
+)
 
 sealed interface EvolutionTableOutcome {
     val layout: EvolutionTableLayout

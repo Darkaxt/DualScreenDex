@@ -10,6 +10,7 @@ import { MoveDetail } from './pages/MoveDetail';
 import { AbilityDetail } from './pages/AbilityDetail';
 import { SetupPage } from './pages/SetupPage';
 import { MemoryMapperPage } from './pages/MemoryMapperPage';
+import { CapabilityReportPage } from './pages/CapabilityReportPage';
 
 export interface DevelopmentToolsProps {
   catalog: Catalog | null;
@@ -43,6 +44,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [abilityDetailId, setAbilityDetailId] = useState<number | null>(null);
   const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'MORE'>('ENTRY');
   const [mapperOpen, setMapperOpen] = useState(false);
+  const [capabilityReportOpen, setCapabilityReportOpen] = useState(false);
   const lastCatalogRefresh = useRef('');
   const loadingPercent = loadingPercentage(state.loading);
 
@@ -82,6 +84,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 
   const screen = useMemo(() => {
     if (mapperOpen) return <MemoryMapperPage onBack={() => setMapperOpen(false)} />;
+    if (capabilityReportOpen && catalog) return <CapabilityReportPage romHash={catalog.hash} refreshMarker={catalogRefreshMarker(state)} onBack={() => setCapabilityReportOpen(false)} />;
     if (state.screen === 'SETUP') return <SetupPage state={state} send={send} />;
     if (!catalog) return <Welcome busy={busy || state.loading.active} error={error} onUpload={onUpload} openSetup={() => void send('SCREEN', { screen: 'SETUP' })} />;
     if (moveDetailId != null) return <MoveDetail catalog={catalog} state={state} moveId={moveDetailId} onBack={() => setMoveDetailId(null)} />;
@@ -92,10 +95,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
       }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} />;
-      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenMapper={() => setMapperOpen(true)} />;
+      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => setCapabilityReportOpen(true)} onOpenMapper={() => setMapperOpen(true)} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} />;
     }
-  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen]);
+  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen, capabilityReportOpen]);
 
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}

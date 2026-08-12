@@ -1,0 +1,286 @@
+package com.enrpau.dualscreendex.parser.dataset.abilities
+
+import com.enrpau.dualscreendex.parser.catalog.BaseStats
+import com.enrpau.dualscreendex.parser.dataset.core.basestats.Gen3BaseStatsRecord
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class AbilityNameCodecTest {
+    @Test
+    fun acceptsRetailBlankAndTerminatedPlaceholderRowZeroButRejectsContamination() {
+        val layout = AbilityNameTableLayout(0x100, 3, 13)
+        val bytes = ByteArray(0x100 + 3 * 13)
+        bytes[0x100] = 0xFF.toByte()
+        putGbaText(bytes, 0x100 + 13, "STENCH", 13)
+        putGbaText(bytes, 0x100 + 26, "DRIZZLE", 13)
+
+        val decoded = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(1, 2)),
+        ) as AbilityNameTableOutcome.Decoded
+        assertTrue(decoded.resolved.rows[0] is AbilityNameRowOutcome.StructuralSentinel)
+
+        putGbaText(bytes, 0x100, "-------", 13)
+        val placeholder = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(1, 2)),
+        ) as AbilityNameTableOutcome.Decoded
+        assertTrue(placeholder.resolved.rows[0] is AbilityNameRowOutcome.StructuralSentinel)
+
+        bytes[0x100 + 8] = 0xFF.toByte()
+        val doubleTerminatorPadding = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(1, 2)),
+        ) as AbilityNameTableOutcome.Decoded
+        assertTrue(doubleTerminatorPadding.resolved.rows[0] is AbilityNameRowOutcome.StructuralSentinel)
+
+        bytes[0x100 + 8] = 0xBB.toByte()
+        val nonPaddingTail = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(1, 2)),
+        )
+        assertTrue(nonPaddingTail is AbilityNameTableOutcome.Rejected)
+        bytes[0x100 + 8] = 0
+
+        bytes.fill(0, 0x100 + 13, 0x100 + 26)
+        bytes[0x100 + 13] = 0xFF.toByte()
+        val rejected = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(1, 2)),
+        )
+        assertTrue(rejected is AbilityNameTableOutcome.Rejected)
+
+        putGbaText(bytes, 0x100 + 13, "STENCH", 13)
+        bytes[0x100 + 1] = 0xBB.toByte()
+        val contaminatedRowZero = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(1, 2)),
+        )
+        assertTrue(contaminatedRowZero is AbilityNameTableOutcome.Rejected)
+    }
+
+    @Test
+    fun trimsOnlyAnAllSentinelSuffixAfterTheLastDecodedActiveAbility() {
+        val names = buildList {
+            add("-------")
+            repeat(85) { index -> add("ABILITY ${index + 1}") }
+            add("...")
+            repeat(169) { add("-------") }
+        }
+        val layout = AbilityNameTableLayout(0x100, names.size.toLong(), 13)
+        val bytes = ByteArray(0x100 + names.size * 13)
+        putAbilityNames(bytes, layout, names)
+
+        val decoded = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(1, 65, 85)),
+        ) as AbilityNameTableOutcome.Decoded
+
+        assertEquals(86, decoded.resolved.baseRowCount)
+        assertEquals(85, decoded.resolved.baseAbilityCount)
+        assertEquals((1..85).toSet(), decoded.resolved.decodedDirectAbilityIds())
+        assertTrue(decoded.resolved.aliasLabels.isEmpty())
+    }
+
+    @Test
+    fun doesNotTrimAnInternalSentinelHoleOrAnyActiveSuffixId() {
+        val internalHole = buildList {
+            add("-------")
+            repeat(77) { index -> add("ABILITY ${index + 1}") }
+            add("----")
+            add("SKILL LINK")
+            add("OTHER ABILITY")
+        }
+        val internalLayout = AbilityNameTableLayout(0x100, internalHole.size.toLong(), 13)
+        val internalBytes = ByteArray(0x100 + internalHole.size * 13)
+        putAbilityNames(internalBytes, internalLayout, internalHole)
+
+        val internal = AbilityNameCodec().decode(
+            abilitySession(internalBytes),
+            internalLayout,
+            AbilitySemanticDomain(setOf(19, 78, 80)),
+        ) as AbilityNameTableOutcome.Decoded
+        assertEquals(internalHole.size, internal.resolved.baseRowCount)
+        assertTrue(78 !in internal.resolved.decodedDirectAbilityIds())
+        assertTrue(79 in internal.resolved.decodedDirectAbilityIds())
+
+        val activeSuffix = buildList {
+            add("-------")
+            repeat(9) { index -> add("ABILITY ${index + 1}") }
+            add("-------")
+        }
+        val suffixLayout = AbilityNameTableLayout(0x100, activeSuffix.size.toLong(), 13)
+        val suffixBytes = ByteArray(0x100 + activeSuffix.size * 13)
+        putAbilityNames(suffixBytes, suffixLayout, activeSuffix)
+        val suffix = AbilityNameCodec().decode(
+            abilitySession(suffixBytes),
+            suffixLayout,
+            AbilitySemanticDomain(setOf(1, 10)),
+        ) as AbilityNameTableOutcome.Decoded
+        assertEquals(activeSuffix.size, suffix.resolved.baseRowCount)
+    }
+
+    @Test
+    fun decodesOfficialAndExpandedCatalogCardinalitiesWithoutHardCodedCounts() {
+        val shapes = listOf(
+            Shape(77, 13, 13),
+            Shape(254, 13, 13),
+            Shape(255, 17, 17),
+            Shape(310, 20, 28),
+        )
+
+        shapes.forEach { shape ->
+            val layout = AbilityNameTableLayout(
+                offset = 0x100,
+                count = (shape.abilityCount + 1).toLong(),
+                nameWidth = shape.width,
+                stride = shape.stride,
+            )
+            val bytes = ByteArray(0x100 + shape.stride * (shape.abilityCount + 1) + 0x20)
+            putAbilityNames(bytes, layout, ordinaryAbilityNames(shape.abilityCount))
+
+            val decoded = AbilityNameCodec().decode(
+                abilitySession(bytes),
+                layout,
+                AbilitySemanticDomain(setOf(1, shape.abilityCount)),
+            ) as AbilityNameTableOutcome.Decoded
+
+            assertEquals(shape.abilityCount, decoded.resolved.baseAbilityCount)
+            assertEquals(shape.abilityCount + 1, decoded.resolved.baseRows.size)
+            assertTrue(decoded.resolved.aliasLabels.isEmpty())
+        }
+    }
+
+    @Test
+    fun preservesAmethystAndBillsFullWideCatalogSemantics() {
+        listOf(292, 327).forEach { abilityCount ->
+            val layout = AbilityNameTableLayout(0x80, abilityCount.toLong() + 1, 17)
+            val bytes = ByteArray(0x80 + (abilityCount + 1) * 17)
+            putAbilityNames(bytes, layout, ordinaryAbilityNames(abilityCount))
+
+            val decoded = AbilityNameCodec().decode(
+                abilitySession(bytes),
+                layout,
+                AbilitySemanticDomain(setOf(1, abilityCount)),
+            ) as AbilityNameTableOutcome.Decoded
+
+            assertEquals(abilityCount, decoded.resolved.baseAbilityCount)
+            assertTrue(decoded.resolved.aliasLabels.isEmpty())
+        }
+    }
+
+    @Test
+    fun separatesCfruBaseIdsFromPostSentinelSpeciesConditionedAliases() {
+        val names = buildList {
+            add("-------")
+            repeat(254) { index -> add("BASE ${index + 1}") }
+            add("-")
+            addAll(listOf("AIR LOCK", "VITAL SPIRIT", "WHITE SMOKE", "PURE POWER"))
+        }
+        val layout = AbilityNameTableLayout(0x100, names.size.toLong(), 17)
+        val bytes = ByteArray(0x100 + names.size * 17)
+        putAbilityNames(bytes, layout, names)
+
+        val decoded = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(1, 65, 254)),
+        ) as AbilityNameTableOutcome.Decoded
+
+        assertEquals(254, decoded.resolved.baseAbilityCount)
+        assertEquals(255, decoded.resolved.baseRows.size)
+        assertEquals(
+            listOf(
+                AbilityAliasLabel(256, "AIR LOCK"),
+                AbilityAliasLabel(257, "VITAL SPIRIT"),
+                AbilityAliasLabel(258, "WHITE SMOKE"),
+                AbilityAliasLabel(259, "PURE POWER"),
+            ),
+            decoded.resolved.aliasLabels,
+        )
+    }
+
+    @Test
+    fun treatsAnActiveStructuralSentinelAsASparseDirectIdHole() {
+        val names = buildList {
+            add("-------")
+            repeat(254) { add("BASE ABILITY") }
+            add("-")
+            addAll(listOf("RUNTIME LABEL", "OTHER LABEL"))
+        }
+        val layout = AbilityNameTableLayout(0x100, names.size.toLong(), 17)
+        val bytes = ByteArray(0x100 + names.size * 17)
+        putAbilityNames(bytes, layout, names)
+
+        val outcome = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(255)),
+        )
+
+        val decoded = outcome as AbilityNameTableOutcome.Decoded
+        assertEquals(names.size, decoded.resolved.baseRowCount)
+        assertTrue(255 !in decoded.resolved.catalogAbilities())
+    }
+
+    @Test
+    fun rejectsCompetingPostCatalogSentinelsInsteadOfChoosingByOrder() {
+        val names = buildList {
+            add("-------")
+            repeat(10) { add("BASE ABILITY") }
+            add("-")
+            addAll(listOf("FIRST ALIAS", "SECOND ALIAS", "THIRD ALIAS"))
+            add("---")
+            addAll(listOf("OTHER LABEL", "ANOTHER LABEL", "FINAL LABEL"))
+        }
+        val layout = AbilityNameTableLayout(0x100, names.size.toLong(), 17)
+        val bytes = ByteArray(0x100 + names.size * 17)
+        putAbilityNames(bytes, layout, names)
+
+        val outcome = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(1, 10)),
+        )
+
+        assertTrue(outcome is AbilityNameTableOutcome.Rejected)
+    }
+
+    @Test
+    fun buildsTheActiveAbilityDomainOnlyFromDecodedBaseStats() {
+        val domain = AbilitySemanticDomain.fromDecodedBaseStats(
+            listOf(baseStats(7, 9), baseStats(9, 145), baseStats()),
+        )
+
+        assertEquals(listOf(7, 9, 145), domain.activeAbilityIds)
+        assertEquals(145, domain.maximumDirectAbilityId)
+    }
+
+    private fun baseStats(vararg abilityIds: Int) = Gen3BaseStatsRecord(
+        stats = BaseStats(45, 49, 49, 45, 65, 65),
+        typeIds = listOf(12, 3),
+        catchRate = 45,
+        baseExperienceYield = 64,
+        evYield = 0,
+        heldItemIds = emptyList(),
+        genderRatio = 127,
+        eggCycles = 20,
+        baseFriendship = 70,
+        growthRate = 4,
+        eggGroupIds = listOf(1, 7),
+        abilityIds = abilityIds.toList(),
+        safariZoneFleeRate = 0,
+        bodyColor = 6,
+        noFlip = false,
+    )
+
+    private data class Shape(val abilityCount: Int, val width: Int, val stride: Int)
+}

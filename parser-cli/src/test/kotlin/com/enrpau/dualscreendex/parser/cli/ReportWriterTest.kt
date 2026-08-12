@@ -17,12 +17,60 @@ import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
+import com.enrpau.dualscreendex.parser.catalog.LearnsetEntry
+import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
+import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
+import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
+import com.google.gson.JsonParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReportWriterTest {
+    @Test
+    fun noFamilyMatchWithConflictingValidatedLocatorsRequiresManualReview() {
+        val probes = listOf(
+            ParserProbe(
+                family = EngineFamily.RED_BLUE,
+                score = 70,
+                hardGatePassed = true,
+                anchors = 2,
+                scoreEvidence = emptyList(),
+                capabilities = listOf(
+                    CapabilityEvidence(
+                        RomCapability.SPECIES_NAMES, true, 0.95, offset = 0x1000, count = 151,
+                    ),
+                ),
+            ),
+            ParserProbe(
+                family = EngineFamily.YELLOW,
+                score = 69,
+                hardGatePassed = true,
+                anchors = 2,
+                scoreEvidence = emptyList(),
+                capabilities = listOf(
+                    CapabilityEvidence(
+                        RomCapability.SPECIES_NAMES, true, 0.96, offset = 0x2000, count = 151,
+                    ),
+                ),
+            ),
+        )
+        val selection = ParserOrchestrator.select(probes)
+        val capabilities = ParserOrchestrator.resolveCapabilities(selection, probes)
+        val score = calculateCompatibility(
+            sampleResult().copy(
+                status = selection.status,
+                selectedFamily = null,
+                selectedProfile = null,
+                capabilities = capabilities,
+            ),
+        )
+
+        assertEquals(SelectionStatus.NO_FAMILY_MATCH, selection.status)
+        assertTrue(score.manualReviewRequired)
+    }
+
     @Test
     fun dataStructureCompatibilityDoesNotDependOnFamilySelection() {
         val available = RomCapability.entries.map {
@@ -155,8 +203,88 @@ class ReportWriterTest {
     fun jsonIsDeterministicForSameReport() {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
-        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 9"))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 11"))
         assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
+    }
+
+    @Test
+    fun jsonPublishesOnlyStructuralRulesetDetailsAtSchemaEleven() {
+        val catalog = ParsedCatalog(
+            romSha256 = "0".repeat(64),
+            family = EngineFamily.FIRERED_LEAFGREEN,
+            platform = Platform.GBA,
+            learnsetRulesets = listOf(
+                LearnsetRuleset(
+                    id = "ruleset-00001234",
+                    label = "Expanded 1",
+                    sourceOffset = 0x1234,
+                    confidence = 0.875,
+                    entriesBySpecies = mapOf(1 to listOf(LearnsetEntry(level = 5, moveId = 10))),
+                    primary = false,
+                    levelUpSelector = LevelUpRulesetSelector(
+                        saveBlock1ByteOffset = 0x20,
+                        mask = 0x04,
+                        expectedValue = 0x04,
+                    ),
+                ),
+            ),
+        )
+        val report = CorpusReport(
+            roots = emptyList(),
+            results = listOf(
+                CorpusResult(
+                    displayName = "ruleset.gba",
+                    source = "ruleset.gba",
+                    durationMillis = 1,
+                    result = sampleResult(),
+                    catalog = CatalogMetrics.from(catalog),
+                ),
+            ),
+        )
+
+        val json = ReportWriter.json(report)
+        val root = JsonParser.parseString(json).asJsonObject
+        val catalogJson = root.getAsJsonArray("results")[0].asJsonObject.getAsJsonObject("catalog")
+        val ruleset = catalogJson.getAsJsonArray("rulesetDetails")[0].asJsonObject
+        val selector = ruleset.getAsJsonObject("levelUpSelector")
+
+        assertEquals(11, root.get("schemaVersion").asInt)
+        assertEquals(1, catalogJson.get("learnsetRulesets").asInt)
+        assertEquals(
+            setOf("id", "label", "sourceOffset", "confidence", "primary", "levelUpSelector"),
+            ruleset.keySet(),
+        )
+        assertEquals(
+            setOf("saveBlock1ByteOffset", "mask", "expectedValue"),
+            selector.keySet(),
+        )
+        assertEquals("ruleset-00001234", ruleset.get("id").asString)
+        assertEquals(0x1234, ruleset.get("sourceOffset").asInt)
+        assertEquals(0x20, selector.get("saveBlock1ByteOffset").asInt)
+        assertFalse(json.contains("entriesBySpecies"))
+        assertFalse(json.contains("moveId"))
+    }
+
+    @Test
+    fun jsonCarriesValidatorReviewProvenanceWithoutChangingTheReportSchema() {
+        val result = sampleResult()
+        val capability = result.capabilities.single().copy(validatorReviewRecommended = true)
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(
+                CorpusResult(
+                    displayName = "review.gba",
+                    source = "review.gba",
+                    durationMillis = 1,
+                    result = result.copy(capabilities = listOf(capability)),
+                ),
+            ),
+        )
+
+        val json = ReportWriter.json(report)
+
+        assertTrue(json.contains("\"schemaVersion\": 11"))
+        assertTrue(json.contains("\"validatorReviewRecommended\": true"))
     }
 
     @Test
@@ -275,10 +403,174 @@ class ReportWriterTest {
         val markdown = ReportWriter.markdown(report)
 
         assertTrue(markdown.contains("Routing score"))
-        assertTrue(markdown.contains("`N/F` = applicable but not found or validated"))
-        assertTrue(markdown.contains("`N/A` = not applicable to that engine"))
-        assertTrue(markdown.contains("| N/F |"))
-        assertTrue(markdown.contains("| N/A |"))
+        assertTrue(markdown.contains("TYPE_CHART: not found"))
+        assertTrue(markdown.contains("ABILITIES: not applicable"))
+    }
+
+    @Test
+    fun markdownPreservesPartialAndAmbiguousCapabilities() {
+        val result = sampleResult().copy(
+            capabilities = listOf(
+                CapabilityEvidence(
+                    RomCapability.LEARNSETS,
+                    compatible = true,
+                    confidence = 0.70,
+                    count = 10,
+                    status = CapabilityStatus.PARTIAL,
+                    validRecords = 7,
+                    totalRecords = 10,
+                ),
+                CapabilityEvidence(
+                    RomCapability.EVOLUTIONS,
+                    compatible = false,
+                    confidence = 0.65,
+                    status = CapabilityStatus.AMBIGUOUS,
+                ),
+            ),
+        )
+        val entry = CorpusResult("Pokemon Partial.gba", "Pokemon Partial.gba", durationMillis = 1, result = result)
+
+        val markdown = ReportWriter.markdown(CorpusReport(roots = listOf("test"), results = listOf(entry)))
+
+        assertEquals(DataStructureCompatibility.PARTIAL, entry.dataCompatibility)
+        assertTrue(markdown.contains("Below 100% or manual review"))
+        assertTrue(markdown.contains("manual review required"))
+        assertTrue(markdown.contains("LEARNSETS: partial"))
+        assertTrue(markdown.contains("EVOLUTIONS: ambiguous"))
+    }
+
+    @Test
+    fun jsonPublishesNumericCompatibilityFromApplicableFeatureCoverage() {
+        val applicable = mapOf(
+            RomCapability.SPECIES_NAMES to CapabilityEvidence(
+                RomCapability.SPECIES_NAMES,
+                compatible = true,
+                confidence = 1.0,
+                status = CapabilityStatus.AVAILABLE,
+            ),
+            RomCapability.LEARNSETS to CapabilityEvidence(
+                RomCapability.LEARNSETS,
+                compatible = true,
+                confidence = 0.9,
+                status = CapabilityStatus.PARTIAL,
+                validRecords = 9,
+                totalRecords = 10,
+            ),
+            RomCapability.EVOLUTIONS to CapabilityEvidence(
+                RomCapability.EVOLUTIONS,
+                compatible = true,
+                confidence = 0.7,
+                status = CapabilityStatus.PARTIAL,
+                validRecords = 7,
+                totalRecords = 10,
+            ),
+            RomCapability.TYPE_CHART to CapabilityEvidence(
+                RomCapability.TYPE_CHART,
+                compatible = false,
+                confidence = 0.0,
+                status = CapabilityStatus.NOT_FOUND,
+            ),
+        )
+        val capabilities = RomCapability.entries.map { capability ->
+            applicable[capability] ?: CapabilityEvidence(
+                capability,
+                compatible = false,
+                confidence = 0.0,
+                status = CapabilityStatus.NOT_APPLICABLE,
+            )
+        }
+        val entry = CorpusResult(
+            "Pokemon Numeric.gba",
+            "Pokemon Numeric.gba",
+            durationMillis = 1,
+            result = sampleResult().copy(capabilities = capabilities),
+        )
+
+        val json = ReportWriter.json(CorpusReport(roots = listOf("test"), results = listOf(entry)))
+
+        assertEquals(65.0, entry.compatibilityPercent, 0.001)
+        assertEquals(3, entry.resolvedFeatureCount)
+        assertEquals(4, entry.expectedFeatureCount)
+        assertTrue(json.contains("\"compatibilityPercent\": 65.0"))
+        assertTrue(json.contains("\"resolvedFeatureCount\": 3"))
+        assertTrue(json.contains("\"expectedFeatureCount\": 4"))
+    }
+
+    @Test
+    fun numericCompatibilityPrefersSemanticCoverageOverRawTableValidity() {
+        val capabilities = RomCapability.entries.map { capability ->
+            if (capability == RomCapability.EVOLUTIONS) {
+                CapabilityEvidence(
+                    capability,
+                    compatible = true,
+                    confidence = 0.99,
+                    status = CapabilityStatus.PARTIAL,
+                    validRecords = 999,
+                    totalRecords = 1_000,
+                    coveredRecords = 7,
+                    expectedRecords = 10,
+                )
+            } else {
+                CapabilityEvidence(
+                    capability,
+                    compatible = false,
+                    confidence = 0.0,
+                    status = CapabilityStatus.NOT_APPLICABLE,
+                )
+            }
+        }
+
+        val score = calculateCompatibility(sampleResult().copy(capabilities = capabilities))
+
+        assertEquals(70.0, score.compatibilityPercent, 0.001)
+        assertEquals(1, score.resolvedFeatureCount)
+        assertEquals(1, score.expectedFeatureCount)
+    }
+
+    @Test
+    fun markdownUsesPercentageAsThePrimaryRomStatus() {
+        val capabilities = RomCapability.entries.map { capability ->
+            when (capability) {
+                RomCapability.SPECIES_NAMES -> CapabilityEvidence(
+                    capability,
+                    compatible = true,
+                    confidence = 1.0,
+                    status = CapabilityStatus.AVAILABLE,
+                )
+                RomCapability.LEARNSETS -> CapabilityEvidence(
+                    capability,
+                    compatible = true,
+                    confidence = 0.75,
+                    status = CapabilityStatus.PARTIAL,
+                    validRecords = 3,
+                    totalRecords = 4,
+                )
+                else -> CapabilityEvidence(
+                    capability,
+                    compatible = false,
+                    confidence = 0.0,
+                    status = CapabilityStatus.NOT_APPLICABLE,
+                )
+            }
+        }
+        val report = CorpusReport(
+            roots = listOf("test"),
+            results = listOf(
+                CorpusResult(
+                    "Pokemon Numeric.gba",
+                    "Pokemon Numeric.gba",
+                    durationMillis = 1,
+                    result = sampleResult().copy(capabilities = capabilities),
+                ),
+            ),
+        )
+
+        val markdown = ReportWriter.markdown(report)
+
+        assertTrue(markdown.contains("| ROM | Compatibility | Resolved features | Expected features |"))
+        assertTrue(markdown.contains("| Pokemon Numeric.gba | 87.50% | 2 | 2 |"))
+        assertFalse(markdown.contains("| ROM | Data parser |"))
+        assertTrue(markdown.contains("LEARNSETS: partial"))
     }
 
     @Test
@@ -300,7 +592,9 @@ class ReportWriterTest {
 
         assertTrue(markdown.contains("Complete core catalogs: 0"))
         assertTrue(markdown.contains("Complete for every applicable extended dataset: 0"))
-        assertTrue(markdown.contains("| Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Ability values | Areas | Type colors | Balls |"))
+        RomCapability.entries.forEach { capability ->
+            assertTrue("missing detailed evidence for $capability", markdown.contains("$capability:"))
+        }
     }
 
     @Test
@@ -350,7 +644,8 @@ class ReportWriterTest {
 
         val markdown = ReportWriter.markdown(report)
 
-        assertTrue(markdown.contains("Unresolved ROM data structures (1)"))
+        assertTrue(markdown.contains("Below 100% or manual review (1)"))
+        assertTrue(markdown.contains("0.00%; 0/${RomCapability.entries.size} features resolved"))
         assertTrue(markdown.contains("Pokemon Pinball.gbc"))
         assertFalse(markdown.contains("Unsupported"))
     }

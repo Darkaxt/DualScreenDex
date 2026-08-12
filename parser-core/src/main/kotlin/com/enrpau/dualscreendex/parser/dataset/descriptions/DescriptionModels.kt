@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.descriptions
 
+import com.enrpau.dualscreendex.parser.catalog.DescriptionRecord
 import com.enrpau.dualscreendex.parser.resolution.CandidateLayoutIdentity
 import com.enrpau.dualscreendex.parser.resolution.ImmutableDatasetLayout
 import java.util.Collections
@@ -69,6 +70,20 @@ class ResolvedDescriptionLayout(
     }
 
     override fun immutableSnapshot(): ResolvedDescriptionLayout = this
+
+    /** Pure catalog projection over the selected codec rows. */
+    fun catalogDescriptions(): Map<Int, DescriptionRecord> = Collections.unmodifiableMap(
+        rows.asSequence()
+            .filterIsInstance<DescriptionRowOutcome.Decoded>()
+            .associate { row ->
+                row.rowIndex to DescriptionRecord(
+                    text = row.pages.first().text,
+                    height = row.height,
+                    weight = row.weight,
+                    category = row.category,
+                )
+            },
+    )
 
     override fun equals(other: Any?): Boolean =
         this === other || other is ResolvedDescriptionLayout && table == other.table && rows == other.rows

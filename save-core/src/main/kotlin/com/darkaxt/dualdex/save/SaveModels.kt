@@ -11,10 +11,18 @@ data class SaveParseContext(
     val romIdentity: String,
     val speciesById: Map<Int, SaveSpeciesContext>,
     val captureBallIds: Set<Int> = (1..15).toSet(),
+    val levelUpRulesetSelectors: List<SaveByteSelector> = emptyList(),
 ) {
     val internalSpeciesCount: Int = (speciesById.keys.maxOrNull() ?: 0) + 1
     val maximumDexNumber: Int = speciesById.values.mapNotNull { it.dexNumber }.maxOrNull() ?: 0
 }
+
+data class SaveByteSelector(
+    val rulesetId: String,
+    val saveBlock1ByteOffset: Int,
+    val mask: Int,
+    val expectedValue: Int,
+)
 
 data class SavedArea(val mapGroup: Int, val mapNumber: Int) {
     val baseId: Int get() = (mapGroup shl 8) or mapNumber
@@ -44,6 +52,9 @@ data class SaveSnapshot(
     val storedIndividuals: List<OwnedIndividual>,
     val capabilities: Map<SaveCapability, SaveCapabilityEvidence>,
     val schemaId: String = "gen3-v1",
+    val detectedLevelUpRulesetId: String? = null,
+    val levelUpRulesetDetectionResolved: Boolean = false,
+    val levelUpRulesetDetectionFingerprint: String? = null,
 ) {
     val allIndividuals: List<OwnedIndividual> get() = party + storedIndividuals
 }

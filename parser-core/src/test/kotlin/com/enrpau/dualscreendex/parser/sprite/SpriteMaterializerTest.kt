@@ -3,13 +3,67 @@ package com.enrpau.dualscreendex.parser.sprite
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class SpriteMaterializerTest {
+    @Test
+    fun decodesExpansionSmolSpriteAndKeepsRawPaletteWhoseFirstByteLooksCompressed() {
+        val bytes = ByteArray(512)
+        putGbaPointer(bytes, 0, 128)
+        putGbaPointer(bytes, 8, 256)
+        Base64.getDecoder().decode("ASAIAAAAKAABAAAAAAH+BwEAAAA=").copyInto(bytes, 128)
+        bytes[256] = 0x10
+        bytes[257] = 0x20
+        bytes[258] = 0x1F
+        val metadata = PokeemeraldExpansionMetadata(
+            headerOffset = 0x204,
+            versionMajor = 1,
+            versionMinor = 15,
+            versionPatch = 3,
+            speciesRecordSize = 128,
+            speciesNameOffset = 44,
+            speciesNameWidth = 13,
+            categoryOffset = 31,
+            nationalDexOffset = 60,
+            heightOffset = 62,
+            weightOffset = 64,
+            descriptionPointerOffset = 76,
+            frontSpritePointerOffset = 88,
+            normalPalettePointerOffset = 96,
+            abilitiesOffset = 24,
+            growthRateOffset = 21,
+            levelUpPointerOffset = 100,
+            teachablePointerOffset = 104,
+            eggMovePointerOffset = 108,
+            evolutionPointerOffset = 112,
+            moveRecordSize = 64,
+            abilityRecordSize = 28,
+            abilityNameWidth = 20,
+            abilityDescriptionPointerOffset = 20,
+        )
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.EMERALD,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = 1,
+            moveCount = 1,
+            tables = ProfileTables(sprites = TableLayout(0, 1, 4, stride = 128)),
+            pokeemeraldExpansion = metadata,
+        )
+
+        val sprite = SpriteMaterializer.pokemon(RomImage(bytes), layout).getValue(0)
+
+        assertEquals(64, sprite.width)
+        assertEquals(64, sprite.height)
+        assertEquals(0xFFFF0000.toInt(), sprite.argb[0])
+    }
+
     @Test
     fun decodesGbaPokemonSpriteWithItsRomPalette() {
         val bytes = ByteArray(512)

@@ -111,6 +111,14 @@ data class LearnsetRuleset(
     val confidence: Double,
     val entriesBySpecies: Map<Int, List<LearnsetEntry>>,
     val primary: Boolean = false,
+    /** SaveBlock1 selector for this level-up table only; egg/TM mode selection is not implied. */
+    val levelUpSelector: LevelUpRulesetSelector? = null,
+)
+
+data class LevelUpRulesetSelector(
+    val saveBlock1ByteOffset: Int,
+    val mask: Int,
+    val expectedValue: Int,
 )
 
 enum class MoveAcquisitionMethod { EGG, MACHINE, TUTOR }
@@ -126,13 +134,15 @@ data class EvolutionEdge(
     val methodId: Int,
     val parameter: Int,
     val raw: ByteArray = byteArrayOf(),
+    val conditionValue: Int? = null,
 ) {
     override fun equals(other: Any?): Boolean =
         other is EvolutionEdge && targetSpeciesId == other.targetSpeciesId && methodId == other.methodId &&
-            parameter == other.parameter && raw.contentEquals(other.raw)
+            parameter == other.parameter && conditionValue == other.conditionValue && raw.contentEquals(other.raw)
 
     override fun hashCode(): Int =
-        31 * (31 * (31 * targetSpeciesId + methodId) + parameter) + raw.contentHashCode()
+        31 * (31 * (31 * (31 * targetSpeciesId + methodId) + parameter) + (conditionValue ?: 0)) +
+            raw.contentHashCode()
 }
 
 data class AbilityRecord(

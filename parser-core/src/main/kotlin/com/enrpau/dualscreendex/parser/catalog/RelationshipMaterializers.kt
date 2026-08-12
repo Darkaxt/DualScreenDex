@@ -3,10 +3,17 @@ package com.enrpau.dualscreendex.parser.catalog
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.Gen3LearnsetEncoding
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.validate.PokemonDatasetValidators
+import com.enrpau.dualscreendex.parser.validate.Gen3PackedLearnsetDecoder
+import com.enrpau.dualscreendex.parser.validate.Gen3DescriptionPointerRecovery
 
 object RelationshipMaterializers {
     fun descriptions(rom: RomImage, layout: ResolvedRomLayout): Map<Int, DescriptionRecord> {
+        if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
+            return layout.resolvedDatasets.descriptions?.catalogDescriptions().orEmpty()
+        }
         val table = layout.tables.descriptions ?: return emptyMap()
         if (layout.generation < 3) return gen12Descriptions(rom, layout)
         layout.pokeemeraldExpansion?.let { expansion ->
@@ -36,15 +43,20 @@ object RelationshipMaterializers {
         val pointerFields = table.pointerOffsets.ifEmpty {
             if (table.recordSize >= 36) listOf(16, 20) else listOf(16)
         }
+        val recoveredPointers = Gen3DescriptionPointerRecovery.recover(rom, table, codec)
         return buildMap {
             repeat(table.count) { id ->
                 val base = table.offset + id * table.recordSize
-                val descriptionOffset = pointerFields.firstNotNullOfOrNull { field -> rom.gbaPointer(base + field) }
-                    ?: return@repeat
+                val directText = pointerFields.firstNotNullOfOrNull { field ->
+                    rom.gbaPointer(base + field)
+                        ?.let { decodeTerminated(rom, it, 512, codec) }
+                        ?.takeIf(String::isNotBlank)
+                }
+                val descriptionText = directText ?: recoveredPointers[id]?.text ?: return@repeat
                 put(
                     id,
                     DescriptionRecord(
-                        text = decodeTerminated(rom, descriptionOffset, 512, codec),
+                        text = descriptionText,
                         height = rom.u16le(base + 12),
                         weight = rom.u16le(base + 14),
                         category = decodeTerminated(rom, base, 12, codec),
@@ -56,6 +68,7 @@ object RelationshipMaterializers {
 
     fun evolutions(rom: RomImage, layout: ResolvedRomLayout): Map<Int, List<EvolutionEdge>> {
         val table = layout.tables.evolutions ?: return emptyMap()
+        if (table.count <= 0) return emptyMap()
         if (layout.generation < 3) return gen12Relationships(rom, layout, table).first
         if (layout.pokeemeraldExpansion != null) {
             val stride = table.stride ?: layout.pokeemeraldExpansion.speciesRecordSize
@@ -67,29 +80,7 @@ object RelationshipMaterializers {
                 }
             }
         }
-        val elementSize = table.elementSize ?: 6
-        val slots = table.recordSize / elementSize
-        return buildMap {
-            repeat(table.count) { speciesId ->
-                val edges = buildList {
-                    repeat(slots) { slot ->
-                        val offset = table.offset + speciesId * table.recordSize + slot * elementSize
-                        val method = rom.u16le(offset)
-                        if (method != 0) {
-                            add(
-                                EvolutionEdge(
-                                    targetSpeciesId = rom.u16le(offset + 4),
-                                    methodId = method,
-                                    parameter = rom.u16le(offset + 2),
-                                    raw = rom.slice(offset, elementSize),
-                                ),
-                            )
-                        }
-                    }
-                }
-                put(speciesId, edges)
-            }
-        }
+        return layout.resolvedDatasets.evolutions?.catalogEvolutions().orEmpty()
     }
 
     fun learnsets(rom: RomImage, layout: ResolvedRomLayout): Map<Int, List<LearnsetEntry>> {
@@ -104,33 +95,7 @@ object RelationshipMaterializers {
                 }
             }
         }
-        if (table.elementSize == 3) {
-            return buildMap {
-                repeat(table.count) { speciesId ->
-                    val offset = rom.gbaPointer(table.offset + speciesId * table.recordSize) ?: return@repeat
-                    put(speciesId, readGen3ExpandedLearnset(rom, offset))
-                }
-            }
-        }
-        val moveBits = Gen3LearnsetEncoding.packedMoveBits(layout.moveCount ?: 0)
-        val moveMask = (1 shl moveBits) - 1
-        return buildMap {
-            repeat(table.count) { speciesId ->
-                val offset = rom.gbaPointer(table.offset + speciesId * table.recordSize) ?: return@repeat
-                put(speciesId, readGen3Learnset(rom, offset, moveBits, moveMask))
-            }
-        }
-    }
-
-    private fun readGen3ExpandedLearnset(rom: RomImage, offset: Int): List<LearnsetEntry> = buildList {
-        var cursor = offset
-        repeat(128) {
-            val move = rom.u16le(cursor)
-            val level = rom.u8(cursor + 2)
-            if (move == 0 && level == 0xFF) return@buildList
-            add(LearnsetEntry(level = level, moveId = move))
-            cursor += 3
-        }
+        return layout.resolvedDatasets.learnsets?.catalogPrimaryEntries().orEmpty()
     }
 
     private fun readExpansionLearnset(rom: RomImage, offset: Int): List<LearnsetEntry> = buildList {
@@ -158,23 +123,6 @@ object RelationshipMaterializers {
                 ),
             )
             cursor += 12
-        }
-    }
-
-    private fun readGen3Learnset(
-        rom: RomImage,
-        offset: Int,
-        moveBits: Int,
-        moveMask: Int,
-    ): List<LearnsetEntry> {
-        return buildList {
-            var cursor = offset
-            repeat(128) {
-                val packed = rom.u16le(cursor)
-                if (packed == 0xFFFF) return@buildList
-                add(LearnsetEntry(level = packed ushr moveBits, moveId = packed and moveMask))
-                cursor += 2
-            }
         }
     }
 

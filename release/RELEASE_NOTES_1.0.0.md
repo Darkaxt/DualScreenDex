@@ -7,7 +7,7 @@ DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-fa
 - Adds catalog-validated Generation II single-battle detection from Gold/Silver/Crystal WRAM, including selected attacks, automatic targets, DV rarity, effectiveness, opponent move-frequency learning, and automatic battle exit.
 - Adds an optional AYN Thor setting that keeps controller focus on the top screen while DualDex is docked on the secondary display and restores the prior focus mode when released.
 - Hardens zero-profile ROM parsing for relocated and expanded Gen III tables, move-acquisition variants, sprites, descriptions, and ROM-native record widths.
-- Adds a gated extended-corpus validator that records the first decoded values of every matched table as well as counts. The attached 14-ROM compatibility report remains the conservative release baseline while the broader audit continues.
+- Publishes a reviewed first-50 compatibility report plus grouped ROM-property documents. Indices 1-33 and the three worst later offenders were rerun with the final parser; the other 14 later observations retain the exact base run after reviewed non-impact proof, matching the explicitly bounded review strategy.
 
 ## Included in v1
 
@@ -27,4 +27,4 @@ DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-fa
 
 Live battle context is enabled only when the active parsed catalog and read-only core memory agree on a supported structure. Generation I Red/Blue/Yellow, Generation II Gold/Silver/Crystal single battles, and Generation III layouts are implemented. Generation III attempts automatic double-target resolution; Generation II multiple opponents are not applicable. Any missing or ambiguous memory capability disables only the affected battle feature—the ROM/SaveRAM Pokédex remains usable. The issue reporter only gathers evidence and never modifies ROMs, saves, emulator memory, or Pokédex state.
 
-The attached compatibility report identifies the tested official games and structurally selected derivatives without distributing ROM content.
+The attached compatibility and grouped-property documents identify the tested official games and structurally selected derivatives without distributing ROM content, saves, trainer data, or private paths.

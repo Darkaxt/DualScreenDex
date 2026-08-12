@@ -28,9 +28,38 @@ class EvolutionResolver(
         expectedSpeciesCount: Int,
         profileLayout: EvolutionTableLayout? = null,
         publishedLayouts: Collection<EvolutionTableLayout> = emptyList(),
+        selectedLayout: EvolutionTableLayout? = null,
     ): DatasetResolution<ResolvedEvolutionLayout> {
         if (expectedSpeciesCount <= 1) {
             return unavailable(0, "Gen III evolution species count must include at least one usable species")
+        }
+        if (selectedLayout != null) {
+            val source = if (matchesExactProfileLayout(session, selectedLayout)) {
+                CandidateSource.EXACT_PROFILE
+            } else {
+                CandidateSource.INHERITED_FAMILY_LAYOUT
+            }
+            return when (
+                val selected = assess(
+                    session,
+                    expectedSpeciesCount,
+                    EvolutionProbe(selectedLayout, source, ReferenceEvidence(emptyList())),
+                )
+            ) {
+                is Assessment.Candidate -> CandidateSelector.select(
+                    session,
+                    DatasetKind.EVOLUTIONS,
+                    sequenceOf(selected.value),
+                )
+                is Assessment.ExtentBudget -> budgetExceeded(
+                    kind = BudgetKind.EXTENT,
+                    observed = selected.observed,
+                    limit = selected.limit,
+                    complete = true,
+                    reason = selected.reason,
+                )
+                Assessment.Rejected -> unavailable(1, "selected evolution layout failed its typed codec")
+            }
         }
         val exactProbe = profileLayout
             ?.takeIf { matchesExactProfileLayout(session, it) }

@@ -1,7 +1,10 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import java.util.LinkedHashMap
 
 object EncounterMethods {
     const val GRASS = 1
@@ -14,16 +17,39 @@ object EncounterMethods {
     const val HIDDEN = 8
 }
 
+internal data class EncounterMaterializationResult(
+    val areas: List<EncounterArea>,
+    val status: CapabilityStatus,
+    val reasons: List<String>,
+    val reviewStatus: CapabilityReviewStatus = CapabilityReviewStatus.NONE,
+    val probeStats: EncounterProbeStats = EncounterProbeStats(),
+)
+
+internal data class EncounterProbeStats(val emptyClassicShellWalks: Int = 0)
+
 object EncounterMaterializer {
-    fun materialize(rom: RomImage, layout: ResolvedRomLayout): List<EncounterArea> = when {
-        layout.pokeemeraldExpansion != null -> pokeemeraldExpansion(rom, layout.speciesCount ?: 0)
+    fun materialize(rom: RomImage, layout: ResolvedRomLayout): List<EncounterArea> =
+        materializeWithEvidence(rom, layout).areas
+
+    internal fun materializeWithEvidence(rom: RomImage, layout: ResolvedRomLayout): EncounterMaterializationResult = when {
+        layout.pokeemeraldExpansion != null -> availableOrNotFound(
+            pokeemeraldExpansion(rom, layout.speciesCount ?: 0),
+        )
         else -> when (layout.generation) {
-        1 -> gen1(rom, layout.speciesCount ?: 190)
-        2 -> gen2(rom, layout.speciesCount ?: 251)
+        1 -> availableOrNotFound(gen1(rom, layout.speciesCount ?: 190))
+        2 -> availableOrNotFound(gen2(rom, layout.speciesCount ?: 251))
         3 -> gen3(rom, layout.speciesCount ?: 412)
-        else -> emptyList()
+        else -> availableOrNotFound(emptyList())
         }
     }
+
+    private fun availableOrNotFound(areas: List<EncounterArea>) = EncounterMaterializationResult(
+        areas = areas,
+        status = if (areas.isNotEmpty()) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
+        reasons = listOf(
+            if (areas.isNotEmpty()) "structurally decoded encounter areas" else "encounter tables were not located",
+        ),
+    )
 
     private fun pokeemeraldExpansion(rom: RomImage, speciesCount: Int): List<EncounterArea> {
         val table = findExpansionHeaderTable(rom, speciesCount) ?: return emptyList()
@@ -237,91 +263,300 @@ object EncounterMaterializer {
             (0 until 3).all { slot -> validByteSlot(rom, offset + 3 + slot * 2, speciesCount) }
     }.getOrDefault(false)
 
-    private fun gen3(rom: RomImage, speciesCount: Int): List<EncounterArea> {
-        val anchored = runCatching { rom.gbaPointer(CFRU_WILD_HEADER_POINTER) }.getOrNull()
-            ?.let { table -> table to anchoredGen3HeaderCount(rom, table, speciesCount) }
-            ?.takeIf { (_, count) -> count > 0 }
-        val (bestOffset, bestCount) = anchored ?: findGen3HeaderTable(rom, speciesCount) ?: return emptyList()
+    private fun gen3(rom: RomImage, speciesCount: Int): EncounterMaterializationResult {
+        val resolved = resolveGen3HeaderTable(rom, speciesCount)
+        val table = resolved.table ?: return EncounterMaterializationResult(
+            areas = emptyList(),
+            status = resolved.status,
+            reasons = listOf(resolved.reason),
+            reviewStatus = resolved.reviewStatus,
+            probeStats = resolved.probeStats,
+        )
         val decoded = buildList {
-            repeat(bestCount) { index ->
-                val header = bestOffset + index * GEN3_HEADER_SIZE
-                if (!validGen3Header(rom, header, speciesCount)) return@repeat
+            repeat(table.count) { index ->
+                val header = table.offset + index * table.abi.headerSize
                 val group = rom.u8(header)
                 val map = rom.u8(header + 1)
-                GEN3_METHODS.forEachIndexed { methodIndex, method ->
+                table.abi.methods.forEachIndexed { methodIndex, method ->
                     val info = rom.gbaPointer(header + 4 + methodIndex * 4) ?: return@forEachIndexed
                     val slotPointer = rom.gbaPointer(info + 4) ?: return@forEachIndexed
-                    val slots = readGen3Slots(rom, slotPointer, GEN3_SLOT_COUNTS[methodIndex], GEN3_WEIGHTS[methodIndex])
-                    add(area(groupMapId(group, map), method, "Map $group-$map - ${GEN3_LABELS[methodIndex]}", slots))
+                    val label = if (method == EncounterMethods.HIDDEN) {
+                        "hidden (${if (rom.u8(info) == 1) "water" else "land"})"
+                    } else {
+                        table.abi.labels[methodIndex]
+                    }
+                    val slots = readGen3Slots(
+                        rom,
+                        slotPointer,
+                        table.abi.slotCounts[methodIndex],
+                        table.abi.weights[methodIndex],
+                    )
+                    add(area(groupMapId(group, map), method, "Map $group-$map - $label", slots))
                 }
             }
         }
-        return decoded.groupBy { it.id }.values.map { variants ->
+        val areas = decoded.groupBy { it.id }.values.map { variants ->
             variants.first().copy(slots = variants.flatMap { it.slots }.distinct())
         }
+        return availableOrNotFound(areas).copy(probeStats = resolved.probeStats)
     }
 
-    private fun findGen3HeaderTable(rom: RomImage, speciesCount: Int): Pair<Int, Int>? {
-        var bestOffset: Int? = null
-        var bestCount = 0
+    private fun resolveGen3HeaderTable(rom: RomImage, speciesCount: Int): Gen3HeaderResolution {
+        val anchoredOffset = runCatching { rom.gbaPointer(CFRU_WILD_HEADER_POINTER) }.getOrNull()
+        val referenceScan = gen3HeaderReferenceCounts(rom, speciesCount)
+        val probeStats = EncounterProbeStats(referenceScan.emptyClassicShellWalks)
+        referenceScan.issue?.let { return ambiguousGen3Resolution(it, probeStats) }
+        val referenceCounts = referenceScan.counts
+        val candidates = mutableListOf<Gen3HeaderTable>()
         var offset = 0
-        while (offset <= rom.size - GEN3_HEADER_SIZE) {
-            if (offset % 4 == 0 && validGen3Header(rom, offset, speciesCount)) {
-                val count = gen3HeaderCount(rom, offset, speciesCount)
-                val cursor = offset + count * GEN3_HEADER_SIZE
-                if (count >= 3 && cursor + 1 < rom.size && rom.u8(cursor) == 0xFF && rom.u8(cursor + 1) == 0xFF && count > bestCount) {
-                    bestOffset = offset
-                    bestCount = count
+        while (offset <= rom.size - GEN3_STANDARD_ABI.headerSize) {
+            GEN3_ABIS.forEach { abi ->
+                if (offset + abi.headerSize > rom.size) return@forEach
+                val anchored = offset == anchoredOffset
+                if (!anchored && offset !in referenceCounts && offset >= abi.headerSize &&
+                    (validGen3HeaderRecord(rom, offset - abi.headerSize, speciesCount, abi) ?: 0) > 0
+                ) {
+                    return@forEach
+                }
+                resolveGen3HeaderCandidate(
+                    rom,
+                    offset,
+                    speciesCount,
+                    abi,
+                    anchored,
+                    allowEmptyFirst = abi.requiresCompiledReference && offset in referenceCounts,
+                )?.let(candidates::add)
+                if (candidates.size > MAX_GEN3_HEADER_CANDIDATES) {
+                    return ambiguousGen3Resolution(GEN3_HEADER_CANDIDATE_BUDGET_REASON, probeStats)
                 }
             }
             offset += 4
         }
-        return bestOffset?.let { it to bestCount }
-    }
-
-    private fun gen3HeaderCount(rom: RomImage, offset: Int, speciesCount: Int): Int {
-        var count = 0
-        var cursor = offset
-        while (count < 1024 && cursor + GEN3_HEADER_SIZE <= rom.size) {
-            val group = rom.u8(cursor)
-            val map = rom.u8(cursor + 1)
-            if (group == 0xFF && map == 0xFF) break
-            if (!validGen3Header(rom, cursor, speciesCount)) return 0
-            count++
-            cursor += GEN3_HEADER_SIZE
+        if (anchoredOffset != null && candidates.none { it.offset == anchoredOffset }) {
+            GEN3_ABIS.forEach { abi ->
+                resolveGen3HeaderCandidate(
+                    rom,
+                    anchoredOffset,
+                    speciesCount,
+                    abi,
+                    anchored = true,
+                    allowEmptyFirst = abi.requiresCompiledReference && anchoredOffset in referenceCounts,
+                )
+                    ?.let(candidates::add)
+            }
         }
-        return count
+        if (candidates.isEmpty()) return unavailableGen3Resolution(probeStats)
+        if (candidates.size > MAX_GEN3_HEADER_CANDIDATES) {
+            return ambiguousGen3Resolution(GEN3_HEADER_CANDIDATE_BUDGET_REASON, probeStats)
+        }
+        if (candidates.groupBy { it.offset }.values.any { sameRoot -> sameRoot.map { it.abi.headerSize }.distinct().size > 1 }) {
+            return ambiguousGen3Resolution(
+                "the same Gen 3 encounter root validates under multiple header ABIs",
+                probeStats,
+            )
+        }
+
+        val withReferences = candidates.map { candidate ->
+            candidate.copy(referenceCount = referenceCounts[candidate.offset] ?: 0)
+        }
+        val permitted = withReferences.filter { candidate ->
+            !candidate.abi.requiresCompiledReference || candidate.referenceCount > 0
+        }
+        if (permitted.isEmpty()) return unavailableGen3Resolution(probeStats)
+        val referenced = permitted.filter { it.referenceCount > 0 }
+        val eligible = referenced.ifEmpty { permitted }
+        val winner = eligible.singleOrNull { candidate ->
+            eligible.all { other -> candidate === other || candidate.dominates(other) }
+        }
+        return winner?.let { Gen3HeaderResolution(table = it, probeStats = probeStats) }
+            ?: ambiguousGen3Resolution(
+                "multiple structurally credible Gen 3 encounter roots remain ambiguous",
+                probeStats,
+            )
     }
 
-    private fun anchoredGen3HeaderCount(rom: RomImage, offset: Int, speciesCount: Int): Int {
+    private fun gen3HeaderReferenceCounts(rom: RomImage, speciesCount: Int): Gen3ReferenceScan {
+        val counts = mutableMapOf<Int, Int>()
+        val emptyClassicCandidates = mutableMapOf<Int, Boolean>()
+        val rejectedEmptyClassicCandidates = object : LinkedHashMap<Int, Unit>(
+            MAX_REJECTED_EMPTY_CLASSIC_TARGETS + 1,
+            0.75f,
+            true,
+        ) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Unit>?): Boolean =
+                size > MAX_REJECTED_EMPTY_CLASSIC_TARGETS
+        }
+        var emptyClassicShellWalks = 0
+        var offset = 0
+        while (offset + 4 <= rom.size) {
+            val target = rom.gbaPointer(offset)
+            if (target != null && target % 4 == 0 && GEN3_ABIS.any { abi ->
+                    if (target + abi.headerSize > rom.size) return@any false
+                    val populated = validGen3HeaderRecord(rom, target, speciesCount, abi) ?: return@any false
+                    if (populated > 0) return@any true
+                    if (!abi.requiresCompiledReference) return@any false
+                    emptyClassicCandidates[target]?.let { return@any it }
+                    if (rejectedEmptyClassicCandidates[target] != null) return@any false
+                    if (emptyClassicShellWalks >= MAX_EMPTY_CLASSIC_SHELL_WALKS) {
+                        return Gen3ReferenceScan(
+                            issue = EMPTY_CLASSIC_SHELL_WALK_BUDGET_REASON,
+                            emptyClassicShellWalks = emptyClassicShellWalks,
+                        )
+                    }
+                    emptyClassicShellWalks++
+                    if (!plausibleEmptyClassicCandidate(rom, target, abi)) {
+                        rejectedEmptyClassicCandidates[target] = Unit
+                        return@any false
+                    }
+                    if (emptyClassicCandidates.size >= MAX_EMPTY_CLASSIC_CANDIDATES) {
+                        return Gen3ReferenceScan(
+                            issue = EMPTY_CLASSIC_CANDIDATE_BUDGET_REASON,
+                            emptyClassicShellWalks = emptyClassicShellWalks,
+                        )
+                    }
+                    val valid = resolveGen3HeaderCandidate(
+                        rom,
+                        target,
+                        speciesCount,
+                        abi,
+                        anchored = false,
+                        allowEmptyFirst = true,
+                    ) != null
+                    emptyClassicCandidates[target] = valid
+                    valid
+                }
+            ) {
+                counts[target] = (counts[target] ?: 0) + 1
+                if (counts.size > MAX_GEN3_REFERENCED_ROOTS) {
+                    return Gen3ReferenceScan(
+                        issue = GEN3_REFERENCED_ROOT_BUDGET_REASON,
+                        emptyClassicShellWalks = emptyClassicShellWalks,
+                    )
+                }
+            }
+            offset += 4
+        }
+        return Gen3ReferenceScan(counts, emptyClassicShellWalks = emptyClassicShellWalks)
+    }
+
+    private fun plausibleEmptyClassicCandidate(
+        rom: RomImage,
+        offset: Int,
+        abi: Gen3EncounterAbi,
+    ): Boolean = runCatching {
+        var index = 1
+        while (index <= MAX_GEN3_HEADERS) {
+            val header = offset.toLong() + index.toLong() * abi.headerSize
+            if (header + 2 > rom.size || header > Int.MAX_VALUE) return@runCatching false
+            val headerOffset = header.toInt()
+            if (rom.u8(headerOffset) == 0xFF && rom.u8(headerOffset + 1) == 0xFF) {
+                return@runCatching index >= MIN_GEN3_HEADERS
+            }
+            if (index == MAX_GEN3_HEADERS || header + abi.headerSize > rom.size) return@runCatching false
+            if (!structurallyPossibleGen3HeaderRecord(rom, headerOffset, abi)) return@runCatching false
+            index++
+        }
+        false
+    }.getOrDefault(false)
+
+    private fun structurallyPossibleGen3HeaderRecord(
+        rom: RomImage,
+        offset: Int,
+        abi: Gen3EncounterAbi,
+    ): Boolean = runCatching {
+        if (!validGroupMap(rom.u8(offset), rom.u8(offset + 1)) ||
+            rom.u8(offset + 2) != 0 || rom.u8(offset + 3) != 0
+        ) {
+            return@runCatching false
+        }
+        abi.methods.indices.all { method ->
+            val pointerOffset = offset + 4 + method * 4
+            rom.u32le(pointerOffset) == 0L || rom.gbaPointer(pointerOffset) != null
+        }
+    }.getOrDefault(false)
+
+    private fun unavailableGen3Resolution(probeStats: EncounterProbeStats) = Gen3HeaderResolution(
+        status = CapabilityStatus.NOT_FOUND,
+        reason = "encounter tables were not located",
+        probeStats = probeStats,
+    )
+
+    private fun ambiguousGen3Resolution(reason: String, probeStats: EncounterProbeStats) = Gen3HeaderResolution(
+        status = CapabilityStatus.AMBIGUOUS,
+        reason = reason,
+        reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
+        probeStats = probeStats,
+    )
+
+    private fun resolveGen3HeaderCandidate(
+        rom: RomImage,
+        offset: Int,
+        speciesCount: Int,
+        abi: Gen3EncounterAbi,
+        anchored: Boolean,
+        allowEmptyFirst: Boolean = false,
+    ): Gen3HeaderTable? = runCatching {
         var count = 0
-        var valid = 0
-        while (count < 1024 && offset + (count + 1) * GEN3_HEADER_SIZE <= rom.size) {
-            val header = offset + count * GEN3_HEADER_SIZE
-            if (rom.u8(header) == 0xFF && rom.u8(header + 1) == 0xFF) break
-            if (validGen3Header(rom, header, speciesCount)) valid++
+        var populated = 0
+        while (count < MAX_GEN3_HEADERS) {
+            val header = offset.toLong() + count.toLong() * abi.headerSize
+            if (header + abi.headerSize > rom.size || header > Int.MAX_VALUE) return@runCatching null
+            val headerOffset = header.toInt()
+            if (rom.u8(headerOffset) == 0xFF && rom.u8(headerOffset + 1) == 0xFF) break
+            val methods = validGen3HeaderRecord(rom, headerOffset, speciesCount, abi) ?: return@runCatching null
+            if (count == 0 && methods == 0 && !allowEmptyFirst) return@runCatching null
+            populated += methods
             count++
         }
-        return count.takeIf { it > 0 && valid.toDouble() / it >= 0.75 } ?: 0
-    }
+        val end = offset.toLong() + count.toLong() * abi.headerSize
+        if (end + 2 > rom.size || end > Int.MAX_VALUE ||
+            rom.u8(end.toInt()) != 0xFF || rom.u8(end.toInt() + 1) != 0xFF
+        ) {
+            return@runCatching null
+        }
+        val minimum = if (anchored) 1 else MIN_GEN3_HEADERS
+        if (count < minimum || populated < minimum) return@runCatching null
+        Gen3HeaderTable(offset, count, populated, abi, anchored)
+    }.getOrNull()
 
-    private fun validGen3Header(rom: RomImage, offset: Int, speciesCount: Int): Boolean = runCatching {
+    private fun validGen3HeaderRecord(
+        rom: RomImage,
+        offset: Int,
+        speciesCount: Int,
+        abi: Gen3EncounterAbi,
+    ): Int? = runCatching {
         val group = rom.u8(offset)
         val map = rom.u8(offset + 1)
-        if (!validGroupMap(group, map) || rom.u8(offset + 2) != 0 || rom.u8(offset + 3) != 0) return@runCatching false
+        if (!validGroupMap(group, map) || rom.u8(offset + 2) != 0 || rom.u8(offset + 3) != 0) return@runCatching null
         var populated = 0
-        repeat(4) { method ->
+        abi.methods.indices.forEach { method ->
             val raw = rom.u32le(offset + 4 + method * 4)
             if (raw != 0L) {
-                val info = rom.gbaPointer(offset + 4 + method * 4) ?: return@runCatching false
-                if (!validGen3Info(rom, info, GEN3_SLOT_COUNTS[method], speciesCount)) return@runCatching false
+                val info = rom.gbaPointer(offset + 4 + method * 4) ?: return@runCatching null
+                if (!validGen3Info(
+                        rom,
+                        info,
+                        abi.slotCounts[method],
+                        speciesCount,
+                        hidden = abi.methods[method] == EncounterMethods.HIDDEN,
+                    )
+                ) {
+                    return@runCatching null
+                }
                 populated++
             }
         }
-        populated > 0
-    }.getOrDefault(false)
+        populated
+    }.getOrNull()
 
-    private fun validGen3Info(rom: RomImage, offset: Int, slotCount: Int, speciesCount: Int): Boolean = runCatching {
+    private fun validGen3Info(
+        rom: RomImage,
+        offset: Int,
+        slotCount: Int,
+        speciesCount: Int,
+        hidden: Boolean = false,
+    ): Boolean = runCatching {
+        if (rom.u8(offset) !in if (hidden) 0..1 else 0..100) return@runCatching false
         if ((1..3).any { rom.u8(offset + it) != 0 }) return@runCatching false
         val slots = rom.gbaPointer(offset + 4) ?: return@runCatching false
         repeat(slotCount) { slot ->
@@ -389,10 +624,56 @@ object EncounterMaterializer {
 
     private data class Gen1PointerTable(val offset: Int, val bank: Int, val encounteredMaps: Int)
     private data class FixedSequence(val offset: Int, val count: Int, val endExclusive: Int)
+    private data class Gen3EncounterAbi(
+        val headerSize: Int,
+        val methods: IntArray,
+        val labels: Array<String>,
+        val slotCounts: IntArray,
+        val weights: Array<IntArray>,
+        val requiresCompiledReference: Boolean = false,
+    )
+    private data class Gen3HeaderTable(
+        val offset: Int,
+        val count: Int,
+        val populatedCount: Int,
+        val abi: Gen3EncounterAbi,
+        val anchored: Boolean,
+        val referenceCount: Int = 0,
+    ) {
+        fun dominates(other: Gen3HeaderTable): Boolean =
+            referenceCount >= other.referenceCount && populatedCount >= other.populatedCount && count >= other.count &&
+                (referenceCount > other.referenceCount || populatedCount > other.populatedCount || count > other.count)
+    }
+    private data class Gen3HeaderResolution(
+        val table: Gen3HeaderTable? = null,
+        val status: CapabilityStatus = CapabilityStatus.AVAILABLE,
+        val reason: String = "structurally decoded encounter areas",
+        val reviewStatus: CapabilityReviewStatus = CapabilityReviewStatus.NONE,
+        val probeStats: EncounterProbeStats = EncounterProbeStats(),
+    )
+    private data class Gen3ReferenceScan(
+        val counts: Map<Int, Int> = emptyMap(),
+        val issue: String? = null,
+        val emptyClassicShellWalks: Int = 0,
+    )
 
     private const val GB_BANK_SIZE = 0x4000
     private val GB_SWITCHABLE_ADDRESS = 0x4000..0x7FFF
-    private const val GEN3_HEADER_SIZE = 20
+    private const val MIN_GEN3_HEADERS = 3
+    private const val MAX_GEN3_HEADERS = 1024
+    private const val MAX_GEN3_HEADER_CANDIDATES = 256
+    private const val MAX_GEN3_REFERENCED_ROOTS = 4096
+    private const val MAX_EMPTY_CLASSIC_CANDIDATES = 256
+    private const val MAX_REJECTED_EMPTY_CLASSIC_TARGETS = 4096
+    private const val MAX_EMPTY_CLASSIC_SHELL_WALKS = 16384
+    private const val EMPTY_CLASSIC_SHELL_WALK_BUDGET_REASON =
+        "empty-first Classic24 total shell-walk budget exceeded (16384); encounter table selection is ambiguous"
+    private const val EMPTY_CLASSIC_CANDIDATE_BUDGET_REASON =
+        "empty-first Classic24 candidate budget exceeded (256); encounter table selection is ambiguous"
+    private const val GEN3_HEADER_CANDIDATE_BUDGET_REASON =
+        "Gen 3 encounter header candidate budget exceeded (256); encounter table selection is ambiguous"
+    private const val GEN3_REFERENCED_ROOT_BUDGET_REASON =
+        "Gen 3 referenced encounter-root budget exceeded (4096); encounter table selection is ambiguous"
     private const val EXPANSION_HEADER_SIZE = 84
     private const val EXPANSION_TIME_COUNT = 4
     private const val CFRU_WILD_HEADER_POINTER = 0x82990
@@ -413,6 +694,34 @@ object EncounterMaterializer {
         intArrayOf(60, 30, 5, 4, 1),
         intArrayOf(70, 30, 60, 20, 20, 40, 40, 15, 4, 1),
     )
+    private val GEN3_STANDARD_ABI = Gen3EncounterAbi(
+        headerSize = 20,
+        methods = GEN3_METHODS,
+        labels = GEN3_LABELS,
+        slotCounts = GEN3_SLOT_COUNTS,
+        weights = GEN3_WEIGHTS,
+    )
+    private val GEN3_HIDDEN_ABI = Gen3EncounterAbi(
+        headerSize = 24,
+        methods = intArrayOf(
+            EncounterMethods.GRASS,
+            EncounterMethods.WATER,
+            EncounterMethods.ROCK_SMASH,
+            EncounterMethods.HIDDEN,
+            EncounterMethods.FISHING,
+        ),
+        labels = arrayOf("grass", "water", "rock smash", "hidden", "fishing"),
+        slotCounts = intArrayOf(12, 5, 5, 3, 10),
+        weights = arrayOf(
+            GEN3_WEIGHTS[0],
+            GEN3_WEIGHTS[1],
+            GEN3_WEIGHTS[2],
+            intArrayOf(60, 30, 10),
+            GEN3_WEIGHTS[3],
+        ),
+        requiresCompiledReference = true,
+    )
+    private val GEN3_ABIS = arrayOf(GEN3_STANDARD_ABI, GEN3_HIDDEN_ABI)
     private val EXPANSION_METHODS = intArrayOf(
         EncounterMethods.GRASS,
         EncounterMethods.WATER,

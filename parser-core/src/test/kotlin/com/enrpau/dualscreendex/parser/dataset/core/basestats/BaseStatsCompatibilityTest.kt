@@ -19,6 +19,7 @@ class BaseStatsCompatibilityTest {
         encodeGbaName(bytes, 11, "BULBA")
         val root = 128
         putRetailBaseStats(bytes, root + 28)
+        putU16(bytes, 240, 1)
         val rom = RomImage(bytes)
         val legacy = RecordMaterializers.species(
             rom,
@@ -52,5 +53,10 @@ class BaseStatsCompatibilityTest {
             target[offset + index] = (0xBB + char.code - 'A'.code).toByte()
         }
         target[offset + value.length] = 0xFF.toByte()
+    }
+
+    private fun putU16(target: ByteArray, offset: Int, value: Int) {
+        target[offset] = value.toByte()
+        target[offset + 1] = (value ushr 8).toByte()
     }
 }

@@ -31,20 +31,12 @@ object SpriteMaterializer {
                     val sprite = runCatching {
                         val entry = table.offset + id * stride
                         val pointer = rom.gbaPointer(entry) ?: error("invalid expansion front-sprite pointer")
-                        val graphics = if (rom.u8(pointer) == 0x10 && rom.u24le(pointer + 1) >= 2048) {
-                            GbaRomCompression.decodeAt(rom, pointer)
-                        } else {
-                            rom.slice(pointer, 2048)
-                        }
+                        val graphics = GbaRomCompression.decodeAt(rom, pointer)
                         require(graphics.size >= 2048)
                         val indexed = TileRenderer.gba4Bpp(graphics.copyOf(2048), 8, 8)
                         val palettePointer = rom.gbaPointer(entry + paletteDelta)
                             ?: error("invalid expansion normal-palette pointer")
-                        val paletteBytes = if (rom.u8(palettePointer) == 0x10 && rom.u24le(palettePointer + 1) >= 32) {
-                            GbaRomCompression.decodeAt(rom, palettePointer)
-                        } else {
-                            rom.slice(palettePointer, 32)
-                        }
+                        val paletteBytes = rom.slice(palettePointer, 32)
                         val palette = ShortArray(16) { index ->
                             ((paletteBytes[index * 2].toInt() and 0xFF) or
                                 ((paletteBytes[index * 2 + 1].toInt() and 0xFF) shl 8)).toShort()
