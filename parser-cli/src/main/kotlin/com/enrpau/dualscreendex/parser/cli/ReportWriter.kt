@@ -3,14 +3,17 @@ package com.enrpau.dualscreendex.parser.cli
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
 import com.enrpau.dualscreendex.parser.model.ParseResult
+import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
+import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.GsonBuilder
+import kotlin.math.round
 
 data class CorpusReport(
-    val schemaVersion: Int = 9,
+    val schemaVersion: Int = 11,
     val minimumParserScore: Int = ParserOrchestrator.minimumScore,
     val minimumRunnerUpMargin: Int = ParserOrchestrator.minimumMargin,
     val roots: List<String>,
@@ -32,7 +35,57 @@ data class CorpusResult(
     val dataCompatibility: DataStructureCompatibility = assessDataCompatibility(
         result, catalog, samples, catalogError, error,
     ),
+    val compatibilityPercent: Double = calculateCompatibility(result).compatibilityPercent,
+    val resolvedFeatureCount: Int = calculateCompatibility(result).resolvedFeatureCount,
+    val expectedFeatureCount: Int = calculateCompatibility(result).expectedFeatureCount,
+    val manualReviewRequired: Boolean = calculateCompatibility(result).manualReviewRequired ||
+        catalogError != null || persistenceError != null || error != null || samples?.referenceErrors?.isNotEmpty() == true,
 )
+
+data class RomCompatibilityScore(
+    val compatibilityPercent: Double,
+    val resolvedFeatureCount: Int,
+    val expectedFeatureCount: Int,
+    val manualReviewRequired: Boolean,
+)
+
+internal fun calculateCompatibility(result: ParseResult?): RomCompatibilityScore {
+    val byCapability = result?.capabilities.orEmpty().associateBy { it.capability }
+    val applicable = RomCapability.entries.filter { capability ->
+        byCapability[capability]?.status != CapabilityStatus.NOT_APPLICABLE
+    }
+    val coverages = applicable.map { capability -> featureCoverage(byCapability[capability]) }
+    val expected = coverages.size
+    val resolved = coverages.count { it > 0.0 }
+    val percent = if (expected == 0) 100.0 else 100.0 * coverages.sum() / expected
+    val manualReview = result?.status == SelectionStatus.AMBIGUOUS || result?.status == SelectionStatus.ERROR || result?.capabilities.orEmpty().any {
+        it.status == CapabilityStatus.AMBIGUOUS || it.reviewStatus == CapabilityReviewStatus.MANUAL_REVIEW
+    }
+    return RomCompatibilityScore(
+        compatibilityPercent = round(percent.coerceIn(0.0, 100.0) * 100.0) / 100.0,
+        resolvedFeatureCount = resolved,
+        expectedFeatureCount = expected,
+        manualReviewRequired = manualReview,
+    )
+}
+
+private fun featureCoverage(evidence: CapabilityEvidence?): Double {
+    if (evidence == null) return 0.0
+    if (evidence.status == CapabilityStatus.NOT_FOUND || evidence.status == CapabilityStatus.AMBIGUOUS) return 0.0
+    if (evidence.status == CapabilityStatus.NOT_APPLICABLE) return 0.0
+    val semanticCounts = evidence.coveredRecords?.let { covered ->
+        evidence.expectedRecords?.let { expected -> covered to expected }
+    }
+    val rawCounts = evidence.validRecords?.let { valid ->
+        evidence.totalRecords?.let { total -> valid to total }
+    }
+    val counts = semanticCounts ?: rawCounts
+    if (counts != null) {
+        val (covered, expected) = counts
+        return if (expected > 0) covered.toDouble().div(expected).coerceIn(0.0, 1.0) else 0.0
+    }
+    return if (evidence.status == CapabilityStatus.AVAILABLE) 1.0 else 0.0
+}
 
 enum class DataStructureCompatibility { COMPLETE, PARTIAL, UNRESOLVED, ERROR }
 
@@ -49,7 +102,7 @@ private fun assessDataCompatibility(
     val allApplicableResolved = RomCapability.entries.all { capability ->
         when (byCapability[capability]?.status) {
             CapabilityStatus.AVAILABLE, CapabilityStatus.NOT_APPLICABLE -> true
-            CapabilityStatus.NOT_FOUND, null -> false
+            CapabilityStatus.PARTIAL, CapabilityStatus.AMBIGUOUS, CapabilityStatus.NOT_FOUND, null -> false
         }
     }
     if (
@@ -58,7 +111,7 @@ private fun assessDataCompatibility(
     ) {
         return DataStructureCompatibility.COMPLETE
     }
-    return if (result.capabilities.any { it.status == CapabilityStatus.AVAILABLE } || catalog != null) {
+    return if (result.capabilities.any { it.status == CapabilityStatus.AVAILABLE || it.status == CapabilityStatus.PARTIAL } || catalog != null) {
         DataStructureCompatibility.PARTIAL
     } else {
         DataStructureCompatibility.UNRESOLVED
@@ -212,6 +265,21 @@ data class CatalogPersistenceMetrics(
     val sections: Int,
 )
 
+data class CatalogRulesetSelectorMetrics(
+    val saveBlock1ByteOffset: Int,
+    val mask: Int,
+    val expectedValue: Int,
+)
+
+data class CatalogRulesetMetrics(
+    val id: String,
+    val label: String,
+    val sourceOffset: Int,
+    val confidence: Double,
+    val primary: Boolean,
+    val levelUpSelector: CatalogRulesetSelectorMetrics? = null,
+)
+
 data class CatalogMetrics(
     val species: Int,
     val namedSpecies: Int,
@@ -234,6 +302,7 @@ data class CatalogMetrics(
     val abilitiesWithMechanics: Int,
     val captureBalls: Int,
     val encounterAreas: Int = 0,
+    val rulesetDetails: List<CatalogRulesetMetrics> = emptyList(),
 ) {
     companion object {
         fun from(catalog: ParsedCatalog): CatalogMetrics {
@@ -270,6 +339,22 @@ data class CatalogMetrics(
             abilitiesWithMechanics = abilities.count { it.mechanics.status == CapabilityStatus.AVAILABLE },
             captureBalls = catalog.captureBallsById.values.count { it.sprite.status == CapabilityStatus.AVAILABLE },
             encounterAreas = catalog.encounterAreas.size,
+            rulesetDetails = catalog.learnsetRulesets.map { ruleset ->
+                CatalogRulesetMetrics(
+                    id = ruleset.id,
+                    label = ruleset.label,
+                    sourceOffset = ruleset.sourceOffset,
+                    confidence = ruleset.confidence,
+                    primary = ruleset.primary,
+                    levelUpSelector = ruleset.levelUpSelector?.let { selector ->
+                        CatalogRulesetSelectorMetrics(
+                            saveBlock1ByteOffset = selector.saveBlock1ByteOffset,
+                            mask = selector.mask,
+                            expectedValue = selector.expectedValue,
+                        )
+                    },
+                )
+            },
         )
         }
     }
@@ -293,9 +378,9 @@ object ReportWriter {
 
     fun markdown(report: CorpusReport): String = buildString {
         val exact = report.results.count { entry -> entry.result?.probes?.any { it.exactProfile } == true }
-        val completeData = report.results.count { it.dataCompatibility == DataStructureCompatibility.COMPLETE }
-        val partialData = report.results.count { it.dataCompatibility == DataStructureCompatibility.PARTIAL }
-        val unresolvedData = report.results.count { it.dataCompatibility == DataStructureCompatibility.UNRESOLVED }
+        val fullyCompatible = report.results.count { it.compatibilityPercent == 100.0 && !it.manualReviewRequired }
+        val belowFullCompatibility = report.results.count { it.compatibilityPercent < 100.0 }
+        val manualReview = report.results.count { it.manualReviewRequired }
         val errors = report.results.count { it.dataCompatibility == DataStructureCompatibility.ERROR }
         val persisted = report.results.count { it.persistence != null }
         val persistenceErrors = report.results.count { it.persistenceError != null }
@@ -305,7 +390,7 @@ object ReportWriter {
                 if (capability !in capabilities) return@all true
                 when (entry.result.capabilities.firstOrNull { it.capability == capability }?.status) {
                     CapabilityStatus.AVAILABLE, CapabilityStatus.NOT_APPLICABLE -> true
-                    CapabilityStatus.NOT_FOUND, null -> false
+                    CapabilityStatus.PARTIAL, CapabilityStatus.AMBIGUOUS, CapabilityStatus.NOT_FOUND, null -> false
                 }
             }
         val completeCore = report.results.count { complete(it, coreCapabilities) }
@@ -318,9 +403,9 @@ object ReportWriter {
         appendLine("## Summary")
         appendLine()
         appendLine("- Inputs evaluated: ${report.results.size}")
-        appendLine("- Complete ROM data parsers: $completeData")
-        appendLine("- Partial ROM data parsers: $partialData")
-        appendLine("- Unresolved ROM data structures: $unresolvedData")
+        appendLine("- ROMs at 100% compatibility: $fullyCompatible")
+        appendLine("- ROMs below 100% compatibility: $belowFullCompatibility")
+        appendLine("- ROMs requiring manual review: $manualReview")
         appendLine("- Exact official ROM profiles encountered: $exact")
         appendLine("- Complete core catalogs: $completeCore")
         appendLine("- Complete for every applicable extended dataset: $completeExtended")
@@ -330,45 +415,26 @@ object ReportWriter {
         appendLine("- Decoded cross-reference errors: $referenceErrors")
         appendLine("- Family scores are internal layout-routing evidence and do not determine ROM data compatibility")
         appendLine()
-        appendNamedOutcomes(report)
+        appendNumericOutcomes(report)
         appendLine()
         appendCatalogCounts(report)
         appendLine()
         appendPersistence(report)
         appendLine()
-        appendLine("## Capability matrix")
+        appendLine("## Compatibility matrix")
         appendLine()
-        appendLine("- `yes` = found and validated")
-        appendLine("- `N/F` = applicable but not found or validated")
-        appendLine("- `N/A` = not applicable to that engine")
+        appendLine("The percentage is the mean semantic coverage of every applicable feature. Not-applicable features are excluded from each ROM's denominator.")
         appendLine()
-        appendLine("| ROM | Data parser | Routing status | Family hint | Profile hint | Routing score | Catalog | Names | Types | Type chart | Stats | Sprites | Dex text | Evolutions | Moves | Move data | Move text | Learnsets | Rulesets | Egg moves | Machine moves | Tutor moves | Abilities | Ability text | Ability values | Areas | Type colors | Balls |")
-        appendLine("| --- | --- | --- | --- | --- | ---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+        appendLine("| ROM | Compatibility | Resolved features | Expected features | Manual review | Routing status | Family hint | Profile hint | Routing score |")
+        appendLine("| --- | ---: | ---: | ---: | :---: | --- | --- | --- | ---: |")
         report.results.forEach { entry ->
             val parsed = entry.result
             val selectedProbe = parsed?.probes?.firstOrNull { it.family == parsed.selectedFamily }
-            fun capability(value: RomCapability): String = when (
-                parsed?.capabilities?.firstOrNull { it.capability == value }?.status
-            ) {
-                CapabilityStatus.AVAILABLE -> "yes"
-                CapabilityStatus.NOT_APPLICABLE -> "N/A"
-                CapabilityStatus.NOT_FOUND, null -> "N/F"
-            }
             appendLine(
-                "| ${cell(entry.displayName)} | ${entry.dataCompatibility} | ${parsed?.status ?: "ERROR"} | ${parsed?.selectedFamily ?: "-"} | " +
-                    "${cell(parsed?.selectedProfile ?: "-")} | ${selectedProbe?.score ?: "-"} | " +
-                    "${capability(RomCapability.SPECIES_CATALOG)} | ${capability(RomCapability.SPECIES_NAMES)} | " +
-                    "${capability(RomCapability.SPECIES_TYPES)} | ${capability(RomCapability.TYPE_CHART)} | " +
-                    "${capability(RomCapability.BASE_STATS)} | ${capability(RomCapability.SPRITES)} | " +
-                    "${capability(RomCapability.POKEDEX_DESCRIPTIONS)} | ${capability(RomCapability.EVOLUTIONS)} | " +
-                    "${capability(RomCapability.MOVE_CATALOG)} | ${capability(RomCapability.MOVE_DETAILS)} | " +
-                    "${capability(RomCapability.MOVE_DESCRIPTIONS)} | ${capability(RomCapability.LEARNSETS)} | " +
-                    "${if (entry.catalog?.learnsetRulesets?.let { it > 0 } == true) "yes" else "N/F"} | " +
-                    "${capability(RomCapability.EGG_MOVES)} | ${capability(RomCapability.MACHINE_MOVES)} | " +
-                    "${capability(RomCapability.TUTOR_MOVES)} | ${capability(RomCapability.ABILITIES)} | " +
-                    "${capability(RomCapability.ABILITY_DESCRIPTIONS)} | ${capability(RomCapability.ABILITY_MECHANICS)} | " +
-                    "${capability(RomCapability.AREA_ENCOUNTERS)} | ${capability(RomCapability.TYPE_PRESENTATION)} | " +
-                    "${capability(RomCapability.BALL_CATALOG)} |",
+                "| ${cell(entry.displayName)} | ${formatPercent(entry.compatibilityPercent)} | ${entry.resolvedFeatureCount} | " +
+                    "${entry.expectedFeatureCount} | ${if (entry.manualReviewRequired) "yes" else "no"} | " +
+                    "${parsed?.status ?: "ERROR"} | ${parsed?.selectedFamily ?: "-"} | " +
+                    "${cell(parsed?.selectedProfile ?: "-")} | ${selectedProbe?.score ?: "-"} |",
             )
         }
 
@@ -384,6 +450,9 @@ object ReportWriter {
             }
             val parsed = entry.result ?: return@forEach
             appendLine("- Identity: `${parsed.sha256}` (SHA-256), `${parsed.crc32}` (CRC32), ${parsed.size} bytes")
+            appendLine("- Compatibility: ${formatPercent(entry.compatibilityPercent)}; resolved ${entry.resolvedFeatureCount}/${entry.expectedFeatureCount} applicable features")
+            appendLine("- Manual review: ${if (entry.manualReviewRequired) "required" else "not required"}")
+            appendLine("- Legacy data compatibility: ${entry.dataCompatibility}")
             appendLine("- Header: ${parsed.header.platform}, title `${cell(parsed.header.title)}`, code `${parsed.header.gameCode ?: "-"}`, revision ${parsed.header.revision}")
             appendLine("- Decision: ${parsed.status}; family ${parsed.selectedFamily ?: "-"}; profile ${parsed.selectedProfile ?: "-"}; margin ${parsed.runnerUpMargin ?: "-"}")
             if (parsed.diagnostics.isNotEmpty()) appendLine("- Diagnostics: ${parsed.diagnostics.joinToString("; ")}")
@@ -399,6 +468,8 @@ object ReportWriter {
                 val reason = evidence.reasons.joinToString("; ")
                 val status = when (evidence.status) {
                     CapabilityStatus.AVAILABLE -> "available"
+                    CapabilityStatus.PARTIAL -> "partial"
+                    CapabilityStatus.AMBIGUOUS -> "ambiguous"
                     CapabilityStatus.NOT_FOUND -> "not found"
                     CapabilityStatus.NOT_APPLICABLE -> "not applicable"
                 }
@@ -430,6 +501,8 @@ object ReportWriter {
 
     private fun formatConfidence(value: Double): String = String.format(java.util.Locale.ROOT, "%.3f", value)
 
+    private fun formatPercent(value: Double): String = String.format(java.util.Locale.ROOT, "%.2f%%", value)
+
     private fun publicRootLabel(value: String): String = value
         .replace('\\', '/')
         .trimEnd('/')
@@ -440,17 +513,18 @@ object ReportWriter {
 
     private fun heading(value: String): String = value.replace("\r", " ").replace("\n", " ")
 
-    private fun StringBuilder.appendNamedOutcomes(report: CorpusReport) {
-        val complete = report.results.filter { it.dataCompatibility == DataStructureCompatibility.COMPLETE }
-        val partial = report.results.filter { it.dataCompatibility == DataStructureCompatibility.PARTIAL }
-        val unresolved = report.results.filter { it.dataCompatibility == DataStructureCompatibility.UNRESOLVED }
-        val errors = report.results.filter { it.dataCompatibility == DataStructureCompatibility.ERROR }
+    private fun StringBuilder.appendNumericOutcomes(report: CorpusReport) {
+        val complete = report.results.filter { it.compatibilityPercent == 100.0 && !it.manualReviewRequired }
+        val incomplete = report.results.filter { it.compatibilityPercent < 100.0 || it.manualReviewRequired }
+        val errors = report.results.filter { it.error != null || it.result?.status == SelectionStatus.ERROR }
 
         appendLine("## Named outcomes")
         appendLine()
-        appendNamedGroup("Complete ROM data parsing", complete) { "all applicable structures decoded and sample-validated" }
-        if (partial.isNotEmpty()) appendNamedGroup("Partial ROM data parsing", partial) { "one or more applicable structures remain N/F" }
-        if (unresolved.isNotEmpty()) appendNamedGroup("Unresolved ROM data structures", unresolved) { "no materializable catalog yet" }
+        appendNamedGroup("100% compatibility", complete) { "all ${it.expectedFeatureCount} applicable features fully covered" }
+        if (incomplete.isNotEmpty()) appendNamedGroup("Below 100% or manual review", incomplete) {
+            "${formatPercent(it.compatibilityPercent)}; ${it.resolvedFeatureCount}/${it.expectedFeatureCount} features resolved" +
+                if (it.manualReviewRequired) "; manual review required" else ""
+        }
         if (errors.isNotEmpty()) appendNamedGroup("Read or parse errors", errors) { it.error ?: "parser error" }
     }
 

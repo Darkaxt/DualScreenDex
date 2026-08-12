@@ -1,5 +1,12 @@
 package com.enrpau.dualscreendex.parser.model
 
+import com.enrpau.dualscreendex.parser.dataset.types.ResolvedTypeChartLayout
+import com.enrpau.dualscreendex.parser.dataset.descriptions.ResolvedDescriptionLayout
+import com.enrpau.dualscreendex.parser.dataset.evolutions.ResolvedEvolutionLayout
+import com.enrpau.dualscreendex.parser.dataset.learnsets.ResolvedLearnsetSet
+import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
+import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityNameLayout
+
 enum class Platform { GB, GBC, GBA, UNKNOWN }
 
 enum class EngineFamily {
@@ -36,7 +43,9 @@ enum class RomCapability {
     BALL_CATALOG,
 }
 
-enum class CapabilityStatus { AVAILABLE, NOT_FOUND, NOT_APPLICABLE }
+enum class CapabilityStatus { AVAILABLE, PARTIAL, AMBIGUOUS, NOT_FOUND, NOT_APPLICABLE }
+
+enum class CapabilityReviewStatus { NONE, MANUAL_REVIEW }
 
 enum class SelectionStatus { SELECTED, AMBIGUOUS, NO_FAMILY_MATCH, ERROR }
 
@@ -70,6 +79,11 @@ data class TableLayout(
 enum class TableRecordFormat {
     STANDARD,
     CFRU_MOVE_16,
+    BATTLE_ENGINE_MOVE_20,
+    GEN3_PACKED_U16,
+    GEN3_MOVE_U16_LEVEL_U8,
+    GEN3_MOVE_U16_LEVEL_U16,
+    GEN3_LEVEL_U8_MOVE_U16,
 }
 
 data class ProfileTables(
@@ -85,6 +99,37 @@ data class ProfileTables(
     val abilities: TableLayout? = null,
 )
 
+/** Immutable typed dataset outcomes selected during the shared ROM-analysis session. */
+class ResolvedDatasetLayouts(
+    typeChart: ResolvedTypeChartLayout? = null,
+    descriptions: ResolvedDescriptionLayout? = null,
+    evolutions: ResolvedEvolutionLayout? = null,
+    learnsets: ResolvedLearnsetSet? = null,
+    moveDetails: ResolvedMoveDetailsLayout? = null,
+    abilityNames: ResolvedAbilityNameLayout? = null,
+) {
+    val typeChart: ResolvedTypeChartLayout? = typeChart?.immutableSnapshot()
+    val descriptions: ResolvedDescriptionLayout? = descriptions?.immutableSnapshot()
+    val evolutions: ResolvedEvolutionLayout? = evolutions?.immutableSnapshot()
+    val learnsets: ResolvedLearnsetSet? = learnsets?.immutableSnapshot()
+    val moveDetails: ResolvedMoveDetailsLayout? = moveDetails?.immutableSnapshot()
+    val abilityNames: ResolvedAbilityNameLayout? = abilityNames?.immutableSnapshot()
+
+    fun immutableSnapshot(): ResolvedDatasetLayouts = this
+
+    override fun equals(other: Any?): Boolean = other is ResolvedDatasetLayouts &&
+        typeChart == other.typeChart && descriptions == other.descriptions && evolutions == other.evolutions &&
+            learnsets == other.learnsets && moveDetails == other.moveDetails && abilityNames == other.abilityNames
+
+    override fun hashCode(): Int =
+        31 * (
+            31 * (
+                31 * (31 * (typeChart?.hashCode() ?: 0) + (descriptions?.hashCode() ?: 0)) +
+                    (evolutions?.hashCode() ?: 0)
+                ) + (learnsets?.hashCode() ?: 0)
+            ) + (moveDetails?.hashCode() ?: 0) + 31 * (abilityNames?.hashCode() ?: 0)
+}
+
 data class ResolvedRomLayout(
     val family: EngineFamily,
     val generation: Int,
@@ -93,6 +138,32 @@ data class ResolvedRomLayout(
     val moveCount: Int?,
     val tables: ProfileTables,
     val pokeemeraldExpansion: PokeemeraldExpansionMetadata? = null,
+    val compiledGbaReferences: GbaCompiledReferenceIndex? = null,
+    val learnsetTables: List<Gen3LearnsetTableLayout> = emptyList(),
+    val learnsetSelector: Gen3LearnsetSelectorEvidence? = null,
+    val resolvedDatasets: ResolvedDatasetLayouts = ResolvedDatasetLayouts(),
+)
+
+data class GbaCompiledReferenceIndex(
+    val counts: Map<Int, Int>,
+    val overflowReason: String? = null,
+) {
+    val overflowed: Boolean get() = overflowReason != null
+}
+
+data class Gen3LearnsetTableLayout(
+    val table: TableLayout,
+    val confidence: Double,
+    val referenceCount: Int,
+)
+
+/** Direct compiled evidence selecting between two level-up learnset tables from SaveBlock1. */
+data class Gen3LearnsetSelectorEvidence(
+    val saveBlock1ByteOffset: Int,
+    val mask: Int,
+    val zeroTableOffset: Int,
+    val nonZeroTableOffset: Int,
+    val codeOffset: Int,
 )
 
 /**
@@ -154,6 +225,15 @@ data class ValidationEvidence(
     val offset: Int? = null,
     val recordSize: Int? = null,
     val elementSize: Int? = null,
+    val ambiguous: Boolean = false,
+    val reviewRecommended: Boolean = false,
+    /** Records that cover the feature's semantic domain after structural sentinels are excluded. */
+    val coveredRecords: Int? = null,
+    /** Records expected by the feature's semantic domain, distinct from raw table slots. */
+    val expectedRecords: Int? = null,
+    /** Expected semantic records that were declared but could not be fully materialized. */
+    val incompleteRecords: Int? = null,
+    val format: TableRecordFormat? = null,
 )
 
 data class CapabilityEvidence(
@@ -165,6 +245,15 @@ data class CapabilityEvidence(
     val recordSize: Int? = null,
     val reasons: List<String> = emptyList(),
     val status: CapabilityStatus = if (compatible) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
+    val validRecords: Int? = null,
+    val totalRecords: Int? = null,
+    val elementSize: Int? = null,
+    val reviewStatus: CapabilityReviewStatus = CapabilityReviewStatus.NONE,
+    val coveredRecords: Int? = null,
+    val expectedRecords: Int? = null,
+    val incompleteRecords: Int? = null,
+    /** Review intent emitted directly by the validator, excluding aggregate coverage and ambiguity review. */
+    val validatorReviewRecommended: Boolean = false,
 )
 
 data class ScoreEvidence(

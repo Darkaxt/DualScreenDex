@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.companion.api
 
+import com.enrpau.dualscreendex.companion.battle.RarityEvaluator
 import com.enrpau.dualscreendex.companion.knowledge.KnowledgePolicy
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.Effectiveness
@@ -110,6 +111,10 @@ data class DiagnosticCapabilityView(
     val count: Int?,
     val recordSize: Int?,
     val reasons: List<String>,
+    val validRecords: Int? = null,
+    val totalRecords: Int? = null,
+    val elementSize: Int? = null,
+    val reviewStatus: String = "NONE",
 )
 
 data class DiagnosticView(
@@ -136,6 +141,8 @@ data class StateView(
     val filter: String,
     val selectedAreaId: Int?,
     val currentAreaIds: List<Int>,
+    val currentAreaBaseId: Int?,
+    val currentAreaName: String?,
     val battleTab: String,
     val settings: Any,
     val speciesState: Map<Int, SpeciesStateView>,
@@ -209,8 +216,20 @@ data class OpponentView(
     val speciesId: Int,
     val level: Int,
     val typeIds: List<Int>,
-    val rarity: String,
+    val rarity: RarityView,
     val moves: List<ObservedMoveView>,
+)
+data class RarityView(
+    val relativeTier: String?,
+    val innateTier: String?,
+    val baseStars: Int?,
+    val areaAdjustment: Double?,
+    val stars: Double?,
+    val areaOutcome: String,
+    val currentAreaBaseId: Int?,
+    val currentAreaName: String?,
+    val matchingAreaCount: Int,
+    val candidateAreaCount: Int,
 )
 data class ObservedMoveView(val moveId: Int, val frequency: Int)
 
@@ -351,9 +370,15 @@ object ApiViewBuilder {
         retroArch: RetroArchView = RetroArchView(),
         saveRam: SaveRamView = SaveRamView(),
     ): StateView {
-        val currentAreaIds = snapshot.ledger.currentAreaBaseId?.let { baseId ->
+        val liveAreaBaseId = snapshot.liveAreaBaseId
+        val effectiveAreaBaseId = liveAreaBaseId
+            ?: snapshot.ledger.currentAreaBaseId.takeIf {
+                !retroArch.connection.equals("CONNECTED", ignoreCase = true) && saveRam.status == "MATCHED"
+            }
+        val currentAreaIds = effectiveAreaBaseId?.let { baseId ->
             catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }?.sorted()
         }.orEmpty()
+        val currentAreaName = effectiveAreaBaseId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
@@ -383,6 +408,8 @@ object ApiViewBuilder {
             snapshot.filter.name,
             snapshot.selectedAreaId,
             currentAreaIds,
+            effectiveAreaBaseId,
+            currentAreaName,
             snapshot.battleTab.name,
             snapshot.settings,
             speciesState,
@@ -405,13 +432,27 @@ object ApiViewBuilder {
                             ivs = opponent.ivs,
                             dvs = opponent.dvs,
                         )
-                        val prefix = PreferredIndividualSelector.levelPrefix(opponent.level, battle.playerReferenceLevel)
-                        val tier = PreferredIndividualSelector.tier(individual)
+                        val rarity = RarityEvaluator.evaluate(
+                            individual = individual,
+                            currentAreaBaseId = effectiveAreaBaseId,
+                            encounterAreas = catalog?.encounterAreas.orEmpty(),
+                        )
                         OpponentView(
                             opponent.speciesId,
                             opponent.level,
                             opponent.typeIds,
-                            listOfNotNull(prefix, tier).joinToString(" "),
+                            RarityView(
+                                relativeTier = rarity.relativeTier?.name,
+                                innateTier = rarity.innateTier?.name,
+                                baseStars = rarity.baseStars,
+                                areaAdjustment = rarity.areaAdjustment,
+                                stars = rarity.stars,
+                                areaOutcome = rarity.areaOutcome.name,
+                                currentAreaBaseId = rarity.currentAreaBaseId,
+                                currentAreaName = currentAreaName,
+                                matchingAreaCount = rarity.matchingAreaCount,
+                                candidateAreaCount = rarity.candidateAreaCount,
+                            ),
                             opponent.moveHistory.toObservedMoveViews(),
                         )
                     },
@@ -458,14 +499,23 @@ object ApiViewBuilder {
             rulesetAssumed = rulesetAssumed,
             rulesets = view.rulesets,
             capabilities = catalog.capabilities.values.sortedBy { it.capability.ordinal }.map {
+                val validRecords = it.validRecords
+                val totalRecords = it.totalRecords
                 DiagnosticCapabilityView(
                     it.capability.name,
-                    it.status.name,
+                    if (
+                        it.status == com.enrpau.dualscreendex.parser.model.CapabilityStatus.AVAILABLE &&
+                        validRecords != null && totalRecords != null && validRecords < totalRecords
+                    ) "PARTIAL" else it.status.name,
                     it.confidence,
                     it.offset,
                     it.count,
                     it.recordSize,
                     it.reasons,
+                    validRecords,
+                    totalRecords,
+                    it.elementSize,
+                    it.reviewStatus.name,
                 )
             },
             parserDiagnostics = catalog.diagnostics,

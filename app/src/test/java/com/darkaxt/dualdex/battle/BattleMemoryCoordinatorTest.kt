@@ -1,12 +1,101 @@
 package com.darkaxt.dualdex.battle
 
 import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.ArrayDeque
 
 class BattleMemoryCoordinatorTest {
+    @Test
+    fun publishesGen1AndGen2LiveAreasBeforeAnyBattleStarts() {
+        assertEquals(LiveAreaMemoryLayout(0x135e, 1), liveAreaMemoryLayout(EngineFamily.RED_BLUE))
+        assertEquals(LiveAreaMemoryLayout(0x135d, 1), liveAreaMemoryLayout(EngineFamily.YELLOW))
+        assertEquals(LiveAreaMemoryLayout(0x1a00, 2), liveAreaMemoryLayout(EngineFamily.GOLD_SILVER))
+        assertEquals(LiveAreaMemoryLayout(0x1cb5, 2), liveAreaMemoryLayout(EngineFamily.CRYSTAL))
+
+        val yellowWram = ByteArray(0x2000).apply { this[0x135d] = 0x28 }
+        val yellowAreas = mutableListOf<Int?>()
+        val yellow = BattleMemoryCoordinator(
+            catalogProvider = { gen1Context() },
+            publisher = {},
+            locationPublisher = yellowAreas::add,
+            transportFactory = { MemoryTransport(yellowWram, 0xc000) },
+            autoStart = false,
+        )
+        yellow.updateSession(connected = true, systemId = "game_boy", romIdentity = "rom")
+        repeat(2) { yellow.heartbeat() }
+        assertEquals(0x28, yellowAreas.last())
+
+        yellowWram[0x135d] = 0xFF.toByte()
+        repeat(2) { yellow.heartbeat() }
+        assertNull(yellowAreas.last())
+        yellow.close()
+
+        val crystalWram = ByteArray(0x2000).apply {
+            this[0x1cb5] = 24
+            this[0x1cb6] = 3
+        }
+        val crystalAreas = mutableListOf<Int?>()
+        val crystal = BattleMemoryCoordinator(
+            catalogProvider = { gen2Context() },
+            publisher = {},
+            locationPublisher = crystalAreas::add,
+            transportFactory = { MemoryTransport(crystalWram, 0xc000) },
+            autoStart = false,
+        )
+        crystal.updateSession(connected = true, systemId = "game_boy_color", romIdentity = "rom")
+        repeat(2) { crystal.heartbeat() }
+        assertEquals(0x1803, crystalAreas.last())
+        crystal.close()
+    }
+
+    @Test
+    fun configuredHeartbeatRateAppliesToDiscoveryAndCachedReads() {
+        assertEquals(1L, battleHeartbeatDelayMillis(eligible = true, discovering = true, pollingIntervalMs = 0))
+        assertEquals(7L, battleHeartbeatDelayMillis(eligible = true, discovering = true, pollingIntervalMs = 7))
+        assertEquals(20L, battleHeartbeatDelayMillis(eligible = true, discovering = true, pollingIntervalMs = 99))
+        assertEquals(1L, battleHeartbeatDelayMillis(eligible = true, discovering = false, pollingIntervalMs = 1))
+        assertEquals(7L, battleHeartbeatDelayMillis(eligible = true, discovering = false, pollingIntervalMs = 7))
+        assertEquals(20L, battleHeartbeatDelayMillis(eligible = false, discovering = true, pollingIntervalMs = 1))
+    }
+
+    @Test
+    fun leavesBattleWhenMainReturnsToTheObservedOverworldCallbacksEvenIfBattleRecordsRemainValid() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context() },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.isEmpty())
+
+        fixture(ewram, 0x143C, opponentPp = 35)
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 200)
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.last().active)
+
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 300)
+        repeat(2) { coordinator.heartbeat() }
+
+        assertTrue(updates.last().ended)
+        assertTrue(!updates.last().active)
+        assertEquals(13, updates.dropLast(1).last().sample?.opponents?.single()?.speciesId)
+        assertEquals(2, ewram[0x143C - 0x1C].toInt())
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 300") })
+        coordinator.close()
+    }
+
     @Test
     fun discoversThenPollsABoundedWindowWithoutTheMapper() {
         val ewram = ByteArray(0x40000)
@@ -38,6 +127,59 @@ class BattleMemoryCoordinatorTest {
     }
 
     @Test
+    fun publishesTheLiveMapOutsideBattleFromTheRomProvenSaveBlockPointer() {
+        val ewram = ByteArray(0x40000)
+        ewram[0x1004] = 0
+        ewram[0x1005] = 16
+        val pointer = byteArrayOf(0x00, 0x10, 0x00, 0x02)
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val liveAreas = mutableListOf<Int?>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x030036F0L to pointer))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context(saveBlock1Pointer = 0x030036F0L) },
+            publisher = updates::add,
+            locationPublisher = { liveAreas.add(it) },
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(3) { coordinator.heartbeat() }
+
+        assertTrue(updates.isEmpty())
+        assertEquals(0x0010, liveAreas.last())
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 30036f0 4") })
+        coordinator.close()
+    }
+
+    @Test
+    fun retainsTheGen3CachedWindowAcrossValidatedNonBattleSamples() {
+        val ewram = ByteArray(0x40000)
+        fixture(ewram, 0x143C, opponentPp = 35)
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(ewram)
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context() },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+        repeat(2) { coordinator.heartbeat() }
+        val fullDiscoveryCommands = transport.commands.size
+
+        ewram[0x143C - 0x1C] = 0
+        repeat(4) { coordinator.heartbeat() }
+        assertTrue(updates.last().ended)
+
+        coordinator.heartbeat()
+        val nextCommand = transport.commands.last()
+        assertTrue(transport.commands.size - fullDiscoveryCommands < 10)
+        assertTrue(nextCommand.startsWith("READ_CORE_MEMORY 2001420 "))
+        coordinator.close()
+    }
+
+    @Test
     fun unsupportedSystemsDoNotReadMemoryOrClearTheCatalogContext() {
         val transport = MemoryTransport(ByteArray(0x40000))
         val updates = mutableListOf<BattleTrackingUpdate>()
@@ -65,11 +207,14 @@ class BattleMemoryCoordinatorTest {
         wram[0x1059] = 0
         wram[0x1162] = 1
         wram[0x0cdc] = 0x54
+        wram[0x135d] = 0
         val updates = mutableListOf<BattleTrackingUpdate>()
+        val liveAreas = mutableListOf<Int?>()
         val transport = MemoryTransport(wram, 0xc000)
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { gen1Context() },
             publisher = updates::add,
+            locationPublisher = liveAreas::add,
             transportFactory = { transport },
             autoStart = false,
         )
@@ -79,15 +224,19 @@ class BattleMemoryCoordinatorTest {
         coordinator.heartbeat()
 
         assertEquals(0x66, updates.last().sample?.opponents?.single()?.speciesId)
+        assertEquals(0, liveAreas.last())
         assertTrue(transport.commands.size <= 8)
         val discoveryReads = transport.commands.size
 
         wram[0x0cf2] = 0x21
+        wram[0x135d] = 0x28
         coordinator.heartbeat()
         coordinator.heartbeat()
 
-        assertEquals(1, transport.commands.size - discoveryReads)
+        assertEquals(2, transport.commands.size - discoveryReads)
         assertEquals(mapOf(0x66 to mapOf(0x21 to 1)), updates.last().observations)
+        assertEquals(0x28, liveAreas.last())
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY d35d 1") })
 
         coordinator.heartbeat()
         coordinator.heartbeat()
@@ -112,11 +261,15 @@ class BattleMemoryCoordinatorTest {
         wram[0x122d] = 1
         wram[0x1230] = 0
         wram[0x06e3] = 33
+        wram[0x1cb5] = 24
+        wram[0x1cb6] = 3
         val updates = mutableListOf<BattleTrackingUpdate>()
+        val liveAreas = mutableListOf<Int?>()
         val transport = MemoryTransport(wram, 0xc000)
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { gen2Context() },
             publisher = updates::add,
+            locationPublisher = liveAreas::add,
             transportFactory = { transport },
             autoStart = false,
         )
@@ -127,12 +280,16 @@ class BattleMemoryCoordinatorTest {
 
         assertEquals(19, updates.last().sample?.opponents?.single()?.speciesId)
         assertEquals(33, updates.last().sample?.selectedMoveId)
+        assertEquals(0x1803, liveAreas.last())
         assertTrue(transport.commands.all { it.startsWith("READ_CORE_MEMORY ") })
 
         wram[0x120e] = 34
         wram[0x071c] = 33
+        wram[0x1cb6] = 4
         repeat(2) { coordinator.heartbeat() }
         assertEquals(mapOf(19 to mapOf(33 to 1)), updates.last().observations)
+        assertEquals(0x1804, liveAreas.last())
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY dcb5 2") })
 
         repeat(2) { coordinator.heartbeat() }
         assertTrue(updates.last().observations.isEmpty())
@@ -171,9 +328,10 @@ class BattleMemoryCoordinatorTest {
         coordinator.close()
     }
 
-    private fun context() = BattleCatalogContext(
+    private fun context(saveBlock1Pointer: Long? = null) = BattleCatalogContext(
         romIdentity = "rom",
         generation = 3,
+        gen3SaveBlock1PointerAddress = saveBlock1Pointer,
         catalog = BattleCatalogView(
             species = mapOf(
                 252 to BattleSpecies(252, listOf(11), setOf(65)),
@@ -187,6 +345,7 @@ class BattleMemoryCoordinatorTest {
     private fun gen1Context() = BattleCatalogContext(
         romIdentity = "rom",
         generation = 1,
+        liveAreaMemoryLayout = LiveAreaMemoryLayout(0x135d, 1),
         catalog = BattleCatalogView(
             species = mapOf(
                 0x54 to BattleSpecies(0x54, listOf(0x17, 0x17)),
@@ -203,6 +362,7 @@ class BattleMemoryCoordinatorTest {
     private fun gen2Context() = BattleCatalogContext(
         romIdentity = "rom",
         generation = 2,
+        liveAreaMemoryLayout = LiveAreaMemoryLayout(0x1cb5, 2),
         catalog = BattleCatalogView(
             species = mapOf(
                 155 to BattleSpecies(155, listOf(20, 20)),
@@ -241,6 +401,19 @@ class BattleMemoryCoordinatorTest {
     private fun putU16(bytes: ByteArray, offset: Int, value: Int) {
         bytes[offset] = value.toByte()
         bytes[offset + 1] = (value ushr 8).toByte()
+    }
+
+    private fun putU32(bytes: ByteArray, offset: Int, value: Int) {
+        repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
+    }
+
+    private fun mainState(bytes: ByteArray, callback1: Int, callback2: Int, counter: Int) {
+        val offset = 0x1574
+        listOf(callback1, callback2, 0x08000301, 0x08000401, 0, 0, 0x08000501)
+            .forEachIndexed { index, value -> putU32(bytes, offset + index * 4, value) }
+        putU32(bytes, offset + 0x20, counter)
+        putU32(bytes, offset + 0x24, counter)
+        putU16(bytes, offset + 0x32, 40)
     }
 
     private fun gen1Mon(
@@ -283,7 +456,11 @@ class BattleMemoryCoordinatorTest {
         bytes[offset + 31] = type2.toByte()
     }
 
-    private class MemoryTransport(private val memory: ByteArray, private val baseAddress: Long = 0x02000000) : NetworkCommandTransport {
+    private class MemoryTransport(
+        private val memory: ByteArray,
+        private val baseAddress: Long = 0x02000000,
+        private val extraMemory: Map<Long, ByteArray> = emptyMap(),
+    ) : NetworkCommandTransport {
         val commands = mutableListOf<String>()
         private val replies = ArrayDeque<ByteArray>()
 
@@ -293,8 +470,18 @@ class BattleMemoryCoordinatorTest {
             val parts = command.split(' ')
             val address = parts[1].toLong(16)
             val length = parts[2].toInt()
-            val offset = (address - baseAddress).toInt()
-            val encoded = (0 until length).joinToString(" ") { "%02X".format(memory[offset + it].toInt() and 0xFF) }
+            val source = extraMemory.entries.firstOrNull { (start, bytes) ->
+                address >= start && address + length <= start + bytes.size
+            }
+            val encoded = if (source != null) {
+                val offset = (address - source.key).toInt()
+                (0 until length).joinToString(" ") { "%02X".format(source.value[offset + it].toInt() and 0xFF) }
+            } else if (address >= 0x03000000L && address + length <= 0x03008000L) {
+                (0 until length).joinToString(" ") { "00" }
+            } else {
+                val offset = (address - baseAddress).toInt()
+                (0 until length).joinToString(" ") { "%02X".format(memory[offset + it].toInt() and 0xFF) }
+            }
             replies += "READ_CORE_MEMORY ${parts[1]} $encoded".toByteArray()
         }
 

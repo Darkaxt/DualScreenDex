@@ -30,14 +30,33 @@ object MoveDescriptionMaterializer {
                 descriptions.size >= maxOf(3, (expected * 0.8).toInt())
             }
         }
-        val pointerCount = (layout.moveCount ?: return null) - 1
-        if (pointerCount < 3) return null
-        return pointerRuns(rom)
-            .asSequence()
-            .filter { it.length >= pointerCount * 4 }
-            .flatMap { run -> windows(run, pointerCount * 4).asSequence() }
+        val moveCount = layout.moveCount ?: return null
+        if (moveCount < 4) return null
+        val pointerCount = moveCount - 1
+        return candidateOffsets(rom, pointerCount)
             .mapNotNull { offset -> decodeCandidate(rom, offset, pointerCount) }
             .maxWithOrNull(compareBy<MoveDescriptionResult> { it.confidence }.thenBy { it.descriptions.size })
+    }
+
+    private fun candidateOffsets(rom: RomImage, pointerCount: Int): Sequence<Int> {
+        val tableBytesLong = pointerCount.toLong() * 4L
+        if (tableBytesLong > rom.size.toLong()) return emptySequence()
+        val minimumPrefixBytesLong = ((pointerCount.toLong() + 1L) / 2L) * 4L
+        val tableBytes = tableBytesLong.toInt()
+        val minimumPrefixBytes = minimumPrefixBytesLong.toInt()
+        return pointerRuns(rom)
+            .asSequence()
+            .filter { run ->
+                run.length >= minimumPrefixBytes && run.offset.toLong() + tableBytesLong <= rom.size.toLong()
+            }
+            .flatMap { run ->
+                if (run.length >= tableBytes) {
+                    windows(run, tableBytes).asSequence()
+                } else {
+                    sequenceOf(run.offset)
+                }
+            }
+            .distinct()
     }
 
     private fun pointerRuns(rom: RomImage): List<PointerRun> {

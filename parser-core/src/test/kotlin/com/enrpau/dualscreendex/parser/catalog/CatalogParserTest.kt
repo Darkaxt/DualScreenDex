@@ -1,20 +1,221 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameCodec
+import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableLayout
+import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableOutcome
+import com.enrpau.dualscreendex.parser.dataset.abilities.AbilitySemanticDomain
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionCodec
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableLayout
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableOutcome
+import com.enrpau.dualscreendex.parser.dataset.descriptions.ResolvedDescriptionLayout
+import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
+import com.enrpau.dualscreendex.parser.model.ResolvedDatasetLayouts
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
+import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
+import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogParserTest {
+    @Test
+    fun reportsStructurallyResolvedPartialAbilityDescriptionsForManualReview() {
+        val count = 21
+        val bytes = ByteArray(0x8000) { 0xFF.toByte() }
+        val namesOffset = 0x400
+        val descriptionsOffset = 0x1000
+        bytes.fill(0, namesOffset, namesOffset + 13)
+        bytes[namesOffset] = 0xFF.toByte()
+        repeat(count - 1) { index -> encodeGbaText(bytes, namesOffset + (index + 1) * 13, "ABILITY") }
+        putGbaPointer(bytes, descriptionsOffset, 0x3000)
+        encodeGbaText(bytes, 0x3000, "NO SPECIAL ABILITY")
+        repeat(15) { index ->
+            val id = index + 1
+            val textOffset = 0x3100 + index * 0x30
+            putGbaPointer(bytes, descriptionsOffset + id * 4, textOffset)
+            encodeGbaText(bytes, textOffset, "ABILITY EFFECT DESCRIPTION")
+        }
+        listOf(0x2200, 0x2300, descriptionsOffset, 0x2400, 0x2500, 0x2600, 0x2700)
+            .forEachIndexed { index, root -> putGbaPointer(bytes, 0x1BC + index * 4, root) }
+        val rom = RomImage(bytes)
+        val typedNames = (AbilityNameCodec().decode(
+            RomAnalysisSession(rom, RomHeader(Platform.GBA, "TEST", "TEST")),
+            AbilityNameTableLayout(namesOffset, count, 13),
+            AbilitySemanticDomain((1 until count).toSet()),
+        ) as AbilityNameTableOutcome.Decoded).resolved
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, 0, 0,
+            ProfileTables(abilities = TableLayout(namesOffset, count, 13)),
+            resolvedDatasets = ResolvedDatasetLayouts(abilityNames = typedNames),
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+
+        val evidence = CatalogMaterializer.materialize(rom, analysis, layout)
+            .capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS)
+
+        assertEquals(CapabilityStatus.PARTIAL, evidence.status)
+        assertEquals(CapabilityReviewStatus.MANUAL_REVIEW, evidence.reviewStatus)
+        assertEquals(15, evidence.coveredRecords)
+        assertEquals(20, evidence.expectedRecords)
+    }
+
+    @Test
+    fun reportsClassicEmptyFirstProbeBudgetOverflowAsAmbiguousManualReview() {
+        val bytes = ByteArray(0x50000)
+        repeat(257) { index ->
+            val root = 0x10000 + index * 0x100
+            putGbaPointer(bytes, 0x1000 + index * 4, root)
+            bytes[root] = 1
+            bytes[root + 1] = 1
+            repeat(2) { headerIndex ->
+                val header = root + (headerIndex + 1) * 24
+                bytes[header] = 1
+                bytes[header + 1] = (headerIndex + 2).toByte()
+            }
+            bytes[root + 72] = 0xFF.toByte()
+            bytes[root + 73] = 0xFF.toByte()
+        }
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, 100, 0, ProfileTables(),
+        )
+        val rom = RomImage(bytes)
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+
+        val evidence = CatalogMaterializer.materialize(rom, analysis, layout)
+            .capabilities.getValue(RomCapability.AREA_ENCOUNTERS)
+
+        assertEquals(CapabilityStatus.AMBIGUOUS, evidence.status)
+        assertEquals(CapabilityReviewStatus.MANUAL_REVIEW, evidence.reviewStatus)
+        assertTrue(evidence.reasons.single().contains("empty-first Classic24 candidate budget exceeded (256)"))
+    }
+
+    @Test
+    fun infersOnlyMissingSpritesFromAnExactNameAndDexAlias() {
+        val bytes = ByteArray(0x2000)
+        val stride = 128
+        val names = listOf("NONE", "ALIAS", "ALIAS", "ALIAS", "OTHER", "OWN", "AMBIG", "AMBIG", "AMBIG")
+        val dexNumbers = listOf(0, 25, 25, 26, 25, 25, 30, 30, 30)
+        names.indices.forEach { id ->
+            val record = id * stride
+            encodeGbaText(bytes, record + 44, names[id])
+            putU16(bytes, record + 60, dexNumbers[id])
+            if (id > 0) {
+                repeat(6) { stat -> bytes[record + stat] = (40 + stat).toByte() }
+                bytes[record + 6] = 12
+                bytes[record + 7] = 3
+            }
+        }
+        val sprite = Base64.getDecoder().decode("ASAIAAAAKAABAAAAAAH+BwEAAAA=")
+        sprite.copyInto(bytes, 0x1000)
+        sprite.copyInto(bytes, 0x1100)
+        putGbaPointer(bytes, stride + 88, 0x1000)
+        putGbaPointer(bytes, stride + 96, 0x1200)
+        putGbaPointer(bytes, stride * 5 + 88, 0x1100)
+        putGbaPointer(bytes, stride * 5 + 96, 0x1240)
+        putGbaPointer(bytes, stride * 6 + 88, 0x1000)
+        putGbaPointer(bytes, stride * 6 + 96, 0x1200)
+        putGbaPointer(bytes, stride * 7 + 88, 0x1100)
+        putGbaPointer(bytes, stride * 7 + 96, 0x1240)
+        bytes[0x1202] = 0x1F
+        bytes[0x1242] = 0xE0.toByte()
+        bytes[0x1243] = 0x03
+
+        val metadata = PokeemeraldExpansionMetadata(
+            0x204, 1, 15, 3, stride, 44, 13, 31, 60, 62, 64, 76, 88, 96,
+            24, 21, 100, 104, 108, 112, 64, 28, 20, 20,
+        )
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, names.size, 0,
+            ProfileTables(
+                speciesNames = TableLayout(44, names.size, 13, stride = stride),
+                baseStats = TableLayout(0, names.size, stride, stride = stride),
+                sprites = TableLayout(88, names.size, 4, stride = stride),
+            ),
+            pokeemeraldExpansion = metadata,
+        )
+        val rom = RomImage(bytes)
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+        assertEquals(setOf(1, 5, 6, 7), SpriteMaterializer.pokemon(rom, layout).keys)
+
+        val species = CatalogMaterializer.materialize(rom, analysis, layout).speciesById
+
+        assertEquals(CapabilityStatus.AVAILABLE, species.getValue(2).sprite.status)
+        assertEquals(species.getValue(1).sprite.value, species.getValue(2).sprite.value)
+        assertTrue(species.getValue(2).sprite.reasons.single().contains("inferred"))
+        assertEquals(CapabilityStatus.NOT_FOUND, species.getValue(3).sprite.status)
+        assertEquals(CapabilityStatus.NOT_FOUND, species.getValue(4).sprite.status)
+        assertEquals(CapabilityStatus.AVAILABLE, species.getValue(5).sprite.status)
+        assertTrue(species.getValue(1).sprite.value != species.getValue(5).sprite.value)
+        assertEquals(CapabilityStatus.NOT_FOUND, species.getValue(8).sprite.status)
+    }
+
+    @Test
+    fun materializerJoinsExpansionDescriptionsByInternalSpeciesId() {
+        val bytes = ByteArray(1024)
+        val stride = 180
+        val first = stride
+        repeat(6) { bytes[first + it] = (40 + it).toByte() }
+        bytes[first + 6] = 12
+        bytes[first + 7] = 3
+        encodeGbaText(bytes, first + 31, "MOUSE")
+        encodeGbaText(bytes, first + 44, "PIKA")
+        putU16(bytes, first + 60, 25)
+        putU16(bytes, first + 62, 4)
+        putU16(bytes, first + 64, 60)
+        putGbaPointer(bytes, first + 76, 500)
+        encodeGbaText(bytes, 500, "ELECTRIC MOUSE")
+        val metadata = PokeemeraldExpansionMetadata(
+            0x204, 1, 15, 3, stride, 44, 13, 31, 60, 62, 64, 76, 88, 96,
+            24, 21, 148, 152, 156, 160, 64, 28, 20, 20,
+        )
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.EMERALD,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = 2,
+            moveCount = 0,
+            tables = ProfileTables(
+                speciesNames = TableLayout(44, 2, 13, stride = stride),
+                baseStats = TableLayout(0, 2, stride, stride = stride),
+                descriptions = TableLayout(0, 2, stride, stride = stride, pointerOffsets = listOf(76)),
+            ),
+            pokeemeraldExpansion = metadata,
+        )
+        val rom = RomImage(bytes)
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+
+        val species = CatalogMaterializer.materialize(rom, analysis, layout).speciesById.getValue(1)
+
+        assertEquals(25, species.dexNumber.value)
+        assertEquals("ELECTRIC MOUSE", species.description.value)
+    }
+
     @Test
     fun materializerJoinsDexDescriptionToRomNativeSpeciesId() {
         val bytes = ByteArray(512) { 0xFF.toByte() }
@@ -26,8 +227,11 @@ class CatalogParserTest {
         bytes[stats + 35] = 3
         val descriptions = 128
         encodeGbaText(bytes, descriptions + 32, "SEED")
+        putU16(bytes, descriptions + 32 + 12, 7)
+        putU16(bytes, descriptions + 32 + 14, 69)
         putGbaPointer(bytes, descriptions + 32 + 16, 400)
         encodeGbaText(bytes, 400, "A SEED")
+        putIdentitySpeciesIndexEvidence(bytes, 480, speciesCount = 2)
         val layout = ResolvedRomLayout(
             family = EngineFamily.EMERALD,
             generation = 3,
@@ -39,7 +243,7 @@ class CatalogParserTest {
                 baseStats = TableLayout(stats, 2, 28),
                 descriptions = TableLayout(descriptions, 2, 32, pointerOffsets = listOf(16)),
             ),
-        )
+        ).withTypedDescriptions(bytes)
         val rom = RomImage(bytes)
         val analysis = ParseResult(
             header = RomHeader(Platform.GBA, "TEST", "TEST"),
@@ -79,6 +283,7 @@ class CatalogParserTest {
         repeat(6) { bytes[stats + 28 + it] = (40 + it).toByte() }
         bytes[stats + 34] = 12
         bytes[stats + 35] = 3
+        putIdentitySpeciesIndexEvidence(bytes, 240, speciesCount = 2)
         val layout = ResolvedRomLayout(
             EngineFamily.EMERALD,
             3,
@@ -128,5 +333,58 @@ class CatalogParserTest {
     private fun putGbaPointer(target: ByteArray, offset: Int, targetOffset: Int) {
         val value = 0x08000000 + targetOffset
         repeat(4) { index -> target[offset + index] = (value ushr (index * 8)).toByte() }
+    }
+
+    private fun putU16(target: ByteArray, offset: Int, value: Int) {
+        target[offset] = value.toByte()
+        target[offset + 1] = (value ushr 8).toByte()
+    }
+
+    private fun putIdentitySpeciesIndexEvidence(
+        target: ByteArray,
+        offset: Int,
+        speciesCount: Int,
+    ) {
+        (1 until speciesCount).forEach { speciesId ->
+            putU16(target, offset + (speciesId - 1) * 2, speciesId)
+        }
+    }
+
+    private fun ResolvedRomLayout.withTypedDescriptions(bytes: ByteArray): ResolvedRomLayout {
+        val selected = requireNotNull(tables.descriptions)
+        val table = DescriptionTableLayout(
+            offset = selected.offset.toLong(),
+            count = selected.count.toLong(),
+            recordSize = selected.recordSize,
+            pointerOffsets = selected.pointerOffsets,
+        )
+        val rom = RomImage(bytes)
+        val decoded = DescriptionCodec().decode(
+            RomAnalysisSession(rom, RomHeaderReader.read(rom)),
+            table,
+        ) as DescriptionTableOutcome.Decoded
+        return copy(
+            resolvedDatasets = ResolvedDatasetLayouts(
+                descriptions = ResolvedDescriptionLayout(table, decoded.rows),
+            ),
+        )
+    }
+
+    private fun putGenThreeInfo(
+        target: ByteArray,
+        offset: Int,
+        rate: Int,
+        slotsOffset: Int,
+        slotCount: Int,
+        firstSpecies: Int,
+    ) {
+        target[offset] = rate.toByte()
+        putGbaPointer(target, offset + 4, slotsOffset)
+        repeat(slotCount) { slot ->
+            val entry = slotsOffset + slot * 4
+            target[entry] = (5 + slot).toByte()
+            target[entry + 1] = (7 + slot).toByte()
+            putU16(target, entry + 2, firstSpecies + slot)
+        }
     }
 }

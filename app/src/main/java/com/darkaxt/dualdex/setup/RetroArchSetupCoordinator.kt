@@ -72,7 +72,9 @@ class RetroArchSetupCoordinator(
     private val battleMemory = BattleMemoryCoordinator(
         catalogProvider = runtime::battleCatalogContext,
         publisher = runtime::applyBattleTracking,
+        locationPublisher = runtime::updateLiveArea,
         transportFactory = { UdpNetworkCommandTransport(commandPort) },
+        pollingIntervalProvider = runtime::battlePollingIntervalMs,
     )
     private val restartVerifier = RestartVerifier()
     private val cachedDirectEntries = if (sharedStorage.isGranted()) directIndexStore.read(ALL_FILES_INDEX_KEY) else emptyList()

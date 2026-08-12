@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.validate
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -68,6 +69,92 @@ class SpriteValidatorsTest {
         )
 
         assertFalse(result.compatible)
+    }
+
+    @Test
+    fun countsTheIndirectGen2UnownSpriteTableAsSpeciesCoverage() {
+        val bytes = ByteArray(0xC000)
+        repeat(201) { index ->
+            val entry = index * 6
+            bytes[entry] = 1
+            putU16(bytes, entry + 1, 0x4100)
+            bytes[entry + 3] = 1
+            putU16(bytes, entry + 4, 0x4100)
+        }
+        repeat(6) { byte -> bytes[200 * 6 + byte] = 0xFF.toByte() }
+        repeat(26) { form ->
+            val entry = 0x8000 + form * 6
+            bytes[entry] = 1
+            putU16(bytes, entry + 1, 0x4100)
+            bytes[entry + 3] = 1
+            putU16(bytes, entry + 4, 0x4100)
+        }
+        byteArrayOf(0, 0x12, 0xFF.toByte()).copyInto(bytes, 0x8100)
+
+        val result = SpriteValidators.gen2(
+            RomImage(bytes), pointerTableOffset = 0, speciesCount = 201, bankAdjustment = 0,
+            bankRemap = mapOf(1 to 2),
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(201, result.validRecords)
+    }
+
+    @Test
+    fun rejectsIndirectGen2UnownTableWithMalformedUnsampledForm() {
+        val bytes = ByteArray(0xC000)
+        repeat(201) { index ->
+            val entry = index * 6
+            bytes[entry] = 1
+            putU16(bytes, entry + 1, 0x4100)
+            bytes[entry + 3] = 1
+            putU16(bytes, entry + 4, 0x4100)
+        }
+        repeat(6) { byte -> bytes[200 * 6 + byte] = 0xFF.toByte() }
+        repeat(26) { form ->
+            val entry = 0x8000 + form * 6
+            bytes[entry] = 1
+            putU16(bytes, entry + 1, 0x4100)
+            bytes[entry + 3] = 1
+            putU16(bytes, entry + 4, 0x4100)
+        }
+        putU16(bytes, 0x8000 + 7 * 6 + 1, 0)
+        byteArrayOf(0, 0x12, 0xFF.toByte()).copyInto(bytes, 0x8100)
+
+        val result = SpriteValidators.gen2(
+            RomImage(bytes), pointerTableOffset = 0, speciesCount = 201, bankAdjustment = 0,
+            bankRemap = mapOf(1 to 2),
+        )
+
+        assertEquals(200, result.validRecords)
+    }
+
+    @Test
+    fun rejectsUnrelatedSameLocalOffsetDataAsAnIndirectGen2UnownTable() {
+        val bytes = ByteArray(0xC000)
+        repeat(201) { index ->
+            val entry = index * 6
+            bytes[entry] = 1
+            putU16(bytes, entry + 1, 0x4100)
+            bytes[entry + 3] = 1
+            putU16(bytes, entry + 4, 0x4100)
+        }
+        repeat(6) { byte -> bytes[200 * 6 + byte] = 0xFF.toByte() }
+        listOf(0, 1, 12, 25).forEach { form ->
+            val entry = 0x4000 + form * 6
+            bytes[entry] = 1
+            putU16(bytes, entry + 1, 0x4100)
+            bytes[entry + 3] = 1
+            putU16(bytes, entry + 4, 0x4100)
+        }
+        byteArrayOf(0, 0x12, 0xFF.toByte()).copyInto(bytes, 0x8100)
+
+        val result = SpriteValidators.gen2(
+            RomImage(bytes), pointerTableOffset = 0, speciesCount = 201, bankAdjustment = 0,
+            bankRemap = mapOf(1 to 2),
+        )
+
+        assertEquals(200, result.validRecords)
     }
 
     @Test

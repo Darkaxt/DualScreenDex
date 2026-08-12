@@ -37,7 +37,11 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
                 action.loading.phase == "FAILED" -> state.catalogReady
                 else -> action.loading.completedUnits > 0
             },
-            catalogName = action.name ?: state.catalogName,
+            catalogName = when {
+                action.loading.phase == "FAILED" -> null
+                action.loading.phase == "IDLE" && action.loading.totalUnits == 0 -> null
+                else -> action.name ?: state.catalogName
+            },
             error = if (action.loading.phase == "FAILED") state.error else null,
         )
         is CompanionAction.OpenSpecies -> state.copy(
@@ -58,9 +62,21 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             priorScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.priorScreen,
             screen = if (state.settings.autoOpenTarget) AppScreen.BATTLE else state.screen,
             battle = action.battle,
+            battleReturnScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.battleReturnScreen,
             selectedSpeciesId = action.battle.opponents.getOrNull(action.battle.targetIndex)?.speciesId,
         )
-        CompanionAction.BattleEnded -> state.copy(screen = state.priorScreen, battle = null)
+        is CompanionAction.BattleUpdated -> state.copy(
+            battle = action.battle,
+            selectedSpeciesId = action.battle.opponents.getOrNull(action.battle.targetIndex)?.speciesId,
+        )
+        CompanionAction.BattleEnded -> {
+            val destination = state.battleReturnScreen.takeUnless { it == AppScreen.BATTLE } ?: AppScreen.POKEDEX
+            state.copy(
+                screen = if (state.screen == AppScreen.BATTLE) destination else state.screen,
+                priorScreen = if (state.priorScreen == AppScreen.BATTLE) destination else state.priorScreen,
+                battle = null,
+            )
+        }
         is CompanionAction.SelectTarget -> {
             val battle = state.battle
             if (battle == null || action.index !in battle.opponents.indices) state
@@ -70,6 +86,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             )
         }
         is CompanionAction.SelectMove -> state.copy(battle = state.battle?.copy(selectedMoveId = action.moveId))
+        is CompanionAction.LiveAreaChanged -> state.copy(liveAreaBaseId = action.areaBaseId)
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
         is CompanionAction.Failure -> state.copy(error = action.message)
     }

@@ -2,14 +2,17 @@ package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
+import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
+import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
 import com.enrpau.dualscreendex.parser.sprite.BallSpriteMaterializer
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
+import java.util.Locale
 
 data class CatalogParseResult(
     val analysis: ParseResult,
@@ -48,9 +51,23 @@ object CatalogMaterializer {
         layout: ResolvedRomLayout,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
     ): ParsedCatalog {
-        val baseSpecies = RecordMaterializers.species(rom, layout)
+        val rawSpecies = RecordMaterializers.species(rom, layout)
+        val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
+            layout.resolvedDatasets.abilityNames?.decodedDirectAbilityIds()?.let { decodedIds ->
+                rawSpecies.mapValues { (_, species) ->
+                    val abilityIds = species.abilityIds.value ?: return@mapValues species
+                    species.copy(abilityIds = CatalogField.available(abilityIds.filter(decodedIds::contains)))
+                }
+            } ?: rawSpecies
+        } else {
+            rawSpecies
+        }
         val rawMoves = RecordMaterializers.moves(rom, layout)
-        val chart = RecordMaterializers.typeChart(rom, layout)
+        val chart = if (layout.generation == 3) {
+            layout.resolvedDatasets.typeChart?.catalogMatchups().orEmpty()
+        } else {
+            RecordMaterializers.typeChart(rom, layout)
+        }
         val types = TypePresentationMaterializer.apply(RecordMaterializers.types(layout, baseSpecies, chart, rawMoves))
         val abilities = RecordMaterializers.abilities(rom, layout)
         val initialCapabilities = analysis.capabilities.associateBy { it.capability }.toMutableMap().also { capabilities ->
@@ -77,12 +94,18 @@ object CatalogMaterializer {
 
         val descriptions = RelationshipMaterializers.descriptions(rom, layout)
         val sprites = SpriteMaterializer.pokemon(rom, layout)
+        val resolvedSprites = resolveSpriteAliases(baseSpecies, sprites, layout.generation)
         val mediaSpecies = baseSpecies.mapValues { (id, record) ->
             val dex = record.dexNumber.value ?: id
-            val description = descriptions[if (layout.generation == 3) dex else id]
-            val sprite = sprites[if (layout.generation == 1) dex else id]
+            val descriptionKey = when {
+                layout.pokeemeraldExpansion != null -> id
+                layout.generation == 3 -> dex
+                else -> id
+            }
+            val description = descriptions[descriptionKey]
+            val sprite = resolvedSprites[id]
             record.copy(
-                sprite = sprite?.let(CatalogField.Companion::available)
+                sprite = sprite?.let { CatalogField(CapabilityStatus.AVAILABLE, it.sprite, it.reasons) }
                     ?: CatalogField.notFound("sprite could not be decoded for species $id"),
                 description = description?.text?.let(CatalogField.Companion::available)
                     ?: CatalogField.notFound("description could not be decoded for species $id"),
@@ -97,7 +120,24 @@ object CatalogMaterializer {
 
         val evolutions = RelationshipMaterializers.evolutions(rom, layout)
         val learnsets = RelationshipMaterializers.learnsets(rom, layout)
-        val encounters = EncounterMaterializer.materialize(rom, layout)
+        val encounterMaterialization = EncounterMaterializer.materializeWithEvidence(rom, layout)
+        val rawEncounters = encounterMaterialization.areas
+        val runtimeMetadata = if (layout.generation == 3) {
+            CatalogRuntimeMetadata(
+                gen3SaveBlock1PointerAddress = Gen3SaveBlock1PointerResolver.resolve(rom),
+                areaNamesByBaseId = if (layout.pokeemeraldExpansion == null) {
+                    Gen3MapLocationResolver.resolve(
+                        rom,
+                        rawEncounters.mapTo(linkedSetOf()) { it.id / 10 },
+                    )
+                } else {
+                    emptyMap()
+                },
+            )
+        } else {
+            CatalogRuntimeMetadata()
+        }
+        val encounters = applyResolvedAreaNames(rawEncounters, runtimeMetadata.areaNamesByBaseId)
         val relationshipSpecies = mediaSpecies.mapValues { (id, record) ->
             record.copy(
                 evolutionEdges = if (layout.tables.evolutions != null) {
@@ -115,6 +155,7 @@ object CatalogMaterializer {
         val relationshipCatalog = mediaCatalog.copy(
             speciesById = relationshipSpecies,
             encounterAreas = encounters,
+            runtimeMetadata = runtimeMetadata,
         )
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.RELATIONSHIPS, 3, 5, relationshipCatalog))
 
@@ -185,14 +226,24 @@ object CatalogMaterializer {
             )
         }
         capabilities[RomCapability.ABILITY_DESCRIPTIONS] = if (abilityDescriptions != null) {
+            val expected = abilities.keys.count { it > 0 }
+            val covered = abilityDescriptions.descriptions.keys.count { it > 0 && it in abilities }
+            val complete = covered >= expected
             CapabilityEvidence(
                 capability = RomCapability.ABILITY_DESCRIPTIONS,
                 compatible = true,
                 confidence = abilityDescriptions.confidence,
                 offset = abilityDescriptions.sourceOffset,
-                count = abilityDescriptions.descriptions.size,
-                reasons = listOf("decoded a validated ability-description pointer table"),
-                status = CapabilityStatus.AVAILABLE,
+                count = covered,
+                reasons = listOf(
+                    if (complete) "decoded a structurally referenced ability-description pointer table"
+                    else "decoded a structurally referenced partial ability-description table ($covered/$expected)",
+                ),
+                status = if (complete) CapabilityStatus.AVAILABLE else CapabilityStatus.PARTIAL,
+                reviewStatus = if (complete) CapabilityReviewStatus.NONE else CapabilityReviewStatus.MANUAL_REVIEW,
+                coveredRecords = covered,
+                expectedRecords = expected,
+                incompleteRecords = (expected - covered).coerceAtLeast(0),
             )
         } else {
             CapabilityEvidence(
@@ -229,11 +280,16 @@ object CatalogMaterializer {
             )
         }
         moveAcquisitions.evidence.values.forEach { evidence -> capabilities[evidence.capability] = evidence }
-        capabilities[RomCapability.AREA_ENCOUNTERS] = collectionCapability(
-            RomCapability.AREA_ENCOUNTERS,
-            encounters.size,
-            "structurally decoded encounter areas",
-            "encounter tables were not located",
+        capabilities[RomCapability.AREA_ENCOUNTERS] = CapabilityEvidence(
+            capability = RomCapability.AREA_ENCOUNTERS,
+            compatible = encounters.isNotEmpty(),
+            confidence = if (encounters.isNotEmpty()) 1.0 else 0.0,
+            offset = encounterMaterialization.selectedRootOffset,
+            count = encounters.size.takeIf { it > 0 },
+            recordSize = encounterMaterialization.headerSize,
+            reasons = encounterMaterialization.reasons,
+            status = encounterMaterialization.status,
+            reviewStatus = encounterMaterialization.reviewStatus,
         )
         capabilities[RomCapability.BALL_CATALOG] = if (balls.values.any { it.sprite.status == CapabilityStatus.AVAILABLE }) {
             CapabilityEvidence(
@@ -269,6 +325,7 @@ object CatalogMaterializer {
             encounterAreas = encounters,
             captureBallsById = balls,
             learnsetRulesets = learnsetRulesets,
+            runtimeMetadata = runtimeMetadata,
             capabilities = capabilities,
             diagnostics = buildList {
                 moveDescriptions?.let {
@@ -296,12 +353,83 @@ object CatalogMaterializer {
                             "confidence=${"%.3f".format(java.util.Locale.ROOT, it.confidence)} primary=${it.primary}",
                     )
                 }
+                encounterMaterialization.selectedRootOffset?.let { root ->
+                    add(
+                        "area encounters: root=0x${root.toString(16)} " +
+                            "headerSize=${encounterMaterialization.headerSize} " +
+                            "headers=${encounterMaterialization.headerCount} " +
+                            "populatedMethods=${encounterMaterialization.populatedMethodCount} " +
+                            "areas=${encounters.size} references=${encounterMaterialization.referenceCount} " +
+                            "candidates=${encounterMaterialization.candidateCount}",
+                    )
+                }
             },
         )
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.EXTENDED, 4, 5, catalog))
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, catalog))
         return catalog
     }
+
+    private fun applyResolvedAreaNames(
+        areas: List<EncounterArea>,
+        namesByBaseId: Map<Int, String>,
+    ): List<EncounterArea> = areas.map { area ->
+        val resolvedName = namesByBaseId[area.id / 10] ?: return@map area
+        val methodName = area.name.value
+            ?.substringAfter(" - ", missingDelimiterValue = "")
+            ?.trim()
+            .orEmpty()
+        area.copy(
+            name = CatalogField.available(
+                if (methodName.isEmpty()) resolvedName else "$resolvedName - $methodName",
+            ),
+        )
+    }
+
+    private fun resolveSpriteAliases(
+        species: Map<Int, SpeciesRecord>,
+        decoded: Map<Int, RgbaSprite>,
+        generation: Int,
+    ): Map<Int, ResolvedSprite> {
+        fun spriteFor(id: Int, record: SpeciesRecord): RgbaSprite? =
+            decoded[if (generation == 1) record.dexNumber.value ?: id else id]
+        fun normalizedName(record: SpeciesRecord): String? = record.name.value
+            ?.trim()
+            ?.replace(Regex("\\s+"), " ")
+            ?.uppercase(Locale.ROOT)
+            ?.takeIf(String::isNotBlank)
+
+        val resolved = species.mapNotNull { (id, record) ->
+            spriteFor(id, record)?.let { id to ResolvedSprite(it) }
+        }.toMap().toMutableMap()
+        species.forEach { (id, record) ->
+            if (id in resolved) return@forEach
+            val dex = record.dexNumber.value?.takeIf { it > 0 } ?: return@forEach
+            val name = normalizedName(record) ?: return@forEach
+            val candidates = species.asSequence()
+                .filter { (candidateId, candidate) ->
+                    candidateId != id && candidate.dexNumber.value == dex && normalizedName(candidate) == name
+                }
+                .mapNotNull { (candidateId, candidate) ->
+                    spriteFor(candidateId, candidate)?.let { candidateId to it }
+                }
+                .toList()
+            val uniqueSprites = candidates.map { it.second }.distinct()
+            if (uniqueSprites.size == 1) {
+                val donorId = candidates.minOf { it.first }
+                resolved[id] = ResolvedSprite(
+                    uniqueSprites.single(),
+                    listOf("inferred ROM sprite from species $donorId with the same normalized name and Pokédex index"),
+                )
+            }
+        }
+        return resolved
+    }
+
+    private data class ResolvedSprite(
+        val sprite: RgbaSprite,
+        val reasons: List<String> = emptyList(),
+    )
 
     private fun collectionCapability(
         capability: RomCapability,

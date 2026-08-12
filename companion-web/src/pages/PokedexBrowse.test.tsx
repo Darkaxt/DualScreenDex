@@ -84,6 +84,19 @@ describe('Pokédex knowledge modes', () => {
     expect((screen.getByRole('button', { name: 'AREA' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it('enables Area from resolved live memory without SaveRAM capability or an active battle', () => {
+    render(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      currentAreaIds: [1],
+      saveRam: {
+        status: 'NOT_FOUND', sourceName: null, sourceLastModifiedEpochMs: null, refreshedAtEpochMs: null,
+        autosaveStatus: 'UNKNOWN', capabilities: {}, candidates: [], message: null,
+      },
+    }} send={vi.fn()} />);
+
+    expect((screen.getByRole('button', { name: 'AREA' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('shows ROM-derived day and night markers only while the Area filter is active', () => {
     const windowCatalog: Catalog = {
       ...catalog,

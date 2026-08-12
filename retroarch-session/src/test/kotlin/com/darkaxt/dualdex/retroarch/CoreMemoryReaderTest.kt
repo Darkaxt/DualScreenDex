@@ -8,7 +8,7 @@ import java.util.ArrayDeque
 
 class CoreMemoryReaderTest {
     @Test
-    fun sendsOnlyOneReadRequestAtATimeAndCompletesFragmentedRegions() {
+    fun retriesThePendingReadAndCompletesFragmentedRegionsDespiteALateDuplicate() {
         val sent = mutableListOf<String>()
         val replies = ArrayDeque<ByteArray>()
         val reader = CoreMemoryReadSession(
@@ -20,8 +20,9 @@ class CoreMemoryReaderTest {
         assertEquals(CoreMemoryReadState.Reading(0, 6), reader.start(listOf(CoreMemoryRegion("ewram", 0x02000000, 6))))
         assertEquals(listOf("READ_CORE_MEMORY 2000000 4"), sent)
         assertEquals(CoreMemoryReadState.Reading(0, 6), reader.heartbeat())
-        assertEquals(1, sent.size)
+        assertEquals(listOf("READ_CORE_MEMORY 2000000 4", "READ_CORE_MEMORY 2000000 4"), sent)
 
+        replies += "READ_CORE_MEMORY 2000000 00 01 02 03".toByteArray()
         replies += "READ_CORE_MEMORY 2000000 00 01 02 03".toByteArray()
         assertEquals(CoreMemoryReadState.Reading(4, 6), reader.heartbeat())
         assertEquals("READ_CORE_MEMORY 2000004 2", sent.last())
@@ -33,7 +34,7 @@ class CoreMemoryReaderTest {
     }
 
     @Test
-    fun malformedRepliesFailWithoutSendingAnotherCommand() {
+    fun malformedReplyForThePendingAddressFailsWithoutSendingAnotherCommand() {
         val sent = mutableListOf<String>()
         val replies = ArrayDeque<ByteArray>()
         val reader = CoreMemoryReadSession(
@@ -41,7 +42,7 @@ class CoreMemoryReaderTest {
             poller = { replies.pollFirst() },
         )
         reader.start(listOf(CoreMemoryRegion("window", 0x02001000, 2)))
-        replies += "READ_CORE_MEMORY 2001001 00 01".toByteArray()
+        replies += "READ_CORE_MEMORY 2001000 GG 01".toByteArray()
 
         assertTrue(reader.heartbeat() is CoreMemoryReadState.Failed)
         assertEquals(1, sent.size)

@@ -65,6 +65,10 @@ class AndroidLoopbackServer(
         runtime.action("SETTINGS", mapOf("displayMode" to mode))
     }
 
+    fun updateOverlayScale(scale: Double) {
+        runtime.updateOverlayScale(scale)
+    }
+
     fun setNativeActionHandler(handler: (String, Map<String, String?>) -> Boolean) {
         nativeActionHandler = handler
     }

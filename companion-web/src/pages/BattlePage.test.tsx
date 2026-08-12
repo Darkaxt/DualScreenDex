@@ -1,11 +1,28 @@
 import { cleanup, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
-import { BattlePage } from './BattlePage';
+import { BattlePage, rarityAssessment } from './BattlePage';
+
+const rarityAssessments = [
+  [0.5, 'Probably not worth catching. It seems quite weak and may only serve as a stepping stone.'],
+  [1, 'Probably not worth catching. It seems quite weak and may only serve as a stepping stone.'],
+  [1.5, 'A modest find. It could help for a while, but you may soon outgrow it.'],
+  [2, 'A modest find. It could help for a while, but you may soon outgrow it.'],
+  [2.5, 'A solid catch. It should be a dependable addition to your team.'],
+  [3, 'A solid catch. It should be a dependable addition to your team.'],
+  [3.5, 'An impressive catch. It looks strong enough to become a lasting team member.'],
+  [4, 'An impressive catch. It looks strong enough to become a lasting team member.'],
+  [4.5, 'An exceptional catch. This one has the makings of a standout partner.'],
+  [5, 'An exceptional catch. This one has the makings of a standout partner.'],
+] as const;
 
 afterEach(cleanup);
 
 describe('battle layout', () => {
+  it.each(rarityAssessments)('uses the approved recruitment assessment at %s stars', (stars, assessment) => {
+    expect(rarityAssessment(stars)).toBe(assessment);
+  });
+
   it('opens the targeted species in the full Pokédex from the identity header', () => {
     const { catalog, state } = fixture(1);
     const send = vi.fn();
@@ -80,10 +97,97 @@ describe('battle layout', () => {
     state.settings.knowledgeMode = 'ORGANIC';
     state.battle = { ...state.battle!, effectiveness: null, effectivenessKnown: false };
 
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(container.querySelector('.effect-result strong')?.textContent).toBe('—');
+    expect(screen.queryByText('UNKNOWN')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'RESOLVE ATTACK' })).toBeNull();
+  });
+
+  it('renders five stars between the name and Pokédex shortcut with half-star fill', () => {
+    const { catalog, state } = fixture(1);
+    state.battle!.opponents[0].rarity = {
+      relativeTier: 'WEAK', innateTier: 'STANDARD', baseStars: 1, areaAdjustment: -0.5, stars: 0.5,
+    };
+
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+    const identityChildren = container.querySelector('.battle-name-row')?.children;
+
+    expect(identityChildren?.[0].tagName).toBe('H1');
+    expect(identityChildren?.[1].classList.contains('rarity-stars')).toBe(true);
+    expect(identityChildren?.[2].classList.contains('battle-dex-link')).toBe(true);
+    expect(container.querySelectorAll('.rarity-star')).toHaveLength(5);
+    expect(container.querySelectorAll('.rarity-star-fill[style="width: 50%;"]')).toHaveLength(1);
+    expect(screen.getByLabelText('0.5 of 5 stars; WEAK STANDARD')).toBeTruthy();
+  });
+
+  it('combines both tiers in the rarity title', () => {
+    const { catalog, state } = fixture(1);
+    state.battleTab = 'RARITY';
+    state.battle!.opponents[0].rarity = {
+      relativeTier: 'WEAK', innateTier: 'STANDARD', baseStars: 1, areaAdjustment: -0.5, stars: 0.5,
+    };
+
     render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
-    expect(screen.getByText('UNKNOWN')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'RESOLVE ATTACK' })).toBeNull();
+    expect(screen.getByText('WEAK STANDARD')).toBeTruthy();
+    expect(screen.queryByText(/CURRENT PARTY/)).toBeNull();
+  });
+
+  it('uses final stars for recruitment advice without inventing an unknown tier', () => {
+    const { catalog, state } = fixture(1);
+    state.battleTab = 'RARITY';
+    state.battle!.opponents[0].rarity = {
+      relativeTier: null, innateTier: 'TRAINED', baseStars: 2, areaAdjustment: null, stars: 2,
+      areaOutcome: 'AREA_NOT_IN_CATALOG', currentAreaBaseId: 0x0202, matchingAreaCount: 0, candidateAreaCount: 0,
+    };
+
+    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('TRAINED')).toBeTruthy();
+    expect(screen.queryByText(/UNKNOWN TRAINED/)).toBeNull();
+    expect(screen.getByLabelText('2 of 5 stars; TRAINED')).toBeTruthy();
+    expect(screen.getByText('A modest find. It could help for a while, but you may soon outgrow it.')).toBeTruthy();
+    expect(screen.queryByText(/UNKNOWN|area|SaveRAM|encounter|formula/i)).toBeNull();
+  });
+
+  it('uses the same generic fallback for a missing Battle Target Entry', () => {
+    const { catalog, state } = fixture(1);
+    catalog.species[0].description = null;
+    state.battleTab = 'ENTRY';
+
+    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
+  });
+
+  it('renders only organic recruitment advice even when technical evidence is present', () => {
+    const { catalog, state } = fixture(1);
+    state.battleTab = 'RARITY';
+    state.battle!.opponents[0].rarity = {
+      relativeTier: 'ORDINARY', innateTier: 'TRAINED', baseStars: 2, areaAdjustment: 0, stars: 2,
+      areaOutcome: 'APPLIED_UNIQUE_ENCOUNTER', currentAreaBaseId: 0x0202, matchingAreaCount: 0, candidateAreaCount: 1,
+    };
+
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('ORDINARY TRAINED')).toBeTruthy();
+    expect(screen.getByText('A modest find. It could help for a while, but you may soon outgrow it.')).toBeTruthy();
+    expect(container.querySelector('.rarity-card')?.textContent).not.toMatch(/Compared with|encounter table|First word|Second|Route 101|SaveRAM|0x0202|UNKNOWN/i);
+  });
+
+  it('reports unavailable rarity without inventing stars when innate data is missing', () => {
+    const { catalog, state } = fixture(1);
+    state.battleTab = 'RARITY';
+    state.battle!.opponents[0].rarity = {
+      relativeTier: 'COMPETENT', innateTier: null, baseStars: null, areaAdjustment: 0.5, stars: null,
+    };
+
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('RARITY UNAVAILABLE')).toBeTruthy();
+    expect(container.querySelector('.rarity-stars')).toBeNull();
+    expect(container.querySelector('.rarity-card p')).toBeNull();
   });
 });
 
@@ -97,10 +201,16 @@ function fixture(opponentCount: number): { catalog: Catalog; state: State } {
       { id: 2, dex: 2, name: 'Hitmonchan', typeIds: [1], stats: null, description: 'Entry', height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
     ],
   } satisfies Catalog;
-  const opponents = catalog.species.slice(0, opponentCount).map(species => ({ speciesId: species.id, level: 34, typeIds: species.typeIds, rarity: 'Ordinary Good', moves: [] }));
+  const opponents: NonNullable<State['battle']>['opponents'] = catalog.species.slice(0, opponentCount).map(species => ({
+    speciesId: species.id,
+    level: 34,
+    typeIds: species.typeIds,
+    rarity: { relativeTier: 'ORDINARY', innateTier: 'VETERAN', baseStars: 3, areaAdjustment: 0, stars: 3 },
+    moves: [],
+  }));
   const state = {
     version: 1, screen: 'BATTLE', priorScreen: 'POKEDEX', settingsReturnScreen: 'BATTLE', selectedSpeciesId: null, filter: 'ALL', selectedAreaId: null, battleTab: 'ATTACK',
-    settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
+    settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', battlePollingIntervalMs: 5 },
     speciesState: { 1: { seen: true, caught: false, team: false, ballId: null }, 2: { seen: true, caught: false, team: false, ballId: null } }, observedMoves: {},
     battle: { opponents, targetIndex: 0, targetMode: 'AUTOMATIC', capabilities: {}, selectedMoveId: 1, effectiveness: 'NEUTRAL', effectivenessKnown: true },
     catalogReady: true, catalogName: 'fixture.gba', error: null, activeRulesetId: null, rulesetAssumed: true,

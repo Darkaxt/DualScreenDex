@@ -23,7 +23,7 @@ data class CompanionSettings(
     val theme: Theme = Theme.GAME,
     val displayTarget: DisplayTarget = DisplayTarget.AUTO,
     val overlayScale: Double = 1.0,
-    val thorTopScreenFocus: Boolean = false,
+    val battlePollingIntervalMs: Int = 5,
 )
 
 data class OwnedPokemon(
@@ -99,7 +99,9 @@ data class AppSnapshot(
     val battleTab: BattleTab = BattleTab.ENTRY,
     val settings: CompanionSettings = CompanionSettings(),
     val ledger: KnowledgeLedger = KnowledgeLedger(),
+    val liveAreaBaseId: Int? = null,
     val battle: BattleState? = null,
+    val battleReturnScreen: AppScreen = AppScreen.POKEDEX,
     val catalogReady: Boolean = false,
     val catalogName: String? = null,
     val error: String? = null,
@@ -116,9 +118,11 @@ sealed interface CompanionAction {
     data class SetBattleTab(val tab: BattleTab) : CompanionAction
     data class UpdateSettings(val settings: CompanionSettings) : CompanionAction
     data class BattleStarted(val battle: BattleState) : CompanionAction
+    data class BattleUpdated(val battle: BattleState) : CompanionAction
     data object BattleEnded : CompanionAction
     data class SelectTarget(val index: Int) : CompanionAction
     data class SelectMove(val moveId: Int) : CompanionAction
+    data class LiveAreaChanged(val areaBaseId: Int?) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction
     data class Failure(val message: String) : CompanionAction
 }

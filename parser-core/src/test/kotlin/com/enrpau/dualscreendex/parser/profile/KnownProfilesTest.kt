@@ -34,4 +34,26 @@ class KnownProfilesTest {
             }
         }
     }
+
+    @Test
+    fun goldAndSilverUseTheCompiledSequentialPokedexEntryBanks() {
+        KnownProfiles.forFamily(EngineFamily.GOLD_SILVER).forEach { profile ->
+            assertEquals(
+                "${profile.name} Pokédex entry banks",
+                listOf(0x68, 0x69, 0x6A, 0x6B),
+                profile.tables.descriptions?.banks,
+            )
+        }
+    }
+
+    @Test
+    fun crystalUsesItsCompiledExplicitPokedexEntryBanks() {
+        KnownProfiles.forFamily(EngineFamily.CRYSTAL).forEach { profile ->
+            assertEquals(
+                "${profile.name} Pokédex entry banks",
+                listOf(0x60, 0x6E, 0x73, 0x74),
+                profile.tables.descriptions?.banks,
+            )
+        }
+    }
 }

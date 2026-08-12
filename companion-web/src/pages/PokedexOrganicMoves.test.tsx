@@ -28,7 +28,8 @@ describe('Organic Pokédex move knowledge', () => {
     renderDetail(uncaughtState, 'STATS');
 
     expect(screen.getByRole('tab', { name: 'ENTRY' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByText('KNOWLEDGE WITHHELD')).toBeTruthy();
+    expect(screen.getByText('DATA NOT AVAILABLE')).toBeTruthy();
+    expect(screen.getByText('Catch this Pokémon to add its full Pokédex data.')).toBeTruthy();
   });
 
   it('shows only witnessed moves without their ROM acquisition levels before capture', () => {
@@ -51,11 +52,35 @@ describe('Organic Pokédex move knowledge', () => {
     expect(screen.getByText('Lv 7')).toBeTruthy();
     expect(screen.queryByText(/OBSERVED|FREQUENCY/i)).toBeNull();
   });
+
+  it('does not silently use a primary level-up table while multi-table Auto is unresolved', () => {
+    renderDetail({
+      ...uncaughtState,
+      activeRulesetId: null,
+      rulesetAssumed: true,
+      speciesState: { 4: { seen: true, caught: true, team: false, ballId: null } },
+    }, 'MOVES', {
+      ...catalog,
+      rulesets: [
+        ...catalog.rulesets,
+        { id: 'modern', label: 'Modern', sourceOffset: 2, confidence: 1, primary: false },
+      ],
+    });
+
+    expect(screen.getByText('Move list not selected')).toBeTruthy();
+    expect(screen.queryByText('Scratch')).toBeNull();
+    expect(screen.queryByText('Ember')).toBeNull();
+    expect(screen.getByText('Choose a level-up list in Settings.')).toBeTruthy();
+  });
 });
 
-function renderDetail(state: State, tab: 'ENTRY' | 'STATS' | 'MOVES' | 'MORE' = 'MOVES') {
+function renderDetail(
+  state: State,
+  tab: 'ENTRY' | 'STATS' | 'MOVES' | 'MORE' = 'MOVES',
+  selectedCatalog: Catalog = catalog,
+) {
   render(<PokedexDetail
-    catalog={catalog}
+    catalog={selectedCatalog}
     state={state}
     send={vi.fn()}
     tab={tab}

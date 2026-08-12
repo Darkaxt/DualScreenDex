@@ -12,7 +12,7 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
     CAUGHT: available('CAUGHT'),
     SEEN: available('SEEN'),
     TEAM: available('PARTY') && available('SPECIES'),
-    AREA: available('CURRENT_AREA') && (state.currentAreaIds?.length ?? 0) > 0,
+    AREA: (state.currentAreaIds?.length ?? 0) > 0,
   } as const;
   const visible = useMemo(() => catalog.species.filter(species => {
     const status = state.speciesState[species.id];
@@ -34,7 +34,7 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
     <div class="browse-tools">
       <label class="search-box"><span>SEARCH</span><input value={search} onInput={event => setSearch(event.currentTarget.value)} placeholder="NAME OR NUMBER" /></label>
       <div class="filter-strip" aria-label="Pokédex filters">
-        {(['ALL', 'CAUGHT', 'SEEN', 'TEAM', 'AREA'] as const).map(filter => <button key={filter} disabled={!filterEnabled[filter]} title={!filterEnabled[filter] ? `${filter} is unavailable from the current SaveRAM` : undefined} class={state.filter === filter ? 'active' : ''} onClick={() => send('FILTER', { filter, areaId: null })}>{filter}</button>)}
+        {(['ALL', 'CAUGHT', 'SEEN', 'TEAM', 'AREA'] as const).map(filter => <button key={filter} disabled={!filterEnabled[filter]} title={!filterEnabled[filter] ? `${filter} filter unavailable` : undefined} class={state.filter === filter ? 'active' : ''} onClick={() => send('FILTER', { filter, areaId: null })}>{filter}</button>)}
       </div>
     </div>
     <div class="species-list" data-scroll-region>
@@ -47,7 +47,7 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
           <StatusMarks state={state.speciesState[species.id]} catalog={catalog} />
         </span>
       </button>)}
-      {visible.length === 0 && <div class="empty-state"><strong>NO DISCOVERIES YET</strong><p>Change the information policy or select a different filter.</p></div>}
+      {visible.length === 0 && <div class="empty-state"><strong>NO POKÉMON FOUND</strong><p>Pokémon you discover will appear here.</p></div>}
     </div>
   </section>;
 }

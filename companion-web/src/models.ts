@@ -75,7 +75,7 @@ export interface Settings {
   theme?: 'GAME' | 'DARK' | 'LIGHT';
   displayTarget?: 'AUTO' | 'HANDHELD' | 'EXTERNAL';
   overlayScale?: number;
-  thorTopScreenFocus?: boolean;
+  battlePollingIntervalMs?: number;
 }
 
 export interface SpeciesState {
@@ -115,6 +115,19 @@ export interface RetroArchState {
   message: string | null;
 }
 
+export interface Rarity {
+  relativeTier: 'WEAK' | 'ORDINARY' | 'COMPETENT' | 'STRONG' | 'MAJOR' | null;
+  innateTier: 'FODDER' | 'STANDARD' | 'TRAINED' | 'VETERAN' | 'ELITE' | 'ACE' | null;
+  baseStars: number | null;
+  areaAdjustment: number | null;
+  stars: number | null;
+  areaOutcome?: 'AREA_UNAVAILABLE' | 'AREA_NOT_IN_CATALOG' | 'SPECIES_LEVEL_NOT_IN_AREA' | 'INVALID_WEIGHTS' | 'AMBIGUOUS_TIER' | 'APPLIED' | 'APPLIED_UNIQUE_ENCOUNTER';
+  currentAreaBaseId?: number | null;
+  currentAreaName?: string | null;
+  matchingAreaCount?: number;
+  candidateAreaCount?: number;
+}
+
 export interface State {
   version: number;
   screen: Screen;
@@ -124,12 +137,14 @@ export interface State {
   filter: 'ALL' | 'CAUGHT' | 'SEEN' | 'TEAM' | 'AREA';
   selectedAreaId: number | null;
   currentAreaIds?: number[];
+  currentAreaBaseId?: number | null;
+  currentAreaName?: string | null;
   battleTab: 'ENTRY' | 'ATTACK' | 'RARITY' | 'MOVES';
   settings: Settings;
   speciesState: Record<number, SpeciesState>;
   observedMoves: Record<number, { moveId: number; frequency: number }[]>;
   battle: null | {
-    opponents: { speciesId: number; level: number; typeIds: number[]; rarity: string; moves: { moveId: number; frequency: number }[] }[];
+    opponents: { speciesId: number; level: number; typeIds: number[]; rarity: Rarity; moves: { moveId: number; frequency: number }[] }[];
     targetIndex: number;
     targetMode: 'AUTOMATIC' | 'MANUAL_TARGET_FALLBACK';
     capabilities: Record<string, string>;
@@ -150,4 +165,33 @@ export interface State {
 export interface Bootstrap {
   catalog: Catalog | null;
   state: State;
+}
+
+export interface DiagnosticCapability {
+  capability: string;
+  status: string;
+  confidence: number;
+  offset: number | null;
+  count: number | null;
+  recordSize: number | null;
+  elementSize?: number | null;
+  validRecords?: number | null;
+  totalRecords?: number | null;
+  reviewStatus?: string | null;
+  reasons: string[];
+}
+
+export interface DiagnosticView {
+  romName: string | null;
+  sha256: string;
+  crc32: string;
+  family: string;
+  platform: string;
+  activeRulesetId: string | null;
+  rulesetAssumed: boolean;
+  rulesets: Catalog['rulesets'];
+  capabilities: DiagnosticCapability[];
+  parserDiagnostics: string[];
+  species: Species | null;
+  move: Move | null;
 }

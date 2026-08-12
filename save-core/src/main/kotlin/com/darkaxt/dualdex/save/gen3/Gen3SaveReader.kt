@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.save.gen3
 import com.darkaxt.dualdex.save.SaveCapability
 import com.darkaxt.dualdex.save.SaveCapabilityEvidence
 import com.darkaxt.dualdex.save.SaveCapabilityStatus
+import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveParseResult
 import com.darkaxt.dualdex.save.SaveSnapshot
@@ -30,6 +31,10 @@ object Gen3SaveReader {
         val storageResult = readStorage(storage, newest.storageBoxCount, context)
         val individuals = partyResult.records + storageResult.records
         val pokedex = resolvePokedexLayout(saveBlock2, flagBytes, context, partyResult.records)
+        val levelUpRuleset = detectLevelUpRuleset(saveBlock1, context)
+        val levelUpRulesetFingerprint = levelUpRuleset.first?.takeIf { levelUpRuleset.second }?.let { id ->
+            LevelUpRulesetDetectionFingerprint.create(context.levelUpRulesetSelectors, id)
+        }
         val caught = pokedex.caught
         val seen = pokedex.seen
         val capabilities = linkedMapOf(
@@ -59,8 +64,33 @@ object Gen3SaveReader {
                 party = partyResult.records,
                 storedIndividuals = storageResult.records,
                 capabilities = capabilities,
+                detectedLevelUpRulesetId = levelUpRuleset.first,
+                levelUpRulesetDetectionResolved = levelUpRuleset.second && levelUpRulesetFingerprint != null,
+                levelUpRulesetDetectionFingerprint = levelUpRulesetFingerprint,
             ),
         )
+    }
+
+    private fun detectLevelUpRuleset(
+        saveBlock1: ByteArray,
+        context: SaveParseContext,
+    ): Pair<String?, Boolean> {
+        val selectors = context.levelUpRulesetSelectors
+        if (selectors.isEmpty() || selectors.map { it.rulesetId }.distinct().size != selectors.size) {
+            return null to false
+        }
+        val valid = selectors.all { selector ->
+            selector.rulesetId.isNotBlank() &&
+                selector.saveBlock1ByteOffset in saveBlock1.indices &&
+                selector.mask in 1..0x80 && selector.mask and (selector.mask - 1) == 0 &&
+                selector.expectedValue in 0..0xFF && selector.expectedValue and selector.mask == selector.expectedValue
+        }
+        if (!valid) return null to false
+        val matches = selectors.filter { selector ->
+            val value = saveBlock1[selector.saveBlock1ByteOffset].toInt() and 0xFF
+            value and selector.mask == selector.expectedValue
+        }
+        return if (matches.size == 1) matches.single().rulesetId to true else null to false
     }
 
     private fun readCompleteSlots(bytes: ByteArray): List<Slot> {

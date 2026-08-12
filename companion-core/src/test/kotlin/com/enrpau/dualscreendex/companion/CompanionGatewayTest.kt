@@ -45,4 +45,30 @@ class CompanionGatewayTest {
         assertEquals(AppScreen.BATTLE, detail.priorScreen)
         assertEquals(AppScreen.BATTLE, returned.screen)
     }
+
+    @Test
+    fun liveBattleUpdatesAndBattleEndPreserveAManuallyOpenedPokedexDetail() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
+        gateway.dispatch(CompanionAction.OpenSpecies(25))
+
+        val updated = gateway.dispatch(CompanionAction.BattleUpdated(BattleState(emptyList())))
+        val ended = gateway.dispatch(CompanionAction.BattleEnded)
+        val returned = gateway.dispatch(CompanionAction.BackToPokedex)
+
+        assertEquals(AppScreen.DETAIL, updated.screen)
+        assertEquals(AppScreen.DETAIL, ended.screen)
+        assertEquals(AppScreen.POKEDEX, returned.screen)
+    }
+
+    @Test
+    fun battleEndDoesNotDiscardTheContinuouslySampledLiveArea() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.LiveAreaChanged(0x0010))
+        gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
+
+        val ended = gateway.dispatch(CompanionAction.BattleEnded)
+
+        assertEquals(0x0010, ended.liveAreaBaseId)
+    }
 }

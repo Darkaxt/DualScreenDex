@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
+import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 data class PokeemeraldExpansionFirstRegisters(
@@ -35,23 +36,56 @@ object PokeemeraldExpansionResolver {
         }.singleOrNull()
     }
 
-    fun validateDescriptions(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence =
-        validateSpeciesPointerField(
+    fun validateDescriptions(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence {
+        val table = resolution.tables.baseStats ?: error("resolved expansion species table is absent")
+        return validateSpeciesPointerField(
             rom,
             resolution,
             resolution.metadata.descriptionPointerOffset,
             "description",
             minimumRatio = 0.80,
-        ) { pointer -> plausibleInlineName(rom, pointer, 512) }
+        ) { pointer -> plausibleInlineName(rom, pointer, 512) }.copy(
+            offset = table.offset,
+            recordSize = resolution.metadata.speciesRecordSize,
+        )
+    }
 
-    fun validateSprites(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence =
-        validateSpeciesPointerField(
-            rom,
-            resolution,
-            resolution.metadata.frontSpritePointerOffset,
-            "front sprite",
-            minimumRatio = 0.80,
-        ) { pointer -> pointer in 0 until rom.size }
+    fun validateSprites(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence {
+        val table = resolution.tables.baseStats ?: error("resolved expansion species table is absent")
+        val stride = resolution.metadata.speciesRecordSize
+        var valid = 0
+        repeat(resolution.speciesCount) { id ->
+            val record = table.offset + id * stride
+            val graphicsPointer = runCatching {
+                rom.gbaPointer(record + resolution.metadata.frontSpritePointerOffset)
+            }.getOrNull()
+            val palettePointer = runCatching {
+                rom.gbaPointer(record + resolution.metadata.normalPalettePointerOffset)
+            }.getOrNull()
+            val graphicsValid = graphicsPointer?.let { pointer ->
+                runCatching {
+                    val decoded = GbaRomCompression.decodeAt(rom, pointer)
+                    decoded.size >= 2048 && decoded.size % 2048 == 0
+                }.getOrDefault(false)
+            } == true
+            val paletteValid = palettePointer?.let { pointer ->
+                runCatching { rom.slice(pointer, 32).size == 32 }.getOrDefault(false)
+            } == true
+            if (graphicsValid && paletteValid) valid++
+        }
+        val confidence = valid.toDouble() / resolution.speciesCount
+        return ValidationEvidence(
+            compatible = confidence >= 0.80,
+            validRecords = valid,
+            totalRecords = resolution.speciesCount,
+            confidence = confidence,
+            reasons = if (confidence >= 0.80) emptyList() else {
+                listOf("decodable expansion front sprites and raw palettes $valid/${resolution.speciesCount} below 80%")
+            },
+            offset = table.offset + resolution.metadata.frontSpritePointerOffset,
+            recordSize = 4,
+        )
+    }
 
     fun validateLearnsets(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence =
         validateSpeciesPointerField(

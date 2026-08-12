@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -28,6 +29,36 @@ class PokeemeraldExpansionResolverTest {
         assertEquals("BULBA", resolved.firstRegisters.speciesName)
         assertEquals("POUND", resolved.firstRegisters.moveName)
         assertEquals("STENCH", resolved.firstRegisters.abilityName)
+    }
+
+    @Test
+    fun descriptionValidationPreservesTheSpeciesTableRootAndStride() {
+        val bytes = fixture()
+        val resolved = requireNotNull(PokeemeraldExpansionResolver.resolve(RomImage(bytes)))
+
+        val evidence = PokeemeraldExpansionResolver.validateDescriptions(RomImage(bytes), resolved)
+
+        assertEquals(true, evidence.compatible)
+        assertEquals(0x1000, evidence.offset)
+        assertEquals(180, evidence.recordSize)
+    }
+
+    @Test
+    fun spriteValidationRequiresDecodableExpansionGraphicsInsteadOfOnlyAnInBoundsPointer() {
+        val valid = fixture().also { bytes ->
+            Base64.getDecoder().decode("ASAIAAAAKAABAAAAAAH+BwEAAAA=").copyInto(bytes, 0x8100)
+            bytes[0x8200 + 2] = 0x1F
+        }
+        val validResolution = requireNotNull(PokeemeraldExpansionResolver.resolve(RomImage(valid)))
+        val validEvidence = PokeemeraldExpansionResolver.validateSprites(RomImage(valid), validResolution)
+        assertEquals(true, validEvidence.compatible)
+        assertEquals(19, validEvidence.validRecords)
+
+        val malformed = valid.copyOf().also { it[0x8100] = 7 }
+        val malformedResolution = requireNotNull(PokeemeraldExpansionResolver.resolve(RomImage(malformed)))
+        val malformedEvidence = PokeemeraldExpansionResolver.validateSprites(RomImage(malformed), malformedResolution)
+        assertEquals(false, malformedEvidence.compatible)
+        assertEquals(0, malformedEvidence.validRecords)
     }
 
     private fun fixture(): ByteArray {

@@ -1,0 +1,15 @@
+export const gameplayCopy = {
+  dataUnavailable: 'DATA NOT AVAILABLE',
+  catchForEntry: 'Catch this Pokémon to add its Pokédex entry.',
+  catchForFullData: 'Catch this Pokémon to add its full Pokédex data.',
+  pokedexUnavailable: 'No compatible Pokédex entry is available for this species.',
+  noMoveSelected: 'NO MOVE SELECTED',
+  selectMove: 'Select a move in battle to view its details.',
+  noMovesRecorded: 'NO MOVES RECORDED',
+  movesWillAppear: 'Moves used in battle will appear here.',
+  moveEffectUnavailable: 'Move effect data not available.',
+  abilityUnavailable: 'Ability data not available.',
+  moveDataUnavailable: 'MOVE DATA NOT AVAILABLE',
+  chooseMoveList: 'Choose a level-up list in Settings.',
+  noAdditionalData: 'No additional data available.',
+} as const;

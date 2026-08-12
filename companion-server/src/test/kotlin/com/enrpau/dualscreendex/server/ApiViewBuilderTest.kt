@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.server
 
 import com.google.gson.Gson
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
+import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.MoveObservation
@@ -171,6 +172,7 @@ class ApiViewBuilderTest {
                 ),
             ),
             catalog,
+            saveRam = SaveRamView(status = "MATCHED"),
         )
 
         assertTrue(view.speciesState.getValue(25).caught)

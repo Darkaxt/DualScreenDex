@@ -41,16 +41,21 @@ object SpriteValidators {
         pointerTableOffset: Int,
         speciesCount: Int,
         bankAdjustment: Int,
+        bankRemap: Map<Int, Int> = emptyMap(),
     ): ValidationEvidence = safely(pointerTableOffset, GEN2_POINTER_RECORD_SIZE, speciesCount) {
         var validPointers = 0
         repeat(speciesCount) { index ->
             val base = pointerTableOffset + index * GEN2_POINTER_RECORD_SIZE
-            if (gen2Pointers(rom, base, bankAdjustment).all { it != null }) validPointers++
+            if (gen2Pointers(rom, pointerTableOffset, base, index, bankAdjustment, bankRemap).all { it != null }) {
+                validPointers++
+            }
         }
         val samples = sampleIndices(speciesCount)
         val validSamples = samples.count { index ->
             val base = pointerTableOffset + index * GEN2_POINTER_RECORD_SIZE
-            gen2Pointers(rom, base, bankAdjustment).all { offset -> offset != null && validLz3Stream(rom, offset) }
+            gen2Pointers(rom, pointerTableOffset, base, index, bankAdjustment, bankRemap).all { offset ->
+                offset != null && validLz3Stream(rom, offset)
+            }
         }
         result(
             validPointers, speciesCount, validSamples, samples.size, pointerTableOffset,
@@ -97,10 +102,69 @@ object SpriteValidators {
         )
     }
 
-    private fun gen2Pointers(rom: RomImage, base: Int, bankAdjustment: Int): List<Int?> = listOf(
-        rom.gbBankAddress(rom.u8(base) + bankAdjustment, rom.u16le(base + 1)),
-        rom.gbBankAddress(rom.u8(base + 3) + bankAdjustment, rom.u16le(base + 4)),
+    private fun gen2Pointers(
+        rom: RomImage,
+        pointerTableOffset: Int,
+        base: Int,
+        index: Int,
+        bankAdjustment: Int,
+        bankRemap: Map<Int, Int>,
+    ): List<Int?> {
+        val direct = directGen2Pointers(rom, base, bankAdjustment, bankRemap)
+        if (direct.all { it != null } || index != GEN2_UNOWN_INDEX || !isEmptyGen2PicRow(rom, base)) return direct
+        return locateGen2UnownPointers(rom, pointerTableOffset, bankAdjustment, bankRemap) ?: direct
+    }
+
+    private fun directGen2Pointers(
+        rom: RomImage,
+        base: Int,
+        bankAdjustment: Int,
+        bankRemap: Map<Int, Int>,
+    ): List<Int?> = listOf(
+        rom.gbBankAddress(bankRemap[rom.u8(base)] ?: rom.u8(base) + bankAdjustment, rom.u16le(base + 1)),
+        rom.gbBankAddress(bankRemap[rom.u8(base + 3)] ?: rom.u8(base + 3) + bankAdjustment, rom.u16le(base + 4)),
     )
+
+    private fun locateGen2UnownPointers(
+        rom: RomImage,
+        pointerTableOffset: Int,
+        bankAdjustment: Int,
+        bankRemap: Map<Int, Int>,
+    ): List<Int?>? {
+        val bankLocalOffset = pointerTableOffset % GB_BANK_SIZE
+        var bank = 0
+        while (bank * GB_BANK_SIZE + bankLocalOffset + GEN2_UNOWN_FORMS * GEN2_POINTER_RECORD_SIZE <= rom.size) {
+            val candidate = bank * GB_BANK_SIZE + bankLocalOffset
+            if (candidate != pointerTableOffset && (0 until GEN2_UNOWN_FORMS).all { form ->
+                    validGen2PicRow(
+                        rom,
+                        candidate + form * GEN2_POINTER_RECORD_SIZE,
+                        bankAdjustment,
+                        bankRemap,
+                    )
+                }
+            ) {
+                return directGen2Pointers(rom, candidate, bankAdjustment, bankRemap)
+            }
+            bank++
+        }
+        return null
+    }
+
+    private fun validGen2PicRow(
+        rom: RomImage,
+        base: Int,
+        bankAdjustment: Int,
+        bankRemap: Map<Int, Int>,
+    ): Boolean {
+        if (rom.u16le(base + 1) !in 0x4000..0x7FFF || rom.u16le(base + 4) !in 0x4000..0x7FFF) return false
+        return directGen2Pointers(rom, base, bankAdjustment, bankRemap).all { offset ->
+            offset != null && validLz3Stream(rom, offset)
+        }
+    }
+
+    private fun isEmptyGen2PicRow(rom: RomImage, base: Int): Boolean =
+        (0 until GEN2_POINTER_RECORD_SIZE).all { rom.u8(base + it) == 0xFF }
 
     private fun validGen1Stream(rom: RomImage, offset: Int, expectedDimensions: Int): Boolean = try {
         val bankEnd = minOf(rom.size, ((offset / GB_BANK_SIZE) + 1) * GB_BANK_SIZE)
@@ -277,6 +341,8 @@ object SpriteValidators {
     private const val GEN1_FRONT_POINTER_OFFSET = 11
     private const val GEN1_BACK_POINTER_OFFSET = 13
     private const val GEN2_POINTER_RECORD_SIZE = 6
+    private const val GEN2_UNOWN_INDEX = 200
+    private const val GEN2_UNOWN_FORMS = 26
     private const val GB_BANK_SIZE = 0x4000
     private const val MAX_LZ_COMMANDS = 4096
     private const val MAX_SPRITE_OUTPUT = 0x10000

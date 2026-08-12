@@ -85,7 +85,7 @@ object TableValidators {
         val reasons = mutableListOf<String>()
         repeat(count) { index ->
             val decoded = codec.decodeDetailed(rom.slice(offset + index * width, width))
-            val plausible = plausibleFixedName(decoded, width, codec, minimumRatio)
+            val plausible = plausibleFixedName(decoded, width, minimumRatio)
             if (plausible) valid++
         }
         val confidence = valid.toDouble() / count.coerceAtLeast(1)
@@ -103,21 +103,34 @@ object TableValidators {
     ): Int? {
         if (offset < 0 || width <= 0 || offset >= rom.size) return null
         var lastGood = 0
+        var pendingFullWidth = false
         var consecutiveInvalid = 0
         for (index in 0 until maximumCount) {
             val recordOffset = offset.toLong() + index.toLong() * width
             if (recordOffset + width > rom.size) break
             val decoded = codec.decodeDetailed(rom.slice(recordOffset.toInt(), width))
-            val valid = plausibleFixedName(decoded, width, codec, minimumRatio = 0.8)
-            if (valid) {
+            val valid = plausibleFixedName(decoded, width, minimumRatio = 0.8)
+            if (valid && !decoded.terminated) {
+                if (pendingFullWidth && decoded.text.firstOrNull(Char::isLetterOrDigit)?.isLowerCase() == true) break
+                pendingFullWidth = true
+                consecutiveInvalid = 0
+            } else if (valid) {
+                if (pendingFullWidth && !looksLikeStandaloneFixedName(decoded.text)) break
                 lastGood = index + 1
+                pendingFullWidth = false
                 consecutiveInvalid = 0
             } else {
+                if (pendingFullWidth) break
                 consecutiveInvalid++
                 if (consecutiveInvalid >= 2 && index + 1 >= minimumCount) break
             }
         }
         return lastGood.takeIf { it >= minimumCount }
+    }
+
+    private fun looksLikeStandaloneFixedName(value: String): Boolean {
+        val first = value.firstOrNull(Char::isLetterOrDigit) ?: return false
+        return !first.isLetter() || first.isUpperCase()
     }
 
     fun locateFixedNameTable(
@@ -128,7 +141,7 @@ object TableValidators {
         preferredOffset: Int? = null,
     ): ValidationEvidence? = locateFixedTable(rom, count, candidateWidths, preferredOffset) { offset, width ->
         val decoded = codec.decodeDetailed(rom.slice(offset, width))
-        plausibleFixedName(decoded, width, codec, minimumRatio = 0.8)
+        plausibleFixedName(decoded, width, minimumRatio = 0.8)
     }
 
     fun locateFixedNameSequenceNear(
@@ -193,13 +206,15 @@ object TableValidators {
     private fun plausibleFixedName(
         decoded: com.enrpau.dualscreendex.parser.text.DecodedText,
         width: Int,
-        codec: PokemonTextCodec,
         minimumRatio: Double,
     ): Boolean {
         if (decoded.text.isBlank() || decoded.validRatio < minimumRatio) return false
         if (decoded.terminated) return true
-        return codec.name == PokemonTextCodec.gbEnglish.name &&
-            decoded.contentBytes == width && decoded.validBytes == width
+        val distinctNameCharacters = decoded.text.asSequence()
+            .filter(Char::isLetterOrDigit)
+            .map(Char::lowercaseChar)
+            .toSet()
+        return decoded.contentBytes == width && decoded.validBytes == width && distinctNameCharacters.size >= 2
     }
 
     fun locateBaseStatTable(
@@ -365,6 +380,7 @@ object TableValidators {
         generation: Int,
     ): ValidationEvidence = safely(offset, recordSize, count) {
         var valid = 0
+        var firstRecordValid = false
         repeat(count) { index ->
             val base = offset + index * recordSize
             val statStart = if (generation <= 2) 1 else 0
@@ -373,7 +389,10 @@ object TableValidators {
             val typeOffset = if (generation == 1) 6 else if (generation == 2) 7 else 6
             val maxType = if (generation == 3) 31 else 27
             val typesValid = rom.u8(base + typeOffset) in 0..maxType && rom.u8(base + typeOffset + 1) in 0..maxType
-            if (statsValid && typesValid) valid++
+            if (statsValid && typesValid) {
+                valid++
+                if (index == 0) firstRecordValid = true
+            }
         }
         val confidence = valid.toDouble() / count.coerceAtLeast(1)
         val minimumRatio = if (generation == 3 && count >= 1_000) 0.895 else 0.90
@@ -382,6 +401,12 @@ object TableValidators {
             compatible, valid, count, confidence,
             if (compatible) emptyList() else listOf("plausible base stats $valid/$count below ${minimumRatio * 100}%"),
             offset, recordSize,
+            coveredRecords = if (generation == 3 && count > 0) {
+                valid - if (firstRecordValid) 1 else 0
+            } else {
+                valid
+            },
+            expectedRecords = if (generation == 3 && count > 0) count - 1 else count,
         )
     }
 
@@ -530,19 +555,67 @@ object TableValidators {
         }
         val confidence = valid.toDouble() / count.coerceAtLeast(1)
         val populatedRatio = populated.toDouble() / (count - 1).coerceAtLeast(1)
-        val compatible = valid == count && populatedRatio >= 0.80
+        val compatible = confidence >= 0.95 && populatedRatio >= 0.80
         ValidationEvidence(
             compatible = compatible,
             validRecords = valid,
             totalRecords = count,
             confidence = minOf(confidence, populatedRatio),
             reasons = if (compatible) {
-                listOf("validated widened 16-byte CFRU/DPE move records")
+                listOf(
+                    "validated widened 16-byte CFRU/DPE move records; " +
+                        "${count - valid} sparse custom records use extension values",
+                )
             } else {
                 listOf("plausible CFRU/DPE move records $valid/$count; populated $populated/${(count - 1).coerceAtLeast(1)}")
             },
             offset = offset,
             recordSize = 16,
+        )
+    }
+
+    /** Validates the later 20-byte Battle Engine move ABI with flags, split, and Z-move fields. */
+    fun battleEngineMoveData(
+        rom: RomImage,
+        offset: Int,
+        count: Int,
+    ): ValidationEvidence = safely(offset, 20, count) {
+        var valid = 0
+        var populated = 0
+        repeat(count) { index ->
+            val base = offset + index * 20
+            val reserved = (0 until 20).all { rom.u8(base + it) == 0 }
+            val accuracy = rom.u8(base + 5)
+            val secondaryChance = rom.u8(base + 7)
+            val priority = rom.u8(base + 10).toByte().toInt()
+            val plausible = reserved || (
+                rom.u16le(base + 2) <= 2048 &&
+                    rom.u8(base + 4) in 0..31 &&
+                    (accuracy in 0..100 || accuracy == 0xFF) &&
+                    rom.u8(base + 6) in 0..64 &&
+                    (secondaryChance in 0..100 || secondaryChance == 0xFF) &&
+                    priority in -8..7 &&
+                    rom.u8(base + 11) == 0 &&
+                    rom.u8(base + 16) in 0..2
+                )
+            if (plausible) valid++
+            if (!reserved) populated++
+        }
+        val confidence = valid.toDouble() / count.coerceAtLeast(1)
+        val populatedRatio = populated.toDouble() / (count - 1).coerceAtLeast(1)
+        val compatible = confidence >= 0.95 && populatedRatio >= 0.80
+        ValidationEvidence(
+            compatible = compatible,
+            validRecords = valid,
+            totalRecords = count,
+            confidence = minOf(confidence, populatedRatio),
+            reasons = if (compatible) {
+                listOf("validated expanded 20-byte Battle Engine move records")
+            } else {
+                listOf("plausible 20-byte Battle Engine move records $valid/$count; populated $populated/${(count - 1).coerceAtLeast(1)}")
+            },
+            offset = offset,
+            recordSize = 20,
         )
     }
 
@@ -629,24 +702,218 @@ object TableValidators {
         }
     }
 
-    fun resolveGen3TypeChart(rom: RomImage, inheritedOffset: Int?): ValidationEvidence {
+    /**
+     * Locates decomp-style square type charts stored as unsigned Q4.12 multipliers.
+     *
+     * Both the candidate root and its exact one-past-end boundary must be compiled GBA pointer
+     * targets. Base-stat types constrain only the minimum active dimension, because unused chart
+     * types need not appear in a species record.
+     */
+    fun locateReferencedGen3Q412TypeCharts(
+        rom: RomImage,
+        activeTypeLowerBound: Int? = null,
+    ): List<ValidationEvidence> {
+        val minimumTypeCount = maxOf(MINIMUM_Q412_TYPE_COUNT, activeTypeLowerBound ?: MINIMUM_Q412_TYPE_COUNT)
+        if (minimumTypeCount > MAXIMUM_Q412_TYPE_COUNT) return emptyList()
+        val references = HashMap<Int, Int>()
+        var pointerOffset = 0
+        while (pointerOffset <= rom.size - 4) {
+            rom.gbaPointer(pointerOffset)?.let { target ->
+                references[target] = (references[target] ?: 0) + 1
+            }
+            pointerOffset += 4
+        }
+        val u32Candidates = references.asSequence()
+            .flatMap { (offset, count) ->
+                (minimumTypeCount..MAXIMUM_Q412_TYPE_COUNT).asSequence().mapNotNull { typeCount ->
+                    val end = offset.toLong() + typeCount.toLong() * typeCount * 4
+                    if (end > Int.MAX_VALUE || end.toInt() !in references) return@mapNotNull null
+                    q412SquareTypeChart(rom, offset, typeCount, elementSize = 4)
+                        ?.let { ReferencedQ412Chart(it, count, occupiedMatrices = 1) }
+                }
+            }
+            .toList()
+        val u16Candidates = activeTypeLowerBound
+            ?.takeIf { it in MINIMUM_Q412_TYPE_COUNT..MAXIMUM_Q412_TYPE_COUNT }
+            ?.let { lowerBound ->
+                references.flatMap { (offset, count) ->
+                    (lowerBound..MAXIMUM_Q412_TYPE_COUNT).mapNotNull { typeCount ->
+                        val pairEnd = offset.toLong() + typeCount.toLong() * typeCount * 4
+                        if (pairEnd > Int.MAX_VALUE || pairEnd.toInt() !in references) return@mapNotNull null
+                        u16Q412TypeChartWithInverseCrossTable(rom, offset, typeCount)
+                            ?.let { ReferencedQ412Chart(it, count, occupiedMatrices = 2) }
+                    }
+                }
+            }.orEmpty()
+        val candidates = u32Candidates + u16Candidates
+        val nonInterior = buildList<ReferencedQ412Chart> {
+            candidates.sortedWith(
+                compareBy<ReferencedQ412Chart> { it.start }
+                    .thenByDescending { it.occupiedEndExclusive },
+            ).forEach { candidate ->
+                if (none { enclosing -> enclosing.startsBeforeAndOverlaps(candidate) }) add(candidate)
+            }
+        }
+        return nonInterior.asSequence()
+            .sortedWith(
+                compareByDescending<ReferencedQ412Chart> { it.references }
+                    .thenByDescending { it.evidence.confidence }
+                    .thenByDescending { it.evidence.totalRecords }
+                    .thenBy { it.evidence.offset },
+            )
+            .map { it.evidence }
+            .toList()
+    }
+
+    fun resolveGen3TypeChart(
+        rom: RomImage,
+        inheritedOffset: Int?,
+        activeTypeLowerBound: Int? = null,
+    ): ValidationEvidence {
         val inherited = inheritedOffset?.let { typeChart(rom, it, generation = 3) }
         if (inherited?.compatible == true) return inherited
 
         val relocated = locateGen3TypeCharts(rom)
-        return relocated.firstOrNull()?.copy(
+        relocated.firstOrNull()?.let { selected ->
+            return selected.copy(
             reasons = if (relocated.size > 1) {
                 listOf("found ${relocated.size} valid relocated type charts; selected the lowest offset")
             } else {
                 listOf("resolved relocated Gen 3 type chart")
             },
-        ) ?: inherited ?: ValidationEvidence(
+            )
+        }
+
+        val matrices = locateReferencedGen3Q412TypeCharts(rom, activeTypeLowerBound)
+        if (matrices.size > 1) {
+            return ValidationEvidence(
+                compatible = false,
+                validRecords = 0,
+                totalRecords = matrices.size,
+                confidence = 0.0,
+                reasons = listOf(
+                    "ambiguous referenced Q4.12 type-chart roots: " +
+                        matrices.joinToString { evidence -> "0x${requireNotNull(evidence.offset).toString(16)}" },
+                ),
+                ambiguous = true,
+                reviewRecommended = true,
+            )
+        }
+        val selectedMatrix = matrices.singleOrNull()
+        return selectedMatrix?.copy(
+            reasons = when {
+                selectedMatrix.offset == inheritedOffset ->
+                    listOf("validated referenced inherited Gen 3 Q4.12 type-effectiveness matrix")
+                else -> listOf("resolved referenced Gen 3 Q4.12 type-effectiveness matrix")
+            },
+        ) ?: inherited?.copy(
+            reasons = inherited.reasons + "no referenced root/end-bounded Q4.12 matrix validated",
+        ) ?: ValidationEvidence(
             compatible = false,
             validRecords = 0,
             totalRecords = 0,
             confidence = 0.0,
             reasons = listOf("type-chart table not resolved"),
         )
+    }
+
+    fun inferGen3ActiveTypeCount(
+        rom: RomImage,
+        table: TableLayout,
+        count: Int,
+    ): Int? {
+        if (count <= 0 || table.recordSize < 8) return null
+        val stride = table.stride ?: table.recordSize
+        val requiredEnd = table.offset.toLong() + (count - 1L) * stride + 8
+        if (stride < 8 || table.offset < 0 || requiredEnd > rom.size) return null
+        var plausibleRows = 0
+        var maximumType = -1
+        repeat(count) { index ->
+            val base = table.offset + index * stride
+            if ((0 until 6).any { rom.u8(base + it) !in 1..255 }) return@repeat
+            val primary = rom.u8(base + 6)
+            val secondary = rom.u8(base + 7)
+            if (primary !in 0..63 || secondary !in 0..63) return@repeat
+            plausibleRows++
+            maximumType = maxOf(maximumType, primary, secondary)
+        }
+        if (plausibleRows < 2 || plausibleRows * 10 < count * 8) return null
+        return maxOf(MINIMUM_Q412_TYPE_COUNT, maximumType + 1)
+            .takeIf { it <= MAXIMUM_Q412_TYPE_COUNT }
+    }
+
+    private fun q412SquareTypeChart(
+        rom: RomImage,
+        offset: Int,
+        typeCount: Int,
+        elementSize: Int,
+    ): ValidationEvidence? {
+        if (elementSize !in setOf(2, 4) || offset % elementSize != 0 || offset !in 0 until rom.size) return null
+        val values = typeCount * typeCount
+        if (offset.toLong() + values.toLong() * elementSize > rom.size) return null
+        val matrix = (0 until values).map { index ->
+            when (elementSize) {
+                2 -> rom.u16le(offset + index * elementSize).toLong()
+                else -> rom.u32le(offset + index * elementSize)
+            }
+        }
+        if (matrix.any { it > Q412_MAXIMUM }) return null
+        val neutral = matrix.count { it == Q412_ONE }
+        val common = matrix.count { it in COMMON_Q412_MULTIPLIERS }
+        val nonNeutral = values - neutral
+        if (neutral * 5 < values * 2 || nonNeutral < typeCount || matrix.toSet().size < 3 || common * 10 < values * 9) return null
+        return ValidationEvidence(
+            compatible = true,
+            validRecords = values,
+            totalRecords = values,
+            confidence = common.toDouble() / values,
+            reasons = listOf(
+                "validated referenced ${typeCount}x$typeCount u${elementSize * 8} Q4.12 type-effectiveness matrix",
+            ),
+            offset = offset,
+            recordSize = typeCount * elementSize,
+            elementSize = elementSize,
+        )
+    }
+
+    private fun u16Q412TypeChartWithInverseCrossTable(
+        rom: RomImage,
+        offset: Int,
+        typeCount: Int,
+    ): ValidationEvidence? {
+        val primary = q412SquareTypeChart(rom, offset, typeCount, elementSize = 2) ?: return null
+        val values = typeCount * typeCount
+        val inverseOffset = offset + values * 2
+        val inverse = q412SquareTypeChart(rom, inverseOffset, typeCount, elementSize = 2) ?: return null
+        repeat(values) { index ->
+            val value = rom.u16le(offset + index * 2)
+            val expectedInverse = when {
+                value < Q412_ONE -> Q412_DOUBLE
+                value > Q412_ONE -> Q412_HALF
+                else -> Q412_ONE.toInt()
+            }
+            if (rom.u16le(inverseOffset + index * 2) != expectedInverse) return null
+        }
+        return primary.copy(
+            confidence = minOf(primary.confidence, inverse.confidence),
+            reasons = listOf(
+                "validated referenced ${typeCount}x$typeCount u16 Q4.12 type-effectiveness matrix " +
+                    "with adjacent inverse cross-table and compiled pair boundary",
+            ),
+        )
+    }
+
+    private data class ReferencedQ412Chart(
+        val evidence: ValidationEvidence,
+        val references: Int,
+        val occupiedMatrices: Int,
+    ) {
+        val start = requireNotNull(evidence.offset).toLong()
+        val occupiedEndExclusive = start +
+            evidence.totalRecords.toLong() * requireNotNull(evidence.elementSize) * occupiedMatrices
+
+        fun startsBeforeAndOverlaps(other: ReferencedQ412Chart): Boolean =
+            start < other.start && occupiedEndExclusive > other.start
     }
 
     private val GEN3_TYPE_CHART_PREFIX = byteArrayOf(
@@ -661,6 +928,29 @@ object TableValidators {
     private val GEN3_TYPE_CHART_TERMINATOR = byteArrayOf(0xFE.toByte(), 0xFE.toByte(), 0)
 
     private val TYPE_MULTIPLIERS = setOf(0, 5, 10, 20)
+
+    private const val MINIMUM_Q412_TYPE_COUNT = 18
+    private const val MAXIMUM_Q412_TYPE_COUNT = 64
+    private const val Q412_ONE = 4096L
+    private const val Q412_HALF = 2048
+    private const val Q412_DOUBLE = 8192
+    private const val Q412_MAXIMUM = 0xFFFFL
+    private val COMMON_Q412_MULTIPLIERS = setOf(
+        0L,
+        512L, // 1/8
+        819L, // 1/5
+        1024L, // 1/4
+        1365L, // 1/3
+        2048L, // 1/2
+        2730L, // 2/3
+        4096L,
+        6144L, // 3/2
+        8192L,
+        12288L,
+        16384L,
+        20480L,
+        32768L,
+    )
 
     private inline fun safely(
         offset: Int,

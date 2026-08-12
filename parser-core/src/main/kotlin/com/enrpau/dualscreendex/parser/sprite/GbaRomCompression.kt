@@ -3,11 +3,17 @@ package com.enrpau.dualscreendex.parser.sprite
 import com.enrpau.dualscreendex.parser.io.RomImage
 
 internal object GbaRomCompression {
-    fun decodeAt(rom: RomImage, offset: Int): ByteArray =
+    fun decodeAt(rom: RomImage, offset: Int): ByteArray = if (rom.u8(offset) == GBA_LZ77_HEADER) {
         GbaLz77Decoder.decode(rom.slice(offset, compressedLength(rom, offset)))
+    } else {
+        val available = minOf(rom.size - offset, MAX_SMOL_ENCODED_BYTES)
+        require(available >= 8) { "truncated SMOL stream" }
+        val candidate = rom.slice(offset, available)
+        GbaSmolDecoder.decode(candidate.copyOf(GbaSmolDecoder.encodedLength(candidate)))
+    }
 
     private fun compressedLength(rom: RomImage, offset: Int): Int {
-        require(rom.u8(offset) == 0x10)
+        require(rom.u8(offset) == GBA_LZ77_HEADER)
         val declared = rom.u24le(offset + 1)
         var input = offset + 4
         var output = 0
@@ -28,4 +34,7 @@ internal object GbaRomCompression {
         require(output >= declared)
         return input - offset
     }
+
+    private const val GBA_LZ77_HEADER = 0x10
+    private const val MAX_SMOL_ENCODED_BYTES = 73_756
 }

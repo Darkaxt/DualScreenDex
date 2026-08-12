@@ -1,4 +1,4 @@
-import type { Bootstrap, State } from './models';
+import type { Bootstrap, DiagnosticView, State } from './models';
 
 export async function bootstrap(): Promise<Bootstrap> {
   const response = await fetch('/api/bootstrap');
@@ -24,7 +24,7 @@ export async function uploadRom(file: File): Promise<Bootstrap> {
   return payload;
 }
 
-export async function diagnostics(speciesId?: number | null, moveId?: number | null): Promise<unknown> {
+export async function diagnostics(speciesId?: number | null, moveId?: number | null): Promise<DiagnosticView> {
   const query = new URLSearchParams();
   if (speciesId != null) query.set('speciesId', String(speciesId));
   if (moveId != null) query.set('moveId', String(moveId));

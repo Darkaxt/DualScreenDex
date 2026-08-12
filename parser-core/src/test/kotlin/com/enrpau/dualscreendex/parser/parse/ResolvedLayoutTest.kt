@@ -1,9 +1,13 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.RomHeader
+import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -50,6 +54,59 @@ class ResolvedLayoutTest {
         assertEquals(chartOffset, layout.tables.typeChart?.offset)
         assertEquals(3, layout.tables.typeChart?.recordSize)
         assertEquals(true, layout.tables.typeChart?.variableLength)
+    }
+
+    @Test
+    fun ambiguousPublishedHeaderDoesNotRestoreInheritedSemanticRoots() {
+        val profile = KnownProfiles.forFamily(EngineFamily.EMERALD).single()
+        val bytes = ByteArray(0x340000)
+        val speciesNames = requireNotNull(profile.tables.speciesNames)
+        val stats = requireNotNull(profile.tables.baseStats)
+        val moveNames = requireNotNull(profile.tables.moveNames)
+        val moves = requireNotNull(profile.tables.moveData)
+        val abilities = requireNotNull(profile.tables.abilities)
+        repeat(speciesNames.count) { id ->
+            putGbaText(bytes, speciesNames.offset + id * speciesNames.recordSize, "MON")
+            val base = stats.offset + id * stats.recordSize
+            if (id > 0) {
+                repeat(6) { field -> bytes[base + field] = (40 + field).toByte() }
+                bytes[base + 6] = 12
+                bytes[base + 7] = 3
+            }
+        }
+        repeat(moveNames.count) { id ->
+            putGbaText(bytes, moveNames.offset + id * moveNames.recordSize, "MOVE")
+            val base = moves.offset + id * moves.recordSize
+            if (id > 0) {
+                bytes[base + 1] = 40
+                bytes[base + 2] = (id % 18).toByte()
+                bytes[base + 3] = 100
+                bytes[base + 4] = 20
+            }
+        }
+        repeat(abilities.count) { id ->
+            putGbaText(bytes, abilities.offset + id * abilities.recordSize, "ABILITY")
+        }
+        // Eleven consecutive pointers make all three overlapping published data windows complete,
+        // while the independent name slots provide no semantic evidence to break the tie.
+        repeat(11) { index -> putPointer(bytes, 0x1AC + index * 4, 0x8000 + index * 0x1000) }
+
+        val probe = FamilyParsers.all.single { it.family == EngineFamily.EMERALD }
+            .probe(RomImage(bytes), RomHeader(Platform.GBA, "POKEMON EMER", "BPEE"))
+        val capabilities = probe.capabilities.associateBy { it.capability }
+        val layout = requireNotNull(probe.resolvedLayout)
+
+        listOf(RomCapability.BASE_STATS, RomCapability.MOVE_DETAILS, RomCapability.ABILITIES).forEach { capability ->
+            assertEquals(
+                capability.name,
+                CapabilityStatus.AMBIGUOUS,
+                capabilities.getValue(capability).status,
+            )
+            assertEquals(CapabilityReviewStatus.MANUAL_REVIEW, capabilities.getValue(capability).reviewStatus)
+        }
+        assertNull(layout.tables.baseStats)
+        assertNull(layout.tables.moveData)
+        assertNull(layout.tables.abilities)
     }
 
     @Test
