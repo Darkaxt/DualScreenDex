@@ -97,6 +97,74 @@ class BattleMemoryCoordinatorTest {
     }
 
     @Test
+    fun ignoresStaleGen3BattleRecordsWhenTheSessionStartsInTheOverworld() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        fixture(ewram, 0x143C, opponentPp = 35)
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context() },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.isEmpty())
+
+        mainState(iwram, callback1 = 0x08170001, callback2 = 0x08171001, counter = 150)
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.isEmpty())
+
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 175)
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.isEmpty())
+
+        ewram[0x143C + 0x58 + 0x24] = 34
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 200)
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.last().active)
+        assertEquals(13, updates.last().sample?.opponents?.single()?.speciesId)
+
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 300)
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.last().ended)
+        coordinator.close()
+    }
+
+    @Test
+    fun learnsTheOverworldAfterASessionStartsDuringAnExistingGen3Battle() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        fixture(ewram, 0x143C, opponentPp = 35)
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 100)
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context() },
+            publisher = updates::add,
+            transportFactory = { MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram)) },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.isEmpty())
+
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 200)
+        repeat(4) { coordinator.heartbeat() }
+        assertTrue(updates.isEmpty())
+
+        ewram[0x143C + 0x58 + 0x24] = 34
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 300)
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.last().active)
+        coordinator.close()
+    }
+
+    @Test
     fun discoversThenPollsABoundedWindowWithoutTheMapper() {
         val ewram = ByteArray(0x40000)
         fixture(ewram, 0x143C, opponentPp = 35)
