@@ -196,12 +196,12 @@ data class CaptureBallRecord(
 enum class RuntimeMemoryEvidence { SOURCE_PROVEN_UNTESTED, LIVE_VALIDATED }
 
 data class CatalogGen3RuntimeMemoryLayout(
-    val mainStructSize: Int,
-    val inBattleByteOffset: Int,
+    val mainAddress: Long,
+    val inBattleAddress: Long,
     val inBattleMask: Int,
     val saveBlock1MapGroupOffset: Int,
     val saveBlock1MapNumberOffset: Int,
-    val multiUsePlayerCursorOffsetFromMain: Int? = null,
+    val multiUsePlayerCursorAddress: Long? = null,
     val multiUsePlayerCursorEvidence: RuntimeMemoryEvidence? = null,
 )
 

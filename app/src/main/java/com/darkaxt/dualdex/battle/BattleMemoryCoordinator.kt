@@ -183,23 +183,22 @@ class BattleMemoryCoordinator(
         val layout = cachedLayout
         val pointerGlobal = catalogProvider()?.gen3SaveBlock1PointerAddress
         val runtimeLayout = contextRuntimeLayout()
-        val mainLayout = cachedGen3MainLayout
-        if (layout == null && mainLayout != null && runtimeLayout != null && !gen3BattleDiscoveryRequested) {
+        if (layout == null && runtimeLayout != null && !gen3BattleDiscoveryRequested) {
             readMode = ReadMode.RUNTIME
             requestedSaveBlock1Address = cachedSaveBlock1Address
             session.start(buildList {
                 add(CoreMemoryRegion(
                     "main-state",
-                    IWRAM_BASE + mainLayout.offset,
+                    runtimeLayout.mainAddress,
                     Gen3MainStateResolver.HEADER_BYTES,
                 ))
                 add(CoreMemoryRegion(
                     "main-lifecycle",
-                    IWRAM_BASE + mainLayout.offset + runtimeLayout.inBattleByteOffset,
+                    runtimeLayout.inBattleAddress,
                     1,
                 ))
-                runtimeLayout.multiUsePlayerCursorOffsetFromMain?.let { cursorOffset ->
-                    add(CoreMemoryRegion("main-target-cursor", IWRAM_BASE + mainLayout.offset + cursorOffset, 1))
+                runtimeLayout.multiUsePlayerCursorAddress?.let { cursorAddress ->
+                    add(CoreMemoryRegion("main-target-cursor", cursorAddress, 1))
                 }
                 pointerGlobal?.let { add(CoreMemoryRegion("save-block-pointer", it, 4)) }
                 requestedSaveBlock1Address?.let { saveBlock ->
@@ -232,26 +231,22 @@ class BattleMemoryCoordinator(
                         EWRAM_BASE + cachedWindowStart,
                         CACHED_WINDOW_BYTES,
                     ))
-                cachedGen3MainLayout?.let { mainLayout ->
+                runtimeLayout?.let { runtime ->
+                    add(CoreMemoryRegion(
+                        "main-state",
+                        runtime.mainAddress,
+                        Gen3MainStateResolver.HEADER_BYTES,
+                    ))
+                    add(CoreMemoryRegion("main-lifecycle", runtime.inBattleAddress, 1))
+                    runtime.multiUsePlayerCursorAddress?.let { cursorAddress ->
+                        add(CoreMemoryRegion("main-target-cursor", cursorAddress, 1))
+                    }
+                } ?: cachedGen3MainLayout?.let { mainLayout ->
                     add(CoreMemoryRegion(
                         "main-state",
                         IWRAM_BASE + mainLayout.offset,
                         Gen3MainStateResolver.HEADER_BYTES,
                     ))
-                    contextRuntimeLayout()?.let { runtimeLayout ->
-                        add(CoreMemoryRegion(
-                            "main-lifecycle",
-                            IWRAM_BASE + mainLayout.offset + runtimeLayout.inBattleByteOffset,
-                            1,
-                        ))
-                        runtimeLayout.multiUsePlayerCursorOffsetFromMain?.let { cursorOffset ->
-                            add(CoreMemoryRegion(
-                                "main-target-cursor",
-                                IWRAM_BASE + mainLayout.offset + cursorOffset,
-                                1,
-                            ))
-                        }
-                    }
                 }
                 pointerGlobal?.let { add(CoreMemoryRegion("save-block-pointer", it, 4)) }
                 val mapGroupOffset = contextRuntimeLayout()?.saveBlock1MapGroupOffset ?: SAVE_LOCATION_GROUP_OFFSET
@@ -317,9 +312,9 @@ class BattleMemoryCoordinator(
         val mainState = resolveGen3MainState(regions, context)
         val gen3Runtime = if (context.generation == 3) {
             Gen3RuntimeSnapshot(
-                battleActive = resolveGen3BattleActive(regions, context, mainState),
+                battleActive = resolveGen3BattleActive(regions, context),
                 areaBaseId = if (supportsLiveArea(context)) resolveCurrentArea(regions, context) else null,
-                targetBattler = resolveGen3LiveTarget(regions, context, mainState),
+                targetBattler = resolveGen3LiveTarget(regions, context),
             )
         } else {
             null
@@ -434,22 +429,29 @@ class BattleMemoryCoordinator(
     ): Gen3MainState? {
         if (context.generation != 3) return null
         regions["main-state"]?.let { bytes ->
-            val absolute = cachedGen3MainLayout ?: return null
+            val absolute = context.gen3RuntimeMemoryLayout?.mainAddress
+                ?.minus(IWRAM_BASE)
+                ?.toInt()
+                ?.let(::Gen3MainLayout)
+                ?: cachedGen3MainLayout
+                ?: return null
             return gen3MainResolver.resolveKnown(bytes, Gen3MainLayout(0))?.copy(layout = absolute)
         }
         val bytes = regions["iwram"] ?: return null
+        context.gen3RuntimeMemoryLayout?.let { runtime ->
+            val offset = (runtime.mainAddress - IWRAM_BASE).toInt()
+            return gen3MainResolver.resolveKnown(bytes, Gen3MainLayout(offset))
+        }
         return gen3MainResolver.resolve(bytes)?.also { cachedGen3MainLayout = it.layout }
     }
 
     private fun resolveGen3BattleActive(
         regions: Map<String, ByteArray>,
         context: BattleCatalogContext,
-        mainState: Gen3MainState?,
     ): Boolean? {
         val layout = context.gen3RuntimeMemoryLayout ?: return null
-        if (mainState == null) return null
         val bytes = regions["main-lifecycle"] ?: regions["iwram"]?.let { iwram ->
-            val offset = mainState.layout.offset + layout.inBattleByteOffset
+            val offset = (layout.inBattleAddress - IWRAM_BASE).toInt()
             if (offset !in iwram.indices) null else byteArrayOf(iwram[offset])
         }
         return Gen3RuntimeMemoryDecoder(layout).decodeBattleActive(bytes)
@@ -458,13 +460,11 @@ class BattleMemoryCoordinator(
     private fun resolveGen3LiveTarget(
         regions: Map<String, ByteArray>,
         context: BattleCatalogContext,
-        mainState: Gen3MainState?,
     ): Int? {
         val layout = context.gen3RuntimeMemoryLayout ?: return null
-        val cursorOffset = layout.multiUsePlayerCursorOffsetFromMain ?: return null
-        if (mainState == null) return null
+        val cursorAddress = layout.multiUsePlayerCursorAddress ?: return null
         val bytes = regions["main-target-cursor"] ?: regions["iwram"]?.let { iwram ->
-            val offset = mainState.layout.offset + cursorOffset
+            val offset = (cursorAddress - IWRAM_BASE).toInt()
             if (offset !in iwram.indices) null else byteArrayOf(iwram[offset])
         }
         return Gen3RuntimeMemoryDecoder(layout).decodeTargetBattler(bytes)

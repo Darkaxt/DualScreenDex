@@ -1,20 +1,25 @@
 package com.darkaxt.dualdex.battle
 
 data class Gen3RuntimeMemoryLayout(
-    val mainStructSize: Int,
-    val inBattleByteOffset: Int,
+    val mainAddress: Long,
+    val inBattleAddress: Long,
     val inBattleMask: Int,
     val saveBlock1MapGroupOffset: Int,
     val saveBlock1MapNumberOffset: Int,
-    val multiUsePlayerCursorOffsetFromMain: Int? = null,
+    val multiUsePlayerCursorAddress: Long? = null,
 ) {
     init {
-        require(mainStructSize in 1..0x8000)
-        require(inBattleByteOffset in 0 until mainStructSize)
+        require(mainAddress in IWRAM_START..IWRAM_END)
+        require(inBattleAddress in IWRAM_START..IWRAM_END)
         require(inBattleMask in 1..0xFF && inBattleMask.countOneBits() == 1)
         require(saveBlock1MapGroupOffset >= 0)
         require(saveBlock1MapNumberOffset == saveBlock1MapGroupOffset + 1)
-        require(multiUsePlayerCursorOffsetFromMain == null || multiUsePlayerCursorOffsetFromMain >= mainStructSize)
+        require(multiUsePlayerCursorAddress == null || multiUsePlayerCursorAddress in IWRAM_START..IWRAM_END)
+    }
+
+    companion object {
+        private const val IWRAM_START = 0x03000000L
+        private const val IWRAM_END = 0x03007FFFL
     }
 }
 

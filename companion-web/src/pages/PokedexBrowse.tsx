@@ -5,6 +5,10 @@ import { Header, Sprite, StatusMarks } from '../components';
 export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; state: State; send: (type: string, values?: Record<string, string | number | boolean | null>) => void }) {
   const [search, setSearch] = useState('');
   const policy = state.settings.knowledgeMode;
+  const activeFilter = policy === 'ORGANIC' && state.filter === 'SEEN' ? 'ALL' : state.filter;
+  const filters = policy === 'ORGANIC'
+    ? (['ALL', 'CAUGHT', 'TEAM', 'AREA'] as const)
+    : (['ALL', 'CAUGHT', 'SEEN', 'TEAM', 'AREA'] as const);
   const capabilities = state.saveRam?.capabilities ?? {};
   const available = (name: string) => capabilities[name] === 'AVAILABLE' || capabilities[name] === 'PARTIAL';
   const filterEnabled = {
@@ -19,22 +23,22 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
     if (policy === 'ORGANIC' && !status?.seen && !status?.caught) return false;
     if (policy === 'HIDDEN' && !status?.caught) return false;
     if (search && !species.name.toLowerCase().includes(search.toLowerCase()) && !String(species.dex).includes(search)) return false;
-    if (state.filter === 'CAUGHT' && !status?.caught) return false;
-    if (state.filter === 'SEEN' && !status?.seen) return false;
-    if (state.filter === 'TEAM' && !status?.team) return false;
-    if (state.filter === 'AREA') {
+    if (activeFilter === 'CAUGHT' && !status?.caught) return false;
+    if (activeFilter === 'SEEN' && !status?.seen) return false;
+    if (activeFilter === 'TEAM' && !status?.team) return false;
+    if (activeFilter === 'AREA') {
       const observedHere = state.currentAreaSpeciesIds?.includes(species.id) ?? false;
-      if (!observedHere && !status?.caught) return false;
+      if (!observedHere) return false;
     }
     return true;
-  }), [catalog, policy, search, state.filter, state.currentAreaIds, state.currentAreaSpeciesIds, state.speciesState]);
+  }), [activeFilter, catalog, policy, search, state.currentAreaSpeciesIds, state.speciesState]);
 
   return <section class="screen pokedex-screen">
     <Header title="POKÉDEX" kicker={`${catalog.family.replaceAll('_', ' ')} · ${policy}`} onSettings={() => send('SCREEN', { screen: 'SETTINGS' })} />
     <div class="browse-tools">
       <label class="search-box"><span>SEARCH</span><input value={search} onInput={event => setSearch(event.currentTarget.value)} placeholder="NAME OR NUMBER" /></label>
       <div class="filter-strip" aria-label="Pokédex filters">
-        {(['ALL', 'CAUGHT', 'SEEN', 'TEAM', 'AREA'] as const).map(filter => <button key={filter} disabled={!filterEnabled[filter]} title={!filterEnabled[filter] ? `${filter} filter unavailable` : undefined} class={state.filter === filter ? 'active' : ''} onClick={() => send('FILTER', { filter, areaId: null })}>{filter}</button>)}
+        {filters.map(filter => <button key={filter} disabled={!filterEnabled[filter]} title={!filterEnabled[filter] ? `${filter} filter unavailable` : undefined} class={activeFilter === filter ? 'active' : ''} onClick={() => send('FILTER', { filter, areaId: null })}>{filter}</button>)}
       </div>
     </div>
     <div class="species-list" data-scroll-region>
@@ -43,7 +47,7 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
         <span class="species-number">#{String(species.dex).padStart(3, '0')}</span>
         <strong>{species.name}</strong>
         <span class="species-row-meta">
-          {state.filter === 'AREA' && <EncounterWindowMark windows={encounterWindows(catalog, state.currentAreaIds ?? [], species.id)} />}
+          {activeFilter === 'AREA' && <EncounterWindowMark windows={encounterWindows(catalog, state.currentAreaIds ?? [], species.id)} />}
           <StatusMarks state={state.speciesState[species.id]} catalog={catalog} />
         </span>
       </button>)}

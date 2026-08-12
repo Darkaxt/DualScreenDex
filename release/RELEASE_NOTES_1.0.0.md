@@ -2,6 +2,14 @@
 
 DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
+## RC19 update
+
+- Decodes the absolute Generation III main-state address, live combat byte, and one-bit lifecycle mask from matched ROM Thumb set/clear operations. Runtime polling now reads that parser-proven byte directly instead of rediscovering a callback-shaped RAM structure or assuming a fixed field offset.
+- Keeps Generation III double battles available with manual target selection when no independently decoded live cursor exists; RC19 does not publish the former source-relative cursor offset as runtime authority.
+- Invalidates RC18 catalog caches so the instruction-decoded runtime layout is materialized before live battle polling.
+- Replaces the permanently zero loading percentage with an honest indeterminate Loading indicator.
+- Removes the redundant Seen filter in Organic mode. The Area filter now contains only species actually observed in that resolved area; a Pokémon caught elsewhere no longer appears there automatically.
+
 ## RC18 update
 
 - Resolves the Generation III main runtime layout from ROM structure and uses its live battle flag as the primary combat lifecycle signal, eliminating stale callback-driven Combat state without hardcoded game addresses.

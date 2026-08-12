@@ -6,8 +6,8 @@ import org.junit.Test
 
 class Gen3RuntimeMemoryDecoderTest {
     private val layout = Gen3RuntimeMemoryLayout(
-        mainStructSize = 0x43C,
-        inBattleByteOffset = 0x439,
+        mainAddress = 0x03001574,
+        inBattleAddress = 0x030019AD,
         inBattleMask = 0x02,
         saveBlock1MapGroupOffset = 4,
         saveBlock1MapNumberOffset = 5,

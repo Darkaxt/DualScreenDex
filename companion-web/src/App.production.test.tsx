@@ -29,7 +29,8 @@ vi.mock('./gateway', () => ({
   }))
 }));
 
-import { App, catalogRefreshMarker, loadingPercentage } from './App';
+import { bootstrap } from './gateway';
+import { App, catalogRefreshMarker } from './App';
 
 describe('production application shell', () => {
   beforeEach(() => document.body.replaceChildren());
@@ -44,10 +45,21 @@ describe('production application shell', () => {
     expect(screen.queryByText(/Generate an encounter/i)).toBeNull();
   });
 
-  it('reports only truthful committed loading progress', () => {
-    expect(loadingPercentage({ active: true, phase: 'RELATIONSHIPS', completedUnits: 3, totalUnits: 5 })).toBe(60);
-    expect(loadingPercentage({ active: true, phase: 'IDENTIFYING', completedUnits: 0, totalUnits: 5 })).toBe(0);
-    expect(loadingPercentage({ active: true, phase: 'IDLE', completedUnits: 0, totalUnits: 0 })).toBeNull();
+  it('shows an indeterminate loading state without a misleading percentage', async () => {
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      state: {
+        ...fixture.state,
+        version: 2,
+        loading: { active: true, phase: 'IDENTIFYING', completedUnits: 0, totalUnits: 5 },
+      },
+    });
+
+    render(<App />);
+
+    const loading = await screen.findByRole('status', { name: 'Loading IDENTIFYING' });
+    expect(loading.textContent).toBe('Loading');
+    expect(loading.textContent).not.toContain('%');
   });
 
   it('opens the capability report from Settings without opening memory capture', async () => {

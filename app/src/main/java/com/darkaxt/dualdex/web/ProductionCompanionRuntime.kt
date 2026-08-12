@@ -273,12 +273,12 @@ class ProductionCompanionRuntime(
             gen3SaveBlock1PointerAddress = current.runtimeMetadata.gen3SaveBlock1PointerAddress,
             gen3RuntimeMemoryLayout = current.runtimeMetadata.gen3RuntimeMemoryLayout?.let { layout ->
                 Gen3RuntimeMemoryLayout(
-                    mainStructSize = layout.mainStructSize,
-                    inBattleByteOffset = layout.inBattleByteOffset,
+                    mainAddress = layout.mainAddress,
+                    inBattleAddress = layout.inBattleAddress,
                     inBattleMask = layout.inBattleMask,
                     saveBlock1MapGroupOffset = layout.saveBlock1MapGroupOffset,
                     saveBlock1MapNumberOffset = layout.saveBlock1MapNumberOffset,
-                    multiUsePlayerCursorOffsetFromMain = layout.multiUsePlayerCursorOffsetFromMain,
+                    multiUsePlayerCursorAddress = layout.multiUsePlayerCursorAddress,
                 )
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),

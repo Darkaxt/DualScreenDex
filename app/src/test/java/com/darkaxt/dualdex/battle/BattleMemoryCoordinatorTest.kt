@@ -152,7 +152,7 @@ class BattleMemoryCoordinatorTest {
         )
         coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
 
-        repeat(2) { coordinator.heartbeat() }
+        repeat(4) { coordinator.heartbeat() }
         assertTrue(updates.last().active)
 
         iwram[0x1574 + 0x439] = 0
@@ -161,6 +161,32 @@ class BattleMemoryCoordinatorTest {
         assertTrue(!updates.last().active)
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 30019ad 1") })
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 3002378 1") })
+        coordinator.close()
+    }
+
+    @Test
+    fun pollsTheRomDecodedLiveAddressWithoutRediscoveringAMainStructureCandidate() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        fixture(ewram, 0x143C, opponentPp = 35)
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 100)
+        // A second callback-shaped structure makes the old RAM pattern scan ambiguous.
+        mainState(iwram, offset = 0x2800, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
+        iwram[0x19AD] = 0x02
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context(runtimeLayout = gen3RuntimeLayout()) },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(4) { coordinator.heartbeat() }
+
+        assertTrue(updates.last().active)
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 30019ad 1") })
         coordinator.close()
     }
 
@@ -518,12 +544,12 @@ class BattleMemoryCoordinatorTest {
     )
 
     private fun gen3RuntimeLayout(liveTargetOffset: Int? = null) = Gen3RuntimeMemoryLayout(
-        mainStructSize = 0x43C,
-        inBattleByteOffset = 0x439,
+        mainAddress = 0x03001574,
+        inBattleAddress = 0x030019AD,
         inBattleMask = 0x02,
         saveBlock1MapGroupOffset = 4,
         saveBlock1MapNumberOffset = 5,
-        multiUsePlayerCursorOffsetFromMain = liveTargetOffset,
+        multiUsePlayerCursorAddress = liveTargetOffset?.let { 0x03001574L + it },
     )
 
     private fun gen1Context() = BattleCatalogContext(
@@ -591,8 +617,7 @@ class BattleMemoryCoordinatorTest {
         repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
     }
 
-    private fun mainState(bytes: ByteArray, callback1: Int, callback2: Int, counter: Int) {
-        val offset = 0x1574
+    private fun mainState(bytes: ByteArray, callback1: Int, callback2: Int, counter: Int, offset: Int = 0x1574) {
         listOf(callback1, callback2, 0x08000301, 0x08000401, 0, 0, 0x08000501)
             .forEachIndexed { index, value -> putU32(bytes, offset + index * 4, value) }
         putU32(bytes, offset + 0x20, counter)

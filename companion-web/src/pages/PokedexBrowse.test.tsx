@@ -27,6 +27,38 @@ const state: State = {
 };
 
 describe('Pokédex knowledge modes', () => {
+  it('hides the redundant Seen filter only in Organic mode', () => {
+    const { rerender } = render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
+
+    expect(screen.queryByRole('button', { name: 'SEEN' })).toBeNull();
+
+    rerender(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      settings: { ...state.settings, knowledgeMode: 'DISCOVERED' },
+    }} send={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'SEEN' })).toBeTruthy();
+
+    rerender(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      settings: { ...state.settings, knowledgeMode: 'HIDDEN' },
+    }} send={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'SEEN' })).toBeTruthy();
+  });
+
+  it('treats a persisted Seen filter as All after entering Organic mode', () => {
+    render(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      filter: 'SEEN',
+      speciesState: {
+        ...state.speciesState,
+        4: { seen: false, caught: true, team: false, ballId: null },
+      },
+    }} send={vi.fn()} />);
+
+    expect(screen.getByText('Charmander')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'ALL' }).classList.contains('active')).toBe(true);
+  });
+
   it('keeps unseen species out of the Organic Pokédex', () => {
     render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
 
@@ -142,7 +174,7 @@ describe('Pokédex knowledge modes', () => {
     expect(screen.queryByTestId('encounter-window-icon')).toBeNull();
   });
 
-  it('shows only locally observed species plus captured species in the Area filter', () => {
+  it('shows only species observed in the resolved area even when another species is caught', () => {
     const areaCatalog: Catalog = {
       ...catalog,
       areas: [
@@ -170,6 +202,6 @@ describe('Pokédex knowledge modes', () => {
       ...areaState,
       speciesState: { ...areaState.speciesState, 4: { ...areaState.speciesState[4], caught: true } },
     }} send={vi.fn()} />);
-    expect(screen.getByText('Charmander')).toBeTruthy();
+    expect(screen.queryByText('Charmander')).toBeNull();
   });
 });

@@ -46,7 +46,6 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [mapperOpen, setMapperOpen] = useState(false);
   const [capabilityReportOpen, setCapabilityReportOpen] = useState(false);
   const lastCatalogRefresh = useRef('');
-  const loadingPercent = loadingPercentage(state.loading);
 
   useEffect(() => {
     bootstrap().then(applyBootstrap).catch(failure => setError(failure.message)).finally(() => setBusy(false));
@@ -107,15 +106,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       <div class="device-screen">
         {catalog && <div class="rom-status" title={state.catalogName ?? undefined}><strong>{state.catalogName ?? 'Unnamed ROM'}</strong><span>{catalog.family.replaceAll('_', ' ')} · CRC32 {catalog.crc32 || 'N/F'}</span></div>}
         <div class={catalog ? 'screen-host with-rom-status' : 'screen-host'}>{screen}</div>
-        {state.loading.active && <div class="loading-indicator" role="status" aria-label={`Loading ${state.loading.phase}${loadingPercent == null ? '' : ` (${loadingPercent}%)`}`}><span>Loading</span><i />{loadingPercent != null && <b> ({loadingPercent}%)</b>}</div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
+        {state.loading.active && <div class="loading-indicator" role="status" aria-label={`Loading ${state.loading.phase}`}><span>Loading</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
       </div>
     </div>
   </main>;
-}
-
-export function loadingPercentage(loading: State['loading']): number | null {
-  if (loading.totalUnits <= 0) return null;
-  return Math.round(Math.min(1, Math.max(0, loading.completedUnits / loading.totalUnits)) * 100);
 }
 
 export function catalogRefreshMarker(state: Pick<State, 'catalogName' | 'loading'>): string {

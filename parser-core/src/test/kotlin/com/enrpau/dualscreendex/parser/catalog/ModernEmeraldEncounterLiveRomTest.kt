@@ -41,9 +41,13 @@ class ModernEmeraldEncounterLiveRomTest {
         assertTrue(requireNotNull(catalog.runtimeMetadata.gen3SaveBlock1PointerAddress) in 0x02000000L..0x03FFFFFFL)
         assertEquals(
             CatalogGen3RuntimeMemoryLayout(
-                0x43C, 0x439, 0x02, 4, 5,
-                multiUsePlayerCursorOffsetFromMain = 0xE04,
-                multiUsePlayerCursorEvidence = RuntimeMemoryEvidence.SOURCE_PROVEN_UNTESTED,
+                mainAddress = 0x03001574,
+                inBattleAddress = 0x030019AD,
+                inBattleMask = 0x02,
+                saveBlock1MapGroupOffset = 4,
+                saveBlock1MapNumberOffset = 5,
+                multiUsePlayerCursorAddress = null,
+                multiUsePlayerCursorEvidence = null,
             ),
             catalog.runtimeMetadata.gen3RuntimeMemoryLayout,
         )
