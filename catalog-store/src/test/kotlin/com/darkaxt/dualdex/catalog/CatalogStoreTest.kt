@@ -27,6 +27,10 @@ import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.TypePresentation
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
+import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -166,7 +170,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(7, CatalogSchema.parserSchemaVersion)
+        assertEquals(8, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -197,6 +201,19 @@ class CatalogStoreTest {
             reopened?.catalog?.runtimeMetadata?.gen3RuntimeMemoryLayout,
         )
         assertEquals("Route 101", reopened?.catalog?.runtimeMetadata?.areaNamesByBaseId?.get(0x0010))
+        val region = reopened?.catalog?.worldMaps?.regions?.single()
+        assertEquals("hoenn-overview", region?.key)
+        assertEquals("Hoenn", region?.displayName)
+        assertEquals(240, region?.pixelWidth)
+        assertEquals(160, region?.pixelHeight)
+        assertEquals(30, region?.gridWidth)
+        assertEquals(20, region?.gridHeight)
+        assertEquals("world/hoenn-overview", region?.imageAssetKey)
+        assertEquals(setOf(0x0010, 0x0011), region?.locations?.single()?.baseAreaIds)
+        assertEquals(
+            listOf(WorldMapCell(4, 7, 2, 1), WorldMapCell(6, 7, 1, 2)),
+            region?.locations?.single()?.geometry,
+        )
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
     }
 
@@ -385,6 +402,30 @@ class CatalogStoreTest {
                     multiUsePlayerCursorEvidence = RuntimeMemoryEvidence.SOURCE_PROVEN_UNTESTED,
                 ),
                 areaNamesByBaseId = mapOf(0x0010 to "Route 101"),
+            ),
+            worldMaps = WorldMapCatalog(
+                regions = listOf(
+                    WorldMapRegion(
+                        key = "hoenn-overview",
+                        displayName = "Hoenn",
+                        pixelWidth = 240,
+                        pixelHeight = 160,
+                        gridWidth = 30,
+                        gridHeight = 20,
+                        imageAssetKey = "world/hoenn-overview",
+                        locations = listOf(
+                            WorldMapLocation(
+                                key = "section-16",
+                                displayName = "Route 101",
+                                baseAreaIds = setOf(0x0010, 0x0011),
+                                geometry = listOf(
+                                    WorldMapCell(4, 7, 2, 1),
+                                    WorldMapCell(6, 7, 1, 2),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
             ),
             capabilities = mapOf(
                 RomCapability.SPECIES_CATALOG to CapabilityEvidence(

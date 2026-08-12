@@ -212,6 +212,35 @@ data class CatalogRuntimeMetadata(
     val areaNamesByBaseId: Map<Int, String> = emptyMap(),
 )
 
+data class WorldMapCatalog(
+    val regions: List<WorldMapRegion> = emptyList(),
+)
+
+data class WorldMapRegion(
+    val key: String,
+    val displayName: String?,
+    val pixelWidth: Int,
+    val pixelHeight: Int,
+    val gridWidth: Int,
+    val gridHeight: Int,
+    val imageAssetKey: String,
+    val locations: List<WorldMapLocation>,
+)
+
+data class WorldMapLocation(
+    val key: String,
+    val displayName: String,
+    val baseAreaIds: Set<Int>,
+    val geometry: List<WorldMapCell>,
+)
+
+data class WorldMapCell(
+    val x: Int,
+    val y: Int,
+    val width: Int,
+    val height: Int,
+)
+
 data class ParsedCatalog(
     val romSha256: String,
     val family: EngineFamily,
@@ -226,6 +255,7 @@ data class ParsedCatalog(
     val captureBallsById: Map<Int, CaptureBallRecord> = emptyMap(),
     val learnsetRulesets: List<LearnsetRuleset> = emptyList(),
     val runtimeMetadata: CatalogRuntimeMetadata = CatalogRuntimeMetadata(),
+    val worldMaps: WorldMapCatalog = WorldMapCatalog(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),
 ) {
