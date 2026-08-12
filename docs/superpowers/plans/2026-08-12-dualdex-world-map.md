@@ -29,6 +29,7 @@
 - `app/.../web/AndroidLoopbackServer.kt`: future immutable map PNG endpoint.
 - `companion-web/src/models.ts`: typed Area/map state.
 - `companion-web/src/pages/PokedexBrowse.tsx`: Area context chip and active Area filtering.
+- `companion-web/src/pages/PokemonDetail.tsx`: Area-row actions that preserve species context and center the map.
 - `companion-web/src/pages/WorldMapPage.tsx`: future single semantic-zoom canvas.
 - `companion-web/src/styles.css`: existing-theme Area chip and future map controls/fog.
 
@@ -387,7 +388,7 @@ git commit -m "feat: establish correct area context"
 
 - [ ] **Step 1: Write a failing round-trip test**
 
-Construct two cells sharing one location and assert region key, dimensions, asset key, display name, base IDs, and geometry survive write/read exactly.
+Construct two cells sharing one location plus a nonempty raster and assert region key, dimensions, asset key, display name, base IDs, geometry, and every RGBA pixel survive write/read exactly. Assert a dangling asset key and mismatched dimensions are rejected.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -397,7 +398,7 @@ Expected: world-map types/section are missing.
 
 - [ ] **Step 3: Add immutable normalized models and required `world_maps` section**
 
-Use the structures in the design spec, add `worldMaps` to `ParsedCatalog`, add a typed codec entry, include it in required sections, and advance the parser schema version.
+Use the structures in the design spec, add `worldMaps` and its immutable rendered assets to `ParsedCatalog`, add a typed codec entry, include it in required sections, validate each key and raster dimension, and advance the parser schema version.
 
 - [ ] **Step 4: Run and verify GREEN**
 
@@ -534,15 +535,17 @@ Expected: metadata, ETag, MIME, missing, and traversal cases pass.
 - Modify: `companion-web/src/App.production.test.tsx`
 - Modify: `companion-web/src/pages/PokedexBrowse.tsx`
 - Modify: `companion-web/src/pages/PokedexBrowse.test.tsx`
+- Modify: `companion-web/src/pages/PokemonDetail.tsx`
+- Modify: `companion-web/src/pages/PokemonDetail.test.tsx`
 - Modify: `companion-web/src/styles.css`
 
 - [ ] **Step 1: Write RED interaction tests**
 
-Assert fit-to-view, zoom controls, pinch scale, bounded pan, pan-not-tap discrimination, current outline, Organic masking of art/labels/hit targets, Discovered reveal, location tap dispatching a validated Area selection, and unavailable-map fallback. Assert an accessible top-right `Open Map` icon in Pokédex and `Open Pokédex` icon in Map, including tooltips and a visibly disabled Map shortcut when no structural map is available.
+Assert fit-to-view, zoom controls, pinch scale, bounded pan, pan-not-tap discrimination, current outline, Organic masking of art/labels/hit targets, Discovered reveal, location tap dispatching a validated Area selection, and unavailable-map fallback. Assert an accessible top-right `Open Map` icon in Pokédex and `Open Pokédex` icon in Map, including tooltips and a visibly disabled Map shortcut when no structural map is available. Assert every bound Pokémon Detail Area row offers `Show on Map`, centers/highlights the selected location, and retains the species and Area tab after a Map → Pokédex return.
 
 - [ ] **Step 2: Run and verify RED**
 
-Run: `npm test -- --run src/pages/WorldMapPage.test.tsx`
+Run: `npm test -- --run src/pages/WorldMapPage.test.tsx src/pages/PokemonDetail.test.tsx`
 
 Expected: page and models are missing.
 
@@ -558,9 +561,13 @@ Dispatch the catalog-owned location key, let the backend validate/resolve it, th
 
 Extend the shared header end-action slot using the established icon-button styling. Map/Pokédex shortcut actions may change only `screen`; they must preserve `selectedAreaId`, `filter`, current/active Area fields, and the in-memory map viewport. Add round-trip tests for Map → Pokédex → Map and Pokédex → Map → Pokédex with a selected non-current Area, plus a current-Area control.
 
-- [ ] **Step 6: Run and verify GREEN**
+- [ ] **Step 6: Add Pokémon Detail Area-to-map navigation**
 
-Run: `npm test -- --run src/pages/WorldMapPage.test.tsx src/pages/PokedexBrowse.test.tsx src/App.production.test.tsx src/components.test.ts`
+Resolve each Area row to a catalog-owned semantic location key on the backend. The row action stores a map focus request while retaining the open species/detail tab, opens Map, centers/highlights the location, and restores that species context through the reverse shortcut. Invalid or absent bindings fail closed.
+
+- [ ] **Step 7: Run and verify GREEN**
+
+Run: `npm test -- --run src/pages/WorldMapPage.test.tsx src/pages/PokemonDetail.test.tsx src/pages/PokedexBrowse.test.tsx src/App.production.test.tsx src/components.test.ts`
 
 Expected: map interactions, Area handoff, accessible shortcuts, disabled fallback, and context-preserving round trips pass.
 
@@ -645,9 +652,35 @@ Run the Step 2 commands.
 
 Expected: both regions resolve and switch without page navigation.
 
+### Task 16: Run the mandatory exact 50-ROM gate
+
+**Files:**
+- Create: `parser-core/src/test/kotlin/com/enrpau/dualscreendex/parser/catalog/WorldMapCorpusTest.kt`
+- Create: `docs/evidence/world-map-first-50.md`
+
+- [ ] **Step 1: Freeze and verify the input set**
+
+Read the exact first 50 unique ROMs in manifest order. Recompute every SHA-256 from file bytes immediately before parsing and record manifest ordinal, path-independent display identity, byte length, and digest. Never deduplicate by filename.
+
+- [ ] **Step 2: Run every ROM twice through the production parser and asset pipeline**
+
+For each pass validate a nonempty ROM-derived raster, exact dimensions, bounded location geometry, at least one valid `baseAreaId` binding, cache round trip, PNG serving, and the three navigation paths. Capture capability status and evidence. Require the second pass to produce byte-identical normalized metadata, raster pixels, and PNG bytes.
+
+- [ ] **Step 3: Preserve the established parser contract**
+
+Run the existing exact first-33 parser/family/reference controls unchanged. Fail the corpus gate on any new ambiguity, budget, error, family classification, reference-index, or parser regression even if the nominal map success total remains high.
+
+- [ ] **Step 4: Report all 50 statuses and enforce the threshold**
+
+Write one row per manifest ROM with exact digest, family, map result, pipeline checks, repeat result, and failure reason. Count `SUCCESS` only when every criterion passes. Require `SUCCESS >= 25`; otherwise stop with an explicit no-ship result.
+
+- [ ] **Step 5: Run SHA-bound official controls**
+
+For one legitimate official Gen I ROM, one legitimate official Gen II ROM, and Modern Emerald, bind acceptance evidence to the freshly computed SHA while keeping production resolution generic. Verify real ROM-derived raster/location data, cache/API round trip, Organic fog, map-to-Area, and Pokémon Area-to-map centering.
+
 ## Stage 3: Local Semantic Zoom
 
-### Task 16: Materialize structurally validated Gen III local maps
+### Task 17: Materialize structurally validated Gen III local maps
 
 **Files:**
 - Create: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/Gen3LocalMapResolver.kt`
@@ -676,7 +709,7 @@ Run the Step 2 command.
 
 Expected: exact raster and asset round trip pass; malformed layouts fail closed per map.
 
-### Task 17: Add same-canvas local semantic zoom
+### Task 18: Add same-canvas local semantic zoom
 
 **Files:**
 - Modify: `companion-web/src/pages/WorldMapPage.tsx`
@@ -703,7 +736,7 @@ Run the Step 2 command.
 
 Expected: all overview/local transitions and fallbacks pass.
 
-### Task 18: Add structurally resolved live coordinates and granular fog
+### Task 19: Add structurally resolved live coordinates and granular fog
 
 **Files:**
 - Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/CatalogModels.kt`

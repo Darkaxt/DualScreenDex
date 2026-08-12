@@ -36,6 +36,8 @@ The Pokédex browse toolbar shows an Area context chip whenever the Area filter 
 
 Map and Pokédex expose a symmetric top-right shortcut using the existing compact icon-action language. Pokédex shows a map icon with an accessible `Open Map` label and tooltip; Map shows a Pokédex icon with an accessible `Open Pokédex` label and tooltip. These shortcuts change only the visible screen. They must not clear `selectedAreaId`, change the Area filter, replace the active/current base IDs, or reset the map viewport, so a map-selected Area survives Map → Pokédex → Map and Pokédex → Map → Pokédex round trips. The Map shortcut remains visibly disabled with an explanatory tooltip when no structurally resolved map is available, while the ordinary Pokédex Area experience remains usable.
 
+Every location row in a Pokémon Detail Area tab also exposes an accessible `Show on Map` action. It sends only the catalog-owned semantic location key, preserves the open species as detail context, and opens the same `WorldMapPage` centered on and highlighting that location. Returning to the Pokédex restores the same species detail tab and Area context. Rows without a structurally proven location binding omit or disable the action rather than guessing from their label.
+
 Map availability is independent of the Area filter. A ROM whose map art cannot be resolved still gets the normal Area filter and Area context chip whenever its encounter/current-location data is valid.
 
 ### Area knowledge correctness
@@ -80,6 +82,7 @@ The future map section uses parser-normalized structures:
 ```kotlin
 data class WorldMapCatalog(
     val regions: List<WorldMapRegion>,
+    val assets: Map<String, RgbaSprite>,
 )
 
 data class WorldMapRegion(
@@ -114,7 +117,7 @@ Several map headers may legitimately share one semantic location. They are group
 
 ### Catalog storage and assets
 
-Overview metadata is persisted in a required `world_maps` catalog section. The API bootstrap contains normalized metadata and immutable asset URLs, not expanded pixel arrays. Region PNGs are served through `/api/maps/world/{regionKey}.png` with the catalog hash as an ETag, following the existing sprite endpoint pattern.
+Overview metadata and each fully rendered ROM-derived raster are persisted in a required `world_maps` catalog section. A region may reference an `imageAssetKey` only when that key resolves to a nonempty raster with exactly the declared pixel dimensions. The API bootstrap contains normalized metadata and immutable asset URLs, not expanded pixel arrays. Region PNGs are served through `/api/maps/world/{regionKey}.png` with the catalog hash as an ETag, following the existing sprite endpoint pattern.
 
 Local maps can be much larger than the overview. Their later stage stores rendered PNG assets in a BLOB-oriented catalog asset table rather than JSON-expanding every raster. The runtime does not retain raw ROM bytes after parsing, so every required asset is materialized during catalog parsing.
 
@@ -214,6 +217,8 @@ Any absent, truncated, invalid, or non-unique dependency fails closed. The UI om
 - Reuse the same map catalog, asset API, fog, selection, and UI.
 - Add Gen II's in-page multi-region control.
 
+Stages 1 and 2 together form the minimum usable map delivery. Gen III-only support is not merge-ready: legitimate official Gen I and Gen II controls must each render real ROM-derived art, expose catalog-bound locations, complete both navigation directions, and apply the same Organic fog contract.
+
 ### Stage 3: local semantic zoom
 
 - Materialize structurally validated local map assets.
@@ -232,7 +237,19 @@ Map stages require:
 - catalog round-trip and parser-schema invalidation tests;
 - knowledge persistence and area-transition-without-battle tests;
 - API tests that prevent unvisited labels, species, or hit targets from leaking in Organic mode;
-- UI tests for pinch/pan versus tap, current/selected labels, unavailable maps, symmetric Map/Pokédex navigation with preserved Area context, and multi-region switching; and
-- live controls on official Gen I, II, and III ROMs plus structurally compatible hacks.
+- UI tests for pinch/pan versus tap, current/selected labels, unavailable maps, symmetric Map/Pokédex navigation with preserved Area context, Pokémon Detail Area-row centering with preserved species context, and multi-region switching; and
+- SHA-bound live controls on official Gen I, II, and III ROMs plus structurally compatible hacks. The SHA binds test evidence only; production resolution remains structural.
+
+Before merge, install, or release, the resolver is run twice over the exact first 50 unique ROMs in manifest order, rehashing every input immediately before each run. A per-ROM `SUCCESS` requires all of the following, not merely a supported family or a nonempty metadata shell:
+
+- a structurally resolved, nonempty ROM-derived world-map raster;
+- validated raster dimensions and location geometry;
+- at least one valid semantic location-to-`baseAreaId` binding;
+- successful asset persistence and HTTP serving;
+- usable Map ↔ Pokédex and Pokémon Detail Area → Map navigation;
+- identical deterministic output on the repeat; and
+- no `AMBIGUOUS`, budget, error, reference-index, parser, family, or exact first-33 behavior regression.
+
+At least 25 of the 50 ROMs must be `SUCCESS`. Every one of the 50 receives an explicit status and reason. `NOT_FOUND`, `NOT_APPLICABLE`, partial metadata, blank placeholder art, unsupported-family scaffolding, or a failed interaction is not success. A total below 25 is a hard no-ship result.
 
 Live acceptance verifies the user-facing flow on the target device: a route transition updates the current outline, the visit survives a cold restart, tapping a revealed location opens the correct Area filter, both top-right shortcuts preserve that Area context and map viewport, and Treecko remains absent from a location unless it was observed there. Pixel hashes and successful builds alone are not sufficient.
