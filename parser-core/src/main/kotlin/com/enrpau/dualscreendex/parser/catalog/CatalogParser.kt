@@ -9,6 +9,7 @@ import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
+import com.enrpau.dualscreendex.parser.parse.Gen1WorldMapResolution
 import com.enrpau.dualscreendex.parser.parse.Gen3WorldMapResolution
 import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3RuntimeMemoryLayoutResolver
@@ -51,6 +52,7 @@ object CatalogParser {
                 analysis = analysis,
                 layout = layout,
                 onProgress = onProgress,
+                resolveGen1WorldMap = context.resolveGen1WorldMap,
                 resolveGen3WorldMap = context.resolveGen3WorldMap,
             ),
         )
@@ -63,6 +65,7 @@ object CatalogMaterializer {
         analysis: ParseResult,
         layout: ResolvedRomLayout,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+        resolveGen1WorldMap: ((Set<Int>) -> Gen1WorldMapResolution)? = null,
         resolveGen3WorldMap: ((Set<Int>) -> Gen3WorldMapResolution)? = null,
     ): ParsedCatalog {
         val rawSpecies = RecordMaterializers.species(rom, layout)
@@ -327,14 +330,15 @@ object CatalogMaterializer {
                 status = if (layout.generation == 3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
             )
         }
-        val worldMapResolution = if (layout.generation == 3 && resolveGen3WorldMap != null) {
-            resolveGen3WorldMap(encounters.mapTo(linkedSetOf(), EncounterArea::baseAreaId))
-        } else {
-            Gen3WorldMapResolution.Unavailable("generation-specific world-map resolver is not yet available")
+        val encounterBaseIds = encounters.mapTo(linkedSetOf(), EncounterArea::baseAreaId)
+        val worldMapResolution: CatalogWorldMapResolution = when {
+            layout.generation == 1 && resolveGen1WorldMap != null -> resolveGen1WorldMap(encounterBaseIds).toCatalog()
+            layout.generation == 3 && resolveGen3WorldMap != null -> resolveGen3WorldMap(encounterBaseIds).toCatalog()
+            else -> CatalogWorldMapResolution.Unavailable("generation-specific world-map resolver is not yet available")
         }
-        val worldMaps = (worldMapResolution as? Gen3WorldMapResolution.Resolved)?.catalog ?: WorldMapCatalog()
+        val worldMaps = (worldMapResolution as? CatalogWorldMapResolution.Resolved)?.catalog ?: WorldMapCatalog()
         capabilities[RomCapability.WORLD_MAP] = when (worldMapResolution) {
-            is Gen3WorldMapResolution.Resolved -> CapabilityEvidence(
+            is CatalogWorldMapResolution.Resolved -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
                 compatible = true,
                 confidence = 1.0,
@@ -342,7 +346,7 @@ object CatalogMaterializer {
                 reasons = worldMapResolution.reasons,
                 status = CapabilityStatus.AVAILABLE,
             )
-            is Gen3WorldMapResolution.Ambiguous -> CapabilityEvidence(
+            is CatalogWorldMapResolution.Ambiguous -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
                 compatible = false,
                 confidence = 0.0,
@@ -350,19 +354,19 @@ object CatalogMaterializer {
                 status = CapabilityStatus.AMBIGUOUS,
                 reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
             )
-            is Gen3WorldMapResolution.BudgetExceeded -> CapabilityEvidence(
+            is CatalogWorldMapResolution.BudgetExceeded -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
                 compatible = false,
                 confidence = 0.0,
                 reasons = listOf(worldMapResolution.reason),
                 status = CapabilityStatus.NOT_FOUND,
             )
-            is Gen3WorldMapResolution.Unavailable -> CapabilityEvidence(
+            is CatalogWorldMapResolution.Unavailable -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
                 compatible = false,
                 confidence = 0.0,
                 reasons = listOf(worldMapResolution.reason),
-                status = if (layout.generation == 3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
+                status = if (layout.generation in 1..3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
             )
         }
         val catalog = ParsedCatalog(
@@ -422,6 +426,26 @@ object CatalogMaterializer {
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.EXTENDED, 4, 5, catalog))
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, catalog))
         return catalog
+    }
+
+    private sealed interface CatalogWorldMapResolution {
+        data class Resolved(val catalog: WorldMapCatalog, val reasons: List<String>) : CatalogWorldMapResolution
+        data class Unavailable(val reason: String) : CatalogWorldMapResolution
+        data class Ambiguous(val reason: String) : CatalogWorldMapResolution
+        data class BudgetExceeded(val reason: String) : CatalogWorldMapResolution
+    }
+
+    private fun Gen3WorldMapResolution.toCatalog(): CatalogWorldMapResolution = when (this) {
+        is Gen3WorldMapResolution.Resolved -> CatalogWorldMapResolution.Resolved(catalog, reasons)
+        is Gen3WorldMapResolution.Unavailable -> CatalogWorldMapResolution.Unavailable(reason)
+        is Gen3WorldMapResolution.Ambiguous -> CatalogWorldMapResolution.Ambiguous(reason)
+        is Gen3WorldMapResolution.BudgetExceeded -> CatalogWorldMapResolution.BudgetExceeded(reason)
+    }
+
+    private fun Gen1WorldMapResolution.toCatalog(): CatalogWorldMapResolution = when (this) {
+        is Gen1WorldMapResolution.Resolved -> CatalogWorldMapResolution.Resolved(catalog, reasons)
+        is Gen1WorldMapResolution.Unavailable -> CatalogWorldMapResolution.Unavailable(reason)
+        is Gen1WorldMapResolution.Ambiguous -> CatalogWorldMapResolution.Ambiguous(reason)
     }
 
     private fun applyResolvedAreaNames(

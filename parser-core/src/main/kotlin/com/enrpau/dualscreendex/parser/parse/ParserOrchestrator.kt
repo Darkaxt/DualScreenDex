@@ -20,6 +20,7 @@ import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 
 internal data class CatalogAnalysisContext(
     val analysis: ParseResult,
+    val resolveGen1WorldMap: (Set<Int>) -> Gen1WorldMapResolution,
     val resolveGen3WorldMap: (Set<Int>) -> Gen3WorldMapResolution,
 )
 
@@ -37,6 +38,7 @@ object ParserOrchestrator {
         }
         return CatalogAnalysisContext(
             analysis = analysis,
+            resolveGen1WorldMap = { baseAreaIds -> Gen1WorldMapResolver.resolve(sharedSession, baseAreaIds) },
             resolveGen3WorldMap = { baseAreaIds -> Gen3WorldMapResolver.resolve(sharedSession, baseAreaIds) },
         )
     }

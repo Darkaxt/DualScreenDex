@@ -36,6 +36,45 @@ object TileRenderer {
         return IndexedSprite(width, height, pixels)
     }
 
+    fun gameBoy2BppTilemap(
+        tiles: ByteArray,
+        tilemap: ByteArray,
+        tileWidth: Int,
+        tileHeight: Int,
+    ): IndexedSprite {
+        require(tileWidth > 0 && tileHeight > 0) { "2bpp tilemap dimensions must be positive" }
+        require(tiles.isNotEmpty() && tiles.size % GAME_BOY_2BPP_TILE_BYTES == 0) {
+            "2bpp tile data must contain complete tiles"
+        }
+        val mapEntries = tileWidth.toLong() * tileHeight.toLong()
+        require(mapEntries <= Int.MAX_VALUE && tilemap.size.toLong() == mapEntries) {
+            "2bpp tilemap has an invalid byte length"
+        }
+        val pixelWidth = tileWidth.toLong() * TILE_EDGE
+        val pixelHeight = tileHeight.toLong() * TILE_EDGE
+        require(pixelWidth * pixelHeight <= Int.MAX_VALUE) { "2bpp tilemap dimensions exceed pixel bounds" }
+        val tileCount = tiles.size / GAME_BOY_2BPP_TILE_BYTES
+        val pixels = ByteArray((pixelWidth * pixelHeight).toInt())
+        repeat(mapEntries.toInt()) { mapIndex ->
+            val tile = tilemap[mapIndex].toInt() and 0xFF
+            require(tile < tileCount) { "2bpp tilemap index exceeds tile data" }
+            val mapX = mapIndex % tileWidth
+            val mapY = mapIndex / tileWidth
+            repeat(TILE_EDGE) { row ->
+                val low = tiles[tile * GAME_BOY_2BPP_TILE_BYTES + row * 2].toInt() and 0xFF
+                val high = tiles[tile * GAME_BOY_2BPP_TILE_BYTES + row * 2 + 1].toInt() and 0xFF
+                repeat(TILE_EDGE) { column ->
+                    val bit = TILE_EDGE - 1 - column
+                    val value = ((low ushr bit) and 1) or (((high ushr bit) and 1) shl 1)
+                    val destination = (mapY * TILE_EDGE + row) * pixelWidth.toInt() +
+                        mapX * TILE_EDGE + column
+                    pixels[destination] = value.toByte()
+                }
+            }
+        }
+        return IndexedSprite(pixelWidth.toInt(), pixelHeight.toInt(), pixels)
+    }
+
     fun gba4Bpp(bytes: ByteArray, tileWidth: Int, tileHeight: Int): IndexedSprite {
         require(bytes.size >= tileWidth * tileHeight * 32) { "not enough 4bpp tile data" }
         val width = tileWidth * 8
@@ -156,6 +195,7 @@ object TileRenderer {
     }
 
     private const val TILE_EDGE = 8
+    private const val GAME_BOY_2BPP_TILE_BYTES = 16
     private const val GBA_8BPP_TILE_BYTES = 64
     private const val GBA_TILEMAP_ENTRY_BYTES = 2
     private const val GBA_TILE_INDEX_MASK = 0x03FF

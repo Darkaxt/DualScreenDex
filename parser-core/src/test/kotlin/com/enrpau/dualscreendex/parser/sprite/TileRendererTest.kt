@@ -19,6 +19,31 @@ class TileRendererTest {
     }
 
     @Test
+    fun composesGameBoyTwoBitplaneTilesThroughAByteTilemap() {
+        val tiles = ByteArray(32)
+        tiles[0] = 0x80.toByte()
+        tiles[17] = 0x80.toByte()
+
+        val sprite = TileRenderer.gameBoy2BppTilemap(
+            tiles = tiles,
+            tilemap = byteArrayOf(1, 0),
+            tileWidth = 2,
+            tileHeight = 1,
+        )
+
+        assertEquals(2, sprite.indexAt(0, 0))
+        assertEquals(0, sprite.indexAt(1, 0))
+        assertEquals(1, sprite.indexAt(8, 0))
+    }
+
+    @Test
+    fun rejectsGameBoyTilemapReferencesOutsideDecodedTiles() {
+        assertThrows(IllegalArgumentException::class.java) {
+            TileRenderer.gameBoy2BppTilemap(ByteArray(16), byteArrayOf(1), 1, 1)
+        }
+    }
+
+    @Test
     fun rendersGbaFourBitplanesLowNibbleFirst() {
         val tile = ByteArray(32)
         tile[0] = 0x21
