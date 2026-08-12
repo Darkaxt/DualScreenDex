@@ -31,15 +31,26 @@ class ThorFocusController(
     fun sync(enabled: Boolean, docked: Boolean, secondaryDisplay: Boolean): ThorFocusResult {
         if (!backend.supported) return ThorFocusResult.NOT_SUPPORTED
         if (!enabled || !docked || !secondaryDisplay) return release()
-        if (!backend.writable) return ThorFocusResult.PERMISSION_REQUIRED
+        val writable = try {
+            backend.writable
+        } catch (_: Exception) {
+            return ThorFocusResult.WRITE_FAILED
+        }
+        if (!writable) return ThorFocusResult.PERMISSION_REQUIRED
 
-        if (backend.owned && backend.current == ThorFocusMode.TOP) return ThorFocusResult.NO_CHANGE
+        val current = try {
+            backend.current
+        } catch (_: Exception) {
+            return ThorFocusResult.WRITE_FAILED
+        }
+
+        if (backend.owned && current == ThorFocusMode.TOP) return ThorFocusResult.NO_CHANGE
         if (backend.owned) clearOwnership()
 
-        backend.previous = backend.current.takeIf { it in ThorFocusMode.AUTO..ThorFocusMode.BOTTOM }
+        backend.previous = current.takeIf { it in ThorFocusMode.AUTO..ThorFocusMode.BOTTOM }
             ?: ThorFocusMode.AUTO
         backend.owned = true
-        return if (backend.write(ThorFocusMode.TOP)) {
+        return if (write(ThorFocusMode.TOP)) {
             ThorFocusResult.ENFORCED
         } else {
             clearOwnership()
@@ -49,18 +60,35 @@ class ThorFocusController(
 
     private fun release(): ThorFocusResult {
         if (!backend.owned) return ThorFocusResult.NO_CHANGE
-        if (!backend.writable) return ThorFocusResult.PERMISSION_REQUIRED
-        if (backend.current != ThorFocusMode.TOP) {
+        val writable = try {
+            backend.writable
+        } catch (_: Exception) {
+            return ThorFocusResult.WRITE_FAILED
+        }
+        if (!writable) return ThorFocusResult.PERMISSION_REQUIRED
+
+        val current = try {
+            backend.current
+        } catch (_: Exception) {
+            return ThorFocusResult.WRITE_FAILED
+        }
+        if (current != ThorFocusMode.TOP) {
             clearOwnership()
             return ThorFocusResult.RELEASED
         }
         val prior = backend.previous ?: ThorFocusMode.AUTO
-        return if (backend.write(prior)) {
+        return if (write(prior)) {
             clearOwnership()
             ThorFocusResult.RESTORED
         } else {
             ThorFocusResult.WRITE_FAILED
         }
+    }
+
+    private fun write(mode: Int): Boolean = try {
+        backend.write(mode)
+    } catch (_: Exception) {
+        false
     }
 
     private fun clearOwnership() {

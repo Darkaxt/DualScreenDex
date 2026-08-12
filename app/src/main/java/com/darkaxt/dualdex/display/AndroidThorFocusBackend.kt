@@ -2,9 +2,27 @@ package com.darkaxt.dualdex.display
 
 import android.content.Context
 import android.os.Build
-import android.provider.Settings
 
-class AndroidThorFocusBackend(context: Context) : ThorFocusBackend {
+internal interface ThorFocusAccess {
+    val writable: Boolean
+    fun read(): Int
+    fun write(mode: Int): Boolean
+}
+
+private object UnavailableThorFocusAccess : ThorFocusAccess {
+    override val writable = false
+
+    override fun read(): Int = throw IllegalStateException("Thor focus access is unavailable")
+
+    override fun write(mode: Int) = false
+}
+
+class AndroidThorFocusBackend internal constructor(
+    context: Context,
+    private val access: ThorFocusAccess,
+) : ThorFocusBackend {
+    constructor(context: Context) : this(context, UnavailableThorFocusAccess)
+
     private val applicationContext = context.applicationContext
     private val preferences = applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
@@ -14,10 +32,10 @@ class AndroidThorFocusBackend(context: Context) : ThorFocusBackend {
             runCatching { applicationContext.packageManager.getPackageInfo(ASSISTANT_PACKAGE, 0) }.isSuccess
 
     override val writable: Boolean
-        get() = Settings.System.canWrite(applicationContext)
+        get() = access.writable
 
     override val current: Int
-        get() = Settings.System.getInt(applicationContext.contentResolver, SYSTEM_KEY, ThorFocusMode.AUTO)
+        get() = access.read()
 
     override var previous: Int?
         get() = if (preferences.contains(PREVIOUS_KEY)) preferences.getInt(PREVIOUS_KEY, ThorFocusMode.AUTO) else null
@@ -37,12 +55,11 @@ class AndroidThorFocusBackend(context: Context) : ThorFocusBackend {
 
     override fun write(mode: Int): Boolean {
         require(mode in ThorFocusMode.AUTO..ThorFocusMode.BOTTOM)
-        return writable && Settings.System.putInt(applicationContext.contentResolver, SYSTEM_KEY, mode)
+        return writable && access.write(mode)
     }
 
     private companion object {
         const val ASSISTANT_PACKAGE = "com.odin.dualscreen.assistant"
-        const val SYSTEM_KEY = "screen_focus_lock"
         const val PREFERENCES = "thor-focus-ownership"
         const val PREVIOUS_KEY = "previous-mode"
         const val OWNED_KEY = "owned"

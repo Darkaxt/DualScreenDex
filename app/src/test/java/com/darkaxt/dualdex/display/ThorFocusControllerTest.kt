@@ -79,17 +79,77 @@ class ThorFocusControllerTest {
         assertEquals(ThorFocusMode.AUTO, backend.current)
     }
 
+    @Test
+    fun readFailureReturnsWriteFailedInsteadOfThrowing() {
+        val backend = FakeBackend(
+            current = ThorFocusMode.AUTO,
+            readFailure = secureSettingsFailure(),
+        )
+
+        assertEquals(
+            ThorFocusResult.WRITE_FAILED,
+            ThorFocusController(backend).sync(enabled = true, docked = true, secondaryDisplay = true),
+        )
+        assertFalse(backend.owned)
+    }
+
+    @Test
+    fun writeFailureReturnsWriteFailedInsteadOfThrowing() {
+        val backend = FakeBackend(
+            current = ThorFocusMode.AUTO,
+            writeFailure = secureSettingsFailure(),
+        )
+
+        assertEquals(
+            ThorFocusResult.WRITE_FAILED,
+            ThorFocusController(backend).sync(enabled = true, docked = true, secondaryDisplay = true),
+        )
+        assertFalse(backend.owned)
+    }
+
+    @Test
+    fun failedRestorationRetainsOwnershipAndPreviousMode() {
+        val backend = FakeBackend(
+            current = ThorFocusMode.TOP,
+            writeFailure = secureSettingsFailure(),
+        ).apply {
+            previous = ThorFocusMode.BOTTOM
+            owned = true
+        }
+
+        assertEquals(
+            ThorFocusResult.WRITE_FAILED,
+            ThorFocusController(backend).sync(enabled = false, docked = true, secondaryDisplay = true),
+        )
+        assertTrue(backend.owned)
+        assertEquals(ThorFocusMode.BOTTOM, backend.previous)
+    }
+
+    private fun secureSettingsFailure() =
+        IllegalArgumentException("You cannot keep your settings in the secure settings.")
+
     private class FakeBackend(
-        override var current: Int,
+        current: Int,
         override val supported: Boolean = true,
         override val writable: Boolean = true,
+        private val readFailure: IllegalArgumentException? = null,
+        private val writeFailure: IllegalArgumentException? = null,
     ) : ThorFocusBackend {
+        private var storedCurrent = current
+
+        override var current: Int
+            get() = readFailure?.let { throw it } ?: storedCurrent
+            set(value) {
+                storedCurrent = value
+            }
+
         override var previous: Int? = null
         override var owned: Boolean = false
         val writes = mutableListOf<Int>()
 
         override fun write(mode: Int): Boolean {
             writes += mode
+            writeFailure?.let { throw it }
             current = mode
             return true
         }
