@@ -33,7 +33,7 @@ export function WorldMapPage({ catalog, state, send }: { catalog: Catalog; state
   const transform = `translate(${pan.x}px, ${pan.y}px) scale(${scale})`;
   const maskId = `fog-${region.key.replace(/[^a-z0-9_-]/gi, '-')}`;
   const revealId = `${maskId}-reveal`;
-  const recenter = () => setPan({ x: 0, y: 0 });
+  const recenter = () => { setPan({ x: 0, y: 0 }); setScale(1); };
 
   return <section class="screen world-map-screen">
     <header class="map-header">
@@ -52,7 +52,7 @@ export function WorldMapPage({ catalog, state, send }: { catalog: Catalog; state
       if (Math.abs(event.clientX - drag.current.x) + Math.abs(event.clientY - drag.current.y) > 4) dragged.current = true;
       setPan({ x: drag.current.panX + event.clientX - drag.current.x, y: drag.current.panY + event.clientY - drag.current.y });
     }} onPointerUp={() => { drag.current = null; }}>
-      <div class="map-canvas" style={{ width: region.pixelWidth, height: region.pixelHeight, transform }}>
+      <div class="map-canvas" style={{ aspectRatio: `${region.pixelWidth} / ${region.pixelHeight}`, transform }}>
         {policy === 'ORGANIC' ? <svg class="map-raster" viewBox={`0 0 ${region.pixelWidth} ${region.pixelHeight}`} role="img" aria-label={`${title} explored map`}>
           <defs><radialGradient id={revealId}><stop offset="0%" stop-color="white" /><stop offset="68%" stop-color="white" /><stop offset="100%" stop-color="black" /></radialGradient><mask id={maskId}><rect width="100%" height="100%" fill="black" />{region.locations.filter(revealed).flatMap(location => location.geometry.map((cell, index) => <ellipse key={`${location.key}-${index}`} cx={(cell.x + cell.width / 2) * region.pixelWidth / region.gridWidth} cy={(cell.y + cell.height / 2) * region.pixelHeight / region.gridHeight} rx={Math.max(18, cell.width * region.pixelWidth / region.gridWidth * 2.4)} ry={Math.max(18, cell.height * region.pixelHeight / region.gridHeight * 2.4)} fill={`url(#${revealId})`} />))}</mask></defs>
           <rect width="100%" height="100%" fill="black" />

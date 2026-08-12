@@ -32,6 +32,8 @@ describe('Map First', () => {
     expect(screen.getByLabelText('Recenter map')).toBeTruthy();
     expect(container.querySelector('.map-location.current')).toBeTruthy();
     expect(container.querySelector('.map-location.selected')).toBeTruthy();
+    expect((container.querySelector('.map-canvas') as HTMLElement).style.width).toBe('');
+    expect((container.querySelector('.map-canvas') as HTMLElement).style.aspectRatio).toBe('160 / 144');
     fireEvent.click(screen.getByLabelText('Open Area Pokédex'));
     expect(send).toHaveBeenCalledWith('MAP_AREA', { locationKey: 'oldale' });
     expect(container.querySelector('.bottom-toolbar')).toBeNull();
