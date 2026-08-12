@@ -2,6 +2,11 @@
 
 DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
+## RC17 update
+
+- Prevents stale Generation III battle records from opening Combat when DualDex starts while the game is already in the overworld.
+- Qualifies battle data against live main-loop callback and battle-memory transitions, while preserving recovery when DualDex starts during an existing battle and immediate exit when the game returns to the overworld.
+
 ## RC16 update
 
 - Uses live RetroArch RAM as the current-area authority while connected. Disk SaveRAM remains available as an offline last-known location, but can no longer override or fill a missing live location.

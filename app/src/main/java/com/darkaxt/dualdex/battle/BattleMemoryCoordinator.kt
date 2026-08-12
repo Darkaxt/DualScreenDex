@@ -67,6 +67,11 @@ class BattleMemoryCoordinator(
     private var requestedSaveBlock1Address: Long? = null
     private var cachedGen3MainLayout: Gen3MainLayout? = null
     private var observedOverworldCallbacks: Gen3MainCallbacks? = null
+    private var observedOverworldSample: BattleMemorySample? = null
+    private var pendingOverworldCallbacks: Gen3MainCallbacks? = null
+    private var pendingOverworldSample: BattleMemorySample? = null
+    private var pendingOverworldObservations = 0
+    private var awaitingOverworldAfterOutcome = false
     @Volatile private var closed = false
 
     init {
@@ -255,9 +260,6 @@ class BattleMemoryCoordinator(
         }
         val mainState = resolveGen3MainState(regions, context)
         val wasActive = tracker.missed().active
-        if (context.generation == 3 && !wasActive && resolvedSample == null && mainState != null) {
-            observedOverworldCallbacks = mainState.callbacks
-        }
         val lifecycleEnded = context.generation == 3 &&
             wasActive &&
             mainState != null &&
@@ -265,10 +267,24 @@ class BattleMemoryCoordinator(
         if (supportsLiveArea(context)) {
             locationPublisher(resolveCurrentArea(regions, context))
         }
-        val sample = resolvedSample
-        val update = if (lifecycleEnded || sample != null && sample.battleOutcome != 0) {
+        val sample = if (context.generation == 3 && mainState != null) {
+            qualifyGen3BattleSample(mainState, resolvedSample, wasActive)
+        } else {
+            resolvedSample
+        }
+        val endedByOutcome = sample != null && sample.battleOutcome != 0
+        val update = if (lifecycleEnded || endedByOutcome) {
             val final = sample?.let { tracker.update(context.romIdentity, it) } ?: tracker.missed()
             tracker.reset(context.romIdentity)
+            if (context.generation == 3) {
+                if (lifecycleEnded) {
+                    observedOverworldSample = resolvedSample
+                    awaitingOverworldAfterOutcome = false
+                } else {
+                    awaitingOverworldAfterOutcome = true
+                }
+                clearPendingOverworldObservation()
+            }
             BattleTrackingUpdate(
                 active = false,
                 sample = null,
@@ -284,6 +300,52 @@ class BattleMemoryCoordinator(
             tracker.validatedNoBattle(context.romIdentity)
         }
         if (update.active || update.ended) publisher(update)
+    }
+
+    private fun qualifyGen3BattleSample(
+        mainState: Gen3MainState,
+        sample: BattleMemorySample?,
+        wasActive: Boolean,
+    ): BattleMemorySample? {
+        if (wasActive) return sample
+        val callbacks = mainState.callbacks
+        val overworld = observedOverworldCallbacks
+        if (overworld == null) {
+            observedOverworldCallbacks = callbacks
+            observedOverworldSample = sample
+            clearPendingOverworldObservation()
+            return null
+        }
+        if (callbacks == overworld) {
+            observedOverworldSample = sample
+            awaitingOverworldAfterOutcome = false
+            clearPendingOverworldObservation()
+            return null
+        }
+        if (awaitingOverworldAfterOutcome) return null
+        if (sample != null && sample != observedOverworldSample) {
+            clearPendingOverworldObservation()
+            return sample
+        }
+        if (pendingOverworldCallbacks == callbacks && pendingOverworldSample == sample) {
+            pendingOverworldObservations++
+        } else {
+            pendingOverworldCallbacks = callbacks
+            pendingOverworldSample = sample
+            pendingOverworldObservations = 1
+        }
+        if (pendingOverworldObservations >= REQUIRED_STABLE_OVERWORLD_OBSERVATIONS) {
+            observedOverworldCallbacks = callbacks
+            observedOverworldSample = sample
+            clearPendingOverworldObservation()
+        }
+        return null
+    }
+
+    private fun clearPendingOverworldObservation() {
+        pendingOverworldCallbacks = null
+        pendingOverworldSample = null
+        pendingOverworldObservations = 0
     }
 
     private fun resolveGen3MainState(
@@ -448,6 +510,9 @@ class BattleMemoryCoordinator(
         requestedSaveBlock1Address = null
         cachedGen3MainLayout = null
         observedOverworldCallbacks = null
+        observedOverworldSample = null
+        awaitingOverworldAfterOutcome = false
+        clearPendingOverworldObservation()
         closeTransport()
     }
 
@@ -490,6 +555,7 @@ class BattleMemoryCoordinator(
         private const val COUNT_DELTA = 0x1C
         private const val CACHED_WINDOW_BYTES = 0x45C
         private const val PRODUCTION_CHUNK_BYTES = 1024
+        private const val REQUIRED_STABLE_OVERWORLD_OBSERVATIONS = 2
     }
 
     private fun supports(generation: Int, systemId: String?): Boolean = when (generation) {
