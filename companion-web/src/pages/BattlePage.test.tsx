@@ -80,9 +80,10 @@ describe('battle layout', () => {
     state.settings.knowledgeMode = 'ORGANIC';
     state.battle = { ...state.battle!, effectiveness: null, effectivenessKnown: false };
 
-    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
-    expect(screen.getByText('UNKNOWN')).toBeTruthy();
+    expect(container.querySelector('.effect-result strong')?.textContent).toBe('—');
+    expect(screen.queryByText('UNKNOWN')).toBeNull();
     expect(screen.queryByRole('button', { name: 'RESOLVE ATTACK' })).toBeNull();
   });
 
@@ -129,7 +130,8 @@ describe('battle layout', () => {
     expect(screen.getByText('TRAINED')).toBeTruthy();
     expect(screen.queryByText(/UNKNOWN TRAINED/)).toBeNull();
     expect(screen.getByLabelText('2 of 5 stars; TRAINED innate quality; area comparison unavailable')).toBeTruthy();
-    expect(screen.getByText('Saved area 0x0202 is not present in this ROM encounter catalog. SaveRAM may not reflect the live battle location.')).toBeTruthy();
+    expect(screen.getByText('Area comparison not available.')).toBeTruthy();
+    expect(screen.queryByText(/0x0202|SaveRAM|encounter catalog/i)).toBeNull();
   });
 
   it('uses the same generic fallback for a missing Battle Target Entry', () => {
@@ -139,10 +141,10 @@ describe('battle layout', () => {
 
     render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
-    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
+    expect(screen.getByText('Pokédex data not available.')).toBeTruthy();
   });
 
-  it('explains when relative rarity uses the only capable ROM encounter table instead of SaveRAM', () => {
+  it('uses a concise fallback when a unique matching encounter table supplies rarity', () => {
     const { catalog, state } = fixture(1);
     state.battleTab = 'RARITY';
     state.battle!.opponents[0].rarity = {
@@ -153,7 +155,21 @@ describe('battle layout', () => {
     render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
     expect(screen.getByText('ORDINARY TRAINED')).toBeTruthy();
-    expect(screen.getByText('SaveRAM area did not match. This tier uses the only ROM encounter table capable of producing this species at this level.')).toBeTruthy();
+    expect(screen.getByText('Compared with matching wild encounters. First word: level. Second: innate quality.')).toBeTruthy();
+    expect(screen.queryByText(/SaveRAM|0x0202/)).toBeNull();
+  });
+
+  it('uses the resolved road or city name in the rarity explanation', () => {
+    const { catalog, state } = fixture(1);
+    state.battleTab = 'RARITY';
+    state.battle!.opponents[0].rarity = {
+      relativeTier: 'ORDINARY', innateTier: 'TRAINED', baseStars: 2, areaAdjustment: 0, stars: 2,
+      currentAreaName: 'Route 101',
+    };
+
+    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('Compared with Route 101 wild encounters. First word: level. Second: innate quality.')).toBeTruthy();
   });
 
   it('reports unavailable rarity without inventing stars when innate data is missing', () => {

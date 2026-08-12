@@ -72,7 +72,7 @@ object Gen3LearnsetSelectorExtractor {
                 validatedTableOffsets,
             )
             if (zeroRoots.size == 1 && nonZeroRoots.size == 1 && zeroRoots.single() != nonZeroRoots.single()) {
-                val qualified = qualificationCache[globalLiteral] ?: isSaveBlock1Global(rom, globalLiteral).also {
+                val qualified = qualificationCache[globalLiteral] ?: Gen3SaveBlock1PointerResolver.qualifies(rom, globalLiteral).also {
                     qualificationCache[globalLiteral] = it
                 }
                 if (!qualified) {
@@ -95,70 +95,6 @@ object Gen3LearnsetSelectorExtractor {
             globalLoad += 2
         }
         return retainedMatch
-    }
-
-    private fun isSaveBlock1Global(rom: RomImage, candidateGlobal: Long): Boolean {
-        val anchor = SaveBlockAnchor()
-        forEachRamGlobalConsumer(rom) { global, groupLoads, numberLoads ->
-            if (global != candidateGlobal) return@forEachRamGlobalConsumer true
-            anchor.loads++
-            anchor.locationGroupLoads += groupLoads
-            anchor.locationNumberLoads += numberLoads
-            !(anchor.loads >= MIN_GLOBAL_LOADS &&
-                anchor.locationGroupLoads >= MIN_LOCATION_LOADS &&
-                anchor.locationNumberLoads >= MIN_LOCATION_LOADS)
-        }
-        return anchor.loads >= MIN_GLOBAL_LOADS &&
-            anchor.locationGroupLoads >= MIN_LOCATION_LOADS &&
-            anchor.locationNumberLoads >= MIN_LOCATION_LOADS
-    }
-
-    private fun forEachRamGlobalConsumer(
-        rom: RomImage,
-        consumer: (global: Long, groupLoads: Int, numberLoads: Int) -> Boolean,
-    ): Boolean {
-        var instructionOffset = 0
-        while (instructionOffset <= rom.size - 8) {
-            val global = literalValue(rom, instructionOffset)
-            if (global !in EWRAM_START..IWRAM_END) {
-                instructionOffset += 2
-                continue
-            }
-            val literalRegister = literalDestination(rom.u16le(instructionOffset)) ?: run {
-                instructionOffset += 2
-                continue
-            }
-            var pointerLoadOffset = instructionOffset + 2
-            var pointerRegister: Int? = null
-            while (pointerLoadOffset <= minOf(instructionOffset + MAX_POINTER_LOAD_SCAN_BYTES, rom.size - 2)) {
-                val instruction = rom.u16le(pointerLoadOffset)
-                if (isWordLoadAtZero(instruction, literalRegister)) {
-                    pointerRegister = instruction and 0x7
-                    break
-                }
-                pointerLoadOffset += 2
-            }
-            if (pointerRegister == null) {
-                instructionOffset += 2
-                continue
-            }
-            var groupLoads = 0
-            var numberLoads = 0
-            var accessOffset = pointerLoadOffset + 2
-            while (accessOffset <= minOf(pointerLoadOffset + MAX_LOCATION_ACCESS_SCAN_BYTES, rom.size - 2)) {
-                val instruction = rom.u16le(accessOffset)
-                if (instruction and 0xF800 == 0x7800 && (instruction ushr 3) and 0x7 == pointerRegister) {
-                    when ((instruction ushr 6) and 0x1F) {
-                        SAVE_LOCATION_GROUP_OFFSET -> groupLoads++
-                        SAVE_LOCATION_NUMBER_OFFSET -> numberLoads++
-                    }
-                }
-                accessOffset += 2
-            }
-            if (!consumer(global, groupLoads, numberLoads)) return false
-            instructionOffset += 2
-        }
-        return true
     }
 
     private fun findMask(rom: RomImage, globalLoad: Int, valueRegister: Int): Pair<Int, Int>? {
@@ -271,20 +207,9 @@ object Gen3LearnsetSelectorExtractor {
     private const val MAX_SAVE_BLOCK1_BYTES = 0x4000
     private const val MAX_GLOBAL_ANCHORS = 256
     private const val MAX_QUALIFICATION_CACHE = 256
-    private const val MAX_POINTER_LOAD_SCAN_BYTES = 10
-    private const val MAX_LOCATION_ACCESS_SCAN_BYTES = 12
-    private const val MIN_GLOBAL_LOADS = 8
-    private const val MIN_LOCATION_LOADS = 4
-    private const val SAVE_LOCATION_GROUP_OFFSET = 4
-    private const val SAVE_LOCATION_NUMBER_OFFSET = 5
     private const val MAX_MASK_LOOKBACK_BYTES = 16
     private const val MAX_TEST_SCAN_BYTES = 32
     private const val MAX_ARM_SCAN_BYTES = 128
     private const val CONDITION_EQ = 0
 
-    private data class SaveBlockAnchor(
-        var loads: Int = 0,
-        var locationGroupLoads: Int = 0,
-        var locationNumberLoads: Int = 0,
-    )
 }

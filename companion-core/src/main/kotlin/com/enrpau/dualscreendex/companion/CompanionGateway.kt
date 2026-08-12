@@ -86,6 +86,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             )
         }
         is CompanionAction.SelectMove -> state.copy(battle = state.battle?.copy(selectedMoveId = action.moveId))
+        is CompanionAction.LiveAreaChanged -> state.copy(liveAreaBaseId = action.areaBaseId)
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
         is CompanionAction.Failure -> state.copy(error = action.message)
     }

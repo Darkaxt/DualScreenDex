@@ -268,6 +268,7 @@ class ProductionCompanionRuntime(
             romIdentity = current.romSha256,
             generation = generation,
             catalog = BattleCatalogView(species, moves, current.typesById.keys),
+            gen3SaveBlock1PointerAddress = current.runtimeMetadata.gen3SaveBlock1PointerAddress,
         )
     }
 
@@ -341,6 +342,12 @@ class ProductionCompanionRuntime(
     }
 
     fun battlePollingIntervalMs(): Int = gateway.bootstrap().settings.battlePollingIntervalMs.coerceIn(1, 20)
+
+    fun updateLiveArea(areaBaseId: Int?) {
+        if (gateway.bootstrap().liveAreaBaseId != areaBaseId) {
+            gateway.dispatch(CompanionAction.LiveAreaChanged(areaBaseId))
+        }
+    }
 
     private fun battleTruth(snapshot: AppSnapshot, currentCatalog: ParsedCatalog?): Effectiveness? {
         val battle = snapshot.battle ?: return null
@@ -534,7 +541,7 @@ class ProductionCompanionRuntime(
     private fun changedCatalogSections(phase: String): Set<String> = when (phase) {
         "ESSENTIAL" -> com.darkaxt.dualdex.catalog.CatalogSchema.requiredSections
         "SPECIES_MEDIA" -> setOf("species")
-        "RELATIONSHIPS" -> setOf("species", "encounters")
+        "RELATIONSHIPS" -> setOf("species", "encounters", "runtime_metadata")
         "EXTENDED" -> setOf(
             "species",
             "moves",

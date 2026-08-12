@@ -9,6 +9,7 @@ import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
+import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
 import com.enrpau.dualscreendex.parser.sprite.BallSpriteMaterializer
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 import java.util.Locale
@@ -120,7 +121,23 @@ object CatalogMaterializer {
         val evolutions = RelationshipMaterializers.evolutions(rom, layout)
         val learnsets = RelationshipMaterializers.learnsets(rom, layout)
         val encounterMaterialization = EncounterMaterializer.materializeWithEvidence(rom, layout)
-        val encounters = encounterMaterialization.areas
+        val rawEncounters = encounterMaterialization.areas
+        val runtimeMetadata = if (layout.generation == 3) {
+            CatalogRuntimeMetadata(
+                gen3SaveBlock1PointerAddress = Gen3SaveBlock1PointerResolver.resolve(rom),
+                areaNamesByBaseId = if (layout.pokeemeraldExpansion == null) {
+                    Gen3MapLocationResolver.resolve(
+                        rom,
+                        rawEncounters.mapTo(linkedSetOf()) { it.id / 10 },
+                    )
+                } else {
+                    emptyMap()
+                },
+            )
+        } else {
+            CatalogRuntimeMetadata()
+        }
+        val encounters = applyResolvedAreaNames(rawEncounters, runtimeMetadata.areaNamesByBaseId)
         val relationshipSpecies = mediaSpecies.mapValues { (id, record) ->
             record.copy(
                 evolutionEdges = if (layout.tables.evolutions != null) {
@@ -138,6 +155,7 @@ object CatalogMaterializer {
         val relationshipCatalog = mediaCatalog.copy(
             speciesById = relationshipSpecies,
             encounterAreas = encounters,
+            runtimeMetadata = runtimeMetadata,
         )
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.RELATIONSHIPS, 3, 5, relationshipCatalog))
 
@@ -307,6 +325,7 @@ object CatalogMaterializer {
             encounterAreas = encounters,
             captureBallsById = balls,
             learnsetRulesets = learnsetRulesets,
+            runtimeMetadata = runtimeMetadata,
             capabilities = capabilities,
             diagnostics = buildList {
                 moveDescriptions?.let {
@@ -349,6 +368,22 @@ object CatalogMaterializer {
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.EXTENDED, 4, 5, catalog))
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, catalog))
         return catalog
+    }
+
+    private fun applyResolvedAreaNames(
+        areas: List<EncounterArea>,
+        namesByBaseId: Map<Int, String>,
+    ): List<EncounterArea> = areas.map { area ->
+        val resolvedName = namesByBaseId[area.id / 10] ?: return@map area
+        val methodName = area.name.value
+            ?.substringAfter(" - ", missingDelimiterValue = "")
+            ?.trim()
+            .orEmpty()
+        area.copy(
+            name = CatalogField.available(
+                if (methodName.isEmpty()) resolvedName else "$resolvedName - $methodName",
+            ),
+        )
     }
 
     private fun resolveSpriteAliases(

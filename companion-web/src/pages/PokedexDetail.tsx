@@ -1,5 +1,6 @@
 import type { Catalog, State } from '../models';
 import { Header, Segmented, Sprite, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
+import { gameplayCopy } from '../gameplayCopy';
 
 type DetailTab = 'ENTRY' | 'STATS' | 'MOVES' | 'MORE';
 
@@ -41,12 +42,12 @@ export function PokedexDetail({
     <Header title={species.name} kicker={`#${String(species.dex).padStart(3, '0')}`} onBack={() => send('BACK')} />
     <div class="identity-card">
       <Sprite speciesId={species.id} name={species.name} available={species.hasSprite} large />
-      <div class="identity-copy"><small>ROM INDEX {species.id}</small><h1>{species.name}</h1><div class="identity-line"><StatusMarks state={status} catalog={catalog} />{uniqueTypeIds(species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
+      <div class="identity-copy"><h1>{species.name}</h1><div class="identity-line"><StatusMarks state={status} catalog={catalog} />{uniqueTypeIds(species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
     </div>
     <Segmented values={['ENTRY', 'STATS', 'MOVES', 'MORE']} active={displayTab} disabledValues={unlocked ? [] : ['STATS', 'MORE']} onSelect={value => setTab(value as DetailTab)} label="Pokédex detail" />
     <div class="detail-content" data-scroll-region>
-      {!unlocked && !observedOnly && <div class="paper-panel withheld"><strong>KNOWLEDGE WITHHELD</strong><p>Organic mode unlocks the complete ROM entry after this species is recruited. Moves witnessed in battle remain available in the Moves tab.</p></div>}
-      {unlocked && displayTab === 'ENTRY' && <div class="paper-panel"><p class="eyebrow">POKÉDEX ENTRY</p><p class="entry-copy">{species.description || 'No compatible Pokédex entry is available for this species.'}</p><div class="fact-grid"><span><small>HEIGHT</small><strong>{formatHeight(species.height, catalog.platform)}</strong></span><span><small>WEIGHT</small><strong>{formatWeight(species.weight, catalog.platform)}</strong></span></div></div>}
+      {!unlocked && !observedOnly && <div class="paper-panel withheld"><strong>{gameplayCopy.dataUnavailable}</strong><p>{gameplayCopy.catchForFullData}</p></div>}
+      {unlocked && displayTab === 'ENTRY' && <div class="paper-panel"><p class="eyebrow">POKÉDEX ENTRY</p><p class="entry-copy">{species.description || gameplayCopy.pokedexUnavailable}</p><div class="fact-grid"><span><small>HEIGHT</small><strong>{formatHeight(species.height, catalog.platform)}</strong></span><span><small>WEIGHT</small><strong>{formatWeight(species.weight, catalog.platform)}</strong></span></div></div>}
       {unlocked && displayTab === 'STATS' && <div class="paper-panel">
         <div class="section-heading"><div><p class="eyebrow">BASE STATS + INNATE RANGE</p><p>Lv 50 projection · no EV/stat experience · neutral nature where applicable.</p></div><strong>BST {baseStatSummary(species.stats)}</strong></div>
         {status?.innateTier && <p class="range-note">Preferred recruit: <strong>{status.innateTier}</strong>{status.preferredLevel ? ` · Lv ${status.preferredLevel}` : ''}</p>}
@@ -63,9 +64,9 @@ export function PokedexDetail({
         {locations.length > 0 && <p class="range-note">Wild encounters in this ROM: <strong>{wildLevelRange(locations.flatMap(item => item.slots))}</strong></p>}
       </div>}
       {unlocked && displayTab === 'MOVES' && <div class="paper-panel move-sections">
-        <div class="section-heading"><div><p class="eyebrow">LEVEL-UP MOVES</p><p>{activeRuleset == null ? 'Save-detected table unresolved' : `${activeRuleset.label} ruleset`}</p></div></div>
+        <div class="section-heading"><div><p class="eyebrow">LEVEL-UP MOVES</p><p>{activeRuleset == null ? 'Move list not selected' : `${activeRuleset.label} list`}</p></div></div>
         {activeRuleset == null && catalog.rulesets.length > 1
-          ? <div class="empty-state"><strong>LEVEL-UP RULESET REQUIRED</strong><p>Load a supported SaveRAM snapshot or choose a manual recovery/debug override in Settings.</p></div>
+          ? <div class="empty-state"><strong>{gameplayCopy.moveDataUnavailable}</strong><p>{gameplayCopy.chooseMoveList}</p></div>
           : <div class="move-table">{moves.map(item => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
           return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>{item.label}</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
@@ -80,7 +81,7 @@ export function PokedexDetail({
         {observedMoves.length > 0 ? <div class="move-table">{observedMoves.map(item => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
           return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>FREQUENCY · {item.frequency}×</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
-        })}</div> : <div class="empty-state"><strong>NO MOVES OBSERVED</strong><p>This list grows when the species uses an attack against you.</p></div>}
+        })}</div> : <div class="empty-state"><strong>{gameplayCopy.noMovesRecorded}</strong><p>{gameplayCopy.movesWillAppear}</p></div>}
       </div>}
       {unlocked && displayTab === 'MORE' && <div class="paper-panel more-sections">
         {species.abilities.length > 0 && <section><p class="eyebrow">ABILITIES</p>{species.abilities.map(ability => <button class="data-row data-link" key={ability.id} onClick={() => openAbility(ability.id)}><strong>{ability.name}</strong><span>#{ability.id}</span></button>)}</section>}
@@ -95,7 +96,7 @@ export function PokedexDetail({
           const sprite = <span class="evolution-sprite-frame">{target?.hasSprite
             ? <img
                 src={`/api/sprites/species/${evolution.targetSpeciesId}.png`}
-                alt={knowledge === 'unknown' ? 'Unknown evolution sprite' : `${targetName} evolution sprite`}
+                alt={knowledge === 'unknown' ? 'Unidentified evolution sprite' : `${targetName} evolution sprite`}
                 aria-hidden="true"
                 class={knowledge === 'unknown' ? 'evolution-silhouette' : knowledge === 'seen' ? 'evolution-seen' : ''}
               />
@@ -109,7 +110,7 @@ export function PokedexDetail({
             : <div class="evolution-row" key={`${evolution.targetSpeciesId}-${index}`}>{content}</div>;
         })}</section>}
         {locations.length > 0 && <section><p class="eyebrow">LOCATIONS</p>{locations.map(({ area, slots }) => <div class="data-row location-row" key={area.id}><strong>{area.name}</strong><span>{wildLevelRange(slots)}{slots.some(slot => slot.weight != null) ? ` · ${Math.max(...slots.map(slot => slot.weight ?? 0))}%` : ''}</span></div>)}</section>}
-        {species.abilities.length === 0 && species.evolutions.length === 0 && locations.length === 0 && <div class="empty-state">No additional compatible ROM records were found for this species.</div>}
+        {species.abilities.length === 0 && species.evolutions.length === 0 && locations.length === 0 && <div class="empty-state">{gameplayCopy.noAdditionalData}</div>}
       </div>}
     </div>
   </section>;

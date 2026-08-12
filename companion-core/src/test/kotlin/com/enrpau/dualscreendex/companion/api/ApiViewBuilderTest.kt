@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
@@ -182,5 +183,39 @@ class ApiViewBuilderTest {
         assertEquals(0, rarity.matchingAreaCount)
         assertEquals(1, rarity.candidateAreaCount)
         assertEquals("ORDINARY", rarity.relativeTier)
+    }
+
+    @Test
+    fun liveMemoryAreaOverridesTheStaleSaveAndPublishesTheRomDerivedName() {
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            encounterAreas = listOf(
+                EncounterArea(
+                    id = 0x0010 * 10 + 1,
+                    name = CatalogField.available("Route 101 grass"),
+                    methodId = 1,
+                    slots = listOf(EncounterSlot(1, 10, 10, 100)),
+                ),
+            ),
+            runtimeMetadata = CatalogRuntimeMetadata(areaNamesByBaseId = mapOf(0x0010 to "Route 101")),
+        )
+        val snapshot = AppSnapshot(
+            ledger = KnowledgeLedger(currentAreaBaseId = 0x0202),
+            liveAreaBaseId = 0x0010,
+            battle = BattleState(
+                opponents = listOf(OpponentState(1, 10, ivs = List(6) { 20 }, moveHistory = emptyList())),
+            ),
+        )
+
+        val state = ApiViewBuilder.state(snapshot, catalog, saveRam = SaveRamView(status = "MATCHED"))
+        val rarity = state.battle!!.opponents.single().rarity
+
+        assertEquals(0x0010, state.currentAreaBaseId)
+        assertEquals("Route 101", state.currentAreaName)
+        assertEquals("Route 101", rarity.currentAreaName)
+        assertEquals("ORDINARY", rarity.relativeTier)
+        assertEquals("TRAINED", rarity.innateTier)
     }
 }

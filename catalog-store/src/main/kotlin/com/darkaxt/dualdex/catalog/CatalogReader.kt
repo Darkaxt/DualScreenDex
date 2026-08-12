@@ -2,6 +2,7 @@ package com.darkaxt.dualdex.catalog
 
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
+import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
@@ -125,6 +126,7 @@ internal class CatalogSectionCodec {
     private val encountersType = type<List<EncounterArea>>()
     private val ballsType = type<Map<Int, CaptureBallRecord>>()
     private val rulesetsType = type<List<LearnsetRuleset>>()
+    private val runtimeMetadataType = type<CatalogRuntimeMetadata>()
     private val capabilitiesType = type<Map<RomCapability, CapabilityEvidence>>()
     private val diagnosticsType = type<List<String>>()
 
@@ -137,6 +139,7 @@ internal class CatalogSectionCodec {
         "encounters" to encode(catalog.encounterAreas, encountersType),
         "capture_balls" to encode(catalog.captureBallsById, ballsType),
         "learnset_rulesets" to encode(catalog.learnsetRulesets, rulesetsType),
+        "runtime_metadata" to encode(catalog.runtimeMetadata, runtimeMetadataType),
         "capabilities" to encode(catalog.capabilities, capabilitiesType),
         "diagnostics" to encode(catalog.diagnostics, diagnosticsType),
     ).filterKeys(included::contains)
@@ -166,6 +169,7 @@ internal class CatalogSectionCodec {
         encounterAreas = encounterAreas,
         captureBallsById = decode(sections.getValue("capture_balls"), ballsType),
         learnsetRulesets = decode(sections.getValue("learnset_rulesets"), rulesetsType),
+        runtimeMetadata = decode(sections.getValue("runtime_metadata"), runtimeMetadataType),
         capabilities = decode(sections.getValue("capabilities"), capabilitiesType),
         diagnostics = decode(sections.getValue("diagnostics"), diagnosticsType),
         )

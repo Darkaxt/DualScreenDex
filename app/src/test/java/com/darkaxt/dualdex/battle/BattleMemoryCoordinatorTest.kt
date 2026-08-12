@@ -47,6 +47,32 @@ class BattleMemoryCoordinatorTest {
     }
 
     @Test
+    fun publishesTheLiveMapOutsideBattleFromTheRomProvenSaveBlockPointer() {
+        val ewram = ByteArray(0x40000)
+        ewram[0x1004] = 0
+        ewram[0x1005] = 16
+        val pointer = byteArrayOf(0x00, 0x10, 0x00, 0x02)
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val liveAreas = mutableListOf<Int?>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x030036F0L to pointer))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context(saveBlock1Pointer = 0x030036F0L) },
+            publisher = updates::add,
+            locationPublisher = { liveAreas.add(it) },
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(3) { coordinator.heartbeat() }
+
+        assertTrue(updates.isEmpty())
+        assertEquals(0x0010, liveAreas.last())
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 30036f0 4") })
+        coordinator.close()
+    }
+
+    @Test
     fun retainsTheGen3CachedWindowAcrossValidatedNonBattleSamples() {
         val ewram = ByteArray(0x40000)
         fixture(ewram, 0x143C, opponentPp = 35)
@@ -207,9 +233,10 @@ class BattleMemoryCoordinatorTest {
         coordinator.close()
     }
 
-    private fun context() = BattleCatalogContext(
+    private fun context(saveBlock1Pointer: Long? = null) = BattleCatalogContext(
         romIdentity = "rom",
         generation = 3,
+        gen3SaveBlock1PointerAddress = saveBlock1Pointer,
         catalog = BattleCatalogView(
             species = mapOf(
                 252 to BattleSpecies(252, listOf(11), setOf(65)),
@@ -279,6 +306,10 @@ class BattleMemoryCoordinatorTest {
         bytes[offset + 1] = (value ushr 8).toByte()
     }
 
+    private fun putU32(bytes: ByteArray, offset: Int, value: Int) {
+        repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
+    }
+
     private fun gen1Mon(
         bytes: ByteArray, offset: Int, species: Int, level: Int, hp: Int, type1: Int, type2: Int,
         moves: List<Int>, pp: List<Int>, dv1: Int, dv2: Int,
@@ -319,7 +350,11 @@ class BattleMemoryCoordinatorTest {
         bytes[offset + 31] = type2.toByte()
     }
 
-    private class MemoryTransport(private val memory: ByteArray, private val baseAddress: Long = 0x02000000) : NetworkCommandTransport {
+    private class MemoryTransport(
+        private val memory: ByteArray,
+        private val baseAddress: Long = 0x02000000,
+        private val extraMemory: Map<Long, ByteArray> = emptyMap(),
+    ) : NetworkCommandTransport {
         val commands = mutableListOf<String>()
         private val replies = ArrayDeque<ByteArray>()
 
@@ -329,8 +364,16 @@ class BattleMemoryCoordinatorTest {
             val parts = command.split(' ')
             val address = parts[1].toLong(16)
             val length = parts[2].toInt()
-            val offset = (address - baseAddress).toInt()
-            val encoded = (0 until length).joinToString(" ") { "%02X".format(memory[offset + it].toInt() and 0xFF) }
+            val source = extraMemory.entries.firstOrNull { (start, bytes) ->
+                address >= start && address + length <= start + bytes.size
+            }
+            val encoded = if (source != null) {
+                val offset = (address - source.key).toInt()
+                (0 until length).joinToString(" ") { "%02X".format(source.value[offset + it].toInt() and 0xFF) }
+            } else {
+                val offset = (address - baseAddress).toInt()
+                (0 until length).joinToString(" ") { "%02X".format(memory[offset + it].toInt() and 0xFF) }
+            }
             replies += "READ_CORE_MEMORY ${parts[1]} $encoded".toByteArray()
         }
 

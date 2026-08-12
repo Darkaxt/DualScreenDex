@@ -37,6 +37,9 @@ class ModernEmeraldEncounterLiveRomTest {
         }
         assertEquals(listOf(161), capableAreas.map { it.id })
         assertEquals(listOf(16), capableAreas.map { it.id / 10 })
+        assertTrue(requireNotNull(capableAreas.single().name.value).startsWith("Map ").not())
+        assertTrue(requireNotNull(catalog.runtimeMetadata.gen3SaveBlock1PointerAddress) in 0x02000000L..0x03FFFFFFL)
+        assertEquals("Oldale Town", catalog.runtimeMetadata.areaNamesByBaseId[0x0202])
         assertTrue(capability.reasons.single().contains("headers=272"))
         assertTrue(capability.reasons.single().contains("references=11"))
         assertTrue(capability.reasons.single().contains("candidates="))

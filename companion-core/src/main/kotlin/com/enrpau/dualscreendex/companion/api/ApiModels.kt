@@ -142,6 +142,7 @@ data class StateView(
     val selectedAreaId: Int?,
     val currentAreaIds: List<Int>,
     val currentAreaBaseId: Int?,
+    val currentAreaName: String?,
     val battleTab: String,
     val settings: Any,
     val speciesState: Map<Int, SpeciesStateView>,
@@ -226,6 +227,7 @@ data class RarityView(
     val stars: Double?,
     val areaOutcome: String,
     val currentAreaBaseId: Int?,
+    val currentAreaName: String?,
     val matchingAreaCount: Int,
     val candidateAreaCount: Int,
 )
@@ -368,9 +370,13 @@ object ApiViewBuilder {
         retroArch: RetroArchView = RetroArchView(),
         saveRam: SaveRamView = SaveRamView(),
     ): StateView {
-        val currentAreaIds = snapshot.ledger.currentAreaBaseId?.let { baseId ->
+        val liveAreaBaseId = snapshot.liveAreaBaseId
+        val effectiveAreaBaseId = liveAreaBaseId
+            ?: snapshot.ledger.currentAreaBaseId.takeIf { saveRam.status == "MATCHED" }
+        val currentAreaIds = effectiveAreaBaseId?.let { baseId ->
             catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }?.sorted()
         }.orEmpty()
+        val currentAreaName = effectiveAreaBaseId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
@@ -400,7 +406,8 @@ object ApiViewBuilder {
             snapshot.filter.name,
             snapshot.selectedAreaId,
             currentAreaIds,
-            snapshot.ledger.currentAreaBaseId,
+            effectiveAreaBaseId,
+            currentAreaName,
             snapshot.battleTab.name,
             snapshot.settings,
             speciesState,
@@ -425,7 +432,7 @@ object ApiViewBuilder {
                         )
                         val rarity = RarityEvaluator.evaluate(
                             individual = individual,
-                            currentAreaBaseId = snapshot.ledger.currentAreaBaseId.takeIf { saveRam.status == "MATCHED" },
+                            currentAreaBaseId = effectiveAreaBaseId,
                             encounterAreas = catalog?.encounterAreas.orEmpty(),
                         )
                         OpponentView(
@@ -440,6 +447,7 @@ object ApiViewBuilder {
                                 stars = rarity.stars,
                                 areaOutcome = rarity.areaOutcome.name,
                                 currentAreaBaseId = rarity.currentAreaBaseId,
+                                currentAreaName = currentAreaName,
                                 matchingAreaCount = rarity.matchingAreaCount,
                                 candidateAreaCount = rarity.candidateAreaCount,
                             ),

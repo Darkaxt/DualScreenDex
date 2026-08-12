@@ -1,5 +1,6 @@
 import type { Catalog, Move, Rarity as RarityModel, State } from '../models';
 import { Header, Segmented, Sprite, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
+import { gameplayCopy } from '../gameplayCopy';
 
 export function BattlePage({ catalog, state, send, openMove, openSpecies }: { catalog: Catalog; state: State; send: (type: string, values?: Record<string, string | number | boolean | null>) => void; openMove: (moveId: number) => void; openSpecies: (speciesId: number) => void }) {
   const battle = state.battle;
@@ -40,16 +41,17 @@ export function BattlePage({ catalog, state, send, openMove, openSpecies }: { ca
 }
 
 function Entry({ catalog, species, unlocked }: { catalog: Catalog; species: Catalog['species'][number]; unlocked?: boolean }) {
-  return <div class="paper-panel"><p class="eyebrow">TARGET ENTRY</p>{unlocked ? <p class="entry-copy">{species.description || 'No compatible Pokédex entry is available for this species.'}</p> : <div class="withheld"><strong>OBSERVE OR RECRUIT</strong><p>The target is identified. Organic mode keeps its full Pokédex entry hidden until capture.</p></div>}</div>;
+  return <div class="paper-panel"><p class="eyebrow">TARGET ENTRY</p>{unlocked ? <p class="entry-copy">{species.description || gameplayCopy.pokedexUnavailable}</p> : <div class="withheld"><strong>{gameplayCopy.dataUnavailable}</strong><p>{gameplayCopy.catchForEntry}</p></div>}</div>;
 }
 
 function Attack({ catalog, move, state, openMove }: { catalog: Catalog; move?: Move; state: State; openMove: (moveId: number) => void }) {
-  if (!move) return <div class="empty-state"><strong>NO ATTACK SELECTED</strong><p>Attack details appear when RetroArch reports the highlighted move.</p></div>;
-  const effect = state.battle?.effectivenessKnown ? state.battle.effectiveness!.replaceAll('_', ' ') : 'UNKNOWN';
+  if (!move) return <div class="empty-state"><strong>{gameplayCopy.noMoveSelected}</strong><p>{gameplayCopy.selectMove}</p></div>;
+  const effect = state.battle?.effectivenessKnown ? state.battle.effectiveness!.replaceAll('_', ' ') : '—';
+  const effectClass = effect === '—' ? 'effect-unavailable' : `effect-${effect.toLowerCase().replaceAll(' ', '-')}`;
   return <div class="attack-card">
     <div class="attack-heading"><div><small>SELECTED ATTACK</small><button class="move-link" onClick={() => openMove(move.id)}>{move.name}</button></div><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></div>
     <div class="move-metadata"><span><small>POWER</small><strong>{move.power ? move.power : '—'}</strong></span><span><small>PRECISION</small><strong>{move.accuracy ? `${move.accuracy}%` : '—'}</strong></span><span><small>PP</small><strong>{move.pp || '—'}</strong></span><span><small>CLASS</small><strong>{move.category ?? '—'}</strong></span></div>
-    <div class={`effect-result effect-${effect.toLowerCase().replaceAll(' ', '-')}`}><small>EFFECTIVENESS</small><strong>{effect}</strong></div>
+    <div class={`effect-result ${effectClass}`}><small>EFFECTIVENESS</small><strong>{effect}</strong></div>
   </div>;
 }
 
@@ -74,31 +76,10 @@ function Rarity({ rarity }: { rarity: RarityModel }) {
   const title = rarity.innateTier == null
     ? 'RARITY UNAVAILABLE'
     : [rarity.relativeTier, rarity.innateTier].filter(Boolean).join(' ');
-  const explanation = rarity.areaOutcome === 'APPLIED_UNIQUE_ENCOUNTER'
-    ? 'SaveRAM area did not match. This tier uses the only ROM encounter table capable of producing this species at this level.'
-    : rarity.relativeTier == null
-      ? areaFailureMessage(rarity)
-      : 'The first word describes level relative to the current encounter table. The second describes normalized IV/DV quality. Exact hidden values, EVs, and encounter rate are not exposed.';
+  const explanation = rarity.relativeTier == null
+    ? gameplayCopy.areaUnavailable
+    : `Compared with ${rarity.currentAreaName ? `${rarity.currentAreaName} wild encounters` : 'matching wild encounters'}. First word: level. Second: innate quality.`;
   return <div class="rarity-card"><small>RECRUITMENT IMPRESSION</small><strong>{title}</strong><p>{explanation}</p></div>;
-}
-
-function areaFailureMessage(rarity: RarityModel): string {
-  switch (rarity.areaOutcome) {
-    case 'AREA_NOT_IN_CATALOG': {
-      const area = rarity.currentAreaBaseId == null
-        ? 'unknown'
-        : `0x${rarity.currentAreaBaseId.toString(16).toUpperCase().padStart(4, '0')}`;
-      return `Saved area ${area} is not present in this ROM encounter catalog. SaveRAM may not reflect the live battle location.`;
-    }
-    case 'SPECIES_LEVEL_NOT_IN_AREA':
-      return 'The current area was found, but this opponent and level are not present in its encounter table.';
-    case 'INVALID_WEIGHTS':
-      return 'The current encounter table does not provide valid weights for an area-relative comparison.';
-    case 'AMBIGUOUS_TIER':
-      return 'Multiple encounter methods produce conflicting relative-level tiers for this opponent.';
-    default:
-      return 'No matched area evidence is available for an area-relative comparison.';
-  }
 }
 
 function formatStars(stars: number): string {
@@ -106,7 +87,7 @@ function formatStars(stars: number): string {
 }
 
 function Moves({ catalog, moves, showFrequency, openMove }: { catalog: Catalog; moves: { moveId: number; frequency: number }[]; showFrequency: boolean; openMove: (moveId: number) => void }) {
-  if (moves.length === 0) return <div class="empty-state"><strong>NO MOVES OBSERVED</strong><p>History begins after this species uses an attack.</p></div>;
+  if (moves.length === 0) return <div class="empty-state"><strong>{gameplayCopy.noMovesRecorded}</strong><p>{gameplayCopy.movesWillAppear}</p></div>;
   return <div class="observed-list">{moves.map(item => {
     const move = catalog.moves.find(candidate => candidate.id === item.moveId);
     return <button key={item.moveId} onClick={() => openMove(item.moveId)}><TypeChip type={catalog.types.find(type => type.id === move?.typeId)} /><strong>{move?.name ?? `MOVE ${item.moveId}`}</strong>{showFrequency && <span>FREQUENCY · {item.frequency}×</span>}<small>{move?.power ? `${move.power} power · ${move.accuracy}% precision` : move?.category}</small></button>;

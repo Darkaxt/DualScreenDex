@@ -28,7 +28,8 @@ describe('Organic Pokédex move knowledge', () => {
     renderDetail(uncaughtState, 'STATS');
 
     expect(screen.getByRole('tab', { name: 'ENTRY' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByText('KNOWLEDGE WITHHELD')).toBeTruthy();
+    expect(screen.getByText('DATA NOT AVAILABLE')).toBeTruthy();
+    expect(screen.getByText('Catch this Pokémon to add its full Pokédex data.')).toBeTruthy();
   });
 
   it('shows only witnessed moves without their ROM acquisition levels before capture', () => {
@@ -66,10 +67,10 @@ describe('Organic Pokédex move knowledge', () => {
       ],
     });
 
-    expect(screen.getByText(/save-detected table unresolved/i)).toBeTruthy();
+    expect(screen.getByText('Move list not selected')).toBeTruthy();
     expect(screen.queryByText('Scratch')).toBeNull();
     expect(screen.queryByText('Ember')).toBeNull();
-    expect(screen.getByText(/manual recovery\/debug override/i)).toBeTruthy();
+    expect(screen.getByText('Choose a level-up list in Settings.')).toBeTruthy();
   });
 });
 

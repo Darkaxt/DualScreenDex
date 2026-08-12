@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
+import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
@@ -163,7 +164,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(3, CatalogSchema.parserSchemaVersion)
+        assertEquals(4, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -179,6 +180,8 @@ class CatalogStoreTest {
             reopened?.catalog?.speciesById?.get(6)?.evolutionEdges?.value?.single()?.conditionValue,
         )
         assertEquals(setOf(EncounterWindow.NIGHT), reopened?.catalog?.encounterAreas?.single()?.windows)
+        assertEquals(0x030036F0L, reopened?.catalog?.runtimeMetadata?.gen3SaveBlock1PointerAddress)
+        assertEquals("Route 101", reopened?.catalog?.runtimeMetadata?.areaNamesByBaseId?.get(0x0010))
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
     }
 
@@ -353,6 +356,10 @@ class CatalogStoreTest {
                     primary = true,
                     levelUpSelector = LevelUpRulesetSelector(0x3DA6, 0x02, 0x02),
                 ),
+            ),
+            runtimeMetadata = CatalogRuntimeMetadata(
+                gen3SaveBlock1PointerAddress = 0x030036F0L,
+                areaNamesByBaseId = mapOf(0x0010 to "Route 101"),
             ),
             capabilities = mapOf(
                 RomCapability.SPECIES_CATALOG to CapabilityEvidence(

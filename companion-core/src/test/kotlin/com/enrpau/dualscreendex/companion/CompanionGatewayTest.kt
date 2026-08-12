@@ -60,4 +60,15 @@ class CompanionGatewayTest {
         assertEquals(AppScreen.DETAIL, ended.screen)
         assertEquals(AppScreen.POKEDEX, returned.screen)
     }
+
+    @Test
+    fun battleEndDoesNotDiscardTheContinuouslySampledLiveArea() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.LiveAreaChanged(0x0010))
+        gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
+
+        val ended = gateway.dispatch(CompanionAction.BattleEnded)
+
+        assertEquals(0x0010, ended.liveAreaBaseId)
+    }
 }

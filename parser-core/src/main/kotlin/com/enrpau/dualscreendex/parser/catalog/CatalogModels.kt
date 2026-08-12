@@ -193,6 +193,11 @@ data class CaptureBallRecord(
     val generic: Boolean = false,
 )
 
+data class CatalogRuntimeMetadata(
+    val gen3SaveBlock1PointerAddress: Long? = null,
+    val areaNamesByBaseId: Map<Int, String> = emptyMap(),
+)
+
 data class ParsedCatalog(
     val romSha256: String,
     val family: EngineFamily,
@@ -206,6 +211,7 @@ data class ParsedCatalog(
     val encounterAreas: List<EncounterArea> = emptyList(),
     val captureBallsById: Map<Int, CaptureBallRecord> = emptyMap(),
     val learnsetRulesets: List<LearnsetRuleset> = emptyList(),
+    val runtimeMetadata: CatalogRuntimeMetadata = CatalogRuntimeMetadata(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),
 ) {

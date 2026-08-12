@@ -17,7 +17,7 @@ describe('Pokédex evolution navigation', () => {
       openAbility={vi.fn()}
     />);
 
-    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
+    expect(screen.getByText('Pokédex data not available.')).toBeTruthy();
     expect(screen.queryByText(/resolved from this ROM/i)).toBeNull();
   });
 
@@ -57,7 +57,7 @@ describe('Pokédex evolution navigation', () => {
 
     expect(screen.getByText('?????????')).toBeTruthy();
     expect(screen.queryByText('Charizard')).toBeNull();
-    expect(screen.getByAltText('Unknown evolution sprite').classList.contains('evolution-silhouette')).toBe(true);
+    expect(screen.getByAltText('Unidentified evolution sprite').classList.contains('evolution-silhouette')).toBe(true);
     expect(screen.queryByRole('button', { name: /Charizard Level 36/i })).toBeNull();
 
     rendered.rerender(<PokedexDetail {...props} state={organic({ seen: true, caught: false, team: false, ballId: null })} />);
