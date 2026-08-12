@@ -61,7 +61,7 @@ The safe live rule is to establish a PP baseline only after the battler identity
 
 For a single battle, the target is deterministic from the active topology: the only living opposing record is battler 1, Weedle. Pound is Normal against Bug/Poison and resolves to neutral effectiveness through the already parsed ROM type chart.
 
-The layout itself is not limited to a fixed opponent count. `gBattlersCount` defines the active portion of the contiguous `gBattleMons` array and `gBattlerPositions` identifies each record's side and field position. A future capability can therefore enumerate every validated active opponent dynamically. The first production reader should still publish only the validated single-opponent case until a labeled double-battle capture proves live target switching.
+The layout itself is not limited to a fixed opponent count. `gBattlersCount` defines the active portion of the contiguous `gBattleMons` array and `gBattlerPositions` identifies each record's side and field position. Production therefore enumerates both opponents in a structurally valid four-battler battle. Modern Emerald Release3.5 source and its official symbol map identify `gMultiUsePlayerCursor` as the live target hover; the remembered `gTargetSelectionCursor` array is updated only when a target is confirmed and cursor memory is enabled. The parser exposes the live cursor only when compiled ROM references corroborate its source-relative field. This path is source-proven and synthetic-tested but not physically validated in a labeled double-battle capture, so an unavailable or invalid cursor keeps both opponents visible with manual target selection.
 
 ## Dynamic mapping strategy
 
@@ -109,7 +109,7 @@ The coordinator therefore reads only the bounded resolved main-state record afte
 | Player highlighted move | **Validated for this exact Modern Emerald build** |
 | Single-battle target | **Validated from topology** |
 | Parsed-ROM effectiveness for highlighted move | **Available once highlighted move and target validate** |
-| Double-battle live target | **Not yet validated**; the live hover uses `gMultiUsePlayerCursor`, while the remembered target fields update only under specific cursor-memory behavior |
+| Double-battle live target | **Source-proven and synthetic-tested; not live-validated**. The live hover uses `gMultiUsePlayerCursor`; invalid or unavailable evidence fails closed to manual target selection while retaining both opponents. |
 | Organic opponent move discovery and frequency | **Validated** through PP decreases: Poison Sting ×1 and String Shot ×2. Ordering and timestamps are not product requirements |
 | Battle enter/leave boundary | **Validated**; the main-loop callback pair returns to the learned overworld state while stale battle records remain resident |
 | Active ruleset selector | **Not evaluated by this session** |

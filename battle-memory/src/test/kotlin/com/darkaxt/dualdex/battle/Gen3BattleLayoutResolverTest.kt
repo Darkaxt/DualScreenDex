@@ -39,7 +39,7 @@ class Gen3BattleLayoutResolverTest {
     }
 
     @Test
-    fun enumeratesBothDoubleBattleOpponentsAndFollowsAValidatedTargetCursor() {
+    fun enumeratesBothDoubleBattleOpponentsButDoesNotTreatTheRememberedCursorAsLive() {
         val region = ByteArray(0x3000)
         fixture(region, 0x1000, listOf(
             mon(252, 20, 11, 11, intArrayOf(10), intArrayOf(35), personality = 100),
@@ -51,8 +51,25 @@ class Gen3BattleLayoutResolverTest {
         val resolved = Gen3BattleLayoutResolver().resolve(region, catalog) as LayoutResolution.Resolved
 
         assertEquals(listOf(13, 16), resolved.sample.opponents.map { it.speciesId })
-        assertEquals(TargetMode.AUTOMATIC, resolved.sample.target.mode)
-        assertEquals(1, resolved.sample.target.opponentIndex)
+        assertEquals(TargetMode.MANUAL_TARGET_FALLBACK, resolved.sample.target.mode)
+    }
+
+    @Test
+    fun followsAnIndependentlyDecodedLiveTargetCursor() {
+        val region = ByteArray(0x3000)
+        fixture(region, 0x1000, listOf(
+            mon(252, 20, 11, 11, intArrayOf(10), intArrayOf(35), personality = 100),
+            mon(13, 18, 6, 3, intArrayOf(40, 81), intArrayOf(35, 40), personality = 200),
+            mon(1, 19, 11, 11, intArrayOf(10), intArrayOf(35), personality = 300),
+            mon(16, 18, 0, 2, intArrayOf(10), intArrayOf(35), personality = 400),
+        ), targetBattler = 1)
+
+        val resolved = Gen3BattleLayoutResolver().resolve(region, catalog) as LayoutResolution.Resolved
+        val liveTarget = resolved.sample.withLiveTargetBattler(3)
+
+        assertEquals(listOf(13, 16), liveTarget.opponents.map { it.speciesId })
+        assertEquals(TargetMode.AUTOMATIC, liveTarget.target.mode)
+        assertEquals(1, liveTarget.target.opponentIndex)
     }
 
     @Test

@@ -136,6 +136,88 @@ class BattleMemoryCoordinatorTest {
     }
 
     @Test
+    fun usesTheValidatedGen3LifecycleByteAsPrimaryTruthAtStartupAndExit() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        fixture(ewram, 0x143C, opponentPp = 35)
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 100)
+        iwram[0x1574 + 0x439] = 0x02
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context(runtimeLayout = gen3RuntimeLayout(liveTargetOffset = 0xE04)) },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.last().active)
+
+        iwram[0x1574 + 0x439] = 0
+        repeat(2) { coordinator.heartbeat() }
+        assertTrue(updates.last().ended)
+        assertTrue(!updates.last().active)
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 30019ad 1") })
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 3002378 1") })
+        coordinator.close()
+    }
+
+    @Test
+    fun suppressesStaleBattleRecordsWhenTheValidatedLifecycleSaysOverworld() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        fixture(ewram, 0x143C, opponentPp = 35)
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 100)
+        iwram[0x1574 + 0x439] = 0
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context(runtimeLayout = gen3RuntimeLayout()) },
+            publisher = updates::add,
+            transportFactory = { MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram)) },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(4) { coordinator.heartbeat() }
+
+        assertTrue(updates.isEmpty())
+        coordinator.close()
+    }
+
+    @Test
+    fun pollsOnlyBoundedRuntimeScalarsOutsideBattleAndDiscoversBattleMemoryOnEntry() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
+        iwram[0x1574 + 0x439] = 0
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context(runtimeLayout = gen3RuntimeLayout()) },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+        repeat(2) { coordinator.heartbeat() }
+        val initialDiscoveryReads = transport.commands.size
+
+        repeat(2) { coordinator.heartbeat() }
+
+        assertTrue(transport.commands.size - initialDiscoveryReads < 10)
+        assertTrue(transport.commands.drop(initialDiscoveryReads).none { it.startsWith("READ_CORE_MEMORY 2000000 400") })
+
+        fixture(ewram, 0x143C, opponentPp = 35)
+        iwram[0x1574 + 0x439] = 0x02
+        repeat(4) { coordinator.heartbeat() }
+
+        assertTrue(updates.last().active)
+        coordinator.close()
+    }
+
+    @Test
     fun learnsTheOverworldAfterASessionStartsDuringAnExistingGen3Battle() {
         val ewram = ByteArray(0x40000)
         val iwram = ByteArray(0x8000)
@@ -217,6 +299,27 @@ class BattleMemoryCoordinatorTest {
         assertTrue(updates.isEmpty())
         assertEquals(0x0010, liveAreas.last())
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 30036f0 4") })
+        coordinator.close()
+    }
+
+    @Test
+    fun rejectsAnInvalidGen3SaveBlockPointerWithoutPublishingAnArea() {
+        val liveAreas = mutableListOf<Int?>()
+        val invalidPointer = byteArrayOf(0x00, 0x10, 0x00, 0x01)
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context(saveBlock1Pointer = 0x030036F0L, runtimeLayout = gen3RuntimeLayout()) },
+            publisher = {},
+            locationPublisher = liveAreas::add,
+            transportFactory = {
+                MemoryTransport(ByteArray(0x40000), extraMemory = mapOf(0x030036F0L to invalidPointer))
+            },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(2) { coordinator.heartbeat() }
+
+        assertNull(liveAreas.last())
         coordinator.close()
     }
 
@@ -396,10 +499,14 @@ class BattleMemoryCoordinatorTest {
         coordinator.close()
     }
 
-    private fun context(saveBlock1Pointer: Long? = null) = BattleCatalogContext(
+    private fun context(
+        saveBlock1Pointer: Long? = null,
+        runtimeLayout: Gen3RuntimeMemoryLayout? = null,
+    ) = BattleCatalogContext(
         romIdentity = "rom",
         generation = 3,
         gen3SaveBlock1PointerAddress = saveBlock1Pointer,
+        gen3RuntimeMemoryLayout = runtimeLayout,
         catalog = BattleCatalogView(
             species = mapOf(
                 252 to BattleSpecies(252, listOf(11), setOf(65)),
@@ -408,6 +515,15 @@ class BattleMemoryCoordinatorTest {
             moves = mapOf(10 to BattleMove(10, 35), 40 to BattleMove(40, 35)),
             typeIds = setOf(3, 6, 11),
         ),
+    )
+
+    private fun gen3RuntimeLayout(liveTargetOffset: Int? = null) = Gen3RuntimeMemoryLayout(
+        mainStructSize = 0x43C,
+        inBattleByteOffset = 0x439,
+        inBattleMask = 0x02,
+        saveBlock1MapGroupOffset = 4,
+        saveBlock1MapNumberOffset = 5,
+        multiUsePlayerCursorOffsetFromMain = liveTargetOffset,
     )
 
     private fun gen1Context() = BattleCatalogContext(

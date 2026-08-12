@@ -224,6 +224,36 @@ class ProductionCompanionRuntimeTest {
         assertEquals(2, reopened.gateway.bootstrap().ledger.observedMoves.getValue(0x66).single().frequency)
         reopened.close()
     }
+
+    @Test
+    fun recordsObservedOpponentsAgainstTheCurrentLiveArea() {
+        val identity = "f".repeat(64)
+        val repository = InMemoryKnowledgeRepository()
+        val runtime = ProductionCompanionRuntime(knowledgeRepository = repository)
+        runtime.loadCatalog("fixture.gba", ParsedCatalog(identity, EngineFamily.EMERALD, Platform.GBA))
+        runtime.updateLiveArea(0x0010)
+        val first = BattleMonSnapshot(
+            battlerIndex = 1, position = 1, speciesId = 13, level = 3, hp = 15, maxHp = 15,
+            ivs = List(6) { 10 }, moves = listOf(40, 0, 0, 0), pp = listOf(35, 0, 0, 0),
+            typeIds = listOf(6, 3), abilityId = 19, personality = 200,
+        )
+        val second = first.copy(battlerIndex = 3, position = 3, speciesId = 16, personality = 201)
+        val sample = BattleMemorySample(
+            layout = ResolvedBattleLayout(0x143C, 0x1420, 0x142C, 0x16EE, 0x1874, 0x1878, 4),
+            battlers = listOf(first, second), opponents = listOf(first, second), selectedMoveId = null,
+            target = BattleTarget(0, TargetMode.MANUAL_TARGET_FALLBACK), capabilities = emptyMap(),
+        )
+
+        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample))
+        runtime.updateLiveArea(0x0011)
+        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample.copy(opponents = listOf(second))))
+
+        val ledger = runtime.gateway.bootstrap().ledger
+        assertEquals(setOf(13, 16), ledger.seenSpeciesByArea.getValue(0x0010))
+        assertEquals(setOf(16), ledger.seenSpeciesByArea.getValue(0x0011))
+        assertEquals(ledger, repository.read(identity))
+        runtime.close()
+    }
     @Test
     fun reusesAnUnchangedPresentationSnapshotForPollingClients() {
         val runtime = ProductionCompanionRuntime(parserWorker = ImmediateExecutorService())

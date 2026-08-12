@@ -139,6 +139,7 @@ export interface State {
   currentAreaIds?: number[];
   currentAreaBaseId?: number | null;
   currentAreaName?: string | null;
+  currentAreaSpeciesIds?: number[];
   battleTab: 'ENTRY' | 'ATTACK' | 'RARITY' | 'MOVES';
   settings: Settings;
   speciesState: Record<number, SpeciesState>;

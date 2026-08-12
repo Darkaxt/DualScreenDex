@@ -109,6 +109,7 @@ describe('Pokédex knowledge modes', () => {
       ...state,
       filter: 'AREA',
       currentAreaIds: [10, 11],
+      currentAreaSpeciesIds: [1, 4],
       settings: { ...state.settings, knowledgeMode: 'DISCOVERED' },
     };
 
@@ -134,9 +135,41 @@ describe('Pokédex knowledge modes', () => {
       ...state,
       filter: 'AREA',
       currentAreaIds: [20, 21],
+      currentAreaSpeciesIds: [1, 4],
       settings: { ...state.settings, knowledgeMode: 'DISCOVERED' },
     }} send={vi.fn()} />);
 
     expect(screen.queryByTestId('encounter-window-icon')).toBeNull();
+  });
+
+  it('shows only locally observed species plus captured species in the Area filter', () => {
+    const areaCatalog: Catalog = {
+      ...catalog,
+      areas: [
+        { id: 10, name: 'Route 1', methodId: 1, speciesIds: [1, 4], windows: ['ANY'], slots: [] },
+      ],
+    };
+    const areaState: State = {
+      ...state,
+      filter: 'AREA',
+      currentAreaIds: [10],
+      currentAreaSpeciesIds: [1],
+      settings: { ...state.settings, knowledgeMode: 'DISCOVERED' },
+      speciesState: {
+        1: { seen: true, caught: false, team: false, ballId: null },
+        4: { seen: true, caught: false, team: false, ballId: null },
+      },
+    };
+
+    const { rerender } = render(<PokedexBrowse catalog={areaCatalog} state={areaState} send={vi.fn()} />);
+
+    expect(screen.getByText('Bulbasaur')).toBeTruthy();
+    expect(screen.queryByText('Charmander')).toBeNull();
+
+    rerender(<PokedexBrowse catalog={areaCatalog} state={{
+      ...areaState,
+      speciesState: { ...areaState.speciesState, 4: { ...areaState.speciesState[4], caught: true } },
+    }} send={vi.fn()} />);
+    expect(screen.getByText('Charmander')).toBeTruthy();
   });
 });

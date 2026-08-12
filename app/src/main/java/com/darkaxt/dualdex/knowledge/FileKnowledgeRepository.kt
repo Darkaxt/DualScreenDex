@@ -61,6 +61,7 @@ class FileKnowledgeRepository(
         val owned: List<OwnedPokemon> = emptyList(),
         val teamSpecies: List<Int> = emptyList(),
         val currentAreaBaseId: Int? = null,
+        val seenSpeciesByArea: List<StoredAreaSpecies> = emptyList(),
         val observedMoves: List<StoredSpeciesMoves> = emptyList(),
         val discoveredMatchups: List<StoredMatchup> = emptyList(),
         val knownMoves: List<Int> = emptyList(),
@@ -71,6 +72,9 @@ class FileKnowledgeRepository(
             owned = owned,
             teamSpecies = teamSpecies.toSet(),
             currentAreaBaseId = currentAreaBaseId,
+            seenSpeciesByArea = seenSpeciesByArea
+                .filter { it.areaBaseId >= 0 }
+                .associate { area -> area.areaBaseId to area.speciesIds.filter { it > 0 }.toSet() },
             observedMoves = observedMoves.associate { species ->
                 species.speciesId to species.moves
                     .filter { it.moveId > 0 && it.frequency > 0 }
@@ -93,6 +97,9 @@ class FileKnowledgeRepository(
                 owned = ledger.owned,
                 teamSpecies = ledger.teamSpecies.sorted(),
                 currentAreaBaseId = ledger.currentAreaBaseId,
+                seenSpeciesByArea = ledger.seenSpeciesByArea.entries
+                    .sortedBy { it.key }
+                    .map { StoredAreaSpecies(it.key, it.value.sorted()) },
                 observedMoves = ledger.observedMoves.entries.sortedBy { it.key }.map { entry ->
                     StoredSpeciesMoves(entry.key, entry.value)
                 },
@@ -107,6 +114,11 @@ class FileKnowledgeRepository(
     private data class StoredSpeciesMoves(
         val speciesId: Int = 0,
         val moves: List<MoveObservation> = emptyList(),
+    )
+
+    private data class StoredAreaSpecies(
+        val areaBaseId: Int = 0,
+        val speciesIds: List<Int> = emptyList(),
     )
 
     private data class StoredMatchup(

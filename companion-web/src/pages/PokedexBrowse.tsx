@@ -23,11 +23,11 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
     if (state.filter === 'SEEN' && !status?.seen) return false;
     if (state.filter === 'TEAM' && !status?.team) return false;
     if (state.filter === 'AREA') {
-      const inCurrentArea = catalog.areas.some(item => state.currentAreaIds?.includes(item.id) && item.speciesIds.includes(species.id));
-      if (!inCurrentArea) return false;
+      const observedHere = state.currentAreaSpeciesIds?.includes(species.id) ?? false;
+      if (!observedHere && !status?.caught) return false;
     }
     return true;
-  }), [catalog, policy, search, state.filter, state.currentAreaIds, state.speciesState]);
+  }), [catalog, policy, search, state.filter, state.currentAreaIds, state.currentAreaSpeciesIds, state.speciesState]);
 
   return <section class="screen pokedex-screen">
     <Header title="POKÉDEX" kicker={`${catalog.family.replaceAll('_', ' ')} · ${policy}`} onSettings={() => send('SCREEN', { screen: 'SETTINGS' })} />

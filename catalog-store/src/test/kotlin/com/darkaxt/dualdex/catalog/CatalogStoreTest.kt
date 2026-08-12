@@ -6,6 +6,8 @@ import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
+import com.enrpau.dualscreendex.parser.catalog.RuntimeMemoryEvidence
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
@@ -164,7 +166,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(4, CatalogSchema.parserSchemaVersion)
+        assertEquals(5, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -181,6 +183,14 @@ class CatalogStoreTest {
         )
         assertEquals(setOf(EncounterWindow.NIGHT), reopened?.catalog?.encounterAreas?.single()?.windows)
         assertEquals(0x030036F0L, reopened?.catalog?.runtimeMetadata?.gen3SaveBlock1PointerAddress)
+        assertEquals(
+            CatalogGen3RuntimeMemoryLayout(
+                0x43C, 0x439, 0x02, 4, 5,
+                multiUsePlayerCursorOffsetFromMain = 0xE04,
+                multiUsePlayerCursorEvidence = RuntimeMemoryEvidence.SOURCE_PROVEN_UNTESTED,
+            ),
+            reopened?.catalog?.runtimeMetadata?.gen3RuntimeMemoryLayout,
+        )
         assertEquals("Route 101", reopened?.catalog?.runtimeMetadata?.areaNamesByBaseId?.get(0x0010))
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
     }
@@ -359,6 +369,11 @@ class CatalogStoreTest {
             ),
             runtimeMetadata = CatalogRuntimeMetadata(
                 gen3SaveBlock1PointerAddress = 0x030036F0L,
+                gen3RuntimeMemoryLayout = CatalogGen3RuntimeMemoryLayout(
+                    0x43C, 0x439, 0x02, 4, 5,
+                    multiUsePlayerCursorOffsetFromMain = 0xE04,
+                    multiUsePlayerCursorEvidence = RuntimeMemoryEvidence.SOURCE_PROVEN_UNTESTED,
+                ),
                 areaNamesByBaseId = mapOf(0x0010 to "Route 101"),
             ),
             capabilities = mapOf(

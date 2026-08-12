@@ -50,7 +50,7 @@ class Gen3BattleLayoutResolver {
             val slot = bytes.u8(moveCursorOffset + player.battlerIndex)
             player.moves.getOrNull(slot)?.takeIf { it != 0 }
         }
-        val target = resolveTarget(bytes, targetCursorOffset, players, opponents)
+        val target = resolveTarget(opponents)
         val layout = ResolvedBattleLayout(
             battleMonsOffset = anchor,
             battlerCountOffset = countOffset,
@@ -128,20 +128,9 @@ class Gen3BattleLayoutResolver {
         )
     }
 
-    private fun resolveTarget(
-        bytes: ByteArray,
-        targetCursorOffset: Int,
-        players: List<BattleMonSnapshot>,
-        opponents: List<BattleMonSnapshot>,
-    ): BattleTarget {
+    private fun resolveTarget(opponents: List<BattleMonSnapshot>): BattleTarget {
         if (opponents.size == 1) return BattleTarget(0, TargetMode.AUTOMATIC)
-        val opponentByBattler = opponents.withIndex().associate { it.value.battlerIndex to it.index }
-        val candidates = players.mapNotNull { player -> opponentByBattler[bytes.u8(targetCursorOffset + player.battlerIndex)] }.distinct()
-        return if (candidates.size == 1) {
-            BattleTarget(candidates.single(), TargetMode.AUTOMATIC)
-        } else {
-            BattleTarget(0, TargetMode.MANUAL_TARGET_FALLBACK)
-        }
+        return BattleTarget(0, TargetMode.MANUAL_TARGET_FALLBACK)
     }
 
     private fun ByteArray.u8(offset: Int): Int = this[offset].toInt() and 0xFF
