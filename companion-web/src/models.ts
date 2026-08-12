@@ -76,6 +76,7 @@ export interface Settings {
   displayTarget?: 'AUTO' | 'HANDHELD' | 'EXTERNAL';
   overlayScale?: number;
   thorTopScreenFocus?: boolean;
+  battlePollingIntervalMs?: number;
 }
 
 export interface SpeciesState {
@@ -115,6 +116,14 @@ export interface RetroArchState {
   message: string | null;
 }
 
+export interface Rarity {
+  relativeTier: 'WEAK' | 'ORDINARY' | 'COMPETENT' | 'STRONG' | 'MAJOR' | null;
+  innateTier: 'FODDER' | 'STANDARD' | 'TRAINED' | 'VETERAN' | 'ELITE' | 'ACE' | null;
+  baseStars: number | null;
+  areaAdjustment: number | null;
+  stars: number | null;
+}
+
 export interface State {
   version: number;
   screen: Screen;
@@ -129,7 +138,7 @@ export interface State {
   speciesState: Record<number, SpeciesState>;
   observedMoves: Record<number, { moveId: number; frequency: number }[]>;
   battle: null | {
-    opponents: { speciesId: number; level: number; typeIds: number[]; rarity: string; moves: { moveId: number; frequency: number }[] }[];
+    opponents: { speciesId: number; level: number; typeIds: number[]; rarity: Rarity; moves: { moveId: number; frequency: number }[] }[];
     targetIndex: number;
     targetMode: 'AUTOMATIC' | 'MANUAL_TARGET_FALLBACK';
     capabilities: Record<string, string>;
@@ -145,6 +154,7 @@ export interface State {
   loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number };
   retroArch?: RetroArchState;
   saveRam?: SaveRamState;
+  thorFocusStatus?: 'ACTIVE' | 'PERMISSION REQUIRED' | 'UNAVAILABLE';
 }
 
 export interface Bootstrap {

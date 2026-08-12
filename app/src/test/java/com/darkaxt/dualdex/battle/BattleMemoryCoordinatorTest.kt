@@ -8,6 +8,15 @@ import java.util.ArrayDeque
 
 class BattleMemoryCoordinatorTest {
     @Test
+    fun adaptiveHeartbeatUsesTheConfiguredDiscoveryRateAndTheCachedRateOtherwise() {
+        assertEquals(1L, battleHeartbeatDelayMillis(eligible = true, discovering = true, pollingIntervalMs = 0))
+        assertEquals(7L, battleHeartbeatDelayMillis(eligible = true, discovering = true, pollingIntervalMs = 7))
+        assertEquals(20L, battleHeartbeatDelayMillis(eligible = true, discovering = true, pollingIntervalMs = 99))
+        assertEquals(20L, battleHeartbeatDelayMillis(eligible = true, discovering = false, pollingIntervalMs = 1))
+        assertEquals(20L, battleHeartbeatDelayMillis(eligible = false, discovering = true, pollingIntervalMs = 1))
+    }
+
+    @Test
     fun discoversThenPollsABoundedWindowWithoutTheMapper() {
         val ewram = ByteArray(0x40000)
         fixture(ewram, 0x143C, opponentPp = 35)
@@ -34,6 +43,33 @@ class BattleMemoryCoordinatorTest {
 
         assertTrue(transport.commands.size - discoveryReads < 10)
         assertEquals(mapOf(13 to mapOf(40 to 1)), updates.last().observations)
+        coordinator.close()
+    }
+
+    @Test
+    fun retainsTheGen3CachedWindowAcrossValidatedNonBattleSamples() {
+        val ewram = ByteArray(0x40000)
+        fixture(ewram, 0x143C, opponentPp = 35)
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(ewram)
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context() },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+        repeat(2) { coordinator.heartbeat() }
+        val fullDiscoveryCommands = transport.commands.size
+
+        ewram[0x143C - 0x1C] = 0
+        repeat(4) { coordinator.heartbeat() }
+        assertTrue(updates.last().ended)
+
+        coordinator.heartbeat()
+        val nextCommand = transport.commands.last()
+        assertTrue(transport.commands.size - fullDiscoveryCommands < 10)
+        assertTrue(nextCommand.startsWith("READ_CORE_MEMORY 2001420 "))
         coordinator.close()
     }
 

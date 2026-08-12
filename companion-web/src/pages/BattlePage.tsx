@@ -1,4 +1,4 @@
-import type { Catalog, Move, State } from '../models';
+import type { Catalog, Move, Rarity as RarityModel, State } from '../models';
 import { Header, Segmented, Sprite, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
 
 export function BattlePage({ catalog, state, send, openMove, openSpecies }: { catalog: Catalog; state: State; send: (type: string, values?: Record<string, string | number | boolean | null>) => void; openMove: (moveId: number) => void; openSpecies: (speciesId: number) => void }) {
@@ -19,7 +19,7 @@ export function BattlePage({ catalog, state, send, openMove, openSpecies }: { ca
     })}</div>}
     <div class="battle-identity">
       <Sprite speciesId={species.id} name={species.name} available={species.hasSprite} large />
-      <div class="battle-identity-copy"><small>TARGET · LV {opponent.level}{battle.opponents.length > 1 && battle.targetMode === 'AUTOMATIC' && <span class="automatic-target">AUTOMATIC TARGET</span>}</small><div class="battle-name-row"><h1>{species.name}</h1><button class="battle-dex-link" aria-label={`Open ${species.name} in Pokédex`} onClick={() => openSpecies(species.id)}>
+      <div class="battle-identity-copy"><small>TARGET · LV {opponent.level}{battle.opponents.length > 1 && battle.targetMode === 'AUTOMATIC' && <span class="automatic-target">AUTOMATIC TARGET</span>}</small><div class="battle-name-row"><h1>{species.name}</h1><RarityStars rarity={opponent.rarity} /><button class="battle-dex-link" aria-label={`Open ${species.name} in Pokédex`} onClick={() => openSpecies(species.id)}>
         <svg viewBox="0 0 28 28" shape-rendering="crispEdges" aria-hidden="true">
           <path class="dex-shell" d="M3 3h17v3h4v19H3z" />
           <path class="dex-screen" d="M7 11h13v8H7z" />
@@ -33,7 +33,7 @@ export function BattlePage({ catalog, state, send, openMove, openSpecies }: { ca
     <div class="battle-content" data-scroll-region>
       {(hidden || state.battleTab === 'ENTRY') && <Entry catalog={catalog} species={species} unlocked={state.settings.knowledgeMode === 'DISCOVERED' || status?.caught} />}
       {!hidden && state.battleTab === 'ATTACK' && <Attack catalog={catalog} move={selectedMove} state={state} openMove={openMove} />}
-      {!hidden && state.battleTab === 'RARITY' && <Rarity label={opponent.rarity} />}
+      {!hidden && state.battleTab === 'RARITY' && <Rarity rarity={opponent.rarity} />}
       {!hidden && state.battleTab === 'MOVES' && <Moves catalog={catalog} moves={opponent.moves} showFrequency={!status?.caught} openMove={openMove} />}
     </div>
   </section>;
@@ -53,9 +53,32 @@ function Attack({ catalog, move, state, openMove }: { catalog: Catalog; move?: M
   </div>;
 }
 
-function Rarity({ label }: { label: string }) {
-  const [prefix, tier] = label.split(' ');
-  return <div class="rarity-card"><small>RECRUITMENT IMPRESSION</small><strong>{tier}</strong><span>{prefix} FOR YOUR CURRENT PARTY</span><p>Innate quality uses the complete IV or DV vector. Exact hidden values, EVs, and encounter rate are not exposed.</p></div>;
+function RarityStars({ rarity }: { rarity: RarityModel }) {
+  if (rarity.stars == null || rarity.innateTier == null) return null;
+  const rating = formatStars(rarity.stars);
+  const areaDescription = rarity.relativeTier == null
+    ? 'area comparison unavailable'
+    : `${rarity.relativeTier} for this encounter table`;
+  return <div class="rarity-stars" role="img" aria-label={`${rating} of 5 stars; ${rarity.innateTier} innate quality; ${areaDescription}`}>
+    {[0, 1, 2, 3, 4].map(index => {
+      const fill = Math.max(0, Math.min(1, rarity.stars! - index));
+      return <span class="rarity-star" aria-hidden="true" key={index}>
+        <span class="rarity-star-outline">☆</span>
+        <span class="rarity-star-fill" style={{ width: `${fill * 100}%` }}>★</span>
+      </span>;
+    })}
+  </div>;
+}
+
+function Rarity({ rarity }: { rarity: RarityModel }) {
+  const title = rarity.innateTier == null
+    ? 'RARITY UNAVAILABLE'
+    : `${rarity.relativeTier ?? 'UNKNOWN'} ${rarity.innateTier}`;
+  return <div class="rarity-card"><small>RECRUITMENT IMPRESSION</small><strong>{title}</strong><p>The first word describes level relative to the current encounter table. The second describes normalized IV/DV quality. Exact hidden values, EVs, and encounter rate are not exposed.</p></div>;
+}
+
+function formatStars(stars: number): string {
+  return Number.isInteger(stars) ? String(stars) : stars.toFixed(1);
 }
 
 function Moves({ catalog, moves, showFrequency, openMove }: { catalog: Catalog; moves: { moveId: number; frequency: number }[]; showFrequency: boolean; openMove: (moveId: number) => void }) {

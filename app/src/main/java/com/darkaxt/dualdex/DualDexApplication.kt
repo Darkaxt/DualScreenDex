@@ -68,10 +68,14 @@ class DualDexApplication : Application() {
         if (resumedActivity?.get() === activity) resumedActivity = null
     }
 
-    fun requestThorFocusSync(requestPermission: Boolean) {
+    fun requestThorFocusSync(requestPermission: Boolean, allowPermissionRequest: Boolean = false) {
         resumedActivity?.get()?.runOnUiThread {
-            resumedActivity?.get()?.syncThorFocus(requestPermission)
+            resumedActivity?.get()?.syncThorFocus(requestPermission, allowPermissionRequest)
         }
+    }
+
+    fun updateThorFocusStatus(status: String) {
+        loopbackServer?.updateThorFocusStatus(status)
     }
 
     private fun requestDisplayTarget(target: String) {
@@ -164,7 +168,12 @@ class DualDexApplication : Application() {
                         (values["displayTarget"] != null || values["thorTopScreenFocus"] != null) -> {
                         runtime.action(type, values)
                         values["displayTarget"]?.let(::requestDisplayTarget)
-                        if (values["thorTopScreenFocus"] != null) requestThorFocusSync(requestPermission = true)
+                        if (values["thorTopScreenFocus"] != null) {
+                            requestThorFocusSync(
+                                requestPermission = true,
+                                allowPermissionRequest = true,
+                            )
+                        }
                         true
                     }
                     else -> false

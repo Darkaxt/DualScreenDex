@@ -35,6 +35,7 @@ class SettingsRepositoryTest {
             displayTarget = DisplayTarget.EXTERNAL,
             overlayScale = 0.65,
             thorTopScreenFocus = true,
+            battlePollingIntervalMs = 1,
         )
 
         repository.write(settings)
@@ -73,6 +74,23 @@ class SettingsRepositoryTest {
 
         assertEquals(1.0, legacy.overlayScale, 0.0)
         assertEquals(1.0, invalid.overlayScale, 0.0)
+    }
+
+    @Test
+    fun clampsPersistedPollingAndKeepsItDeviceGlobalAcrossRomProfiles() {
+        val low = SettingsRepository({ """{"battlePollingIntervalMs":0}""" }, {}).read()
+        val high = SettingsRepository({ """{"battlePollingIntervalMs":99}""" }, {}).read()
+        assertEquals(1, low.battlePollingIntervalMs)
+        assertEquals(20, high.battlePollingIntervalMs)
+
+        var document: String? = null
+        val repository = SettingsRepository({ document }, { document = it })
+        repository.writeForRom(romA, CompanionSettings(theme = Theme.DARK, battlePollingIntervalMs = 2))
+        repository.writeForRom(romB, CompanionSettings(theme = Theme.LIGHT, battlePollingIntervalMs = 17))
+
+        assertEquals(17, repository.readForRom(romA).battlePollingIntervalMs)
+        assertEquals(17, repository.readForRom(romB).battlePollingIntervalMs)
+        assertFalse(requireNotNull(document).substringAfter("\"romOverrides\"").contains("battlePollingIntervalMs"))
     }
 
     @Test

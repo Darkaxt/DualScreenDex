@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.companion.api
 
+import com.enrpau.dualscreendex.companion.battle.RarityEvaluator
 import com.enrpau.dualscreendex.companion.knowledge.KnowledgePolicy
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.Effectiveness
@@ -153,6 +154,7 @@ data class StateView(
     val loading: CatalogLoadingView,
     val retroArch: RetroArchView = RetroArchView(),
     val saveRam: SaveRamView = SaveRamView(),
+    val thorFocusStatus: String = "UNAVAILABLE",
 )
 data class RetroArchView(
     val storageGrant: String = "MISSING",
@@ -213,8 +215,15 @@ data class OpponentView(
     val speciesId: Int,
     val level: Int,
     val typeIds: List<Int>,
-    val rarity: String,
+    val rarity: RarityView,
     val moves: List<ObservedMoveView>,
+)
+data class RarityView(
+    val relativeTier: String?,
+    val innateTier: String?,
+    val baseStars: Int?,
+    val areaAdjustment: Double?,
+    val stars: Double?,
 )
 data class ObservedMoveView(val moveId: Int, val frequency: Int)
 
@@ -354,6 +363,7 @@ object ApiViewBuilder {
         rulesetAssumed: Boolean = true,
         retroArch: RetroArchView = RetroArchView(),
         saveRam: SaveRamView = SaveRamView(),
+        thorFocusStatus: String = "UNAVAILABLE",
     ): StateView {
         val currentAreaIds = snapshot.ledger.currentAreaBaseId?.let { baseId ->
             catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }?.sorted()
@@ -409,13 +419,22 @@ object ApiViewBuilder {
                             ivs = opponent.ivs,
                             dvs = opponent.dvs,
                         )
-                        val prefix = PreferredIndividualSelector.levelPrefix(opponent.level, battle.playerReferenceLevel)
-                        val tier = PreferredIndividualSelector.tier(individual)
+                        val rarity = RarityEvaluator.evaluate(
+                            individual = individual,
+                            currentAreaBaseId = snapshot.ledger.currentAreaBaseId.takeIf { saveRam.status == "MATCHED" },
+                            encounterAreas = catalog?.encounterAreas.orEmpty(),
+                        )
                         OpponentView(
                             opponent.speciesId,
                             opponent.level,
                             opponent.typeIds,
-                            listOfNotNull(prefix, tier).joinToString(" "),
+                            RarityView(
+                                relativeTier = rarity.relativeTier?.name,
+                                innateTier = rarity.innateTier?.name,
+                                baseStars = rarity.baseStars,
+                                areaAdjustment = rarity.areaAdjustment,
+                                stars = rarity.stars,
+                            ),
                             opponent.moveHistory.toObservedMoveViews(),
                         )
                     },
@@ -440,6 +459,7 @@ object ApiViewBuilder {
             ),
             retroArch,
             saveRam,
+            thorFocusStatus,
         )
     }
 

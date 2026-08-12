@@ -15,10 +15,17 @@ data class BattleCatalogContext(
     val catalog: BattleCatalogView,
 )
 
+internal fun battleHeartbeatDelayMillis(
+    eligible: Boolean,
+    discovering: Boolean,
+    pollingIntervalMs: Int,
+): Long = if (eligible && discovering) pollingIntervalMs.coerceIn(1, 20).toLong() else 20L
+
 class BattleMemoryCoordinator(
     private val catalogProvider: () -> BattleCatalogContext?,
     private val publisher: (BattleTrackingUpdate) -> Unit,
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
+    private val pollingIntervalProvider: () -> Int = { 5 },
     autoStart: Boolean = true,
 ) : AutoCloseable {
     private val gen1Resolver = Gen1BattleLayoutResolver()
@@ -36,14 +43,10 @@ class BattleMemoryCoordinator(
     private var cachedLayout: ResolvedBattleLayout? = null
     private var readMode = ReadMode.DISCOVERY
     private var cachedWindowStart = 0
+    @Volatile private var closed = false
 
     init {
-        if (autoStart) heartbeatExecutor.scheduleWithFixedDelay(
-            ::safeHeartbeat,
-            0,
-            HEARTBEAT_MILLIS,
-            TimeUnit.MILLISECONDS,
-        )
+        if (autoStart) scheduleHeartbeat(0)
     }
 
     @Synchronized
@@ -186,13 +189,12 @@ class BattleMemoryCoordinator(
                 val absolute = requireNotNull(cachedLayout)
                 val rebased = absolute.rebased(-cachedWindowStart)
                 gen3Resolver.resolveKnown(bytes, rebased, context.catalog)?.copy(layout = absolute)
-                    .also { if (it == null) cachedLayout = null }
+                    .also { if (it == null && !knownGen3NonBattle(bytes, rebased)) cachedLayout = null }
             }
         }
         val update = if (sample != null && sample.battleOutcome != 0) {
             val final = tracker.update(context.romIdentity, sample)
             tracker.reset(context.romIdentity)
-            cachedLayout = null
             BattleTrackingUpdate(
                 active = false,
                 sample = null,
@@ -223,6 +225,11 @@ class BattleMemoryCoordinator(
         return battleFlagOffset in bytes.indices && bytes[battleFlagOffset].toInt() and 0xff == 0
     }
 
+    private fun knownGen3NonBattle(bytes: ByteArray, layout: ResolvedBattleLayout): Boolean {
+        val offset = layout.battlerCountOffset
+        return offset in bytes.indices && bytes[offset].toInt() and 0xff == 0
+    }
+
     private fun ResolvedBattleLayout.rebased(delta: Int): ResolvedBattleLayout = copy(
         battleMonsOffset = battleMonsOffset + delta,
         battlerCountOffset = battlerCountOffset + delta,
@@ -235,6 +242,25 @@ class BattleMemoryCoordinator(
     private fun safeHeartbeat() {
         runCatching(::heartbeat)
     }
+
+    private fun scheduleHeartbeat(delayMillis: Long) {
+        heartbeatExecutor.schedule(
+            {
+                if (closed) return@schedule
+                safeHeartbeat()
+                if (!closed) scheduleHeartbeat(nextHeartbeatDelay())
+            },
+            delayMillis,
+            TimeUnit.MILLISECONDS,
+        )
+    }
+
+    @Synchronized
+    private fun nextHeartbeatDelay(): Long = battleHeartbeatDelayMillis(
+        eligible = eligible,
+        discovering = cachedLayout == null || readMode == ReadMode.DISCOVERY,
+        pollingIntervalMs = pollingIntervalProvider(),
+    )
 
     @Synchronized
     private fun resetReader() {
@@ -249,6 +275,7 @@ class BattleMemoryCoordinator(
     }
 
     override fun close() {
+        closed = true
         heartbeatExecutor.shutdown()
         synchronized(this) {
             resetReader()
@@ -273,7 +300,6 @@ class BattleMemoryCoordinator(
         private const val COUNT_DELTA = 0x1C
         private const val CACHED_WINDOW_BYTES = 0x45C
         private const val PRODUCTION_CHUNK_BYTES = 1024
-        private const val HEARTBEAT_MILLIS = 20L
     }
 
     private fun supports(generation: Int, systemId: String?): Boolean = when (generation) {

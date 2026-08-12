@@ -1,5 +1,9 @@
 package com.enrpau.dualscreendex.companion.api
 
+import com.enrpau.dualscreendex.companion.model.AppSnapshot
+import com.enrpau.dualscreendex.companion.model.BattleState
+import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
@@ -73,5 +77,75 @@ class ApiViewBuilderTest {
         assertEquals(10, capability.totalRecords)
         assertEquals(4, capability.elementSize)
         assertEquals("MANUAL_REVIEW", capability.reviewStatus)
+    }
+
+    @Test
+    fun projectsStructuredRarityFromMatchedCurrentAreaEvidence() {
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            encounterAreas = listOf(
+                EncounterArea(
+                    id = 0x0203 * 10 + 1,
+                    name = CatalogField.available("Test grass"),
+                    methodId = 1,
+                    slots = listOf(
+                        EncounterSlot(1, 14, 14, 1),
+                        EncounterSlot(2, 10, 10, 1_000),
+                    ),
+                ),
+            ),
+        )
+        val snapshot = AppSnapshot(
+            ledger = KnowledgeLedger(currentAreaBaseId = 0x0203),
+            battle = BattleState(
+                opponents = listOf(
+                    OpponentState(1, 14, ivs = List(6) { 24 }, moveHistory = emptyList()),
+                ),
+            ),
+        )
+
+        val rarity = ApiViewBuilder.state(snapshot, catalog, saveRam = SaveRamView(status = "MATCHED"))
+            .battle!!.opponents.single().rarity
+
+        assertEquals("STRONG", rarity.relativeTier)
+        assertEquals("VETERAN", rarity.innateTier)
+        assertEquals(3, rarity.baseStars)
+        assertEquals(0.5, rarity.areaAdjustment)
+        assertEquals(3.5, rarity.stars)
+    }
+
+    @Test
+    fun withholdsAreaRarityWhenSaveRamIsNotMatched() {
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            encounterAreas = listOf(
+                EncounterArea(
+                    id = 0x0203 * 10 + 1,
+                    name = CatalogField.available("Test grass"),
+                    methodId = 1,
+                    slots = listOf(EncounterSlot(1, 14, 14, 100)),
+                ),
+            ),
+        )
+        val snapshot = AppSnapshot(
+            ledger = KnowledgeLedger(currentAreaBaseId = 0x0203),
+            battle = BattleState(
+                opponents = listOf(
+                    OpponentState(1, 14, ivs = List(6) { 24 }, moveHistory = emptyList()),
+                ),
+            ),
+        )
+
+        val rarity = ApiViewBuilder.state(snapshot, catalog, saveRam = SaveRamView(status = "STALE"))
+            .battle!!.opponents.single().rarity
+
+        assertEquals(null, rarity.relativeTier)
+        assertEquals(null, rarity.areaAdjustment)
+        assertEquals("VETERAN", rarity.innateTier)
+        assertEquals(3.0, rarity.stars)
     }
 }

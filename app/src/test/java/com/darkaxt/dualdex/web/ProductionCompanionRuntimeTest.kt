@@ -9,6 +9,7 @@ import com.darkaxt.dualdex.settings.SettingsRepository
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
+import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.Density
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
@@ -136,8 +137,14 @@ class ProductionCompanionRuntimeTest {
         snapshot = runtime.gateway.bootstrap()
         assertEquals("MOVES", snapshot.battleTab.name)
 
+        runtime.action("OPEN_SPECIES", mapOf("speciesId" to "13"))
+        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample))
+        assertEquals(AppScreen.DETAIL, runtime.gateway.bootstrap().screen)
+
         runtime.applyBattleTracking(BattleTrackingUpdate(false, null, ended = true))
         assertNull(runtime.gateway.bootstrap().battle)
+        assertEquals(AppScreen.DETAIL, runtime.gateway.bootstrap().screen)
+        assertEquals(AppScreen.POKEDEX.name, runtime.action("BACK", emptyMap()).screen)
         runtime.close()
     }
 
@@ -348,6 +355,20 @@ class ProductionCompanionRuntimeTest {
 
         assertEquals("OVERLAY", state.settings.let { it as com.enrpau.dualscreendex.companion.model.CompanionSettings }.displayMode.name)
         assertTrue((state.settings as CompanionSettings).thorTopScreenFocus)
+        runtime.close()
+    }
+
+    @Test
+    fun parsesAndClampsTheLiveBattlePollingSetting() {
+        val runtime = ProductionCompanionRuntime()
+
+        var settings = runtime.action("SETTINGS", mapOf("battlePollingIntervalMs" to "0")).settings as CompanionSettings
+        assertEquals(1, settings.battlePollingIntervalMs)
+        assertEquals(1, runtime.battlePollingIntervalMs())
+
+        settings = runtime.action("SETTINGS", mapOf("battlePollingIntervalMs" to "99")).settings as CompanionSettings
+        assertEquals(20, settings.battlePollingIntervalMs)
+        assertEquals(20, runtime.battlePollingIntervalMs())
         runtime.close()
     }
 

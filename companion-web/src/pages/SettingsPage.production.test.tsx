@@ -77,6 +77,32 @@ describe('production settings copy', () => {
     expect(screen.getByText(/restores the prior focus mode/i)).toBeTruthy();
   });
 
+  it.each(['ACTIVE', 'PERMISSION REQUIRED', 'UNAVAILABLE'] as const)(
+    'shows truthful Thor focus status %s only while focus is requested',
+    status => {
+      const enabledState = {
+        ...state,
+        thorFocusStatus: status,
+        settings: { ...state.settings, thorTopScreenFocus: true },
+      } satisfies State;
+      const { rerender } = render(
+        <SettingsPage catalog={catalog} state={enabledState} send={vi.fn()} onUpload={vi.fn()} />,
+      );
+
+      expect(screen.getByText(status, { selector: '.thor-focus-status strong' })).toBeTruthy();
+
+      rerender(
+        <SettingsPage
+          catalog={catalog}
+          state={{ ...enabledState, settings: { ...enabledState.settings, thorTopScreenFocus: false } }}
+          send={vi.fn()}
+          onUpload={vi.fn()}
+        />,
+      );
+      expect(screen.queryByText(status, { selector: '.thor-focus-status strong' })).toBeNull();
+    },
+  );
+
   it('shows SaveRAM health and lets an ambiguous match be selected', () => {
     const send = vi.fn();
     render(<SettingsPage catalog={catalog} state={{ ...state, saveRam: {

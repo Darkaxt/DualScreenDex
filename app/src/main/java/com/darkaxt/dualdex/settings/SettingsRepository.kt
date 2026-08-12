@@ -74,6 +74,7 @@ class SettingsRepository(
             displayTarget = sanitized.displayTarget,
             overlayScale = sanitized.overlayScale,
             thorTopScreenFocus = sanitized.thorTopScreenFocus,
+            battlePollingIntervalMs = sanitized.battlePollingIntervalMs,
         )
         val override = StoredSettings.difference(sanitized, globals)
         val overrides = LinkedHashMap(state.romOverrides)
@@ -192,6 +193,7 @@ class SettingsRepository(
             null
         },
         thorTopScreenFocus = if (includeDeviceFields) objectValue.booleanValue("thorTopScreenFocus") else null,
+        battlePollingIntervalMs = if (includeDeviceFields) objectValue.intValue("battlePollingIntervalMs")?.coerceIn(1, 20) else null,
     )
 
     private fun sanitize(settings: CompanionSettings): CompanionSettings {
@@ -200,6 +202,7 @@ class SettingsRepository(
             fontScale = settings.fontScale.takeIf(Double::isFinite)?.coerceIn(0.85, 1.35) ?: defaults.fontScale,
             ruleset = normalizedRuleset(settings.ruleset) ?: defaults.ruleset,
             overlayScale = settings.overlayScale.takeIf(Double::isFinite)?.coerceIn(0.45, 1.0) ?: defaults.overlayScale,
+            battlePollingIntervalMs = settings.battlePollingIntervalMs.coerceIn(1, 20),
         )
     }
 
@@ -263,6 +266,7 @@ class SettingsRepository(
         val displayTarget: String? = null,
         val overlayScale: Double? = null,
         val thorTopScreenFocus: Boolean? = null,
+        val battlePollingIntervalMs: Int? = null,
     ) {
         fun applyTo(fallback: CompanionSettings): CompanionSettings = CompanionSettings(
             knowledgeMode = knowledgeMode?.let(KnowledgeMode::valueOf) ?: fallback.knowledgeMode,
@@ -279,6 +283,7 @@ class SettingsRepository(
             displayTarget = displayTarget?.let(DisplayTarget::valueOf) ?: fallback.displayTarget,
             overlayScale = overlayScale ?: fallback.overlayScale,
             thorTopScreenFocus = thorTopScreenFocus ?: fallback.thorTopScreenFocus,
+            battlePollingIntervalMs = battlePollingIntervalMs ?: fallback.battlePollingIntervalMs,
         )
 
         fun isEmpty(): Boolean = this == StoredSettings()
@@ -299,6 +304,7 @@ class SettingsRepository(
                 displayTarget = settings.displayTarget.name,
                 overlayScale = settings.overlayScale,
                 thorTopScreenFocus = settings.thorTopScreenFocus,
+                battlePollingIntervalMs = settings.battlePollingIntervalMs,
             )
 
             fun difference(settings: CompanionSettings, globals: CompanionSettings) = StoredSettings(

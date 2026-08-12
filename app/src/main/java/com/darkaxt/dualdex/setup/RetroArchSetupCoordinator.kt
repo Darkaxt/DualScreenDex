@@ -73,6 +73,7 @@ class RetroArchSetupCoordinator(
         catalogProvider = runtime::battleCatalogContext,
         publisher = runtime::applyBattleTracking,
         transportFactory = { UdpNetworkCommandTransport(commandPort) },
+        pollingIntervalProvider = runtime::battlePollingIntervalMs,
     )
     private val restartVerifier = RestartVerifier()
     private val cachedDirectEntries = if (sharedStorage.isGranted()) directIndexStore.read(ALL_FILES_INDEX_KEY) else emptyList()

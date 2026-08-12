@@ -62,9 +62,21 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             priorScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.priorScreen,
             screen = if (state.settings.autoOpenTarget) AppScreen.BATTLE else state.screen,
             battle = action.battle,
+            battleReturnScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.battleReturnScreen,
             selectedSpeciesId = action.battle.opponents.getOrNull(action.battle.targetIndex)?.speciesId,
         )
-        CompanionAction.BattleEnded -> state.copy(screen = state.priorScreen, battle = null)
+        is CompanionAction.BattleUpdated -> state.copy(
+            battle = action.battle,
+            selectedSpeciesId = action.battle.opponents.getOrNull(action.battle.targetIndex)?.speciesId,
+        )
+        CompanionAction.BattleEnded -> {
+            val destination = state.battleReturnScreen.takeUnless { it == AppScreen.BATTLE } ?: AppScreen.POKEDEX
+            state.copy(
+                screen = if (state.screen == AppScreen.BATTLE) destination else state.screen,
+                priorScreen = if (state.priorScreen == AppScreen.BATTLE) destination else state.priorScreen,
+                battle = null,
+            )
+        }
         is CompanionAction.SelectTarget -> {
             val battle = state.battle
             if (battle == null || action.index !in battle.opponents.indices) state

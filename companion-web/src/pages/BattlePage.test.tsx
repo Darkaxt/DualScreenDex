@@ -85,6 +85,62 @@ describe('battle layout', () => {
     expect(screen.getByText('UNKNOWN')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'RESOLVE ATTACK' })).toBeNull();
   });
+
+  it('renders five stars between the name and Pokédex shortcut with half-star fill', () => {
+    const { catalog, state } = fixture(1);
+    state.battle!.opponents[0].rarity = {
+      relativeTier: 'WEAK', innateTier: 'STANDARD', baseStars: 1, areaAdjustment: -0.5, stars: 0.5,
+    };
+
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+    const identityChildren = container.querySelector('.battle-name-row')?.children;
+
+    expect(identityChildren?.[0].tagName).toBe('H1');
+    expect(identityChildren?.[1].classList.contains('rarity-stars')).toBe(true);
+    expect(identityChildren?.[2].classList.contains('battle-dex-link')).toBe(true);
+    expect(container.querySelectorAll('.rarity-star')).toHaveLength(5);
+    expect(container.querySelectorAll('.rarity-star-fill[style="width: 50%;"]')).toHaveLength(1);
+    expect(screen.getByLabelText('0.5 of 5 stars; STANDARD innate quality; WEAK for this encounter table')).toBeTruthy();
+  });
+
+  it('combines both tiers in the rarity title', () => {
+    const { catalog, state } = fixture(1);
+    state.battleTab = 'RARITY';
+    state.battle!.opponents[0].rarity = {
+      relativeTier: 'WEAK', innateTier: 'STANDARD', baseStars: 1, areaAdjustment: -0.5, stars: 0.5,
+    };
+
+    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('WEAK STANDARD')).toBeTruthy();
+    expect(screen.queryByText(/CURRENT PARTY/)).toBeNull();
+  });
+
+  it('labels unavailable area evidence without changing innate stars', () => {
+    const { catalog, state } = fixture(1);
+    state.battleTab = 'RARITY';
+    state.battle!.opponents[0].rarity = {
+      relativeTier: null, innateTier: 'TRAINED', baseStars: 2, areaAdjustment: null, stars: 2,
+    };
+
+    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('UNKNOWN TRAINED')).toBeTruthy();
+    expect(screen.getByLabelText('2 of 5 stars; TRAINED innate quality; area comparison unavailable')).toBeTruthy();
+  });
+
+  it('reports unavailable rarity without inventing stars when innate data is missing', () => {
+    const { catalog, state } = fixture(1);
+    state.battleTab = 'RARITY';
+    state.battle!.opponents[0].rarity = {
+      relativeTier: 'COMPETENT', innateTier: null, baseStars: null, areaAdjustment: 0.5, stars: null,
+    };
+
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('RARITY UNAVAILABLE')).toBeTruthy();
+    expect(container.querySelector('.rarity-stars')).toBeNull();
+  });
 });
 
 function fixture(opponentCount: number): { catalog: Catalog; state: State } {
@@ -97,10 +153,16 @@ function fixture(opponentCount: number): { catalog: Catalog; state: State } {
       { id: 2, dex: 2, name: 'Hitmonchan', typeIds: [1], stats: null, description: 'Entry', height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
     ],
   } satisfies Catalog;
-  const opponents = catalog.species.slice(0, opponentCount).map(species => ({ speciesId: species.id, level: 34, typeIds: species.typeIds, rarity: 'Ordinary Good', moves: [] }));
+  const opponents: NonNullable<State['battle']>['opponents'] = catalog.species.slice(0, opponentCount).map(species => ({
+    speciesId: species.id,
+    level: 34,
+    typeIds: species.typeIds,
+    rarity: { relativeTier: 'ORDINARY', innateTier: 'VETERAN', baseStars: 3, areaAdjustment: 0, stars: 3 },
+    moves: [],
+  }));
   const state = {
     version: 1, screen: 'BATTLE', priorScreen: 'POKEDEX', settingsReturnScreen: 'BATTLE', selectedSpeciesId: null, filter: 'ALL', selectedAreaId: null, battleTab: 'ATTACK',
-    settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
+    settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', battlePollingIntervalMs: 5 },
     speciesState: { 1: { seen: true, caught: false, team: false, ballId: null }, 2: { seen: true, caught: false, team: false, ballId: null } }, observedMoves: {},
     battle: { opponents, targetIndex: 0, targetMode: 'AUTOMATIC', capabilities: {}, selectedMoveId: 1, effectiveness: 'NEUTRAL', effectivenessKnown: true },
     catalogReady: true, catalogName: 'fixture.gba', error: null, activeRulesetId: null, rulesetAssumed: true,

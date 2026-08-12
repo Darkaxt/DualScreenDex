@@ -36,7 +36,9 @@ import com.darkaxt.dualdex.display.CompanionDisplay
 import com.darkaxt.dualdex.display.DisplayTargetController
 import com.darkaxt.dualdex.display.AndroidThorFocusBackend
 import com.darkaxt.dualdex.display.ThorFocusController
-import com.darkaxt.dualdex.display.ThorFocusResult
+import com.darkaxt.dualdex.display.ThorFocusPermissionAction
+import com.darkaxt.dualdex.display.ThorFocusPermissionPolicy
+import com.darkaxt.dualdex.display.ThorFocusStatusPolicy
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
 
@@ -46,7 +48,7 @@ class MainActivity : AppCompatActivity() {
     private var companionWebView: DualDexWebView? = null
     private val thorFocusBackend by lazy { AndroidThorFocusBackend(this) }
     private val thorFocusController by lazy { ThorFocusController(thorFocusBackend) }
-    private var thorFocusPermissionRequested = false
+    private val thorFocusPermissionPolicy = ThorFocusPermissionPolicy()
     private val mapperExportPicker = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) {
             runCatching {
@@ -70,6 +72,12 @@ class MainActivity : AppCompatActivity() {
             application.updateDisplayMode("DOCKED")
         }
     }
+    private val thorFocusPermission = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        thorFocusPermissionPolicy.permissionResultReturned()
+        if (thorFocusPermissionPolicy.nextAction() == ThorFocusPermissionAction.SYNC_WITHOUT_PERMISSION_REQUEST) {
+            syncThorFocus(requestPermission = false)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,7 +98,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         if (isFinishing && !isChangingConfigurations) {
-            thorFocusController.sync(enabled = false, docked = false, secondaryDisplay = false)
+            releaseThorFocus()
         }
         picker.cancel()
         companionWebView?.destroy()
@@ -169,7 +177,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showOverlay() {
-        thorFocusController.sync(enabled = false, docked = false, secondaryDisplay = false)
+        releaseThorFocus()
         if (Settings.canDrawOverlays(this)) {
             (application as DualDexApplication).updateDisplayMode("OVERLAY")
             FloatingCompanionService.show(this)
@@ -233,24 +241,35 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
-    fun syncThorFocus(requestPermission: Boolean) {
+    fun syncThorFocus(requestPermission: Boolean, allowPermissionRequest: Boolean = false) {
+        if (allowPermissionRequest) thorFocusPermissionPolicy.allowPermissionRequest()
         val application = application as DualDexApplication
         val result = thorFocusController.sync(
             enabled = application.currentThorTopScreenFocus(),
             docked = application.currentDisplayMode() == com.enrpau.dualscreendex.companion.model.DisplayMode.DOCKED,
             secondaryDisplay = (display?.displayId ?: Display.DEFAULT_DISPLAY) != Display.DEFAULT_DISPLAY,
         )
-        if (result == ThorFocusResult.PERMISSION_REQUIRED && requestPermission &&
-            thorFocusBackend.supported && !thorFocusPermissionRequested
+        application.updateThorFocusStatus(
+            ThorFocusStatusPolicy.resolve(result, thorFocusBackend.owned).displayValue,
+        )
+        if (
+            thorFocusPermissionPolicy.afterSync(result, requestPermission) ==
+            ThorFocusPermissionAction.REQUEST_PERMISSION
         ) {
-            thorFocusPermissionRequested = true
-            startActivity(
+            thorFocusPermission.launch(
                 Intent(
                     Settings.ACTION_MANAGE_WRITE_SETTINGS,
                     Uri.parse("package:$packageName"),
                 ),
             )
         }
+    }
+
+    private fun releaseThorFocus() {
+        val result = thorFocusController.sync(enabled = false, docked = false, secondaryDisplay = false)
+        (application as DualDexApplication).updateThorFocusStatus(
+            ThorFocusStatusPolicy.resolve(result, thorFocusBackend.owned).displayValue,
+        )
     }
 
     private fun showRecovery(failure: Throwable?) {

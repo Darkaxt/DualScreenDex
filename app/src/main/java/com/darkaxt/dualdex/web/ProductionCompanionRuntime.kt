@@ -79,6 +79,7 @@ class ProductionCompanionRuntime(
     @Volatile private var settingsWritesEnabled = true
     @Volatile private var retroArch = RetroArchView()
     @Volatile private var saveRam = SaveRamView()
+    @Volatile private var thorFocusStatus = "UNAVAILABLE"
     private var detectedLevelUpRulesetId: String? = null
     private var levelUpRulesetDetectionResolved = false
     private var catalogPublicationInProgress = false
@@ -205,6 +206,7 @@ class ProductionCompanionRuntime(
             rulesetAssumed = snapshot.settings.ruleset == "AUTO" && !levelUpRulesetDetectionResolved,
             retroArch = retroArch,
             saveRam = saveRam,
+            thorFocusStatus = thorFocusStatus,
         ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
     }
 
@@ -216,6 +218,14 @@ class ProductionCompanionRuntime(
 
     fun updateSaveRam(state: SaveRamView) {
         saveRam = state
+    }
+
+    @Synchronized
+    fun updateThorFocusStatus(status: String) {
+        require(status in THOR_FOCUS_STATUSES) { "unknown Thor focus status: $status" }
+        if (thorFocusStatus == status) return
+        thorFocusStatus = status
+        cachedState = null
     }
 
     fun updateOverlayScale(scale: Double) {
@@ -329,13 +339,18 @@ class ProductionCompanionRuntime(
             },
             capabilities = sample.capabilities.mapKeys { it.key.name }.mapValues { it.value.name },
         )
-        gateway.dispatch(CompanionAction.BattleStarted(battle))
+        gateway.dispatch(
+            if (gateway.bootstrap().battle == null) CompanionAction.BattleStarted(battle)
+            else CompanionAction.BattleUpdated(battle),
+        )
     }
 
     @Synchronized
     fun clearLiveBattle() {
         if (gateway.bootstrap().battle != null) gateway.dispatch(CompanionAction.BattleEnded)
     }
+
+    fun battlePollingIntervalMs(): Int = gateway.bootstrap().settings.battlePollingIntervalMs.coerceIn(1, 20)
 
     private fun battleTruth(snapshot: AppSnapshot, currentCatalog: ParsedCatalog?): Effectiveness? {
         val battle = snapshot.battle ?: return null
@@ -463,6 +478,8 @@ class ProductionCompanionRuntime(
                     displayTarget = values["displayTarget"]?.let { DisplayTarget.valueOf(it.uppercase()) } ?: current.displayTarget,
                     overlayScale = current.overlayScale,
                     thorTopScreenFocus = values["thorTopScreenFocus"]?.toBooleanStrictOrNull() ?: current.thorTopScreenFocus,
+                    battlePollingIntervalMs = values["battlePollingIntervalMs"]?.toIntOrNull()?.coerceIn(1, 20)
+                        ?: current.battlePollingIntervalMs,
                 )
         gateway.dispatch(
             CompanionAction.UpdateSettings(updated),
@@ -664,4 +681,8 @@ class ProductionCompanionRuntime(
         val saveRam: SaveRamView,
         val view: StateView,
     )
+
+    private companion object {
+        val THOR_FOCUS_STATUSES = setOf("ACTIVE", "PERMISSION REQUIRED", "UNAVAILABLE")
+    }
 }

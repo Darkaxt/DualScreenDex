@@ -69,6 +69,10 @@ class AndroidLoopbackServer(
         runtime.updateOverlayScale(scale)
     }
 
+    fun updateThorFocusStatus(status: String) {
+        runtime.updateThorFocusStatus(status)
+    }
+
     fun setNativeActionHandler(handler: (String, Map<String, String?>) -> Boolean) {
         nativeActionHandler = handler
     }
