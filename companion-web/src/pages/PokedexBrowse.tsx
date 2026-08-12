@@ -10,13 +10,25 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
     ? (['ALL', 'CAUGHT', 'TEAM', 'AREA'] as const)
     : (['ALL', 'CAUGHT', 'SEEN', 'TEAM', 'AREA'] as const);
   const capabilities = state.saveRam?.capabilities ?? {};
+  const activeAreaIds = state.activeAreaIds ?? state.currentAreaIds ?? [];
+  const activeAreaBaseId = state.activeAreaBaseId !== undefined
+    ? state.activeAreaBaseId
+    : state.currentAreaBaseId;
+  const activeAreaName = state.activeAreaName !== undefined
+    ? state.activeAreaName
+    : state.currentAreaName;
+  const activeAreaSpeciesIds = state.activeAreaSpeciesIds ?? state.currentAreaSpeciesIds ?? [];
+  const activeAreaIsCurrent = state.activeAreaIsCurrent ?? (
+    state.currentAreaBaseId != null &&
+    activeAreaBaseId === state.currentAreaBaseId
+  );
   const available = (name: string) => capabilities[name] === 'AVAILABLE' || capabilities[name] === 'PARTIAL';
   const filterEnabled = {
     ALL: true,
     CAUGHT: available('CAUGHT'),
     SEEN: available('SEEN'),
     TEAM: available('PARTY') && available('SPECIES'),
-    AREA: (state.currentAreaIds?.length ?? 0) > 0,
+    AREA: activeAreaIds.length > 0,
   } as const;
   const visible = useMemo(() => catalog.species.filter(species => {
     const status = state.speciesState[species.id];
@@ -27,11 +39,11 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
     if (activeFilter === 'SEEN' && !status?.seen) return false;
     if (activeFilter === 'TEAM' && !status?.team) return false;
     if (activeFilter === 'AREA') {
-      const observedHere = state.currentAreaSpeciesIds?.includes(species.id) ?? false;
+      const observedHere = activeAreaSpeciesIds.includes(species.id);
       if (!observedHere) return false;
     }
     return true;
-  }), [activeFilter, catalog, policy, search, state.currentAreaSpeciesIds, state.speciesState]);
+  }), [activeFilter, activeAreaSpeciesIds, catalog, policy, search, state.speciesState]);
 
   return <section class="screen pokedex-screen">
     <Header title="POKÉDEX" kicker={`${catalog.family.replaceAll('_', ' ')} · ${policy}`} onSettings={() => send('SCREEN', { screen: 'SETTINGS' })} />
@@ -40,6 +52,14 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
       <div class="filter-strip" aria-label="Pokédex filters">
         {filters.map(filter => <button key={filter} disabled={!filterEnabled[filter]} title={!filterEnabled[filter] ? `${filter} filter unavailable` : undefined} class={activeFilter === filter ? 'active' : ''} onClick={() => send('FILTER', { filter, areaId: null })}>{filter}</button>)}
       </div>
+      {activeFilter === 'AREA' && activeAreaName && <div class="area-context" aria-label="Area filter location">
+        <svg class="area-context-pin" aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M12 21s6-5.3 6-11a6 6 0 1 0-12 0c0 5.7 6 11 6 11Z" />
+          <circle cx="12" cy="10" r="2.2" />
+        </svg>
+        <span><small>AREA</small><strong>{activeAreaName}</strong></span>
+        {activeAreaIsCurrent && <b>CURRENT</b>}
+      </div>}
     </div>
     <div class="species-list" data-scroll-region>
       {visible.map(species => <button key={species.id} class="species-row" onClick={() => send('OPEN_SPECIES', { speciesId: species.id })}>
@@ -47,7 +67,7 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
         <span class="species-number">#{String(species.dex).padStart(3, '0')}</span>
         <strong>{species.name}</strong>
         <span class="species-row-meta">
-          {activeFilter === 'AREA' && <EncounterWindowMark windows={encounterWindows(catalog, state.currentAreaIds ?? [], species.id)} />}
+          {activeFilter === 'AREA' && <EncounterWindowMark windows={encounterWindows(catalog, activeAreaIds, species.id)} />}
           <StatusMarks state={state.speciesState[species.id]} catalog={catalog} />
         </span>
       </button>)}

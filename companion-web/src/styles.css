@@ -56,6 +56,12 @@ button { cursor: pointer; }
 .filter-strip button, .segmented button { min-width: 0; height: 38px; padding: 0 4px; border: 1px solid #82906f; background: #b9c998; color: #17291f; font-size: .68em; font-weight: 900; letter-spacing: .03em; }
 .filter-strip button.active, .segmented button.active { color: var(--paper); background: var(--forest-800); border-color: var(--forest-800); }
 .filter-strip button:disabled { opacity: .38; cursor: not-allowed; }
+.area-context { min-width: 0; min-height: 42px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 6px 9px; color: var(--ink); background: #edf0d9; border: 1px solid #82906f; border-left: 4px solid var(--forest-700); }
+.area-context-pin { width: 24px; height: 24px; fill: none; stroke: var(--forest-700); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.area-context > span { min-width: 0; display: grid; gap: 2px; }
+.area-context small { color: #667264; font-size: .57em; font-weight: 950; letter-spacing: .14em; }
+.area-context strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8em; letter-spacing: .035em; }
+.area-context > b { padding: 5px 7px 4px; color: var(--acid); background: var(--forest-800); font-size: .55em; letter-spacing: .1em; }
 .segmented button:disabled { cursor: not-allowed; color: #687065; background: #abb59b; border-color: #919a86; opacity: .55; }
 .area-select { width: 100%; height: 34px; border: 1px solid #82906f; background: #f4f1dd; color: var(--ink); padding: 0 8px; font-size: .75em; }
 .species-list { min-height: 0; overflow: auto; scrollbar-color: #6d795c transparent; }
@@ -149,6 +155,8 @@ button { cursor: pointer; }
 [data-theme="dark"] .setting-note, [data-theme="dark"] .ruleset-setting { color: #bdc7b6; }
 [data-theme="dark"] .setting-group { border-color: #536258; }
 [data-theme="dark"] .browse-tools, [data-theme="dark"] .identity-card, [data-theme="dark"] .segmented { background: var(--paper-deep); }
+[data-theme="dark"] .area-context { color: var(--ink); background: #293a30; border-color: #657466; }
+[data-theme="dark"] .area-context small { color: #b8c4b4; }
 [data-theme="dark"] .paper-panel, [data-theme="dark"] .setup-step { color: var(--ink); background: #1e2c25; border-color: #657466; box-shadow: none; }
 [data-theme="dark"] .search-box, [data-theme="dark"] .area-select, [data-theme="dark"] .ruleset-setting select, [data-theme="dark"] .mapper-custom input { color: var(--ink); background: #27372e; border-color: #718071; }
 [data-theme="dark"] .segmented button:not(.active), [data-theme="dark"] .filter-strip button:not(.active) { color: #e3ead5; background: #455b4a; border-color: #6b7b6c; }

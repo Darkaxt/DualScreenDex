@@ -166,7 +166,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(6, CatalogSchema.parserSchemaVersion)
+        assertEquals(7, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -182,6 +182,7 @@ class CatalogStoreTest {
             reopened?.catalog?.speciesById?.get(6)?.evolutionEdges?.value?.single()?.conditionValue,
         )
         assertEquals(setOf(EncounterWindow.NIGHT), reopened?.catalog?.encounterAreas?.single()?.windows)
+        assertEquals(0, reopened?.catalog?.encounterAreas?.single()?.baseAreaId)
         assertEquals(0x030036F0L, reopened?.catalog?.runtimeMetadata?.gen3SaveBlock1PointerAddress)
         assertEquals(
             CatalogGen3RuntimeMemoryLayout(
@@ -353,6 +354,7 @@ class CatalogStoreTest {
             encounterAreas = listOf(
                 EncounterArea(
                     1,
+                    0,
                     CatalogField.available("Route 1"),
                     0,
                     listOf(EncounterSlot(6, 34, 36, 10)),

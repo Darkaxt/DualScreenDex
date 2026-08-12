@@ -171,6 +171,7 @@ enum class EncounterWindow { ANY, MORNING, DAY, NIGHT }
 
 data class EncounterArea(
     val id: Int,
+    val baseAreaId: Int,
     val name: CatalogField<String>,
     val methodId: Int,
     val slots: List<EncounterSlot>,

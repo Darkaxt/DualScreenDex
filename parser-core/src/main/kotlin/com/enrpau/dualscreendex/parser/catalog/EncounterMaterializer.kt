@@ -72,6 +72,7 @@ object EncounterMaterializer {
                         add(
                             EncounterArea(
                                 id = groupMapId(group, map) * 100 + time * 10 + method,
+                                baseAreaId = groupMapId(group, map),
                                 name = CatalogField.available(
                                     "Map $group-$map - ${EXPANSION_TIME_LABELS[time]} ${EXPANSION_LABELS[methodIndex]}",
                                 ),
@@ -631,6 +632,7 @@ object EncounterMaterializer {
 
     private fun area(baseId: Int, method: Int, name: String, slots: List<EncounterSlot>) = EncounterArea(
         id = baseId * 10 + method,
+        baseAreaId = baseId,
         name = CatalogField.available(name),
         methodId = method,
         slots = slots,

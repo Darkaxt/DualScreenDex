@@ -30,6 +30,7 @@ class ApiViewBuilderTest {
             encounterAreas = listOf(
                 EncounterArea(
                     id = 17,
+                    baseAreaId = 1,
                     name = CatalogField.available("Route 29 - night grass"),
                     methodId = 7,
                     slots = listOf(EncounterSlot(19, 2, 4, 30)),
@@ -38,7 +39,9 @@ class ApiViewBuilderTest {
             ),
         )
 
-        assertEquals(listOf("NIGHT"), ApiViewBuilder.catalog(catalog).areas.single().windows)
+        val area = ApiViewBuilder.catalog(catalog).areas.single()
+        assertEquals(listOf("NIGHT"), area.windows)
+        assertEquals(1, area.baseAreaId)
     }
 
     @Test
@@ -90,6 +93,7 @@ class ApiViewBuilderTest {
             encounterAreas = listOf(
                 EncounterArea(
                     id = 0x0203 * 10 + 1,
+                    baseAreaId = 0x0203,
                     name = CatalogField.available("Test grass"),
                     methodId = 1,
                     slots = listOf(
@@ -127,6 +131,7 @@ class ApiViewBuilderTest {
             encounterAreas = listOf(
                 EncounterArea(
                     id = 0x0203 * 10 + 1,
+                    baseAreaId = 0x0203,
                     name = CatalogField.available("Test grass"),
                     methodId = 1,
                     slots = listOf(EncounterSlot(1, 14, 14, 100)),
@@ -161,6 +166,7 @@ class ApiViewBuilderTest {
             encounterAreas = listOf(
                 EncounterArea(
                     id = 0x0203 * 10 + 1,
+                    baseAreaId = 0x0203,
                     name = CatalogField.available("Test grass"),
                     methodId = 1,
                     slots = listOf(EncounterSlot(1, 14, 14, 100)),
@@ -195,6 +201,7 @@ class ApiViewBuilderTest {
             encounterAreas = listOf(
                 EncounterArea(
                     id = 0x0010 * 10 + 1,
+                    baseAreaId = 0x0010,
                     name = CatalogField.available("Route 101 grass"),
                     methodId = 1,
                     slots = listOf(EncounterSlot(1, 10, 10, 100)),
@@ -229,6 +236,7 @@ class ApiViewBuilderTest {
             encounterAreas = listOf(
                 EncounterArea(
                     id = 0x0202 * 10 + 1,
+                    baseAreaId = 0x0202,
                     name = CatalogField.available("Stale saved area grass"),
                     methodId = 1,
                     slots = listOf(EncounterSlot(1, 10, 10, 100)),
@@ -253,7 +261,114 @@ class ApiViewBuilderTest {
     }
 
     @Test
-    fun areaSpeciesAreObservedLocallyWithACapturedSpeciesOverride() {
+    fun caughtSpeciesWithoutALocalObservationIsAbsentFromAreaSpecies() {
+        val state = ApiViewBuilder.state(
+            areaSnapshot(caught = setOf(4), observedHere = setOf(1, 2)),
+            areaCatalog(),
+        )
+
+        assertEquals(listOf(1, 2), state.currentAreaSpeciesIds)
+        assertEquals(listOf(1, 2), state.activeAreaSpeciesIds)
+    }
+
+    @Test
+    fun locallyObservedSpeciesIsPresentWithoutBeingCaught() {
+        val state = ApiViewBuilder.state(
+            areaSnapshot(observedHere = setOf(2)),
+            areaCatalog(),
+        )
+
+        assertEquals(listOf(2), state.currentAreaSpeciesIds)
+        assertEquals(listOf(2), state.activeAreaSpeciesIds)
+    }
+
+    @Test
+    fun caughtAndLocallyObservedSpeciesRemainsPresentBecauseOfTheObservation() {
+        val state = ApiViewBuilder.state(
+            areaSnapshot(caught = setOf(2), observedHere = setOf(2)),
+            areaCatalog(),
+        )
+
+        assertEquals(listOf(2), state.currentAreaSpeciesIds)
+        assertEquals(listOf(2), state.activeAreaSpeciesIds)
+    }
+
+    @Test
+    fun selectedAreaUsesExplicitBaseIdentityWithoutReplacingTheCurrentArea() {
+        val currentBaseId = 0x0010
+        val selectedBaseId = 0x0011
+        val selectedAreaId = selectedBaseId * 100 + 21
+        val catalog = areaCatalog().copy(
+            encounterAreas = listOf(
+                EncounterArea(
+                    id = currentBaseId * 10 + 1,
+                    baseAreaId = currentBaseId,
+                    name = CatalogField.available("Route 101 - grass"),
+                    methodId = 1,
+                    slots = listOf(EncounterSlot(1, 2, 3, 100)),
+                ),
+                EncounterArea(
+                    id = selectedAreaId,
+                    baseAreaId = selectedBaseId,
+                    name = CatalogField.available("Oldale Town - day grass"),
+                    methodId = 1,
+                    slots = listOf(EncounterSlot(3, 2, 3, 100)),
+                ),
+            ),
+            runtimeMetadata = CatalogRuntimeMetadata(
+                areaNamesByBaseId = mapOf(
+                    currentBaseId to "Route 101",
+                    selectedBaseId to "Oldale Town",
+                ),
+            ),
+        )
+        val snapshot = areaSnapshot(observedHere = setOf(1)).copy(
+            selectedAreaId = selectedAreaId,
+            ledger = areaSnapshot(observedHere = setOf(1)).ledger.copy(
+                seenSpeciesByArea = mapOf(
+                    currentBaseId to setOf(1),
+                    selectedBaseId to setOf(3),
+                ),
+            ),
+        )
+
+        val state = ApiViewBuilder.state(snapshot, catalog)
+
+        assertEquals(currentBaseId, state.currentAreaBaseId)
+        assertEquals("Route 101", state.currentAreaName)
+        assertEquals(listOf(currentBaseId * 10 + 1), state.currentAreaIds)
+        assertEquals(selectedBaseId, state.activeAreaBaseId)
+        assertEquals("Oldale Town", state.activeAreaName)
+        assertEquals(listOf(selectedAreaId), state.activeAreaIds)
+        assertEquals(listOf(3), state.activeAreaSpeciesIds)
+        assertEquals(false, state.activeAreaIsCurrent)
+    }
+
+    @Test
+    fun selectedEncounterMethodInTheCurrentAreaRetainsTheCurrentMarker() {
+        val catalog = areaCatalog()
+        val selectedAreaId = catalog.encounterAreas.single().id
+        val state = ApiViewBuilder.state(
+            areaSnapshot(observedHere = setOf(1)).copy(selectedAreaId = selectedAreaId),
+            catalog,
+        )
+
+        assertEquals(true, state.activeAreaIsCurrent)
+    }
+
+    @Test
+    fun invalidSelectedAreaFallsBackToTheCurrentArea() {
+        val state = ApiViewBuilder.state(
+            areaSnapshot(observedHere = setOf(1)).copy(selectedAreaId = Int.MAX_VALUE),
+            areaCatalog(),
+        )
+
+        assertEquals(0x0010, state.activeAreaBaseId)
+        assertEquals("Route 101", state.activeAreaName)
+        assertEquals(true, state.activeAreaIsCurrent)
+    }
+
+    private fun areaCatalog(): ParsedCatalog {
         val catalog = ParsedCatalog(
             romSha256 = "a".repeat(64),
             family = EngineFamily.EMERALD,
@@ -272,26 +387,28 @@ class ApiViewBuilderTest {
             encounterAreas = listOf(
                 EncounterArea(
                     id = 0x0010 * 10 + 1,
+                    baseAreaId = 0x0010,
                     name = CatalogField.available("Route 101 grass"),
                     methodId = 1,
                     slots = listOf(EncounterSlot(1, 2, 3, 100)),
                 ),
             ),
+            runtimeMetadata = CatalogRuntimeMetadata(areaNamesByBaseId = mapOf(0x0010 to "Route 101")),
         )
-        val snapshot = AppSnapshot(
-            liveAreaBaseId = 0x0010,
-            ledger = KnowledgeLedger(
-                seenSpecies = setOf(1, 2, 3),
-                caughtSpecies = setOf(4),
-                seenSpeciesByArea = mapOf(
-                    0x0010 to setOf(1, 2),
-                    0x0011 to setOf(3),
-                ),
-            ),
-        )
-
-        val state = ApiViewBuilder.state(snapshot, catalog)
-
-        assertEquals(listOf(1, 2, 4), state.currentAreaSpeciesIds)
+        return catalog
     }
+
+    private fun areaSnapshot(
+        caught: Set<Int> = emptySet(),
+        observedHere: Set<Int> = emptySet(),
+    ) = AppSnapshot(
+        liveAreaBaseId = 0x0010,
+        ledger = KnowledgeLedger(
+            seenSpecies = observedHere + caught,
+            caughtSpecies = caught,
+            seenSpeciesByArea = mapOf(
+                0x0010 to observedHere,
+            ),
+        ),
+    )
 }

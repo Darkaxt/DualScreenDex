@@ -133,8 +133,8 @@ describe('Pokédex knowledge modes', () => {
     const windowCatalog: Catalog = {
       ...catalog,
       areas: [
-        { id: 10, name: 'Route 1', methodId: 1, speciesIds: [1], windows: ['DAY'], slots: [] },
-        { id: 11, name: 'Route 1', methodId: 2, speciesIds: [4], windows: ['NIGHT'], slots: [] },
+        { id: 10, baseAreaId: 1, name: 'Route 1', methodId: 1, speciesIds: [1], windows: ['DAY'], slots: [] },
+        { id: 11, baseAreaId: 1, name: 'Route 1', methodId: 2, speciesIds: [4], windows: ['NIGHT'], slots: [] },
       ],
     };
     const areaState: State = {
@@ -159,8 +159,8 @@ describe('Pokédex knowledge modes', () => {
     const windowCatalog: Catalog = {
       ...catalog,
       areas: [
-        { id: 20, name: 'Route 2', methodId: 1, speciesIds: [1], windows: ['DAY', 'NIGHT'], slots: [] },
-        { id: 21, name: 'Route 2 water', methodId: 2, speciesIds: [4], windows: ['ANY'], slots: [] },
+        { id: 20, baseAreaId: 2, name: 'Route 2', methodId: 1, speciesIds: [1], windows: ['DAY', 'NIGHT'], slots: [] },
+        { id: 21, baseAreaId: 2, name: 'Route 2 water', methodId: 2, speciesIds: [4], windows: ['ANY'], slots: [] },
       ],
     };
     render(<PokedexBrowse catalog={windowCatalog} state={{
@@ -178,7 +178,7 @@ describe('Pokédex knowledge modes', () => {
     const areaCatalog: Catalog = {
       ...catalog,
       areas: [
-        { id: 10, name: 'Route 1', methodId: 1, speciesIds: [1, 4], windows: ['ANY'], slots: [] },
+        { id: 10, baseAreaId: 1, name: 'Route 1', methodId: 1, speciesIds: [1, 4], windows: ['ANY'], slots: [] },
       ],
     };
     const areaState: State = {
@@ -203,5 +203,72 @@ describe('Pokédex knowledge modes', () => {
       speciesState: { ...areaState.speciesState, 4: { ...areaState.speciesState[4], caught: true } },
     }} send={vi.fn()} />);
     expect(screen.queryByText('Charmander')).toBeNull();
+  });
+
+  it('labels the live Area context with the ROM-derived location and Current marker', () => {
+    render(<PokedexBrowse catalog={{
+      ...catalog,
+      areas: [
+        { id: 10, baseAreaId: 1, name: 'Route 101', methodId: 1, speciesIds: [1], windows: ['ANY'], slots: [] },
+      ],
+    }} state={{
+      ...state,
+      filter: 'AREA',
+      activeAreaIds: [10],
+      activeAreaBaseId: 1,
+      activeAreaName: 'Route 101',
+      activeAreaSpeciesIds: [1],
+      activeAreaIsCurrent: true,
+    }} send={vi.fn()} />);
+
+    expect(screen.getByLabelText('Area filter location')).toBeTruthy();
+    expect(screen.getByText('Route 101')).toBeTruthy();
+    expect(screen.getByText('CURRENT')).toBeTruthy();
+  });
+
+  it('labels a selected non-current Area without a Current marker or map-art dependency', () => {
+    render(<PokedexBrowse catalog={{
+      ...catalog,
+      areas: [
+        { id: 21, baseAreaId: 2, name: 'Oldale Town', methodId: 1, speciesIds: [4], windows: ['ANY'], slots: [] },
+      ],
+    }} state={{
+      ...state,
+      filter: 'AREA',
+      selectedAreaId: 21,
+      currentAreaBaseId: 1,
+      currentAreaName: 'Route 101',
+      activeAreaIds: [21],
+      activeAreaBaseId: 2,
+      activeAreaName: 'Oldale Town',
+      activeAreaSpeciesIds: [4],
+      activeAreaIsCurrent: false,
+      speciesState: {
+        ...state.speciesState,
+        4: { seen: true, caught: false, team: false, ballId: null },
+      },
+    }} send={vi.fn()} />);
+
+    expect(screen.getByText('Oldale Town')).toBeTruthy();
+    expect(screen.queryByText('CURRENT')).toBeNull();
+    expect(screen.getByText('Charmander')).toBeTruthy();
+    expect(screen.queryByText('Bulbasaur')).toBeNull();
+  });
+
+  it('does not substitute the current name when a selected Area name is unavailable', () => {
+    render(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      filter: 'AREA',
+      currentAreaBaseId: 1,
+      currentAreaName: 'Route 101',
+      activeAreaIds: [21],
+      activeAreaBaseId: 2,
+      activeAreaName: null,
+      activeAreaSpeciesIds: [],
+      activeAreaIsCurrent: false,
+    }} send={vi.fn()} />);
+
+    expect(screen.queryByLabelText('Area filter location')).toBeNull();
+    expect(screen.queryByText('Route 101')).toBeNull();
   });
 });

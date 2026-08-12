@@ -29,14 +29,14 @@ class ModernEmeraldEncounterLiveRomTest {
         assertEquals(0xBD34E0, capability.offset)
         assertEquals(20, capability.recordSize)
         assertEquals(231, catalog.encounterAreas.size)
-        assertEquals(133, catalog.encounterAreas.map { it.id / 10 }.distinct().size)
+        assertEquals(133, catalog.encounterAreas.map(EncounterArea::baseAreaId).distinct().size)
         val capableAreas = catalog.encounterAreas.filter { area ->
             area.slots.any { slot ->
                 slot.speciesId == 290 && 2 in slot.minimumLevel..slot.maximumLevel
             }
         }
         assertEquals(listOf(161), capableAreas.map { it.id })
-        assertEquals(listOf(16), capableAreas.map { it.id / 10 })
+        assertEquals(listOf(16), capableAreas.map(EncounterArea::baseAreaId))
         assertTrue(requireNotNull(capableAreas.single().name.value).startsWith("Map ").not())
         assertTrue(requireNotNull(catalog.runtimeMetadata.gen3SaveBlock1PointerAddress) in 0x02000000L..0x03FFFFFFL)
         assertEquals(
@@ -75,7 +75,7 @@ class ModernEmeraldEncounterLiveRomTest {
         assertEquals(0x11DE94C, capability.offset)
         assertEquals(20, capability.recordSize)
         assertEquals(328, catalog.encounterAreas.size)
-        assertEquals(187, catalog.encounterAreas.map { it.id / 10 }.distinct().size)
+        assertEquals(187, catalog.encounterAreas.map(EncounterArea::baseAreaId).distinct().size)
         assertTrue(capability.reasons.single().contains("headers=195"))
         assertTrue(capability.reasons.single().contains("populatedMethods=336"))
         assertTrue(capability.reasons.single().contains("references=13"))

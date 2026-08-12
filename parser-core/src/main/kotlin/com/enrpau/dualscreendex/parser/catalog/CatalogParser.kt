@@ -130,7 +130,7 @@ object CatalogMaterializer {
                 areaNamesByBaseId = if (layout.pokeemeraldExpansion == null) {
                     Gen3MapLocationResolver.resolve(
                         rom,
-                        rawEncounters.mapTo(linkedSetOf()) { it.id / 10 },
+                        rawEncounters.mapTo(linkedSetOf(), EncounterArea::baseAreaId),
                     )
                 } else {
                     emptyMap()
@@ -376,7 +376,7 @@ object CatalogMaterializer {
         areas: List<EncounterArea>,
         namesByBaseId: Map<Int, String>,
     ): List<EncounterArea> = areas.map { area ->
-        val resolvedName = namesByBaseId[area.id / 10] ?: return@map area
+        val resolvedName = namesByBaseId[area.baseAreaId] ?: return@map area
         val methodName = area.name.value
             ?.substringAfter(" - ", missingDelimiterValue = "")
             ?.trim()

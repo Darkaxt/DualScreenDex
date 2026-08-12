@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.owned.PreferredIndividualSelector
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
+import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 
@@ -95,6 +96,7 @@ data class EncounterSlotView(
 )
 data class AreaView(
     val id: Int,
+    val baseAreaId: Int,
     val name: String,
     val methodId: Int,
     val speciesIds: List<Int>,
@@ -144,6 +146,11 @@ data class StateView(
     val currentAreaBaseId: Int?,
     val currentAreaName: String?,
     val currentAreaSpeciesIds: List<Int>,
+    val activeAreaIds: List<Int>,
+    val activeAreaBaseId: Int?,
+    val activeAreaName: String?,
+    val activeAreaSpeciesIds: List<Int>,
+    val activeAreaIsCurrent: Boolean,
     val battleTab: String,
     val settings: Any,
     val speciesState: Map<Int, SpeciesStateView>,
@@ -347,6 +354,7 @@ object ApiViewBuilder {
         areas = catalog.encounterAreas.sortedBy { it.id }.map {
             AreaView(
                 it.id,
+                it.baseAreaId,
                 it.name.value ?: "Area ${it.id}",
                 it.methodId,
                 it.slots.map { slot -> slot.speciesId }.filter { id -> id > 0 }.distinct(),
@@ -376,17 +384,16 @@ object ApiViewBuilder {
             ?: snapshot.ledger.currentAreaBaseId.takeIf {
                 !retroArch.connection.equals("CONNECTED", ignoreCase = true) && saveRam.status == "MATCHED"
             }
-        val currentAreaIds = effectiveAreaBaseId?.let { baseId ->
-            catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }?.sorted()
-        }.orEmpty()
-        val currentAreaName = effectiveAreaBaseId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
-        val currentAreaSpeciesIds = effectiveAreaBaseId?.let { baseId ->
-            val navigableIds = catalog?.navigableSpecies()?.mapTo(mutableSetOf()) { it.id }.orEmpty()
-            val captured = navigableIds.filterTo(mutableSetOf()) { KnowledgePolicy.isCaught(it, snapshot.ledger) }
-            (snapshot.ledger.seenSpeciesByArea[baseId].orEmpty() + captured)
-                .filter { it in navigableIds }
-                .sorted()
-        }.orEmpty()
+        val currentAreaIds = encounterAreaIds(catalog, effectiveAreaBaseId)
+        val currentAreaName = areaDisplayName(catalog, effectiveAreaBaseId)
+        val selectedArea = snapshot.selectedAreaId?.let { selectedId ->
+            catalog?.encounterAreas?.firstOrNull { area -> area.id == selectedId }
+        }
+        val activeAreaBaseId = selectedArea?.baseAreaId ?: effectiveAreaBaseId
+        val activeAreaIds = encounterAreaIds(catalog, activeAreaBaseId)
+        val activeAreaName = areaDisplayName(catalog, activeAreaBaseId)
+        val activeAreaSpeciesIds = observedAreaSpeciesIds(snapshot, catalog, activeAreaBaseId)
+        val currentAreaSpeciesIds = observedAreaSpeciesIds(snapshot, catalog, effectiveAreaBaseId)
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
@@ -408,24 +415,29 @@ object ApiViewBuilder {
             }
         }
         return StateView(
-            snapshot.version,
-            snapshot.screen.name,
-            snapshot.priorScreen.name,
-            snapshot.settingsReturnScreen.name,
-            snapshot.selectedSpeciesId,
-            snapshot.filter.name,
-            snapshot.selectedAreaId,
-            currentAreaIds,
-            effectiveAreaBaseId,
-            currentAreaName,
-            currentAreaSpeciesIds,
-            snapshot.battleTab.name,
-            snapshot.settings,
-            speciesState,
-            snapshot.ledger.observedMoves.mapValues { (_, observations) ->
+            version = snapshot.version,
+            screen = snapshot.screen.name,
+            priorScreen = snapshot.priorScreen.name,
+            settingsReturnScreen = snapshot.settingsReturnScreen.name,
+            selectedSpeciesId = snapshot.selectedSpeciesId,
+            filter = snapshot.filter.name,
+            selectedAreaId = snapshot.selectedAreaId,
+            currentAreaIds = currentAreaIds,
+            currentAreaBaseId = effectiveAreaBaseId,
+            currentAreaName = currentAreaName,
+            currentAreaSpeciesIds = currentAreaSpeciesIds,
+            activeAreaIds = activeAreaIds,
+            activeAreaBaseId = activeAreaBaseId,
+            activeAreaName = activeAreaName,
+            activeAreaSpeciesIds = activeAreaSpeciesIds,
+            activeAreaIsCurrent = activeAreaBaseId != null && activeAreaBaseId == effectiveAreaBaseId,
+            battleTab = snapshot.battleTab.name,
+            settings = snapshot.settings,
+            speciesState = speciesState,
+            observedMoves = snapshot.ledger.observedMoves.mapValues { (_, observations) ->
                 observations.toObservedMoveViews()
             },
-            snapshot.battle?.let { battle ->
+            battle = snapshot.battle?.let { battle ->
                 BattleView(
                     opponents = battle.opponents.map { opponent ->
                         val generation = when (catalog?.platform?.name) {
@@ -473,20 +485,52 @@ object ApiViewBuilder {
                     effectivenessKnown = knownEffectiveness != null,
                 )
             },
-            snapshot.catalogReady,
-            snapshot.catalogName,
-            snapshot.error,
-            activeRulesetId,
-            rulesetAssumed,
-            CatalogLoadingView(
+            catalogReady = snapshot.catalogReady,
+            catalogName = snapshot.catalogName,
+            error = snapshot.error,
+            activeRulesetId = activeRulesetId,
+            rulesetAssumed = rulesetAssumed,
+            loading = CatalogLoadingView(
                 snapshot.catalogLoading.active,
                 snapshot.catalogLoading.phase,
                 snapshot.catalogLoading.completedUnits,
                 snapshot.catalogLoading.totalUnits,
             ),
-            retroArch,
-            saveRam,
+            retroArch = retroArch,
+            saveRam = saveRam,
         )
+    }
+
+    private fun encounterAreaIds(catalog: ParsedCatalog?, baseAreaId: Int?): List<Int> = baseAreaId?.let { baseId ->
+        catalog?.encounterAreas
+            ?.filter { area -> area.baseAreaId == baseId }
+            ?.map(EncounterArea::id)
+            ?.sorted()
+    }.orEmpty()
+
+    private fun observedAreaSpeciesIds(
+        snapshot: AppSnapshot,
+        catalog: ParsedCatalog?,
+        baseAreaId: Int?,
+    ): List<Int> {
+        if (baseAreaId == null) return emptyList()
+        val navigableIds = catalog?.navigableSpecies()?.mapTo(mutableSetOf()) { it.id }.orEmpty()
+        return snapshot.ledger.seenSpeciesByArea[baseAreaId].orEmpty()
+            .filter { it in navigableIds }
+            .sorted()
+    }
+
+    private fun areaDisplayName(catalog: ParsedCatalog?, baseAreaId: Int?): String? {
+        if (catalog == null || baseAreaId == null) return null
+        catalog.runtimeMetadata.areaNamesByBaseId[baseAreaId]
+            ?.takeIf(String::isNotBlank)
+            ?.let { return it }
+        return catalog.encounterAreas
+            .asSequence()
+            .filter { area -> area.baseAreaId == baseAreaId }
+            .mapNotNull { area -> area.name.value?.substringBefore(" - ")?.trim()?.takeIf(String::isNotBlank) }
+            .distinct()
+            .singleOrNull()
     }
 
     fun diagnostics(

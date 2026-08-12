@@ -224,6 +224,7 @@ class RarityEvaluatorTest {
         )
         val unrelated = EncounterArea(
             id = 0x0301 * 10 + 1,
+            baseAreaId = 0x0301,
             name = CatalogField.available("Other area"),
             methodId = 1,
             slots = listOf(slot(3, 5, 5, 100)),
@@ -239,6 +240,27 @@ class RarityEvaluatorTest {
         assertNull(result.relativeTier)
         assertEquals(0, result.matchingAreaCount)
         assertEquals(1, result.candidateAreaCount)
+    }
+
+    @Test
+    fun matchesTheCurrentAreaByExplicitBaseIdentityRatherThanEncodedRowArithmetic() {
+        val expansionStyleRowId = AREA_BASE_ID * 100 + 21
+        val result = RarityEvaluator.evaluate(
+            individual(level = 14),
+            currentAreaBaseId = AREA_BASE_ID,
+            encounterAreas = listOf(
+                EncounterArea(
+                    id = expansionStyleRowId,
+                    baseAreaId = AREA_BASE_ID,
+                    name = CatalogField.available("Expansion area"),
+                    methodId = 1,
+                    slots = listOf(slot(1, 14, 14, 1), slot(2, 10, 10, 1_000)),
+                ),
+            ),
+        )
+
+        assertEquals(AreaRarityOutcome.APPLIED, result.areaOutcome)
+        assertEquals(1, result.matchingAreaCount)
     }
 
     @Test
@@ -269,6 +291,7 @@ class RarityEvaluatorTest {
         slots: List<EncounterSlot>,
     ) = EncounterArea(
         id = AREA_BASE_ID * 10 + methodId,
+        baseAreaId = AREA_BASE_ID,
         name = CatalogField.available("Test area"),
         methodId = methodId,
         slots = slots,
