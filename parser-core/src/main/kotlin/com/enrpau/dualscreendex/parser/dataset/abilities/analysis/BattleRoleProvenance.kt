@@ -268,6 +268,35 @@ object BattleRoleProvenance {
                             state,
                             prioritize = state.hasPendingAttackProof(),
                         )
+                    } else if (source != null) {
+                        val dispatch = state[source.register] as? Value.ComputedDispatch
+                        val targets = dispatch?.let {
+                            proveComputedDispatchTargets(image, it, abi, item.instructionSet)
+                        }
+                        if (targets == null) {
+                            incomplete++
+                        } else {
+                            incomplete += targets.incompleteEntries
+                            targets.handlers.forEach { (target, abilityIds) ->
+                                val effect = proveComputedHandlerEffect(
+                                    image,
+                                    target,
+                                    targets.commonContinuation,
+                                    Arm7InstructionSet.THUMB,
+                                    abi,
+                                    state,
+                                )
+                                if (effect != null) {
+                                    abilityIds.filterNot { it in abi.withheldAbilityIds }.forEach { abilityId ->
+                                        attackMechanics += AttackMechanic(
+                                            abilityId = abilityId,
+                                            predicates = setOf(MechanicPredicate.AttackerAbility(abilityId)),
+                                            effect = effect,
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         incomplete++
                     }
@@ -477,8 +506,28 @@ object BattleRoleProvenance {
         second is Value.ScaledMoveId && first is Value.MoveId -> second.copy(stride = second.stride + 1)
         first is Value.ScaledMoveId && second is Value.Constant -> Value.MoveRecordPointer(second.value.toInt(), first.stride)
         second is Value.ScaledMoveId && first is Value.Constant -> Value.MoveRecordPointer(first.value.toInt(), second.stride)
+        first is Value.ScaledField && second is Value.Constant ->
+            Value.IndexedRomTable(second.value.toInt(), first.field, first.stride)
+        second is Value.ScaledField && first is Value.Constant ->
+            Value.IndexedRomTable(first.value.toInt(), second.field, second.stride)
+        first is Value.Stat && second is Value.Stat &&
+            first.role == second.role && first.field == second.field -> addStats(first, second)
         first is Value.Constant && second is Value.Constant -> Value.Constant((first.value + second.value) and 0xFFFF_FFFFL)
         else -> Value.Unknown
+    }
+
+    private fun addStats(first: Value.Stat, second: Value.Stat): Value {
+        val numerator = first.numerator.toLong() * second.denominator +
+            second.numerator.toLong() * first.denominator
+        val denominator = first.denominator.toLong() * second.denominator
+        if (numerator !in 1..Int.MAX_VALUE.toLong() || denominator !in 1..Int.MAX_VALUE.toLong()) {
+            return Value.Unknown
+        }
+        val divisor = gcd(numerator.toInt(), denominator.toInt())
+        return first.copy(
+            numerator = numerator.toInt() / divisor,
+            denominator = denominator.toInt() / divisor,
+        )
     }
 
     private fun subtract(first: Value?, second: Value): Value = when {
@@ -499,6 +548,8 @@ object BattleRoleProvenance {
             Value.ShiftedPackedEffectiveSplit(first.mask, second.value.toInt())
         first is Value.EffectiveMoveSplit && second is Value.Constant ->
             Value.ShiftedEffectiveMoveSplit(second.value.toInt())
+        first is Value.Field && second is Value.Constant && second.value.toInt() in 0..30 ->
+            Value.ScaledField(first, 1 shl second.value.toInt())
         first is Value.Stat && second is Value.Constant -> Value.ShiftedStat(first, second.value.toInt())
         first is Value.Constant && second is Value.Constant -> Value.Constant((first.value shl second.value.toInt()) and 0xFFFF_FFFFL)
         else -> Value.Unknown
@@ -519,6 +570,10 @@ object BattleRoleProvenance {
             second.value.toInt() == 32 - Integer.bitCount(first.mask) -> Value.EffectiveMoveSplit
         first is Value.ShiftedEffectiveMoveSplit && second is Value.Constant &&
             first.leftShift == second.value.toInt() -> Value.EffectiveMoveSplit
+        first is Value.Stat && second is Value.Constant && second.value.toInt() in 0..30 -> {
+            val denominator = first.denominator.toLong() shl second.value.toInt()
+            if (denominator > Int.MAX_VALUE) Value.Unknown else first.copy(denominator = denominator.toInt())
+        }
         first is Value.ShiftedStat && second is Value.Constant -> {
             val rightShift = second.value.toInt()
             val delta = first.leftShift - rightShift
@@ -598,6 +653,17 @@ object BattleRoleProvenance {
                         Value.StatusSlice(base.role, field, access, mask)
                     } else if (access == field) {
                         Value.Field(base.role, field)
+                    } else {
+                        Value.Unknown
+                    }
+                } else if (base is Value.IndexedRomTable &&
+                    address.index == null &&
+                    address.immediate == 0 &&
+                    instruction.width == Arm7MemoryWidth.WORD
+                ) {
+                    val tableOffset = base.root.toLong() - GBA_ROM_BASE
+                    if (base.stride == 4 && tableOffset in 0..image.size.toLong() - 4) {
+                        Value.ComputedDispatch(base.root, base.field, base.stride)
                     } else {
                         Value.Unknown
                     }
@@ -945,6 +1011,179 @@ object BattleRoleProvenance {
         }
     }
 
+    private fun proveComputedDispatchTargets(
+        image: RomImage,
+        dispatch: Value.ComputedDispatch,
+        abi: BattleMechanicsAbi,
+        instructionSet: Arm7InstructionSet,
+    ): ComputedDispatchTargets? {
+        if (instructionSet != Arm7InstructionSet.THUMB ||
+            dispatch.field.role != BattleRecordRole.ATTACKER ||
+            dispatch.field.field != abi.record.ability ||
+            dispatch.stride != 4
+        ) {
+            return null
+        }
+        val tableOffset = dispatch.root.toLong() - GBA_ROM_BASE
+        if (tableOffset !in 0..image.size.toLong() - 4) return null
+        val maximumAbilityId = abi.activeAbilityIds.maxOrNull() ?: return null
+        val tableEndExclusive = tableOffset + (maximumAbilityId.toLong() + 1L) * dispatch.stride
+        if (tableEndExclusive > image.size.toLong()) return null
+        val commonContinuation = image.gbaPointer(tableOffset.toInt())?.and(-2) ?: return null
+        if (!isAlignedAndInBounds(image, commonContinuation, instructionSet)) return null
+        if (decode(image, commonContinuation, instructionSet) !is Arm7DecodeResult.Decoded) return null
+
+        val handlers = linkedMapOf<Int, MutableSet<Int>>()
+        var incomplete = 0
+        abi.activeAbilityIds.forEach { abilityId ->
+            val entry = tableOffset + abilityId.toLong() * dispatch.stride
+            if (entry !in 0..image.size.toLong() - 4) {
+                incomplete++
+                return@forEach
+            }
+            val target = image.gbaPointer(entry.toInt())?.and(-2)
+            if (target == null ||
+                target.toLong() in tableOffset until tableEndExclusive ||
+                !isAlignedAndInBounds(image, target, instructionSet) ||
+                decode(image, target, instructionSet) !is Arm7DecodeResult.Decoded ||
+                !handlerCompletesAt(image, target, commonContinuation, instructionSet)
+            ) {
+                incomplete++
+                return@forEach
+            }
+            handlers.getOrPut(target, ::linkedSetOf) += abilityId
+        }
+        if (handlers.isEmpty()) return null
+        return ComputedDispatchTargets(
+            commonContinuation = commonContinuation,
+            handlers = handlers.mapValues { it.value.toSet() },
+            incompleteEntries = incomplete,
+        )
+    }
+
+    private fun proveComputedHandlerEffect(
+        image: RomImage,
+        entry: Int,
+        continuation: Int,
+        instructionSet: Arm7InstructionSet,
+        abi: BattleMechanicsAbi,
+        incoming: SymbolicState,
+    ): MultiplyAttack? {
+        val inputRegisters = Arm7Register.entries.filter { register ->
+            val stat = incoming[register] as? Value.Stat
+            stat?.role == BattleRecordRole.ATTACKER &&
+                stat.field == abi.record.attack &&
+                stat.numerator == 1 &&
+                stat.denominator == 1
+        }
+        if (inputRegisters.size != 1) return null
+        val inputRegister = inputRegisters.single()
+        val initial = incoming.copy().also { it.beginComputedHandlerProof() }
+        val queue = ArrayDeque<WorkItem>().apply { add(WorkItem(entry, instructionSet, initial)) }
+        val visited = mutableSetOf<StateKey>()
+        val outputs = mutableListOf<Value.Stat>()
+        var decoded = 0
+
+        while (queue.isNotEmpty() && decoded < MAX_DISPATCH_HANDLER_INSTRUCTIONS) {
+            val item = queue.removeFirst()
+            if (item.offset == continuation && item.instructionSet == instructionSet) {
+                val output = normalizeStat(item.state[inputRegister]) ?: return null
+                if (output.role != BattleRecordRole.ATTACKER || output.field != abi.record.attack) return null
+                outputs += output
+                continue
+            }
+            if (!isAlignedAndInBounds(image, item.offset, item.instructionSet)) return null
+            val state = item.state.copy()
+            state.leaveJoinedAbilityRegion(item.offset)
+            if (!visited.add(StateKey(item.offset, item.instructionSet, state.signature()))) continue
+            val instruction = (decode(image, item.offset, item.instructionSet) as? Arm7DecodeResult.Decoded)
+                ?.instruction ?: return null
+            if (instruction.memoryEffects.any { it.direction == Arm7MemoryDirection.WRITE }) return null
+            decoded++
+            execute(image, instruction, state, abi, linkedSetOf(), linkedSetOf())
+            when (val effect = instruction.controlEffect) {
+                is Arm7ControlEffect.Sequential ->
+                    queue += WorkItem(item.offset + instruction.size, item.instructionSet, state)
+                is Arm7ControlEffect.DirectBranch -> {
+                    if (effect.conditional) {
+                        val join = immediatePostDominator(
+                            image,
+                            item.offset,
+                            item.instructionSet,
+                            MAX_DISPATCH_HANDLER_INSTRUCTIONS,
+                        )
+                        queue += WorkItem(
+                            item.offset + instruction.size,
+                            item.instructionSet,
+                            state.copy().also { it.applyBranch(instruction.condition, taken = false, join) },
+                        )
+                        enqueueTarget(
+                            queue,
+                            image,
+                            effect.target,
+                            item.instructionSet,
+                            state.copy().also { it.applyBranch(instruction.condition, taken = true, join) },
+                        )
+                    } else {
+                        enqueueTarget(queue, image, effect.target, item.instructionSet, state)
+                    }
+                }
+                else -> return null
+            }
+        }
+        if (queue.isNotEmpty() || outputs.isEmpty()) return null
+        val ratios = outputs.map { it.numerator to it.denominator }.distinct()
+        if (ratios.size != 1) return null
+        val (numerator, denominator) = ratios.single()
+        if (numerator == denominator) return null
+        val divisor = gcd(numerator, denominator)
+        return MultiplyAttack(numerator / divisor, denominator / divisor)
+    }
+
+    private fun normalizeStat(value: Value): Value.Stat? = when (value) {
+        is Value.Stat -> value
+        is Value.ShiftedStat -> {
+            val numerator = value.stat.numerator.toLong() shl value.leftShift
+            if (numerator !in 1..Int.MAX_VALUE.toLong()) null else value.stat.copy(numerator = numerator.toInt())
+        }
+        else -> null
+    }
+
+    private fun handlerCompletesAt(
+        image: RomImage,
+        entry: Int,
+        continuation: Int,
+        instructionSet: Arm7InstructionSet,
+    ): Boolean {
+        if (entry == continuation) return true
+        val memo = mutableMapOf<CfgNode, Boolean>()
+        val visiting = mutableSetOf<CfgNode>()
+        var decoded = 0
+
+        fun complete(node: CfgNode): Boolean {
+            if (node.offset == continuation && node.instructionSet == instructionSet) return true
+            memo[node]?.let { return it }
+            if (!visiting.add(node) || ++decoded > MAX_DISPATCH_HANDLER_INSTRUCTIONS) return false
+            val instruction = (decode(image, node.offset, node.instructionSet) as? Arm7DecodeResult.Decoded)
+                ?.instruction ?: return false.also { visiting.remove(node) }
+            val next = CfgNode(node.offset + instruction.size, node.instructionSet)
+            val successors = when (val effect = instruction.controlEffect) {
+                is Arm7ControlEffect.Sequential -> setOf(next)
+                is Arm7ControlEffect.DirectBranch -> buildSet {
+                    add(CfgNode(effect.target.toInt() and -2, node.instructionSet))
+                    if (effect.conditional) add(next)
+                }
+                else -> emptySet()
+            }
+            val result = successors.isNotEmpty() && successors.all(::complete)
+            visiting.remove(node)
+            memo[node] = result
+            return result
+        }
+
+        return complete(CfgNode(entry, instructionSet))
+    }
+
     private fun immediatePostDominator(
         image: RomImage,
         branchOffset: Int,
@@ -1036,6 +1275,11 @@ object BattleRoleProvenance {
         val stackPointer: Value,
     )
     private data class CfgNode(val offset: Int, val instructionSet: Arm7InstructionSet)
+    private data class ComputedDispatchTargets(
+        val commonContinuation: Int,
+        val handlers: Map<Int, Set<Int>>,
+        val incompleteEntries: Int,
+    )
 
     private class SymbolicState private constructor(
         private val registers: Array<Value>,
@@ -1158,6 +1402,18 @@ object BattleRoleProvenance {
             .filter { (fact, nonZero) -> nonZero && fact.role == BattleRecordRole.ATTACKER }
             .keys
             .singleOrNull()
+        fun beginComputedHandlerProof() {
+            pendingAbilityTest = null
+            pendingMoveSplitTest = null
+            pendingStatusTest = null
+            pendingAttackMechanic = null
+            abilityFacts.clear()
+            abilityFactJoins.clear()
+            moveSplitFacts.clear()
+            moveSplitFactJoins.clear()
+            statusFacts.clear()
+            statusFactJoins.clear()
+        }
         fun hasPendingAttackProof(): Boolean = pendingAttackMechanic != null || this[Arm7Register.R0] is Value.AttackOutput
 
         fun mergeIndependentTypedAttackAtJoin(
@@ -1242,6 +1498,9 @@ object BattleRoleProvenance {
         data object MoveId : Value
         data class ScaledMoveId(val stride: Int) : Value
         data class MoveRecordPointer(val root: Int, val stride: Int, val byteOffset: Int = 0) : Value
+        data class ScaledField(val field: Field, val stride: Int) : Value
+        data class IndexedRomTable(val root: Int, val field: Field, val stride: Int) : Value
+        data class ComputedDispatch(val root: Int, val field: Field, val stride: Int) : Value
         data object EffectiveMoveSplit : Value
         data class ShiftedEffectiveMoveSplit(val leftShift: Int) : Value
         data object EffectiveSplitContextSlot : Value
@@ -1301,6 +1560,7 @@ object BattleRoleProvenance {
     private const val MAX_HELPER_INSTRUCTIONS = 1_024
     private const val MAX_Q412_HELPER_INSTRUCTIONS = 128
     private const val MAX_DIVISION_HELPER_INSTRUCTIONS = 4_096
+    private const val MAX_DISPATCH_HANDLER_INSTRUCTIONS = 256
     private const val MAX_HELPER_STACK_BYTES = 64
     private const val Q412_SHIFT = 12
     private const val Q412_ONE = 1 shl Q412_SHIFT
