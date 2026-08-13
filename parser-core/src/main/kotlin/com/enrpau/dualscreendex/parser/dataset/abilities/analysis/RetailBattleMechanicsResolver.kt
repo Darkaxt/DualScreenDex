@@ -70,7 +70,7 @@ object RetailBattleMechanicsResolver {
             )
         }
         val candidates = mutableListOf<ResolvedRetailBattleMechanics>()
-        var multiCallerTargets = 0
+        var decodedCallTargets = 0
         var provedCallerSites = 0
         var maxProvedCallerSitesPerTarget = 0
         var coherentCallerTargets = 0
@@ -78,14 +78,13 @@ object RetailBattleMechanicsResolver {
         var typedFieldCandidates = 0
         var semanticCandidates = 0
         calls.toSortedMap().forEach { (entry, callSites) ->
-            if (callSites.size < MIN_INDEPENDENT_CALLERS) return@forEach
-            multiCallerTargets++
+            decodedCallTargets++
             val callerEvidence = callSites.mapNotNull { proveCallerArguments(session.rom, it) }
             provedCallerSites += callerEvidence.size
             maxProvedCallerSitesPerTarget = maxOf(maxProvedCallerSitesPerTarget, callerEvidence.size)
             val coherent = callerEvidence.groupBy { it.battleArrayRoot to it.recordStride }
                 .values
-                .filter { evidence -> evidence.map { it.callSite }.distinct().size >= MIN_INDEPENDENT_CALLERS }
+                .filter { evidence -> evidence.map { it.callSite }.distinct().isNotEmpty() }
             if (coherent.size != 1) return@forEach
             coherentCallerTargets++
             val evidence = coherent.single().distinctBy { it.callSite }.sortedBy { it.callSite }
@@ -152,7 +151,7 @@ object RetailBattleMechanicsResolver {
         return when (distinct.size) {
             0 -> RetailBattleMechanicsResolution.Unavailable(
                 "no routine proved caller roles, selected move-table use, typed fields, and attack mechanics " +
-                    "(multiCallerTargets=$multiCallerTargets, coherentCallerTargets=$coherentCallerTargets, " +
+                    "(decodedCallTargets=$decodedCallTargets, coherentCallerTargets=$coherentCallerTargets, " +
                     "provedCallerSites=$provedCallerSites, maxProvedCallerSitesPerTarget=$maxProvedCallerSitesPerTarget, " +
                     "moveRootRoutineTargets=$moveRootRoutineTargets, typedFieldCandidates=$typedFieldCandidates, " +
                     "semanticCandidates=$semanticCandidates)",
@@ -502,7 +501,6 @@ object RetailBattleMechanicsResolver {
     private const val GBA_ROM_BASE = 0x0800_0000
     private const val GBA_EWRAM_START = 0x0200_0000
     private const val GBA_IWRAM_END_EXCLUSIVE = 0x0300_8000
-    private const val MIN_INDEPENDENT_CALLERS = 2
     private const val MAX_CALL_EDGES = 262_144
     private const val MAX_ROUTINE_INSTRUCTIONS = 4_096
     private const val MAX_POINTER_STATE_TRANSFERS = 65_536
