@@ -1,26 +1,63 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
-/** Resolves map labels from encounter-proven gMapGroups and the ROM's region-map entry table. */
+/** Resolves semantic map identities from encounter-proven map headers and region-map data. */
 object Gen3MapLocationResolver {
     fun resolve(rom: RomImage, encounterBaseIds: Set<Int>): Map<Int, String> {
-        val requiredMaps = encounterBaseIds
-            .filter { it in 0..0xFFFF }
-            .groupBy({ it ushr 8 }, { it and 0xFF })
-            .mapValues { (_, maps) -> maps.toSet() }
+        val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return emptyMap()
-        val mapGroupsRoot = findMapGroupsRoot(rom, requiredMaps) ?: return emptyMap()
-        val mapSections = enumerateMapSections(rom, mapGroupsRoot) ?: return emptyMap()
-        val names = findRegionNames(rom, mapSections.values.toSet()) ?: return emptyMap()
-        return mapSections.mapNotNull { (baseId, sectionId) ->
-            names[sectionId]?.let { baseId to it }
-        }.toMap(linkedMapOf())
+        val root = findMapGroupsRoots(rom, requiredMaps).singleOrNull() ?: return emptyMap()
+        return resolveFromRoot(rom, root).namesByBaseArea
     }
 
-    private fun findMapGroupsRoot(rom: RomImage, requiredMaps: Map<Int, Set<Int>>): Int? {
-        val maxGroup = requiredMaps.keys.maxOrNull() ?: return null
+    fun resolve(
+        rom: RomImage,
+        encounterBaseIds: Set<Int>,
+        references: GbaReferenceIndex,
+    ): Map<Int, String> = resolveDetailed(rom, encounterBaseIds, references)?.namesByBaseArea.orEmpty()
+
+    internal fun resolveDetailed(
+        rom: RomImage,
+        encounterBaseIds: Set<Int>,
+        references: GbaReferenceIndex,
+    ): Gen3MapLocationResolution? {
+        val requiredMaps = requiredMaps(encounterBaseIds)
+        if (requiredMaps.isEmpty()) return null
+        val roots = findMapGroupsRoots(rom, requiredMaps)
+        val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return null
+        val root = roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull() ?: return null
+        return resolveFromRoot(rom, root).takeIf { it.entriesBySection.isNotEmpty() }
+    }
+
+    internal fun resolveSectionByBaseArea(
+        rom: RomImage,
+        encounterBaseIds: Set<Int>,
+        references: GbaReferenceIndex,
+    ): Map<Int, Int> {
+        val requiredMaps = requiredMaps(encounterBaseIds)
+        if (requiredMaps.isEmpty()) return emptyMap()
+        val roots = findMapGroupsRoots(rom, requiredMaps)
+        val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return emptyMap()
+        val root = roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull() ?: return emptyMap()
+        return enumerateMapSections(rom, root).orEmpty()
+    }
+
+    private fun requiredMaps(encounterBaseIds: Set<Int>): Map<Int, Set<Int>> = encounterBaseIds
+        .filter { it in 0..0xFFFF }
+        .groupBy({ it ushr 8 }, { it and 0xFF })
+        .mapValues { (_, maps) -> maps.toSet() }
+
+    private fun resolveFromRoot(rom: RomImage, root: Int): Gen3MapLocationResolution {
+        val sections = enumerateMapSections(rom, root).orEmpty()
+        val entries = findRegionEntries(rom, sections.values.toSet()).orEmpty()
+        return Gen3MapLocationResolution(sections, entries)
+    }
+
+    private fun findMapGroupsRoots(rom: RomImage, requiredMaps: Map<Int, Set<Int>>): List<Int> {
+        val maxGroup = requiredMaps.keys.maxOrNull() ?: return emptyList()
         val roots = mutableListOf<Int>()
         var root = 0
         val last = rom.size - (maxGroup + 1) * 4
@@ -33,13 +70,10 @@ object Gen3MapLocationResolver {
                         rom.gbaPointer(pointerOffset.toInt())?.let { validMapHeader(rom, it) } == true
                 }
             }
-            if (valid) {
-                roots += root
-                if (roots.size > 1) return null
-            }
+            if (valid && enumerateMapSections(rom, root) != null) roots += root
             root += 4
         }
-        return roots.singleOrNull()
+        return roots
     }
 
     private fun enumerateMapSections(rom: RomImage, root: Int): Map<Int, Int>? {
@@ -79,23 +113,20 @@ object Gen3MapLocationResolver {
         return rom.u16le(offset + 0x12) != 0
     }
 
-    private fun findRegionNames(rom: RomImage, sectionIds: Set<Int>): Map<Int, String>? {
+    private fun findRegionEntries(rom: RomImage, sectionIds: Set<Int>): Map<Int, Gen3RegionMapEntry>? {
         if (sectionIds.isEmpty()) return null
         val maxSection = sectionIds.maxOrNull() ?: return null
         val anchorIds = sectionIds.sortedDescending().take(3)
-        val candidates = linkedMapOf<Int, Map<Int, String>>()
+        val candidates = linkedMapOf<Int, Map<Int, Gen3RegionMapEntry>>()
         var root = 0
         val last = rom.size - (maxSection + 1) * REGION_ENTRY_BYTES
         while (root <= last) {
-            if (anchorIds.all { validRegionEntry(rom, root, it) }) {
-                if (!(0..maxSection).all { validRegionEntryShell(rom, root, it) }) {
-                    root += 4
-                    continue
-                }
-                val names = sectionIds.mapNotNull { section ->
-                    decodeRegionName(rom, root, section)?.let { section to it }
+            if (anchorIds.all { validRegionEntry(rom, root, it) } &&
+                (0..maxSection).all { validRegionEntryShell(rom, root, it) }
+            ) {
+                candidates[root] = sectionIds.mapNotNull { section ->
+                    decodeRegionEntry(rom, root, section)?.let { section to it }
                 }.toMap()
-                candidates[root] = names
             }
             root += 4
         }
@@ -112,10 +143,8 @@ object Gen3MapLocationResolver {
         return candidates.getValue(winner)
     }
 
-    private fun validRegionEntry(rom: RomImage, root: Int, sectionId: Int): Boolean {
-        if (!validRegionEntryShell(rom, root, sectionId)) return false
-        return decodeRegionName(rom, root, sectionId) != null
-    }
+    private fun validRegionEntry(rom: RomImage, root: Int, sectionId: Int): Boolean =
+        validRegionEntryShell(rom, root, sectionId) && decodeRegionEntry(rom, root, sectionId) != null
 
     private fun validRegionEntryShell(rom: RomImage, root: Int, sectionId: Int): Boolean {
         val offset = root + sectionId * REGION_ENTRY_BYTES
@@ -131,15 +160,23 @@ object Gen3MapLocationResolver {
         return available > 0 && PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(text, available)).terminated
     }
 
-    private fun decodeRegionName(rom: RomImage, root: Int, sectionId: Int): String? {
+    private fun decodeRegionEntry(rom: RomImage, root: Int, sectionId: Int): Gen3RegionMapEntry? {
         val offset = root + sectionId * REGION_ENTRY_BYTES
         val text = rom.gbaPointer(offset + 4) ?: return null
         val available = minOf(MAX_REGION_NAME_BYTES, rom.size - text)
         if (available <= 0) return null
         val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(text, available))
-        return decoded.text.takeIf {
+        val name = decoded.text.takeIf {
             decoded.terminated && decoded.validRatio >= MIN_TEXT_RATIO && it.any(Char::isLetterOrDigit)
-        }
+        } ?: return null
+        return Gen3RegionMapEntry(
+            sectionId,
+            rom.u8(offset),
+            rom.u8(offset + 1),
+            rom.u8(offset + 2),
+            rom.u8(offset + 3),
+            name,
+        )
     }
 
     private const val MAP_HEADER_BYTES = 28
@@ -151,3 +188,21 @@ object Gen3MapLocationResolver {
     private const val MAX_REGION_NAME_BYTES = 32
     private const val MIN_TEXT_RATIO = 0.85
 }
+
+internal data class Gen3MapLocationResolution(
+    val sectionByBaseArea: Map<Int, Int>,
+    val entriesBySection: Map<Int, Gen3RegionMapEntry>,
+) {
+    val namesByBaseArea: Map<Int, String> = sectionByBaseArea.mapNotNull { (baseId, sectionId) ->
+        entriesBySection[sectionId]?.let { baseId to it.displayName }
+    }.toMap(linkedMapOf())
+}
+
+internal data class Gen3RegionMapEntry(
+    val sectionId: Int,
+    val x: Int,
+    val y: Int,
+    val width: Int,
+    val height: Int,
+    val displayName: String,
+)
