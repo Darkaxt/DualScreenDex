@@ -28,6 +28,20 @@
 
 The mechanics compatibility gate is met at 38/46 genuine applicable production successes. The four Gen I/II rows are truthful controls and are not counted. Analyzer-only Classic evidence is also not counted.
 
+## Production projection after the frozen survey
+
+The survey above remains immutable evidence of resolver coverage. Subsequent
+production commits `44ee0d1`, `c94cb00`, and `fa09aef` project only
+`COMPLETE_PROOF` tuples into the existing catalog, persistence, API, and
+Ability Detail contracts. The final correction propagates immutable proof from
+the parser's shared `RomAnalysisSession`; it does not open a second whole-ROM
+analysis. Focused real-ROM architecture/materialization tests and the complete
+parser, catalog-store, companion-core, and companion-server suites are green.
+
+Classic remains `NOT_FOUND` and Clover remains `AMBIGUOUS` on the normal
+production path, so their analyzer-only evidence is not promoted into the APK.
+No emulator or device result is claimed by this document.
+
 The two complete evidence packets are byte-identical. All 50 rows, both within-run analyses, aggregate counts, structural clusters, exact tuples, withheld reasons, and first-33 observations match.
 
 ## Production complete proofs

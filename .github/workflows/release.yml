@@ -84,6 +84,13 @@ jobs:
             reports/dualdex-parser-compatibility.md \
             reports/dualdex-rom-hacks-compatibility.json \
             reports/dualdex-rom-hacks-compatibility.md \
+            docs/reports/2026-08-13-base-first50-release-gate.json \
+            docs/reports/2026-08-13-base-first50-release-gate.md \
+            docs/reports/2026-08-13-base-full332-compatibility-summary.json \
+            docs/reports/2026-08-13-base-full332-compatibility.md \
+            docs/reports/2026-08-13-map-first50-release-gate-raw.json \
+            docs/reports/2026-08-13-map-first50-release-gate.md \
+            docs/reports/arm7-first50-compatibility-survey.md \
             release/POST_RELEASE_CHECKLIST.md; do
             test -s "$document"
           done
@@ -91,11 +98,26 @@ jobs:
             reports/dualdex-parser-compatibility.json >/dev/null
           jq -e '.schemaVersion == 1 and .reportSchemaVersion == 11 and .romCount == 50' \
             reports/dualdex-rom-hacks-compatibility.json >/dev/null
+          jq -e '.schemaVersion == 1 and .uniqueSha256Identities == 332 and .exactRehashes == 332 and .statusDistribution.ERROR == 0' \
+            docs/reports/2026-08-13-base-full332-compatibility-summary.json >/dev/null
+          jq -e '.schemaVersion == 1 and (.rows | length) == 50 and .summary.statusDistribution.SELECTED == 50 and .summary.exactRehashes == 50 and .summary.deterministicRoutes == 50 and .summary.referenceClosed == 50 and .summary.persistedAndReopened == 50 and .summary.sqliteQuickCheckOk == 50 and .summary.sqliteForeignKeyErrors == 0' \
+            docs/reports/2026-08-13-base-first50-release-gate.json >/dev/null
+          jq -e '.summary.completed == 50 and .summary.available >= 25 and .summary.deterministic == 50 and .summary.safeNoMapFallback == (50 - .summary.available) and (.observations | length) == 50' \
+            docs/reports/2026-08-13-map-first50-release-gate-raw.json >/dev/null
+          jq -e '.baseFirst50Selected == 50 and .mapFirst50Available == 26 and .arm7Applicable == 46 and .arm7ProductionComplete == 38 and (has("debugApkSha256") | not)' \
+            release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
             reports/dualdex-parser-compatibility.md \
             reports/dualdex-rom-hacks-compatibility.json \
-            reports/dualdex-rom-hacks-compatibility.md; then
+            reports/dualdex-rom-hacks-compatibility.md \
+            docs/reports/2026-08-13-base-first50-release-gate.json \
+            docs/reports/2026-08-13-base-first50-release-gate.md \
+            docs/reports/2026-08-13-base-full332-compatibility-summary.json \
+            docs/reports/2026-08-13-base-full332-compatibility.md \
+            docs/reports/2026-08-13-map-first50-release-gate-raw.json \
+            docs/reports/2026-08-13-map-first50-release-gate.md \
+            docs/reports/arm7-first50-compatibility-survey.md; then
             echo 'Compatibility documentation contains a private path.'
             exit 1
           fi
@@ -318,6 +340,13 @@ jobs:
           cp reports/dualdex-parser-compatibility.md "$ASSETS/dualdex-parser-compatibility.md"
           cp reports/dualdex-rom-hacks-compatibility.json "$ASSETS/dualdex-rom-hacks-compatibility.json"
           cp reports/dualdex-rom-hacks-compatibility.md "$ASSETS/dualdex-rom-hacks-compatibility.md"
+          cp docs/reports/2026-08-13-base-first50-release-gate.json "$ASSETS/dualdex-base-first50-release-gate.json"
+          cp docs/reports/2026-08-13-base-first50-release-gate.md "$ASSETS/dualdex-base-first50-release-gate.md"
+          cp docs/reports/2026-08-13-base-full332-compatibility-summary.json "$ASSETS/dualdex-base-full332-compatibility-summary.json"
+          cp docs/reports/2026-08-13-base-full332-compatibility.md "$ASSETS/dualdex-base-full332-compatibility.md"
+          cp docs/reports/2026-08-13-map-first50-release-gate-raw.json "$ASSETS/dualdex-map-first50-release-gate.json"
+          cp docs/reports/2026-08-13-map-first50-release-gate.md "$ASSETS/dualdex-map-first50-release-gate.md"
+          cp docs/reports/arm7-first50-compatibility-survey.md "$ASSETS/dualdex-arm7-first50-compatibility.md"
           cp release/RELEASE_NOTES_1.0.0.md "$ASSETS/RELEASE_NOTES.md"
 
           apk_sha256="$(sha256sum "$APK" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')"
@@ -357,6 +386,13 @@ jobs:
               dualdex-parser-compatibility.md \
               dualdex-rom-hacks-compatibility.json \
               dualdex-rom-hacks-compatibility.md \
+              dualdex-base-first50-release-gate.json \
+              dualdex-base-first50-release-gate.md \
+              dualdex-base-full332-compatibility-summary.json \
+              dualdex-base-full332-compatibility.md \
+              dualdex-map-first50-release-gate.json \
+              dualdex-map-first50-release-gate.md \
+              dualdex-arm7-first50-compatibility.md \
               RELEASE_NOTES.md \
               provenance.json > SHA256SUMS.txt
           )
@@ -396,6 +432,13 @@ jobs:
             "$ASSETS/dualdex-parser-compatibility.md" \
             "$ASSETS/dualdex-rom-hacks-compatibility.json" \
             "$ASSETS/dualdex-rom-hacks-compatibility.md" \
+            "$ASSETS/dualdex-base-first50-release-gate.json" \
+            "$ASSETS/dualdex-base-first50-release-gate.md" \
+            "$ASSETS/dualdex-base-full332-compatibility-summary.json" \
+            "$ASSETS/dualdex-base-full332-compatibility.md" \
+            "$ASSETS/dualdex-map-first50-release-gate.json" \
+            "$ASSETS/dualdex-map-first50-release-gate.md" \
+            "$ASSETS/dualdex-arm7-first50-compatibility.md" \
             "$ASSETS/RELEASE_NOTES.md"
 
           echo "GitHub created the non-replacing $RELEASE_KIND release for $RELEASE_TAG." >> "$GITHUB_STEP_SUMMARY"

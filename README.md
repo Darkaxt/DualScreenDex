@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Public prerelease [`v1.0.0-rc.24`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.24) retains the stable RC19 layout, Organic Area silhouettes and live Gen III party detection, while structurally validated Gen III ROMs now enter combat from a bounded ROM-derived live battle window instead of a full-memory scan. Reviewed ROM behavior is published in [ROM Hacks Compatibility](reports/dualdex-rom-hacks-compatibility.md), with lower-level evidence in [Parser Compatibility](reports/dualdex-parser-compatibility.md). Stable `v1.0.0` has not been released.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Public prerelease [`v1.0.0-rc.25`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.25) adds normalized ROM-derived maps, semantic ARM7TDMI ability mechanics, proven-wild Rarity-first behavior, and broader compatibility evidence while preserving fail-closed fallback. Stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
@@ -175,6 +175,7 @@ The release candidate contains:
 - progressive background materialization that publishes navigable catalog snapshots before slower extended datasets complete;
 - resident runtime-selectable learnset variants, with `Auto` plus diagnostic manual selection and no ROM reparse when switching;
 - materialized species, forms, types, stats, sprites, descriptions, evolutions, moves, move descriptions, normalized learnsets, abilities, ability descriptions, encounters, type presentation, type matchups, and capture-ball artwork;
+- normalized ROM-derived world maps with intrinsic rasters, semantic location geometry, fog, markers, pan, visible zoom controls, midpoint-preserving pinch zoom, recenter, and direct Area Pokédex navigation;
 - independent tri-state capability evidence (`AVAILABLE`, `NOT_FOUND`, `NOT_APPLICABLE`);
 - checksum-valid per-ROM SaveRAM snapshots persisted in the catalog database, including seen/caught, Team, Area, preferred individual, IV/DV quality, and capture-ball provenance where applicable;
 - Area-filter sun/moon markers derived from the parsed encounter windows;
@@ -182,21 +183,18 @@ The release candidate contains:
 - Discovered, Organic, and Hidden presentation policies; and
 - human-readable and machine-readable compatibility reports.
 
-The private in-scope corpus result is:
+The frozen release gates distinguish base parsing from optional capability coverage:
 
-- **14 inputs evaluated**;
-- **11 exact official matches**;
-- **3 structurally selected derivatives**: Modern Emerald 3.5, Sword and Shield Ultimate Plus, and Pokémon Unbound;
-- **14 complete core catalogs**;
-- **14 complete for every applicable extended dataset**;
-- **0 ambiguous and 0 parse errors**; and
-- no applicable `N/F` capability cells in the current corpus report.
+- **50/50** exact first-corpus ROMs select one base family, persist and reopen, and close every catalog reference;
+- the broader unique-ROM baseline covers **332** rehashed identities: 230 selected, 100 explicit no-family matches, two ambiguous, and zero per-ROM parser errors;
+- normalized world maps are completely available on **26/50** exact first-corpus rows, producing 81 regions; the other 24 rows expose no map assets and retain the ordinary Pokédex/Area experience; and
+- semantic ARM7TDMI ability proof is complete on **38/46** applicable GBA rows. Those proofs publish only exact attacker Attack ×2 mechanics for abilities 37 and 74; four GB/GBC controls are not applicable and incomplete GBA proofs publish nothing.
 
-Move and ability descriptions validate for every sampled GBA ROM and are correctly `N/A` where the older engine does not contain those tables. Egg moves validate for Generations II and III, and machine compatibility validates for all 14 samples. Tutor compatibility validates for Crystal, Emerald, FireRed/LeafGreen, and the three derivatives; it is correctly `N/A` for Generation I, Gold/Silver, and Ruby/Sapphire, whose move relearner is already represented by the level-up learnset rather than a separate tutor-compatibility table. Spin-offs such as Pinball, Trading Card Game, Puzzle Challenge, and Mystery Dungeon are excluded from the v1 mainline-family report.
+These denominators are deliberately different. A selected base catalog is not counted as a working map or proven mechanic, and a fail-closed optional capability is never counted as a success.
 
-Numeric ability mechanics are tracked separately from descriptions. The implemented ROM-code resolver validates the compiled threshold, multiplier, ability IDs, and type IDs for Overgrow, Blaze, Torrent, and Swarm before exposing `HP <= 1/3` and `x1.5` type-matched move power. It resolves those four abilities in every sampled GBA ROM, including the three derivatives. Other abilities remain description-only unless their exact mechanics are independently resolved; DualDex never substitutes familiar series values for unvalidated ROM behavior.
+Numeric ability mechanics are tracked separately from names and descriptions. The production resolver follows decoded calls and use-def relationships from parser-selected layouts into typed battle fields, predicates, arithmetic, and writeback. It never substitutes familiar series values, names, hashes, symbols, or fixed routine addresses for missing proof.
 
-Read the player-facing [ROM Hacks Compatibility report](reports/dualdex-rom-hacks-compatibility.md), with its [machine-readable JSON](reports/dualdex-rom-hacks-compatibility.json), for the reviewed first 50 ROMs grouped by generation and engine family. The separate [Parser Compatibility report](reports/dualdex-parser-compatibility.md) and [schema-11 JSON evidence](reports/dualdex-parser-compatibility.json) contain the deeper engine lineage, ABI, ruleset, mechanic, encounter, gap, integrity, and provenance evidence. Reports contain structural evidence and hashes, but no decoded bulk tables, sprites, ROM bytes, saves, trainer data, or private paths.
+Read the player-facing [ROM Hacks Compatibility report](reports/dualdex-rom-hacks-compatibility.md), with its [machine-readable JSON](reports/dualdex-rom-hacks-compatibility.json), for the reviewed first 50 ROMs grouped by generation and engine family. The separate [Parser Compatibility report](reports/dualdex-parser-compatibility.md) and [schema-11 JSON evidence](reports/dualdex-parser-compatibility.json) retain the reviewed RC24 evidence contract; the independent [exact first-50 base release gate](docs/reports/2026-08-13-base-first50-release-gate.md) records RC25's 50/50 result without rewriting that historical report. Optional capability evidence is published independently in the [world-map first-50 release gate](docs/reports/2026-08-13-map-first50-release-gate.md) and [ARM7TDMI first-50 survey](docs/reports/arm7-first50-compatibility-survey.md). The [full unique-ROM base audit](docs/reports/2026-08-13-base-full332-compatibility.md) keeps broader coverage visible without treating every optional feature as resolved. Reports contain structural evidence and hashes, but no decoded bulk tables, sprites, ROM bytes, saves, trainer data, or private paths.
 
 SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1-gen2-saveram-compatibility.md) and [Generation III](docs/reports/gen3-saveram-compatibility.md). These reports contain no ROM/save bytes, trainer data, or private filesystem paths.
 
@@ -212,7 +210,8 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Species and capture-ball sprite decoding | Implemented without AWT/Android dependencies |
 | Area encounters, type colors, and type chart | Implemented and reported independently |
 | Ability descriptions and focused detail pages | Implemented for validated ROMs |
-| Numeric ability mechanics | Implemented for four code-validated pinch abilities; unresolved abilities remain description-only |
+| Numeric ability mechanics | Semantic ARM7TDMI proof complete on 38/46 applicable first-corpus GBA ROMs; unresolved mechanics remain description-only |
+| ROM-derived world maps | Complete on 26/50 exact first-corpus rows with normalized raster/geometry/location evidence; unresolved maps fail closed to the normal Pokédex/Area UI |
 | Packaged production UI | Implemented and exact-viewport browser/WebView validated |
 | Browser-hosted plausible simulator | Retained as a development harness; absent from production assets |
 | Loopback HTTP companion server | Implemented and bound only to `127.0.0.1` |
@@ -224,7 +223,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in signed RC9; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Public signed candidate | [`v1.0.0-rc.24`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.24) prerelease; protected signing and public-asset verification are mandatory. Device installation is permitted, while validation remains manual per the current handoff boundary. |
+| Public signed candidate | [`v1.0.0-rc.25`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.25) prerelease; protected signing and public-asset verification are mandatory. Device installation and validation remain manual. |
 
 ## Parser development
 

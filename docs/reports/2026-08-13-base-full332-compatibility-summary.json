@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "b0b1adf4571748834edaa2d44ef1bc4c4c8aa8a0",
+  "scope": "frozen full unique-ROM base compatibility baseline",
+  "manifestPayloadRows": 334,
+  "uniqueSha256Identities": 332,
+  "exactRehashes": 332,
+  "normalization": "first deterministic manifest occurrence per SHA-256",
+  "statusDistribution": {
+    "SELECTED": 230,
+    "NO_FAMILY_MATCH": 100,
+    "AMBIGUOUS": 2,
+    "ERROR": 0
+  },
+  "familyDistribution": {
+    "FIRERED_LEAFGREEN": 88,
+    "RED_BLUE": 59,
+    "EMERALD": 53,
+    "RUBY_SAPPHIRE": 15,
+    "CRYSTAL": 9,
+    "GOLD_SILVER": 3,
+    "YELLOW": 3
+  },
+  "selectedCatalogsPersistedAndReopened": 230,
+  "sqliteAuditErrors": 0,
+  "referenceErrorRowsAtBaseline": 9,
+  "referenceErrorsAtBaseline": 2157,
+  "postBaselineNote": "Focused encounter, NO_MOVE, and ability-reference closure slices are verified separately; this aggregate was not altered without a fresh 332-ROM rerun.",
+  "containsRomBytes": false,
+  "containsSaveData": false,
+  "containsPrivatePaths": false
+}

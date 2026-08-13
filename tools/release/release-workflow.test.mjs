@@ -94,6 +94,34 @@ test("runs Android deployment safety checks in CI and before release signing", (
   assert.match(workflow.slice(0, workflow.indexOf("  sign-and-publish:")), command);
 });
 
+test("publishes the independently gated base, map, and ARM7 compatibility evidence", () => {
+  const requiredEvidence = [
+    "dualdex-base-first50-release-gate.json",
+    "dualdex-base-first50-release-gate.md",
+    "dualdex-base-full332-compatibility-summary.json",
+    "dualdex-base-full332-compatibility.md",
+    "dualdex-map-first50-release-gate.json",
+    "dualdex-map-first50-release-gate.md",
+    "dualdex-arm7-first50-compatibility.md",
+  ];
+
+  for (const asset of requiredEvidence) {
+    assert.match(workflow, new RegExp(asset.replaceAll(".", "\\.")));
+  }
+  assert.match(workflow, /\.summary\.available >= 25/);
+  assert.match(workflow, /\.summary\.statusDistribution\.SELECTED == 50/);
+  assert.match(workflow, /\.uniqueSha256Identities == 332/);
+  assert.match(workflow, /\.mapFirst50Available == 26/);
+  assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
+});
+
+test("builds only the unsigned release APK before protected signing", () => {
+  assert.match(workflow, /:app:assembleRelease/);
+  assert.doesNotMatch(workflow, /assembleDebug/);
+  assert.doesNotMatch(workflow, /app-debug\.apk/);
+  assert.doesNotMatch(readFileSync(join(repositoryRoot, "release", "v1-ready.json"), "utf8"), /debugApkSha256/);
+});
+
 test("pins every CI and release action to an immutable commit", () => {
   for (const [name, source] of [
     ["CI", continuousIntegrationWorkflow],

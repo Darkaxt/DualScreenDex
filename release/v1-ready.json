@@ -1,16 +1,14 @@
 {
   "schema": 1,
   "versionName": "1.0.0",
-  "versionCode": 1,
   "applicationId": "com.darkaxt.dualdex",
   "stage": 7,
   "status": "ready-for-github-signing",
-  "verifiedDate": "2026-08-12",
+  "verifiedDate": "2026-08-13",
   "openV1LedgerItems": 0,
-  "unitTests": 1192,
-  "webTests": 83,
-  "instrumentationTests": 3,
-  "corpusInputs": 50,
-  "debugApkSha256": "A25A93782DB959AE42DCD125CE46ABD15157B501C5651D40118AFFFBE3EA6371",
+  "baseFirst50Selected": 50,
+  "mapFirst50Available": 26,
+  "arm7Applicable": 46,
+  "arm7ProductionComplete": 38,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

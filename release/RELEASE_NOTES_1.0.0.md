@@ -1,6 +1,16 @@
 # DualDex 1.0.0
 
-DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
+DualDex is a passive ROM, SaveRAM, and validated live-WRAM Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
+
+## RC25: ROM-derived maps, semantic ability mechanics, and broader compatibility
+
+- Restores the Map experience on top of normalized ROM-derived raster and location evidence. Complete maps support one-pointer pan, two-pointer pinch zoom with midpoint preservation, visible zoom controls, recenter, fog, location overlays, and direct Area Pokédex navigation without adding a second Area toolbar.
+- Passes the exact first-50 world-map release gate at **26/50** ROMs and 81 complete regions. Every available result has intrinsic raster, geometry, and encounter-bound location evidence; all 24 unresolved ROMs keep the normal Pokédex and Area behavior with an empty, non-crashing map capability.
+- Adds source-controlled map reconstruction for official Red/Blue/Yellow, Gold/Silver/Crystal, Emerald and FireRed/LeafGreen engine formats, plus structurally compatible derivatives. ROM names, hashes, symbols, and fixed offsets remain test evidence rather than production selectors.
+- Replaces the retail byte-signature ability materializer with bounded ARM7TDMI semantic proof. The frozen first-50 survey proves exact attacker Attack ×2 mechanics for abilities 37 and 74 on **38/46 applicable GBA ROMs**, with no extra inferred mechanics; four GB/GBC rows are correctly not applicable and unsupported or ambiguous GBA paths publish nothing.
+- Opens Rarity only once, at the start of a structurally proven wild battle with a usable assessment. Trainer, link, tutorial, special, ambiguous, and incomplete battle evidence never steals the active tab.
+- Preserves the exact base compatibility gate at **50/50** selected, reference-clean, persisted and reopened catalogs. The broader 332-identity audit is published separately so first-50 release coverage is not presented as global compatibility.
+- Keeps the live Gen III party and battle-window improvements from RC23/RC24. SaveRAM remains the fallback for ownership, boxes, Pokédex flags, and unsupported live layouts; every newer live path remains read-only and fail closed.
 
 ## RC24: immediate ROM-derived Gen III battle window
 
