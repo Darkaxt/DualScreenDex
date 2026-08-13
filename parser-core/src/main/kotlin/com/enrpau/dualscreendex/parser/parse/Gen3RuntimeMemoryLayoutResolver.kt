@@ -14,6 +14,7 @@ object Gen3RuntimeMemoryLayoutResolver {
             ?: return null
         val mainBase = analysis.scores.filterValues { it == best }.keys.singleOrNull() ?: return null
         val battleField = resolveBattleField(rom, mainBase) ?: return null
+        val liveParty = resolveLiveParty(analysis.references)
         return CatalogGen3RuntimeMemoryLayout(
             mainAddress = mainBase,
             inBattleAddress = battleField.address,
@@ -22,7 +23,34 @@ object Gen3RuntimeMemoryLayoutResolver {
             saveBlock1MapNumberOffset = SAVE_MAP_NUMBER_OFFSET,
             multiUsePlayerCursorAddress = null,
             multiUsePlayerCursorEvidence = null,
+            playerPartyCountAddress = liveParty?.countAddress,
+            playerPartyAddress = liveParty?.partyAddress,
         )
+    }
+
+    /**
+     * EWRAM_DATA places the byte-sized party count immediately before the naturally aligned
+     * Pokemon array. Both globals have many independent compiled consumers. We rank every
+     * adjacent referenced pair and publish only one unique strongest authority; the addresses
+     * themselves always come from the ROM literal pools.
+     */
+    private fun resolveLiveParty(references: Map<Long, Int>): LivePartyLayout? {
+        val candidates = buildList {
+            references.forEach { (partyAddress, partyReferences) ->
+                if (partyAddress !in EWRAM_START..EWRAM_END || partyAddress and 3L != 0L) return@forEach
+                if (partyAddress + LIVE_PARTY_BYTES > EWRAM_END + 1) return@forEach
+                for (padding in 1L..MAX_COUNT_PADDING) {
+                    val countAddress = partyAddress - padding
+                    val countReferences = references[countAddress] ?: continue
+                    if (partyReferences <= countReferences) continue
+                    add(LivePartyLayout(countAddress, partyAddress, partyReferences, countReferences))
+                }
+            }
+        }
+        val best = candidates.maxWithOrNull(
+            compareBy<LivePartyLayout> { it.partyReferences }.thenBy { it.countReferences },
+        ) ?: return null
+        return candidates.filter { it.score == best.score }.singleOrNull()
     }
 
     /**
@@ -127,13 +155,14 @@ object Gen3RuntimeMemoryLayoutResolver {
         var offset = 0
         while (offset <= rom.size - 4) {
             val value = rom.u32le(offset)
-            if (value in IWRAM_START..IWRAM_END) {
+            if (value in EWRAM_START..EWRAM_END || value in IWRAM_START..IWRAM_END) {
                 references[value] = references.getOrDefault(value, 0) + 1
             }
             offset += 4
         }
         val scores = references.filter { (base, count) ->
-            count >= MIN_MAIN_BASE_REFERENCES &&
+            base in IWRAM_START..IWRAM_END &&
+                count >= MIN_MAIN_BASE_REFERENCES &&
                 references.getOrDefault(base + MAIN_TAIL_WORD_OFFSET, 0) >= MIN_MAIN_TAIL_REFERENCES &&
                 base + MAIN_STRUCT_SIZE <= IWRAM_END + 1
         }.mapValues { (base, count) -> ReferenceScore(count, references.getValue(base + MAIN_TAIL_WORD_OFFSET)) }
@@ -142,12 +171,16 @@ object Gen3RuntimeMemoryLayoutResolver {
 
     private const val IWRAM_START = 0x03000000L
     private const val IWRAM_END = 0x03007FFFL
+    private const val EWRAM_START = 0x02000000L
+    private const val EWRAM_END = 0x0203FFFFL
     private const val MAIN_STRUCT_SIZE = 0x43C
     private const val MAIN_TAIL_WORD_OFFSET = 0x438
     private const val SAVE_MAP_GROUP_OFFSET = 4
     private const val SAVE_MAP_NUMBER_OFFSET = 5
     private const val MIN_MAIN_BASE_REFERENCES = 32
     private const val MIN_MAIN_TAIL_REFERENCES = 3
+    private const val LIVE_PARTY_BYTES = 6 * 100L
+    private const val MAX_COUNT_PADDING = 3L
     private const val LOOK_BEHIND_BYTES = 16
     private const val TRACE_BYTES = 64
     private const val OR_OPERATION = 12
@@ -159,6 +192,15 @@ object Gen3RuntimeMemoryLayoutResolver {
         val references: Map<Long, Int>,
         val scores: Map<Long, ReferenceScore>,
     )
+
+    private data class LivePartyLayout(
+        val countAddress: Long,
+        val partyAddress: Long,
+        val partyReferences: Int,
+        val countReferences: Int,
+    ) {
+        val score: Pair<Int, Int> get() = partyReferences to countReferences
+    }
 
     private sealed interface Value {
         data class Constant(val value: Long) : Value

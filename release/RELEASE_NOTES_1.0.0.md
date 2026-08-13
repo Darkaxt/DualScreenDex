@@ -2,6 +2,14 @@
 
 DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
+## RC23 live party
+
+- Reads the active Gen III party from a structurally resolved `gPlayerPartyCount`/`gPlayerParty` EWRAM pair, so a newly received starter appears before the first in-game save.
+- Reuses the checksum-validating Gen III Pokémon codec and publishes a party only when every occupied record decodes completely.
+- Keeps live party membership authoritative while connected, including across stale periodic SaveRAM refreshes; SaveRAM remains the fallback and continues to supply boxes, Pokédex flags, and saved location.
+- Polls only one count byte plus the six-record party window and performs no emulator-memory writes.
+- Missing or ambiguous ROM evidence fails closed to the existing SaveRAM behavior.
+
 ## RC22 rollback
 
 - Restores the complete RC19 runtime, parser, API, and navigation baseline. The experimental Map First page, embedded maps, map assets, routes, icons, and shortcuts from RC20/RC21 are not included.

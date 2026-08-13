@@ -7,6 +7,8 @@ data class Gen3RuntimeMemoryLayout(
     val saveBlock1MapGroupOffset: Int,
     val saveBlock1MapNumberOffset: Int,
     val multiUsePlayerCursorAddress: Long? = null,
+    val playerPartyCountAddress: Long? = null,
+    val playerPartyAddress: Long? = null,
 ) {
     init {
         require(mainAddress in IWRAM_START..IWRAM_END)
@@ -15,11 +17,16 @@ data class Gen3RuntimeMemoryLayout(
         require(saveBlock1MapGroupOffset >= 0)
         require(saveBlock1MapNumberOffset == saveBlock1MapGroupOffset + 1)
         require(multiUsePlayerCursorAddress == null || multiUsePlayerCursorAddress in IWRAM_START..IWRAM_END)
+        require((playerPartyCountAddress == null) == (playerPartyAddress == null))
+        require(playerPartyCountAddress == null || playerPartyCountAddress in EWRAM_START..EWRAM_END)
+        require(playerPartyAddress == null || playerPartyAddress in EWRAM_START..EWRAM_END)
     }
 
     companion object {
         private const val IWRAM_START = 0x03000000L
         private const val IWRAM_END = 0x03007FFFL
+        private const val EWRAM_START = 0x02000000L
+        private const val EWRAM_END = 0x0203FFFFL
     }
 }
 

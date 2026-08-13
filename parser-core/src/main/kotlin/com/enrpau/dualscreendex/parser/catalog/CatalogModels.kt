@@ -203,7 +203,17 @@ data class CatalogGen3RuntimeMemoryLayout(
     val saveBlock1MapNumberOffset: Int,
     val multiUsePlayerCursorAddress: Long? = null,
     val multiUsePlayerCursorEvidence: RuntimeMemoryEvidence? = null,
-)
+    val playerPartyCountAddress: Long? = null,
+    val playerPartyAddress: Long? = null,
+) {
+    init {
+        require((playerPartyCountAddress == null) == (playerPartyAddress == null)) {
+            "live party count and record addresses must be present together"
+        }
+        require(playerPartyCountAddress == null || playerPartyCountAddress in 0x02000000L..0x0203FFFFL)
+        require(playerPartyAddress == null || playerPartyAddress in 0x02000000L..0x0203FFFFL)
+    }
+}
 
 data class CatalogRuntimeMetadata(
     val gen3SaveBlock1PointerAddress: Long? = null,

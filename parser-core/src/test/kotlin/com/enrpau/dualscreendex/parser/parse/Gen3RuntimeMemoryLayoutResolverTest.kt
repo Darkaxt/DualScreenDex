@@ -16,6 +16,8 @@ class Gen3RuntimeMemoryLayoutResolverTest {
         repeat(32) { putU32(bytes, it * 4, 0x03001574) }
         repeat(3) { putU32(bytes, 0x200 + it * 4, 0x030019AC) }
         repeat(4) { putU32(bytes, 0x300 + it * 4, 0x03002378) }
+        repeat(8) { putU32(bytes, 0x500 + it * 4, 0x02001004) }
+        repeat(3) { putU32(bytes, 0x540 + it * 4, 0x02001001) }
         writeBattleFlagMutation(bytes, 0x400, 0x03001574, 0x439, 0x02, set = true)
         writeBattleFlagMutation(bytes, 0x440, 0x03001574, 0x439, 0x02, set = false)
 
@@ -28,6 +30,8 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                 saveBlock1MapNumberOffset = 5,
                 multiUsePlayerCursorAddress = null,
                 multiUsePlayerCursorEvidence = null,
+                playerPartyCountAddress = 0x02001001,
+                playerPartyAddress = 0x02001004,
             ),
             Gen3RuntimeMemoryLayoutResolver.resolve(RomImage(bytes)),
         )
@@ -41,6 +45,23 @@ class Gen3RuntimeMemoryLayoutResolverTest {
         writeCandidate(bytes, 0, 0x03001000)
         writeCandidate(bytes, 0x800, 0x03002000)
         assertNull(Gen3RuntimeMemoryLayoutResolver.resolve(RomImage(bytes)))
+    }
+
+    @Test
+    fun keepsTheMainAbiButWithholdsAnAmbiguousLivePartyPair() {
+        val bytes = ByteArray(0x2000)
+        writeCandidate(bytes, 0, 0x03001000)
+        writeBattleFlagMutation(bytes, 0x500, 0x03001000, 0x439, 0x02, set = true)
+        writeBattleFlagMutation(bytes, 0x540, 0x03001000, 0x439, 0x02, set = false)
+        repeat(8) { putU32(bytes, 0x700 + it * 4, 0x02001004) }
+        repeat(3) { putU32(bytes, 0x740 + it * 4, 0x02001001) }
+        repeat(8) { putU32(bytes, 0x780 + it * 4, 0x02002004) }
+        repeat(3) { putU32(bytes, 0x7C0 + it * 4, 0x02002001) }
+
+        val resolved = requireNotNull(Gen3RuntimeMemoryLayoutResolver.resolve(RomImage(bytes)))
+
+        assertNull(resolved.playerPartyCountAddress)
+        assertNull(resolved.playerPartyAddress)
     }
 
     @Test
@@ -59,6 +80,8 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                 saveBlock1MapNumberOffset = 5,
                 multiUsePlayerCursorAddress = null,
                 multiUsePlayerCursorEvidence = null,
+                playerPartyCountAddress = 0x0201D9C5,
+                playerPartyAddress = 0x0201D9C8,
             ),
             Gen3RuntimeMemoryLayoutResolver.resolve(RomImage(Files.readAllBytes(path))),
         )

@@ -39,11 +39,13 @@ import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import com.enrpau.dualscreendex.companion.model.Theme
 import com.enrpau.dualscreendex.companion.knowledge.SaveKnowledgeMapper
+import com.enrpau.dualscreendex.companion.knowledge.LivePartyKnowledgeMapper
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveByteSelector
 import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SaveSpeciesContext
+import com.darkaxt.dualdex.save.OwnedIndividual
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
@@ -83,6 +85,7 @@ class ProductionCompanionRuntime(
     @Volatile private var saveRam = SaveRamView()
     private var detectedLevelUpRulesetId: String? = null
     private var levelUpRulesetDetectionResolved = false
+    private var liveParty: List<OwnedIndividual>? = null
     private var catalogPublicationInProgress = false
     private var cachedState: CachedState? = null
     private val loadGeneration = AtomicLong()
@@ -232,17 +235,17 @@ class ProductionCompanionRuntime(
     @Synchronized
     fun saveParseContext(): SaveParseContext? {
         if (catalogPublicationInProgress) return null
-        return catalog?.let { current ->
-            SaveParseContext(
-                romIdentity = current.romSha256,
-                speciesById = current.speciesById.mapValues { (id, species) ->
-                    SaveSpeciesContext(id, species.dexNumber.value, species.growthRate.value, species.formId)
-                },
-                captureBallIds = current.captureBallsById.keys.ifEmpty { (1..15).toSet() },
-                levelUpRulesetSelectors = completeLevelUpRulesetSelectors(current),
-            )
-        }
+        return catalog?.let(::saveParseContext)
     }
+
+    private fun saveParseContext(current: ParsedCatalog): SaveParseContext = SaveParseContext(
+        romIdentity = current.romSha256,
+        speciesById = current.speciesById.mapValues { (id, species) ->
+            SaveSpeciesContext(id, species.dexNumber.value, species.growthRate.value, species.formId)
+        },
+        captureBallIds = current.captureBallsById.keys.ifEmpty { (1..15).toSet() },
+        levelUpRulesetSelectors = completeLevelUpRulesetSelectors(current),
+    )
 
     @Synchronized
     fun battleCatalogContext(): BattleCatalogContext? {
@@ -279,10 +282,26 @@ class ProductionCompanionRuntime(
                     saveBlock1MapGroupOffset = layout.saveBlock1MapGroupOffset,
                     saveBlock1MapNumberOffset = layout.saveBlock1MapNumberOffset,
                     multiUsePlayerCursorAddress = layout.multiUsePlayerCursorAddress,
+                    playerPartyCountAddress = layout.playerPartyCountAddress,
+                    playerPartyAddress = layout.playerPartyAddress,
                 )
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),
+            saveParseContext = saveParseContext(current),
         )
+    }
+
+    @Synchronized
+    fun updateLiveParty(party: List<OwnedIndividual>?) {
+        liveParty = party
+        if (party == null) return
+        val current = catalog ?: return
+        val before = gateway.bootstrap().ledger
+        val merged = LivePartyKnowledgeMapper.merge(before, current, party, generation = 3)
+        if (merged != before) {
+            gateway.dispatch(CompanionAction.ReplaceLedger(merged))
+            persistKnowledge(merged)
+        }
     }
 
     @Synchronized
@@ -404,7 +423,10 @@ class ProductionCompanionRuntime(
     fun applySaveSnapshot(snapshot: SaveSnapshot, state: SaveRamView): Boolean {
         val current = catalog ?: return false
         if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return false
-        val merged = SaveKnowledgeMapper.merge(gateway.bootstrap().ledger, current, snapshot)
+        val fromSave = SaveKnowledgeMapper.merge(gateway.bootstrap().ledger, current, snapshot)
+        val merged = liveParty?.let { party ->
+            LivePartyKnowledgeMapper.merge(fromSave, current, party, generation = 3)
+        } ?: fromSave
         val selectors = completeLevelUpRulesetSelectors(current)
         val detected = snapshot.detectedLevelUpRulesetId?.takeIf { id ->
             val expectedFingerprint = LevelUpRulesetDetectionFingerprint.create(selectors, id)
@@ -599,6 +621,7 @@ class ProductionCompanionRuntime(
     private fun beginCatalogTransition(romSha256: String?, name: String? = null, phase: String): Long {
         val generation = loadGeneration.incrementAndGet()
         catalog = null
+        liveParty = null
         settingsRomSha256 = null
         settingsWritesEnabled = false
         clearLevelUpRulesetDetection()

@@ -48,6 +48,8 @@ class ModernEmeraldEncounterLiveRomTest {
                 saveBlock1MapNumberOffset = 5,
                 multiUsePlayerCursorAddress = null,
                 multiUsePlayerCursorEvidence = null,
+                playerPartyCountAddress = 0x0201D9C5,
+                playerPartyAddress = 0x0201D9C8,
             ),
             catalog.runtimeMetadata.gen3RuntimeMemoryLayout,
         )

@@ -1,6 +1,8 @@
 package com.darkaxt.dualdex.battle
 
 import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
+import com.darkaxt.dualdex.save.SaveParseContext
+import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -525,14 +527,52 @@ class BattleMemoryCoordinatorTest {
         coordinator.close()
     }
 
+    @Test
+    fun publishesTheChecksumValidatedLivePartyOutsideBattle() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        ewram[0x1001] = 1
+        plainPartyRecord(ewram, 0x1004, species = 252, level = 5)
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
+        iwram[0x1574 + 0x439] = 0
+        val parties = mutableListOf<List<com.darkaxt.dualdex.save.OwnedIndividual>?>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = {
+                context(
+                    runtimeLayout = gen3RuntimeLayout(playerPartyOffset = 0x1004),
+                    saveContext = SaveParseContext(
+                        "rom",
+                        mapOf(252 to SaveSpeciesContext(252, 252, 0)),
+                    ),
+                )
+            },
+            publisher = {},
+            partyPublisher = parties::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(6) { coordinator.heartbeat() }
+
+        assertEquals(listOf(252), requireNotNull(parties.last()).map { it.speciesId })
+        assertEquals(5, requireNotNull(parties.last()).single().level)
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 2001001 1") })
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 2001004 600") })
+        coordinator.close()
+    }
+
     private fun context(
         saveBlock1Pointer: Long? = null,
         runtimeLayout: Gen3RuntimeMemoryLayout? = null,
+        saveContext: SaveParseContext? = null,
     ) = BattleCatalogContext(
         romIdentity = "rom",
         generation = 3,
         gen3SaveBlock1PointerAddress = saveBlock1Pointer,
         gen3RuntimeMemoryLayout = runtimeLayout,
+        saveParseContext = saveContext,
         catalog = BattleCatalogView(
             species = mapOf(
                 252 to BattleSpecies(252, listOf(11), setOf(65)),
@@ -543,13 +583,15 @@ class BattleMemoryCoordinatorTest {
         ),
     )
 
-    private fun gen3RuntimeLayout(liveTargetOffset: Int? = null) = Gen3RuntimeMemoryLayout(
+    private fun gen3RuntimeLayout(liveTargetOffset: Int? = null, playerPartyOffset: Int? = null) = Gen3RuntimeMemoryLayout(
         mainAddress = 0x03001574,
         inBattleAddress = 0x030019AD,
         inBattleMask = 0x02,
         saveBlock1MapGroupOffset = 4,
         saveBlock1MapNumberOffset = 5,
         multiUsePlayerCursorAddress = liveTargetOffset?.let { 0x03001574L + it },
+        playerPartyCountAddress = playerPartyOffset?.let { 0x02000000L + it - 3 },
+        playerPartyAddress = playerPartyOffset?.let { 0x02000000L + it },
     )
 
     private fun gen1Context() = BattleCatalogContext(
@@ -615,6 +657,13 @@ class BattleMemoryCoordinatorTest {
 
     private fun putU32(bytes: ByteArray, offset: Int, value: Int) {
         repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
+    }
+
+    private fun plainPartyRecord(bytes: ByteArray, offset: Int, species: Int, level: Int) {
+        bytes[offset + 19] = 0x02
+        putU16(bytes, offset + 32, species)
+        putU32(bytes, offset + 36, 125)
+        bytes[offset + 84] = level.toByte()
     }
 
     private fun mainState(bytes: ByteArray, callback1: Int, callback2: Int, counter: Int, offset: Int = 0x1574) {

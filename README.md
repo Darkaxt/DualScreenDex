@@ -2,10 +2,10 @@
 
 DualDex is a passive Pokédex companion for mainline-family Pokémon games running in RetroArch on Android handhelds. It supports a normal docked activity for dual-screen devices and an optional floating overlay for single-screen play.
 
-The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. For validated Generation I and III layouts it also reads live battle state through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
+The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Public prerelease [`v1.0.0-rc.22`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.22) restores the RC19 product baseline without the experimental Map First UI. Its Organic Area filter lists the ROM's parsed local encounters with known Pokémon first and unseen identities masked as disabled silhouettes. Reviewed ROM behavior is published in [ROM Hacks Compatibility](reports/dualdex-rom-hacks-compatibility.md), with lower-level evidence in [Parser Compatibility](reports/dualdex-parser-compatibility.md). Stable `v1.0.0` has not been released.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Public prerelease [`v1.0.0-rc.23`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.23) retains the stable RC19 layout and the Organic Area silhouettes from RC22, while structurally validated Gen III ROMs now publish their current party from live RAM before an in-game save. Reviewed ROM behavior is published in [ROM Hacks Compatibility](reports/dualdex-rom-hacks-compatibility.md), with lower-level evidence in [Parser Compatibility](reports/dualdex-parser-compatibility.md). Stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
@@ -70,7 +70,7 @@ The parser knows the complete ROM, but the UI controls how much of that truth it
 | `Organic` (default) | List only seen/caught species, remember facts learned through battle, and unlock complete static species knowledge after capture. |
 | `Hidden` | Keep manual Pokédex access but hide battle assistance beyond minimal target identity and caught state. |
 
-Organic ownership comes from checksum-valid SaveRAM. On supported live layouts, opponent moves are remembered by species and ranked by frequency, while a player's consumed PP unlocks the selected move's intrinsic matchup against that target. DualDex computes the result from the parsed move, active type chart, and validated live battler types; it does not infer effectiveness from HP loss. Once a species is captured, its static Pokédex becomes omniscient. Battle discoveries are persisted locally by ROM SHA-256 and survive app restarts.
+Organic ownership comes from checksum-valid SaveRAM plus checksum-validated live party records on structurally supported Gen III layouts. On supported live layouts, opponent moves are remembered by species and ranked by frequency, while a player's consumed PP unlocks the selected move's intrinsic matchup against that target. DualDex computes the result from the parsed move, active type chart, and validated live battler types; it does not infer effectiveness from HP loss. Once a species is captured, its static Pokédex becomes omniscient. Battle discoveries are persisted locally by ROM SHA-256 and survive app restarts.
 
 ### Recruitment-oriented rarity
 
@@ -224,7 +224,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in signed RC9; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Public signed candidate | [`v1.0.0-rc.22`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.22) prerelease; protected signing and public-asset verification are mandatory. Device installation is permitted, while validation remains manual per the current handoff boundary. |
+| Public signed candidate | [`v1.0.0-rc.23`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.23) prerelease; protected signing and public-asset verification are mandatory. Device installation is permitted, while validation remains manual per the current handoff boundary. |
 
 ## Parser development
 

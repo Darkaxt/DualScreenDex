@@ -1130,6 +1130,55 @@ class ProductionCompanionRuntimeTest {
         runtime.close()
     }
 
+    @Test
+    fun keepsTheLivePartyAuthoritativeAcrossAStaleSaveRamRefresh() {
+        val hash = "a".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(25 to saveSpecies(25), 277 to saveSpecies(277)),
+            ),
+        )
+        runtime.updateLiveParty(
+            listOf(OwnedIndividual("party-0", 277, level = 5, ivs = List(6) { 20 }, captureBallId = 4)),
+        )
+        val staleSave = SaveSnapshot(
+            romIdentity = hash,
+            saveIdentity = "save",
+            saveGeneration = 3,
+            saveCounter = 1,
+            currentArea = SavedArea(0, 0),
+            seenDexNumbers = setOf(25),
+            caughtDexNumbers = setOf(25),
+            party = emptyList(),
+            storedIndividuals = listOf(OwnedIndividual("box-0", 25, level = 8)),
+            capabilities = emptyMap(),
+        )
+
+        assertTrue(runtime.applySaveSnapshot(staleSave, SaveRamView(status = "MATCHED")))
+
+        val state = runtime.stateView()
+        assertTrue(state.speciesState.getValue(277).team)
+        assertTrue(state.speciesState.getValue(277).caught)
+        assertFalse(state.speciesState.getValue(25).team)
+        assertTrue(state.speciesState.getValue(25).caught)
+        runtime.close()
+    }
+
+    private fun saveSpecies(id: Int) = SpeciesRecord(
+        id = id,
+        dexNumber = CatalogField.available(id),
+        name = CatalogField.available("Species $id"),
+        typeIds = CatalogField.available(emptyList()),
+        baseStats = CatalogField.notFound("fixture"),
+        sprite = CatalogField.notFound("fixture"),
+        growthRate = CatalogField.available(0),
+    )
+
     private class FakeCatalogRepository(private val stored: StoredCatalog) : CatalogRepository {
         override fun write(
             catalog: ParsedCatalog,

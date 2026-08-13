@@ -166,7 +166,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(6, CatalogSchema.parserSchemaVersion)
+        assertEquals(7, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -192,6 +192,8 @@ class CatalogStoreTest {
                 saveBlock1MapNumberOffset = 5,
                 multiUsePlayerCursorAddress = 0x03002378,
                 multiUsePlayerCursorEvidence = RuntimeMemoryEvidence.SOURCE_PROVEN_UNTESTED,
+                playerPartyCountAddress = 0x02001001,
+                playerPartyAddress = 0x02001004,
             ),
             reopened?.catalog?.runtimeMetadata?.gen3RuntimeMemoryLayout,
         )
@@ -381,6 +383,8 @@ class CatalogStoreTest {
                     saveBlock1MapNumberOffset = 5,
                     multiUsePlayerCursorAddress = 0x03002378,
                     multiUsePlayerCursorEvidence = RuntimeMemoryEvidence.SOURCE_PROVEN_UNTESTED,
+                    playerPartyCountAddress = 0x02001001,
+                    playerPartyAddress = 0x02001004,
                 ),
                 areaNamesByBaseId = mapOf(0x0010 to "Route 101"),
             ),

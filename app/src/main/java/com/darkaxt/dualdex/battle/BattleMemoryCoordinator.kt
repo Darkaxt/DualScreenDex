@@ -6,6 +6,8 @@ import com.darkaxt.dualdex.retroarch.CoreMemoryRegion
 import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
 import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.SaveParseContext
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -17,6 +19,7 @@ data class BattleCatalogContext(
     val gen3SaveBlock1PointerAddress: Long? = null,
     val gen3RuntimeMemoryLayout: Gen3RuntimeMemoryLayout? = null,
     val liveAreaMemoryLayout: LiveAreaMemoryLayout? = null,
+    val saveParseContext: SaveParseContext? = null,
 )
 
 data class LiveAreaMemoryLayout(val wramOffset: Int, val byteCount: Int) {
@@ -44,6 +47,7 @@ class BattleMemoryCoordinator(
     private val catalogProvider: () -> BattleCatalogContext?,
     private val publisher: (BattleTrackingUpdate) -> Unit,
     private val locationPublisher: (Int?) -> Unit = {},
+    private val partyPublisher: (List<OwnedIndividual>?) -> Unit = {},
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     private val pollingIntervalProvider: () -> Int = { 5 },
     autoStart: Boolean = true,
@@ -74,6 +78,7 @@ class BattleMemoryCoordinator(
     private var pendingOverworldSample: BattleMemorySample? = null
     private var pendingOverworldObservations = 0
     private var awaitingOverworldAfterOutcome = false
+    private var lastPublishedLiveParty: List<OwnedIndividual>? = null
     @Volatile private var closed = false
 
     init {
@@ -93,7 +98,11 @@ class BattleMemoryCoordinator(
         if (eligible == nextEligible && sessionIdentity == nextIdentity && sessionGeneration == nextGeneration) return
 
         val hadBattle = tracker.missed().active
-        if (!nextEligible || sessionIdentity != nextIdentity) locationPublisher(null)
+        if (!nextEligible || sessionIdentity != nextIdentity) {
+            locationPublisher(null)
+            lastPublishedLiveParty = null
+            partyPublisher(null)
+        }
         resetReader()
         tracker.reset(nextIdentity)
         eligible = nextEligible
@@ -182,7 +191,8 @@ class BattleMemoryCoordinator(
         }
         val layout = cachedLayout
         val pointerGlobal = catalogProvider()?.gen3SaveBlock1PointerAddress
-        val runtimeLayout = contextRuntimeLayout()
+        val context = catalogProvider()
+        val runtimeLayout = context?.gen3RuntimeMemoryLayout
         if (layout == null && runtimeLayout != null && !gen3BattleDiscoveryRequested) {
             readMode = ReadMode.RUNTIME
             requestedSaveBlock1Address = cachedSaveBlock1Address
@@ -208,6 +218,7 @@ class BattleMemoryCoordinator(
                         Gen3RuntimeMemoryDecoder.MAP_ID_BYTES,
                     ))
                 }
+                addAll(livePartyRegions(context))
             })
             reader = session
             return
@@ -220,6 +231,7 @@ class BattleMemoryCoordinator(
                 add(CoreMemoryRegion("ewram", EWRAM_BASE, EWRAM_BYTES))
                 add(CoreMemoryRegion("iwram", IWRAM_BASE, IWRAM_BYTES))
                 pointerGlobal?.let { add(CoreMemoryRegion("save-block-pointer", it, 4)) }
+                addAll(livePartyRegions(context))
             })
         } else {
             readMode = ReadMode.CACHED
@@ -257,6 +269,7 @@ class BattleMemoryCoordinator(
                         Gen3RuntimeMemoryDecoder.MAP_ID_BYTES,
                     ))
                 }
+                addAll(livePartyRegions(context))
             })
         }
         reader = session
@@ -319,6 +332,7 @@ class BattleMemoryCoordinator(
         } else {
             null
         }
+        publishLiveParty(regions, context)
         val lifecycleActive = gen3Runtime?.battleActive
         if (context.generation == 3 && cachedLayout == null) {
             gen3BattleDiscoveryRequested = lifecycleActive == true
@@ -564,6 +578,31 @@ class BattleMemoryCoordinator(
         ?.wramOffset
 
     private fun contextRuntimeLayout(): Gen3RuntimeMemoryLayout? = catalogProvider()?.gen3RuntimeMemoryLayout
+
+    private fun livePartyRegions(context: BattleCatalogContext?): List<CoreMemoryRegion> {
+        val layout = context?.gen3RuntimeMemoryLayout ?: return emptyList()
+        if (context.saveParseContext == null) return emptyList()
+        val countAddress = layout.playerPartyCountAddress ?: return emptyList()
+        val partyAddress = layout.playerPartyAddress ?: return emptyList()
+        return listOf(
+            CoreMemoryRegion("live-party-count", countAddress, 1),
+            CoreMemoryRegion("live-party", partyAddress, Gen3LivePartyDecoder.PARTY_BYTES),
+        )
+    }
+
+    private fun publishLiveParty(regions: Map<String, ByteArray>, context: BattleCatalogContext) {
+        if (context.generation != 3) return
+        val parseContext = context.saveParseContext ?: return
+        val decoded = Gen3LivePartyDecoder.decode(
+            regions["live-party-count"],
+            regions["live-party"],
+            parseContext,
+        ) ?: return
+        if (decoded != lastPublishedLiveParty) {
+            lastPublishedLiveParty = decoded
+            partyPublisher(decoded)
+        }
+    }
 
     private fun reconstructGen2Wram(regions: Map<String, ByteArray>): ByteArray {
         val layout = requireNotNull(cachedLayout)

@@ -2,7 +2,7 @@ package com.darkaxt.dualdex.catalog
 
 object CatalogSchema {
     const val version = 1
-    const val parserSchemaVersion = 6
+    const val parserSchemaVersion = 7
 
     val requiredSections = linkedSetOf(
         "species",
