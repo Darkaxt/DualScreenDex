@@ -38,18 +38,37 @@ data class FieldReadEvidence(
     val instructionOffset: Int,
 )
 
+sealed interface MechanicPredicate {
+    data class AttackerAbility(val abilityId: Int) : MechanicPredicate
+}
+
+data class MultiplyAttack(val numerator: Int, val denominator: Int) {
+    init {
+        require(numerator > 0)
+        require(denominator > 0)
+    }
+}
+
+data class AttackMechanic(
+    val abilityId: Int,
+    val predicates: Set<MechanicPredicate>,
+    val effect: MultiplyAttack,
+)
+
 data class BattleRoleProvenanceResult(
     val recordPointers: List<BattleRecordPointerEvidence>,
     val fieldReads: List<FieldReadEvidence>,
     val decodedInstructions: Int,
     val incompletePaths: Int,
+    val attackMechanics: List<AttackMechanic>,
 )
 
 /**
  * Bounded ARMv4T use-def analysis for parser-supplied battle-record roles.
  *
- * This intentionally proves only record-pointer and field-read provenance. It does not infer an
- * ABI, locate a routine, or assign mechanics. Unknown values and unsupported paths fail closed.
+ * The ABI and routine entry are supplied by the parser. This analysis proves record-pointer and
+ * field-read provenance and emits only ability-guarded attack transforms supported by the decoded
+ * control/data flow. Unknown values and unsupported paths fail closed.
  */
 object BattleRoleProvenance {
     fun analyze(
@@ -67,6 +86,7 @@ object BattleRoleProvenance {
         val visited = mutableSetOf<StateKey>()
         val pointers = linkedSetOf<BattleRecordPointerEvidence>()
         val fields = linkedSetOf<FieldReadEvidence>()
+        val attackMechanics = linkedSetOf<AttackMechanic>()
         if (abi.roleContract is BattleRoleContract.DirectPointers) {
             pointers += BattleRecordPointerEvidence(
                 BattleRecordRole.ATTACKER,
@@ -99,13 +119,19 @@ object BattleRoleProvenance {
             decoded++
             val state = item.state.copy()
             recordMemoryEvidence(instruction, state, abi.record, fields)
-            execute(image, instruction, state, abi, pointers)
+            execute(image, instruction, state, abi, pointers, attackMechanics)
 
             when (val effect = instruction.controlEffect) {
                 is Arm7ControlEffect.Sequential -> queue += WorkItem(item.offset + instruction.size, item.instructionSet, state)
                 is Arm7ControlEffect.DirectBranch -> {
-                    if (effect.conditional) queue += WorkItem(item.offset + instruction.size, item.instructionSet, state.copy())
-                    enqueueTarget(queue, image, effect.target, item.instructionSet, state)
+                    if (effect.conditional) {
+                        val fallthrough = state.copy().also { it.applyBranch(instruction.condition, taken = false) }
+                        val taken = state.copy().also { it.applyBranch(instruction.condition, taken = true) }
+                        queue += WorkItem(item.offset + instruction.size, item.instructionSet, fallthrough)
+                        enqueueTarget(queue, image, effect.target, item.instructionSet, taken)
+                    } else {
+                        enqueueTarget(queue, image, effect.target, item.instructionSet, state)
+                    }
                 }
                 is Arm7ControlEffect.Call -> {
                     // Interprocedural helper summaries are separate semantic evidence. A call is
@@ -118,7 +144,13 @@ object BattleRoleProvenance {
             }
         }
         if (queue.isNotEmpty()) incomplete += queue.size
-        return BattleRoleProvenanceResult(pointers.toList(), fields.toList(), decoded, incomplete)
+        return BattleRoleProvenanceResult(
+            pointers.toList(),
+            fields.toList(),
+            decoded,
+            incomplete,
+            attackMechanics.toList(),
+        )
     }
 
     private fun execute(
@@ -127,10 +159,28 @@ object BattleRoleProvenance {
         state: SymbolicState,
         abi: BattleMechanicsAbi,
         pointers: MutableSet<BattleRecordPointerEvidence>,
+        attackMechanics: MutableSet<AttackMechanic>,
     ) {
         when (instruction) {
             is Arm7DataProcessing -> {
+                if (instruction.flagsWritten.isNotEmpty()) state.pendingAbilityTest = null
                 state[instruction.destination] = evaluateData(instruction, state)
+                val attack = state[instruction.destination] as? Value.Stat
+                if (attack != null &&
+                    attack.role == BattleRecordRole.ATTACKER &&
+                    attack.field == abi.record.attack &&
+                    (attack.numerator != 1 || attack.denominator != 1)
+                ) {
+                    state.abilityFacts.filterValues { it }.keys.forEach { fact ->
+                        if (fact.role == BattleRecordRole.ATTACKER) {
+                            attackMechanics += AttackMechanic(
+                                abilityId = fact.abilityId,
+                                predicates = setOf(MechanicPredicate.AttackerAbility(fact.abilityId)),
+                                effect = MultiplyAttack(attack.numerator, attack.denominator),
+                            )
+                        }
+                    }
+                }
             }
             is Arm7Multiply -> {
                 val left = state[instruction.multiplicand]
@@ -149,7 +199,12 @@ object BattleRoleProvenance {
                 if (instruction.load) instruction.registers.forEach { state[it] = Value.Unknown }
             }
             is Arm7Branch -> if (instruction.link) state[Arm7Register.LR] = Value.Constant(instruction.returnAddress!!)
-            is Arm7BranchRegister, is Arm7Compare -> Unit
+            is Arm7Compare -> {
+                val first = evaluateOperand(instruction.first, state)
+                val second = evaluateOperand(instruction.second, state)
+                state.pendingAbilityTest = abilityTest(first, second, abi)
+            }
+            is Arm7BranchRegister -> Unit
             else -> instruction.registersWritten.forEach { state[it] = Value.Unknown }
         }
         if (abi.roleContract !is BattleRoleContract.IndexedArray) return
@@ -178,7 +233,12 @@ object BattleRoleProvenance {
         val signedImmediate = if (address.add) address.immediate else -address.immediate
         val offset = base.byteOffset + indexOffset + signedImmediate
         val width = transfer.width.toScalarWidth() ?: return
-        val field = listOfNotNull(
+        val field = fieldAt(record, offset, width) ?: return
+        fields += FieldReadEvidence(base.role, field, instruction.offset)
+    }
+
+    private fun fieldAt(record: BattleRecordAbi, offset: Int, width: ScalarWidth): ScalarField? =
+        listOfNotNull(
             record.attack,
             record.defense,
             record.specialAttack,
@@ -187,8 +247,18 @@ object BattleRoleProvenance {
             record.hp,
             record.maxHp,
             record.status,
-        ).singleOrNull { it.offset == offset && it.width == width } ?: return
-        fields += FieldReadEvidence(base.role, field, instruction.offset)
+        ).singleOrNull { it.offset == offset && it.width == width }
+
+    private fun abilityTest(first: Value, second: Value, abi: BattleMechanicsAbi): AbilityFact? {
+        val field = when {
+            first is Value.Field && second is Value.Constant -> first to second
+            second is Value.Field && first is Value.Constant -> second to first
+            else -> return null
+        }
+        if (field.first.field != abi.record.ability) return null
+        val abilityId = field.second.value.toInt()
+        if (abilityId !in abi.activeAbilityIds) return null
+        return AbilityFact(field.first.role, abilityId)
     }
 
     private fun evaluateData(instruction: Arm7DataProcessing, state: SymbolicState): Value {
@@ -239,7 +309,9 @@ object BattleRoleProvenance {
     }
 
     private fun shiftLeft(first: Value?, second: Value): Value = when {
+        second is Value.Constant && second.value == 0L -> first ?: Value.Unknown
         first is Value.Index && second is Value.Constant -> Value.ShiftedIndex(first.role, second.value.toInt())
+        first is Value.Stat && second is Value.Constant -> Value.ShiftedStat(first, second.value.toInt())
         first is Value.Constant && second is Value.Constant -> Value.Constant((first.value shl second.value.toInt()) and 0xFFFF_FFFFL)
         else -> Value.Unknown
     }
@@ -247,6 +319,14 @@ object BattleRoleProvenance {
     private fun shiftRight(first: Value?, second: Value): Value = when {
         first is Value.ShiftedIndex && second is Value.Constant && first.leftShift == second.value.toInt() ->
             Value.Index(first.role)
+        first is Value.ShiftedStat && second is Value.Constant -> {
+            val rightShift = second.value.toInt()
+            val delta = first.leftShift - rightShift
+            when {
+                delta >= 0 -> first.stat.copy(numerator = first.stat.numerator shl delta)
+                else -> first.stat.copy(denominator = first.stat.denominator shl -delta)
+            }
+        }
         first is Value.Constant && second is Value.Constant -> Value.Constant(first.value ushr second.value.toInt())
         else -> Value.Unknown
     }
@@ -274,7 +354,16 @@ object BattleRoleProvenance {
             }
             is Arm7Address.RegisterOffset -> {
                 val base = state[address.base]
-                if (base is Value.Constant && address.index == null && instruction.width == Arm7MemoryWidth.WORD) {
+                if (base is Value.RecordPointer) {
+                    val indexOffset = address.index?.let { (state[it] as? Value.Constant)?.value?.toInt() } ?: 0
+                    val immediate = if (address.add) address.immediate else -address.immediate
+                    val field = fieldAt(abi.record, base.byteOffset + indexOffset + immediate, instruction.width.toScalarWidth() ?: return Value.Unknown)
+                    if (field == null) Value.Unknown else if (field == abi.record.attack) {
+                        Value.Stat(base.role, field)
+                    } else {
+                        Value.Field(base.role, field)
+                    }
+                } else if (base is Value.Constant && address.index == null && instruction.width == Arm7MemoryWidth.WORD) {
                     val mappedAddress = base.value + if (address.add) address.immediate else -address.immediate
                     val romOffset = mappedAddress - GBA_ROM_BASE
                     if (romOffset in 0..image.size - 4L) Value.Constant(image.u32le(romOffset.toInt())) else Value.Unknown
@@ -321,11 +410,28 @@ object BattleRoleProvenance {
     private data class WorkItem(val offset: Int, val instructionSet: Arm7InstructionSet, val state: SymbolicState)
     private data class StateKey(val offset: Int, val instructionSet: Arm7InstructionSet, val signature: List<Value>)
 
-    private class SymbolicState private constructor(private val registers: Array<Value>) {
+    private class SymbolicState private constructor(
+        private val registers: Array<Value>,
+        var pendingAbilityTest: AbilityFact? = null,
+        val abilityFacts: MutableMap<AbilityFact, Boolean> = mutableMapOf(),
+    ) {
         operator fun get(register: Arm7Register): Value = registers[register.index]
         operator fun set(register: Arm7Register, value: Value) { registers[register.index] = value }
-        fun copy(): SymbolicState = SymbolicState(registers.copyOf())
-        fun signature(): List<Value> = registers.toList()
+        fun copy(): SymbolicState = SymbolicState(registers.copyOf(), pendingAbilityTest, abilityFacts.toMutableMap())
+        fun signature(): List<Value> = registers.toList() + Value.Facts(pendingAbilityTest, abilityFacts.toMap())
+        fun applyBranch(condition: com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Condition, taken: Boolean) {
+            val fact = pendingAbilityTest ?: return
+            val equals = when (condition) {
+                com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Condition.EQUAL -> taken
+                com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Condition.NOT_EQUAL -> !taken
+                else -> {
+                    pendingAbilityTest = null
+                    return
+                }
+            }
+            abilityFacts[fact] = equals
+            pendingAbilityTest = null
+        }
         fun clobberCallerSaved() {
             listOf(Arm7Register.R0, Arm7Register.R1, Arm7Register.R2, Arm7Register.R3, Arm7Register.R12).forEach {
                 this[it] = Value.Unknown
@@ -367,7 +473,18 @@ object BattleRoleProvenance {
             val byteOffset: Int = 0,
             val announced: Boolean = false,
         ) : Value
+        data class Field(val role: BattleRecordRole, val field: ScalarField) : Value
+        data class Stat(
+            val role: BattleRecordRole,
+            val field: ScalarField,
+            val numerator: Int = 1,
+            val denominator: Int = 1,
+        ) : Value
+        data class ShiftedStat(val stat: Stat, val leftShift: Int) : Value
+        data class Facts(val pending: AbilityFact?, val facts: Map<AbilityFact, Boolean>) : Value
     }
+
+    private data class AbilityFact(val role: BattleRecordRole, val abilityId: Int)
 
     private const val GBA_ROM_BASE = 0x0800_0000L
 }

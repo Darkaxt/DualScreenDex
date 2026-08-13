@@ -29,6 +29,14 @@ class BattleRoleProvenanceLiveRomTest {
                 expectedAttackLoad = 0x3ED82,
                 moveRoot = 0x0825_0C74,
             ),
+            Control(
+                environmentVariable = "DUALDEX_MODERN_EMERALD_ROM",
+                fallbackPath = "D:/Temp/dualdex-expanded-corpus/roms/0116-a0b4e5e9c0c4/Modern Emerald (v3.5).gba",
+                sha256 = "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+                routineEntry = 0x18FBE8,
+                expectedAttackLoad = 0x18FC7E,
+                moveRoot = 0x088D_6924,
+            ),
         )
 
         controls.forEach { control ->
@@ -49,6 +57,21 @@ class BattleRoleProvenanceLiveRomTest {
                     it.field == ScalarField(0x02, ScalarWidth.U16) &&
                     it.instructionOffset == control.expectedAttackLoad
             })
+            assertEquals(
+                setOf(
+                    AttackMechanic(
+                        abilityId = 37,
+                        predicates = setOf(MechanicPredicate.AttackerAbility(37)),
+                        effect = MultiplyAttack(2, 1),
+                    ),
+                    AttackMechanic(
+                        abilityId = 74,
+                        predicates = setOf(MechanicPredicate.AttackerAbility(74)),
+                        effect = MultiplyAttack(2, 1),
+                    ),
+                ),
+                result.attackMechanics.toSet(),
+            )
         }
     }
 
