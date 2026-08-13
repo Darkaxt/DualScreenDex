@@ -198,7 +198,7 @@ class AndroidLoopbackServer(
     private fun worldMapResponse(path: String): Response {
         val encoded = path.removePrefix("/api/maps/").removeSuffix(".png")
         if (encoded.isBlank() || encoded.contains('/') || encoded.contains("..")) return textResponse("map not available", 404)
-        val key = runCatching { URLDecoder.decode(encoded, StandardCharsets.UTF_8) }.getOrNull()
+        val key = runCatching { URLDecoder.decode(encoded, StandardCharsets.UTF_8.name()) }.getOrNull()
             ?: return textResponse("map not available", 404)
         if (key.split('/').any { it == ".." }) return textResponse("map not available", 404)
         val sprite = runtime.worldMapAsset(key) ?: return textResponse("map not available", 404)

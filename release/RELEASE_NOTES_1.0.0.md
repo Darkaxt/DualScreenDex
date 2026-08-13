@@ -2,9 +2,9 @@
 
 DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
-## RC20 map preview
+## RC21 map preview
 
-World maps are release-gated to the exact validated Modern Emerald 3.5 ROM in RC20. Other ROMs continue to use the existing Pokédex and Area experience: map capability remains unavailable, no Map control or assets are published, and catalog parsing continues normally.
+World maps are release-gated to the exact validated Modern Emerald 3.5 ROM in RC21. Other ROMs continue to use the existing Pokédex and Area experience: map capability remains unavailable, no Map control or assets are published, and catalog parsing continues normally.
 
 - Adds a full-screen, ROM-derived Map First view with zoom, pan, recenter, region selection where applicable, and a compact route into the Area Pokédex.
 - Adds Organic fog of war driven by validated visited-area knowledge. Unknown map cells, labels, and hit targets remain concealed, with fully black outer boundaries.
