@@ -27,6 +27,29 @@ const state: State = {
 };
 
 describe('Pokédex knowledge modes', () => {
+  it('places a semantic Map shortcut in the existing header only for normalized maps', () => {
+    const onOpenMap = vi.fn();
+    const mappedCatalog: Catalog = {
+      ...catalog,
+      worldMaps: [{
+        key: 'gen3-region-0', displayName: 'Hoenn', pixelWidth: 224, pixelHeight: 120,
+        gridWidth: 28, gridHeight: 15, imageUrl: '/api/maps/world%2Fgen3-region-0.png', locations: [],
+      }],
+    };
+
+    const { rerender, container } = render(<PokedexBrowse catalog={mappedCatalog} state={state} send={vi.fn()} onOpenMap={onOpenMap} />);
+
+    const map = screen.getByRole('button', { name: 'Open Map' });
+    expect(map.closest('.app-header')).toBeTruthy();
+    expect(map.querySelector('svg')?.dataset.semanticIcon).toBe('map');
+    expect(container.querySelector('[data-map-navigation-row]')).toBeNull();
+    fireEvent.click(map);
+    expect(onOpenMap).toHaveBeenCalledOnce();
+
+    rerender(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} onOpenMap={onOpenMap} />);
+    expect(screen.queryByRole('button', { name: 'Open Map' })).toBeNull();
+  });
+
   it('hides the redundant Seen filter only in Organic mode', () => {
     const { rerender } = render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
 

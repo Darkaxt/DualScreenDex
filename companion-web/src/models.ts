@@ -58,7 +58,26 @@ export interface Catalog {
   types: TypeInfo[];
   areas: { id: number; name: string; methodId: number; speciesIds: number[]; windows: EncounterWindow[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
+  worldMaps?: WorldMapRegion[];
   capabilities: Record<string, string>;
+}
+
+export interface WorldMapRegion {
+  key: string;
+  displayName: string | null;
+  pixelWidth: number;
+  pixelHeight: number;
+  gridWidth: number;
+  gridHeight: number;
+  imageUrl: string;
+  locations: WorldMapLocation[];
+}
+
+export interface WorldMapLocation {
+  key: string;
+  displayName: string;
+  baseAreaIds: number[];
+  geometry: { x: number; y: number; width: number; height: number }[];
 }
 
 export interface Settings {

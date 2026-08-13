@@ -9,6 +9,8 @@ import com.enrpau.dualscreendex.companion.owned.PreferredIndividualSelector
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 data class BootstrapView(val catalog: CatalogView?, val state: StateView)
 
@@ -23,8 +25,29 @@ data class CatalogView(
     val types: List<TypeView>,
     val areas: List<AreaView>,
     val balls: List<BallView>,
+    val worldMaps: List<WorldMapRegionView>,
     val capabilities: Map<String, String>,
 )
+
+data class WorldMapRegionView(
+    val key: String,
+    val displayName: String?,
+    val pixelWidth: Int,
+    val pixelHeight: Int,
+    val gridWidth: Int,
+    val gridHeight: Int,
+    val imageUrl: String,
+    val locations: List<WorldMapLocationView>,
+)
+
+data class WorldMapLocationView(
+    val key: String,
+    val displayName: String,
+    val baseAreaIds: List<Int>,
+    val geometry: List<WorldMapCellView>,
+)
+
+data class WorldMapCellView(val x: Int, val y: Int, val width: Int, val height: Int)
 
 data class SpeciesView(
     val id: Int,
@@ -358,6 +381,27 @@ object ApiViewBuilder {
         },
         balls = catalog.captureBallsById.values.sortedBy { it.id }.map {
             BallView(it.id, it.name.value ?: "Ball ${it.id}", it.generic, it.sprite.value != null)
+        },
+        worldMaps = catalog.worldMaps.regions.map { region ->
+            WorldMapRegionView(
+                key = region.key,
+                displayName = region.displayName,
+                pixelWidth = region.pixelWidth,
+                pixelHeight = region.pixelHeight,
+                gridWidth = region.gridWidth,
+                gridHeight = region.gridHeight,
+                imageUrl = "/api/maps/${URLEncoder.encode(region.imageAssetKey, StandardCharsets.UTF_8)}.png",
+                locations = region.locations.map { location ->
+                    WorldMapLocationView(
+                        key = location.key,
+                        displayName = location.displayName,
+                        baseAreaIds = location.baseAreaIds.sorted(),
+                        geometry = location.geometry.map { cell ->
+                            WorldMapCellView(cell.x, cell.y, cell.width, cell.height)
+                        },
+                    )
+                },
+            )
         },
         capabilities = catalog.capabilities.mapKeys { it.key.name }.mapValues { it.value.status.name },
     )

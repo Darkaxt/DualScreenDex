@@ -1,0 +1,239 @@
+import type { JSX } from 'preact';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { DexIcon, MapIcon } from '../components';
+import { anchoredZoom, containFit, GestureTracker, type MapViewport } from '../mapEngine';
+import type { Catalog, State, WorldMapLocation, WorldMapRegion } from '../models';
+
+interface MapPageProps {
+  catalog: Catalog;
+  state: State;
+  onOpenAreaDex: () => void;
+  onOpenSettings: () => void;
+}
+
+const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
+
+export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPageProps) {
+  const maps = catalog.worldMaps ?? [];
+  const currentRegion = maps.find(item => item.locations.some(location => location.baseAreaIds.includes(state.currentAreaBaseId ?? -1)));
+  const [regionKey, setRegionKey] = useState(() => currentRegion?.key ?? maps[0]?.key ?? '');
+  const region = maps.find(item => item.key === regionKey) ?? currentRegion ?? maps[0];
+  const currentLocation = region?.locations.find(location => location.baseAreaIds.includes(state.currentAreaBaseId ?? -1));
+  const [selectedKey, setSelectedKey] = useState(() => currentLocation?.key ?? region?.locations[0]?.key ?? '');
+  const selectedLocation = region?.locations.find(location => location.key === selectedKey) ?? currentLocation ?? region?.locations[0];
+  const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
+  const [fit, setFit] = useState({ width: region?.pixelWidth ?? 1, height: region?.pixelHeight ?? 1, scale: 1 });
+  const [fogVisible, setFogVisible] = useState(true);
+  const [markersVisible, setMarkersVisible] = useState(true);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const stageRef = useRef<HTMLElement>(null);
+  const fogRef = useRef<HTMLCanvasElement>(null);
+  const gestureRef = useRef(new GestureTracker(HOME_VIEWPORT));
+  const allowMarkerSelectionRef = useRef(true);
+  const pressedMarkerRef = useRef(new Map<number, string>());
+
+  useEffect(() => {
+    if (currentRegion && currentRegion.key !== regionKey) setRegionKey(currentRegion.key);
+  }, [currentRegion?.key]);
+
+  useEffect(() => {
+    if (!region) return;
+    const nextCurrent = region.locations.find(location => location.baseAreaIds.includes(state.currentAreaBaseId ?? -1));
+    setSelectedKey(nextCurrent?.key ?? region.locations[0]?.key ?? '');
+    setViewport(HOME_VIEWPORT);
+  }, [region?.key]);
+
+  useEffect(() => {
+    if (!region || !stageRef.current) return;
+    const stage = stageRef.current;
+    const measure = () => {
+      const bounds = stage.getBoundingClientRect();
+      const availableWidth = bounds.width || region.pixelWidth;
+      const availableHeight = bounds.height || region.pixelHeight;
+      setFit(containFit(region.pixelWidth, region.pixelHeight, availableWidth, availableHeight));
+      gestureRef.current.setCenter(availableWidth / 2, availableHeight / 2);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [region?.key, region?.pixelWidth, region?.pixelHeight]);
+
+  useEffect(() => {
+    if (!region || !fogVisible || !fogRef.current) return;
+    paintFog(fogRef.current, region, currentLocation);
+  }, [region?.key, currentLocation?.key, fogVisible]);
+
+  const markerLocations = useMemo(() => {
+    if (!region || !markersVisible) return [];
+    return fogVisible ? (currentLocation ? [currentLocation] : []) : region.locations;
+  }, [region?.key, currentLocation?.key, fogVisible, markersVisible]);
+
+  if (!region) return null;
+
+  function setViewport(next: MapViewport) {
+    gestureRef.current.setViewport(next);
+    setViewportState(next);
+  }
+
+  function zoom(multiplier: number, anchor?: { x: number; y: number }) {
+    const bounds = stageRef.current?.getBoundingClientRect();
+    const center = { x: (bounds?.width ?? region.pixelWidth) / 2, y: (bounds?.height ?? region.pixelHeight) / 2 };
+    setViewport(anchoredZoom(viewport, viewport.scale * multiplier, anchor ?? center, center));
+  }
+
+  function pointerPoint(event: JSX.TargetedPointerEvent<HTMLElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+  }
+
+  function onPointerDown(event: JSX.TargetedPointerEvent<HTMLElement>) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    if ((event.target as Element).closest('.map-control, .map-legend-panel')) return;
+    const point = pointerPoint(event);
+    const markerKey = (event.target as Element).closest<HTMLElement>('.map-marker')?.dataset.markerKey;
+    if (markerKey) pressedMarkerRef.current.set(event.pointerId, markerKey);
+    else pressedMarkerRef.current.delete(event.pointerId);
+    gestureRef.current.down(event.pointerId, point.x, point.y);
+    allowMarkerSelectionRef.current = false;
+    event.currentTarget.classList.add('is-manipulating');
+    if (event.currentTarget.setPointerCapture) event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
+  function onPointerMove(event: JSX.TargetedPointerEvent<HTMLElement>) {
+    if (!gestureRef.current.pointers.has(event.pointerId)) return;
+    const point = pointerPoint(event);
+    setViewportState(gestureRef.current.move(event.pointerId, point.x, point.y));
+    event.preventDefault();
+  }
+
+  function finishPointer(event: JSX.TargetedPointerEvent<HTMLElement>, cancelled: boolean) {
+    const markerKey = pressedMarkerRef.current.get(event.pointerId);
+    pressedMarkerRef.current.delete(event.pointerId);
+    const result = cancelled ? gestureRef.current.cancel(event.pointerId) : gestureRef.current.up(event.pointerId);
+    setViewportState(result.viewport);
+    allowMarkerSelectionRef.current = result.select;
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (gestureRef.current.activeCount === 0) event.currentTarget.classList.remove('is-manipulating');
+    if (result.select && markerKey) setSelectedKey(markerKey);
+    event.preventDefault();
+  }
+
+  function onWheel(event: JSX.TargetedWheelEvent<HTMLElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    zoom(event.deltaY < 0 ? 1.18 : 1 / 1.18, { x: event.clientX - bounds.left, y: event.clientY - bounds.top });
+    event.preventDefault();
+  }
+
+  const transform = `translate(calc(-50% + ${viewport.panX}px), calc(-50% + ${viewport.panY}px)) scale(${viewport.scale})`;
+  const selectedIsCurrent = selectedLocation?.key === currentLocation?.key;
+
+  return <section class="screen map-screen">
+    <header class="map-page-header">
+      <div class="map-page-title">
+        <small>{region.displayName ?? 'WORLD MAP'}</small>
+        <h1>{catalog.family.replaceAll('_', ' ')}</h1>
+      </div>
+      <div class="map-current-location">
+        <strong>{selectedLocation?.displayName ?? state.currentAreaName ?? 'Unknown location'}</strong>
+        <span>{selectedIsCurrent ? 'CURRENT' : 'MAP POINT'}</span>
+      </div>
+    </header>
+    <main
+      ref={stageRef}
+      class="map-stage"
+      role="region"
+      aria-label="Interactive world map"
+      data-scale={viewport.scale}
+      data-pan-x={viewport.panX}
+      data-pan-y={viewport.panY}
+      data-selected-key={selectedLocation?.key}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={event => finishPointer(event, false)}
+      onPointerCancel={event => finishPointer(event, true)}
+      onWheel={onWheel}
+    >
+      <div class="map-plane" style={{ width: fit.width, height: fit.height, transform }}>
+        <img src={region.imageUrl} alt={`${region.displayName ?? 'World'} region map`} draggable={false} />
+        {fogVisible && <canvas ref={fogRef} class="map-fog" width={region.pixelWidth} height={region.pixelHeight} aria-hidden="true" />}
+        {markerLocations.map(location => {
+          const position = markerPosition(location, region);
+          return <button
+            key={location.key}
+            class={`map-marker ${location.key === currentLocation?.key ? 'is-current' : ''} ${location.key === selectedLocation?.key ? 'is-selected' : ''}`}
+            data-marker-key={location.key}
+            style={{ left: `${position.x}%`, top: `${position.y}%` }}
+            aria-label={location.key === currentLocation?.key ? `Current location: ${location.displayName}` : location.displayName}
+            onClick={event => {
+              if (event.detail !== 0 && !allowMarkerSelectionRef.current) {
+                event.preventDefault();
+                return;
+              }
+              setSelectedKey(location.key);
+            }}
+          ><span /></button>;
+        })}
+      </div>
+
+      <nav class="map-utility-rail" aria-label="Map utilities">
+        <button class="map-control" aria-label="Map settings and legend" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>
+        <button class="map-control" aria-label="Open Area Pokédex" onClick={onOpenAreaDex}><DexIcon /></button>
+        <button class="map-control fog-control" aria-label="Toggle fog of war" aria-pressed={fogVisible} onClick={() => setFogVisible(value => !value)}><span class="fog-icon" /></button>
+        <button class="map-control marker-control" aria-label="Toggle map markers" aria-pressed={markersVisible} onClick={() => setMarkersVisible(value => !value)}><span class="pin-icon" /></button>
+        {legendOpen && <div class="map-legend-panel">
+          <small>ATLAS</small>
+          <strong>{region.displayName ?? region.key}</strong>
+          {maps.length > 1 && <div class="map-region-options">{maps.map(item => <button key={item.key} aria-pressed={item.key === region.key} onClick={() => setRegionKey(item.key)}>{item.displayName ?? item.key}</button>)}</div>}
+          <button onClick={onOpenSettings}>Open Settings</button>
+        </div>}
+      </nav>
+
+      <nav class="map-zoom-rail" aria-label="Map view controls">
+        <button class="map-control" aria-label="Zoom in" onClick={() => zoom(1.25)}>+</button>
+        <button class="map-control" aria-label="Zoom out" onClick={() => zoom(0.8)}>−</button>
+        <button class="map-control recenter-control" aria-label="Recenter map" onClick={() => setViewport(HOME_VIEWPORT)}><span /></button>
+      </nav>
+    </main>
+  </section>;
+}
+
+function markerPosition(location: WorldMapLocation, region: WorldMapRegion) {
+  const cells = location.geometry;
+  if (cells.length === 0) return { x: 50, y: 50 };
+  const left = Math.min(...cells.map(cell => cell.x));
+  const top = Math.min(...cells.map(cell => cell.y));
+  const right = Math.max(...cells.map(cell => cell.x + cell.width));
+  const bottom = Math.max(...cells.map(cell => cell.y + cell.height));
+  return { x: ((left + right) / 2 / region.gridWidth) * 100, y: ((top + bottom) / 2 / region.gridHeight) * 100 };
+}
+
+function paintFog(canvas: HTMLCanvasElement, region: WorldMapRegion, currentLocation?: WorldMapLocation) {
+  const context = canvas.getContext('2d');
+  if (!context) return;
+  context.clearRect(0, 0, region.pixelWidth, region.pixelHeight);
+  context.fillStyle = '#000';
+  context.fillRect(0, 0, region.pixelWidth, region.pixelHeight);
+  if (currentLocation) {
+    context.save();
+    context.globalCompositeOperation = 'destination-out';
+    for (const cell of currentLocation.geometry) {
+      const centerX = ((cell.x + cell.width / 2) / region.gridWidth) * region.pixelWidth;
+      const centerY = ((cell.y + cell.height / 2) / region.gridHeight) * region.pixelHeight;
+      const radius = Math.max(14, Math.max(cell.width / region.gridWidth * region.pixelWidth, cell.height / region.gridHeight * region.pixelHeight) * 1.5);
+      const aperture = context.createRadialGradient(centerX, centerY, radius * 0.35, centerX, centerY, radius);
+      aperture.addColorStop(0, 'rgba(0, 0, 0, 1)');
+      aperture.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      context.fillStyle = aperture;
+      context.fillRect(centerX - radius, centerY - radius, radius * 2, radius * 2);
+    }
+    context.restore();
+  }
+  context.globalCompositeOperation = 'source-over';
+  context.fillStyle = '#000';
+  context.fillRect(0, 0, region.pixelWidth, 1);
+  context.fillRect(0, region.pixelHeight - 1, region.pixelWidth, 1);
+  context.fillRect(0, 0, 1, region.pixelHeight);
+  context.fillRect(region.pixelWidth - 1, 0, 1, region.pixelHeight);
+}

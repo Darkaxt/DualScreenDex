@@ -5,7 +5,12 @@ import type { Bootstrap } from './models';
 const fixture: Bootstrap = {
   catalog: {
     hash: 'sha', crc32: 'C3A9F204', family: 'EMERALD', platform: 'GBA', rulesets: [{ id: 'default', label: 'Default', sourceOffset: 0, confidence: 1, primary: true }],
-    species: [], moves: [], types: [], areas: [], balls: [], capabilities: {}
+    species: [], moves: [], types: [], areas: [], balls: [], capabilities: {},
+    worldMaps: [{
+      key: 'gen3-region-0', displayName: 'Hoenn', pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15,
+      imageUrl: '/api/maps/world%2Fgen3-region-0.png',
+      locations: [{ key: 'section-16', displayName: 'Route 101', baseAreaIds: [16], geometry: [{ x: 3, y: 11, width: 2, height: 1 }] }],
+    }]
   },
   state: {
     version: 1, screen: 'POKEDEX', priorScreen: 'POKEDEX', settingsReturnScreen: 'POKEDEX',
@@ -33,7 +38,17 @@ import { bootstrap } from './gateway';
 import { App, catalogRefreshMarker } from './App';
 
 describe('production application shell', () => {
-  beforeEach(() => document.body.replaceChildren());
+  beforeEach(() => {
+    document.body.replaceChildren();
+    class TestResizeObserver {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+      observe(target: Element) { this.callback([{ target, contentRect: target.getBoundingClientRect() } as ResizeObserverEntry], this as unknown as ResizeObserver); }
+      disconnect() {}
+      unobserve() {}
+    }
+    vi.stubGlobal('ResizeObserver', TestResizeObserver);
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as typeof HTMLCanvasElement.prototype.getContext;
+  });
 
   it('keeps ROM identity visible without rendering simulator controls', async () => {
     render(<App />);
@@ -70,6 +85,17 @@ describe('production application shell', () => {
 
     expect(await screen.findByText('LOADED ROM · READ ONLY')).toBeTruthy();
     expect(screen.queryByText('ISSUE REPORT MEMORY CAPTURE')).toBeNull();
+  });
+
+  it('opens the normalized Map locally and returns to Area Pokédex without a new server screen', async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
+    expect(screen.getByRole('region', { name: 'Interactive world map' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Open Area Pokédex' }));
+
+    expect(screen.queryByRole('region', { name: 'Interactive world map' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Open Map' })).toBeTruthy();
   });
 });
 

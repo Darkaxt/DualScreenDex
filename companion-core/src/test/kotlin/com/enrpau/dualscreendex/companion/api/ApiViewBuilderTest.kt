@@ -10,6 +10,11 @@ import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
+import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
@@ -21,6 +26,49 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ApiViewBuilderTest {
+    @Test
+    fun exposesOnlyNormalizedWorldMapPresentationData() {
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            worldMaps = WorldMapCatalog(
+                regions = listOf(
+                    WorldMapRegion(
+                        key = "gen3-region-0",
+                        displayName = "Hoenn",
+                        pixelWidth = 224,
+                        pixelHeight = 120,
+                        gridWidth = 28,
+                        gridHeight = 15,
+                        imageAssetKey = "world/gen3-region-0",
+                        locations = listOf(
+                            WorldMapLocation(
+                                key = "section-16",
+                                displayName = "Route 101",
+                                baseAreaIds = setOf(0x10, 0x11),
+                                geometry = listOf(WorldMapCell(3, 11, 2, 1)),
+                            ),
+                        ),
+                    ),
+                ),
+                assets = mapOf("world/gen3-region-0" to RgbaSprite(224, 120, IntArray(224 * 120))),
+            ),
+        )
+
+        val map = ApiViewBuilder.catalog(catalog).worldMaps.single()
+
+        assertEquals("gen3-region-0", map.key)
+        assertEquals("Hoenn", map.displayName)
+        assertEquals(224, map.pixelWidth)
+        assertEquals(120, map.pixelHeight)
+        assertEquals(28, map.gridWidth)
+        assertEquals(15, map.gridHeight)
+        assertEquals("/api/maps/world%2Fgen3-region-0.png", map.imageUrl)
+        assertEquals(listOf(0x10, 0x11), map.locations.single().baseAreaIds)
+        assertEquals(WorldMapCellView(3, 11, 2, 1), map.locations.single().geometry.single())
+    }
+
     @Test
     fun exposesParsedEncounterWindows() {
         val catalog = ParsedCatalog(

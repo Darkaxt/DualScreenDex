@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     test: {
+      include: ['src/**/*.test.{ts,tsx}'],
       environment: 'jsdom',
       pool: 'forks',
       fileParallelism: false,

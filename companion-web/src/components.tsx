@@ -50,17 +50,39 @@ export function EyeStatus({ seen }: { seen: boolean }) {
   </svg>;
 }
 
-export function Header({ title, kicker, onBack, onSettings }: { title: string; kicker?: string; onBack?: () => void; onSettings?: () => void }) {
+export function MapIcon() {
+  return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="map">
+    <path d="m3 6 7-3 8 3 7-3v19l-7 3-8-3-7 3Z" />
+    <path d="M10 3v19M18 6v19" />
+  </svg>;
+}
+
+export function DexIcon() {
+  return <svg viewBox="0 0 28 28" shape-rendering="crispEdges" aria-hidden="true" data-semantic-icon="pokedex">
+    <path class="dex-shell" d="M3 3h17v3h4v19H3z" />
+    <path class="dex-screen" d="M7 11h13v8H7z" />
+    <path class="dex-hinge" d="M20 6h4M20 9h4M20 22h4" />
+    <circle class="dex-lens" cx="9" cy="7" r="2" />
+    <path class="dex-detail" d="M9 14h6v2H9zM7 22h4M14 22h6" />
+  </svg>;
+}
+
+function SettingsIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.64 5.64l1.42 1.42M16.94 16.94l1.42 1.42M18.36 5.64l-1.42 1.42M7.06 16.94l-1.42 1.42" />
+    <circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" />
+  </svg>;
+}
+
+export function Header({ title, kicker, onBack, onSettings, onMap }: { title: string; kicker?: string; onBack?: () => void; onSettings?: () => void; onMap?: () => void }) {
   return (
     <header class="app-header">
       {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
       <div class="header-title"><strong>{title}</strong>{kicker && <small>{kicker}</small>}</div>
-      {onSettings ? <button class="header-action settings-action" onClick={onSettings} aria-label="Settings">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.64 5.64l1.42 1.42M16.94 16.94l1.42 1.42M18.36 5.64l-1.42 1.42M7.06 16.94l-1.42 1.42" />
-          <circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" />
-        </svg>
-      </button> : <span class="header-spacer" />}
+      {onMap ? <div class="header-actions">
+        <button class="header-action map-action" onClick={onMap} aria-label="Open Map"><MapIcon /></button>
+        {onSettings && <button class="header-action settings-action" onClick={onSettings} aria-label="Settings"><SettingsIcon /></button>}
+      </div> : onSettings ? <button class="header-action settings-action" onClick={onSettings} aria-label="Settings"><SettingsIcon /></button> : <span class="header-spacer" />}
     </header>
   );
 }

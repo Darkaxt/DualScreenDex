@@ -20,4 +20,19 @@ describe('screen layout containment', () => {
     expect(contentRule).toMatch(/min-height\s*:\s*0/)
     expect(contentRule).toMatch(/overflow\s*:\s*auto/)
   })
+
+  it('reserves the Map screen for a full black gesture stage and accessible fallback controls', () => {
+    const screenRule = styles.match(/\.map-screen\s*\{([^}]*)\}/)?.[1]
+    const stageRule = styles.match(/\.map-stage\s*\{([^}]*)\}/)?.[1]
+    const controlRule = styles.match(/\.map-control\s*\{([^}]*)\}/)?.[1]
+
+    expect(screenRule).toMatch(/grid-template-rows\s*:\s*auto 1fr/)
+    expect(stageRule).toMatch(/touch-action\s*:\s*none/)
+    expect(stageRule).toMatch(/overflow\s*:\s*hidden/)
+    expect(stageRule).toMatch(/background\s*:\s*#000/)
+    expect(controlRule).toMatch(/width\s*:\s*46px/)
+    expect(controlRule).toMatch(/height\s*:\s*46px/)
+    expect(styles).not.toContain('.map-navigation-row')
+    expect(styles).not.toContain('[data-map-navigation-row]')
+  })
 })

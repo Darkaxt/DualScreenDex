@@ -11,6 +11,7 @@ import { AbilityDetail } from './pages/AbilityDetail';
 import { SetupPage } from './pages/SetupPage';
 import { MemoryMapperPage } from './pages/MemoryMapperPage';
 import { CapabilityReportPage } from './pages/CapabilityReportPage';
+import { MapPage } from './pages/MapPage';
 
 export interface DevelopmentToolsProps {
   catalog: Catalog | null;
@@ -45,6 +46,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'MORE'>('ENTRY');
   const [mapperOpen, setMapperOpen] = useState(false);
   const [capabilityReportOpen, setCapabilityReportOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const lastCatalogRefresh = useRef('');
 
   useEffect(() => {
@@ -86,6 +88,18 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     if (capabilityReportOpen && catalog) return <CapabilityReportPage romHash={catalog.hash} refreshMarker={catalogRefreshMarker(state)} onBack={() => setCapabilityReportOpen(false)} />;
     if (state.screen === 'SETUP') return <SetupPage state={state} send={send} />;
     if (!catalog) return <Welcome busy={busy || state.loading.active} error={error} onUpload={onUpload} openSetup={() => void send('SCREEN', { screen: 'SETUP' })} />;
+    if (mapOpen && (catalog.worldMaps?.length ?? 0) > 0) return <MapPage
+      catalog={catalog}
+      state={state}
+      onOpenAreaDex={() => {
+        setMapOpen(false);
+        void send('FILTER', { filter: 'AREA', areaId: null });
+      }}
+      onOpenSettings={() => {
+        setMapOpen(false);
+        void send('SCREEN', { screen: 'SETTINGS' });
+      }}
+    />;
     if (moveDetailId != null) return <MoveDetail catalog={catalog} state={state} moveId={moveDetailId} onBack={() => setMoveDetailId(null)} />;
     if (abilityDetailId != null) return <AbilityDetail catalog={catalog} state={state} abilityId={abilityDetailId} onBack={() => setAbilityDetailId(null)} />;
     switch (state.screen) {
@@ -93,11 +107,11 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={setMoveDetailId} openSpecies={speciesId => {
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
-      }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} />;
+      }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={() => setMapOpen(true)} />;
       case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => setCapabilityReportOpen(true)} onOpenMapper={() => setMapperOpen(true)} />;
-      default: return <PokedexBrowse catalog={catalog} state={state} send={send} />;
+      default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={() => setMapOpen(true)} />;
     }
-  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen, capabilityReportOpen]);
+  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen, capabilityReportOpen, mapOpen]);
 
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
