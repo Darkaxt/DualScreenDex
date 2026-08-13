@@ -27,12 +27,23 @@ internal object HeaderlessUnifiedSpeciesResolver {
     private const val RECORD_SIZE = 260
     private const val NAME_OFFSET = 44
     private const val NAME_WIDTH = 13
-    private const val NATIONAL_DEX_OFFSET = 60
+    private const val DEFAULT_NATIONAL_DEX_OFFSET = 60
+
+    private data class RootAccessorPrefix(
+        val exclusiveBound: Int,
+        val rootRegister: Int,
+        val indexRegister: Int,
+    )
+
+    private data class NationalDexAccessor(
+        val exclusiveBound: Int,
+        val fieldOffset: Int,
+    )
 
     fun resolve(session: RomAnalysisSession): HeaderlessUnifiedSpeciesResolution? {
         val index = session.gbaReferenceIndex ?: return null
         if (index.overflowed) return null
-        val nominatedRoots = index.targets.mapNotNullTo(linkedSetOf()) { (target, evidence) ->
+        val fieldRelativeRoots = index.targets.mapNotNullTo(linkedSetOf()) { (target, evidence) ->
             if (!evidence.siteEvidenceAvailable || target < NAME_OFFSET) return@mapNotNullTo null
             if (evidence.instructionSites.none { hasNameFieldAddressFormation(session.rom, it) }) {
                 return@mapNotNullTo null
@@ -40,6 +51,19 @@ internal object HeaderlessUnifiedSpeciesResolver {
             val root = target - NAME_OFFSET
             if (!plausibleFirstRows(session.rom, root)) return@mapNotNullTo null
             root
+        }
+        val rootRelativeRoots = index.targets.mapNotNullTo(linkedSetOf()) { (target, evidence) ->
+            if (!plausibleFirstRows(session.rom, target)) return@mapNotNullTo null
+            val sites = if (evidence.siteEvidenceAvailable) {
+                evidence
+            } else {
+                session.nominatedGbaReferenceSites(target)
+            }?.takeIf { it.siteEvidenceAvailable } ?: return@mapNotNullTo null
+            target.takeIf { sites.instructionSites.any { site -> rootNameAccessorBound(session.rom, site) != null } }
+        }
+        val nominatedRoots = linkedSetOf<Int>().apply {
+            addAll(fieldRelativeRoots)
+            addAll(rootRelativeRoots)
         }
         val candidates = nominatedRoots.mapNotNull { root -> resolveRoot(session, root) }
         return candidates.singleOrNull()
@@ -51,12 +75,27 @@ internal object HeaderlessUnifiedSpeciesResolver {
     ): HeaderlessUnifiedSpeciesResolution? {
         val references = session.nominatedGbaReferenceSites(root)
             ?.takeIf { it.siteEvidenceAvailable } ?: return null
-        val counts = references.instructionSites.mapNotNull { nameAccessorBound(session.rom, it) }.distinct()
+        val fieldRelativeCounts = references.instructionSites.mapNotNull { site ->
+            nameAccessorBound(session.rom, site)
+        }.distinct()
+        val rootRelativeCounts = references.instructionSites.mapNotNull { site ->
+            rootNameAccessorBound(session.rom, site)
+        }.distinct()
+        val counts = (fieldRelativeCounts + rootRelativeCounts).distinct()
         if (counts.size != 1 || references.instructionSites.none { hasSixStatLeafConsumer(session.rom, it) }) {
             return null
         }
         val speciesCount = counts.single()
         if (speciesCount <= 1) return null
+        val nationalDexAccessors = references.instructionSites.mapNotNull { site ->
+            rootNationalDexAccessor(session.rom, site)
+        }.distinct()
+        val nationalDexOffset = when {
+            rootRelativeCounts.isEmpty() -> DEFAULT_NATIONAL_DEX_OFFSET
+            nationalDexAccessors.size != 1 -> return null
+            nationalDexAccessors.single().exclusiveBound != speciesCount -> return null
+            else -> nationalDexAccessors.single().fieldOffset
+        }
         when (
             session.limits.checkTableExtent(
                 offset = root.toLong(),
@@ -90,7 +129,7 @@ internal object HeaderlessUnifiedSpeciesResolver {
                 activePredicateOffset = 0,
                 speciesNameOffset = NAME_OFFSET,
                 speciesNameWidth = NAME_WIDTH,
-                nationalDexOffset = NATIONAL_DEX_OFFSET,
+                nationalDexOffset = nationalDexOffset,
             ),
             speciesNamesEvidence = ValidationEvidence(
                 compatible = true,
@@ -174,6 +213,97 @@ internal object HeaderlessUnifiedSpeciesResolver {
             returnWindow.none { it and 0xFF87 == 0x4700 }
         ) return null
         return maximumId + 1
+    }
+
+    /**
+     * Alternate compiler materialization of the same complete accessor. The exclusive table
+     * bound is built from an immediate shift, then the function indexes the nominated root,
+     * checks the active byte, and returns the row name or the row-zero fallback.
+     */
+    private fun rootNameAccessorBound(rom: RomImage, site: Int): Int? {
+        val prefix = rootAccessorPrefix(rom, site) ?: return null
+        val returnWindow = (site + 10..site + 58 step 2).map { rom.u16le(it) }
+        if (returnWindow.none { it and 0xFF00 == 0x3000 && it and 0xFF == NAME_OFFSET } ||
+            returnWindow.none { it and 0xFF87 == 0x4700 }
+        ) return null
+        return prefix.exclusiveBound
+    }
+
+    /** Complete active-row accessor that returns a u16 Dex field from the same bounded table. */
+    private fun rootNationalDexAccessor(rom: RomImage, site: Int): NationalDexAccessor? {
+        val prefix = rootAccessorPrefix(rom, site) ?: return null
+        val activeBranch = rom.u16le(site + 10)
+        if (activeBranch and 0xFF00 != 0xD100) return null
+        val branchDisplacement = (activeBranch and 0xFF).toByte().toInt() * 2
+        val activePath = site + 14 + branchDisplacement
+        if (activePath !in site + 12..site + 48 || activePath + 4 > rom.size) return null
+        val rowAdd = rom.u16le(activePath)
+        if (rowAdd and 0xFE00 != 0x1800) return null
+        val addDestination = rowAdd and 0x7
+        val addLeft = (rowAdd ushr 3) and 0x7
+        val addRight = (rowAdd ushr 6) and 0x7
+        if (addDestination != prefix.rootRegister ||
+            setOf(addLeft, addRight) != setOf(prefix.rootRegister, prefix.indexRegister)
+        ) return null
+        val load = rom.u16le(activePath + 2)
+        if (load and 0xF800 != 0x8800 || (load ushr 3) and 0x7 != prefix.rootRegister) return null
+        val fieldOffset = ((load ushr 6) and 0x1F) * 2
+        if (fieldOffset < NAME_OFFSET + NAME_WIDTH || fieldOffset + 2 > RECORD_SIZE) return null
+        return NationalDexAccessor(prefix.exclusiveBound, fieldOffset)
+    }
+
+    /** Shared bound, species normalization, 260-byte row index, and active-byte prefix. */
+    private fun rootAccessorPrefix(rom: RomImage, site: Int): RootAccessorPrefix? {
+        if (site !in 14 until rom.size - 62) return null
+        val immediate = rom.u16le(site - 14)
+        val normalizeLeft = rom.u16le(site - 12)
+        val normalizeRight = rom.u16le(site - 10)
+        val boundShift = rom.u16le(site - 8)
+        val compare = rom.u16le(site - 6)
+        val outOfBoundsBranch = rom.u16le(site - 4)
+        val indexShift = rom.u16le(site - 2)
+        val addOriginal = rom.u16le(site + 2)
+        val scaleFour = rom.u16le(site + 4)
+        val activeLoad = rom.u16le(site + 6)
+        val activeCompare = rom.u16le(site + 8)
+        if (immediate and 0xF800 != 0x2000 ||
+            normalizeLeft and 0xF800 != 0 || (normalizeLeft ushr 6) and 0x1F != 16 ||
+            normalizeRight and 0xF800 != 0x0800 || (normalizeRight ushr 6) and 0x1F != 16 ||
+            boundShift and 0xF800 != 0 ||
+            compare and 0xFFC0 != 0x4280 ||
+            outOfBoundsBranch and 0xFF00 != 0xD200 ||
+            indexShift and 0xF800 != 0 || (indexShift ushr 6) and 0x1F != 6 ||
+            addOriginal and 0xFE00 != 0x1800 ||
+            scaleFour and 0xF800 != 0 || (scaleFour ushr 6) and 0x1F != 2 ||
+            activeLoad and 0xF800 != 0x5800 ||
+            activeCompare and 0xF800 != 0x2800
+        ) return null
+        val immediateRegister = (immediate ushr 8) and 0x7
+        if ((boundShift ushr 3) and 0x7 != immediateRegister || boundShift and 0x7 != immediateRegister) {
+            return null
+        }
+        val speciesRegister = normalizeLeft and 0x7
+        if (
+            (normalizeRight ushr 3) and 0x7 != speciesRegister || normalizeRight and 0x7 != speciesRegister ||
+            compare and 0x7 != speciesRegister || (compare ushr 3) and 0x7 != immediateRegister
+        ) return null
+        val indexRegister = indexShift and 0x7
+        if ((indexShift ushr 3) and 0x7 != speciesRegister ||
+            addOriginal and 0x7 != indexRegister || (addOriginal ushr 3) and 0x7 != indexRegister ||
+            (addOriginal ushr 6) and 0x7 != speciesRegister ||
+            scaleFour and 0x7 != indexRegister || (scaleFour ushr 3) and 0x7 != indexRegister
+        ) return null
+        val rootRegister = (rom.u16le(site) ushr 8) and 0x7
+        val activeRegister = activeLoad and 0x7
+        if (rom.u16le(site) and 0xF800 != 0x4800 ||
+            setOf((activeLoad ushr 6) and 0x7, (activeLoad ushr 3) and 0x7) !=
+            setOf(rootRegister, indexRegister) ||
+            (activeCompare ushr 8) and 0x7 != activeRegister || activeCompare and 0xFF != 0
+        ) return null
+        val shiftAmount = (boundShift ushr 6) and 0x1F
+        val exclusiveBound = (immediate and 0xFF).toLong() shl shiftAmount
+        if (exclusiveBound !in 2..Int.MAX_VALUE.toLong()) return null
+        return RootAccessorPrefix(exclusiveBound.toInt(), rootRegister, indexRegister)
     }
 
     /** Complete leaf that indexes the same root and returns the sum of bytes +0 through +5. */

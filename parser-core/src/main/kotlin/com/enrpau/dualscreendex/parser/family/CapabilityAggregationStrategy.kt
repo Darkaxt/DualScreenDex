@@ -44,13 +44,18 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
             15,
             "names=${core.moveNames.compatible}, data=${core.moveData.compatible}",
         )
+        val compiledUnifiedCoherencePoints = if (
+            identity.headerlessUnifiedSpecies != null && core.speciesNames.compatible && core.baseStats.compatible
+        ) 5 else 0
         val crossPoints = (if (core.speciesNames.compatible && core.baseStats.compatible) 10 else 0) +
+            compiledUnifiedCoherencePoints +
             (if (core.moveNames.compatible && core.moveData.compatible) 5 else 0)
         score += ScoreEvidence(
             "cross-table integrity",
-            crossPoints,
+            minOf(crossPoints, 15),
             15,
             "species=${core.speciesNames.compatible && core.baseStats.compatible}, " +
+                "compiledUnified=${compiledUnifiedCoherencePoints > 0}, " +
                 "moves=${core.moveNames.compatible && core.moveData.compatible}",
         )
         score += ScoreEvidence(
