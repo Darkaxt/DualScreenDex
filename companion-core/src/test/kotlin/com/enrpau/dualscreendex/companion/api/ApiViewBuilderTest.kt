@@ -130,6 +130,52 @@ class ApiViewBuilderTest {
     }
 
     @Test
+    fun selectedMapAreaDrivesAreaDexWhilePhysicalCurrentLocationStaysTruthful() {
+        val route101 = 0x0010 * 10 + 1
+        val oldale = 0x0011 * 10 + 1
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = (1..2).associateWith { speciesId ->
+                com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
+                    id = speciesId,
+                    dexNumber = CatalogField.available(speciesId),
+                    name = CatalogField.available("Species $speciesId"),
+                    typeIds = CatalogField.available(emptyList()),
+                    baseStats = CatalogField.notFound("fixture"),
+                    sprite = CatalogField.notFound("fixture"),
+                    abilityIds = CatalogField.available(emptyList()),
+                )
+            },
+            encounterAreas = listOf(
+                EncounterArea(route101, CatalogField.available("Route 101 grass"), 1, listOf(EncounterSlot(1, 2, 3, 100))),
+                EncounterArea(oldale, CatalogField.available("Oldale water"), 2, listOf(EncounterSlot(2, 3, 4, 100))),
+            ),
+            runtimeMetadata = CatalogRuntimeMetadata(areaNamesByBaseId = mapOf(0x0010 to "Route 101")),
+        )
+        val snapshot = AppSnapshot(
+            filter = com.enrpau.dualscreendex.companion.model.PokedexFilter.AREA,
+            selectedAreaId = oldale,
+            liveAreaBaseId = 0x0010,
+            ledger = KnowledgeLedger(
+                visitedAreaBaseIds = setOf(0x0010, 0x0011),
+                seenSpeciesByArea = mapOf(0x0011 to setOf(2)),
+            ),
+        )
+
+        val state = ApiViewBuilder.state(snapshot, catalog)
+
+        assertEquals(0x0010, state.currentAreaBaseId)
+        assertEquals("Route 101", state.currentAreaName)
+        assertEquals(listOf(oldale), state.currentAreaIds)
+        assertEquals(listOf(2), state.currentAreaSpeciesIds)
+        assertEquals(listOf(0x0010, 0x0011), state.revealedAreaBaseIds)
+        assertEquals(listOf(0x0011), state.observedAreaBaseIdsBySpecies.getValue(2))
+        assertEquals(0x0011, ApiViewBuilder.catalog(catalog).areas.single { it.id == oldale }.baseAreaId)
+    }
+
+    @Test
     fun exposesStructuredPartialCapabilityEvidence() {
         val catalog = ParsedCatalog(
             romSha256 = "a".repeat(64),

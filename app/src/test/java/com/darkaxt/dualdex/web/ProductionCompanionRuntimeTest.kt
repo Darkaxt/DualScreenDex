@@ -24,11 +24,18 @@ import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
+import com.enrpau.dualscreendex.parser.catalog.EncounterArea
+import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
+import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -296,6 +303,62 @@ class ProductionCompanionRuntimeTest {
         assertEquals(setOf(13, 16), ledger.seenSpeciesByArea.getValue(0x0010))
         assertEquals(setOf(16), ledger.seenSpeciesByArea.getValue(0x0011))
         assertEquals(ledger, repository.read(identity))
+        runtime.close()
+    }
+
+    @Test
+    fun persistsVisitedAreasAndRoutesTheSelectedMapLocationIntoAreaDex() {
+        val identity = "9".repeat(64)
+        val repository = InMemoryKnowledgeRepository()
+        val selectedAreaId = 0x0011 * 10 + 1
+        val runtime = ProductionCompanionRuntime(knowledgeRepository = repository)
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                identity,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                encounterAreas = listOf(
+                    EncounterArea(
+                        selectedAreaId,
+                        CatalogField.available("Oldale grass"),
+                        1,
+                        listOf(EncounterSlot(1, 2, 3, 100)),
+                    ),
+                    EncounterArea(
+                        0x0012 * 10 + 1,
+                        CatalogField.available("Decoy grass"),
+                        1,
+                        listOf(EncounterSlot(2, 2, 3, 100)),
+                    ),
+                ),
+                worldMaps = WorldMapCatalog(
+                    regions = listOf(
+                        WorldMapRegion(
+                            "hoenn", "Hoenn", 8, 8, 1, 1, "world/hoenn",
+                            listOf(WorldMapLocation("oldale", "Oldale Town", setOf(0x0011), listOf(WorldMapCell(0, 0, 1, 1)))),
+                        ),
+                        WorldMapRegion(
+                            "decoy", "Decoy", 8, 8, 1, 1, "world/decoy",
+                            listOf(WorldMapLocation("oldale", "Decoy Town", setOf(0x0012), listOf(WorldMapCell(0, 0, 1, 1)))),
+                        ),
+                    ),
+                    assets = mapOf(
+                        "world/hoenn" to RgbaSprite(8, 8, IntArray(64)),
+                        "world/decoy" to RgbaSprite(8, 8, IntArray(64)),
+                    ),
+                ),
+            ),
+        )
+
+        runtime.updateLiveArea(0x0011)
+        val state = runtime.action("MAP_AREA", mapOf("regionKey" to "hoenn", "locationKey" to "oldale"))
+
+        assertEquals(setOf(0x0011), runtime.gateway.bootstrap().ledger.visitedAreaBaseIds)
+        assertEquals(setOf(0x0011), repository.read(identity)!!.visitedAreaBaseIds)
+        assertEquals("AREA", state.filter)
+        assertEquals(selectedAreaId, state.selectedAreaId)
+        assertEquals(listOf(selectedAreaId), state.currentAreaIds)
         runtime.close()
     }
     @Test

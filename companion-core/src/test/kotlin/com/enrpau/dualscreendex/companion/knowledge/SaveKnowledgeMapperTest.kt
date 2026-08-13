@@ -27,7 +27,10 @@ class SaveKnowledgeMapperTest {
                 25 to species(25, 25),
             ),
         )
-        val prior = KnowledgeLedger(observedMoves = mapOf(6 to listOf(MoveObservation(52, 2))))
+        val prior = KnowledgeLedger(
+            visitedAreaBaseIds = setOf(0x0101),
+            observedMoves = mapOf(6 to listOf(MoveObservation(52, 2))),
+        )
         val snapshot = SaveSnapshot(
             romIdentity = catalog.romSha256,
             saveIdentity = "save",
@@ -52,6 +55,7 @@ class SaveKnowledgeMapperTest {
         assertEquals(setOf(6), ledger.caughtSpecies)
         assertEquals(setOf(6), ledger.teamSpecies)
         assertEquals(0x0203, ledger.currentAreaBaseId)
+        assertEquals(setOf(0x0101, 0x0203), ledger.visitedAreaBaseIds)
         assertEquals(3, ledger.owned.size)
         assertTrue(ledger.owned.single { it.stableKey == "party-1" }.isEgg)
         assertFalse(ledger.owned.single { it.stableKey == "box-0" }.party)

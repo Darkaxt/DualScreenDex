@@ -33,6 +33,31 @@ import org.junit.Test
 
 class CatalogParserTest {
     @Test
+    fun optionalWorldMapResolverFailureKeepsTheBaseCatalogUsable() {
+        val rom = RomImage(ByteArray(0x200))
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, 0, 0, ProfileTables(),
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+
+        val catalog = CatalogMaterializer.materialize(
+            rom = rom,
+            analysis = analysis,
+            layout = layout,
+            resolveWorldMap = { _, _ -> error("deliberate optional resolver failure") },
+        )
+
+        assertTrue(catalog.worldMaps.regions.isEmpty())
+        assertTrue(catalog.worldMaps.assets.isEmpty())
+        val evidence = catalog.capabilities.getValue(RomCapability.WORLD_MAP)
+        assertEquals(CapabilityStatus.NOT_FOUND, evidence.status)
+        assertTrue(evidence.reasons.any { it.contains("world-map stage: resolver-exception") })
+    }
+
+    @Test
     fun reportsStructurallyResolvedPartialAbilityDescriptionsForManualReview() {
         val count = 21
         val bytes = ByteArray(0x8000) { 0xFF.toByte() }

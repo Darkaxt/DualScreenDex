@@ -1,9 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
 import { maskEvolutionName, PokedexDetail } from './PokedexDetail';
 
 afterEach(cleanup);
+beforeEach(() => {
+  HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as typeof HTMLCanvasElement.prototype.getContext;
+});
 
 describe('Pokédex evolution navigation', () => {
   it('uses a generic Pokédex Entry fallback when compatible text is unavailable', () => {
@@ -69,6 +72,45 @@ describe('Pokédex evolution navigation', () => {
     expect(captured.classList.contains('evolution-seen')).toBe(false);
     expect(captured.classList.contains('evolution-silhouette')).toBe(false);
   });
+
+  it('embeds the normalized world map on AREA and exposes only organically observed habitats', () => {
+    const send = vi.fn();
+    render(<PokedexDetail
+      catalog={catalog}
+      state={{
+        ...state,
+        settings: { ...state.settings, knowledgeMode: 'ORGANIC' },
+        observedAreaBaseIdsBySpecies: { 5: [0x11] },
+        revealedAreaBaseIds: [0x10, 0x11],
+      }}
+      send={send}
+      tab="AREA"
+      setTab={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+    />);
+
+    expect(screen.getByRole('img', { name: 'Hoenn Charmeleon habitat map' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Observed at Oldale Town' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Observed at Petalburg City' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Observed at Oldale Town' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open selected Area Pokédex' }));
+    expect(send).toHaveBeenCalledWith('MAP_AREA', { regionKey: 'hoenn', locationKey: 'oldale' });
+  });
+
+  it('keeps AREA safe when the catalog has no normalized map', () => {
+    render(<PokedexDetail
+      catalog={{ ...catalog, worldMaps: [] }}
+      state={state}
+      send={vi.fn()}
+      tab="AREA"
+      setTab={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+    />);
+
+    expect(screen.getByText('MAP UNAVAILABLE')).toBeTruthy();
+  });
 });
 
 const baseSpecies = {
@@ -87,7 +129,19 @@ const baseSpecies = {
 };
 
 const catalog = {
-  hash: 'sha', crc32: '1234ABCD', family: 'EMERALD', platform: 'GBA', rulesets: [], moves: [], areas: [], balls: [], capabilities: {},
+  hash: 'sha', crc32: '1234ABCD', family: 'EMERALD', platform: 'GBA', rulesets: [], moves: [], balls: [], capabilities: {},
+  areas: [
+    { id: 0x11 * 10 + 1, baseAreaId: 0x11, name: 'Oldale grass', methodId: 1, speciesIds: [5, 6], windows: ['ANY'], slots: [{ speciesId: 5, minimumLevel: 3, maximumLevel: 4, weight: 50 }] },
+    { id: 0x12 * 10 + 1, baseAreaId: 0x12, name: 'Petalburg grass', methodId: 1, speciesIds: [5], windows: ['ANY'], slots: [{ speciesId: 5, minimumLevel: 4, maximumLevel: 5, weight: 50 }] },
+  ],
+  worldMaps: [{
+    key: 'hoenn', displayName: 'Hoenn', pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15,
+    imageUrl: '/api/maps/world%2Fhoenn.png',
+    locations: [
+      { key: 'oldale', displayName: 'Oldale Town', baseAreaIds: [0x11], geometry: [{ x: 4, y: 9, width: 1, height: 1 }] },
+      { key: 'petalburg', displayName: 'Petalburg City', baseAreaIds: [0x12], geometry: [{ x: 2, y: 8, width: 1, height: 1 }] },
+    ],
+  }],
   types: [{ id: 10, name: 'Fire', foreground: '#111', background: '#f80', border: '#b40' }],
   species: [
     { ...baseSpecies, id: 5, name: 'Charmeleon', evolutions: [{ targetSpeciesId: 6, targetName: 'Charizard', methodId: 1, parameter: 36, condition: 'Level 36' }] },

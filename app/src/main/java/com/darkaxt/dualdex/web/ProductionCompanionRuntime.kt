@@ -417,9 +417,19 @@ class ProductionCompanionRuntime(
 
     fun battlePollingIntervalMs(): Int = gateway.bootstrap().settings.battlePollingIntervalMs.coerceIn(1, 20)
 
+    @Synchronized
     fun updateLiveArea(areaBaseId: Int?) {
         if (gateway.bootstrap().liveAreaBaseId != areaBaseId) {
             gateway.dispatch(CompanionAction.LiveAreaChanged(areaBaseId))
+        }
+        val validAreaBaseId = areaBaseId?.takeIf { candidate ->
+            catalog?.encounterAreas?.any { it.id / 10 == candidate } == true
+        } ?: return
+        val before = gateway.bootstrap().ledger
+        if (validAreaBaseId !in before.visitedAreaBaseIds) {
+            val updated = before.copy(visitedAreaBaseIds = before.visitedAreaBaseIds + validAreaBaseId)
+            gateway.dispatch(CompanionAction.ReplaceLedger(updated))
+            persistKnowledge(updated)
         }
     }
 
@@ -489,6 +499,23 @@ class ProductionCompanionRuntime(
                     values["areaId"]?.toIntOrNull(),
                 ),
             )
+            "MAP_AREA" -> {
+                val regionKey = requireNotNull(values["regionKey"]) { "regionKey is required" }
+                val locationKey = requireNotNull(values["locationKey"]) { "locationKey is required" }
+                val region = catalog?.worldMaps?.regions?.singleOrNull { it.key == regionKey }
+                    ?: error("map region is unavailable or ambiguous")
+                val location = region.locations.asSequence()
+                    .singleOrNull { it.key == locationKey }
+                    ?: error("map location is unavailable or ambiguous")
+                val areaId = catalog?.encounterAreas
+                    ?.filter { it.id / 10 in location.baseAreaIds }
+                    ?.minByOrNull { it.id }
+                    ?.id
+                    ?: error("map location has no encounter area")
+                gateway.dispatch(
+                    CompanionAction.SetFilter(PokedexFilter.AREA, areaId),
+                )
+            }
             "SETTINGS" -> updateSettings(values)
             "TAB", "BATTLE_TAB" -> gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.valueOf(requireNotNull(values["tab"]).uppercase())))
             "TARGET", "SELECT_TARGET" -> gateway.dispatch(CompanionAction.SelectTarget(requireInt(values, "index")))

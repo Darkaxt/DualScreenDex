@@ -5,16 +5,21 @@ import type { Bootstrap } from './models';
 const fixture: Bootstrap = {
   catalog: {
     hash: 'sha', crc32: 'C3A9F204', family: 'EMERALD', platform: 'GBA', rulesets: [{ id: 'default', label: 'Default', sourceOffset: 0, confidence: 1, primary: true }],
-    species: [], moves: [], types: [], areas: [], balls: [], capabilities: {},
+    species: [], moves: [], types: [],
+    areas: [{ id: 0x11 * 10 + 1, baseAreaId: 0x11, name: 'Oldale grass', methodId: 1, speciesIds: [], windows: ['ANY'], slots: [] }],
+    balls: [], capabilities: {},
     worldMaps: [{
       key: 'gen3-region-0', displayName: 'Hoenn', pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15,
       imageUrl: '/api/maps/world%2Fgen3-region-0.png',
-      locations: [{ key: 'section-16', displayName: 'Route 101', baseAreaIds: [16], geometry: [{ x: 3, y: 11, width: 2, height: 1 }] }],
+      locations: [
+        { key: 'section-16', displayName: 'Route 101', baseAreaIds: [16], geometry: [{ x: 3, y: 11, width: 2, height: 1 }] },
+        { key: 'section-17', displayName: 'Oldale Town', baseAreaIds: [17], geometry: [{ x: 4, y: 9, width: 1, height: 1 }] },
+      ],
     }]
   },
   state: {
     version: 1, screen: 'POKEDEX', priorScreen: 'POKEDEX', settingsReturnScreen: 'POKEDEX',
-    selectedSpeciesId: null, filter: 'ALL', selectedAreaId: null, battleTab: 'ENTRY',
+    selectedSpeciesId: null, filter: 'ALL', selectedAreaId: null, currentAreaBaseId: 16, revealedAreaBaseIds: [16, 17], battleTab: 'ENTRY',
     settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
     speciesState: {}, observedMoves: {}, battle: null, catalogReady: true,
     catalogName: 'Pokemon Modern Emerald.gba', error: null, activeRulesetId: null,
@@ -34,7 +39,7 @@ vi.mock('./gateway', () => ({
   }))
 }));
 
-import { bootstrap } from './gateway';
+import { action, bootstrap } from './gateway';
 import { App, catalogRefreshMarker } from './App';
 
 describe('production application shell', () => {
@@ -92,8 +97,10 @@ describe('production application shell', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
     expect(screen.getByRole('region', { name: 'Interactive world map' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Oldale Town' }));
     fireEvent.click(screen.getByRole('button', { name: 'Open Area Pokédex' }));
 
+    expect(action).toHaveBeenCalledWith('MAP_AREA', { regionKey: 'gen3-region-0', locationKey: 'section-17' });
     expect(screen.queryByRole('region', { name: 'Interactive world map' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Open Map' })).toBeTruthy();
   });

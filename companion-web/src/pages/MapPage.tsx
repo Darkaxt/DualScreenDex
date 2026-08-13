@@ -7,7 +7,7 @@ import type { Catalog, State, WorldMapLocation, WorldMapRegion } from '../models
 interface MapPageProps {
   catalog: Catalog;
   state: State;
-  onOpenAreaDex: () => void;
+  onOpenAreaDex: (regionKey: string, location: WorldMapLocation) => void;
   onOpenSettings: () => void;
 }
 
@@ -15,12 +15,17 @@ const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
 
 export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPageProps) {
   const maps = catalog.worldMaps ?? [];
-  const currentRegion = maps.find(item => item.locations.some(location => location.baseAreaIds.includes(state.currentAreaBaseId ?? -1)));
-  const [regionKey, setRegionKey] = useState(() => currentRegion?.key ?? maps[0]?.key ?? '');
-  const region = maps.find(item => item.key === regionKey) ?? currentRegion ?? maps[0];
+  const selectedArea = catalog.areas.find(area => area.id === state.selectedAreaId);
+  const selectedAreaBaseId = state.filter === 'AREA'
+    ? selectedArea?.baseAreaId ?? (selectedArea ? Math.floor(selectedArea.id / 10) : undefined)
+    : undefined;
+  const focusedAreaBaseId = selectedAreaBaseId ?? state.currentAreaBaseId ?? undefined;
+  const focusedRegion = maps.find(item => item.locations.some(location => location.baseAreaIds.includes(focusedAreaBaseId ?? -1)));
+  const [regionKey, setRegionKey] = useState(() => focusedRegion?.key ?? maps[0]?.key ?? '');
+  const region = maps.find(item => item.key === regionKey) ?? focusedRegion ?? maps[0];
   const currentLocation = region?.locations.find(location => location.baseAreaIds.includes(state.currentAreaBaseId ?? -1));
-  const [selectedKey, setSelectedKey] = useState(() => currentLocation?.key ?? region?.locations[0]?.key ?? '');
-  const selectedLocation = region?.locations.find(location => location.key === selectedKey) ?? currentLocation ?? region?.locations[0];
+  const focusedLocation = region?.locations.find(location => location.baseAreaIds.includes(focusedAreaBaseId ?? -1));
+  const [selectedKey, setSelectedKey] = useState(() => focusedLocation?.key ?? '');
   const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
   const [fit, setFit] = useState({ width: region?.pixelWidth ?? 1, height: region?.pixelHeight ?? 1, scale: 1 });
   const [fogVisible, setFogVisible] = useState(true);
@@ -31,17 +36,29 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   const gestureRef = useRef(new GestureTracker(HOME_VIEWPORT));
   const allowMarkerSelectionRef = useRef(true);
   const pressedMarkerRef = useRef(new Map<number, string>());
+  const revealedBaseIds = useMemo(() => new Set([
+    ...(state.revealedAreaBaseIds ?? []),
+    ...(currentLocation?.baseAreaIds ?? []),
+  ]), [state.revealedAreaBaseIds, currentLocation?.key]);
+  const revealedLocations = useMemo(
+    () => region?.locations.filter(location => location.baseAreaIds.some(baseAreaId => revealedBaseIds.has(baseAreaId))) ?? [],
+    [region?.key, revealedBaseIds],
+  );
+  const selectedCandidate = region?.locations.find(location => location.key === selectedKey);
+  const selectedLocation = fogVisible
+    ? revealedLocations.find(location => location.key === selectedCandidate?.key) ?? currentLocation ?? revealedLocations[0]
+    : selectedCandidate ?? currentLocation ?? region?.locations[0];
 
   useEffect(() => {
-    if (currentRegion && currentRegion.key !== regionKey) setRegionKey(currentRegion.key);
-  }, [currentRegion?.key]);
+    if (focusedRegion && focusedRegion.key !== regionKey) setRegionKey(focusedRegion.key);
+  }, [focusedRegion?.key]);
 
   useEffect(() => {
     if (!region) return;
-    const nextCurrent = region.locations.find(location => location.baseAreaIds.includes(state.currentAreaBaseId ?? -1));
-    setSelectedKey(nextCurrent?.key ?? region.locations[0]?.key ?? '');
+    const nextFocused = region.locations.find(location => location.baseAreaIds.includes(focusedAreaBaseId ?? -1));
+    setSelectedKey(nextFocused?.key ?? '');
     setViewport(HOME_VIEWPORT);
-  }, [region?.key]);
+  }, [region?.key, focusedAreaBaseId]);
 
   useEffect(() => {
     if (!region || !stageRef.current) return;
@@ -61,13 +78,13 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
 
   useEffect(() => {
     if (!region || !fogVisible || !fogRef.current) return;
-    paintFog(fogRef.current, region, currentLocation);
-  }, [region?.key, currentLocation?.key, fogVisible]);
+    paintFog(fogRef.current, region, revealedLocations);
+  }, [region?.key, revealedLocations, fogVisible]);
 
   const markerLocations = useMemo(() => {
     if (!region || !markersVisible) return [];
-    return fogVisible ? (currentLocation ? [currentLocation] : []) : region.locations;
-  }, [region?.key, currentLocation?.key, fogVisible, markersVisible]);
+    return fogVisible ? revealedLocations : region.locations;
+  }, [region?.key, revealedLocations, fogVisible, markersVisible]);
 
   if (!region) return null;
 
@@ -179,7 +196,7 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
 
       <nav class="map-utility-rail" aria-label="Map utilities">
         <button class="map-control" aria-label="Map settings and legend" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>
-        <button class="map-control" aria-label="Open Area Pokédex" onClick={onOpenAreaDex}><DexIcon /></button>
+        <button class="map-control" aria-label="Open Area Pokédex" disabled={!selectedLocation} onClick={() => selectedLocation && onOpenAreaDex(region.key, selectedLocation)}><DexIcon /></button>
         <button class="map-control fog-control" aria-label="Toggle fog of war" aria-pressed={fogVisible} onClick={() => setFogVisible(value => !value)}><span class="fog-icon" /></button>
         <button class="map-control marker-control" aria-label="Toggle map markers" aria-pressed={markersVisible} onClick={() => setMarkersVisible(value => !value)}><span class="pin-icon" /></button>
         {legendOpen && <div class="map-legend-panel">
@@ -209,16 +226,16 @@ function markerPosition(location: WorldMapLocation, region: WorldMapRegion) {
   return { x: ((left + right) / 2 / region.gridWidth) * 100, y: ((top + bottom) / 2 / region.gridHeight) * 100 };
 }
 
-function paintFog(canvas: HTMLCanvasElement, region: WorldMapRegion, currentLocation?: WorldMapLocation) {
+export function paintFog(canvas: HTMLCanvasElement, region: WorldMapRegion, revealedLocations: WorldMapLocation[]) {
   const context = canvas.getContext('2d');
   if (!context) return;
   context.clearRect(0, 0, region.pixelWidth, region.pixelHeight);
   context.fillStyle = '#000';
   context.fillRect(0, 0, region.pixelWidth, region.pixelHeight);
-  if (currentLocation) {
+  if (revealedLocations.length > 0) {
     context.save();
     context.globalCompositeOperation = 'destination-out';
-    for (const cell of currentLocation.geometry) {
+    for (const location of revealedLocations) for (const cell of location.geometry) {
       const centerX = ((cell.x + cell.width / 2) / region.gridWidth) * region.pixelWidth;
       const centerY = ((cell.y + cell.height / 2) / region.gridHeight) * region.pixelHeight;
       const radius = Math.max(14, Math.max(cell.width / region.gridWidth * region.pixelWidth, cell.height / region.gridHeight * region.pixelHeight) * 1.5);

@@ -56,6 +56,7 @@ data class KnowledgeLedger(
     val owned: List<OwnedPokemon> = emptyList(),
     val teamSpecies: Set<Int> = emptySet(),
     val currentAreaBaseId: Int? = null,
+    val visitedAreaBaseIds: Set<Int> = emptySet(),
     val seenSpeciesByArea: Map<Int, Set<Int>> = emptyMap(),
     val observedMoves: Map<Int, List<MoveObservation>> = emptyMap(),
     val discoveredMatchups: Map<MatchupKey, Effectiveness> = emptyMap(),

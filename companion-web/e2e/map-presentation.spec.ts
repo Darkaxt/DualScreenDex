@@ -12,28 +12,46 @@ const artifactDir = join(process.cwd(), '..', 'output', 'map-presentation');
 const state = {
   version: 1, screen: 'POKEDEX', priorScreen: 'POKEDEX', settingsReturnScreen: 'POKEDEX', selectedSpeciesId: null,
   filter: 'AREA', selectedAreaId: null, currentAreaBaseId: 16, currentAreaName: 'Route 101', battleTab: 'ENTRY',
+  currentAreaIds: [161], currentAreaSpeciesIds: [5], revealedAreaBaseIds: [16, 17], observedAreaBaseIdsBySpecies: { 5: [17] },
   settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
-  speciesState: {}, observedMoves: {}, battle: null, catalogReady: true, catalogName: 'Emerald control', error: null,
+  speciesState: { 5: { seen: true, caught: true, team: false, ballId: null }, 6: { seen: false, caught: false, team: false, ballId: null } }, observedMoves: {}, battle: null, catalogReady: true, catalogName: 'Emerald control', error: null,
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
 };
 
 const catalog = {
-  hash: 'sanitized-browser-control', crc32: 'CONTROL', family: 'EMERALD', platform: 'GBA', rulesets: [], species: [], moves: [], types: [], areas: [], balls: [], capabilities: {},
+  hash: 'sanitized-browser-control', crc32: 'CONTROL', family: 'EMERALD', platform: 'GBA', rulesets: [], moves: [], types: [], balls: [], capabilities: {},
+  species: [
+    { id: 5, dex: 5, name: 'Charmeleon', typeIds: [], stats: null, description: 'Fixture', height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
+    { id: 6, dex: 6, name: 'Charizard', typeIds: [], stats: null, description: 'Fixture', height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
+  ],
+  areas: [{ id: 171, baseAreaId: 17, name: 'Oldale grass', methodId: 1, speciesIds: [5, 6], windows: ['ANY'], slots: [
+    { speciesId: 5, minimumLevel: 3, maximumLevel: 4, weight: 50 },
+    { speciesId: 6, minimumLevel: 4, maximumLevel: 4, weight: 1 },
+  ] }],
   worldMaps: [{
     key: 'gen3-region-0', displayName: 'Hoenn', pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15,
     imageUrl: '/api/maps/world%2Fgen3-region-0.png',
     locations: [
       { key: 'section-16', displayName: 'Route 101', baseAreaIds: [16], geometry: [{ x: 3, y: 11, width: 2, height: 1 }] },
       { key: 'section-17', displayName: 'Oldale Town', baseAreaIds: [17], geometry: [{ x: 4, y: 9, width: 1, height: 1 }] },
+      { key: 'section-18', displayName: 'Petalburg City', baseAreaIds: [18], geometry: [{ x: 23, y: 3, width: 1, height: 1 }] },
     ],
   }],
 };
 
 test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ page, context }) => {
   let serveMaps = true;
-  await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog: { ...catalog, worldMaps: serveMaps ? catalog.worldMaps : [] }, state }) }));
-  await page.route('**/api/state', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(state) }));
-  await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(state) }));
+  let serverState: Omit<typeof state, 'selectedAreaId' | 'selectedSpeciesId'> & { selectedAreaId: number | null; selectedSpeciesId: number | null } = { ...state };
+  const actions: Record<string, unknown>[] = [];
+  await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog: { ...catalog, worldMaps: serveMaps ? catalog.worldMaps : [] }, state: serverState }) }));
+  await page.route('**/api/state', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(serverState) }));
+  await page.route('**/api/actions', async route => {
+    const action = route.request().postDataJSON() as Record<string, unknown>;
+    actions.push(action);
+    if (action.type === 'MAP_AREA') serverState = { ...serverState, version: serverState.version + 1, screen: 'POKEDEX', filter: 'AREA', selectedAreaId: 171, currentAreaIds: [171], currentAreaSpeciesIds: [5] };
+    if (action.type === 'OPEN_SPECIES') serverState = { ...serverState, version: serverState.version + 1, screen: 'DETAIL', selectedSpeciesId: Number(action.speciesId) };
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(serverState) });
+  });
   await page.route('**/api/maps/**', route => route.fulfill({ contentType: 'image/png', body: raster }));
 
   await page.goto('/');
@@ -78,6 +96,20 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
     };
   });
   expect(fogEdges).toEqual({ top: true, right: true, bottom: true, left: true });
+  const fogDiscovery = await page.locator('.map-fog').evaluate(canvas => {
+    const target = canvas as HTMLCanvasElement;
+    const context = target.getContext('2d')!;
+    const alphaAtCell = (x: number, y: number) => context.getImageData(
+      Math.round((x + .5) / 28 * target.width),
+      Math.round((y + .5) / 15 * target.height),
+      1,
+      1,
+    ).data[3];
+    return { current: alphaAtCell(3, 11), visited: alphaAtCell(4, 9), undiscovered: alphaAtCell(23, 3) };
+  });
+  expect(fogDiscovery.current).toBeLessThan(255);
+  expect(fogDiscovery.visited).toBeLessThan(255);
+  expect(fogDiscovery.undiscovered).toBe(255);
 
   mkdirSync(artifactDir, { recursive: true });
   await page.screenshot({ path: join(artifactDir, 'fit-fog.png') });
@@ -145,7 +177,24 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
   await expect(stage).toHaveAttribute('data-pointer-cancel-seen', 'true');
   await expect(stage).not.toHaveClass(/is-manipulating/);
 
+  await page.getByRole('button', { name: 'Open Area Pokédex' }).click();
+  await expect.poll(() => actions.at(-1)).toEqual({ type: 'MAP_AREA', regionKey: 'gen3-region-0', locationKey: 'section-17' });
+  await expect(page.getByRole('button', { name: 'Charmeleon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Unidentified encounter' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Charmeleon' }).click();
+  await page.getByRole('tab', { name: 'AREA' }).click();
+  await expect(page.getByRole('img', { name: 'Hoenn Charmeleon habitat map' })).toBeVisible();
+  const pokemonMapBounds = await page.locator('.pokemon-area-canvas').boundingBox();
+  expect(pokemonMapBounds!.width / pokemonMapBounds!.height).toBeCloseTo(224 / 120, 2);
+  await expect(page.getByRole('button', { name: 'Observed at Oldale Town' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Observed at Petalburg City' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open selected Area Pokédex' }).locator('svg')).toHaveAttribute('data-semantic-icon', 'pokedex');
+  await page.screenshot({ path: join(artifactDir, 'pokemon-area.png') });
+  await page.getByRole('button', { name: 'Open selected Area Pokédex' }).click();
+  await expect.poll(() => actions.at(-1)).toEqual({ type: 'MAP_AREA', regionKey: 'gen3-region-0', locationKey: 'section-17' });
+
   serveMaps = false;
+  serverState = { ...serverState, version: serverState.version + 1, screen: 'POKEDEX', selectedSpeciesId: null };
   await page.reload();
   await expect(page.getByRole('button', { name: 'Open Map' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible();
@@ -158,11 +207,15 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
     fit: { width: fit!.width, height: fit!.height, aspect: fit!.width / fit!.height },
     contentStageRatio: stageBounds!.height / hostBounds!.height,
     fogEdges,
+    fogDiscovery,
     onePointerPan: { x: 82, y: 43 },
     pinchOut: { scale: pinchOutScale, anchored: true },
     pinchIn: { scale: pinchInScale, anchored: true },
     pointerCancelCleanup: true,
     pinchSelectionSuppressed: true,
+    selectedAreaDexLocationPreserved: true,
+    pokemonAreaOrganicMaskingAndReturn: true,
+    pokemonAreaAspect: pokemonMapBounds!.width / pokemonMapBounds!.height,
     noMapFallback: true,
   }, null, 2)}\n`);
 });

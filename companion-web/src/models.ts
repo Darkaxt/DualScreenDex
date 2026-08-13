@@ -56,7 +56,7 @@ export interface Catalog {
   species: Species[];
   moves: Move[];
   types: TypeInfo[];
-  areas: { id: number; name: string; methodId: number; speciesIds: number[]; windows: EncounterWindow[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
+  areas: { id: number; baseAreaId?: number; name: string; methodId: number; speciesIds: number[]; windows: EncounterWindow[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
   worldMaps?: WorldMapRegion[];
   capabilities: Record<string, string>;
@@ -159,6 +159,8 @@ export interface State {
   currentAreaBaseId?: number | null;
   currentAreaName?: string | null;
   currentAreaSpeciesIds?: number[];
+  revealedAreaBaseIds?: number[];
+  observedAreaBaseIdsBySpecies?: Record<number, number[]>;
   battleTab: 'ENTRY' | 'ATTACK' | 'RARITY' | 'MOVES';
   settings: Settings;
   speciesState: Record<number, SpeciesState>;

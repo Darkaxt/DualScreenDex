@@ -346,7 +346,16 @@ object CatalogMaterializer {
             )
         }
         val worldMapResolution = if (layout.generation in 1..3 && resolveWorldMap != null) {
-            resolveWorldMap(layout.generation, encounters.mapTo(linkedSetOf()) { it.id / 10 })
+            try {
+                resolveWorldMap(layout.generation, encounters.mapTo(linkedSetOf()) { it.id / 10 }).also { resolution ->
+                    if (resolution is WorldMapResolution.Resolved) resolution.catalog.validate()
+                }
+            } catch (failure: Exception) {
+                WorldMapResolution.Unavailable(
+                    stage = "resolver-exception",
+                    reason = "optional world-map resolution failed closed (${failure.javaClass.simpleName})",
+                )
+            }
         } else {
             null
         }

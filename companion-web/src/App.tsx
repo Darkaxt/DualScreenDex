@@ -43,7 +43,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [busy, setBusy] = useState(true);
   const [moveDetailId, setMoveDetailId] = useState<number | null>(null);
   const [abilityDetailId, setAbilityDetailId] = useState<number | null>(null);
-  const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'MORE'>('ENTRY');
+  const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'AREA' | 'MORE'>('ENTRY');
   const [mapperOpen, setMapperOpen] = useState(false);
   const [capabilityReportOpen, setCapabilityReportOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
@@ -91,9 +91,9 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     if (mapOpen && (catalog.worldMaps?.length ?? 0) > 0) return <MapPage
       catalog={catalog}
       state={state}
-      onOpenAreaDex={() => {
+      onOpenAreaDex={(regionKey, location) => {
         setMapOpen(false);
-        void send('FILTER', { filter: 'AREA', areaId: null });
+        void send('MAP_AREA', { regionKey, locationKey: location.key });
       }}
       onOpenSettings={() => {
         setMapOpen(false);

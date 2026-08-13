@@ -118,6 +118,7 @@ data class EncounterSlotView(
 )
 data class AreaView(
     val id: Int,
+    val baseAreaId: Int,
     val name: String,
     val methodId: Int,
     val speciesIds: List<Int>,
@@ -167,6 +168,8 @@ data class StateView(
     val currentAreaBaseId: Int?,
     val currentAreaName: String?,
     val currentAreaSpeciesIds: List<Int>,
+    val revealedAreaBaseIds: List<Int>,
+    val observedAreaBaseIdsBySpecies: Map<Int, List<Int>>,
     val battleTab: String,
     val settings: Any,
     val speciesState: Map<Int, SpeciesStateView>,
@@ -370,6 +373,7 @@ object ApiViewBuilder {
         areas = catalog.encounterAreas.sortedBy { it.id }.map {
             AreaView(
                 it.id,
+                it.id / 10,
                 it.name.value ?: "Area ${it.id}",
                 it.methodId,
                 it.slots.map { slot -> slot.speciesId }.filter { id -> id > 0 }.distinct(),
@@ -420,17 +424,31 @@ object ApiViewBuilder {
             ?: snapshot.ledger.currentAreaBaseId.takeIf {
                 !retroArch.connection.equals("CONNECTED", ignoreCase = true) && saveRam.status == "MATCHED"
             }
-        val currentAreaIds = effectiveAreaBaseId?.let { baseId ->
+        val selectedAreaBaseId = snapshot.selectedAreaId
+            ?.takeIf { snapshot.filter == com.enrpau.dualscreendex.companion.model.PokedexFilter.AREA }
+            ?.let { selectedId -> catalog?.encounterAreas?.singleOrNull { it.id == selectedId } }
+            ?.let { it.id / 10 }
+        val browsedAreaBaseId = selectedAreaBaseId ?: effectiveAreaBaseId
+        val currentAreaIds = browsedAreaBaseId?.let { baseId ->
             catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }?.sorted()
         }.orEmpty()
         val currentAreaName = effectiveAreaBaseId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
-        val currentAreaSpeciesIds = effectiveAreaBaseId?.let { baseId ->
+        val currentAreaSpeciesIds = browsedAreaBaseId?.let { baseId ->
             val navigableIds = catalog?.navigableSpecies()?.mapTo(mutableSetOf()) { it.id }.orEmpty()
             val captured = navigableIds.filterTo(mutableSetOf()) { KnowledgePolicy.isCaught(it, snapshot.ledger) }
             (snapshot.ledger.seenSpeciesByArea[baseId].orEmpty() + captured)
                 .filter { it in navigableIds }
                 .sorted()
         }.orEmpty()
+        val revealedAreaBaseIds = (
+            snapshot.ledger.visitedAreaBaseIds +
+                snapshot.ledger.seenSpeciesByArea.keys +
+                listOfNotNull(effectiveAreaBaseId)
+            ).sorted()
+        val observedAreaBaseIdsBySpecies = snapshot.ledger.seenSpeciesByArea.entries
+            .flatMap { (areaBaseId, speciesIds) -> speciesIds.map { speciesId -> speciesId to areaBaseId } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, areaBaseIds) -> areaBaseIds.distinct().sorted() }
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
@@ -463,6 +481,8 @@ object ApiViewBuilder {
             effectiveAreaBaseId,
             currentAreaName,
             currentAreaSpeciesIds,
+            revealedAreaBaseIds,
+            observedAreaBaseIdsBySpecies,
             snapshot.battleTab.name,
             snapshot.settings,
             speciesState,
