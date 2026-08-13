@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.cli
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializer
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.AttackMechanic
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.BattleMechanicsAbi
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.BattleRecordAbi
@@ -11,6 +12,8 @@ import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.MoveMechanicsA
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.MultiplyAttack
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.ScalarField
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.ScalarWidth
+import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolution
+import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolver
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7InstructionSet
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -50,14 +53,14 @@ class Arm7MechanicsCompatibilitySurveyTest {
         }
         val applicable = rows.filter { it.platform == Platform.GBA.name }
         val packet = SurveyPacket(
-            schemaVersion = 2,
-            baseCommit = "bac2f8f1f4d8883e00dacbabe3cc5a130cb83a2a",
+            schemaVersion = 3,
+            baseCommit = "211fccf88a71450bdc9af64ddfc09c41fac98a80",
             manifest = manifestPath.toAbsolutePath().toString(),
             total = rows.size,
             applicableGba = applicable.size,
             notApplicable = rows.size - applicable.size,
-            oracleMatches = applicable.count { it.run1.stage == MechanicsStage.ORACLE_MATCH },
-            withheld = applicable.count { it.run1.stage != MechanicsStage.ORACLE_MATCH },
+            completeProofs = applicable.count { it.run1.stage == MechanicsStage.COMPLETE_PROOF },
+            withheld = applicable.count { it.run1.stage != MechanicsStage.COMPLETE_PROOF },
             deterministic = rows.all { it.deterministic },
             first33RegressionPassed = rows.take(33).all { it.first33Regression == true },
             stageCounts = applicable.groupingBy { it.run1.stage.name }.eachCount().toSortedMap(),
@@ -158,12 +161,54 @@ class Arm7MechanicsCompatibilitySurveyTest {
                 "parser did not select a typed ability domain",
             )
         val sourceControl = sourceControls[rom.sha256]
-            ?: return MechanicsOutcome(
-                MechanicsStage.MECHANICS_INPUT_UNAVAILABLE,
-                "static ${move.table.abi.name} move ABI and ${ability.baseAbilityCount}-ID ability domain selected; " +
-                    "parser publishes neither BattleMechanicsAbi nor a structurally selected routine root",
-                staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
-            )
+        if (sourceControl == null) {
+            return when (val resolution = RetailBattleMechanicsResolver.resolve(
+                RomAnalysisSession(rom, parse.header),
+                move,
+                ability.decodedDirectAbilityIds(),
+            )) {
+                is RetailBattleMechanicsResolution.Resolved -> {
+                    val resolved = resolution.layout
+                    MechanicsOutcome(
+                        stage = MechanicsStage.COMPLETE_PROOF,
+                        reason = "complete independent caller, typed ABI, move-table, field-use, and semantic proof; no contradictory extras",
+                        staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
+                        battleAbiCluster = buildString {
+                            append("DIRECT_POINTERS:stride=0x${resolved.abi.record.stride.toString(16)}")
+                            append(":attack=${resolved.abi.record.attack.label()}")
+                            append(":ability=${resolved.abi.record.ability.label()}")
+                        },
+                        routineCluster = buildString {
+                            append("THUMB_DAMAGE_DIRECT")
+                            append(":decodedCallers=${resolved.proof.decodedCallSites.size}")
+                            append(":roleProofs=${resolved.proof.callerEvidence.size}")
+                            append(":moveRefs=${resolved.proof.moveTableReferenceSites.size}")
+                        },
+                        routineEntry = resolved.routineEntry,
+                        battleArrayRoot = resolved.proof.callerEvidence.firstOrNull()?.battleArrayRoot,
+                        decodedCallSites = resolved.proof.decodedCallSites.size,
+                        provenCallerSites = resolved.proof.callerEvidence.size,
+                        moveReferenceSites = resolved.proof.moveTableReferenceSites.size,
+                        tuples = resolved.mechanics.sortedBy(AttackMechanic::abilityId).map(::tuple),
+                    )
+                }
+                is RetailBattleMechanicsResolution.Unavailable -> MechanicsOutcome(
+                    MechanicsStage.UNSUPPORTED,
+                    resolution.reason,
+                    staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
+                )
+                is RetailBattleMechanicsResolution.Ambiguous -> MechanicsOutcome(
+                    MechanicsStage.AMBIGUOUS,
+                    "multiple complete routine/ABI candidates: ${resolution.entries.size}",
+                    staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
+                )
+                is RetailBattleMechanicsResolution.BudgetExceeded -> MechanicsOutcome(
+                    MechanicsStage.BUDGET,
+                    resolution.reason,
+                    staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
+                )
+            }
+        }
         val result = BattleRoleProvenance.analyze(
             rom,
             sourceControl.entry,
@@ -173,7 +218,7 @@ class Arm7MechanicsCompatibilitySurveyTest {
         )
         val oracleMatched = result.attackMechanics.toSet() == sourceControl.expected
         return MechanicsOutcome(
-            stage = if (oracleMatched) MechanicsStage.ORACLE_MATCH else MechanicsStage.SEMANTIC_MISMATCH,
+            stage = if (oracleMatched) MechanicsStage.COMPLETE_PROOF else MechanicsStage.SEMANTIC_MISMATCH,
             reason = if (oracleMatched) {
                 "exact source-control tuples, no extras; ${result.incompletePaths} bounded paths withheld"
             } else {
@@ -210,6 +255,9 @@ class Arm7MechanicsCompatibilitySurveyTest {
         })
         append(":x${mechanic.effect.numerator}/${mechanic.effect.denominator}")
     }
+
+    private fun ScalarField.label(): String =
+        "${width.name.lowercase()}@0x${offset.toString(16)}"
 
     private fun selectedLayout(parse: ParseResult): ResolvedRomLayout? =
         parse.probes.singleOrNull { it.family == parse.selectedFamily }?.resolvedLayout
@@ -248,7 +296,7 @@ class Arm7MechanicsCompatibilitySurveyTest {
         val total: Int,
         val applicableGba: Int,
         val notApplicable: Int,
-        val oracleMatches: Int,
+        val completeProofs: Int,
         val withheld: Int,
         val deterministic: Boolean,
         val first33RegressionPassed: Boolean,
@@ -284,6 +332,11 @@ class Arm7MechanicsCompatibilitySurveyTest {
         val routineCluster: String? = null,
         val decodedInstructions: Int? = null,
         val incompletePaths: Int? = null,
+        val routineEntry: Int? = null,
+        val battleArrayRoot: Int? = null,
+        val decodedCallSites: Int? = null,
+        val provenCallerSites: Int? = null,
+        val moveReferenceSites: Int? = null,
         val tuples: List<String> = emptyList(),
     )
 
@@ -291,12 +344,11 @@ class Arm7MechanicsCompatibilitySurveyTest {
         NOT_APPLICABLE,
         PARSER_LAYOUT_UNAVAILABLE,
         STATIC_TYPED_LAYOUT_UNAVAILABLE,
-        MECHANICS_INPUT_UNAVAILABLE,
         AMBIGUOUS,
         BUDGET,
         UNSUPPORTED,
         SEMANTIC_MISMATCH,
-        ORACLE_MATCH,
+        COMPLETE_PROOF,
     }
 
     private data class SourceControl(
