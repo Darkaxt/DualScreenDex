@@ -534,7 +534,11 @@ class RelationshipMaterializersTest {
         bytes[record + 3] = 0
         bytes[record + 4] = 5
         bytes[record + 5] = 33
-        bytes[record + 6] = 0
+        bytes[record + 6] = 88
+        bytes[record + 7] = 0 // NO_MOVE is a consumer no-op, not a catalog move.
+        bytes[record + 8] = 6
+        bytes[record + 9] = 34
+        bytes[record + 10] = 0
         val table = TableLayout(0, 1, 2, variableLength = true, bank = 1)
         val layout = ResolvedRomLayout(
             family = EngineFamily.CRYSTAL,
@@ -550,7 +554,7 @@ class RelationshipMaterializersTest {
             RelationshipMaterializers.evolutions(RomImage(bytes), layout).getValue(1),
         )
         assertEquals(
-            listOf(LearnsetEntry(5, 33)),
+            listOf(LearnsetEntry(5, 33), LearnsetEntry(6, 34)),
             RelationshipMaterializers.learnsets(RomImage(bytes), layout).getValue(1),
         )
     }

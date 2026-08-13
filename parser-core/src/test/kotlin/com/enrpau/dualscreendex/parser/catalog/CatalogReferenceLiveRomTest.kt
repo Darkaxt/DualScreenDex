@@ -83,6 +83,21 @@ class CatalogReferenceLiveRomTest {
         assertEquals(CapabilityStatus.AVAILABLE, moveDetails.status)
     }
 
+    @Test
+    fun digimonCrystalOmitsNoMoveFromDecodedLevelUpRelationships() {
+        val catalog = parseLiveRom(
+            environmentVariable = "DUALDEX_DIGIMON_CRYSTAL_ROM",
+            expectedSha256 = "a333699c83a7a9adaf62c942aa8215e9a0f3d9d598c62a96093fc671781113ae",
+        )
+
+        val speciesSeven = catalog.speciesById.getValue(7).learnset.value.orEmpty()
+        assertTrue(LearnsetEntry(level = 1, moveId = 60) in speciesSeven)
+        assertTrue(speciesSeven.none { it.moveId == 0 })
+        assertTrue(catalog.speciesById.values.all { species ->
+            species.learnset.value.orEmpty().all { it.moveId in catalog.movesById }
+        })
+    }
+
     private fun parseLiveRom(environmentVariable: String, expectedSha256: String): ParsedCatalog {
         val configuredPath = System.getenv(environmentVariable)
         assumeTrue("set $environmentVariable to run this live-ROM regression", !configuredPath.isNullOrBlank())

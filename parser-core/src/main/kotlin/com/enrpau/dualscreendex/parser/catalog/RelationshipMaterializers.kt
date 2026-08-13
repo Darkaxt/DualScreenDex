@@ -186,7 +186,10 @@ object RelationshipMaterializers {
                 repeat(128) {
                     val level = rom.u8(cursor)
                     if (level == 0) return@buildList
-                    add(LearnsetEntry(level, rom.u8(cursor + 1)))
+                    val move = rom.u8(cursor + 1)
+                    // Gen I/II consumers use move 0 as NO_MOVE, matching empty party move slots.
+                    // It is a no-op relationship, not a catalog move identity.
+                    if (move != 0) add(LearnsetEntry(level, move))
                     cursor += 2
                 }
             }
