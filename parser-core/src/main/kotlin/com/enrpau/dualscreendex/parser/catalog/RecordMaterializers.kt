@@ -389,7 +389,7 @@ object RecordMaterializers {
 
     private fun baseStatBytes(generation: Int): Int = if (generation == 2) 9 else 8
 
-    private fun readName(
+    internal fun readName(
         rom: RomImage,
         table: TableLayout,
         index: Int,

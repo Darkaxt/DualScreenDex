@@ -467,10 +467,10 @@ class EncounterMaterializerTest {
         val areas = EncounterMaterializer.materialize(RomImage(bytes), layout(3, Platform.GBA, 200))
 
         val grass = areas.single()
-        assertEquals(12, grass.slots.size)
+        assertEquals(11, grass.slots.size)
         assertEquals(18, grass.slots.first().minimumLevel)
         assertEquals(2, grass.slots.first().maximumLevel)
-        assertEquals(0, grass.slots[1].speciesId)
+        assertTrue(grass.slots.none { it.speciesId == 0 })
     }
 
     private fun layout(generation: Int, platform: Platform, speciesCount: Int) = ResolvedRomLayout(

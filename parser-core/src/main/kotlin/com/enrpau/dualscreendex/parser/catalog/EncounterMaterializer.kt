@@ -296,7 +296,6 @@ object EncounterMaterializer {
                         slotPointer,
                         table.abi.slotCounts[methodIndex],
                         table.abi.weights[methodIndex],
-                        omitSpeciesNone = table.abi.speciesNoneMeansAbsent,
                     )
                     if (slots.isNotEmpty()) {
                         add(area(groupMapId(group, map), method, "Map $group-$map - $label", slots))
@@ -604,12 +603,11 @@ object EncounterMaterializer {
         offset: Int,
         count: Int,
         weights: IntArray,
-        omitSpeciesNone: Boolean = false,
     ): List<EncounterSlot> = buildList {
         repeat(count) { index ->
             val entry = offset + index * 4
             val species = rom.u16le(entry + 2)
-            if (!omitSpeciesNone || species != 0) {
+            if (species != 0) {
                 add(EncounterSlot(species, rom.u8(entry), rom.u8(entry + 1), weights[index]))
             }
         }
@@ -662,7 +660,6 @@ object EncounterMaterializer {
         val slotCounts: IntArray,
         val weights: Array<IntArray>,
         val requiresCompiledReference: Boolean = false,
-        val speciesNoneMeansAbsent: Boolean = false,
     )
     private data class Gen3HeaderTable(
         val offset: Int,
@@ -754,7 +751,6 @@ object EncounterMaterializer {
             GEN3_WEIGHTS[3],
         ),
         requiresCompiledReference = true,
-        speciesNoneMeansAbsent = true,
     )
     private val GEN3_ABIS = arrayOf(GEN3_STANDARD_ABI, GEN3_HIDDEN_ABI)
     private val EXPANSION_METHODS = intArrayOf(

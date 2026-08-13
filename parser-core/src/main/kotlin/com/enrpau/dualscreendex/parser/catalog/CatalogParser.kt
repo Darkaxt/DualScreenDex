@@ -154,8 +154,16 @@ object CatalogMaterializer {
                 },
             )
         }
+        val closedRelationshipSpecies = EncounterReferencedSpeciesClosure.close(
+            rom = rom,
+            generation = layout.generation,
+            names = layout.tables.speciesNames,
+            namesStatus = initialCapabilities[RomCapability.SPECIES_NAMES]?.status,
+            species = relationshipSpecies,
+            encounters = encounters,
+        )
         val relationshipCatalog = mediaCatalog.copy(
-            speciesById = relationshipSpecies,
+            speciesById = closedRelationshipSpecies,
             encounterAreas = encounters,
             runtimeMetadata = runtimeMetadata,
         )
@@ -166,7 +174,7 @@ object CatalogMaterializer {
         val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
         val abilityMechanics = AbilityMechanicsMaterializer.materialize(rom, layout, abilities, baseTypes)
         val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
-        val species = relationshipSpecies.mapValues { (id, record) ->
+        val species = closedRelationshipSpecies.mapValues { (id, record) ->
             record.copy(
                 moveAcquisitions = if (moveAcquisitions.evidence.values.any { it.compatible }) {
                     CatalogField.available(moveAcquisitions.acquisitionsBySpecies[id].orEmpty())
