@@ -22,7 +22,7 @@ import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 internal data class CatalogAnalysisContext(
     val analysis: ParseResult,
     val resolveGen3AreaNames: (Set<Int>) -> Map<Int, String>,
-    val resolveGen3WorldMap: (Set<Int>) -> Gen3WorldMapResolution,
+    val resolveWorldMap: (Int, Set<Int>) -> WorldMapResolution,
 )
 
 object ParserOrchestrator {
@@ -47,7 +47,17 @@ object ParserOrchestrator {
                     Gen3MapLocationResolver.resolve(sharedSession.rom, baseAreaIds, references)
                 }
             },
-            resolveGen3WorldMap = { baseAreaIds -> Gen3WorldMapResolver.resolve(sharedSession, baseAreaIds) },
+            resolveWorldMap = { generation, baseAreaIds ->
+                when (generation) {
+                    1 -> Gen1WorldMapResolver.resolve(sharedSession, baseAreaIds)
+                    2 -> Gen2WorldMapResolver.resolve(sharedSession, baseAreaIds)
+                    3 -> Gen3WorldMapResolver.resolve(sharedSession, baseAreaIds)
+                    else -> WorldMapResolution.Unavailable(
+                        "generation",
+                        "world maps are not part of this engine's normalized parser path",
+                    )
+                }
+            },
         )
     }
 

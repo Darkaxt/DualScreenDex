@@ -26,19 +26,37 @@ import org.junit.Test
 
 class WorldMapCatalogApiRealControlTest {
     @Test
-    fun officialEmeraldSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[0])
+    fun redSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[0])
 
     @Test
-    fun modernEmeraldSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[1])
+    fun blueSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[1])
 
     @Test
-    fun classicSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[2])
+    fun yellowSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[2])
 
     @Test
-    fun fireRedFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[3])
+    fun goldRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[3])
 
     @Test
-    fun leafGreenFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[4])
+    fun silverRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[4])
+
+    @Test
+    fun crystalRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[5])
+
+    @Test
+    fun officialEmeraldSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[6])
+
+    @Test
+    fun modernEmeraldSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[7])
+
+    @Test
+    fun classicSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[8])
+
+    @Test
+    fun fireRedFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[9])
+
+    @Test
+    fun leafGreenFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[10])
 
     private fun assertRoundTrip(control: Control) {
         val configured = System.getenv(control.environmentVariable)
@@ -51,7 +69,7 @@ class WorldMapCatalogApiRealControlTest {
         val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
         assertEquals(control.pngHashes.size, catalog.worldMaps.regions.size)
         assertEquals(
-            (0 until control.pngHashes.size).map { "gen3-region-$it" },
+            control.regionKeys,
             catalog.worldMaps.regions.map { it.key },
         )
 
@@ -108,29 +126,74 @@ class WorldMapCatalogApiRealControlTest {
     private data class Control(
         val environmentVariable: String,
         val romSha256: String,
+        val regionKeys: List<String>,
         val pngHashes: List<String>,
     )
 
     private companion object {
+        val GEN2_PNGS = listOf(
+            "23739bddf01b2c98a03ca1c4af28ade7d751623ec8063311dd2b8b366c81c516",
+            "c06748683d60a89e4d2984bbcb565dc854ddd7942295d5039b80bcabe223258d",
+        )
         val controls = listOf(
+            Control(
+                "DUALDEX_POKERED_ROM",
+                "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
+                listOf("gen1-kanto"),
+                listOf("aa70952cb3c34789bc63639861d304b05b1c034dfb57e58720520de72d2ed098"),
+            ),
+            Control(
+                "DUALDEX_POKEBLUE_ROM",
+                "2a951313c2640e8c2cb21f25d1db019ae6245d9c7121f754fa61afd7bee6452d",
+                listOf("gen1-kanto"),
+                listOf("aa70952cb3c34789bc63639861d304b05b1c034dfb57e58720520de72d2ed098"),
+            ),
+            Control(
+                "DUALDEX_POKEYELLOW_ROM",
+                "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
+                listOf("gen1-kanto"),
+                listOf("aa70952cb3c34789bc63639861d304b05b1c034dfb57e58720520de72d2ed098"),
+            ),
+            Control(
+                "DUALDEX_POKEGOLD_ROM",
+                "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e",
+                listOf("gen2-johto", "gen2-kanto"),
+                GEN2_PNGS,
+            ),
+            Control(
+                "DUALDEX_POKESILVER_ROM",
+                "72b190859a59623cbef6c49d601f8de52c1d2331b4f08a8d2acc17274fc19a8c",
+                listOf("gen2-johto", "gen2-kanto"),
+                GEN2_PNGS,
+            ),
+            Control(
+                "DUALDEX_POKECRYSTAL_ROM",
+                "d6702e353dcbe2d2c69183046c878ef13a0dae4006e8cdff521cca83dd1582fe",
+                listOf("gen2-johto", "gen2-kanto"),
+                GEN2_PNGS,
+            ),
             Control(
                 "DUALDEX_OFFICIAL_EMERALD_ROM",
                 "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
+                listOf("gen3-region-0"),
                 listOf("c9d5f2a5c77c0df16c14c73a15577f0c6f4a05794c191ebe72ed5a24724aadc6"),
             ),
             Control(
                 "DUALDEX_MODERN_EMERALD_ROM",
                 "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+                listOf("gen3-region-0"),
                 listOf("80c4a69b9372276818768123dcd7cad09bcced88720704c8f424bc4501931ffe"),
             ),
             Control(
                 "DUALDEX_CLASSIC_ROM",
                 "01c0177b2498e1842a1bf9ee2ddac145fb95275321bd3813dbf17341d63ad16c",
+                listOf("gen3-region-0"),
                 listOf("0c171c9fe8175629aa47de4e2854a334a2025f21b9196ba2f4c57a8cdcbc67ec"),
             ),
             Control(
                 "DUALDEX_FIRERED_ROM",
                 "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+                (0..3).map { "gen3-region-$it" },
                 listOf(
                     "c691c958253ff35595b36bf69f85d8d8940929c13deb7d0851ece717ab9d67aa",
                     "5bf5a1caf04a9bdbbbb80ea4dba5f9cdbf7d1eb046e7d29a85f6cacd392fbb70",
@@ -141,6 +204,7 @@ class WorldMapCatalogApiRealControlTest {
             Control(
                 "DUALDEX_LEAFGREEN_ROM",
                 "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825",
+                (0..3).map { "gen3-region-$it" },
                 listOf(
                     "c691c958253ff35595b36bf69f85d8d8940929c13deb7d0851ece717ab9d67aa",
                     "5bf5a1caf04a9bdbbbb80ea4dba5f9cdbf7d1eb046e7d29a85f6cacd392fbb70",

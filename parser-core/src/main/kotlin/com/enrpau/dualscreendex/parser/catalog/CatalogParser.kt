@@ -9,7 +9,7 @@ import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
-import com.enrpau.dualscreendex.parser.parse.Gen3WorldMapResolution
+import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3RuntimeMemoryLayoutResolver
 import com.enrpau.dualscreendex.parser.sprite.BallSpriteMaterializer
@@ -52,7 +52,7 @@ object CatalogParser {
                 layout,
                 onProgress,
                 context.resolveGen3AreaNames,
-                context.resolveGen3WorldMap,
+                context.resolveWorldMap,
             ),
         )
     }
@@ -65,7 +65,7 @@ object CatalogMaterializer {
         layout: ResolvedRomLayout,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
         resolveGen3AreaNames: ((Set<Int>) -> Map<Int, String>)? = null,
-        resolveGen3WorldMap: ((Set<Int>) -> Gen3WorldMapResolution)? = null,
+        resolveWorldMap: ((Int, Set<Int>) -> WorldMapResolution)? = null,
     ): ParsedCatalog {
         val rawSpecies = RecordMaterializers.species(rom, layout)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
@@ -345,14 +345,14 @@ object CatalogMaterializer {
                 status = if (layout.generation == 3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
             )
         }
-        val worldMapResolution = if (layout.generation == 3 && resolveGen3WorldMap != null) {
-            resolveGen3WorldMap(encounters.mapTo(linkedSetOf()) { it.id / 10 })
+        val worldMapResolution = if (layout.generation in 1..3 && resolveWorldMap != null) {
+            resolveWorldMap(layout.generation, encounters.mapTo(linkedSetOf()) { it.id / 10 })
         } else {
             null
         }
-        val worldMaps = (worldMapResolution as? Gen3WorldMapResolution.Resolved)?.catalog ?: WorldMapCatalog()
+        val worldMaps = (worldMapResolution as? WorldMapResolution.Resolved)?.catalog ?: WorldMapCatalog()
         capabilities[RomCapability.WORLD_MAP] = when (worldMapResolution) {
-            is Gen3WorldMapResolution.Resolved -> CapabilityEvidence(
+            is WorldMapResolution.Resolved -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
                 compatible = true,
                 confidence = 1.0,
@@ -360,7 +360,7 @@ object CatalogMaterializer {
                 reasons = worldMapResolution.reasons,
                 status = CapabilityStatus.AVAILABLE,
             )
-            is Gen3WorldMapResolution.Ambiguous -> CapabilityEvidence(
+            is WorldMapResolution.Ambiguous -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
                 compatible = false,
                 confidence = 0.0,
@@ -368,14 +368,14 @@ object CatalogMaterializer {
                 status = CapabilityStatus.AMBIGUOUS,
                 reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
             )
-            is Gen3WorldMapResolution.BudgetExceeded -> CapabilityEvidence(
+            is WorldMapResolution.BudgetExceeded -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
                 compatible = false,
                 confidence = 0.0,
                 reasons = listOf(worldMapResolution.reason),
                 status = CapabilityStatus.NOT_FOUND,
             )
-            is Gen3WorldMapResolution.Unavailable -> CapabilityEvidence(
+            is WorldMapResolution.Unavailable -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
                 compatible = false,
                 confidence = 0.0,

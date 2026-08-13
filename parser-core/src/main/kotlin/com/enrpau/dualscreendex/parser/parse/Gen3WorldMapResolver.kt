@@ -12,37 +12,34 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 
-sealed interface Gen3WorldMapResolution {
-    data class Resolved(val catalog: WorldMapCatalog, val reasons: List<String>) : Gen3WorldMapResolution
-    data class Unavailable(val reason: String) : Gen3WorldMapResolution
-    data class Ambiguous(val reason: String) : Gen3WorldMapResolution
-    data class BudgetExceeded(val reason: String) : Gen3WorldMapResolution
-}
-
 /**
  * Finds source-family ABI assets through compiled loader references, then terminates that ABI at
  * the normalized compositor/catalog boundary. It deliberately knows no ROM identity or placement.
  */
 object Gen3WorldMapResolver {
-    fun resolve(session: RomAnalysisSession, encounterBaseIds: Set<Int>): Gen3WorldMapResolution {
+    fun resolve(session: RomAnalysisSession, encounterBaseIds: Set<Int>): WorldMapResolution {
         val references = session.gbaReferenceIndex
-            ?: return Gen3WorldMapResolution.Unavailable("compiled GBA references are unavailable")
-        references.overflowReason?.let { return Gen3WorldMapResolution.BudgetExceeded(it) }
+            ?: return WorldMapResolution.Unavailable("asset-loader", "compiled GBA references are unavailable")
+        references.overflowReason?.let { return WorldMapResolution.BudgetExceeded("asset-loader", it) }
         val functionIndex = ThumbFunctionIndex.build(session.rom, references)
         val streams = decodeReferencedStreams(session.rom, references)
         val affine = affineCandidates(session.rom, references, functionIndex, streams)
         val text = textCandidates(session.rom, references, functionIndex, streams)
         if (affine.isNotEmpty() && text.isNotEmpty()) {
-            return Gen3WorldMapResolution.Ambiguous("multiple proven world-map loader formats remained eligible")
+            return WorldMapResolution.Ambiguous(
+                "asset-loader",
+                "multiple proven world-map loader formats remained eligible",
+            )
         }
         val resolution = when {
             affine.isNotEmpty() -> resolveAffine(session.rom, encounterBaseIds, references, affine)
             text.isNotEmpty() -> resolveText(session.rom, encounterBaseIds, references, functionIndex, text)
-            else -> Gen3WorldMapResolution.Unavailable(
+            else -> WorldMapResolution.Unavailable(
+                "asset-loader",
                 "no compiled-reference tile, tilemap, and BGR555 palette cluster passed a proven loader contract",
             )
         }
-        return if (resolution is Gen3WorldMapResolution.Resolved) {
+        return if (resolution is WorldMapResolution.Resolved) {
             resolution.copy(
                 reasons = resolution.reasons +
                     "indexed ${functionIndex.analyzedSiteCount} distinct compiled reference sites once",
@@ -57,19 +54,26 @@ object Gen3WorldMapResolver {
         encounterBaseIds: Set<Int>,
         references: GbaReferenceIndex,
         candidates: List<AssetCandidate>,
-    ): Gen3WorldMapResolution {
+    ): WorldMapResolution {
         val winners = authoritative(candidates)
         if (winners.size != 1) {
-            return Gen3WorldMapResolution.Ambiguous("${winners.size} equally authoritative affine asset clusters remained")
+            return WorldMapResolution.Ambiguous(
+                "asset-loader",
+                "${winners.size} equally authoritative affine asset clusters remained",
+            )
         }
         val locations = Gen3MapLocationResolver.resolveDetailed(rom, encounterBaseIds, references)
-            ?: return Gen3WorldMapResolution.Unavailable(
+            ?: return WorldMapResolution.Unavailable(
+                "map-header-join",
                 "encounter map headers and affine region entries did not resolve uniquely",
             )
         val winner = winners.single()
         val normalized = emeraldLocations(locations, winner.composition.gridWidth, winner.composition.gridHeight)
         if (normalized.isEmpty()) {
-            return Gen3WorldMapResolution.Unavailable("affine region entries retained no encounter binding")
+            return WorldMapResolution.Unavailable(
+                "encounter-binding",
+                "affine region entries retained no encounter binding",
+            )
         }
         val regionKey = "gen3-region-0"
         val assetKey = "world/$regionKey"
@@ -83,7 +87,7 @@ object Gen3WorldMapResolver {
             assetKey,
             normalized,
         )
-        return Gen3WorldMapResolution.Resolved(
+        return WorldMapResolution.Resolved(
             WorldMapCatalog(listOf(region), mapOf(assetKey to winner.composition.raster)).validate(),
             listOf(
                 "validated one affine loader asset cluster",
@@ -98,22 +102,32 @@ object Gen3WorldMapResolver {
         references: GbaReferenceIndex,
         functionIndex: ThumbFunctionIndex,
         candidates: List<TextAssetCandidate>,
-    ): Gen3WorldMapResolution {
+    ): WorldMapResolution {
         val winnerGroups = authoritativeText(candidates)
         if (winnerGroups.size != 1) {
-            return Gen3WorldMapResolution.Ambiguous("${winnerGroups.size} equally authoritative text-map asset clusters remained")
+            return WorldMapResolution.Ambiguous(
+                "asset-loader",
+                "${winnerGroups.size} equally authoritative text-map asset clusters remained",
+            )
         }
         val winner = winnerGroups.single()
         if (winner.maps.size != TEXT_REGION_COUNT) {
-            return Gen3WorldMapResolution.Unavailable(
+            return WorldMapResolution.Unavailable(
+                "map-plane",
                 "text-map loader cluster exposed ${winner.maps.size} regions instead of $TEXT_REGION_COUNT",
             )
         }
         val layouts = resolveTextSemanticLayouts(rom, references, functionIndex)
-            ?: return Gen3WorldMapResolution.Unavailable("four semantic text-map section planes did not resolve uniquely")
+            ?: return WorldMapResolution.Unavailable(
+                "map-plane",
+                "four semantic text-map section planes did not resolve uniquely",
+            )
         val sectionByBaseArea = Gen3MapLocationResolver.resolveSectionByBaseArea(rom, encounterBaseIds, references)
         if (sectionByBaseArea.isEmpty()) {
-            return Gen3WorldMapResolution.Unavailable("encounter map headers did not resolve a semantic section join")
+            return WorldMapResolution.Unavailable(
+                "map-header-join",
+                "encounter map headers did not resolve a semantic section join",
+            )
         }
         val baseAreasBySection = sectionByBaseArea.entries.groupBy({ it.value }, { it.key })
         val regions = mutableListOf<WorldMapRegion>()
@@ -121,7 +135,10 @@ object Gen3WorldMapResolver {
         winner.maps.zip(layouts).forEachIndexed { index, (map, layout) ->
             val normalized = textLocations(layout, baseAreasBySection)
             if (normalized.isEmpty()) {
-                return Gen3WorldMapResolution.Unavailable("text-map region $index retained no encounter binding")
+                return WorldMapResolution.Unavailable(
+                    "encounter-binding",
+                    "text-map region $index retained no encounter binding",
+                )
             }
             val regionKey = "gen3-region-$index"
             val assetKey = "world/$regionKey"
@@ -137,7 +154,7 @@ object Gen3WorldMapResolver {
             )
             assets[assetKey] = map.composition.raster
         }
-        return Gen3WorldMapResolution.Resolved(
+        return WorldMapResolution.Resolved(
             WorldMapCatalog(regions, assets).validate(),
             listOf(
                 "validated one shared text-map loader cluster with four independent regions",

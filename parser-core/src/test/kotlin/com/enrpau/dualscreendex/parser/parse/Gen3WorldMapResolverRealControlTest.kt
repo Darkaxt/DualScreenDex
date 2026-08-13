@@ -47,8 +47,8 @@ class Gen3WorldMapResolverRealControlTest {
                 encounterBaseIds,
             )
             val resolutionMs = (System.nanoTime() - resolutionStarted) / 1_000_000
-            assertTrue("${control.environmentVariable}: $resolution", resolution is Gen3WorldMapResolution.Resolved)
-            val resolved = resolution as Gen3WorldMapResolution.Resolved
+            assertTrue("${control.environmentVariable}: $resolution", resolution is WorldMapResolution.Resolved)
+            val resolved = resolution as WorldMapResolution.Resolved
             assertTrue(
                 "${control.environmentVariable} must report one-pass function indexing",
                 resolved.reasons.any { it.matches(Regex("indexed [1-9][0-9]* distinct compiled reference sites once")) },
