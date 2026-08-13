@@ -246,6 +246,33 @@ class BattleMemoryCoordinatorTest {
     }
 
     @Test
+    fun usesTheRomProvenBattleWindowImmediatelyOnGen3Entry() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        fixture(ewram, 0x143C, opponentPp = 35)
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 100)
+        iwram[0x1574 + 0x439] = 0x02
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context(runtimeLayout = gen3RuntimeLayout(battleMonsOffset = 0x143C)) },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(4) { coordinator.heartbeat() }
+
+        assertTrue(updates.last().active)
+        assertEquals(13, updates.last().sample?.opponents?.single()?.speciesId)
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 2001420 ") })
+        assertTrue(transport.commands.none { it.startsWith("READ_CORE_MEMORY 2000000 ") })
+        assertTrue(transport.commands.none { it.startsWith("READ_CORE_MEMORY 3000000 ") })
+        coordinator.close()
+    }
+
+    @Test
     fun learnsTheOverworldAfterASessionStartsDuringAnExistingGen3Battle() {
         val ewram = ByteArray(0x40000)
         val iwram = ByteArray(0x8000)
@@ -583,7 +610,11 @@ class BattleMemoryCoordinatorTest {
         ),
     )
 
-    private fun gen3RuntimeLayout(liveTargetOffset: Int? = null, playerPartyOffset: Int? = null) = Gen3RuntimeMemoryLayout(
+    private fun gen3RuntimeLayout(
+        liveTargetOffset: Int? = null,
+        playerPartyOffset: Int? = null,
+        battleMonsOffset: Int? = null,
+    ) = Gen3RuntimeMemoryLayout(
         mainAddress = 0x03001574,
         inBattleAddress = 0x030019AD,
         inBattleMask = 0x02,
@@ -592,6 +623,7 @@ class BattleMemoryCoordinatorTest {
         multiUsePlayerCursorAddress = liveTargetOffset?.let { 0x03001574L + it },
         playerPartyCountAddress = playerPartyOffset?.let { 0x02000000L + it - 3 },
         playerPartyAddress = playerPartyOffset?.let { 0x02000000L + it },
+        battleMonsAddress = battleMonsOffset?.let { 0x02000000L + it },
     )
 
     private fun gen1Context() = BattleCatalogContext(

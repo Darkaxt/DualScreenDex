@@ -9,6 +9,7 @@ data class Gen3RuntimeMemoryLayout(
     val multiUsePlayerCursorAddress: Long? = null,
     val playerPartyCountAddress: Long? = null,
     val playerPartyAddress: Long? = null,
+    val battleMonsAddress: Long? = null,
 ) {
     init {
         require(mainAddress in IWRAM_START..IWRAM_END)
@@ -20,6 +21,7 @@ data class Gen3RuntimeMemoryLayout(
         require((playerPartyCountAddress == null) == (playerPartyAddress == null))
         require(playerPartyCountAddress == null || playerPartyCountAddress in EWRAM_START..EWRAM_END)
         require(playerPartyAddress == null || playerPartyAddress in EWRAM_START..EWRAM_END)
+        require(battleMonsAddress == null || battleMonsAddress in EWRAM_START..EWRAM_END - BATTLE_WINDOW_TAIL_BYTES)
     }
 
     companion object {
@@ -27,6 +29,7 @@ data class Gen3RuntimeMemoryLayout(
         private const val IWRAM_END = 0x03007FFFL
         private const val EWRAM_START = 0x02000000L
         private const val EWRAM_END = 0x0203FFFFL
+        private const val BATTLE_WINDOW_TAIL_BYTES = 0x43FL
     }
 }
 

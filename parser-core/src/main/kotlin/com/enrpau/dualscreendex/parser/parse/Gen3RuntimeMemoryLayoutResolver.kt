@@ -15,6 +15,7 @@ object Gen3RuntimeMemoryLayoutResolver {
         val mainBase = analysis.scores.filterValues { it == best }.keys.singleOrNull() ?: return null
         val battleField = resolveBattleField(rom, mainBase) ?: return null
         val liveParty = resolveLiveParty(analysis.references)
+        val battleLayout = resolveBattleLayout(analysis.references)
         return CatalogGen3RuntimeMemoryLayout(
             mainAddress = mainBase,
             inBattleAddress = battleField.address,
@@ -25,7 +26,45 @@ object Gen3RuntimeMemoryLayoutResolver {
             multiUsePlayerCursorEvidence = null,
             playerPartyCountAddress = liveParty?.countAddress,
             playerPartyAddress = liveParty?.partyAddress,
+            battleMonsAddress = battleLayout?.battleMonsAddress,
         )
+    }
+
+    /**
+     * The retail/expansion Gen III battle globals are emitted as one stable related layout:
+     * battler count and positions precede gBattleMons, while the move and target cursors follow it.
+     * Every address must be independently present in compiled literal pools. Selection is based on
+     * the complete reference tuple and fails closed when two layouts have equal authority.
+     */
+    private fun resolveBattleLayout(references: Map<Long, Int>): LiveBattleLayout? {
+        val candidates = references.keys.mapNotNull { battleMonsAddress ->
+            if (battleMonsAddress !in EWRAM_START..EWRAM_END || battleMonsAddress and 3L != 0L) {
+                return@mapNotNull null
+            }
+            if (battleMonsAddress + BATTLE_TARGET_CURSOR_DELTA + MAX_BATTLERS > EWRAM_END + 1) {
+                return@mapNotNull null
+            }
+            val counts = listOf(
+                references[battleMonsAddress] ?: return@mapNotNull null,
+                references[battleMonsAddress - BATTLE_COUNT_DELTA] ?: return@mapNotNull null,
+                references[battleMonsAddress - BATTLE_POSITIONS_DELTA] ?: return@mapNotNull null,
+                references[battleMonsAddress + BATTLE_MOVE_CURSOR_DELTA] ?: return@mapNotNull null,
+                references[battleMonsAddress + BATTLE_TARGET_CURSOR_DELTA] ?: return@mapNotNull null,
+                references[battleMonsAddress + MAX_BATTLERS * BATTLE_MON_RECORD_BYTES]
+                    ?: return@mapNotNull null,
+            )
+            LiveBattleLayout(battleMonsAddress, counts)
+        }
+        val best = candidates.maxWithOrNull(
+            compareBy<LiveBattleLayout> { it.totalReferences }
+                .thenBy { it.referenceCounts[0] }
+                .thenBy { it.referenceCounts[1] }
+                .thenBy { it.referenceCounts[2] }
+                .thenBy { it.referenceCounts[3] }
+                .thenBy { it.referenceCounts[4] }
+                .thenBy { it.referenceCounts[5] },
+        ) ?: return null
+        return candidates.filter { it.score == best.score }.singleOrNull()
     }
 
     /**
@@ -181,6 +220,12 @@ object Gen3RuntimeMemoryLayoutResolver {
     private const val MIN_MAIN_TAIL_REFERENCES = 3
     private const val LIVE_PARTY_BYTES = 6 * 100L
     private const val MAX_COUNT_PADDING = 3L
+    private const val BATTLE_COUNT_DELTA = 0x1CL
+    private const val BATTLE_POSITIONS_DELTA = 0x10L
+    private const val BATTLE_MOVE_CURSOR_DELTA = 0x438L
+    private const val BATTLE_TARGET_CURSOR_DELTA = 0x43CL
+    private const val MAX_BATTLERS = 4L
+    private const val BATTLE_MON_RECORD_BYTES = 0x58L
     private const val LOOK_BEHIND_BYTES = 16
     private const val TRACE_BYTES = 64
     private const val OR_OPERATION = 12
@@ -200,6 +245,14 @@ object Gen3RuntimeMemoryLayoutResolver {
         val countReferences: Int,
     ) {
         val score: Pair<Int, Int> get() = partyReferences to countReferences
+    }
+
+    private data class LiveBattleLayout(
+        val battleMonsAddress: Long,
+        val referenceCounts: List<Int>,
+    ) {
+        val totalReferences: Int get() = referenceCounts.sum()
+        val score: List<Int> get() = listOf(totalReferences) + referenceCounts
     }
 
     private sealed interface Value {

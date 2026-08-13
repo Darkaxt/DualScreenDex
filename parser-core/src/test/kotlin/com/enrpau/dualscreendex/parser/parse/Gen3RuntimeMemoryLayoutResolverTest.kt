@@ -18,6 +18,7 @@ class Gen3RuntimeMemoryLayoutResolverTest {
         repeat(4) { putU32(bytes, 0x300 + it * 4, 0x03002378) }
         repeat(8) { putU32(bytes, 0x500 + it * 4, 0x02001004) }
         repeat(3) { putU32(bytes, 0x540 + it * 4, 0x02001001) }
+        writeBattleLayoutReferences(bytes, 0x600, 0x0200203C)
         writeBattleFlagMutation(bytes, 0x400, 0x03001574, 0x439, 0x02, set = true)
         writeBattleFlagMutation(bytes, 0x440, 0x03001574, 0x439, 0x02, set = false)
 
@@ -32,6 +33,7 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                 multiUsePlayerCursorEvidence = null,
                 playerPartyCountAddress = 0x02001001,
                 playerPartyAddress = 0x02001004,
+                battleMonsAddress = 0x0200203C,
             ),
             Gen3RuntimeMemoryLayoutResolver.resolve(RomImage(bytes)),
         )
@@ -65,6 +67,20 @@ class Gen3RuntimeMemoryLayoutResolverTest {
     }
 
     @Test
+    fun keepsTheMainAbiButWithholdsAmbiguousBattleLayoutReferences() {
+        val bytes = ByteArray(0x3000)
+        writeCandidate(bytes, 0, 0x03001000)
+        writeBattleFlagMutation(bytes, 0x500, 0x03001000, 0x439, 0x02, set = true)
+        writeBattleFlagMutation(bytes, 0x540, 0x03001000, 0x439, 0x02, set = false)
+        writeBattleLayoutReferences(bytes, 0x800, 0x0200203C)
+        writeBattleLayoutReferences(bytes, 0xA00, 0x0200303C)
+
+        val resolved = requireNotNull(Gen3RuntimeMemoryLayoutResolver.resolve(RomImage(bytes)))
+
+        assertNull(resolved.battleMonsAddress)
+    }
+
+    @Test
     fun recognizesTheSourceVerifiedModernEmerald35Abi() {
         val configured = System.getenv("DUALDEX_MODERN_EMERALD_ROM")
         assumeTrue("set DUALDEX_MODERN_EMERALD_ROM to run this live-ROM regression", !configured.isNullOrBlank())
@@ -82,6 +98,7 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                 multiUsePlayerCursorEvidence = null,
                 playerPartyCountAddress = 0x0201D9C5,
                 playerPartyAddress = 0x0201D9C8,
+                battleMonsAddress = 0x0200143C,
             ),
             Gen3RuntimeMemoryLayoutResolver.resolve(RomImage(Files.readAllBytes(path))),
         )
@@ -90,6 +107,24 @@ class Gen3RuntimeMemoryLayoutResolverTest {
     private fun writeCandidate(bytes: ByteArray, start: Int, base: Int) {
         repeat(32) { putU32(bytes, start + it * 4, base) }
         repeat(3) { putU32(bytes, start + 0x200 + it * 4, base + 0x438) }
+    }
+
+    private fun writeBattleLayoutReferences(bytes: ByteArray, start: Int, battleMonsAddress: Int) {
+        val related = listOf(
+            battleMonsAddress to 12,
+            battleMonsAddress - 0x1C to 6,
+            battleMonsAddress - 0x10 to 4,
+            battleMonsAddress + 0x438 to 5,
+            battleMonsAddress + 0x43C to 3,
+            battleMonsAddress + 4 * 0x58 to 7,
+        )
+        var offset = start
+        related.forEach { (address, references) ->
+            repeat(references) {
+                putU32(bytes, offset, address)
+                offset += 4
+            }
+        }
     }
 
     private fun writeBattleFlagMutation(

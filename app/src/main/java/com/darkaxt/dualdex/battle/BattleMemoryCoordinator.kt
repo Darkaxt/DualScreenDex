@@ -335,7 +335,8 @@ class BattleMemoryCoordinator(
         publishLiveParty(regions, context)
         val lifecycleActive = gen3Runtime?.battleActive
         if (context.generation == 3 && cachedLayout == null) {
-            gen3BattleDiscoveryRequested = lifecycleActive == true
+            cachedLayout = if (lifecycleActive == true) parserResolvedGen3BattleLayout(context) else null
+            gen3BattleDiscoveryRequested = lifecycleActive == true && cachedLayout == null
         }
         val wasActive = tracker.missed().active
         val lifecycleEnded = context.generation == 3 &&
@@ -579,6 +580,21 @@ class BattleMemoryCoordinator(
 
     private fun contextRuntimeLayout(): Gen3RuntimeMemoryLayout? = catalogProvider()?.gen3RuntimeMemoryLayout
 
+    private fun parserResolvedGen3BattleLayout(context: BattleCatalogContext): ResolvedBattleLayout? {
+        val address = context.gen3RuntimeMemoryLayout?.battleMonsAddress ?: return null
+        val offset = (address - EWRAM_BASE).toInt()
+        if (offset !in COUNT_DELTA until EWRAM_BYTES - CACHED_WINDOW_BYTES) return null
+        return ResolvedBattleLayout(
+            battleMonsOffset = offset,
+            battlerCountOffset = offset - COUNT_DELTA,
+            battlerPositionsOffset = offset - POSITIONS_DELTA,
+            outcomeOffset = offset + OUTCOME_DELTA,
+            moveCursorOffset = offset + MOVE_CURSOR_DELTA,
+            targetCursorOffset = offset + TARGET_CURSOR_DELTA,
+            battlerCount = 2,
+        )
+    }
+
     private fun livePartyRegions(context: BattleCatalogContext?): List<CoreMemoryRegion> {
         val layout = context?.gen3RuntimeMemoryLayout ?: return emptyList()
         if (context.saveParseContext == null) return emptyList()
@@ -709,6 +725,10 @@ class BattleMemoryCoordinator(
         private const val SAVE_LOCATION_GROUP_OFFSET = 4
         private const val SAVE_LOCATION_NUMBER_OFFSET = 5
         private const val COUNT_DELTA = 0x1C
+        private const val POSITIONS_DELTA = 0x10
+        private const val OUTCOME_DELTA = 0x2B2
+        private const val MOVE_CURSOR_DELTA = 0x438
+        private const val TARGET_CURSOR_DELTA = 0x43C
         private const val CACHED_WINDOW_BYTES = 0x45C
         private const val PRODUCTION_CHUNK_BYTES = 1024
         private const val REQUIRED_STABLE_OVERWORLD_OBSERVATIONS = 2

@@ -50,6 +50,7 @@ class ModernEmeraldEncounterLiveRomTest {
                 multiUsePlayerCursorEvidence = null,
                 playerPartyCountAddress = 0x0201D9C5,
                 playerPartyAddress = 0x0201D9C8,
+                battleMonsAddress = 0x0200143C,
             ),
             catalog.runtimeMetadata.gen3RuntimeMemoryLayout,
         )

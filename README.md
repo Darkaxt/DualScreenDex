@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Public prerelease [`v1.0.0-rc.23`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.23) retains the stable RC19 layout and the Organic Area silhouettes from RC22, while structurally validated Gen III ROMs now publish their current party from live RAM before an in-game save. Reviewed ROM behavior is published in [ROM Hacks Compatibility](reports/dualdex-rom-hacks-compatibility.md), with lower-level evidence in [Parser Compatibility](reports/dualdex-parser-compatibility.md). Stable `v1.0.0` has not been released.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, save-backed knowledge, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Public prerelease [`v1.0.0-rc.24`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.24) retains the stable RC19 layout, Organic Area silhouettes and live Gen III party detection, while structurally validated Gen III ROMs now enter combat from a bounded ROM-derived live battle window instead of a full-memory scan. Reviewed ROM behavior is published in [ROM Hacks Compatibility](reports/dualdex-rom-hacks-compatibility.md), with lower-level evidence in [Parser Compatibility](reports/dualdex-parser-compatibility.md). Stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
@@ -224,7 +224,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in signed RC9; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Public signed candidate | [`v1.0.0-rc.23`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.23) prerelease; protected signing and public-asset verification are mandatory. Device installation is permitted, while validation remains manual per the current handoff boundary. |
+| Public signed candidate | [`v1.0.0-rc.24`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.24) prerelease; protected signing and public-asset verification are mandatory. Device installation is permitted, while validation remains manual per the current handoff boundary. |
 
 ## Parser development
 

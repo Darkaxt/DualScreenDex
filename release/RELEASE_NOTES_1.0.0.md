@@ -2,6 +2,13 @@
 
 DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
+## RC24: immediate ROM-derived Gen III battle window
+
+- Resolves the Gen III live battle-mon array structurally from compiled ROM references.
+- Reads the bounded battle window immediately after the proven live battle flag activates, removing the serialized full-EWRAM scan from supported ROMs.
+- Retains the existing fail-closed full-memory discovery path when the ROM evidence is absent or ambiguous.
+- Keeps the RC23 live party reader, stable RC19 interface, Organic Area silhouettes and All Files permission contract unchanged.
+
 ## RC23 live party
 
 - Reads the active Gen III party from a structurally resolved `gPlayerPartyCount`/`gPlayerParty` EWRAM pair, so a newly received starter appears before the first in-game save.

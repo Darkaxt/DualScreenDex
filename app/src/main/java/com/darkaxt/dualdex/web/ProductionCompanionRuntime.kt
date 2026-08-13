@@ -284,6 +284,7 @@ class ProductionCompanionRuntime(
                     multiUsePlayerCursorAddress = layout.multiUsePlayerCursorAddress,
                     playerPartyCountAddress = layout.playerPartyCountAddress,
                     playerPartyAddress = layout.playerPartyAddress,
+                    battleMonsAddress = layout.battleMonsAddress,
                 )
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),

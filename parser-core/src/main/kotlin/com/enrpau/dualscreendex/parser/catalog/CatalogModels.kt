@@ -205,6 +205,7 @@ data class CatalogGen3RuntimeMemoryLayout(
     val multiUsePlayerCursorEvidence: RuntimeMemoryEvidence? = null,
     val playerPartyCountAddress: Long? = null,
     val playerPartyAddress: Long? = null,
+    val battleMonsAddress: Long? = null,
 ) {
     init {
         require((playerPartyCountAddress == null) == (playerPartyAddress == null)) {
@@ -212,6 +213,9 @@ data class CatalogGen3RuntimeMemoryLayout(
         }
         require(playerPartyCountAddress == null || playerPartyCountAddress in 0x02000000L..0x0203FFFFL)
         require(playerPartyAddress == null || playerPartyAddress in 0x02000000L..0x0203FFFFL)
+        require(battleMonsAddress == null || battleMonsAddress in 0x02000000L..0x0203FBBFL) {
+            "battle-mon window must fit in EWRAM"
+        }
     }
 }
 
