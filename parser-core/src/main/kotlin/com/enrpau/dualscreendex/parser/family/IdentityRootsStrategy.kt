@@ -18,6 +18,8 @@ import com.enrpau.dualscreendex.parser.parse.GbaPublishedDataState
 import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolution
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
+import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolution
+import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.util.Collections
@@ -33,6 +35,7 @@ internal sealed interface IdentityRootsPhaseResult {
         val identityMatched: Boolean,
         scoreEvidence: List<ScoreEvidence>,
         expansion: PokeemeraldExpansionResolution?,
+        headerlessUnifiedSpecies: HeaderlessUnifiedSpeciesResolution? = null,
         compiledGbaReferences: GbaCompiledReferenceIndex?,
         tableResolution: ProfileTableResolution,
         val codec: PokemonTextCodec,
@@ -41,6 +44,7 @@ internal sealed interface IdentityRootsPhaseResult {
         val baseProfile = baseProfile?.immutableCopy()
         val scoreEvidence: List<ScoreEvidence> = Collections.unmodifiableList(scoreEvidence.toList())
         val expansion = expansion?.immutableCopy()
+        val headerlessUnifiedSpecies = headerlessUnifiedSpecies
         val compiledGbaReferences = compiledGbaReferences?.copy(
             counts = Collections.unmodifiableMap(LinkedHashMap(compiledGbaReferences.counts)),
         )
@@ -104,13 +108,29 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         } else {
             null
         }
+        val headerlessUnifiedSpecies = if (
+            generation == 3 && identityMatched && expansion == null &&
+            definition.family == com.enrpau.dualscreendex.parser.model.EngineFamily.EMERALD
+        ) {
+            HeaderlessUnifiedSpeciesResolver.resolve(session)
+        } else {
+            null
+        }
         val compiledGbaReferences = if (generation == 3 && expansion == null) {
             requireNotNull(session.gbaReferenceIndex).asLegacyCounts()
         } else {
             null
         }
-        val tableResolution = expansion?.let { ProfileTableResolution(it.tables) }
+        val inheritedTableResolution = expansion?.let { ProfileTableResolution(it.tables) }
             ?: resolveTables(session.rom, definition, baseProfile)
+        val tableResolution = headerlessUnifiedSpecies?.let { unified ->
+            inheritedTableResolution.copy(
+                tables = inheritedTableResolution.tables.copy(
+                    speciesNames = unified.tables.speciesNames,
+                    baseStats = unified.tables.baseStats,
+                ),
+            )
+        } ?: inheritedTableResolution
         val codec = if (generation == 3) PokemonTextCodec.gbaEnglish else PokemonTextCodec.gbEnglish
         return IdentityRootsPhaseResult.Resolved(
             exactProfile = exact,
@@ -118,6 +138,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             identityMatched = identityMatched,
             scoreEvidence = score,
             expansion = expansion,
+            headerlessUnifiedSpecies = headerlessUnifiedSpecies,
             compiledGbaReferences = compiledGbaReferences,
             tableResolution = tableResolution,
             codec = codec,

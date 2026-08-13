@@ -138,10 +138,20 @@ data class ResolvedRomLayout(
     val moveCount: Int?,
     val tables: ProfileTables,
     val pokeemeraldExpansion: PokeemeraldExpansionMetadata? = null,
+    val headerlessUnifiedSpecies: HeaderlessUnifiedSpeciesMetadata? = null,
     val compiledGbaReferences: GbaCompiledReferenceIndex? = null,
     val learnsetTables: List<Gen3LearnsetTableLayout> = emptyList(),
     val learnsetSelector: Gen3LearnsetSelectorEvidence? = null,
     val resolvedDatasets: ResolvedDatasetLayouts = ResolvedDatasetLayouts(),
+)
+
+/** Binary-proven unified species record ABI without a published expansion header. */
+data class HeaderlessUnifiedSpeciesMetadata(
+    val speciesRecordSize: Int,
+    val activePredicateOffset: Int,
+    val speciesNameOffset: Int,
+    val speciesNameWidth: Int,
+    val nationalDexOffset: Int,
 )
 
 data class GbaCompiledReferenceIndex(

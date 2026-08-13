@@ -54,6 +54,7 @@ class RomAnalysisSession(
     val limits: ResolutionLimits = ResolutionLimits(),
     private val gbaReferenceIndexFactory: GbaReferenceIndexFactory = DefaultGbaReferenceIndexFactory,
 ) {
+    private val nominatedGbaReferenceSiteCache = mutableMapOf<Int, GbaTargetReferenceEvidence?>()
     val exactProfileIdentity: ExactProfileIdentity? = exactProfile?.let {
         ExactProfileIdentity.derive(it, rom, header)
     }
@@ -67,5 +68,39 @@ class RomAnalysisSession(
         } else {
             null
         }
+    }
+
+    /**
+     * Enumerates concrete literal-load sites once for a structurally nominated target whose
+     * ordinary reference-index entry retained counts only. This is session-owned and cached so
+     * family phases never perform independent whole-ROM rescans.
+     */
+    @Synchronized
+    internal fun nominatedGbaReferenceSites(targetOffset: Int): GbaTargetReferenceEvidence? {
+        if (header.platform != Platform.GBA || targetOffset !in 0 until rom.size) return null
+        if (nominatedGbaReferenceSiteCache.containsKey(targetOffset)) {
+            return nominatedGbaReferenceSiteCache[targetOffset]
+        }
+        val indexed = gbaReferenceIndex?.target(targetOffset)
+        val resolved = when {
+            indexed == null -> null
+            indexed.siteEvidenceAvailable -> indexed
+            indexed.count > limits.maxNominatedGbaReferenceSites -> GbaTargetReferenceEvidence(
+                count = indexed.count,
+                instructionSites = emptyList(),
+                observedSites = indexed.count,
+                limitSites = limits.maxNominatedGbaReferenceSites,
+                overflowReason = "nominated compiled reference site budget exceeded " +
+                    "(${indexed.count} > ${limits.maxNominatedGbaReferenceSites})",
+            )
+            else -> SafeGbaReferenceSiteEnumerator.enumerate(
+                rom = rom,
+                targetOffset = targetOffset,
+                expectedCount = indexed.count,
+                maxSites = limits.maxNominatedGbaReferenceSites,
+            )
+        }
+        nominatedGbaReferenceSiteCache[targetOffset] = resolved
+        return resolved
     }
 }

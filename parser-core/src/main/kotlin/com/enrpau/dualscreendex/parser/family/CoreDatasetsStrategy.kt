@@ -98,15 +98,16 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         val exact = identity.exactProfile
         val profile = identity.baseProfile
         val expansion = identity.expansion
+        val headerlessUnifiedSpecies = identity.headerlessUnifiedSpecies
         val tableResolution = identity.tableResolution
         val publishedDataEvidence = tableResolution.publishedDataEvidence
         val codec = identity.codec
         var tables = tableResolution.tables
 
-        var speciesCount = expansion?.speciesCount ?: inferSpeciesCount(
+        var speciesCount = expansion?.speciesCount ?: headerlessUnifiedSpecies?.speciesCount ?: inferSpeciesCount(
             rom, tables, codec, profile, generation, exactProfile = exact != null,
         )
-        if (generation == 3 && expansion == null && exact == null && speciesCount != null) {
+        if (generation == 3 && expansion == null && headerlessUnifiedSpecies == null && exact == null && speciesCount != null) {
             val reconciled = Gen3DynamicTableResolver.reconcileSpeciesExtent(
                 rom,
                 tables,
@@ -130,12 +131,18 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 rom, tables, speciesCount, inferredMoveCount,
             )
             tables = dynamic.tables
-            dynamicBaseStatsEvidence = dynamic.baseStatsEvidence
+            dynamicBaseStatsEvidence = dynamic.baseStatsEvidence.takeIf { headerlessUnifiedSpecies == null }
             dynamicMoveDataEvidence = dynamic.moveDataEvidence
+            headerlessUnifiedSpecies?.let { unified ->
+                tables = tables.copy(
+                    speciesNames = unified.tables.speciesNames,
+                    baseStats = unified.tables.baseStats,
+                )
+            }
         }
 
         var baseStatsLayout = tables.baseStats?.let { layout ->
-            if (generation == 3 && speciesCount != null && expansion == null) {
+            if (generation == 3 && speciesCount != null && expansion == null && headerlessUnifiedSpecies == null) {
                 val inferredSize = TableValidators.inferBaseStatsRecordSize(
                     rom, layout.offset, speciesCount, generation,
                 )
@@ -145,7 +152,8 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             }
         }
         var speciesNamesLayout = tables.speciesNames
-        var names = validateNames(rom, speciesNamesLayout, speciesCount, codec, generation)
+        var names = headerlessUnifiedSpecies?.speciesNamesEvidence
+            ?: validateNames(rom, speciesNamesLayout, speciesCount, codec, generation)
         if (generation == 2 && !names.compatible && speciesCount != null) {
             TableValidators.locateFixedNameTable(
                 rom, speciesCount, 8..16, codec, preferredOffset = speciesNamesLayout?.offset,
@@ -158,7 +166,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 names = relocated
             }
         }
-        var stats = publishedDataEvidence ?: dynamicBaseStatsEvidence ?: baseStatsLayout?.let {
+        var stats = headerlessUnifiedSpecies?.baseStatsEvidence ?: publishedDataEvidence ?: dynamicBaseStatsEvidence ?: baseStatsLayout?.let {
             val validationCount = if (generation == 1) it.count else speciesCount ?: it.count
             TableValidators.baseStats(rom, it.offset, validationCount, it.recordSize, generation)
         } ?: missing("species base-stat table not resolved")

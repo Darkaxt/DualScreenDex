@@ -256,3 +256,53 @@ internal object SafeGbaReferenceIndexBuilder {
     private const val THUMB_LITERAL_LOAD_OPCODE = 0x4800
     private const val GBA_ROM_BASE = 0x08000000L
 }
+
+/** ROM-bounded concrete-site enumeration for one session-nominated reference target. */
+internal object SafeGbaReferenceSiteEnumerator {
+    fun enumerate(
+        rom: RomImage,
+        targetOffset: Int,
+        expectedCount: Int,
+        maxSites: Int,
+    ): GbaTargetReferenceEvidence {
+        val sites = ArrayList<Int>(minOf(expectedCount, maxSites))
+        var instructionOffset = 0
+        while (instructionOffset <= rom.size - 2) {
+            val instruction = rom.u16le(instructionOffset)
+            if (instruction and 0xF800 == 0x4800) {
+                val pc = (instructionOffset + 4) and -4
+                val literalOffset = pc.toLong() + (instruction and 0xFF).toLong() * 4L
+                if (literalOffset in 0..rom.size.toLong() - 4L) {
+                    val rawTarget = rom.u32le(literalOffset.toInt())
+                    if (rawTarget - 0x08000000L == targetOffset.toLong()) {
+                        if (sites.size == maxSites) {
+                            return GbaTargetReferenceEvidence(
+                                count = expectedCount,
+                                instructionSites = emptyList(),
+                                observedSites = sites.size + 1,
+                                limitSites = maxSites,
+                                overflowReason = "nominated compiled reference site budget exceeded " +
+                                    "(${sites.size + 1} > $maxSites)",
+                            )
+                        }
+                        sites += instructionOffset
+                    }
+                }
+            }
+            instructionOffset += 2
+        }
+        val mismatch = sites.size != expectedCount
+        return GbaTargetReferenceEvidence(
+            count = expectedCount,
+            instructionSites = if (mismatch) emptyList() else sites,
+            observedSites = sites.size,
+            limitSites = maxSites,
+            overflowReason = if (mismatch) {
+                "nominated compiled reference count changed during the analysis session " +
+                    "(${sites.size} != $expectedCount)"
+            } else {
+                null
+            },
+        )
+    }
+}

@@ -98,6 +98,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                     moveCount = core.moveCount,
                     tables = resolvedTables,
                     pokeemeraldExpansion = expansion?.metadata,
+                    headerlessUnifiedSpecies = identity.headerlessUnifiedSpecies?.metadata,
                     compiledGbaReferences = identity.compiledGbaReferences,
                     learnsetTables = dependent.learnsetTables,
                     learnsetSelector = dependent.learnsetSelector,

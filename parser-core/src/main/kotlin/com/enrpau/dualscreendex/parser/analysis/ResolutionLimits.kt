@@ -4,6 +4,7 @@ package com.enrpau.dualscreendex.parser.analysis
 data class ResolutionLimits(
     val maxDistinctGbaReferenceTargets: Int = 32_768,
     val maxCompiledReferenceSitesPerCandidate: Int = 16,
+    val maxNominatedGbaReferenceSites: Int = 4_096,
     val maxProbeRootsPerDataset: Int = 16_384,
     val maxProbeWorkPerDataset: Int = 65_536,
     val maxCandidatesPerDataset: Int = 4_096,
@@ -24,6 +25,9 @@ data class ResolutionLimits(
         }
         require(maxCompiledReferenceSitesPerCandidate > 0) {
             "compiled reference site budget must be positive"
+        }
+        require(maxNominatedGbaReferenceSites > 0) {
+            "nominated compiled reference site budget must be positive"
         }
         require(maxDatasetExtentBytes > 0) {
             "dataset extent budget must be positive"

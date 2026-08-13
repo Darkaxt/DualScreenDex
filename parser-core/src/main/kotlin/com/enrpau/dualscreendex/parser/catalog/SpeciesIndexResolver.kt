@@ -91,6 +91,20 @@ object SpeciesIndexResolver {
                 },
             )
         }
+        layout.headerlessUnifiedSpecies?.let { unified ->
+            val table = layout.tables.baseStats ?: return SpeciesIndexResolution.Unavailable(
+                emptyMap(),
+                "headerless unified species table is unavailable",
+            )
+            val stride = table.stride ?: unified.speciesRecordSize
+            return SpeciesIndexResolution.Resolved(
+                (1 until speciesCount).mapNotNull { id ->
+                    val row = table.offset + id * stride
+                    if (rom.u8(row + unified.activePredicateOffset) == 0) null
+                    else id to rom.u16le(row + unified.nationalDexOffset)
+                }.toMap(),
+            )
+        }
         val storedCount = speciesCount - 1
         if (storedCount <= 0) return SpeciesIndexResolution.Resolved(mapOf(0 to 0))
         val fallback = unresolvedGen3Fallback(speciesCount)
