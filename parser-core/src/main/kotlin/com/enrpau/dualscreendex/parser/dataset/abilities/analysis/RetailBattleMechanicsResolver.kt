@@ -31,6 +31,7 @@ data class RetailBattleMechanicsProof(
     val decodedCallSites: List<Int>,
     val callerEvidence: List<RetailCallerEvidence>,
     val moveTableReferenceSites: List<Int>,
+    val literalVeneerSites: List<Int>,
 )
 
 data class ResolvedRetailBattleMechanics(
@@ -135,6 +136,7 @@ object RetailBattleMechanicsResolver {
                             decodedCallSites = callSites.distinct().sorted(),
                             callerEvidence = evidence,
                             moveTableReferenceSites = routine.moveReferenceSites.sorted(),
+                            literalVeneerSites = routine.literalVeneerSites.sorted(),
                         ),
                     )
                 }
@@ -314,6 +316,7 @@ object RetailBattleMechanicsResolver {
     private fun reachableRoutine(image: RomImage, entry: Int, moveReferences: Set<Int>): RoutineEvidence? {
         val queue = ArrayDeque<Int>().apply { add(entry) }
         val visited = linkedMapOf<Int, Arm7Instruction>()
+        val veneerSites = linkedSetOf<Int>()
         while (queue.isNotEmpty() && visited.size < MAX_ROUTINE_INSTRUCTIONS) {
             val offset = queue.removeFirst()
             if (offset in visited) continue
@@ -327,6 +330,12 @@ object RetailBattleMechanicsResolver {
                     if (target in 0 until image.size) queue += target
                 }
                 is Arm7ControlEffect.Call -> queue += offset + instruction.size
+                is Arm7ControlEffect.IndirectBranch, is Arm7ControlEffect.ProgramCounterWrite -> {
+                    literalThumbVeneer(image, instruction)?.let { veneer ->
+                        veneerSites += veneer.loadOffset
+                        queue += veneer.targetOffset
+                    }
+                }
                 else -> Unit
             }
         }
@@ -334,6 +343,7 @@ object RetailBattleMechanicsResolver {
         return RoutineEvidence(
             instructions = visited.values.toList(),
             moveReferenceSites = visited.keys.intersect(moveReferences),
+            literalVeneerSites = veneerSites,
         )
     }
 
@@ -357,7 +367,7 @@ object RetailBattleMechanicsResolver {
             val offset = queue.removeFirst()
             val instruction = decoded(image, offset) ?: continue
             val output = transferPointerOffsets(states.getValue(offset), instruction, stride, fields)
-            routineSuccessors(instruction, image.size).forEach { successor ->
+            routineSuccessors(image, instruction).forEach { successor ->
                 val merged = states[successor]?.merge(output) ?: output
                 if (merged != states[successor]) {
                     states[successor] = merged
@@ -439,15 +449,17 @@ object RetailBattleMechanicsResolver {
         return pointer.mapTo(linkedSetOf()) { it + delta }.filterTo(linkedSetOf()) { it in 0 until stride }
     }
 
-    private fun routineSuccessors(instruction: Arm7Instruction, imageSize: Int): Set<Int> = buildSet {
+    private fun routineSuccessors(image: RomImage, instruction: Arm7Instruction): Set<Int> = buildSet {
         when (val control = instruction.controlEffect) {
             is Arm7ControlEffect.Sequential -> add(instruction.offset + instruction.size)
             is Arm7ControlEffect.DirectBranch -> {
                 if (control.conditional) add(instruction.offset + instruction.size)
                 val target = control.target.toInt() and -2
-                if (target in 0 until imageSize) add(target)
+                if (target in 0 until image.size) add(target)
             }
             is Arm7ControlEffect.Call -> add(instruction.offset + instruction.size)
+            is Arm7ControlEffect.IndirectBranch, is Arm7ControlEffect.ProgramCounterWrite ->
+                literalThumbVeneer(image, instruction)?.let { add(it.targetOffset) }
             else -> Unit
         }
     }
@@ -478,6 +490,7 @@ object RetailBattleMechanicsResolver {
     private data class RoutineEvidence(
         val instructions: List<Arm7Instruction>,
         val moveReferenceSites: Set<Int>,
+        val literalVeneerSites: Set<Int>,
     )
 
     private data class PointerOffsetState(

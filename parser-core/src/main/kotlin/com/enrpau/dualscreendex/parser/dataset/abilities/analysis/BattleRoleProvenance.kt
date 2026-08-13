@@ -239,10 +239,37 @@ object BattleRoleProvenance {
                 is Arm7ControlEffect.Return -> emitReturnedAttackMechanic(state, attackMechanics)
                 is Arm7ControlEffect.IndirectBranch -> {
                     val branch = instruction as? Arm7BranchRegister
-                    if (branch == null || state[branch.targetRegister] !is Value.ReturnAddress) {
-                        incomplete++
-                    } else {
+                    val targetValue = branch?.let { state[it.targetRegister] }
+                    val veneer = literalThumbVeneer(image, instruction)
+                    if (targetValue is Value.ReturnAddress) {
                         emitReturnedAttackMechanic(state, attackMechanics)
+                    } else if (veneer != null && targetValue == Value.Constant(veneer.rawTarget)) {
+                        enqueueTarget(
+                            queue,
+                            image,
+                            veneer.targetOffset.toLong() or 1L,
+                            Arm7InstructionSet.THUMB,
+                            state,
+                            prioritize = state.hasPendingAttackProof(),
+                        )
+                    } else {
+                        incomplete++
+                    }
+                }
+                is Arm7ControlEffect.ProgramCounterWrite -> {
+                    val veneer = literalThumbVeneer(image, instruction)
+                    val source = (instruction as? Arm7DataProcessing)?.second as? Arm7RegisterOperand
+                    if (veneer != null && source != null && state[source.register] == Value.Constant(veneer.rawTarget)) {
+                        enqueueTarget(
+                            queue,
+                            image,
+                            veneer.targetOffset.toLong() or 1L,
+                            Arm7InstructionSet.THUMB,
+                            state,
+                            prioritize = state.hasPendingAttackProof(),
+                        )
+                    } else {
+                        incomplete++
                     }
                 }
                 else -> incomplete++
@@ -940,6 +967,10 @@ object BattleRoleProvenance {
                     add(CfgNode(effect.target.toInt() and -2, node.instructionSet))
                     if (effect.conditional) add(next)
                 }
+                is Arm7ControlEffect.IndirectBranch, is Arm7ControlEffect.ProgramCounterWrite ->
+                    literalThumbVeneer(image, instruction)?.let { veneer ->
+                        setOf(CfgNode(veneer.targetOffset, Arm7InstructionSet.THUMB))
+                    }.orEmpty()
                 else -> emptySet()
             }
             successors[node] = edges
