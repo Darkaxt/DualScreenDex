@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolver
 import com.enrpau.dualscreendex.parser.catalog.RelationshipMaterializers
 import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
@@ -18,12 +19,37 @@ import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 
+internal data class CatalogAnalysisContext(
+    val analysis: ParseResult,
+    val resolveGen3AreaNames: (Set<Int>) -> Map<Int, String>,
+    val resolveGen3WorldMap: (Set<Int>) -> Gen3WorldMapResolution,
+)
+
 object ParserOrchestrator {
     const val minimumScore = 75
     const val minimumMargin = 10
     private val familyProbeCoordinator = FamilyProbeCoordinator()
 
     fun analyze(rom: RomImage): ParseResult = analyze(rom, ::newSession)
+
+    internal fun analyzeForCatalog(rom: RomImage): CatalogAnalysisContext {
+        lateinit var sharedSession: RomAnalysisSession
+        val analysis = analyze(rom) { analyzedRom, header, exactProfile ->
+            newSession(analyzedRom, header, exactProfile).also { sharedSession = it }
+        }
+        return CatalogAnalysisContext(
+            analysis = analysis,
+            resolveGen3AreaNames = { baseAreaIds ->
+                val references = sharedSession.gbaReferenceIndex
+                if (references == null || references.overflowed) {
+                    emptyMap()
+                } else {
+                    Gen3MapLocationResolver.resolve(sharedSession.rom, baseAreaIds, references)
+                }
+            },
+            resolveGen3WorldMap = { baseAreaIds -> Gen3WorldMapResolver.resolve(sharedSession, baseAreaIds) },
+        )
+    }
 
     internal fun analyze(
         rom: RomImage,

@@ -82,6 +82,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     testImplementation(libs.junit)
+    testImplementation("org.xerial:sqlite-jdbc:3.53.1.0")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation("androidx.activity:activity-ktx:1.8.2")

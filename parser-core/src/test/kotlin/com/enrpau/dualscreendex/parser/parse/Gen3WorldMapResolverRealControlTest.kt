@@ -33,21 +33,30 @@ class Gen3WorldMapResolverRealControlTest {
 
     private fun assertControl(control: Control) {
         val rom = realRom(control)
+            val analysisStarted = System.nanoTime()
             val analysis = ParserOrchestrator.analyze(rom)
+            val analysisMs = (System.nanoTime() - analysisStarted) / 1_000_000
             assertEquals("${control.environmentVariable} parser selection", SelectionStatus.SELECTED, analysis.status)
             val layout = analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout
             requireNotNull(layout)
             val encounterBaseIds = EncounterMaterializer.materialize(rom, layout)
                 .mapTo(linkedSetOf()) { it.id / 10 }
+            val resolutionStarted = System.nanoTime()
             val resolution = Gen3WorldMapResolver.resolve(
                 RomAnalysisSession(rom, RomHeaderReader.read(rom)),
                 encounterBaseIds,
             )
+            val resolutionMs = (System.nanoTime() - resolutionStarted) / 1_000_000
             assertTrue("${control.environmentVariable}: $resolution", resolution is Gen3WorldMapResolution.Resolved)
             val resolved = resolution as Gen3WorldMapResolution.Resolved
             assertTrue(
                 "${control.environmentVariable} must report one-pass function indexing",
                 resolved.reasons.any { it.matches(Regex("indexed [1-9][0-9]* distinct compiled reference sites once")) },
+            )
+            println(
+                "world-map-control ${control.environmentVariable} analysisMs=$analysisMs " +
+                    "resolutionMs=$resolutionMs " +
+                    resolved.reasons.first { it.startsWith("indexed ") },
             )
             val catalog = resolved.catalog.validate()
 
