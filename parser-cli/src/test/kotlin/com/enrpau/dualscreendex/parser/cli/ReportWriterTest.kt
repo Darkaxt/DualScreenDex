@@ -22,12 +22,48 @@ import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.JsonParser
+import java.io.StringWriter
+import java.io.Writer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReportWriterTest {
+    @Test
+    fun streamingWritersPreserveSmallReportBytes() {
+        val report = CorpusReport(
+            roots = listOf("D:/private/roms"),
+            results = listOf(CorpusResult("sample.gba", "sample.gba", durationMillis = 1, result = sampleResult())),
+        )
+        val json = StringWriter()
+        val markdown = StringWriter()
+
+        ReportWriter.json(report, json)
+        ReportWriter.markdown(report, markdown)
+
+        assertEquals(ReportWriter.json(report), json.toString())
+        assertEquals(ReportWriter.markdown(report), markdown.toString())
+    }
+
+    @Test
+    fun largeReportStreamsWithoutOneAggregateWrite() {
+        val results = List(5_000) { index ->
+            CorpusResult("sample-$index.gba", "sample-$index.gba", durationMillis = index.toLong())
+        }
+        val jsonSink = BoundedChunkWriter(maxChunkChars = 4_096)
+        val markdownSink = BoundedChunkWriter(maxChunkChars = 4_096)
+
+        val report = CorpusReport(roots = listOf("test"), results = results)
+        ReportWriter.json(report, jsonSink)
+        ReportWriter.markdown(report, markdownSink)
+
+        assertTrue(jsonSink.totalChars > 4_096)
+        assertTrue(jsonSink.maximumChunkChars <= 4_096)
+        assertTrue(markdownSink.totalChars > 4_096)
+        assertTrue(markdownSink.maximumChunkChars <= 4_096)
+    }
+
     @Test
     fun noFamilyMatchWithConflictingValidatedLocatorsRequiresManualReview() {
         val probes = listOf(
@@ -709,5 +745,22 @@ class ReportWriterTest {
             probes = listOf(probe),
             capabilities = listOf(capability),
         )
+    }
+
+    private class BoundedChunkWriter(private val maxChunkChars: Int) : Writer() {
+        var totalChars: Long = 0
+            private set
+        var maximumChunkChars: Int = 0
+            private set
+
+        override fun write(buffer: CharArray, offset: Int, length: Int) {
+            require(length <= maxChunkChars) { "aggregate write of $length characters exceeded diagnostic bound" }
+            totalChars += length
+            maximumChunkChars = maxOf(maximumChunkChars, length)
+        }
+
+        override fun flush() = Unit
+
+        override fun close() = Unit
     }
 }

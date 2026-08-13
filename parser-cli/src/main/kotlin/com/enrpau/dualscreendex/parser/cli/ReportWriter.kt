@@ -10,6 +10,8 @@ import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.GsonBuilder
+import java.io.StringWriter
+import java.io.Writer
 import kotlin.math.round
 
 data class CorpusReport(
@@ -389,11 +391,23 @@ object ReportWriter {
     )
     private val coreCapabilities = RomCapability.entries.filterNot(extendedCapabilities::contains)
 
-    fun json(report: CorpusReport): String = gson.toJson(
-        report.copy(roots = report.roots.map(::publicRootLabel).distinct()),
-    ) + "\n"
+    fun json(report: CorpusReport): String = StringWriter().also { json(report, it) }.toString()
 
-    fun markdown(report: CorpusReport): String = buildString {
+    fun json(report: CorpusReport, writer: Writer) {
+        gson.toJson(
+            report.copy(roots = report.roots.map(::publicRootLabel).distinct()),
+            writer,
+        )
+        writer.append('\n')
+    }
+
+    fun markdown(report: CorpusReport): String = StringWriter().also { markdown(report, it) }.toString()
+
+    fun markdown(report: CorpusReport, writer: Writer) {
+        writer.writeMarkdown(report)
+    }
+
+    private fun Appendable.writeMarkdown(report: CorpusReport) {
         val exact = report.results.count { entry -> entry.result?.probes?.any { it.exactProfile } == true }
         val fullyCompatible = report.results.count { it.compatibilityPercent == 100.0 && !it.manualReviewRequired }
         val belowFullCompatibility = report.results.count { it.compatibilityPercent < 100.0 }
@@ -512,7 +526,7 @@ object ReportWriter {
         }
     }
 
-    private fun StringBuilder.appendSampleGroup(label: String, values: List<String>) {
+    private fun Appendable.appendSampleGroup(label: String, values: List<String>) {
         appendLine("  - $label: ${if (values.isEmpty()) "-" else values.joinToString(" | ") { "`${it.replace("`", "'")}`" }}")
     }
 
@@ -530,7 +544,7 @@ object ReportWriter {
 
     private fun heading(value: String): String = value.replace("\r", " ").replace("\n", " ")
 
-    private fun StringBuilder.appendNumericOutcomes(report: CorpusReport) {
+    private fun Appendable.appendNumericOutcomes(report: CorpusReport) {
         val complete = report.results.filter { it.compatibilityPercent == 100.0 && !it.manualReviewRequired }
         val incomplete = report.results.filter { it.compatibilityPercent < 100.0 || it.manualReviewRequired }
         val errors = report.results.filter { it.error != null || it.result?.status == SelectionStatus.ERROR }
@@ -545,7 +559,7 @@ object ReportWriter {
         if (errors.isNotEmpty()) appendNamedGroup("Read or parse errors", errors) { it.error ?: "parser error" }
     }
 
-    private fun StringBuilder.appendCatalogCounts(report: CorpusReport) {
+    private fun Appendable.appendCatalogCounts(report: CorpusReport) {
         appendLine("## Materialized catalog counts")
         appendLine()
         appendLine("Counts prove records were decoded and joined; the report intentionally contains no copyrighted ROM text or pixels.")
@@ -569,7 +583,7 @@ object ReportWriter {
         }
     }
 
-    private fun StringBuilder.appendPersistence(report: CorpusReport) {
+    private fun Appendable.appendPersistence(report: CorpusReport) {
         appendLine("## SQLite catalog persistence")
         appendLine()
         appendLine("Each row is a complete SHA-256-keyed database that was written, closed, reopened, and decoded back into the production catalog model.")
@@ -589,7 +603,7 @@ object ReportWriter {
         }
     }
 
-    private fun StringBuilder.appendNamedGroup(
+    private fun Appendable.appendNamedGroup(
         title: String,
         entries: List<CorpusResult>,
         suffix: (CorpusResult) -> String,

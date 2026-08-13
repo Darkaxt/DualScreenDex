@@ -6,8 +6,12 @@ import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializer
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
+import java.io.Writer
+import java.nio.charset.StandardCharsets
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import kotlin.system.exitProcess
 import kotlin.time.measureTimedValue
 import kotlin.time.measureTime
@@ -89,8 +93,8 @@ fun main(arguments: Array<String>) {
         roots = options.roots.map { it.toString().replace('\\', '/') },
         results = results,
     )
-    write(options.json, ReportWriter.json(report))
-    write(options.markdown, ReportWriter.markdown(report))
+    writeAtomically(options.json) { ReportWriter.json(report, it) }
+    writeAtomically(options.markdown) { ReportWriter.markdown(report, it) }
 
     val selected = results.count { it.result?.status?.name == "SELECTED" }
     val noFamilyMatch = results.count { it.result?.status?.name == "NO_FAMILY_MATCH" }
@@ -134,9 +138,26 @@ private fun persistCatalog(
 private fun readableFailure(failure: Throwable): String =
     "${failure.javaClass.simpleName}: ${failure.message ?: "catalog materialization failure"}"
 
-private fun write(path: Path, content: String) {
-    path.toAbsolutePath().parent?.let(Files::createDirectories)
-    Files.writeString(path, content)
+internal fun writeAtomically(path: Path, content: (Writer) -> Unit) {
+    val absolute = path.toAbsolutePath()
+    val parent = absolute.parent ?: throw IllegalArgumentException("report path has no parent: $absolute")
+    Files.createDirectories(parent)
+    val temporary = Files.createTempFile(parent, ".${absolute.fileName}.", ".tmp")
+    try {
+        Files.newBufferedWriter(temporary, StandardCharsets.UTF_8).use(content)
+        try {
+            Files.move(
+                temporary,
+                absolute,
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } catch (_: AtomicMoveNotSupportedException) {
+            Files.move(temporary, absolute, StandardCopyOption.REPLACE_EXISTING)
+        }
+    } finally {
+        Files.deleteIfExists(temporary)
+    }
 }
 
 internal data class CliOptions(
