@@ -36,9 +36,9 @@ class BattleMechanicsAbiTest {
             record = retailRecord().copy(
                 stride = 0x5C,
                 ability = ScalarField(0x20, ScalarWidth.U16),
-                hp = ScalarField(0x2A, ScalarWidth.U16),
-                maxHp = ScalarField(0x2E, ScalarWidth.U16),
-                status = ScalarField(0x50, ScalarWidth.U32),
+                hp = null,
+                maxHp = null,
+                status = null,
             ),
             move = MoveMechanicsAbi(
                 tableRoot = 0x0820_0000,
@@ -50,15 +50,19 @@ class BattleMechanicsAbiTest {
             ),
             activeAbilityIds = setOf(37, 55, 62, 74),
             roleContract = BattleRoleContract.IndexedArray(
-                battleArrayRoot = 0x0202_4000,
+                battleArrayRoot = 0x0202_30F8,
                 attackerIndexParameterRegister = 1,
                 defenderIndexParameterRegister = 2,
             ),
         )
 
         assertEquals(ScalarWidth.U16, abi.record.ability.width)
+        assertEquals(ScalarField(0x02, ScalarWidth.U16), abi.record.attack)
+        assertEquals(null, abi.record.hp)
+        assertEquals(null, abi.record.maxHp)
+        assertEquals(null, abi.record.status)
         assertEquals(ScalarField(16, ScalarWidth.U8), abi.move.category)
-        assertEquals(0x0202_4000, (abi.roleContract as BattleRoleContract.IndexedArray).battleArrayRoot)
+        assertEquals(0x0202_30F8, (abi.roleContract as BattleRoleContract.IndexedArray).battleArrayRoot)
     }
 
     @Test

@@ -26,17 +26,17 @@ data class ScalarField(
 data class BattleRecordAbi(
     val stride: Int,
     val attack: ScalarField,
-    val defense: ScalarField,
-    val specialAttack: ScalarField,
-    val specialDefense: ScalarField,
+    val defense: ScalarField? = null,
+    val specialAttack: ScalarField? = null,
+    val specialDefense: ScalarField? = null,
     val ability: ScalarField,
-    val hp: ScalarField,
-    val maxHp: ScalarField,
-    val status: ScalarField,
+    val hp: ScalarField? = null,
+    val maxHp: ScalarField? = null,
+    val status: ScalarField? = null,
 ) {
     init {
         require(stride > 0) { "battle-record stride must be positive" }
-        listOf(attack, defense, specialAttack, specialDefense, ability, hp, maxHp, status)
+        listOfNotNull(attack, defense, specialAttack, specialDefense, ability, hp, maxHp, status)
             .forEach { it.requireContainedBy("battle-record", stride) }
     }
 }
