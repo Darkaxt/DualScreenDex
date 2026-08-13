@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Public prerelease [`v1.0.0-rc.25`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.25) adds normalized ROM-derived maps, semantic ARM7TDMI ability mechanics, proven-wild Rarity-first behavior, and broader compatibility evidence while preserving fail-closed fallback. Stable `v1.0.0` has not been released.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Release candidate `v1.0.0-rc.25` is prepared to add normalized ROM-derived maps, semantic ARM7TDMI ability mechanics, proven-wild Rarity-first behavior, and broader compatibility evidence while preserving fail-closed fallback. Stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
@@ -223,7 +223,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in signed RC9; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Public signed candidate | [`v1.0.0-rc.25`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.0.0-rc.25) prerelease; protected signing and public-asset verification are mandatory. Device installation and validation remain manual. |
+| Public signed candidate | `v1.0.0-rc.25` is prepared but not yet published; protected signing and public-asset verification are mandatory. Device installation and validation remain manual. |
 
 ## Parser development
 

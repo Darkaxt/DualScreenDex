@@ -30,8 +30,8 @@ The mechanics compatibility gate is met at 38/46 genuine applicable production s
 
 ## Production projection after the frozen survey
 
-The survey above remains immutable evidence of resolver coverage. Subsequent
-production commits `44ee0d1`, `c94cb00`, and `fa09aef` project only
+The survey above remains immutable evidence of resolver coverage. The RC25
+production commits `04af720`, `fa2583f`, and `02132b1` project only
 `COMPLETE_PROOF` tuples into the existing catalog, persistence, API, and
 Ability Detail contracts. The final correction propagates immutable proof from
 the parser's shared `RomAnalysisSession`; it does not open a second whole-ROM
