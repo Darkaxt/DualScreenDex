@@ -377,46 +377,104 @@ object Gen2WorldMapResolver {
         LandmarkAuthority(bank, table)
     }.getOrNull()
 
-    private fun findRegionClassifiers(rom: RomImage): List<RegionClassifier> = buildList {
+    private fun findRegionClassifiers(rom: RomImage): List<RegionClassifier> {
+        val detailed = findDetailedRegionClassifiers(rom)
+        return if (detailed.isNotEmpty()) detailed else findOneThresholdRegionClassifiers(rom)
+    }
+
+    private fun findDetailedRegionClassifiers(rom: RomImage): List<RegionClassifier> = buildList {
         var offset = 0
         while (offset + REGION_CLASSIFIER_BYTES <= rom.size) {
-            parseRegionClassifierAt(rom, offset)?.let(::add)
+            parseDetailedRegionClassifierAt(rom, offset)?.let(::add)
             offset++
         }
     }.distinct()
 
-    private fun parseRegionClassifierAt(rom: RomImage, offset: Int): RegionClassifier? = runCatching {
-        var firstCompare = -1
-        var cursor = offset
-        while (cursor + 3 < offset + 16) {
-            if (rom.u8(cursor) == COMPARE_IMMEDIATE && rom.u8(cursor + 2) == JR_Z) {
-                firstCompare = cursor
-                break
-            }
-            cursor++
-        }
-        if (firstCompare < 0) return@runCatching null
-        val ship = rom.u8(firstCompare + 1)
+    private fun parseDetailedRegionClassifierAt(rom: RomImage, offset: Int): RegionClassifier? = runCatching {
+        val common = parseRegionClassifierPrefix(rom, offset) ?: return@runCatching null
+        val check = common.checkOffset
         if (
-            rom.u8(firstCompare + 4) != COMPARE_IMMEDIATE || rom.u8(firstCompare + 5) != SPECIAL_LANDMARK ||
-            rom.u8(firstCompare + 6) != JR_NZ
+            rom.u8(check) != COMPARE_IMMEDIATE || rom.u8(check + 2) != JR_C ||
+            rom.u8(check + 4) != COMPARE_IMMEDIATE || rom.u8(check + 6) != JR_C
         ) return@runCatching null
-        cursor = firstCompare + 8
-        while (cursor + 6 < minOf(rom.size, firstCompare + 40)) {
-            if (
-                rom.u8(cursor) == COMPARE_IMMEDIATE && rom.u8(cursor + 2) == JR_C &&
-                rom.u8(cursor + 4) == COMPARE_IMMEDIATE && rom.u8(cursor + 6) == JR_C
-            ) {
-                val kanto = rom.u8(cursor + 1)
-                val victory = rom.u8(cursor + 5)
-                if (kanto > SPECIAL_LANDMARK && victory > kanto && ship >= victory) {
-                    return@runCatching RegionClassifier(kanto, victory, ship)
-                }
-            }
-            cursor++
-        }
-        null
+        val johto = check + 8
+        val kanto = johto + 3
+        if (
+            !provesRegionReturnE(rom, johto, JOHTO_REGION) || !provesRegionReturnE(rom, kanto, KANTO_REGION) ||
+            branchTarget(check + 2, rom.u8(check + 3)) != johto ||
+            branchTarget(check + 6, rom.u8(check + 7)) != kanto || common.shipTarget != johto
+        ) return@runCatching null
+        val firstThreshold = rom.u8(check + 1)
+        val secondThreshold = rom.u8(check + 5)
+        if (
+            firstThreshold <= SPECIAL_LANDMARK || secondThreshold <= firstThreshold ||
+            common.ship < secondThreshold
+        ) return@runCatching null
+        RegionClassifier(firstThreshold, secondThreshold, common.ship)
     }.getOrNull()
+
+    /**
+     * Some source-compatible Gen II builds retain the complete `IsInJohto` consumer but omit a
+     * valid Victory Road exception in the far region helper. Its one-threshold form still proves
+     * the same current-map call, FAST_SHIP path, dynamic-special retry, threshold, and common
+     * Johto/Kanto returns. Prefer the richer two-threshold authority whenever it is complete.
+     */
+    private fun findOneThresholdRegionClassifiers(rom: RomImage): List<RegionClassifier> = buildList {
+        var offset = 0
+        while (offset + REGION_CLASSIFIER_BYTES <= rom.size) {
+            parseOneThresholdRegionClassifierAt(rom, offset)?.let(::add)
+            offset++
+        }
+    }.distinct()
+
+    private fun parseOneThresholdRegionClassifierAt(rom: RomImage, offset: Int): RegionClassifier? = runCatching {
+        val common = parseRegionClassifierPrefix(rom, offset) ?: return@runCatching null
+        val check = common.checkOffset
+        if (rom.u8(check) != COMPARE_IMMEDIATE || rom.u8(check + 2) != JR_NC) return@runCatching null
+        val johto = check + 4
+        val kanto = johto + 2
+        if (
+            rom.u8(johto) != XOR_A || rom.u8(johto + 1) != RETURN ||
+            rom.u8(kanto) != LOAD_A_IMMEDIATE || rom.u8(kanto + 1) != KANTO_REGION || rom.u8(kanto + 2) != RETURN ||
+            branchTarget(check + 2, rom.u8(check + 3)) != kanto || common.shipTarget != johto
+        ) return@runCatching null
+        val threshold = rom.u8(check + 1)
+        if (threshold <= SPECIAL_LANDMARK || threshold >= common.ship) return@runCatching null
+        RegionClassifier(threshold, common.ship, common.ship)
+    }.getOrNull()
+
+    private fun parseRegionClassifierPrefix(rom: RomImage, offset: Int): RegionClassifierPrefix? = runCatching {
+        if (
+            offset < MAP_LOCATION_CALL_BYTES || rom.u8(offset) != COMPARE_IMMEDIATE ||
+            rom.u8(offset + 2) != JR_Z || rom.u8(offset + 4) != COMPARE_IMMEDIATE ||
+            rom.u8(offset + 5) != SPECIAL_LANDMARK || rom.u8(offset + 6) != JR_NZ
+        ) return@runCatching null
+        val currentCall = parseMapLocationCall(rom, offset - MAP_LOCATION_CALL_BYTES) ?: return@runCatching null
+        val backupCall = parseMapLocationCall(rom, offset + 8) ?: return@runCatching null
+        if (currentCall != backupCall) return@runCatching null
+        val check = offset + 8 + MAP_LOCATION_CALL_BYTES
+        if (branchTarget(offset + 6, rom.u8(offset + 7)) != check) return@runCatching null
+        RegionClassifierPrefix(
+            ship = rom.u8(offset + 1),
+            shipTarget = branchTarget(offset + 2, rom.u8(offset + 3)),
+            checkOffset = check,
+        )
+    }.getOrNull()
+
+    private fun parseMapLocationCall(rom: RomImage, offset: Int): Int? = runCatching {
+        if (
+            rom.u8(offset) != LOAD_A_ABSOLUTE || rom.u8(offset + 3) != LOAD_B_A ||
+            rom.u8(offset + 4) != LOAD_A_ABSOLUTE || rom.u8(offset + 7) != LOAD_C_A ||
+            rom.u8(offset + 8) != CALL
+        ) return@runCatching null
+        rom.u16le(offset + 9)
+    }.getOrNull()
+
+    private fun provesRegionReturnE(rom: RomImage, offset: Int, region: Int): Boolean =
+        rom.u8(offset) == LOAD_E_IMMEDIATE && rom.u8(offset + 1) == region && rom.u8(offset + 2) == RETURN
+
+    private fun branchTarget(opcodeOffset: Int, encodedDelta: Int): Int =
+        opcodeOffset + 2 + encodedDelta.toByte().toInt()
 
     private fun buildBindings(
         rom: RomImage,
@@ -498,6 +556,7 @@ object Gen2WorldMapResolver {
     private data class MapGroupAuthority(val tableOffset: Int)
     private data class LandmarkAuthority(val bank: Int, val tableOffset: Int)
     private data class RegionClassifier(val kanto: Int, val victory: Int, val ship: Int)
+    private data class RegionClassifierPrefix(val ship: Int, val shipTarget: Int, val checkOffset: Int)
     private data class Landmark(val id: Int, val x: Int, val y: Int, val name: String, val baseAreaIds: Set<Int>)
     private data class BindingChain(val johto: List<Landmark>, val kanto: List<Landmark>)
     private data class BindingSearch(
@@ -552,10 +611,15 @@ object Gen2WorldMapResolver {
     private const val MAP_POINTER_CONSUMER_BYTES = 23
     private const val LANDMARK_CONSUMER_BYTES = 15
     private const val REGION_CLASSIFIER_BYTES = 40
+    private const val MAP_LOCATION_CALL_BYTES = 11
     private const val LOAD_HL_IMMEDIATE = 0x21
     private const val LOAD_DE_IMMEDIATE = 0x11
     private const val LOAD_BC_IMMEDIATE = 0x01
     private const val LOAD_A_IMMEDIATE = 0x3e
+    private const val LOAD_A_ABSOLUTE = 0xfa
+    private const val LOAD_B_A = 0x47
+    private const val LOAD_C_A = 0x4f
+    private const val LOAD_E_IMMEDIATE = 0x1e
     private const val LOAD_B_IMMEDIATE = 0x06
     private const val COMPARE_IMMEDIATE = 0xfe
     private const val CALL = 0xcd
@@ -564,6 +628,10 @@ object Gen2WorldMapResolver {
     private const val JR_NZ = 0x20
     private const val JR_Z = 0x28
     private const val JR_C = 0x38
+    private const val JR_NC = 0x30
+    private const val XOR_A = 0xaf
+    private const val JOHTO_REGION = 0
+    private const val KANTO_REGION = 1
     private val VRAM_TILE_RANGE = 0x8800..0x97ff
     private val WRAM_PALETTE_DESTINATIONS = setOf(0xc200, 0xd000)
 }
