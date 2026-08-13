@@ -85,7 +85,15 @@ class Gen1BattleLayoutResolver {
             battleOutcome = bytes.u8OrZero(layout.outcomeOffset),
             playerExecutedMoveId = playerExecuted,
             opponentExecutedMoveId = enemyExecuted,
+            encounterKind = classifyEncounter(bytes.u8(battleFlagOffset), battleType),
         )
+    }
+
+    private fun classifyEncounter(battleMode: Int, battleType: Int): BattleEncounterKind = when {
+        battleType !in setOf(NORMAL_BATTLE, SAFARI_BATTLE) -> BattleEncounterKind.UNKNOWN
+        battleMode == WILD_BATTLE -> BattleEncounterKind.WILD
+        battleMode == TRAINER_BATTLE -> BattleEncounterKind.TRAINER
+        else -> BattleEncounterKind.UNKNOWN
     }
 
     private fun readBattleMon(
@@ -153,6 +161,7 @@ class Gen1BattleLayoutResolver {
         private const val TRAINER_BATTLE = 2
         private const val NORMAL_BATTLE = 0
         private const val PIKACHU_BATTLE = 4
+        private const val SAFARI_BATTLE = 2
         private const val ENEMY_DELTA = 0x72
         private const val PLAYER_DELTA = 0x43
         private const val BATTLE_TYPE_DELTA = 3

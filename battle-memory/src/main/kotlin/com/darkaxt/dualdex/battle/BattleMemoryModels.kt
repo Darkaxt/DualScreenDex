@@ -29,6 +29,7 @@ enum class BattleCapability {
 enum class CapabilityState { AVAILABLE, NOT_FOUND, NOT_APPLICABLE }
 
 enum class TargetMode { AUTOMATIC, MANUAL_TARGET_FALLBACK }
+enum class BattleEncounterKind { WILD, TRAINER, UNKNOWN }
 
 data class BattleTarget(
     val opponentIndex: Int,
@@ -71,6 +72,7 @@ data class BattleMemorySample(
     val battleOutcome: Int = 0,
     val playerExecutedMoveId: Int? = null,
     val opponentExecutedMoveId: Int? = null,
+    val encounterKind: BattleEncounterKind = BattleEncounterKind.UNKNOWN,
 )
 
 sealed interface LayoutResolution {

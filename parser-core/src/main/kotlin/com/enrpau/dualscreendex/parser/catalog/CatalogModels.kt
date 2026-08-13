@@ -206,6 +206,9 @@ data class CatalogGen3RuntimeMemoryLayout(
     val playerPartyCountAddress: Long? = null,
     val playerPartyAddress: Long? = null,
     val battleMonsAddress: Long? = null,
+    val battleTypeFlagsAddress: Long? = null,
+    val trainerBattleMask: Int? = null,
+    val nonWildBattleMask: Int? = null,
 ) {
     init {
         require((playerPartyCountAddress == null) == (playerPartyAddress == null)) {
@@ -216,6 +219,12 @@ data class CatalogGen3RuntimeMemoryLayout(
         require(battleMonsAddress == null || battleMonsAddress in 0x02000000L..0x0203FBBFL) {
             "battle-mon window must fit in EWRAM"
         }
+        require(
+            listOf(battleTypeFlagsAddress, trainerBattleMask, nonWildBattleMask).all { it == null } ||
+                listOf(battleTypeFlagsAddress, trainerBattleMask, nonWildBattleMask).all { it != null },
+        ) { "battle type descriptor must be complete" }
+        require(battleTypeFlagsAddress == null || battleTypeFlagsAddress in 0x02000000L..0x0203FFFCL)
+        require(trainerBattleMask == null || trainerBattleMask.countOneBits() == 1)
     }
 }
 

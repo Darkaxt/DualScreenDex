@@ -94,7 +94,18 @@ class Gen2BattleLayoutResolver {
             battleOutcome = bytes.u8OrZero(layout.outcomeOffset),
             playerExecutedMoveId = selectedMove,
             opponentExecutedMoveId = lastEnemyMove,
+            encounterKind = classifyEncounter(
+                bytes.u8(battleFlagOffset),
+                bytes.u8OrZero(battleFlagOffset + BATTLE_TYPE_DELTA),
+            ),
         )
+    }
+
+    private fun classifyEncounter(battleMode: Int, battleType: Int): BattleEncounterKind = when {
+        battleType in SPECIAL_BATTLE_TYPES -> BattleEncounterKind.UNKNOWN
+        battleMode == WILD_BATTLE -> BattleEncounterKind.WILD
+        battleMode == TRAINER_BATTLE -> BattleEncounterKind.TRAINER
+        else -> BattleEncounterKind.UNKNOWN
     }
 
     private fun findPlayerCandidates(
@@ -222,6 +233,7 @@ class Gen2BattleLayoutResolver {
         private const val TRAINER_BATTLE = 2
         private const val MIN_BATTLE_TYPE = 0
         private const val MAX_BATTLE_TYPE = 12
+        private val SPECIAL_BATTLE_TYPES = setOf(2, 3, 6) // debug, tutorial, bug contest
         private const val ENEMY_DELTA = 0x27
         private const val BATTLE_TYPE_DELTA = 3
         private val OFFICIAL_LAYOUT_SHAPES = listOf(

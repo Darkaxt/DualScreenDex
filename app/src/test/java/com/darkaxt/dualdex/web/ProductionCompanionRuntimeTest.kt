@@ -48,10 +48,54 @@ import com.darkaxt.dualdex.battle.BattleMatchupObservation
 import com.darkaxt.dualdex.battle.BattleMonSnapshot
 import com.darkaxt.dualdex.battle.BattleTarget
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
+import com.darkaxt.dualdex.battle.BattleEncounterKind
 import com.darkaxt.dualdex.battle.ResolvedBattleLayout
 import com.darkaxt.dualdex.battle.TargetMode
 
 class ProductionCompanionRuntimeTest {
+    @Test
+    fun provenWildBattleOpensUsableRarityOnceWithoutLaterTabOverrides() {
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog("fixture.gba", ParsedCatalog(
+            "sha", EngineFamily.EMERALD, Platform.GBA,
+            speciesById = mapOf(13 to SpeciesRecord(
+                id = 13, dexNumber = CatalogField.available(13), name = CatalogField.available("WEEDLE"),
+                typeIds = CatalogField.available(listOf(6)), baseStats = CatalogField.notFound("fixture"),
+                sprite = CatalogField.notFound("fixture"), abilityIds = CatalogField.available(emptyList()),
+            )),
+            encounterAreas = listOf(com.enrpau.dualscreendex.parser.catalog.EncounterArea(
+                id = 0x0010 * 10 + 1,
+                name = CatalogField.available("Route"),
+                methodId = 1,
+                slots = listOf(com.enrpau.dualscreendex.parser.catalog.EncounterSlot(13, 3, 3, 100)),
+            )),
+        ))
+        runtime.updateLiveArea(0x0010)
+        val opponent = BattleMonSnapshot(
+            battlerIndex = 1, position = 1, speciesId = 13, level = 3, hp = 15, maxHp = 15,
+            ivs = List(6) { 24 }, moves = listOf(40, 0, 0, 0), pp = listOf(35, 0, 0, 0),
+            typeIds = listOf(6, 6), abilityId = 0, personality = 200,
+        )
+        val sample = BattleMemorySample(
+            layout = ResolvedBattleLayout(0x143C, 0x1420, 0x142C, 0x16EE, 0x1874, 0x1878, 2),
+            battlers = listOf(opponent), opponents = listOf(opponent), selectedMoveId = null,
+            target = BattleTarget(0, TargetMode.AUTOMATIC), capabilities = emptyMap(),
+            encounterKind = BattleEncounterKind.WILD,
+        )
+
+        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample))
+        assertEquals("RARITY", runtime.gateway.bootstrap().battleTab.name)
+
+        runtime.action("BATTLE_TAB", mapOf("tab" to "MOVES"))
+        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample.copy(encounterKind = BattleEncounterKind.TRAINER)))
+        assertEquals("MOVES", runtime.gateway.bootstrap().battleTab.name)
+
+        runtime.applyBattleTracking(BattleTrackingUpdate(false, null, ended = true))
+        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample.copy(encounterKind = BattleEncounterKind.TRAINER)))
+        assertEquals("ENTRY", runtime.gateway.bootstrap().battleTab.name)
+        runtime.close()
+    }
+
     @Test
     fun organicEffectivenessUnlocksAfterThePlayerConsumesMovePpAgainstTheTarget() {
         val runtime = ProductionCompanionRuntime()

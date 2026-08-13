@@ -210,6 +210,13 @@ class BattleMemoryCoordinator(
                 runtimeLayout.multiUsePlayerCursorAddress?.let { cursorAddress ->
                     add(CoreMemoryRegion("main-target-cursor", cursorAddress, 1))
                 }
+                runtimeLayout.battleTypeFlagsAddress?.let { flagsAddress ->
+                    add(CoreMemoryRegion(
+                        "battle-type-flags",
+                        flagsAddress,
+                        Gen3RuntimeMemoryDecoder.BATTLE_TYPE_FLAGS_BYTES,
+                    ))
+                }
                 pointerGlobal?.let { add(CoreMemoryRegion("save-block-pointer", it, 4)) }
                 requestedSaveBlock1Address?.let { saveBlock ->
                     add(CoreMemoryRegion(
@@ -252,6 +259,13 @@ class BattleMemoryCoordinator(
                     add(CoreMemoryRegion("main-lifecycle", runtime.inBattleAddress, 1))
                     runtime.multiUsePlayerCursorAddress?.let { cursorAddress ->
                         add(CoreMemoryRegion("main-target-cursor", cursorAddress, 1))
+                    }
+                    runtime.battleTypeFlagsAddress?.let { flagsAddress ->
+                        add(CoreMemoryRegion(
+                            "battle-type-flags",
+                            flagsAddress,
+                            Gen3RuntimeMemoryDecoder.BATTLE_TYPE_FLAGS_BYTES,
+                        ))
                     }
                 } ?: cachedGen3MainLayout?.let { mainLayout ->
                     add(CoreMemoryRegion(
@@ -324,10 +338,16 @@ class BattleMemoryCoordinator(
         }
         val mainState = resolveGen3MainState(regions, context)
         val gen3Runtime = if (context.generation == 3) {
+            val battleActive = resolveGen3BattleActive(regions, context)
             Gen3RuntimeSnapshot(
-                battleActive = resolveGen3BattleActive(regions, context),
+                battleActive = battleActive,
                 areaBaseId = if (supportsLiveArea(context)) resolveCurrentArea(regions, context) else null,
                 targetBattler = resolveGen3LiveTarget(regions, context),
+                encounterKind = if (battleActive == true) {
+                    resolveGen3EncounterKind(regions, context)
+                } else {
+                    BattleEncounterKind.UNKNOWN
+                },
             )
         } else {
             null
@@ -358,7 +378,12 @@ class BattleMemoryCoordinator(
             mainState != null -> qualifyGen3BattleSample(mainState, resolvedSample, wasActive)
             else -> resolvedSample
         }?.let { resolved ->
-            if (context.generation == 3) resolved.withLiveTargetBattler(gen3Runtime?.targetBattler) else resolved
+            if (context.generation == 3) {
+                resolved.withLiveTargetBattler(gen3Runtime?.targetBattler)
+                    .copy(encounterKind = gen3Runtime?.encounterKind ?: BattleEncounterKind.UNKNOWN)
+            } else {
+                resolved
+            }
         }
         val endedByOutcome = sample != null && sample.battleOutcome != 0
         val update = if (lifecycleEnded || endedByOutcome) {
@@ -483,6 +508,23 @@ class BattleMemoryCoordinator(
             if (offset !in iwram.indices) null else byteArrayOf(iwram[offset])
         }
         return Gen3RuntimeMemoryDecoder(layout).decodeTargetBattler(bytes)
+    }
+
+    private fun resolveGen3EncounterKind(
+        regions: Map<String, ByteArray>,
+        context: BattleCatalogContext,
+    ): BattleEncounterKind {
+        val layout = context.gen3RuntimeMemoryLayout ?: return BattleEncounterKind.UNKNOWN
+        val address = layout.battleTypeFlagsAddress ?: return BattleEncounterKind.UNKNOWN
+        val bytes = regions["battle-type-flags"] ?: regions["ewram"]?.let { ewram ->
+            val offset = (address - EWRAM_BASE).toInt()
+            if (offset < 0 || offset + Gen3RuntimeMemoryDecoder.BATTLE_TYPE_FLAGS_BYTES > ewram.size) {
+                null
+            } else {
+                ewram.copyOfRange(offset, offset + Gen3RuntimeMemoryDecoder.BATTLE_TYPE_FLAGS_BYTES)
+            }
+        }
+        return Gen3RuntimeMemoryDecoder(layout).decodeBattleEncounterKind(bytes)
     }
 
     private fun knownGen1NonBattle(bytes: ByteArray): Boolean {

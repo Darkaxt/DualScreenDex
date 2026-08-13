@@ -4,6 +4,7 @@ enum class KnowledgeMode { DISCOVERED, ORGANIC, HIDDEN }
 enum class AppScreen { POKEDEX, DETAIL, BATTLE, SETTINGS, SETUP }
 enum class PokedexFilter { ALL, CAUGHT, SEEN, TEAM, AREA }
 enum class BattleTab { ENTRY, ATTACK, RARITY, MOVES }
+enum class BattleEncounterKind { WILD, TRAINER, UNKNOWN }
 enum class Density { AUTO, COMFORTABLE, COMPACT }
 enum class DisplayMode { DOCKED, OVERLAY }
 enum class Theme { GAME, DARK, LIGHT }
@@ -80,6 +81,8 @@ data class BattleState(
     val playerReferenceLevel: Int? = null,
     val targetMode: BattleTargetMode = BattleTargetMode.AUTOMATIC,
     val capabilities: Map<String, String> = emptyMap(),
+    val encounterKind: BattleEncounterKind = BattleEncounterKind.UNKNOWN,
+    val rarityUsable: Boolean = false,
 )
 
 data class CatalogLoadingState(

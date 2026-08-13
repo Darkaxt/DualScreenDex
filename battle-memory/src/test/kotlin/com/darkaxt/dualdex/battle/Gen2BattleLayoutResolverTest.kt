@@ -36,6 +36,25 @@ class Gen2BattleLayoutResolverTest {
         assertEquals(33, sample.opponentExecutedMoveId)
         assertEquals(CapabilityState.AVAILABLE, sample.capabilities[BattleCapability.OPPONENT_PP])
         assertEquals(CapabilityState.NOT_APPLICABLE, sample.capabilities[BattleCapability.MULTIPLE_OPPONENTS])
+        assertEquals(BattleEncounterKind.WILD, sample.encounterKind)
+    }
+
+    @Test
+    fun tutorialBattleFailsClosedDespiteTheWildModeByte() {
+        val wram = crystalBattle().also { it[0x1230] = 3 }
+
+        val sample = (Gen2BattleLayoutResolver().resolve(wram, catalog) as LayoutResolution.Resolved).sample
+
+        assertEquals(BattleEncounterKind.UNKNOWN, sample.encounterKind)
+    }
+
+    @Test
+    fun classifiesTrainerFromTheStructurallyResolvedModeByte() {
+        val wram = crystalBattle().also { it[0x122d] = 2 }
+
+        val sample = (Gen2BattleLayoutResolver().resolve(wram, catalog) as LayoutResolution.Resolved).sample
+
+        assertEquals(BattleEncounterKind.TRAINER, sample.encounterKind)
     }
 
     @Test

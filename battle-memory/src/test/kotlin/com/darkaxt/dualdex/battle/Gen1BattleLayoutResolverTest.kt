@@ -40,6 +40,7 @@ class Gen1BattleLayoutResolverTest {
         assertEquals(0x54, sample.selectedMoveId)
         assertEquals(0x21, sample.opponentExecutedMoveId)
         assertEquals(0x0fe4, sample.layout.battleMonsOffset)
+        assertEquals(BattleEncounterKind.TRAINER, sample.encounterKind)
     }
 
     @Test
@@ -55,6 +56,21 @@ class Gen1BattleLayoutResolverTest {
         assertEquals(0x54, sample.opponents.single().speciesId)
         assertEquals(1, sample.battlers.size)
         assertEquals(null, sample.selectedMoveId)
+        assertEquals(BattleEncounterKind.UNKNOWN, sample.encounterKind)
+    }
+
+    @Test
+    fun classifiesANormalBattleFromTheStructurallyResolvedModeByte() {
+        val bytes = ByteArray(0x2000)
+        putBattleMon(bytes, 0x0fe4, 0x66, 5, 16, 21, listOf(0x21), listOf(35), 0, 0, 0x98, 0x88)
+        putBattleMon(bytes, 0x1013, 0x54, 5, 20, 20, listOf(0x54), listOf(30), 0x17, 0x17, 0x91, 0xfb)
+        bytes[0x1056] = 1
+        bytes[0x1059] = 0
+        bytes[0x1162] = 1
+
+        val sample = (Gen1BattleLayoutResolver().resolve(bytes, catalog) as LayoutResolution.Resolved).sample
+
+        assertEquals(BattleEncounterKind.WILD, sample.encounterKind)
     }
 
     private fun putBattleMon(

@@ -2,6 +2,8 @@ package com.enrpau.dualscreendex.companion
 
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
+import com.enrpau.dualscreendex.companion.model.BattleEncounterKind
+import com.enrpau.dualscreendex.companion.model.BattleTab
 import com.enrpau.dualscreendex.companion.model.CompanionAction
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicReference
@@ -62,6 +64,11 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             priorScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.priorScreen,
             screen = if (state.settings.autoOpenTarget) AppScreen.BATTLE else state.screen,
             battle = action.battle,
+            battleTab = initialBattleTab(
+                action.battle.encounterKind,
+                state.settings.rarityEnabled,
+                action.battle.rarityUsable,
+            ),
             battleReturnScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.battleReturnScreen,
             selectedSpeciesId = action.battle.opponents.getOrNull(action.battle.targetIndex)?.speciesId,
         )
@@ -90,4 +97,14 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
         is CompanionAction.Failure -> state.copy(error = action.message)
     }
+}
+
+fun initialBattleTab(
+    encounterKind: BattleEncounterKind,
+    rarityEnabled: Boolean,
+    rarityUsable: Boolean,
+): BattleTab = if (encounterKind == BattleEncounterKind.WILD && rarityEnabled && rarityUsable) {
+    BattleTab.RARITY
+} else {
+    BattleTab.ENTRY
 }

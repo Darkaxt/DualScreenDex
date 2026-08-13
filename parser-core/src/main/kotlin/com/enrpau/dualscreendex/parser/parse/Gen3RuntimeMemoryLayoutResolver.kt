@@ -16,6 +16,7 @@ object Gen3RuntimeMemoryLayoutResolver {
         val battleField = resolveBattleField(rom, mainBase) ?: return null
         val liveParty = resolveLiveParty(analysis.references)
         val battleLayout = resolveBattleLayout(analysis.references)
+        val battleTypeFlags = resolveBattleTypeFlags(rom)
         return CatalogGen3RuntimeMemoryLayout(
             mainAddress = mainBase,
             inBattleAddress = battleField.address,
@@ -27,7 +28,63 @@ object Gen3RuntimeMemoryLayoutResolver {
             playerPartyCountAddress = liveParty?.countAddress,
             playerPartyAddress = liveParty?.partyAddress,
             battleMonsAddress = battleLayout?.battleMonsAddress,
+            battleTypeFlagsAddress = battleTypeFlags,
+            trainerBattleMask = battleTypeFlags?.let { TRAINER_BATTLE_MASK },
+            nonWildBattleMask = battleTypeFlags?.let { NON_WILD_BATTLE_MASK },
         )
+    }
+
+    /**
+     * Resolves the engine-owned battle-type word from independent compiled bit-test consumers.
+     * Selection requires one unique EWRAM word whose code consumers test trainer, link, and
+     * tutorial roles. The address itself always comes from the ROM's Thumb literal pools.
+     */
+    private fun resolveBattleTypeFlags(rom: RomImage): Long? {
+        val evidence = linkedMapOf<Long, MutableMap<Int, MutableSet<Int>>>()
+        var offset = 0
+        while (offset <= rom.size - 2) {
+            val raw = rom.u16le(offset)
+            if (raw and 0xF800 == 0x4800) {
+                val literalOffset = ((offset + 4) and -4) + (raw and 0xFF) * 4
+                if (literalOffset <= rom.size - 4) {
+                    val address = rom.u32le(literalOffset)
+                    if (address in EWRAM_START..EWRAM_WORD_END && address and 3L == 0L) {
+                        val pointerRegister = (raw ushr 8) and 7
+                        traceFlagBitTest(rom, offset, pointerRegister)?.let { shift ->
+                            evidence.getOrPut(address) { linkedMapOf() }
+                                .getOrPut(shift) { linkedSetOf() }
+                                .add(offset)
+                        }
+                    }
+                }
+            }
+            offset += 2
+        }
+        return evidence.filterValues { shifts ->
+            shifts[TRAINER_BIT_SHIFT].orEmpty().size >= MIN_TRAINER_TESTS &&
+                shifts[LINK_BIT_SHIFT].orEmpty().size >= MIN_LINK_TESTS &&
+                shifts[TUTORIAL_BIT_SHIFT].orEmpty().size >= MIN_TUTORIAL_TESTS
+        }.keys.singleOrNull()
+    }
+
+    private fun traceFlagBitTest(rom: RomImage, literalLoadOffset: Int, pointerRegister: Int): Int? {
+        var loadedRegister: Int? = null
+        var offset = literalLoadOffset + 2
+        val end = minOf(rom.size, literalLoadOffset + FLAG_TEST_TRACE_BYTES)
+        while (offset <= end - 2) {
+            val raw = rom.u16le(offset)
+            when {
+                raw and 0xF800 == 0x6800 &&
+                    (raw ushr 6) and 0x1F == 0 &&
+                    (raw ushr 3) and 7 == pointerRegister -> loadedRegister = raw and 7
+                loadedRegister != null &&
+                    raw and 0xF800 == 0 &&
+                    (raw ushr 3) and 7 == loadedRegister -> return (raw ushr 6) and 0x1F
+                raw and 0xF000 == 0xD000 || raw and 0xF800 == 0xE000 || raw and 0xFF87 == 0x4700 -> return null
+            }
+            offset += 2
+        }
+        return null
     }
 
     /**
@@ -212,6 +269,7 @@ object Gen3RuntimeMemoryLayoutResolver {
     private const val IWRAM_END = 0x03007FFFL
     private const val EWRAM_START = 0x02000000L
     private const val EWRAM_END = 0x0203FFFFL
+    private const val EWRAM_WORD_END = EWRAM_END - 3
     private const val MAIN_STRUCT_SIZE = 0x43C
     private const val MAIN_TAIL_WORD_OFFSET = 0x438
     private const val SAVE_MAP_GROUP_OFFSET = 4
@@ -228,6 +286,15 @@ object Gen3RuntimeMemoryLayoutResolver {
     private const val BATTLE_MON_RECORD_BYTES = 0x58L
     private const val LOOK_BEHIND_BYTES = 16
     private const val TRACE_BYTES = 64
+    private const val FLAG_TEST_TRACE_BYTES = 18
+    private const val TRAINER_BIT_SHIFT = 28
+    private const val LINK_BIT_SHIFT = 30
+    private const val TUTORIAL_BIT_SHIFT = 22
+    private const val MIN_TRAINER_TESTS = 2
+    private const val MIN_LINK_TESTS = 2
+    private const val MIN_TUTORIAL_TESTS = 1
+    private const val TRAINER_BATTLE_MASK = 1 shl 3
+    private const val NON_WILD_BATTLE_MASK = 0x8FFF8B72.toInt()
     private const val OR_OPERATION = 12
     private const val BIT_CLEAR_OPERATION = 14
     private val NON_MUTATING_ALU_OPERATIONS = setOf(8, 10)

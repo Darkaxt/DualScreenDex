@@ -1,12 +1,70 @@
 package com.enrpau.dualscreendex.companion
 
 import com.enrpau.dualscreendex.companion.model.AppScreen
+import com.enrpau.dualscreendex.companion.model.AppSnapshot
+import com.enrpau.dualscreendex.companion.model.BattleEncounterKind
 import com.enrpau.dualscreendex.companion.model.BattleState
+import com.enrpau.dualscreendex.companion.model.BattleTab
 import com.enrpau.dualscreendex.companion.model.CompanionAction
+import com.enrpau.dualscreendex.companion.model.CompanionSettings
+import com.enrpau.dualscreendex.companion.model.OpponentState
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class CompanionGatewayTest {
+    @Test
+    fun initialBattleTabRequiresProvenWildEnabledAndUsableRarity() {
+        BattleEncounterKind.entries.forEach { kind ->
+            listOf(false, true).forEach { enabled ->
+                listOf(false, true).forEach { usable ->
+                    val expected = if (kind == BattleEncounterKind.WILD && enabled && usable) {
+                        BattleTab.RARITY
+                    } else {
+                        BattleTab.ENTRY
+                    }
+
+                    assertEquals(expected, initialBattleTab(kind, enabled, usable))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun battleStartAppliesInitialPolicyOnceAndUpdatesNeverStealManualTab() {
+        val gateway = CompanionGateway(AppSnapshot(settings = CompanionSettings(rarityEnabled = true)))
+        val first = BattleState(
+            opponents = listOf(opponent(1), opponent(2)),
+            encounterKind = BattleEncounterKind.WILD,
+            rarityUsable = true,
+        )
+
+        assertEquals(BattleTab.RARITY, gateway.dispatch(CompanionAction.BattleStarted(first)).battleTab)
+        gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.MOVES))
+
+        val secondTarget = first.copy(targetIndex = 1, encounterKind = BattleEncounterKind.TRAINER)
+        assertEquals(BattleTab.MOVES, gateway.dispatch(CompanionAction.BattleUpdated(secondTarget)).battleTab)
+        assertEquals(BattleTab.MOVES, gateway.dispatch(CompanionAction.SelectTarget(1)).battleTab)
+    }
+
+    @Test
+    fun eachNewBattleLifecycleReappliesTheFailClosedInitialPolicy() {
+        val gateway = CompanionGateway(AppSnapshot(settings = CompanionSettings(rarityEnabled = true)))
+        val wild = BattleState(emptyList(), encounterKind = BattleEncounterKind.WILD, rarityUsable = true)
+        gateway.dispatch(CompanionAction.BattleStarted(wild))
+        gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.ATTACK))
+        gateway.dispatch(CompanionAction.BattleEnded)
+
+        val trainer = wild.copy(encounterKind = BattleEncounterKind.TRAINER)
+
+        assertEquals(BattleTab.ENTRY, gateway.dispatch(CompanionAction.BattleStarted(trainer)).battleTab)
+    }
+
+    private fun opponent(speciesId: Int) = OpponentState(
+        speciesId = speciesId,
+        level = 5,
+        moveHistory = emptyList(),
+    )
+
     @Test
     fun snapshotsAdvanceMonotonicallyAndReturnToBrowse() {
         val gateway = CompanionGateway()

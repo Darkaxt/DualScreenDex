@@ -10,6 +10,9 @@ data class Gen3RuntimeMemoryLayout(
     val playerPartyCountAddress: Long? = null,
     val playerPartyAddress: Long? = null,
     val battleMonsAddress: Long? = null,
+    val battleTypeFlagsAddress: Long? = null,
+    val trainerBattleMask: Int? = null,
+    val nonWildBattleMask: Int? = null,
 ) {
     init {
         require(mainAddress in IWRAM_START..IWRAM_END)
@@ -22,6 +25,12 @@ data class Gen3RuntimeMemoryLayout(
         require(playerPartyCountAddress == null || playerPartyCountAddress in EWRAM_START..EWRAM_END)
         require(playerPartyAddress == null || playerPartyAddress in EWRAM_START..EWRAM_END)
         require(battleMonsAddress == null || battleMonsAddress in EWRAM_START..EWRAM_END - BATTLE_WINDOW_TAIL_BYTES)
+        require(
+            listOf(battleTypeFlagsAddress, trainerBattleMask, nonWildBattleMask).all { it == null } ||
+                listOf(battleTypeFlagsAddress, trainerBattleMask, nonWildBattleMask).all { it != null },
+        ) { "battle type descriptor must be complete" }
+        require(battleTypeFlagsAddress == null || battleTypeFlagsAddress in EWRAM_START..EWRAM_END - 3)
+        require(trainerBattleMask == null || trainerBattleMask.countOneBits() == 1)
     }
 
     companion object {
@@ -37,6 +46,7 @@ data class Gen3RuntimeSnapshot(
     val battleActive: Boolean?,
     val areaBaseId: Int?,
     val targetBattler: Int? = null,
+    val encounterKind: BattleEncounterKind = BattleEncounterKind.UNKNOWN,
 )
 
 class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
@@ -57,8 +67,25 @@ class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
         ?.and(0xFF)
         ?.takeIf { it in 0 until MAX_BATTLERS }
 
+    fun decodeBattleEncounterKind(bytes: ByteArray?): BattleEncounterKind {
+        val trainerMask = layout.trainerBattleMask ?: return BattleEncounterKind.UNKNOWN
+        val nonWildMask = layout.nonWildBattleMask ?: return BattleEncounterKind.UNKNOWN
+        if (layout.battleTypeFlagsAddress == null || bytes?.size != BATTLE_TYPE_FLAGS_BYTES) {
+            return BattleEncounterKind.UNKNOWN
+        }
+        val flags = bytes.foldIndexed(0) { index, value, byte ->
+            value or ((byte.toInt() and 0xFF) shl (index * 8))
+        }
+        return when {
+            flags and nonWildMask != 0 -> BattleEncounterKind.UNKNOWN
+            flags and trainerMask != 0 -> BattleEncounterKind.TRAINER
+            else -> BattleEncounterKind.WILD
+        }
+    }
+
     companion object {
         const val MAP_ID_BYTES = 2
+        const val BATTLE_TYPE_FLAGS_BYTES = 4
         private const val MAX_BATTLERS = 4
     }
 }

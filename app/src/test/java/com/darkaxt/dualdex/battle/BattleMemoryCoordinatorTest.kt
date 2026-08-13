@@ -83,6 +83,7 @@ class BattleMemoryCoordinatorTest {
         assertTrue(updates.isEmpty())
 
         fixture(ewram, 0x143C, opponentPp = 35)
+        putU32(ewram, 0x03A0, 1 shl 2)
         mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 200)
         repeat(2) { coordinator.heartbeat() }
         assertTrue(updates.last().active)
@@ -156,6 +157,7 @@ class BattleMemoryCoordinatorTest {
 
         repeat(4) { coordinator.heartbeat() }
         assertTrue(updates.last().active)
+        assertEquals(BattleEncounterKind.WILD, updates.last().sample?.encounterKind)
 
         iwram[0x1574 + 0x439] = 0
         repeat(2) { coordinator.heartbeat() }
@@ -163,6 +165,7 @@ class BattleMemoryCoordinatorTest {
         assertTrue(!updates.last().active)
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 30019ad 1") })
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 3002378 1") })
+        assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 20003a0 4" })
         coordinator.close()
     }
 
@@ -624,6 +627,9 @@ class BattleMemoryCoordinatorTest {
         playerPartyCountAddress = playerPartyOffset?.let { 0x02000000L + it - 3 },
         playerPartyAddress = playerPartyOffset?.let { 0x02000000L + it },
         battleMonsAddress = battleMonsOffset?.let { 0x02000000L + it },
+        battleTypeFlagsAddress = 0x020003A0,
+        trainerBattleMask = 1 shl 3,
+        nonWildBattleMask = 0x8FFF8B72.toInt(),
     )
 
     private fun gen1Context() = BattleCatalogContext(

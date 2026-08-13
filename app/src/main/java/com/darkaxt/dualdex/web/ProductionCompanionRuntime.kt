@@ -23,6 +23,8 @@ import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
 import com.enrpau.dualscreendex.companion.model.BattleState
+import com.enrpau.dualscreendex.companion.model.BattleEncounterKind as CompanionBattleEncounterKind
+import com.enrpau.dualscreendex.companion.battle.RarityEvaluator
 import com.enrpau.dualscreendex.companion.model.BattleTab
 import com.enrpau.dualscreendex.companion.model.BattleTargetMode
 import com.enrpau.dualscreendex.companion.model.CompanionAction
@@ -285,6 +287,9 @@ class ProductionCompanionRuntime(
                     playerPartyCountAddress = layout.playerPartyCountAddress,
                     playerPartyAddress = layout.playerPartyAddress,
                     battleMonsAddress = layout.battleMonsAddress,
+                    battleTypeFlagsAddress = layout.battleTypeFlagsAddress,
+                    trainerBattleMask = layout.trainerBattleMask,
+                    nonWildBattleMask = layout.nonWildBattleMask,
                 )
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),
@@ -370,6 +375,34 @@ class ProductionCompanionRuntime(
                 TargetMode.MANUAL_TARGET_FALLBACK -> BattleTargetMode.MANUAL_TARGET_FALLBACK
             },
             capabilities = sample.capabilities.mapKeys { it.key.name }.mapValues { it.value.name },
+            encounterKind = when (sample.encounterKind) {
+                com.darkaxt.dualdex.battle.BattleEncounterKind.WILD -> CompanionBattleEncounterKind.WILD
+                com.darkaxt.dualdex.battle.BattleEncounterKind.TRAINER -> CompanionBattleEncounterKind.TRAINER
+                com.darkaxt.dualdex.battle.BattleEncounterKind.UNKNOWN -> CompanionBattleEncounterKind.UNKNOWN
+            },
+            rarityUsable = opponents.getOrNull(
+                sample.target.opponentIndex.coerceIn(0, (opponents.size - 1).coerceAtLeast(0)),
+            )?.let { opponent ->
+                val current = catalog ?: return@let false
+                val generation = when (current.family) {
+                    EngineFamily.RED_BLUE, EngineFamily.YELLOW -> 1
+                    EngineFamily.GOLD_SILVER, EngineFamily.CRYSTAL -> 2
+                    else -> 3
+                }
+                val assessment = RarityEvaluator.evaluate(
+                    individual = com.enrpau.dualscreendex.companion.model.OwnedPokemon(
+                        stableKey = "battle",
+                        speciesId = opponent.speciesId,
+                        generation = generation,
+                        level = opponent.level,
+                        ivs = opponent.ivs,
+                        dvs = opponent.dvs,
+                    ),
+                    currentAreaBaseId = gateway.bootstrap().liveAreaBaseId,
+                    encounterAreas = current.encounterAreas,
+                )
+                assessment.innateTier != null && assessment.relativeTier != null && assessment.stars != null
+            } ?: false,
         )
         gateway.dispatch(
             if (gateway.bootstrap().battle == null) CompanionAction.BattleStarted(battle)

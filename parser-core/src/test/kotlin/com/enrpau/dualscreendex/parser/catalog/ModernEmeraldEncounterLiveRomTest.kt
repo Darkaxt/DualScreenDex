@@ -51,6 +51,9 @@ class ModernEmeraldEncounterLiveRomTest {
                 playerPartyCountAddress = 0x0201D9C5,
                 playerPartyAddress = 0x0201D9C8,
                 battleMonsAddress = 0x0200143C,
+                battleTypeFlagsAddress = 0x020003A0,
+                trainerBattleMask = 1 shl 3,
+                nonWildBattleMask = 0x8FFF8B72.toInt(),
             ),
             catalog.runtimeMetadata.gen3RuntimeMemoryLayout,
         )
