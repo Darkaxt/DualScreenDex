@@ -28,9 +28,10 @@ object GbaWorldMapCompositor {
         tiles: ByteArray,
         tilemap: ByteArray,
         palette: ShortArray,
-    ): GbaWorldMapComposition = when (tilemap.size) {
-        AFFINE_MAP_BYTES -> composeAffine(tiles, tilemap, palette)
-        TEXT_MAP_BYTES -> composeText(tiles, tilemap, palette)
+    ): GbaWorldMapComposition = when {
+        tilemap.size == AFFINE_MAP_BYTES -> composeAffine(tiles, tilemap, palette)
+        tilemap.size in TEXT_REQUIRED_CROP_BYTES..TEXT_MAP_BYTES && tilemap.size % 2 == 0 ->
+            composeText(tiles, tilemap, palette)
         else -> GbaWorldMapComposition.Rejected(
             "tilemap byte length ${tilemap.size} does not match a proven world-map format",
         )
@@ -102,6 +103,9 @@ object GbaWorldMapCompositor {
         tilemap: ByteArray,
         palette: ShortArray,
     ): GbaWorldMapComposition {
+        if (tilemap.size < TEXT_REQUIRED_CROP_BYTES) {
+            return GbaWorldMapComposition.Rejected("text tilemap does not contain the complete display crop")
+        }
         if (tiles.isEmpty() || tiles.size % TEXT_TILE_BYTES != 0) {
             return GbaWorldMapComposition.Rejected("text tile bytes are not a non-empty 4bpp tile stream")
         }
@@ -215,6 +219,10 @@ object GbaWorldMapCompositor {
     private const val TEXT_CROP_Y = 4
     private const val TEXT_OUTPUT_WIDTH = 22
     private const val TEXT_OUTPUT_HEIGHT = 15
+    // Real loaders may omit an unused suffix while retaining the same 30-cell row stride.
+    // Require every byte through the final cell touched by the 22x15 display crop.
+    private const val TEXT_REQUIRED_CROP_BYTES =
+        ((TEXT_CROP_Y + TEXT_OUTPUT_HEIGHT - 1) * TEXT_MAP_WIDTH + TEXT_CROP_X + TEXT_OUTPUT_WIDTH) * 2
     private const val TEXT_TILE_INDEX_MASK = 0x03ff
     private const val TEXT_HORIZONTAL_FLIP = 0x0400
     private const val TEXT_VERTICAL_FLIP = 0x0800

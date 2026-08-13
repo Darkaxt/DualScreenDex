@@ -245,7 +245,9 @@ object Gen3WorldMapResolver {
         functionIndex: ThumbFunctionIndex,
         streams: List<CompressedStream>,
     ): List<TextAssetCandidate> {
-        val maps = streams.filter { it.decoded.size == TEXT_MAP_BYTES }
+        val maps = streams.filter {
+            it.decoded.size in TEXT_REQUIRED_CROP_BYTES..TEXT_MAP_BYTES && it.decoded.size % 2 == 0
+        }
         val graphics = streams.filter { it.decoded.isNotEmpty() && it.decoded.size % TEXT_TILE_BYTES == 0 }
         return buildList {
             graphics.forEach { graphicsStream ->
@@ -649,6 +651,7 @@ object Gen3WorldMapResolver {
     private const val AFFINE_TILE_BYTES = 64
     private const val AFFINE_PALETTE_COLORS = 32
     private const val TEXT_MAP_BYTES = 1200
+    private const val TEXT_REQUIRED_CROP_BYTES = 1132
     private const val TEXT_TILE_BYTES = 32
     private const val TEXT_PALETTE_COLORS = 80
     private const val TEXT_REGION_COUNT = 4

@@ -58,6 +58,9 @@ class WorldMapCatalogApiRealControlTest {
     @Test
     fun leafGreenFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[10])
 
+    @Test
+    fun darkCryFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[11])
+
     private fun assertRoundTrip(control: Control) {
         val configured = System.getenv(control.environmentVariable)
         assumeTrue("set ${control.environmentVariable} to run this real-ROM control", !configured.isNullOrBlank())
@@ -210,6 +213,17 @@ class WorldMapCatalogApiRealControlTest {
                     "5bf5a1caf04a9bdbbbb80ea4dba5f9cdbf7d1eb046e7d29a85f6cacd392fbb70",
                     "d6f9b9aac3127691700f46e4df681ce6c1aee8a4f32c0f274b1df043dc47c160",
                     "2e1d951bf0cdf4181a43fc2e451428b067a7f9ba4307dfbc7a6eea237bf01765",
+                ),
+            ),
+            Control(
+                "DUALDEX_DARK_CRY_ROM",
+                "e61d4f66e2d4d39798bcd18f5abfb3db75282508fffd12401b9a1e9d0c1b08ed",
+                (0..3).map { "gen3-region-$it" },
+                listOf(
+                    "9bc538416978211d88e36bd8440a423957517718c51c838895e0f67432ef35c0",
+                    "4556ba8ff635a8a1f234c4825ed7825bfc3a50515e306bb3af1ddaf908b8b13e",
+                    "6f1acba35c5bed020c07f060506bb9761bb2f8cc137fd670cf51eb3c03a580d9",
+                    "cfec5c171fa388debf9fe8745be2b812589fda2cfe12ca487d7bebd5cf8e64f5",
                 ),
             ),
         )

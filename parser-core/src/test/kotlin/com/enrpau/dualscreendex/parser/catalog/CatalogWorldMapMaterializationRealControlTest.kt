@@ -110,6 +110,19 @@ class CatalogWorldMapMaterializationRealControlTest {
         ),
     )
 
+    @Test
+    fun darkCryCatalogMaterializesFourExactNormalizedMaps() = assertCatalog(
+        "DUALDEX_DARK_CRY_ROM",
+        "e61d4f66e2d4d39798bcd18f5abfb3db75282508fffd12401b9a1e9d0c1b08ed",
+        (0..3).map { "gen3-region-$it" },
+        listOf(
+            "bb44c69d073c93911dd47d6121b936e40174cb84ca5128a5d0912ea6981b36d7",
+            "1933d3f93fc82dcfc0f7f5c5db82a9f98d264108ac3fb9f6da4aa46aa41c1d0d",
+            "182c44baf94103874a3aa76867b6640d74bc6b0709cdd551bcd30ba358f2e4e6",
+            "9aa8f8db6faf3d0317a5a3dececeac4fed923816f7b1ff105293111c129de19c",
+        ),
+    )
+
     private fun assertCatalog(
         environmentVariable: String,
         expectedRomSha: String,
