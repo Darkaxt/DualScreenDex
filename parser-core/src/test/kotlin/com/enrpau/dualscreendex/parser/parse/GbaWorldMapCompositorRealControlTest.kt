@@ -148,6 +148,60 @@ class GbaWorldMapCompositorRealControlTest {
     }
 
     @Test
+    fun loaderPaddedFrlgPlanesIgnoreOnlyTheAlignedSuffix() {
+        val rom = control("DUALDEX_CLOVER_ROM", CLOVER_SHA)
+        val tiles = decoded(rom, 0x6e883c, CLOVER_TILES_SHA)
+        val palette = palette(rom, 0x3ef2dc, 80, CLOVER_PALETTE_SHA)
+        val expected = listOf(
+            Triple(0x2e3f28, "25afbba07dde3f6bdd79e4f0d58f0f87f0eb65f933cf7f24f88299e21651b65e", "50a41e7a72bddfb8812a99ff01ac3e26170d5ab2ca5ed179b885c7ad21ed0ebb"),
+            Triple(0x2e41f4, "1a63c7ba062cb3a1697a0f5bd3367e156fc4a6e22ad416ec92b9d415383c91b7", "4cf81884ab3be1fd315555385dd719cab2b5d46880f17982a5fc3ceb5ba838da"),
+            Triple(0x2e42f0, "bba3e926dd362fa9765e18fe0809eb20f97f5be2248f9397c7b65f5690140aac", "c79660d299bd1fb315c32cacfd21a41d10d76ef20fffacea67267609fb038bf2"),
+            Triple(0x2e43c0, "3cca16b016e43718ec12831257b49967e62ce319af96bf9f32a9222b9292e37b", "11fef4f3fdbc027b99034f2389238b5d4c88938292dac94fded4c7ee45fcd08e"),
+        )
+
+        expected.forEach { (offset, mapHash, rasterHash) ->
+            val tilemap = decoded(rom, offset, mapHash)
+            val result = resolved(GbaWorldMapCompositor.compose(tiles, tilemap, palette))
+            assertEquals(rasterHash, sha256(result.raster.argb))
+        }
+        val padded = decoded(rom, expected.first().first, expected.first().second)
+        assertTrue(GbaWorldMapCompositor.compose(tiles, padded.copyOf(1218), palette) is GbaWorldMapComposition.Rejected)
+        assertTrue(GbaWorldMapCompositor.compose(tiles, padded.copyOf(1264), palette) is GbaWorldMapComposition.Rejected)
+    }
+
+    @Test
+    fun darkVioletPaddedPlanesRenderExactLoaderOrderedRasters() = assertPaddedTextControl(
+        env = "DUALDEX_DARK_VIOLET_ROM",
+        romSha = DARK_VIOLET_SHA,
+        tilesOffset = 0x3ef61c,
+        tilesSha = DARK_VIOLET_TILES_SHA,
+        paletteOffset = 0x3ef2dc,
+        paletteSha = DARK_VIOLET_PALETTE_SHA,
+        maps = listOf(
+            PaddedExpected(0xa1a4f8, "6fe122a8797614c976392afe7708ba9439972ee8106a7215952b979536bb0af8", "117e4d9c854ec0b80ab942dcd7f65d8e52d8826589e93fa88532a8ce60422118"),
+            PaddedExpected(0x7fcdc8, "dce92a60b1d269913828c0c189de1a13b322539aa19294b62a3cba34cf2128ba", "da5db5e336b772d95b541a793b3d44a6dc6ce628e43f6077b65c430b024e4aa1"),
+            PaddedExpected(0x3f0c0c, "cd68b8a70e21ac1f53344160234d1eabb7221040c62102c3a648faa550eb40db", "17a547a2ecec1d3f93abfd74f569f250a92f16e303f93c12c1311566538db0bf"),
+            PaddedExpected(0x3f0cf0, "2d0f7a665f88f15d28c213f7e490c232c3eeea8ffc12156aafce32499caa2400", "fd9e4540d935e9756f5fe9c7c519a9c7cbc3920778e61a1df0c9737c511d6b3d"),
+        ),
+    )
+
+    @Test
+    fun darkWorshipPaddedPlaneRendersExactLoaderOrderedRasters() = assertPaddedTextControl(
+        env = "DUALDEX_DARK_WORSHIP_ROM",
+        romSha = DARK_WORSHIP_SHA,
+        tilesOffset = 0xaf690c,
+        tilesSha = DARK_WORSHIP_TILES_SHA,
+        paletteOffset = 0x3ef2dc,
+        paletteSha = DARK_WORSHIP_PALETTE_SHA,
+        maps = listOf(
+            PaddedExpected(0xac0454, "211c05cda89a2124c6c27949d3689edf10860e65f3f02330cc613d2ec42296f4", "55f12ce30d00015e28c278bd9b8a5eafaa392a0ae19947b504e4c637e58b2457"),
+            PaddedExpected(0x3f0afc, "72c0b2615eaf061f5490779a3caf0470dbb88b08dd010c4887b8ed6d61eac124", "118b80b0aed6e7bbd80318230aced72dcb8c469634a87f5d34f57d36a3b83673"),
+            PaddedExpected(0x3f0c0c, "cd68b8a70e21ac1f53344160234d1eabb7221040c62102c3a648faa550eb40db", "b56fd1bb7f986ec6c638f82b5f07bbe9f5b6654b495d7e680f1bc5ca061786e4"),
+            PaddedExpected(0x3f0cf0, "2d0f7a665f88f15d28c213f7e490c232c3eeea8ffc12156aafce32499caa2400", "74811ed87bb54a05512ddf99c383b1b2d9b90fb3b1110547ddfeb9ec4ae79d8d"),
+        ),
+    )
+
+    @Test
     fun provenTwoKilobyteClassicDecoyFailsClosed() {
         val rom = control("DUALDEX_CLASSIC_ROM", CLASSIC_SHA)
         val unrelatedTiles = decoded(rom, 0x326470, "5249cad1ec29f6364150204a47a070d8c8d50dc454c99bb7f9f84c2146ca4063")
@@ -207,6 +261,25 @@ class GbaWorldMapCompositorRealControlTest {
             sha256(PngEncoder.encode(result.raster))
         }
         assertEquals(expected.map(FrlgExpected::pngSha), actualPngHashes)
+    }
+
+    private fun assertPaddedTextControl(
+        env: String,
+        romSha: String,
+        tilesOffset: Int,
+        tilesSha: String,
+        paletteOffset: Int,
+        paletteSha: String,
+        maps: List<PaddedExpected>,
+    ) {
+        val rom = control(env, romSha)
+        val tiles = decoded(rom, tilesOffset, tilesSha)
+        val palette = palette(rom, paletteOffset, 80, paletteSha)
+        maps.forEach { expected ->
+            val tilemap = decoded(rom, expected.offset, expected.mapSha)
+            val result = resolved(GbaWorldMapCompositor.compose(tiles, tilemap, palette))
+            assertEquals(expected.argbSha, sha256(result.raster.argb))
+        }
     }
 
     private fun control(env: String, expectedSha: String): RomImage {
@@ -271,6 +344,8 @@ class GbaWorldMapCompositorRealControlTest {
         val topLeft: Int,
     )
 
+    private data class PaddedExpected(val offset: Int, val mapSha: String, val argbSha: String)
+
     private companion object {
         const val OFFICIAL_EMERALD_SHA = "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af"
         const val MODERN_EMERALD_SHA = "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895"
@@ -278,6 +353,9 @@ class GbaWorldMapCompositorRealControlTest {
         const val FIRERED_SHA = "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059"
         const val LEAFGREEN_SHA = "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825"
         const val DARK_CRY_SHA = "e61d4f66e2d4d39798bcd18f5abfb3db75282508fffd12401b9a1e9d0c1b08ed"
+        const val CLOVER_SHA = "42f99abd548934d77999ac3eb563fb9bc70a34701d37a262b21b882a43a8bdd9"
+        const val DARK_VIOLET_SHA = "6b7e6df19c974371a4f80ea5c0f1e8d68a2cfee248faf34080a48ae3f0135e21"
+        const val DARK_WORSHIP_SHA = "930663704d1a84b93815d276703114e88785de94fcb3230d832ef07dc399f1d8"
         const val OFFICIAL_EMERALD_TILES_SHA = "7fab32a15049c96dd3d8eb9c0ef9ff969a0254c6d96c8538b4b104e8af13dd39"
         const val OFFICIAL_EMERALD_MAP_SHA = "dcf3d464dad11083ece52687184c89ab069c108340ecf5540eb0f14c6d8c8096"
         const val MODERN_EMERALD_TILES_SHA = "5828ca11400d78d81f09aad639ee481155eda63f923dc6ca1175ea6193367148"
@@ -290,5 +368,11 @@ class GbaWorldMapCompositorRealControlTest {
         const val DARK_CRY_TILES_SHA = "ee83cb51854bb3f67a88e43cd254ef34c4bf9239e439929432bbd8cd381a9547"
         const val DARK_CRY_SHORT_MAP_SHA = "6d330c519ae07ce7e8e09fd6dc30de980e2445c956496d87269a5db477a9b1cc"
         const val DARK_CRY_PALETTE_SHA = "e3ef03b01b555aa548511076cabe462f6a2d95cb668a5a4c2b9e4271ed18b060"
+        const val CLOVER_TILES_SHA = "e5baeb6c709c6505c38f5232cbcad29bda8be1a9acb103e9d3634cb8c6b5671a"
+        const val CLOVER_PALETTE_SHA = "ca3c2fe1cf1fcef24e37cb0fe36513ebe1f5328701ff26ec551a59cec750b835"
+        const val DARK_VIOLET_TILES_SHA = "7eee4d0d02a9dba75a5b884139f3025cf2ff59d9f6c57ec0e111816865a130c6"
+        const val DARK_VIOLET_PALETTE_SHA = "c61e97327587313eca268aba4a512aaaddf16c1df537aff20c55b29d6a4b7bb2"
+        const val DARK_WORSHIP_TILES_SHA = "65955d16fe4058c532db1c11bb4604d7f538d6deb3764261a030c7018684ad87"
+        const val DARK_WORSHIP_PALETTE_SHA = "da53a2920bc1e8999ffdf53786787adc6ec5575e285faed22a91f5a07321415d"
     }
 }

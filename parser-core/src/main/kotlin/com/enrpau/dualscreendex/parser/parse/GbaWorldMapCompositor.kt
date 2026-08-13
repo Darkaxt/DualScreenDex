@@ -30,12 +30,17 @@ object GbaWorldMapCompositor {
         palette: ShortArray,
     ): GbaWorldMapComposition = when {
         tilemap.size == AFFINE_MAP_BYTES -> composeAffine(tiles, tilemap, palette)
-        tilemap.size in TEXT_REQUIRED_CROP_BYTES..TEXT_MAP_BYTES && tilemap.size % 2 == 0 ->
+        isTextMapByteLength(tilemap.size) ->
             composeText(tiles, tilemap, palette)
         else -> GbaWorldMapComposition.Rejected(
             "tilemap byte length ${tilemap.size} does not match a proven world-map format",
         )
     }
+
+    internal fun isTextMapByteLength(byteLength: Int): Boolean =
+        (byteLength in TEXT_REQUIRED_CROP_BYTES..TEXT_MAP_BYTES && byteLength % 2 == 0) ||
+            (byteLength in TEXT_MAP_BYTES + TEXT_PADDING_ALIGNMENT..TEXT_MAX_PADDED_MAP_BYTES &&
+                (byteLength - TEXT_MAP_BYTES) % TEXT_PADDING_ALIGNMENT == 0)
 
     private fun composeAffine(
         tiles: ByteArray,
@@ -215,6 +220,10 @@ object GbaWorldMapCompositor {
     private const val TEXT_MAP_WIDTH = 30
     private const val TEXT_MAP_HEIGHT = 20
     private const val TEXT_MAP_BYTES = TEXT_MAP_WIDTH * TEXT_MAP_HEIGHT * 2
+    // Source consumes exactly 600 u16 cells. Proven real loaders may align-pad the decompressed
+    // root by up to three 16-byte units while retaining 1200-byte destination-slot stride.
+    private const val TEXT_PADDING_ALIGNMENT = 16
+    private const val TEXT_MAX_PADDED_MAP_BYTES = TEXT_MAP_BYTES + 3 * TEXT_PADDING_ALIGNMENT
     private const val TEXT_CROP_X = 4
     private const val TEXT_CROP_Y = 4
     private const val TEXT_OUTPUT_WIDTH = 22

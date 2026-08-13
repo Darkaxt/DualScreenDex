@@ -8,6 +8,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -123,6 +124,24 @@ class CatalogWorldMapMaterializationRealControlTest {
         ),
     )
 
+    @Test
+    fun cloverPaddedAssetsReachTheTypedSemanticJoin() = assertTypedSemanticJoin(
+        "DUALDEX_CLOVER_ROM",
+        "42f99abd548934d77999ac3eb563fb9bc70a34701d37a262b21b882a43a8bdd9",
+    )
+
+    @Test
+    fun darkVioletPaddedAssetsReachTheTypedSemanticJoin() = assertTypedSemanticJoin(
+        "DUALDEX_DARK_VIOLET_ROM",
+        "6b7e6df19c974371a4f80ea5c0f1e8d68a2cfee248faf34080a48ae3f0135e21",
+    )
+
+    @Test
+    fun darkWorshipPaddedAssetsReachTheTypedSemanticJoin() = assertTypedSemanticJoin(
+        "DUALDEX_DARK_WORSHIP_ROM",
+        "930663704d1a84b93815d276703114e88785de94fcb3230d832ef07dc399f1d8",
+    )
+
     private fun assertCatalog(
         environmentVariable: String,
         expectedRomSha: String,
@@ -153,6 +172,23 @@ class CatalogWorldMapMaterializationRealControlTest {
                 digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
             },
         )
+    }
+
+    private fun assertTypedSemanticJoin(environmentVariable: String, expectedRomSha: String) {
+        val configured = System.getenv(environmentVariable)
+        assumeTrue("set $environmentVariable to run this real-ROM control", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals(expectedRomSha, rom.sha256)
+
+        val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
+        val capability = catalog.capabilities.getValue(RomCapability.WORLD_MAP)
+        assertEquals(CapabilityStatus.NOT_FOUND, capability.status)
+        assertTrue(capability.reasons.contains("world-map stage: map-header-join"))
+        assertTrue(capability.reasons.any { "semantic section join" in it })
+        assertTrue(catalog.worldMaps.regions.isEmpty())
+        assertTrue(catalog.worldMaps.assets.isEmpty())
     }
 
     private companion object {
