@@ -34,6 +34,17 @@ import org.junit.Test
 /** Read-only exact-first-50 survey. ROM-specific controls remain test diagnostics only. */
 class Arm7MechanicsCompatibilitySurveyTest {
     @Test
+    fun `analyzer-only proof never promotes the production integration stage`() {
+        assertEquals(
+            MechanicsStage.UNSUPPORTED,
+            integrationStage(
+                MechanicsStage.UNSUPPORTED,
+                MechanicsStage.COMPLETE_PROOF,
+            ),
+        )
+    }
+
+    @Test
     fun `survey exact first fifty twice without inventing mechanics inputs`() {
         val manifestPath = configuredPath("DUALDEX_CORPUS_MANIFEST")
         val baselinePath = configuredPath("DUALDEX_REVIEW_BASELINE")
@@ -53,13 +64,17 @@ class Arm7MechanicsCompatibilitySurveyTest {
         }
         val applicable = rows.filter { it.platform == Platform.GBA.name }
         val packet = SurveyPacket(
-            schemaVersion = 3,
-            baseCommit = "211fccf88a71450bdc9af64ddfc09c41fac98a80",
+            schemaVersion = 4,
+            baseCommit = configuredValue("DUALDEX_MECHANICS_SURVEY_COMMIT"),
             manifest = manifestPath.toAbsolutePath().toString(),
             total = rows.size,
             applicableGba = applicable.size,
             notApplicable = rows.size - applicable.size,
             completeProofs = applicable.count { it.run1.stage == MechanicsStage.COMPLETE_PROOF },
+            analyzerOnlyProofs = applicable.count {
+                it.run1.stage != MechanicsStage.COMPLETE_PROOF &&
+                    it.analyzerRun1?.stage == MechanicsStage.COMPLETE_PROOF
+            },
             withheld = applicable.count { it.run1.stage != MechanicsStage.COMPLETE_PROOF },
             deterministic = rows.all { it.deterministic },
             first33RegressionPassed = rows.take(33).all { it.first33Regression == true },
@@ -102,13 +117,16 @@ class Arm7MechanicsCompatibilitySurveyTest {
         val secondReferenceErrors = referenceErrors(index, secondRom, second, secondLayout)
         val firstMechanics = mechanics(firstRom, first, firstLayout)
         val secondMechanics = mechanics(secondRom, second, secondLayout)
+        val firstAnalyzer = analyzerMechanics(firstRom, first, firstLayout)
+        val secondAnalyzer = analyzerMechanics(secondRom, second, secondLayout)
         val deterministic = first.status == second.status &&
             first.selectedFamily == second.selectedFamily &&
             firstLayout?.resolvedDatasets?.moveDetails?.table == secondLayout?.resolvedDatasets?.moveDetails?.table &&
             firstLayout?.resolvedDatasets?.abilityNames?.baseAbilityCount ==
             secondLayout?.resolvedDatasets?.abilityNames?.baseAbilityCount &&
             firstReferenceErrors == secondReferenceErrors &&
-            firstMechanics == secondMechanics
+            firstMechanics == secondMechanics &&
+            firstAnalyzer == secondAnalyzer
         val prior = baseline[expectedSha]
         val regression = if (index <= 33) {
             prior != null &&
@@ -130,6 +148,9 @@ class Arm7MechanicsCompatibilitySurveyTest {
             abilityCount = firstLayout?.resolvedDatasets?.abilityNames?.baseAbilityCount,
             run1 = firstMechanics,
             run2 = secondMechanics,
+            analyzerRun1 = firstAnalyzer,
+            analyzerRun2 = secondAnalyzer,
+            analyzerDeterministic = firstAnalyzer == secondAnalyzer,
             deterministic = deterministic,
             first33Regression = regression,
             referenceErrors = firstReferenceErrors,
@@ -160,13 +181,12 @@ class Arm7MechanicsCompatibilitySurveyTest {
                 MechanicsStage.STATIC_TYPED_LAYOUT_UNAVAILABLE,
                 "parser did not select a typed ability domain",
             )
-        val sourceControl = sourceControls[rom.sha256]
-        if (sourceControl == null) {
-            return when (val resolution = RetailBattleMechanicsResolver.resolve(
-                RomAnalysisSession(rom, parse.header),
-                move,
-                ability.decodedDirectAbilityIds(),
-            )) {
+        val resolution = RetailBattleMechanicsResolver.resolve(
+            RomAnalysisSession(rom, parse.header),
+            move,
+            ability.decodedDirectAbilityIds(),
+        )
+        val integration = when (resolution) {
                 is RetailBattleMechanicsResolution.Resolved -> {
                     val resolved = resolution.layout
                     MechanicsOutcome(
@@ -208,7 +228,21 @@ class Arm7MechanicsCompatibilitySurveyTest {
                     staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
                 )
             }
-        }
+        return integration.copy(stage = integrationStage(integration.stage, null))
+    }
+
+    private fun analyzerMechanics(
+        rom: RomImage,
+        parse: ParseResult,
+        layout: ResolvedRomLayout?,
+    ): MechanicsOutcome? {
+        if (parse.header.platform != Platform.GBA ||
+            parse.status != SelectionStatus.SELECTED ||
+            layout == null
+        ) return null
+        val move = layout.resolvedDatasets.moveDetails ?: return null
+        val ability = layout.resolvedDatasets.abilityNames ?: return null
+        val sourceControl = sourceControls[rom.sha256] ?: return null
         val result = BattleRoleProvenance.analyze(
             rom,
             sourceControl.entry,
@@ -233,6 +267,11 @@ class Arm7MechanicsCompatibilitySurveyTest {
             tuples = result.attackMechanics.sortedBy(AttackMechanic::abilityId).map(::tuple),
         )
     }
+
+    private fun integrationStage(
+        integration: MechanicsStage,
+        @Suppress("UNUSED_PARAMETER") analyzer: MechanicsStage?,
+    ): MechanicsStage = integration
 
     private fun referenceErrors(
         index: Int,
@@ -263,9 +302,13 @@ class Arm7MechanicsCompatibilitySurveyTest {
         parse.probes.singleOrNull { it.family == parse.selectedFamily }?.resolvedLayout
 
     private fun configuredPath(name: String): Path {
+        return Path.of(configuredValue(name))
+    }
+
+    private fun configuredValue(name: String): String {
         val configured = System.getenv(name)
         assumeTrue("set $name to run exact first-50 survey", !configured.isNullOrBlank())
-        return Path.of(configured)
+        return configured!!
     }
 
     private fun baseline(path: Path): Map<String, BaselineObservation> {
@@ -297,6 +340,7 @@ class Arm7MechanicsCompatibilitySurveyTest {
         val applicableGba: Int,
         val notApplicable: Int,
         val completeProofs: Int,
+        val analyzerOnlyProofs: Int,
         val withheld: Int,
         val deterministic: Boolean,
         val first33RegressionPassed: Boolean,
@@ -319,6 +363,9 @@ class Arm7MechanicsCompatibilitySurveyTest {
         val abilityCount: Int?,
         val run1: MechanicsOutcome,
         val run2: MechanicsOutcome,
+        val analyzerRun1: MechanicsOutcome?,
+        val analyzerRun2: MechanicsOutcome?,
+        val analyzerDeterministic: Boolean,
         val deterministic: Boolean,
         val first33Regression: Boolean?,
         val referenceErrors: List<String>,
