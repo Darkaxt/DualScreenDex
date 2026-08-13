@@ -53,6 +53,7 @@ object RetailBattleMechanicsResolver {
         session: RomAnalysisSession,
         moveDetails: ResolvedMoveDetailsLayout,
         activeAbilityIds: Set<Int>,
+        selectedAbi: BattleMechanicsAbi? = null,
     ): RetailBattleMechanicsResolution {
         if (moveDetails.table.abi != MoveDetailsAbi.RETAIL_12) {
             return RetailBattleMechanicsResolution.Unavailable("selected move ABI is not retail-12")
@@ -64,6 +65,11 @@ object RetailBattleMechanicsResolver {
         val calls = decodedThumbCalls(session.rom)
             ?: return RetailBattleMechanicsResolution.BudgetExceeded("decoded Thumb call-edge budget exceeded")
         val moveRoot = GBA_ROM_BASE + moveDetails.table.offset.toInt()
+        selectedAbi?.let { abi ->
+            validateSelectedAbi(abi, moveDetails, moveRoot, abilityDomain)?.let { reason ->
+                return RetailBattleMechanicsResolution.Unavailable(reason)
+            }
+        }
         val moveReferences = decodedLiteralReferences(session.rom, moveRoot)
         if (moveReferences.isEmpty()) {
             return RetailBattleMechanicsResolution.Unavailable(
@@ -78,14 +84,23 @@ object RetailBattleMechanicsResolver {
         var moveRootRoutineTargets = 0
         var typedFieldCandidates = 0
         var semanticCandidates = 0
+        var selectedCallerStrideContradictions = 0
         calls.toSortedMap().forEach { (entry, callSites) ->
             decodedCallTargets++
             val callerEvidence = callSites.mapNotNull { proveCallerArguments(session.rom, it) }
             provedCallerSites += callerEvidence.size
             maxProvedCallerSitesPerTarget = maxOf(maxProvedCallerSitesPerTarget, callerEvidence.size)
-            val coherent = callerEvidence.groupBy { it.battleArrayRoot to it.recordStride }
+            val allCoherent = callerEvidence.groupBy { it.battleArrayRoot to it.recordStride }
                 .values
                 .filter { evidence -> evidence.map { it.callSite }.distinct().isNotEmpty() }
+            val coherent = if (selectedAbi == null) {
+                allCoherent
+            } else {
+                allCoherent.filter { evidence -> evidence.first().recordStride == selectedAbi.record.stride }
+                    .also {
+                        if (it.isEmpty() && allCoherent.isNotEmpty()) selectedCallerStrideContradictions++
+                    }
+            }
             if (coherent.size != 1) return@forEach
             coherentCallerTargets++
             val evidence = coherent.single().distinctBy { it.callSite }.sortedBy { it.callSite }
@@ -101,45 +116,55 @@ object RetailBattleMechanicsResolver {
                 power = ScalarField(1, ScalarWidth.U8),
                 type = ScalarField(2, ScalarWidth.U8),
             )
-            fields.filter { it.width in setOf(ScalarWidth.U8, ScalarWidth.U16) }.forEach { ability ->
-                fields.filter { it.width in setOf(ScalarWidth.U16, ScalarWidth.U32) }.forEach { attack ->
-                    if (ability == attack) return@forEach
-                    val abi = BattleMechanicsAbi(
-                        record = BattleRecordAbi(stride = stride, attack = attack, ability = ability),
-                        move = moveAbi,
-                        activeAbilityIds = abilityDomain,
-                        roleContract = BattleRoleContract.DirectPointers(0, 1),
-                    )
-                    typedFieldCandidates++
-                    val semantic = BattleRoleProvenance.analyze(
-                        image = session.rom,
-                        entry = entry,
-                        instructionSet = Arm7InstructionSet.THUMB,
-                        abi = abi,
-                        maxDecodedInstructions = MAX_ROUTINE_INSTRUCTIONS,
-                    )
-                    if (semantic.attackMechanics.isEmpty() || semantic.attackMechanics.hasContradictoryEffects()) {
-                        return@forEach
+            val abiCandidates = selectedAbi?.let(::listOf) ?: buildList {
+                fields.filter { it.width in setOf(ScalarWidth.U8, ScalarWidth.U16) }.forEach { ability ->
+                    fields.filter { it.width in setOf(ScalarWidth.U16, ScalarWidth.U32) }.forEach { attack ->
+                        if (ability != attack) {
+                            add(
+                                BattleMechanicsAbi(
+                                    record = BattleRecordAbi(stride = stride, attack = attack, ability = ability),
+                                    move = moveAbi,
+                                    activeAbilityIds = abilityDomain,
+                                    roleContract = BattleRoleContract.DirectPointers(0, 1),
+                                ),
+                            )
+                        }
                     }
-                    semanticCandidates++
-                    if (semantic.fieldReads.none { it.role == BattleRecordRole.ATTACKER && it.field == attack && it.access == attack }) {
-                        return@forEach
-                    }
-                    if (semantic.fieldReads.none { it.role == BattleRecordRole.ATTACKER && it.field == ability && it.access == ability }) {
-                        return@forEach
-                    }
-                    candidates += ResolvedRetailBattleMechanics(
-                        routineEntry = entry,
-                        abi = abi,
-                        mechanics = semantic.attackMechanics.distinct().sortedBy(AttackMechanic::abilityId),
-                        proof = RetailBattleMechanicsProof(
-                            decodedCallSites = callSites.distinct().sorted(),
-                            callerEvidence = evidence,
-                            moveTableReferenceSites = routine.moveReferenceSites.sorted(),
-                            literalVeneerSites = routine.literalVeneerSites.sorted(),
-                        ),
-                    )
                 }
+            }
+            abiCandidates.forEach { abi ->
+                val ability = abi.record.ability
+                val attack = abi.record.attack
+                if (ability !in fields || attack !in fields) return@forEach
+                typedFieldCandidates++
+                val semantic = BattleRoleProvenance.analyze(
+                    image = session.rom,
+                    entry = entry,
+                    instructionSet = Arm7InstructionSet.THUMB,
+                    abi = abi,
+                    maxDecodedInstructions = MAX_ROUTINE_INSTRUCTIONS,
+                )
+                if (semantic.attackMechanics.isEmpty() || semantic.attackMechanics.hasContradictoryEffects()) {
+                    return@forEach
+                }
+                semanticCandidates++
+                if (semantic.fieldReads.none { it.role == BattleRecordRole.ATTACKER && it.field == attack && it.access == attack }) {
+                    return@forEach
+                }
+                if (semantic.fieldReads.none { it.role == BattleRecordRole.ATTACKER && it.field == ability && it.access == ability }) {
+                    return@forEach
+                }
+                candidates += ResolvedRetailBattleMechanics(
+                    routineEntry = entry,
+                    abi = abi,
+                    mechanics = semantic.attackMechanics.distinct().sortedBy(AttackMechanic::abilityId),
+                    proof = RetailBattleMechanicsProof(
+                        decodedCallSites = callSites.distinct().sorted(),
+                        callerEvidence = evidence,
+                        moveTableReferenceSites = routine.moveReferenceSites.sorted(),
+                        literalVeneerSites = routine.literalVeneerSites.sorted(),
+                    ),
+                )
             }
         }
         val distinct = candidates.distinctBy { candidate ->
@@ -150,17 +175,143 @@ object RetailBattleMechanicsResolver {
                 candidate.mechanics,
             )
         }
-        return when (distinct.size) {
+        val canonical = collapseMandatoryVeneerAliases(session.rom, distinct)
+        return when (canonical.size) {
             0 -> RetailBattleMechanicsResolution.Unavailable(
-                "no routine proved caller roles, selected move-table use, typed fields, and attack mechanics " +
+                (if (selectedAbi != null &&
+                    coherentCallerTargets == 0 &&
+                    selectedCallerStrideContradictions != 0
+                ) {
+                    "selected ABI record stride ${selectedAbi.record.stride} contradicts decoded caller evidence; "
+                } else {
+                    "no routine proved caller roles, selected move-table use, typed fields, and attack mechanics "
+                }) +
                     "(decodedCallTargets=$decodedCallTargets, coherentCallerTargets=$coherentCallerTargets, " +
                     "provedCallerSites=$provedCallerSites, maxProvedCallerSitesPerTarget=$maxProvedCallerSitesPerTarget, " +
                     "moveRootRoutineTargets=$moveRootRoutineTargets, typedFieldCandidates=$typedFieldCandidates, " +
                     "semanticCandidates=$semanticCandidates)",
             )
-            1 -> RetailBattleMechanicsResolution.Resolved(distinct.single())
-            else -> RetailBattleMechanicsResolution.Ambiguous(distinct.map { it.routineEntry }.distinct().sorted())
+            1 -> RetailBattleMechanicsResolution.Resolved(canonical.single())
+            else -> RetailBattleMechanicsResolution.Ambiguous(canonical.map { it.routineEntry }.distinct().sorted())
         }
+    }
+
+    private fun collapseMandatoryVeneerAliases(
+        image: RomImage,
+        candidates: List<ResolvedRetailBattleMechanics>,
+    ): List<ResolvedRetailBattleMechanics> {
+        val remaining = candidates.toMutableList()
+        var changed: Boolean
+        do {
+            changed = false
+            val alias = remaining.firstNotNullOfOrNull { source ->
+                remaining.singleOrNull { target ->
+                    target !== source &&
+                        source.abi.sameContractAs(target.abi) &&
+                        source.mechanics == target.mechanics &&
+                        shareMandatoryVeneerContinuation(image, source, target)
+                }?.let { target -> source to target }
+            }
+            if (alias != null) {
+                val (source, target) = alias
+                remaining.remove(source)
+                remaining[remaining.indexOf(target)] = target.copy(
+                    proof = RetailBattleMechanicsProof(
+                        decodedCallSites = (source.proof.decodedCallSites + target.proof.decodedCallSites)
+                            .distinct()
+                            .sorted(),
+                        callerEvidence = (source.proof.callerEvidence + target.proof.callerEvidence)
+                            .distinctBy { it.callSite }
+                            .sortedBy { it.callSite },
+                        moveTableReferenceSites =
+                            (source.proof.moveTableReferenceSites + target.proof.moveTableReferenceSites).distinct().sorted(),
+                        literalVeneerSites =
+                            (source.proof.literalVeneerSites + target.proof.literalVeneerSites).distinct().sorted(),
+                    ),
+                )
+                changed = true
+            }
+        } while (changed)
+        return remaining
+    }
+
+    private fun BattleMechanicsAbi.sameContractAs(other: BattleMechanicsAbi): Boolean =
+        record == other.record &&
+            move == other.move &&
+            activeAbilityIds == other.activeAbilityIds &&
+            withheldAbilityIds == other.withheldAbilityIds &&
+            roleContract == other.roleContract &&
+            moveParameterRegister == other.moveParameterRegister
+
+    private fun shareMandatoryVeneerContinuation(
+        image: RomImage,
+        source: ResolvedRetailBattleMechanics,
+        target: ResolvedRetailBattleMechanics,
+    ): Boolean = source.proof.literalVeneerSites
+        .mapNotNull { site ->
+            decoded(image, site + 2)
+                ?.let { literalThumbVeneer(image, it) }
+                ?.takeIf { it.loadOffset == site }
+                ?.targetOffset
+        }
+        .distinct()
+        .singleOrNull { continuation ->
+            allEntryPathsReach(image, source.routineEntry, continuation) &&
+                allEntryPathsReach(image, target.routineEntry, continuation)
+        } != null
+
+    private fun allEntryPathsReach(image: RomImage, source: Int, target: Int): Boolean {
+        if (source == target) return true
+        val memo = mutableMapOf<Int, Boolean>()
+        val visiting = mutableSetOf<Int>()
+        var decodedCount = 0
+
+        fun reaches(offset: Int): Boolean {
+            if (offset == target) return true
+            memo[offset]?.let { return it }
+            if (!visiting.add(offset) || ++decodedCount > MAX_ALIAS_INSTRUCTIONS) return false
+            val instruction = decoded(image, offset)
+            val successors = when (val control = instruction?.controlEffect) {
+                is Arm7ControlEffect.Sequential, is Arm7ControlEffect.Call ->
+                    setOf(offset + instruction.size)
+                is Arm7ControlEffect.DirectBranch -> buildSet {
+                    add(control.target.toInt() and -2)
+                    if (control.conditional) add(offset + instruction.size)
+                }
+                is Arm7ControlEffect.IndirectBranch, is Arm7ControlEffect.ProgramCounterWrite ->
+                    literalThumbVeneer(image, instruction)?.targetOffset?.let(::setOf).orEmpty()
+                else -> emptySet()
+            }
+            val result = successors.isNotEmpty() && successors.all { it in 0 until image.size && reaches(it) }
+            visiting.remove(offset)
+            memo[offset] = result
+            return result
+        }
+
+        return reaches(source)
+    }
+
+    private fun validateSelectedAbi(
+        abi: BattleMechanicsAbi,
+        moveDetails: ResolvedMoveDetailsLayout,
+        moveRoot: Int,
+        abilityDomain: Set<Int>,
+    ): String? {
+        if (abi.roleContract != BattleRoleContract.DirectPointers(0, 1)) {
+            return "selected ABI role contract is not the decoded retail direct-pointer contract"
+        }
+        if (abi.activeAbilityIds != abilityDomain.sorted()) {
+            return "selected ABI ability domain contradicts the parser-selected ability domain"
+        }
+        if (abi.move.tableRoot != moveRoot ||
+            abi.move.stride != moveDetails.table.abi.recordSize ||
+            abi.move.effect != ScalarField(0, ScalarWidth.U8) ||
+            abi.move.power != ScalarField(1, ScalarWidth.U8) ||
+            abi.move.type != ScalarField(2, ScalarWidth.U8)
+        ) {
+            return "selected ABI move layout contradicts the parser-selected retail-12 layout"
+        }
+        return null
     }
 
     private fun decodedThumbCalls(image: RomImage): Map<Int, List<Int>>? {
@@ -517,6 +668,7 @@ object RetailBattleMechanicsResolver {
     private const val MAX_CALL_EDGES = 262_144
     private const val MAX_ROUTINE_INSTRUCTIONS = 4_096
     private const val MAX_POINTER_STATE_TRANSFERS = 65_536
+    private const val MAX_ALIAS_INSTRUCTIONS = 512
     private val CALLER_VOLATILE_REGISTERS = setOf(
         Arm7Register.R0,
         Arm7Register.R1,

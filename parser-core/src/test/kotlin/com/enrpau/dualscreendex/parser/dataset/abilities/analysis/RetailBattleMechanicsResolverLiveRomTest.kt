@@ -76,6 +76,34 @@ class RetailBattleMechanicsResolverLiveRomTest {
                 ),
                 resolved.mechanics.toSet(),
             )
+
+            val selectedAbi = BattleMechanicsAbi(
+                record = BattleRecordAbi(
+                    stride = 0x58,
+                    attack = ScalarField(0x02, ScalarWidth.U16),
+                    ability = ScalarField(0x20, ScalarWidth.U8),
+                ),
+                move = MoveMechanicsAbi(
+                    tableRoot = 0x0800_0000 + moves.table.offset.toInt(),
+                    stride = moves.table.abi.recordSize,
+                    effect = ScalarField(0, ScalarWidth.U8),
+                    power = ScalarField(1, ScalarWidth.U8),
+                    type = ScalarField(2, ScalarWidth.U8),
+                ),
+                activeAbilityIds = abilityIds,
+                roleContract = BattleRoleContract.DirectPointers(0, 1),
+            )
+            val selectedResult = RetailBattleMechanicsResolver.resolve(
+                RomAnalysisSession(image, RomHeaderReader.read(image)),
+                moves,
+                abilityIds,
+                selectedAbi,
+            )
+            assertTrue(selectedResult.toString(), selectedResult is RetailBattleMechanicsResolution.Resolved)
+            val selected = (selectedResult as RetailBattleMechanicsResolution.Resolved).layout
+            assertEquals(control.routineEntry, selected.routineEntry)
+            assertEquals(selectedAbi, selected.abi)
+            assertEquals(resolved.mechanics, selected.mechanics)
         }
     }
 

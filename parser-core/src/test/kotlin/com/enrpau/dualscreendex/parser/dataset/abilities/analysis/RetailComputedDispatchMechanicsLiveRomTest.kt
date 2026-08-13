@@ -1,7 +1,9 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities.analysis
 
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7InstructionSet
 import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
+import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import java.nio.file.Files
@@ -50,6 +52,52 @@ class RetailComputedDispatchMechanicsLiveRomTest {
         }
     }
 
+    @Test
+    fun `resolver consumes the selected Clover ABI without rediscovering competing stat fields`() {
+        val image = loadControl()
+        val parsed = ParserOrchestrator.analyze(image)
+        val layout = parsed.probes.single { it.family == parsed.selectedFamily }.resolvedLayout!!
+        val moves = layout.resolvedDatasets.moveDetails!!
+        val abilityIds = layout.resolvedDatasets.abilityNames!!.decodedDirectAbilityIds()
+        val selectedAbi = typedAbi(moves, abilityIds)
+
+        val resolved = RetailBattleMechanicsResolver.resolve(
+            RomAnalysisSession(image, RomHeaderReader.read(image)),
+            moves,
+            abilityIds,
+            selectedAbi,
+        )
+
+        assertTrue(resolved.toString(), resolved is RetailBattleMechanicsResolution.Resolved)
+        val mechanics = (resolved as RetailBattleMechanicsResolution.Resolved).layout
+        assertEquals(ROUTINE_ENTRY, mechanics.routineEntry)
+        assertEquals(selectedAbi, mechanics.abi)
+        assertEquals(expectedMechanics, mechanics.mechanics.toSet())
+    }
+
+    @Test
+    fun `resolver rejects a selected ABI contradicted by decoded caller stride`() {
+        val image = loadControl()
+        val parsed = ParserOrchestrator.analyze(image)
+        val layout = parsed.probes.single { it.family == parsed.selectedFamily }.resolvedLayout!!
+        val moves = layout.resolvedDatasets.moveDetails!!
+        val abilityIds = layout.resolvedDatasets.abilityNames!!.decodedDirectAbilityIds()
+        val contradicted = typedAbi(moves, abilityIds, recordStride = 0x5C)
+
+        val resolution = RetailBattleMechanicsResolver.resolve(
+            RomAnalysisSession(image, RomHeaderReader.read(image)),
+            moves,
+            abilityIds,
+            contradicted,
+        )
+
+        assertTrue(resolution.toString(), resolution is RetailBattleMechanicsResolution.Unavailable)
+        assertTrue(
+            (resolution as RetailBattleMechanicsResolution.Unavailable).reason,
+            resolution.reason.contains("selected ABI record stride"),
+        )
+    }
+
     private fun resolve(
         image: RomImage,
         moves: ResolvedMoveDetailsLayout,
@@ -58,23 +106,29 @@ class RetailComputedDispatchMechanicsLiveRomTest {
         image = image,
         entry = ROUTINE_ENTRY,
         instructionSet = Arm7InstructionSet.THUMB,
-        abi = BattleMechanicsAbi(
-            record = BattleRecordAbi(
-                stride = 0x58,
-                attack = ScalarField(0x02, ScalarWidth.U16),
-                ability = ScalarField(0x20, ScalarWidth.U8),
-            ),
-            move = MoveMechanicsAbi(
-                tableRoot = 0x0800_0000 + moves.table.offset.toInt(),
-                stride = moves.table.abi.recordSize,
-                effect = ScalarField(0, ScalarWidth.U8),
-                power = ScalarField(1, ScalarWidth.U8),
-                type = ScalarField(2, ScalarWidth.U8),
-            ),
-            activeAbilityIds = abilityIds,
-            roleContract = BattleRoleContract.DirectPointers(0, 1),
-        ),
+        abi = typedAbi(moves, abilityIds),
         maxDecodedInstructions = 4_096,
+    )
+
+    private fun typedAbi(
+        moves: ResolvedMoveDetailsLayout,
+        abilityIds: Set<Int>,
+        recordStride: Int = 0x58,
+    ) = BattleMechanicsAbi(
+        record = BattleRecordAbi(
+            stride = recordStride,
+            attack = ScalarField(0x02, ScalarWidth.U16),
+            ability = ScalarField(0x20, ScalarWidth.U8),
+        ),
+        move = MoveMechanicsAbi(
+            tableRoot = 0x0800_0000 + moves.table.offset.toInt(),
+            stride = moves.table.abi.recordSize,
+            effect = ScalarField(0, ScalarWidth.U8),
+            power = ScalarField(1, ScalarWidth.U8),
+            type = ScalarField(2, ScalarWidth.U8),
+        ),
+        activeAbilityIds = abilityIds,
+        roleContract = BattleRoleContract.DirectPointers(0, 1),
     )
 
     private fun loadControl(): RomImage {
