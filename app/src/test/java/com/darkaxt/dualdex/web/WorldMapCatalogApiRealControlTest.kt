@@ -8,6 +8,8 @@ import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.RomCapability
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
@@ -59,7 +61,7 @@ class WorldMapCatalogApiRealControlTest {
     fun leafGreenFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[10])
 
     @Test
-    fun darkCryFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[11])
+    fun darkCryLocationBindingFailurePersistsAndExposesNoMapAssets() = assertNoMapRoundTrip(controls[11])
 
     @Test
     fun darkVioletFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[12])
@@ -107,6 +109,50 @@ class WorldMapCatalogApiRealControlTest {
                 sha256(bytes)
             }
             assertEquals(control.pngHashes, actualPngHashes)
+        } finally {
+            server?.close()
+            deleteTree(root)
+        }
+    }
+
+    private fun assertNoMapRoundTrip(control: Control) {
+        val configured = System.getenv(control.environmentVariable)
+        assumeTrue("set ${control.environmentVariable} to run this real-ROM control", !configured.isNullOrBlank())
+        val romPath = Path.of(requireNotNull(configured))
+        assumeTrue("real ROM does not exist: $romPath", Files.isRegularFile(romPath))
+        val rom = RomImage(Files.readAllBytes(romPath))
+        assertEquals(control.romSha256, rom.sha256)
+        assertTrue(control.regionKeys.isEmpty())
+        assertTrue(control.pngHashes.isEmpty())
+
+        val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
+        val capability = catalog.capabilities.getValue(RomCapability.WORLD_MAP)
+        assertEquals(CapabilityStatus.NOT_FOUND, capability.status)
+        assertTrue(capability.reasons.contains("world-map stage: encounter-binding"))
+        assertTrue(capability.reasons.contains("text-map region 3 retained no encounter binding"))
+        assertTrue(catalog.worldMaps.regions.isEmpty())
+        assertTrue(catalog.worldMaps.assets.isEmpty())
+
+        val root = newRoot()
+        var server: AndroidLoopbackServer? = null
+        try {
+            val cache = CatalogCache(root.toFile(), JdbcTestCatalogDatabaseFactory)
+            cache.write(
+                catalog,
+                CatalogSourceMetadata.direct(romPath.fileName.toString(), rom.size, "REAL-CONTROL"),
+                CatalogWriteProgress.complete(),
+            )
+            val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
+            assertEquals(capability, reopened.capabilities.getValue(RomCapability.WORLD_MAP))
+            assertTrue(reopened.worldMaps.regions.isEmpty())
+            assertTrue(reopened.worldMaps.assets.isEmpty())
+
+            val runtime = ProductionCompanionRuntime().apply { loadCatalog(romPath.fileName.toString(), reopened) }
+            server = AndroidLoopbackServer(runtime) { null }.also { it.start() }
+            val key = URLEncoder.encode("world/gen3-region-0", StandardCharsets.UTF_8)
+            val response = URI("http://127.0.0.1:${server.address.port}/api/maps/$key.png")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(404, response.responseCode)
         } finally {
             server?.close()
             deleteTree(root)
@@ -224,13 +270,8 @@ class WorldMapCatalogApiRealControlTest {
             Control(
                 "DUALDEX_DARK_CRY_ROM",
                 "e61d4f66e2d4d39798bcd18f5abfb3db75282508fffd12401b9a1e9d0c1b08ed",
-                (0..3).map { "gen3-region-$it" },
-                listOf(
-                    "9bc538416978211d88e36bd8440a423957517718c51c838895e0f67432ef35c0",
-                    "4556ba8ff635a8a1f234c4825ed7825bfc3a50515e306bb3af1ddaf908b8b13e",
-                    "6f1acba35c5bed020c07f060506bb9761bb2f8cc137fd670cf51eb3c03a580d9",
-                    "cfec5c171fa388debf9fe8745be2b812589fda2cfe12ca487d7bebd5cf8e64f5",
-                ),
+                emptyList(),
+                emptyList(),
             ),
             Control(
                 "DUALDEX_DARK_VIOLET_ROM",

@@ -112,16 +112,9 @@ class CatalogWorldMapMaterializationRealControlTest {
     )
 
     @Test
-    fun darkCryCatalogMaterializesFourExactNormalizedMaps() = assertCatalog(
+    fun darkCryCatalogFailsClosedAtLocationBinding() = assertTypedLocationBinding(
         "DUALDEX_DARK_CRY_ROM",
         "e61d4f66e2d4d39798bcd18f5abfb3db75282508fffd12401b9a1e9d0c1b08ed",
-        (0..3).map { "gen3-region-$it" },
-        listOf(
-            "bb44c69d073c93911dd47d6121b936e40174cb84ca5128a5d0912ea6981b36d7",
-            "1933d3f93fc82dcfc0f7f5c5db82a9f98d264108ac3fb9f6da4aa46aa41c1d0d",
-            "182c44baf94103874a3aa76867b6640d74bc6b0709cdd551bcd30ba358f2e4e6",
-            "9aa8f8db6faf3d0317a5a3dececeac4fed923816f7b1ff105293111c129de19c",
-        ),
     )
 
     @Test
@@ -219,6 +212,23 @@ class CatalogWorldMapMaterializationRealControlTest {
         assertEquals(CapabilityStatus.NOT_FOUND, capability.status)
         assertTrue(capability.reasons.contains("world-map stage: map-header-join"))
         assertTrue(capability.reasons.any { "semantic section join" in it })
+        assertTrue(catalog.worldMaps.regions.isEmpty())
+        assertTrue(catalog.worldMaps.assets.isEmpty())
+    }
+
+    private fun assertTypedLocationBinding(environmentVariable: String, expectedRomSha: String) {
+        val configured = System.getenv(environmentVariable)
+        assumeTrue("set $environmentVariable to run this real-ROM control", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals(expectedRomSha, rom.sha256)
+
+        val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
+        val capability = catalog.capabilities.getValue(RomCapability.WORLD_MAP)
+        assertEquals(CapabilityStatus.NOT_FOUND, capability.status)
+        assertTrue(capability.reasons.contains("world-map stage: encounter-binding"))
+        assertTrue(capability.reasons.contains("text-map region 3 retained no encounter binding"))
         assertTrue(catalog.worldMaps.regions.isEmpty())
         assertTrue(catalog.worldMaps.assets.isEmpty())
     }

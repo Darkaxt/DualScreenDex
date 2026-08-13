@@ -32,7 +32,25 @@ class Gen3WorldMapResolverRealControlTest {
     fun leafGreenResolvesFourExactSourceOracleRegions() = assertControl(controls[4])
 
     @Test
-    fun darkCryResolvesItsCropCompleteFrlgRegions() = assertControl(controls[5])
+    fun darkCryFailsClosedWithoutAFourthRegionLocationBinding() {
+        val control = controls[5]
+        val rom = realRom(control)
+        val analysis = ParserOrchestrator.analyze(rom)
+        assertEquals(SelectionStatus.SELECTED, analysis.status)
+        val layout = requireNotNull(analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout)
+        val encounterBaseIds = EncounterMaterializer.materialize(rom, layout)
+            .mapTo(linkedSetOf()) { it.id / 10 }
+
+        val resolution = Gen3WorldMapResolver.resolve(
+            RomAnalysisSession(rom, RomHeaderReader.read(rom)),
+            encounterBaseIds,
+        )
+
+        assertTrue("$resolution", resolution is WorldMapResolution.Unavailable)
+        resolution as WorldMapResolution.Unavailable
+        assertEquals("encounter-binding", resolution.stage)
+        assertEquals("text-map region 3 retained no encounter binding", resolution.reason)
+    }
 
     @Test
     fun darkVioletResolvesItsExactLoaderAndCompactHeaderConsumerRegions() = assertControl(controls[6])

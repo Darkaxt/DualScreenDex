@@ -132,6 +132,44 @@ class GbaWorldMapCompositorRealControlTest {
     }
 
     @Test
+    fun darkCryLoaderRetainsFourExactRasterPlanesBeforeLocationBinding() {
+        val rom = control("DUALDEX_DARK_CRY_ROM", DARK_CRY_SHA)
+        val tiles = decoded(rom, 0x7680c1, DARK_CRY_TILES_SHA)
+        val palette = palette(rom, 0x3ef2dc, 80, DARK_CRY_PALETTE_SHA)
+        val expected = listOf(
+            Triple(
+                0x769161,
+                DARK_CRY_SHORT_MAP_SHA,
+                "bb44c69d073c93911dd47d6121b936e40174cb84ca5128a5d0912ea6981b36d7",
+            ),
+            Triple(
+                0x3f0afc,
+                "72c0b2615eaf061f5490779a3caf0470dbb88b08dd010c4887b8ed6d61eac124",
+                "1933d3f93fc82dcfc0f7f5c5db82a9f98d264108ac3fb9f6da4aa46aa41c1d0d",
+            ),
+            Triple(
+                0x3f0c0c,
+                "cd68b8a70e21ac1f53344160234d1eabb7221040c62102c3a648faa550eb40db",
+                "182c44baf94103874a3aa76867b6640d74bc6b0709cdd551bcd30ba358f2e4e6",
+            ),
+            Triple(
+                0x3f0cf0,
+                "2d0f7a665f88f15d28c213f7e490c232c3eeea8ffc12156aafce32499caa2400",
+                "9aa8f8db6faf3d0317a5a3dececeac4fed923816f7b1ff105293111c129de19c",
+            ),
+        )
+
+        assertEquals(
+            expected.map { it.third },
+            expected.map { (offset, mapSha, _) ->
+                val tilemap = decoded(rom, offset, mapSha)
+                val result = resolved(GbaWorldMapCompositor.compose(tiles, tilemap, palette))
+                sha256(result.raster.argb)
+            },
+        )
+    }
+
+    @Test
     fun cropCompleteFrlgBoundaryRejectsOneMissingRequiredCell() {
         val rom = control("DUALDEX_DARK_CRY_ROM", DARK_CRY_SHA)
         val tiles = decoded(rom, 0x7680c1, DARK_CRY_TILES_SHA)

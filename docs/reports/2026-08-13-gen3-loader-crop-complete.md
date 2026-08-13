@@ -44,13 +44,13 @@ The four normalized ARGB raster hashes are:
 3. `182c44baf94103874a3aa76867b6640d74bc6b0709cdd551bcd30ba358f2e4e6`
 4. `9aa8f8db6faf3d0317a5a3dececeac4fed923816f7b1ff105293111c129de19c`
 
-Their PNG hashes after CatalogParser, SQLite persistence, runtime reload, and
-loopback API serving are:
-
-1. `9bc538416978211d88e36bd8440a423957517718c51c838895e0f67432ef35c0`
-2. `4556ba8ff635a8a1f234c4825ed7825bfc3a50515e306bb3af1ddaf908b8b13e`
-3. `6f1acba35c5bed020c07f060506bb9761bb2f8cc137fd670cf51eb3c03a580d9`
-4. `cfec5c171fa388debf9fe8745be2b812589fda2cfe12ca487d7bebd5cf8e64f5`
+These four raster hashes are loader/compositor evidence only. The semantic
+resolver cannot bind any encounter location to Dark Cry's fourth region, so it
+fails closed at `encounter-binding`. CatalogParser records `WORLD_MAP` as
+`NOT_FOUND`; SQLite/runtime reload retains zero regions and assets; the
+loopback asset route returns 404. This is the deterministic `LOCATION_BINDING`
+row recorded by the frozen exact50 release gate, not a four-region available
+catalog.
 
 ## Fail-closed boundary
 
