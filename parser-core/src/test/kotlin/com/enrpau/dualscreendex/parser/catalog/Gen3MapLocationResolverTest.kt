@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.io.RomImage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -36,6 +37,106 @@ class Gen3MapLocationResolverTest {
     @Test
     fun returnsNoNamesWhenEncounterKeysDoNotProveOneMapGroupsRoot() {
         assertTrue(Gen3MapLocationResolver.resolve(RomImage(ByteArray(0x400)), setOf(0x0000)).isEmpty())
+    }
+
+    @Test
+    fun compactConsumerJoinsRequiredSparseGroupsWithoutEnumeratingUnrelatedPacking() {
+        val bytes = compactConsumerFixture(0x180)
+        putPointer(bytes, 0x184, 0x240)
+        putPointer(bytes, 0x188, 0x340)
+        putPointer(bytes, 0x240, 0x500)
+        putPointer(bytes, 0x340, 0x51C)
+        writeMapHeader(bytes, 0x500, 88)
+        writeMapHeader(bytes, 0x51C, 149)
+
+        val sections = Gen3MapLocationResolver.resolveSectionByBaseArea(
+            RomImage(bytes),
+            setOf(0x0100, 0x0200),
+            GbaReferenceIndex.countsOnlyForTesting(mapOf(0x700 to 1)),
+        )
+
+        assertEquals(mapOf(0x0100 to 88, 0x0200 to 149), sections)
+
+        val narrow = ByteArray(0x1000)
+        writeNarrowCompactConsumer(narrow, 0x40, 0x180)
+        putPointer(narrow, 0x184, 0x240)
+        putPointer(narrow, 0x188, 0x340)
+        putPointer(narrow, 0x240, 0x500)
+        putPointer(narrow, 0x340, 0x51C)
+        writeMapHeader(narrow, 0x500, 88)
+        writeMapHeader(narrow, 0x51C, 149)
+        assertEquals(mapOf(0x0100 to 88, 0x0200 to 149), resolveCompact(narrow))
+    }
+
+    @Test
+    fun compactConsumerFailsClosedForPartialOrDuplicateAuthorities() {
+        val partial = compactConsumerFixture(0x180)
+        putPointer(partial, 0x184, 0x240)
+        putPointer(partial, 0x240, 0x500)
+        writeMapHeader(partial, 0x500, 88)
+        assertTrue(resolveCompact(partial).isEmpty())
+
+        val duplicate = partial.copyOf()
+        putPointer(duplicate, 0x188, 0x340)
+        putPointer(duplicate, 0x340, 0x51C)
+        writeMapHeader(duplicate, 0x51C, 149)
+        writeCompactConsumer(duplicate, 0x80, 0x1C0)
+        putPointer(duplicate, 0x1C4, 0x280)
+        putPointer(duplicate, 0x1C8, 0x380)
+        putPointer(duplicate, 0x280, 0x580)
+        putPointer(duplicate, 0x380, 0x59C)
+        writeMapHeader(duplicate, 0x580, 88)
+        writeMapHeader(duplicate, 0x59C, 149)
+        assertTrue(resolveCompact(duplicate).isEmpty())
+
+        val decoy = compactConsumerFixture(0x180)
+        putPointer(decoy, 0x184, 0x240)
+        putPointer(decoy, 0x188, 0x340)
+        putPointer(decoy, 0x240, 0x500)
+        putPointer(decoy, 0x340, 0x51C)
+        writeMapHeader(decoy, 0x500, 88)
+        writeMapHeader(decoy, 0x51C, 149)
+        writeCompactConsumer(decoy, 0x80, 0x1C0)
+        assertTrue(resolveCompact(decoy).isEmpty())
+    }
+
+    @Test
+    fun compactConsumerAcceptsSourceValidNullEventsButRejectsInvalidNonNullPointers() {
+        val nullEvents = compactConsumerFixture(0x180)
+        putPointer(nullEvents, 0x184, 0x240)
+        putPointer(nullEvents, 0x188, 0x340)
+        putPointer(nullEvents, 0x240, 0x500)
+        putPointer(nullEvents, 0x340, 0x51C)
+        writeMapHeader(nullEvents, 0x500, 88)
+        writeMapHeader(nullEvents, 0x51C, 149)
+        putU32(nullEvents, 0x51C + 4, 0)
+        assertEquals(mapOf(0x0100 to 88, 0x0200 to 149), resolveCompact(nullEvents))
+
+        putU32(nullEvents, 0x51C + 4, 0x07000000)
+        assertTrue(resolveCompact(nullEvents).isEmpty())
+    }
+
+    private fun resolveCompact(bytes: ByteArray): Map<Int, Int> =
+        Gen3MapLocationResolver.resolveSectionByBaseArea(
+            RomImage(bytes),
+            setOf(0x0100, 0x0200),
+            GbaReferenceIndex.countsOnlyForTesting(mapOf(0x700 to 1)),
+        )
+
+    private fun compactConsumerFixture(root: Int): ByteArray = ByteArray(0x1000).also {
+        writeCompactConsumer(it, 0x40, root)
+    }
+
+    private fun writeCompactConsumer(bytes: ByteArray, offset: Int, root: Int) {
+        val instructions = intArrayOf(0x0400, 0x0409, 0x4A06, 0x0B80, 0x1880, 0x6800, 0x0B89, 0x1809, 0x6808, 0x4770)
+        instructions.forEachIndexed { index, instruction -> putU16(bytes, offset + index * 2, instruction) }
+        putPointer(bytes, offset + 0x20, root)
+    }
+
+    private fun writeNarrowCompactConsumer(bytes: ByteArray, offset: Int, root: Int) {
+        val instructions = intArrayOf(0x4A03, 0x0080, 0x1880, 0x6800, 0x0089, 0x1809, 0x6808, 0x4770)
+        instructions.forEachIndexed { index, instruction -> putU16(bytes, offset + index * 2, instruction) }
+        putPointer(bytes, offset + 0x10, root)
     }
 
     private fun writeMapHeader(bytes: ByteArray, offset: Int, regionSection: Int) {

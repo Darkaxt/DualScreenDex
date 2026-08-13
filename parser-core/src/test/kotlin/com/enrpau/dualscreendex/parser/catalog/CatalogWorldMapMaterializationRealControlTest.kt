@@ -125,15 +125,33 @@ class CatalogWorldMapMaterializationRealControlTest {
     )
 
     @Test
-    fun cloverPaddedAssetsReachTheTypedSemanticJoin() = assertTypedSemanticJoin(
+    fun cloverCatalogMaterializesFourExactNormalizedMapsAndBindings() = assertCatalog(
         "DUALDEX_CLOVER_ROM",
         "42f99abd548934d77999ac3eb563fb9bc70a34701d37a262b21b882a43a8bdd9",
+        (0..3).map { "gen3-region-$it" },
+        listOf(
+            "50a41e7a72bddfb8812a99ff01ac3e26170d5ab2ca5ed179b885c7ad21ed0ebb",
+            "4cf81884ab3be1fd315555385dd719cab2b5d46880f17982a5fc3ceb5ba838da",
+            "c79660d299bd1fb315c32cacfd21a41d10d76ef20fffacea67267609fb038bf2",
+            "11fef4f3fdbc027b99034f2389238b5d4c88938292dac94fded4c7ee45fcd08e",
+        ),
+        expectedLocationCounts = listOf(45, 10, 4, 8),
+        expectedBindingSha = "9cd112641a396c32e571557d6fd42d92b87d52dd7d71ffd9ff605e609212dc10",
     )
 
     @Test
-    fun darkVioletPaddedAssetsReachTheTypedSemanticJoin() = assertTypedSemanticJoin(
+    fun darkVioletCatalogMaterializesFourExactNormalizedMapsAndBindings() = assertCatalog(
         "DUALDEX_DARK_VIOLET_ROM",
         "6b7e6df19c974371a4f80ea5c0f1e8d68a2cfee248faf34080a48ae3f0135e21",
+        (0..3).map { "gen3-region-$it" },
+        listOf(
+            "117e4d9c854ec0b80ab942dcd7f65d8e52d8826589e93fa88532a8ce60422118",
+            "da5db5e336b772d95b541a793b3d44a6dc6ce628e43f6077b65c430b024e4aa1",
+            "17a547a2ecec1d3f93abfd74f569f250a92f16e303f93c12c1311566538db0bf",
+            "fd9e4540d935e9756f5fe9c7c519a9c7cbc3920778e61a1df0c9737c511d6b3d",
+        ),
+        expectedLocationCounts = listOf(44, 10, 6, 3),
+        expectedBindingSha = "e8c90983d9128c110668a55f7656a37062f7b5d63ff749e8e9d98c8b5d8c620d",
     )
 
     @Test
@@ -147,6 +165,8 @@ class CatalogWorldMapMaterializationRealControlTest {
         expectedRomSha: String,
         expectedRegionKeys: List<String>,
         expectedArgb: List<String>,
+        expectedLocationCounts: List<Int>? = null,
+        expectedBindingSha: String? = null,
     ) {
         val configured = System.getenv(environmentVariable)
         assumeTrue("set $environmentVariable to run this real-ROM control", !configured.isNullOrBlank())
@@ -161,6 +181,9 @@ class CatalogWorldMapMaterializationRealControlTest {
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
         assertEquals(expectedArgb.size, catalog.worldMaps.regions.size)
         assertEquals(expectedRegionKeys, catalog.worldMaps.regions.map { it.key })
+        expectedLocationCounts?.let { expected ->
+            assertEquals(expected, catalog.worldMaps.regions.map { it.locations.size })
+        }
         assertEquals(
             expectedArgb,
             catalog.worldMaps.regions.map { region ->
@@ -172,6 +195,15 @@ class CatalogWorldMapMaterializationRealControlTest {
                 digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
             },
         )
+        expectedBindingSha?.let { expected ->
+            val binding = catalog.worldMaps.regions.joinToString("/") { region ->
+                region.locations.joinToString("|") { location ->
+                    "${location.key}:${location.baseAreaIds.sorted()}:" +
+                        location.geometry.joinToString(",") { "${it.x}:${it.y}:${it.width}:${it.height}" }
+                }
+            }
+            assertEquals(expected, sha256(binding.toByteArray()))
+        }
     }
 
     private fun assertTypedSemanticJoin(environmentVariable: String, expectedRomSha: String) {
@@ -190,6 +222,10 @@ class CatalogWorldMapMaterializationRealControlTest {
         assertTrue(catalog.worldMaps.regions.isEmpty())
         assertTrue(catalog.worldMaps.assets.isEmpty())
     }
+
+    private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
+        .digest(bytes)
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
     private companion object {
         val GEN2_RASTERS = listOf(

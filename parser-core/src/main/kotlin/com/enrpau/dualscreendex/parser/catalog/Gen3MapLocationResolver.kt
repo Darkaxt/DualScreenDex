@@ -26,10 +26,9 @@ object Gen3MapLocationResolver {
     ): Gen3MapLocationResolution? {
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return null
-        val roots = findMapGroupsRoots(rom, requiredMaps)
-        val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return null
-        val root = roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull() ?: return null
-        return resolveFromRoot(rom, root).takeIf { it.entriesBySection.isNotEmpty() }
+        val sections = resolveMapSections(rom, requiredMaps, references) ?: return null
+        val entries = findRegionEntries(rom, sections.values.toSet()).orEmpty()
+        return Gen3MapLocationResolution(sections, entries).takeIf { it.entriesBySection.isNotEmpty() }
     }
 
     internal fun resolveSectionByBaseArea(
@@ -39,11 +38,86 @@ object Gen3MapLocationResolver {
     ): Map<Int, Int> {
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return emptyMap()
-        val roots = findMapGroupsRoots(rom, requiredMaps)
-        val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return emptyMap()
-        val root = roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull() ?: return emptyMap()
-        return enumerateMapSections(rom, root).orEmpty()
+        return resolveMapSections(rom, requiredMaps, references).orEmpty()
     }
+
+    private fun resolveMapSections(
+        rom: RomImage,
+        requiredMaps: Map<Int, Set<Int>>,
+        references: GbaReferenceIndex,
+    ): Map<Int, Int>? {
+        val compiledRoots = findCompiledMapGroupsConsumerRoots(rom)
+        if (compiledRoots.isNotEmpty()) {
+            val root = compiledRoots.singleOrNull() ?: return null
+            return enumerateRequiredMapSections(rom, root, requiredMaps)
+        }
+        val roots = findMapGroupsRoots(rom, requiredMaps)
+        val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return null
+        val root = roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull() ?: return null
+        return enumerateMapSections(rom, root)
+    }
+
+    private fun enumerateRequiredMapSections(
+        rom: RomImage,
+        root: Int,
+        requiredMaps: Map<Int, Set<Int>>,
+    ): Map<Int, Int>? {
+        val sections = linkedMapOf<Int, Int>()
+        requiredMaps.toSortedMap().forEach { (group, maps) ->
+            val groupPointerOffset = root.toLong() + group.toLong() * 4L
+            if (groupPointerOffset < 0 || groupPointerOffset + 4L > rom.size.toLong()) return null
+            val groupRoot = rom.gbaPointer(groupPointerOffset.toInt()) ?: return null
+            maps.sorted().forEach { map ->
+                val headerPointerOffset = groupRoot.toLong() + map.toLong() * 4L
+                if (headerPointerOffset < 0 || headerPointerOffset + 4L > rom.size.toLong()) return null
+                val header = rom.gbaPointer(headerPointerOffset.toInt()) ?: return null
+                if (!validMapHeader(rom, header)) return null
+                sections[(group shl 8) or map] = rom.u8(header + REGION_SECTION_OFFSET)
+            }
+        }
+        return sections.takeIf { it.size == requiredMaps.values.sumOf { maps -> maps.size } }
+    }
+
+    /**
+     * Matches the source consumer `gMapGroups[group][map]`, including the compiler's u16
+     * zero-extension and four-byte pointer indexing. The data arrays may be sparse or relocated;
+     * only the required encounter keys are authoritative.
+     */
+    private fun findCompiledMapGroupsConsumerRoots(rom: RomImage): List<Int> = buildList {
+        var offset = 0
+        while (offset.toLong() + MAP_GROUP_LOOKUP_NARROW_BYTES <= rom.size.toLong()) {
+            val u16Arguments = offset.toLong() + MAP_GROUP_LOOKUP_U16_BYTES <= rom.size.toLong() &&
+                rom.u16le(offset) == THUMB_LSL_R0_16 &&
+                rom.u16le(offset + 2) == THUMB_LSL_R1_16 &&
+                isLiteralLoadR2(rom.u16le(offset + 4)) &&
+                rom.u16le(offset + 6) == THUMB_LSR_R0_14 &&
+                rom.u16le(offset + 8) == THUMB_ADD_R0_R0_R2 &&
+                rom.u16le(offset + 10) == THUMB_LDR_R0_R0 &&
+                rom.u16le(offset + 12) == THUMB_LSR_R1_14 &&
+                rom.u16le(offset + 14) == THUMB_ADD_R1_R1_R0 &&
+                rom.u16le(offset + 16) == THUMB_LDR_R0_R1 &&
+                rom.u16le(offset + 18) == THUMB_BX_LR
+            val narrowArguments = isLiteralLoadR2(rom.u16le(offset)) &&
+                rom.u16le(offset + 2) == THUMB_LSL_R0_2 &&
+                rom.u16le(offset + 4) == THUMB_ADD_R0_R0_R2 &&
+                rom.u16le(offset + 6) == THUMB_LDR_R0_R0 &&
+                rom.u16le(offset + 8) == THUMB_LSL_R1_2 &&
+                rom.u16le(offset + 10) == THUMB_ADD_R1_R1_R0 &&
+                rom.u16le(offset + 12) == THUMB_LDR_R0_R1 &&
+                rom.u16le(offset + 14) == THUMB_BX_LR
+            if (u16Arguments || narrowArguments) {
+                val literalOffset = if (u16Arguments) offset + 4 else offset
+                val literalInstruction = rom.u16le(literalOffset)
+                val literal = ((literalOffset + 4) and -4) + (literalInstruction and 0xff) * 4
+                if (literal.toLong() + 4L <= rom.size.toLong()) rom.gbaPointer(literal)?.let(::add)
+            }
+            offset += 2
+        }
+    }.distinct()
+
+    private fun isLiteralLoadR2(instruction: Int): Boolean =
+        instruction and THUMB_LITERAL_LOAD_MASK == THUMB_LITERAL_LOAD_OPCODE &&
+            instruction ushr THUMB_REGISTER_SHIFT and THUMB_REGISTER_MASK == 2
 
     private fun requiredMaps(encounterBaseIds: Set<Int>): Map<Int, Set<Int>> = encounterBaseIds
         .filter { it in 0..0xFFFF }
@@ -104,12 +178,12 @@ object Gen3MapLocationResolver {
     private fun validMapHeader(rom: RomImage, offset: Int): Boolean {
         if (offset < 0 || offset.toLong() + MAP_HEADER_BYTES > rom.size.toLong()) return false
         val layout = rom.gbaPointer(offset) ?: return false
-        val events = rom.gbaPointer(offset + 4) ?: return false
-        if (layout == events) return false
-        for (pointerOffset in listOf(offset + 8, offset + 12)) {
+        for (pointerOffset in listOf(offset + 4, offset + 8, offset + 12)) {
             val raw = rom.u32le(pointerOffset)
             if (raw != 0L && rom.gbaPointer(pointerOffset) == null) return false
         }
+        val events = rom.gbaPointer(offset + 4)
+        if (events != null && layout == events) return false
         return rom.u16le(offset + 0x12) != 0
     }
 
@@ -187,6 +261,23 @@ object Gen3MapLocationResolver {
     private const val REGION_GRID_HEIGHT = 32
     private const val MAX_REGION_NAME_BYTES = 32
     private const val MIN_TEXT_RATIO = 0.85
+    private const val MAP_GROUP_LOOKUP_U16_BYTES = 20L
+    private const val MAP_GROUP_LOOKUP_NARROW_BYTES = 16L
+    private const val THUMB_LSL_R0_16 = 0x0400
+    private const val THUMB_LSL_R1_16 = 0x0409
+    private const val THUMB_LSR_R0_14 = 0x0B80
+    private const val THUMB_LSL_R0_2 = 0x0080
+    private const val THUMB_ADD_R0_R0_R2 = 0x1880
+    private const val THUMB_LDR_R0_R0 = 0x6800
+    private const val THUMB_LSR_R1_14 = 0x0B89
+    private const val THUMB_LSL_R1_2 = 0x0089
+    private const val THUMB_ADD_R1_R1_R0 = 0x1809
+    private const val THUMB_LDR_R0_R1 = 0x6808
+    private const val THUMB_BX_LR = 0x4770
+    private const val THUMB_LITERAL_LOAD_MASK = 0xF800
+    private const val THUMB_LITERAL_LOAD_OPCODE = 0x4800
+    private const val THUMB_REGISTER_SHIFT = 8
+    private const val THUMB_REGISTER_MASK = 0x7
 }
 
 internal data class Gen3MapLocationResolution(

@@ -61,6 +61,12 @@ class WorldMapCatalogApiRealControlTest {
     @Test
     fun darkCryFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[11])
 
+    @Test
+    fun darkVioletFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[12])
+
+    @Test
+    fun cloverFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[13])
+
     private fun assertRoundTrip(control: Control) {
         val configured = System.getenv(control.environmentVariable)
         assumeTrue("set ${control.environmentVariable} to run this real-ROM control", !configured.isNullOrBlank())
@@ -224,6 +230,28 @@ class WorldMapCatalogApiRealControlTest {
                     "4556ba8ff635a8a1f234c4825ed7825bfc3a50515e306bb3af1ddaf908b8b13e",
                     "6f1acba35c5bed020c07f060506bb9761bb2f8cc137fd670cf51eb3c03a580d9",
                     "cfec5c171fa388debf9fe8745be2b812589fda2cfe12ca487d7bebd5cf8e64f5",
+                ),
+            ),
+            Control(
+                "DUALDEX_DARK_VIOLET_ROM",
+                "6b7e6df19c974371a4f80ea5c0f1e8d68a2cfee248faf34080a48ae3f0135e21",
+                (0..3).map { "gen3-region-$it" },
+                listOf(
+                    "d5f07e96179d64e411ac4dec65c6b5d45fd190391b153a67c0a12927ab0a63bb",
+                    "5a5da685c0211d1639f9de29c0749239db8ed22aa819b249e23bb940fa43c32c",
+                    "e46976338b3b08670f1c2e846100a58bfc7f337ba92a0f989024aa357b0f8778",
+                    "d7a86d7147422ba4dc09e72e14a1ba8c5bc3f2feafcb6e78cf4aac7875c7a68a",
+                ),
+            ),
+            Control(
+                "DUALDEX_CLOVER_ROM",
+                "42f99abd548934d77999ac3eb563fb9bc70a34701d37a262b21b882a43a8bdd9",
+                (0..3).map { "gen3-region-$it" },
+                listOf(
+                    "66ec72ca90e7220017cad597c5cc6be2c4901d214d467cd9c9749a1804da748a",
+                    "0906e9ede556e27e166ebcd7610e3b09af40fd86cbd3066427a3d44eb95324bc",
+                    "f8c5f9d281dd36609b1a62c256c777dcae3a105cb1d8eaa7052acdde728381bd",
+                    "1b898a83a7cd7d677ea1aec26b6f9f5bece1dae2fc5096f5cfb2e8ab04cc34ac",
                 ),
             ),
         )

@@ -34,6 +34,12 @@ class Gen3WorldMapResolverRealControlTest {
     @Test
     fun darkCryResolvesItsCropCompleteFrlgRegions() = assertControl(controls[5])
 
+    @Test
+    fun darkVioletResolvesItsExactLoaderAndCompactHeaderConsumerRegions() = assertControl(controls[6])
+
+    @Test
+    fun cloverResolvesItsExactNarrowConsumerAndNullEventHeaderRegions() = assertControl(controls[7])
+
     private fun assertControl(control: Control) {
         val rom = realRom(control)
             val analysisStarted = System.nanoTime()
@@ -161,6 +167,32 @@ class Gen3WorldMapResolverRealControlTest {
                     "1933d3f93fc82dcfc0f7f5c5db82a9f98d264108ac3fb9f6da4aa46aa41c1d0d",
                     "182c44baf94103874a3aa76867b6640d74bc6b0709cdd551bcd30ba358f2e4e6",
                     "9aa8f8db6faf3d0317a5a3dececeac4fed923816f7b1ff105293111c129de19c",
+                ),
+            ),
+            Control(
+                "DUALDEX_DARK_VIOLET_ROM",
+                "6b7e6df19c974371a4f80ea5c0f1e8d68a2cfee248faf34080a48ae3f0135e21",
+                176,
+                120,
+                22,
+                listOf(
+                    "117e4d9c854ec0b80ab942dcd7f65d8e52d8826589e93fa88532a8ce60422118",
+                    "da5db5e336b772d95b541a793b3d44a6dc6ce628e43f6077b65c430b024e4aa1",
+                    "17a547a2ecec1d3f93abfd74f569f250a92f16e303f93c12c1311566538db0bf",
+                    "fd9e4540d935e9756f5fe9c7c519a9c7cbc3920778e61a1df0c9737c511d6b3d",
+                ),
+            ),
+            Control(
+                "DUALDEX_CLOVER_ROM",
+                "42f99abd548934d77999ac3eb563fb9bc70a34701d37a262b21b882a43a8bdd9",
+                176,
+                120,
+                22,
+                listOf(
+                    "50a41e7a72bddfb8812a99ff01ac3e26170d5ab2ca5ed179b885c7ad21ed0ebb",
+                    "4cf81884ab3be1fd315555385dd719cab2b5d46880f17982a5fc3ceb5ba838da",
+                    "c79660d299bd1fb315c32cacfd21a41d10d76ef20fffacea67267609fb038bf2",
+                    "11fef4f3fdbc027b99034f2389238b5d4c88938292dac94fded4c7ee45fcd08e",
                 ),
             ),
         )
