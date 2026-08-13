@@ -56,6 +56,13 @@ class Gen2WorldMapHackRealControlTest {
         assertEquals("landmark-join", (result as WorldMapResolution.Unavailable).stage)
     }
 
+    @Test fun bronzeNullControlledLandmarkNameFailsClosed() {
+        val result = resolve(realRom("DUALDEX_BRONZE_ROM", BRONZE_SHA))
+
+        assertTrue("runtime-dependent NULL name must fail closed: $result", result is WorldMapResolution.Unavailable)
+        assertEquals("landmark-join", (result as WorldMapResolution.Unavailable).stage)
+    }
+
     private fun resolve(rom: RomImage): WorldMapResolution {
         val analysis = ParserOrchestrator.analyze(rom)
         val layout = requireNotNull(analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout)
@@ -64,19 +71,21 @@ class Gen2WorldMapHackRealControlTest {
     }
 
     private fun bronze2Rom(): RomImage {
-        val configured = System.getenv("DUALDEX_BRONZE2_ROM")
-        assumeTrue("set DUALDEX_BRONZE2_ROM to run this real control", !configured.isNullOrBlank())
-        val path = Path.of(requireNotNull(configured))
-        assumeTrue("Bronze2 ROM does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also {
-            assertEquals("87758fbc06a9abc73577bbc16d184bc3fb6f35d5abf22d776156629b5e5ae811", it.sha256)
-        }
+        return realRom("DUALDEX_BRONZE2_ROM", BRONZE2_SHA)
     }
 
     private fun bronze2Bytes(): ByteArray {
         val configured = System.getenv("DUALDEX_BRONZE2_ROM")
         assumeTrue("set DUALDEX_BRONZE2_ROM to run this real control", !configured.isNullOrBlank())
         return Files.readAllBytes(Path.of(requireNotNull(configured)))
+    }
+
+    private fun realRom(env: String, expectedSha: String): RomImage {
+        val configured = System.getenv(env)
+        assumeTrue("set $env to run this real control", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("real control ROM does not exist: $path", Files.isRegularFile(path))
+        return RomImage(Files.readAllBytes(path)).also { assertEquals(expectedSha, it.sha256) }
     }
 
     private fun findOneThresholdClassifier(bytes: ByteArray): ClassifierOffsets {
@@ -125,6 +134,8 @@ class Gen2WorldMapHackRealControlTest {
     )
 
     private companion object {
+        const val BRONZE_SHA = "3cf45157784fe70ddf9f07639236022321bf62b70797c412457625b2704c3269"
+        const val BRONZE2_SHA = "87758fbc06a9abc73577bbc16d184bc3fb6f35d5abf22d776156629b5e5ae811"
         const val BRONZE2_JOHTO_RASTER_SHA = "6e36d20b35f904a06fec5e11750c8938b9163f2d05ccdc848bd44b16e883497c"
         const val BRONZE2_KANTO_RASTER_SHA = "17a94384a359aaa5c9179249800442388dd1042fe9956a83f1fad319c7e275f1"
         const val BRONZE2_LOCATION_SHA = "9646f17b9ca2a9559f3f2c6bf50ebac374171f8d8683ce75039f91c67329bf8a"

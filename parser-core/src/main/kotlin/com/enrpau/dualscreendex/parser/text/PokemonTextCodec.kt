@@ -14,6 +14,8 @@ class PokemonTextCodec private constructor(
     val terminator: Int,
     private val decoder: (Int) -> Char?,
 ) {
+    internal fun decodeByte(value: Int): Char? = decoder(value and 0xff)
+
     fun decode(bytes: ByteArray): String = decodeDetailed(bytes).text
 
     fun decodeDetailed(bytes: ByteArray): DecodedText {

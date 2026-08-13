@@ -9,7 +9,6 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.sprite.Lz3Decoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
-import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 /** Resolves the Gen II Town Map through compiled asset, map-header, and landmark consumers. */
 object Gen2WorldMapResolver {
@@ -506,12 +505,9 @@ object Gen2WorldMapResolver {
             if (x !in 0 until GRID_WIDTH || y !in 0 until GRID_HEIGHT) return@runCatching null
             val namePointer = rom.u16le(row + 2)
             val nameRoot = rom.gbBankAddress(landmarks.bank, namePointer) ?: return@runCatching null
-            val decodedName = PokemonTextCodec.gbEnglish.decodeDetailed(
+            val name = Gen2LandmarkNameCodec.decode(
                 rom.slice(nameRoot, minOf(MAX_NAME_BYTES, rom.size - nameRoot)),
-            )
-            val name = decodedName.text.takeIf {
-                decodedName.terminated && decodedName.validRatio >= MIN_TEXT_RATIO && it.isNotBlank()
-            } ?: return@runCatching null
+            ) ?: return@runCatching null
             Landmark(id, x, y, name, baseIds.toSet())
         }
         BindingChain(
@@ -600,9 +596,6 @@ object Gen2WorldMapResolver {
     private const val COORDINATE_X_BIAS = 8
     private const val COORDINATE_Y_BIAS = 16
     private const val MAX_NAME_BYTES = 32
-    // Gen II place names use a valid control glyph between words that the shared codec counts as
-    // non-printing; require termination and a conservative readable majority rather than rejecting it.
-    private const val MIN_TEXT_RATIO = 0.75
     private const val END_MARKER = 0xff
     private const val MAP_AUTHORITY_BYTES = 24
     private const val MAP_COPY_BYTES = 20
