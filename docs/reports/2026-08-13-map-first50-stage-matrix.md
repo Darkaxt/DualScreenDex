@@ -1,5 +1,9 @@
 # Exact first50 world-map compatibility stage matrix
 
+> Historical baseline: this survey records the 12/50 state at `a50dcc4`.
+> The current release-gate result is the mechanically verified 26/50 report at
+> `0682607`; see `2026-08-13-map-first50-release-gate.md` and its raw JSON.
+
 ## Scope and method
 
 This is a read-only compatibility survey at `a50dcc4`. It does not change the
