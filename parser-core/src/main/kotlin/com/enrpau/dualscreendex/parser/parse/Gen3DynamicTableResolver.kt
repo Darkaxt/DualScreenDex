@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
 import com.enrpau.dualscreendex.parser.model.TableLayout
@@ -15,6 +16,7 @@ object Gen3DynamicTableResolver {
         tables: ProfileTables,
         proposedCount: Int,
         references: GbaCompiledReferenceIndex?,
+        referenceSites: GbaReferenceIndex? = null,
     ): Gen3SpeciesExtentResolution {
         val names = tables.speciesNames ?: return Gen3SpeciesExtentResolution(proposedCount, tables)
         val stats = tables.baseStats ?: return Gen3SpeciesExtentResolution(proposedCount, tables)
@@ -23,6 +25,12 @@ object Gen3DynamicTableResolver {
         ) {
             return Gen3SpeciesExtentResolution(proposedCount, tables)
         }
+        reconcileSparseInactiveSpeciesSuffix(
+            rom = rom,
+            tables = tables,
+            proposedCount = proposedCount,
+            referenceSites = referenceSites,
+        )?.let { return it }
         val mapOffset = references.counts.keys.singleOrNull { candidate ->
             credibleSpeciesToDexMap(rom, names, proposedCount, candidate)
         } ?: return Gen3SpeciesExtentResolution(proposedCount, tables)
@@ -58,6 +66,181 @@ object Gen3DynamicTableResolver {
             )
         }
         return Gen3SpeciesExtentResolution(proposedCount, tables)
+    }
+
+    /**
+     * A decompilation engine may retain a generously sized zero tail after its active species
+     * domain. The source-defined SpeciesToNationalPokedexNum consumer indexes a u16 table with
+     * `(species - 1) * 2`; only that compiled address formation can authorize the mapped positive
+     * prefix. Names and base stats must independently validate the same prefix and an inactive next
+     * row. Ordinary literal references are not authority.
+     */
+    private fun reconcileSparseInactiveSpeciesSuffix(
+        rom: RomImage,
+        tables: ProfileTables,
+        proposedCount: Int,
+        referenceSites: GbaReferenceIndex?,
+    ): Gen3SpeciesExtentResolution? {
+        val names = tables.speciesNames ?: return null
+        val stats = tables.baseStats ?: return null
+        val index = referenceSites ?: return null
+        val candidates = index.targets.mapNotNull { (mapOffset, evidence) ->
+            if (!evidence.siteEvidenceAvailable ||
+                evidence.count < MINIMUM_DIRECT_SPECIES_TO_DEX_REFERENCES ||
+                evidence.instructionSites.none { site -> hasLeafSpeciesToDexLookup(rom, site) }
+            ) {
+                return@mapNotNull null
+            }
+            val boundary = sparseMappedSpeciesBoundary(rom, mapOffset, proposedCount) ?: return@mapNotNull null
+            val nameEvidence = TableValidators.names(
+                rom,
+                names.copy(count = boundary),
+                boundary,
+                com.enrpau.dualscreendex.parser.text.PokemonTextCodec.gbaEnglish,
+            )
+            if (!nameEvidence.compatible) return@mapNotNull null
+            val recordSize = TableValidators.inferBaseStatsRecordSize(
+                rom,
+                stats.offset,
+                boundary,
+                generation = 3,
+            ) ?: return@mapNotNull null
+            val statsEvidence = TableValidators.baseStats(
+                rom,
+                stats.offset,
+                boundary,
+                recordSize,
+                generation = 3,
+            )
+            if (!statsEvidence.compatible ||
+                !speciesDomainEndsAt(rom, names, stats, boundary, recordSize)
+            ) return@mapNotNull null
+            SparseSpeciesExtentCandidate(boundary, recordSize)
+        }
+        val selected = candidates.singleOrNull() ?: return null
+        return Gen3SpeciesExtentResolution(
+            selected.boundary,
+            tables.copy(
+                speciesNames = names.copy(count = selected.boundary),
+                baseStats = stats.copy(count = selected.boundary, recordSize = selected.baseStatsRecordSize),
+                sprites = tables.sprites?.copy(count = minOf(tables.sprites.count, selected.boundary)),
+                evolutions = tables.evolutions?.copy(count = minOf(tables.evolutions.count, selected.boundary)),
+                learnsets = tables.learnsets?.copy(count = minOf(tables.learnsets.count, selected.boundary)),
+            ),
+        )
+    }
+
+    private fun sparseMappedSpeciesBoundary(rom: RomImage, offset: Int, proposedCount: Int): Int? {
+        val storedCount = proposedCount - 1
+        if (storedCount < MINIMUM_RECONCILED_SPECIES_COUNT || offset < 0 ||
+            offset.toLong() + storedCount * 2L > rom.size.toLong()
+        ) {
+            return null
+        }
+        val firstZero = (0 until storedCount).firstOrNull { index -> rom.u16le(offset + index * 2) == 0 }
+            ?: return null
+        val boundary = firstZero + 1
+        if (boundary <= MINIMUM_RECONCILED_SPECIES_COUNT ||
+            rom.u16le(offset) != 1 || rom.u16le(offset + 2) != 2 ||
+            (0 until firstZero).any { index -> rom.u16le(offset + index * 2) == 0 }
+        ) {
+            return null
+        }
+        val positive = (0 until firstZero).map { index -> rom.u16le(offset + index * 2) }
+        if (positive.distinct().size * 100 < positive.size * MINIMUM_MAPPED_ID_UNIQUENESS_PERCENT) return null
+        return boundary
+    }
+
+    /** Names and stats independently stop at the compiled mapping's active species boundary. */
+    private fun speciesDomainEndsAt(
+        rom: RomImage,
+        names: TableLayout,
+        stats: TableLayout,
+        boundary: Int,
+        baseStatsRecordSize: Int,
+    ): Boolean {
+        val nextName = TableValidators.names(
+            rom,
+            names.copy(offset = names.offset + boundary * names.recordSize, count = 1),
+            1,
+            com.enrpau.dualscreendex.parser.text.PokemonTextCodec.gbaEnglish,
+        )
+        if (nextName.validRecords != 0) return false
+        val nextStatsOffset = stats.offset.toLong() + boundary.toLong() * baseStatsRecordSize
+        if (nextStatsOffset < 0 || nextStatsOffset + baseStatsRecordSize > rom.size.toLong()) return false
+        return rom.slice(nextStatsOffset.toInt(), baseStatsRecordSize).all { it == 0.toByte() }
+    }
+
+    /** Recognizes the complete leaf function for `SpeciesToNationalPokedexNum`. */
+    private fun hasLeafSpeciesToDexLookup(rom: RomImage, literalSite: Int): Boolean {
+        if (literalSite < LEAF_SPECIES_TO_DEX_PREFIX_BYTES || literalSite + LEAF_SPECIES_TO_DEX_SUFFIX_BYTES > rom.size) {
+            return false
+        }
+        val functionStart = literalSite - LEAF_SPECIES_TO_DEX_PREFIX_BYTES
+        if (rom.u16le(functionStart) and 0xFF00 != 0xB500 ||
+            rom.u16le(literalSite - 4) and 0xF800 != 0x2800 ||
+            rom.u16le(literalSite - 2) and 0xFF00 != 0xD000
+        ) {
+            return false
+        }
+        if (literalSite !in 0..rom.size - 2) return false
+        val literalLoad = rom.u16le(literalSite)
+        if (literalLoad and THUMB_LITERAL_LOAD_MASK != THUMB_LITERAL_LOAD_OPCODE) return false
+        val rootRegister = (literalLoad ushr 8) and 0x7
+        var indexRegister: Int? = null
+        var scaled = false
+        var addressRegister: Int? = null
+        val end = minOf(rom.size - 2, literalSite + DIRECT_SPECIES_TO_DEX_WINDOW_BYTES)
+        var offset = literalSite + 2
+        while (offset <= end) {
+            val instruction = rom.u16le(offset)
+            when {
+                instruction and 0xF800 == 0x3800 && instruction and 0xFF == 1 -> {
+                    indexRegister = (instruction ushr 8) and 0x7
+                    scaled = false
+                    addressRegister = null
+                }
+                indexRegister != null && instruction and 0xF800 == 0 &&
+                    (instruction ushr 6) and 0x1F == 1 &&
+                    (instruction ushr 3) and 0x7 == indexRegister && instruction and 0x7 == indexRegister -> {
+                    scaled = true
+                }
+                indexRegister != null && scaled && instruction and 0xFE00 == 0x1800 -> {
+                    val left = (instruction ushr 3) and 0x7
+                    val right = (instruction ushr 6) and 0x7
+                    if ((left == rootRegister && right == indexRegister) ||
+                        (right == rootRegister && left == indexRegister)
+                    ) {
+                        addressRegister = instruction and 0x7
+                    }
+                }
+                addressRegister != null && instruction and 0xF800 == 0x8800 &&
+                    (instruction ushr 6) and 0x1F == 0 &&
+                    (instruction ushr 3) and 0x7 == addressRegister -> {
+                    return hasLeafReturnSequence(rom, offset)
+                }
+                instruction and 0xF000 == 0xD000 || instruction and 0xF800 == 0xE000 -> return false
+            }
+            offset += 2
+        }
+        return false
+    }
+
+    private fun hasLeafReturnSequence(rom: RomImage, loadOffset: Int): Boolean {
+        val end = minOf(rom.size - 2, loadOffset + LEAF_SPECIES_TO_DEX_SUFFIX_BYTES)
+        var sawZeroReturn = false
+        var offset = loadOffset + 2
+        while (offset <= end) {
+            val instruction = rom.u16le(offset)
+            if (instruction and 0xFF00 == 0x2000 && instruction and 0xFF == 0) sawZeroReturn = true
+            if (sawZeroReturn && instruction and 0xFF00 == 0xBC00) {
+                val next = rom.u16le(offset + 2)
+                if (next and 0xFF87 == 0x4700) return true
+            }
+            if (instruction and 0xF800 == 0xF000 || instruction and 0xF800 == 0xF800) return false
+            offset += 2
+        }
+        return false
     }
 
     fun resolve(
@@ -399,6 +582,11 @@ object Gen3DynamicTableResolver {
         val evidence: ValidationEvidence?,
     )
 
+    private data class SparseSpeciesExtentCandidate(
+        val boundary: Int,
+        val baseStatsRecordSize: Int,
+    )
+
     private data class ReferencedTargetResolution(
         val referenceCounts: Map<Int, Int>,
         val overflowEvidence: ValidationEvidence? = null,
@@ -420,6 +608,13 @@ object Gen3DynamicTableResolver {
     private const val MINIMUM_RECONCILED_SPECIES_COUNT = 300
     private const val MINIMUM_INCOHERENT_SUFFIX_DENOMINATOR = 4
     private const val MAXIMUM_INCOHERENT_SUFFIX_VALID_NUMERATOR = 1
+    private const val MINIMUM_DIRECT_SPECIES_TO_DEX_REFERENCES = 2
+    private const val MINIMUM_MAPPED_ID_UNIQUENESS_PERCENT = 95
+    private const val DIRECT_SPECIES_TO_DEX_WINDOW_BYTES = 24
+    private const val LEAF_SPECIES_TO_DEX_PREFIX_BYTES = 10
+    private const val LEAF_SPECIES_TO_DEX_SUFFIX_BYTES = 16
+    private const val THUMB_LITERAL_LOAD_MASK = 0xF800
+    private const val THUMB_LITERAL_LOAD_OPCODE = 0x4800
 }
 
 internal data class Gen3SpeciesExtentResolution(

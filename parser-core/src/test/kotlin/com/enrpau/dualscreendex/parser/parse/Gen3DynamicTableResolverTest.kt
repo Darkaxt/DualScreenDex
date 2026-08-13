@@ -1,6 +1,8 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
+import com.enrpau.dualscreendex.parser.analysis.SafeGbaReferenceIndexBuilder
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
@@ -15,6 +17,118 @@ import org.junit.Test
 import java.util.Base64
 
 class Gen3DynamicTableResolverTest {
+    @Test
+    fun trimsSparseInactiveSuffixFromDirectSpeciesToNationalDexConsumer() {
+        val proposedCount = 420
+        val expectedCount = 330
+        val staleInheritedCount = 312
+        val names = 0x4000
+        val stats = 0x6000
+        val shorterMap = 0xA000
+        val expectedMap = 0xA400
+        val bytes = ByteArray(0x10000)
+        repeat(expectedCount) { id ->
+            writeName(bytes, names + id * 11, "MON")
+            writeValidStats(bytes, stats + id * 36, id)
+        }
+        repeat(expectedCount - 1) { index -> writeU16(bytes, expectedMap + index * 2, index + 1) }
+        repeat(300) { index -> writeU16(bytes, shorterMap + index * 2, index + 1) }
+        putLeafSpeciesToDexConsumer(bytes, 0x200, 0x280, expectedMap)
+        putLeafSpeciesToDexConsumer(bytes, 0x220, 0x284, expectedMap)
+        putThumbLiteralReference(bytes, 0x240, 0x288, shorterMap)
+        putThumbLiteralReference(bytes, 0x260, 0x28C, shorterMap)
+        repeat(17) { index ->
+            putThumbLiteralReference(bytes, 0x300 + index * 0x10, 0x700, 0xD000)
+        }
+        val rom = RomImage(bytes)
+        val inherited = ProfileTables(
+            speciesNames = TableLayout(names, staleInheritedCount, 11),
+            baseStats = TableLayout(stats, staleInheritedCount, 28),
+        )
+
+        val resolved = Gen3DynamicTableResolver.reconcileSpeciesExtent(
+            rom = rom,
+            tables = inherited,
+            proposedCount = proposedCount,
+            references = GbaCompiledReferenceIndex(mapOf(shorterMap to 2, expectedMap to 2)),
+            referenceSites = SafeGbaReferenceIndexBuilder.build(rom, ResolutionLimits()),
+        )
+
+        assertEquals(expectedCount, resolved.speciesCount)
+        assertEquals(expectedCount, resolved.tables.speciesNames?.count)
+        assertEquals(expectedCount, resolved.tables.baseStats?.count)
+        assertEquals(36, resolved.tables.baseStats?.recordSize)
+    }
+
+    @Test
+    fun preservesSparseExtentWhenTwoLeafRootsAreEligible() {
+        val proposedCount = 420
+        val apparentCount = 330
+        val names = 0x4000
+        val stats = 0x6000
+        val firstMap = 0xA000
+        val secondMap = 0xA400
+        val bytes = ByteArray(0x10000)
+        repeat(apparentCount) { id ->
+            writeName(bytes, names + id * 11, "MON")
+            writeValidStats(bytes, stats + id * 36, id)
+        }
+        repeat(apparentCount - 1) { index ->
+            writeU16(bytes, firstMap + index * 2, index + 1)
+            writeU16(bytes, secondMap + index * 2, index + 1)
+        }
+        putLeafSpeciesToDexConsumer(bytes, 0x200, 0x280, firstMap)
+        putLeafSpeciesToDexConsumer(bytes, 0x220, 0x284, firstMap)
+        putLeafSpeciesToDexConsumer(bytes, 0x240, 0x288, secondMap)
+        putLeafSpeciesToDexConsumer(bytes, 0x260, 0x28C, secondMap)
+        val rom = RomImage(bytes)
+
+        val resolved = Gen3DynamicTableResolver.reconcileSpeciesExtent(
+            rom = rom,
+            tables = ProfileTables(
+                speciesNames = TableLayout(names, proposedCount, 11),
+                baseStats = TableLayout(stats, proposedCount, 28),
+            ),
+            proposedCount = proposedCount,
+            references = GbaCompiledReferenceIndex(mapOf(firstMap to 2, secondMap to 2)),
+            referenceSites = SafeGbaReferenceIndexBuilder.build(rom, ResolutionLimits()),
+        )
+
+        assertEquals(proposedCount, resolved.speciesCount)
+    }
+
+    @Test
+    fun preservesSparseExtentWhenMapHasNoDirectLookupConsumer() {
+        val proposedCount = 420
+        val apparentCount = 330
+        val names = 0x4000
+        val stats = 0x6000
+        val map = 0xA000
+        val bytes = ByteArray(0x10000)
+        repeat(apparentCount) { id ->
+            writeName(bytes, names + id * 11, "MON")
+            writeValidStats(bytes, stats + id * 36, id)
+        }
+        repeat(apparentCount - 1) { index -> writeU16(bytes, map + index * 2, index + 1) }
+        putThumbLiteralReference(bytes, 0x200, 0x280, map)
+        putThumbLiteralReference(bytes, 0x220, 0x284, map)
+        val rom = RomImage(bytes)
+
+        val resolved = Gen3DynamicTableResolver.reconcileSpeciesExtent(
+            rom = rom,
+            tables = ProfileTables(
+                speciesNames = TableLayout(names, proposedCount, 11),
+                baseStats = TableLayout(stats, proposedCount, 28),
+            ),
+            proposedCount = proposedCount,
+            references = GbaCompiledReferenceIndex(mapOf(map to 2)),
+            referenceSites = SafeGbaReferenceIndexBuilder.build(rom, ResolutionLimits()),
+        )
+
+        assertEquals(proposedCount, resolved.speciesCount)
+        assertEquals(28, resolved.tables.baseStats?.recordSize)
+    }
+
     @Test
     fun trimsDarkVioletAdjacentMoveNamesFromInferredSpeciesExtent() {
         val proposedCount = 420
@@ -510,6 +624,39 @@ class Gen3DynamicTableResolverTest {
     private fun writePointer(bytes: ByteArray, offset: Int, target: Int) {
         val value = 0x08000000 + target
         repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
+    }
+
+    private fun putLeafSpeciesToDexConsumer(
+        bytes: ByteArray,
+        instructionOffset: Int,
+        literalOffset: Int,
+        target: Int,
+    ) {
+        writeU16(bytes, instructionOffset - 10, 0xB500) // push {lr}
+        writeU16(bytes, instructionOffset - 4, 0x2900) // cmp r1, #0
+        writeU16(bytes, instructionOffset - 2, 0xD008) // beq zero return
+        putThumbLiteralReference(bytes, instructionOffset, literalOffset, target)
+        writeU16(bytes, instructionOffset + 2, 0x3901) // subs r1, #1
+        writeU16(bytes, instructionOffset + 4, 0x0049) // lsls r1, r1, #1
+        writeU16(bytes, instructionOffset + 6, 0x1809) // adds r1, r1, r0
+        writeU16(bytes, instructionOffset + 8, 0x8808) // ldrh r0, [r1]
+        writeU16(bytes, instructionOffset + 10, 0xE003) // b return
+        writeU16(bytes, instructionOffset + 14, 0x2000) // movs r0, #0
+        writeU16(bytes, instructionOffset + 16, 0xBC02) // pop {r1}
+        writeU16(bytes, instructionOffset + 18, 0x4708) // bx r1
+    }
+
+    private fun putThumbLiteralReference(
+        bytes: ByteArray,
+        instructionOffset: Int,
+        literalOffset: Int,
+        target: Int,
+    ) {
+        val pc = (instructionOffset + 4) and -4
+        val displacement = literalOffset - pc
+        require(displacement >= 0 && displacement % 4 == 0 && displacement / 4 <= 0xFF)
+        writeU16(bytes, instructionOffset, 0x4800 or (displacement / 4))
+        writePointer(bytes, literalOffset, target)
     }
 
     private fun writeName(bytes: ByteArray, offset: Int, name: String) {
