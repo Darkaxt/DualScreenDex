@@ -2,6 +2,8 @@ package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import java.nio.file.Files
@@ -34,6 +36,7 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(260, layout.tables.baseStats?.stride)
         assertEquals(0x7B0160 + 44, layout.tables.speciesNames?.offset)
         assertEquals(260, layout.tables.speciesNames?.stride)
+        assertEquals(21, layout.resolvedDatasets.typeChart?.table?.typeCount)
 
         val catalog = CatalogParser.parse(rom).catalog
         assertNotNull(catalog)
@@ -45,5 +48,21 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertFalse(catalog.speciesById.containsKey(0x5F4))
         assertEquals("Bulbasaur", catalog.speciesById.getValue(1).name.value)
         assertEquals(45, catalog.speciesById.getValue(1).baseStats.value?.hp)
+        val closureErrors = buildList {
+            catalog.encounterAreas.flatMap { it.slots }.forEach { slot ->
+                if (slot.speciesId !in catalog.speciesById) {
+                    add("encounter references missing species ${slot.speciesId}")
+                }
+            }
+            catalog.movesById.values.filter { it.id > 0 }.forEach { move ->
+                move.typeId.value?.let { typeId ->
+                    if (typeId !in catalog.typesById) add("move ${move.id} references missing type $typeId")
+                }
+            }
+        }.distinct().sorted()
+        assertEquals(emptyList<String>(), closureErrors)
+        assertEquals(CapabilityStatus.NOT_FOUND, catalog.typesById.getValue(0).name.status)
+        assertEquals(CapabilityStatus.NOT_FOUND, catalog.typesById.getValue(0).presentation.status)
+        assertEquals(CapabilityStatus.NOT_FOUND, catalog.capabilities.getValue(RomCapability.MOVE_CATALOG).status)
     }
 }

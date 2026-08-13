@@ -14,6 +14,7 @@ internal object ReferencedMoveCatalogClosure {
         species: Map<Int, SpeciesRecord>,
         rulesets: List<LearnsetRuleset>,
         typedDetails: Map<Int, CatalogMoveDetails>,
+        validTypeIds: Set<Int>? = null,
     ): Map<Int, MoveRecord> {
         val referencedIds = buildSet {
             species.values.forEach { record ->
@@ -29,7 +30,8 @@ internal object ReferencedMoveCatalogClosure {
 
         return moves.toSortedMap().apply {
             referencedIds.forEach { moveId ->
-                putIfAbsent(moveId, placeholder(moveId, typedDetails[moveId]))
+                val details = typedDetails[moveId]?.takeIf { validTypeIds == null || it.typeId in validTypeIds }
+                putIfAbsent(moveId, placeholder(moveId, details))
             }
         }
     }
@@ -54,5 +56,28 @@ internal object ReferencedMoveCatalogClosure {
             effectId = details?.effectId?.let(CatalogField.Companion::available)
                 ?: CatalogField.notFound(unresolvedDetails),
         )
+    }
+}
+
+/** Closes only type IDs that the selected complete type domain independently proves valid. */
+internal object ReferencedTypeCatalogClosure {
+    fun close(
+        types: Map<Int, TypeRecord>,
+        moves: Map<Int, MoveRecord>,
+        validTypeIds: Set<Int>,
+    ): Map<Int, TypeRecord> = types.toSortedMap().apply {
+        moves.values.mapNotNull { it.typeId.value }
+            .filter { it in validTypeIds }
+            .distinct()
+            .sorted()
+            .forEach { typeId ->
+                putIfAbsent(
+                    typeId,
+                    TypeRecord(
+                        id = typeId,
+                        name = CatalogField.notFound("referenced type has no decoded ROM name"),
+                    ),
+                )
+            }
     }
 }

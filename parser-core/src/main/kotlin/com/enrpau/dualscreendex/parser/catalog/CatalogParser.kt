@@ -69,12 +69,12 @@ object CatalogMaterializer {
         } else {
             RecordMaterializers.typeChart(rom, layout)
         }
-        val types = TypePresentationMaterializer.apply(RecordMaterializers.types(layout, baseSpecies, chart, rawMoves))
+        val baseTypes = TypePresentationMaterializer.apply(RecordMaterializers.types(layout, baseSpecies, chart, rawMoves))
         val abilities = RecordMaterializers.abilities(rom, layout)
         val initialCapabilities = analysis.capabilities.associateBy { it.capability }.toMutableMap().also { capabilities ->
             capabilities[RomCapability.TYPE_PRESENTATION] = collectionCapability(
                 RomCapability.TYPE_PRESENTATION,
-                types.values.count { it.presentation.status == CapabilityStatus.AVAILABLE },
+                baseTypes.values.count { it.presentation.status == CapabilityStatus.AVAILABLE },
                 "family type colors with explicit accessible fallback for custom IDs",
                 "no materialized types were available for presentation",
             )
@@ -86,7 +86,7 @@ object CatalogMaterializer {
             romCrc32 = analysis.crc32,
             speciesById = baseSpecies,
             movesById = rawMoves,
-            typesById = types,
+            typesById = baseTypes,
             abilitiesById = abilities,
             typeChart = chart,
             capabilities = initialCapabilities,
@@ -164,7 +164,7 @@ object CatalogMaterializer {
         val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
         val moveDescriptions = MoveDescriptionMaterializer.materialize(rom, layout)
         val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
-        val abilityMechanics = AbilityMechanicsMaterializer.materialize(rom, layout, abilities, types)
+        val abilityMechanics = AbilityMechanicsMaterializer.materialize(rom, layout, abilities, baseTypes)
         val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
         val species = relationshipSpecies.mapValues { (id, record) ->
             record.copy(
@@ -175,11 +175,15 @@ object CatalogMaterializer {
                 },
             )
         }
+        val validTypeIds = layout.resolvedDatasets.typeChart?.table?.typeCount
+            ?.let { typeCount -> (0 until typeCount).toSet() }
+            ?: baseTypes.keys
         val closedMoves = ReferencedMoveCatalogClosure.close(
             moves = rawMoves,
             species = species,
             rulesets = learnsetRulesets,
             typedDetails = layout.resolvedDatasets.moveDetails?.catalogDetails().orEmpty(),
+            validTypeIds = validTypeIds,
         )
         val moves = closedMoves.mapValues { (id, move) ->
             val effectText = moveDescriptions?.descriptions?.get(id)
@@ -193,6 +197,7 @@ object CatalogMaterializer {
                 },
             )
         }
+        val types = ReferencedTypeCatalogClosure.close(baseTypes, moves, validTypeIds)
         val enrichedAbilities = abilities.mapValues { (id, ability) ->
             val description = abilityDescriptions?.descriptions?.get(id)
             ability.copy(

@@ -181,6 +181,7 @@ class EncounterMaterializerTest {
         putGenThreeInfo(bytes, 0x500, 20, 0x1000, 12, 10)
         putGenThreeInfo(bytes, 0x508, 0, 0x1100, 3, 50)
         putGenThreeInfo(bytes, 0x510, 30, 0x1200, 10, 60)
+        putU16(bytes, 0x1202, 0)
 
         // A compiled WildPokemonHeader may name a map while leaving every method empty.
         bytes[table + 24] = 1
@@ -204,7 +205,8 @@ class EncounterMaterializerTest {
         assertEquals(setOf(EncounterWindow.ANY), hidden.windows)
         assertEquals(EncounterSlot(50, 5, 7, 60), hidden.slots.first())
         val fishing = areas.single { it.id == 0x101 * 10 + EncounterMethods.FISHING }
-        assertEquals(60, fishing.slots.first().speciesId)
+        assertEquals(9, fishing.slots.size)
+        assertTrue(fishing.slots.none { it.speciesId == 0 })
         val waterHidden = areas.single { it.id == 0x103 * 10 + EncounterMethods.HIDDEN }
         assertTrue(waterHidden.name.value!!.contains("water"))
         assertEquals(setOf(EncounterWindow.ANY), waterHidden.windows)

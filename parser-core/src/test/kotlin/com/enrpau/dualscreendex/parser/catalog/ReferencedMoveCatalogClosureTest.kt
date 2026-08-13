@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.dataset.moves.CatalogMoveDetails
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -59,6 +60,29 @@ class ReferencedMoveCatalogClosureTest {
         }
         assertFalse(0 in closed)
         assertFalse(-1 in closed)
+    }
+
+    @Test
+    fun closesOnlyReferencedTypesProvenInsideTheSelectedTypeDomain() {
+        val referencedNone = move(1, "").copy(
+            name = CatalogField.notFound("referenced move has no decoded ROM name"),
+            typeId = CatalogField.available(0),
+        )
+        val invalid = move(2, "").copy(
+            name = CatalogField.notFound("referenced move has no decoded ROM name"),
+            typeId = CatalogField.available(21),
+        )
+
+        val closed = ReferencedTypeCatalogClosure.close(
+            types = emptyMap(),
+            moves = mapOf(1 to referencedNone, 2 to invalid),
+            validTypeIds = (0 until 21).toSet(),
+        )
+
+        assertEquals(setOf(0), closed.keys)
+        assertEquals(CapabilityStatus.NOT_FOUND, closed.getValue(0).name.status)
+        assertEquals(CapabilityStatus.NOT_FOUND, closed.getValue(0).presentation.status)
+        assertTrue(closed.getValue(0).name.reasons.single().contains("referenced type"))
     }
 
     private fun species(
