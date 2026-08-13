@@ -97,6 +97,7 @@ object BattleRoleProvenance {
         val fields = linkedSetOf<FieldReadEvidence>()
         val attackMechanics = linkedSetOf<AttackMechanic>()
         val joinCache = mutableMapOf<JoinKey, Int?>()
+        val typedJoinValues = mutableMapOf<TypedJoinKey, MutableSet<Value.Stat>>()
         if (abi.roleContract is BattleRoleContract.DirectPointers) {
             pointers += BattleRecordPointerEvidence(
                 BattleRecordRole.ATTACKER,
@@ -118,22 +119,27 @@ object BattleRoleProvenance {
                 incomplete++
                 continue
             }
-            val key = StateKey(item.offset, item.instructionSet, item.state.signature())
-            if (!visited.add(key)) continue
             val result = decode(image, item.offset, item.instructionSet)
             val instruction = (result as? Arm7DecodeResult.Decoded)?.instruction
             if (instruction == null) {
                 incomplete++
                 continue
             }
-            decoded++
             val state = item.state.copy()
             state.leaveJoinedAbilityRegion(item.offset)
+            state.mergeIndependentTypedAttackAtJoin(item.offset, item.instructionSet, abi, typedJoinValues)
+            val key = StateKey(item.offset, item.instructionSet, state.signature())
+            if (!visited.add(key)) continue
+            if (state.pendingAttackMechanic in attackMechanics) continue
+            decoded++
             recordMemoryEvidence(instruction, state, abi.record, fields)
             execute(image, instruction, state, abi, pointers, attackMechanics)
 
             when (val effect = instruction.controlEffect) {
-                is Arm7ControlEffect.Sequential -> queue += WorkItem(item.offset + instruction.size, item.instructionSet, state)
+                is Arm7ControlEffect.Sequential -> {
+                    val continuation = WorkItem(item.offset + instruction.size, item.instructionSet, state)
+                    if (state.hasPendingAttackProof()) queue.addFirst(continuation) else queue.addLast(continuation)
+                }
                 is Arm7ControlEffect.DirectBranch -> {
                     if (effect.conditional) {
                         val join = if (state.pendingAbilityTest == null &&
@@ -148,10 +154,25 @@ object BattleRoleProvenance {
                         }
                         val fallthrough = state.copy().also { it.applyBranch(instruction.condition, taken = false, join) }
                         val taken = state.copy().also { it.applyBranch(instruction.condition, taken = true, join) }
-                        queue += WorkItem(item.offset + instruction.size, item.instructionSet, fallthrough)
-                        enqueueTarget(queue, image, effect.target, item.instructionSet, taken)
+                        val fallthroughItem = WorkItem(item.offset + instruction.size, item.instructionSet, fallthrough)
+                        if (fallthrough.hasPendingAttackProof()) queue.addFirst(fallthroughItem) else queue.addLast(fallthroughItem)
+                        enqueueTarget(
+                            queue,
+                            image,
+                            effect.target,
+                            item.instructionSet,
+                            taken,
+                            prioritize = taken.hasPendingAttackProof(),
+                        )
                     } else {
-                        enqueueTarget(queue, image, effect.target, item.instructionSet, state)
+                        enqueueTarget(
+                            queue,
+                            image,
+                            effect.target,
+                            item.instructionSet,
+                            state,
+                            prioritize = state.hasPendingAttackProof(),
+                        )
                     }
                 }
                 is Arm7ControlEffect.Call -> {
@@ -175,6 +196,19 @@ object BattleRoleProvenance {
                         if (effect.exchange) item.instructionSet.opposite() else item.instructionSet,
                         state,
                     )
+                    val attackOutput = proveAttackModifierReturn(
+                        image,
+                        effect.target,
+                        if (effect.exchange) item.instructionSet.opposite() else item.instructionSet,
+                        state,
+                        abi,
+                    )
+                    val dividedStat = proveUnsignedDivisionReturn(
+                        image,
+                        effect.target,
+                        if (effect.exchange) item.instructionSet.opposite() else item.instructionSet,
+                        state,
+                    )
                     if (q412Effect != null) {
                         val abilityFact = state.positiveAttackerAbility()
                         val splitFact = state.positiveMoveSplit()
@@ -183,7 +217,7 @@ object BattleRoleProvenance {
                             abilityFact.abilityId !in abi.withheldAbilityIds &&
                             splitFact != null
                         ) {
-                            attackMechanics += AttackMechanic(
+                            state.pendingAttackMechanic = AttackMechanic(
                                 abilityId = abilityFact.abilityId,
                                 predicates = buildSet {
                                     add(MechanicPredicate.AttackerAbility(abilityFact.abilityId))
@@ -197,12 +231,19 @@ object BattleRoleProvenance {
                     state.clobberCallerSaved()
                     if (ability != null) state[Arm7Register.R0] = ability
                     if (moveSplit != null) state[Arm7Register.R0] = moveSplit
-                    queue += WorkItem(item.offset + instruction.size, item.instructionSet, state)
+                    if (dividedStat != null) state[Arm7Register.R0] = dividedStat
+                    if (attackOutput != null) state[Arm7Register.R0] = attackOutput
+                    val continuation = WorkItem(item.offset + instruction.size, item.instructionSet, state)
+                    if (state.hasPendingAttackProof()) queue.addFirst(continuation) else queue.addLast(continuation)
                 }
-                is Arm7ControlEffect.Return -> Unit
+                is Arm7ControlEffect.Return -> emitReturnedAttackMechanic(state, attackMechanics)
                 is Arm7ControlEffect.IndirectBranch -> {
                     val branch = instruction as? Arm7BranchRegister
-                    if (branch == null || state[branch.targetRegister] !is Value.ReturnAddress) incomplete++
+                    if (branch == null || state[branch.targetRegister] !is Value.ReturnAddress) {
+                        incomplete++
+                    } else {
+                        emitReturnedAttackMechanic(state, attackMechanics)
+                    }
                 }
                 else -> incomplete++
             }
@@ -308,18 +349,6 @@ object BattleRoleProvenance {
         fields += FieldReadEvidence(base.role, field, instruction.offset, access)
     }
 
-    private fun fieldAt(record: BattleRecordAbi, offset: Int, width: ScalarWidth): ScalarField? =
-        listOfNotNull(
-            record.attack,
-            record.defense,
-            record.specialAttack,
-            record.specialDefense,
-            record.ability,
-            record.hp,
-            record.maxHp,
-            record.status,
-        ).singleOrNull { it.offset == offset && it.width == width }
-
     private fun fieldContaining(record: BattleRecordAbi, access: ScalarField): ScalarField? =
         listOfNotNull(
             record.attack,
@@ -394,6 +423,10 @@ object BattleRoleProvenance {
         right is Value.Index && left is Value.Constant -> Value.ScaledIndex(right.role, left.value.toInt())
         left is Value.MoveId && right is Value.Constant -> Value.ScaledMoveId(right.value.toInt())
         right is Value.MoveId && left is Value.Constant -> Value.ScaledMoveId(left.value.toInt())
+        left is Value.Stat && right is Value.Constant && right.value in 1..Int.MAX_VALUE.toLong() ->
+            left.copy(numerator = left.numerator * right.value.toInt())
+        right is Value.Stat && left is Value.Constant && left.value in 1..Int.MAX_VALUE.toLong() ->
+            right.copy(numerator = right.numerator * left.value.toInt())
         left is Value.Constant && right is Value.Constant -> Value.Constant((left.value * right.value) and 0xFFFF_FFFFL)
         else -> Value.Unknown
     }
@@ -541,10 +574,20 @@ object BattleRoleProvenance {
                     } else {
                         Value.Unknown
                     }
-                } else if (base is Value.Constant && address.index == null && instruction.width == Arm7MemoryWidth.WORD) {
+                } else if (base is Value.Constant && address.index == null) {
                     val mappedAddress = base.value + if (address.add) address.immediate else -address.immediate
                     val romOffset = mappedAddress - GBA_ROM_BASE
-                    if (romOffset in 0..image.size - 4L) Value.Constant(image.u32le(romOffset.toInt())) else Value.Unknown
+                    val bytes = instruction.width.bytes
+                    if (romOffset !in 0..image.size.toLong() - bytes) {
+                        Value.Unknown
+                    } else {
+                        val value = when (instruction.width) {
+                            Arm7MemoryWidth.BYTE -> image.u8(romOffset.toInt()).toLong()
+                            Arm7MemoryWidth.HALFWORD -> image.u16le(romOffset.toInt()).toLong()
+                            Arm7MemoryWidth.WORD -> image.u32le(romOffset.toInt())
+                        }
+                        Value.Constant(value)
+                    }
                 } else Value.Unknown
             }
             else -> Value.Unknown
@@ -730,6 +773,123 @@ object BattleRoleProvenance {
         }
     }
 
+    private fun proveAttackModifierReturn(
+        image: RomImage,
+        rawTarget: Long,
+        instructionSet: Arm7InstructionSet,
+        state: SymbolicState,
+        abi: BattleMechanicsAbi,
+    ): Value.AttackOutput? {
+        val mechanic = state.pendingAttackMechanic ?: return null
+        val modifier = (state[Arm7Register.R0] as? Value.Constant)?.value ?: return null
+        val attack = state[Arm7Register.R1] as? Value.Stat ?: return null
+        if (attack.role != BattleRecordRole.ATTACKER || attack.field != abi.record.attack) return null
+        val expectedModifier = mechanic.effect.numerator.toLong() * Q412_ONE
+        if (expectedModifier % mechanic.effect.denominator != 0L ||
+            modifier != expectedModifier / mechanic.effect.denominator
+        ) return null
+        val entry = rawTarget.toInt() and -2
+        if (!provePureQ412ApplyReturn(image, entry, instructionSet)) return null
+        return Value.AttackOutput(attack.role, attack.field, mechanic)
+    }
+
+    private fun proveUnsignedDivisionReturn(
+        image: RomImage,
+        rawTarget: Long,
+        instructionSet: Arm7InstructionSet,
+        state: SymbolicState,
+    ): Value.Stat? {
+        val dividend = state[Arm7Register.R0] as? Value.Stat ?: return null
+        val divisor = (state[Arm7Register.R1] as? Value.Constant)?.value?.toInt() ?: return null
+        if (divisor <= 0) return null
+        val entry = rawTarget.toInt() and -2
+        if (!proveUnsignedDivisionBody(image, entry, instructionSet)) return null
+        return dividend.copy(denominator = dividend.denominator * divisor)
+    }
+
+    private fun proveUnsignedDivisionBody(
+        image: RomImage,
+        entry: Int,
+        instructionSet: Arm7InstructionSet,
+    ): Boolean {
+        if (!isAlignedAndInBounds(image, entry, instructionSet)) return false
+        val probes = listOf(1L to 2L, 19L to 7L, 256L to 16L, 0x7FFF_FFFFL to 257L)
+        return probes.all { (dividend, divisor) ->
+            val memory = Arm7Memory(image.slice(0, image.size))
+            val machineState = Arm7State(instructionSet, Arm7Memory.ROM_START + entry).apply {
+                this[Arm7Register.SP] = HELPER_STACK
+                this[Arm7Register.LR] = HELPER_RETURN or 1L
+                this[Arm7Register.R0] = dividend
+                this[Arm7Register.R1] = divisor
+            }
+            memory.clearTrace()
+            val result = Arm7Machine(memory, machineState).run(Arm7ExecutionBudget(MAX_DIVISION_HELPER_INSTRUCTIONS)) {
+                if (it.state.pc == HELPER_RETURN) "returned" else null
+            }
+            val writes = memory.traces().filter { it.direction == Arm7MemoryDirection.WRITE }
+            result is Arm7ExecutionResult.Completed &&
+                machineState[Arm7Register.R0] == dividend / divisor &&
+                writes.all { it.address in HELPER_STACK - MAX_HELPER_STACK_BYTES until HELPER_STACK }
+        }
+    }
+
+    private fun provePureQ412ApplyReturn(
+        image: RomImage,
+        entry: Int,
+        instructionSet: Arm7InstructionSet,
+    ): Boolean {
+        if (!isStraightLinePureReturn(image, entry, instructionSet)) return false
+        val probes = listOf(
+            Q412_ONE to 100,
+            Q412_ONE * 2 to 211,
+            Q412_ONE * 3 / 2 to 337,
+        )
+        return probes.all { (modifier, attack) ->
+            val memory = Arm7Memory(image.slice(0, image.size))
+            val state = Arm7State(instructionSet, Arm7Memory.ROM_START + entry).apply {
+                this[Arm7Register.SP] = HELPER_STACK
+                this[Arm7Register.LR] = HELPER_RETURN or 1L
+                this[Arm7Register.R0] = modifier.toLong()
+                this[Arm7Register.R1] = attack.toLong()
+            }
+            memory.clearTrace()
+            val result = Arm7Machine(memory, state).run(Arm7ExecutionBudget(MAX_Q412_HELPER_INSTRUCTIONS)) {
+                if (it.state.pc == HELPER_RETURN) "returned" else null
+            }
+            val expected = (modifier.toLong() * attack + Q412_ROUND) shr Q412_SHIFT
+            result is Arm7ExecutionResult.Completed &&
+                state[Arm7Register.R0] == expected &&
+                memory.traces().none { it.direction == Arm7MemoryDirection.WRITE }
+        }
+    }
+
+    private fun isStraightLinePureReturn(
+        image: RomImage,
+        entry: Int,
+        instructionSet: Arm7InstructionSet,
+    ): Boolean {
+        var offset = entry
+        repeat(MAX_Q412_HELPER_INSTRUCTIONS) {
+            val instruction = (decode(image, offset, instructionSet) as? Arm7DecodeResult.Decoded)?.instruction
+                ?: return false
+            if (instruction.memoryEffects.any { it.direction == Arm7MemoryDirection.WRITE }) return false
+            when (instruction.controlEffect) {
+                is Arm7ControlEffect.Sequential -> offset += instruction.size
+                is Arm7ControlEffect.Return -> return true
+                else -> return false
+            }
+        }
+        return false
+    }
+
+    private fun emitReturnedAttackMechanic(
+        state: SymbolicState,
+        attackMechanics: MutableSet<AttackMechanic>,
+    ) {
+        val output = state[Arm7Register.R0] as? Value.AttackOutput ?: return
+        if (output.mechanic == state.pendingAttackMechanic) attackMechanics += output.mechanic
+    }
+
     private fun gcd(first: Int, second: Int): Int {
         var left = first
         var right = second
@@ -747,11 +907,15 @@ object BattleRoleProvenance {
         rawTarget: Long,
         currentSet: Arm7InstructionSet,
         state: SymbolicState,
+        prioritize: Boolean = false,
     ) {
         val target = rawTarget.toInt()
         val targetSet = if (rawTarget and 1L != 0L) Arm7InstructionSet.THUMB else currentSet
         val offset = target and -2
-        if (isAlignedAndInBounds(image, offset, targetSet)) queue += WorkItem(offset, targetSet, state.copy())
+        if (isAlignedAndInBounds(image, offset, targetSet)) {
+            val target = WorkItem(offset, targetSet, state.copy())
+            if (prioritize) queue.addFirst(target) else queue.addLast(target)
+        }
     }
 
     private fun immediatePostDominator(
@@ -829,6 +993,17 @@ object BattleRoleProvenance {
     private data class WorkItem(val offset: Int, val instructionSet: Arm7InstructionSet, val state: SymbolicState)
     private data class StateKey(val offset: Int, val instructionSet: Arm7InstructionSet, val signature: List<Value>)
     private data class JoinKey(val offset: Int, val instructionSet: Arm7InstructionSet)
+    private data class TypedJoinKey(
+        val offset: Int,
+        val instructionSet: Arm7InstructionSet,
+        val register: Arm7Register,
+        val frame: JoinFrame,
+    )
+    private data class JoinFrame(
+        val stackValues: List<Value>,
+        val stackSlots: Set<Int>,
+        val stackPointer: Value,
+    )
     private data class CfgNode(val offset: Int, val instructionSet: Arm7InstructionSet)
 
     private class SymbolicState private constructor(
@@ -839,6 +1014,7 @@ object BattleRoleProvenance {
         val moveSplitFacts: MutableMap<MoveSplitFact, Boolean> = mutableMapOf(),
         var pendingStatusTest: StatusNonZeroFact? = null,
         val statusFacts: MutableMap<StatusNonZeroFact, Boolean> = mutableMapOf(),
+        var pendingAttackMechanic: AttackMechanic? = null,
         private val stack: MutableList<Value> = mutableListOf(),
         val stackMemory: MutableMap<Int, Value> = mutableMapOf(),
         val abilityFactJoins: MutableMap<AbilityFact, Int> = mutableMapOf(),
@@ -855,6 +1031,7 @@ object BattleRoleProvenance {
             moveSplitFacts.toMutableMap(),
             pendingStatusTest,
             statusFacts.toMutableMap(),
+            pendingAttackMechanic,
             stack.toMutableList(),
             stackMemory.toMutableMap(),
             abilityFactJoins.toMutableMap(),
@@ -872,6 +1049,7 @@ object BattleRoleProvenance {
                 pendingStatusTest,
                 statusFacts.toMap(),
                 statusFactJoins.toMap(),
+                pendingAttackMechanic,
             ) +
             Value.Stack(stack.toList(), stackMemory.toMap())
         fun push(registers: Collection<Arm7Register>) {
@@ -949,6 +1127,42 @@ object BattleRoleProvenance {
             .filter { (fact, nonZero) -> nonZero && fact.role == BattleRecordRole.ATTACKER }
             .keys
             .singleOrNull()
+        fun hasPendingAttackProof(): Boolean = pendingAttackMechanic != null || this[Arm7Register.R0] is Value.AttackOutput
+
+        fun mergeIndependentTypedAttackAtJoin(
+            offset: Int,
+            instructionSet: Arm7InstructionSet,
+            abi: BattleMechanicsAbi,
+            typedJoinValues: MutableMap<TypedJoinKey, MutableSet<Value.Stat>>,
+        ) {
+            val pending = pendingAttackMechanic
+            if (pending == null) {
+                if (pendingAbilityTest != null || pendingMoveSplitTest != null || pendingStatusTest != null) return
+                if (abilityFacts.any { it.value } || moveSplitFacts.any { it.value } || statusFacts.any { it.value }) return
+                Arm7Register.entries.forEach { register ->
+                    val stat = this[register] as? Value.Stat ?: return@forEach
+                    if (stat.role != BattleRecordRole.ATTACKER || stat.field != abi.record.attack) return@forEach
+                    typedJoinValues.getOrPut(
+                        TypedJoinKey(offset, instructionSet, register, joinFrame()),
+                        ::linkedSetOf,
+                    ) += stat
+                }
+                return
+            }
+            Arm7Register.entries.forEach { register ->
+                if (this[register] !is Value.Unknown) return@forEach
+                val candidates = typedJoinValues[TypedJoinKey(offset, instructionSet, register, joinFrame())]
+                    ?.filter { it.role == BattleRecordRole.ATTACKER && it.field == abi.record.attack }
+                    .orEmpty()
+                if (candidates.size == 1) this[register] = candidates.single()
+            }
+        }
+
+        private fun joinFrame(): JoinFrame = JoinFrame(
+            stackValues = stack.toList(),
+            stackSlots = stackMemory.keys.toSet(),
+            stackPointer = this[Arm7Register.SP],
+        )
 
         companion object {
             fun initial(abi: BattleMechanicsAbi): SymbolicState {
@@ -1016,6 +1230,11 @@ object BattleRoleProvenance {
             val access: ScalarField,
             val mask: Long,
         ) : Value
+        data class AttackOutput(
+            val role: BattleRecordRole,
+            val field: ScalarField,
+            val mechanic: AttackMechanic,
+        ) : Value
         data class AbilityOrNone(val role: BattleRecordRole, val field: ScalarField) : Value {
             fun toField() = Field(role, field)
         }
@@ -1036,6 +1255,7 @@ object BattleRoleProvenance {
             val pendingStatus: StatusNonZeroFact?,
             val statusFacts: Map<StatusNonZeroFact, Boolean>,
             val statusJoins: Map<StatusNonZeroFact, Int>,
+            val pendingAttackMechanic: AttackMechanic?,
         ) : Value
         data class Stack(val values: List<Value>, val memory: Map<Int, Value>) : Value
         data class StackPointer(val byteOffset: Int) : Value
@@ -1049,6 +1269,8 @@ object BattleRoleProvenance {
     private const val GBA_ROM_BASE = 0x0800_0000L
     private const val MAX_HELPER_INSTRUCTIONS = 1_024
     private const val MAX_Q412_HELPER_INSTRUCTIONS = 128
+    private const val MAX_DIVISION_HELPER_INSTRUCTIONS = 4_096
+    private const val MAX_HELPER_STACK_BYTES = 64
     private const val Q412_SHIFT = 12
     private const val Q412_ONE = 1 shl Q412_SHIFT
     private const val Q412_ROUND = 1 shl (Q412_SHIFT - 1)

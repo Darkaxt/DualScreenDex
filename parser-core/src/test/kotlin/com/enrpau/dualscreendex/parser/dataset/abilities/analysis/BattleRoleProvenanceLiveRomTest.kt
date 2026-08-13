@@ -213,6 +213,32 @@ class BattleRoleProvenanceLiveRomTest {
         )
     }
 
+    @Test
+    fun `Classic withholds attack mechanics when final modifier application is not proven`() {
+        val control = Control(
+            environmentVariable = "DUALDEX_CLASSIC_ROM",
+            fallbackPath = "D:/Temp/dualdex-hack-roms/Classic (v1.5.0b).gba",
+            sha256 = "01c0177b2498e1842a1bf9ee2ddac145fb95275321bd3813dbf17341d63ad16c",
+            routineEntry = 0x5097C,
+            expectedAttackLoad = 0x50A10,
+            moveRoot = 0x0835_81F8,
+        )
+        val image = control.load()
+        val bytes = image.slice(0, image.size)
+        bytes[0x4EDD0] = 0x70
+        bytes[0x4EDD1] = 0x47 // bx lr: no modifier/attack arithmetic remains.
+
+        val result = BattleRoleProvenance.analyze(
+            image = RomImage(bytes),
+            entry = control.routineEntry,
+            instructionSet = Arm7InstructionSet.THUMB,
+            abi = classicAbi(control.moveRoot),
+            maxDecodedInstructions = 4_096,
+        )
+
+        assertEquals(emptyList<AttackMechanic>(), result.attackMechanics)
+    }
+
     private fun retailAbi(moveRoot: Int) = BattleMechanicsAbi(
         record = BattleRecordAbi(
             stride = 0x58,
