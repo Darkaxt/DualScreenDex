@@ -313,6 +313,12 @@ object MapFirst50Matrix {
     private fun elapsedMillis(started: Long) = (System.nanoTime() - started) / 1_000_000
 
     private val frozenControls = listOf(
+        Control("official-red", "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b", 1, listOf("d55384218790ed7744af655bef486bcba8b1a932aa81e3d5701871f8ac60eca4")),
+        Control("official-blue", "2a951313c2640e8c2cb21f25d1db019ae6245d9c7121f754fa61afd7bee6452d", 1, listOf("d55384218790ed7744af655bef486bcba8b1a932aa81e3d5701871f8ac60eca4")),
+        Control("official-yellow", "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf", 1, listOf("d55384218790ed7744af655bef486bcba8b1a932aa81e3d5701871f8ac60eca4")),
+        Control("official-gold", "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e", 2, listOf("adb9cefb64aece67c7cff271b70183af5dafa7c3e95beffd31436a7cab79a5e9", "c53b3c2e032545fa2452bbadd4a29aea8619cc852b9ed45d17d6d8475cebe5b7")),
+        Control("official-silver", "72b190859a59623cbef6c49d601f8de52c1d2331b4f08a8d2acc17274fc19a8c", 2, listOf("adb9cefb64aece67c7cff271b70183af5dafa7c3e95beffd31436a7cab79a5e9", "c53b3c2e032545fa2452bbadd4a29aea8619cc852b9ed45d17d6d8475cebe5b7")),
+        Control("official-crystal", "d6702e353dcbe2d2c69183046c878ef13a0dae4006e8cdff521cca83dd1582fe", 2, listOf("adb9cefb64aece67c7cff271b70183af5dafa7c3e95beffd31436a7cab79a5e9", "c53b3c2e032545fa2452bbadd4a29aea8619cc852b9ed45d17d6d8475cebe5b7")),
         Control("official-emerald", "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af", 1, listOf("1c3a1bf13c851dcc707f1f3f71c8f90e703a0faf0832917a0195618952a77aab")),
         Control("modern-emerald", "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", 1, listOf("0163d9b5e747d788db925776c25a087a1cc4bbfa34fd3e021580aa8756717fb0")),
         Control("classic", "01c0177b2498e1842a1bf9ee2ddac145fb95275321bd3813dbf17341d63ad16c", 1, listOf("dc326776034d066f0b2691e14f2325e78d6761b40db6da52c8454ab8fe46a46f")),
