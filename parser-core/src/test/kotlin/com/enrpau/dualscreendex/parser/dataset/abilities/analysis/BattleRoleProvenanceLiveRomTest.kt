@@ -114,6 +114,36 @@ class BattleRoleProvenanceLiveRomTest {
         assertEquals(emptyList<FieldReadEvidence>(), result.fieldReads.filter {
             it.instructionOffset == control.expectedAttackLoad && it.role == BattleRecordRole.DEFENDER
         })
+        assertEquals(
+            result.toString(),
+            setOf(
+                AttackMechanic(
+                    abilityId = 37,
+                    predicates = setOf(
+                        MechanicPredicate.AttackerAbility(37),
+                        MechanicPredicate.MoveSplit(0),
+                    ),
+                    effect = MultiplyAttack(2, 1),
+                ),
+                AttackMechanic(
+                    abilityId = 74,
+                    predicates = setOf(
+                        MechanicPredicate.AttackerAbility(74),
+                        MechanicPredicate.MoveSplit(0),
+                    ),
+                    effect = MultiplyAttack(2, 1),
+                ),
+                AttackMechanic(
+                    abilityId = 55,
+                    predicates = setOf(
+                        MechanicPredicate.AttackerAbility(55),
+                        MechanicPredicate.MoveSplit(0),
+                    ),
+                    effect = MultiplyAttack(3, 2),
+                ),
+            ),
+            result.attackMechanics.toSet(),
+        )
     }
 
     private fun retailAbi(moveRoot: Int) = BattleMechanicsAbi(
@@ -146,6 +176,9 @@ class BattleRoleProvenanceLiveRomTest {
             power = ScalarField(2, ScalarWidth.U16),
             type = ScalarField(4, ScalarWidth.U8),
             category = ScalarField(16, ScalarWidth.U8),
+            effectiveSplitContextPointer = 0x0202_3598,
+            effectiveSplitPackedField = ScalarField(0x2D4, ScalarWidth.U8),
+            effectiveSplitMask = 0x60,
         ),
         activeAbilityIds = setOf(37, 55, 62, 74),
         roleContract = BattleRoleContract.IndexedArray(
@@ -153,6 +186,8 @@ class BattleRoleProvenanceLiveRomTest {
             attackerIndexParameterRegister = 1,
             defenderIndexParameterRegister = 2,
         ),
+        moveParameterRegister = 0,
+        withheldAbilityIds = setOf(62),
     )
 
     private data class Control(
