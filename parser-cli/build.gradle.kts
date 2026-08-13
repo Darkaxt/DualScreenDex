@@ -22,3 +22,10 @@ application {
 tasks.test {
     useJUnit()
 }
+
+tasks.register<JavaExec>("mapFirst50Matrix") {
+    group = "verification"
+    description = "Runs the evidence-only first50 world-map compatibility matrix"
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.enrpau.dualscreendex.parser.cli.MapFirst50Matrix")
+}
