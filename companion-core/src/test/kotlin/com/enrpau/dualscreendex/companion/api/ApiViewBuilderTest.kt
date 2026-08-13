@@ -5,6 +5,9 @@ import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
+import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
@@ -67,6 +70,43 @@ class ApiViewBuilderTest {
         assertEquals("/api/maps/world%2Fgen3-region-0.png", map.imageUrl)
         assertEquals(listOf(0x10, 0x11), map.locations.single().baseAreaIds)
         assertEquals(WorldMapCellView(3, 11, 2, 1), map.locations.single().geometry.single())
+    }
+
+    @Test
+    fun exposesOnlyCatalogPublishedSemanticAbilityMechanics() {
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = mapOf(
+                1 to com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
+                    id = 1,
+                    dexNumber = CatalogField.available(1),
+                    name = CatalogField.available("TESTMON"),
+                    typeIds = CatalogField.available(emptyList()),
+                    baseStats = CatalogField.notFound("fixture"),
+                    sprite = CatalogField.notFound("fixture"),
+                    abilityIds = CatalogField.available(listOf(37)),
+                ),
+            ),
+            abilitiesById = mapOf(
+                37 to AbilityRecord(
+                    id = 37,
+                    name = CatalogField.available("Huge Power"),
+                    mechanics = CatalogField.available(
+                        listOf(AbilityMechanic(AbilityMechanicKind.MULTIPLIER, "Attack", "Attack ×2", 2, 1)),
+                    ),
+                ),
+            ),
+        )
+
+        val mechanic = ApiViewBuilder.catalog(catalog).species.single().abilities.single().mechanics.single()
+
+        assertEquals("MULTIPLIER", mechanic.kind)
+        assertEquals("Attack", mechanic.label)
+        assertEquals("Attack ×2", mechanic.value)
+        assertEquals(2, mechanic.numerator)
+        assertEquals(1, mechanic.denominator)
     }
 
     @Test
