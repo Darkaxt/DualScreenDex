@@ -151,6 +151,42 @@ class ReportWriterTest {
     }
 
     @Test
+    fun catalogSamplesValidateEveryMoveReferenceSource() {
+        val species = SpeciesRecord(
+            id = 1,
+            dexNumber = CatalogField.available(1),
+            name = CatalogField.available("Bulbasaur"),
+            typeIds = CatalogField.available(emptyList()),
+            baseStats = CatalogField.available(BaseStats(45, 49, 49, 45, 65, 65)),
+            sprite = CatalogField.notFound("fixture"),
+            learnset = CatalogField.available(listOf(LearnsetEntry(5, 10))),
+            moveAcquisitions = CatalogField.available(
+                listOf(MoveAcquisition(11, MoveAcquisitionMethod.MACHINE, 1)),
+            ),
+        )
+        val ruleset = LearnsetRuleset(
+            id = "alternate",
+            label = "Alternate",
+            sourceOffset = 0x100,
+            confidence = 1.0,
+            entriesBySpecies = mapOf(1 to listOf(LearnsetEntry(6, 12))),
+        )
+        val catalog = ParsedCatalog(
+            romSha256 = "0".repeat(64),
+            family = EngineFamily.FIRERED_LEAFGREEN,
+            platform = Platform.GBA,
+            speciesById = mapOf(1 to species),
+            learnsetRulesets = listOf(ruleset),
+        )
+
+        val errors = CatalogSamples.from(catalog).referenceErrors
+
+        assertTrue(errors.any { it == "species 1 learns missing move 10" })
+        assertTrue(errors.any { it == "species 1 acquires missing move 11 by MACHINE" })
+        assertTrue(errors.any { it == "ruleset alternate species 1 learns missing move 12" })
+    }
+
+    @Test
     fun catalogSamplesExposePhysicalAndDexOrderedLeadingSpeciesRegisters() {
         fun species(id: Int, dex: Int, name: String, acquisitions: List<MoveAcquisition> = emptyList()) = SpeciesRecord(
             id = id,

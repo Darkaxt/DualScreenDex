@@ -175,7 +175,13 @@ object CatalogMaterializer {
                 },
             )
         }
-        val moves = rawMoves.mapValues { (id, move) ->
+        val closedMoves = ReferencedMoveCatalogClosure.close(
+            moves = rawMoves,
+            species = species,
+            rulesets = learnsetRulesets,
+            typedDetails = layout.resolvedDatasets.moveDetails?.catalogDetails().orEmpty(),
+        )
+        val moves = closedMoves.mapValues { (id, move) ->
             val effectText = moveDescriptions?.descriptions?.get(id)
             move.copy(
                 effectText = when {

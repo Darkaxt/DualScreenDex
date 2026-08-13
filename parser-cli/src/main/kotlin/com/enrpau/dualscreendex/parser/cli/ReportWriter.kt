@@ -161,6 +161,23 @@ data class CatalogSamples(
                             add("species ${species.id} learns missing move ${entry.moveId}")
                         }
                     }
+                    species.moveAcquisitions.value.orEmpty().forEach { acquisition ->
+                        if (acquisition.moveId > 0 && acquisition.moveId !in catalog.movesById) {
+                            add(
+                                "species ${species.id} acquires missing move ${acquisition.moveId} " +
+                                    "by ${acquisition.method}",
+                            )
+                        }
+                    }
+                }
+                catalog.learnsetRulesets.forEach { ruleset ->
+                    ruleset.entriesBySpecies.forEach { (speciesId, entries) ->
+                        entries.forEach { entry ->
+                            if (entry.moveId > 0 && entry.moveId !in catalog.movesById) {
+                                add("ruleset ${ruleset.id} species $speciesId learns missing move ${entry.moveId}")
+                            }
+                        }
+                    }
                 }
                 moves.forEach { move ->
                     move.typeId.value?.let { typeId ->
