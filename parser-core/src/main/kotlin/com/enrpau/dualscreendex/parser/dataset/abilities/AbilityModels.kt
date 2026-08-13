@@ -3,6 +3,9 @@ package com.enrpau.dualscreendex.parser.dataset.abilities
 import com.enrpau.dualscreendex.parser.dataset.core.basestats.Gen3BaseStatsRecord
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.AttackMechanic
+import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.BattleMechanicsAbi
+import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsProof
 import com.enrpau.dualscreendex.parser.resolution.CandidateLayoutIdentity
 import com.enrpau.dualscreendex.parser.resolution.ImmutableDatasetLayout
 import java.util.Collections
@@ -337,11 +340,43 @@ sealed interface AbilityDescriptionTableOutcome {
     ) : AbilityDescriptionTableOutcome
 }
 
-/** Marker type used only to make the deferred mechanics outcome explicit and typed. */
-class ResolvedAbilityMechanicsLayout private constructor() :
-    ImmutableDatasetLayout<ResolvedAbilityMechanicsLayout> {
-    override val layoutIdentity: CandidateLayoutIdentity = CandidateLayoutIdentity("ability-mechanics:deferred")
+/** Complete parser-selected ARM7TDMI mechanic proof propagated to catalog consumers. */
+class ResolvedAbilityMechanicsLayout(
+    val routineEntry: Int,
+    val abi: BattleMechanicsAbi,
+    mechanics: Collection<AttackMechanic>,
+    proof: RetailBattleMechanicsProof,
+) : ImmutableDatasetLayout<ResolvedAbilityMechanicsLayout> {
+    val mechanics: List<AttackMechanic> = Collections.unmodifiableList(mechanics.map { mechanic ->
+        mechanic.copy(predicates = Collections.unmodifiableSet(mechanic.predicates.toSet()))
+    })
+    val proof: RetailBattleMechanicsProof = proof.copy(
+        decodedCallSites = Collections.unmodifiableList(proof.decodedCallSites.toList()),
+        callerEvidence = Collections.unmodifiableList(proof.callerEvidence.toList()),
+        moveTableReferenceSites = Collections.unmodifiableList(proof.moveTableReferenceSites.toList()),
+        literalVeneerSites = Collections.unmodifiableList(proof.literalVeneerSites.toList()),
+    )
+    override val layoutIdentity: CandidateLayoutIdentity = CandidateLayoutIdentity(
+        "ability-mechanics:arm7tdmi:${routineEntry.toString(16)}:${abi.record.stride}:${this.mechanics.size}",
+    )
+
+    init {
+        require(routineEntry >= 0) { "ability-mechanics routine entry must not be negative" }
+        require(this.mechanics.isNotEmpty()) { "ability-mechanics proof must emit at least one mechanic" }
+    }
+
     override fun immutableSnapshot(): ResolvedAbilityMechanicsLayout = this
+
+    override fun equals(other: Any?): Boolean = other is ResolvedAbilityMechanicsLayout &&
+        routineEntry == other.routineEntry && abi == other.abi && mechanics == other.mechanics && proof == other.proof
+
+    override fun hashCode(): Int {
+        var result = routineEntry
+        result = 31 * result + abi.hashCode()
+        result = 31 * result + mechanics.hashCode()
+        result = 31 * result + proof.hashCode()
+        return result
+    }
 }
 
 private fun <T> immutable(values: Collection<T>): List<T> =

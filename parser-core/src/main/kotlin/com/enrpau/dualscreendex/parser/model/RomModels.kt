@@ -6,7 +6,7 @@ import com.enrpau.dualscreendex.parser.dataset.evolutions.ResolvedEvolutionLayou
 import com.enrpau.dualscreendex.parser.dataset.learnsets.ResolvedLearnsetSet
 import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
 import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityNameLayout
-import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.BattleMechanicsAbi
+import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityMechanicsLayout
 
 enum class Platform { GB, GBC, GBA, UNKNOWN }
 
@@ -109,7 +109,7 @@ class ResolvedDatasetLayouts(
     learnsets: ResolvedLearnsetSet? = null,
     moveDetails: ResolvedMoveDetailsLayout? = null,
     abilityNames: ResolvedAbilityNameLayout? = null,
-    battleMechanicsAbi: BattleMechanicsAbi? = null,
+    abilityMechanics: ResolvedAbilityMechanicsLayout? = null,
 ) {
     val typeChart: ResolvedTypeChartLayout? = typeChart?.immutableSnapshot()
     val descriptions: ResolvedDescriptionLayout? = descriptions?.immutableSnapshot()
@@ -117,14 +117,14 @@ class ResolvedDatasetLayouts(
     val learnsets: ResolvedLearnsetSet? = learnsets?.immutableSnapshot()
     val moveDetails: ResolvedMoveDetailsLayout? = moveDetails?.immutableSnapshot()
     val abilityNames: ResolvedAbilityNameLayout? = abilityNames?.immutableSnapshot()
-    val battleMechanicsAbi: BattleMechanicsAbi? = battleMechanicsAbi
+    val abilityMechanics: ResolvedAbilityMechanicsLayout? = abilityMechanics?.immutableSnapshot()
 
     fun immutableSnapshot(): ResolvedDatasetLayouts = this
 
     override fun equals(other: Any?): Boolean = other is ResolvedDatasetLayouts &&
         typeChart == other.typeChart && descriptions == other.descriptions && evolutions == other.evolutions &&
             learnsets == other.learnsets && moveDetails == other.moveDetails && abilityNames == other.abilityNames &&
-            battleMechanicsAbi == other.battleMechanicsAbi
+            abilityMechanics == other.abilityMechanics
 
     override fun hashCode(): Int {
         var result = typeChart?.hashCode() ?: 0
@@ -133,7 +133,7 @@ class ResolvedDatasetLayouts(
         result = 31 * result + (learnsets?.hashCode() ?: 0)
         result = 31 * result + (moveDetails?.hashCode() ?: 0)
         result = 31 * result + (abilityNames?.hashCode() ?: 0)
-        result = 31 * result + (battleMechanicsAbi?.hashCode() ?: 0)
+        result = 31 * result + (abilityMechanics?.hashCode() ?: 0)
         return result
     }
 }

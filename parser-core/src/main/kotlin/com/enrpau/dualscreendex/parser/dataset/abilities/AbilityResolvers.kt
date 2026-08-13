@@ -2,6 +2,10 @@ package com.enrpau.dualscreendex.parser.dataset.abilities
 
 import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.BattleMechanicsAbi
+import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolution
+import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolver
+import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.resolution.BudgetKind
 import com.enrpau.dualscreendex.parser.resolution.CandidateEligibility
@@ -646,10 +650,16 @@ class AbilityDescriptionResolver(
 }
 
 object AbilityMechanicsResolver {
-    fun resolve(): DatasetResolution<ResolvedAbilityMechanicsLayout> = DatasetResolution.Unavailable(
-        kind = DatasetKind.ABILITY_MECHANICS,
-        observedCandidates = 0,
-        reason = "ability mechanics are unavailable until the post-map Thumb interpretation phase",
+    fun resolve(
+        session: RomAnalysisSession,
+        moveDetails: ResolvedMoveDetailsLayout,
+        abilityNames: ResolvedAbilityNameLayout,
+        selectedAbi: BattleMechanicsAbi? = null,
+    ): RetailBattleMechanicsResolution = RetailBattleMechanicsResolver.resolve(
+        session = session,
+        moveDetails = moveDetails,
+        activeAbilityIds = abilityNames.decodedDirectAbilityIds(),
+        selectedAbi = selectedAbi,
     )
 }
 

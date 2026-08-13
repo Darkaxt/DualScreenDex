@@ -1,11 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
-import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.AttackMechanic
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.MechanicPredicate
-import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolution
-import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolver
-import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import java.util.Locale
@@ -55,22 +51,15 @@ object AbilityMechanicsMaterializer {
                 mechanicsByAbility = mechanics,
             )
         }
-        val moveDetails = layout.resolvedDatasets.moveDetails ?: return null
-        val abilityNames = layout.resolvedDatasets.abilityNames ?: return null
-        val resolution = RetailBattleMechanicsResolver.resolve(
-            session = RomAnalysisSession(rom, RomHeaderReader.read(rom)),
-            moveDetails = moveDetails,
-            activeAbilityIds = abilityNames.decodedDirectAbilityIds(),
-            selectedAbi = layout.resolvedDatasets.battleMechanicsAbi,
-        ) as? RetailBattleMechanicsResolution.Resolved ?: return null
-        val mechanics = resolution.layout.mechanics.mapNotNull { mechanic ->
+        val resolved = layout.resolvedDatasets.abilityMechanics ?: return null
+        val mechanics = resolved.mechanics.mapNotNull { mechanic ->
             mechanic.takeIf { it.abilityId in abilities }?.toCatalogMechanic()
         }
             .groupBy { it.first }
             .mapValues { (_, entries) -> entries.map { it.second }.distinct() }
         if (mechanics.isEmpty()) return null
         return AbilityMechanicsResult(
-            sourceOffset = resolution.layout.routineEntry,
+            sourceOffset = resolved.routineEntry,
             confidence = 1.0,
             mechanicsByAbility = mechanics,
         )

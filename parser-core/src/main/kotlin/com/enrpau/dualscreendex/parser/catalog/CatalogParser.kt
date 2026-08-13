@@ -301,7 +301,7 @@ object CatalogMaterializer {
                 status = CapabilityStatus.AVAILABLE,
             )
         } else {
-            CapabilityEvidence(
+            initialCapabilities[RomCapability.ABILITY_MECHANICS] ?: CapabilityEvidence(
                 capability = RomCapability.ABILITY_MECHANICS,
                 compatible = false,
                 confidence = 0.0,

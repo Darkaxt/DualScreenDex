@@ -12,12 +12,12 @@ import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.MoveMechanicsA
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.MultiplyAttack
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.ScalarField
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.ScalarWidth
-import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolution
-import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolver
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7InstructionSet
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ParseResult
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
@@ -181,53 +181,48 @@ class Arm7MechanicsCompatibilitySurveyTest {
                 MechanicsStage.STATIC_TYPED_LAYOUT_UNAVAILABLE,
                 "parser did not select a typed ability domain",
             )
-        val resolution = RetailBattleMechanicsResolver.resolve(
-            RomAnalysisSession(rom, parse.header),
-            move,
-            ability.decodedDirectAbilityIds(),
-        )
-        val integration = when (resolution) {
-                is RetailBattleMechanicsResolution.Resolved -> {
-                    val resolved = resolution.layout
-                    MechanicsOutcome(
-                        stage = MechanicsStage.COMPLETE_PROOF,
-                        reason = "complete independent caller, typed ABI, move-table, field-use, and semantic proof; no contradictory extras",
-                        staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
-                        battleAbiCluster = buildString {
-                            append("DIRECT_POINTERS:stride=0x${resolved.abi.record.stride.toString(16)}")
-                            append(":attack=${resolved.abi.record.attack.label()}")
-                            append(":ability=${resolved.abi.record.ability.label()}")
-                        },
-                        routineCluster = buildString {
-                            append("THUMB_DAMAGE_DIRECT")
-                            append(":decodedCallers=${resolved.proof.decodedCallSites.size}")
-                            append(":roleProofs=${resolved.proof.callerEvidence.size}")
-                            append(":moveRefs=${resolved.proof.moveTableReferenceSites.size}")
-                        },
-                        routineEntry = resolved.routineEntry,
-                        battleArrayRoot = resolved.proof.callerEvidence.firstOrNull()?.battleArrayRoot,
-                        decodedCallSites = resolved.proof.decodedCallSites.size,
-                        provenCallerSites = resolved.proof.callerEvidence.size,
-                        moveReferenceSites = resolved.proof.moveTableReferenceSites.size,
-                        tuples = resolved.mechanics.sortedBy(AttackMechanic::abilityId).map(::tuple),
-                    )
-                }
-                is RetailBattleMechanicsResolution.Unavailable -> MechanicsOutcome(
-                    MechanicsStage.UNSUPPORTED,
-                    resolution.reason,
-                    staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
-                )
-                is RetailBattleMechanicsResolution.Ambiguous -> MechanicsOutcome(
-                    MechanicsStage.AMBIGUOUS,
-                    "multiple complete routine/ABI candidates: ${resolution.entries.size}",
-                    staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
-                )
-                is RetailBattleMechanicsResolution.BudgetExceeded -> MechanicsOutcome(
-                    MechanicsStage.BUDGET,
-                    resolution.reason,
-                    staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
-                )
+        val resolved = layout.resolvedDatasets.abilityMechanics
+        if (resolved == null) {
+            val evidence = parse.capabilities.firstOrNull { it.capability == RomCapability.ABILITY_MECHANICS }
+            val stage = if (evidence?.status == CapabilityStatus.AMBIGUOUS) {
+                MechanicsStage.AMBIGUOUS
+            } else {
+                MechanicsStage.UNSUPPORTED
             }
+            return MechanicsOutcome(
+                stage,
+                evidence?.reasons?.joinToString("; ") ?: "parser did not propagate a complete mechanics proof",
+                staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
+            )
+        }
+        val integration = MechanicsOutcome(
+            stage = MechanicsStage.COMPLETE_PROOF,
+            reason = "normal parser path propagated complete typed caller, field, predicate, effect, and writeback proof",
+            staticTypedCluster = "${move.table.abi.name}:${ability.baseAbilityCount}",
+            battleAbiCluster = buildString {
+                append(
+                    when (resolved.abi.roleContract) {
+                        is BattleRoleContract.DirectPointers -> "DIRECT_POINTERS"
+                        is BattleRoleContract.IndexedArray -> "INDEXED_ARRAY"
+                    },
+                )
+                append(":stride=0x${resolved.abi.record.stride.toString(16)}")
+                append(":attack=${resolved.abi.record.attack.label()}")
+                append(":ability=${resolved.abi.record.ability.label()}")
+            },
+            routineCluster = buildString {
+                append("THUMB_DAMAGE_DIRECT")
+                append(":decodedCallers=${resolved.proof.decodedCallSites.size}")
+                append(":roleProofs=${resolved.proof.callerEvidence.size}")
+                append(":moveRefs=${resolved.proof.moveTableReferenceSites.size}")
+            },
+            routineEntry = resolved.routineEntry,
+            battleArrayRoot = resolved.proof.callerEvidence.firstOrNull()?.battleArrayRoot,
+            decodedCallSites = resolved.proof.decodedCallSites.size,
+            provenCallerSites = resolved.proof.callerEvidence.size,
+            moveReferenceSites = resolved.proof.moveTableReferenceSites.size,
+            tuples = resolved.mechanics.sortedBy(AttackMechanic::abilityId).map(::tuple),
+        )
         return integration.copy(stage = integrationStage(integration.stage, null))
     }
 

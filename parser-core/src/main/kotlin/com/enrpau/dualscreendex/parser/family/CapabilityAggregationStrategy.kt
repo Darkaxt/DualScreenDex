@@ -1,6 +1,9 @@
 package com.enrpau.dualscreendex.parser.family
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityMechanicsResolver
+import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityMechanicsLayout
+import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolution
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.ParserProbe
@@ -62,7 +65,15 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
             "sprites", if (dependent.sprites.compatible) 10 else 0, 10, dependent.sprites.summary(),
         )
 
-        val capabilities = buildCapabilities(definition, identity, core, semantic, dependent)
+        val abilityMechanics = resolveAbilityMechanics(session, definition, identity, core, semantic)
+        val capabilities = buildCapabilities(
+            definition,
+            identity,
+            core,
+            semantic,
+            dependent,
+            abilityMechanics.evidence,
+        )
         val anchors = listOf(
             identity.identityMatched,
             tables.speciesNames != null,
@@ -114,6 +125,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                         learnsets = dependent.resolvedLearnsets,
                         moveDetails = core.resolvedMoveDetails,
                         abilityNames = semantic.resolvedAbilityNames,
+                        abilityMechanics = abilityMechanics.layout,
                     ),
                 ),
             ),
@@ -126,6 +138,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
         core: CoreDatasetsPhaseResult.Resolved,
         semantic: SemanticDomainPhaseResult.Resolved,
         dependent: DependentDatasetsPhaseResult.Resolved,
+        abilityMechanics: CapabilityEvidence,
     ): List<CapabilityEvidence> {
         val catalog = speciesCatalogEvidence(core.speciesNames, core.baseStats)
         val discovered = listOf(
@@ -145,9 +158,99 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                 semantic.abilities,
                 if (semantic.abilities.compatible) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
             ),
+            abilityMechanics,
         )
         return applyCapabilityApplicability(definition, discovered)
     }
+
+    private fun resolveAbilityMechanics(
+        session: RomAnalysisSession,
+        definition: EngineFamilyDefinition,
+        identity: IdentityRootsPhaseResult.Resolved,
+        core: CoreDatasetsPhaseResult.Resolved,
+        semantic: SemanticDomainPhaseResult.Resolved,
+    ): AbilityMechanicsPhaseResult {
+        if (definition.formatGeneration < 3) {
+            return AbilityMechanicsPhaseResult(
+                null,
+                unavailableMechanics("abilities are not part of this engine", CapabilityStatus.NOT_APPLICABLE),
+            )
+        }
+        if (identity.expansion != null) {
+            return AbilityMechanicsPhaseResult(
+                null,
+                unavailableMechanics("compiled ability transforms are not represented by the published expansion metadata"),
+            )
+        }
+        val moveDetails = core.resolvedMoveDetails ?: return AbilityMechanicsPhaseResult(
+            null,
+            unavailableMechanics("parser did not select a typed move ABI for ability mechanics"),
+        )
+        val abilityNames = semantic.resolvedAbilityNames ?: return AbilityMechanicsPhaseResult(
+            null,
+            unavailableMechanics("parser did not select a typed ability domain for ability mechanics"),
+        )
+        return when (val resolution = AbilityMechanicsResolver.resolve(
+            session = session,
+            moveDetails = moveDetails,
+            abilityNames = abilityNames,
+        )) {
+            is RetailBattleMechanicsResolution.Resolved -> {
+                val resolved = resolution.layout
+                val layout = ResolvedAbilityMechanicsLayout(
+                    resolved.routineEntry,
+                    resolved.abi,
+                    resolved.mechanics,
+                    resolved.proof,
+                )
+                AbilityMechanicsPhaseResult(
+                    layout,
+                    CapabilityEvidence(
+                        capability = RomCapability.ABILITY_MECHANICS,
+                        compatible = true,
+                        confidence = 1.0,
+                        offset = resolved.routineEntry,
+                        count = resolved.mechanics.map { it.abilityId }.distinct().size,
+                        reasons = listOf(
+                            "decoded complete caller-role, typed field, predicate, effect, and writeback proofs",
+                        ),
+                        status = CapabilityStatus.AVAILABLE,
+                    ),
+                )
+            }
+            is RetailBattleMechanicsResolution.Ambiguous -> AbilityMechanicsPhaseResult(
+                null,
+                unavailableMechanics(
+                    "multiple complete battle-mechanics interpretations survived",
+                    CapabilityStatus.AMBIGUOUS,
+                ),
+            )
+            is RetailBattleMechanicsResolution.Unavailable -> AbilityMechanicsPhaseResult(
+                null,
+                unavailableMechanics(resolution.reason),
+            )
+            is RetailBattleMechanicsResolution.BudgetExceeded -> AbilityMechanicsPhaseResult(
+                null,
+                unavailableMechanics(resolution.reason),
+            )
+        }
+    }
+
+    private fun unavailableMechanics(
+        reason: String,
+        status: CapabilityStatus = CapabilityStatus.NOT_FOUND,
+    ) = CapabilityEvidence(
+        capability = RomCapability.ABILITY_MECHANICS,
+        compatible = false,
+        confidence = 0.0,
+        reasons = listOf(reason),
+        status = status,
+    )
+
+    private data class AbilityMechanicsPhaseResult(
+        val layout: ResolvedAbilityMechanicsLayout?,
+        val evidence: CapabilityEvidence,
+    )
 
     private fun moveDetailsCapability(
         definition: EngineFamilyDefinition,

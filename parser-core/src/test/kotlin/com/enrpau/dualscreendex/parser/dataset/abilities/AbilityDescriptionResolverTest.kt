@@ -228,18 +228,6 @@ class AbilityDescriptionResolverTest {
         )
     }
 
-    @Test
-    fun mechanicsRemainExplicitlyUnavailableUntilThumbInterpretationPhase() {
-        val result = AbilityMechanicsResolver.resolve()
-
-        assertEquals(DatasetKind.ABILITY_MECHANICS, result.kind)
-        assertTrue(result is DatasetResolution.Unavailable)
-        assertTrue(
-            (result as DatasetResolution.Unavailable<ResolvedAbilityMechanicsLayout>)
-                .reason.contains("Thumb interpretation", ignoreCase = true),
-        )
-    }
-
     private fun resolvedNames(
         abilityCount: Int,
         width: Int = 13,
