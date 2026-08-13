@@ -156,4 +156,19 @@ class BattleMechanicsAbi(
     private fun requireParameterRegister(register: Int, label: String) {
         require(register in 0..3) { "$label must use an ARM procedure-call parameter register" }
     }
+
+    override fun equals(other: Any?): Boolean = other is BattleMechanicsAbi &&
+        record == other.record && move == other.move && activeAbilityIds == other.activeAbilityIds &&
+        roleContract == other.roleContract && moveParameterRegister == other.moveParameterRegister &&
+        withheldAbilityIds == other.withheldAbilityIds
+
+    override fun hashCode(): Int {
+        var result = record.hashCode()
+        result = 31 * result + move.hashCode()
+        result = 31 * result + activeAbilityIds.hashCode()
+        result = 31 * result + roleContract.hashCode()
+        result = 31 * result + (moveParameterRegister ?: 0)
+        result = 31 * result + withheldAbilityIds.hashCode()
+        return result
+    }
 }

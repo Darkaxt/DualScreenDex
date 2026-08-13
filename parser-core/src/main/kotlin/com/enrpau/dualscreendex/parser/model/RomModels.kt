@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.dataset.evolutions.ResolvedEvolutionLayou
 import com.enrpau.dualscreendex.parser.dataset.learnsets.ResolvedLearnsetSet
 import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
 import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityNameLayout
+import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.BattleMechanicsAbi
 
 enum class Platform { GB, GBC, GBA, UNKNOWN }
 
@@ -108,6 +109,7 @@ class ResolvedDatasetLayouts(
     learnsets: ResolvedLearnsetSet? = null,
     moveDetails: ResolvedMoveDetailsLayout? = null,
     abilityNames: ResolvedAbilityNameLayout? = null,
+    battleMechanicsAbi: BattleMechanicsAbi? = null,
 ) {
     val typeChart: ResolvedTypeChartLayout? = typeChart?.immutableSnapshot()
     val descriptions: ResolvedDescriptionLayout? = descriptions?.immutableSnapshot()
@@ -115,20 +117,25 @@ class ResolvedDatasetLayouts(
     val learnsets: ResolvedLearnsetSet? = learnsets?.immutableSnapshot()
     val moveDetails: ResolvedMoveDetailsLayout? = moveDetails?.immutableSnapshot()
     val abilityNames: ResolvedAbilityNameLayout? = abilityNames?.immutableSnapshot()
+    val battleMechanicsAbi: BattleMechanicsAbi? = battleMechanicsAbi
 
     fun immutableSnapshot(): ResolvedDatasetLayouts = this
 
     override fun equals(other: Any?): Boolean = other is ResolvedDatasetLayouts &&
         typeChart == other.typeChart && descriptions == other.descriptions && evolutions == other.evolutions &&
-            learnsets == other.learnsets && moveDetails == other.moveDetails && abilityNames == other.abilityNames
+            learnsets == other.learnsets && moveDetails == other.moveDetails && abilityNames == other.abilityNames &&
+            battleMechanicsAbi == other.battleMechanicsAbi
 
-    override fun hashCode(): Int =
-        31 * (
-            31 * (
-                31 * (31 * (typeChart?.hashCode() ?: 0) + (descriptions?.hashCode() ?: 0)) +
-                    (evolutions?.hashCode() ?: 0)
-                ) + (learnsets?.hashCode() ?: 0)
-            ) + (moveDetails?.hashCode() ?: 0) + 31 * (abilityNames?.hashCode() ?: 0)
+    override fun hashCode(): Int {
+        var result = typeChart?.hashCode() ?: 0
+        result = 31 * result + (descriptions?.hashCode() ?: 0)
+        result = 31 * result + (evolutions?.hashCode() ?: 0)
+        result = 31 * result + (learnsets?.hashCode() ?: 0)
+        result = 31 * result + (moveDetails?.hashCode() ?: 0)
+        result = 31 * result + (abilityNames?.hashCode() ?: 0)
+        result = 31 * result + (battleMechanicsAbi?.hashCode() ?: 0)
+        return result
+    }
 }
 
 data class ResolvedRomLayout(

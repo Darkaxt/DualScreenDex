@@ -184,7 +184,7 @@ object CatalogMaterializer {
         val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
         val moveDescriptions = MoveDescriptionMaterializer.materialize(rom, layout)
         val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
-        val abilityMechanics = AbilityMechanicsMaterializer.materialize(rom, layout, abilities, baseTypes)
+        val abilityMechanics = AbilityMechanicsMaterializer.materialize(rom, layout, abilities)
         val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
         val species = closedRelationshipSpecies.mapValues { (id, record) ->
             record.copy(
