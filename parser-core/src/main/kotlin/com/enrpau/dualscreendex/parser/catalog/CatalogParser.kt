@@ -332,9 +332,11 @@ object CatalogMaterializer {
         }
         val encounterBaseIds = encounters.mapTo(linkedSetOf(), EncounterArea::baseAreaId)
         val worldMapResolution: CatalogWorldMapResolution = when {
-            layout.generation == 1 && resolveGen1WorldMap != null -> resolveGen1WorldMap(encounterBaseIds).toCatalog()
-            layout.generation == 3 && resolveGen3WorldMap != null -> resolveGen3WorldMap(encounterBaseIds).toCatalog()
-            else -> CatalogWorldMapResolution.Unavailable("generation-specific world-map resolver is not yet available")
+            rom.sha256 == MODERN_EMERALD_3_5_SHA256 && resolveGen3WorldMap != null ->
+                resolveGen3WorldMap(encounterBaseIds).toCatalog()
+            else -> CatalogWorldMapResolution.Unavailable(
+                "world maps are limited to the validated Modern Emerald 3.5 release in this build",
+            )
         }
         val worldMaps = (worldMapResolution as? CatalogWorldMapResolution.Resolved)?.catalog ?: WorldMapCatalog()
         capabilities[RomCapability.WORLD_MAP] = when (worldMapResolution) {
@@ -427,6 +429,9 @@ object CatalogMaterializer {
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, catalog))
         return catalog
     }
+
+    private const val MODERN_EMERALD_3_5_SHA256 =
+        "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895"
 
     private sealed interface CatalogWorldMapResolution {
         data class Resolved(val catalog: WorldMapCatalog, val reasons: List<String>) : CatalogWorldMapResolution
