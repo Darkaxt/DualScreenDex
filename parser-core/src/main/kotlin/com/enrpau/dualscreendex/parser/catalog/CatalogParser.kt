@@ -364,7 +364,10 @@ object CatalogMaterializer {
                 capability = RomCapability.WORLD_MAP,
                 compatible = false,
                 confidence = 0.0,
-                reasons = listOf(worldMapResolution.reason),
+                reasons = listOf(
+                    "world-map stage: ${worldMapResolution.stage}",
+                    worldMapResolution.reason,
+                ),
                 status = CapabilityStatus.AMBIGUOUS,
                 reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
             )
@@ -372,14 +375,20 @@ object CatalogMaterializer {
                 capability = RomCapability.WORLD_MAP,
                 compatible = false,
                 confidence = 0.0,
-                reasons = listOf(worldMapResolution.reason),
+                reasons = listOf(
+                    "world-map stage: ${worldMapResolution.stage}",
+                    worldMapResolution.reason,
+                ),
                 status = CapabilityStatus.NOT_FOUND,
             )
             is WorldMapResolution.Unavailable -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
                 compatible = false,
                 confidence = 0.0,
-                reasons = listOf(worldMapResolution.reason),
+                reasons = listOf(
+                    "world-map stage: ${worldMapResolution.stage}",
+                    worldMapResolution.reason,
+                ),
                 status = CapabilityStatus.NOT_FOUND,
             )
             null -> CapabilityEvidence(

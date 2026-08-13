@@ -1,0 +1,70 @@
+{
+  "generatedAt": "2026-08-13T16:34:00+03:00",
+  "sourceCommit": "9302d44",
+  "manifestSha256": "7146d2410231febfba550470d62ac179ef8c532d94bc15d2365211f862d03d5f",
+  "runCountPerRom": 2,
+  "observations": [
+    {
+      "index": 21,
+      "name": "Bronze (Girl Patch) (v1.23).gbc",
+      "selectedFamily": "GOLD_SILVER",
+      "mapCapabilityStatus": "NOT_FOUND",
+      "typedStage": "LANDMARK_JOIN",
+      "counts": { "headers": 1, "landmarks": 1, "classifiers": 1 },
+      "regionCount": 0,
+      "deterministic": true,
+      "safeNoMapFallback": true,
+      "first33RoutingPreserved": true,
+      "first33ReferencesPreserved": true
+    },
+    {
+      "index": 22,
+      "name": "Bronze (v1.23).gbc",
+      "selectedFamily": "GOLD_SILVER",
+      "mapCapabilityStatus": "NOT_FOUND",
+      "typedStage": "LANDMARK_JOIN",
+      "counts": { "headers": 1, "landmarks": 1, "classifiers": 1 },
+      "regionCount": 0,
+      "deterministic": true,
+      "safeNoMapFallback": true,
+      "first33RoutingPreserved": true,
+      "first33ReferencesPreserved": true
+    },
+    {
+      "index": 23,
+      "name": "Bronze 2 (v1.05).gbc",
+      "selectedFamily": "CRYSTAL",
+      "mapCapabilityStatus": "NOT_FOUND",
+      "typedStage": "LANDMARK_JOIN",
+      "counts": { "headers": 1, "landmarks": 1, "classifiers": 0 },
+      "regionCount": 0,
+      "deterministic": true,
+      "safeNoMapFallback": true,
+      "first33RoutingPreserved": true,
+      "first33ReferencesPreserved": true
+    },
+    {
+      "index": 38,
+      "name": "Dark Energy (v5.01).gbc",
+      "selectedFamily": "GOLD_SILVER",
+      "mapCapabilityStatus": "NOT_FOUND",
+      "typedStage": "LANDMARK_JOIN",
+      "counts": { "headers": 1, "landmarks": 1, "classifiers": 1 },
+      "regionCount": 0,
+      "deterministic": true,
+      "safeNoMapFallback": true
+    }
+  ],
+  "summary": {
+    "completed": 4,
+    "shaVerified": 4,
+    "deterministic": 4,
+    "available": 0,
+    "typedResolverFailure": 4,
+    "notApplicable": 0,
+    "safeNoMapFallback": 4,
+    "first33RoutingPreserved": 3,
+    "first33ReferencesPreserved": 3,
+    "clusters": { "LANDMARK_JOIN": 4 }
+  }
+}

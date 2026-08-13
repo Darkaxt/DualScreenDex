@@ -194,11 +194,19 @@ object MapFirst50Matrix {
     ): String {
         if (selectionStatus != "SELECTED") return "FAMILY_SELECTION_$selectionStatus"
         if (!catalogMaterialized) return "CATALOG_MATERIALIZATION"
-        if (generation != 3 || mapStatus == CapabilityStatus.NOT_APPLICABLE.name) return "NOT_APPLICABLE"
+        if (generation !in 1..3 || mapStatus == CapabilityStatus.NOT_APPLICABLE.name) return "NOT_APPLICABLE"
         if (mapStatus == CapabilityStatus.AVAILABLE.name) return "RESOLVED"
         val reason = reasons.joinToString(" ").lowercase()
         return when {
             "budget" in reason || "limit" in reason -> "REFERENCE_BUDGET"
+            "world-map stage: landmark-join" in reason -> "LANDMARK_JOIN"
+            "world-map stage: entry-table" in reason -> "ENTRY_TABLE"
+            "world-map stage: map-header-join" in reason -> "SEMANTIC_REGION_JOIN"
+            "world-map stage: encounter-binding" in reason -> "LOCATION_BINDING"
+            "world-map stage: map-plane" in reason -> "SEMANTIC_REGION_PLANES"
+            "world-map stage: palette" in reason -> "PALETTE"
+            "world-map stage: asset-loader" in reason && mapStatus == CapabilityStatus.AMBIGUOUS.name -> "LOADER_AUTHORITY"
+            "world-map stage: asset-loader" in reason -> "LOADER_ASSET_CLUSTER"
             "compiled gba references are unavailable" in reason -> "REFERENCE_INDEX"
             "equally authoritative" in reason || "multiple proven world-map loader formats" in reason -> "LOADER_AUTHORITY"
             "tile, tilemap, and bgr555 palette cluster" in reason -> "LOADER_ASSET_CLUSTER"
