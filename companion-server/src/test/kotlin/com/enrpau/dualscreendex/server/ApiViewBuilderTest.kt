@@ -109,7 +109,7 @@ class ApiViewBuilderTest {
                 ),
             ),
             encounterAreas = listOf(
-                EncounterArea(9, 0, CatalogField.available("ROUTE 1"), 0, listOf(EncounterSlot(1, 3, 5, 20))),
+                EncounterArea(9, CatalogField.available("ROUTE 1"), 0, listOf(EncounterSlot(1, 3, 5, 20))),
             ),
             learnsetRulesets = listOf(
                 LearnsetRuleset(
@@ -158,8 +158,8 @@ class ApiViewBuilderTest {
             platform = Platform.GBA,
             speciesById = mapOf(25 to species),
             encounterAreas = listOf(
-                EncounterArea(baseId * 10, baseId, CatalogField.available("AREA - GRASS"), 0, listOf(EncounterSlot(25, 3, 5, 20))),
-                EncounterArea(baseId * 10 + 1, baseId, CatalogField.available("AREA - SURF"), 1, listOf(EncounterSlot(25, 5, 7, 20))),
+                EncounterArea(baseId * 10, CatalogField.available("AREA - GRASS"), 0, listOf(EncounterSlot(25, 3, 5, 20))),
+                EncounterArea(baseId * 10 + 1, CatalogField.available("AREA - SURF"), 1, listOf(EncounterSlot(25, 5, 7, 20))),
             ),
         )
 
@@ -179,6 +179,5 @@ class ApiViewBuilderTest {
         assertEquals(31, view.speciesState.getValue(25).preferredLevel)
         assertEquals("ACE", view.speciesState.getValue(25).innateTier)
         assertEquals(listOf(baseId * 10, baseId * 10 + 1), view.currentAreaIds)
-        assertEquals(emptyList<Int>(), view.currentAreaSpeciesIds)
     }
 }

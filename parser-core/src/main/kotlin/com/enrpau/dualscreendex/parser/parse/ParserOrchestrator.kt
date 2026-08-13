@@ -18,30 +18,12 @@ import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 
-internal data class CatalogAnalysisContext(
-    val analysis: ParseResult,
-    val resolveGen1WorldMap: (Set<Int>) -> Gen1WorldMapResolution,
-    val resolveGen3WorldMap: (Set<Int>) -> Gen3WorldMapResolution,
-)
-
 object ParserOrchestrator {
     const val minimumScore = 75
     const val minimumMargin = 10
     private val familyProbeCoordinator = FamilyProbeCoordinator()
 
     fun analyze(rom: RomImage): ParseResult = analyze(rom, ::newSession)
-
-    internal fun analyzeForCatalog(rom: RomImage): CatalogAnalysisContext {
-        lateinit var sharedSession: RomAnalysisSession
-        val analysis = analyze(rom) { analyzedRom, header, exactProfile ->
-            newSession(analyzedRom, header, exactProfile).also { sharedSession = it }
-        }
-        return CatalogAnalysisContext(
-            analysis = analysis,
-            resolveGen1WorldMap = { baseAreaIds -> Gen1WorldMapResolver.resolve(sharedSession, baseAreaIds) },
-            resolveGen3WorldMap = { baseAreaIds -> Gen3WorldMapResolver.resolve(sharedSession, baseAreaIds) },
-        )
-    }
 
     internal fun analyze(
         rom: RomImage,

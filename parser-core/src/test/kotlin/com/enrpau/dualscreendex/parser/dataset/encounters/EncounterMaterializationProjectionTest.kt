@@ -20,7 +20,6 @@ class EncounterMaterializationProjectionTest {
         val areas = EncounterMaterializationProjection.materialize(layout)
 
         val hidden = areas.single { it.methodId == EncounterMethods.HIDDEN }
-        assertEquals(0x102, hidden.baseAreaId)
         assertTrue(hidden.name.value!!.contains("land"))
         assertEquals(setOf(EncounterWindow.ANY), hidden.windows)
         assertEquals(listOf(60, 30, 10), hidden.slots.map { it.weight })
@@ -71,6 +70,6 @@ class EncounterMaterializationProjectionTest {
             setOf(EncounterWindow.MORNING, EncounterWindow.DAY, EncounterWindow.NIGHT),
             areas.flatMap { it.windows }.toSet(),
         )
-        assertTrue(areas.none { it.baseAreaId in setOf(0x103, 0x104) })
+        assertTrue(areas.none { it.id / 10 in setOf(0x103, 0x104) })
     }
 }

@@ -15,7 +15,6 @@ object EncounterMaterializationProjection {
                 row.methods.map { method ->
                     EncounterArea(
                         id = groupMapId(row.mapGroup, row.mapNumber) * 10 + method.methodId,
-                        baseAreaId = groupMapId(row.mapGroup, row.mapNumber),
                         name = CatalogField.available(
                             "Map ${row.mapGroup}-${row.mapNumber} - ${methodLabel(method)}",
                         ),

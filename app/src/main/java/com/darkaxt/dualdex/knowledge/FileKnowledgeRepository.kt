@@ -25,7 +25,7 @@ class FileKnowledgeRepository(
         if (!document.isFile) return null
         val stored = runCatching { gson.fromJson(document.readText(), StoredLedger::class.java) }.getOrNull()
             ?: return null
-        if (stored.schema !in SUPPORTED_SCHEMAS || !stored.romIdentity.equals(identity, ignoreCase = true)) return null
+        if (stored.schema != SCHEMA || !stored.romIdentity.equals(identity, ignoreCase = true)) return null
         return stored.toLedger()
     }
 
@@ -61,7 +61,6 @@ class FileKnowledgeRepository(
         val owned: List<OwnedPokemon> = emptyList(),
         val teamSpecies: List<Int> = emptyList(),
         val currentAreaBaseId: Int? = null,
-        val visitedAreaBaseIds: List<Int> = emptyList(),
         val seenSpeciesByArea: List<StoredAreaSpecies> = emptyList(),
         val observedMoves: List<StoredSpeciesMoves> = emptyList(),
         val discoveredMatchups: List<StoredMatchup> = emptyList(),
@@ -73,9 +72,6 @@ class FileKnowledgeRepository(
             owned = owned,
             teamSpecies = teamSpecies.toSet(),
             currentAreaBaseId = currentAreaBaseId,
-            visitedAreaBaseIds = visitedAreaBaseIds.filter { it >= 0 }.toSet() +
-                seenSpeciesByArea.mapNotNull { it.areaBaseId.takeIf { id -> id >= 0 } } +
-                listOfNotNull(currentAreaBaseId),
             seenSpeciesByArea = seenSpeciesByArea
                 .filter { it.areaBaseId >= 0 }
                 .associate { area -> area.areaBaseId to area.speciesIds.filter { it > 0 }.toSet() },
@@ -101,7 +97,6 @@ class FileKnowledgeRepository(
                 owned = ledger.owned,
                 teamSpecies = ledger.teamSpecies.sorted(),
                 currentAreaBaseId = ledger.currentAreaBaseId,
-                visitedAreaBaseIds = ledger.visitedAreaBaseIds.sorted(),
                 seenSpeciesByArea = ledger.seenSpeciesByArea.entries
                     .sortedBy { it.key }
                     .map { StoredAreaSpecies(it.key, it.value.sorted()) },
@@ -133,7 +128,6 @@ class FileKnowledgeRepository(
     )
 
     private companion object {
-        const val SCHEMA = 2
-        val SUPPORTED_SCHEMAS = setOf(1, SCHEMA)
+        const val SCHEMA = 1
     }
 }

@@ -133,8 +133,8 @@ describe('Pokédex knowledge modes', () => {
     const windowCatalog: Catalog = {
       ...catalog,
       areas: [
-        { id: 10, baseAreaId: 1, name: 'Route 1', methodId: 1, speciesIds: [1], windows: ['DAY'], slots: [] },
-        { id: 11, baseAreaId: 1, name: 'Route 1', methodId: 2, speciesIds: [4], windows: ['NIGHT'], slots: [] },
+        { id: 10, name: 'Route 1', methodId: 1, speciesIds: [1], windows: ['DAY'], slots: [] },
+        { id: 11, name: 'Route 1', methodId: 2, speciesIds: [4], windows: ['NIGHT'], slots: [] },
       ],
     };
     const areaState: State = {
@@ -159,8 +159,8 @@ describe('Pokédex knowledge modes', () => {
     const windowCatalog: Catalog = {
       ...catalog,
       areas: [
-        { id: 20, baseAreaId: 2, name: 'Route 2', methodId: 1, speciesIds: [1], windows: ['DAY', 'NIGHT'], slots: [] },
-        { id: 21, baseAreaId: 2, name: 'Route 2 water', methodId: 2, speciesIds: [4], windows: ['ANY'], slots: [] },
+        { id: 20, name: 'Route 2', methodId: 1, speciesIds: [1], windows: ['DAY', 'NIGHT'], slots: [] },
+        { id: 21, name: 'Route 2 water', methodId: 2, speciesIds: [4], windows: ['ANY'], slots: [] },
       ],
     };
     render(<PokedexBrowse catalog={windowCatalog} state={{
@@ -174,11 +174,11 @@ describe('Pokédex knowledge modes', () => {
     expect(screen.queryByTestId('encounter-window-icon')).toBeNull();
   });
 
-  it('shows the parsed roster in Discovered mode regardless of local observation or caught state', () => {
+  it('shows the parsed roster in Discovered mode', () => {
     const areaCatalog: Catalog = {
       ...catalog,
       areas: [
-        { id: 10, baseAreaId: 1, name: 'Route 1', methodId: 1, speciesIds: [1, 4], windows: ['ANY'], slots: [] },
+        { id: 10, name: 'Route 1', methodId: 1, speciesIds: [1, 4], windows: ['ANY'], slots: [] },
       ],
     };
     const areaState: State = {
@@ -205,112 +205,45 @@ describe('Pokédex knowledge modes', () => {
     expect(screen.getByText('Charmander')).toBeTruthy();
   });
 
-  it('masks an unseen parsed encounter in Organic Area without leaking it to search', () => {
-    const areaCatalog: Catalog = { ...catalog, areas: [{ id: 10, baseAreaId: 1, name: 'Route 1', methodId: 1, speciesIds: [1, 4], windows: ['NIGHT'], slots: [] }] };
-    const organic: State = { ...state, filter: 'AREA', activeAreaIds: [10], activeAreaBaseId: 1, activeAreaName: 'Route 1', activeAreaSpeciesIds: [1], settings: { ...state.settings, knowledgeMode: 'ORGANIC' }, speciesState: { 1: { seen: true, caught: false, team: false, ballId: null }, 4: { seen: false, caught: false, team: false, ballId: null } } };
-    const { container } = render(<PokedexBrowse catalog={areaCatalog} state={organic} send={vi.fn()} />);
+  it('orders known Area encounters first and masks unseen parsed encounters without inserting caught gifts', () => {
+    const areaCatalog: Catalog = {
+      ...catalog,
+      species: [
+        catalog.species[0],
+        { ...catalog.species[1], hasSprite: true },
+        { ...catalog.species[0], id: 7, dex: 7, name: 'Squirtle', hasSprite: true },
+        { ...catalog.species[0], id: 252, dex: 252, name: 'Treecko', hasSprite: true },
+      ],
+      areas: [
+        { id: 10, name: 'Route 1', methodId: 1, speciesIds: [1, 4, 7], windows: ['NIGHT'], slots: [] },
+      ],
+    };
+    const { container } = render(<PokedexBrowse catalog={areaCatalog} state={{
+      ...state,
+      filter: 'AREA',
+      currentAreaIds: [10],
+      currentAreaSpeciesIds: [1],
+      speciesState: {
+        1: { seen: true, caught: false, team: false, ballId: null },
+        4: { seen: false, caught: false, team: false, ballId: null },
+        7: { seen: false, caught: true, team: false, ballId: null },
+        252: { seen: false, caught: true, team: false, ballId: null },
+      },
+    }} send={vi.fn()} />);
 
-    expect(screen.getByText('??????????')).toBeTruthy();
+    expect(Array.from(container.querySelectorAll('.species-row strong')).map(node => node.textContent)).toEqual([
+      'Bulbasaur',
+      'Squirtle',
+      '??????????',
+    ]);
     expect(screen.getByText('#???')).toBeTruthy();
     expect((screen.getByLabelText('Unidentified encounter') as HTMLButtonElement).disabled).toBe(true);
-    expect(container.querySelector('.identity-hidden')).toBeTruthy();
-    expect(screen.getAllByLabelText('Night encounter')).toHaveLength(2);
+    expect(container.querySelector('.identity-silhouette')).toBeTruthy();
+    expect(screen.queryByText('Treecko')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Open Map' })).toBeNull();
 
     fireEvent.input(screen.getByPlaceholderText('NAME OR NUMBER'), { target: { value: 'Charmander' } });
     expect(screen.queryByText('??????????')).toBeNull();
     expect(screen.queryByText('Charmander')).toBeNull();
-  });
-
-  it('reveals a globally caught roster member but never inserts a caught gift outside the parsed roster', () => {
-    const areaCatalog: Catalog = { ...catalog, areas: [{ id: 10, baseAreaId: 1, name: 'Route 1', methodId: 1, speciesIds: [1], windows: ['ANY'], slots: [{ speciesId: 1, minimumLevel: 2, maximumLevel: 3, weight: 100 }] }] };
-    render(<PokedexBrowse catalog={areaCatalog} state={{
-      ...state,
-      filter: 'AREA',
-      activeAreaIds: [10],
-      activeAreaRoster: [{ speciesId: 1, methodIds: [1], windows: ['ANY'], identityKnown: true }],
-      speciesState: {
-        1: { seen: false, caught: true, team: false, ballId: null },
-        4: { seen: false, caught: true, team: false, ballId: null },
-      },
-    }} send={vi.fn()} />);
-
-    expect(screen.getByText('Bulbasaur')).toBeTruthy();
-    expect(screen.queryByText('Charmander')).toBeNull();
-  });
-
-  it('offers a state-preserving back action after Map or Pokemon Area handoff', () => {
-    const send = vi.fn();
-    render(<PokedexBrowse catalog={catalog} state={{ ...state, priorScreen: 'DETAIL' }} send={send} />);
-
-    fireEvent.click(screen.getByLabelText('Back'));
-
-    expect(send).toHaveBeenCalledWith('BACK');
-  });
-
-  it('labels the live Area context with the ROM-derived location and Current marker', () => {
-    render(<PokedexBrowse catalog={{
-      ...catalog,
-      areas: [
-        { id: 10, baseAreaId: 1, name: 'Route 101', methodId: 1, speciesIds: [1], windows: ['ANY'], slots: [] },
-      ],
-    }} state={{
-      ...state,
-      filter: 'AREA',
-      activeAreaIds: [10],
-      activeAreaBaseId: 1,
-      activeAreaName: 'Route 101',
-      activeAreaSpeciesIds: [1],
-      activeAreaIsCurrent: true,
-    }} send={vi.fn()} />);
-
-    expect(screen.getByLabelText('Area filter location')).toBeTruthy();
-    expect(screen.getByText('Route 101')).toBeTruthy();
-    expect(screen.getByText('CURRENT')).toBeTruthy();
-  });
-
-  it('labels a selected non-current Area without a Current marker or map-art dependency', () => {
-    render(<PokedexBrowse catalog={{
-      ...catalog,
-      areas: [
-        { id: 21, baseAreaId: 2, name: 'Oldale Town', methodId: 1, speciesIds: [4], windows: ['ANY'], slots: [] },
-      ],
-    }} state={{
-      ...state,
-      filter: 'AREA',
-      selectedAreaId: 21,
-      currentAreaBaseId: 1,
-      currentAreaName: 'Route 101',
-      activeAreaIds: [21],
-      activeAreaBaseId: 2,
-      activeAreaName: 'Oldale Town',
-      activeAreaSpeciesIds: [4],
-      activeAreaIsCurrent: false,
-      speciesState: {
-        ...state.speciesState,
-        4: { seen: true, caught: false, team: false, ballId: null },
-      },
-    }} send={vi.fn()} />);
-
-    expect(screen.getByText('Oldale Town')).toBeTruthy();
-    expect(screen.queryByText('CURRENT')).toBeNull();
-    expect(screen.getByText('Charmander')).toBeTruthy();
-    expect(screen.queryByText('Bulbasaur')).toBeNull();
-  });
-
-  it('does not substitute the current name when a selected Area name is unavailable', () => {
-    render(<PokedexBrowse catalog={catalog} state={{
-      ...state,
-      filter: 'AREA',
-      currentAreaBaseId: 1,
-      currentAreaName: 'Route 101',
-      activeAreaIds: [21],
-      activeAreaBaseId: 2,
-      activeAreaName: null,
-      activeAreaSpeciesIds: [],
-      activeAreaIsCurrent: false,
-    }} send={vi.fn()} />);
-
-    expect(screen.queryByLabelText('Area filter location')).toBeNull();
-    expect(screen.queryByText('Route 101')).toBeNull();
   });
 });

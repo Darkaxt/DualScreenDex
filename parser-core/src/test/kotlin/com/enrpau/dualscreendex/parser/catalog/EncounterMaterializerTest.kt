@@ -5,7 +5,6 @@ import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
-import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import org.junit.Assert.assertEquals
@@ -130,40 +129,6 @@ class EncounterMaterializerTest {
     }
 
     @Test
-    fun preservesExpansionBaseAreaIdentityAlongsideTimeEncodedRowIds() {
-        val bytes = ByteArray(0x1000)
-        val table = 0x100
-        val info = 0x400
-        val slots = 0x500
-        repeat(3) { index ->
-            val header = table + index * 84
-            bytes[header] = 1
-            bytes[header + 1] = (index + 1).toByte()
-            putGbaPointer(bytes, header + 4, info)
-        }
-        bytes[table + 3 * 84] = 0xFF.toByte()
-        bytes[table + 3 * 84 + 1] = 0xFF.toByte()
-        bytes[info] = 20
-        putGbaPointer(bytes, info + 4, slots)
-        repeat(12) { index ->
-            val entry = slots + index * 4
-            bytes[entry] = 2
-            bytes[entry + 1] = 3
-            putU16(bytes, entry + 2, index + 1)
-        }
-        val metadata = PokeemeraldExpansionMetadata(
-            0, 1, 0, 0, 180, 44, 13, 31, 60, 62, 64, 76, 88, 96,
-            24, 21, 100, 104, 108, 112, 64, 28, 20, 20,
-        )
-        val expansionLayout = layout(3, Platform.GBA, 50).copy(pokeemeraldExpansion = metadata)
-
-        val areas = EncounterMaterializer.materialize(RomImage(bytes), expansionLayout)
-
-        assertEquals(listOf(0x101, 0x102, 0x103), areas.map(EncounterArea::baseAreaId))
-        assertTrue(areas.all { area -> area.id / 10 != area.baseAreaId })
-    }
-
-    @Test
     fun prefersTheMainReferencedGenThreeTableWhenAnEncounterRateExceedsOneHundred() {
         val bytes = ByteArray(0x4000)
         val main = 0x100
@@ -185,7 +150,7 @@ class EncounterMaterializerTest {
             layout(3, Platform.GBA, 100),
         )
 
-        assertEquals(listOf(0x201, 0x202, 0x203), result.areas.map { it.baseAreaId })
+        assertEquals(listOf(0x201, 0x202, 0x203), result.areas.map { it.id / 10 })
         assertEquals(main, result.selectedRootOffset)
         assertEquals(20, result.headerSize)
         assertEquals(3, result.headerCount)
@@ -283,7 +248,7 @@ class EncounterMaterializerTest {
         val areas = EncounterMaterializer.materialize(RomImage(bytes), layout(3, Platform.GBA, 100))
 
         assertEquals(3, areas.size)
-        assertEquals(listOf(0x102, 0x103, 0x104), areas.map { it.baseAreaId })
+        assertEquals(listOf(0x102, 0x103, 0x104), areas.map { it.id / 10 })
         assertTrue(areas.all { it.methodId == EncounterMethods.GRASS })
     }
 
@@ -309,7 +274,7 @@ class EncounterMaterializerTest {
         val areas = EncounterMaterializer.materialize(RomImage(bytes), layout(3, Platform.GBA, 100))
 
         assertEquals(3, areas.size)
-        assertEquals(listOf(0x106, 0x107, 0x108), areas.map { it.baseAreaId })
+        assertEquals(listOf(0x106, 0x107, 0x108), areas.map { it.id / 10 })
     }
 
     @Test
@@ -423,7 +388,7 @@ class EncounterMaterializerTest {
         val areas = EncounterMaterializer.materialize(RomImage(bytes), layout(3, Platform.GBA, 100))
 
         assertEquals(3, areas.size)
-        assertEquals(listOf(0x102, 0x103, 0x104), areas.map { it.baseAreaId })
+        assertEquals(listOf(0x102, 0x103, 0x104), areas.map { it.id / 10 })
     }
 
     @Test

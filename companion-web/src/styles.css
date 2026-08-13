@@ -23,7 +23,6 @@ html, body, #app { width: 100%; min-height: 100%; margin: 0; }
 body { overflow: auto; background: radial-gradient(circle at 74% 20%, #29322e 0, transparent 30%), linear-gradient(145deg, #171b19, #0c0f0e 72%); }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
-.identity-silhouette, .evolution-silhouette { filter: brightness(0); opacity: 1; }
 
 .production-shell, .production-device { width: 100%; height: 100dvh; min-height: 0; overflow: hidden; }
 .production-device .device-screen { width: 100%; height: 100%; border-radius: 0; }
@@ -36,7 +35,7 @@ button { cursor: pointer; }
 .screen { position: absolute; inset: 0; display: grid; min-width: 0; min-height: 0; overflow: hidden; background: var(--paper); animation: screen-in 170ms ease-out both; }
 @keyframes screen-in { from { opacity: .65; translate: 0 5px; } }
 
-.app-header { min-height: 62px; display: grid; grid-template-columns: 54px 1fr auto; align-items: center; background: var(--forest-800); color: var(--acid); border-bottom: 3px solid #87a84c; }
+.app-header { min-height: 62px; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; background: var(--forest-800); color: var(--acid); border-bottom: 3px solid #87a84c; }
 .header-title { min-width: 0; display: flex; flex-direction: column; line-height: 1; }
 .header-title strong { font-family: "Arial Black", Bahnschrift, sans-serif; font-size: 1.12em; letter-spacing: .035em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .header-title small { margin-top: 6px; color: #e8efc6; font-size: .63em; letter-spacing: .08em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -46,20 +45,6 @@ button { cursor: pointer; }
 .back-action span::before { top: 26px; rotate: -45deg; }.back-action span::after { top: 25px; rotate: 45deg; }
 .settings-action svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .header-spacer { width: 54px; }
-.header-end-actions { align-self: stretch; display: flex; }.header-end-actions .header-action { width: 46px; }.header-icon-action { font-size: 1.4em; font-weight: 900; }.header-icon-action:disabled { opacity: .35; cursor: not-allowed; }
-
-.world-map-screen { grid-template-rows: auto 1fr; color: #edf1d4; background: #000; }
-.map-header { min-height: 62px; z-index: 8; display: grid; grid-template-columns: minmax(0, 1fr) 54px; align-items: stretch; background: var(--forest-800); border-bottom: 3px solid #87a84c; }
-.map-heading { min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 8px 14px; line-height: 1; }.map-heading strong { color: var(--acid); font: 900 1.05em/1 "Arial Black", sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.map-heading span { margin-top: 7px; color: #e8efc6; font-size: .64em; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.map-heading b { margin-left: 8px; padding: 3px 5px; color: var(--forest-950); background: var(--acid); font-size: .8em; }
-.map-global-dex { border: 0; color: var(--acid); background: transparent; font-size: 1.45em; }.map-global-dex:hover, .map-global-dex:focus-visible { background: #fff1; outline: none; }
-.map-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; touch-action: none; background: #000; }
-.map-canvas { position: absolute; inset: 0; width: auto; height: 100%; max-width: 100%; margin: auto; transform-origin: center; image-rendering: pixelated; will-change: transform; }
-.map-raster { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: fill; image-rendering: pixelated; }
-.map-location { position: absolute; z-index: 3; translate: -50% -50%; width: 10px; height: 10px; padding: 0; border: 0; border-radius: 50%; color: white; background: #d9f47a; box-shadow: 0 0 0 2px #071e18; }.map-location span { position: absolute; left: 50%; top: 13px; translate: -50% 0; width: max-content; max-width: 86px; padding: 2px 4px; color: #f4f4df; background: #071e18dc; font-size: 6px; font-weight: 900; letter-spacing: .02em; pointer-events: none; }.map-location.current { box-shadow: 0 0 0 2px #fff, 0 0 0 5px #d9f47a; animation: map-current 1.6s ease-in-out infinite; }.map-location.selected::after { content: ""; position: absolute; inset: -7px; border: 2px dashed #fff; border-radius: 50%; }.map-location.selected span { color: #071e18; background: #d9f47a; }
-@keyframes map-current { 50% { box-shadow: 0 0 0 2px #fff, 0 0 0 8px #d9f47a22; } }
-.map-left-controls, .map-right-controls { position: absolute; z-index: 7; top: 10px; display: grid; gap: 6px; }.map-left-controls { left: 10px; }.map-right-controls { right: 10px; }.map-left-controls button, .map-right-controls button { width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border: 1px solid #b7cd79; color: var(--acid); background: #071e18e8; box-shadow: 0 2px 8px #0008; font-weight: 950; }.map-area-dex { margin-top: 2px; font-size: 1.15em; }.map-unavailable { place-items: center; background: #000; }
-.map-legend { width: max-content; display: grid; gap: 6px; padding: 8px 10px; color: #edf1d4; background: #071e18f2; border: 1px solid #b7cd79; box-shadow: 0 3px 10px #000a; font-size: .6em; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }.map-legend span { display: flex; align-items: center; gap: 7px; }.map-legend i { width: 9px; height: 9px; border-radius: 50%; background: var(--acid); }.map-legend i.current { box-shadow: 0 0 0 2px #fff; }.map-legend i.selected { outline: 1px dashed #fff; outline-offset: 3px; }.map-legend i.explored { border-radius: 0; background: linear-gradient(135deg, #688c64, #d9f47a); }
-.pokemon-area-map { min-height: 100%; display: grid; align-content: start; background: #000; }.pokemon-area-map-canvas { position: relative; width: 100%; max-height: 100%; overflow: hidden; background: #000; }.pokemon-area-map-canvas > img, .pokemon-area-map-canvas > svg { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }.pokemon-area-map-canvas > button:not(.pokemon-area-dex) { position: absolute; z-index: 3; translate: -50% -50%; width: 13px; height: 13px; padding: 0; border: 2px solid #fff; border-radius: 50%; background: var(--acid); box-shadow: 0 0 0 5px #d9f47a42; }.pokemon-area-map-canvas > button.selected::after { content: ""; position: absolute; inset: -8px; border: 2px dashed #fff; border-radius: 50%; }.pokemon-area-dex { position: absolute; z-index: 5; left: 10px; top: 10px; width: 38px; height: 38px; border: 1px solid #b7cd79; color: var(--acid); background: #071e18e8; }.pokemon-area-empty { margin: 0; padding: 18px; color: #e8efc6; background: #071e18; text-align: center; font: .78em Georgia, serif; }
 
 .pokedex-screen { grid-template-rows: auto auto 1fr; }
 .browse-tools { display: grid; gap: 8px; padding: 10px 12px; background: var(--paper-deep); border-bottom: 1px solid var(--line); }
@@ -71,13 +56,10 @@ button { cursor: pointer; }
 .filter-strip button, .segmented button { min-width: 0; height: 38px; padding: 0 4px; border: 1px solid #82906f; background: #b9c998; color: #17291f; font-size: .68em; font-weight: 900; letter-spacing: .03em; }
 .filter-strip button.active, .segmented button.active { color: var(--paper); background: var(--forest-800); border-color: var(--forest-800); }
 .filter-strip button:disabled { opacity: .38; cursor: not-allowed; }
-.species-row.identity-hidden { opacity: 1; cursor: default; }.species-row.identity-hidden strong, .species-row.identity-hidden .species-number { color: #26372e; }.species-row.identity-hidden:disabled { background: transparent; }
-.area-context { min-width: 0; min-height: 42px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 6px 9px; color: var(--ink); background: #edf0d9; border: 1px solid #82906f; border-left: 4px solid var(--forest-700); }
-.area-context-pin { width: 24px; height: 24px; fill: none; stroke: var(--forest-700); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.area-context > span { min-width: 0; display: grid; gap: 2px; }
-.area-context small { color: #667264; font-size: .57em; font-weight: 950; letter-spacing: .14em; }
-.area-context strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8em; letter-spacing: .035em; }
-.area-context > b { padding: 5px 7px 4px; color: var(--acid); background: var(--forest-800); font-size: .55em; letter-spacing: .1em; }
+.species-row.identity-hidden { opacity: 1; cursor: default; }
+.species-row.identity-hidden:disabled { background: transparent; }
+.species-row.identity-hidden strong, .species-row.identity-hidden .species-number { color: #26372e; }
+.identity-silhouette { filter: brightness(0); }
 .segmented button:disabled { cursor: not-allowed; color: #687065; background: #abb59b; border-color: #919a86; opacity: .55; }
 .area-select { width: 100%; height: 34px; border: 1px solid #82906f; background: #f4f1dd; color: var(--ink); padding: 0 8px; font-size: .75em; }
 .species-list { min-height: 0; overflow: auto; scrollbar-color: #6d795c transparent; }
@@ -171,8 +153,6 @@ button { cursor: pointer; }
 [data-theme="dark"] .setting-note, [data-theme="dark"] .ruleset-setting { color: #bdc7b6; }
 [data-theme="dark"] .setting-group { border-color: #536258; }
 [data-theme="dark"] .browse-tools, [data-theme="dark"] .identity-card, [data-theme="dark"] .segmented { background: var(--paper-deep); }
-[data-theme="dark"] .area-context { color: var(--ink); background: #293a30; border-color: #657466; }
-[data-theme="dark"] .area-context small { color: #b8c4b4; }
 [data-theme="dark"] .paper-panel, [data-theme="dark"] .setup-step { color: var(--ink); background: #1e2c25; border-color: #657466; box-shadow: none; }
 [data-theme="dark"] .search-box, [data-theme="dark"] .area-select, [data-theme="dark"] .ruleset-setting select, [data-theme="dark"] .mapper-custom input { color: var(--ink); background: #27372e; border-color: #718071; }
 [data-theme="dark"] .segmented button:not(.active), [data-theme="dark"] .filter-strip button:not(.active) { color: #e3ead5; background: #455b4a; border-color: #6b7b6c; }

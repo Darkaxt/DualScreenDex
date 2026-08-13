@@ -7,11 +7,8 @@ import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.owned.PreferredIndividualSelector
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
-import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 data class BootstrapView(val catalog: CatalogView?, val state: StateView)
 
@@ -26,33 +23,7 @@ data class CatalogView(
     val types: List<TypeView>,
     val areas: List<AreaView>,
     val balls: List<BallView>,
-    val worldMaps: List<WorldMapRegionView>,
     val capabilities: Map<String, String>,
-)
-
-data class WorldMapRegionView(
-    val key: String,
-    val displayName: String?,
-    val pixelWidth: Int,
-    val pixelHeight: Int,
-    val gridWidth: Int,
-    val gridHeight: Int,
-    val assetUrl: String,
-    val locations: List<WorldMapLocationView>,
-)
-data class WorldMapLocationView(
-    val key: String,
-    val displayName: String,
-    val baseAreaIds: List<Int>,
-    val geometry: List<WorldMapCellView>,
-)
-data class WorldMapCellView(val x: Int, val y: Int, val width: Int, val height: Int)
-
-data class AreaRosterEntryView(
-    val speciesId: Int,
-    val methodIds: List<Int>,
-    val windows: List<String>,
-    val identityKnown: Boolean,
 )
 
 data class SpeciesView(
@@ -124,7 +95,6 @@ data class EncounterSlotView(
 )
 data class AreaView(
     val id: Int,
-    val baseAreaId: Int,
     val name: String,
     val methodId: Int,
     val speciesIds: List<Int>,
@@ -174,14 +144,6 @@ data class StateView(
     val currentAreaBaseId: Int?,
     val currentAreaName: String?,
     val currentAreaSpeciesIds: List<Int>,
-    val activeAreaIds: List<Int>,
-    val activeAreaBaseId: Int?,
-    val activeAreaName: String?,
-    val activeAreaSpeciesIds: List<Int>,
-    val activeAreaRoster: List<AreaRosterEntryView>,
-    val activeAreaIsCurrent: Boolean,
-    val visitedAreaBaseIds: List<Int>,
-    val observedAreaBaseIdsBySpecies: Map<Int, List<Int>>,
     val battleTab: String,
     val settings: Any,
     val speciesState: Map<Int, SpeciesStateView>,
@@ -385,7 +347,6 @@ object ApiViewBuilder {
         areas = catalog.encounterAreas.sortedBy { it.id }.map {
             AreaView(
                 it.id,
-                it.baseAreaId,
                 it.name.value ?: "Area ${it.id}",
                 it.methodId,
                 it.slots.map { slot -> slot.speciesId }.filter { id -> id > 0 }.distinct(),
@@ -397,25 +358,6 @@ object ApiViewBuilder {
         },
         balls = catalog.captureBallsById.values.sortedBy { it.id }.map {
             BallView(it.id, it.name.value ?: "Ball ${it.id}", it.generic, it.sprite.value != null)
-        },
-        worldMaps = catalog.worldMaps.regions.map { region ->
-            WorldMapRegionView(
-                region.key,
-                region.displayName,
-                region.pixelWidth,
-                region.pixelHeight,
-                region.gridWidth,
-                region.gridHeight,
-                "/api/maps/${URLEncoder.encode(region.imageAssetKey, StandardCharsets.UTF_8)}.png",
-                region.locations.map { location ->
-                    WorldMapLocationView(
-                        location.key,
-                        location.displayName,
-                        location.baseAreaIds.sorted(),
-                        location.geometry.map { WorldMapCellView(it.x, it.y, it.width, it.height) },
-                    )
-                },
-            )
         },
         capabilities = catalog.capabilities.mapKeys { it.key.name }.mapValues { it.value.status.name },
     )
@@ -434,17 +376,17 @@ object ApiViewBuilder {
             ?: snapshot.ledger.currentAreaBaseId.takeIf {
                 !retroArch.connection.equals("CONNECTED", ignoreCase = true) && saveRam.status == "MATCHED"
             }
-        val currentAreaIds = encounterAreaIds(catalog, effectiveAreaBaseId)
-        val currentAreaName = areaDisplayName(catalog, effectiveAreaBaseId)
-        val selectedArea = snapshot.selectedAreaId?.let { selectedId ->
-            catalog?.encounterAreas?.firstOrNull { area -> area.id == selectedId }
-        }
-        val activeAreaBaseId = selectedArea?.baseAreaId ?: effectiveAreaBaseId
-        val activeAreaIds = encounterAreaIds(catalog, activeAreaBaseId)
-        val activeAreaName = areaDisplayName(catalog, activeAreaBaseId)
-        val activeAreaSpeciesIds = observedAreaSpeciesIds(snapshot, catalog, activeAreaBaseId)
-        val currentAreaSpeciesIds = observedAreaSpeciesIds(snapshot, catalog, effectiveAreaBaseId)
-        val activeAreaRoster = encounterAreaRoster(snapshot, catalog, activeAreaIds)
+        val currentAreaIds = effectiveAreaBaseId?.let { baseId ->
+            catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }?.sorted()
+        }.orEmpty()
+        val currentAreaName = effectiveAreaBaseId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
+        val currentAreaSpeciesIds = effectiveAreaBaseId?.let { baseId ->
+            val navigableIds = catalog?.navigableSpecies()?.mapTo(mutableSetOf()) { it.id }.orEmpty()
+            val captured = navigableIds.filterTo(mutableSetOf()) { KnowledgePolicy.isCaught(it, snapshot.ledger) }
+            (snapshot.ledger.seenSpeciesByArea[baseId].orEmpty() + captured)
+                .filter { it in navigableIds }
+                .sorted()
+        }.orEmpty()
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
@@ -466,35 +408,24 @@ object ApiViewBuilder {
             }
         }
         return StateView(
-            version = snapshot.version,
-            screen = snapshot.screen.name,
-            priorScreen = snapshot.priorScreen.name,
-            settingsReturnScreen = snapshot.settingsReturnScreen.name,
-            selectedSpeciesId = snapshot.selectedSpeciesId,
-            filter = snapshot.filter.name,
-            selectedAreaId = snapshot.selectedAreaId,
-            currentAreaIds = currentAreaIds,
-            currentAreaBaseId = effectiveAreaBaseId,
-            currentAreaName = currentAreaName,
-            currentAreaSpeciesIds = currentAreaSpeciesIds,
-            activeAreaIds = activeAreaIds,
-            activeAreaBaseId = activeAreaBaseId,
-            activeAreaName = activeAreaName,
-            activeAreaSpeciesIds = activeAreaSpeciesIds,
-            activeAreaRoster = activeAreaRoster,
-            activeAreaIsCurrent = activeAreaBaseId != null && activeAreaBaseId == effectiveAreaBaseId,
-            visitedAreaBaseIds = snapshot.ledger.visitedAreaBaseIds.sorted(),
-            observedAreaBaseIdsBySpecies = snapshot.ledger.seenSpeciesByArea.entries
-                .flatMap { (area, species) -> species.map { it to area } }
-                .groupBy({ it.first }, { it.second })
-                .mapValues { (_, areas) -> areas.distinct().sorted() },
-            battleTab = snapshot.battleTab.name,
-            settings = snapshot.settings,
-            speciesState = speciesState,
-            observedMoves = snapshot.ledger.observedMoves.mapValues { (_, observations) ->
+            snapshot.version,
+            snapshot.screen.name,
+            snapshot.priorScreen.name,
+            snapshot.settingsReturnScreen.name,
+            snapshot.selectedSpeciesId,
+            snapshot.filter.name,
+            snapshot.selectedAreaId,
+            currentAreaIds,
+            effectiveAreaBaseId,
+            currentAreaName,
+            currentAreaSpeciesIds,
+            snapshot.battleTab.name,
+            snapshot.settings,
+            speciesState,
+            snapshot.ledger.observedMoves.mapValues { (_, observations) ->
                 observations.toObservedMoveViews()
             },
-            battle = snapshot.battle?.let { battle ->
+            snapshot.battle?.let { battle ->
                 BattleView(
                     opponents = battle.opponents.map { opponent ->
                         val generation = when (catalog?.platform?.name) {
@@ -542,74 +473,20 @@ object ApiViewBuilder {
                     effectivenessKnown = knownEffectiveness != null,
                 )
             },
-            catalogReady = snapshot.catalogReady,
-            catalogName = snapshot.catalogName,
-            error = snapshot.error,
-            activeRulesetId = activeRulesetId,
-            rulesetAssumed = rulesetAssumed,
-            loading = CatalogLoadingView(
+            snapshot.catalogReady,
+            snapshot.catalogName,
+            snapshot.error,
+            activeRulesetId,
+            rulesetAssumed,
+            CatalogLoadingView(
                 snapshot.catalogLoading.active,
                 snapshot.catalogLoading.phase,
                 snapshot.catalogLoading.completedUnits,
                 snapshot.catalogLoading.totalUnits,
             ),
-            retroArch = retroArch,
-            saveRam = saveRam,
+            retroArch,
+            saveRam,
         )
-    }
-
-    private fun encounterAreaRoster(
-        snapshot: AppSnapshot,
-        catalog: ParsedCatalog?,
-        activeAreaIds: List<Int>,
-    ): List<AreaRosterEntryView> {
-        val areas = catalog?.encounterAreas.orEmpty().filter { it.id in activeAreaIds }
-        return areas
-            .flatMap { area -> area.slots.filter { it.speciesId > 0 }.map { it.speciesId to area } }
-            .groupBy({ it.first }, { it.second })
-            .toSortedMap()
-            .map { (speciesId, speciesAreas) ->
-                AreaRosterEntryView(
-                    speciesId = speciesId,
-                    methodIds = speciesAreas.map { it.methodId }.distinct().sorted(),
-                    windows = speciesAreas.flatMap { it.windows }.map { it.name }.distinct().sorted(),
-                    identityKnown = snapshot.settings.knowledgeMode != com.enrpau.dualscreendex.companion.model.KnowledgeMode.ORGANIC ||
-                        speciesId in snapshot.ledger.seenSpecies ||
-                        KnowledgePolicy.isCaught(speciesId, snapshot.ledger),
-                )
-            }
-    }
-
-    private fun encounterAreaIds(catalog: ParsedCatalog?, baseAreaId: Int?): List<Int> = baseAreaId?.let { baseId ->
-        catalog?.encounterAreas
-            ?.filter { area -> area.baseAreaId == baseId }
-            ?.map(EncounterArea::id)
-            ?.sorted()
-    }.orEmpty()
-
-    private fun observedAreaSpeciesIds(
-        snapshot: AppSnapshot,
-        catalog: ParsedCatalog?,
-        baseAreaId: Int?,
-    ): List<Int> {
-        if (baseAreaId == null) return emptyList()
-        val navigableIds = catalog?.navigableSpecies()?.mapTo(mutableSetOf()) { it.id }.orEmpty()
-        return snapshot.ledger.seenSpeciesByArea[baseAreaId].orEmpty()
-            .filter { it in navigableIds }
-            .sorted()
-    }
-
-    private fun areaDisplayName(catalog: ParsedCatalog?, baseAreaId: Int?): String? {
-        if (catalog == null || baseAreaId == null) return null
-        catalog.runtimeMetadata.areaNamesByBaseId[baseAreaId]
-            ?.takeIf(String::isNotBlank)
-            ?.let { return it }
-        return catalog.encounterAreas
-            .asSequence()
-            .filter { area -> area.baseAreaId == baseAreaId }
-            .mapNotNull { area -> area.name.value?.substringBefore(" - ")?.trim()?.takeIf(String::isNotBlank) }
-            .distinct()
-            .singleOrNull()
     }
 
     fun diagnostics(

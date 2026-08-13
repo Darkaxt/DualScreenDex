@@ -92,7 +92,7 @@ object RarityEvaluator {
             }
         }
         val matchingAreas = currentAreaBaseId?.let { baseId ->
-            encounterAreas.filter { area -> area.baseAreaId == baseId }
+            encounterAreas.filter { area -> area.id / 10 == baseId }
         }.orEmpty()
         val localCandidates = matchingAreas.filter(capableAreas::contains)
         if (localCandidates.isNotEmpty()) {

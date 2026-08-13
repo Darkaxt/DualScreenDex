@@ -25,7 +25,6 @@ class FileKnowledgeRepositoryTest {
             ),
             teamSpecies = setOf(25),
             currentAreaBaseId = 1,
-            visitedAreaBaseIds = setOf(1, 2),
             seenSpeciesByArea = mapOf(1 to setOf(25, 133), 2 to setOf(7)),
             observedMoves = mapOf(133 to listOf(MoveObservation(33, 3), MoveObservation(39, 1))),
             discoveredMatchups = mapOf(MatchupKey(133, 84) to Effectiveness.NEUTRAL),
@@ -46,16 +45,5 @@ class FileKnowledgeRepositoryTest {
         root.resolve("$identity.json").writeText("""{"schema":1,"romIdentity":"${"d".repeat(64)}"}""")
 
         assertNull(FileKnowledgeRepository(root).read(identity))
-    }
-
-    @Test
-    fun schemaOneSeedsVisitedAreasOnlyFromProvenKnowledge() {
-        val identity = "e".repeat(64)
-        val root = temporary.newFolder("knowledge")
-        root.resolve("$identity.json").writeText(
-            """{"schema":1,"romIdentity":"$identity","currentAreaBaseId":3,"seenSpeciesByArea":[{"areaBaseId":4,"speciesIds":[25]}]}""",
-        )
-
-        assertEquals(setOf(3, 4), FileKnowledgeRepository(root).read(identity)?.visitedAreaBaseIds)
     }
 }

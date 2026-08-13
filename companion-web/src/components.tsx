@@ -50,17 +50,17 @@ export function EyeStatus({ seen }: { seen: boolean }) {
   </svg>;
 }
 
-export function Header({ title, kicker, onBack, onSettings, endAction }: { title: string; kicker?: string; onBack?: () => void; onSettings?: () => void; endAction?: { label: string; title?: string; onClick: () => void; icon: string; disabled?: boolean } }) {
+export function Header({ title, kicker, onBack, onSettings }: { title: string; kicker?: string; onBack?: () => void; onSettings?: () => void }) {
   return (
     <header class="app-header">
       {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
       <div class="header-title"><strong>{title}</strong>{kicker && <small>{kicker}</small>}</div>
-      {endAction || onSettings ? <span class="header-end-actions">{endAction && <button class="header-action header-icon-action" onClick={endAction.onClick} aria-label={endAction.label} title={endAction.title ?? endAction.label} disabled={endAction.disabled}>{endAction.icon}</button>}{onSettings && <button class="header-action settings-action" onClick={onSettings} aria-label="Settings">
+      {onSettings ? <button class="header-action settings-action" onClick={onSettings} aria-label="Settings">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.64 5.64l1.42 1.42M16.94 16.94l1.42 1.42M18.36 5.64l-1.42 1.42M7.06 16.94l-1.42 1.42" />
           <circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" />
         </svg>
-      </button>}</span> : <span class="header-spacer" />}
+      </button> : <span class="header-spacer" />}
     </header>
   );
 }

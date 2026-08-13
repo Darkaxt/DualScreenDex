@@ -20,8 +20,6 @@ import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SavedArea
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
-import com.enrpau.dualscreendex.parser.catalog.EncounterArea
-import com.enrpau.dualscreendex.parser.catalog.EncounterMethods
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
@@ -54,38 +52,6 @@ import com.darkaxt.dualdex.battle.ResolvedBattleLayout
 import com.darkaxt.dualdex.battle.TargetMode
 
 class ProductionCompanionRuntimeTest {
-    @Test
-    fun recordsOnlyCatalogValidatedLiveAreasAsVisitedWithoutABattle() {
-        val identity = "e".repeat(64)
-        val repository = InMemoryKnowledgeRepository()
-        val runtime = ProductionCompanionRuntime(knowledgeRepository = repository)
-        runtime.loadCatalog(
-            "fixture.gba",
-            ParsedCatalog(
-                identity,
-                EngineFamily.EMERALD,
-                Platform.GBA,
-                encounterAreas = listOf(
-                    EncounterArea(
-                        id = 0x0101 * 10 + EncounterMethods.GRASS,
-                        baseAreaId = 0x0101,
-                        name = CatalogField.available("Route 1 - grass"),
-                        methodId = EncounterMethods.GRASS,
-                        slots = emptyList(),
-                    ),
-                ),
-            ),
-        )
-
-        runtime.updateLiveArea(0x0101)
-        runtime.updateLiveArea(0x0101)
-        runtime.updateLiveArea(0x9999)
-
-        assertEquals(setOf(0x0101), runtime.gateway.bootstrap().ledger.visitedAreaBaseIds)
-        assertEquals(runtime.gateway.bootstrap().ledger, repository.read(identity))
-        runtime.close()
-    }
-
     @Test
     fun organicEffectivenessUnlocksAfterThePlayerConsumesMovePpAgainstTheTarget() {
         val runtime = ProductionCompanionRuntime()

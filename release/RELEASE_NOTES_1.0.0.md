@@ -2,17 +2,12 @@
 
 DualDex is a passive, ROM- and SaveRAM-backed Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
-## RC21 map preview
+## RC22 rollback
 
-World maps are release-gated to the exact validated Modern Emerald 3.5 ROM in RC21. Other ROMs continue to use the existing Pokédex and Area experience: map capability remains unavailable, no Map control or assets are published, and catalog parsing continues normally.
-
-- Adds a full-screen, ROM-derived Map First view with zoom, pan, recenter, region selection where applicable, and a compact route into the Area Pokédex.
-- Adds Organic fog of war driven by validated visited-area knowledge. Unknown map cells, labels, and hit targets remain concealed, with fully black outer boundaries.
-- Adds symmetric Map-to-Pokédex and Pokédex-to-Map navigation while preserving the selected or current area context.
-- Adds a Pokémon Area map showing the locations where that species has actually been observed.
-- Changes the Organic Area Pokédex roster to use parsed encounter slots: unseen encounter species appear as non-interactive black silhouettes with masked names and Pokédex numbers, while gifts and starters absent from the encounter table do not leak into the area.
-- Materializes the validated Modern Emerald 3.5 ROM map raster and geometry. Missing, ambiguous, unsupported, or non-allowlisted map data fails closed without affecting the catalog or Pokédex.
-- Excludes the experimental ARM7TDMI/THUMB ability-mechanics work. Its Modern-only proof did not pass the required first-50 generalization gate and is documented separately rather than shipped.
+- Restores the complete RC19 runtime, parser, API, and navigation baseline. The experimental Map First page, embedded maps, map assets, routes, icons, and shortcuts from RC20/RC21 are not included.
+- Keeps the Organic Area encounter roster: Pokémon already seen or caught in the parsed local encounter table appear first with their normal identity; unseen possible encounters follow as disabled black silhouettes with masked numbers and names.
+- Prevents caught starters, gifts, or trades from appearing in an Area unless that species is actually present in the ROM's parsed encounter table for the resolved area.
+- Keeps unsupported or unresolved areas fail-closed: the Area filter remains unavailable rather than inventing data or exposing a broken map surface.
 
 ## RC19 update
 

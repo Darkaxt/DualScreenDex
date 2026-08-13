@@ -9,8 +9,6 @@ import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
-import com.enrpau.dualscreendex.parser.parse.Gen1WorldMapResolution
-import com.enrpau.dualscreendex.parser.parse.Gen3WorldMapResolution
 import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3RuntimeMemoryLayoutResolver
 import com.enrpau.dualscreendex.parser.sprite.BallSpriteMaterializer
@@ -37,25 +35,13 @@ object CatalogParser {
         rom: RomImage,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
     ): CatalogParseResult {
-        val context = ParserOrchestrator.analyzeForCatalog(rom)
-        val analysis = context.analysis
+        val analysis = ParserOrchestrator.analyze(rom)
         if (analysis.status != SelectionStatus.SELECTED || analysis.selectedFamily == null) {
             return CatalogParseResult(analysis, null, null)
         }
         val layout = analysis.probes.singleOrNull { it.family == analysis.selectedFamily }?.resolvedLayout
             ?: return CatalogParseResult(analysis, null, null)
-        return CatalogParseResult(
-            analysis,
-            layout,
-            CatalogMaterializer.materialize(
-                rom = rom,
-                analysis = analysis,
-                layout = layout,
-                onProgress = onProgress,
-                resolveGen1WorldMap = context.resolveGen1WorldMap,
-                resolveGen3WorldMap = context.resolveGen3WorldMap,
-            ),
-        )
+        return CatalogParseResult(analysis, layout, CatalogMaterializer.materialize(rom, analysis, layout, onProgress))
     }
 }
 
@@ -65,8 +51,6 @@ object CatalogMaterializer {
         analysis: ParseResult,
         layout: ResolvedRomLayout,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
-        resolveGen1WorldMap: ((Set<Int>) -> Gen1WorldMapResolution)? = null,
-        resolveGen3WorldMap: ((Set<Int>) -> Gen3WorldMapResolution)? = null,
     ): ParsedCatalog {
         val rawSpecies = RecordMaterializers.species(rom, layout)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
@@ -146,7 +130,7 @@ object CatalogMaterializer {
                 areaNamesByBaseId = if (layout.pokeemeraldExpansion == null) {
                     Gen3MapLocationResolver.resolve(
                         rom,
-                        rawEncounters.mapTo(linkedSetOf(), EncounterArea::baseAreaId),
+                        rawEncounters.mapTo(linkedSetOf()) { it.id / 10 },
                     )
                 } else {
                     emptyMap()
@@ -330,47 +314,6 @@ object CatalogMaterializer {
                 status = if (layout.generation == 3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
             )
         }
-        val encounterBaseIds = encounters.mapTo(linkedSetOf(), EncounterArea::baseAreaId)
-        val worldMapResolution: CatalogWorldMapResolution = when {
-            rom.sha256 == MODERN_EMERALD_3_5_SHA256 && resolveGen3WorldMap != null ->
-                resolveGen3WorldMap(encounterBaseIds).toCatalog()
-            else -> CatalogWorldMapResolution.Unavailable(
-                "world maps are limited to the validated Modern Emerald 3.5 release in this build",
-            )
-        }
-        val worldMaps = (worldMapResolution as? CatalogWorldMapResolution.Resolved)?.catalog ?: WorldMapCatalog()
-        capabilities[RomCapability.WORLD_MAP] = when (worldMapResolution) {
-            is CatalogWorldMapResolution.Resolved -> CapabilityEvidence(
-                capability = RomCapability.WORLD_MAP,
-                compatible = true,
-                confidence = 1.0,
-                count = worldMapResolution.catalog.regions.sumOf { it.locations.size },
-                reasons = worldMapResolution.reasons,
-                status = CapabilityStatus.AVAILABLE,
-            )
-            is CatalogWorldMapResolution.Ambiguous -> CapabilityEvidence(
-                capability = RomCapability.WORLD_MAP,
-                compatible = false,
-                confidence = 0.0,
-                reasons = listOf(worldMapResolution.reason),
-                status = CapabilityStatus.AMBIGUOUS,
-                reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
-            )
-            is CatalogWorldMapResolution.BudgetExceeded -> CapabilityEvidence(
-                capability = RomCapability.WORLD_MAP,
-                compatible = false,
-                confidence = 0.0,
-                reasons = listOf(worldMapResolution.reason),
-                status = CapabilityStatus.NOT_FOUND,
-            )
-            is CatalogWorldMapResolution.Unavailable -> CapabilityEvidence(
-                capability = RomCapability.WORLD_MAP,
-                compatible = false,
-                confidence = 0.0,
-                reasons = listOf(worldMapResolution.reason),
-                status = if (layout.generation in 1..3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
-            )
-        }
         val catalog = ParsedCatalog(
             romSha256 = analysis.sha256,
             family = layout.family,
@@ -385,7 +328,6 @@ object CatalogMaterializer {
             captureBallsById = balls,
             learnsetRulesets = learnsetRulesets,
             runtimeMetadata = runtimeMetadata,
-            worldMaps = worldMaps,
             capabilities = capabilities,
             diagnostics = buildList {
                 moveDescriptions?.let {
@@ -430,34 +372,11 @@ object CatalogMaterializer {
         return catalog
     }
 
-    private const val MODERN_EMERALD_3_5_SHA256 =
-        "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895"
-
-    private sealed interface CatalogWorldMapResolution {
-        data class Resolved(val catalog: WorldMapCatalog, val reasons: List<String>) : CatalogWorldMapResolution
-        data class Unavailable(val reason: String) : CatalogWorldMapResolution
-        data class Ambiguous(val reason: String) : CatalogWorldMapResolution
-        data class BudgetExceeded(val reason: String) : CatalogWorldMapResolution
-    }
-
-    private fun Gen3WorldMapResolution.toCatalog(): CatalogWorldMapResolution = when (this) {
-        is Gen3WorldMapResolution.Resolved -> CatalogWorldMapResolution.Resolved(catalog, reasons)
-        is Gen3WorldMapResolution.Unavailable -> CatalogWorldMapResolution.Unavailable(reason)
-        is Gen3WorldMapResolution.Ambiguous -> CatalogWorldMapResolution.Ambiguous(reason)
-        is Gen3WorldMapResolution.BudgetExceeded -> CatalogWorldMapResolution.BudgetExceeded(reason)
-    }
-
-    private fun Gen1WorldMapResolution.toCatalog(): CatalogWorldMapResolution = when (this) {
-        is Gen1WorldMapResolution.Resolved -> CatalogWorldMapResolution.Resolved(catalog, reasons)
-        is Gen1WorldMapResolution.Unavailable -> CatalogWorldMapResolution.Unavailable(reason)
-        is Gen1WorldMapResolution.Ambiguous -> CatalogWorldMapResolution.Ambiguous(reason)
-    }
-
     private fun applyResolvedAreaNames(
         areas: List<EncounterArea>,
         namesByBaseId: Map<Int, String>,
     ): List<EncounterArea> = areas.map { area ->
-        val resolvedName = namesByBaseId[area.baseAreaId] ?: return@map area
+        val resolvedName = namesByBaseId[area.id / 10] ?: return@map area
         val methodName = area.name.value
             ?.substringAfter(" - ", missingDelimiterValue = "")
             ?.trim()

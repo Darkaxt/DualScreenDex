@@ -1,11 +1,6 @@
 package com.darkaxt.dualdex.web
 
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
-import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
-import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
-import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
-import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
-import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
@@ -57,41 +52,6 @@ class AndroidLoopbackServerTest {
             assertTrue(URI("$base/api/mapper/state").toURL().readText().contains("\"enabled\":false"))
             assertTrue(post("$base/api/mapper/actions", "{\"type\":\"ENABLE\",\"privacyAcknowledged\":true}").contains("\"action\":\"ENABLE\""))
             assertTrue(post("$base/api/mapper/export", "{}").contains("\"containsRawMemory\":true"))
-        } finally {
-            server.close()
-        }
-    }
-
-    @Test
-    fun servesOnlyCatalogOwnedWorldMapPngAssets() {
-        val pixels = IntArray(8 * 8) { 0xff123456.toInt() }
-        val runtime = ProductionCompanionRuntime().apply {
-            loadCatalog(
-                "map.gba",
-                ParsedCatalog(
-                    "sha",
-                    EngineFamily.EMERALD,
-                    Platform.GBA,
-                    worldMaps = WorldMapCatalog(
-                        regions = listOf(WorldMapRegion("hoenn", "HOENN", 8, 8, 1, 1, "world/hoenn", listOf(
-                            WorldMapLocation("route-101", "Route 101", setOf(1), listOf(WorldMapCell(0, 0, 1, 1))),
-                        ))),
-                        assets = mapOf("world/hoenn" to RgbaSprite(8, 8, pixels)),
-                    ),
-                ),
-            )
-        }
-        val server = AndroidLoopbackServer(runtime) { null }
-        try {
-            server.start()
-            val base = "http://127.0.0.1:${server.address.port}"
-            val map = URI("$base/api/maps/world%2Fhoenn.png").toURL().openConnection() as HttpURLConnection
-            assertEquals(200, map.responseCode)
-            assertEquals("image/png", map.contentType)
-            assertTrue(map.inputStream.readBytes().copyOfRange(1, 4).contentEquals("PNG".toByteArray()))
-
-            val missing = URI("$base/api/maps/world%2Fmissing.png").toURL().openConnection() as HttpURLConnection
-            assertEquals(404, missing.responseCode)
         } finally {
             server.close()
         }

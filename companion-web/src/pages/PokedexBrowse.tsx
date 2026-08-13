@@ -10,70 +10,52 @@ export function PokedexBrowse({ catalog, state, send }: { catalog: Catalog; stat
     ? (['ALL', 'CAUGHT', 'TEAM', 'AREA'] as const)
     : (['ALL', 'CAUGHT', 'SEEN', 'TEAM', 'AREA'] as const);
   const capabilities = state.saveRam?.capabilities ?? {};
-  const activeAreaIds = state.activeAreaIds ?? state.currentAreaIds ?? [];
-  const activeAreaBaseId = state.activeAreaBaseId !== undefined
-    ? state.activeAreaBaseId
-    : state.currentAreaBaseId;
-  const activeAreaName = state.activeAreaName !== undefined
-    ? state.activeAreaName
-    : state.currentAreaName;
-  const parsedAreaSpeciesIds = useMemo(() => catalog.areas
-    .filter(area => activeAreaIds.includes(area.id))
-    .flatMap(area => area.speciesIds)
-    .filter((id, index, all) => id > 0 && all.indexOf(id) === index), [activeAreaIds, catalog.areas]);
-  const areaRoster = state.activeAreaRoster;
-  const rosterSpeciesIds = areaRoster?.map(entry => entry.speciesId) ?? parsedAreaSpeciesIds;
-  const activeAreaIsCurrent = state.activeAreaIsCurrent ?? (
-    state.currentAreaBaseId != null &&
-    activeAreaBaseId === state.currentAreaBaseId
-  );
   const available = (name: string) => capabilities[name] === 'AVAILABLE' || capabilities[name] === 'PARTIAL';
   const filterEnabled = {
     ALL: true,
     CAUGHT: available('CAUGHT'),
     SEEN: available('SEEN'),
     TEAM: available('PARTY') && available('SPECIES'),
-    AREA: activeAreaIds.length > 0,
+    AREA: (state.currentAreaIds?.length ?? 0) > 0,
   } as const;
+  const areaSpeciesIds = useMemo(() => new Set(catalog.areas
+    .filter(area => (state.currentAreaIds ?? []).includes(area.id))
+    .flatMap(area => area.speciesIds)
+    .filter(id => id > 0)), [catalog.areas, state.currentAreaIds]);
   const visible = useMemo(() => catalog.species.filter(species => {
     const status = state.speciesState[species.id];
+    const identityKnown = status?.seen || status?.caught;
     const organicArea = policy === 'ORGANIC' && activeFilter === 'AREA';
-    const hiddenIdentity = organicArea && (areaRoster?.find(entry => entry.speciesId === species.id)?.identityKnown === false || (!areaRoster && !status?.seen && !status?.caught));
-    if (policy === 'ORGANIC' && !organicArea && !status?.seen && !status?.caught) return false;
+    if (policy === 'ORGANIC' && !organicArea && !identityKnown) return false;
     if (policy === 'HIDDEN' && !status?.caught) return false;
-    if (search && (hiddenIdentity || (!species.name.toLowerCase().includes(search.toLowerCase()) && !String(species.dex).includes(search)))) return false;
+    if (search && (organicArea && !identityKnown || (!species.name.toLowerCase().includes(search.toLowerCase()) && !String(species.dex).includes(search)))) return false;
     if (activeFilter === 'CAUGHT' && !status?.caught) return false;
     if (activeFilter === 'SEEN' && !status?.seen) return false;
     if (activeFilter === 'TEAM' && !status?.team) return false;
-    if (activeFilter === 'AREA') {
-      if (!rosterSpeciesIds.includes(species.id)) return false;
-    }
+    if (activeFilter === 'AREA' && !areaSpeciesIds.has(species.id)) return false;
     return true;
-  }), [activeFilter, areaRoster, catalog, policy, rosterSpeciesIds, search, state.speciesState]);
+  }).sort((left, right) => {
+    if (activeFilter !== 'AREA') return 0;
+    const leftKnown = Boolean(state.speciesState[left.id]?.seen || state.speciesState[left.id]?.caught);
+    const rightKnown = Boolean(state.speciesState[right.id]?.seen || state.speciesState[right.id]?.caught);
+    return Number(rightKnown) - Number(leftKnown);
+  }), [activeFilter, areaSpeciesIds, catalog.species, policy, search, state.speciesState]);
 
   return <section class="screen pokedex-screen">
-    <Header title="POKÉDEX" kicker={`${catalog.family.replaceAll('_', ' ')} · ${policy}`} onBack={state.priorScreen === 'MAP' || state.priorScreen === 'DETAIL' ? () => send('BACK') : undefined} onSettings={() => send('SCREEN', { screen: 'SETTINGS' })} endAction={{ label: 'Open Map', title: catalog.worldMaps?.length ? 'Open Map' : 'Map unavailable for this ROM', icon: '⌖', disabled: !catalog.worldMaps?.length, onClick: () => send('SCREEN', { screen: 'MAP' }) }} />
+    <Header title="POKÉDEX" kicker={`${catalog.family.replaceAll('_', ' ')} · ${policy}`} onSettings={() => send('SCREEN', { screen: 'SETTINGS' })} />
     <div class="browse-tools">
       <label class="search-box"><span>SEARCH</span><input value={search} onInput={event => setSearch(event.currentTarget.value)} placeholder="NAME OR NUMBER" /></label>
       <div class="filter-strip" aria-label="Pokédex filters">
         {filters.map(filter => <button key={filter} disabled={!filterEnabled[filter]} title={!filterEnabled[filter] ? `${filter} filter unavailable` : undefined} class={activeFilter === filter ? 'active' : ''} onClick={() => send('FILTER', { filter, areaId: null })}>{filter}</button>)}
       </div>
-      {activeFilter === 'AREA' && activeAreaName && <div class="area-context" aria-label="Area filter location">
-        <svg class="area-context-pin" aria-hidden="true" viewBox="0 0 24 24">
-          <path d="M12 21s6-5.3 6-11a6 6 0 1 0-12 0c0 5.7 6 11 6 11Z" />
-          <circle cx="12" cy="10" r="2.2" />
-        </svg>
-        <span><small>AREA</small><strong>{activeAreaName}</strong></span>
-        {activeAreaIsCurrent && <b>CURRENT</b>}
-      </div>}
     </div>
     <div class="species-list" data-scroll-region>
-      {visible.map(species => { const rosterEntry = areaRoster?.find(entry => entry.speciesId === species.id); const hidden = policy === 'ORGANIC' && activeFilter === 'AREA' && (rosterEntry?.identityKnown === false || (!rosterEntry && !state.speciesState[species.id]?.seen && !state.speciesState[species.id]?.caught)); return <button key={species.id} class={`species-row ${hidden ? 'identity-hidden' : ''}`} disabled={hidden} aria-label={hidden ? 'Unidentified encounter' : undefined} onClick={() => send('OPEN_SPECIES', { speciesId: species.id })}>
+      {visible.map(species => { const hidden = policy === 'ORGANIC' && activeFilter === 'AREA' && !state.speciesState[species.id]?.seen && !state.speciesState[species.id]?.caught; return <button key={species.id} class={`species-row ${hidden ? 'identity-hidden' : ''}`} disabled={hidden} aria-label={hidden ? 'Unidentified encounter' : undefined} onClick={() => send('OPEN_SPECIES', { speciesId: species.id })}>
         <Sprite speciesId={species.id} name={species.name} available={species.hasSprite} silhouette={hidden} />
         <span class="species-number">{hidden ? '#???' : `#${String(species.dex).padStart(3, '0')}`}</span>
         <strong>{hidden ? maskIdentityName(species.name) : species.name}</strong>
         <span class="species-row-meta">
-          {activeFilter === 'AREA' && <EncounterWindowMark windows={rosterEntry ? new Set(rosterEntry.windows) : encounterWindows(catalog, activeAreaIds, species.id)} />}
+          {activeFilter === 'AREA' && <EncounterWindowMark windows={encounterWindows(catalog, state.currentAreaIds ?? [], species.id)} />}
           <StatusMarks state={state.speciesState[species.id]} catalog={catalog} />
         </span>
       </button>; })}

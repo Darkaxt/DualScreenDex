@@ -42,51 +42,10 @@ class CatalogModelsTest {
     }
 
     @Test
-    fun worldMapCatalogRequiresEveryRegionToOwnAMatchingRaster() {
-        val region = WorldMapRegion(
-            key = "region-0",
-            displayName = "Test Region",
-            pixelWidth = 16,
-            pixelHeight = 8,
-            gridWidth = 2,
-            gridHeight = 1,
-            imageAssetKey = "world/region-0",
-            locations = listOf(
-                WorldMapLocation(
-                    key = "location-0",
-                    displayName = "Test Route",
-                    baseAreaIds = setOf(7),
-                    geometry = listOf(WorldMapCell(0, 0, 1, 1)),
-                ),
-            ),
-        )
-
-        assertThrows(IllegalArgumentException::class.java) {
-            WorldMapCatalog(regions = listOf(region))
-        }
-        assertThrows(IllegalArgumentException::class.java) {
-            WorldMapCatalog(
-                regions = listOf(region),
-                assets = mapOf("world/region-0" to RgbaSprite(8, 8, IntArray(64))),
-            )
-        }
-
-        val raster = RgbaSprite(16, 8, IntArray(128) { 0xff123456.toInt() })
-        assertEquals(
-            raster,
-            WorldMapCatalog(
-                regions = listOf(region),
-                assets = mapOf("world/region-0" to raster),
-            ).assets.getValue("world/region-0"),
-        )
-    }
-
-    @Test
     fun catalogDeclaresIndependentAreaPaletteAndBallCapabilities() {
         assertEquals(true, RomCapability.entries.contains(RomCapability.AREA_ENCOUNTERS))
         assertEquals(true, RomCapability.entries.contains(RomCapability.TYPE_PRESENTATION))
         assertEquals(true, RomCapability.entries.contains(RomCapability.BALL_CATALOG))
-        assertEquals(true, RomCapability.entries.contains(RomCapability.WORLD_MAP))
     }
 
     @Test

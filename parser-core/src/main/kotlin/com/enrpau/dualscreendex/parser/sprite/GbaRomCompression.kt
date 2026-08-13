@@ -2,7 +2,7 @@ package com.enrpau.dualscreendex.parser.sprite
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 
-object GbaRomCompression {
+internal object GbaRomCompression {
     fun decodeAt(rom: RomImage, offset: Int): ByteArray = if (rom.u8(offset) == GBA_LZ77_HEADER) {
         GbaLz77Decoder.decode(rom.slice(offset, compressedLength(rom, offset)))
     } else {
