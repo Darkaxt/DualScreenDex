@@ -49,6 +49,37 @@ class CatalogModelsTest {
     }
 
     @Test
+    fun worldMapCatalogPreservesFourIndependentRegionIdentitiesAndAssets() {
+        val regions = listOf("kanto", "sevii-123", "sevii-45", "sevii-67").mapIndexed { index, key ->
+            WorldMapRegion(
+                key = key,
+                displayName = null,
+                pixelWidth = 176,
+                pixelHeight = 120,
+                gridWidth = 22,
+                gridHeight = 15,
+                imageAssetKey = "world/$key",
+                locations = listOf(
+                    WorldMapLocation(
+                        key = "section-$index",
+                        displayName = "Region $index",
+                        baseAreaIds = setOf(index),
+                        geometry = listOf(WorldMapCell(index, 0, 1, 1)),
+                    ),
+                ),
+            )
+        }
+        val assets = regions.associate { region ->
+            region.imageAssetKey to RgbaSprite(176, 120, IntArray(176 * 120) { 0xff000000.toInt() })
+        }
+
+        val catalog = WorldMapCatalog(regions, assets)
+
+        assertEquals(listOf("kanto", "sevii-123", "sevii-45", "sevii-67"), catalog.regions.map { it.key })
+        assertEquals(regions.map { it.imageAssetKey }.toSet(), catalog.assets.keys)
+    }
+
+    @Test
     fun navigableSpeciesExcludesNoneAndReservedInternalSlots() {
         fun species(id: Int, dex: Int, name: String = if (dex == 0) "RESERVED" else "MON$dex") = SpeciesRecord(
             id = id,
