@@ -14,6 +14,7 @@ object CatalogSchema {
         "capture_balls",
         "learnset_rulesets",
         "runtime_metadata",
+        "world_maps",
         "capabilities",
         "diagnostics",
     )

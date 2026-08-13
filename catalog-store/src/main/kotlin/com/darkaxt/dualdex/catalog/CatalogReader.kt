@@ -11,6 +11,7 @@ import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -127,6 +128,7 @@ internal class CatalogSectionCodec {
     private val ballsType = type<Map<Int, CaptureBallRecord>>()
     private val rulesetsType = type<List<LearnsetRuleset>>()
     private val runtimeMetadataType = type<CatalogRuntimeMetadata>()
+    private val worldMapsType = type<WorldMapCatalog>()
     private val capabilitiesType = type<Map<RomCapability, CapabilityEvidence>>()
     private val diagnosticsType = type<List<String>>()
 
@@ -140,6 +142,7 @@ internal class CatalogSectionCodec {
         "capture_balls" to encode(catalog.captureBallsById, ballsType),
         "learnset_rulesets" to encode(catalog.learnsetRulesets, rulesetsType),
         "runtime_metadata" to encode(catalog.runtimeMetadata, runtimeMetadataType),
+        "world_maps" to encode(catalog.worldMaps, worldMapsType),
         "capabilities" to encode(catalog.capabilities, capabilitiesType),
         "diagnostics" to encode(catalog.diagnostics, diagnosticsType),
     ).filterKeys(included::contains)
@@ -170,6 +173,7 @@ internal class CatalogSectionCodec {
         captureBallsById = decode(sections.getValue("capture_balls"), ballsType),
         learnsetRulesets = decode(sections.getValue("learnset_rulesets"), rulesetsType),
         runtimeMetadata = decode(sections.getValue("runtime_metadata"), runtimeMetadataType),
+        worldMaps = decode<WorldMapCatalog>(sections.getValue("world_maps"), worldMapsType).validate(),
         capabilities = decode(sections.getValue("capabilities"), capabilitiesType),
         diagnostics = decode(sections.getValue("diagnostics"), diagnosticsType),
         )

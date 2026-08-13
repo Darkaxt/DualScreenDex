@@ -27,6 +27,10 @@ import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.TypePresentation
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
+import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -48,6 +52,48 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogStoreTest {
+    @Test
+    fun `normalized world map regions and raster assets survive a complete catalog round trip`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val raster = RgbaSprite(2, 2, intArrayOf(0xff102030.toInt(), 0xff405060.toInt(), 0xff708090.toInt(), 0xffa0b0c0.toInt()))
+        val worldMaps = WorldMapCatalog(
+            regions = listOf(
+                WorldMapRegion(
+                    key = "region-0",
+                    displayName = null,
+                    pixelWidth = 2,
+                    pixelHeight = 2,
+                    gridWidth = 22,
+                    gridHeight = 15,
+                    imageAssetKey = "world/region-0",
+                    locations = listOf(
+                        WorldMapLocation(
+                            key = "section-0",
+                            displayName = "Region 0",
+                            baseAreaIds = setOf(0x0102),
+                            geometry = listOf(WorldMapCell(4, 5, 2, 1)),
+                        ),
+                    ),
+                ),
+            ),
+            assets = mapOf("world/region-0" to raster),
+        )
+        val catalog = completeCatalog("7".repeat(64)).copy(worldMaps = worldMaps)
+
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Control.gba", 16_777_216, "CONTROL"),
+            CatalogWriteProgress.complete(),
+        )
+        val reopened = cache.readComplete(catalog.romSha256)
+
+        assertEquals(9, CatalogSchema.parserSchemaVersion)
+        assertEquals(worldMaps, reopened?.catalog?.worldMaps)
+        assertEquals(raster.argb.toList(), reopened?.catalog?.worldMaps?.assets?.get("world/region-0")?.argb?.toList())
+        assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
+    }
+
     @Test
     fun `legacy encounter sections without windows reopen as unrestricted`() {
         val catalog = completeCatalog("f".repeat(64))

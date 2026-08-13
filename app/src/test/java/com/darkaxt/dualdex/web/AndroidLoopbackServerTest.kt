@@ -1,6 +1,11 @@
 package com.darkaxt.dualdex.web
 
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
+import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
@@ -10,6 +15,59 @@ import java.net.HttpURLConnection
 import java.net.URI
 
 class AndroidLoopbackServerTest {
+    @Test
+    fun servesOnlyCatalogOwnedNormalizedMapPngAssets() {
+        val pixels = IntArray(8 * 8) { 0xff123456.toInt() }
+        val runtime = ProductionCompanionRuntime().apply {
+            loadCatalog(
+                "map.gba",
+                ParsedCatalog(
+                    "sha",
+                    EngineFamily.EMERALD,
+                    Platform.GBA,
+                    worldMaps = WorldMapCatalog(
+                        regions = listOf(
+                            WorldMapRegion(
+                                "region-0",
+                                null,
+                                8,
+                                8,
+                                1,
+                                1,
+                                "world/region-0",
+                                listOf(
+                                    WorldMapLocation(
+                                        "section-0",
+                                        "Region 0",
+                                        setOf(1),
+                                        listOf(WorldMapCell(0, 0, 1, 1)),
+                                    ),
+                                ),
+                            ),
+                        ),
+                        assets = mapOf("world/region-0" to RgbaSprite(8, 8, pixels)),
+                    ),
+                ),
+            )
+        }
+        val server = AndroidLoopbackServer(runtime) { null }
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+            val map = URI("$base/api/maps/world%2Fregion-0.png").toURL().openConnection() as HttpURLConnection
+            assertEquals(200, map.responseCode)
+            assertEquals("image/png", map.contentType)
+            assertTrue(map.inputStream.readBytes().copyOfRange(1, 4).contentEquals("PNG".toByteArray()))
+
+            val missing = URI("$base/api/maps/world%2Fmissing.png").toURL().openConnection() as HttpURLConnection
+            assertEquals(404, missing.responseCode)
+            val traversal = URI("$base/api/maps/..%2Fsecret.png").toURL().openConnection() as HttpURLConnection
+            assertEquals(404, traversal.responseCode)
+        } finally {
+            server.close()
+        }
+    }
+
     @Test
     fun bindsOnlyToLoopbackAndServesPackagedUiAndCatalog() {
         val runtime = ProductionCompanionRuntime().apply {

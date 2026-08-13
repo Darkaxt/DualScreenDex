@@ -504,6 +504,9 @@ class ProductionCompanionRuntime(
     fun ballSprite(id: Int) = catalog?.captureBallsById?.get(id)?.sprite?.value
 
     @Synchronized
+    fun worldMapAsset(key: String) = catalog?.worldMaps?.assets?.get(key)
+
+    @Synchronized
     fun catalogHash(): String? = catalog?.romSha256
 
     @Synchronized
