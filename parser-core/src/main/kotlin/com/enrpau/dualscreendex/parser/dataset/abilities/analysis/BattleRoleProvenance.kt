@@ -42,10 +42,12 @@ data class FieldReadEvidence(
     val role: BattleRecordRole,
     val field: ScalarField,
     val instructionOffset: Int,
+    val access: ScalarField = field,
 )
 
 sealed interface MechanicPredicate {
     data class AttackerAbility(val abilityId: Int) : MechanicPredicate
+    data class AttackerStatusNonZero(val mask: Long) : MechanicPredicate
     data class MoveSplit(val splitId: Int) : MechanicPredicate
 }
 
@@ -134,7 +136,10 @@ object BattleRoleProvenance {
                 is Arm7ControlEffect.Sequential -> queue += WorkItem(item.offset + instruction.size, item.instructionSet, state)
                 is Arm7ControlEffect.DirectBranch -> {
                     if (effect.conditional) {
-                        val join = if (state.pendingAbilityTest == null && state.pendingMoveSplitTest == null) null else {
+                        val join = if (state.pendingAbilityTest == null &&
+                            state.pendingMoveSplitTest == null &&
+                            state.pendingStatusTest == null
+                        ) null else {
                             val joinKey = JoinKey(item.offset, item.instructionSet)
                             if (joinCache.containsKey(joinKey)) joinCache[joinKey] else {
                                 immediatePostDominator(image, item.offset, item.instructionSet, maxDecodedInstructions)
@@ -173,16 +178,18 @@ object BattleRoleProvenance {
                     if (q412Effect != null) {
                         val abilityFact = state.positiveAttackerAbility()
                         val splitFact = state.positiveMoveSplit()
+                        val statusFact = state.positiveAttackerStatus()
                         if (abilityFact != null &&
                             abilityFact.abilityId !in abi.withheldAbilityIds &&
                             splitFact != null
                         ) {
                             attackMechanics += AttackMechanic(
                                 abilityId = abilityFact.abilityId,
-                                predicates = setOf(
-                                    MechanicPredicate.AttackerAbility(abilityFact.abilityId),
-                                    MechanicPredicate.MoveSplit(splitFact.splitId),
-                                ),
+                                predicates = buildSet {
+                                    add(MechanicPredicate.AttackerAbility(abilityFact.abilityId))
+                                    statusFact?.let { add(MechanicPredicate.AttackerStatusNonZero(it.mask)) }
+                                    add(MechanicPredicate.MoveSplit(splitFact.splitId))
+                                },
                                 effect = q412Effect,
                             )
                         }
@@ -223,6 +230,7 @@ object BattleRoleProvenance {
                 if (instruction.flagsWritten.isNotEmpty()) {
                     state.pendingAbilityTest = null
                     state.pendingMoveSplitTest = null
+                    state.pendingStatusTest = null
                 }
                 state[instruction.destination] = evaluateData(instruction, state)
                 val attack = state[instruction.destination] as? Value.Stat
@@ -264,6 +272,7 @@ object BattleRoleProvenance {
                 val second = evaluateOperand(instruction.second, state)
                 state.pendingAbilityTest = abilityTest(first, second, abi)
                 state.pendingMoveSplitTest = moveSplitTest(first, second)
+                state.pendingStatusTest = statusTest(first, second)
             }
             is Arm7BranchRegister -> Unit
             else -> instruction.registersWritten.forEach { state[it] = Value.Unknown }
@@ -294,8 +303,9 @@ object BattleRoleProvenance {
         val signedImmediate = if (address.add) address.immediate else -address.immediate
         val offset = base.byteOffset + indexOffset + signedImmediate
         val width = transfer.width.toScalarWidth() ?: return
-        val field = fieldAt(record, offset, width) ?: return
-        fields += FieldReadEvidence(base.role, field, instruction.offset)
+        val access = ScalarField(offset, width)
+        val field = fieldContaining(record, access) ?: return
+        fields += FieldReadEvidence(base.role, field, instruction.offset, access)
     }
 
     private fun fieldAt(record: BattleRecordAbi, offset: Int, width: ScalarWidth): ScalarField? =
@@ -309,6 +319,21 @@ object BattleRoleProvenance {
             record.maxHp,
             record.status,
         ).singleOrNull { it.offset == offset && it.width == width }
+
+    private fun fieldContaining(record: BattleRecordAbi, access: ScalarField): ScalarField? =
+        listOfNotNull(
+            record.attack,
+            record.defense,
+            record.specialAttack,
+            record.specialDefense,
+            record.ability,
+            record.hp,
+            record.maxHp,
+            record.status,
+        ).singleOrNull { field ->
+            access.offset >= field.offset &&
+                access.offset.toLong() + access.width.bytes <= field.offset.toLong() + field.width.bytes
+        }
 
     private fun abilityTest(first: Value, second: Value, abi: BattleMechanicsAbi): AbilityFact? {
         val field = when {
@@ -333,6 +358,15 @@ object BattleRoleProvenance {
             else -> return null
         }
         return splitId.takeIf { it in 0..2 }?.let(::MoveSplitFact)
+    }
+
+    private fun statusTest(first: Value, second: Value): StatusNonZeroFact? {
+        val slice = when {
+            first is Value.StatusSlice && second is Value.Constant && second.value == 0L -> first
+            second is Value.StatusSlice && first is Value.Constant && first.value == 0L -> second
+            else -> return null
+        }
+        return StatusNonZeroFact(slice.role, slice.mask)
     }
 
     private fun evaluateData(instruction: Arm7DataProcessing, state: SymbolicState): Value {
@@ -368,9 +402,11 @@ object BattleRoleProvenance {
         first is Value.Constant && first.value == 0L -> second
         second is Value.Constant && second.value == 0L -> first ?: Value.Unknown
         first is Value.ScaledIndex && second is Value.ArrayRoot && first.stride == second.stride ->
-            Value.RecordPointer(first.role, BattleRecordOrigin.INDEXED_ARRAY)
+            Value.RecordPointer(first.role, BattleRecordOrigin.INDEXED_ARRAY, second.byteOffset)
         second is Value.ScaledIndex && first is Value.ArrayRoot && second.stride == first.stride ->
-            Value.RecordPointer(second.role, BattleRecordOrigin.INDEXED_ARRAY)
+            Value.RecordPointer(second.role, BattleRecordOrigin.INDEXED_ARRAY, first.byteOffset)
+        first is Value.ArrayRoot && second is Value.Constant -> first.copy(byteOffset = first.byteOffset + second.value.toInt())
+        second is Value.ArrayRoot && first is Value.Constant -> second.copy(byteOffset = second.byteOffset + first.value.toInt())
         first is Value.RecordPointer && second is Value.Constant -> first.copy(byteOffset = first.byteOffset + second.value.toInt())
         second is Value.RecordPointer && first is Value.Constant -> second.copy(byteOffset = second.byteOffset + first.value.toInt())
         first is Value.StackPointer && second is Value.Constant -> first.copy(byteOffset = first.byteOffset + second.value.toInt())
@@ -489,11 +525,21 @@ object BattleRoleProvenance {
                 } else if (base is Value.RecordPointer) {
                     val indexOffset = address.index?.let { (state[it] as? Value.Constant)?.value?.toInt() } ?: 0
                     val immediate = if (address.add) address.immediate else -address.immediate
-                    val field = fieldAt(abi.record, base.byteOffset + indexOffset + immediate, instruction.width.toScalarWidth() ?: return Value.Unknown)
-                    if (field == null) Value.Unknown else if (field == abi.record.attack) {
+                    val access = ScalarField(
+                        base.byteOffset + indexOffset + immediate,
+                        instruction.width.toScalarWidth() ?: return Value.Unknown,
+                    )
+                    val field = fieldContaining(abi.record, access)
+                    if (field == null) Value.Unknown else if (field == abi.record.attack && access == field) {
                         Value.Stat(base.role, field)
-                    } else {
+                    } else if (field == abi.record.status) {
+                        val bitOffset = (access.offset - field.offset) * 8
+                        val mask = ((1L shl (access.width.bytes * 8)) - 1L) shl bitOffset
+                        Value.StatusSlice(base.role, field, access, mask)
+                    } else if (access == field) {
                         Value.Field(base.role, field)
+                    } else {
+                        Value.Unknown
                     }
                 } else if (base is Value.Constant && address.index == null && instruction.width == Arm7MemoryWidth.WORD) {
                     val mappedAddress = base.value + if (address.add) address.immediate else -address.immediate
@@ -791,10 +837,13 @@ object BattleRoleProvenance {
         val abilityFacts: MutableMap<AbilityFact, Boolean> = mutableMapOf(),
         var pendingMoveSplitTest: MoveSplitFact? = null,
         val moveSplitFacts: MutableMap<MoveSplitFact, Boolean> = mutableMapOf(),
+        var pendingStatusTest: StatusNonZeroFact? = null,
+        val statusFacts: MutableMap<StatusNonZeroFact, Boolean> = mutableMapOf(),
         private val stack: MutableList<Value> = mutableListOf(),
         val stackMemory: MutableMap<Int, Value> = mutableMapOf(),
         val abilityFactJoins: MutableMap<AbilityFact, Int> = mutableMapOf(),
         val moveSplitFactJoins: MutableMap<MoveSplitFact, Int> = mutableMapOf(),
+        val statusFactJoins: MutableMap<StatusNonZeroFact, Int> = mutableMapOf(),
     ) {
         operator fun get(register: Arm7Register): Value = registers[register.index]
         operator fun set(register: Arm7Register, value: Value) { registers[register.index] = value }
@@ -804,10 +853,13 @@ object BattleRoleProvenance {
             abilityFacts.toMutableMap(),
             pendingMoveSplitTest,
             moveSplitFacts.toMutableMap(),
+            pendingStatusTest,
+            statusFacts.toMutableMap(),
             stack.toMutableList(),
             stackMemory.toMutableMap(),
             abilityFactJoins.toMutableMap(),
             moveSplitFactJoins.toMutableMap(),
+            statusFactJoins.toMutableMap(),
         )
         fun signature(): List<Value> = registers.toList() +
             Value.Facts(
@@ -817,6 +869,9 @@ object BattleRoleProvenance {
                 pendingMoveSplitTest,
                 moveSplitFacts.toMap(),
                 moveSplitFactJoins.toMap(),
+                pendingStatusTest,
+                statusFacts.toMap(),
+                statusFactJoins.toMap(),
             ) +
             Value.Stack(stack.toList(), stackMemory.toMap())
         fun push(registers: Collection<Arm7Register>) {
@@ -843,6 +898,7 @@ object BattleRoleProvenance {
                 else -> {
                     pendingAbilityTest = null
                     pendingMoveSplitTest = null
+                    pendingStatusTest = null
                     return
                 }
             }
@@ -854,8 +910,13 @@ object BattleRoleProvenance {
                 moveSplitFacts[fact] = equals
                 if (equals && join != null) moveSplitFactJoins[fact] = join
             }
+            pendingStatusTest?.let { fact ->
+                statusFacts[fact] = !equals
+                if (!equals && join != null) statusFactJoins[fact] = join
+            }
             pendingAbilityTest = null
             pendingMoveSplitTest = null
+            pendingStatusTest = null
         }
         fun leaveJoinedAbilityRegion(offset: Int) {
             abilityFactJoins.filterValues { it == offset }.keys.forEach { fact ->
@@ -865,6 +926,10 @@ object BattleRoleProvenance {
             moveSplitFactJoins.filterValues { it == offset }.keys.forEach { fact ->
                 moveSplitFactJoins.remove(fact)
                 moveSplitFacts.remove(fact)
+            }
+            statusFactJoins.filterValues { it == offset }.keys.forEach { fact ->
+                statusFactJoins.remove(fact)
+                statusFacts.remove(fact)
             }
         }
         fun clobberCallerSaved() {
@@ -878,6 +943,10 @@ object BattleRoleProvenance {
             .singleOrNull()
         fun positiveMoveSplit(): MoveSplitFact? = moveSplitFacts
             .filterValues { it }
+            .keys
+            .singleOrNull()
+        fun positiveAttackerStatus(): StatusNonZeroFact? = statusFacts
+            .filter { (fact, nonZero) -> nonZero && fact.role == BattleRecordRole.ATTACKER }
             .keys
             .singleOrNull()
 
@@ -921,7 +990,7 @@ object BattleRoleProvenance {
     private sealed interface Value {
         data object Unknown : Value
         data class Constant(val value: Long) : Value
-        data class ArrayRoot(val value: Int, val stride: Int) : Value
+        data class ArrayRoot(val value: Int, val stride: Int, val byteOffset: Int = 0) : Value
         data class Index(val role: BattleRecordRole) : Value
         data class ShiftedIndex(val role: BattleRecordRole, val leftShift: Int) : Value
         data class ScaledIndex(val role: BattleRecordRole, val stride: Int) : Value
@@ -941,6 +1010,12 @@ object BattleRoleProvenance {
             val announced: Boolean = false,
         ) : Value
         data class Field(val role: BattleRecordRole, val field: ScalarField) : Value
+        data class StatusSlice(
+            val role: BattleRecordRole,
+            val field: ScalarField,
+            val access: ScalarField,
+            val mask: Long,
+        ) : Value
         data class AbilityOrNone(val role: BattleRecordRole, val field: ScalarField) : Value {
             fun toField() = Field(role, field)
         }
@@ -958,6 +1033,9 @@ object BattleRoleProvenance {
             val pendingMoveSplit: MoveSplitFact?,
             val moveSplitFacts: Map<MoveSplitFact, Boolean>,
             val moveSplitJoins: Map<MoveSplitFact, Int>,
+            val pendingStatus: StatusNonZeroFact?,
+            val statusFacts: Map<StatusNonZeroFact, Boolean>,
+            val statusJoins: Map<StatusNonZeroFact, Int>,
         ) : Value
         data class Stack(val values: List<Value>, val memory: Map<Int, Value>) : Value
         data class StackPointer(val byteOffset: Int) : Value
@@ -966,6 +1044,7 @@ object BattleRoleProvenance {
 
     private data class AbilityFact(val role: BattleRecordRole, val abilityId: Int)
     private data class MoveSplitFact(val splitId: Int)
+    private data class StatusNonZeroFact(val role: BattleRecordRole, val mask: Long)
 
     private const val GBA_ROM_BASE = 0x0800_0000L
     private const val MAX_HELPER_INSTRUCTIONS = 1_024

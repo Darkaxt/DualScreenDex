@@ -1,6 +1,17 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities.analysis
 
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7InstructionSet
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Address
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DataOperation
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DataProcessing
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DecodeResult
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Immediate
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Instruction
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7MemoryTransfer
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7MemoryWidth
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Register
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7RegisterOperand
+import com.enrpau.dualscreendex.parser.analysis.thumb.ThumbDecoder
 import com.enrpau.dualscreendex.parser.io.RomImage
 import java.nio.file.Files
 import java.nio.file.Path
@@ -10,6 +21,47 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class BattleRoleProvenanceLiveRomTest {
+    @Test
+    fun `Classic independent status consumer proves full field width from typed root and stride`() {
+        val control = Control(
+            environmentVariable = "DUALDEX_CLASSIC_ROM",
+            fallbackPath = "D:/Temp/dualdex-hack-roms/Classic (v1.5.0b).gba",
+            sha256 = "01c0177b2498e1842a1bf9ee2ddac145fb95275321bd3813dbf17341d63ad16c",
+            routineEntry = 0x3BF90,
+            expectedAttackLoad = 0,
+            moveRoot = 0x0835_81F8,
+        )
+        val image = control.load()
+        val rootLoad = image.decodeAs<Arm7MemoryTransfer>(0x3BFB8)
+        val rootAddress = rootLoad.address as Arm7Address.PcRelative
+        assertEquals(0x0202_30F8, image.u32le(rootAddress.resolvedAddress.toInt()).toInt())
+
+        assertDataOperation(image, 0x3BFBA, Arm7DataOperation.ADD, Arm7Register.R6, Arm7RegisterOperand(Arm7Register.R5), Arm7Immediate(0))
+        assertDataOperation(image, 0x3BFBC, Arm7DataOperation.ADD, Arm7Register.R6, Arm7RegisterOperand(Arm7Register.R6), Arm7Immediate(0x50))
+        assertDataOperation(image, 0x3BFBE, Arm7DataOperation.MOVE, Arm7Register.R0, null, Arm7Immediate(0x5C))
+        assertDataOperation(image, 0x3BFC0, Arm7DataOperation.ADD, Arm7Register.R2, Arm7RegisterOperand(Arm7Register.R4), Arm7Immediate(0))
+        assertDataOperation(
+            image,
+            0x3BFC2,
+            Arm7DataOperation.MULTIPLY,
+            Arm7Register.R2,
+            Arm7RegisterOperand(Arm7Register.R2),
+            Arm7RegisterOperand(Arm7Register.R0),
+        )
+        assertDataOperation(
+            image,
+            0x3BFD2,
+            Arm7DataOperation.ADD,
+            Arm7Register.R2,
+            Arm7RegisterOperand(Arm7Register.R2),
+            Arm7RegisterOperand(Arm7Register.R6),
+        )
+        val statusLoad = image.decodeAs<Arm7MemoryTransfer>(0x3BFD4)
+        assertTrue(statusLoad.load)
+        assertEquals(Arm7MemoryWidth.WORD, statusLoad.width)
+        assertEquals(Arm7Address.RegisterOffset(Arm7Register.R2), statusLoad.address)
+    }
+
     @Test
     fun `retail Emerald and FRLG preserve the direct attacker pointer through compiler factoring`() {
         val controls = listOf(
@@ -103,6 +155,12 @@ class BattleRoleProvenanceLiveRomTest {
                 it.field == ScalarField(0x02, ScalarWidth.U16) &&
                 it.instructionOffset == control.expectedAttackLoad
         })
+        assertTrue(result.toString(), result.fieldReads.any {
+            it.role == BattleRecordRole.ATTACKER &&
+                it.field == ScalarField(0x50, ScalarWidth.U32) &&
+                it.access == ScalarField(0x50, ScalarWidth.U8) &&
+                it.instructionOffset == 0x50CAE
+        })
         // Real discrepancy regression: CalcAttackStat crosses opaque helpers after the first
         // modifier dispatch. Volatile values must remain clobbered, while the attacker index in
         // callee-saved r5 must still form a typed record on the later branch.
@@ -141,6 +199,15 @@ class BattleRoleProvenanceLiveRomTest {
                     ),
                     effect = MultiplyAttack(3, 2),
                 ),
+                AttackMechanic(
+                    abilityId = 62,
+                    predicates = setOf(
+                        MechanicPredicate.AttackerAbility(62),
+                        MechanicPredicate.AttackerStatusNonZero(0xFF),
+                        MechanicPredicate.MoveSplit(0),
+                    ),
+                    effect = MultiplyAttack(3, 2),
+                ),
             ),
             result.attackMechanics.toSet(),
         )
@@ -168,6 +235,7 @@ class BattleRoleProvenanceLiveRomTest {
             stride = 0x5C,
             attack = ScalarField(0x02, ScalarWidth.U16),
             ability = ScalarField(0x20, ScalarWidth.U16),
+            status = ScalarField(0x50, ScalarWidth.U32),
         ),
         move = MoveMechanicsAbi(
             tableRoot = moveRoot,
@@ -187,8 +255,30 @@ class BattleRoleProvenanceLiveRomTest {
             defenderIndexParameterRegister = 2,
         ),
         moveParameterRegister = 0,
-        withheldAbilityIds = setOf(62),
     )
+
+    private fun assertDataOperation(
+        image: RomImage,
+        offset: Int,
+        operation: Arm7DataOperation,
+        destination: Arm7Register,
+        first: Any?,
+        second: Any,
+    ) {
+        val instruction = image.decodeAs<Arm7DataProcessing>(offset)
+        assertEquals(operation, instruction.operation)
+        assertEquals(destination, instruction.destination)
+        assertEquals(first, instruction.first)
+        assertEquals(second, instruction.second)
+    }
+
+    private inline fun <reified T : Arm7Instruction> RomImage.decodeAs(offset: Int): T {
+        val result = ThumbDecoder.decode(this, offset)
+        assertTrue("expected decoded instruction at 0x${offset.toString(16)}, got $result", result is Arm7DecodeResult.Decoded)
+        val instruction = (result as Arm7DecodeResult.Decoded).instruction
+        assertTrue("expected ${T::class.simpleName} at 0x${offset.toString(16)}, got $instruction", instruction is T)
+        return instruction as T
+    }
 
     private data class Control(
         val environmentVariable: String,
