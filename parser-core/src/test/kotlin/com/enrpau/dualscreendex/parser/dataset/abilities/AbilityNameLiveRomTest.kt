@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
+import com.enrpau.dualscreendex.parser.family.validatedDirectAbilityIds
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -145,6 +146,129 @@ class AbilityNameLiveRomTest {
         )
     }
 
+    @Test fun grandDadAndOdysseyCloseEveryReferencedAbilityFromTheirTypedNameTables() {
+        listOf(
+            LiveAbilityClosureCase(
+                "DUALDEX_GRAND_DAD_ROM",
+                "a51cf68b15789c28b093613689a25d024b981047b007aad286a3ae484da06634",
+                0x24FC40,
+                78,
+                78,
+                ((1..75).toSet() + 77) - 46,
+                setOf(23),
+                setOf(46),
+                CapabilityStatus.PARTIAL,
+            ),
+            LiveAbilityClosureCase(
+                "DUALDEX_ODYSSEY_ROM",
+                "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
+                0x10B7E00,
+                256,
+                253,
+                setOf(
+                    2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                    22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+                    39, 40, 42, 43, 44, 45, 46, 47, 48, 49, 51, 52, 53, 55, 57, 58, 59, 60,
+                    61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 82, 83,
+                    85, 92, 93, 98, 100, 102, 106, 110, 111, 112, 114, 117, 129, 137, 138,
+                    139, 146, 147, 148, 154, 163, 169, 170, 173, 234, 235, 236, 237, 238,
+                    239, 240, 241, 242, 243, 246, 247, 248, 249, 250, 251, 252,
+                ),
+                emptySet(),
+                emptySet(),
+                CapabilityStatus.AVAILABLE,
+            ),
+        ).forEach { case ->
+            val rom = loadRom(case.environmentVariable, case.expectedSha256)
+            val parsed = CatalogParser.parse(rom)
+            val layout = requireNotNull(parsed.layout)
+            val selected = layout.tables.abilities ?: error(
+                "ability table unavailable for ${case.environmentVariable}: " +
+                    parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITIES },
+            )
+            val typed = layout.resolvedDatasets.abilityNames ?: error(
+                "typed ability table unavailable for ${case.environmentVariable}: " +
+                    parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITIES },
+            )
+            val catalog = requireNotNull(parsed.catalog)
+
+            assertEquals(case.expectedRoot, selected.offset)
+            assertEquals(13, selected.recordSize)
+            assertEquals(case.expectedPhysicalCount, selected.count)
+            assertEquals(case.expectedRoot.toLong(), typed.table.offset)
+            assertEquals(case.expectedPhysicalCount.toLong(), typed.table.count)
+            assertEquals(case.expectedBaseRowCount, typed.baseRowCount)
+            assertTrue(
+                "missing typed ability IDs ${case.expectedReferencedIds - typed.catalogDirectAbilityIds()}",
+                case.expectedReferencedIds.all { it in typed.catalogDirectAbilityIds() },
+            )
+            assertTrue(case.expectedReferencedIds.all { it in catalog.abilitiesById })
+            case.expectedUnresolvedNameIds.forEach { abilityId ->
+                assertEquals(CapabilityStatus.NOT_FOUND, catalog.abilitiesById.getValue(abilityId).name.status)
+            }
+            case.expectedSuppressedIds.forEach { abilityId ->
+                assertTrue(abilityId !in catalog.abilitiesById)
+                assertTrue(catalog.speciesById.values.none { abilityId in it.abilityIds.value.orEmpty() })
+            }
+            assertEquals(0, missingAbilityReferences(catalog))
+            val capability = parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITIES }
+            assertEquals(case.expectedCapabilityStatus, capability.status)
+            assertTrue(capability.compatible)
+        }
+    }
+
+    @Test fun grandDadAndOdysseyCandidateTablesSatisfyTheirCompiledBaseStatDomains() {
+        listOf(
+            LiveAbilityClosureCase(
+                "DUALDEX_GRAND_DAD_ROM",
+                "a51cf68b15789c28b093613689a25d024b981047b007aad286a3ae484da06634",
+                0x24FC40,
+                78,
+                78,
+                ((1..75).toSet() + 77) - 46,
+                setOf(23),
+                setOf(46),
+                CapabilityStatus.PARTIAL,
+            ),
+            LiveAbilityClosureCase(
+                "DUALDEX_ODYSSEY_ROM",
+                "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
+                0x10B7E00,
+                256,
+                253,
+                emptySet(),
+                emptySet(),
+                emptySet(),
+                CapabilityStatus.AVAILABLE,
+            ),
+        ).forEach { case ->
+            val rom = loadRom(case.environmentVariable, case.expectedSha256)
+            val parsed = CatalogParser.parse(rom)
+            val stats = requireNotNull(requireNotNull(parsed.layout).tables.baseStats)
+            val activeIds = validatedDirectAbilityIds(rom, stats)
+            val session = RomAnalysisSession(rom, RomHeaderReader.read(rom))
+            val result = AbilityNameResolver().resolve(
+                session,
+                AbilitySemanticDomain(activeIds),
+                AbilityNameTableLayout(case.expectedRoot.toLong(), case.expectedPhysicalCount.toLong(), 13),
+            )
+            val resolved = when (result) {
+                is DatasetResolution.Resolved -> result.candidate.layout
+                is DatasetResolution.Partial -> result.candidate.layout
+                else -> error("typed real ability candidate rejected for ${case.environmentVariable}: $result")
+            }
+            assertEquals(case.expectedBaseRowCount, resolved.baseRowCount)
+            assertTrue(
+                "missing direct ability IDs ${(activeIds - case.expectedSuppressedIds) - resolved.catalogDirectAbilityIds()}",
+                (activeIds - case.expectedSuppressedIds).all { it in resolved.catalogDirectAbilityIds() },
+            )
+            println(
+                "ABILITY_CLOSURE_CANDIDATE ${case.environmentVariable} active=${activeIds.size} " +
+                    "max=${activeIds.maxOrNull()} physical=${resolved.table.count} base=${resolved.baseRowCount}",
+            )
+        }
+    }
+
     private fun assertParity(
         environmentVariable: String,
         expectedSha256: String,
@@ -157,8 +281,14 @@ class AbilityNameLiveRomTest {
         val parsed = CatalogParser.parse(rom)
         val layout = requireNotNull(parsed.layout)
         val catalog = requireNotNull(parsed.catalog)
-        val selected = requireNotNull(layout.tables.abilities)
-        val typed = requireNotNull(layout.resolvedDatasets.abilityNames)
+        val selected = layout.tables.abilities ?: error(
+            "ability table unavailable for $environmentVariable: " +
+                parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITIES },
+        )
+        val typed = layout.resolvedDatasets.abilityNames ?: error(
+            "typed ability table unavailable for $environmentVariable: " +
+                parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITIES },
+        )
         assertEquals(expectedRoot, selected.offset)
         assertEquals(expectedPhysicalCount, selected.count)
         assertEquals(expectedRoot.toLong(), typed.table.offset)
@@ -179,8 +309,14 @@ class AbilityNameLiveRomTest {
         val parsed = CatalogParser.parse(rom)
         val layout = requireNotNull(parsed.layout)
         val catalog = requireNotNull(parsed.catalog)
-        val selected = requireNotNull(layout.tables.abilities)
-        val typed = requireNotNull(layout.resolvedDatasets.abilityNames)
+        val selected = layout.tables.abilities ?: error(
+            "ability table unavailable for ${case.environmentVariable}: " +
+                parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITIES },
+        )
+        val typed = layout.resolvedDatasets.abilityNames ?: error(
+            "typed ability table unavailable for ${case.environmentVariable}: " +
+                parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITIES },
+        )
         val decodedIds = typed.decodedDirectAbilityIds()
         assertEquals(case.expectedRoot, selected.offset)
         assertEquals(case.expectedPhysicalCount, selected.count)
@@ -238,6 +374,18 @@ class AbilityNameLiveRomTest {
         val expectedBaseRowCount: Int,
         val expectedDecodedIds: Set<Int>,
         val expectedNameSha256: String,
+        val expectedCapabilityStatus: CapabilityStatus,
+    )
+
+    private data class LiveAbilityClosureCase(
+        val environmentVariable: String,
+        val expectedSha256: String,
+        val expectedRoot: Int,
+        val expectedPhysicalCount: Int,
+        val expectedBaseRowCount: Int,
+        val expectedReferencedIds: Set<Int>,
+        val expectedUnresolvedNameIds: Set<Int>,
+        val expectedSuppressedIds: Set<Int>,
         val expectedCapabilityStatus: CapabilityStatus,
     )
 }

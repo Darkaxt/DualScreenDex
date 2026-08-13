@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.dataset.abilities
 
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.dataset.core.basestats.Gen3BaseStatsRecord
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -209,7 +210,7 @@ class AbilityNameCodecTest {
     }
 
     @Test
-    fun treatsAnActiveStructuralSentinelAsASparseDirectIdHole() {
+    fun keepsAnActiveStructuralSentinelAsASparseDirectIdHole() {
         val names = buildList {
             add("-------")
             repeat(254) { add("BASE ABILITY") }
@@ -228,7 +229,56 @@ class AbilityNameCodecTest {
 
         val decoded = outcome as AbilityNameTableOutcome.Decoded
         assertEquals(names.size, decoded.resolved.baseRowCount)
-        assertTrue(255 !in decoded.resolved.catalogAbilities())
+        assertTrue(255 !in decoded.resolved.decodedDirectAbilityIds())
+        assertTrue(255 !in decoded.resolved.catalogDirectAbilityIds())
+        assertTrue(decoded.resolved.unresolvedActiveAbilityIds.isEmpty())
+    }
+
+    @Test
+    fun preservesAnIndependentlyReferencedMalformedNameAsAnUnresolvedAbilityIdentity() {
+        val names = buildList {
+            add("-------")
+            repeat(19) { add("BASE ABILITY") }
+        }
+        val layout = AbilityNameTableLayout(0x100, names.size.toLong(), 17)
+        val bytes = ByteArray(0x100 + names.size * 17)
+        putAbilityNames(bytes, layout, names)
+        bytes.fill(0, 0x100 + 7 * 17, 0x100 + 8 * 17)
+
+        val outcome = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(7)),
+        ) as AbilityNameTableOutcome.Decoded
+
+        assertTrue(7 !in outcome.resolved.decodedDirectAbilityIds())
+        assertTrue(7 in outcome.resolved.catalogDirectAbilityIds())
+        assertEquals(CapabilityStatus.NOT_FOUND, outcome.resolved.catalogAbilities().getValue(7).name.status)
+        assertEquals(setOf(7), outcome.resolved.unresolvedActiveAbilityIds)
+    }
+
+    @Test
+    fun acceptsASparsePhysicalTableOnlyWhenEveryCompiledReferencedAbilityHasAName() {
+        val layout = AbilityNameTableLayout(0x100, 20, 13)
+        val bytes = ByteArray(0x100 + 20 * 13)
+        putGbaText(bytes, 0x100, "-------", 13)
+        listOf(2, 7, 18).forEach { abilityId ->
+            putGbaText(bytes, 0x100 + abilityId * 13, "ABILITY $abilityId", 13)
+        }
+
+        val decoded = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(2, 7, 18)),
+        ) as AbilityNameTableOutcome.Decoded
+        assertEquals(setOf(2, 7, 18), decoded.resolved.decodedDirectAbilityIds())
+
+        val incomplete = AbilityNameCodec().decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(2, 7, 17, 18)),
+        )
+        assertTrue(incomplete is AbilityNameTableOutcome.Rejected)
     }
 
     @Test

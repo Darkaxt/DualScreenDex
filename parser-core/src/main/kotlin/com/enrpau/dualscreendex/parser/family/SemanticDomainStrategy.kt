@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.parse.DatasetResolvers
 import com.enrpau.dualscreendex.parser.parse.Gen3PublishedPartialBaseStatsResolver
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
 import com.enrpau.dualscreendex.parser.parse.selectAbilityNameEvidence
+import com.enrpau.dualscreendex.parser.parse.compiledAbilityNameStride
 import com.enrpau.dualscreendex.parser.parse.semanticAbilityNameBoundary
 import com.enrpau.dualscreendex.parser.dataset.types.ResolvedTypeChartLayout
 import com.enrpau.dualscreendex.parser.dataset.types.TypeChartAbi
@@ -19,6 +20,7 @@ import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionResolver
 import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableLayout
 import com.enrpau.dualscreendex.parser.dataset.descriptions.ResolvedDescriptionLayout
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameResolver
+import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameCodec
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableLayout
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilitySemanticDomain
 import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityNameLayout
@@ -329,18 +331,29 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         core: CoreDatasetsPhaseResult.Resolved,
     ): ResolvedAbilityEvidence {
         val rom = session.rom
+        val domain = AbilitySemanticDomain(
+            validatedDirectAbilityIds(
+                rom,
+                validatedAbilityCoverageLayout(
+                    rom,
+                    resolvedLayout(core.candidateTables.baseStats, core.baseStats),
+                    core.baseStatsLayout,
+                ),
+            ),
+        )
         val abilityEvidence = if (definition.formatGeneration == 3) {
         core.candidateTables.abilities?.let { layout ->
             identity.expansion?.let { expansion ->
                 TableValidators.names(rom, layout, expansion.abilityCount, identity.codec)
             } ?: resolveAbilityNames(
-                rom = rom,
+                session = session,
                 layout = layout,
                 codec = identity.codec,
                 profile = identity.baseProfile,
                 exact = identity.exactProfile != null,
                 baseStats = core.baseStatsLayout,
                 speciesCount = core.speciesCount,
+                semanticDomain = domain,
             )
         } ?: missingEvidence("ability-name table not resolved")
     } else {
@@ -361,16 +374,6 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                     "selected ability-name ABI could not be represented by the typed codec"),
                 null,
             )
-        val domain = AbilitySemanticDomain(
-            validatedDirectAbilityIds(
-                rom,
-                validatedAbilityCoverageLayout(
-                    rom,
-                    resolvedLayout(core.candidateTables.baseStats, core.baseStats),
-                    core.baseStatsLayout,
-                ),
-            ),
-        )
         val resolution = AbilityNameResolver().resolve(
             session = session,
             semanticDomain = domain,
@@ -437,14 +440,16 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
     )
 
     private fun resolveAbilityNames(
-        rom: RomImage,
+        session: RomAnalysisSession,
         layout: TableLayout,
         codec: PokemonTextCodec,
         profile: FamilyProfileBasis?,
         exact: Boolean,
         baseStats: TableLayout?,
         speciesCount: Int?,
+        semanticDomain: AbilitySemanticDomain,
     ): ValidationEvidence {
+        val rom = session.rom
         val inherited = TableValidators.names(
             rom,
             layout,
@@ -452,12 +457,75 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
             codec,
             minimumRatio = 0.85,
         )
-        val selected = selectAbilityNameEvidence(exact, inherited) {
-            (8..32).mapNotNull { recordSize ->
-                val count = TableValidators.inferFixedNameCount(
-                    rom, layout.offset, recordSize, codec, minimumCount = 10, maximumCount = 512,
-                ) ?: return@mapNotNull null
+        val requiredDirectCount = (semanticDomain.maximumDirectAbilityId + 1).takeIf { it > 1 }
+        val consumerStride = compiledAbilityNameStride(session, layout.offset)
+        val dynamicCandidates = (8..32).flatMap { recordSize ->
+            val inferredCount = TableValidators.inferFixedNameCount(
+                rom, layout.offset, recordSize, codec, minimumCount = 10, maximumCount = 512,
+            )
+            buildSet {
+                inferredCount?.let(::add)
+                requiredDirectCount?.takeIf {
+                    consumerStride == recordSize && (inferredCount == null || it > inferredCount)
+                }?.let(::add)
+            }.map { count ->
                 TableValidators.fixedNames(rom, layout.offset, count, recordSize, codec)
+            }
+        }
+        val typedCandidates = if (exact) emptyList() else dynamicCandidates.mapNotNull { evidence ->
+            val offset = evidence.offset ?: return@mapNotNull null
+            val width = evidence.recordSize ?: return@mapNotNull null
+            val candidate = runCatching {
+                AbilityNameTableLayout(offset.toLong(), evidence.totalRecords.toLong(), width)
+            }.getOrNull() ?: return@mapNotNull null
+            val decoded = AbilityNameCodec().decode(session, candidate, semanticDomain)
+                as? com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableOutcome.Decoded
+                ?: return@mapNotNull null
+            evidence to decoded.resolved
+        }
+        val consumerBoundCandidates = consumerStride?.let { stride ->
+            typedCandidates.filter { (_, resolved) -> resolved.table.stride == stride }
+        }.orEmpty()
+        val eligibleTypedCandidates = if (consumerStride == null) typedCandidates else consumerBoundCandidates
+        val selected = when {
+            exact -> inherited
+            eligibleTypedCandidates.size == 1 -> {
+                val (evidence, resolved) = eligibleTypedCandidates.single()
+                val decodedIds = resolved.decodedDirectAbilityIds()
+                val covered = semanticDomain.activeAbilityIds.count(decodedIds::contains)
+                val expected = semanticDomain.activeAbilityIds.size
+                val decodedBase = resolved.baseRows.drop(1)
+                    .count { it is com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameRowOutcome.Decoded }
+                evidence.copy(
+                    compatible = true,
+                    validRecords = decodedBase,
+                    totalRecords = resolved.table.count.toInt(),
+                    confidence = decodedBase.toDouble() / resolved.baseAbilityCount.toDouble(),
+                    offset = resolved.table.offset.toInt(),
+                    recordSize = resolved.table.nameWidth,
+                    coveredRecords = covered.takeIf { expected > 0 },
+                    expectedRecords = expected.takeIf { it > 0 },
+                    incompleteRecords = (expected - covered).takeIf { expected > 0 },
+                    reviewRecommended = covered < expected,
+                    reasons = evidence.reasons + (
+                        "selected the sole typed ability-name ABI coherent with compiled base-stat ability IDs" +
+                            (consumerStride?.let { " and complete compiled stride-$it consumers" } ?: "")
+                        ),
+                )
+            }
+            eligibleTypedCandidates.size > 1 -> inherited.copy(
+                compatible = false,
+                ambiguous = true,
+                reasons = inherited.reasons +
+                    (
+                        "multiple typed ability-name ABIs are coherent with compiled base-stat ability IDs: " +
+                            eligibleTypedCandidates.joinToString { (_, resolved) ->
+                                "${resolved.table.nameWidth}x${resolved.table.count}/base${resolved.baseRowCount}"
+                            }
+                        ),
+            )
+            else -> selectAbilityNameEvidence(exact, inherited) {
+                dynamicCandidates
             }
         }
         val offset = selected.offset ?: return selected

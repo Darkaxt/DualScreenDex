@@ -79,20 +79,18 @@ class AbilityNameCodec : AbilityNameTableDecoder {
                 "decoded base stats reference ability IDs outside the proposed direct catalog: $activeOutsideCatalog",
             )
         }
-        val malformedActive = semanticDomain.activeAbilityIds.filter { rows[it] is AbilityNameRowOutcome.Malformed }
-        if (malformedActive.isNotEmpty()) {
-            return AbilityNameTableOutcome.Rejected(
-                layout,
-                "decoded base-stat ability IDs do not map to named direct records: $malformedActive",
-            )
-        }
+        val unresolvedActive = semanticDomain.activeAbilityIds.filter { rows[it] is AbilityNameRowOutcome.Malformed }
+        val unnamedActive = semanticDomain.activeAbilityIds.filter { rows[it] !is AbilityNameRowOutcome.Decoded }
         val expectedBase = baseRowCount - 1
         val decodedBase = rows.subList(1, baseRowCount).count { it is AbilityNameRowOutcome.Decoded }
-        if (decodedBase.toLong() * 100L < expectedBase.toLong() * MINIMUM_BASE_COVERAGE_PERCENT) {
+        val denseEnough = decodedBase.toLong() * 100L >= expectedBase.toLong() * MINIMUM_BASE_COVERAGE_PERCENT
+        val completeCompiledDomain = semanticDomain.activeAbilityIds.isNotEmpty() && unnamedActive.isEmpty()
+        if (!denseEnough && !completeCompiledDomain) {
             return AbilityNameTableOutcome.Rejected(
                 layout,
                 "named direct ability coverage $decodedBase/$expectedBase is below " +
-                    "$MINIMUM_BASE_COVERAGE_PERCENT%",
+                    "$MINIMUM_BASE_COVERAGE_PERCENT% and the compiled base-stat domain is incomplete: " +
+                    unnamedActive,
             )
         }
         val aliases = boundary?.let { separator ->
@@ -102,7 +100,7 @@ class AbilityNameCodec : AbilityNameTableDecoder {
         }.orEmpty()
         return AbilityNameTableOutcome.Decoded(
             layout,
-            ResolvedAbilityNameLayout(layout, rows, baseRowCount, aliases),
+            ResolvedAbilityNameLayout(layout, rows, baseRowCount, aliases, unresolvedActive),
         )
     }
 

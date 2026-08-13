@@ -69,10 +69,10 @@ object CatalogMaterializer {
     ): ParsedCatalog {
         val rawSpecies = RecordMaterializers.species(rom, layout)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
-            layout.resolvedDatasets.abilityNames?.decodedDirectAbilityIds()?.let { decodedIds ->
+            layout.resolvedDatasets.abilityNames?.catalogDirectAbilityIds()?.let { catalogIds ->
                 rawSpecies.mapValues { (_, species) ->
                     val abilityIds = species.abilityIds.value ?: return@mapValues species
-                    species.copy(abilityIds = CatalogField.available(abilityIds.filter(decodedIds::contains)))
+                    species.copy(abilityIds = CatalogField.available(abilityIds.filter(catalogIds::contains)))
                 }
             } ?: rawSpecies
         } else {

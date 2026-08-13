@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
@@ -81,6 +82,46 @@ internal fun selectAbilityNameEvidence(
         .filter { it.compatible }
         .maxWithOrNull(compareBy<ValidationEvidence> { it.validRecords }.thenBy { it.confidence })
         ?: inherited
+}
+
+/**
+ * Proves a fixed ability-name stride only when every complete reference-site consumer multiplies
+ * an ability ID by the same immediate and adds that product to the nominated table root.
+ */
+internal fun compiledAbilityNameStride(session: RomAnalysisSession, root: Int): Int? {
+    val references = session.gbaReferenceIndex?.target(root) ?: return null
+    if (!references.siteEvidenceAvailable || references.instructionSites.isEmpty() ||
+        references.instructionSites.size != references.count
+    ) return null
+    val strides = references.instructionSites.map { site ->
+        compiledFixedStrideConsumer(session.rom, site) ?: return null
+    }
+    return strides.distinct().singleOrNull()
+}
+
+private fun compiledFixedStrideConsumer(rom: RomImage, rootLoadSite: Int): Int? {
+    if (rootLoadSite < 4 || rootLoadSite + 4 > rom.size) return null
+    val move = rom.u16le(rootLoadSite - 4)
+    val multiply = rom.u16le(rootLoadSite - 2)
+    val rootLoad = rom.u16le(rootLoadSite)
+    val add = rom.u16le(rootLoadSite + 2)
+    if (move and 0xF800 != 0x2000 || multiply and 0xFFC0 != 0x4340 ||
+        rootLoad and 0xF800 != 0x4800 || add and 0xFE00 != 0x1800
+    ) return null
+
+    val scaleRegister = (move ushr 8) and 0x7
+    val scale = move and 0xFF
+    val multiplyResult = multiply and 0x7
+    val multiplyOther = (multiply ushr 3) and 0x7
+    if (scale == 0 || scaleRegister != multiplyResult && scaleRegister != multiplyOther) return null
+
+    val rootRegister = (rootLoad ushr 8) and 0x7
+    val addFirst = (add ushr 3) and 0x7
+    val addSecond = (add ushr 6) and 0x7
+    if (rootRegister == multiplyResult ||
+        setOf(addFirst, addSecond) != setOf(rootRegister, multiplyResult)
+    ) return null
+    return scale
 }
 
 internal data class AbilityNameBoundary(

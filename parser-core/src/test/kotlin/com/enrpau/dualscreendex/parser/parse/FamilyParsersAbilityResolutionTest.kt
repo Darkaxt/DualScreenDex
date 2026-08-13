@@ -1,10 +1,13 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.family.reconcileAbilityEvidence
 import com.enrpau.dualscreendex.parser.family.validatedDirectAbilityIds
 import com.enrpau.dualscreendex.parser.family.validatedAbilityCoverageLayout
@@ -14,6 +17,28 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FamilyParsersAbilityResolutionTest {
+    @Test
+    fun provesAUniqueFixedAbilityNameStrideFromEveryCompiledRootConsumer() {
+        val root = 0x400
+        val bytes = ByteArray(0x600)
+        listOf(0x104, 0x124).forEach { rootLoad ->
+            writeU16(bytes, rootLoad - 4, 0x200D) // mov r0, #13
+            writeU16(bytes, rootLoad - 2, 0x4341) // mul r1, r0
+            val literal = rootLoad + 0x3C
+            val pc = (rootLoad + 4) and -4
+            writeU16(bytes, rootLoad, 0x4800 or ((literal - pc) / 4)) // ldr r0, =root
+            writeU16(bytes, rootLoad + 2, 0x180C) // add r4, r1, r0
+            writeU32(bytes, literal, 0x08000000 + root)
+        }
+        val session = RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBA, "ABILITY TEST"))
+
+        assertEquals(13, compiledAbilityNameStride(session, root))
+
+        writeU16(bytes, 0x120, 0x200C)
+        val inconsistent = RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBA, "ABILITY TEST"))
+        assertEquals(null, compiledAbilityNameStride(inconsistent, root))
+    }
+
     @Test
     fun abilityCoveragePromotesOnlyAnExactlyValidatedPhysicalBaseStatExtent() {
         val bytes = ByteArray(760 * 28)
@@ -295,5 +320,9 @@ class FamilyParsersAbilityResolutionTest {
     private fun writeU16(target: ByteArray, offset: Int, value: Int) {
         target[offset] = value.toByte()
         target[offset + 1] = (value ushr 8).toByte()
+    }
+
+    private fun writeU32(target: ByteArray, offset: Int, value: Int) {
+        repeat(4) { index -> target[offset + index] = (value ushr (index * 8)).toByte() }
     }
 }

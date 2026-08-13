@@ -128,14 +128,19 @@ class ResolvedAbilityNameLayout(
     rows: Collection<AbilityNameRowOutcome>,
     val baseRowCount: Int,
     aliasLabels: Collection<AbilityAliasLabel>,
+    unresolvedActiveAbilityIds: Collection<Int> = emptyList(),
 ) : ImmutableDatasetLayout<ResolvedAbilityNameLayout> {
     val rows: List<AbilityNameRowOutcome> = immutable(rows.toList())
     val baseRows: List<AbilityNameRowOutcome> = immutable(this.rows.take(baseRowCount))
     val aliasLabels: List<AbilityAliasLabel> = immutable(aliasLabels.toList())
+    val unresolvedActiveAbilityIds: Set<Int> = Collections.unmodifiableSet(
+        unresolvedActiveAbilityIds.toSortedSet(),
+    )
     val baseAbilityCount: Int get() = baseRowCount - 1
     override val layoutIdentity: CandidateLayoutIdentity = CandidateLayoutIdentity(
         table.layoutIdentity.value + ":base=$baseRowCount:aliases=" +
-            this.aliasLabels.joinToString(",") { "${it.sourceRowIndex}" },
+            this.aliasLabels.joinToString(",") { "${it.sourceRowIndex}" } +
+            ":unresolved=" + this.unresolvedActiveAbilityIds.joinToString(","),
     )
 
     init {
@@ -157,30 +162,55 @@ class ResolvedAbilityNameLayout(
         require(this.aliasLabels.all { it.sourceRowIndex > baseRowCount }) {
             "ability alias labels must follow the excluded post-catalog sentinel"
         }
+        require(this.unresolvedActiveAbilityIds.all { it in 1 until baseRowCount }) {
+            "unresolved active ability IDs must lie inside the direct ability catalog"
+        }
+        require(this.unresolvedActiveAbilityIds.none { baseRows[it] is AbilityNameRowOutcome.Decoded }) {
+            "decoded ability names cannot also be marked unresolved"
+        }
     }
 
     override fun immutableSnapshot(): ResolvedAbilityNameLayout = this
 
     fun catalogAbilities(): Map<Int, AbilityRecord> = Collections.unmodifiableMap(
-        baseRows.mapNotNull { row ->
-            val name = (row as? AbilityNameRowOutcome.Decoded)?.name ?: return@mapNotNull null
-            row.rowIndex to AbilityRecord(row.rowIndex, CatalogField.available(name))
-        }.toMap(),
+        buildMap {
+            baseRows.mapNotNull { row ->
+                val name = (row as? AbilityNameRowOutcome.Decoded)?.name ?: return@mapNotNull null
+                row.rowIndex to AbilityRecord(row.rowIndex, CatalogField.available(name))
+            }.forEach { (id, ability) -> put(id, ability) }
+            unresolvedActiveAbilityIds.forEach { id ->
+                put(
+                    id,
+                    AbilityRecord(
+                        id,
+                        CatalogField.notFound(
+                            "compiled base stats reference ability $id but its fixed-width name record is malformed",
+                        ),
+                    ),
+                )
+            }
+        },
     )
 
     fun decodedDirectAbilityIds(): Set<Int> = Collections.unmodifiableSet(
         baseRows.filterIsInstance<AbilityNameRowOutcome.Decoded>().mapTo(linkedSetOf()) { it.rowIndex },
     )
 
+    fun catalogDirectAbilityIds(): Set<Int> = Collections.unmodifiableSet(
+        (decodedDirectAbilityIds() + unresolvedActiveAbilityIds).toSortedSet(),
+    )
+
     override fun equals(other: Any?): Boolean = this === other ||
         other is ResolvedAbilityNameLayout && table == other.table && rows == other.rows &&
-        baseRowCount == other.baseRowCount && aliasLabels == other.aliasLabels
+            baseRowCount == other.baseRowCount && aliasLabels == other.aliasLabels &&
+            unresolvedActiveAbilityIds == other.unresolvedActiveAbilityIds
 
     override fun hashCode(): Int {
         var result = table.hashCode()
         result = 31 * result + rows.hashCode()
         result = 31 * result + baseRowCount
         result = 31 * result + aliasLabels.hashCode()
+        result = 31 * result + unresolvedActiveAbilityIds.hashCode()
         return result
     }
 }
