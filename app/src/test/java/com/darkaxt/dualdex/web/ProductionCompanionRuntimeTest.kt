@@ -336,7 +336,7 @@ class ProductionCompanionRuntimeTest {
                     regions = listOf(
                         WorldMapRegion(
                             "hoenn", "Hoenn", 8, 8, 1, 1, "world/hoenn",
-                            listOf(WorldMapLocation("oldale", "Oldale Town", setOf(0x0011), listOf(WorldMapCell(0, 0, 1, 1)))),
+                            listOf(WorldMapLocation("oldale", "Oldale Town", setOf(0x0011, 0x0012), listOf(WorldMapCell(0, 0, 1, 1)))),
                         ),
                         WorldMapRegion(
                             "decoy", "Decoy", 8, 8, 1, 1, "world/decoy",
@@ -351,14 +351,16 @@ class ProductionCompanionRuntimeTest {
             ),
         )
 
+        runtime.action("OPEN_SPECIES", mapOf("speciesId" to "1"))
         runtime.updateLiveArea(0x0011)
         val state = runtime.action("MAP_AREA", mapOf("regionKey" to "hoenn", "locationKey" to "oldale"))
 
         assertEquals(setOf(0x0011), runtime.gateway.bootstrap().ledger.visitedAreaBaseIds)
         assertEquals(setOf(0x0011), repository.read(identity)!!.visitedAreaBaseIds)
         assertEquals("AREA", state.filter)
+        assertEquals(AppScreen.POKEDEX.name, state.screen)
         assertEquals(selectedAreaId, state.selectedAreaId)
-        assertEquals(listOf(selectedAreaId), state.currentAreaIds)
+        assertEquals(listOf(selectedAreaId, 0x0012 * 10 + 1), state.currentAreaIds)
         runtime.close()
     }
     @Test

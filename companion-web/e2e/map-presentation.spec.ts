@@ -11,7 +11,7 @@ const artifactDir = join(process.cwd(), '..', 'output', 'map-presentation');
 
 const state = {
   version: 1, screen: 'POKEDEX', priorScreen: 'POKEDEX', settingsReturnScreen: 'POKEDEX', selectedSpeciesId: null,
-  filter: 'AREA', selectedAreaId: null, currentAreaBaseId: 16, currentAreaName: 'Route 101', battleTab: 'ENTRY',
+  filter: 'AREA', selectedAreaId: null, selectedAreaIds: [] as number[], currentAreaBaseId: 16, currentAreaName: 'Route 101', battleTab: 'ENTRY',
   currentAreaIds: [161], currentAreaSpeciesIds: [5], revealedAreaBaseIds: [16, 17], observedAreaBaseIdsBySpecies: { 5: [17] },
   settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
   speciesState: { 5: { seen: true, caught: true, team: false, ballId: null }, 6: { seen: false, caught: false, team: false, ballId: null } }, observedMoves: {}, battle: null, catalogReady: true, catalogName: 'Emerald control', error: null,
@@ -24,18 +24,23 @@ const catalog = {
     { id: 5, dex: 5, name: 'Charmeleon', typeIds: [], stats: null, description: 'Fixture', height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
     { id: 6, dex: 6, name: 'Charizard', typeIds: [], stats: null, description: 'Fixture', height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
   ],
-  areas: [{ id: 171, baseAreaId: 17, name: 'Oldale grass', methodId: 1, speciesIds: [5, 6], windows: ['ANY'], slots: [
-    { speciesId: 5, minimumLevel: 3, maximumLevel: 4, weight: 50 },
-    { speciesId: 6, minimumLevel: 4, maximumLevel: 4, weight: 1 },
-  ] }],
+  areas: [
+    { id: 171, baseAreaId: 17, name: 'Oldale grass', methodId: 1, speciesIds: [5], windows: ['DAY'], slots: [{ speciesId: 5, minimumLevel: 3, maximumLevel: 4, weight: 50 }] },
+    { id: 181, baseAreaId: 18, name: 'Oldale water', methodId: 2, speciesIds: [6], windows: ['NIGHT'], slots: [{ speciesId: 6, minimumLevel: 4, maximumLevel: 4, weight: 1 }] },
+    { id: 191, baseAreaId: 19, name: 'Kanto grass', methodId: 1, speciesIds: [5], windows: ['DAY'], slots: [{ speciesId: 5, minimumLevel: 5, maximumLevel: 6, weight: 25 }] },
+  ],
   worldMaps: [{
     key: 'gen3-region-0', displayName: 'Hoenn', pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15,
     imageUrl: '/api/maps/world%2Fgen3-region-0.png',
     locations: [
       { key: 'section-16', displayName: 'Route 101', baseAreaIds: [16], geometry: [{ x: 3, y: 11, width: 2, height: 1 }] },
-      { key: 'section-17', displayName: 'Oldale Town', baseAreaIds: [17], geometry: [{ x: 4, y: 9, width: 1, height: 1 }] },
+      { key: 'section-17', displayName: 'Oldale Town', baseAreaIds: [17, 18], geometry: [{ x: 4, y: 9, width: 1, height: 1 }] },
       { key: 'section-18', displayName: 'Petalburg City', baseAreaIds: [18], geometry: [{ x: 23, y: 3, width: 1, height: 1 }] },
     ],
+  }, {
+    key: 'gen3-region-1', displayName: 'Kanto', pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15,
+    imageUrl: '/api/maps/world%2Fgen3-region-1.png',
+    locations: [{ key: 'section-19', displayName: 'Pallet Town', baseAreaIds: [19], geometry: [{ x: 3, y: 10, width: 1, height: 1 }] }],
   }],
 };
 
@@ -48,7 +53,7 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
   await page.route('**/api/actions', async route => {
     const action = route.request().postDataJSON() as Record<string, unknown>;
     actions.push(action);
-    if (action.type === 'MAP_AREA') serverState = { ...serverState, version: serverState.version + 1, screen: 'POKEDEX', filter: 'AREA', selectedAreaId: 171, currentAreaIds: [171], currentAreaSpeciesIds: [5] };
+    if (action.type === 'MAP_AREA') serverState = { ...serverState, version: serverState.version + 1, screen: 'POKEDEX', filter: 'AREA', selectedAreaId: 171, selectedAreaIds: [171, 181], currentAreaIds: [171, 181], currentAreaSpeciesIds: [5] };
     if (action.type === 'OPEN_SPECIES') serverState = { ...serverState, version: serverState.version + 1, screen: 'DETAIL', selectedSpeciesId: Number(action.speciesId) };
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(serverState) });
   });
@@ -181,6 +186,9 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
   await expect.poll(() => actions.at(-1)).toEqual({ type: 'MAP_AREA', regionKey: 'gen3-region-0', locationKey: 'section-17' });
   await expect(page.getByRole('button', { name: 'Charmeleon' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Unidentified encounter' })).toBeDisabled();
+  await expect(page.getByLabel('Day encounter')).toBeVisible();
+  await expect(page.getByLabel('Night encounter')).toBeVisible();
+  expect(serverState.currentAreaIds).toEqual([171, 181]);
   await page.getByRole('button', { name: 'Charmeleon' }).click();
   await page.getByRole('tab', { name: 'AREA' }).click();
   await expect(page.getByRole('img', { name: 'Hoenn Charmeleon habitat map' })).toBeVisible();
@@ -188,6 +196,7 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
   expect(pokemonMapBounds!.width / pokemonMapBounds!.height).toBeCloseTo(224 / 120, 2);
   await expect(page.getByRole('button', { name: 'Observed at Oldale Town' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Observed at Petalburg City' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Kanto' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Open selected Area Pokédex' }).locator('svg')).toHaveAttribute('data-semantic-icon', 'pokedex');
   await page.screenshot({ path: join(artifactDir, 'pokemon-area.png') });
   await page.getByRole('button', { name: 'Open selected Area Pokédex' }).click();
@@ -214,6 +223,7 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
     pointerCancelCleanup: true,
     pinchSelectionSuppressed: true,
     selectedAreaDexLocationPreserved: true,
+    multiBaseAreaIdsPreserved: serverState.currentAreaIds.length === 2,
     pokemonAreaOrganicMaskingAndReturn: true,
     pokemonAreaAspect: pokemonMapBounds!.width / pokemonMapBounds!.height,
     noMapFallback: true,

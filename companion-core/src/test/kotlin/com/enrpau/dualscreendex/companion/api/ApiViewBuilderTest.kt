@@ -133,6 +133,7 @@ class ApiViewBuilderTest {
     fun selectedMapAreaDrivesAreaDexWhilePhysicalCurrentLocationStaysTruthful() {
         val route101 = 0x0010 * 10 + 1
         val oldale = 0x0011 * 10 + 1
+        val oldaleWater = 0x0012 * 10 + 1
         val catalog = ParsedCatalog(
             romSha256 = "a".repeat(64),
             family = EngineFamily.EMERALD,
@@ -151,16 +152,18 @@ class ApiViewBuilderTest {
             encounterAreas = listOf(
                 EncounterArea(route101, CatalogField.available("Route 101 grass"), 1, listOf(EncounterSlot(1, 2, 3, 100))),
                 EncounterArea(oldale, CatalogField.available("Oldale water"), 2, listOf(EncounterSlot(2, 3, 4, 100))),
+                EncounterArea(oldaleWater, CatalogField.available("Oldale pond"), 3, listOf(EncounterSlot(1, 3, 4, 100))),
             ),
             runtimeMetadata = CatalogRuntimeMetadata(areaNamesByBaseId = mapOf(0x0010 to "Route 101")),
         )
         val snapshot = AppSnapshot(
             filter = com.enrpau.dualscreendex.companion.model.PokedexFilter.AREA,
             selectedAreaId = oldale,
+            selectedAreaIds = setOf(oldaleWater, oldale),
             liveAreaBaseId = 0x0010,
             ledger = KnowledgeLedger(
                 visitedAreaBaseIds = setOf(0x0010, 0x0011),
-                seenSpeciesByArea = mapOf(0x0011 to setOf(2)),
+                seenSpeciesByArea = mapOf(0x0011 to setOf(2), 0x0012 to setOf(1)),
             ),
         )
 
@@ -168,9 +171,10 @@ class ApiViewBuilderTest {
 
         assertEquals(0x0010, state.currentAreaBaseId)
         assertEquals("Route 101", state.currentAreaName)
-        assertEquals(listOf(oldale), state.currentAreaIds)
-        assertEquals(listOf(2), state.currentAreaSpeciesIds)
-        assertEquals(listOf(0x0010, 0x0011), state.revealedAreaBaseIds)
+        assertEquals(listOf(oldale, oldaleWater), state.selectedAreaIds)
+        assertEquals(listOf(oldale, oldaleWater), state.currentAreaIds)
+        assertEquals(listOf(1, 2), state.currentAreaSpeciesIds)
+        assertEquals(listOf(0x0010, 0x0011, 0x0012), state.revealedAreaBaseIds)
         assertEquals(listOf(0x0011), state.observedAreaBaseIdsBySpecies.getValue(2))
         assertEquals(0x0011, ApiViewBuilder.catalog(catalog).areas.single { it.id == oldale }.baseAreaId)
     }

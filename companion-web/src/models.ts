@@ -155,6 +155,7 @@ export interface State {
   selectedSpeciesId: number | null;
   filter: 'ALL' | 'CAUGHT' | 'SEEN' | 'TEAM' | 'AREA';
   selectedAreaId: number | null;
+  selectedAreaIds?: number[];
   currentAreaIds?: number[];
   currentAreaBaseId?: number | null;
   currentAreaName?: string | null;

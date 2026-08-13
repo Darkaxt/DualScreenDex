@@ -101,6 +101,7 @@ data class AppSnapshot(
     val selectedSpeciesId: Int? = null,
     val filter: PokedexFilter = PokedexFilter.ALL,
     val selectedAreaId: Int? = null,
+    val selectedAreaIds: Set<Int> = emptySet(),
     val battleTab: BattleTab = BattleTab.ENTRY,
     val settings: CompanionSettings = CompanionSettings(),
     val ledger: KnowledgeLedger = KnowledgeLedger(),
@@ -120,6 +121,7 @@ sealed interface CompanionAction {
     data object BackToPokedex : CompanionAction
     data class SetScreen(val screen: AppScreen) : CompanionAction
     data class SetFilter(val filter: PokedexFilter, val areaId: Int? = null) : CompanionAction
+    data class OpenAreaPokedex(val areaIds: Set<Int>) : CompanionAction
     data class SetBattleTab(val tab: BattleTab) : CompanionAction
     data class UpdateSettings(val settings: CompanionSettings) : CompanionAction
     data class BattleStarted(val battle: BattleState) : CompanionAction

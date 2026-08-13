@@ -93,6 +93,7 @@ describe('Pokédex evolution navigation', () => {
     expect(screen.getByRole('img', { name: 'Hoenn Charmeleon habitat map' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Observed at Oldale Town' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Observed at Petalburg City' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Kanto' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Observed at Oldale Town' }));
     fireEvent.click(screen.getByRole('button', { name: 'Open selected Area Pokédex' }));
     expect(send).toHaveBeenCalledWith('MAP_AREA', { regionKey: 'hoenn', locationKey: 'oldale' });
@@ -133,6 +134,7 @@ const catalog = {
   areas: [
     { id: 0x11 * 10 + 1, baseAreaId: 0x11, name: 'Oldale grass', methodId: 1, speciesIds: [5, 6], windows: ['ANY'], slots: [{ speciesId: 5, minimumLevel: 3, maximumLevel: 4, weight: 50 }] },
     { id: 0x12 * 10 + 1, baseAreaId: 0x12, name: 'Petalburg grass', methodId: 1, speciesIds: [5], windows: ['ANY'], slots: [{ speciesId: 5, minimumLevel: 4, maximumLevel: 5, weight: 50 }] },
+    { id: 0x13 * 10 + 1, baseAreaId: 0x13, name: 'Kanto grass', methodId: 1, speciesIds: [5], windows: ['ANY'], slots: [{ speciesId: 5, minimumLevel: 5, maximumLevel: 6, weight: 50 }] },
   ],
   worldMaps: [{
     key: 'hoenn', displayName: 'Hoenn', pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15,
@@ -141,6 +143,10 @@ const catalog = {
       { key: 'oldale', displayName: 'Oldale Town', baseAreaIds: [0x11], geometry: [{ x: 4, y: 9, width: 1, height: 1 }] },
       { key: 'petalburg', displayName: 'Petalburg City', baseAreaIds: [0x12], geometry: [{ x: 2, y: 8, width: 1, height: 1 }] },
     ],
+  }, {
+    key: 'kanto', displayName: 'Kanto', pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15,
+    imageUrl: '/api/maps/world%2Fkanto.png',
+    locations: [{ key: 'pallet', displayName: 'Pallet Town', baseAreaIds: [0x13], geometry: [{ x: 3, y: 10, width: 1, height: 1 }] }],
   }],
   types: [{ id: 10, name: 'Fire', foreground: '#111', background: '#f80', border: '#b40' }],
   species: [

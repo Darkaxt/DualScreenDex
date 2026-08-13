@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.BattleEncounterKind
 import com.enrpau.dualscreendex.companion.model.BattleTab
 import com.enrpau.dualscreendex.companion.model.CompanionAction
+import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicReference
 
@@ -57,7 +58,17 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         } else {
             state.copy(screen = action.screen)
         }
-        is CompanionAction.SetFilter -> state.copy(filter = action.filter, selectedAreaId = action.areaId)
+        is CompanionAction.SetFilter -> state.copy(
+            filter = action.filter,
+            selectedAreaId = action.areaId,
+            selectedAreaIds = if (action.filter == PokedexFilter.AREA) setOfNotNull(action.areaId) else emptySet(),
+        )
+        is CompanionAction.OpenAreaPokedex -> state.copy(
+            screen = AppScreen.POKEDEX,
+            filter = PokedexFilter.AREA,
+            selectedAreaId = action.areaIds.minOrNull(),
+            selectedAreaIds = action.areaIds,
+        )
         is CompanionAction.SetBattleTab -> state.copy(battleTab = action.tab)
         is CompanionAction.UpdateSettings -> state.copy(settings = action.settings)
         is CompanionAction.BattleStarted -> state.copy(

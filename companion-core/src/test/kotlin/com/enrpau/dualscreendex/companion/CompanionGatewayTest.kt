@@ -66,6 +66,20 @@ class CompanionGatewayTest {
     )
 
     @Test
+    fun areaPokedexNavigationLeavesDetailAndPreservesEverySelectedEncounterArea() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.OpenSpecies(25))
+
+        val browse = gateway.dispatch(CompanionAction.OpenAreaPokedex(setOf(172, 111, 171)))
+
+        assertEquals(AppScreen.POKEDEX, browse.screen)
+        assertEquals(com.enrpau.dualscreendex.companion.model.PokedexFilter.AREA, browse.filter)
+        assertEquals(111, browse.selectedAreaId)
+        assertEquals(setOf(111, 171, 172), browse.selectedAreaIds)
+        assertEquals(25, browse.selectedSpeciesId)
+    }
+
+    @Test
     fun snapshotsAdvanceMonotonicallyAndReturnToBrowse() {
         val gateway = CompanionGateway()
         val detail = gateway.dispatch(CompanionAction.OpenSpecies(25))

@@ -21,6 +21,7 @@ class AndroidLoopbackServerTest {
     @Test
     fun routesMapLocationSelectionThroughTheLoopbackActionApi() {
         val areaId = 0x0011 * 10 + 1
+        val secondAreaId = 0x0012 * 10 + 1
         val runtime = ProductionCompanionRuntime().apply {
             loadCatalog(
                 "map.gba",
@@ -30,12 +31,13 @@ class AndroidLoopbackServerTest {
                     Platform.GBA,
                     encounterAreas = listOf(
                         EncounterArea(areaId, CatalogField.available("Oldale grass"), 1, listOf(EncounterSlot(1, 2, 3, 100))),
+                        EncounterArea(secondAreaId, CatalogField.available("Oldale water"), 2, listOf(EncounterSlot(2, 3, 4, 100))),
                     ),
                     worldMaps = WorldMapCatalog(
                         regions = listOf(
                             WorldMapRegion(
                                 "region-0", "Hoenn", 8, 8, 1, 1, "world/region-0",
-                                listOf(WorldMapLocation("oldale", "Oldale Town", setOf(0x0011), listOf(WorldMapCell(0, 0, 1, 1)))),
+                                listOf(WorldMapLocation("oldale", "Oldale Town", setOf(0x0011, 0x0012), listOf(WorldMapCell(0, 0, 1, 1)))),
                             ),
                         ),
                         assets = mapOf("world/region-0" to RgbaSprite(8, 8, IntArray(64))),
@@ -45,6 +47,7 @@ class AndroidLoopbackServerTest {
         }
         val server = AndroidLoopbackServer(runtime) { null }
         try {
+            runtime.action("OPEN_SPECIES", mapOf("speciesId" to "1"))
             server.start()
             val body = post(
                 "http://127.0.0.1:${server.address.port}/api/actions",
@@ -52,8 +55,10 @@ class AndroidLoopbackServerTest {
             )
 
             assertTrue(body.contains("\"filter\":\"AREA\""))
+            assertTrue(body.contains("\"screen\":\"POKEDEX\""))
             assertTrue(body.contains("\"selectedAreaId\":$areaId"))
-            assertTrue(body.contains("\"currentAreaIds\":[$areaId]"))
+            assertTrue(body.contains("\"selectedAreaIds\":[$areaId,$secondAreaId]"))
+            assertTrue(body.contains("\"currentAreaIds\":[$areaId,$secondAreaId]"))
         } finally {
             server.close()
         }

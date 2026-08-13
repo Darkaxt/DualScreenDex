@@ -507,13 +507,13 @@ class ProductionCompanionRuntime(
                 val location = region.locations.asSequence()
                     .singleOrNull { it.key == locationKey }
                     ?: error("map location is unavailable or ambiguous")
-                val areaId = catalog?.encounterAreas
+                val areaIds = catalog?.encounterAreas
                     ?.filter { it.id / 10 in location.baseAreaIds }
-                    ?.minByOrNull { it.id }
-                    ?.id
+                    ?.mapTo(sortedSetOf()) { it.id }
+                    ?.takeIf { it.isNotEmpty() }
                     ?: error("map location has no encounter area")
                 gateway.dispatch(
-                    CompanionAction.SetFilter(PokedexFilter.AREA, areaId),
+                    CompanionAction.OpenAreaPokedex(areaIds),
                 )
             }
             "SETTINGS" -> updateSettings(values)

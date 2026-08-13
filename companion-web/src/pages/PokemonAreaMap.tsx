@@ -14,9 +14,10 @@ export function PokemonAreaMap({ catalog, state, speciesId, send }: { catalog: C
     () => organic ? new Set(state.observedAreaBaseIdsBySpecies?.[speciesId] ?? []) : habitatBaseIds,
     [habitatBaseIds, organic, speciesId, state.observedAreaBaseIdsBySpecies],
   );
+  const presentedBaseIds = organic ? visibleBaseIds : habitatBaseIds;
   const mapRegions = useMemo(() => (catalog.worldMaps ?? []).filter(region =>
-    region.locations.some(location => location.baseAreaIds.some(baseAreaId => habitatBaseIds.has(baseAreaId))),
-  ), [catalog.worldMaps, habitatBaseIds]);
+    region.locations.some(location => location.baseAreaIds.some(baseAreaId => presentedBaseIds.has(baseAreaId))),
+  ), [catalog.worldMaps, presentedBaseIds]);
   const [regionKey, setRegionKey] = useState(() => mapRegions[0]?.key ?? '');
   const region = mapRegions.find(candidate => candidate.key === regionKey) ?? mapRegions[0];
   const visibleLocations = useMemo(() => region?.locations.filter(location =>
@@ -30,7 +31,7 @@ export function PokemonAreaMap({ catalog, state, speciesId, send }: { catalog: C
     if (region && fogRef.current) paintFog(fogRef.current, region, visibleLocations);
   }, [region?.key, visibleLocations]);
 
-  if (!region) return <div class="pokemon-area-empty empty-state"><strong>MAP UNAVAILABLE</strong><p>This ROM has no normalized world map for habitat presentation.</p></div>;
+  if (!region) return <div class="pokemon-area-empty empty-state"><strong>{organic && habitatBaseIds.size > 0 ? 'NO KNOWN LOCATIONS' : 'MAP UNAVAILABLE'}</strong><p>{organic && habitatBaseIds.size > 0 ? 'Discover this Pokémon in the wild to reveal its habitat.' : 'This ROM has no normalized world map for habitat presentation.'}</p></div>;
 
   return <section class="pokemon-area-panel" aria-label="Pokémon habitat atlas">
     <header>
