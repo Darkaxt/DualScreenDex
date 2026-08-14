@@ -91,6 +91,44 @@ class Gen2WorldMapHackRealControlTest {
         assertEquals(ANNIVERSARY_CRYSTAL_LOCATION_SHA, locationFingerprint(catalog))
     }
 
+    @Test fun kalosCrystalResolvesThroughPairedCompiledCoreConsumers() {
+        val rom = realRom("DUALDEX_KALOS_CRYSTAL_ROM", KALOS_CRYSTAL_SHA)
+        val encounters = encounters(rom)
+        assertEquals(335, encounters.size)
+        assertEquals(114, encounters.map { it.id / 10 }.toSet().size)
+        assertEquals(
+            mapOf(
+                EncounterMethods.WATER to 62,
+                EncounterMethods.GRASS_MORNING to 91,
+                EncounterMethods.GRASS_DAY to 91,
+                EncounterMethods.GRASS_NIGHT to 91,
+            ),
+            encounters.groupingBy { it.methodId }.eachCount(),
+        )
+        assertTrue(encounters.all { area ->
+            area.slots.isNotEmpty() && area.slots.all { slot ->
+                slot.speciesId in 1..229 && slot.minimumLevel in 1..100 &&
+                    slot.maximumLevel in slot.minimumLevel..100 && (slot.weight ?: 0) > 0
+            }
+        })
+        assertEquals(KALOS_CRYSTAL_ENCOUNTER_SHA, encounterFingerprint(encounters))
+
+        val result = resolve(rom, encounters)
+
+        assertTrue("Kalos Crystal: $result", result is WorldMapResolution.Resolved)
+        val catalog = (result as WorldMapResolution.Resolved).catalog.validate()
+        assertEquals(listOf("gen2-johto", "gen2-kanto"), catalog.regions.map { it.key })
+        assertEquals(114, catalog.regions.flatMap { it.locations }.flatMap { it.baseAreaIds }.toSet().size)
+        assertEquals(listOf(45 to 78, 34 to 36), catalog.regions.map { region ->
+            region.locations.size to region.locations.sumOf { it.baseAreaIds.size }
+        })
+        assertEquals(
+            listOf(KALOS_CRYSTAL_JOHTO_RASTER_SHA, KALOS_CRYSTAL_KANTO_RASTER_SHA),
+            catalog.regions.map { sha256(catalog.assets.getValue(it.imageAssetKey)) },
+        )
+        assertEquals(KALOS_CRYSTAL_LOCATION_SHA, locationFingerprint(catalog))
+    }
+
     @Test fun malformedOneThresholdFailsClosed() {
         val source = bronze2Bytes()
         val classifier = findOneThresholdClassifier(source)
@@ -226,5 +264,15 @@ class Gen2WorldMapHackRealControlTest {
             "7dd5ca12862111503bb473fc9cdf627a30242e3ae2b5ba1dc23cbaab5795d85b"
         const val ANNIVERSARY_CRYSTAL_ENCOUNTER_SHA =
             "8bc6b49c14234887082577358111426afd8f499661d1dd5ae56cd36a012536fb"
+        const val KALOS_CRYSTAL_SHA =
+            "7cd8957e47a04bf0542de5d6a65affb369704e85ce11e03022be491be7dc1050"
+        const val KALOS_CRYSTAL_JOHTO_RASTER_SHA =
+            "adb9cefb64aece67c7cff271b70183af5dafa7c3e95beffd31436a7cab79a5e9"
+        const val KALOS_CRYSTAL_KANTO_RASTER_SHA =
+            "c53b3c2e032545fa2452bbadd4a29aea8619cc852b9ed45d17d6d8475cebe5b7"
+        const val KALOS_CRYSTAL_LOCATION_SHA =
+            "355728883137963f6696793e9b5834a0155be312c8abd4d57a572c78981445d2"
+        const val KALOS_CRYSTAL_ENCOUNTER_SHA =
+            "287025214d7e1eb4c5aa43a744924b133dded32cd7cc0db3eeb6d8397aede804"
     }
 }

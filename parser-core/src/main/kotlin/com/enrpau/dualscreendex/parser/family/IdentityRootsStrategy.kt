@@ -18,6 +18,7 @@ import com.enrpau.dualscreendex.parser.parse.GbaPublishedDataState
 import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolution
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
+import com.enrpau.dualscreendex.parser.parse.Gen2CompiledCoreResolver
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolution
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
@@ -116,6 +117,14 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         } else {
             null
         }
+        // A larger 8-bit boundary can include reserved IDs; without an active predicate it is not authoritative.
+        val gen2CompiledCore = if (generation == 2 && identityMatched && exact == null) {
+            Gen2CompiledCoreResolver.resolve(session.rom)?.takeIf { compiled ->
+                baseProfile != null && compiled.speciesCount < baseProfile.internalSpeciesCount
+            }
+        } else {
+            null
+        }
         val compiledGbaReferences = if (generation == 3 && expansion == null) {
             requireNotNull(session.gbaReferenceIndex).asLegacyCounts()
         } else {
@@ -123,14 +132,22 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         }
         val inheritedTableResolution = expansion?.let { ProfileTableResolution(it.tables) }
             ?: resolveTables(session.rom, definition, baseProfile)
-        val tableResolution = headerlessUnifiedSpecies?.let { unified ->
+        val compiledCoreTableResolution = gen2CompiledCore?.let { compiled ->
             inheritedTableResolution.copy(
                 tables = inheritedTableResolution.tables.copy(
+                    speciesNames = compiled.tables.speciesNames,
+                    baseStats = compiled.tables.baseStats,
+                ),
+            )
+        } ?: inheritedTableResolution
+        val tableResolution = headerlessUnifiedSpecies?.let { unified ->
+            compiledCoreTableResolution.copy(
+                tables = compiledCoreTableResolution.tables.copy(
                     speciesNames = unified.tables.speciesNames,
                     baseStats = unified.tables.baseStats,
                 ),
             )
-        } ?: inheritedTableResolution
+        } ?: compiledCoreTableResolution
         val codec = if (generation == 3) PokemonTextCodec.gbaEnglish else PokemonTextCodec.gbEnglish
         return IdentityRootsPhaseResult.Resolved(
             exactProfile = exact,
