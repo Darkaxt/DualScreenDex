@@ -5,7 +5,7 @@ This handoff is mandatory for every signed candidate. The registry update is not
 ## 1. Verify the protected GitHub release
 
 - Confirm the tag is new and the release was created by the protected signing workflow.
-- Download the APK, `SHA256SUMS.txt`, `provenance.json`, certificate, both Parser Compatibility documents, both ROM Hacks Compatibility documents, the exact first-50 base/map/ARM7 gate documents, and the full-332 base summary/matrix.
+- Download the APK, `SHA256SUMS.txt`, `provenance.json`, certificate, both Parser Compatibility documents, both ROM Hacks Compatibility documents, the exact first-50 base/map/evolution/ARM7 gate documents, and the full-332 base summary/matrix.
 - Recompute every checksum and verify the APK package, version name/code, and certificate fingerprint against the release metadata.
 
 ## 2. Validate the signed APK on the physical AYN Thor

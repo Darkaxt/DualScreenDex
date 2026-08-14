@@ -94,7 +94,7 @@ test("runs Android deployment safety checks in CI and before release signing", (
   assert.match(workflow.slice(0, workflow.indexOf("  sign-and-publish:")), command);
 });
 
-test("publishes the independently gated base, map, and ARM7 compatibility evidence", () => {
+test("publishes the independently gated base, map, evolution, and ARM7 compatibility evidence", () => {
   const requiredEvidence = [
     "dualdex-base-first50-release-gate.json",
     "dualdex-base-first50-release-gate.md",
@@ -102,6 +102,8 @@ test("publishes the independently gated base, map, and ARM7 compatibility eviden
     "dualdex-base-full332-compatibility.md",
     "dualdex-map-first50-release-gate.json",
     "dualdex-map-first50-release-gate.md",
+    "dualdex-evolution-first50-release-gate.json",
+    "dualdex-evolution-first50-release-gate.md",
     "dualdex-arm7-first50-compatibility.md",
   ];
 
@@ -110,8 +112,10 @@ test("publishes the independently gated base, map, and ARM7 compatibility eviden
   }
   assert.match(workflow, /\.summary\.available >= 25/);
   assert.match(workflow, /\.summary\.statusDistribution\.SELECTED == 50/);
+  assert.match(workflow, /\.summary\.completeTables == 50/);
   assert.match(workflow, /\.uniqueSha256Identities == 332/);
   assert.match(workflow, /\.mapFirst50Available == 26/);
+  assert.match(workflow, /\.evolutionFirst50Complete == 50/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });
 
