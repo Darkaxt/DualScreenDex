@@ -18,6 +18,7 @@ import com.enrpau.dualscreendex.parser.parse.GbaPublishedDataState
 import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolution
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
+import com.enrpau.dualscreendex.parser.parse.Gen1CompiledNameResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledCoreResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledMoveResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledSpriteResolver
@@ -140,14 +141,26 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         }
         val inheritedTableResolution = expansion?.let { ProfileTableResolution(it.tables) }
             ?: resolveTables(session.rom, definition, baseProfile)
-        val compiledCoreTableResolution = gen2CompiledCore?.let { compiled ->
+        val compiledGen1Names = if (generation == 1 && exact == null) {
+            inheritedTableResolution.tables.speciesNames?.let { inherited ->
+                Gen1CompiledNameResolver.resolve(session.rom, inherited.count)
+            }
+        } else {
+            null
+        }
+        val compiledGen1NameTableResolution = compiledGen1Names?.let { speciesNames ->
             inheritedTableResolution.copy(
-                tables = inheritedTableResolution.tables.copy(
+                tables = inheritedTableResolution.tables.copy(speciesNames = speciesNames),
+            )
+        } ?: inheritedTableResolution
+        val compiledCoreTableResolution = gen2CompiledCore?.let { compiled ->
+            compiledGen1NameTableResolution.copy(
+                tables = compiledGen1NameTableResolution.tables.copy(
                     speciesNames = compiled.tables.speciesNames,
                     baseStats = compiled.tables.baseStats,
                 ),
             )
-        } ?: inheritedTableResolution
+        } ?: compiledGen1NameTableResolution
         val compiledMoveData = if (generation == 2 && exact == null) {
             compiledCoreTableResolution.tables.moveData?.let { inherited ->
                 Gen2CompiledMoveResolver.resolve(session.rom, inherited.count)

@@ -19,6 +19,8 @@ class Gen1WorldMapRealControlTest {
     @Test fun redResolvesItsExactSourceOracle() = assertControl(CONTROLS[0])
     @Test fun blueResolvesItsExactSourceOracle() = assertControl(CONTROLS[1])
     @Test fun yellowResolvesItsExactSourceOracle() = assertControl(CONTROLS[2])
+    @Test fun shinRedResolvesRelocatedCompiledNamesAndMap() = assertControl(CONTROLS[3])
+    @Test fun shinBlueResolvesRelocatedCompiledNamesAndMap() = assertControl(CONTROLS[4])
 
     private fun assertControl(control: Control) {
         val rom = realRom(control)
@@ -100,6 +102,18 @@ class Gen1WorldMapRealControlTest {
                 "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
                 RASTER_SHA,
                 "3c2f8177ae8d2073822e04d85bc76fb7f45e056e48c6ba5bf7297e22ef54dfbf",
+            ),
+            Control(
+                "DUALDEX_SHIN_RED_ROM",
+                "024a1c4dab1b12d0b963c6cf756d2c1082de0ccd53fe31384787dcf34edef718",
+                RASTER_SHA,
+                "165454e8cc5450e8a1edd0c6dcbfebb47e3254f1eb198d396efcdd5ef97d4433",
+            ),
+            Control(
+                "DUALDEX_SHIN_BLUE_ROM",
+                "25e39e5ef5ef0de0f7faf481827927a4033ac1d31782a2b9be9a8412d8fd1158",
+                RASTER_SHA,
+                "165454e8cc5450e8a1edd0c6dcbfebb47e3254f1eb198d396efcdd5ef97d4433",
             ),
         )
     }
