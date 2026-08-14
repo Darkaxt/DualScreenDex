@@ -9,11 +9,13 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
+import java.awt.image.BufferedImage
 import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.time.Instant
+import javax.imageio.ImageIO
 
 /** Evidence-only real-corpus runner. No ROM identity or outcome from this class enters production parsing. */
 object MapFirst50Matrix {
@@ -50,6 +52,8 @@ object MapFirst50Matrix {
             val rom = RomImage(bytes)
             val header = RomHeaderReader.read(rom)
             val run1 = run(path)
+            val renderDirectory = System.getenv("DUALDEX_MAP_RENDER_DIRECTORY")?.let(Path::of)
+            if (renderDirectory != null) render(path, renderDirectory)
             val run2 = run(path)
             val baseline = baselineBySha[rom.sha256]
             val observation = RomObservation(
@@ -114,6 +118,17 @@ object MapFirst50Matrix {
         )
         writeReport(outputPath, report.copy(summary = summary))
         println("matrix summary: ${gson.toJson(summary)}")
+    }
+
+    private fun render(path: Path, directory: Path) {
+        val maps = requireNotNull(CatalogParser.parse(RomImage(Files.readAllBytes(path))).catalog).worldMaps
+        Files.createDirectories(directory)
+        maps.regions.forEach { region ->
+            val raster = requireNotNull(maps.assets[region.imageAssetKey])
+            val image = BufferedImage(raster.width, raster.height, BufferedImage.TYPE_INT_ARGB)
+            image.setRGB(0, 0, raster.width, raster.height, raster.argb, 0, raster.width)
+            check(ImageIO.write(image, "png", directory.resolve("${region.key}.png").toFile()))
+        }
     }
 
     private fun run(path: Path): RunObservation {

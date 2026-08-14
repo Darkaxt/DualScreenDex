@@ -111,17 +111,18 @@ object Gen3WorldMapResolver {
             )
         }
         val winner = winnerGroups.single()
-        if (winner.maps.size != TEXT_REGION_COUNT) {
+        if (winner.regions.isEmpty() || winner.regions.map(TextRegionAsset::slot) != (0 until winner.regions.size).toList()) {
             return WorldMapResolution.Unavailable(
                 "map-plane",
-                "text-map loader cluster exposed ${winner.maps.size} regions instead of $TEXT_REGION_COUNT",
+                "text-map loader cluster did not expose contiguous branch-owned regions",
             )
         }
-        val layouts = resolveTextSemanticLayouts(rom, references, functionIndex)
-            ?: return WorldMapResolution.Unavailable(
-                "map-plane",
-                "four semantic text-map section planes did not resolve uniquely",
-            )
+        val semanticCandidates = resolveTextSemanticLayouts(
+            rom,
+            references,
+            functionIndex,
+            winner.regions.map(TextRegionAsset::slot).toSet(),
+        )
         val sectionByBaseArea = Gen3MapLocationResolver.resolveSectionByBaseArea(rom, encounterBaseIds, references)
         if (sectionByBaseArea.isEmpty()) {
             return WorldMapResolution.Unavailable(
@@ -130,9 +131,29 @@ object Gen3WorldMapResolver {
             )
         }
         val baseAreasBySection = sectionByBaseArea.entries.groupBy({ it.value }, { it.key })
+        val layoutWinner = when (semanticCandidates.size) {
+            1 -> semanticCandidates.single()
+            else -> {
+                val layouts = semanticCandidates.filter { candidate ->
+                    candidate.all { textLocations(it, baseAreasBySection).isNotEmpty() }
+                }
+                val maximumBindings = layouts.maxOfOrNull { candidate ->
+                    candidate.sumOf { layout -> textLocations(layout, baseAreasBySection).size }
+                }
+                maximumBindings?.let { count ->
+                    layouts.filter { candidate ->
+                        candidate.sumOf { layout -> textLocations(layout, baseAreasBySection).size } == count
+                    }.singleOrNull()
+                }
+            }
+        } ?: return WorldMapResolution.Unavailable(
+            "map-plane",
+            "text-map semantic section planes did not resolve uniquely",
+        )
         val regions = mutableListOf<WorldMapRegion>()
         val assets = linkedMapOf<String, com.enrpau.dualscreendex.parser.catalog.RgbaSprite>()
-        winner.maps.zip(layouts).forEachIndexed { index, (map, layout) ->
+        winner.regions.zip(layoutWinner).forEach { (regionAsset, layout) ->
+            val index = regionAsset.slot
             val normalized = textLocations(layout, baseAreasBySection)
             if (normalized.isEmpty()) {
                 return WorldMapResolution.Unavailable(
@@ -145,19 +166,19 @@ object Gen3WorldMapResolver {
             regions += WorldMapRegion(
                 regionKey,
                 null,
-                map.composition.raster.width,
-                map.composition.raster.height,
-                map.composition.gridWidth,
-                map.composition.gridHeight,
+                regionAsset.asset.composition.raster.width,
+                regionAsset.asset.composition.raster.height,
+                regionAsset.asset.composition.gridWidth,
+                regionAsset.asset.composition.gridHeight,
                 assetKey,
                 normalized,
             )
-            assets[assetKey] = map.composition.raster
+            assets[assetKey] = regionAsset.asset.composition.raster
         }
         return WorldMapResolution.Resolved(
             WorldMapCatalog(regions, assets).validate(),
             listOf(
-                "validated one shared text-map loader cluster with four independent regions",
+                "validated one text-map loader cluster with ${winner.regions.size} branch-owned regions",
                 "joined each region to its compiled semantic section plane",
             ),
         )
@@ -251,55 +272,138 @@ object Gen3WorldMapResolver {
                 !GbaWorldMapCompositor.isTextMapByteLength(it.decoded.size)
         }
         return buildList {
-            graphics.forEach { graphicsStream ->
-                val functions = loaderFunctions(references, functionIndex, graphicsStream.offset)
-                functions.forEach { functionStart ->
-                    val referencedMaps = maps.filter { functionStart in loaderFunctions(references, functionIndex, it.offset) }
+            functionsWithTextMaps(references, functionIndex, maps).forEach { functionStart ->
+                val referencedMaps = maps.filter { functionStart in loaderFunctions(references, functionIndex, it.offset) }
+                val mapsBySlot = referencedMaps.mapNotNull { map ->
+                    compressedDestinationOffset(rom, references, functionIndex, map.offset, functionStart)
+                        ?.let { destination -> destination to map }
+                }.groupBy({ it.first }, { it.second })
+                val destinations = mapsBySlot.keys.sorted()
+                val baseDestination = destinations.firstOrNull() ?: return@forEach
+                val slotByDestination = destinations.mapNotNull { destination ->
+                    val delta = destination - baseDestination
+                    if (delta >= 0 && delta % TEXT_MAP_BYTES == 0) destination to (delta / TEXT_MAP_BYTES) else null
+                }.toMap()
+                if (slotByDestination.size != destinations.size) return@forEach
+
+                val bundles = graphics.mapNotNull { graphicsStream ->
+                    if (functionStart !in loaderFunctions(references, functionIndex, graphicsStream.offset)) return@mapNotNull null
                     val palettes = paletteCandidatesInFunction(
                         rom,
                         references,
                         functionIndex,
                         functionStart,
                         excludedOffsets = intArrayOf(graphicsStream.offset) + referencedMaps.map(CompressedStream::offset),
-                        colors = TEXT_PALETTE_COLORS,
                     )
-                    palettes.forEach { palette ->
-                        val resolvedMaps = referencedMaps.mapNotNull { map ->
-                            val result = GbaWorldMapCompositor.compose(graphicsStream.decoded, map.decoded, palette.colors)
-                            if (result is GbaWorldMapComposition.Resolved &&
-                                result.format == GbaWorldMapFormat.TEXT_4BPP_30X20
-                            ) {
-                                TextMapCandidate(
-                                    asset = AssetCandidate(graphicsStream.offset, map.offset, palette.offset, result),
-                                    destinationOffset = compressedDestinationOffset(
-                                        rom,
-                                        references,
-                                        functionIndex,
-                                        map.offset,
-                                        functionStart,
-                                    ) ?: return@mapNotNull null,
-                                )
-                            } else {
-                                null
-                            }
-                        }.distinctBy(TextMapCandidate::destinationOffset).sortedBy(TextMapCandidate::destinationOffset)
-                        if (resolvedMaps.size == TEXT_LOADER_DESTINATION_COUNT &&
-                            resolvedMaps.zipWithNext().all { (left, right) ->
-                                right.destinationOffset - left.destinationOffset == TEXT_MAP_BYTES
-                            }
-                        ) {
-                            add(
-                                TextAssetCandidate(
-                                    graphicsStream.offset,
-                                    palette.offset,
-                                    resolvedMaps.take(TEXT_REGION_COUNT).map(TextMapCandidate::asset),
-                                ),
+                    palettes.mapNotNull { palette ->
+                        val graphicsSlot = branchSelectionSlot(
+                            rom,
+                            references,
+                            functionIndex,
+                            functionStart,
+                            setOf(graphicsStream.offset),
+                        )
+                        val paletteSlot = branchSelectionSlot(
+                            rom,
+                            references,
+                            functionIndex,
+                            functionStart,
+                            setOf(palette.offset),
+                        )
+                        if (graphicsSlot != null && paletteSlot != null && graphicsSlot != paletteSlot) {
+                            return@mapNotNull null
+                        }
+                        TextAssetBundle(graphicsStream, palette, graphicsSlot ?: paletteSlot)
+                    }
+                }.flatten()
+
+                val regionAssets = slotByDestination.entries.mapNotNull { (destination, slot) ->
+                    if (slot == TEXT_BACKGROUND_SLOT) return@mapNotNull null
+                    val map = mapsBySlot[destination]?.singleOrNull() ?: return@mapNotNull null
+                    val eligible = bundles.mapNotNull { bundle ->
+                        if (bundle.branchSlot != null && bundle.branchSlot != slot) return@mapNotNull null
+                        val result = GbaWorldMapCompositor.compose(bundle.graphics.decoded, map.decoded, bundle.palette.colors)
+                        if (result is GbaWorldMapComposition.Resolved && result.format == GbaWorldMapFormat.TEXT_4BPP_30X20) {
+                            TextRegionAsset(
+                                slot,
+                                AssetCandidate(bundle.graphics.offset, map.offset, bundle.palette.offset, result),
                             )
+                        } else {
+                            null
+                        }
+                    }.distinctBy { it.asset.identity }
+                    when {
+                        eligible.size == 1 -> eligible.single()
+                        eligible.isEmpty() -> null
+                        else -> eligible.singleOrNull { candidate ->
+                            bundles.any { bundle ->
+                                bundle.branchSlot == slot &&
+                                    bundle.graphics.offset == candidate.asset.graphicsOffset &&
+                                    bundle.palette.offset == candidate.asset.paletteOffset
+                            }
                         }
                     }
+                }.sortedBy(TextRegionAsset::slot)
+
+                if (regionAssets.isNotEmpty() &&
+                    regionAssets.map(TextRegionAsset::slot) == (0 until regionAssets.size).toList() &&
+                    (regionAssets.size > 1 || destinations.size == TEXT_LOADER_DESTINATION_COUNT)
+                ) {
+                    add(TextAssetCandidate(functionStart, regionAssets))
                 }
             }
         }.distinctBy(TextAssetCandidate::identity)
+    }
+
+    private fun functionsWithTextMaps(
+        references: GbaReferenceIndex,
+        functionIndex: ThumbFunctionIndex,
+        maps: List<CompressedStream>,
+    ): Set<Int> = maps.flatMap { loaderFunctions(references, functionIndex, it.offset) }.toSet()
+
+    private fun branchSelectionSlot(
+        rom: RomImage,
+        references: GbaReferenceIndex,
+        functionIndex: ThumbFunctionIndex,
+        functionStart: Int,
+        targets: Set<Int>,
+    ): Int? {
+        val sites = targets.flatMap { target ->
+            completeSites(references, target).orEmpty().filter { functionIndex.functionStart(it) == functionStart }
+        }
+        if (sites.isEmpty()) return null
+        val slots = sites.mapNotNull { site -> precedingBranchSlot(rom, functionStart, site) }.distinct()
+        return slots.singleOrNull()
+    }
+
+    private fun precedingBranchSlot(rom: RomImage, functionStart: Int, site: Int): Int? {
+        var cursor = functionStart
+        var exact: Pair<Int, Int>? = null
+        var guardedFallthrough: Pair<Int, Int>? = null
+        while (cursor + 4 <= site) {
+            val compare = rom.u16le(cursor)
+            if (compare and THUMB_COMPARE_IMMEDIATE_MASK == THUMB_COMPARE_IMMEDIATE_OPCODE) {
+                val branchOffset = cursor + 2
+                val branch = branchDestination(rom, branchOffset)
+                val slot = compare and 0xff
+                when {
+                    branch == site -> exact = cursor to slot
+                    branch != null && branch > site &&
+                        thumbBranchCondition(rom, branchOffset) == THUMB_CONDITION_NOT_EQUAL -> {
+                        guardedFallthrough = cursor to slot
+                    }
+                }
+            }
+            cursor += 2
+        }
+        return (exact ?: guardedFallthrough)?.second
+    }
+
+    private fun thumbBranchCondition(rom: RomImage, branchOffset: Int): Int? {
+        if (branchOffset < 0 || branchOffset + 2 > rom.size) return null
+        val instruction = rom.u16le(branchOffset)
+        if (instruction and THUMB_CONDITIONAL_BRANCH_MASK != THUMB_CONDITIONAL_BRANCH_OPCODE) return null
+        return instruction ushr 8 and 0xf
     }
 
     private fun paletteCandidatesInFunction(
@@ -308,12 +412,15 @@ object Gen3WorldMapResolver {
         functionIndex: ThumbFunctionIndex,
         functionStart: Int,
         excludedOffsets: IntArray,
-        colors: Int,
     ): List<PaletteCandidate> = references.targets.keys.mapNotNull { offset ->
         if (offset in excludedOffsets || functionStart !in loaderFunctions(references, functionIndex, offset)) return@mapNotNull null
-        val sites = completeSites(references, offset).orEmpty().filter { functionIndex.functionStart(it) == functionStart }
-        if (sites.none { paletteLoadByteCount(rom, it) == colors * 2 }) return@mapNotNull null
-        readPalette(rom, offset, colors)
+        val byteCounts = completeSites(references, offset).orEmpty()
+            .filter { functionIndex.functionStart(it) == functionStart }
+            .mapNotNull { paletteLoadByteCount(rom, it) }
+            .filter { it in MIN_TEXT_PALETTE_BYTES..MAX_TEXT_PALETTE_BYTES && it % BYTES_PER_PALETTE_BANK == 0 }
+            .distinct()
+        val byteCount = byteCounts.singleOrNull() ?: return@mapNotNull null
+        readPalette(rom, offset, byteCount / 2)
     }
 
     private fun paletteLoadByteCount(rom: RomImage, site: Int): Int? {
@@ -438,7 +545,8 @@ object Gen3WorldMapResolver {
         rom: RomImage,
         references: GbaReferenceIndex,
         functionIndex: ThumbFunctionIndex,
-    ): List<SemanticLayout>? {
+        requiredSlots: Set<Int>,
+    ): List<List<SemanticLayout>> {
         val layoutsByTarget = references.targets.keys.mapNotNull { target ->
             decodeSemanticLayout(rom, target)?.let { target to it }
         }
@@ -446,19 +554,25 @@ object Gen3WorldMapResolver {
             .distinct()
             .mapNotNull { functionStart ->
                 val members = layoutsByTarget.mapNotNull { (target, layout) ->
-                    val regionSlot = semanticRegionSlot(rom, references, functionIndex, target, functionStart)
-                        ?: return@mapNotNull null
+                    val regionSlot = semanticRegionSlot(
+                        rom,
+                        references,
+                        functionIndex,
+                        target,
+                        functionStart,
+                        requiredSlots,
+                    ) ?: return@mapNotNull null
                     Triple(regionSlot, target, layout)
                 }
-                if (members.size != TEXT_REGION_COUNT ||
-                    members.map { it.first }.toSet() != (0 until TEXT_REGION_COUNT).toSet() ||
-                    members.map { it.second }.distinct().size != TEXT_REGION_COUNT
+                if (members.size != requiredSlots.size ||
+                    members.map { it.first }.toSet() != requiredSlots ||
+                    members.map { it.second }.distinct().size != requiredSlots.size
                 ) {
                     return@mapNotNull null
                 }
                 members.sortedBy { it.first }.map { it.third }
             }
-        return groups.distinct().singleOrNull()
+        return groups.distinct()
     }
 
     private fun semanticRegionSlot(
@@ -467,6 +581,7 @@ object Gen3WorldMapResolver {
         functionIndex: ThumbFunctionIndex,
         target: Int,
         functionStart: Int,
+        requiredSlots: Set<Int>,
     ): Int? {
         val slots = completeSites(references, target).orEmpty().mapNotNull { site ->
             if (functionIndex.functionStart(site) != functionStart) return@mapNotNull null
@@ -481,7 +596,7 @@ object Gen3WorldMapResolver {
                 val compare = rom.u16le(cursor)
                 if (compare and THUMB_COMPARE_IMMEDIATE_MASK == THUMB_COMPARE_IMMEDIATE_OPCODE) {
                     val slot = compare and 0xff
-                    if (slot in 0 until TEXT_REGION_COUNT && branchDestination(rom, cursor + 2) == site) {
+                    if (slot in requiredSlots && branchDestination(rom, cursor + 2) == site) {
                         return@mapNotNull slot
                     }
                 }
@@ -611,14 +726,20 @@ object Gen3WorldMapResolver {
     ) {
         val identity: Triple<Int, Int, Int> get() = Triple(graphicsOffset, mapOffset, paletteOffset)
     }
+    private data class TextAssetBundle(
+        val graphics: CompressedStream,
+        val palette: PaletteCandidate,
+        val branchSlot: Int?,
+    )
+    private data class TextRegionAsset(val slot: Int, val asset: AssetCandidate)
     private data class TextAssetCandidate(
-        val graphicsOffset: Int,
-        val paletteOffset: Int,
-        val maps: List<AssetCandidate>,
+        val functionStart: Int,
+        val regions: List<TextRegionAsset>,
     ) {
-        val identity: List<Int> get() = listOf(graphicsOffset, paletteOffset) + maps.map(AssetCandidate::mapOffset)
+        val identity: List<Int> get() = listOf(functionStart) + regions.flatMap { region ->
+            listOf(region.slot, region.asset.graphicsOffset, region.asset.mapOffset, region.asset.paletteOffset)
+        }
     }
-    private data class TextMapCandidate(val asset: AssetCandidate, val destinationOffset: Int)
 
     private const val GBA_LZ_HEADER = 0x10
     private const val MAX_DECOMPRESSED_ASSET_BYTES = 256 * 1_024
@@ -648,14 +769,17 @@ object Gen3WorldMapResolver {
     private const val THUMB_COMPARE_IMMEDIATE_OPCODE = 0x2800
     private const val THUMB_CONDITIONAL_BRANCH_MASK = 0xF000
     private const val THUMB_CONDITIONAL_BRANCH_OPCODE = 0xD000
+    private const val THUMB_CONDITION_NOT_EQUAL = 0x1
     private const val AFFINE_MAP_BYTES = 4096
     private const val AFFINE_TILE_BYTES = 64
     private const val AFFINE_PALETTE_COLORS = 32
     private const val TEXT_MAP_BYTES = 1200
     private const val TEXT_TILE_BYTES = 32
-    private const val TEXT_PALETTE_COLORS = 80
-    private const val TEXT_REGION_COUNT = 4
-    private const val TEXT_LOADER_DESTINATION_COUNT = TEXT_REGION_COUNT + 1
+    private const val MIN_TEXT_PALETTE_BYTES = 16 * 2
+    private const val MAX_TEXT_PALETTE_BYTES = 16 * 16 * 2
+    private const val BYTES_PER_PALETTE_BANK = 16 * 2
+    private const val TEXT_BACKGROUND_SLOT = 4
+    private const val TEXT_LOADER_DESTINATION_COUNT = 5
     private const val TEXT_GRID_WIDTH = 22
     private const val TEXT_GRID_HEIGHT = 15
     private const val SEMANTIC_GRID_CELLS = TEXT_GRID_WIDTH * TEXT_GRID_HEIGHT
