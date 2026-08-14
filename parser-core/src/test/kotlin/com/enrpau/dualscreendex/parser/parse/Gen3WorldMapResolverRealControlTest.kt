@@ -58,45 +58,48 @@ class Gen3WorldMapResolverRealControlTest {
     @Test
     fun cloverResolvesItsExactNarrowConsumerAndNullEventHeaderRegions() = assertControl(controls[7])
 
+    @Test
+    fun dreamstoneResolvesItsIndexedConsumerAndExactRaster() = assertControl(controls[8])
+
     private fun assertControl(control: Control) {
         val rom = realRom(control)
-            val analysisStarted = System.nanoTime()
-            val analysis = ParserOrchestrator.analyze(rom)
-            val analysisMs = (System.nanoTime() - analysisStarted) / 1_000_000
-            assertEquals("${control.environmentVariable} parser selection", SelectionStatus.SELECTED, analysis.status)
-            val layout = analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout
-            requireNotNull(layout)
-            val encounterBaseIds = EncounterMaterializer.materialize(rom, layout)
-                .mapTo(linkedSetOf()) { it.id / 10 }
-            val resolutionStarted = System.nanoTime()
-            val resolution = Gen3WorldMapResolver.resolve(
-                RomAnalysisSession(rom, RomHeaderReader.read(rom)),
-                encounterBaseIds,
-            )
-            val resolutionMs = (System.nanoTime() - resolutionStarted) / 1_000_000
-            assertTrue("${control.environmentVariable}: $resolution", resolution is WorldMapResolution.Resolved)
-            val resolved = resolution as WorldMapResolution.Resolved
-            assertTrue(
-                "${control.environmentVariable} must report one-pass function indexing",
-                resolved.reasons.any { it.matches(Regex("indexed [1-9][0-9]* distinct compiled reference sites once")) },
-            )
-            println(
-                "world-map-control ${control.environmentVariable} analysisMs=$analysisMs " +
-                    "resolutionMs=$resolutionMs " +
-                    resolved.reasons.first { it.startsWith("indexed ") },
-            )
-            val catalog = resolved.catalog.validate()
+        val analysisStarted = System.nanoTime()
+        val analysis = ParserOrchestrator.analyze(rom)
+        val analysisMs = (System.nanoTime() - analysisStarted) / 1_000_000
+        assertEquals("${control.environmentVariable} parser selection", SelectionStatus.SELECTED, analysis.status)
+        val layout = analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout
+        requireNotNull(layout)
+        val encounterBaseIds = EncounterMaterializer.materialize(rom, layout)
+            .mapTo(linkedSetOf()) { it.id / 10 }
+        val resolutionStarted = System.nanoTime()
+        val resolution = Gen3WorldMapResolver.resolve(
+            RomAnalysisSession(rom, RomHeaderReader.read(rom)),
+            encounterBaseIds,
+        )
+        val resolutionMs = (System.nanoTime() - resolutionStarted) / 1_000_000
+        assertTrue("${control.environmentVariable}: $resolution", resolution is WorldMapResolution.Resolved)
+        val resolved = resolution as WorldMapResolution.Resolved
+        assertTrue(
+            "${control.environmentVariable} must report one-pass function indexing",
+            resolved.reasons.any { it.matches(Regex("indexed [1-9][0-9]* distinct compiled reference sites once")) },
+        )
+        println(
+            "world-map-control ${control.environmentVariable} analysisMs=$analysisMs " +
+                "resolutionMs=$resolutionMs " +
+                resolved.reasons.first { it.startsWith("indexed ") },
+        )
+        val catalog = resolved.catalog.validate()
 
-            assertEquals("${control.environmentVariable} region count", control.argbHashes.size, catalog.regions.size)
-            assertEquals(control.argbHashes.size, catalog.assets.size)
-            val actualHashes = catalog.regions.map { region ->
-                assertEquals(control.pixelWidth, region.pixelWidth)
-                assertEquals(control.pixelHeight, region.pixelHeight)
-                assertEquals(control.gridWidth, region.gridWidth)
-                assertEquals(15, region.gridHeight)
-                sha256(requireNotNull(catalog.assets[region.imageAssetKey]))
-            }
-            assertEquals("${control.environmentVariable} normalized pixels", control.argbHashes, actualHashes)
+        assertEquals("${control.environmentVariable} region count", control.argbHashes.size, catalog.regions.size)
+        assertEquals(control.argbHashes.size, catalog.assets.size)
+        val actualHashes = catalog.regions.map { region ->
+            assertEquals(control.pixelWidth, region.pixelWidth)
+            assertEquals(control.pixelHeight, region.pixelHeight)
+            assertEquals(control.gridWidth, region.gridWidth)
+            assertEquals(15, region.gridHeight)
+            sha256(requireNotNull(catalog.assets[region.imageAssetKey]))
+        }
+        assertEquals("${control.environmentVariable} normalized pixels", control.argbHashes, actualHashes)
     }
 
     private fun realRom(control: Control): RomImage {
@@ -212,6 +215,14 @@ class Gen3WorldMapResolverRealControlTest {
                     "c79660d299bd1fb315c32cacfd21a41d10d76ef20fffacea67267609fb038bf2",
                     "11fef4f3fdbc027b99034f2389238b5d4c88938292dac94fded4c7ee45fcd08e",
                 ),
+            ),
+            Control(
+                "DUALDEX_DREAMSTONE_ROM",
+                "ac31df9cc158823861294b17bd4e66857deab2a53dd81620ddcf6fc03a6a4220",
+                224,
+                120,
+                28,
+                listOf("0cc223adec5306d6cdce6bc584a66f882f283fe5064eff114784143fab8da5e8"),
             ),
         )
     }

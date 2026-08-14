@@ -33,13 +33,13 @@ Use this workflow when a Gen III ROM scores 0% for world maps. The objective is 
    - immediate palette byte counts or `CpuSet` control words and writable destinations;
    - decompression destinations and their strides.
 7. Reconstruct runtime ownership. Associate graphics and palettes independently by branch before pairing them. Reject pairs whose proven branch arms or slots conflict.
-8. Derive the raster layout from raw structure. For FRLG text maps, the proven stride is 1200 bytes and the fifth destination is the shared background plane. For affine maps, test the complete row-layout invariant before changing the 64×64 crop stride.
+8. Derive the raster layout from raw structure. For FRLG text maps, the proven stride is 1200 bytes and the fifth destination is the shared background plane. For affine maps, test the complete row-layout invariant before changing the 64×64 crop stride. For regular 8bpp backgrounds, validate the full u16 entry ABI, required tile coverage, and source-backed semantic crop.
 9. Compose each region only with its eligible branch-owned bundle. A successful composition is necessary but not sufficient.
-10. Resolve semantic planes through compiled consumers. Treat a compiled `gMapGroups[group][map]` consumer as authority, retain structurally valid encounter map-header joins, and do not structurally fall back when compiled roots exist but fail validation. If several semantic groups remain, use encounter-bound section coverage as authority.
+10. Resolve semantic planes through compiled consumers. Treat a compiled `gMapGroups[group][map]` consumer as authority, retain structurally valid encounter map-header joins, and do not structurally fall back when compiled roots exist but fail validation. Match complete Thumb instruction shapes rather than one compiler's register allocation. If several semantic groups remain, use encounter-bound section coverage as authority.
 11. Complete map-header and encounter/base-area joins. Reject any published region with no bindings.
 12. Export parser-produced PNGs and inspect them visually.
 13. Run two fresh parses and compare the entire deterministic projection.
-14. Run exact raster controls for FireRed, LeafGreen, Dark Violet, and Clover, plus affine controls such as Classic. Investigate every regression from its real ROM/source.
+14. Run exact raster controls for FireRed, LeafGreen, Dark Violet, Clover, and Dreamstone, plus affine controls such as Classic. Investigate every regression from its real ROM/source.
 15. Only then port the generic rule to the current production parser, commit, and push.
 
 ## Thumb branch ownership pattern
@@ -67,6 +67,33 @@ If both a direct immediate-argument palette loader and a software-buffer `CpuSet
 ## Affine row-layout pattern
 
 A 4096-byte decode does not by itself prove conventional 64-byte physical rows. Some real loaders store 32 logical 64-byte rows at 128-byte physical stride. Require the full duplicated-half invariant across logical rows 1 through 31 before using that layout; then export and inspect the changed raster. A few matching or zero-filled rows are not sufficient evidence.
+
+## Tiled 8bpp regular-background pattern
+
+A 1280-byte decode can be a 32×20 array of little-endian regular-background entries rather than an affine map or 4bpp plane. Decode each u16 as:
+
+- tile index: `entry & 0x03FF`;
+- horizontal flip: `entry & 0x0400`;
+- vertical flip: `entry & 0x0800`.
+
+Require 64-byte-aligned 8bpp graphics, prove every referenced tile and palette index is covered, and derive the semantic viewport from the raw loader/source coordinate contract. Dreamstone uses a source-backed 28×15 crop at tile `(1, 2)` inside the 32×20 physical map.
+
+Do not require a valid map root to have exactly one global function owner. Normal and fly loaders may share a tilemap while using different graphics formats. Evaluate map uniqueness inside the specific function shared by the candidate map and graphics. Cross-format pairing must still fail structural coverage; Dreamstone's fly graphics expose only 120 tiles when interpreted as 8bpp, while the raw map references tile 120 and above.
+
+## Compiled map-group consumers
+
+Compilers can express `gMapGroups[group][map]` with direct register-indexed loads instead of explicit address additions. One valid u16-argument form loads the root into `r3`, zero-extends and scales `r0` and `r1` by four, then performs `ldr r3, [r0, r3]` and `ldr r0, [r1, r3]` before `bx lr`.
+
+Match the complete function shape, calculate the PC-relative literal from the actual literal-load site, and validate every encounter-requested group/map slot. Do not accept isolated indexed loads or weaken map-header validation.
+
+## Explicit region-entry states
+
+After a compiled map-group root establishes the required section IDs, a referenced region-table record can be either:
+
+- a complete bounded geometry shell with a terminated valid name; or
+- exactly eight zero bytes, meaning explicitly absent and unbindable.
+
+A nonzero malformed record still invalidates the candidate table. Keep at least three ordinary alphanumeric entries as authority anchors before selecting by compiled reference count. Once the table is authoritative, retain valid nonblank punctuation-only names such as `???`; punctuation is not evidence against a source-defined name.
 
 ## False-positive defense
 

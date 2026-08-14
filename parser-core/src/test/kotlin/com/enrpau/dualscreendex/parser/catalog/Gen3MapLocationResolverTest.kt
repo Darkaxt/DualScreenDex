@@ -66,6 +66,44 @@ class Gen3MapLocationResolverTest {
         writeMapHeader(narrow, 0x500, 88)
         writeMapHeader(narrow, 0x51C, 149)
         assertEquals(mapOf(0x0100 to 88, 0x0200 to 149), resolveCompact(narrow))
+
+        val indexed = ByteArray(0x1000)
+        writeIndexedU16CompactConsumer(indexed, 0x40, 0x180)
+        putPointer(indexed, 0x184, 0x240)
+        putPointer(indexed, 0x188, 0x340)
+        putPointer(indexed, 0x240, 0x500)
+        putPointer(indexed, 0x340, 0x51C)
+        writeMapHeader(indexed, 0x500, 88)
+        writeMapHeader(indexed, 0x51C, 149)
+        assertEquals(mapOf(0x0100 to 88, 0x0200 to 149), resolveCompact(indexed))
+    }
+
+    @Test
+    fun compiledConsumerOmitsEmptyEntriesButRetainsPunctuationNames() {
+        val bytes = ByteArray(0x1000)
+        writeIndexedU16CompactConsumer(bytes, 0x40, 0x180)
+        putPointer(bytes, 0x180, 0x240)
+        repeat(5) { map ->
+            val header = 0x300 + map * 0x1C
+            putPointer(bytes, 0x240 + map * 4, header)
+            writeMapHeader(bytes, header, map)
+        }
+        writeRegionEntry(bytes, 0x600, 0, 0x800, "Alpha")
+        writeRegionEntry(bytes, 0x600, 1, 0x820, "Beta")
+        writeRegionEntry(bytes, 0x600, 3, 0x840, "???")
+        writeRegionEntry(bytes, 0x600, 4, 0x860, "Gamma")
+        putPointer(bytes, 0x900, 0x600)
+
+        val names = Gen3MapLocationResolver.resolve(
+            RomImage(bytes),
+            (0..4).toSet(),
+            GbaReferenceIndex.countsOnlyForTesting(mapOf(0x700 to 1)),
+        )
+
+        assertEquals(
+            mapOf(0 to "Alpha", 1 to "Beta", 3 to "???", 4 to "Gamma"),
+            names,
+        )
     }
 
     @Test
@@ -157,6 +195,12 @@ class Gen3MapLocationResolverTest {
         putPointer(bytes, offset + 0x10, root)
     }
 
+    private fun writeIndexedU16CompactConsumer(bytes: ByteArray, offset: Int, root: Int) {
+        val instructions = intArrayOf(0x4B03, 0x0400, 0x0B80, 0x58C3, 0x0409, 0x0B89, 0x58C8, 0x4770)
+        instructions.forEachIndexed { index, instruction -> putU16(bytes, offset + index * 2, instruction) }
+        putPointer(bytes, offset + 0x10, root)
+    }
+
     private fun writeMapHeader(bytes: ByteArray, offset: Int, regionSection: Int) {
         putPointer(bytes, offset, 0x500)
         putPointer(bytes, offset + 4, 0x520)
@@ -178,6 +222,7 @@ class Gen3MapLocationResolverTest {
                 in 'A'..'Z' -> (0xBB + character.code - 'A'.code).toByte()
                 in 'a'..'z' -> (0xD5 + character.code - 'a'.code).toByte()
                 in '0'..'9' -> (0xA1 + character.code - '0'.code).toByte()
+                '?' -> 0xAC.toByte()
                 else -> error("unsupported fixture character $character")
             }
         }

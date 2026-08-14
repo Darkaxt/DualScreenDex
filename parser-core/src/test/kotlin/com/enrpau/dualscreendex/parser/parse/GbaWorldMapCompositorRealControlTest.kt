@@ -90,6 +90,48 @@ class GbaWorldMapCompositorRealControlTest {
     }
 
     @Test
+    fun dreamstoneLoaderUsesItsFullSourceOwnedTextBackground() {
+        val rom = control("DUALDEX_DREAMSTONE_ROM", DREAMSTONE_SHA)
+        val tiles = decoded(rom, 0xE84DB8, DREAMSTONE_TILES_SHA)
+        val tilemap = decoded(rom, 0xE843E8, DREAMSTONE_MAP_SHA)
+        val palette = palette(rom, 0xE826E8, 32, DREAMSTONE_PALETTE_SHA)
+
+        val result = resolved(GbaWorldMapCompositor.compose(tiles, tilemap, palette))
+
+        assertEquals(GbaWorldMapFormat.TILED_8BPP_32X20, result.format)
+        assertEquals(224, result.raster.width)
+        assertEquals(120, result.raster.height)
+        assertEquals(
+            "0cc223adec5306d6cdce6bc584a66f882f283fe5064eff114784143fab8da5e8",
+            sha256(result.raster.argb),
+        )
+        mapOf(
+            (0 to 0) to 0xFF94B573.toInt(),
+            (40 to 16) to 0xFF637B9C.toInt(),
+            (111 to 60) to 0xFF639C5A.toInt(),
+            (223 to 119) to 0xFF9CD6FF.toInt(),
+        ).forEach { (position, expected) ->
+            assertEquals(
+                "pixel $position",
+                expected,
+                result.raster.argb[position.second * result.raster.width + position.first],
+            )
+        }
+    }
+
+    @Test
+    fun dreamstoneFlyGraphicsCannotSatisfyThe8BppMap() {
+        val rom = control("DUALDEX_DREAMSTONE_ROM", DREAMSTONE_SHA)
+        val flyTiles = GbaRomCompression.decodeAt(rom, 0xE846E8)
+        val tilemap = decoded(rom, 0xE843E8, DREAMSTONE_MAP_SHA)
+        val palette = palette(rom, 0xE826E8, 32, DREAMSTONE_PALETTE_SHA)
+
+        assertEquals(7680, flyTiles.size)
+        val result = GbaWorldMapCompositor.compose(flyTiles, tilemap, palette)
+        assertTrue("expected uncovered 8bpp tile rejection, got $result", result is GbaWorldMapComposition.Rejected)
+    }
+
+    @Test
     fun fireRedAndLeafGreenRenderAllFourTextMapIdentities() {
         assertFrlgControl(
             env = "DUALDEX_FIRERED_ROM",
@@ -388,6 +430,7 @@ class GbaWorldMapCompositorRealControlTest {
         const val OFFICIAL_EMERALD_SHA = "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af"
         const val MODERN_EMERALD_SHA = "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895"
         const val CLASSIC_SHA = "01c0177b2498e1842a1bf9ee2ddac145fb95275321bd3813dbf17341d63ad16c"
+        const val DREAMSTONE_SHA = "ac31df9cc158823861294b17bd4e66857deab2a53dd81620ddcf6fc03a6a4220"
         const val FIRERED_SHA = "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059"
         const val LEAFGREEN_SHA = "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825"
         const val DARK_CRY_SHA = "e61d4f66e2d4d39798bcd18f5abfb3db75282508fffd12401b9a1e9d0c1b08ed"
@@ -400,6 +443,9 @@ class GbaWorldMapCompositorRealControlTest {
         const val MODERN_EMERALD_MAP_SHA = "1627ca00f20c0a593ed30d4657cd165bdf92f31c30b4304464aed3e2688de873"
         const val CLASSIC_TILES_SHA = "ce2b7db0298fe504ec250092748c940649deb61ad342655480576aef34622de8"
         const val CLASSIC_MAP_SHA = "8675dbba552d2ca9f2179bf15597fa1ed1612a2a39faf54dda173b887d4836a1"
+        const val DREAMSTONE_TILES_SHA = "5eca908524ca693e227ed449cad81775ec9e469f546052a357783f16a44a8dc3"
+        const val DREAMSTONE_MAP_SHA = "d9494bb021eac071d380cb64b7f1b1858564c408969c917f4e081ba39aece47b"
+        const val DREAMSTONE_PALETTE_SHA = "37d8bdae4a9d5e868d62ab007bcda0d2114867bd6f1e5dcc3f39a10f9b909b05"
         const val EMERALD_PALETTE_SHA = "795a5502910a4a8d226589bfd0d8c421111e30db3d152acaf66186e6659b4563"
         const val FRLG_TILES_SHA = "f9e8ddc403b2efcd9eaf87a8a1f16d9248f92d2372e42fb7aa88b09aed5fb3b4"
         const val FRLG_PALETTE_SHA = "116382eeea3b668f188e80eb49f7440b1daeb0732cd81da2401da887e1e0e227"

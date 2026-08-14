@@ -127,6 +127,14 @@ object Gen3MapLocationResolver {
                 rom.u16le(offset + 14) == THUMB_ADD_R1_R1_R0 &&
                 rom.u16le(offset + 16) == THUMB_LDR_R0_R1 &&
                 rom.u16le(offset + 18) == THUMB_BX_LR
+            val indexedU16Arguments = isLiteralLoadR3(rom.u16le(offset)) &&
+                rom.u16le(offset + 2) == THUMB_LSL_R0_16 &&
+                rom.u16le(offset + 4) == THUMB_LSR_R0_14 &&
+                rom.u16le(offset + 6) == THUMB_LDR_R3_R0_R3 &&
+                rom.u16le(offset + 8) == THUMB_LSL_R1_16 &&
+                rom.u16le(offset + 10) == THUMB_LSR_R1_14 &&
+                rom.u16le(offset + 12) == THUMB_LDR_R0_R1_R3 &&
+                rom.u16le(offset + 14) == THUMB_BX_LR
             val narrowArguments = isLiteralLoadR2(rom.u16le(offset)) &&
                 rom.u16le(offset + 2) == THUMB_LSL_R0_2 &&
                 rom.u16le(offset + 4) == THUMB_ADD_R0_R0_R2 &&
@@ -135,7 +143,7 @@ object Gen3MapLocationResolver {
                 rom.u16le(offset + 10) == THUMB_ADD_R1_R1_R0 &&
                 rom.u16le(offset + 12) == THUMB_LDR_R0_R1 &&
                 rom.u16le(offset + 14) == THUMB_BX_LR
-            if (u16Arguments || narrowArguments) {
+            if (u16Arguments || indexedU16Arguments || narrowArguments) {
                 val literalOffset = if (u16Arguments) offset + 4 else offset
                 val literalInstruction = rom.u16le(literalOffset)
                 val literal = ((literalOffset + 4) and -4) + (literalInstruction and 0xff) * 4
@@ -146,8 +154,14 @@ object Gen3MapLocationResolver {
     }.distinct()
 
     private fun isLiteralLoadR2(instruction: Int): Boolean =
+        isLiteralLoad(instruction, 2)
+
+    private fun isLiteralLoadR3(instruction: Int): Boolean =
+        isLiteralLoad(instruction, 3)
+
+    private fun isLiteralLoad(instruction: Int, register: Int): Boolean =
         instruction and THUMB_LITERAL_LOAD_MASK == THUMB_LITERAL_LOAD_OPCODE &&
-            instruction ushr THUMB_REGISTER_SHIFT and THUMB_REGISTER_MASK == 2
+            instruction ushr THUMB_REGISTER_SHIFT and THUMB_REGISTER_MASK == register
 
     private fun requiredMaps(encounterBaseIds: Set<Int>): Map<Int, Set<Int>> = encounterBaseIds
         .filter { it in 0..0xFFFF }
@@ -220,17 +234,30 @@ object Gen3MapLocationResolver {
     private fun findRegionEntries(rom: RomImage, sectionIds: Set<Int>): Map<Int, Gen3RegionMapEntry>? {
         if (sectionIds.isEmpty()) return null
         val maxSection = sectionIds.maxOrNull() ?: return null
-        val anchorIds = sectionIds.sortedDescending().take(3)
+        val requiredAnchorCount = minOf(REGION_ENTRY_ANCHORS, sectionIds.size)
+        val provisionalAnchors = sectionIds.sortedDescending().take(requiredAnchorCount)
         val candidates = linkedMapOf<Int, Map<Int, Gen3RegionMapEntry>>()
         var root = 0
         val last = rom.size - (maxSection + 1) * REGION_ENTRY_BYTES
         while (root <= last) {
-            if (anchorIds.all { validRegionEntry(rom, root, it) } &&
-                sectionIds.all { validRegionEntryShell(rom, root, it) }
+            if (provisionalAnchors.all {
+                    emptyRegionEntry(rom, root, it) ||
+                        decodableRegionEntry(rom, root, it)
+                } &&
+                sectionIds.all {
+                    emptyRegionEntry(rom, root, it) ||
+                        validRegionEntryShell(rom, root, it)
+                }
             ) {
-                candidates[root] = sectionIds.mapNotNull { section ->
-                    decodeRegionEntry(rom, root, section)?.let { section to it }
-                }.toMap()
+                val authoritativeAnchors = sectionIds.asSequence()
+                    .filter { validRegionEntry(rom, root, it) }
+                    .take(requiredAnchorCount)
+                    .toList()
+                if (authoritativeAnchors.size == requiredAnchorCount) {
+                    candidates[root] = sectionIds.mapNotNull { section ->
+                        decodeRegionEntry(rom, root, section)?.let { section to it }
+                    }.toMap()
+                }
             }
             root += 4
         }
@@ -252,8 +279,23 @@ object Gen3MapLocationResolver {
         return candidates.getValue(winner)
     }
 
+    private fun emptyRegionEntry(rom: RomImage, root: Int, sectionId: Int): Boolean {
+        val offset = root.toLong() + sectionId.toLong() * REGION_ENTRY_BYTES
+        if (offset < 0 || offset + REGION_ENTRY_BYTES > rom.size.toLong()) return false
+        return (0 until REGION_ENTRY_BYTES).all { byte ->
+            rom.u8(offset.toInt() + byte) == 0
+        }
+    }
+
+    private fun decodableRegionEntry(rom: RomImage, root: Int, sectionId: Int): Boolean =
+        validRegionEntryShell(rom, root, sectionId) &&
+            decodeRegionEntry(rom, root, sectionId) != null
+
     private fun validRegionEntry(rom: RomImage, root: Int, sectionId: Int): Boolean =
-        validRegionEntryShell(rom, root, sectionId) && decodeRegionEntry(rom, root, sectionId) != null
+        validRegionEntryShell(rom, root, sectionId) &&
+            decodeRegionEntry(rom, root, sectionId)
+                ?.displayName
+                ?.any(Char::isLetterOrDigit) == true
 
     private fun validRegionEntryShell(rom: RomImage, root: Int, sectionId: Int): Boolean {
         val offset = root + sectionId * REGION_ENTRY_BYTES
@@ -276,7 +318,7 @@ object Gen3MapLocationResolver {
         if (available <= 0) return null
         val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(text, available))
         val name = decoded.text.takeIf {
-            decoded.terminated && decoded.validRatio >= MIN_TEXT_RATIO && it.any(Char::isLetterOrDigit)
+            decoded.terminated && decoded.validRatio >= MIN_TEXT_RATIO && it.isNotBlank()
         } ?: return null
         return Gen3RegionMapEntry(
             sectionId,
@@ -298,6 +340,7 @@ object Gen3MapLocationResolver {
     private const val GBA_ROM_BASE = 0x08000000L
     private const val REGION_SECTION_OFFSET = 0x14
     private const val REGION_ENTRY_BYTES = 8
+    private const val REGION_ENTRY_ANCHORS = 3
     private const val REGION_GRID_WIDTH = 32
     private const val REGION_GRID_HEIGHT = 32
     private const val MAX_REGION_NAME_BYTES = 32
@@ -307,6 +350,8 @@ object Gen3MapLocationResolver {
     private const val THUMB_LSL_R0_16 = 0x0400
     private const val THUMB_LSL_R1_16 = 0x0409
     private const val THUMB_LSR_R0_14 = 0x0B80
+    private const val THUMB_LDR_R3_R0_R3 = 0x58C3
+    private const val THUMB_LDR_R0_R1_R3 = 0x58C8
     private const val THUMB_LSL_R0_2 = 0x0080
     private const val THUMB_ADD_R0_R0_R2 = 0x1880
     private const val THUMB_LDR_R0_R0 = 0x6800
