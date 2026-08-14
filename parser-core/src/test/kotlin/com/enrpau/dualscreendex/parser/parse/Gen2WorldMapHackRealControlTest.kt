@@ -34,6 +34,23 @@ class Gen2WorldMapHackRealControlTest {
         assertEquals(BRONZE2_LOCATION_SHA, locationFingerprint(catalog))
     }
 
+    @Test fun crystalLegacyResolvesSharedExtendedPaletteMapConsumer() {
+        val result = resolve(realRom("DUALDEX_CRYSTAL_LEGACY_ROM", CRYSTAL_LEGACY_SHA))
+
+        assertTrue("Crystal Legacy: $result", result is WorldMapResolution.Resolved)
+        val catalog = (result as WorldMapResolution.Resolved).catalog.validate()
+        assertEquals(listOf("gen2-johto", "gen2-kanto"), catalog.regions.map { it.key })
+        assertEquals(114, catalog.regions.flatMap { it.locations }.flatMap { it.baseAreaIds }.toSet().size)
+        assertEquals(listOf(45 to 78, 34 to 36), catalog.regions.map { region ->
+            region.locations.size to region.locations.sumOf { it.baseAreaIds.size }
+        })
+        assertEquals(
+            listOf(CRYSTAL_LEGACY_JOHTO_RASTER_SHA, CRYSTAL_LEGACY_KANTO_RASTER_SHA),
+            catalog.regions.map { sha256(catalog.assets.getValue(it.imageAssetKey)) },
+        )
+        assertEquals(CRYSTAL_LEGACY_LOCATION_SHA, locationFingerprint(catalog))
+    }
+
     @Test fun malformedOneThresholdFailsClosed() {
         val source = bronze2Bytes()
         val classifier = findOneThresholdClassifier(source)
@@ -139,5 +156,9 @@ class Gen2WorldMapHackRealControlTest {
         const val BRONZE2_JOHTO_RASTER_SHA = "6e36d20b35f904a06fec5e11750c8938b9163f2d05ccdc848bd44b16e883497c"
         const val BRONZE2_KANTO_RASTER_SHA = "17a94384a359aaa5c9179249800442388dd1042fe9956a83f1fad319c7e275f1"
         const val BRONZE2_LOCATION_SHA = "9646f17b9ca2a9559f3f2c6bf50ebac374171f8d8683ce75039f91c67329bf8a"
+        const val CRYSTAL_LEGACY_SHA = "18153207488a9e2b4837d677ec9f1240dc2674a29dd6a0319553b73cafccceaa"
+        const val CRYSTAL_LEGACY_JOHTO_RASTER_SHA = "9d348e028f32fe38f23c3ae561ee2f512fd41fa360d9313d412b5337c178411a"
+        const val CRYSTAL_LEGACY_KANTO_RASTER_SHA = "ae6bd49974c5d87260f8567b0810bdd0d9c0aabfe1a453a3d7459a91dc1faaa6"
+        const val CRYSTAL_LEGACY_LOCATION_SHA = "355728883137963f6696793e9b5834a0155be312c8abd4d57a572c78981445d2"
     }
 }

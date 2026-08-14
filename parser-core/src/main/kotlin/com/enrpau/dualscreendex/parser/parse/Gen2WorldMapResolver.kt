@@ -159,7 +159,14 @@ object Gen2WorldMapResolver {
     private fun parsePaletteMapConsumer(rom: RomImage, start: Int, end: Int): ByteArray? {
         var offset = start
         while (offset + 4 <= end) {
-            if (rom.u8(offset) == COMPARE_IMMEDIATE && rom.u8(offset + 1) == PALETTE_TILE_LIMIT) {
+            val paletteTileLimit = rom.u8(offset + 1)
+            // The shared consumer may cover adjacent UI tiles beyond the 48 Town Map tiles.
+            if (
+                rom.u8(offset) == COMPARE_IMMEDIATE &&
+                rom.u8(offset + 2) == JR_NC &&
+                paletteTileLimit % 2 == 0 &&
+                paletteTileLimit / 2 >= PALETTE_MAP_BYTES
+            ) {
                 var cursor = offset + 2
                 while (cursor + 3 <= minOf(end, offset + 48)) {
                     if (rom.u8(cursor) == LOAD_HL_IMMEDIATE) {
@@ -580,7 +587,6 @@ object Gen2WorldMapResolver {
     private const val PALETTE_COLOR_COUNT = PALETTE_COUNT * COLORS_PER_PALETTE
     private const val PALETTE_BYTES = PALETTE_COLOR_COUNT * 2
     private const val PALETTE_MAP_BYTES = TILE_COUNT / 2
-    private const val PALETTE_TILE_LIMIT = 0x60
     private const val MIN_DISTINCT_PALETTES = 5
     private const val MAX_BGR555 = 0x7fff
     private const val PALETTE_LAYOUT_INDEX = 2
