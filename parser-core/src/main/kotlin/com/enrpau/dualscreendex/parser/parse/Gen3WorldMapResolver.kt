@@ -23,20 +23,20 @@ object Gen3WorldMapResolver {
         references.overflowReason?.let { return WorldMapResolution.BudgetExceeded("asset-loader", it) }
         val functionIndex = ThumbFunctionIndex.build(session.rom, references)
         val streams = decodeReferencedStreams(session.rom, references)
-        val affine = affineCandidates(session.rom, references, functionIndex, streams)
+        val eightBpp = eightBppCandidates(session.rom, references, functionIndex, streams)
         val text = textCandidates(session.rom, references, functionIndex, streams)
         mapTrace(
-            "summary streams=${streams.size} affine=${affine.size} text=${text.size} " +
+            "summary streams=${streams.size} eightBpp=${eightBpp.size} text=${text.size} " +
                 "referenceSites=${functionIndex.analyzedSiteCount}",
         )
-        if (affine.isNotEmpty() && text.isNotEmpty()) {
+        if (eightBpp.isNotEmpty() && text.isNotEmpty()) {
             return WorldMapResolution.Ambiguous(
                 "asset-loader",
                 "multiple proven world-map loader formats remained eligible",
             )
         }
         val resolution = when {
-            affine.isNotEmpty() -> resolveAffine(session.rom, encounterBaseIds, references, affine)
+            eightBpp.isNotEmpty() -> resolve8Bpp(session.rom, encounterBaseIds, references, eightBpp)
             text.isNotEmpty() -> resolveText(session.rom, encounterBaseIds, references, functionIndex, text)
             else -> WorldMapResolution.Unavailable(
                 "asset-loader",
@@ -53,7 +53,7 @@ object Gen3WorldMapResolver {
         }
     }
 
-    private fun resolveAffine(
+    private fun resolve8Bpp(
         rom: RomImage,
         encounterBaseIds: Set<Int>,
         references: GbaReferenceIndex,
@@ -63,20 +63,20 @@ object Gen3WorldMapResolver {
         if (winners.size != 1) {
             return WorldMapResolution.Ambiguous(
                 "asset-loader",
-                "${winners.size} equally authoritative affine asset clusters remained",
+                "${winners.size} equally authoritative 8bpp asset clusters remained",
             )
         }
         val locations = Gen3MapLocationResolver.resolveDetailed(rom, encounterBaseIds, references)
             ?: return WorldMapResolution.Unavailable(
                 "map-header-join",
-                "encounter map headers and affine region entries did not resolve uniquely",
+                "encounter map headers and region entries did not resolve uniquely",
             )
         val winner = winners.single()
         val normalized = emeraldLocations(locations, winner.composition.gridWidth, winner.composition.gridHeight)
         if (normalized.isEmpty()) {
             return WorldMapResolution.Unavailable(
                 "encounter-binding",
-                "affine region entries retained no encounter binding",
+                "region entries retained no encounter binding",
             )
         }
         val regionKey = "gen3-region-0"
@@ -94,7 +94,7 @@ object Gen3WorldMapResolver {
         return WorldMapResolution.Resolved(
             WorldMapCatalog(listOf(region), mapOf(assetKey to winner.composition.raster)).validate(),
             listOf(
-                "validated one affine loader asset cluster",
+                "validated one 8bpp loader asset cluster",
                 "resolved ${normalized.size} encounter-bound semantic locations",
             ),
         )
@@ -222,13 +222,16 @@ object Gen3WorldMapResolver {
         )
     }
 
-    private fun affineCandidates(
+    private fun eightBppCandidates(
         rom: RomImage,
         references: GbaReferenceIndex,
         functionIndex: ThumbFunctionIndex,
         streams: List<CompressedStream>,
     ): List<AssetCandidate> {
-        val maps = streams.filter { it.decoded.size == AFFINE_MAP_BYTES }
+        val maps = streams.filter {
+            it.decoded.size == AFFINE_MAP_BYTES ||
+                it.decoded.size == TILED_8BPP_MAP_BYTES
+        }
         val graphics = streams.filter { it.decoded.isNotEmpty() && it.decoded.size % AFFINE_TILE_BYTES == 0 }
         if (mapTraceEnabled) {
             maps.filter { loaderFunctions(references, functionIndex, it.offset).isNotEmpty() }.forEach { map ->
@@ -249,18 +252,6 @@ object Gen3WorldMapResolver {
         }
         return buildList {
             maps.forEach { map ->
-                val mapFunctions = loaderFunctions(references, functionIndex, map.offset)
-                val uniqueAffineMap = mapFunctions.singleOrNull()?.let { function ->
-                    uniqueAffineMapInFunction(references, functionIndex, maps, function) == map.offset
-                } == true
-                val mapBranchArm = mapFunctions.singleOrNull()?.let { function ->
-                    branchArmOwnership(
-                        rom,
-                        function,
-                        completeSites(references, map.offset).orEmpty()
-                            .filter { functionIndex.functionStart(it) == function },
-                    )
-                }
                 graphics.forEach { graphicsStream ->
                     if (map.offset == graphicsStream.offset) return@forEach
                     val sharedFunctions = sharedLoaderFunctions(
@@ -271,6 +262,19 @@ object Gen3WorldMapResolver {
                     )
                     if (sharedFunctions.isEmpty()) return@forEach
                     val sharedFunction = sharedFunctions.singleOrNull() ?: return@forEach
+                    val unique8BppMap =
+                        unique8BppMapInFunction(
+                            references,
+                            functionIndex,
+                            maps,
+                            sharedFunction,
+                        ) == map.offset
+                    val mapBranchArm = branchArmOwnership(
+                        rom,
+                        sharedFunction,
+                        completeSites(references, map.offset).orEmpty()
+                            .filter { functionIndex.functionStart(it) == sharedFunction },
+                    )
                     val graphicsBranchArm = branchArmOwnership(
                         rom,
                         sharedFunction,
@@ -320,8 +324,11 @@ object Gen3WorldMapResolver {
                                     "palette=0x${palette.offset.toString(16)} result=${compositionTrace(result)}",
                             )
                             if (result is GbaWorldMapComposition.Resolved &&
-                                result.format == GbaWorldMapFormat.AFFINE_8BPP_64X64 &&
-                                uniqueAffineMap
+                                result.format in setOf(
+                                    GbaWorldMapFormat.AFFINE_8BPP_64X64,
+                                    GbaWorldMapFormat.TILED_8BPP_32X20,
+                                ) &&
+                                unique8BppMap
                             ) {
                                 add(
                                     AssetCandidate(
@@ -341,7 +348,7 @@ object Gen3WorldMapResolver {
         }.distinctBy(AssetCandidate::identity)
     }
 
-    private fun uniqueAffineMapInFunction(
+    private fun unique8BppMapInFunction(
         references: GbaReferenceIndex,
         functionIndex: ThumbFunctionIndex,
         maps: List<CompressedStream>,
@@ -1127,6 +1134,7 @@ object Gen3WorldMapResolver {
         0x0500_0000L..0x0500_03FFL,
     )
     private const val AFFINE_MAP_BYTES = 4096
+    private const val TILED_8BPP_MAP_BYTES = 32 * 20 * 2
     private const val AFFINE_TILE_BYTES = 64
     private const val TEXT_MAP_BYTES = 1200
     private const val TEXT_TILE_BYTES = 32

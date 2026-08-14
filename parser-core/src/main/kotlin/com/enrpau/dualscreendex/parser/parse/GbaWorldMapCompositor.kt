@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.sprite.TileRenderer
 
 enum class GbaWorldMapFormat {
     AFFINE_8BPP_64X64,
+    TILED_8BPP_32X20,
     TEXT_4BPP_30X20,
 }
 
@@ -30,6 +31,7 @@ object GbaWorldMapCompositor {
         palette: ShortArray,
     ): GbaWorldMapComposition = when {
         tilemap.size == AFFINE_MAP_BYTES -> composeAffine(tiles, tilemap, palette)
+        tilemap.size == TILED_MAP_BYTES -> composeTiled8Bpp(tiles, tilemap, palette)
         isTextMapByteLength(tilemap.size) ->
             composeText(tiles, tilemap, palette)
         else -> GbaWorldMapComposition.Rejected(
@@ -105,6 +107,79 @@ object GbaWorldMapCompositor {
             gridWidth = AFFINE_OUTPUT_WIDTH,
             gridHeight = AFFINE_OUTPUT_HEIGHT,
             raster = RgbaSprite(AFFINE_OUTPUT_WIDTH * TILE_PIXELS, AFFINE_OUTPUT_HEIGHT * TILE_PIXELS, argb),
+        )
+    }
+
+    private fun composeTiled8Bpp(
+        tiles: ByteArray,
+        tilemap: ByteArray,
+        palette: ShortArray,
+    ): GbaWorldMapComposition {
+        if (tiles.isEmpty() || tiles.size % AFFINE_TILE_BYTES != 0) {
+            return GbaWorldMapComposition.Rejected("tiled 8bpp bytes are not a non-empty tile stream")
+        }
+        if (palette.size !in 2..MAX_AFFINE_PALETTE_COLORS) {
+            return GbaWorldMapComposition.Rejected("tiled 8bpp palette length ${palette.size} is invalid")
+        }
+        val tileCount = tiles.size / AFFINE_TILE_BYTES
+        val outputWidth = TILED_OUTPUT_WIDTH * TILE_PIXELS
+        val indices = ByteArray(outputWidth * TILED_OUTPUT_HEIGHT * TILE_PIXELS)
+        repeat(TILED_OUTPUT_HEIGHT) { cellY ->
+            repeat(TILED_OUTPUT_WIDTH) { cellX ->
+                val sourceEntry =
+                    (TILED_CROP_Y + cellY) * TILED_MAP_WIDTH +
+                        TILED_CROP_X + cellX
+                val byteOffset = sourceEntry * 2
+                val entry = (tilemap[byteOffset].toInt() and 0xff) or
+                    ((tilemap[byteOffset + 1].toInt() and 0xff) shl 8)
+                val tileIndex = entry and TEXT_TILE_INDEX_MASK
+                if (tileIndex >= tileCount) {
+                    return GbaWorldMapComposition.Rejected(
+                        "tiled 8bpp index $tileIndex exceeds $tileCount decoded tiles",
+                    )
+                }
+                copy8BppTextTile(
+                    tiles = tiles,
+                    tileIndex = tileIndex,
+                    horizontalFlip = entry and TEXT_HORIZONTAL_FLIP != 0,
+                    verticalFlip = entry and TEXT_VERTICAL_FLIP != 0,
+                    output = indices,
+                    outputWidth = outputWidth,
+                    cellX = cellX,
+                    cellY = cellY,
+                )
+            }
+        }
+        val usedIndices = indices.map { it.toInt() and 0xff }.filter { it != 0 }
+        if (usedIndices.isEmpty()) {
+            return GbaWorldMapComposition.Rejected("tiled 8bpp crop contains no nonzero palette indices")
+        }
+        val paletteBase = usedIndices.min() / PALETTE_BANK_COLORS * PALETTE_BANK_COLORS
+        if (usedIndices.max() >= paletteBase + palette.size) {
+            return GbaWorldMapComposition.Rejected(
+                "tiled 8bpp palette does not cover used indices ${usedIndices.min()}..${usedIndices.max()}",
+            )
+        }
+        val argb = IntArray(indices.size) { position ->
+            val sourceIndex = indices[position].toInt() and 0xff
+            if (sourceIndex == 0) {
+                0
+            } else {
+                TileRenderer.bgr555ToArgb(
+                    palette[sourceIndex - paletteBase].toInt() and 0xffff,
+                    transparent = false,
+                )
+            }
+        }
+        return GbaWorldMapComposition.Resolved(
+            format = GbaWorldMapFormat.TILED_8BPP_32X20,
+            gridWidth = TILED_OUTPUT_WIDTH,
+            gridHeight = TILED_OUTPUT_HEIGHT,
+            raster = RgbaSprite(
+                outputWidth,
+                TILED_OUTPUT_HEIGHT * TILE_PIXELS,
+                argb,
+            ),
         )
     }
 
@@ -196,6 +271,29 @@ object GbaWorldMapCompositor {
         }
     }
 
+    private fun copy8BppTextTile(
+        tiles: ByteArray,
+        tileIndex: Int,
+        horizontalFlip: Boolean,
+        verticalFlip: Boolean,
+        output: ByteArray,
+        outputWidth: Int,
+        cellX: Int,
+        cellY: Int,
+    ) {
+        repeat(TILE_PIXELS) { pixelY ->
+            val sourceY = if (verticalFlip) TILE_PIXELS - 1 - pixelY else pixelY
+            repeat(TILE_PIXELS) { pixelX ->
+                val sourceX = if (horizontalFlip) TILE_PIXELS - 1 - pixelX else pixelX
+                val source = tileIndex * AFFINE_TILE_BYTES + sourceY * TILE_PIXELS + sourceX
+                val destination =
+                    (cellY * TILE_PIXELS + pixelY) * outputWidth +
+                        cellX * TILE_PIXELS + pixelX
+                output[destination] = tiles[source]
+            }
+        }
+    }
+
     private fun copy4BppTextTile(
         tiles: ByteArray,
         tileIndex: Int,
@@ -238,6 +336,14 @@ object GbaWorldMapCompositor {
     private const val AFFINE_CROP_Y = 2
     private const val AFFINE_OUTPUT_WIDTH = 28
     private const val AFFINE_OUTPUT_HEIGHT = 15
+
+    private const val TILED_MAP_WIDTH = 32
+    private const val TILED_MAP_HEIGHT = 20
+    private const val TILED_MAP_BYTES = TILED_MAP_WIDTH * TILED_MAP_HEIGHT * 2
+    private const val TILED_CROP_X = 1
+    private const val TILED_CROP_Y = 2
+    private const val TILED_OUTPUT_WIDTH = 28
+    private const val TILED_OUTPUT_HEIGHT = 15
 
     private const val TEXT_TILE_BYTES = 32
     private const val TEXT_MAP_WIDTH = 30
