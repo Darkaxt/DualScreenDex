@@ -81,7 +81,7 @@ object Gen2WorldMapResolver {
         return WorldMapResolution.Resolved(
             catalog,
             listOf(
-                "validated one compiled 48-tile 2bpp, two-plane, palette-map, and six-palette asset chain",
+                "validated one compiled 48-tile 2bpp, two-plane, palette-map, and six-palette-prefix asset chain",
                 "joined ${requiredMaps.size} encounter maps through one compiled header, landmark, and region chain",
             ),
         )
@@ -96,6 +96,13 @@ object Gen2WorldMapResolver {
             for (bank in 1 until bankCount) addAll(findGraphicsLoaders(rom, bank))
         }
         val palettes = findPaletteLoaders(rom)
+        if (System.getenv("DUALDEX_MAP_TRACE") == "1") {
+            println(
+                "world-map-trace gen2 assets maps=${mapAuthorities.map { it.bank }} " +
+                    "graphics=${graphics.map { it.loaderBank }} palettes=${palettes.size} " +
+                    "paletteCallers=${mapAuthorities.associate { it.bank to hasPaletteSelectionCaller(rom, it.bank) }}",
+            )
+        }
         return buildList {
             for (map in mapAuthorities) {
                 if (!hasPaletteSelectionCaller(rom, map.bank)) continue
@@ -269,10 +276,12 @@ object Gen2WorldMapResolver {
     private fun findPaletteLoaders(rom: RomImage): List<ShortArray> = buildList {
         var offset = 0
         while (offset + PALETTE_LOADER_BYTES <= rom.size) {
+            val paletteCopyBytes = rom.u16le(offset + 7)
             if (
                 rom.u8(offset) == LOAD_HL_IMMEDIATE && rom.u8(offset + 3) == LOAD_DE_IMMEDIATE &&
                 rom.u16le(offset + 4) in WRAM_PALETTE_DESTINATIONS && rom.u8(offset + 6) == LOAD_BC_IMMEDIATE &&
-                rom.u16le(offset + 7) == PALETTE_BYTES
+                paletteCopyBytes in PALETTE_BYTES..MAX_BG_PALETTE_BYTES &&
+                paletteCopyBytes % BYTES_PER_PALETTE == 0
             ) {
                 val bank = offset / BANK_BYTES
                 val root = rom.gbBankAddress(bank, rom.u16le(offset + 1))
@@ -285,9 +294,10 @@ object Gen2WorldMapResolver {
     }.distinctBy(ShortArray::contentHashCode)
 
     /**
-     * The six-palette copy must be the third entry of a compiled CGB layout jump table. The map
-     * code selects that same entry through `ld b, 2` before its layout call. This joins the
-     * otherwise bank-separated palette code to the Town Map consumer without an identity value.
+     * The copy's six-palette Town Map prefix must be selected by the third entry of a compiled CGB
+     * layout jump table. The map code selects that same entry through `ld b, 2` before its layout
+     * call. This joins the otherwise bank-separated palette code to the Town Map consumer without
+     * an identity value. A layout may copy up to all eight BG palettes after that required prefix.
      */
     private fun provesPaletteJumpTableAuthority(rom: RomImage, paletteCopy: Int): Boolean {
         val bank = paletteCopy / BANK_BYTES
@@ -662,6 +672,8 @@ object Gen2WorldMapResolver {
     private const val COLORS_PER_PALETTE = 4
     private const val PALETTE_COLOR_COUNT = PALETTE_COUNT * COLORS_PER_PALETTE
     private const val PALETTE_BYTES = PALETTE_COLOR_COUNT * 2
+    private const val BYTES_PER_PALETTE = COLORS_PER_PALETTE * 2
+    private const val MAX_BG_PALETTE_BYTES = 8 * BYTES_PER_PALETTE
     private const val PALETTE_MAP_BYTES = TILE_COUNT / 2
     private const val MIN_DISTINCT_PALETTES = 5
     private const val MAX_BGR555 = 0x7fff

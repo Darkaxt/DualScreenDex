@@ -19,6 +19,7 @@ import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolution
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledCoreResolver
+import com.enrpau.dualscreendex.parser.parse.Gen2CompiledMoveResolver
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolution
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
@@ -140,14 +141,26 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                 ),
             )
         } ?: inheritedTableResolution
-        val tableResolution = headerlessUnifiedSpecies?.let { unified ->
+        val compiledMoveData = if (generation == 2 && exact == null) {
+            compiledCoreTableResolution.tables.moveData?.let { inherited ->
+                Gen2CompiledMoveResolver.resolve(session.rom, inherited.count)
+            }
+        } else {
+            null
+        }
+        val compiledMoveTableResolution = compiledMoveData?.let { moveData ->
             compiledCoreTableResolution.copy(
-                tables = compiledCoreTableResolution.tables.copy(
+                tables = compiledCoreTableResolution.tables.copy(moveData = moveData),
+            )
+        } ?: compiledCoreTableResolution
+        val tableResolution = headerlessUnifiedSpecies?.let { unified ->
+            compiledMoveTableResolution.copy(
+                tables = compiledMoveTableResolution.tables.copy(
                     speciesNames = unified.tables.speciesNames,
                     baseStats = unified.tables.baseStats,
                 ),
             )
-        } ?: compiledCoreTableResolution
+        } ?: compiledMoveTableResolution
         val codec = if (generation == 3) PokemonTextCodec.gbaEnglish else PokemonTextCodec.gbEnglish
         return IdentityRootsPhaseResult.Resolved(
             exactProfile = exact,

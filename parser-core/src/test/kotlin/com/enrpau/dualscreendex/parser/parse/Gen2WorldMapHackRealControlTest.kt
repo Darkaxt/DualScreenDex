@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterMaterializer
 import com.enrpau.dualscreendex.parser.catalog.EncounterMethods
@@ -8,9 +9,11 @@ import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.RomCapability
+import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.ByteBuffer
 import java.security.MessageDigest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -129,6 +132,22 @@ class Gen2WorldMapHackRealControlTest {
         assertEquals(KALOS_CRYSTAL_LOCATION_SHA, locationFingerprint(catalog))
     }
 
+    @Test fun gold97ReforgedResolvesCompiledMoveAndExtendedPaletteConsumers() {
+        assertGold97Variant(
+            env = "DUALDEX_GOLD97_ROM",
+            expectedRomSha = GOLD97_SHA,
+            expectedEncounterSha = GOLD97_ENCOUNTER_SHA,
+        )
+    }
+
+    @Test fun silver97ReforgedResolvesCompiledMoveAndExtendedPaletteConsumers() {
+        assertGold97Variant(
+            env = "DUALDEX_SILVER97_ROM",
+            expectedRomSha = SILVER97_SHA,
+            expectedEncounterSha = SILVER97_ENCOUNTER_SHA,
+        )
+    }
+
     @Test fun malformedOneThresholdFailsClosed() {
         val source = bronze2Bytes()
         val classifier = findOneThresholdClassifier(source)
@@ -156,6 +175,61 @@ class Gen2WorldMapHackRealControlTest {
 
         assertTrue("runtime-dependent NULL name must fail closed: $result", result is WorldMapResolution.Unavailable)
         assertEquals("landmark-join", (result as WorldMapResolution.Unavailable).stage)
+    }
+
+    private fun assertGold97Variant(
+        env: String,
+        expectedRomSha: String,
+        expectedEncounterSha: String,
+    ) {
+        val rom = realRom(env, expectedRomSha)
+        val encounters = encounters(rom)
+        assertEquals(347, encounters.size)
+        assertEquals(116, encounters.map { it.id / 10 }.toSet().size)
+        assertEquals(
+            mapOf(
+                EncounterMethods.WATER to 71,
+                EncounterMethods.GRASS_MORNING to 92,
+                EncounterMethods.GRASS_DAY to 92,
+                EncounterMethods.GRASS_NIGHT to 92,
+            ),
+            encounters.groupingBy { it.methodId }.eachCount(),
+        )
+        assertTrue(encounters.all { area ->
+            area.slots.isNotEmpty() && area.slots.all { slot ->
+                slot.speciesId in 1..251 && slot.minimumLevel in 1..100 &&
+                    slot.maximumLevel in slot.minimumLevel..100 && (slot.weight ?: 0) > 0
+            }
+        })
+        assertEquals(expectedEncounterSha, encounterFingerprint(encounters))
+
+        val result = resolve(rom, encounters)
+
+        assertTrue("$env: $result", result is WorldMapResolution.Resolved)
+        val catalog = (result as WorldMapResolution.Resolved).catalog.validate()
+        assertEquals(listOf("gen2-johto", "gen2-kanto"), catalog.regions.map { it.key })
+        assertEquals(116, catalog.regions.flatMap { it.locations }.flatMap { it.baseAreaIds }.toSet().size)
+        assertEquals(listOf(44 to 75, 26 to 41), catalog.regions.map { region ->
+            region.locations.size to region.locations.sumOf { it.baseAreaIds.size }
+        })
+        assertEquals(
+            listOf(GOLD97_JOHTO_RASTER_SHA, GOLD97_KANTO_RASTER_SHA),
+            catalog.regions.map { sha256(catalog.assets.getValue(it.imageAssetKey)) },
+        )
+        assertEquals(GOLD97_LOCATION_SHA, locationFingerprint(catalog))
+
+        val integratedCatalog = requireNotNull(CatalogParser.parse(rom).catalog)
+        assertEquals(
+            CapabilityStatus.AVAILABLE,
+            integratedCatalog.capabilities.getValue(RomCapability.WORLD_MAP).status,
+        )
+        assertEquals(
+            listOf(GOLD97_JOHTO_RASTER_SHA, GOLD97_KANTO_RASTER_SHA),
+            integratedCatalog.worldMaps.regions.map { region ->
+                sha256(integratedCatalog.worldMaps.assets.getValue(region.imageAssetKey))
+            },
+        )
+        assertEquals(GOLD97_LOCATION_SHA, locationFingerprint(integratedCatalog.worldMaps))
     }
 
     private fun resolve(rom: RomImage): WorldMapResolution = resolve(rom, encounters(rom))
@@ -274,5 +348,19 @@ class Gen2WorldMapHackRealControlTest {
             "355728883137963f6696793e9b5834a0155be312c8abd4d57a572c78981445d2"
         const val KALOS_CRYSTAL_ENCOUNTER_SHA =
             "287025214d7e1eb4c5aa43a744924b133dded32cd7cc0db3eeb6d8397aede804"
+        const val GOLD97_SHA =
+            "5e0c4688abd5ce2cb00d76902301791d5dfd196a99ff1e764268dffb196c50c3"
+        const val SILVER97_SHA =
+            "6d491ec85788e967aface80b61f91936bd84deb9239fef1d010f93962fe58828"
+        const val GOLD97_JOHTO_RASTER_SHA =
+            "918bdd844e7a55c84e7e1c88275ba0dcf517e51623f3d1d31908e7fece2cbdfe"
+        const val GOLD97_KANTO_RASTER_SHA =
+            "9ca35356ada5a30589dfa1ce8459b9043b86057a31d14f751cc7157c9687e8ea"
+        const val GOLD97_LOCATION_SHA =
+            "9ef198994a7b16dc395876e7f0fb98ac45ba5a23210777b99a36a2d070029af7"
+        const val GOLD97_ENCOUNTER_SHA =
+            "ca44fdb56e0e6d9efa35a51016cb244b49249b7b35d692eeed32360d4385ca78"
+        const val SILVER97_ENCOUNTER_SHA =
+            "ae7f69524f2fde1202875a4ff3037dc4380d364e93c43efec3546eabaa9fbffd"
     }
 }
