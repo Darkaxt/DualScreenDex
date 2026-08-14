@@ -128,7 +128,16 @@ object Gen2WorldMapResolver {
         }
     }
 
-    private fun parseMapAuthorityAt(rom: RomImage, bank: Int, offset: Int, bankEnd: Int): MapAuthority? = runCatching {
+    private fun parseMapAuthorityAt(
+        rom: RomImage,
+        bank: Int,
+        offset: Int,
+        bankEnd: Int,
+    ): MapAuthority? =
+        parseDirectMapAuthorityAt(rom, bank, offset, bankEnd)
+            ?: parseGuardedMapAuthorityAt(rom, bank, offset, bankEnd)
+
+    private fun parseDirectMapAuthorityAt(rom: RomImage, bank: Int, offset: Int, bankEnd: Int): MapAuthority? = runCatching {
         if (
             rom.u8(offset) != LOAD_DE_IMMEDIATE || rom.u8(offset + 3) != JR ||
             rom.u8(offset + 5) != LOAD_DE_IMMEDIATE || rom.u8(offset + 8) != LOAD_HL_IMMEDIATE
@@ -143,6 +152,48 @@ object Gen2WorldMapResolver {
             ?: return@runCatching null
         MapAuthority(bank, johto, kanto, paletteMap)
     }.getOrNull()
+
+    private fun parseGuardedMapAuthorityAt(
+        rom: RomImage,
+        bank: Int,
+        offset: Int,
+        bankEnd: Int,
+    ): MapAuthority? = runCatching {
+        if (
+            rom.u8(offset) != LOAD_DE_IMMEDIATE ||
+            rom.u8(offset + 3) != JR ||
+            rom.u8(offset + 5) != LOAD_A_ABSOLUTE ||
+            rom.u8(offset + 8) != CB_PREFIX ||
+            !isBitTestA(rom.u8(offset + 9)) ||
+            rom.u8(offset + 10) != LOAD_DE_IMMEDIATE ||
+            rom.u8(offset + 13) != JR_NZ ||
+            rom.u8(offset + 15) != LOAD_DE_IMMEDIATE ||
+            rom.u8(offset + 18) != LOAD_HL_IMMEDIATE
+        ) return@runCatching null
+
+        val sharedLoop = offset + 18
+        val johtoTarget = offset + 5 + rom.u8(offset + 4).toByte().toInt()
+        val kantoTarget = offset + 15 + rom.u8(offset + 14).toByte().toInt()
+        if (
+            johtoTarget != sharedLoop ||
+            kantoTarget != sharedLoop ||
+            !provesPlaneCopyLoop(rom, sharedLoop + 3, minOf(bankEnd, sharedLoop + 32))
+        ) return@runCatching null
+
+        val johto = readPlane(rom, bank, rom.u16le(offset + 1)) ?: return@runCatching null
+        val kanto = readPlane(rom, bank, rom.u16le(offset + 11)) ?: return@runCatching null
+        readPlane(rom, bank, rom.u16le(offset + 16)) ?: return@runCatching null
+        val paletteMap = parsePaletteMapConsumer(
+            rom,
+            offset + GUARDED_MAP_COPY_BYTES,
+            minOf(bankEnd, offset + 160),
+        ) ?: return@runCatching null
+        MapAuthority(bank, johto, kanto, paletteMap)
+    }.getOrNull()
+
+    private fun isBitTestA(opcode: Int): Boolean =
+        opcode in BIT_0_A..BIT_7_A &&
+            (opcode - BIT_0_A) % BIT_OPCODE_STRIDE == 0
 
     private fun provesPlaneCopyLoop(rom: RomImage, start: Int, end: Int): Boolean {
         val expected = intArrayOf(0x1a, 0xfe, 0xff, 0xc8, 0x1a, 0x22, 0x13, 0x18)
@@ -333,7 +384,7 @@ object Gen2WorldMapResolver {
             if (authority != null) add(authority)
             offset++
         }
-    }.distinctBy { it.tableOffset }
+    }.distinctBy { it.bank to it.tableOffset }
 
     private fun parseMapPointerConsumerAt(
         rom: RomImage,
@@ -350,17 +401,43 @@ object Gen2WorldMapResolver {
             rom.u8(offset + 17) != LOAD_A_IMMEDIATE || rom.u8(offset + 18) != MAP_HEADER_BYTES ||
             rom.u8(offset + 19) != CALL || rom.u8(offset + 22) != RETURN
         ) return@runCatching null
-        val table = rom.gbBankAddress(MAP_DATA_BANK, rom.u16le(offset + 6)) ?: return@runCatching null
+        val bank = findMapDataBank(rom, offset) ?: return@runCatching null
+        val table = rom.gbBankAddress(bank, rom.u16le(offset + 6)) ?: return@runCatching null
         if (!requiredMaps.all { base ->
                 val group = base ushr 8
                 val map = base and 0xff
                 val groupPointer = rom.u16le(table + (group - 1) * 2)
-                val root = rom.gbBankAddress(MAP_DATA_BANK, groupPointer) ?: return@all false
+                val root = rom.gbBankAddress(bank, groupPointer) ?: return@all false
                 root + (map - 1) * MAP_HEADER_BYTES + MAP_HEADER_BYTES <= rom.size
             }
         ) return@runCatching null
-        MapGroupAuthority(table)
+        MapGroupAuthority(bank, table)
     }.getOrNull()
+
+    private fun findMapDataBank(rom: RomImage, consumerOffset: Int): Int? {
+        val banks = buildSet {
+            var offset = 0
+            while (offset + MAP_HEADER_MEMBER_CONSUMER_BYTES <= minOf(BANK_BYTES, rom.size)) {
+                if (
+                    rom.u8(offset) == LOAD_A_HIGH &&
+                    rom.u8(offset + 2) == PUSH_AF &&
+                    rom.u8(offset + 3) == LOAD_A_IMMEDIATE &&
+                    rom.u8(offset + 5) == RST_BANKSWITCH &&
+                    rom.u8(offset + 6) == CALL &&
+                    rom.u16le(offset + 7) == consumerOffset &&
+                    rom.u8(offset + 9) == ADD_HL_DE &&
+                    rom.u8(offset + 10) == LOAD_C_HL &&
+                    rom.u8(offset + 11) == INC_HL &&
+                    rom.u8(offset + 12) == LOAD_B_HL &&
+                    rom.u8(offset + 13) == POP_AF &&
+                    rom.u8(offset + 14) == RST_BANKSWITCH &&
+                    rom.u8(offset + 15) == RETURN
+                ) add(rom.u8(offset + 4))
+                offset++
+            }
+        }
+        return banks.singleOrNull()
+    }
 
     private fun findLandmarkAuthorities(rom: RomImage): List<LandmarkAuthority> = buildList {
         var offset = BANK_BYTES
@@ -494,7 +571,7 @@ object Gen2WorldMapResolver {
             val group = base ushr 8
             val map = base and 0xff
             val pointer = rom.u16le(groups.tableOffset + (group - 1) * 2)
-            val root = rom.gbBankAddress(MAP_DATA_BANK, pointer) ?: return@runCatching null
+            val root = rom.gbBankAddress(groups.bank, pointer) ?: return@runCatching null
             val row = root + (map - 1) * MAP_HEADER_BYTES
             val landmark = rom.u8(row + MAP_LOCATION_FIELD)
             if (landmark == SPECIAL_LANDMARK) return@runCatching null
@@ -556,7 +633,7 @@ object Gen2WorldMapResolver {
         val paletteMap: ByteArray,
         val palettes: ShortArray,
     )
-    private data class MapGroupAuthority(val tableOffset: Int)
+    private data class MapGroupAuthority(val bank: Int, val tableOffset: Int)
     private data class LandmarkAuthority(val bank: Int, val tableOffset: Int)
     private data class RegionClassifier(val kanto: Int, val victory: Int, val ship: Int)
     private data class RegionClassifierPrefix(val ship: Int, val shipTarget: Int, val checkOffset: Int)
@@ -571,7 +648,6 @@ object Gen2WorldMapResolver {
     private data class RegionInput(val key: String, val displayName: String, val map: ByteArray, val landmarks: List<Landmark>)
 
     private const val BANK_BYTES = 0x4000
-    private const val MAP_DATA_BANK = 0x25
     private const val TILE_EDGE = 8
     private const val BYTES_PER_TILE = 16
     private const val TILE_COUNT = 48
@@ -605,29 +681,43 @@ object Gen2WorldMapResolver {
     private const val END_MARKER = 0xff
     private const val MAP_AUTHORITY_BYTES = 24
     private const val MAP_COPY_BYTES = 20
+    private const val GUARDED_MAP_COPY_BYTES = 30
     private const val GRAPHICS_LOADER_BYTES = 13
     private const val PALETTE_LOADER_BYTES = 9
     private const val MAP_POINTER_CONSUMER_BYTES = 23
+    private const val MAP_HEADER_MEMBER_CONSUMER_BYTES = 16
     private const val LANDMARK_CONSUMER_BYTES = 15
     private const val REGION_CLASSIFIER_BYTES = 40
     private const val MAP_LOCATION_CALL_BYTES = 11
     private const val LOAD_HL_IMMEDIATE = 0x21
     private const val LOAD_DE_IMMEDIATE = 0x11
     private const val LOAD_BC_IMMEDIATE = 0x01
+    private const val LOAD_A_HIGH = 0xf0
     private const val LOAD_A_IMMEDIATE = 0x3e
     private const val LOAD_A_ABSOLUTE = 0xfa
     private const val LOAD_B_A = 0x47
     private const val LOAD_C_A = 0x4f
+    private const val LOAD_C_HL = 0x4e
+    private const val LOAD_B_HL = 0x46
     private const val LOAD_E_IMMEDIATE = 0x1e
     private const val LOAD_B_IMMEDIATE = 0x06
     private const val COMPARE_IMMEDIATE = 0xfe
+    private const val PUSH_AF = 0xf5
+    private const val POP_AF = 0xf1
+    private const val ADD_HL_DE = 0x19
+    private const val INC_HL = 0x23
     private const val CALL = 0xcd
+    private const val RST_BANKSWITCH = 0xd7
     private const val RETURN = 0xc9
     private const val JR = 0x18
     private const val JR_NZ = 0x20
     private const val JR_Z = 0x28
     private const val JR_C = 0x38
     private const val JR_NC = 0x30
+    private const val CB_PREFIX = 0xcb
+    private const val BIT_0_A = 0x47
+    private const val BIT_7_A = 0x7f
+    private const val BIT_OPCODE_STRIDE = 8
     private const val XOR_A = 0xaf
     private const val JOHTO_REGION = 0
     private const val KANTO_REGION = 1

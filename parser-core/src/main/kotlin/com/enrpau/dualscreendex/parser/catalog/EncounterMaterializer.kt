@@ -186,7 +186,18 @@ object EncounterMaterializer {
         grass to water
     }.getOrNull()
 
-    private fun gen2(rom: RomImage, speciesCount: Int): List<EncounterArea> = buildList {
+    private fun gen2(rom: RomImage, speciesCount: Int): List<EncounterArea> {
+        val compactConsumers = findCompactGen2Consumers(rom)
+        if (compactConsumers.isNotEmpty()) {
+            val consumer = compactConsumers.singleOrNull() ?: return emptyList()
+            val levelAuthority = findCompactGen2LevelAuthorities(rom, consumer.bank).singleOrNull()
+                ?: return emptyList()
+            return materializeCompactGen2(rom, speciesCount, consumer, levelAuthority).orEmpty()
+        }
+        return standardGen2(rom, speciesCount)
+    }
+
+    private fun standardGen2(rom: RomImage, speciesCount: Int): List<EncounterArea> = buildList {
         val discoveredGrass = findGen2Arrays(rom, recordSize = 47, minimumRecords = 3) { offset ->
             validGen2GrassRecord(rom, offset, speciesCount)
         }
@@ -224,6 +235,264 @@ object EncounterMaterializer {
             }
         }
     }.distinctBy { it.id }
+
+    private fun findCompactGen2Consumers(rom: RomImage): List<CompactGen2Consumer> = buildList {
+        val bankCount = rom.size / GB_BANK_SIZE
+        for (bank in 1 until bankCount) {
+            val bankStart = bank * GB_BANK_SIZE
+            val bankEnd = minOf(bankStart + GB_BANK_SIZE, rom.size)
+            var offset = bankStart
+            while (offset + COMPACT_GEN2_CONSUMER_BYTES <= bankEnd) {
+                parseCompactGen2ConsumerAt(rom, bank, offset, bankEnd)?.let(::add)
+                offset++
+            }
+        }
+    }.distinct()
+
+    private fun parseCompactGen2ConsumerAt(
+        rom: RomImage,
+        bank: Int,
+        offset: Int,
+        bankEnd: Int,
+    ): CompactGen2Consumer? = runCatching {
+        if (
+            rom.u8(offset) != 0x21 ||
+            rom.u8(offset + 3) != 0x01 || rom.u16le(offset + 4) != COMPACT_GEN2_RECORD_BYTES ||
+            rom.u8(offset + 6) != 0xcd || rom.u8(offset + 9) != 0xd8 ||
+            rom.u8(offset + 10) != 0xcd || rom.u8(offset + 13) != 0x54 || rom.u8(offset + 14) != 0x5d ||
+            rom.u8(offset + 15) != 0x21 || rom.u8(offset + 18) != 0xcd ||
+            rom.u8(offset + 21) != 0x01 || rom.u16le(offset + 22) != COMPACT_GEN2_RECORD_BYTES ||
+            rom.u8(offset + 24) != 0x18 ||
+            rom.u8(offset + 26) != 0x21 ||
+            rom.u8(offset + 29) != 0x01 || rom.u16le(offset + 30) != COMPACT_GEN2_RECORD_BYTES ||
+            rom.u8(offset + 32) != 0x21 || rom.u8(offset + 35) != 0x11 ||
+            rom.u8(offset + 38) != 0xcd || rom.u16le(offset + 39) != rom.u16le(offset + 19) ||
+            rom.u8(offset + 41) != 0x01 || rom.u16le(offset + 42) != COMPACT_GEN2_RECORD_BYTES ||
+            rom.u8(offset + 44) != 0x18 ||
+            compactBranchTarget(offset + 24, rom.u8(offset + 25)) !=
+            compactBranchTarget(offset + 44, rom.u8(offset + 45))
+        ) return@runCatching null
+
+        val selector = rom.gbBankAddress(bank, rom.u16le(offset + 11)) ?: return@runCatching null
+        if (
+            selector + COMPACT_GEN2_KANTO_SELECTOR_BYTES > bankEnd ||
+            rom.u8(selector) != 0x21 || rom.u8(selector + 3) != 0xcb ||
+            !isBitTestHl(rom.u8(selector + 4)) || rom.u8(selector + 5) != 0x21 ||
+            rom.u8(selector + 8) != 0xc0 || rom.u8(selector + 9) != 0x21 ||
+            rom.u8(selector + 12) != 0xc9
+        ) return@runCatching null
+
+        CompactGen2Consumer(
+            bank = bank,
+            johtoGrass = rom.gbBankAddress(bank, rom.u16le(offset + 16)) ?: return@runCatching null,
+            kantoGrass = rom.gbBankAddress(bank, rom.u16le(selector + 6)) ?: return@runCatching null,
+            alternateKantoGrass = rom.gbBankAddress(bank, rom.u16le(selector + 10)) ?: return@runCatching null,
+            swarmGrass = rom.gbBankAddress(bank, rom.u16le(offset + 1)) ?: return@runCatching null,
+            johtoWater = rom.gbBankAddress(bank, rom.u16le(offset + 33)) ?: return@runCatching null,
+            kantoWater = rom.gbBankAddress(bank, rom.u16le(offset + 36)) ?: return@runCatching null,
+            swarmWater = rom.gbBankAddress(bank, rom.u16le(offset + 27)) ?: return@runCatching null,
+        )
+    }.getOrNull()
+
+    private fun isBitTestHl(opcode: Int): Boolean =
+        opcode in 0x46..0x7e && (opcode - 0x46) % 8 == 0
+
+    private fun compactBranchTarget(opcodeOffset: Int, encodedDelta: Int): Int =
+        opcodeOffset + 2 + encodedDelta.toByte().toInt()
+
+    private fun findCompactGen2LevelAuthorities(rom: RomImage, bank: Int): List<CompactGen2LevelAuthority> {
+        val bankStart = bank * GB_BANK_SIZE
+        val bankEnd = minOf(bankStart + GB_BANK_SIZE, rom.size)
+        return buildList {
+            var offset = bankStart
+            while (offset + COMPACT_GEN2_LEVEL_CONSUMER_BYTES <= bankEnd) {
+                parseCompactGen2LevelAuthorityAt(rom, bank, offset, bankEnd)?.let(::add)
+                offset++
+            }
+        }.distinctBy { authority ->
+            authority.weights.joinToString("|") { it.contentHashCode().toString() } + ":" +
+                authority.levelPointers.contentHashCode() + ":" + authority.levelAdjustments.contentHashCode()
+        }
+    }
+
+    private fun parseCompactGen2LevelAuthorityAt(
+        rom: RomImage,
+        bank: Int,
+        offset: Int,
+        bankEnd: Int,
+    ): CompactGen2LevelAuthority? = runCatching {
+        if (
+            rom.u8(offset) != 0x1a || rom.u8(offset + 1) != 0xe6 || rom.u8(offset + 2) != 0x0f ||
+            rom.u8(offset + 3) != 0xd5 || rom.u8(offset + 4) != 0x21 ||
+            rom.u8(offset + 7) != 0x4f || rom.u8(offset + 8) != 0x06 || rom.u8(offset + 9) != 0x00 ||
+            rom.u8(offset + 10) != 0x3e || rom.u8(offset + 11) != COMPACT_GEN2_SLOT_COUNT ||
+            rom.u8(offset + 12) != 0xcd ||
+            rom.u8(offset + 39) != 0xe1 || rom.u8(offset + 40) != 0xe5 ||
+            rom.u8(offset + 41) != 0xfa || rom.u8(offset + 44) != 0x4f ||
+            rom.u8(offset + 45) != 0x7e || rom.u8(offset + 46) != 0xcb || rom.u8(offset + 47) != 0x37 ||
+            rom.u8(offset + 48) != 0xe6 || rom.u8(offset + 49) != 0x0f || rom.u8(offset + 50) != 0x28 ||
+            rom.u8(offset + 52) != 0x06 || rom.u8(offset + 53) != 0x00 || rom.u8(offset + 54) != 0x3d ||
+            rom.u8(offset + 55) != 0x21 || rom.u8(offset + 58) != 0x09 ||
+            rom.u8(offset + 59) != 0x0e || rom.u8(offset + 60) != COMPACT_GEN2_TIME_COUNT ||
+            rom.u8(offset + 61) != 0xcd || rom.u16le(offset + 62) != rom.u16le(offset + 13) ||
+            rom.u8(offset + 64) != 0x7e || rom.u8(offset + 65) != 0xa7 || rom.u8(offset + 66) != 0x28 ||
+            rom.u8(offset + 68) != 0x3d || rom.u8(offset + 69) != 0x21 ||
+            rom.u8(offset + 72) != 0x0e || rom.u8(offset + 73) != COMPACT_GEN2_SLOT_COUNT ||
+            rom.u8(offset + 74) != 0xcd || rom.u16le(offset + 75) != rom.u16le(offset + 13) ||
+            rom.u8(offset + 77) != 0x19 || rom.u8(offset + 78) != 0x7e ||
+            rom.u8(offset + 79) != 0xe1 || rom.u8(offset + 80) != 0x2b || rom.u8(offset + 81) != 0x86 ||
+            rom.u8(offset + 82) != 0xe1 || rom.u8(offset + 83) != 0x19 || rom.u8(offset + 84) != 0x47 ||
+            rom.u8(offset + 85) != 0xcd
+        ) return@runCatching null
+
+        val probabilityRoot = rom.gbBankAddress(bank, rom.u16le(offset + 5)) ?: return@runCatching null
+        val levelPointerRoot = rom.gbBankAddress(bank, rom.u16le(offset + 56)) ?: return@runCatching null
+        val levelTableRoot = rom.gbBankAddress(bank, rom.u16le(offset + 70)) ?: return@runCatching null
+        if (
+            probabilityRoot + COMPACT_GEN2_PROBABILITY_BYTES > bankEnd ||
+            levelPointerRoot + COMPACT_GEN2_LEVEL_POINTER_BYTES > bankEnd
+        ) return@runCatching null
+
+        val weights = List(COMPACT_GEN2_PROBABILITY_COUNT) { table ->
+            val result = IntArray(COMPACT_GEN2_SLOT_COUNT)
+            var previous = 0
+            repeat(COMPACT_GEN2_SLOT_COUNT) { slot ->
+                val cumulative = rom.u8(probabilityRoot + table * COMPACT_GEN2_SLOT_COUNT + slot)
+                val delta = cumulative - previous
+                if (delta <= 0 || delta % 2 != 0) return@runCatching null
+                result[slot] = delta / 2
+                previous = cumulative
+            }
+            if (previous != COMPACT_GEN2_PROBABILITY_TOTAL) return@runCatching null
+            result
+        }
+        val levelPointers = rom.slice(levelPointerRoot, COMPACT_GEN2_LEVEL_POINTER_BYTES)
+        val levelTableCount = levelPointers.maxOf { it.toInt() and 0xff }
+        if (levelTableCount == 0 || levelTableRoot + levelTableCount * COMPACT_GEN2_SLOT_COUNT > bankEnd) {
+            return@runCatching null
+        }
+        CompactGen2LevelAuthority(
+            weights,
+            levelPointers,
+            rom.slice(levelTableRoot, levelTableCount * COMPACT_GEN2_SLOT_COUNT),
+        )
+    }.getOrNull()
+
+    private fun materializeCompactGen2(
+        rom: RomImage,
+        speciesCount: Int,
+        consumer: CompactGen2Consumer,
+        levels: CompactGen2LevelAuthority,
+    ): List<EncounterArea>? = runCatching {
+        val requiredGrass = listOf(consumer.johtoGrass, consumer.kantoGrass, consumer.alternateKantoGrass).map { root ->
+            readCompactGen2Array(rom, root, speciesCount, levels, allowEmpty = false) ?: return@runCatching null
+        }
+        val requiredWater = listOf(consumer.johtoWater, consumer.kantoWater).map { root ->
+            readCompactGen2Array(rom, root, speciesCount, levels, allowEmpty = false) ?: return@runCatching null
+        }
+        val grass = requiredGrass.flatten() +
+            (readCompactGen2Array(rom, consumer.swarmGrass, speciesCount, levels, allowEmpty = true)
+                ?: return@runCatching null)
+        val water = requiredWater.flatten() +
+            (readCompactGen2Array(rom, consumer.swarmWater, speciesCount, levels, allowEmpty = true)
+                ?: return@runCatching null)
+        val decoded = buildList {
+            grass.forEach { record ->
+                repeat(COMPACT_GEN2_TIME_COUNT) { time ->
+                    val method = EncounterMethods.GRASS_MORNING + time
+                    val label = listOf("morning grass", "day grass", "night grass")[time]
+                    add(
+                        area(
+                            groupMapId(record.group, record.map),
+                            method,
+                            "Map ${record.group}-${record.map} - $label",
+                            readCompactGen2Slots(rom, record, time, levels),
+                        ),
+                    )
+                }
+            }
+            water.forEach { record ->
+                val slots = (0 until COMPACT_GEN2_TIME_COUNT).flatMap { time ->
+                    readCompactGen2Slots(rom, record, time, levels)
+                }.distinct()
+                add(
+                    area(
+                        groupMapId(record.group, record.map),
+                        EncounterMethods.WATER,
+                        "Map ${record.group}-${record.map} - water",
+                        slots,
+                    ),
+                )
+            }
+        }
+        decoded.groupBy { it.id }.values.map { variants ->
+            variants.first().copy(slots = variants.flatMap { it.slots }.distinct())
+        }
+    }.getOrNull()
+
+    private fun readCompactGen2Array(
+        rom: RomImage,
+        root: Int,
+        speciesCount: Int,
+        levels: CompactGen2LevelAuthority,
+        allowEmpty: Boolean,
+    ): List<CompactGen2Record>? = runCatching {
+        val bankEnd = minOf((root / GB_BANK_SIZE + 1) * GB_BANK_SIZE, rom.size)
+        val records = buildList {
+            var cursor = root
+            while (size < MAX_COMPACT_GEN2_RECORDS && cursor < bankEnd && rom.u8(cursor) != 0xff) {
+                if (cursor + COMPACT_GEN2_RECORD_BYTES > bankEnd) return@runCatching null
+                val group = rom.u8(cursor)
+                val map = rom.u8(cursor + 1)
+                val encounterRate = rom.u8(cursor + 2)
+                val baseLevel = rom.u8(cursor + 3)
+                val configuration = rom.u8(cursor + 4)
+                if (
+                    group !in 1..63 || map !in 1..254 || encounterRate == 0 || baseLevel !in 1..100 ||
+                    configuration and 0x0f !in levels.weights.indices ||
+                    (0 until COMPACT_GEN2_SPECIES_BYTES).any { index ->
+                        rom.u8(cursor + COMPACT_GEN2_HEADER_BYTES + index) !in 1..speciesCount
+                    }
+                ) return@runCatching null
+                add(CompactGen2Record(cursor, group, map, baseLevel, configuration))
+                cursor += COMPACT_GEN2_RECORD_BYTES
+            }
+            if (cursor >= bankEnd || rom.u8(cursor) != 0xff) return@runCatching null
+        }
+        records.takeIf { allowEmpty || it.isNotEmpty() }
+    }.getOrNull()
+
+    private fun readCompactGen2Slots(
+        rom: RomImage,
+        record: CompactGen2Record,
+        time: Int,
+        levels: CompactGen2LevelAuthority,
+    ): List<EncounterSlot> {
+        val probability = record.configuration and 0x0f
+        val levelProfile = record.configuration ushr 4
+        val levelTable = if (levelProfile == 0) {
+            0
+        } else {
+            levels.levelPointers[(levelProfile - 1) * COMPACT_GEN2_TIME_COUNT + time].toInt() and 0xff
+        }
+        return List(COMPACT_GEN2_SLOT_COUNT) { slot ->
+            val adjustment = if (levelTable == 0) {
+                0
+            } else {
+                levels.levelAdjustments[(levelTable - 1) * COMPACT_GEN2_SLOT_COUNT + slot].toInt()
+            }
+            val minimum = (record.baseLevel + adjustment).coerceIn(1, 100)
+            val maximum = (record.baseLevel + adjustment + COMPACT_GEN2_LEVEL_VARIANCE).coerceIn(1, 100)
+            EncounterSlot(
+                speciesId = rom.u8(
+                    record.offset + COMPACT_GEN2_HEADER_BYTES + time * COMPACT_GEN2_SLOT_COUNT + slot,
+                ),
+                minimumLevel = minimum,
+                maximumLevel = maximum,
+                weight = levels.weights[probability][slot],
+            )
+        }
+    }
 
     private fun findGen2Arrays(
         rom: RomImage,
@@ -653,6 +922,28 @@ object EncounterMaterializer {
 
     private data class Gen1PointerTable(val offset: Int, val bank: Int, val encounteredMaps: Int)
     private data class FixedSequence(val offset: Int, val count: Int, val endExclusive: Int)
+    private data class CompactGen2Consumer(
+        val bank: Int,
+        val johtoGrass: Int,
+        val kantoGrass: Int,
+        val alternateKantoGrass: Int,
+        val swarmGrass: Int,
+        val johtoWater: Int,
+        val kantoWater: Int,
+        val swarmWater: Int,
+    )
+    private data class CompactGen2LevelAuthority(
+        val weights: List<IntArray>,
+        val levelPointers: ByteArray,
+        val levelAdjustments: ByteArray,
+    )
+    private data class CompactGen2Record(
+        val offset: Int,
+        val group: Int,
+        val map: Int,
+        val baseLevel: Int,
+        val configuration: Int,
+    )
     private data class Gen3EncounterAbi(
         val headerSize: Int,
         val methods: IntArray,
@@ -689,6 +980,20 @@ object EncounterMaterializer {
     )
 
     private const val GB_BANK_SIZE = 0x4000
+    private const val COMPACT_GEN2_HEADER_BYTES = 5
+    private const val COMPACT_GEN2_SLOT_COUNT = 16
+    private const val COMPACT_GEN2_TIME_COUNT = 3
+    private const val COMPACT_GEN2_SPECIES_BYTES = COMPACT_GEN2_SLOT_COUNT * COMPACT_GEN2_TIME_COUNT
+    private const val COMPACT_GEN2_RECORD_BYTES = COMPACT_GEN2_HEADER_BYTES + COMPACT_GEN2_SPECIES_BYTES
+    private const val COMPACT_GEN2_CONSUMER_BYTES = 46
+    private const val COMPACT_GEN2_KANTO_SELECTOR_BYTES = 13
+    private const val COMPACT_GEN2_LEVEL_CONSUMER_BYTES = 88
+    private const val COMPACT_GEN2_PROBABILITY_COUNT = 4
+    private const val COMPACT_GEN2_PROBABILITY_TOTAL = 200
+    private const val COMPACT_GEN2_PROBABILITY_BYTES = COMPACT_GEN2_PROBABILITY_COUNT * COMPACT_GEN2_SLOT_COUNT
+    private const val COMPACT_GEN2_LEVEL_POINTER_BYTES = 15 * COMPACT_GEN2_TIME_COUNT
+    private const val COMPACT_GEN2_LEVEL_VARIANCE = 4
+    private const val MAX_COMPACT_GEN2_RECORDS = 256
     private val GB_SWITCHABLE_ADDRESS = 0x4000..0x7FFF
     private const val MIN_GEN3_HEADERS = 3
     private const val MAX_GEN3_HEADERS = 1024

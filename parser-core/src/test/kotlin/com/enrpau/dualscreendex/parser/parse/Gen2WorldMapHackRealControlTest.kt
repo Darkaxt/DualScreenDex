@@ -1,7 +1,9 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterMaterializer
+import com.enrpau.dualscreendex.parser.catalog.EncounterMethods
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
@@ -51,6 +53,44 @@ class Gen2WorldMapHackRealControlTest {
         assertEquals(CRYSTAL_LEGACY_LOCATION_SHA, locationFingerprint(catalog))
     }
 
+    @Test fun anniversaryCrystalResolvesGuardedMapAndCompactEncounterConsumers() {
+        val rom = realRom("DUALDEX_ANNIVERSARY_CRYSTAL_ROM", ANNIVERSARY_CRYSTAL_SHA)
+        val encounters = encounters(rom)
+        assertEquals(410, encounters.size)
+        assertEquals(137, encounters.map { it.id / 10 }.toSet().size)
+        assertEquals(
+            mapOf(
+                EncounterMethods.WATER to 59,
+                EncounterMethods.GRASS_MORNING to 117,
+                EncounterMethods.GRASS_DAY to 117,
+                EncounterMethods.GRASS_NIGHT to 117,
+            ),
+            encounters.groupingBy { it.methodId }.eachCount(),
+        )
+        assertTrue(encounters.all { area ->
+            area.slots.isNotEmpty() && area.slots.all { slot ->
+                slot.speciesId in 1..251 && slot.minimumLevel in 1..100 &&
+                    slot.maximumLevel in slot.minimumLevel..100 && (slot.weight ?: 0) > 0
+            }
+        })
+        assertEquals(ANNIVERSARY_CRYSTAL_ENCOUNTER_SHA, encounterFingerprint(encounters))
+
+        val result = resolve(rom, encounters)
+
+        assertTrue("Anniversary Crystal: $result", result is WorldMapResolution.Resolved)
+        val catalog = (result as WorldMapResolution.Resolved).catalog.validate()
+        assertEquals(listOf("gen2-johto", "gen2-kanto"), catalog.regions.map { it.key })
+        assertEquals(137, catalog.regions.flatMap { it.locations }.flatMap { it.baseAreaIds }.toSet().size)
+        assertEquals(listOf(42 to 65, 39 to 72), catalog.regions.map { region ->
+            region.locations.size to region.locations.sumOf { it.baseAreaIds.size }
+        })
+        assertEquals(
+            listOf(ANNIVERSARY_CRYSTAL_JOHTO_RASTER_SHA, ANNIVERSARY_CRYSTAL_KANTO_RASTER_SHA),
+            catalog.regions.map { sha256(catalog.assets.getValue(it.imageAssetKey)) },
+        )
+        assertEquals(ANNIVERSARY_CRYSTAL_LOCATION_SHA, locationFingerprint(catalog))
+    }
+
     @Test fun malformedOneThresholdFailsClosed() {
         val source = bronze2Bytes()
         val classifier = findOneThresholdClassifier(source)
@@ -80,11 +120,18 @@ class Gen2WorldMapHackRealControlTest {
         assertEquals("landmark-join", (result as WorldMapResolution.Unavailable).stage)
     }
 
-    private fun resolve(rom: RomImage): WorldMapResolution {
+    private fun resolve(rom: RomImage): WorldMapResolution = resolve(rom, encounters(rom))
+
+    private fun resolve(rom: RomImage, encounters: List<EncounterArea>): WorldMapResolution =
+        Gen2WorldMapResolver.resolve(
+            RomAnalysisSession(rom, RomHeaderReader.read(rom)),
+            encounters.mapTo(linkedSetOf()) { it.id / 10 },
+        )
+
+    private fun encounters(rom: RomImage): List<EncounterArea> {
         val analysis = ParserOrchestrator.analyze(rom)
         val layout = requireNotNull(analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout)
-        val baseAreaIds = EncounterMaterializer.materialize(rom, layout).mapTo(linkedSetOf()) { it.id / 10 }
-        return Gen2WorldMapResolver.resolve(RomAnalysisSession(rom, RomHeaderReader.read(rom)), baseAreaIds)
+        return EncounterMaterializer.materialize(rom, layout)
     }
 
     private fun bronze2Rom(): RomImage {
@@ -119,6 +166,16 @@ class Gen2WorldMapHackRealControlTest {
             ) return ClassifierOffsets(ship + 1, check + 1, ship + 17)
         }
         error("complete one-threshold classifier not found")
+    }
+
+    private fun encounterFingerprint(areas: List<EncounterArea>): String {
+        val canonical = areas.sortedBy { it.id }.joinToString(";") { area ->
+            val slots = area.slots.joinToString(",") { slot ->
+                "${slot.speciesId}:${slot.minimumLevel}-${slot.maximumLevel}:${slot.weight}"
+            }
+            "${area.id}:${area.methodId}:${area.windows.map { it.name }.sorted()}:$slots"
+        }
+        return sha256(canonical.toByteArray())
     }
 
     private fun locationFingerprint(catalog: WorldMapCatalog): String {
@@ -160,5 +217,14 @@ class Gen2WorldMapHackRealControlTest {
         const val CRYSTAL_LEGACY_JOHTO_RASTER_SHA = "9d348e028f32fe38f23c3ae561ee2f512fd41fa360d9313d412b5337c178411a"
         const val CRYSTAL_LEGACY_KANTO_RASTER_SHA = "ae6bd49974c5d87260f8567b0810bdd0d9c0aabfe1a453a3d7459a91dc1faaa6"
         const val CRYSTAL_LEGACY_LOCATION_SHA = "355728883137963f6696793e9b5834a0155be312c8abd4d57a572c78981445d2"
+        const val ANNIVERSARY_CRYSTAL_SHA = "638dfbf61aa7a6e0bf1dcf75518dd69ed9e2f038f1dc09ab318ef4bbcdc29f5c"
+        const val ANNIVERSARY_CRYSTAL_JOHTO_RASTER_SHA =
+            "adb9cefb64aece67c7cff271b70183af5dafa7c3e95beffd31436a7cab79a5e9"
+        const val ANNIVERSARY_CRYSTAL_KANTO_RASTER_SHA =
+            "074aacb3e08341b1293aa445cf4c4bc398d54e297b810b7677f8ca515f41da91"
+        const val ANNIVERSARY_CRYSTAL_LOCATION_SHA =
+            "7dd5ca12862111503bb473fc9cdf627a30242e3ae2b5ba1dc23cbaab5795d85b"
+        const val ANNIVERSARY_CRYSTAL_ENCOUNTER_SHA =
+            "8bc6b49c14234887082577358111426afd8f499661d1dd5ae56cd36a012536fb"
     }
 }
