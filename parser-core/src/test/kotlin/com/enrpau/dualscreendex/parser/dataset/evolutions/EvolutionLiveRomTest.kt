@@ -50,8 +50,8 @@ class EvolutionLiveRomTest {
                 "DUALDEX_DARKFIRE_ROM",
                 "8c564fcd1e419d81a56eaf6734ae9eb70d0f9849d08200c1807d31d674a48d69",
                 0x3F0E84,
-                494, 8, 8, 493, 236,
-                "a7f3663b8a58402fa30099987ecc162ac8bc3688b16ceee1273bad3d477c003c",
+                494, 10, 8, 493, 269,
+                "f449a971b4c63977b8d35d500f47d14adcbf6afd735acffd045983ff3d73b806",
             ),
             RealControl(
                 "DUALDEX_DREAMSTONE_ROM",
@@ -90,6 +90,16 @@ class EvolutionLiveRomTest {
         assertEquals(Triple(4, 32, 3), ivysaur.edges.single().let { Triple(it.methodId, it.parameter, it.targetSpeciesId) })
         assertEquals(listOf(0, 0), bulbasaur.edges.single().raw.takeLast(2).map { it.toInt() and 0xff })
     }
+
+    @Test fun classicKeepsItsSourceProvenTenSlotEvolutionStride() = assertCompleteEvolutionTable(
+        RealControl(
+            "DUALDEX_CLASSIC_ROM",
+            "01c0177b2498e1842a1bf9ee2ddac145fb95275321bd3813dbf17341d63ad16c",
+            0x368A88,
+            429, 10, 8, 403, 190,
+            "2f6437ba40dec067aa2af4c522c6d0ae90d065b7936285fd1b71905e045ebb7f",
+        ),
+    )
 
     @Test fun alteredEmeraldHasExactTypedPayloadParity() = assertCodecParity(
         "DUALDEX_ALTERED_EMERALD_ROM",

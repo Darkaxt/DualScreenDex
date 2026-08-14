@@ -601,27 +601,11 @@ object DatasetResolvers {
                     }
             }
         }
-        val structurallyComplete = discoveredCandidates.filter { candidate ->
-            candidate.validation.evidence.validRecords == speciesCount && candidate.validation.structuralQuality == 1.0
-        }
-        val narrowestComplete = structurallyComplete.minOfOrNull { candidate ->
-            candidate.validation.evidence.recordSize ?: Int.MAX_VALUE
-        }
-        val completeCandidates = if (narrowestComplete == null) emptyList() else structurallyComplete.filter {
-            it.validation.evidence.recordSize == narrowestComplete
-        }
-        val strongestCompleteReferences = completeCandidates.maxOfOrNull { it.referenceCount }
-        val authoritativeComplete = completeCandidates.filter {
-            it.referenceCount == strongestCompleteReferences && it.referenceCount > 0
-        }
-        val anchoredAuthority = authoritativeComplete.singleOrNull()
-        val allCandidates = if (anchoredAuthority == null) {
-            listOfNotNull(inheritedCandidate) + referencedCandidates + discoveredCandidates
-        } else {
-            (listOfNotNull(inheritedCandidate) + referencedCandidates + anchoredAuthority).filter { candidate ->
-                candidate.sameLayoutAs(anchoredAuthority)
-            }
-        }
+        // A smaller row stride is not an authority: Classic's source-proven 10-slot table also
+        // admits a superficially complete 8-slot alias at the same compiled-referenced root.
+        // Preserve every fully validated shape so reference boundaries, content quality, and an
+        // independently inherited layout can either select one exact table or fail ambiguous.
+        val allCandidates = listOfNotNull(inheritedCandidate) + referencedCandidates + discoveredCandidates
         var resolution = chooseEvolutions(allCandidates)
         if (referenced.overflowReason != null) {
             fun overflowFailure(detail: String): ValidationEvidence = missing(
@@ -635,9 +619,6 @@ object DatasetResolvers {
             }
             if (!resolution.compatible || selected == null || referenced.overflowBoundary == null) {
                 return overflowFailure("no unique retained candidate established a complete table")
-            }
-            if (anchoredAuthority != null && resolution.matchesLayoutOf(anchoredAuthority)) {
-                return resolution
             }
             if (!selected.strictlyStrongerThan(referenced.overflowBoundary)) {
                 val omittedContenders = referenced.omittedCandidates
@@ -680,16 +661,6 @@ object DatasetResolvers {
         }
         return resolution
     }
-
-    private fun EvolutionCandidate.sameLayoutAs(other: EvolutionCandidate): Boolean =
-        validation.evidence.offset == other.validation.evidence.offset &&
-            validation.evidence.recordSize == other.validation.evidence.recordSize &&
-            validation.evidence.elementSize == other.validation.evidence.elementSize
-
-    private fun ValidationEvidence.matchesLayoutOf(candidate: EvolutionCandidate): Boolean =
-        offset == candidate.validation.evidence.offset &&
-            recordSize == candidate.validation.evidence.recordSize &&
-            elementSize == candidate.validation.evidence.elementSize
 
     private fun evolutionAnchorSlotSum(
         rom: RomImage,
