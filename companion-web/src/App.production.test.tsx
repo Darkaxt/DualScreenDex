@@ -40,7 +40,7 @@ vi.mock('./gateway', () => ({
 }));
 
 import { action, bootstrap } from './gateway';
-import { App, catalogRefreshMarker } from './App';
+import { App, catalogRefreshMarker, loadingModuleLabel } from './App';
 
 describe('production application shell', () => {
   beforeEach(() => {
@@ -77,9 +77,19 @@ describe('production application shell', () => {
 
     render(<App />);
 
-    const loading = await screen.findByRole('status', { name: 'Loading IDENTIFYING' });
-    expect(loading.textContent).toBe('Loading');
+    const loading = await screen.findByRole('status', { name: 'Loading ROM identity' });
+    expect(loading.textContent).toBe('Loading ROM identity');
     expect(loading.textContent).not.toContain('%');
+  });
+
+  it('uses concise names for every parser module and humanizes future phases', () => {
+    expect(loadingModuleLabel('IDENTIFYING')).toBe('ROM identity');
+    expect(loadingModuleLabel('ESSENTIAL')).toBe('core catalog');
+    expect(loadingModuleLabel('SPECIES_MEDIA')).toBe('sprites & entries');
+    expect(loadingModuleLabel('RELATIONSHIPS')).toBe('evolutions & areas');
+    expect(loadingModuleLabel('EXTENDED')).toBe('extended data');
+    expect(loadingModuleLabel('CACHE_REOPEN')).toBe('saved catalog');
+    expect(loadingModuleLabel('FUTURE_PHASE')).toBe('future phase');
   });
 
   it('opens the capability report from Settings without opening memory capture', async () => {

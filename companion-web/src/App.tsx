@@ -112,6 +112,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={() => setMapOpen(true)} />;
     }
   }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen, capabilityReportOpen, mapOpen]);
+  const loadingLabel = `Loading ${loadingModuleLabel(state.loading.phase)}`;
 
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
@@ -120,7 +121,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       <div class="device-screen">
         {catalog && <div class="rom-status" title={state.catalogName ?? undefined}><strong>{state.catalogName ?? 'Unnamed ROM'}</strong><span>{catalog.family.replaceAll('_', ' ')} · CRC32 {catalog.crc32 || 'N/F'}</span></div>}
         <div class={catalog ? 'screen-host with-rom-status' : 'screen-host'}>{screen}</div>
-        {state.loading.active && <div class="loading-indicator" role="status" aria-label={`Loading ${state.loading.phase}`}><span>Loading</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
+        {state.loading.active && <div class="loading-indicator" role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
       </div>
     </div>
   </main>;
@@ -129,6 +130,18 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 export function catalogRefreshMarker(state: Pick<State, 'catalogName' | 'loading'>): string {
   if (state.loading.completedUnits <= 0) return '';
   return `${state.catalogName ?? ''}:${state.loading.phase}:${state.loading.completedUnits}:${state.loading.totalUnits}`;
+}
+
+export function loadingModuleLabel(phase: string): string {
+  const labels: Record<string, string> = {
+    IDENTIFYING: 'ROM identity',
+    ESSENTIAL: 'core catalog',
+    SPECIES_MEDIA: 'sprites & entries',
+    RELATIONSHIPS: 'evolutions & areas',
+    EXTENDED: 'extended data',
+    CACHE_REOPEN: 'saved catalog',
+  };
+  return labels[phase] ?? phase.replaceAll('_', ' ').toLowerCase();
 }
 
 function Welcome({ busy, error, onUpload, openSetup }: { busy: boolean; error: string | null; onUpload: (file: File) => void; openSetup: () => void }) {

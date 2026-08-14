@@ -36,7 +36,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         is CompanionAction.CatalogLoadingChanged -> state.copy(
             catalogLoading = action.loading,
             catalogReady = when {
-                action.name != null && action.loading.active && action.loading.completedUnits == 0 -> false
+                action.loading.active -> false
                 action.loading.phase == "FAILED" -> state.catalogReady
                 else -> action.loading.completedUnits > 0
             },

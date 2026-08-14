@@ -28,7 +28,7 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   const [selectedKey, setSelectedKey] = useState(() => focusedLocation?.key ?? '');
   const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
   const [fit, setFit] = useState({ width: region?.pixelWidth ?? 1, height: region?.pixelHeight ?? 1, scale: 1 });
-  const [fogVisible, setFogVisible] = useState(true);
+  const fogVisible = state.settings.knowledgeMode !== 'DISCOVERED';
   const [markersVisible, setMarkersVisible] = useState(true);
   const [legendOpen, setLegendOpen] = useState(false);
   const stageRef = useRef<HTMLElement>(null);
@@ -48,6 +48,9 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   const selectedLocation = fogVisible
     ? revealedLocations.find(location => location.key === selectedCandidate?.key) ?? currentLocation ?? revealedLocations[0]
     : selectedCandidate ?? currentLocation ?? region?.locations[0];
+  const selectedHasEncounterAreas = selectedLocation != null && catalog.areas.some(area =>
+    selectedLocation.baseAreaIds.includes(area.baseAreaId ?? Math.floor(area.id / 10)),
+  );
 
   useEffect(() => {
     if (focusedRegion && focusedRegion.key !== regionKey) setRegionKey(focusedRegion.key);
@@ -196,8 +199,7 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
 
       <nav class="map-utility-rail" aria-label="Map utilities">
         <button class="map-control" aria-label="Map settings and legend" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>
-        <button class="map-control" aria-label="Open Area Pokédex" disabled={!selectedLocation} onClick={() => selectedLocation && onOpenAreaDex(region.key, selectedLocation)}><DexIcon /></button>
-        <button class="map-control fog-control" aria-label="Toggle fog of war" aria-pressed={fogVisible} onClick={() => setFogVisible(value => !value)}><span class="fog-icon" /></button>
+        <button class="map-control" aria-label="Open Area Pokédex" disabled={!selectedHasEncounterAreas} onClick={() => selectedLocation && selectedHasEncounterAreas && onOpenAreaDex(region.key, selectedLocation)}><DexIcon /></button>
         <button class="map-control marker-control" aria-label="Toggle map markers" aria-pressed={markersVisible} onClick={() => setMarkersVisible(value => !value)}><span class="pin-icon" /></button>
         {legendOpen && <div class="map-legend-panel">
           <small>ATLAS</small>

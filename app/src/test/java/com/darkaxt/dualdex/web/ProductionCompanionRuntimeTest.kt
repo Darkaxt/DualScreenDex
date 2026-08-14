@@ -711,6 +711,56 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun progressiveParsePublishesTheCurrentCatalogModule() {
+        val incoming = ParsedCatalog("b".repeat(64), EngineFamily.EMERALD, Platform.GBA)
+        val executor = HoldingExecutorService()
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = executor,
+            parseCatalog = { _, progress ->
+                progress(CatalogMaterializationProgress(CatalogMaterializationPhase.SPECIES_MEDIA, 2, 5, incoming))
+                incoming
+            },
+        )
+        val phases = mutableListOf<com.enrpau.dualscreendex.companion.model.CatalogLoadingState>()
+        val subscription = runtime.gateway.subscribe { snapshot -> phases += snapshot.catalogLoading }
+
+        runtime.load("incoming.gba", RomImage(ByteArray(0xC0)))
+        executor.runNext()
+
+        assertTrue(phases.any { it.active && it.phase == "SPECIES_MEDIA" && it.completedUnits == 2 && it.totalUnits == 5 })
+        subscription.close()
+        runtime.close()
+    }
+
+    @Test
+    fun mapLocationWithoutEncounterAreasIsASilentNoOp() {
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                "sha",
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                worldMaps = WorldMapCatalog(
+                    regions = listOf(
+                        WorldMapRegion(
+                            "hoenn", "Hoenn", 8, 8, 1, 1, "world/hoenn",
+                            listOf(WorldMapLocation("empty", "Empty Point", setOf(0x0011), listOf(WorldMapCell(0, 0, 1, 1)))),
+                        ),
+                    ),
+                    assets = mapOf("world/hoenn" to RgbaSprite(8, 8, IntArray(64))),
+                ),
+            ),
+        )
+        val before = runtime.stateView()
+
+        val after = runtime.action("MAP_AREA", mapOf("regionKey" to "hoenn", "locationKey" to "empty"))
+
+        assertSame(before, after)
+        runtime.close()
+    }
+
+    @Test
     fun supersededProgressNeverReplacesTheWinningCatalogOrItsSettings() {
         val hashA = "a".repeat(64)
         val winner = ParsedCatalog("b".repeat(64), EngineFamily.EMERALD, Platform.GBA)

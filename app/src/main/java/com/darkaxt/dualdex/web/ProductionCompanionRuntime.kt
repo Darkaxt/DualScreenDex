@@ -510,8 +510,8 @@ class ProductionCompanionRuntime(
                 val areaIds = catalog?.encounterAreas
                     ?.filter { it.id / 10 in location.baseAreaIds }
                     ?.mapTo(sortedSetOf()) { it.id }
-                    ?.takeIf { it.isNotEmpty() }
-                    ?: error("map location has no encounter area")
+                    .orEmpty()
+                if (areaIds.isEmpty()) return stateView()
                 gateway.dispatch(
                     CompanionAction.OpenAreaPokedex(areaIds),
                 )
@@ -606,6 +606,17 @@ class ProductionCompanionRuntime(
         source: CatalogSourceMetadata,
     ) {
         if (generation != loadGeneration.get()) return
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(
+                    active = true,
+                    phase = progress.phase.name,
+                    completedUnits = progress.completedUnits,
+                    totalUnits = progress.totalUnits,
+                ),
+                source.displayName,
+            ),
+        )
         catalogRepository?.write(
             progress.catalog,
             source,

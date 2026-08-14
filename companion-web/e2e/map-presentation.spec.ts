@@ -75,6 +75,7 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
   await expect(stage).toBeVisible();
   const controls = ['Zoom in', 'Zoom out', 'Recenter map', 'Map settings and legend', 'Open Area Pokédex'];
   for (const label of controls) await expect(page.getByRole('button', { name: label })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Toggle fog of war' })).toHaveCount(0);
   await expect(page.locator('.map-utility-rail > button').nth(0).locator('svg')).toHaveAttribute('data-semantic-icon', 'map');
   await expect(page.locator('.map-utility-rail > button').nth(1).locator('svg')).toHaveAttribute('data-semantic-icon', 'pokedex');
 
@@ -134,12 +135,18 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
   await page.screenshot({ path: join(artifactDir, 'panned.png') });
 
   await page.getByRole('button', { name: 'Recenter map' }).click();
-  await page.getByRole('button', { name: 'Toggle fog of war' }).click();
+  serverState = { ...serverState, version: serverState.version + 1, settings: { ...serverState.settings, knowledgeMode: 'DISCOVERED' } };
+  await page.reload();
+  await page.getByRole('button', { name: 'Open Map' }).click();
   await expect(page.locator('.map-fog')).toHaveCount(0);
   await page.screenshot({ path: join(artifactDir, 'fog-off.png') });
   await page.getByRole('button', { name: 'Oldale Town' }).click();
   await expect(stage).toHaveAttribute('data-selected-key', 'section-17');
-  await page.getByRole('button', { name: 'Toggle fog of war' }).click();
+  serverState = { ...serverState, version: serverState.version + 1, settings: { ...serverState.settings, knowledgeMode: 'ORGANIC' } };
+  await page.reload();
+  await page.getByRole('button', { name: 'Open Map' }).click();
+  await expect(page.locator('.map-fog')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Oldale Town' }).click();
 
   const currentMarkerBounds = await page.getByRole('button', { name: 'Current location: Route 101' }).boundingBox();
   const centerX = currentMarkerBounds!.x + currentMarkerBounds!.width / 2 + 60;
@@ -217,6 +224,7 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
     contentStageRatio: stageBounds!.height / hostBounds!.height,
     fogEdges,
     fogDiscovery,
+    fogControlledByKnowledgeMode: true,
     onePointerPan: { x: 82, y: 43 },
     pinchOut: { scale: pinchOutScale, anchored: true },
     pinchIn: { scale: pinchInScale, anchored: true },

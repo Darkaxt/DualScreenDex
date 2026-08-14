@@ -7,11 +7,29 @@ import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.BattleTab
 import com.enrpau.dualscreendex.companion.model.CompanionAction
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
+import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class CompanionGatewayTest {
+    @Test
+    fun partialCatalogProgressNeverPublishesCatalogReady() {
+        val gateway = CompanionGateway(AppSnapshot(catalogReady = true))
+
+        val progress = gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(active = true, phase = "RELATIONSHIPS", completedUnits = 3, totalUnits = 5),
+                "incoming.gba",
+            ),
+        )
+
+        assertFalse(progress.catalogReady)
+        assertEquals("RELATIONSHIPS", progress.catalogLoading.phase)
+        assertEquals(3, progress.catalogLoading.completedUnits)
+    }
+
     @Test
     fun initialBattleTabRequiresProvenWildEnabledAndUsableRarity() {
         BattleEncounterKind.entries.forEach { kind ->

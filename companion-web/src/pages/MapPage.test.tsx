@@ -60,8 +60,9 @@ describe('normalized world map presentation', () => {
     fireEvent.click(buttons[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Open Settings' }));
     expect(openSettings).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: 'Oldale Town' }));
     fireEvent.click(buttons[1]);
-    expect(openAreaDex).toHaveBeenCalledWith('gen3-region-0', expect.objectContaining({ key: 'section-16' }));
+    expect(openAreaDex).toHaveBeenCalledWith('gen3-region-0', expect.objectContaining({ key: 'section-17' }));
   });
 
   it('keeps every persisted discovered location revealed and passes the chosen marker to Area Dex', () => {
@@ -102,7 +103,7 @@ describe('normalized world map presentation', () => {
     expect(screen.getByRole('region', { name: 'Interactive world map' }).dataset.selectedKey).toBe('section-17');
   });
 
-  it('keeps zoom, recenter, fog, markers, and current-location controls functional', () => {
+  it('keeps zoom, recenter, markers, and knowledge-mode fog functional without a fog override', () => {
     const { container } = render(<MapPage catalog={catalog} state={state} onOpenAreaDex={vi.fn()} onOpenSettings={vi.fn()} />);
     const stage = screen.getByRole('region', { name: 'Interactive world map' });
 
@@ -114,14 +115,29 @@ describe('normalized world map presentation', () => {
     expect(stage.dataset.panX).toBe('0');
     expect(stage.dataset.panY).toBe('0');
 
-    const fog = screen.getByRole('button', { name: 'Toggle fog of war' });
     const markers = screen.getByRole('button', { name: 'Toggle map markers' });
-    expect(fog.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.queryByRole('button', { name: 'Toggle fog of war' })).toBeNull();
+    expect(container.querySelector('.map-fog')).toBeTruthy();
     expect(markers.getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(fog);
     fireEvent.click(markers);
-    expect(fog.getAttribute('aria-pressed')).toBe('false');
     expect(markers.getAttribute('aria-pressed')).toBe('false');
     expect(container.querySelector('.map-marker')).toBeNull();
+  });
+
+  it('shows the whole map in Discovered mode and disables Area Dex for a point without encounters', () => {
+    const openAreaDex = vi.fn();
+    const { container } = render(<MapPage
+      catalog={catalog}
+      state={{ ...state, settings: { ...state.settings, knowledgeMode: 'DISCOVERED' } }}
+      onOpenAreaDex={openAreaDex}
+      onOpenSettings={vi.fn()}
+    />);
+
+    expect(container.querySelector('.map-fog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Petalburg City' }));
+    const areaDex = screen.getByRole('button', { name: 'Open Area Pokédex' });
+    expect(areaDex.hasAttribute('disabled')).toBe(true);
+    fireEvent.click(areaDex);
+    expect(openAreaDex).not.toHaveBeenCalled();
   });
 });
