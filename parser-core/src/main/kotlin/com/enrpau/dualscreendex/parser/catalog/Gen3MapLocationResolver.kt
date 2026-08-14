@@ -77,6 +77,7 @@ object Gen3MapLocationResolver {
     ): Map<Int, Int>? {
         val requiredCount = requiredMaps.values.sumOf(Set<Int>::size)
         val sections = linkedMapOf<Int, Int>()
+        var unbindableHeaders = 0
         requiredMaps.toSortedMap().forEach groupLoop@{ (group, maps) ->
             val groupPointerOffset = root.toLong() + group.toLong() * 4L
             if (groupPointerOffset < 0 || groupPointerOffset + 4L > rom.size.toLong()) {
@@ -88,12 +89,23 @@ object Gen3MapLocationResolver {
                 if (headerPointerOffset < 0 || headerPointerOffset + 4L > rom.size.toLong()) {
                     return@mapLoop
                 }
-                val header = rom.gbaPointer(headerPointerOffset.toInt()) ?: return@mapLoop
+                val rawHeader = rom.u32le(headerPointerOffset.toInt())
+                val header = rom.gbaPointer(headerPointerOffset.toInt())
+                if (header == null) {
+                    if (rawHeader != 0L) unbindableHeaders++
+                    return@mapLoop
+                }
                 if (!validMapHeader(rom, header)) return@mapLoop
                 sections[(group shl 8) or map] = rom.u8(header + REGION_SECTION_OFFSET)
             }
         }
-        return sections.takeIf { it.size == requiredCount }
+        mapTrace(
+            "map-groups root=0x${root.toString(16)} bound=${sections.size}/$requiredCount " +
+                "unbindable=$unbindableHeaders",
+        )
+        return sections.takeIf {
+            it.isNotEmpty() && it.size + unbindableHeaders == requiredCount
+        }
     }
 
     /**

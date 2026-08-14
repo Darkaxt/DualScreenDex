@@ -104,6 +104,21 @@ class Gen3MapLocationResolverTest {
     }
 
     @Test
+    fun compactConsumerClassifiesExplicitNonRomHeadersAsUnbindable() {
+        val bytes = compactConsumerFixture(0x180)
+        putPointer(bytes, 0x184, 0x240)
+        putPointer(bytes, 0x188, 0x340)
+        putPointer(bytes, 0x240, 0x500)
+        putU32(bytes, 0x340, 0xF7F7F7F7.toInt())
+        writeMapHeader(bytes, 0x500, 88)
+
+        assertEquals(mapOf(0x0100 to 88), resolveCompact(bytes))
+
+        putU32(bytes, 0x340, 0)
+        assertTrue(resolveCompact(bytes).isEmpty())
+    }
+
+    @Test
     fun compactConsumerAcceptsSourceValidNullEventsButRejectsInvalidNonNullPointers() {
         val nullEvents = compactConsumerFixture(0x180)
         putPointer(nullEvents, 0x184, 0x240)
