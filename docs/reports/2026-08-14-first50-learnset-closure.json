@@ -1,0 +1,64 @@
+{
+  "sourceCommit": "39269f1",
+  "manifestSha256": "7146d2410231febfba550470d62ac179ef8c532d94bc15d2365211f862d03d5f",
+  "baselineReportSha256": "c553d26c5d8a9b1d895716e3bd9d60faf3481eb0951bb84f2272d27cab45dd2f",
+  "currentReportSha256": "0c316918ee4fc16ce9722b0ee2b44ff4d430c7a11c5dcfe59c912642e52f4afa",
+  "rows": 50,
+  "selection": {
+    "SELECTED": 50
+  },
+  "families": {
+    "FIRERED_LEAFGREEN": 30,
+    "EMERALD": 14,
+    "RUBY_SAPPHIRE": 2,
+    "GOLD_SILVER": 3,
+    "CRYSTAL": 1
+  },
+  "routingDeltas": 0,
+  "referenceErrorRows": 0,
+  "referenceErrors": 0,
+  "persistence": {
+    "reopened": 50,
+    "sectionCount": 12,
+    "quickCheckErrors": 0,
+    "foreignKeyErrors": 0
+  },
+  "compatibilityPercent": {
+    "before": 95.21,
+    "after": 95.34
+  },
+  "learnsets": {
+    "before": {
+      "AVAILABLE": 38,
+      "PARTIAL": 4,
+      "NOT_FOUND": 8
+    },
+    "after": {
+      "AVAILABLE": 40,
+      "PARTIAL": 4,
+      "NOT_FOUND": 6
+    }
+  },
+  "evolutions": {
+    "AVAILABLE": 50
+  },
+  "newlyComplete": [
+    {
+      "row": 34,
+      "rom": "Crippling Medical Debt Edition (v1.1).gba",
+      "family": "EMERALD",
+      "coveredSpecies": 1525,
+      "expectedSpecies": 1525,
+      "entries": 22177
+    },
+    {
+      "row": 50,
+      "rom": "Dreamstone Mysteries.gba",
+      "family": "EMERALD",
+      "coveredSpecies": 1522,
+      "expectedSpecies": 1522,
+      "entries": 22164,
+      "semanticSha256": "5e80424ae344770807f1729338e69d61885ecb3af7867b8265252b2f79b093de"
+    }
+  ]
+}
