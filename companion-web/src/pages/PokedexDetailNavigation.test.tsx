@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
-import { maskEvolutionName, PokedexDetail } from './PokedexDetail';
+import { maskIdentityName } from '../components';
+import { PokedexDetail } from './PokedexDetail';
 
 afterEach(cleanup);
 beforeEach(() => {
@@ -25,8 +26,8 @@ describe('Pokédex evolution navigation', () => {
   });
 
   it('masks every name character while preserving spacing', () => {
-    expect(maskEvolutionName('Mr Mime')).toBe('?? ????');
-    expect(maskEvolutionName('Farfetch’d')).toBe('??????????');
+    expect(maskIdentityName('Mr Mime')).toBe('?? ????');
+    expect(maskIdentityName('Farfetch’d')).toBe('??????????');
   });
 
   it('opens the resolved target species on its entry tab', () => {
@@ -60,17 +61,45 @@ describe('Pokédex evolution navigation', () => {
 
     expect(screen.getByText('?????????')).toBeTruthy();
     expect(screen.queryByText('Charizard')).toBeNull();
-    expect(screen.getByAltText('Unidentified evolution sprite').classList.contains('evolution-silhouette')).toBe(true);
+    expect(screen.getByAltText('Unidentified evolution sprite').classList.contains('identity-silhouette')).toBe(true);
     expect(screen.queryByRole('button', { name: /Charizard Level 36/i })).toBeNull();
 
     rendered.rerender(<PokedexDetail {...props} state={organic({ seen: true, caught: false, team: false, ballId: null })} />);
     expect(screen.getByText('Charizard')).toBeTruthy();
-    expect(screen.getByAltText('Charizard evolution sprite').classList.contains('evolution-seen')).toBe(true);
+    expect(screen.getByAltText('Charizard evolution sprite').classList.contains('identity-seen')).toBe(true);
 
     rendered.rerender(<PokedexDetail {...props} state={organic({ seen: true, caught: true, team: false, ballId: null })} />);
     const captured = screen.getByAltText('Charizard evolution sprite');
-    expect(captured.classList.contains('evolution-seen')).toBe(false);
-    expect(captured.classList.contains('evolution-silhouette')).toBe(false);
+    expect(captured.classList.contains('identity-seen')).toBe(false);
+    expect(captured.classList.contains('identity-silhouette')).toBe(false);
+  });
+
+  it('uses unknown silhouette seen grayscale and captured full color for the Pokédex detail avatar', () => {
+    const props = { catalog, send: vi.fn(), tab: 'ENTRY' as const, setTab: vi.fn(), openMove: vi.fn(), openAbility: vi.fn() };
+    const unknownState: State = {
+      ...state,
+      settings: { ...state.settings, knowledgeMode: 'ORGANIC' },
+      speciesState: {},
+    };
+    const rendered = render(<PokedexDetail {...props} state={unknownState} />);
+
+    expect(screen.getByAltText('Unidentified Pokémon').classList.contains('identity-silhouette')).toBe(true);
+
+    const seenState: State = {
+      ...unknownState,
+      speciesState: { 5: { seen: true, caught: false, team: false, ballId: null } },
+    };
+    rendered.rerender(<PokedexDetail {...props} state={seenState} />);
+
+    expect(screen.getByAltText('Charmeleon sprite').classList.contains('identity-seen')).toBe(true);
+
+    rendered.rerender(<PokedexDetail {...props} state={{
+      ...seenState,
+      speciesState: { 5: { seen: true, caught: true, team: false, ballId: null } },
+    }} />);
+    const captured = screen.getByAltText('Charmeleon sprite');
+    expect(captured.classList.contains('identity-seen')).toBe(false);
+    expect(captured.classList.contains('identity-silhouette')).toBe(false);
   });
 
   it('embeds the normalized world map on AREA and exposes only organically observed habitats', () => {
@@ -126,7 +155,7 @@ const baseSpecies = {
   normalizedLearnsets: {},
   moveAcquisitions: [],
   abilities: [],
-  hasSprite: false,
+  hasSprite: true,
 };
 
 const catalog = {

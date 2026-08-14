@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/preact';
 import { h } from 'preact';
-import { EyeStatus, StatusMarks, uniqueTypeIds } from './components';
-import type { Catalog } from './models';
+import { EyeStatus, speciesIdentityKnowledge, StatusMarks, uniqueTypeIds } from './components';
+import type { Catalog, SpeciesState } from './models';
 
 describe('type presentation', () => {
   it('shows a monotype only once when the ROM repeats both type slots', () => {
@@ -17,6 +17,22 @@ describe('species visibility icon', () => {
     expect(screen.getByLabelText('Seen').tagName.toLowerCase()).toBe('svg');
     rerender(h(EyeStatus, { seen: false }));
     expect(screen.getByLabelText('Not seen').querySelector('line')).not.toBeNull();
+  });
+});
+
+describe('species identity knowledge', () => {
+  const seen: SpeciesState = { seen: true, caught: false, team: false, ballId: null };
+  const captured: SpeciesState = { seen: false, caught: true, team: false, ballId: null };
+
+  it('derives unknown, seen, and captured presentation in Organic mode', () => {
+    expect(speciesIdentityKnowledge('ORGANIC', undefined)).toBe('unknown');
+    expect(speciesIdentityKnowledge('ORGANIC', seen)).toBe('seen');
+    expect(speciesIdentityKnowledge('ORGANIC', captured)).toBe('captured');
+  });
+
+  it('presents validated identities fully outside Organic mode', () => {
+    expect(speciesIdentityKnowledge('DISCOVERED', undefined)).toBe('captured');
+    expect(speciesIdentityKnowledge('HIDDEN', seen)).toBe('captured');
   });
 });
 

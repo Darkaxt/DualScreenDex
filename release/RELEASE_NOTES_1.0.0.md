@@ -10,6 +10,8 @@ DualDex is a passive ROM, SaveRAM, and validated live-WRAM Pokédex companion fo
 - Replaces the retail byte-signature ability materializer with bounded ARM7TDMI semantic proof. The frozen first-50 survey proves exact attacker Attack ×2 mechanics for abilities 37 and 74 on **38/46 applicable GBA ROMs**, with no extra inferred mechanics; four GB/GBC rows are correctly not applicable and unsupported or ambiguous GBA paths publish nothing.
 - Opens Rarity only once, at the start of a structurally proven wild battle with a usable assessment. Trainer, link, tutorial, special, ambiguous, and incomplete battle evidence never steals the active tab.
 - Preserves the exact base compatibility gate at **50/50** selected, reference-clean, persisted and reopened catalogs. The broader 332-identity audit is published separately so first-50 release coverage is not presented as global compatibility.
+- Completes evolution parsing on **50/50** exact first-corpus ROMs. All rows expose available per-species evolution fields with zero malformed rows, deterministic semantic edge maps, and exact SQLite reopen parity; `NOT_FOUND` and `NOT_APPLICABLE` are not counted as successes.
+- Applies one Organic identity rule to Pokédex rows, the detail avatar, and evolution targets: unknown species use a black silhouette and stay non-interactive, seen species use grayscale artwork and remain navigable, and captured species use full-color artwork.
 - Keeps the live Gen III party and battle-window improvements from RC23/RC24. SaveRAM remains the fallback for ownership, boxes, Pokédex flags, and unsupported live layouts; every newer live path remains read-only and fail closed.
 
 ## RC24: immediate ROM-derived Gen III battle window

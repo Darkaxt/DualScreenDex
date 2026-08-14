@@ -2,7 +2,7 @@
 
 ## Scope
 
-Use one knowledge-state presentation rule for species identities shown in evolution rows and Pokédex browse rows. Preserve the existing Organic, Discovered, Hidden, Area, search, sorting, and navigation policies. This change does not expose additional species, alter the knowledge ledger, or change parser/catalog data.
+Use one knowledge-state presentation rule for species identities shown in evolution rows, Pokédex browse rows, and the Pokédex detail avatar. Preserve the existing Organic, Discovered, Hidden, Area, search, sorting, and navigation policies. This change does not expose additional species, alter the knowledge ledger, or change parser/catalog data.
 
 ## Presentation contract
 
@@ -20,7 +20,7 @@ Pokédex membership remains unchanged. In particular, Organic All continues to e
 
 ## Architecture
 
-Add one small shared identity-presentation helper in the companion web layer. It accepts the knowledge mode plus optional species state and returns the three-state value. The shared sprite component accepts that value and applies the corresponding accessible label and CSS class. Evolution rows and Pokédex browse rows both consume the helper; neither reimplements the policy.
+Add one small shared identity-presentation helper in the companion web layer. It accepts the knowledge mode plus optional species state and returns the three-state value. The shared sprite component accepts that value and applies the corresponding accessible label and CSS class. Evolution rows, Pokédex browse rows, and the Pokédex detail avatar all consume the helper; none reimplements the policy.
 
 The existing evolution-row click behavior remains authoritative: seen and captured targets open the correct Pokédex entry and reset the detail tab to Entry; unknown targets are not interactive. Pokédex rows retain their existing `OPEN_SPECIES` action when the shared state is seen or captured and remain disabled when the state is unknown.
 

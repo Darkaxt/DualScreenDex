@@ -1,9 +1,22 @@
-import type { Catalog, SpeciesState, TypeInfo } from './models';
+import type { Catalog, KnowledgeMode, SpeciesState, TypeInfo } from './models';
 
-export function Sprite({ speciesId, name, available, large = false, silhouette = false }: { speciesId: number; name: string; available: boolean; large?: boolean; silhouette?: boolean }) {
+export type SpeciesIdentityKnowledge = 'unknown' | 'seen' | 'captured';
+
+export function speciesIdentityKnowledge(mode: KnowledgeMode, state?: SpeciesState): SpeciesIdentityKnowledge {
+  if (mode !== 'ORGANIC') return 'captured';
+  if (state?.caught) return 'captured';
+  if (state?.seen) return 'seen';
+  return 'unknown';
+}
+
+export function identitySpriteClass(knowledge: SpeciesIdentityKnowledge): string {
+  return knowledge === 'unknown' ? 'identity-silhouette' : knowledge === 'seen' ? 'identity-seen' : '';
+}
+
+export function Sprite({ speciesId, name, available, large = false, knowledge = 'captured' }: { speciesId: number; name: string; available: boolean; large?: boolean; knowledge?: SpeciesIdentityKnowledge }) {
   return (
     <div class={`sprite-frame ${large ? 'sprite-large' : ''}`}>
-      {available ? <img class={silhouette ? 'identity-silhouette' : ''} src={`/api/sprites/species/${speciesId}.png`} alt={silhouette ? 'Unidentified Pokémon' : `${name} sprite`} /> : <span class="sprite-missing" aria-label="Sprite unavailable" />}
+      {available ? <img class={identitySpriteClass(knowledge)} src={`/api/sprites/species/${speciesId}.png`} alt={knowledge === 'unknown' ? 'Unidentified Pokémon' : `${name} sprite`} /> : <span class="sprite-missing" aria-label="Sprite unavailable" />}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { Catalog, State } from '../models';
-import { Header, Segmented, Sprite, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
+import { Header, identitySpriteClass, maskIdentityName, Segmented, speciesIdentityKnowledge, Sprite, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
 import { PokemonAreaMap } from './PokemonAreaMap';
 
@@ -25,6 +25,7 @@ export function PokedexDetail({
   const species = catalog.species.find(item => item.id === state.selectedSpeciesId) ?? catalog.species[0];
   if (!species) return null;
   const status = state.speciesState[species.id];
+  const identityKnowledge = speciesIdentityKnowledge(state.settings.knowledgeMode, status);
   const unlocked = state.settings.knowledgeMode !== 'ORGANIC' || status?.caught;
   const observedMoves = state.observedMoves[species.id] ?? [];
   const displayTab = !unlocked && (tab === 'STATS' || tab === 'MORE') ? 'ENTRY' : tab;
@@ -42,7 +43,7 @@ export function PokedexDetail({
   return <section class="screen detail-screen">
     <Header title={species.name} kicker={`#${String(species.dex).padStart(3, '0')}`} onBack={() => send('BACK')} />
     <div class="identity-card">
-      <Sprite speciesId={species.id} name={species.name} available={species.hasSprite} large />
+      <Sprite speciesId={species.id} name={species.name} available={species.hasSprite} large knowledge={identityKnowledge} />
       <div class="identity-copy"><h1>{species.name}</h1><div class="identity-line"><StatusMarks state={status} catalog={catalog} />{uniqueTypeIds(species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
     </div>
     <Segmented values={['ENTRY', 'STATS', 'MOVES', 'AREA', 'MORE']} active={displayTab} disabledValues={unlocked ? [] : ['STATS', 'MORE']} onSelect={value => setTab(value as DetailTab)} label="Pokédex detail" />
@@ -90,17 +91,15 @@ export function PokedexDetail({
         {species.evolutions.length > 0 && <section><p class="eyebrow">EVOLUTIONS</p>{species.evolutions.map((evolution, index) => {
           const target = catalog.species.find(candidate => candidate.id === evolution.targetSpeciesId);
           const targetStatus = state.speciesState[evolution.targetSpeciesId];
-          const knowledge = state.settings.knowledgeMode !== 'ORGANIC' || targetStatus?.caught
-            ? 'captured'
-            : targetStatus?.seen ? 'seen' : 'unknown';
+          const knowledge = speciesIdentityKnowledge(state.settings.knowledgeMode, targetStatus);
           const resolvedTargetName = target?.name ?? evolution.targetName;
-          const targetName = knowledge === 'unknown' ? maskEvolutionName(resolvedTargetName) : resolvedTargetName;
+          const targetName = knowledge === 'unknown' ? maskIdentityName(resolvedTargetName) : resolvedTargetName;
           const sprite = <span class="evolution-sprite-frame">{target?.hasSprite
             ? <img
                 src={`/api/sprites/species/${evolution.targetSpeciesId}.png`}
                 alt={knowledge === 'unknown' ? 'Unidentified evolution sprite' : `${targetName} evolution sprite`}
                 aria-hidden="true"
-                class={knowledge === 'unknown' ? 'evolution-silhouette' : knowledge === 'seen' ? 'evolution-seen' : ''}
+                class={identitySpriteClass(knowledge)}
               />
             : <span class="evolution-sprite-missing" aria-label="Evolution sprite unavailable" />}</span>;
           const content = <>{sprite}<strong>{targetName}</strong><span>{evolution.condition}</span></>;
@@ -120,10 +119,6 @@ export function PokedexDetail({
 
 export function baseStatSummary(stats: Record<string, number> | null): number {
   return Object.values(stats ?? {}).reduce((total, value) => total + value, 0);
-}
-
-export function maskEvolutionName(name: string): string {
-  return Array.from(name).map(character => /\s/u.test(character) ? character : '?').join('');
 }
 
 export function projectedStatRange(base: number, name: string, platform: string, level = 50): { low: number; typical: number; high: number } {

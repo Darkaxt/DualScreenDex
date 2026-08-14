@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Apply the approved unknown, seen, and captured sprite/name behavior consistently to evolution targets and Pokédex rows while preserving current visibility and navigation policies.
+**Goal:** Apply the approved unknown, seen, and captured sprite/name behavior consistently to evolution targets, Pokédex rows, and the Pokédex detail avatar while preserving current visibility and navigation policies.
 
 **Architecture:** Centralize knowledge-state derivation and identity masking in `components.tsx`, then make the evolution and Pokédex consumers render through that shared contract. No API, catalog, knowledge-ledger, or filter-membership change is required.
 
@@ -17,19 +17,19 @@
 - Modify: `companion-web/src/pages/PokedexBrowse.test.tsx`
 - Modify: `companion-web/src/pages/PokedexDetailNavigation.test.tsx`
 
-- [ ] **Step 1: Add failing component tests**
+- [x] **Step 1: Add failing component tests**
 
 Assert that Organic state derives `unknown` for no ledger entry, `seen` for `seen=true`, and `captured` for `caught=true` even when `seen=false`; assert that Discovered derives `captured` presentation.
 
-- [ ] **Step 2: Add failing Pokédex-row tests**
+- [x] **Step 2: Add failing Pokédex-row tests**
 
-Use an Organic Area fixture containing unknown, seen, and captured species. Require unknown to render a black silhouette and masked name without navigation; seen to render grayscale with the real name and navigation; captured to render full color with the real name and navigation. Preserve Organic All exclusion.
+Use an Organic Area fixture containing unknown, seen, and captured species. Require unknown to render a black silhouette and masked name without navigation; seen to render grayscale with the real name and navigation; captured to render full color with the real name and navigation. Require the same sprite treatment for the selected species on Pokédex detail. Preserve Organic All exclusion.
 
-- [ ] **Step 3: Retain evolution navigation assertions**
+- [x] **Step 3: Retain evolution navigation assertions**
 
 Require the same three classes/names in evolution rows and verify that only seen/captured targets dispatch `OPEN_SPECIES` for the exact target ID.
 
-- [ ] **Step 4: Run RED**
+- [x] **Step 4: Run RED**
 
 ```powershell
 npm.cmd test -- --run src/components.test.ts src/pages/PokedexBrowse.test.tsx src/pages/PokedexDetailNavigation.test.tsx
@@ -45,27 +45,27 @@ Expected: new shared-helper/import or Pokédex seen-grayscale assertions fail be
 - Modify: `companion-web/src/pages/PokedexDetail.tsx`
 - Modify: `companion-web/src/styles.css`
 
-- [ ] **Step 1: Define the shared state**
+- [x] **Step 1: Define the shared state**
 
 Add `SpeciesIdentityKnowledge = 'unknown' | 'seen' | 'captured'` and a pure `speciesIdentityKnowledge(mode, state)` function. Return captured outside Organic; inside Organic, caught wins over seen and missing state is unknown.
 
-- [ ] **Step 2: Extend `Sprite`**
+- [x] **Step 2: Extend `Sprite`**
 
 Replace the silhouette-only boolean with the shared knowledge value. Map unknown to `identity-silhouette` and an unidentified accessible label, seen to `identity-seen` and the real ROM name, and captured to no filter class.
 
-- [ ] **Step 3: Migrate Pokédex rows**
+- [x] **Step 3: Migrate Pokédex rows**
 
 Derive knowledge once per row, mask the name only for unknown, disable only unknown rows already exposed by Organic Area, and retain the exact `OPEN_SPECIES` action for seen/captured rows.
 
-- [ ] **Step 4: Migrate evolution rows**
+- [x] **Step 4: Migrate evolution rows and detail avatar**
 
-Use the same helper, mask function, sprite classes, and navigation predicate. Keep the existing target lookup and reset the detail tab to Entry before opening the exact target.
+Use the same helper, mask function, sprite classes, and navigation predicate. Keep the existing target lookup and reset the detail tab to Entry before opening the exact target. Pass the selected species knowledge state through the shared sprite component for the large detail avatar.
 
-- [ ] **Step 5: Unify CSS**
+- [x] **Step 5: Unify CSS**
 
 Apply black silhouette and grayscale styles through shared identity classes for both sprite-frame sizes. Remove evolution-only duplicate filtering while retaining evolution layout styles.
 
-- [ ] **Step 6: Run GREEN**
+- [x] **Step 6: Run GREEN**
 
 ```powershell
 npm.cmd test -- --run src/components.test.ts src/pages/PokedexBrowse.test.tsx src/pages/PokedexDetailNavigation.test.tsx
@@ -79,7 +79,7 @@ Expected: all focused tests pass.
 - Modify only if a regression is found: `companion-web/src/App.production.test.tsx`
 - Modify only if a regression is found: `app/src/test/kotlin/com/darkaxt/dualdex/web/AndroidLoopbackServerTest.kt`
 
-- [ ] **Step 1: Run the complete web suite**
+- [x] **Step 1: Run the complete web suite**
 
 ```powershell
 npm.cmd test -- --run
@@ -88,7 +88,7 @@ npm.cmd run build
 
 Expected: all Vitest tests and the production Vite build pass.
 
-- [ ] **Step 2: Run the Android-host seam**
+- [x] **Step 2: Run the Android-host seam**
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest --tests 'com.darkaxt.dualdex.web.AndroidLoopbackServerTest' --no-daemon --console=plain
@@ -96,7 +96,7 @@ Expected: all Vitest tests and the production Vite build pass.
 
 Expected: loopback assets/API remain green; no catalog/schema changes are needed.
 
-- [ ] **Step 3: Review and commit**
+- [x] **Step 3: Review and commit**
 
 ```powershell
 git diff --check

@@ -269,4 +269,40 @@ describe('Pokédex knowledge modes', () => {
     expect(screen.queryByText('??????????')).toBeNull();
     expect(screen.queryByText('Charmander')).toBeNull();
   });
+
+  it('uses the same unknown seen and captured avatar states as evolution rows', () => {
+    const send = vi.fn();
+    const identityCatalog: Catalog = {
+      ...catalog,
+      species: [
+        { ...catalog.species[0], hasSprite: true },
+        { ...catalog.species[1], hasSprite: true },
+        { ...catalog.species[0], id: 7, dex: 7, name: 'Squirtle', hasSprite: true },
+      ],
+      areas: [{ id: 10, name: 'Route 1', methodId: 1, speciesIds: [1, 4, 7], windows: ['ANY'], slots: [] }],
+    };
+    const { container } = render(<PokedexBrowse catalog={identityCatalog} state={{
+      ...state,
+      filter: 'AREA',
+      currentAreaIds: [10],
+      speciesState: {
+        1: { seen: true, caught: false, team: false, ballId: null },
+        4: { seen: false, caught: false, team: false, ballId: null },
+        7: { seen: false, caught: true, team: false, ballId: null },
+      },
+    }} send={send} />);
+
+    expect(screen.getByAltText('Bulbasaur sprite').classList.contains('identity-seen')).toBe(true);
+    expect(screen.getByAltText('Unidentified Pokémon').classList.contains('identity-silhouette')).toBe(true);
+    expect(screen.getByText('??????????')).toBeTruthy();
+    const captured = screen.getByAltText('Squirtle sprite');
+    expect(captured.classList.contains('identity-seen')).toBe(false);
+    expect(captured.classList.contains('identity-silhouette')).toBe(false);
+
+    fireEvent.click(screen.getByText('Bulbasaur').closest('button')!);
+    fireEvent.click(screen.getByText('Squirtle').closest('button')!);
+    expect(send).toHaveBeenNthCalledWith(1, 'OPEN_SPECIES', { speciesId: 1 });
+    expect(send).toHaveBeenNthCalledWith(2, 'OPEN_SPECIES', { speciesId: 7 });
+    expect((container.querySelector('.identity-hidden') as HTMLButtonElement).disabled).toBe(true);
+  });
 });

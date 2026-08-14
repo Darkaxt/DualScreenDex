@@ -95,8 +95,19 @@ class WorldMapCatalogApiRealControlTest {
             )
             val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
             assertEquals(catalog.worldMaps, reopened.worldMaps)
+            val parsedEvolutionEdges = catalog.navigableSpecies().associate { species ->
+                species.id to species.evolutionEdges.value.orEmpty()
+            }
+            val reopenedEvolutionEdges = reopened.navigableSpecies().associate { species ->
+                species.id to species.evolutionEdges.value.orEmpty()
+            }
+            assertEquals(parsedEvolutionEdges, reopenedEvolutionEdges)
 
             val runtime = ProductionCompanionRuntime().apply { loadCatalog(romPath.fileName.toString(), reopened) }
+            assertEquals(
+                reopenedEvolutionEdges.values.sumOf(List<*>::size),
+                requireNotNull(runtime.bootstrap().catalog).species.sumOf { it.evolutions.size },
+            )
             server = AndroidLoopbackServer(runtime) { null }.also { it.start() }
             val base = "http://127.0.0.1:${server.address.port}"
             val actualPngHashes = reopened.worldMaps.regions.map { region ->
