@@ -4,11 +4,12 @@
   "applicationId": "com.darkaxt.dualdex",
   "stage": 7,
   "status": "ready-for-github-signing",
-  "verifiedDate": "2026-08-13",
+  "verifiedDate": "2026-08-14",
   "openV1LedgerItems": 0,
   "baseFirst50Selected": 50,
   "mapFirst50Available": 26,
   "evolutionFirst50Complete": 50,
+  "moveDetailsFirst50Available": 48,
   "arm7Applicable": 46,
   "arm7ProductionComplete": 38,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"

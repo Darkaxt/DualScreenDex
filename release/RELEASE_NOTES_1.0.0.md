@@ -2,6 +2,14 @@
 
 DualDex is a passive ROM, SaveRAM, and validated live-WRAM Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
+## RC28: broader move data and clearer map state
+
+- Resolves Celia's widened 16-byte move-detail table structurally, publishing all 1,188 validated move rows without ROM-name, hash, or fixed-offset selection. First-50 `MOVE_DETAILS` availability increases from **47/50 to 48/50**, and Celia's measured compatibility rises from **85.64% to 90.40%**.
+- Replaces the generic loading message with the module currently being materialized: ROM identity, core catalog, sprites and entries, evolutions and areas, extended data, or saved catalog.
+- Makes map fog follow the global knowledge mode. Discovered mode shows the map clearly; Organic and Hidden retain discovery fog. The redundant local fog button is removed.
+- Silences the non-actionable `map location has no encounter area` warning. Locations without encounter-backed Area Pokédex data simply keep that action disabled.
+- Includes the latest source-backed tiled 8bpp Gen III map resolver work already integrated on the release branch.
+
 ## RC27: complete evolution catalogs and consistent Organic identities
 
 - Completes evolution parsing on **50/50** exact first-corpus ROMs. All rows expose available per-species evolution fields with zero malformed rows, deterministic semantic edge maps, and exact SQLite reopen parity; `NOT_FOUND` and `NOT_APPLICABLE` are not counted as successes.
