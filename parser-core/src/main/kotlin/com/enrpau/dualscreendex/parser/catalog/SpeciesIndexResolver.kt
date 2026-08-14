@@ -551,8 +551,14 @@ object SpeciesIndexResolver {
         } else if (oneDefectCompositionSupport) {
             summary.distinctCount.toDouble() / count
         } else if (descriptionCount != null && descriptionCount > 1) {
-            if (summary.maximum >= descriptionCount) return null
-            summary.distinctCount.toDouble() / (descriptionCount - 1)
+            if (summary.maximum >= descriptionCount) {
+                // A partial Pokédex-entry table must not invalidate an independently compiled
+                // species-to-Dex map. IDs beyond the table remain navigable species whose
+                // description capability truthfully stays unresolved.
+                summary.distinctCount.toDouble() / summary.maximum
+            } else {
+                summary.distinctCount.toDouble() / (descriptionCount - 1)
+            }
         } else {
             summary.distinctCount.toDouble() / summary.maximum
         }

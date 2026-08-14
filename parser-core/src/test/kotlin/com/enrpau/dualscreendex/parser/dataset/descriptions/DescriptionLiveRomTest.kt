@@ -2,7 +2,11 @@ package com.enrpau.dualscreendex.parser.dataset.descriptions
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.DescriptionRecord
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.RomCapability
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -14,6 +18,77 @@ import org.junit.Test
 
 /** Real-ROM characterization for the ordinary Gen III typed-description cutover. */
 class DescriptionLiveRomTest {
+    @Test fun celiaPublishesItsCompiledPokedexEntryDescriptions() {
+        val configured = System.getenv("DUALDEX_CELIA_ROM")
+        assumeTrue("set DUALDEX_CELIA_ROM to run this live-ROM regression", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals(
+            "81ac9b9d4e7bdd3bf06ed53954d784118a743372906c6c6fc62b3cbc19587148",
+            rom.sha256,
+        )
+
+        val session = RomAnalysisSession(rom, RomHeaderReader.read(rom))
+        val direct = DescriptionCodec().decode(
+            session,
+            DescriptionTableLayout(0xCA6B70, 386, 36, listOf(16)),
+        ) as DescriptionTableOutcome.Decoded
+        assertEquals(384, direct.rows.count { it is DescriptionRowOutcome.Decoded })
+        assertEquals(1, direct.rows.count { it is DescriptionRowOutcome.StructuralEmpty })
+        assertEquals(1, direct.rows.count { it is DescriptionRowOutcome.Malformed })
+        val reference = requireNotNull(session.gbaReferenceIndex?.target(0xCA6B70))
+        assertEquals(8, reference.count)
+        val resolution = DescriptionResolver().resolve(session, 386)
+        assertTrue(
+            resolution.toString(),
+            resolution is com.enrpau.dualscreendex.parser.resolution.DatasetResolution.Partial,
+        )
+        assertEquals(
+            DescriptionTableLayout(0xCA6B70, 386, 36, listOf(16)),
+            (resolution as com.enrpau.dualscreendex.parser.resolution.DatasetResolution.Partial).candidate.layout.table,
+        )
+
+        val parsed = CatalogParser.parse(rom)
+        val layout = requireNotNull(parsed.layout)
+        val catalogSpecies = requireNotNull(parsed.catalog).speciesById.values
+        val selected = requireNotNull(layout.tables.descriptions)
+        assertEquals(0xCA6B70, selected.offset)
+        assertEquals(386, selected.count)
+        assertEquals(36, selected.recordSize)
+        assertEquals(listOf(16), selected.pointerOffsets)
+        val capability = parsed.analysis.capabilities.single {
+            it.capability == RomCapability.POKEDEX_DESCRIPTIONS
+        }
+        assertEquals(CapabilityStatus.PARTIAL, capability.status)
+        assertEquals(382, capability.coveredRecords)
+        assertEquals(384, capability.expectedRecords)
+        assertEquals(2, capability.incompleteRecords)
+
+        val typed = requireNotNull(layout.resolvedDatasets.descriptions).catalogDescriptions()
+        val navigableSpecies = catalogSpecies.filter { (it.dexNumber.value ?: 0) > 0 }
+        assertEquals(384, typed.size)
+        assertEquals("UNKNOWN", typed.getValue(0).category)
+        assertEquals("FIRST", typed.getValue(2).category)
+        assertEquals(setOf(154, 197), (0 until 386).filterNot(typed::containsKey).toSet())
+        assertEquals(411, navigableSpecies.size)
+        assertEquals(411, navigableSpecies.maxOf { it.dexNumber.value ?: 0 })
+        assertEquals(
+            setOf(
+                40, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263,
+                264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 408,
+            ),
+            navigableSpecies
+                .filter { it.description.value == null }
+                .mapTo(linkedSetOf()) { it.id },
+        )
+        assertEquals(383, navigableSpecies.count { it.description.value != null })
+        assertEquals(
+            "d62c951fc4ddbf35f3a251ea9b26c4e1664c1ff2b957601db800d73ecbfedad7",
+            descriptionSha256(typed),
+        )
+    }
+
     @Test fun aGrandDayOutThirtySixByteRowsHaveExactTypedPayloadParity() = assertCodecParity(
         "DUALDEX_A_GRAND_DAY_OUT_ROM",
         "2005275fc54ae63f3d1bc50c49980e87dcd9ecae5e4733d322bb2a2c99270916",

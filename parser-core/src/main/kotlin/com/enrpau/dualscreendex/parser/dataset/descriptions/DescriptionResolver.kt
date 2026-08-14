@@ -137,6 +137,7 @@ class DescriptionResolver(
                 )
             }
             referenceIndex?.targets?.forEach { (root, evidence) ->
+                if (!looksLikeDescriptionStart(session.rom, root)) return@forEach
                 canonicalLayouts(root, expectedSpeciesCount).forEach { layout ->
                     yield(
                         DescriptionProposal.Probe(

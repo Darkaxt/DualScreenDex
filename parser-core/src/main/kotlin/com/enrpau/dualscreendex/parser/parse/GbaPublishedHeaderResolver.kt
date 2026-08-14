@@ -14,6 +14,7 @@ internal data class GbaHeaderPointers(
     val abilities: Int? = null,
     val abilityDescriptions: Int? = null,
     val moveData: Int? = null,
+    val pokedexCount: Int? = null,
     val publishedDataState: GbaPublishedDataState = GbaPublishedDataState.ABSENT,
     val publishedDataEvidence: ValidationEvidence? = null,
 )
@@ -75,14 +76,26 @@ internal object GbaPublishedHeaderResolver {
             null
         }
 
+        val speciesNames = rom.pointerOrNull(SPECIES_NAMES_SLOT)
+        val moveNames = rom.pointerOrNull(MOVE_NAMES_SLOT)
+        val sprites = rom.pointerOrNull(SPRITES_SLOT)
+        val publishedPokedexCount = if (POKEDEX_COUNT_SLOT <= rom.size - 4) {
+            rom.u32le(POKEDEX_COUNT_SLOT)
+                .takeIf { speciesCount != null && it in 2L..speciesCount.toLong() }
+                ?.toInt()
+                ?.takeIf { speciesNames != null && moveNames != null && sprites != null }
+        } else {
+            null
+        }
         return GbaHeaderPointers(
-            speciesNames = rom.pointerOrNull(SPECIES_NAMES_SLOT),
-            moveNames = rom.pointerOrNull(MOVE_NAMES_SLOT),
-            sprites = rom.pointerOrNull(SPRITES_SLOT),
+            speciesNames = speciesNames,
+            moveNames = moveNames,
+            sprites = sprites,
             baseStats = pointerBlock?.let { rom.pointerOrNull(it) },
             abilities = pointerBlock?.let { rom.pointerOrNull(it + 4) },
             abilityDescriptions = pointerBlock?.let { rom.pointerOrNull(it + 8) },
             moveData = pointerBlock?.let { rom.pointerOrNull(it + 16) },
+            pokedexCount = publishedPokedexCount,
             publishedDataState = publishedDataState,
             publishedDataEvidence = publishedDataEvidence,
         )
@@ -136,6 +149,7 @@ internal object GbaPublishedHeaderResolver {
     private const val SPRITES_SLOT = 0x128
     private const val SPECIES_NAMES_SLOT = 0x144
     private const val MOVE_NAMES_SLOT = 0x148
+    private const val POKEDEX_COUNT_SLOT = 0x168
     private const val COMPACT_DATA_ROOT = 0x1AC
     private const val FREE_SEEN_FLAGS_DATA_ROOT = 0x1B4
     private const val STANDARD_DATA_ROOT = 0x1BC

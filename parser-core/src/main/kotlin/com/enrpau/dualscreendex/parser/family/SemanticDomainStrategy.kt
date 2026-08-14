@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.parse.DatasetResolvers
 import com.enrpau.dualscreendex.parser.parse.Gen3PublishedPartialBaseStatsResolver
+import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
 import com.enrpau.dualscreendex.parser.parse.selectAbilityNameEvidence
 import com.enrpau.dualscreendex.parser.parse.compiledAbilityNameStride
@@ -77,7 +78,8 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         val rawCore = requireNotNull(state.coreDatasets) as CoreDatasetsPhaseResult.Resolved
         val descriptionResolution = resolveDescriptions(session, definition, identity, rawCore)
         val descriptions = descriptionResolution.evidence
-        val descriptionsLayout = resolvedLayout(rawCore.candidateTables.descriptions, descriptions)
+        val descriptionsLayout = descriptionResolution.resolved?.table?.toTableLayout()
+            ?: resolvedLayout(rawCore.candidateTables.descriptions, descriptions)
         val core = promotePublishedPartialStats(
             session,
             definition,
@@ -145,37 +147,68 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         identity: IdentityRootsPhaseResult.Resolved,
         core: CoreDatasetsPhaseResult.Resolved,
     ): ResolvedDescriptionEvidence {
-        val evidence = validateDescriptions(session, definition, identity, core)
-        if (definition.formatGeneration != 3 || identity.expansion != null || !evidence.compatible) {
-            return ResolvedDescriptionEvidence(evidence, null)
+        if (definition.formatGeneration != 3 || identity.expansion != null) {
+            return ResolvedDescriptionEvidence(validateDescriptions(session, definition, identity, core), null)
         }
-        val selected = resolvedLayout(core.candidateTables.descriptions, evidence)
-            ?.toDescriptionTableLayout()
-            ?: return ResolvedDescriptionEvidence(
-                evidence.copy(
-                    compatible = false,
-                    reasons = evidence.reasons +
-                        "selected description ABI could not be represented by the typed codec",
-                ),
-                null,
+        val legacyEvidence = validateDescriptions(session, definition, identity, core)
+        if (legacyEvidence.compatible) {
+            val selected = resolvedLayout(core.candidateTables.descriptions, legacyEvidence)
+                ?.toDescriptionTableLayout()
+                ?: return ResolvedDescriptionEvidence(
+                    legacyEvidence.copy(
+                        compatible = false,
+                        reasons = legacyEvidence.reasons +
+                            "selected description ABI could not be represented by the typed codec",
+                    ),
+                    null,
+                )
+            val selectedResolved = resolveTypedDescriptions(
+                session = session,
+                expectedSpeciesCount = core.speciesCount ?: selected.count.toInt(),
+                selectedLayout = selected,
             )
-        val resolution = DescriptionResolver().resolve(
-            session = session,
-            expectedSpeciesCount = core.speciesCount ?: selected.count.toInt(),
-            selectedLayout = selected,
-        )
-        val resolved = when (resolution) {
-            is DatasetResolution.Resolved -> resolution.candidate.layout
-            is DatasetResolution.Partial -> resolution.candidate.layout
-            else -> null
+            return if (selectedResolved != null) {
+                ResolvedDescriptionEvidence(legacyEvidence, selectedResolved)
+            } else {
+                ResolvedDescriptionEvidence(
+                    legacyEvidence.copy(
+                        compatible = false,
+                        reasons = legacyEvidence.reasons + "selected description layout failed typed resolution",
+                    ),
+                    null,
+                )
+            }
         }
-        return if (resolved != null) {
+        val publishedPokedexCount = GbaPublishedHeaderResolver.resolve(session.rom).pokedexCount
+        val expectedCount = publishedPokedexCount
+            ?: core.speciesCount
+            ?: identity.baseProfile?.internalSpeciesCount
+            ?: 412
+        val resolved = resolveTypedDescriptions(
+            session = session,
+            expectedSpeciesCount = expectedCount,
+        ) ?: return ResolvedDescriptionEvidence(legacyEvidence, null)
+        val typedTable = resolved.table.toTableLayout()
+        val evidence = DatasetResolvers.gen3Descriptions(
+            session = session,
+            speciesCount = typedTable.count,
+            inherited = typedTable,
+            codec = identity.codec,
+        )
+        val selected = resolvedLayout(typedTable, evidence)
+        val agreesWithTypedSelection = selected?.let {
+            it.offset == typedTable.offset &&
+                it.count == typedTable.count &&
+                it.recordSize == typedTable.recordSize
+        } == true
+        return if (evidence.compatible && agreesWithTypedSelection) {
             ResolvedDescriptionEvidence(evidence, resolved)
         } else {
             ResolvedDescriptionEvidence(
                 evidence.copy(
                     compatible = false,
-                    reasons = evidence.reasons + "selected description layout failed typed resolution",
+                    reasons = evidence.reasons +
+                        "typed description selection did not agree with legacy structural validation",
                 ),
                 null,
             )
@@ -193,6 +226,29 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         return runCatching {
             DescriptionTableLayout(offset.toLong(), count.toLong(), recordSize, pointers)
         }.getOrNull()
+    }
+
+    private fun DescriptionTableLayout.toTableLayout(): TableLayout = TableLayout(
+        offset = offset.toInt(),
+        count = count.toInt(),
+        recordSize = recordSize,
+        pointerOffsets = pointerOffsets,
+    )
+
+    private fun resolveTypedDescriptions(
+        session: RomAnalysisSession,
+        expectedSpeciesCount: Int,
+        selectedLayout: DescriptionTableLayout? = null,
+    ): ResolvedDescriptionLayout? = when (
+        val resolution = DescriptionResolver().resolve(
+            session = session,
+            expectedSpeciesCount = expectedSpeciesCount,
+            selectedLayout = selectedLayout,
+        )
+    ) {
+        is DatasetResolution.Resolved -> resolution.candidate.layout
+        is DatasetResolution.Partial -> resolution.candidate.layout
+        else -> null
     }
 
     private data class ResolvedDescriptionEvidence(

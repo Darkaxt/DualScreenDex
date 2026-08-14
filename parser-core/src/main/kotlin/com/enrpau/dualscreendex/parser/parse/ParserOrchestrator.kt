@@ -166,7 +166,8 @@ object ParserOrchestrator {
                 )
             }
             domain.source == SpeciesSemanticDomainSource.STRONGLY_REFERENCED_REGIONAL_ORDER ||
-                domain.source == SpeciesSemanticDomainSource.COMPILED_SPECIES_TO_DEX_MAP -> {
+                domain.source == SpeciesSemanticDomainSource.COMPILED_SPECIES_TO_DEX_MAP ||
+                domain.source == SpeciesSemanticDomainSource.PUBLISHED_POKEDEX_COUNT -> {
                 byCapability[RomCapability.POKEDEX_DESCRIPTIONS]?.toValidationEvidence()?.let { evidence ->
                     val byDex = layout.resolvedDatasets.descriptions?.catalogDescriptions().orEmpty()
                     val coveredSpeciesIds = RecordMaterializers.species(rom, layout).values
