@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetRowOutcome
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -8,6 +9,7 @@ import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -37,6 +39,22 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(0x7B0160 + 44, layout.tables.speciesNames?.offset)
         assertEquals(260, layout.tables.speciesNames?.stride)
         assertEquals(21, layout.resolvedDatasets.typeChart?.table?.typeCount)
+        assertNotNull("moveCount=${layout.moveCount}", layout.tables.learnsets)
+        val resolvedLearnsets = requireNotNull(layout.resolvedDatasets.learnsets)
+        val primaryLearnsets = requireNotNull(resolvedLearnsets.primary)
+        assertEquals(0x7B0160 + 148, layout.tables.learnsets?.offset)
+        assertEquals(260, layout.tables.learnsets?.stride)
+        assertEquals(260, primaryLearnsets.layout.table.pointerStride)
+        assertEquals(0x5F5, primaryLearnsets.layout.rows.size)
+        assertTrue(primaryLearnsets.layout.rows.none { it is LearnsetRowOutcome.Malformed })
+        val decodedLearnsets = primaryLearnsets.layout.rows.filterIsInstance<LearnsetRowOutcome.Decoded>()
+        assertEquals(1_522, decodedLearnsets.size)
+        assertEquals(22_164, decodedLearnsets.sumOf { it.entries.size })
+        assertEquals(847, decodedLearnsets.flatMap { it.entries }.maxOf { it.moveId })
+        assertEquals(
+            "5e80424ae344770807f1729338e69d61885ecb3af7867b8265252b2f79b093de",
+            learnsetSha256(decodedLearnsets),
+        )
 
         val catalog = CatalogParser.parse(rom).catalog
         assertNotNull(catalog)
@@ -48,6 +66,17 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertFalse(catalog.speciesById.containsKey(0x5F4))
         assertEquals("Bulbasaur", catalog.speciesById.getValue(1).name.value)
         assertEquals(45, catalog.speciesById.getValue(1).baseStats.value?.hp)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LEARNSETS).status)
+        assertTrue(catalog.navigableSpecies().all { it.learnset.status == CapabilityStatus.AVAILABLE })
+        assertEquals(
+            listOf(LearnsetEntry(1, 33), LearnsetEntry(1, 45)),
+            catalog.speciesById.getValue(1).learnset.value?.take(2),
+        )
+        val referencedMoves = catalog.speciesById.values
+            .flatMap { it.learnset.value.orEmpty() }
+            .mapTo(linkedSetOf()) { it.moveId }
+        assertTrue(referencedMoves.all(catalog.movesById::containsKey))
+        assertTrue(catalog.movesById.containsKey(847))
         val closureErrors = buildList {
             catalog.encounterAreas.flatMap { it.slots }.forEach { slot ->
                 if (slot.speciesId !in catalog.speciesById) {
@@ -64,5 +93,23 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(CapabilityStatus.NOT_FOUND, catalog.typesById.getValue(0).name.status)
         assertEquals(CapabilityStatus.NOT_FOUND, catalog.typesById.getValue(0).presentation.status)
         assertEquals(CapabilityStatus.NOT_FOUND, catalog.capabilities.getValue(RomCapability.MOVE_CATALOG).status)
+
+        val second = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val secondRows = requireNotNull(second.layout?.resolvedDatasets?.learnsets?.primary)
+            .layout.rows.filterIsInstance<LearnsetRowOutcome.Decoded>()
+        assertEquals(learnsetSha256(decodedLearnsets), learnsetSha256(secondRows))
+        assertEquals(
+            catalog.speciesById.mapValues { it.value.learnset },
+            requireNotNull(second.catalog).speciesById.mapValues { it.value.learnset },
+        )
+    }
+
+    private fun learnsetSha256(rows: List<LearnsetRowOutcome.Decoded>): String {
+        val bytes = rows.joinToString("\u001e") { row ->
+            "${row.rowIndex}:" + row.entries.joinToString(";") { entry -> "${entry.level},${entry.moveId}" }
+        }.toByteArray()
+        return MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
+            "%02x".format(byte.toInt() and 0xFF)
+        }
     }
 }

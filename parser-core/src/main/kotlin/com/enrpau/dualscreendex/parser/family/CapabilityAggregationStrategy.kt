@@ -90,7 +90,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
             moveData = resolvedLayout(core.moveDataLayout, core.moveData),
             typeChart = semantic.typeChartLayout,
             evolutions = resolvedLayout(tables.evolutions, dependent.evolutions),
-            learnsets = resolvedLayout(tables.learnsets, dependent.learnsets),
+            learnsets = dependent.resolvedLearnsetTable ?: resolvedLayout(tables.learnsets, dependent.learnsets),
             sprites = resolvedLayout(tables.sprites, dependent.sprites),
             descriptions = semantic.descriptionsLayout,
             abilities = semantic.abilitiesLayout,

@@ -1,6 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.learnsets
 
-import com.enrpau.dualscreendex.parser.analysis.ExtentCheck
+import com.enrpau.dualscreendex.parser.analysis.CheckedRomExtent
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.LearnsetEntry
 import com.enrpau.dualscreendex.parser.resolution.CandidateLayoutIdentity
@@ -40,18 +40,22 @@ data class LearnsetTableLayout(
     val offset: Long,
     val speciesCount: Int,
     val format: LearnsetFormat,
+    val pointerStride: Int = DEFAULT_POINTER_STRIDE,
 ) : ImmutableDatasetLayout<LearnsetTableLayout> {
     init {
         require(offset >= 0) { "learnset table offset must not be negative" }
         require(speciesCount > 0) { "learnset species count must be positive" }
+        require(pointerStride >= DEFAULT_POINTER_STRIDE) { "learnset pointer stride must cover one pointer" }
     }
 
     override val layoutIdentity: CandidateLayoutIdentity = CandidateLayoutIdentity(
-        "level-up-learnsets:${offset.toString(16)}:$speciesCount:${format.stableId}",
+        "level-up-learnsets:${offset.toString(16)}:$speciesCount:${format.stableId}:p$pointerStride",
     )
 
     override fun immutableSnapshot(): LearnsetTableLayout = this
 }
+
+private const val DEFAULT_POINTER_STRIDE = 4
 
 data class LearnsetEntryValue(
     val level: Int,
@@ -317,24 +321,38 @@ class LearnsetCodec : LearnsetTableDecoder {
                 "packed ${layout.format.moveBits}-bit format cannot represent $moveCount move ids",
             )
         }
-        val pointerExtent = when (
-            val extent = session.limits.checkTableExtent(
-                offset = layout.offset,
-                count = layout.speciesCount.toLong(),
-                recordSize = POINTER_BYTES,
-                romSize = session.rom.size.toLong(),
+        val pointerSpanLength = try {
+            Math.addExact(
+                Math.multiplyExact((layout.speciesCount - 1).toLong(), layout.pointerStride.toLong()),
+                POINTER_BYTES,
             )
-        ) {
-            is ExtentCheck.Valid -> extent.extent
-            is ExtentCheck.Invalid -> return LearnsetTableOutcome.Rejected(layout, extent.reason)
-            is ExtentCheck.BudgetExceeded -> return LearnsetTableOutcome.ExtentBudgetExceeded(
+        } catch (_: ArithmeticException) {
+            return LearnsetTableOutcome.Rejected(layout, "learnset pointer span overflows Long")
+        }
+        if (pointerSpanLength > session.limits.maxDatasetExtentBytes) {
+            return LearnsetTableOutcome.ExtentBudgetExceeded(
                 layout = layout,
-                observedBytes = extent.observedBytes,
-                limitBytes = extent.limitBytes,
+                observedBytes = pointerSpanLength,
+                limitBytes = session.limits.maxDatasetExtentBytes,
                 reason = "Gen III learnset pointer-table extent budget exceeded " +
-                    "(${extent.observedBytes} > ${extent.limitBytes})",
+                    "($pointerSpanLength > ${session.limits.maxDatasetExtentBytes})",
             )
         }
+        val pointerEnd = try {
+            Math.addExact(layout.offset, pointerSpanLength)
+        } catch (_: ArithmeticException) {
+            return LearnsetTableOutcome.Rejected(layout, "learnset pointer span end overflows Long")
+        }
+        if (pointerEnd > session.rom.size.toLong() ||
+            layout.offset > Int.MAX_VALUE || pointerSpanLength > Int.MAX_VALUE || pointerEnd > Int.MAX_VALUE
+        ) {
+            return LearnsetTableOutcome.Rejected(layout, "learnset pointer span exceeds the indexed ROM extent")
+        }
+        val pointerExtent = CheckedRomExtent(
+            offset = layout.offset.toInt(),
+            length = pointerSpanLength.toInt(),
+            endExclusive = pointerEnd.toInt(),
+        )
 
         ledger.claimExtent(pointerExtent.length.toLong())?.let { exhausted ->
             return LearnsetTableOutcome.ExtentBudgetExceeded(
@@ -349,7 +367,7 @@ class LearnsetCodec : LearnsetTableDecoder {
         return try {
             val rawPointers = List(layout.speciesCount) { row ->
                 ledger.consumeWork("pointer-table row")
-                session.rom.u32le(pointerExtent.offset + row * POINTER_BYTES.toInt())
+                session.rom.u32le(pointerExtent.offset + row * layout.pointerStride)
             }
             val targets = rawPointers.map { raw -> gbaTarget(raw, session.rom.size) }
             val distinctTargets = targets.filterNotNull().distinct().sorted()

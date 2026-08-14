@@ -28,6 +28,7 @@ object LearnsetRulesetMaterializer {
                         recordSize = 4,
                         variableLength = true,
                         elementSize = table.format.entrySize,
+                        stride = table.pointerStride,
                     ),
                     resolved.confidence,
                     resolved.catalogEntries(),

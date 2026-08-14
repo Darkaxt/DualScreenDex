@@ -59,6 +59,35 @@ class LearnsetCodecTest {
     }
 
     @Test
+    fun decodesPointersEmbeddedAtTheSelectedRecordStride() {
+        val bytes = ByteArray(0x400)
+        putPointer(bytes, 0, 0x200)
+        putPointer(bytes, 260, 0x240)
+        putWide(bytes, 0x200, listOf(LearnsetEntryValue(1, 33)))
+        putWide(bytes, 0x240, listOf(LearnsetEntryValue(7, 45)))
+
+        val outcome = codec.decodeGen3(
+            learnsetSession(bytes),
+            LearnsetTableLayout(
+                offset = 0,
+                speciesCount = 2,
+                format = LearnsetFormat.MoveU16LevelU16,
+                pointerStride = 260,
+            ),
+            moveCount = 100,
+        ) as LearnsetTableOutcome.Decoded
+
+        assertEquals(
+            listOf(LearnsetEntryValue(1, 33)),
+            (outcome.rows[0] as LearnsetRowOutcome.Decoded).entries,
+        )
+        assertEquals(
+            listOf(LearnsetEntryValue(7, 45)),
+            (outcome.rows[1] as LearnsetRowOutcome.Decoded).entries,
+        )
+    }
+
+    @Test
     fun packedRecoveryIsBoundedByTheAdjacentPointerAndKeepsOnlyTheValidPrefix() {
         val bytes = ByteArray(0x300)
         putPointer(bytes, 0, 0x100)

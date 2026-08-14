@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionResolver
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionTableLayout
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EmbeddedEvolutionPointerResolver
 import com.enrpau.dualscreendex.parser.dataset.evolutions.ResolvedEvolutionLayout
+import com.enrpau.dualscreendex.parser.dataset.learnsets.EmbeddedLearnsetPointerResolver
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetFormat
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetResolver
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetTableLayout
@@ -35,6 +36,7 @@ internal sealed interface DependentDatasetsPhaseResult {
         learnsetTables: List<Gen3LearnsetTableLayout>,
         val learnsetSelector: Gen3LearnsetSelectorEvidence?,
         resolvedLearnsets: ResolvedLearnsetSet? = null,
+        val resolvedLearnsetTable: TableLayout? = null,
     ) : DependentDatasetsPhaseResult {
         val sprites = sprites.dependentSnapshot()
         val evolutions = evolutions.dependentSnapshot()
@@ -105,6 +107,17 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
         } else {
             null
         }
+        val embeddedLearnsets = if (generation == 3 && expansion == null) {
+            identity.headerlessUnifiedSpecies?.let { unified ->
+                EmbeddedLearnsetPointerResolver.resolve(
+                    session = session,
+                    metadata = unified.metadata,
+                    speciesCount = unified.speciesCount,
+                )
+            }
+        } else {
+            null
+        }
         val legacyEvolutions = embeddedEvolutions?.evidence ?: evolutionAndLearnset?.evolutions ?: if (generation == 3) {
             if (expansion != null) {
                 PokeemeraldExpansionResolver.validateEvolutions(rom, expansion)
@@ -130,8 +143,8 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
         )
         var learnsetTables = emptyList<Gen3LearnsetTableLayout>()
         var learnsetSelector: Gen3LearnsetSelectorEvidence? = null
-        var resolvedLearnsets: ResolvedLearnsetSet? = null
-        var learnsets = evolutionAndLearnset?.learnsets ?: if (generation == 3) {
+        var resolvedLearnsets: ResolvedLearnsetSet? = embeddedLearnsets?.resolved
+        var learnsets = embeddedLearnsets?.evidence ?: evolutionAndLearnset?.learnsets ?: if (generation == 3) {
             if (expansion != null) {
                 PokeemeraldExpansionResolver.validateLearnsets(rom, expansion)
             } else {
@@ -148,7 +161,7 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
         } else {
             missingEvidence("combined evolution/learnset table not resolved")
         }
-        if (generation == 3 && expansion == null && learnsetTables.isNotEmpty()) {
+        if (embeddedLearnsets == null && generation == 3 && expansion == null && learnsetTables.isNotEmpty()) {
             val typed = resolveLearnsets(
                 session = session,
                 moveCount = core.moveCount ?: profile?.moveCount?.plus(1) ?: 355,
@@ -175,6 +188,7 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
                 learnsetTables = learnsetTables,
                 learnsetSelector = learnsetSelector,
                 resolvedLearnsets = resolvedLearnsets,
+                resolvedLearnsetTable = embeddedLearnsets?.table,
             ),
         )
     }
@@ -236,7 +250,7 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
             else -> return null
         }
         if (elementSize != typedFormat.entrySize) return null
-        return LearnsetTableLayout(offset.toLong(), count, typedFormat)
+        return LearnsetTableLayout(offset.toLong(), count, typedFormat, stride ?: 4)
     }
 
     private fun resolveEvolutions(

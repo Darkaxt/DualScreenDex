@@ -19,7 +19,8 @@ The parser already proves the shipped ROM's unified species root, 260-byte recor
 
 1. Decode each aligned pointer-field candidate across every active species row.
 2. Accept only a supported, explicitly terminated Gen III learnset ABI.
-3. Validate every move against the parser-selected move domain.
+3. Treat each positive `u16` move ID in a fully decoded relationship as existence evidence, while
+   keeping names/details unavailable unless an independently selected move dataset covers that ID.
 4. Select exactly one pointer field and ABI; zero or multiple survivors fail closed.
 5. Preserve inactive species IDs as structural-empty rows and retain original active IDs.
 
@@ -27,6 +28,6 @@ No production ROM name, SHA, source symbol, absolute address, or fixed field off
 
 ## Output contract
 
-On Dreamstone, the normal `CatalogParser` path must publish typed level-up entries for the full active species catalog, report LEARNSETS as AVAILABLE, preserve zero reference errors, survive SQLite write/reopen, and produce the same semantic result in two fresh parses. A malformed or ambiguous embedded field remains unavailable.
+On Dreamstone, the normal `CatalogParser` path must publish typed level-up entries for the full active species catalog, report LEARNSETS as AVAILABLE, close every referenced move ID without inventing names/details, preserve zero reference errors, survive SQLite write/reopen, and produce the same semantic result in two fresh parses. A malformed or ambiguous embedded field remains unavailable.
 
 After the focused slice, rerun the exact first-50 matrix and report numeric before/after counts. Subsequent holes are separate source-backed slices, starting with Altered Emerald's two incomplete rows rather than broad heuristic changes.
