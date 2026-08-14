@@ -194,8 +194,54 @@ object EncounterMaterializer {
                 ?: return emptyList()
             return materializeCompactGen2(rom, speciesCount, consumer, levelAuthority).orEmpty()
         }
+        val compiled = Gen2CompiledEncounterResolver.resolve(rom, speciesCount)
+        if (compiled.detected) {
+            return compiled.layout?.let { materializeCompiledGen2(rom, speciesCount, it) }.orEmpty()
+        }
         return standardGen2(rom, speciesCount)
     }
+
+    private fun materializeCompiledGen2(
+        rom: RomImage,
+        speciesCount: Int,
+        layout: Gen2CompiledEncounterLayout,
+    ): List<EncounterArea> = buildList {
+        layout.grassTables.forEach { table ->
+            repeat(table.count) { recordIndex ->
+                val base = table.offset + recordIndex * table.recordSize
+                val group = rom.u8(base)
+                val map = rom.u8(base + 1)
+                repeat(GEN2_TIME_COUNT) { time ->
+                    if (rom.u8(base + 2 + time) > 0) {
+                        val method = EncounterMethods.GRASS_MORNING + time
+                        val label = GEN2_GRASS_LABELS[time]
+                        val slots = readByteSlots(
+                            rom,
+                            base + GEN2_GRASS_HEADER_BYTES + time * layout.grassSlotCount * GEN2_SLOT_BYTES,
+                            layout.grassSlotCount,
+                            speciesCount,
+                            layout.grassWeights,
+                        )
+                        add(area(groupMapId(group, map), method, "Map $group-$map - $label", slots))
+                    }
+                }
+            }
+        }
+        val water = layout.waterTable
+        repeat(water.count) { recordIndex ->
+            val base = water.offset + recordIndex * water.recordSize
+            val group = rom.u8(base)
+            val map = rom.u8(base + 1)
+            val slots = readByteSlots(
+                rom,
+                base + GEN2_WATER_HEADER_BYTES,
+                layout.waterSlotCount,
+                speciesCount,
+                layout.waterWeights,
+            )
+            add(area(groupMapId(group, map), EncounterMethods.WATER, "Map $group-$map - water", slots))
+        }
+    }.distinctBy { it.id }
 
     private fun standardGen2(rom: RomImage, speciesCount: Int): List<EncounterArea> = buildList {
         val discoveredGrass = findGen2Arrays(rom, recordSize = 47, minimumRecords = 3) { offset ->
@@ -980,6 +1026,10 @@ object EncounterMaterializer {
     )
 
     private const val GB_BANK_SIZE = 0x4000
+    private const val GEN2_GRASS_HEADER_BYTES = 5
+    private const val GEN2_WATER_HEADER_BYTES = 3
+    private const val GEN2_TIME_COUNT = 3
+    private const val GEN2_SLOT_BYTES = 2
     private const val COMPACT_GEN2_HEADER_BYTES = 5
     private const val COMPACT_GEN2_SLOT_COUNT = 16
     private const val COMPACT_GEN2_TIME_COUNT = 3
@@ -1013,6 +1063,7 @@ object EncounterMaterializer {
     private const val EXPANSION_HEADER_SIZE = 84
     private const val EXPANSION_TIME_COUNT = 4
     private const val CFRU_WILD_HEADER_POINTER = 0x82990
+    private val GEN2_GRASS_LABELS = arrayOf("morning grass", "day grass", "night grass")
     private val GEN1_WEIGHTS = intArrayOf(20, 20, 15, 10, 10, 10, 5, 5, 4, 1)
     private val GEN2_GRASS_WEIGHTS = intArrayOf(30, 30, 20, 10, 5, 4, 1)
     private val GEN2_WATER_WEIGHTS = intArrayOf(60, 30, 10)

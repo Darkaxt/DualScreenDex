@@ -3,9 +3,7 @@ package com.enrpau.dualscreendex.parser.cli
 import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
-import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializer
-import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
-import com.enrpau.dualscreendex.parser.model.SelectionStatus
+import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import java.io.Writer
 import java.nio.charset.StandardCharsets
 import java.nio.file.AtomicMoveNotSupportedException
@@ -40,16 +38,7 @@ fun main(arguments: Array<String>) {
             CorpusResult(input.displayName, input.source, input.archiveEntry, 0, error = input.error ?: "input has no ROM image")
         } else {
             try {
-                val measured = measureTimedValue {
-                    val analysis = ParserOrchestrator.analyze(input.rom)
-                    val layout = analysis.probes.singleOrNull { it.family == analysis.selectedFamily }?.resolvedLayout
-                    val catalog = if (analysis.status == SelectionStatus.SELECTED && layout != null) {
-                        runCatching { CatalogMaterializer.materialize(input.rom, analysis, layout) }
-                    } else {
-                        null
-                    }
-                    CatalogAttempt(analysis, catalog)
-                }
+                val measured = measureTimedValue { CatalogParser.parseCatching(input.rom) }
                 val materialized = measured.value.catalog?.getOrNull()
                 val persisted = if (cache != null && materialized != null) {
                     runCatching { persistCatalog(cache, input, measured.value.analysis, materialized) }
@@ -104,11 +93,6 @@ fun main(arguments: Array<String>) {
     println("JSON: ${options.json.toAbsolutePath()}")
     println("Markdown: ${options.markdown.toAbsolutePath()}")
 }
-
-private data class CatalogAttempt(
-    val analysis: com.enrpau.dualscreendex.parser.model.ParseResult,
-    val catalog: Result<com.enrpau.dualscreendex.parser.catalog.ParsedCatalog>?,
-)
 
 private fun persistCatalog(
     cache: CatalogCache,

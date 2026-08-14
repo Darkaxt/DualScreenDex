@@ -69,6 +69,9 @@ class WorldMapCatalogApiRealControlTest {
     @Test
     fun cloverFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[13])
 
+    @Test
+    fun orangeRegionSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[14])
+
     private fun assertRoundTrip(control: Control) {
         val configured = System.getenv(control.environmentVariable)
         assumeTrue("set ${control.environmentVariable} to run this real-ROM control", !configured.isNullOrBlank())
@@ -305,6 +308,12 @@ class WorldMapCatalogApiRealControlTest {
                     "f8c5f9d281dd36609b1a62c256c777dcae3a105cb1d8eaa7052acdde728381bd",
                     "1b898a83a7cd7d677ea1aec26b6f9f5bece1dae2fc5096f5cfb2e8ab04cc34ac",
                 ),
+            ),
+            Control(
+                "DUALDEX_ORANGE_ROM",
+                "037f5ba913953f2387175c5e0549347d162ef3b224d25660e8055acdac4564be",
+                listOf("gen2-johto"),
+                listOf("0234ec217a38e89e8c711128077bc75589327cdb3aff21de715c2b9550794244"),
             ),
         )
     }

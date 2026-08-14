@@ -19,6 +19,12 @@ internal object Gen2CompiledCoreResolver {
     private const val NAME_RECORD_SIZE = 10
     private const val NAME_CONSUMER_BYTES = 45
     private const val BASE_CONSUMER_BYTES = 70
+    private const val VARIANT_BASE_TAIL_BYTES = 22
+    private const val VARIANT_BASE_PROLOGUE_BYTES = 12
+    private const val VARIANT_BASE_EPILOGUE_BYTES = 12
+    private const val MAX_VARIANT_BASE_FUNCTION_BYTES = 1024
+    private const val MINIMUM_BASE_RECORD_SIZE = 20
+    private const val MAXIMUM_BASE_RECORD_SIZE = 64
 
     private data class NameConsumer(
         val bank: Int,
@@ -37,7 +43,7 @@ internal object Gen2CompiledCoreResolver {
             parseNameConsumer(rom, offset)
         }
         val bases = (0..scanEnd - BASE_CONSUMER_BYTES).mapNotNull { offset ->
-            parseBaseConsumer(rom, offset)
+            parseBaseConsumer(rom, offset) ?: parseVariantBaseConsumer(rom, offset, scanEnd)
         }
         val candidates = names.flatMap { name ->
             bases.mapNotNull { base -> resolvePair(rom, name, base) }
@@ -128,6 +134,65 @@ internal object Gen2CompiledCoreResolver {
         BaseConsumer(bank, root, recordSize)
     }.getOrNull()
 
+    private fun parseVariantBaseConsumer(
+        rom: RomImage,
+        offset: Int,
+        scanEnd: Int,
+    ): BaseConsumer? = runCatching {
+        if (offset + VARIANT_BASE_TAIL_BYTES > scanEnd) return@runCatching null
+        val recordSize = rom.u16le(offset + 2)
+        if (
+            rom.u8(offset) != DEC_A ||
+            rom.u8(offset + 1) != LOAD_BC_IMMEDIATE ||
+            recordSize !in MINIMUM_BASE_RECORD_SIZE..MAXIMUM_BASE_RECORD_SIZE ||
+            rom.u8(offset + 4) != LOAD_HL_IMMEDIATE ||
+            rom.u8(offset + 7) != CALL ||
+            rom.u8(offset + 10) != LOAD_DE_IMMEDIATE ||
+            rom.u8(offset + 13) != LOAD_BC_IMMEDIATE ||
+            rom.u16le(offset + 14) != recordSize ||
+            rom.u8(offset + 16) != CALL ||
+            rom.u8(offset + 19) != JUMP
+        ) return@runCatching null
+
+        val epilogue = rom.u16le(offset + 20)
+        if (
+            epilogue + VARIANT_BASE_EPILOGUE_BYTES > scanEnd ||
+            rom.u8(epilogue) != LOAD_A_ABSOLUTE ||
+            rom.u8(epilogue + 3) != LOAD_ABSOLUTE_A ||
+            rom.u16le(epilogue + 4) != rom.u16le(offset + 11) ||
+            rom.u8(epilogue + 6) != POP_AF ||
+            rom.u8(epilogue + 7) != RST_BANKSWITCH ||
+            rom.u8(epilogue + 8) != POP_HL ||
+            rom.u8(epilogue + 9) != POP_DE ||
+            rom.u8(epilogue + 10) != POP_BC ||
+            rom.u8(epilogue + 11) != RETURN
+        ) return@runCatching null
+
+        val speciesAddress = rom.u16le(epilogue + 1)
+        val prologueStart = maxOf(0, offset - MAX_VARIANT_BASE_FUNCTION_BYTES)
+        val banks = (prologueStart until offset).mapNotNull { candidate ->
+            if (
+                candidate + VARIANT_BASE_PROLOGUE_BYTES <= offset &&
+                rom.u8(candidate) == PUSH_BC &&
+                rom.u8(candidate + 1) == PUSH_DE &&
+                rom.u8(candidate + 2) == PUSH_HL &&
+                rom.u8(candidate + 3) == LOAD_A_HIGH &&
+                rom.u8(candidate + 5) == PUSH_AF &&
+                rom.u8(candidate + 6) == LOAD_A_IMMEDIATE &&
+                rom.u8(candidate + 8) == RST_BANKSWITCH &&
+                rom.u8(candidate + 9) == LOAD_A_ABSOLUTE &&
+                rom.u16le(candidate + 10) == speciesAddress
+            ) {
+                rom.u8(candidate + 7).takeIf { it > 0 }
+            } else {
+                null
+            }
+        }.distinct()
+        val bank = banks.singleOrNull() ?: return@runCatching null
+        val root = rom.gbBankAddress(bank, rom.u16le(offset + 5)) ?: return@runCatching null
+        BaseConsumer(bank, root, recordSize)
+    }.getOrNull()
+
     private fun resolvePair(
         rom: RomImage,
         names: NameConsumer,
@@ -135,9 +200,10 @@ internal object Gen2CompiledCoreResolver {
     ): Gen2CompiledCoreResolution? {
         if (names.bank != base.bank || names.root <= base.root) return null
         val distance = names.root - base.root
-        if (distance % base.recordSize != 0) return null
-        val speciesCount = distance / base.recordSize
-        if (speciesCount !in MINIMUM_SPECIES_COUNT..MAXIMUM_SPECIES_COUNT) return null
+        val adjacentCount = if (distance % base.recordSize == 0) distance / base.recordSize else null
+        val speciesCount = adjacentCount?.takeIf { it in MINIMUM_SPECIES_COUNT..MAXIMUM_SPECIES_COUNT }
+            ?: inferSequentialSpeciesCount(rom, base, names.root)
+            ?: return null
         if ((0 until speciesCount).any { index -> rom.u8(base.root + index * base.recordSize) != index + 1 }) {
             return null
         }
@@ -153,6 +219,22 @@ internal object Gen2CompiledCoreResolver {
             speciesCount = speciesCount,
             tables = ProfileTables(speciesNames = nameLayout, baseStats = baseLayout),
         )
+    }
+
+    private fun inferSequentialSpeciesCount(
+        rom: RomImage,
+        base: BaseConsumer,
+        upperBound: Int,
+    ): Int? {
+        var count = 0
+        while (
+            count < MAXIMUM_SPECIES_COUNT &&
+            base.root + (count + 1) * base.recordSize <= upperBound &&
+            rom.u8(base.root + count * base.recordSize) == count + 1
+        ) {
+            count++
+        }
+        return count.takeIf { it in MINIMUM_SPECIES_COUNT..MAXIMUM_SPECIES_COUNT }
     }
 
     private const val LOAD_A_HIGH = 0xF0
@@ -173,6 +255,7 @@ internal object Gen2CompiledCoreResolver {
     private const val COMPARE_IMMEDIATE = 0xFE
     private const val JR = 0x18
     private const val JR_Z = 0x28
+    private const val JUMP = 0xC3
     private const val CALL = 0xCD
     private const val RETURN = 0xC9
     private const val PUSH_BC = 0xC5

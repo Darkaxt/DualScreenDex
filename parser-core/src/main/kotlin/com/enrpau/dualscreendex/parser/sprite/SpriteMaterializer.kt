@@ -141,7 +141,10 @@ object SpriteMaterializer {
 
     private fun gen2Dimensions(rom: RomImage, layout: ResolvedRomLayout, index: Int): Int? {
         val stats = layout.tables.baseStats ?: return null
-        if (index !in 0 until stats.count || stats.recordSize < 18) return null
+        if (
+            index !in 0 until stats.count ||
+            stats.recordSize != RETAIL_GEN2_BASE_STATS_BYTES
+        ) return null
         val packed = rom.u8(stats.offset + index * stats.recordSize + 17)
         val width = packed ushr 4
         val height = packed and 0x0F
@@ -214,6 +217,7 @@ object SpriteMaterializer {
         return width
     }
 
+    private const val RETAIL_GEN2_BASE_STATS_BYTES = 32
     private val GB_GRAYSCALE = intArrayOf(0, 0xFFC8D0C0.toInt(), 0xFF687060.toInt(), 0xFF182018.toInt())
     private val GBA_GRAYSCALE = IntArray(16) { index ->
         if (index == 0) 0 else {

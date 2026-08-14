@@ -2,9 +2,16 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
+internal enum class Gen2LandmarkNameEncoding {
+    STANDARD,
+    EXPANDED,
+}
+
 /** Decodes the copied Gen II Town Map name buffer with its actual PlaceString controls. */
 internal object Gen2LandmarkNameCodec {
-    fun decode(bytes: ByteArray): String? {
+    fun decode(bytes: ByteArray): String? = decode(bytes, Gen2LandmarkNameEncoding.STANDARD)
+
+    fun decode(bytes: ByteArray, encoding: Gen2LandmarkNameEncoding): String? {
         val copiedTerminator = bytes.indexOfFirst { (it.toInt() and 0xff) == STRING_TERMINATOR }
         if (copiedTerminator < 0) return null
 
@@ -27,32 +34,86 @@ internal object Gen2LandmarkNameCodec {
                 0x9d -> output.append(';')
                 0x9e -> output.append('[')
                 0x9f -> output.append(']')
-                0xc0 -> output.append('Ä')
-                0xc1 -> output.append('Ö')
-                0xc2 -> output.append('Ü')
-                0xc3 -> output.append('ä')
-                0xc4 -> output.append('ö')
-                0xc5 -> output.append('ü')
-                in 0xd0..0xd6 -> output.append(CONTRACTIONS[value - 0xd0])
-                0xdf -> output.append('←')
-                0xe1 -> output.append("PK")
-                0xe2 -> output.append("MN")
-                0xeb -> output.append('→')
-                0xec -> output.append('▷')
-                0xed -> output.append('▶')
-                0xee -> output.append('▼')
-                0xef -> output.append('♂')
-                0xf0 -> output.append('¥')
-                0xf1 -> output.append('×')
-                0xf3 -> output.append('/')
-                0xf4 -> output.append(',')
-                0xf5 -> output.append('♀')
+                in 0xba..0xff -> output.append(decodeDialectGlyph(value, encoding) ?: return null)
                 in 0 until FIRST_FONT_GLYPH -> return null
                 else -> output.append(PokemonTextCodec.gbEnglish.decodeByte(value) ?: return null)
             }
         }
         return output.toString().replace(WHITESPACE, " ").trim().takeIf(String::isNotBlank)
     }
+
+    private fun decodeDialectGlyph(value: Int, encoding: Gen2LandmarkNameEncoding): String? =
+        when (encoding) {
+            Gen2LandmarkNameEncoding.STANDARD -> when (value) {
+                0xc0 -> "Ä"
+                0xc1 -> "Ö"
+                0xc2 -> "Ü"
+                0xc3 -> "ä"
+                0xc4 -> "ö"
+                0xc5 -> "ü"
+                in 0xd0..0xd6 -> CONTRACTIONS[value - 0xd0]
+                0xdf -> "←"
+                0xe1 -> "PK"
+                0xe2 -> "MN"
+                0xeb -> "→"
+                0xec -> "▷"
+                0xed -> "▶"
+                0xee -> "▼"
+                0xef -> "♂"
+                0xf0 -> "¥"
+                0xf1 -> "×"
+                0xf3 -> "/"
+                0xf4 -> ","
+                0xf5 -> "♀"
+                else -> PokemonTextCodec.gbEnglish.decodeByte(value)?.toString()
+            }
+            Gen2LandmarkNameEncoding.EXPANDED -> when (value) {
+                0xba -> "′"
+                0xbb -> "″"
+                0xbc -> "PHONE"
+                0xbd -> "SHINY"
+                in 0xc0..0xc6 -> CONTRACTIONS[value - 0xc0]
+                0xc7 -> "↕"
+                0xc8 -> "PO"
+                0xc9 -> "KE"
+                0xca -> "“"
+                0xcb -> "”"
+                0xcc -> "ID"
+                0xcd -> "№"
+                0xce -> "…"
+                0xcf -> "←"
+                0xd0 -> "'"
+                0xd1 -> "PK"
+                0xd2 -> "MN"
+                0xd3 -> "-"
+                0xd4 -> "◀"
+                0xd5 -> "▲"
+                0xd6 -> "?"
+                0xd7 -> "!"
+                0xd8 -> "."
+                0xd9 -> "&"
+                0xda -> "é"
+                0xdb -> "→"
+                0xdc -> "▷"
+                0xdd -> "▶"
+                0xde -> "▼"
+                0xdf -> "♂"
+                0xe0 -> "¥"
+                0xe1 -> "×"
+                0xe2 -> "·"
+                0xe3 -> "/"
+                0xe4 -> ","
+                0xe5 -> "♀"
+                in 0xe6..0xef -> ('0'.code + value - 0xe6).toChar().toString()
+                0xfa -> "┌"
+                0xfb -> "─"
+                0xfc -> "┐"
+                0xfd -> "│"
+                0xfe -> "└"
+                0xff -> "┘"
+                else -> null
+            }
+        }
 
     private const val NULL = 0x00
     private const val BSP = 0x1f

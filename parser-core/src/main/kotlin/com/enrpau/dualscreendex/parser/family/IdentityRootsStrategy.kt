@@ -20,6 +20,7 @@ import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolution
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledCoreResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledMoveResolver
+import com.enrpau.dualscreendex.parser.parse.Gen2CompiledSpriteResolver
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolution
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
@@ -118,10 +119,16 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         } else {
             null
         }
-        // A larger 8-bit boundary can include reserved IDs; without an active predicate it is not authoritative.
-        val gen2CompiledCore = if (generation == 2 && identityMatched && exact == null) {
+        // A larger 8-bit boundary is authoritative only when a complete compiled sprite consumer
+        // resolves the same expanded species count.
+        val gen2CompiledCore = if (generation == 2 && exact == null) {
             Gen2CompiledCoreResolver.resolve(session.rom)?.takeIf { compiled ->
-                baseProfile != null && compiled.speciesCount < baseProfile.internalSpeciesCount
+                baseProfile != null && when {
+                    compiled.speciesCount < baseProfile.internalSpeciesCount -> true
+                    compiled.speciesCount > baseProfile.internalSpeciesCount ->
+                        Gen2CompiledSpriteResolver.resolve(session.rom, compiled.speciesCount) != null
+                    else -> false
+                }
             }
         } else {
             null
@@ -153,14 +160,27 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                 tables = compiledCoreTableResolution.tables.copy(moveData = moveData),
             )
         } ?: compiledCoreTableResolution
-        val tableResolution = headerlessUnifiedSpecies?.let { unified ->
+        val compiledSpriteTable = if (generation == 2 && exact == null) {
+            compiledMoveTableResolution.tables.sprites?.let { inherited ->
+                val speciesCount = compiledMoveTableResolution.tables.speciesNames?.count ?: inherited.count
+                Gen2CompiledSpriteResolver.resolve(session.rom, speciesCount)
+            }
+        } else {
+            null
+        }
+        val compiledSpriteTableResolution = compiledSpriteTable?.let { sprites ->
             compiledMoveTableResolution.copy(
-                tables = compiledMoveTableResolution.tables.copy(
+                tables = compiledMoveTableResolution.tables.copy(sprites = sprites),
+            )
+        } ?: compiledMoveTableResolution
+        val tableResolution = headerlessUnifiedSpecies?.let { unified ->
+            compiledSpriteTableResolution.copy(
+                tables = compiledSpriteTableResolution.tables.copy(
                     speciesNames = unified.tables.speciesNames,
                     baseStats = unified.tables.baseStats,
                 ),
             )
-        } ?: compiledMoveTableResolution
+        } ?: compiledSpriteTableResolution
         val codec = if (generation == 3) PokemonTextCodec.gbaEnglish else PokemonTextCodec.gbEnglish
         return IdentityRootsPhaseResult.Resolved(
             exactProfile = exact,

@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterMaterializer
 import com.enrpau.dualscreendex.parser.catalog.EncounterMethods
+import com.enrpau.dualscreendex.parser.catalog.Gen2CompiledEncounterResolver
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
@@ -16,6 +17,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -54,6 +56,87 @@ class Gen2WorldMapHackRealControlTest {
             catalog.regions.map { sha256(catalog.assets.getValue(it.imageAssetKey)) },
         )
         assertEquals(CRYSTAL_LEGACY_LOCATION_SHA, locationFingerprint(catalog))
+    }
+
+    @Test fun orangeResolvesExpandedCoreAndSingleEncounterBearingRegion() {
+        val rom = realRom("DUALDEX_ORANGE_ROM", ORANGE_SHA)
+        val core = requireNotNull(Gen2CompiledCoreResolver.resolve(rom))
+        assertEquals(253, core.speciesCount)
+        assertEquals(27, core.tables.baseStats?.recordSize)
+        assertEquals(253, requireNotNull(Gen2CompiledSpriteResolver.resolve(rom, core.speciesCount)).count)
+        val encounters = encounters(rom)
+        val baseAreaIds = encounters.mapTo(linkedSetOf()) { it.id / 10 }
+        assertEquals(253, encounters.size)
+        assertEquals(86, baseAreaIds.size)
+        assertTrue(encounters.all { area ->
+            area.slots.isNotEmpty() && area.slots.all { slot ->
+                slot.speciesId in 1..253 && slot.minimumLevel in 1..100 &&
+                    slot.maximumLevel in slot.minimumLevel..100 && (slot.weight ?: 0) > 0
+            }
+        })
+
+        val result = resolve(rom, encounters)
+
+        assertTrue("Orange: ${result::class.simpleName}", result is WorldMapResolution.Resolved)
+        val catalog = (result as WorldMapResolution.Resolved).catalog.validate()
+        assertEquals(listOf("gen2-johto"), catalog.regions.map { it.key })
+        val region = catalog.regions.single()
+        assertNull(region.displayName)
+        assertEquals(54 to 86, region.locations.size to region.locations.sumOf { it.baseAreaIds.size })
+        assertEquals(baseAreaIds, region.locations.flatMapTo(linkedSetOf()) { it.baseAreaIds })
+        assertEquals(ORANGE_RASTER_SHA, sha256(catalog.assets.getValue(region.imageAssetKey)))
+        assertEquals(ORANGE_NAMED_LOCATION_SHA, namedLocationFingerprint(catalog))
+
+        val second = (resolve(rom, encounters) as WorldMapResolution.Resolved).catalog.validate()
+        assertEquals(ORANGE_RASTER_SHA, sha256(second.assets.getValue(region.imageAssetKey)))
+        assertEquals(ORANGE_NAMED_LOCATION_SHA, namedLocationFingerprint(second))
+
+        val integratedCatalog = requireNotNull(CatalogParser.parse(rom).catalog)
+        assertEquals(253, integratedCatalog.speciesById.size)
+        assertTrue(integratedCatalog.speciesById.values.all { it.sprite.status == CapabilityStatus.AVAILABLE })
+        assertEquals(
+            CapabilityStatus.AVAILABLE,
+            integratedCatalog.capabilities.getValue(RomCapability.WORLD_MAP).status,
+        )
+        assertEquals(ORANGE_RASTER_SHA, sha256(integratedCatalog.worldMaps.assets.getValue(region.imageAssetKey)))
+        assertEquals(ORANGE_NAMED_LOCATION_SHA, namedLocationFingerprint(integratedCatalog.worldMaps))
+    }
+
+    @Test fun peridotRetainsCompiledEncounterSupportButFailsClosedAtLandmarkJoin() {
+        val rom = realRom("DUALDEX_PERIDOT_ROM", PERIDOT_SHA)
+        val core = requireNotNull(Gen2CompiledCoreResolver.resolve(rom))
+        assertEquals(253, core.speciesCount)
+        assertEquals(34, core.tables.baseStats?.recordSize)
+        val compiled = Gen2CompiledEncounterResolver.resolve(rom, core.speciesCount)
+        assertTrue(compiled.detected)
+        assertEquals(253, requireNotNull(compiled.layout).maximumSpeciesId)
+        val encounters = encounters(rom)
+        assertEquals(434, encounters.size)
+        assertEquals(140, encounters.map { it.id / 10 }.toSet().size)
+        assertEquals(
+            mapOf(
+                EncounterMethods.WATER to 65,
+                EncounterMethods.GRASS_MORNING to 123,
+                EncounterMethods.GRASS_DAY to 123,
+                EncounterMethods.GRASS_NIGHT to 123,
+            ),
+            encounters.groupingBy { it.methodId }.eachCount(),
+        )
+        assertEquals(PERIDOT_ENCOUNTER_SHA, encounterFingerprint(encounters))
+
+        val result = resolve(rom, encounters)
+
+        assertTrue("Peridot must remain unavailable: $result", result is WorldMapResolution.Unavailable)
+        assertEquals("landmark-join", (result as WorldMapResolution.Unavailable).stage)
+        assertTrue(result.reason.contains("classifiers=1"))
+        val integratedCatalog = requireNotNull(CatalogParser.parse(rom).catalog)
+        assertTrue(integratedCatalog.speciesById.values.all { it.sprite.status == CapabilityStatus.AVAILABLE })
+        assertEquals(
+            CapabilityStatus.NOT_FOUND,
+            integratedCatalog.capabilities.getValue(RomCapability.WORLD_MAP).status,
+        )
+        assertTrue(integratedCatalog.worldMaps.regions.isEmpty())
+        assertTrue(integratedCatalog.worldMaps.assets.isEmpty())
     }
 
     @Test fun anniversaryCrystalResolvesGuardedMapAndCompactEncounterConsumers() {
@@ -151,7 +234,7 @@ class Gen2WorldMapHackRealControlTest {
     @Test fun malformedOneThresholdFailsClosed() {
         val source = bronze2Bytes()
         val classifier = findOneThresholdClassifier(source)
-        source[classifier.thresholdOffset] = source[classifier.shipOffset]
+        source[classifier.thresholdOffset] = (source[classifier.shipOffset].u8() + 1).toByte()
 
         val result = resolve(RomImage(source))
 
@@ -303,6 +386,17 @@ class Gen2WorldMapHackRealControlTest {
         return sha256(canonical.toByteArray())
     }
 
+    private fun namedLocationFingerprint(catalog: WorldMapCatalog): String {
+        val canonical = catalog.regions.flatMap { region ->
+            region.locations.map { location ->
+                val cells = location.geometry.joinToString(",") { "${it.x}:${it.y}:${it.width}:${it.height}" }
+                "${region.key}:${location.key}:${location.displayName}:" +
+                    "${location.baseAreaIds.sorted().joinToString(",")}:$cells"
+            }
+        }.joinToString(";")
+        return sha256(canonical.toByteArray())
+    }
+
     private fun sha256(sprite: RgbaSprite): String {
         val digest = MessageDigest.getInstance("SHA-256")
         sprite.argb.forEach { digest.update(ByteBuffer.allocate(Int.SIZE_BYTES).putInt(it).array()) }
@@ -320,6 +414,13 @@ class Gen2WorldMapHackRealControlTest {
     )
 
     private companion object {
+        const val ORANGE_SHA = "037f5ba913953f2387175c5e0549347d162ef3b224d25660e8055acdac4564be"
+        const val ORANGE_RASTER_SHA = "d913a0621593e68935b10fbf8259455f3e53c56381d7e967780fbe3fa597cacb"
+        const val ORANGE_NAMED_LOCATION_SHA =
+            "954ba7995a85480f358bd812510dc6869756d5163144d71f7f3bb1c8797a02b4"
+        const val PERIDOT_SHA = "22dc749a396a353d6724aa96e28d4fef89d4b89e38e594852c8930c3c4a7f160"
+        const val PERIDOT_ENCOUNTER_SHA =
+            "523aad5c34175a89597b6b865e8cf49da5706dd6eb243215778ec95c86e9592e"
         const val BRONZE_SHA = "3cf45157784fe70ddf9f07639236022321bf62b70797c412457625b2704c3269"
         const val BRONZE2_SHA = "87758fbc06a9abc73577bbc16d184bc3fb6f35d5abf22d776156629b5e5ae811"
         const val BRONZE2_JOHTO_RASTER_SHA = "6e36d20b35f904a06fec5e11750c8938b9163f2d05ccdc848bd44b16e883497c"

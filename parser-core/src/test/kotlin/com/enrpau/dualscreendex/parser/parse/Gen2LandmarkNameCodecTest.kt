@@ -43,6 +43,20 @@ class Gen2LandmarkNameCodecTest {
         )
     }
 
+    @Test fun expandedDialectDecodesShiftedDigitsAndPunctuation() {
+        assertEquals(
+            "FUKUHARA №.4",
+            Gen2LandmarkNameCodec.decode(
+                byteArrayOf(
+                    0x85.toByte(), 0x94.toByte(), 0x8a.toByte(), 0x94.toByte(),
+                    0x87.toByte(), 0x80.toByte(), 0x91.toByte(), 0x80.toByte(), 0x7f,
+                    0xcd.toByte(), 0xd8.toByte(), 0xea.toByte(), 0x50,
+                ),
+                Gen2LandmarkNameEncoding.EXPANDED,
+            ),
+        )
+    }
+
     @Test fun englishContractionGlyphsAreDecodedInFull() {
         assertEquals(
             "DIGLETT's CAVE",

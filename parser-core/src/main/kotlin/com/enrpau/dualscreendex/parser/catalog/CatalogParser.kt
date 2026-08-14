@@ -22,6 +22,12 @@ data class CatalogParseResult(
     val catalog: ParsedCatalog?,
 )
 
+data class CatalogParseAttempt(
+    val analysis: ParseResult,
+    val layout: ResolvedRomLayout?,
+    val catalog: Result<ParsedCatalog>?,
+)
+
 enum class CatalogMaterializationPhase { ESSENTIAL, SPECIES_MEDIA, RELATIONSHIPS, EXTENDED, COMPLETE }
 
 data class CatalogMaterializationProgress(
@@ -36,24 +42,38 @@ object CatalogParser {
         rom: RomImage,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
     ): CatalogParseResult {
+        val attempt = parseCatching(rom, onProgress)
+        return CatalogParseResult(
+            attempt.analysis,
+            attempt.layout,
+            attempt.catalog?.getOrThrow(),
+        )
+    }
+
+    fun parseCatching(
+        rom: RomImage,
+        onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+    ): CatalogParseAttempt {
         val context = ParserOrchestrator.analyzeForCatalog(rom)
         val analysis = context.analysis
         if (analysis.status != SelectionStatus.SELECTED || analysis.selectedFamily == null) {
-            return CatalogParseResult(analysis, null, null)
+            return CatalogParseAttempt(analysis, null, null)
         }
         val layout = analysis.probes.singleOrNull { it.family == analysis.selectedFamily }?.resolvedLayout
-            ?: return CatalogParseResult(analysis, null, null)
-        return CatalogParseResult(
+            ?: return CatalogParseAttempt(analysis, null, null)
+        return CatalogParseAttempt(
             analysis,
             layout,
-            CatalogMaterializer.materialize(
-                rom,
-                analysis,
-                layout,
-                onProgress,
-                context.resolveGen3AreaNames,
-                context.resolveWorldMap,
-            ),
+            runCatching {
+                CatalogMaterializer.materialize(
+                    rom,
+                    analysis,
+                    layout,
+                    onProgress,
+                    context.resolveGen3AreaNames,
+                    context.resolveWorldMap,
+                )
+            },
         )
     }
 }
