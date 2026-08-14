@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Release candidate `v1.0.0-rc.25` is prepared to add normalized ROM-derived maps, semantic ARM7TDMI ability mechanics, proven-wild Rarity-first behavior, and broader compatibility evidence while preserving fail-closed fallback. Stable `v1.0.0` has not been released.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Release candidate `v1.0.0-rc.26` combines RC25's normalized ROM-derived maps, semantic ARM7TDMI ability mechanics, and proven-wild Rarity behavior with complete first-50 evolution catalogs and consistent Organic identity artwork. Stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
