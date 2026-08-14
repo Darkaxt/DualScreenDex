@@ -41,3 +41,11 @@ Dreamstone source defines one `gMovesInfo` array of 48-byte `MoveInfo` records. 
 Production selection must start from compiled-reference targets and the independently decoded positive move-ID domain already present in complete learnsets. It may admit the source-defined 48-byte ABI only when exactly one referenced root provides complete pointer names and typed detail rows for every ID from zero through the maximum referenced move ID. Table-wide content validates a compiled-nominated root; it cannot nominate a raw ROM offset. Invalid pointers, malformed packed fields, incomplete dense coverage, exhausted evidence, and multiple complete roots fail closed. Production must not select by ROM name, SHA, source symbol, absolute address, or source revision.
 
 The normal catalog path must publish `MOVE_CATALOG` and `MOVE_DETAILS` as `AVAILABLE`, preserve the ordinary move IDs and decoded names/details, keep unsupported special-only move records outside the ordinary domain, preserve zero reference errors, and survive SQLite write/reopen. Ability mechanics remain independently gated and must not be promoted merely because the move ABI becomes available.
+
+## Later slice: compiled Pokédex-entry descriptions
+
+After Celia's widened move details were resolved, its next non-THUMB gap was the Pokédex-description table. The comparative source defines 386 `PokedexEntry` rows with a 36-byte record and one description pointer at `+16`; the exact ROM independently contains that table with eight compiled references.
+
+Production may use the published Gen III Pokédex count only when the fixed species-name, move-name, and sprite header roles are valid and the count lies inside the independently decoded species-name domain. Typed discovery then remains compiled-reference-nominated and must agree with the legacy structural validator. Partial records stay unavailable, and a partial description table cannot invalidate an independently compiled species-to-Dex map.
+
+The output gate is truthful semantic coverage, not an all-or-nothing label: Celia must report 382 decoded descriptions across 384 navigable Pokédex species, preserve two unavailable active rows, retain zero reference errors, survive SQLite reopen, and leave the other 49 exact-first-50 results unchanged. THUMB ability mechanics are out of scope for this slice.

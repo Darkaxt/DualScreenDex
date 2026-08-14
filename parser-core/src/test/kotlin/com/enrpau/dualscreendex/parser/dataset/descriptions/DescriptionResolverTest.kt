@@ -160,11 +160,22 @@ class DescriptionResolverTest {
             decodeAttempts++
             DescriptionTableOutcome.Rejected(layout, "fixture invalid root")
         }
-        val references = (0 until 128).associate { index -> 0x400 + index * 4 to 1 }
+        val bytes = ByteArray(0x8000)
+        val references = (0 until 128).associate { index -> 0x400 + index * 0x40 to 1 }
+        references.keys.forEachIndexed { index, root ->
+            putDescriptionTable(
+                bytes = bytes,
+                offset = root,
+                count = 1,
+                recordSize = 36,
+                pointerOffsets = listOf(16),
+                textOffset = 0x3000 + index * 0x20,
+            )
+        }
 
         val result = DescriptionResolver(decoder).resolve(
             session = descriptionSession(
-                bytes = ByteArray(0x1000),
+                bytes = bytes,
                 references = references,
                 limits = ResolutionLimits(maxProbeRootsPerDataset = 3),
             ),

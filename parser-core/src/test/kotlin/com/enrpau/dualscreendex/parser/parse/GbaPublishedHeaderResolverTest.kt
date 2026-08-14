@@ -7,6 +7,21 @@ import org.junit.Test
 
 class GbaPublishedHeaderResolverTest {
     @Test
+    fun resolvesPublishedPokedexCountOnlyWithTheFixedHeaderPointerRoles() {
+        val bytes = ByteArray(0x30000)
+        writePointer(bytes, 0x128, 0x8000)
+        writePointer(bytes, 0x144, 0x9000)
+        writePointer(bytes, 0x148, 0xA000)
+        repeat(386) { id -> encodeGbaName(bytes, 0x9000 + id * 11, "MON") }
+        writeU32(bytes, 0x168, 386)
+
+        assertEquals(386, GbaPublishedHeaderResolver.resolve(RomImage(bytes)).pokedexCount)
+
+        bytes.fill(0, 0x144, 0x148)
+        assertNull(GbaPublishedHeaderResolver.resolve(RomImage(bytes)).pokedexCount)
+    }
+
+    @Test
     fun resolvesCompactGfHeaderPointerBlock() {
         val bytes = ByteArray(0x20000)
         val roots = listOf(0x8000, 0x9000, 0xA000, 0xB000, 0xC000, 0xD000, 0xE000)
@@ -113,6 +128,10 @@ class GbaPublishedHeaderResolverTest {
 
     private fun writePointer(bytes: ByteArray, offset: Int, target: Int) {
         val value = 0x08000000 + target
+        repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
+    }
+
+    private fun writeU32(bytes: ByteArray, offset: Int, value: Int) {
         repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
     }
 }

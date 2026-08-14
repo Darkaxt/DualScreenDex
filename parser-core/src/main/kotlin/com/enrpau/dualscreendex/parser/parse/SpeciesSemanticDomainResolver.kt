@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 internal enum class SpeciesSemanticDomainSource {
     STRONGLY_REFERENCED_REGIONAL_ORDER,
     COMPILED_SPECIES_TO_DEX_MAP,
+    PUBLISHED_POKEDEX_COUNT,
     PUBLISHED_EXPANSION_SPECIES_TABLE,
     NAVIGABLE_SPECIES_FALLBACK,
 }
@@ -158,7 +159,8 @@ internal data class SpeciesSemanticDomain(
         val physicalGap = expected > 0 && covered < expected
         val authoritative = authoritativeFallback ||
             source == SpeciesSemanticDomainSource.STRONGLY_REFERENCED_REGIONAL_ORDER ||
-            source == SpeciesSemanticDomainSource.COMPILED_SPECIES_TO_DEX_MAP
+            source == SpeciesSemanticDomainSource.COMPILED_SPECIES_TO_DEX_MAP ||
+            source == SpeciesSemanticDomainSource.PUBLISHED_POKEDEX_COUNT
         return incomplete > 0 ||
             evidence.ambiguous ||
             evidence.reviewRecommended ||
@@ -244,11 +246,24 @@ internal object SpeciesSemanticDomainResolver {
                 descriptionCount = layout.tables.descriptions?.count,
             )
         }
+        val publishedPokedexCount = GbaPublishedHeaderResolver.resolve(rom).pokedexCount
+            ?.takeIf { count -> layout.tables.descriptions?.count == count }
+        val publishedPokedexDomain = if (
+            regionalOrder == null && compiledSpeciesToDexMap == null && !expansionDomain &&
+            materialization.indexResolution is SpeciesIndexResolution.Resolved && publishedPokedexCount != null
+        ) {
+            navigable.filter { record -> (record.dexNumber.value ?: 0) in 1 until publishedPokedexCount }
+                .takeIf { records -> records.map { it.dexNumber.value }.distinct().size == records.size }
+        } else {
+            null
+        }
         val speciesById = species.associateBy { it.id }
         val expected = regionalOrder?.speciesIds?.mapNotNull { speciesId ->
             speciesById[speciesId]
         } ?: if (expansionDomain) {
             expansionActive
+        } else if (publishedPokedexDomain != null) {
+            publishedPokedexDomain
         } else {
             navigable.filterNot { it.id in compiledSpeciesToDexMap?.reservedOverflowSpeciesIds.orEmpty() }
         }
@@ -276,6 +291,10 @@ internal object SpeciesSemanticDomainResolver {
                     } else {
                         ""
                     }
+            } ?: publishedPokedexDomain?.let {
+                "selected ${it.size} navigable species inside the structurally published " +
+                    "Pokédex count $publishedPokedexCount; excluded " +
+                    "${(rawCount - it.size).coerceAtLeast(0)} internal or out-of-domain slots"
             } ?: if (expansionDomain) {
                 "selected ${expected.size} positive-Dex named or populated species from the published " +
                     "pokeemerald-expansion gSpeciesInfo table; excluded " +
@@ -287,6 +306,8 @@ internal object SpeciesSemanticDomainResolver {
                 SpeciesSemanticDomainSource.STRONGLY_REFERENCED_REGIONAL_ORDER
             } else if (compiledSpeciesToDexMap != null) {
                 SpeciesSemanticDomainSource.COMPILED_SPECIES_TO_DEX_MAP
+            } else if (publishedPokedexDomain != null) {
+                SpeciesSemanticDomainSource.PUBLISHED_POKEDEX_COUNT
             } else if (expansionDomain) {
                 SpeciesSemanticDomainSource.PUBLISHED_EXPANSION_SPECIES_TABLE
             } else {

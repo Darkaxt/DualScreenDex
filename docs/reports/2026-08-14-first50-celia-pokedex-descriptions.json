@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-14",
+  "scope": "exact-first-50",
+  "change": "compiled Gen III Pokedex-entry descriptions",
+  "implementationCommit": "b5809db",
+  "numericCompatibility": {
+    "first50AverageBefore": 95.53,
+    "first50AverageAfter": 95.63,
+    "celiaBefore": 90.40,
+    "celiaAfter": 95.14,
+    "celiaResolvedFeaturesBefore": 19,
+    "celiaResolvedFeaturesAfter": 20,
+    "celiaExpectedFeatures": 21
+  },
+  "capabilities": {
+    "pokedexDescriptionsAvailableBefore": 35,
+    "pokedexDescriptionsAvailableAfter": 35,
+    "pokedexDescriptionsPartialBefore": 11,
+    "pokedexDescriptionsPartialAfter": 12,
+    "pokedexDescriptionsNotFoundBefore": 4,
+    "pokedexDescriptionsNotFoundAfter": 3,
+    "evolutionsAvailable": 50
+  },
+  "celia": {
+    "sha256": "81ac9b9d4e7bdd3bf06ed53954d784118a743372906c6c6fc62b3cbc19587148",
+    "family": "FIRERED_LEAFGREEN",
+    "tableRows": 386,
+    "recordSize": 36,
+    "descriptionPointerOffset": 16,
+    "decodedPhysicalRows": 384,
+    "semanticCoveredRows": 382,
+    "semanticExpectedRows": 384,
+    "semanticSha256": "d62c951fc4ddbf35f3a251ea9b26c4e1664c1ff2b957601db800d73ecbfedad7",
+    "referenceErrors": 0,
+    "sqliteBytes": 1527808,
+    "catalogSections": 12,
+    "sourceOracleCommit": "8b31f2472810f75571d122159d164467e149d4a8"
+  },
+  "exact50": {
+    "rows": 50,
+    "selected": 50,
+    "ambiguous": 0,
+    "noFamilyMatch": 0,
+    "errors": 0,
+    "exactShaIdentities": 50,
+    "routingDeltas": 0,
+    "first33RoutingOrReferenceDeltas": 0,
+    "referenceErrorRows": 0,
+    "persistedAndReopened": 50,
+    "sqliteQuickCheckErrors": 0,
+    "sqliteForeignKeyErrors": 0,
+    "catalogSectionCounts": [12]
+  },
+  "verification": {
+    "nonThumbParserTests": 996,
+    "nonThumbParserFailures": 0,
+    "nonThumbParserErrors": 0,
+    "nonThumbParserSkipped": 106,
+    "focusedDescriptionGate": "BUILD_SUCCESSFUL",
+    "rawJsonSha256": "ac10886a7bc3afb2f48c49202eb9bfb3011db0bb045cc14f43ca0377a7813d02",
+    "rawMarkdownSha256": "639a99c9679be39eb906d045cad3894b0e95d399892387974a8f214ee85e9592"
+  }
+}

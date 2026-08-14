@@ -2,6 +2,15 @@
 
 DualDex is a passive ROM, SaveRAM, and validated live-WRAM Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
+## RC29: broader ROM-native Pokédex entries
+
+- Resolves Celia's compiled 386-row Gen III Pokédex-entry table structurally, publishing 382 ROM-native descriptions across 384 navigable Pokédex species. The two unsupported active rows remain unavailable rather than receiving external or fabricated text.
+- Raises Celia's measured compatibility from **90.40% to 95.14%** and the exact-first-50 average from **95.53% to 95.63%**. First-50 Pokédex-description coverage changes from **35 available / 11 partial / 4 not found** to **35 available / 12 partial / 3 not found**.
+- Preserves the exact base gate at **50/50 selected**, zero routing or first-33 reference deltas, zero cross-reference errors, and 50/50 SQLite write/reopen/quick-check success.
+- Leaves THUMB ability mechanics unchanged and deferred. Existing evolution coverage remains **50/50 available**.
+- Upgrades the build toolchain to Gradle 9.4.1, Android Gradle Plugin 9.2.1, and Kotlin 2.4.20-Beta2; pins the audited Netty, Bouncy Castle, jose4j, JDOM, Commons Lang, HttpClient, and Protobuf dependency paths above their published security floors.
+- Adds a resolved-configuration security gate to both CI and protected release signing. It covers all 48 Dependabot advisories open during the RC29 audit and verifies the Android lint/test toolchain without adding those build-only libraries to the APK runtime.
+
 ## RC28: broader move data and clearer map state
 
 - Resolves Celia's widened 16-byte move-detail table structurally, publishing all 1,188 validated move rows without ROM-name, hash, or fixed-offset selection. First-50 `MOVE_DETAILS` availability increases from **47/50 to 48/50**, and Celia's measured compatibility rises from **85.64% to 90.40%**.
