@@ -20,7 +20,7 @@ Use this workflow when a Gen III ROM scores 0% for world maps. The objective is 
 ## Procedure
 
 1. Run the focused real-ROM matrix row and record the earliest failure stage.
-2. Select a near-working ROM with public source. Check `D:\Temp\PokemonHacks\pokemon_romhack_sources.md`; verify links marked `VERIFY`.
+2. Select a near-working ROM with public source. Consult `references/pokemon_romhack_sources.md` as a discovery index, then verify the selected repository and relevant branch live before treating it as an oracle.
 3. Read the existing resolver and compositor contracts before disassembling anything.
 4. Use source to identify likely asset roles and loader functions. Do not require source revision equality.
 5. In raw ROM bytes, locate compiled literal references and prove that all candidate assets share the loader owner.
