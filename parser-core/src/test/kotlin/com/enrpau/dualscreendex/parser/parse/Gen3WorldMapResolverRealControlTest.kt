@@ -38,8 +38,9 @@ class Gen3WorldMapResolverRealControlTest {
         val analysis = ParserOrchestrator.analyze(rom)
         assertEquals(SelectionStatus.SELECTED, analysis.status)
         val layout = requireNotNull(analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout)
+        val encounterIdDivisor = if (layout.pokeemeraldExpansion == null) 10 else 100
         val encounterBaseIds = EncounterMaterializer.materialize(rom, layout)
-            .mapTo(linkedSetOf()) { it.id / 10 }
+            .mapTo(linkedSetOf()) { it.id / encounterIdDivisor }
 
         val resolution = Gen3WorldMapResolver.resolve(
             RomAnalysisSession(rom, RomHeaderReader.read(rom)),
@@ -61,6 +62,9 @@ class Gen3WorldMapResolverRealControlTest {
     @Test
     fun dreamstoneResolvesItsIndexedConsumerAndExactRaster() = assertControl(controls[8])
 
+    @Test
+    fun battleTheaterResolvesItsTableDrivenEncounterBoundRegion() = assertControl(controls[9])
+
     private fun assertControl(control: Control) {
         val rom = realRom(control)
         val analysisStarted = System.nanoTime()
@@ -69,8 +73,9 @@ class Gen3WorldMapResolverRealControlTest {
         assertEquals("${control.environmentVariable} parser selection", SelectionStatus.SELECTED, analysis.status)
         val layout = analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout
         requireNotNull(layout)
+        val encounterIdDivisor = if (layout.pokeemeraldExpansion == null) 10 else 100
         val encounterBaseIds = EncounterMaterializer.materialize(rom, layout)
-            .mapTo(linkedSetOf()) { it.id / 10 }
+            .mapTo(linkedSetOf()) { it.id / encounterIdDivisor }
         val resolutionStarted = System.nanoTime()
         val resolution = Gen3WorldMapResolver.resolve(
             RomAnalysisSession(rom, RomHeaderReader.read(rom)),
@@ -92,11 +97,15 @@ class Gen3WorldMapResolverRealControlTest {
 
         assertEquals("${control.environmentVariable} region count", control.argbHashes.size, catalog.regions.size)
         assertEquals(control.argbHashes.size, catalog.assets.size)
-        val actualHashes = catalog.regions.map { region ->
+        val actualHashes = catalog.regions.mapIndexed { index, region ->
             assertEquals(control.pixelWidth, region.pixelWidth)
             assertEquals(control.pixelHeight, region.pixelHeight)
             assertEquals(control.gridWidth, region.gridWidth)
             assertEquals(15, region.gridHeight)
+            control.locationCounts?.let { assertEquals(it[index], region.locations.size) }
+            control.baseAreaCounts?.let { expected ->
+                assertEquals(expected[index], region.locations.sumOf { it.baseAreaIds.size })
+            }
             sha256(requireNotNull(catalog.assets[region.imageAssetKey]))
         }
         assertEquals("${control.environmentVariable} normalized pixels", control.argbHashes, actualHashes)
@@ -123,6 +132,8 @@ class Gen3WorldMapResolverRealControlTest {
         val pixelHeight: Int,
         val gridWidth: Int,
         val argbHashes: List<String>,
+        val locationCounts: List<Int>? = null,
+        val baseAreaCounts: List<Int>? = null,
     )
 
     private companion object {
@@ -223,6 +234,16 @@ class Gen3WorldMapResolverRealControlTest {
                 120,
                 28,
                 listOf("0cc223adec5306d6cdce6bc584a66f882f283fe5064eff114784143fab8da5e8"),
+            ),
+            Control(
+                "DUALDEX_BATTLE_THEATER_ROM",
+                "99c84950e2be2f887a84bdc32c741c92385bb4a54843d871a8876e9b47e1d59d",
+                224,
+                120,
+                28,
+                listOf("1c3a1bf13c851dcc707f1f3f71c8f90e703a0faf0832917a0195618952a77aab"),
+                locationCounts = listOf(43),
+                baseAreaCounts = listOf(48),
             ),
         )
     }
