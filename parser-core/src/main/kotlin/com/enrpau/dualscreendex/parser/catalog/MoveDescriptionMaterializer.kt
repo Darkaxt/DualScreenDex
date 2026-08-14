@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 data class MoveDescriptionResult(
@@ -13,20 +14,26 @@ data class MoveDescriptionResult(
 object MoveDescriptionMaterializer {
     fun materialize(rom: RomImage, layout: ResolvedRomLayout): MoveDescriptionResult? {
         if (layout.generation != 3) return null
-        layout.pokeemeraldExpansion?.let { expansion ->
-            val table = layout.tables.moveData ?: return null
+        val table = layout.tables.moveData
+        val embeddedDescriptionStride = when {
+            layout.pokeemeraldExpansion != null -> table?.stride ?: layout.pokeemeraldExpansion.moveRecordSize
+            table?.format == TableRecordFormat.UNIFIED_MOVE_INFO_48 -> table.stride ?: return null
+            else -> null
+        }
+        if (embeddedDescriptionStride != null) {
+            val embeddedTable = table ?: return null
             val count = layout.moveCount ?: return null
             val descriptions = buildMap {
                 repeat(count - 1) { index ->
                     val id = index + 1
-                    val record = table.offset + id * (table.stride ?: expansion.moveRecordSize)
+                    val record = embeddedTable.offset + id * embeddedDescriptionStride
                     val text = rom.gbaPointer(record + 4)?.let { decodeText(rom, it) } ?: return@repeat
                     put(id, text)
                 }
             }
             val expected = count - 1
             val confidence = descriptions.size.toDouble() / expected.coerceAtLeast(1)
-            return MoveDescriptionResult(table.offset, confidence, descriptions).takeIf {
+            return MoveDescriptionResult(embeddedTable.offset, confidence, descriptions).takeIf {
                 descriptions.size >= maxOf(3, (expected * 0.8).toInt())
             }
         }

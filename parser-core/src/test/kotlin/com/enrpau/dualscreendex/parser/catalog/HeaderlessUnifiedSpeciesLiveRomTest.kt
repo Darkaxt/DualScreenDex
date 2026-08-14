@@ -39,6 +39,16 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(0x7B0160 + 44, layout.tables.speciesNames?.offset)
         assertEquals(260, layout.tables.speciesNames?.stride)
         assertEquals(21, layout.resolvedDatasets.typeChart?.table?.typeCount)
+        assertEquals(848, layout.moveCount)
+        assertEquals(0x759858, layout.tables.moveNames?.offset)
+        assertEquals(848, layout.tables.moveNames?.count)
+        assertEquals(48, layout.tables.moveNames?.stride)
+        assertTrue(layout.tables.moveNames?.valuesArePointers == true)
+        assertEquals(0x759858, layout.tables.moveData?.offset)
+        assertEquals(848, layout.tables.moveData?.count)
+        assertEquals(48, layout.tables.moveData?.recordSize)
+        assertEquals(48, layout.tables.moveData?.stride)
+        assertEquals(848, layout.resolvedDatasets.moveDetails?.rows?.size)
         assertNotNull("moveCount=${layout.moveCount}", layout.tables.learnsets)
         val resolvedLearnsets = requireNotNull(layout.resolvedDatasets.learnsets)
         val primaryLearnsets = requireNotNull(resolvedLearnsets.primary)
@@ -90,9 +100,21 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
             }
         }.distinct().sorted()
         assertEquals(emptyList<String>(), closureErrors)
-        assertEquals(CapabilityStatus.NOT_FOUND, catalog.typesById.getValue(0).name.status)
-        assertEquals(CapabilityStatus.NOT_FOUND, catalog.typesById.getValue(0).presentation.status)
-        assertEquals(CapabilityStatus.NOT_FOUND, catalog.capabilities.getValue(RomCapability.MOVE_CATALOG).status)
+        assertFalse(catalog.typesById.containsKey(0))
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MOVE_CATALOG).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MOVE_DETAILS).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MOVE_DESCRIPTIONS).status)
+        assertEquals(847, catalog.movesById.size)
+        assertEquals("Pound", catalog.movesById.getValue(1).name.value)
+        assertEquals(1, catalog.movesById.getValue(1).typeId.value)
+        assertEquals(MoveCategory.PHYSICAL, catalog.movesById.getValue(1).category.value)
+        assertEquals(40, catalog.movesById.getValue(1).power.value)
+        assertEquals(100, catalog.movesById.getValue(1).accuracy.value)
+        assertEquals(35, catalog.movesById.getValue(1).pp.value)
+        assertEquals(0, catalog.movesById.getValue(1).priority.value)
+        assertEquals(1, catalog.movesById.getValue(1).effectId.value)
+        assertEquals("Pounds the foe with forelegs or tail.", catalog.movesById.getValue(1).effectText.value)
+        assertEquals("Malignant Chain", catalog.movesById.getValue(847).name.value)
 
         val second = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
         val secondRows = requireNotNull(second.layout?.resolvedDatasets?.learnsets?.primary)
@@ -102,6 +124,7 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
             catalog.speciesById.mapValues { it.value.learnset },
             requireNotNull(second.catalog).speciesById.mapValues { it.value.learnset },
         )
+        assertEquals(catalog.movesById, requireNotNull(second.catalog).movesById)
     }
 
     private fun learnsetSha256(rows: List<LearnsetRowOutcome.Decoded>): String {

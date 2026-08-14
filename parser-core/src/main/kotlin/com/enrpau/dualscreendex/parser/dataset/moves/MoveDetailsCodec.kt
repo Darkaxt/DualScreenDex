@@ -53,6 +53,9 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
     ): MoveDetailsRowOutcome {
         val bytes = session.rom.slice(recordOffset, abi.recordSize)
         if (bytes.all { it == 0.toByte() }) return MoveDetailsRowOutcome.StructuralEmpty(rowIndex)
+        if (abi == MoveDetailsAbi.UNIFIED_MOVE_INFO_48) {
+            return decodeUnifiedMoveInfoRow(session, rowIndex, recordOffset)
+        }
 
         val widened = abi != MoveDetailsAbi.RETAIL_12
         val typeId = session.rom.u8(recordOffset + if (widened) EXTENDED_TYPE_OFFSET else RETAIL_TYPE_OFFSET)
@@ -67,12 +70,14 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
             MoveDetailsAbi.RETAIL_12 -> RETAIL_PRIORITY_OFFSET
             MoveDetailsAbi.CFRU_16 -> CFRU_PRIORITY_OFFSET
             MoveDetailsAbi.BATTLE_ENGINE_20 -> BATTLE_ENGINE_PRIORITY_OFFSET
+            MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
         }
         val priority = session.rom.u8(recordOffset + priorityOffset).toByte().toInt()
         val splitRaw = when (abi) {
             MoveDetailsAbi.RETAIL_12 -> null
             MoveDetailsAbi.CFRU_16 -> session.rom.u8(recordOffset + CFRU_SPLIT_OFFSET)
             MoveDetailsAbi.BATTLE_ENGINE_20 -> session.rom.u8(recordOffset + BATTLE_ENGINE_SPLIT_OFFSET)
+            MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
         }
         val reasons = buildList {
             if (typeId !in 0..MAX_TYPE_ID) add("type value $typeId exceeds $MAX_TYPE_ID")
@@ -151,8 +156,52 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
                 zMovePower = session.rom.u8(recordOffset + BATTLE_ENGINE_Z_POWER_OFFSET),
                 zMoveEffect = session.rom.u8(recordOffset + BATTLE_ENGINE_Z_EFFECT_OFFSET),
             )
+            MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
         }
         return MoveDetailsRowOutcome.Decoded(rowIndex, record)
+    }
+
+    private fun decodeUnifiedMoveInfoRow(
+        session: RomAnalysisSession,
+        rowIndex: Int,
+        recordOffset: Int,
+    ): MoveDetailsRowOutcome {
+        val packedMove = session.rom.u16le(recordOffset + UNIFIED_PACKED_MOVE_OFFSET)
+        val packedAccuracy = session.rom.u16le(recordOffset + UNIFIED_PACKED_ACCURACY_OFFSET)
+        val typeId = packedMove and 0x1F
+        val splitRaw = (packedMove ushr 5) and 0x3
+        val power = packedMove ushr 7
+        val accuracy = packedAccuracy and 0x7F
+        val target = packedAccuracy ushr 7
+        val pp = session.rom.u8(recordOffset + UNIFIED_PP_OFFSET)
+        val priorityBits = session.rom.u32le(recordOffset + UNIFIED_FLAGS_OFFSET).toInt() and 0xF
+        val priority = if (priorityBits >= 8) priorityBits - 16 else priorityBits
+        val split = MoveSplit.fromRaw(splitRaw)
+        val reasons = buildList {
+            if (typeId !in 0..MAX_TYPE_ID) add("type value $typeId exceeds $MAX_TYPE_ID")
+            if (split == null) add("split value $splitRaw is not physical, special, or status")
+            if (accuracy !in 0..MAX_PERCENT) add("accuracy value $accuracy is outside 0..$MAX_PERCENT")
+            if (pp !in 0..MAX_PP) add("pp value $pp exceeds $MAX_PP")
+        }
+        if (reasons.isNotEmpty()) return MoveDetailsRowOutcome.Malformed(rowIndex, reasons)
+        return MoveDetailsRowOutcome.Decoded(
+            rowIndex = rowIndex,
+            record = Gen3MoveDetailsRecord(
+                effectId = session.rom.u16le(recordOffset + UNIFIED_EFFECT_OFFSET),
+                power = power,
+                typeId = typeId,
+                accuracy = accuracy,
+                pp = pp,
+                secondaryEffectChance = 0,
+                targetMask = target,
+                priority = priority,
+                flags = session.rom.u32le(recordOffset + UNIFIED_FLAGS_OFFSET),
+                split = requireNotNull(split),
+                argument = session.rom.u32le(recordOffset + UNIFIED_ARGUMENT_OFFSET).toInt(),
+                zMovePower = null,
+                zMoveEffect = null,
+            ),
+        )
     }
 
     private companion object {
@@ -179,6 +228,12 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
         const val BATTLE_ENGINE_ARGUMENT_OFFSET = 17
         const val BATTLE_ENGINE_Z_POWER_OFFSET = 18
         const val BATTLE_ENGINE_Z_EFFECT_OFFSET = 19
+        const val UNIFIED_EFFECT_OFFSET = 8
+        const val UNIFIED_PACKED_MOVE_OFFSET = 10
+        const val UNIFIED_PACKED_ACCURACY_OFFSET = 12
+        const val UNIFIED_PP_OFFSET = 14
+        const val UNIFIED_FLAGS_OFFSET = 16
+        const val UNIFIED_ARGUMENT_OFFSET = 24
         const val EXTENDED_PADDING_OFFSET = 11
         const val MAX_TYPE_ID = 31
         const val MAX_PP = 64

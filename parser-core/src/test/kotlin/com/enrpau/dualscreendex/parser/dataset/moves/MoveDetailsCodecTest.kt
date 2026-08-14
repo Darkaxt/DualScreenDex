@@ -72,6 +72,27 @@ class MoveDetailsCodecTest {
     }
 
     @Test
+    fun decodesUnifiedMoveInfoPackedFieldsAtItsFortyEightByteAbiOffsets() {
+        val bytes = ByteArray(64)
+        putUnifiedMoveInfo(bytes, 8)
+        val row = decodedRow(bytes, MoveDetailsTableLayout(8, 1, MoveDetailsAbi.UNIFIED_MOVE_INFO_48))
+
+        assertEquals(700, row.effectId)
+        assertEquals(450, row.power)
+        assertEquals(18, row.typeId)
+        assertEquals(100, row.accuracy)
+        assertEquals(5, row.pp)
+        assertEquals(0, row.secondaryEffectChance)
+        assertEquals(0x123, row.targetMask)
+        assertEquals(-3, row.priority)
+        assertEquals(0x89ABCDEDL, row.flags)
+        assertEquals(MoveSplit.SPECIAL, row.split)
+        assertEquals(0x01020304, row.argument)
+        assertNull(row.zMovePower)
+        assertNull(row.zMoveEffect)
+    }
+
+    @Test
     fun classifiesAllZeroSlotsAsStructuralEmptyAndNonzeroInvalidSlotsAsMalformed() {
         val bytes = ByteArray(64)
         bytes[16 + 4] = 99
@@ -157,6 +178,7 @@ class MoveDetailsCodecTest {
                 MoveDetailsAbi.RETAIL_12 -> putRetailMove(bytes, 7)
                 MoveDetailsAbi.CFRU_16 -> putCfruMove(bytes, 7)
                 MoveDetailsAbi.BATTLE_ENGINE_20 -> putBattleEngineMove(bytes, 7)
+                MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> putUnifiedMoveInfo(bytes, 7)
             }
             assertTrue(
                 MoveDetailsCodec().decode(

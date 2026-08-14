@@ -16,6 +16,7 @@ import com.enrpau.dualscreendex.parser.dataset.moves.MoveDetailsResolver
 import com.enrpau.dualscreendex.parser.dataset.moves.MoveDetailsSemanticDomain
 import com.enrpau.dualscreendex.parser.dataset.moves.MoveDetailsTableLayout
 import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
+import com.enrpau.dualscreendex.parser.dataset.learnsets.EmbeddedLearnsetPointerResolver
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.validate.TableValidators
@@ -36,6 +37,7 @@ internal sealed interface CoreDatasetsPhaseResult {
         moveNamesLayout: TableLayout?,
         moveDataLayout: TableLayout?,
         resolvedMoveDetails: ResolvedMoveDetailsLayout? = null,
+        val headerlessEmbeddedLearnsets: EmbeddedLearnsetPointerResolver.Resolution? = null,
         moveDetailsTypedRejectionReason: String? = null,
         publishedPartialBaseStatsCandidate: PublishedPartialBaseStatsCandidate? = null,
     ) : CoreDatasetsPhaseResult {
@@ -68,6 +70,7 @@ internal sealed interface CoreDatasetsPhaseResult {
             moveNamesLayout = moveNamesLayout,
             moveDataLayout = moveDataLayout,
             resolvedMoveDetails = resolvedMoveDetails,
+            headerlessEmbeddedLearnsets = headerlessEmbeddedLearnsets,
             moveDetailsTypedRejectionReason = moveDetailsTypedRejectionReason,
             publishedPartialBaseStatsCandidate = publishedPartialBaseStatsCandidate,
         )
@@ -104,6 +107,38 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         val codec = identity.codec
         var tables = tableResolution.tables
 
+        val headerlessEmbeddedLearnsets = if (generation == 3 && expansion == null) {
+            headerlessUnifiedSpecies?.let { unified ->
+                EmbeddedLearnsetPointerResolver.resolve(
+                    session = session,
+                    metadata = unified.metadata,
+                    speciesCount = unified.speciesCount,
+                )
+            }
+        } else {
+            null
+        }
+        val ordinaryMoveCount = headerlessEmbeddedLearnsets
+            ?.resolved
+            ?.catalogPrimaryEntries()
+            ?.values
+            ?.asSequence()
+            ?.flatten()
+            ?.maxOfOrNull { it.moveId }
+            ?.plus(1)
+        val headerlessUnifiedMoves = ordinaryMoveCount?.let { moveCount ->
+            com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedMoveResolver.resolve(
+                session = session,
+                ordinaryMoveCount = moveCount,
+            )
+        }
+        headerlessUnifiedMoves?.let { unified ->
+            tables = tables.copy(
+                moveNames = unified.tables.moveNames,
+                moveData = unified.tables.moveData,
+            )
+        }
+
         var speciesCount = expansion?.speciesCount ?: headerlessUnifiedSpecies?.speciesCount ?: inferSpeciesCount(
             rom, tables, codec, profile, generation, exactProfile = exact != null,
         )
@@ -118,7 +153,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             speciesCount = reconciled.speciesCount
             tables = reconciled.tables
         }
-        val inferredMoveCount = expansion?.moveCount ?: inferMoveCount(
+        val inferredMoveCount = expansion?.moveCount ?: headerlessUnifiedMoves?.moveCount ?: inferMoveCount(
             rom, tables.moveNames, codec, profile, exactProfile = exact != null,
         )
         var dynamicBaseStatsEvidence: ValidationEvidence? = null
@@ -181,7 +216,8 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             }
         }
         var moveNamesLayout = tables.moveNames
-        var moveNames = validateNames(rom, moveNamesLayout, inferredMoveCount, codec, generation)
+        var moveNames = headerlessUnifiedMoves?.moveNamesEvidence
+            ?: validateNames(rom, moveNamesLayout, inferredMoveCount, codec, generation)
         if (
             generation == 2 && exact == null && inferredMoveCount != null &&
             moveNamesLayout?.variableLength == true &&
@@ -200,7 +236,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 }
             }
         }
-        val moveData = publishedDataEvidence ?: dynamicMoveDataEvidence ?: tables.moveData?.let {
+        val moveData = headerlessUnifiedMoves?.moveDataEvidence ?: publishedDataEvidence ?: dynamicMoveDataEvidence ?: tables.moveData?.let {
             if (expansion != null) {
                 TableValidators.pokeemeraldExpansionMoveData(rom, it, inferredMoveCount ?: it.count)
             } else if (it.format == TableRecordFormat.CFRU_MOVE_16) {
@@ -225,7 +261,9 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 effectiveMoveCount = inferredMoveCount
             }
         }
-        val moveDetailsResolution = if (generation == 3 && expansion == null && moveData.compatible) {
+        val moveDetailsResolution = if (
+            headerlessUnifiedMoves == null && generation == 3 && expansion == null && moveData.compatible
+        ) {
             val selected = resolvedLayout(tables.moveData, moveData)?.toMoveDetailsTableLayout()
             val activeRows = selected?.let { selectedLayout ->
                 activeMoveRows(rom, moveNamesLayout, selectedLayout.count.toInt(), codec)
@@ -246,12 +284,12 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         } else {
             null
         }
-        val resolvedMoveDetails = when (moveDetailsResolution) {
+        val resolvedMoveDetails = headerlessUnifiedMoves?.resolvedMoveDetails ?: when (moveDetailsResolution) {
             is DatasetResolution.Resolved -> moveDetailsResolution.candidate.layout
             is DatasetResolution.Partial -> moveDetailsResolution.candidate.layout
             else -> null
         }
-        val moveDetailsTypedRejectionReason = when (moveDetailsResolution) {
+        val moveDetailsTypedRejectionReason = if (headerlessUnifiedMoves != null) null else when (moveDetailsResolution) {
             is DatasetResolution.Unavailable -> moveDetailsResolution.reason
             is DatasetResolution.Ambiguous -> "selected move-details typed resolution was ambiguous"
             is DatasetResolution.BudgetExceeded -> moveDetailsResolution.reason
@@ -285,6 +323,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             moveNamesLayout = moveNamesLayout,
             moveDataLayout = tables.moveData,
             resolvedMoveDetails = resolvedMoveDetails,
+            headerlessEmbeddedLearnsets = headerlessEmbeddedLearnsets,
             moveDetailsTypedRejectionReason = moveDetailsTypedRejectionReason,
             publishedPartialBaseStatsCandidate = publishedPartialBaseStatsCandidate,
         )

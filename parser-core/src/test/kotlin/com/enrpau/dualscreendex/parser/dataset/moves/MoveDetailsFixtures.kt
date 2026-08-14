@@ -152,6 +152,28 @@ internal fun putBattleEngineMove(
     bytes[offset + 19] = zMoveEffect.toByte()
 }
 
+internal fun putUnifiedMoveInfo(
+    bytes: ByteArray,
+    offset: Int,
+    effect: Int = 700,
+    power: Int = 450,
+    type: Int = 18,
+    category: Int = 1,
+    accuracy: Int = 100,
+    target: Int = 0x123,
+    pp: Int = 5,
+    priority: Int = -3,
+    flags: Long = 0x89ABCDEFL,
+    argument: Long = 0x01020304L,
+) {
+    putMoveU16(bytes, offset + 8, effect)
+    putMoveU16(bytes, offset + 10, type or (category shl 5) or (power shl 7))
+    putMoveU16(bytes, offset + 12, accuracy or (target shl 7))
+    bytes[offset + 14] = pp.toByte()
+    putMoveU32(bytes, offset + 16, (flags and -16L) or (priority and 0xF).toLong())
+    putMoveU32(bytes, offset + 24, argument)
+}
+
 internal fun putMoveThumbLiteralReferences(
     bytes: ByteArray,
     instructionOffset: Int,

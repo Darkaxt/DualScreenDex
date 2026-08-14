@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-14",
+  "scope": "exact-first-50",
+  "change": "headerless unified 48-byte move table closure",
+  "numericCompatibility": {
+    "first50AverageBefore": 95.34,
+    "first50AverageAfter": 95.44,
+    "dreamstoneBefore": 57.14,
+    "dreamstoneAfter": 61.90,
+    "dreamstoneResolvedFeaturesBefore": 12,
+    "dreamstoneResolvedFeaturesAfter": 13,
+    "expectedFeatures": 21
+  },
+  "capabilities": {
+    "moveCatalogAvailableBefore": 47,
+    "moveCatalogAvailableAfter": 48,
+    "moveDetailsAvailableBefore": 47,
+    "moveDetailsAvailableAfter": 47,
+    "moveDescriptionsAvailableBefore": 46,
+    "moveDescriptionsAvailableAfter": 46,
+    "learnsetsAvailable": 44,
+    "evolutionsAvailable": 50
+  },
+  "dreamstone": {
+    "sha256": "ac31df9cc158823861294b17bd4e66857deab2a53dd81620ddcf6fc03a6a4220",
+    "family": "EMERALD",
+    "ordinaryMoveCount": 848,
+    "publishedMoveCount": 847,
+    "moveDetailRows": 848,
+    "moveDescriptionRows": 842,
+    "referenceErrors": 0,
+    "sqliteBytes": 315392,
+    "sourceOracleCommit": "f7997186345885bfa23a170e5f573851fc034b9b"
+  },
+  "exact50": {
+    "rows": 50,
+    "selected": 50,
+    "ambiguous": 0,
+    "noFamilyMatch": 0,
+    "errors": 0,
+    "exactShaIdentities": 50,
+    "routingDeltas": 0,
+    "first33RoutingOrReferenceDeltas": 0,
+    "referenceErrorRows": 0,
+    "persistedAndReopened": 50,
+    "sqliteQuickCheckErrors": 0,
+    "sqliteForeignKeyErrors": 0,
+    "catalogSectionCounts": [12]
+  },
+  "verification": {
+    "parserCoreTests": 1043,
+    "parserCoreFailures": 0,
+    "parserCoreErrors": 0,
+    "parserCoreSkipped": 90,
+    "rawJsonSha256": "32ac997b736f9f010fb14d7bdb9e46cf64d1f01c0fe9f1a2e859cc0b25fe21c5",
+    "rawMarkdownSha256": "2d8017db8a71cee27658e004e51eb2611b4a0c4bf067acbf19751c34cc0e64fd"
+  }
+}

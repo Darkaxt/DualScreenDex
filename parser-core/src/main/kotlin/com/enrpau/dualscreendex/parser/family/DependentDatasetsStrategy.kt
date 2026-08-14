@@ -5,7 +5,6 @@ import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionResolver
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionTableLayout
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EmbeddedEvolutionPointerResolver
 import com.enrpau.dualscreendex.parser.dataset.evolutions.ResolvedEvolutionLayout
-import com.enrpau.dualscreendex.parser.dataset.learnsets.EmbeddedLearnsetPointerResolver
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetFormat
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetResolver
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetTableLayout
@@ -107,17 +106,7 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
         } else {
             null
         }
-        val embeddedLearnsets = if (generation == 3 && expansion == null) {
-            identity.headerlessUnifiedSpecies?.let { unified ->
-                EmbeddedLearnsetPointerResolver.resolve(
-                    session = session,
-                    metadata = unified.metadata,
-                    speciesCount = unified.speciesCount,
-                )
-            }
-        } else {
-            null
-        }
+        val embeddedLearnsets = core.headerlessEmbeddedLearnsets
         val legacyEvolutions = embeddedEvolutions?.evidence ?: evolutionAndLearnset?.evolutions ?: if (generation == 3) {
             if (expansion != null) {
                 PokeemeraldExpansionResolver.validateEvolutions(rom, expansion)
