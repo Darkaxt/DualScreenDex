@@ -27,6 +27,9 @@ object Gen3MapLocationResolver {
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return null
         val sections = resolveMapSections(rom, requiredMaps, references) ?: return null
+        mapTrace(
+            "map-sections count=${sections.values.toSet().size} ids=${sections.values.toSortedSet()}",
+        )
         val entries = findRegionEntries(rom, sections.values.toSet()).orEmpty()
         return Gen3MapLocationResolution(sections, entries).takeIf { it.entriesBySection.isNotEmpty() }
     }
@@ -291,11 +294,17 @@ object Gen3MapLocationResolver {
         validRegionEntryShell(rom, root, sectionId) &&
             decodeRegionEntry(rom, root, sectionId) != null
 
-    private fun validRegionEntry(rom: RomImage, root: Int, sectionId: Int): Boolean =
-        validRegionEntryShell(rom, root, sectionId) &&
+    private fun validRegionEntry(rom: RomImage, root: Int, sectionId: Int): Boolean {
+        val offset = root + sectionId * REGION_ENTRY_BYTES
+        return validRegionEntryShell(rom, root, sectionId) &&
+            !offMapCoordinates(
+                rom.u8(offset),
+                rom.u8(offset + 1),
+            ) &&
             decodeRegionEntry(rom, root, sectionId)
                 ?.displayName
                 ?.any(Char::isLetterOrDigit) == true
+    }
 
     private fun validRegionEntryShell(rom: RomImage, root: Int, sectionId: Int): Boolean {
         val offset = root + sectionId * REGION_ENTRY_BYTES
@@ -303,13 +312,26 @@ object Gen3MapLocationResolver {
         val y = rom.u8(offset + 1)
         val width = rom.u8(offset + 2)
         val height = rom.u8(offset + 3)
-        if (x >= REGION_GRID_WIDTH || y >= REGION_GRID_HEIGHT) return false
+        val offMap = offMapCoordinates(x, y)
+        if (
+            !offMap &&
+            (x >= REGION_GRID_WIDTH ||
+                y >= REGION_GRID_HEIGHT)
+        ) return false
         if (width !in 1..REGION_GRID_WIDTH || height !in 1..REGION_GRID_HEIGHT) return false
-        if (x + width > REGION_GRID_WIDTH || y + height > REGION_GRID_HEIGHT) return false
+        if (
+            !offMap &&
+            (x + width > REGION_GRID_WIDTH ||
+                y + height > REGION_GRID_HEIGHT)
+        ) return false
         val text = rom.gbaPointer(offset + 4) ?: return false
         val available = minOf(MAX_REGION_NAME_BYTES, rom.size - text)
         return available > 0 && PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(text, available)).terminated
     }
+
+    private fun offMapCoordinates(x: Int, y: Int): Boolean =
+        x == OFF_MAP_COORDINATE &&
+            y == OFF_MAP_COORDINATE
 
     private fun decodeRegionEntry(rom: RomImage, root: Int, sectionId: Int): Gen3RegionMapEntry? {
         val offset = root + sectionId * REGION_ENTRY_BYTES
@@ -341,6 +363,7 @@ object Gen3MapLocationResolver {
     private const val REGION_SECTION_OFFSET = 0x14
     private const val REGION_ENTRY_BYTES = 8
     private const val REGION_ENTRY_ANCHORS = 3
+    private const val OFF_MAP_COORDINATE = 0xFF
     private const val REGION_GRID_WIDTH = 32
     private const val REGION_GRID_HEIGHT = 32
     private const val MAX_REGION_NAME_BYTES = 32

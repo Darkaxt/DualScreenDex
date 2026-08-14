@@ -65,6 +65,9 @@ class Gen3WorldMapResolverRealControlTest {
     @Test
     fun battleTheaterResolvesItsTableDrivenEncounterBoundRegion() = assertControl(controls[9])
 
+    @Test
+    fun blazedGlazedResolvesNamedOffMapSentinelsAndExactRaster() = assertControl(controls[10])
+
     private fun assertControl(control: Control) {
         val rom = realRom(control)
         val analysisStarted = System.nanoTime()
@@ -244,6 +247,16 @@ class Gen3WorldMapResolverRealControlTest {
                 listOf("1c3a1bf13c851dcc707f1f3f71c8f90e703a0faf0832917a0195618952a77aab"),
                 locationCounts = listOf(43),
                 baseAreaCounts = listOf(48),
+            ),
+            Control(
+                "DUALDEX_BLAZED_GLAZED_ROM",
+                "0b55d44bfd32a350202c0878754cfcacbbaee128de3b59297ee669b69269199f",
+                224,
+                120,
+                28,
+                listOf("120fc88466f34514b5555f38101074c2218e268cb9bbec4e3a693c153154f539"),
+                locationCounts = listOf(110),
+                baseAreaCounts = listOf(171),
             ),
         )
     }

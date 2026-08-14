@@ -39,7 +39,7 @@ Use this workflow when a Gen III ROM scores 0% for world maps. The objective is 
 11. Complete map-header and encounter/base-area joins. Reject any published region with no bindings.
 12. Export parser-produced PNGs and inspect them visually.
 13. Run two fresh parses and compare the entire deterministic projection.
-14. Run exact raster controls for FireRed, LeafGreen, Dark Violet, Clover, Dreamstone, and Battle Theater, plus affine controls such as Classic. Investigate every regression from its real ROM/source.
+14. Run exact raster controls for FireRed, LeafGreen, Dark Violet, Clover, Dreamstone, Battle Theater, and Blazed Glazed, plus affine controls such as Classic. Investigate every regression from its real ROM/source.
 15. Only then port the generic rule to the current production parser, commit, and push.
 
 ## Thumb branch ownership pattern
@@ -116,12 +116,13 @@ Match the complete function shape, calculate the PC-relative literal from the ac
 
 ## Explicit region-entry states
 
-After a compiled map-group root establishes the required section IDs, a referenced region-table record can be either:
+After a compiled map-group root establishes the required section IDs, a referenced region-table record can be:
 
-- a complete bounded geometry shell with a terminated valid name; or
+- a complete bounded geometry shell with a terminated valid name;
+- a named off-map record whose `x` and `y` are both `0xFF`, preserving section identity without publishable geometry; or
 - exactly eight zero bytes, meaning explicitly absent and unbindable.
 
-A nonzero malformed record still invalidates the candidate table. Keep at least three ordinary alphanumeric entries as authority anchors before selecting by compiled reference count. Once the table is authoritative, retain valid nonblank punctuation-only names such as `???`; punctuation is not evidence against a source-defined name.
+A nonzero malformed record still invalidates the candidate table. Reject a half-sentinel where only one coordinate is `0xFF`, and retain the ordinary width, height, pointer, termination, and text-quality checks for a complete sentinel record. Keep at least three ordinary alphanumeric entries as authority anchors before selecting by compiled reference count. Once the table is authoritative, retain valid nonblank punctuation-only names such as `???`; punctuation is not evidence against a source-defined name. Off-map sentinels may name encounter areas such as caves, but they must not produce out-of-bounds world-map geometry.
 
 ## False-positive defense
 
