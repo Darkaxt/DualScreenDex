@@ -30,4 +30,14 @@ No production ROM name, SHA, source symbol, absolute address, or fixed field off
 
 On Dreamstone, the normal `CatalogParser` path must publish typed level-up entries for the full active species catalog, report LEARNSETS as AVAILABLE, close every referenced move ID without inventing names/details, preserve zero reference errors, survive SQLite write/reopen, and produce the same semantic result in two fresh parses. A malformed or ambiguous embedded field remains unavailable.
 
-After the focused slice, rerun the exact first-50 matrix and report numeric before/after counts. Subsequent holes are separate source-backed slices, starting with Altered Emerald's two incomplete rows rather than broad heuristic changes.
+After the focused slice, rerun one exact first-50 matrix and report numeric before/after counts. Subsequent holes are separate source-backed slices selected by expected compatibility gain and available source authority rather than broad heuristic changes.
+
+## Second slice: headerless unified move records
+
+After the first slice, the matrix moved Dreamstone and Crippling learnsets to `AVAILABLE`. The next slice targets Dreamstone's move catalog and move details instead of Altered Emerald's two incomplete learnset rows: Dreamstone is the weakest source-backed first-50 catalog and the same public source plus exact ROM are already proven inputs.
+
+Dreamstone source defines one `gMovesInfo` array of 48-byte `MoveInfo` records. Ordinary move IDs are the dense domain `0..847`; each record embeds name and description pointers plus typed effect, type, category, power, accuracy, target, PP, priority, flags, and argument fields. The exact ROM independently contains a complete 848-row ordinary domain matching those semantics.
+
+Production selection must start from compiled-reference targets and the independently decoded positive move-ID domain already present in complete learnsets. It may admit the source-defined 48-byte ABI only when exactly one referenced root provides complete pointer names and typed detail rows for every ID from zero through the maximum referenced move ID. Table-wide content validates a compiled-nominated root; it cannot nominate a raw ROM offset. Invalid pointers, malformed packed fields, incomplete dense coverage, exhausted evidence, and multiple complete roots fail closed. Production must not select by ROM name, SHA, source symbol, absolute address, or source revision.
+
+The normal catalog path must publish `MOVE_CATALOG` and `MOVE_DETAILS` as `AVAILABLE`, preserve the ordinary move IDs and decoded names/details, keep unsupported special-only move records outside the ordinary domain, preserve zero reference errors, and survive SQLite write/reopen. Ability mechanics remain independently gated and must not be promoted merely because the move ABI becomes available.

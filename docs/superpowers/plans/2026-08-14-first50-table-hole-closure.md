@@ -5,5 +5,9 @@
 3. Add an embedded-stride typed learnset decoder test using real record semantics, including ambiguity and malformed-pointer fail-closed controls.
 4. Implement embedded learnset selection under the already-proven headerless unified species ABI and wire it into the shared dependent-dataset phase.
 5. Run focused unit/live/catalog persistence verification, then the full parser module.
-6. Commit the focused slice and rerun the exact first-50 matrix twice, reporting numerical coverage deltas and any unchanged holes.
+6. Commit the focused slice and rerun one exact first-50 matrix, reporting numerical coverage deltas and any unchanged holes; changed live-ROM paths prove determinism through two fresh parses.
 7. Continue with the next source-backed hole only after the previous matrix is frozen.
+8. Freeze Dreamstone's source-defined 48-byte unified move ABI and exact ordinary move domain without building the source project.
+9. Add a real-ROM RED requiring complete move names/details plus malformed and duplicate-root fail-closed mutations.
+10. Implement compiled-nominated, dense-domain unified move selection and the typed 48-byte decoder; reuse the shared parser session and existing catalog materializers.
+11. Verify Dreamstone through CatalogParser, SQLite, and reference closure; run focused controls and one exact first-50 regression matrix only.
