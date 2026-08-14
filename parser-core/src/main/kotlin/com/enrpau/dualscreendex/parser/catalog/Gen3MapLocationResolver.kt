@@ -48,8 +48,21 @@ object Gen3MapLocationResolver {
     ): Map<Int, Int>? {
         val compiledRoots = findCompiledMapGroupsConsumerRoots(rom)
         if (compiledRoots.isNotEmpty()) {
-            val root = compiledRoots.singleOrNull() ?: return null
-            return enumerateRequiredMapSections(rom, root, requiredMaps)
+            val requiredCount = requiredMaps.values.sumOf { maps -> maps.size }
+            val resolved = compiledRoots.mapNotNull { root ->
+                enumerateRequiredMapSections(rom, root, requiredMaps)?.also { sections ->
+                    mapTrace(
+                        "map-groups root=0x${root.toString(16)} " +
+                            "required=${sections.size}/$requiredCount",
+                    )
+                }
+            }.distinct()
+            mapTrace(
+                "map-groups compiledRoots=${compiledRoots.joinToString { "0x${it.toString(16)}" }} " +
+                    "validLayouts=${resolved.size} requiredGroups=${requiredMaps.keys.sorted()} " +
+                    "maxMaps=${requiredMaps.mapValues { it.value.maxOrNull() }}",
+            )
+            return resolved.singleOrNull()
         }
         val roots = findMapGroupsRoots(rom, requiredMaps)
         val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return null
@@ -63,19 +76,23 @@ object Gen3MapLocationResolver {
         requiredMaps: Map<Int, Set<Int>>,
     ): Map<Int, Int>? {
         val sections = linkedMapOf<Int, Int>()
-        requiredMaps.toSortedMap().forEach { (group, maps) ->
+        requiredMaps.toSortedMap().forEach groupLoop@{ (group, maps) ->
             val groupPointerOffset = root.toLong() + group.toLong() * 4L
-            if (groupPointerOffset < 0 || groupPointerOffset + 4L > rom.size.toLong()) return null
-            val groupRoot = rom.gbaPointer(groupPointerOffset.toInt()) ?: return null
-            maps.sorted().forEach { map ->
+            if (groupPointerOffset < 0 || groupPointerOffset + 4L > rom.size.toLong()) {
+                return@groupLoop
+            }
+            val groupRoot = rom.gbaPointer(groupPointerOffset.toInt()) ?: return@groupLoop
+            maps.sorted().forEach mapLoop@{ map ->
                 val headerPointerOffset = groupRoot.toLong() + map.toLong() * 4L
-                if (headerPointerOffset < 0 || headerPointerOffset + 4L > rom.size.toLong()) return null
-                val header = rom.gbaPointer(headerPointerOffset.toInt()) ?: return null
-                if (!validMapHeader(rom, header)) return null
+                if (headerPointerOffset < 0 || headerPointerOffset + 4L > rom.size.toLong()) {
+                    return@mapLoop
+                }
+                val header = rom.gbaPointer(headerPointerOffset.toInt()) ?: return@mapLoop
+                if (!validMapHeader(rom, header)) return@mapLoop
                 sections[(group shl 8) or map] = rom.u8(header + REGION_SECTION_OFFSET)
             }
         }
-        return sections.takeIf { it.size == requiredMaps.values.sumOf { maps -> maps.size } }
+        return sections.takeIf { it.isNotEmpty() }
     }
 
     /**
@@ -196,7 +213,7 @@ object Gen3MapLocationResolver {
         val last = rom.size - (maxSection + 1) * REGION_ENTRY_BYTES
         while (root <= last) {
             if (anchorIds.all { validRegionEntry(rom, root, it) } &&
-                (0..maxSection).all { validRegionEntryShell(rom, root, it) }
+                sectionIds.all { validRegionEntryShell(rom, root, it) }
             ) {
                 candidates[root] = sectionIds.mapNotNull { section ->
                     decodeRegionEntry(rom, root, section)?.let { section to it }
@@ -213,7 +230,12 @@ object Gen3MapLocationResolver {
             pointerOffset += 4
         }
         val maximumReferences = referenceCounts.values.maxOrNull()?.takeIf { it > 0 } ?: return null
-        val winner = referenceCounts.filterValues { it == maximumReferences }.keys.singleOrNull() ?: return null
+        val winners = referenceCounts.filterValues { it == maximumReferences }.keys
+        mapTrace(
+            "region-entries candidates=${candidates.size} maxReferences=$maximumReferences " +
+                "winners=${winners.joinToString { "0x${it.toString(16)}" }}",
+        )
+        val winner = winners.singleOrNull() ?: return null
         return candidates.getValue(winner)
     }
 
@@ -251,6 +273,12 @@ object Gen3MapLocationResolver {
             rom.u8(offset + 3),
             name,
         )
+    }
+
+    private fun mapTrace(message: String) {
+        if (System.getenv("DUALDEX_MAP_TRACE") == "1") {
+            println("world-map-trace $message")
+        }
     }
 
     private const val MAP_HEADER_BYTES = 28

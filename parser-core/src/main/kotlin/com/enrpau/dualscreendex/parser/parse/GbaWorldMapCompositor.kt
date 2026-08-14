@@ -54,11 +54,16 @@ object GbaWorldMapCompositor {
             return GbaWorldMapComposition.Rejected("affine palette length ${palette.size} is invalid")
         }
         val tileCount = tiles.size / AFFINE_TILE_BYTES
+        val interleavedRows = hasInterleavedAffineRows(tilemap)
         val indices = ByteArray(AFFINE_OUTPUT_WIDTH * TILE_PIXELS * AFFINE_OUTPUT_HEIGHT * TILE_PIXELS)
         repeat(AFFINE_OUTPUT_HEIGHT) { cellY ->
             repeat(AFFINE_OUTPUT_WIDTH) { cellX ->
-                val tileIndex = tilemap[(AFFINE_CROP_Y + cellY) * AFFINE_MAP_WIDTH + AFFINE_CROP_X + cellX]
-                    .toInt() and 0xff
+                val mapOffset = if (interleavedRows) {
+                    cellY * AFFINE_INTERLEAVED_ROW_STRIDE + cellX
+                } else {
+                    (AFFINE_CROP_Y + cellY) * AFFINE_MAP_WIDTH + AFFINE_CROP_X + cellX
+                }
+                val tileIndex = tilemap[mapOffset].toInt() and 0xff
                 if (tileIndex >= tileCount) {
                     return GbaWorldMapComposition.Rejected(
                         "affine tile index $tileIndex exceeds $tileCount decoded tiles",
@@ -161,6 +166,21 @@ object GbaWorldMapCompositor {
         )
     }
 
+    private fun hasInterleavedAffineRows(tilemap: ByteArray): Boolean {
+        var nonzeroMatches = 0
+        val rowsMatch = (1 until AFFINE_INTERLEAVED_LOGICAL_ROWS).all { row ->
+            val trailing = (row * 2 - 1) * AFFINE_MAP_WIDTH + AFFINE_INTERLEAVED_HALF_WIDTH
+            val leading = row * AFFINE_INTERLEAVED_ROW_STRIDE
+            (0 until AFFINE_INTERLEAVED_HALF_WIDTH).all { column ->
+                val value = tilemap[trailing + column]
+                val matches = value == tilemap[leading + column]
+                if (matches && value.toInt() != 0) nonzeroMatches++
+                matches
+            }
+        }
+        return rowsMatch && nonzeroMatches >= AFFINE_INTERLEAVED_HALF_WIDTH
+    }
+
     private fun copy8BppTile(
         tiles: ByteArray,
         tileIndex: Int,
@@ -211,6 +231,9 @@ object GbaWorldMapCompositor {
     private const val AFFINE_TILE_BYTES = 64
     private const val AFFINE_MAP_WIDTH = 64
     private const val AFFINE_MAP_BYTES = 64 * 64
+    private const val AFFINE_INTERLEAVED_HALF_WIDTH = 32
+    private const val AFFINE_INTERLEAVED_LOGICAL_ROWS = 32
+    private const val AFFINE_INTERLEAVED_ROW_STRIDE = AFFINE_MAP_WIDTH * 2
     private const val AFFINE_CROP_X = 1
     private const val AFFINE_CROP_Y = 2
     private const val AFFINE_OUTPUT_WIDTH = 28
