@@ -9,11 +9,13 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
+import java.awt.image.BufferedImage
 import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.time.Instant
+import javax.imageio.ImageIO
 
 /** Evidence-only real-corpus runner. No ROM identity or outcome from this class enters production parsing. */
 object MapFirst50Matrix {
@@ -50,6 +52,8 @@ object MapFirst50Matrix {
             val rom = RomImage(bytes)
             val header = RomHeaderReader.read(rom)
             val run1 = run(path)
+            val renderDirectory = System.getenv("DUALDEX_MAP_RENDER_DIRECTORY")?.let(Path::of)
+            if (renderDirectory != null) render(path, renderDirectory)
             val run2 = run(path)
             val baseline = baselineBySha[rom.sha256]
             val observation = RomObservation(
@@ -114,6 +118,17 @@ object MapFirst50Matrix {
         )
         writeReport(outputPath, report.copy(summary = summary))
         println("matrix summary: ${gson.toJson(summary)}")
+    }
+
+    private fun render(path: Path, directory: Path) {
+        val maps = requireNotNull(CatalogParser.parse(RomImage(Files.readAllBytes(path))).catalog).worldMaps
+        Files.createDirectories(directory)
+        maps.regions.forEach { region ->
+            val raster = requireNotNull(maps.assets[region.imageAssetKey])
+            val image = BufferedImage(raster.width, raster.height, BufferedImage.TYPE_INT_ARGB)
+            image.setRGB(0, 0, raster.width, raster.height, raster.argb, 0, raster.width)
+            check(ImageIO.write(image, "png", directory.resolve("${region.key}.png").toFile()))
+        }
     }
 
     private fun run(path: Path): RunObservation {
@@ -320,7 +335,8 @@ object MapFirst50Matrix {
         Control("official-silver", "72b190859a59623cbef6c49d601f8de52c1d2331b4f08a8d2acc17274fc19a8c", 2, listOf("adb9cefb64aece67c7cff271b70183af5dafa7c3e95beffd31436a7cab79a5e9", "c53b3c2e032545fa2452bbadd4a29aea8619cc852b9ed45d17d6d8475cebe5b7")),
         Control("official-crystal", "d6702e353dcbe2d2c69183046c878ef13a0dae4006e8cdff521cca83dd1582fe", 2, listOf("adb9cefb64aece67c7cff271b70183af5dafa7c3e95beffd31436a7cab79a5e9", "c53b3c2e032545fa2452bbadd4a29aea8619cc852b9ed45d17d6d8475cebe5b7")),
         Control("official-emerald", "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af", 1, listOf("1c3a1bf13c851dcc707f1f3f71c8f90e703a0faf0832917a0195618952a77aab")),
-        Control("modern-emerald", "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", 1, listOf("0163d9b5e747d788db925776c25a087a1cc4bbfa34fd3e021580aa8756717fb0")),
+        Control("modern-emerald", "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", 1, listOf("120fc88466f34514b5555f38101074c2218e268cb9bbec4e3a693c153154f539")),
+        Control("altered-emerald", "8fe93d8245c96ea5aa49d61df2c74ee99a439b15cde7c0afa4f0b5a87aac34f0", 1, listOf("120fc88466f34514b5555f38101074c2218e268cb9bbec4e3a693c153154f539")),
         Control("classic", "01c0177b2498e1842a1bf9ee2ddac145fb95275321bd3813dbf17341d63ad16c", 1, listOf("dc326776034d066f0b2691e14f2325e78d6761b40db6da52c8454ab8fe46a46f")),
         Control("official-fire-red", "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059", 4, listOf("250195a226d642147bb594e30cb03596ef94dd88237204f761fb164286d53654", "8e1d6f588bf4bd24913a559e70f6af8f42c32d484f523ee197a09b73c03b4135", "eebdbb58c4d7fbbc875d6fbc465751625c26baf2a2c728c06fa8331d92fd7e4a", "b96065661b1848860cc69db7e9370194df740568e4352d7288e2b4ee17640a3b")),
         Control("official-leaf-green", "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825", 4, listOf("250195a226d642147bb594e30cb03596ef94dd88237204f761fb164286d53654", "8e1d6f588bf4bd24913a559e70f6af8f42c32d484f523ee197a09b73c03b4135", "eebdbb58c4d7fbbc875d6fbc465751625c26baf2a2c728c06fa8331d92fd7e4a", "b96065661b1848860cc69db7e9370194df740568e4352d7288e2b4ee17640a3b")),
