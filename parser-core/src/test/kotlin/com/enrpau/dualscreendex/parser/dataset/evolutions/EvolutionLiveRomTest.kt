@@ -2,6 +2,8 @@ package com.enrpau.dualscreendex.parser.dataset.evolutions
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import java.nio.file.Files
 import java.nio.file.Path
@@ -14,6 +16,81 @@ import org.junit.Test
 
 /** Real-ROM ABI and payload characterization before the ordinary Gen III typed-evolution cutover. */
 class EvolutionLiveRomTest {
+    @Test fun incompleteFirstFiftyEvolutionTablesDecodeEverySelectedRow() {
+        val controls = listOf(
+            RealControl(
+                "DUALDEX_CRIPPLING_ROM",
+                "79882b5e276f6c0386fe7c4d5cce122c56ff969d694ffc530b1a534ab57d25cb",
+                0xD959B8,
+                1528, 1, 8, 1525, 652,
+                "6b1edcde61b170c4196c9afc4142c167674763dd951adc57a812f2636a11f239",
+            ),
+            RealControl(
+                "DUALDEX_CRYSTAL_ADVANCE_ROM",
+                "fbbcbf32afd427afa5de45799923c414c21b77917004477f214c9f5cd87537b6",
+                0x149CB54,
+                760, 7, 8, 699, 273,
+                "b23af1252729a75af9c0648036452e639e91f83e58f1c226b7bd139f04b1d6bf",
+            ),
+            RealControl(
+                "DUALDEX_DARK_VIOLET_ROM",
+                "6b7e6df19c974371a4f80ea5c0f1e8d68a2cfee248faf34080a48ae3f0135e21",
+                0xA13330,
+                412, 7, 8, 366, 151,
+                "3dce97bd2242a0dab5aec7f05fc85d6b4ce2cbe8f75f83978588f2dc8107ffe1",
+            ),
+            RealControl(
+                "DUALDEX_DARK_VIOLET_FAN_PATCH_ROM",
+                "d171d29b691ced98178b4370826f0627f9c2ed6e0313d813f909ba147031c717",
+                0xA13330,
+                412, 7, 8, 366, 151,
+                "3dce97bd2242a0dab5aec7f05fc85d6b4ce2cbe8f75f83978588f2dc8107ffe1",
+            ),
+            RealControl(
+                "DUALDEX_DARKFIRE_ROM",
+                "8c564fcd1e419d81a56eaf6734ae9eb70d0f9849d08200c1807d31d674a48d69",
+                0x3F0E84,
+                494, 8, 8, 493, 236,
+                "a7f3663b8a58402fa30099987ecc162ac8bc3688b16ceee1273bad3d477c003c",
+            ),
+            RealControl(
+                "DUALDEX_DREAMSTONE_ROM",
+                "ac31df9cc158823861294b17bd4e66857deab2a53dd81620ddcf6fc03a6a4220",
+                0x7B0200,
+                1525, 1, 8, 1522, 631,
+                "1aac9d884eee5025b25e7ad8c916eeec3867ba39ba9d99fb47e8973083884c9d",
+            ),
+        ).filter { !System.getenv(it.environmentVariable).isNullOrBlank() }
+        assumeTrue("set at least one incomplete first-50 evolution ROM", controls.isNotEmpty())
+        val failures = controls.mapNotNull { control ->
+            runCatching { assertCompleteEvolutionTable(control) }.exceptionOrNull()?.let { error ->
+                "${control.environmentVariable}: ${error.message}"
+            }
+        }
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    @Test fun modernEmeraldEvolutionTableDecodesEverySelectedRow() {
+        val control = RealControl(
+            "DUALDEX_MODERN_EMERALD_ROM",
+            "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+            0x8E606C,
+            462, 8, 8, 428, 217,
+            "b9ccecb45ce67286de3a7e57a3497372d117068625dfd1a3c278d8a5061ef038",
+        )
+        assertCompleteEvolutionTable(control)
+
+        val configured = System.getenv(control.environmentVariable)
+        assumeTrue("set ${control.environmentVariable} to run this live-ROM regression", !configured.isNullOrBlank())
+        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(Path.of(requireNotNull(configured)))))
+        val typed = requireNotNull(parsed.layout?.resolvedDatasets?.evolutions)
+        val bulbasaur = typed.rows[1] as EvolutionRowOutcome.Decoded
+        val ivysaur = typed.rows[2] as EvolutionRowOutcome.Decoded
+        assertEquals(Triple(4, 16, 2), bulbasaur.edges.single().let { Triple(it.methodId, it.parameter, it.targetSpeciesId) })
+        assertEquals(Triple(4, 32, 3), ivysaur.edges.single().let { Triple(it.methodId, it.parameter, it.targetSpeciesId) })
+        assertEquals(listOf(0, 0), bulbasaur.edges.single().raw.takeLast(2).map { it.toInt() and 0xff })
+    }
+
     @Test fun alteredEmeraldHasExactTypedPayloadParity() = assertCodecParity(
         "DUALDEX_ALTERED_EMERALD_ROM",
         "8fe93d8245c96ea5aa49d61df2c74ee99a439b15cde7c0afa4f0b5a87aac34f0",
@@ -100,6 +177,67 @@ class EvolutionLiveRomTest {
         )
     }
 
+    private fun assertCompleteEvolutionTable(control: RealControl) {
+        val configured = System.getenv(control.environmentVariable)
+        assumeTrue(
+            "set ${control.environmentVariable} to run this live-ROM regression",
+            !configured.isNullOrBlank(),
+        )
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals(control.sha256, rom.sha256)
+
+        val first = CatalogParser.parse(rom)
+        val firstLayout = requireNotNull(first.layout)
+        val selected = requireNotNull(firstLayout.tables.evolutions) {
+            first.analysis.capabilities.firstOrNull {
+                it.capability == com.enrpau.dualscreendex.parser.model.RomCapability.EVOLUTIONS
+            }.toString()
+        }
+        val typed = requireNotNull(firstLayout.resolvedDatasets.evolutions) {
+            "${control.environmentVariable} has no typed evolution table"
+        }
+        assertEquals(control.tableOffset.toLong(), typed.table.offset)
+        assertEquals(control.selectedRows, selected.count)
+        assertEquals(selected.count, typed.rows.size)
+        assertEquals(
+            "${control.environmentVariable} selected ${typed.table}",
+            control.slotsPerSpecies,
+            typed.table.slotsPerSpecies,
+        )
+        assertEquals("${control.environmentVariable} selected ${typed.table}", control.recordSize, typed.table.recordSize)
+        if (control.slotsPerSpecies > 1) {
+            val references = requireNotNull(
+                RomAnalysisSession(rom, RomHeaderReader.read(rom)).gbaReferenceIndex?.target(control.tableOffset),
+            )
+            assertTrue("${control.environmentVariable} table root must have compiled references", references.count > 0)
+        }
+        val malformed = typed.rows.filterIsInstance<EvolutionRowOutcome.Malformed>()
+        assertTrue(
+            "${control.environmentVariable} selected ${typed.table} with " +
+                "${malformed.size}/${typed.rows.size} malformed evolution rows: " +
+                malformed.take(5).joinToString { "${it.rowIndex}:${it.reasons}" },
+            malformed.isEmpty(),
+        )
+        val firstEdges = requireNotNull(first.catalog).navigableSpecies().associate { species ->
+            species.id to species.evolutionEdges.value.orEmpty()
+        }
+        assertTrue(
+            "${control.environmentVariable} must publish at least one evolution edge",
+            firstEdges.values.sumOf(List<*>::size) > 0,
+        )
+        assertEquals(control.navigableRows, firstEdges.size)
+        assertEquals(control.edges, firstEdges.values.sumOf(List<*>::size))
+        assertEquals(control.semanticSha256, evolutionSha256(firstEdges))
+
+        val second = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val secondEdges = requireNotNull(second.catalog).navigableSpecies().associate { species ->
+            species.id to species.evolutionEdges.value.orEmpty()
+        }
+        assertEquals(evolutionSha256(firstEdges), evolutionSha256(secondEdges))
+    }
+
     private fun evolutionSha256(values: Map<Int, List<EvolutionEdge>>): String {
         val bytes = values.toSortedMap().entries.joinToString("\u001e") { (id, edges) ->
             "$id\u001f" + edges.joinToString("\u001d") { edge ->
@@ -111,4 +249,16 @@ class EvolutionLiveRomTest {
             "%02x".format(byte.toInt() and 0xFF)
         }
     }
+
+    private data class RealControl(
+        val environmentVariable: String,
+        val sha256: String,
+        val tableOffset: Int,
+        val selectedRows: Int,
+        val slotsPerSpecies: Int,
+        val recordSize: Int,
+        val navigableRows: Int,
+        val edges: Int,
+        val semanticSha256: String,
+    )
 }

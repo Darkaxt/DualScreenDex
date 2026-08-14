@@ -27,18 +27,18 @@ Run:
 
 Expected RED: the six partial controls report malformed rows and Modern has no resolved evolution layout.
 
-### Task 2: Derive layouts from compiled consumers
+### Task 2: Derive layouts from compiled reference roots and unified-record pointers
 
 **Files:**
-- Create: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/dataset/evolutions/CompiledEvolutionLayoutResolver.kt`
-- Create: `parser-core/src/test/kotlin/com/enrpau/dualscreendex/parser/dataset/evolutions/CompiledEvolutionLayoutResolverTest.kt`
-- Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/dataset/evolutions/EvolutionResolver.kt`
+- Create: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/dataset/evolutions/EmbeddedEvolutionPointerResolver.kt`
+- Create: `parser-core/src/test/kotlin/com/enrpau/dualscreendex/parser/dataset/evolutions/EmbeddedEvolutionPointerResolverTest.kt`
+- Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/parse/DatasetResolvers.kt`
 
-- [ ] Add a bounded resolver that consumes session-owned compiled-reference evidence and decoded ARM/Thumb instructions.
-- [ ] Track a species index into `root + species * rowStride`, then prove same-record halfword reads at offsets 0, 2, and 4.
-- [ ] Derive six- or eight-byte records and the slot count from address progression/loop bounds.
-- [ ] Reject incomplete decoding, contradictory layouts, unsupported arithmetic, and exhausted work as typed failures.
-- [ ] Feed unique structurally owned layouts to `EvolutionCodec`; do not select by ROM name, SHA, source symbol, or absolute offset.
+- [ ] Admit only compiled-reference roots that pass the typed evolution-table sample before consuming the candidate budget.
+- [ ] Derive six- or eight-byte compiled records and slot counts from exact species cardinality and complete table validation; preserve ABI tail padding in the raw record.
+- [ ] Resolve source-backed evolution-list pointers only inside an independently proven unified species root/stride and require a unique aligned pointer field plus terminated record ABI.
+- [ ] Reject malformed rows, inactive/out-of-domain targets, contradictory layouts, and exhausted discovery as typed failures.
+- [ ] Feed only unique structurally supported layouts to `EvolutionCodec`; do not select by ROM name, SHA, source symbol, or absolute offset.
 - [ ] Run the focused resolver and real-ROM tests until all seven controls pass.
 
 ### Task 3: Admit complete typed recovery over partial legacy evidence

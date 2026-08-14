@@ -29,3 +29,10 @@ tasks.register<JavaExec>("mapFirst50Matrix") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("com.enrpau.dualscreendex.parser.cli.MapFirst50Matrix")
 }
+
+tasks.register<JavaExec>("evolutionFirst50Matrix") {
+    group = "verification"
+    description = "Runs the evidence-only exact first50 evolution completeness matrix"
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.enrpau.dualscreendex.parser.cli.EvolutionFirst50Matrix")
+}

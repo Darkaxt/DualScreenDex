@@ -40,6 +40,7 @@ internal data class Gen3EvolutionRowValidation(
     val records: List<Gen3EvolutionRecord>,
     val validSlots: Int,
     val invalidSlots: Int,
+    val nonNavigableTransformationTargets: List<Int> = emptyList(),
 )
 
 object PokemonDatasetValidators {
@@ -200,6 +201,7 @@ object PokemonDatasetValidators {
         var validSlots = 0
         var invalidSlots = 0
         var activeEdges = 0
+        val nonNavigableTransformationTargets = mutableListOf<Int>()
         repeat(speciesCount) { species ->
             if (species == 0) {
                 validRows++
@@ -216,12 +218,16 @@ object PokemonDatasetValidators {
                 validSlots += row.validSlots
                 invalidSlots += row.invalidSlots
                 activeEdges += row.records.size
+                nonNavigableTransformationTargets += row.nonNavigableTransformationTargets
                 if (row.invalidSlots == 0) validRows++
             }
         }
         val confidence = validRows.toDouble() / speciesCount
         val structuralQuality = validSlots.toDouble() / (validSlots + invalidSlots).coerceAtLeast(1)
-        val compatible = activeEdges > 0 && confidence > GEN3_EVOLUTION_STRUCTURAL_CREDIBILITY_FLOOR
+        val coherentTransformationTargets = nonNavigableTransformationTargets.distinct().size ==
+            nonNavigableTransformationTargets.size
+        val compatible = activeEdges > 0 && confidence > GEN3_EVOLUTION_STRUCTURAL_CREDIBILITY_FLOOR &&
+            coherentTransformationTargets
         val reasons = buildList {
             if (compatible && validRows < speciesCount) {
                 add("partial Gen 3 evolution coverage $validRows/$speciesCount; manual review recommended")
@@ -230,6 +236,9 @@ object PokemonDatasetValidators {
             if (activeEdges == 0) add("no active evolution edges were found")
             if (confidence <= GEN3_EVOLUTION_STRUCTURAL_CREDIBILITY_FLOOR) {
                 add("valid Gen 3 evolution rows $validRows/$speciesCount do not have a strict majority")
+            }
+            if (!coherentTransformationTargets) {
+                add("non-navigable battle transformation targets are repeated or contradictory")
             }
         }
         return Gen3EvolutionValidation(
@@ -260,6 +269,7 @@ object PokemonDatasetValidators {
             return Gen3EvolutionRowValidation(emptyList(), 0, slotsPerSpecies.coerceAtLeast(0))
         }
         val records = mutableListOf<Gen3EvolutionRecord>()
+        val nonNavigableTransformationTargets = mutableListOf<Int>()
         var validSlots = 0
         var invalidSlots = 0
         repeat(slotsPerSpecies) { slot ->
@@ -273,8 +283,12 @@ object PokemonDatasetValidators {
             val parameter = rom.u16le(record + 2)
             val target = rom.u16le(record + 4)
             val conditionValue = if (recordSize == 8) rom.u16le(record + 6) else null
+            val terminatedListPadding = method == 0xFFFF && parameter == 0 && target == 0 &&
+                (conditionValue == null || conditionValue == 0)
+            val nonNavigableTransformation = method in GEN3_RESERVED_TRANSFORMATION_METHODS &&
+                target !in 1 until speciesCount && target !in setOf(0, 0xFFFF)
             val structurallyValid = (
-                method == 0 || (
+                method == 0 || terminatedListPadding || nonNavigableTransformation || (
                     (method in 1..maximumMethod || method in GEN3_RESERVED_TRANSFORMATION_METHODS) &&
                         target in 1 until speciesCount
                 )
@@ -284,7 +298,9 @@ object PokemonDatasetValidators {
                 return@repeat
             }
             validSlots++
-            if (method != 0) {
+            if (nonNavigableTransformation) nonNavigableTransformationTargets += target
+            if (method != 0 && !nonNavigableTransformation) {
+                if (terminatedListPadding) return@repeat
                 records += Gen3EvolutionRecord(
                     methodId = method,
                     parameter = parameter,
@@ -294,7 +310,9 @@ object PokemonDatasetValidators {
                 )
             }
         }
-        return Gen3EvolutionRowValidation(records, validSlots, invalidSlots)
+        return Gen3EvolutionRowValidation(
+            records, validSlots, invalidSlots, nonNavigableTransformationTargets,
+        )
     }
 
     fun gen3Learnsets(

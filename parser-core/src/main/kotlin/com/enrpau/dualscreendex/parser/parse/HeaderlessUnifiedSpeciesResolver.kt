@@ -125,6 +125,7 @@ internal object HeaderlessUnifiedSpeciesResolver {
                 ),
             ),
             metadata = HeaderlessUnifiedSpeciesMetadata(
+                speciesTableOffset = root,
                 speciesRecordSize = RECORD_SIZE,
                 activePredicateOffset = 0,
                 speciesNameOffset = NAME_OFFSET,

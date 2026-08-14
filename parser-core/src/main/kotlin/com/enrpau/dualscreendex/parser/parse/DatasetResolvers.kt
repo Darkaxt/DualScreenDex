@@ -524,11 +524,18 @@ object DatasetResolvers {
         referenceIndex.overflowReason?.let { return missing(it, reviewRecommended = true) }
         val inheritedValidation = inherited?.let { validateEvolutionDetailed(rom, speciesCount, it) }
         val inheritedCandidate = inheritedValidation?.takeIf { it.evidence.compatible }?.let {
-            EvolutionCandidate(it, referenceCount = referenceIndex.counts[it.evidence.offset] ?: 0, inherited = true)
+            EvolutionCandidate(
+                it,
+                referenceCount = referenceIndex.counts[it.evidence.offset] ?: 0,
+                inherited = true,
+                anchorSlotSum = evolutionAnchorSlotSum(
+                    rom, requireNotNull(it.evidence.offset), requireNotNull(it.evidence.recordSize),
+                    requireNotNull(it.evidence.elementSize),
+                ),
+            )
         }
 
         val referenced = boundedReferencedEvolutionCandidates(rom, speciesCount, referenceIndex.counts)
-        referenced.overflowReason?.let { return missing(it, reviewRecommended = true) }
         val referencedCandidates = referenced.candidates.mapNotNull { candidate ->
             val validation = PokemonDatasetValidators.gen3EvolutionValidation(
                 rom = rom,
@@ -538,39 +545,172 @@ object DatasetResolvers {
                 recordSize = candidate.elementSize,
             )
             validation.takeIf { it.evidence.compatible }?.let {
-                EvolutionCandidate(it, candidate.referenceCount, inherited = false)
+                EvolutionCandidate(
+                    it,
+                    candidate.referenceCount,
+                    inherited = false,
+                    anchorSlotSum = evolutionAnchorSlotSum(
+                        rom,
+                        candidate.tableOffset,
+                        candidate.slotsPerSpecies * candidate.elementSize,
+                        candidate.elementSize,
+                    ),
+                )
             }
         }
-        if (referencedCandidates.isNotEmpty()) {
-            return chooseEvolutions(listOfNotNull(inheritedCandidate) + referencedCandidates)
-        }
-
-        val candidates = mutableListOf<ValidationEvidence>()
+        val discoveredCandidates = mutableListOf<EvolutionCandidate>()
         val levelEvolutionMethods = rom.findAll(byteArrayOf(4, 0))
         for (recordSize in listOf(8, 6)) {
             for (slots in listOf(5, 8, 16, 32)) {
                 val stride = slots * recordSize
-                levelEvolutionMethods.asSequence().map { firstSpeciesOffset -> firstSpeciesOffset - stride }
+                levelEvolutionMethods.asSequence().flatMap { firstSpeciesOffset ->
+                    (0 until slots).asSequence().map { slot -> firstSpeciesOffset - stride - slot * recordSize }
+                }
                     .filter { tableOffset -> tableOffset >= 0 && tableOffset % 2 == 0 }
                     .filter { tableOffset ->
                         val first = tableOffset + stride
                         val second = tableOffset + stride * 2
                         second + 6 <= rom.size &&
-                            rom.u16le(first + 2) in 1..100 && rom.u16le(first + 4) == 2 &&
-                            rom.u16le(second) == 4 && rom.u16le(second + 2) in 1..100 && rom.u16le(second + 4) == 3
+                            (0 until slots).any { slot ->
+                                val record = first + slot * recordSize
+                                rom.u16le(record) == 4 && rom.u16le(record + 2) in 1..100 &&
+                                    rom.u16le(record + 4) == 2
+                            } &&
+                            (0 until slots).any { slot ->
+                                val record = second + slot * recordSize
+                                rom.u16le(record) == 4 && rom.u16le(record + 2) in 1..100 &&
+                                    rom.u16le(record + 4) == 3
+                            }
                     }
                     .distinct()
                     .forEach { tableOffset ->
-                    validateEvolution(
+                    validateEvolutionDetailed(
                         rom,
                         speciesCount,
                         TableLayout(tableOffset, speciesCount, stride, elementSize = recordSize),
-                    ).takeIf { it.compatible }?.let(candidates::add)
+                    ).takeIf { it.evidence.compatible }?.let { validation ->
+                        discoveredCandidates += EvolutionCandidate(
+                            validation = validation,
+                            referenceCount = referenceIndex.counts[tableOffset] ?: 0,
+                            inherited = false,
+                            anchorSlotSum = evolutionAnchorSlotSum(
+                                rom, tableOffset, stride, recordSize,
+                            ),
+                        )
+                    }
                     }
             }
         }
-        inheritedCandidate?.validation?.evidence?.let(candidates::add)
-        return choose(candidates, inherited?.offset, "Gen 3 evolution table", coverageFirst = true)
+        val structurallyComplete = discoveredCandidates.filter { candidate ->
+            candidate.validation.evidence.validRecords == speciesCount && candidate.validation.structuralQuality == 1.0
+        }
+        val narrowestComplete = structurallyComplete.minOfOrNull { candidate ->
+            candidate.validation.evidence.recordSize ?: Int.MAX_VALUE
+        }
+        val completeCandidates = if (narrowestComplete == null) emptyList() else structurallyComplete.filter {
+            it.validation.evidence.recordSize == narrowestComplete
+        }
+        val strongestCompleteReferences = completeCandidates.maxOfOrNull { it.referenceCount }
+        val authoritativeComplete = completeCandidates.filter {
+            it.referenceCount == strongestCompleteReferences && it.referenceCount > 0
+        }
+        val anchoredAuthority = authoritativeComplete.singleOrNull()
+        val allCandidates = if (anchoredAuthority == null) {
+            listOfNotNull(inheritedCandidate) + referencedCandidates + discoveredCandidates
+        } else {
+            (listOfNotNull(inheritedCandidate) + referencedCandidates + anchoredAuthority).filter { candidate ->
+                candidate.sameLayoutAs(anchoredAuthority)
+            }
+        }
+        var resolution = chooseEvolutions(allCandidates)
+        if (referenced.overflowReason != null) {
+            fun overflowFailure(detail: String): ValidationEvidence = missing(
+                "${referenced.overflowReason}; $detail",
+                reviewRecommended = true,
+            )
+            val selected = (referenced.candidates + referenced.omittedCandidates).singleOrNull { candidate ->
+                candidate.tableOffset == resolution.offset &&
+                    candidate.slotsPerSpecies * candidate.elementSize == resolution.recordSize &&
+                    candidate.elementSize == resolution.elementSize
+            }
+            if (!resolution.compatible || selected == null || referenced.overflowBoundary == null) {
+                return overflowFailure("no unique retained candidate established a complete table")
+            }
+            if (anchoredAuthority != null && resolution.matchesLayoutOf(anchoredAuthority)) {
+                return resolution
+            }
+            if (!selected.strictlyStrongerThan(referenced.overflowBoundary)) {
+                val omittedContenders = referenced.omittedCandidates
+                    .filterNot { it == selected }
+                    .filterNot { omitted -> selected.strictlyStrongerThan(omitted.strength) }
+                if (omittedContenders.size > MAX_REFERENCED_EVOLUTION_OVERFLOW_CONTENDERS) {
+                    return overflowFailure(
+                        "${omittedContenders.size} omitted candidates tie or exceed the selected prefilter strength",
+                    )
+                }
+                val validatedContenders = omittedContenders.mapNotNull { candidate ->
+                    PokemonDatasetValidators.gen3EvolutionValidation(
+                        rom = rom,
+                        offset = candidate.tableOffset,
+                        speciesCount = speciesCount,
+                        slotsPerSpecies = candidate.slotsPerSpecies,
+                        recordSize = candidate.elementSize,
+                    ).takeIf { it.evidence.compatible }?.let { validation ->
+                        EvolutionCandidate(
+                            validation,
+                            candidate.referenceCount,
+                            inherited = false,
+                            anchorSlotSum = evolutionAnchorSlotSum(
+                                rom,
+                                candidate.tableOffset,
+                                candidate.slotsPerSpecies * candidate.elementSize,
+                                candidate.elementSize,
+                            ),
+                        )
+                    }
+                }
+                resolution = chooseEvolutions(allCandidates + validatedContenders)
+                if (!resolution.compatible || resolution.offset != selected.tableOffset ||
+                    resolution.recordSize != selected.slotsPerSpecies * selected.elementSize ||
+                    resolution.elementSize != selected.elementSize
+                ) {
+                    return overflowFailure("a fully validated omitted candidate contradicts the selected table")
+                }
+            }
+        }
+        return resolution
+    }
+
+    private fun EvolutionCandidate.sameLayoutAs(other: EvolutionCandidate): Boolean =
+        validation.evidence.offset == other.validation.evidence.offset &&
+            validation.evidence.recordSize == other.validation.evidence.recordSize &&
+            validation.evidence.elementSize == other.validation.evidence.elementSize
+
+    private fun ValidationEvidence.matchesLayoutOf(candidate: EvolutionCandidate): Boolean =
+        offset == candidate.validation.evidence.offset &&
+            recordSize == candidate.validation.evidence.recordSize &&
+            elementSize == candidate.validation.evidence.elementSize
+
+    private fun evolutionAnchorSlotSum(
+        rom: RomImage,
+        tableOffset: Int,
+        stride: Int,
+        elementSize: Int,
+    ): Int {
+        if (stride <= 0 || elementSize <= 0 || stride % elementSize != 0) return Int.MAX_VALUE
+        val slots = stride / elementSize
+        var total = 0
+        for (species in 1..2) {
+            val expectedTarget = species + 1
+            val slot = (0 until slots).firstOrNull { candidateSlot ->
+                val record = tableOffset.toLong() + species.toLong() * stride +
+                    candidateSlot.toLong() * elementSize
+                record >= 0 && record + 6 <= rom.size &&
+                    rom.u16le(record.toInt()) == 4 && rom.u16le(record.toInt() + 4) == expectedTarget
+            } ?: return Int.MAX_VALUE
+            total += slot
+        }
+        return total
     }
 
     private fun boundedReferencedEvolutionCandidates(
@@ -582,7 +722,7 @@ object DatasetResolvers {
 
         val candidates = mutableListOf<ReferencedEvolutionCandidate>()
         var eligibleShapes = 0
-        referenceCounts.forEach { (tableOffset, rootReferences) ->
+        referenceCounts.entries.sortedByDescending { it.value }.forEach { (tableOffset, rootReferences) ->
             if (tableOffset % 2 != 0) return@forEach
             for (elementSize in EVOLUTION_ELEMENT_SIZES) {
                 for (slots in MIN_EVOLUTION_SLOTS..MAX_EVOLUTION_SLOTS) {
@@ -590,30 +730,20 @@ object DatasetResolvers {
                     val end = tableOffset.toLong() + speciesCount.toLong() * stride
                     if (end !in 0..rom.size.toLong()) continue
                     val endOffset = end.toInt()
-                    val endReferences = if (endOffset == rom.size) {
-                        0
-                    } else {
-                        referenceCounts[endOffset] ?: continue
-                    }
-                    eligibleShapes++
-                    if (eligibleShapes > MAX_REFERENCED_EVOLUTION_PREFILTER_SHAPES) {
-                        return ReferencedEvolutionCandidates(
-                            candidates,
-                            overflowReason = "Gen 3 evolution table prefilter shape budget exceeded " +
-                                "($MAX_REFERENCED_EVOLUTION_PREFILTER_SHAPES); " +
-                                "automatic resolution requires review",
-                        )
-                    }
+                    val endReferences = if (endOffset == rom.size) 0 else referenceCounts[endOffset] ?: 0
+                    if (rootReferences < 2 && endReferences == 0 && endOffset != rom.size) continue
                     if (!looksLikeEvolutionTableSample(
                             rom, tableOffset, speciesCount, slots, elementSize,
                         )
                     ) continue
-                    if (candidates.size >= MAX_REFERENCED_EVOLUTION_CANDIDATES) {
+                    eligibleShapes++
+                    if (eligibleShapes > MAX_REFERENCED_EVOLUTION_PREFILTER_SHAPES) {
                         return ReferencedEvolutionCandidates(
-                            candidates,
-                            overflowReason = "Gen 3 evolution table candidate budget exceeded " +
-                                "($MAX_REFERENCED_EVOLUTION_CANDIDATES); " +
+                            emptyList(),
+                            overflowReason = "Gen 3 evolution table prefilter shape budget exceeded " +
+                                "($MAX_REFERENCED_EVOLUTION_PREFILTER_SHAPES); " +
                                 "automatic resolution requires review",
+                            overflowBoundary = ReferencedEvolutionCandidateStrength(Int.MAX_VALUE, Int.MAX_VALUE),
                         )
                     }
                     candidates += ReferencedEvolutionCandidate(
@@ -621,11 +751,56 @@ object DatasetResolvers {
                         slotsPerSpecies = slots,
                         elementSize = elementSize,
                         referenceCount = rootReferences + endReferences,
+                        sampledActiveSlots = sampledActiveEvolutionSlots(
+                            rom, tableOffset, speciesCount, slots, elementSize,
+                        ),
                     )
                 }
             }
         }
-        return ReferencedEvolutionCandidates(candidates)
+        val ranked = candidates.sortedWith(
+            compareByDescending<ReferencedEvolutionCandidate> { it.referenceCount }
+                .thenByDescending { it.sampledActiveSlots }
+                .thenBy { it.tableOffset }
+                .thenBy { it.slotsPerSpecies }
+                .thenBy { it.elementSize },
+        )
+        return ReferencedEvolutionCandidates(
+            candidates = ranked.take(MAX_REFERENCED_EVOLUTION_CANDIDATES),
+            overflowReason = if (ranked.size > MAX_REFERENCED_EVOLUTION_CANDIDATES) {
+                "Gen 3 evolution table candidate budget exceeded " +
+                    "($MAX_REFERENCED_EVOLUTION_CANDIDATES); automatic resolution requires review"
+            } else {
+                null
+            },
+            overflowBoundary = ranked.getOrNull(MAX_REFERENCED_EVOLUTION_CANDIDATES)?.strength,
+            omittedCandidates = ranked.drop(MAX_REFERENCED_EVOLUTION_CANDIDATES),
+        )
+    }
+
+    private fun ReferencedEvolutionCandidate.strictlyStrongerThan(
+        other: ReferencedEvolutionCandidateStrength,
+    ): Boolean = referenceCount > other.referenceCount ||
+        (referenceCount == other.referenceCount && sampledActiveSlots > other.sampledActiveSlots)
+
+    private fun sampledActiveEvolutionSlots(
+        rom: RomImage,
+        tableOffset: Int,
+        speciesCount: Int,
+        slotsPerSpecies: Int,
+        elementSize: Int,
+    ): Int {
+        val stride = slotsPerSpecies * elementSize
+        val sampleCount = minOf(speciesCount, MAX_EVOLUTION_ROOT_SAMPLES)
+        var active = 0
+        for (sample in 0 until sampleCount) {
+            val species = if (sampleCount == 1) 0 else sample * (speciesCount - 1) / (sampleCount - 1)
+            for (slot in 0 until slotsPerSpecies) {
+                val method = rom.u16le(tableOffset + species * stride + slot * elementSize)
+                if (method != 0) active++
+            }
+        }
+        return active
     }
 
     private fun looksLikeEvolutionTableSample(
@@ -666,8 +841,9 @@ object DatasetResolvers {
             compareByDescending<EvolutionCandidate> { it.validation.evidence.validRecords }
                 .thenByDescending { it.validation.evidence.confidence }
                 .thenByDescending { it.validation.structuralQuality }
-                .thenByDescending { it.validation.activeEdges }
                 .thenByDescending { it.referenceCount }
+                .thenBy { it.anchorSlotSum }
+                .thenByDescending { it.validation.activeEdges }
                 .thenByDescending { it.inherited },
         )
         if (ranked.size > 1 && ranked[0].sameStrengthAs(ranked[1])) {
@@ -684,14 +860,16 @@ object DatasetResolvers {
         validation.evidence.validRecords == other.validation.evidence.validRecords &&
             validation.evidence.confidence == other.validation.evidence.confidence &&
             validation.structuralQuality == other.validation.structuralQuality &&
-            validation.activeEdges == other.validation.activeEdges &&
             referenceCount == other.referenceCount &&
+            anchorSlotSum == other.anchorSlotSum &&
+            validation.activeEdges == other.validation.activeEdges &&
             inherited == other.inherited
 
     private data class EvolutionCandidate(
         val validation: Gen3EvolutionValidation,
         val referenceCount: Int,
         val inherited: Boolean,
+        val anchorSlotSum: Int = Int.MAX_VALUE,
     )
 
     private data class ReferencedEvolutionCandidate(
@@ -699,11 +877,22 @@ object DatasetResolvers {
         val slotsPerSpecies: Int,
         val elementSize: Int,
         val referenceCount: Int,
+        val sampledActiveSlots: Int,
+    ) {
+        val strength: ReferencedEvolutionCandidateStrength
+            get() = ReferencedEvolutionCandidateStrength(sampledActiveSlots, referenceCount)
+    }
+
+    private data class ReferencedEvolutionCandidateStrength(
+        val sampledActiveSlots: Int,
+        val referenceCount: Int,
     )
 
     private data class ReferencedEvolutionCandidates(
         val candidates: List<ReferencedEvolutionCandidate>,
         val overflowReason: String? = null,
+        val overflowBoundary: ReferencedEvolutionCandidateStrength? = null,
+        val omittedCandidates: List<ReferencedEvolutionCandidate> = emptyList(),
     )
 
     fun gen3Learnsets(
@@ -1315,5 +1504,6 @@ object DatasetResolvers {
     private const val MAX_EVOLUTION_SLOTS = 32
     private const val MAX_EVOLUTION_ROOT_SAMPLES = 16
     private const val MAX_REFERENCED_EVOLUTION_CANDIDATES = 256
+    private const val MAX_REFERENCED_EVOLUTION_OVERFLOW_CONTENDERS = 256
     private const val MAX_REFERENCED_EVOLUTION_PREFILTER_SHAPES = 4_096
 }

@@ -110,8 +110,20 @@ class EvolutionCodec {
             if (method == 0) return@repeat // Disabled-slot payload is intentionally opaque.
             val parameter = session.rom.u16le(record + 2)
             val target = session.rom.u16le(record + 4)
+            val condition = if (recordSize == 8) session.rom.u16le(record + 6) else null
+            if (method == 0xFFFF && parameter == 0 && target == 0 && (condition == null || condition == 0)) {
+                return@repeat
+            }
             if (method !in 1..maximumMethod && method !in RESERVED_TRANSFORMATION_METHODS) {
                 reasons += "slot $slot has unsupported method $method"
+                return@repeat
+            }
+            // Battle-only transformation records can target internal form IDs that are outside
+            // the independently proven navigable species domain. They are valid engine records,
+            // but are not Pokédex evolution links. In-domain transformation targets remain typed.
+            if (method in RESERVED_TRANSFORMATION_METHODS && target !in 1 until speciesCount &&
+                target !in setOf(0, 0xFFFF)
+            ) {
                 return@repeat
             }
             if (target !in 1 until speciesCount) {
@@ -122,7 +134,7 @@ class EvolutionCodec {
                 targetSpeciesId = target,
                 methodId = method,
                 parameter = parameter,
-                conditionValue = if (recordSize == 8) session.rom.u16le(record + 6) else null,
+                conditionValue = condition,
                 raw = session.rom.slice(record, recordSize),
             )
         }

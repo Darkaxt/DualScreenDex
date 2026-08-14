@@ -155,6 +155,7 @@ data class ResolvedRomLayout(
 
 /** Binary-proven unified species record ABI without a published expansion header. */
 data class HeaderlessUnifiedSpeciesMetadata(
+    val speciesTableOffset: Int,
     val speciesRecordSize: Int,
     val activePredicateOffset: Int,
     val speciesNameOffset: Int,

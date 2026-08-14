@@ -19,7 +19,9 @@ The current exact first-50 report contains evolution edges for all 50 ROMs, but 
 | 46 | DarkFire 2.1.3 | 392 | 494 | 79.35% |
 | 50 | Dreamstone Mysteries | 1,422 | 1,525 | 93.25% |
 
-Modern Emerald 3.5 is outside the first-50 cohort. Its source defines a `NUM_SPECIES x 8` array of six-byte records containing three `u16` fields: method, parameter, and target species. RC25 currently publishes no evolution table because generic discovery exhausts its 4,096-shape prefilter before validating that real layout.
+Modern Emerald 3.5 is outside the first-50 cohort. Its Release 3.5 source defines a `NUM_SPECIES x 8` array whose entries contain three `u16` fields: method, parameter, and target species. The shipped compiler ABI pads each entry to eight bytes; the exact Bulbasaur/Ivysaur source sequence appears at the parser-selected ROM root with a 64-byte species stride. RC25 currently publishes no evolution table because generic discovery exhausts its 4,096-shape prefilter before validating that real layout.
+
+The maintained ROM-source index identifies public repositories for Dreamstone Mysteries (`dsmyst/dreamstone-mysteries`) and Modern Emerald (`resetes12/pokeemerald`). Dreamstone's source family stores a pointer to a terminated `struct Evolution` list in each unified species record and defines `EVOLUTIONS_END` as `0xFFFF`; Modern's Release 3.5 source defines the fixed eight-slot table described above. The index explicitly records Crippling Medical Debt, Crystal Advance Redux, Dark Violet, its Fan-Patch parent, and DarkFire as closed-source/binary. Those five are therefore verified from exact real-ROM structure and deterministic semantic edge hashes, not represented as source-backed builds.
 
 ## Rejected approaches
 
@@ -35,23 +37,17 @@ Scanning for plausible triples and choosing the table with the highest valid-row
 
 Increasing the 4,096-shape or candidate limits would spend more time enumerating unowned layouts and could merely move the failure threshold. It does not establish why a candidate is the evolution table.
 
-## Selected approach: compiled-consumer-derived layout
+## Selected approach: typed reference-root and embedded-pointer layouts
 
-The parser will derive a typed evolution layout from decoded code that consumes the table.
+The fixed-table resolver starts only from roots in the session-owned compiled-reference index, derives candidate row ABIs from the selected species cardinality, and validates the complete table with the typed evolution codec. Candidate-budget accounting begins only after a referenced root has passed the evolution-table sample, so unrelated reference shapes cannot starve a real table. Complete candidates prefer the narrowest ABI and strongest direct compiled-root authority; contradictory equal evidence remains unresolved.
 
-1. Start only from roots present in the session-owned compiled-reference index.
-2. Decode ARM/Thumb control flow for the owning consumer reached from real call targets; do not assign ownership from the nearest `PUSH` or an arbitrary address window.
-3. Track the species identifier through address formation and prove a row address of `root + speciesId * rowStride`.
-4. Track slot iteration within that row and derive `recordSize` and `slotsPerSpecies` from address progression or loop bounds.
-5. Require typed halfword reads for method at `+0`, parameter at `+2`, and target species at `+4` from the same record lineage. An optional fourth halfword at `+6` admits the existing eight-byte format.
-6. Decode the proposed table with the existing `EvolutionCodec`. Empty rows are valid; malformed active records are not silently discarded.
-7. Select only one complete, structurally owned layout. Multiple contradictory layouts remain unresolved.
+Headerless unified-species engines use a different source-backed structure: each already-proven species record contains an evolution-list pointer. The resolver tests aligned pointer fields inside that independently established record ABI, requires one unique field and one unique terminated record ABI, and validates every active target against the same proven species domain. Null pointers and inactive records are empty; malformed, unterminated, out-of-range, or contradictory candidates fail closed.
 
-The existing content-anchor resolver remains a fallback for already-working ROMs. A compiled-consumer result may replace a partial inherited/content result, but it may not replace an existing complete result unless both decode to the same evolution-edge set.
+Both paths decode through the existing `EvolutionCodec`. Empty rows are valid, while malformed active records are never silently discarded. The original content-anchor resolver remains a fallback for already-working ROMs, and the exact first-50 gate requires every previously complete semantic edge hash to remain unchanged.
 
 ## Data flow
 
-`RomAnalysisSession` supplies the ROM, compiled-reference index, and decoded instruction support. The new consumer-layout resolver returns an `EvolutionTableLayout` plus structural provenance. `EvolutionResolver` performs the byte decoding and candidate selection. `DependentDatasetsStrategy` then materializes the selected rows through the existing catalog relationship path; no schema change is required.
+`RomAnalysisSession` supplies the ROM and compiled-reference index. Fixed tables publish the selected typed `TableLayout`; unified-record engines publish a typed `EvolutionTableLayout` backed by the proven species root and stride. `DependentDatasetsStrategy` materializes both through the existing catalog relationship path; no schema change is required.
 
 Production selection uses structural evidence only. ROM names, hashes, source symbols, and exact offsets are permitted only in tests and diagnostics.
 
@@ -79,7 +75,7 @@ For each of the six first-50 ROMs:
 
 For Modern Emerald:
 
-- the derived layout is six-byte records, eight slots per species;
+- the derived layout is source-defined three-`u16` records compiled to eight bytes, eight slots per species;
 - every source-defined active evolution edge matches the source oracle and no extra edge is published;
 - the catalog and reopened SQLite database retain the exact edge set.
 

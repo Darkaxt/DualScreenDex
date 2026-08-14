@@ -303,6 +303,10 @@ class PokemonDatasetValidatorsTest {
             putU16(bytes, edge + 2, 100 + slot)
             putU16(bytes, edge + 4, slot + 1)
         }
+        putU16(bytes, stride + 3 * 8, 0xFFFF)
+        putU16(bytes, stride + 4 * 8, 0xFFFF)
+        putU16(bytes, stride + 4 * 8 + 2, 250)
+        putU16(bytes, stride + 4 * 8 + 4, 900)
 
         val result = PokemonDatasetValidators.gen3EvolutionValidation(
             RomImage(bytes), offset = 0, speciesCount = 4,

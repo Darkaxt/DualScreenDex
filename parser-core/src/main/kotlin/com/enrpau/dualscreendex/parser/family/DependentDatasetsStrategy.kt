@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.family
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionResolver
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionTableLayout
+import com.enrpau.dualscreendex.parser.dataset.evolutions.EmbeddedEvolutionPointerResolver
 import com.enrpau.dualscreendex.parser.dataset.evolutions.ResolvedEvolutionLayout
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetFormat
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetResolver
@@ -93,7 +94,18 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
         } else {
             null
         }
-        val legacyEvolutions = evolutionAndLearnset?.evolutions ?: if (generation == 3) {
+        val embeddedEvolutions = if (generation == 3 && expansion == null) {
+            identity.headerlessUnifiedSpecies?.let { unified ->
+                EmbeddedEvolutionPointerResolver.resolve(
+                    session = session,
+                    metadata = unified.metadata,
+                    speciesCount = unified.speciesCount,
+                )
+            }
+        } else {
+            null
+        }
+        val legacyEvolutions = embeddedEvolutions?.evidence ?: evolutionAndLearnset?.evolutions ?: if (generation == 3) {
             if (expansion != null) {
                 PokeemeraldExpansionResolver.validateEvolutions(rom, expansion)
             } else {
@@ -106,7 +118,9 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
         } else {
             missingEvidence("combined evolution/learnset table not resolved")
         }
-        val evolutionResolution = resolveEvolutions(
+        val evolutionResolution = embeddedEvolutions?.let {
+            ResolvedEvolutionEvidence(it.evidence, it.resolved)
+        } ?: resolveEvolutions(
             session = session,
             generation = generation,
             expansion = expansion != null,

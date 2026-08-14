@@ -40,6 +40,8 @@ class EvolutionCodecTest {
                 condition = 20 + slot,
             )
         }
+        putEvolution(bytes, stride + 3 * 8, method = 0xFFFF, parameter = 0, target = 0, condition = 0)
+        putEvolution(bytes, stride + 4 * 8, method = 0xFFFF, parameter = 250, target = 900, condition = 0)
 
         val outcome = codec.decodeGen3(
             evolutionSession(bytes),
