@@ -125,7 +125,8 @@ Exact established rasters were preserved for:
 - Classic: 100%;
 - Dark Violet: 100%, four regions;
 - Clover: 100%, four regions;
-- Celia's Stupid Romhack: 100%, two regions.
+- Celia's Stupid Romhack: 100%, two regions;
+- Delta Emerald: 100%, exact official-Emerald raster.
 
 Modern Emerald remained 100% with the visually and structurally corrected affine raster described above. Altered Emerald moved from 0% to 100%.
 
