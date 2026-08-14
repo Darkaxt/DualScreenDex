@@ -69,6 +69,7 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
         val priorityOffset = when (abi) {
             MoveDetailsAbi.RETAIL_12 -> RETAIL_PRIORITY_OFFSET
             MoveDetailsAbi.CFRU_16 -> CFRU_PRIORITY_OFFSET
+            MoveDetailsAbi.WIDENED_RETAIL_16 -> WIDENED_RETAIL_PRIORITY_OFFSET
             MoveDetailsAbi.BATTLE_ENGINE_20 -> BATTLE_ENGINE_PRIORITY_OFFSET
             MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
         }
@@ -76,12 +77,16 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
         val splitRaw = when (abi) {
             MoveDetailsAbi.RETAIL_12 -> null
             MoveDetailsAbi.CFRU_16 -> session.rom.u8(recordOffset + CFRU_SPLIT_OFFSET)
+            MoveDetailsAbi.WIDENED_RETAIL_16 -> null
             MoveDetailsAbi.BATTLE_ENGINE_20 -> session.rom.u8(recordOffset + BATTLE_ENGINE_SPLIT_OFFSET)
             MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
         }
         val reasons = buildList {
-            if (typeId !in 0..MAX_TYPE_ID) add("type value $typeId exceeds $MAX_TYPE_ID")
+            if (abi != MoveDetailsAbi.WIDENED_RETAIL_16 && typeId !in 0..MAX_TYPE_ID) {
+                add("type value $typeId exceeds $MAX_TYPE_ID")
+            }
             if (
+                abi != MoveDetailsAbi.WIDENED_RETAIL_16 &&
                 accuracy != ACCURACY_ALWAYS &&
                 (!widened || accuracy != ACCURACY_ENGINE_DEFINED) &&
                 accuracy !in MIN_PERCENT_ACCURACY..MAX_PERCENT
@@ -89,7 +94,9 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
                 add("accuracy value $accuracy is neither always-hit nor $MIN_PERCENT_ACCURACY..$MAX_PERCENT")
             }
             if (pp !in 0..MAX_PP) add("pp value $pp exceeds $MAX_PP")
-            if (secondaryChance !in 0..MAX_PERCENT && secondaryChance != CHANCE_ENGINE_DEFINED) {
+            if (abi != MoveDetailsAbi.WIDENED_RETAIL_16 &&
+                secondaryChance !in 0..MAX_PERCENT && secondaryChance != CHANCE_ENGINE_DEFINED
+            ) {
                 add("secondary-effect chance $secondaryChance is outside 0..$MAX_PERCENT")
             }
             if (priority !in MIN_PRIORITY..MAX_PRIORITY) {
@@ -98,11 +105,24 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
             if (splitRaw != null && MoveSplit.fromRaw(splitRaw) == null) {
                 add("split value $splitRaw is not physical, special, or status")
             }
-            if (abi != MoveDetailsAbi.RETAIL_12 && session.rom.u8(recordOffset + EXTENDED_PADDING_OFFSET) != 0) {
+            if (abi == MoveDetailsAbi.WIDENED_RETAIL_16 &&
+                (session.rom.u8(recordOffset + WIDENED_RETAIL_PADDING_OFFSET) != 0 ||
+                    session.rom.u8(recordOffset + WIDENED_RETAIL_PADDING_OFFSET + 1) != 0)
+            ) {
+                add("widened retail ABI tail padding is nonzero")
+            } else if (abi != MoveDetailsAbi.RETAIL_12 &&
+                abi != MoveDetailsAbi.WIDENED_RETAIL_16 &&
+                session.rom.u8(recordOffset + EXTENDED_PADDING_OFFSET) != 0
+            ) {
                 add("extended ABI padding byte is nonzero")
             }
+            if (abi == MoveDetailsAbi.WIDENED_RETAIL_16 &&
+                session.rom.u8(recordOffset + WIDENED_RETAIL_DANCE_OFFSET) !in 0..1
+            ) {
+                add("widened retail dance flag is not boolean")
+            }
             if (
-                abi != MoveDetailsAbi.RETAIL_12 &&
+                abi != MoveDetailsAbi.RETAIL_12 && abi != MoveDetailsAbi.WIDENED_RETAIL_16 &&
                 session.rom.u16le(recordOffset + POWER_OFFSET) > MAX_WIDENED_POWER
             ) {
                 add("widened power exceeds $MAX_WIDENED_POWER")
@@ -137,6 +157,21 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
                 priority = priority,
                 flags = session.rom.u32le(recordOffset + CFRU_FLAGS_OFFSET),
                 split = requireNotNull(MoveSplit.fromRaw(requireNotNull(splitRaw))),
+                argument = null,
+                zMovePower = null,
+                zMoveEffect = null,
+            )
+            MoveDetailsAbi.WIDENED_RETAIL_16 -> Gen3MoveDetailsRecord(
+                effectId = session.rom.u16le(recordOffset),
+                power = session.rom.u16le(recordOffset + POWER_OFFSET),
+                typeId = typeId,
+                accuracy = accuracy,
+                pp = pp,
+                secondaryEffectChance = secondaryChance,
+                targetMask = session.rom.u16le(recordOffset + WIDENED_RETAIL_TARGET_OFFSET),
+                priority = priority,
+                flags = session.rom.u8(recordOffset + WIDENED_RETAIL_FLAGS_OFFSET).toLong(),
+                split = null,
                 argument = null,
                 zMovePower = null,
                 zMoveEffect = null,
@@ -221,6 +256,11 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
         const val CFRU_PRIORITY_OFFSET = 9
         const val CFRU_SPLIT_OFFSET = 10
         const val CFRU_FLAGS_OFFSET = 12
+        const val WIDENED_RETAIL_TARGET_OFFSET = 8
+        const val WIDENED_RETAIL_PRIORITY_OFFSET = 10
+        const val WIDENED_RETAIL_FLAGS_OFFSET = 11
+        const val WIDENED_RETAIL_DANCE_OFFSET = 13
+        const val WIDENED_RETAIL_PADDING_OFFSET = 14
         const val BATTLE_ENGINE_TARGET_OFFSET = 8
         const val BATTLE_ENGINE_PRIORITY_OFFSET = 10
         const val BATTLE_ENGINE_FLAGS_OFFSET = 12

@@ -268,7 +268,8 @@ object Gen3DynamicTableResolver {
             return Gen3DynamicTableResolution(inherited, inheritedStatsEvidence, standardMoveEvidence)
         }
 
-        val referenced = referencedTargets(rom, speciesCount, moveCount)
+        val maximumMoveTypeId = moveTypeUpperBound(inherited)
+        val referenced = referencedTargets(rom, speciesCount, moveCount, maximumMoveTypeId)
         if (referenced.overflowEvidence != null) {
             return Gen3DynamicTableResolution(
                 tables = inherited.copy(
@@ -305,6 +306,25 @@ object Gen3DynamicTableResolver {
             .filter { it % 4 == 0 }
             .flatMap { offset ->
                 buildList {
+                    if (offset.toLong() + moveCount.toLong() * 16 <= rom.size &&
+                        plausibleWidenedRetailMoveSample(rom, offset, moveCount, maximumMoveTypeId)
+                    ) {
+                        val evidence = TableValidators.widenedRetailMoveData(
+                            rom,
+                            offset,
+                            moveCount,
+                            maximumMoveTypeId,
+                        )
+                        if (evidence.compatible) {
+                            add(
+                                DynamicMoveCandidate(
+                                    evidence,
+                                    references[offset] ?: 0,
+                                    TableRecordFormat.WIDENED_RETAIL_MOVE_16,
+                                ),
+                            )
+                        }
+                    }
                     if (offset.toLong() + moveCount.toLong() * 16 <= rom.size &&
                         plausibleCfruMoveSample(rom, offset, moveCount)
                     ) {
@@ -367,14 +387,21 @@ object Gen3DynamicTableResolver {
         )
     }
 
-    private fun referencedTargets(rom: RomImage, speciesCount: Int, moveCount: Int): ReferencedTargetResolution {
+    private fun referencedTargets(
+        rom: RomImage,
+        speciesCount: Int,
+        moveCount: Int,
+        maximumMoveTypeId: Int,
+    ): ReferencedTargetResolution {
         val counts = HashMap<Int, Int>()
         var qualifiedCandidates = 0
         var offset = 0
         while (offset <= rom.size - 4) {
             val target = rom.gbaPointer(offset)
             if (target != null && target % 4 == 0) {
-                if (target !in counts && !plausibleDynamicTarget(rom, target, speciesCount, moveCount)) {
+                if (target !in counts &&
+                    !plausibleDynamicTarget(rom, target, speciesCount, moveCount, maximumMoveTypeId)
+                ) {
                     offset += 4
                     continue
                 }
@@ -423,11 +450,25 @@ object Gen3DynamicTableResolver {
         return ReferencedTargetResolution(counts.filterValues { it >= 2 })
     }
 
-    private fun plausibleDynamicTarget(rom: RomImage, offset: Int, speciesCount: Int, moveCount: Int): Boolean =
+    private fun plausibleDynamicTarget(
+        rom: RomImage,
+        offset: Int,
+        speciesCount: Int,
+        moveCount: Int,
+        maximumMoveTypeId: Int,
+    ): Boolean =
         (tableFits(rom, offset, speciesCount, 28) &&
             plausibleStatsSample(rom, offset, speciesCount, MAX_PREFILTER_RECORDS)) ||
             (tableFits(rom, offset, moveCount, 16) &&
                 plausibleCfruMoveSample(rom, offset, moveCount, MAX_PREFILTER_RECORDS)) ||
+            (tableFits(rom, offset, moveCount, 16) &&
+                plausibleWidenedRetailMoveSample(
+                    rom,
+                    offset,
+                    moveCount,
+                    maximumMoveTypeId,
+                    MAX_PREFILTER_RECORDS,
+                )) ||
             (tableFits(rom, offset, moveCount, 20) &&
                 plausibleBattleEngineMoveSample(rom, offset, moveCount, MAX_PREFILTER_RECORDS))
 
@@ -535,6 +576,43 @@ object Gen3DynamicTableResolver {
             ) plausible++
         }
         return plausible * 10 >= (sample - 1) * 9 && populated * 5 >= (sample - 1) * 4
+    }
+
+    private fun plausibleWidenedRetailMoveSample(
+        rom: RomImage,
+        offset: Int,
+        count: Int,
+        maximumTypeId: Int,
+        maximumSample: Int = 96,
+    ): Boolean {
+        val sample = minOf(count, maximumSample)
+        if (sample < 4) return false
+        var plausible = 0
+        var populated = 0
+        var flagged = 0
+        for (index in 1 until sample) {
+            val base = offset + index * 16
+            val reserved = (0 until 16).all { rom.u8(base + it) == 0 }
+            if (!reserved) populated++
+            if (rom.u8(base + 11) != 0) flagged++
+            if (reserved || (
+                    rom.u8(base + 4) in 0..maximumTypeId &&
+                        rom.u8(base + 6) in 0..64 &&
+                        rom.u16le(base + 8) <= 0x1FF &&
+                        rom.u8(base + 10).toByte().toInt() in -8..7 &&
+                        rom.u8(base + 13) in 0..1 &&
+                        rom.u8(base + 14) == 0 && rom.u8(base + 15) == 0
+                    )
+            ) plausible++
+        }
+        return plausible * 10 >= (sample - 1) * 9 &&
+            populated * 5 >= (sample - 1) * 4 && flagged > 0
+    }
+
+    internal fun moveTypeUpperBound(tables: ProfileTables): Int {
+        val chartEntries = tables.typeChart?.count ?: return 0xFF
+        val dimension = kotlin.math.sqrt(chartEntries.toDouble()).toInt()
+        return if (dimension in 1..256 && dimension * dimension == chartEntries) dimension - 1 else 0xFF
     }
 
     private fun plausibleBattleEngineMoveSample(rom: RomImage, offset: Int, count: Int, maximumSample: Int = 96): Boolean {

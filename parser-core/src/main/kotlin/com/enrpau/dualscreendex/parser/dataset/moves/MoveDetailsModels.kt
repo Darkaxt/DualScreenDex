@@ -17,6 +17,9 @@ enum class MoveDetailsAbi(
     /** Widened effect/power ABI used by the accepted CFRU/DPE-derived controls. */
     CFRU_16(16, TableRecordFormat.CFRU_MOVE_16),
 
+    /** Widened retail fields with u16 target, byte flags/string/dance fields, and two-byte tail padding. */
+    WIDENED_RETAIL_16(16, TableRecordFormat.WIDENED_RETAIL_MOVE_16),
+
     /** Later Battle Engine ABI with u16 target, u32 flags, split, and Z-move metadata. */
     BATTLE_ENGINE_20(20, TableRecordFormat.BATTLE_ENGINE_MOVE_20),
 
@@ -161,15 +164,24 @@ class ResolvedMoveDetailsLayout(
         materializedRecords.mapValues { (_, record) ->
             CatalogMoveDetails(
                 typeId = record.typeId,
-                category = when (record.split) {
-                    MoveSplit.PHYSICAL -> MoveCategory.PHYSICAL
-                    MoveSplit.SPECIAL -> MoveCategory.SPECIAL
-                    MoveSplit.STATUS -> MoveCategory.STATUS
-                    null -> when {
+                category = if (table.abi == MoveDetailsAbi.WIDENED_RETAIL_16) {
+                    when {
                         record.power == 0 -> MoveCategory.STATUS
-                        record.typeId in 0..8 -> MoveCategory.PHYSICAL
-                        record.typeId in 10..17 -> MoveCategory.SPECIAL
+                        record.typeId < 12 -> MoveCategory.PHYSICAL
+                        record.typeId > 12 -> MoveCategory.SPECIAL
                         else -> MoveCategory.UNKNOWN
+                    }
+                } else {
+                    when (record.split) {
+                        MoveSplit.PHYSICAL -> MoveCategory.PHYSICAL
+                        MoveSplit.SPECIAL -> MoveCategory.SPECIAL
+                        MoveSplit.STATUS -> MoveCategory.STATUS
+                        null -> when {
+                            record.power == 0 -> MoveCategory.STATUS
+                            record.typeId in 0..8 -> MoveCategory.PHYSICAL
+                            record.typeId in 10..17 -> MoveCategory.SPECIAL
+                            else -> MoveCategory.UNKNOWN
+                        }
                     }
                 },
                 power = record.power,

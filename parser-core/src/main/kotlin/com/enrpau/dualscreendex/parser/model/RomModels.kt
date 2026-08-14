@@ -81,6 +81,7 @@ data class TableLayout(
 enum class TableRecordFormat {
     STANDARD,
     CFRU_MOVE_16,
+    WIDENED_RETAIL_MOVE_16,
     BATTLE_ENGINE_MOVE_20,
     UNIFIED_MOVE_INFO_48,
     GEN3_PACKED_U16,

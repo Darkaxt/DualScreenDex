@@ -177,6 +177,7 @@ class MoveDetailsCodecTest {
             when (abi) {
                 MoveDetailsAbi.RETAIL_12 -> putRetailMove(bytes, 7)
                 MoveDetailsAbi.CFRU_16 -> putCfruMove(bytes, 7)
+                MoveDetailsAbi.WIDENED_RETAIL_16 -> putWidenedRetailMove(bytes, 7)
                 MoveDetailsAbi.BATTLE_ENGINE_20 -> putBattleEngineMove(bytes, 7)
                 MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> putUnifiedMoveInfo(bytes, 7)
             }
@@ -187,6 +188,19 @@ class MoveDetailsCodecTest {
                 ) is MoveDetailsTableOutcome.Decoded,
             )
         }
+    }
+
+    private fun putWidenedRetailMove(bytes: ByteArray, offset: Int) {
+        bytes[offset] = 43
+        bytes[offset + 2] = 60
+        bytes[offset + 4] = 33
+        bytes[offset + 5] = 100
+        bytes[offset + 6] = 35
+        bytes[offset + 8] = 0x10
+        bytes[offset + 9] = 0x01
+        bytes[offset + 10] = 0
+        bytes[offset + 11] = 0x33
+        bytes[offset + 13] = 1
     }
 
     private fun decodedRow(bytes: ByteArray, layout: MoveDetailsTableLayout): Gen3MoveDetailsRecord {

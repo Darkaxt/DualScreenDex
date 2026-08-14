@@ -574,6 +574,74 @@ object TableValidators {
         )
     }
 
+    /**
+     * Validates the widened retail BattleMove ABI used by source-derived engines that retain
+     * byte flags/string/dance fields and align each record to 16 bytes. The independently
+     * resolved type-chart cardinality supplies the type domain; the final invalid row may only
+     * trim when it is the sole suffix after a complete populated prefix.
+     */
+    fun widenedRetailMoveData(
+        rom: RomImage,
+        offset: Int,
+        count: Int,
+        maximumTypeId: Int,
+    ): ValidationEvidence = safely(offset, 16, count) {
+        val plausible = BooleanArray(count)
+        var populated = 0
+        var flagged = 0
+        repeat(count) { index ->
+            val base = offset + index * 16
+            val reserved = (0 until 16).all { rom.u8(base + it) == 0 }
+            if (!reserved) populated++
+            if (rom.u8(base + 11) != 0) flagged++
+            plausible[index] = reserved || (
+                rom.u8(base + 4) in 0..maximumTypeId &&
+                    rom.u8(base + 6) in 0..64 &&
+                    rom.u16le(base + 8) <= 0x1FF &&
+                    rom.u8(base + 10).toByte().toInt() in -8..7 &&
+                    rom.u8(base + 13) in 0..1 &&
+                    rom.u8(base + 14) == 0 &&
+                    rom.u8(base + 15) == 0
+                )
+        }
+        val firstInvalid = plausible.indexOfFirst { !it }
+        if (firstInvalid == count - 1 && firstInvalid > 1 &&
+            plausible.copyOfRange(0, firstInvalid).all { it } && flagged > 0 &&
+            populated - 1 >= firstInvalid - 1
+        ) {
+            return@safely ValidationEvidence(
+                compatible = true,
+                validRecords = firstInvalid,
+                totalRecords = firstInvalid,
+                confidence = 1.0,
+                reasons = listOf(
+                    "trimmed one non-record suffix after a complete widened retail move table",
+                ),
+                offset = offset,
+                recordSize = 16,
+            )
+        }
+        val valid = plausible.count { it }
+        val populatedRatio = populated.toDouble() / (count - 1).coerceAtLeast(1)
+        val compatible = valid == count && populatedRatio >= 0.80 && flagged > 0
+        ValidationEvidence(
+            compatible = compatible,
+            validRecords = valid,
+            totalRecords = count,
+            confidence = minOf(valid.toDouble() / count.coerceAtLeast(1), populatedRatio),
+            reasons = if (compatible) {
+                listOf("validated widened retail move records with byte flags and aligned tail padding")
+            } else {
+                listOf(
+                    "plausible widened retail move records $valid/$count; " +
+                        "populated $populated/${(count - 1).coerceAtLeast(1)}; flagged=$flagged",
+                )
+            },
+            offset = offset,
+            recordSize = 16,
+        )
+    }
+
     /** Validates the later 20-byte Battle Engine move ABI with flags, split, and Z-move fields. */
     fun battleEngineMoveData(
         rom: RomImage,

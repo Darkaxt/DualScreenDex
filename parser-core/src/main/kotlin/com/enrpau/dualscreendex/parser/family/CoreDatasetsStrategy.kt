@@ -241,6 +241,13 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 TableValidators.pokeemeraldExpansionMoveData(rom, it, inferredMoveCount ?: it.count)
             } else if (it.format == TableRecordFormat.CFRU_MOVE_16) {
                 TableValidators.cfruMoveData(rom, it.offset, inferredMoveCount ?: it.count)
+            } else if (it.format == TableRecordFormat.WIDENED_RETAIL_MOVE_16) {
+                TableValidators.widenedRetailMoveData(
+                    rom,
+                    it.offset,
+                    inferredMoveCount ?: it.count,
+                    Gen3DynamicTableResolver.moveTypeUpperBound(tables),
+                )
             } else if (it.format == TableRecordFormat.BATTLE_ENGINE_MOVE_20) {
                 TableValidators.battleEngineMoveData(rom, it.offset, inferredMoveCount ?: it.count)
             } else {

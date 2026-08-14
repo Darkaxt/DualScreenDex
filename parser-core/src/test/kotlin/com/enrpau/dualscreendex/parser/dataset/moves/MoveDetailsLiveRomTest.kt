@@ -55,7 +55,7 @@ class MoveDetailsLiveRomTest {
         assertEquals(2, requireNotNull(parsed.catalog).learnsetRulesets.size)
     }
 
-    @Test fun celiaNeverPublishesItsInvalidCfruTailAsMoveDetails() {
+    @Test fun celiaPublishesItsCompleteWidenedRetailMoveDetailsWithoutTheAdjacentPointerTail() {
         val parsed = parse(
             "DUALDEX_CELIA_ROM",
             "81ac9b9d4e7bdd3bf06ed53954d784118a743372906c6c6fc62b3cbc19587148",
@@ -63,32 +63,71 @@ class MoveDetailsLiveRomTest {
         val layout = requireNotNull(parsed.layout)
         val selected = requireNotNull(layout.tables.moveData)
         assertEquals(0x73E7EC, selected.offset)
-        assertEquals(1190, selected.count)
+        assertEquals(1189, selected.count)
         assertEquals(16, selected.recordSize)
-        assertEquals(TableRecordFormat.CFRU_MOVE_16, selected.format)
+        assertEquals(TableRecordFormat.WIDENED_RETAIL_MOVE_16, selected.format)
 
         val catalog = requireNotNull(parsed.catalog)
         assertFalse(catalog.movesById.containsKey(0))
-        // The prior raw 16-byte reinterpretation published a contaminated tail. The selected
-        // typed codec truthfully rejects the complete table rather than inventing those details.
-        assertNull(layout.resolvedDatasets.moveDetails)
+        val typed = requireNotNull(layout.resolvedDatasets.moveDetails)
+        assertEquals(MoveDetailsAbi.WIDENED_RETAIL_16, typed.table.abi)
+        assertEquals(1189L, typed.table.count)
         val capability = parsed.analysis.capabilities.single { it.capability == RomCapability.MOVE_DETAILS }
-        assertEquals(CapabilityStatus.NOT_FOUND, capability.status)
-        assertFalse(capability.compatible)
-        assertTrue(capability.reasons.any { it.contains("typed", ignoreCase = true) })
+        assertEquals(CapabilityStatus.AVAILABLE, capability.status)
+        assertTrue(capability.compatible)
         assertEquals(1188, catalog.movesById.size)
         assertFalse(catalog.movesById.containsKey(0))
         assertFalse(catalog.movesById.containsKey(1189))
         assertEquals((1..1188).toSet(), catalog.movesById.keys)
         assertTrue(catalog.movesById.values.all { it.name.value?.any(Char::isLetterOrDigit) == true })
-        catalog.movesById.values.forEach { move ->
-            listOf(move.typeId, move.category, move.power, move.accuracy, move.pp, move.priority, move.effectId)
-                .forEach { assertEquals(CapabilityStatus.NOT_FOUND, it.status) }
-        }
+        val pound = catalog.movesById.getValue(1)
+        assertEquals(0, pound.typeId.value)
+        assertEquals(com.enrpau.dualscreendex.parser.catalog.MoveCategory.PHYSICAL, pound.category.value)
+        assertEquals(60, pound.power.value)
+        assertEquals(100, pound.accuracy.value)
+        assertEquals(35, pound.pp.value)
+        assertEquals(0, pound.priority.value)
+        assertEquals(0, pound.effectId.value)
+        val customSpecial = catalog.movesById.getValue(327)
+        assertEquals(33, customSpecial.typeId.value)
+        assertEquals(com.enrpau.dualscreendex.parser.catalog.MoveCategory.SPECIAL, customSpecial.category.value)
+        assertEquals(85, customSpecial.power.value)
+        assertEquals(238, catalog.movesById.getValue(78).accuracy.value)
+        assertEquals(30000, catalog.movesById.getValue(638).power.value)
+        assertEquals(com.enrpau.dualscreendex.parser.catalog.MoveCategory.UNKNOWN, catalog.movesById.getValue(497).category.value)
+        assertEquals(
+            "3661acf5995ddc1ba16c0722e10decac17a1f31563e6db89aaa75a7758193105",
+            moveSha256(catalog.movesById.values),
+        )
         assertNoUnknownLearnsetMoves(catalog.movesById.keys, catalog.speciesById.values.flatMap {
             it.learnset.value.orEmpty().map { entry -> entry.moveId }
         })
-        println("MOVE_DETAILS_CELIA typed=false moves=${catalog.movesById.size} contaminatedTailRejected=true")
+        println("MOVE_DETAILS_CELIA typed=true moves=${catalog.movesById.size} adjacentTailRejected=true")
+    }
+
+    @Test fun celiaFailsClosedWhenARealActiveRecordViolatesItsAlignedTail() {
+        val configured = System.getenv("DUALDEX_CELIA_ROM")
+        assumeTrue("set DUALDEX_CELIA_ROM to run this live-ROM regression", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        val bytes = Files.readAllBytes(path)
+        assertEquals(
+            "81ac9b9d4e7bdd3bf06ed53954d784118a743372906c6c6fc62b3cbc19587148",
+            MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
+                "%02x".format(byte.toInt() and 0xFF)
+            },
+        )
+        bytes[0x73E7EC + 16 + 14] = 1
+
+        val parsed = CatalogParser.parse(RomImage(bytes))
+        val layout = requireNotNull(parsed.layout)
+        assertNull(layout.resolvedDatasets.moveDetails)
+        val capability = parsed.analysis.capabilities.single { it.capability == RomCapability.MOVE_DETAILS }
+        assertEquals(CapabilityStatus.NOT_FOUND, capability.status)
+        assertFalse(capability.compatible)
+        requireNotNull(parsed.catalog).movesById.values.forEach { move ->
+            listOf(move.typeId, move.category, move.power, move.accuracy, move.pp, move.priority, move.effectId)
+                .forEach { assertEquals(CapabilityStatus.NOT_FOUND, it.status) }
+        }
     }
 
     @Test fun deltaKeepsItsNameOnlyCatalogWithoutASelectedDetailOutcome() {
