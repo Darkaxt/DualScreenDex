@@ -345,9 +345,13 @@ object CatalogMaterializer {
                 status = if (layout.generation == 3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
             )
         }
+        val encounterAreaIdStride = if (layout.pokeemeraldExpansion == null) 10 else 100
         val worldMapResolution = if (layout.generation in 1..3 && resolveWorldMap != null) {
             try {
-                resolveWorldMap(layout.generation, encounters.mapTo(linkedSetOf()) { it.id / 10 }).also { resolution ->
+                resolveWorldMap(
+                    layout.generation,
+                    encounters.mapTo(linkedSetOf()) { it.id / encounterAreaIdStride },
+                ).also { resolution ->
                     if (resolution is WorldMapResolution.Resolved) resolution.catalog.validate()
                 }
             } catch (failure: Exception) {

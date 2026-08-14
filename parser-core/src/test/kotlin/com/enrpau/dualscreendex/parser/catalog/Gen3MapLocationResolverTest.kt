@@ -35,6 +35,39 @@ class Gen3MapLocationResolverTest {
     }
 
     @Test
+    fun retainsNamedOffMapSentinelEntriesAsTableAuthority() {
+        val bytes = ByteArray(0x1000)
+        putPointer(bytes, 0x210, 0x200)
+        putPointer(bytes, 0x214, 0x20C)
+        putPointer(bytes, 0x200, 0x300)
+        putPointer(bytes, 0x204, 0x31C)
+        putPointer(bytes, 0x208, 0x338)
+        putPointer(bytes, 0x20C, 0x354)
+        writeMapHeader(bytes, 0x300, 0)
+        writeMapHeader(bytes, 0x31C, 1)
+        writeMapHeader(bytes, 0x338, 2)
+        writeMapHeader(bytes, 0x354, 3)
+        writeRegionEntry(bytes, 0x600, 0, 0x700, "Oldale Town")
+        writeRegionEntry(bytes, 0x600, 1, 0x720, "Dark Cave")
+        writeRegionEntry(bytes, 0x600, 2, 0x740, "Littleroot Town")
+        writeRegionEntry(bytes, 0x600, 3, 0x760, "Route 101")
+        bytes[0x608] = 0xFF.toByte()
+        bytes[0x609] = 0xFF.toByte()
+        putPointer(bytes, 0x900, 0x600)
+
+        val names = Gen3MapLocationResolver.resolve(
+            RomImage(bytes),
+            setOf(0x0000, 0x0001, 0x0002, 0x0100),
+        )
+
+        assertEquals("Oldale Town", names[0x0000])
+        assertEquals("Dark Cave", names[0x0001])
+        assertEquals("Littleroot Town", names[0x0002])
+        assertEquals("Route 101", names[0x0100])
+        assertEquals(4, names.size)
+    }
+
+    @Test
     fun returnsNoNamesWhenEncounterKeysDoNotProveOneMapGroupsRoot() {
         assertTrue(Gen3MapLocationResolver.resolve(RomImage(ByteArray(0x400)), setOf(0x0000)).isEmpty())
     }

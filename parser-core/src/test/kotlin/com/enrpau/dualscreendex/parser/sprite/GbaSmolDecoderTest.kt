@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.sprite
 import com.enrpau.dualscreendex.parser.io.RomImage
 import java.util.Base64
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
@@ -64,6 +65,27 @@ class GbaSmolDecoderTest {
         val expected = ByteArray(640) { index -> (((index / 32) * 17 + index % 7) % 256).toByte() }
 
         assertArrayEquals(expected, GbaSmolDecoder.decode(compressed))
+    }
+
+    @Test
+    fun decodesDeltaTilemapReferenceStream() {
+        val compressed = byteArrayOf(
+            0x88.toByte(), 0x00, 0x10, 0x00,
+            0x02, 0x00, 0x00, 0x00,
+            0x01, 0x00, 0x01, 0x00,
+            0x01, 0x00, 0x01, 0x00,
+            0x00, 0x04, 0x00, 0x00,
+        )
+
+        assertEquals(8, GbaSmolDecoder.decodedSize(compressed))
+        assertEquals(compressed.size, GbaSmolDecoder.encodedLength(compressed))
+        assertArrayEquals(
+            byteArrayOf(1, 0, 2, 0, 3, 0, 4, 0),
+            GbaSmolDecoder.decode(compressed),
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            GbaSmolDecoder.decode(compressed.copyOf(17))
+        }
     }
 
     @Test

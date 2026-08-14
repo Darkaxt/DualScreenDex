@@ -39,7 +39,7 @@ Use this workflow when a Gen III ROM scores 0% for world maps. The objective is 
 11. Complete map-header and encounter/base-area joins. Reject any published region with no bindings.
 12. Export parser-produced PNGs and inspect them visually.
 13. Run two fresh parses and compare the entire deterministic projection.
-14. Run exact raster controls for FireRed, LeafGreen, Dark Violet, Clover, and Dreamstone, plus affine controls such as Classic. Investigate every regression from its real ROM/source.
+14. Run exact raster controls for FireRed, LeafGreen, Dark Violet, Clover, Dreamstone, Battle Theater, and Blazed Glazed, plus affine controls such as Classic. Investigate every regression from its real ROM/source.
 15. Only then port the generic rule to the current production parser, commit, and push.
 
 ## Thumb branch ownership pattern
@@ -80,6 +80,34 @@ Require 64-byte-aligned 8bpp graphics, prove every referenced tile and palette i
 
 Do not require a valid map root to have exactly one global function owner. Normal and fly loaders may share a tilemap while using different graphics formats. Evaluate map uniqueness inside the specific function shared by the candidate map and graphics. Cross-format pairing must still fail structural coverage; Dreamstone's fly graphics expose only 120 tiles when interpreted as 8bpp, while the raw map references tile 120 and above.
 
+## SMOL tilemap mode 8
+
+pokeemerald-expansion can encode affine tilemaps with SMOL mode 8 rather than GBA LZ77 or graphics SMOL modes 1 through 6. The first header word retains the decoded byte length and u16-symbol count; the second word is the instruction-vector byte count. The payload is:
+
+1. a little-endian u16 symbol vector;
+2. four-byte alignment;
+3. the ordinary SMOL copy/literal instruction vector;
+4. final four-byte stream alignment.
+
+Expand the instruction vector with the u16 symbols, then cumulatively delta-decode every output u16 modulo 65536. Bound and validate the encoded length before reading either vector. Prove the implementation against raw streams and exact source-generated `.bin` products before adding a small synthetic mechanic test.
+
+## Table-driven multi-region loaders
+
+A loader may reference one indexed data table instead of loading map, graphics, and palette roots directly. Treat a table as authoritative only when a compiled-reference root exposes at least two contiguous records and every record satisfies the full ABI. Battle Theater demonstrated a 28-byte record with:
+
+- dex map, graphics, and palette pointers;
+- region map, graphics, and palette pointers;
+- a complete palette-byte count;
+- zero alignment padding.
+
+Require all six pointers to remain in ROM, decode and validate both compressed halves, prove map tile coverage and palette-bank coverage, and compose every region-side asset. Do not require table-contained assets to have their own Thumb literal sites. Stop at the first invalid record and reject duplicate region bundles.
+
+The corresponding semantic authority can be a compiled consumer referencing one contiguous array per table slot. Battle Theater uses five single-layer 28×15 u8 planes with a dominant `MAPSEC_NONE` sentinel. Require the exact region count, contiguous plane storage, one shared Thumb function owner, non-overlapping section ownership, and encounter-bound coverage. Compiler/linker output stores these planes in reverse address order relative to the table slots; accept that association only as part of the complete count/contiguity/function contract. Compose and visually inspect every table asset, but publish only regions that retain encounter bindings.
+
+## Expansion encounter base IDs
+
+The expansion encounter materializer encodes time-specific areas as `baseAreaId * 100 + time * 10 + method`, while ordinary Gen III areas use `baseAreaId * 10 + method`. Normalize with the stride selected by the already-resolved expansion ABI before invoking map-header joins. Dividing expansion IDs by ten invents false group IDs and makes a valid `gMapGroups[group][map]` consumer appear broken.
+
 ## Compiled map-group consumers
 
 Compilers can express `gMapGroups[group][map]` with direct register-indexed loads instead of explicit address additions. One valid u16-argument form loads the root into `r3`, zero-extends and scales `r0` and `r1` by four, then performs `ldr r3, [r0, r3]` and `ldr r0, [r1, r3]` before `bx lr`.
@@ -88,12 +116,13 @@ Match the complete function shape, calculate the PC-relative literal from the ac
 
 ## Explicit region-entry states
 
-After a compiled map-group root establishes the required section IDs, a referenced region-table record can be either:
+After a compiled map-group root establishes the required section IDs, a referenced region-table record can be:
 
-- a complete bounded geometry shell with a terminated valid name; or
+- a complete bounded geometry shell with a terminated valid name;
+- a named off-map record whose `x` and `y` are both `0xFF`, preserving section identity without publishable geometry; or
 - exactly eight zero bytes, meaning explicitly absent and unbindable.
 
-A nonzero malformed record still invalidates the candidate table. Keep at least three ordinary alphanumeric entries as authority anchors before selecting by compiled reference count. Once the table is authoritative, retain valid nonblank punctuation-only names such as `???`; punctuation is not evidence against a source-defined name.
+A nonzero malformed record still invalidates the candidate table. Reject a half-sentinel where only one coordinate is `0xFF`, and retain the ordinary width, height, pointer, termination, and text-quality checks for a complete sentinel record. Keep at least three ordinary alphanumeric entries as authority anchors before selecting by compiled reference count. Once the table is authoritative, retain valid nonblank punctuation-only names such as `???`; punctuation is not evidence against a source-defined name. Off-map sentinels may name encounter areas such as caves, but they must not produce out-of-bounds world-map geometry.
 
 ## False-positive defense
 

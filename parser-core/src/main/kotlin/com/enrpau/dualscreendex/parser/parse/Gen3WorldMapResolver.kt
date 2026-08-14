@@ -21,15 +21,28 @@ object Gen3WorldMapResolver {
         val references = session.gbaReferenceIndex
             ?: return WorldMapResolution.Unavailable("asset-loader", "compiled GBA references are unavailable")
         references.overflowReason?.let { return WorldMapResolution.BudgetExceeded("asset-loader", it) }
+        var phaseStarted = System.nanoTime()
         val functionIndex = ThumbFunctionIndex.build(session.rom, references)
+        mapTrace("timing functionIndexMs=${elapsedMillis(phaseStarted)}")
+        phaseStarted = System.nanoTime()
         val streams = decodeReferencedStreams(session.rom, references)
+        mapTrace("timing streamsMs=${elapsedMillis(phaseStarted)}")
+        phaseStarted = System.nanoTime()
         val eightBpp = eightBppCandidates(session.rom, references, functionIndex, streams)
+        mapTrace("timing eightBppMs=${elapsedMillis(phaseStarted)}")
+        phaseStarted = System.nanoTime()
+        val tableEightBpp = tableDrivenEightBppCandidates(session.rom, references)
+        mapTrace("timing tableEightBppMs=${elapsedMillis(phaseStarted)}")
+        phaseStarted = System.nanoTime()
         val text = textCandidates(session.rom, references, functionIndex, streams)
+        mapTrace("timing textMs=${elapsedMillis(phaseStarted)}")
         mapTrace(
-            "summary streams=${streams.size} eightBpp=${eightBpp.size} text=${text.size} " +
+            "summary streams=${streams.size} eightBpp=${eightBpp.size} " +
+                "tableEightBpp=${tableEightBpp.size} text=${text.size} " +
                 "referenceSites=${functionIndex.analyzedSiteCount}",
         )
-        if (eightBpp.isNotEmpty() && text.isNotEmpty()) {
+        val eligibleFormats = listOf(eightBpp, tableEightBpp, text).count { it.isNotEmpty() }
+        if (eligibleFormats > 1) {
             return WorldMapResolution.Ambiguous(
                 "asset-loader",
                 "multiple proven world-map loader formats remained eligible",
@@ -37,6 +50,13 @@ object Gen3WorldMapResolver {
         }
         val resolution = when {
             eightBpp.isNotEmpty() -> resolve8Bpp(session.rom, encounterBaseIds, references, eightBpp)
+            tableEightBpp.isNotEmpty() -> resolveTableEightBpp(
+                session.rom,
+                encounterBaseIds,
+                references,
+                functionIndex,
+                tableEightBpp,
+            )
             text.isNotEmpty() -> resolveText(session.rom, encounterBaseIds, references, functionIndex, text)
             else -> WorldMapResolution.Unavailable(
                 "asset-loader",
@@ -96,6 +116,102 @@ object Gen3WorldMapResolver {
             listOf(
                 "validated one 8bpp loader asset cluster",
                 "resolved ${normalized.size} encounter-bound semantic locations",
+            ),
+        )
+    }
+
+    private fun resolveTableEightBpp(
+        rom: RomImage,
+        encounterBaseIds: Set<Int>,
+        references: GbaReferenceIndex,
+        functionIndex: ThumbFunctionIndex,
+        candidates: List<TableAssetCandidate>,
+    ): WorldMapResolution {
+        val winner = candidates.singleOrNull()
+            ?: return WorldMapResolution.Ambiguous(
+                "asset-loader",
+                "${candidates.size} table-driven 8bpp asset clusters remained",
+            )
+        if (winner.regions.map(TableRegionAsset::slot) != (0 until winner.regions.size).toList()) {
+            return WorldMapResolution.Unavailable(
+                "map-plane",
+                "table-driven 8bpp cluster did not expose contiguous regions",
+            )
+        }
+        val semanticCandidates = resolveTableSemanticLayouts(
+            rom,
+            references,
+            functionIndex,
+            winner.regions.size,
+        )
+        val sectionByBaseArea = Gen3MapLocationResolver.resolveSectionByBaseArea(
+            rom,
+            encounterBaseIds,
+            references,
+        )
+        if (sectionByBaseArea.isEmpty()) {
+            return WorldMapResolution.Unavailable(
+                "map-header-join",
+                "encounter map headers did not resolve a semantic section join",
+            )
+        }
+        val baseAreasBySection = sectionByBaseArea.entries.groupBy({ it.value }, { it.key })
+        mapTrace(
+            "table-bindings semanticCandidates=${semanticCandidates.size} sections=${baseAreasBySection.size} " +
+                "perRegion=${semanticCandidates.joinToString { candidate ->
+                    candidate.joinToString(prefix = "[", postfix = "]") { layout ->
+                        textLocations(layout, baseAreasBySection).size.toString()
+                    }
+                }}",
+        )
+        val layoutWinner = semanticCandidates.filter { candidate ->
+            candidate.any { layout -> textLocations(layout, baseAreasBySection).isNotEmpty() }
+        }.let { eligible ->
+            val maximumBindings = eligible.maxOfOrNull { candidate ->
+                candidate.sumOf { layout -> textLocations(layout, baseAreasBySection).size }
+            }
+            maximumBindings?.let { count ->
+                eligible.filter { candidate ->
+                    candidate.sumOf { layout -> textLocations(layout, baseAreasBySection).size } == count
+                }.singleOrNull()
+            }
+        } ?: return WorldMapResolution.Unavailable(
+            "map-plane",
+            "table-driven semantic section planes did not resolve uniquely",
+        )
+
+        val regions = mutableListOf<WorldMapRegion>()
+        val assets = linkedMapOf<String, com.enrpau.dualscreendex.parser.catalog.RgbaSprite>()
+        winner.regions.zip(layoutWinner).forEach { (regionAsset, layout) ->
+            val slot = regionAsset.slot
+            val locations = textLocations(layout, baseAreasBySection)
+            if (locations.isEmpty()) return@forEach
+            val regionKey = "gen3-region-$slot"
+            val assetKey = "world/$regionKey"
+            val composition = regionAsset.asset.composition
+            regions += WorldMapRegion(
+                regionKey,
+                null,
+                composition.raster.width,
+                composition.raster.height,
+                composition.gridWidth,
+                composition.gridHeight,
+                assetKey,
+                locations,
+            )
+            assets[assetKey] = composition.raster
+        }
+        if (regions.isEmpty()) {
+            return WorldMapResolution.Unavailable(
+                "encounter-binding",
+                "table-driven 8bpp regions retained no encounter binding",
+            )
+        }
+        return WorldMapResolution.Resolved(
+            WorldMapCatalog(regions, assets).validate(),
+            listOf(
+                "validated one table-driven 8bpp loader cluster with ${winner.regions.size} regions",
+                "published ${regions.size} region(s) with compiled semantic planes and encounter bindings",
             ),
         )
     }
@@ -346,6 +462,183 @@ object Gen3WorldMapResolver {
                 }
             }
         }.distinctBy(AssetCandidate::identity)
+    }
+
+    private fun tableDrivenEightBppCandidates(
+        rom: RomImage,
+        references: GbaReferenceIndex,
+    ): List<TableAssetCandidate> = references.targets.keys.mapNotNull { root ->
+        val evidence = references.target(root) ?: return@mapNotNull null
+        if (!evidence.siteEvidenceAvailable || evidence.instructionSites.size < MIN_TABLE_REFERENCE_SITES) {
+            return@mapNotNull null
+        }
+        tableDrivenEightBppCandidateAt(rom, root)
+    }.distinctBy(TableAssetCandidate::identity)
+
+    private fun tableDrivenEightBppCandidateAt(
+        rom: RomImage,
+        root: Int,
+    ): TableAssetCandidate? {
+        if (root and 3 != 0) return null
+        repeat(MIN_TABLE_REGION_COUNT) { slot ->
+            val recordOffset = root.toLong() + slot.toLong() * REGION_MAP_INFO_BYTES
+            if (
+                recordOffset < 0 ||
+                recordOffset + REGION_MAP_INFO_BYTES > rom.size.toLong() ||
+                tableRecordShellAt(rom, recordOffset.toInt()) == null
+            ) return null
+        }
+        val regions = buildList {
+            repeat(MAX_TABLE_REGION_COUNT) { slot ->
+                val recordOffset = root.toLong() + slot.toLong() * REGION_MAP_INFO_BYTES
+                if (recordOffset < 0 || recordOffset + REGION_MAP_INFO_BYTES > rom.size.toLong()) {
+                    return@buildList
+                }
+                val region = tableDrivenEightBppRegionAt(rom, recordOffset.toInt(), slot)
+                    ?: return@buildList
+                add(region)
+            }
+        }
+        if (regions.size < MIN_TABLE_REGION_COUNT) return null
+        if (regions.map { it.asset.identity }.distinct().size != regions.size) return null
+        mapTrace(
+            "table-8bpp root=0x${root.toString(16)} regions=${regions.size} " +
+                "maps=${regions.joinToString { "0x${it.asset.mapOffset.toString(16)}" }}",
+        )
+        return TableAssetCandidate(root, regions)
+    }
+
+    private fun tableRecordShellAt(
+        rom: RomImage,
+        recordOffset: Int,
+    ): TableRecordShell? {
+        if (recordOffset < 0 || recordOffset.toLong() + REGION_MAP_INFO_BYTES > rom.size.toLong()) return null
+        val fields = IntArray(REGION_MAP_INFO_POINTER_COUNT) { index ->
+            romPointerAtOrNull(rom, recordOffset + index * 4) ?: return null
+        }
+        val compressed = setOf(
+            fields[DEX_MAP_FIELD],
+            fields[DEX_GRAPHICS_FIELD],
+            fields[REGION_MAP_FIELD],
+            fields[REGION_GRAPHICS_FIELD],
+        )
+        if (
+            fields[DEX_MAP_FIELD] == fields[DEX_GRAPHICS_FIELD] ||
+            fields[REGION_MAP_FIELD] == fields[REGION_GRAPHICS_FIELD] ||
+            fields[DEX_PALETTE_FIELD] in compressed ||
+            fields[REGION_PALETTE_FIELD] in compressed
+        ) return null
+        val paletteBytes = rom.u16le(recordOffset + REGION_MAP_INFO_PALETTE_SIZE_OFFSET)
+        if (
+            paletteBytes !in MIN_TABLE_PALETTE_BYTES..MAX_TABLE_PALETTE_BYTES ||
+            paletteBytes % BYTES_PER_PALETTE_BANK != 0 ||
+            rom.u16le(recordOffset + REGION_MAP_INFO_PADDING_OFFSET) != 0
+        ) return null
+        return TableRecordShell(fields, paletteBytes)
+    }
+
+    private fun tableDrivenEightBppRegionAt(
+        rom: RomImage,
+        recordOffset: Int,
+        slot: Int,
+    ): TableRegionAsset? {
+        val shell = tableRecordShellAt(rom, recordOffset) ?: return null
+        val fields = shell.fields
+        val paletteBytes = shell.paletteBytes
+        mapTrace(
+            "table-record-shape slot=$slot record=0x${recordOffset.toString(16)} " +
+                "paletteBytes=$paletteBytes",
+        )
+
+        val dexMap = decodeTableStream(rom, fields[DEX_MAP_FIELD]) ?: return null
+        val dexGraphics = decodeTableStream(rom, fields[DEX_GRAPHICS_FIELD]) ?: return null
+        val regionMap = decodeTableStream(rom, fields[REGION_MAP_FIELD]) ?: return null
+        val regionGraphics = decodeTableStream(rom, fields[REGION_GRAPHICS_FIELD]) ?: return null
+        mapTrace(
+            "table-record-streams slot=$slot record=0x${recordOffset.toString(16)} " +
+                "dexMap=${dexMap.decoded.size} dexGfx=${dexGraphics.decoded.size} " +
+                "map=${regionMap.decoded.size} gfx=${regionGraphics.decoded.size}",
+        )
+        val dexPalette = readPalette(rom, fields[DEX_PALETTE_FIELD], paletteBytes / 2) ?: return null
+        val regionPalette = readPalette(rom, fields[REGION_PALETTE_FIELD], paletteBytes / 2) ?: return null
+        if (
+            !validAffine8BppAsset(dexGraphics.decoded, dexMap.decoded, dexPalette.colors.size) ||
+            regionMap.decoded.size != AFFINE_MAP_BYTES ||
+            regionGraphics.decoded.isEmpty() ||
+            regionGraphics.decoded.size % AFFINE_TILE_BYTES != 0 ||
+            !paletteCovers8BppGraphics(regionGraphics.decoded, regionPalette.colors.size)
+        ) return null
+
+        val regionComposition = GbaWorldMapCompositor.compose(
+            regionGraphics.decoded,
+            regionMap.decoded,
+            regionPalette.colors,
+        )
+        mapTrace(
+            "table-record-compose slot=$slot record=0x${recordOffset.toString(16)} " +
+                "dex=validated region=${compositionTrace(regionComposition)}",
+        )
+        if (
+            regionComposition !is GbaWorldMapComposition.Resolved ||
+            regionComposition.format != GbaWorldMapFormat.AFFINE_8BPP_64X64
+        ) return null
+
+        mapTrace(
+            "table-8bpp-region slot=$slot record=0x${recordOffset.toString(16)} " +
+                "dexMap=0x${dexMap.offset.toString(16)} dexGfx=0x${dexGraphics.offset.toString(16)} " +
+                "map=0x${regionMap.offset.toString(16)} gfx=0x${regionGraphics.offset.toString(16)} " +
+                "palette=0x${regionPalette.offset.toString(16)}",
+        )
+        return TableRegionAsset(
+            slot,
+            AssetCandidate(
+                regionGraphics.offset,
+                regionMap.offset,
+                regionPalette.offset,
+                regionComposition,
+            ),
+        )
+    }
+
+    private fun paletteCovers8BppGraphics(
+        graphics: ByteArray,
+        paletteColors: Int,
+    ): Boolean {
+        if (graphics.isEmpty() || paletteColors <= 0) return false
+        val nonZero = graphics.map { it.toInt() and 0xFF }.filter { it != 0 }
+        if (nonZero.toSet().size < 2) return false
+        val base = nonZero.min() and -PALETTE_BANK_COLORS
+        return nonZero.max() < base + paletteColors
+    }
+
+    private fun validAffine8BppAsset(
+        graphics: ByteArray,
+        tilemap: ByteArray,
+        paletteColors: Int,
+    ): Boolean {
+        if (
+            graphics.isEmpty() ||
+            graphics.size % AFFINE_TILE_BYTES != 0 ||
+            tilemap.size !in MIN_TABLE_AFFINE_MAP_BYTES..AFFINE_MAP_BYTES ||
+            tilemap.size and (tilemap.size - 1) != 0 ||
+            paletteColors <= 0
+        ) return false
+        val tileCount = graphics.size / AFFINE_TILE_BYTES
+        val mapValues = tilemap.map { it.toInt() and 0xFF }
+        if (mapValues.toSet().size < 2 || mapValues.max() >= tileCount) return false
+        return paletteCovers8BppGraphics(graphics, paletteColors)
+    }
+
+    private fun decodeTableStream(rom: RomImage, offset: Int): CompressedStream? {
+        val declared = GbaRomCompression.decodedSizeAtOrNull(rom, offset) ?: return null
+        if (declared !in 1..MAX_DECOMPRESSED_ASSET_BYTES) return null
+        return runCatching { CompressedStream(offset, GbaRomCompression.decodeAt(rom, offset)) }.getOrNull()
+    }
+
+    private fun romPointerAtOrNull(rom: RomImage, offset: Int): Int? {
+        if (offset < 0 || offset.toLong() + 4 > rom.size.toLong()) return null
+        val target = rom.u32le(offset) - GBA_ROM_BASE
+        return target.takeIf { it in 0 until rom.size.toLong() }?.toInt()
     }
 
     private fun unique8BppMapInFunction(
@@ -862,6 +1155,70 @@ object Gen3WorldMapResolver {
         return PaletteCandidate(offset, values).takeIf { distinct.size >= 2 }
     }
 
+    private fun resolveTableSemanticLayouts(
+        rom: RomImage,
+        references: GbaReferenceIndex,
+        functionIndex: ThumbFunctionIndex,
+        regionCount: Int,
+    ): List<List<SemanticLayout>> {
+        val layoutsByTarget = references.targets.keys.mapNotNull { target ->
+            decodeTableSemanticLayout(rom, target)?.let { target to it }
+        }
+        return layoutsByTarget.flatMap { (target, _) ->
+            loaderFunctions(references, functionIndex, target)
+        }.distinct().mapNotNull { functionStart ->
+            val members = layoutsByTarget.filter { (target, _) ->
+                functionStart in loaderFunctions(references, functionIndex, target)
+            }.sortedBy { it.first }
+            if (members.size != regionCount) return@mapNotNull null
+            if (members.zipWithNext().any { (left, right) ->
+                    right.first - left.first != TABLE_SEMANTIC_LAYOUT_BYTES
+                }
+            ) return@mapNotNull null
+            val sectionOwners = members.flatMap { (_, layout) -> layout.cellsBySection.keys }
+                .groupingBy { it }
+                .eachCount()
+            if (sectionOwners.values.any { it != 1 }) return@mapNotNull null
+            mapTrace(
+                "table-semantic function=0x${functionStart.toString(16)} targets=" +
+                    members.sortedByDescending { it.first }
+                        .joinToString { "0x${it.first.toString(16)}" },
+            )
+            members.sortedByDescending { it.first }.map { it.second }
+        }.distinct()
+    }
+
+    private fun decodeTableSemanticLayout(
+        rom: RomImage,
+        offset: Int,
+    ): SemanticLayout? {
+        if (offset < 0 || offset.toLong() + TABLE_SEMANTIC_LAYOUT_BYTES > rom.size.toLong()) return null
+        val bytes = rom.slice(offset, TABLE_SEMANTIC_LAYOUT_BYTES)
+        val frequencies = bytes.asIterable().groupingBy { it.toInt() and 0xFF }.eachCount()
+        val empty = frequencies.maxByOrNull { it.value }
+            ?.takeIf { it.value >= TABLE_SEMANTIC_GRID_CELLS / 2 }
+            ?.key ?: return null
+        val active = bytes.map { it.toInt() and 0xFF }.filter { it != empty }
+        if (
+            active.size < MIN_SEMANTIC_CELLS ||
+            active.any { it >= empty } ||
+            active.toSet().size < MIN_SEMANTIC_SECTIONS
+        ) return null
+        val cellsBySection = linkedMapOf<Int, MutableList<WorldMapCell>>()
+        bytes.forEachIndexed { index, value ->
+            val section = value.toInt() and 0xFF
+            if (section != empty) {
+                cellsBySection.getOrPut(section, ::mutableListOf) += WorldMapCell(
+                    index % TABLE_SEMANTIC_GRID_WIDTH,
+                    index / TABLE_SEMANTIC_GRID_WIDTH,
+                    1,
+                    1,
+                )
+            }
+        }
+        return SemanticLayout(cellsBySection)
+    }
+
     private fun resolveTextSemanticLayouts(
         rom: RomImage,
         references: GbaReferenceIndex,
@@ -957,8 +1314,8 @@ object Gen3WorldMapResolver {
 
     private fun decodeReferencedStreams(rom: RomImage, references: GbaReferenceIndex): List<CompressedStream> =
         references.targets.keys.mapNotNull { offset ->
-            if (offset.toLong() + 4 > rom.size.toLong() || rom.u8(offset) != GBA_LZ_HEADER) return@mapNotNull null
-            val declared = rom.u24le(offset + 1)
+            if (rom.u8(offset) != GBA_LZ77_HEADER) return@mapNotNull null
+            val declared = GbaRomCompression.decodedSizeAtOrNull(rom, offset) ?: return@mapNotNull null
             if (declared !in 1..MAX_DECOMPRESSED_ASSET_BYTES) return@mapNotNull null
             runCatching { CompressedStream(offset, GbaRomCompression.decodeAt(rom, offset)) }.getOrNull()
         }
@@ -1046,6 +1403,10 @@ object Gen3WorldMapResolver {
         is GbaWorldMapComposition.Rejected -> "rejected:${result.reason}"
     }
 
+    private fun elapsedMillis(started: Long): Long =
+        (System.nanoTime() - started) /
+            NANOS_PER_MILLISECOND
+
     private fun mapTrace(message: String) {
         if (mapTraceEnabled) println("world-map-trace $message")
     }
@@ -1078,6 +1439,21 @@ object Gen3WorldMapResolver {
         val branchSlot: Int?,
     )
     private data class TextRegionAsset(val slot: Int, val asset: AssetCandidate)
+    private data class TableRecordShell(val fields: IntArray, val paletteBytes: Int)
+    private data class TableRegionAsset(val slot: Int, val asset: AssetCandidate) {
+        val identity: List<Int> get() = listOf(
+            slot,
+            asset.graphicsOffset,
+            asset.mapOffset,
+            asset.paletteOffset,
+        )
+    }
+    private data class TableAssetCandidate(
+        val root: Int,
+        val regions: List<TableRegionAsset>,
+    ) {
+        val identity: List<Int> get() = listOf(root) + regions.flatMap(TableRegionAsset::identity)
+    }
     private data class TextAssetCandidate(
         val functionStart: Int,
         val regions: List<TextRegionAsset>,
@@ -1087,8 +1463,25 @@ object Gen3WorldMapResolver {
         }
     }
 
-    private const val GBA_LZ_HEADER = 0x10
+    private const val NANOS_PER_MILLISECOND = 1_000_000L
     private const val MAX_DECOMPRESSED_ASSET_BYTES = 256 * 1_024
+    private const val GBA_LZ77_HEADER = 0x10
+    private const val GBA_ROM_BASE = 0x0800_0000L
+    private const val REGION_MAP_INFO_BYTES = 28L
+    private const val REGION_MAP_INFO_POINTER_COUNT = 6
+    private const val REGION_MAP_INFO_PALETTE_SIZE_OFFSET = 24
+    private const val REGION_MAP_INFO_PADDING_OFFSET = 26
+    private const val DEX_MAP_FIELD = 0
+    private const val DEX_GRAPHICS_FIELD = 1
+    private const val DEX_PALETTE_FIELD = 2
+    private const val REGION_MAP_FIELD = 3
+    private const val REGION_GRAPHICS_FIELD = 4
+    private const val REGION_PALETTE_FIELD = 5
+    private const val MIN_TABLE_REGION_COUNT = 2
+    private const val MAX_TABLE_REGION_COUNT = 8
+    private const val MIN_TABLE_REFERENCE_SITES = 2
+    private const val MIN_TABLE_PALETTE_BYTES = 2 * 16 * 2
+    private const val MAX_TABLE_PALETTE_BYTES = 16 * 16 * 2
     private const val THUMB_PUSH_MASK = 0xFF00
     private const val THUMB_PUSH_WITH_LR = 0xB500
     private const val THUMB_POP_MASK = 0xFF00
@@ -1134,6 +1527,7 @@ object Gen3WorldMapResolver {
         0x0500_0000L..0x0500_03FFL,
     )
     private const val AFFINE_MAP_BYTES = 4096
+    private const val MIN_TABLE_AFFINE_MAP_BYTES = 1024
     private const val TILED_8BPP_MAP_BYTES = 32 * 20 * 2
     private const val AFFINE_TILE_BYTES = 64
     private const val TEXT_MAP_BYTES = 1200
@@ -1141,12 +1535,18 @@ object Gen3WorldMapResolver {
     private const val MIN_TEXT_PALETTE_BYTES = 16 * 2
     private const val MAX_TEXT_PALETTE_BYTES = 16 * 16 * 2
     private const val BYTES_PER_PALETTE_BANK = 16 * 2
+    private const val PALETTE_BANK_COLORS = 16
     private const val TEXT_BACKGROUND_SLOT = 4
     private const val TEXT_LOADER_DESTINATION_COUNT = 5
     private const val TEXT_GRID_WIDTH = 22
     private const val TEXT_GRID_HEIGHT = 15
     private const val SEMANTIC_GRID_CELLS = TEXT_GRID_WIDTH * TEXT_GRID_HEIGHT
     private const val SEMANTIC_LAYOUT_BYTES = SEMANTIC_GRID_CELLS * 2
+    private const val TABLE_SEMANTIC_GRID_WIDTH = 28
+    private const val TABLE_SEMANTIC_GRID_HEIGHT = 15
+    private const val TABLE_SEMANTIC_GRID_CELLS =
+        TABLE_SEMANTIC_GRID_WIDTH * TABLE_SEMANTIC_GRID_HEIGHT
+    private const val TABLE_SEMANTIC_LAYOUT_BYTES = TABLE_SEMANTIC_GRID_CELLS
     private const val MIN_SEMANTIC_CELLS = 12
     private const val MIN_SEMANTIC_SECTIONS = 3
 }

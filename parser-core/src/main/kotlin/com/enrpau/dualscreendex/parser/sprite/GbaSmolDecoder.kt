@@ -1,20 +1,20 @@
 package com.enrpau.dualscreendex.parser.sprite
 
-/** Decoder for pokeemerald-expansion's SMOL 4bpp compression modes 1 through 6. */
+/** Decoder for pokeemerald-expansion's SMOL graphics modes 1 through 6 and tilemap mode 8. */
 internal object GbaSmolDecoder {
     fun decode(input: ByteArray): ByteArray {
         require(input.size >= HEADER_BYTES) { "truncated SMOL header" }
         val first = input.u32le(0)
         val second = input.u32le(4)
         val mode = first and MODE_MASK
+        if (mode == IS_TILEMAP) return decodeTilemap(input, first, second)
         require(mode in BASE_ONLY..ENCODE_BOTH_DELTA_SYMS) { "unsupported SMOL mode $mode" }
 
-        val outputSize = ((first ushr IMAGE_SIZE_OFFSET) and IMAGE_SIZE_MASK) * 4
+        val outputSize = decodedSize(first, mode)
         val symbolCount = (first ushr SYMBOL_SIZE_OFFSET) and SYMBOL_SIZE_MASK
         val initialState = second and INITIAL_STATE_MASK
         val bitstreamWords = (second ushr BITSTREAM_SIZE_OFFSET) and BITSTREAM_SIZE_MASK
         val loCount = (second ushr LO_SIZE_OFFSET) and LO_SIZE_MASK
-        require(outputSize > 0 && outputSize % 2 == 0) { "invalid SMOL output size $outputSize" }
 
         val loEncoded = mode == ENCODE_LO || mode == ENCODE_BOTH || mode == ENCODE_BOTH_DELTA_SYMS
         val symbolsEncoded = mode == ENCODE_SYMS || mode == ENCODE_DELTA_SYMS ||
@@ -77,13 +77,36 @@ internal object GbaSmolDecoder {
         return expand(lo, symbols, outputSize)
     }
 
+    fun decodedSize(input: ByteArray): Int {
+        require(input.size >= HEADER_BYTES) { "truncated SMOL header" }
+        val first = input.u32le(0)
+        return decodedSize(first, first and MODE_MASK)
+    }
+
     fun encodedLength(input: ByteArray): Int {
+        val encodedLength = encodedLengthFromHeader(input)
+        require(encodedLength <= input.size) { "truncated SMOL stream" }
+        return encodedLength
+    }
+
+    fun encodedLengthFromHeader(input: ByteArray): Int {
         require(input.size >= HEADER_BYTES) { "truncated SMOL header" }
         val first = input.u32le(0)
         val second = input.u32le(4)
         val mode = first and MODE_MASK
-        require(mode in BASE_ONLY..ENCODE_BOTH_DELTA_SYMS) { "unsupported SMOL mode $mode" }
+        decodedSize(first, mode)
         val symbolCount = (first ushr SYMBOL_SIZE_OFFSET) and SYMBOL_SIZE_MASK
+        if (mode == IS_TILEMAP) {
+            require(second > 0) { "empty SMOL tilemap instruction vector" }
+            val symbolBytes = Math.multiplyExact(symbolCount, 2)
+            return aligned4(
+                Math.addExact(
+                    Math.addExact(HEADER_BYTES, aligned4(symbolBytes)),
+                    second,
+                ),
+            )
+        }
+
         val bitstreamWords = (second ushr BITSTREAM_SIZE_OFFSET) and BITSTREAM_SIZE_MASK
         val loCount = (second ushr LO_SIZE_OFFSET) and LO_SIZE_MASK
         val loEncoded = mode == ENCODE_LO || mode == ENCODE_BOTH || mode == ENCODE_BOTH_DELTA_SYMS
@@ -95,10 +118,45 @@ internal object GbaSmolDecoder {
             Math.multiplyExact(bitstreamWords, 4) +
             (if (symbolsEncoded) 0 else Math.multiplyExact(symbolCount, 2)) +
             (if (loEncoded) 0 else loCount)
-        val aligned = (bytes + 3) and -4
-        require(aligned <= input.size) { "truncated SMOL stream" }
-        return aligned
+        return aligned4(bytes)
     }
+
+    private fun decodedSize(first: Int, mode: Int): Int {
+        require(mode in BASE_ONLY..ENCODE_BOTH_DELTA_SYMS || mode == IS_TILEMAP) {
+            "unsupported SMOL mode $mode"
+        }
+        val unitBytes = if (mode == IS_TILEMAP) 1 else SMOL_IMAGE_SIZE_MULTIPLIER
+        val outputSize = Math.multiplyExact(
+            (first ushr IMAGE_SIZE_OFFSET) and IMAGE_SIZE_MASK,
+            unitBytes,
+        )
+        require(outputSize > 0 && outputSize % 2 == 0) { "invalid SMOL output size $outputSize" }
+        return outputSize
+    }
+
+    private fun decodeTilemap(input: ByteArray, first: Int, second: Int): ByteArray {
+        val outputSize = decodedSize(first, IS_TILEMAP)
+        val symbolCount = (first ushr SYMBOL_SIZE_OFFSET) and SYMBOL_SIZE_MASK
+        val instructionCount = second
+        require(symbolCount > 0) { "empty SMOL tilemap symbol vector" }
+        require(instructionCount > 0) { "empty SMOL tilemap instruction vector" }
+        val symbolBytes = Math.multiplyExact(symbolCount, 2)
+        val instructionOffset = HEADER_BYTES + aligned4(symbolBytes)
+        require(instructionOffset <= input.size - instructionCount) { "truncated SMOL tilemap data" }
+        val symbols = IntArray(symbolCount) { index -> input.u16le(HEADER_BYTES + index * 2) }
+        val instructions = input.copyOfRange(instructionOffset, instructionOffset + instructionCount)
+        val output = expand(instructions, symbols, outputSize)
+        var previous = 0
+        repeat(outputSize / 2) { index ->
+            val offset = index * 2
+            previous = (previous + output.u16le(offset)) and 0xFFFF
+            output[offset] = previous.toByte()
+            output[offset + 1] = (previous ushr 8).toByte()
+        }
+        return output
+    }
+
+    private fun aligned4(value: Int): Int = Math.addExact(value, 3) and -4
 
     private fun decodeTable(input: ByteArray, offset: Int): Array<DecodeEntry> {
         require(offset <= input.size - FREQUENCY_BYTES) { "truncated SMOL frequency table" }
@@ -249,6 +307,7 @@ internal object GbaSmolDecoder {
     private const val MODE_MASK = 0xF
     private const val IMAGE_SIZE_OFFSET = 4
     private const val IMAGE_SIZE_MASK = 0x3FFF
+    private const val SMOL_IMAGE_SIZE_MULTIPLIER = 4
     private const val SYMBOL_SIZE_OFFSET = 18
     private const val SYMBOL_SIZE_MASK = 0x3FFF
     private const val INITIAL_STATE_MASK = 0x3F
@@ -262,4 +321,5 @@ internal object GbaSmolDecoder {
     private const val ENCODE_LO = 4
     private const val ENCODE_BOTH = 5
     private const val ENCODE_BOTH_DELTA_SYMS = 6
+    private const val IS_TILEMAP = 8
 }
