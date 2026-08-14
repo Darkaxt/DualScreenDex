@@ -69,7 +69,7 @@ class Gen3MapLocationResolverTest {
     }
 
     @Test
-    fun compactConsumerFailsClosedForPartialOrDuplicateAuthorities() {
+    fun compactConsumerRequiresCompleteAndNonConflictingAuthorities() {
         val partial = compactConsumerFixture(0x180)
         putPointer(partial, 0x184, 0x240)
         putPointer(partial, 0x240, 0x500)
@@ -87,6 +87,9 @@ class Gen3MapLocationResolverTest {
         putPointer(duplicate, 0x380, 0x59C)
         writeMapHeader(duplicate, 0x580, 88)
         writeMapHeader(duplicate, 0x59C, 149)
+        assertEquals(mapOf(0x0100 to 88, 0x0200 to 149), resolveCompact(duplicate))
+
+        writeMapHeader(duplicate, 0x59C, 150)
         assertTrue(resolveCompact(duplicate).isEmpty())
 
         val decoy = compactConsumerFixture(0x180)
@@ -97,7 +100,7 @@ class Gen3MapLocationResolverTest {
         writeMapHeader(decoy, 0x500, 88)
         writeMapHeader(decoy, 0x51C, 149)
         writeCompactConsumer(decoy, 0x80, 0x1C0)
-        assertTrue(resolveCompact(decoy).isEmpty())
+        assertEquals(mapOf(0x0100 to 88, 0x0200 to 149), resolveCompact(decoy))
     }
 
     @Test

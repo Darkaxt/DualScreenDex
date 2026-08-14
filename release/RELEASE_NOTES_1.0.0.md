@@ -2,7 +2,7 @@
 
 DualDex is a passive ROM, SaveRAM, and validated live-WRAM Pokédex companion for mainline-family Pokémon games from Game Boy through Game Boy Advance.
 
-## RC26: complete evolution catalogs and consistent Organic identities
+## RC27: complete evolution catalogs and consistent Organic identities
 
 - Completes evolution parsing on **50/50** exact first-corpus ROMs. All rows expose available per-species evolution fields with zero malformed rows, deterministic semantic edge maps, and exact SQLite reopen parity; `NOT_FOUND` and `NOT_APPLICABLE` are not counted as successes.
 - Applies one Organic identity rule to Pokédex rows, the detail avatar, and evolution targets: unknown species use a black silhouette and stay non-interactive, seen species use grayscale artwork and remain navigable, and captured species use full-color artwork.

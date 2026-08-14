@@ -75,6 +75,7 @@ object Gen3MapLocationResolver {
         root: Int,
         requiredMaps: Map<Int, Set<Int>>,
     ): Map<Int, Int>? {
+        val requiredCount = requiredMaps.values.sumOf(Set<Int>::size)
         val sections = linkedMapOf<Int, Int>()
         requiredMaps.toSortedMap().forEach groupLoop@{ (group, maps) ->
             val groupPointerOffset = root.toLong() + group.toLong() * 4L
@@ -92,7 +93,7 @@ object Gen3MapLocationResolver {
                 sections[(group shl 8) or map] = rom.u8(header + REGION_SECTION_OFFSET)
             }
         }
-        return sections.takeIf { it.isNotEmpty() }
+        return sections.takeIf { it.size == requiredCount }
     }
 
     /**
