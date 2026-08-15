@@ -114,7 +114,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(13, CatalogSchema.parserSchemaVersion)
+        assertEquals(14, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps, reopened?.catalog?.localMaps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -270,7 +270,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(13, CatalogSchema.parserSchemaVersion)
+        assertEquals(14, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -347,7 +347,7 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun `parser schema changes invalidate stale content so a current reparse can replace it`() {
+    fun `revision 13 mapless catalogs are invalidated so the current parser can rebuild them`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("d".repeat(64))
@@ -355,7 +355,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
 
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
-            database.execute("UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1", listOf(-1))
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1", listOf(13))
         }
 
         assertNull(cache.readComplete(catalog.romSha256))
