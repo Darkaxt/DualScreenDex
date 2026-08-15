@@ -178,16 +178,12 @@ object ParserOrchestrator {
             }
             else -> null
         }
-        val sprites = if (expansion) {
-            byCapability[RomCapability.SPRITES]?.toValidationEvidence()?.let { evidence ->
-                domain.applyToSprites(
-                    evidence,
-                    SpriteMaterializer.pokemon(rom, layout).keys,
-                    authoritativeFallback = true,
-                )
-            }
-        } else {
-            null
+        val sprites = byCapability[RomCapability.SPRITES]?.toValidationEvidence()?.let { evidence ->
+            domain.applyToSprites(
+                evidence,
+                SpriteMaterializer.pokemon(rom, layout).keys,
+                authoritativeFallback = expansion,
+            )
         }
         val replacements = mapOf(
             RomCapability.SPECIES_NAMES to capabilityEvidence(RomCapability.SPECIES_NAMES, names),

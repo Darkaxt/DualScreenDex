@@ -23,6 +23,12 @@ parser, catalog, or persistence errors.
 The earlier exploratory table that read preliminary family-probe capabilities was
 discarded. The numbers below come from each final materialized catalog capability set.
 
+This table is the survey snapshot before the subsequent Modern Emerald sprite-domain
+correction. Modern Emerald's current exact result is 22/22 and 100.00%; the focused
+evidence is in `2026-08-15-modern-emerald-complete-compatibility.md`. The aggregate
+figures below remain attached to the original 36-ROM survey rather than being silently
+recomputed from one refreshed row.
+
 ## Results
 
 | ROM | Routing | Family | Fully available | Strict functional | Record-weighted |
