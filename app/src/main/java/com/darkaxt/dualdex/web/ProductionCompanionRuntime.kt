@@ -48,6 +48,12 @@ import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.BagPocket
+import com.darkaxt.dualdex.save.gen3.Gen3BagAbi
+import com.darkaxt.dualdex.save.gen3.Gen3BagPocketAbi
+import com.darkaxt.dualdex.save.gen3.Gen3BitFlag
+import com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi
+import com.darkaxt.dualdex.save.gen3.Gen3TrainerCardAbi
 import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
@@ -259,6 +265,44 @@ class ProductionCompanionRuntime(
             move.pp.value?.takeIf { it > 0 }?.let { id to it }
         }.toMap(),
         gen3TextEncoding = Gen3TextEncoding.ENGLISH.takeIf { current.platform == Platform.GBA },
+        gen3SaveRuntimeAbi = current.runtimeMetadata.gen3RuntimeMemoryLayout?.saveRuntimeAbi?.let { abi ->
+            Gen3SaveRuntimeAbi(
+                saveBlock1Size = abi.saveBlock1Size,
+                saveBlock2Size = abi.saveBlock2Size,
+                textEncoding = when (abi.textEncoding) {
+                    com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding.ENGLISH ->
+                        Gen3TextEncoding.ENGLISH
+                },
+                trainer = Gen3TrainerCardAbi(
+                    playerNameOffset = abi.trainer.playerNameOffset,
+                    playerNameLength = abi.trainer.playerNameLength,
+                    genderOffset = abi.trainer.genderOffset,
+                    trainerIdOffset = abi.trainer.trainerIdOffset,
+                    playTimeHoursOffset = abi.trainer.playTimeHoursOffset,
+                    playTimeMinutesOffset = abi.trainer.playTimeMinutesOffset,
+                    encryptionKeyOffset = abi.trainer.encryptionKeyOffset,
+                    moneyOffset = abi.trainer.moneyOffset,
+                    maximumMoney = abi.trainer.maximumMoney,
+                    badgeFlags = abi.trainer.badgeFlags.map { Gen3BitFlag(it.byteOffset, it.mask) },
+                ),
+                bag = Gen3BagAbi(
+                    abi.bag.pockets.map { pocket ->
+                        Gen3BagPocketAbi(
+                            pocket = when (pocket.pocket) {
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.ITEMS -> BagPocket.ITEMS
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.KEY_ITEMS -> BagPocket.KEY_ITEMS
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.BALLS -> BagPocket.BALLS
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.TM_HM -> BagPocket.TM_HM
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.BERRIES -> BagPocket.BERRIES
+                            },
+                            byteOffset = pocket.byteOffset,
+                            capacity = pocket.capacity,
+                            slotSize = pocket.slotSize,
+                        )
+                    },
+                ),
+            )
+        },
     )
 
     @Synchronized
@@ -296,12 +340,18 @@ class ProductionCompanionRuntime(
                     saveBlock1MapGroupOffset = layout.saveBlock1MapGroupOffset,
                     saveBlock1MapNumberOffset = layout.saveBlock1MapNumberOffset,
                     multiUsePlayerCursorAddress = layout.multiUsePlayerCursorAddress,
-                    playerPartyCountAddress = layout.playerPartyCountAddress,
-                    playerPartyAddress = layout.playerPartyAddress,
+                    playerPartyCountAddress = layout.partyAbi?.countAddress ?: layout.playerPartyCountAddress,
+                    playerPartyAddress = layout.partyAbi?.partyAddress ?: layout.playerPartyAddress,
+                    playerPartyCapacity = layout.partyAbi?.capacity ?: layout.playerPartyAddress?.let { 6 },
+                    playerPartyRecordSize = layout.partyAbi?.recordSize ?: layout.playerPartyAddress?.let { 100 },
                     battleMonsAddress = layout.battleMonsAddress,
                     battleTypeFlagsAddress = layout.battleTypeFlagsAddress,
                     trainerBattleMask = layout.trainerBattleMask,
                     nonWildBattleMask = layout.nonWildBattleMask,
+                    saveBlock1PointerAddress = layout.saveBlock1PointerAddress,
+                    saveBlock2PointerAddress = layout.saveBlock2PointerAddress,
+                    saveBlock1Size = layout.saveRuntimeAbi?.saveBlock1Size,
+                    saveBlock2Size = layout.saveRuntimeAbi?.saveBlock2Size,
                 )
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),

@@ -1275,6 +1275,35 @@ class ProductionCompanionRuntimeTest {
                         pp = CatalogField.available(35),
                     ),
                 ),
+                runtimeMetadata = com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata(
+                    gen3RuntimeMemoryLayout = com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout(
+                        mainAddress = 0x030022C0,
+                        inBattleAddress = 0x03002748,
+                        inBattleMask = 2,
+                        saveBlock1MapGroupOffset = 4,
+                        saveBlock1MapNumberOffset = 5,
+                        saveBlock1PointerAddress = 0x03005D8C,
+                        saveBlock2PointerAddress = 0x03005D90,
+                        saveRuntimeAbi = com.enrpau.dualscreendex.parser.catalog.CatalogGen3SaveRuntimeAbi(
+                            saveBlock1Size = 0x3D88,
+                            saveBlock2Size = 0x0F2C,
+                            textEncoding = com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding.ENGLISH,
+                            trainer = com.enrpau.dualscreendex.parser.catalog.CatalogGen3TrainerCardAbi(
+                                0, 8, 8, 0x0A, 0x0E, 0x10, 0xAC, 0x490, 999_999,
+                                listOf(com.enrpau.dualscreendex.parser.catalog.CatalogGen3BitFlag(0x1270, 1)),
+                            ),
+                            bag = com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagAbi(
+                                listOf(
+                                    com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocketAbi(
+                                        com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.ITEMS,
+                                        0x560,
+                                        30,
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
             ),
         )
         val context = requireNotNull(runtime.saveParseContext())
@@ -1282,6 +1311,11 @@ class ProductionCompanionRuntimeTest {
         assertEquals(listOf(9, 31), context.speciesById.getValue(25).abilityIds)
         assertEquals(35, context.movePpById.getValue(33))
         assertEquals(com.darkaxt.dualdex.save.gen3.Gen3TextEncoding.ENGLISH, context.gen3TextEncoding)
+        val saveAbi = requireNotNull(context.gen3SaveRuntimeAbi)
+        assertEquals(0x3D88, saveAbi.saveBlock1Size)
+        assertEquals(0x0F2C, saveAbi.saveBlock2Size)
+        assertEquals(0xAC, saveAbi.trainer.encryptionKeyOffset)
+        assertEquals(com.darkaxt.dualdex.save.BagPocket.ITEMS, saveAbi.bag.pockets.single().pocket)
         val snapshot = SaveSnapshot(
             romIdentity = hash,
             saveIdentity = "save",

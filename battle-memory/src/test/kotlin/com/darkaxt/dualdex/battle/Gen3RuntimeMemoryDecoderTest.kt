@@ -2,6 +2,7 @@ package com.darkaxt.dualdex.battle
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class Gen3RuntimeMemoryDecoderTest {
@@ -41,6 +42,27 @@ class Gen3RuntimeMemoryDecoderTest {
         assertNull(decoder.decodeTargetBattler(byteArrayOf(4)))
         assertEquals(BattleEncounterKind.UNKNOWN, decoder.decodeBattleEncounterKind(null))
         assertEquals(BattleEncounterKind.UNKNOWN, decoder.decodeBattleEncounterKind(byteArrayOf(0, 0, 0)))
+    }
+
+    @Test
+    fun preservesCompletePointerFirstReadPlan() {
+        val complete = layout.copy(
+            saveBlock1PointerAddress = 0x03005D8C,
+            saveBlock2PointerAddress = 0x03005D90,
+            saveBlock1Size = 0x3D88,
+            saveBlock2Size = 0x0F2C,
+            playerPartyCountAddress = 0x020244E9,
+            playerPartyAddress = 0x020244EC,
+            playerPartyCapacity = 6,
+            playerPartyRecordSize = 100,
+        )
+
+        assertEquals(0x03005D8CL, complete.saveBlock1PointerAddress)
+        assertEquals(0x0F2C, complete.saveBlock2Size)
+        assertEquals(600, complete.playerPartyCapacity!! * complete.playerPartyRecordSize!!)
+        assertThrows(IllegalArgumentException::class.java) {
+            layout.copy(saveBlock1PointerAddress = 0x03005D8C)
+        }
     }
 
     private fun u32(value: Int) = ByteArray(4) { index -> (value ushr (index * 8)).toByte() }

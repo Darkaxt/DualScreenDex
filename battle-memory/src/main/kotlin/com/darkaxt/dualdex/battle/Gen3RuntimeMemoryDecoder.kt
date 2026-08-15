@@ -9,10 +9,16 @@ data class Gen3RuntimeMemoryLayout(
     val multiUsePlayerCursorAddress: Long? = null,
     val playerPartyCountAddress: Long? = null,
     val playerPartyAddress: Long? = null,
+    val playerPartyCapacity: Int? = if (playerPartyAddress == null) null else 6,
+    val playerPartyRecordSize: Int? = if (playerPartyAddress == null) null else 100,
     val battleMonsAddress: Long? = null,
     val battleTypeFlagsAddress: Long? = null,
     val trainerBattleMask: Int? = null,
     val nonWildBattleMask: Int? = null,
+    val saveBlock1PointerAddress: Long? = null,
+    val saveBlock2PointerAddress: Long? = null,
+    val saveBlock1Size: Int? = null,
+    val saveBlock2Size: Int? = null,
 ) {
     init {
         require(mainAddress in IWRAM_START..IWRAM_END)
@@ -24,6 +30,18 @@ data class Gen3RuntimeMemoryLayout(
         require((playerPartyCountAddress == null) == (playerPartyAddress == null))
         require(playerPartyCountAddress == null || playerPartyCountAddress in EWRAM_START..EWRAM_END)
         require(playerPartyAddress == null || playerPartyAddress in EWRAM_START..EWRAM_END)
+        require(
+            listOf(playerPartyCountAddress, playerPartyAddress, playerPartyCapacity, playerPartyRecordSize)
+                .all { it == null } ||
+                listOf(playerPartyCountAddress, playerPartyAddress, playerPartyCapacity, playerPartyRecordSize)
+                    .all { it != null },
+        ) { "party read-plan descriptor must be complete" }
+        require(playerPartyCapacity == null || playerPartyCapacity > 0)
+        require(playerPartyRecordSize == null || playerPartyRecordSize >= 80)
+        require(
+            playerPartyAddress == null ||
+                playerPartyAddress + playerPartyCapacity!!.toLong() * playerPartyRecordSize!! <= EWRAM_END + 1,
+        ) { "party read-plan window must fit in EWRAM" }
         require(battleMonsAddress == null || battleMonsAddress in EWRAM_START..EWRAM_END - BATTLE_WINDOW_TAIL_BYTES)
         require(
             listOf(battleTypeFlagsAddress, trainerBattleMask, nonWildBattleMask).all { it == null } ||
@@ -31,6 +49,16 @@ data class Gen3RuntimeMemoryLayout(
         ) { "battle type descriptor must be complete" }
         require(battleTypeFlagsAddress == null || battleTypeFlagsAddress in EWRAM_START..EWRAM_END - 3)
         require(trainerBattleMask == null || trainerBattleMask.countOneBits() == 1)
+        require(
+            listOf(saveBlock1PointerAddress, saveBlock2PointerAddress, saveBlock1Size, saveBlock2Size)
+                .all { it == null } ||
+                listOf(saveBlock1PointerAddress, saveBlock2PointerAddress, saveBlock1Size, saveBlock2Size)
+                    .all { it != null },
+        ) { "save-block pointer read-plan descriptor must be complete" }
+        require(saveBlock1PointerAddress == null || saveBlock1PointerAddress in IWRAM_START..IWRAM_END - 3)
+        require(saveBlock2PointerAddress == null || saveBlock2PointerAddress in IWRAM_START..IWRAM_END - 3)
+        require(saveBlock1Size == null || saveBlock1Size > 0)
+        require(saveBlock2Size == null || saveBlock2Size > 0)
     }
 
     companion object {

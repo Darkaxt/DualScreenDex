@@ -9,6 +9,15 @@ import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocketAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BattleUiAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BitFlag
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3PartyAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3SaveRuntimeAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TrainerCardAbi
 import com.enrpau.dualscreendex.parser.catalog.RuntimeMemoryEvidence
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
@@ -90,7 +99,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(11, CatalogSchema.parserSchemaVersion)
+        assertEquals(12, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(raster.argb.toList(), reopened?.catalog?.worldMaps?.assets?.get("world/region-0")?.argb?.toList())
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
@@ -214,7 +223,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(11, CatalogSchema.parserSchemaVersion)
+        assertEquals(12, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -232,21 +241,7 @@ class CatalogStoreTest {
         assertEquals(setOf(EncounterWindow.NIGHT), reopened?.catalog?.encounterAreas?.single()?.windows)
         assertEquals(0x030036F0L, reopened?.catalog?.runtimeMetadata?.gen3SaveBlock1PointerAddress)
         assertEquals(
-            CatalogGen3RuntimeMemoryLayout(
-                mainAddress = 0x03001574,
-                inBattleAddress = 0x030019AD,
-                inBattleMask = 0x02,
-                saveBlock1MapGroupOffset = 4,
-                saveBlock1MapNumberOffset = 5,
-                multiUsePlayerCursorAddress = 0x03002378,
-                multiUsePlayerCursorEvidence = RuntimeMemoryEvidence.SOURCE_PROVEN_UNTESTED,
-                playerPartyCountAddress = 0x02001001,
-                playerPartyAddress = 0x02001004,
-                battleMonsAddress = 0x0200143C,
-                battleTypeFlagsAddress = 0x020003A0,
-                trainerBattleMask = 1 shl 3,
-                nonWildBattleMask = 0x8FFF8B72.toInt(),
-            ),
+            catalog.runtimeMetadata.gen3RuntimeMemoryLayout,
             reopened?.catalog?.runtimeMetadata?.gen3RuntimeMemoryLayout,
         )
         assertEquals("Route 101", reopened?.catalog?.runtimeMetadata?.areaNamesByBaseId?.get(0x0010))
@@ -452,6 +447,35 @@ class CatalogStoreTest {
                     battleTypeFlagsAddress = 0x020003A0,
                     trainerBattleMask = 1 shl 3,
                     nonWildBattleMask = 0x8FFF8B72.toInt(),
+                    saveBlock1PointerAddress = 0x030036F0L,
+                    saveBlock2PointerAddress = 0x030036F4L,
+                    saveRuntimeAbi = CatalogGen3SaveRuntimeAbi(
+                        saveBlock1Size = 0x3D88,
+                        saveBlock2Size = 0x0F2C,
+                        textEncoding = CatalogGen3TextEncoding.ENGLISH,
+                        trainer = CatalogGen3TrainerCardAbi(
+                            playerNameOffset = 0,
+                            playerNameLength = 8,
+                            genderOffset = 8,
+                            trainerIdOffset = 0x0A,
+                            playTimeHoursOffset = 0x0E,
+                            playTimeMinutesOffset = 0x10,
+                            encryptionKeyOffset = 0xAC,
+                            moneyOffset = 0x490,
+                            maximumMoney = 999_999,
+                            badgeFlags = (0 until 8).map { CatalogGen3BitFlag(0x1270, 1 shl it) },
+                        ),
+                        bag = CatalogGen3BagAbi(
+                            listOf(CatalogGen3BagPocketAbi(CatalogGen3BagPocket.ITEMS, 0x560, 30)),
+                        ),
+                    ),
+                    partyAbi = CatalogGen3PartyAbi(0x02001001, 0x02001004, 6, 100),
+                    battleUiAbi = CatalogGen3BattleUiAbi(
+                        0x02001000,
+                        0x02001002,
+                        0x0200143C + 0x438,
+                        0x0200143C + 0x43C,
+                    ),
                 ),
                 areaNamesByBaseId = mapOf(0x0010 to "Route 101"),
             ),
