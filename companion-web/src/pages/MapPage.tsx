@@ -1,6 +1,6 @@
 import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { DexIcon, MapIcon } from '../components';
+import { DexIcon, MapIcon, SettingsIcon } from '../components';
 import { anchoredZoom, containFit, GestureTracker, type MapViewport } from '../mapEngine';
 import type { Catalog, State, WorldMapLocation, WorldMapRegion } from '../models';
 
@@ -180,13 +180,13 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
 
   return <section class="screen map-screen">
     <header class="map-page-header">
-      <div class="map-page-title">
-        <small>{activeMode === 'LOCAL' ? 'LOCAL MAP' : displayName}</small>
-        <h1>{catalog.family.replaceAll('_', ' ')}</h1>
-      </div>
       <div class="map-current-location">
         <strong>{activeMode === 'LOCAL' ? displayName : selectedLocation?.displayName ?? state.currentAreaName ?? 'Unknown location'}</strong>
         <span>{activeMode === 'LOCAL' || selectedIsCurrent ? 'CURRENT' : 'MAP POINT'}</span>
+      </div>
+      <div class="header-actions map-header-actions">
+        <button class="header-action settings-action" aria-label="Settings" onClick={onOpenSettings}><SettingsIcon /></button>
+        <button class="header-action map-dex-action" aria-label="Open Area Pokédex" disabled={!region || !selectedHasEncounterAreas} onClick={() => region && selectedLocation && selectedHasEncounterAreas && onOpenAreaDex(region.key, selectedLocation)}><DexIcon /></button>
       </div>
     </header>
     <main
@@ -205,7 +205,7 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
       onPointerCancel={event => finishPointer(event, true)}
       onWheel={onWheel}
     >
-      <div class="map-plane" style={{ width: fit.width, height: fit.height, transform }}>
+      <div class="map-plane map-framed-plane" style={{ width: fit.width, height: fit.height, transform }}>
         <img src={activeMap.imageUrl} alt={`${displayName} ${activeMode === 'LOCAL' ? 'local' : 'region'} map`} draggable={false} />
         {fogVisible && region && <canvas ref={fogRef} class="map-fog" width={region.pixelWidth} height={region.pixelHeight} aria-hidden="true" />}
         {markerLocations.map(location => {
@@ -236,14 +236,12 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
       </div>
 
       <nav class="map-utility-rail" aria-label="Map utilities">
-        <button class="map-control" aria-label="Map settings and legend" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>
-        <button class="map-control" aria-label="Open Area Pokédex" disabled={!region || !selectedHasEncounterAreas} onClick={() => region && selectedLocation && selectedHasEncounterAreas && onOpenAreaDex(region.key, selectedLocation)}><DexIcon /></button>
+        {activeMode === 'ATLAS' && maps.length > 1 && <button class="map-control" aria-label="Choose map region" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>}
         {activeMode === 'ATLAS' && <button class="map-control marker-control" aria-label="Toggle map markers" aria-pressed={markersVisible} onClick={() => setMarkersVisible(value => !value)}><span class="pin-icon" /></button>}
-        {legendOpen && <div class="map-legend-panel">
+        {legendOpen && activeMode === 'ATLAS' && maps.length > 1 && <div class="map-legend-panel">
           <small>{activeMode}</small>
           <strong>{displayName}</strong>
-          {activeMode === 'ATLAS' && maps.length > 1 && <div class="map-region-options">{maps.map(item => <button key={item.key} aria-pressed={item.key === region?.key} onClick={() => setRegionKey(item.key)}>{item.displayName ?? item.key}</button>)}</div>}
-          <button onClick={onOpenSettings}>Open Settings</button>
+          <div class="map-region-options">{maps.map(item => <button key={item.key} aria-pressed={item.key === region?.key} onClick={() => setRegionKey(item.key)}>{item.displayName ?? item.key}</button>)}</div>
         </div>}
       </nav>
 

@@ -41,24 +41,29 @@ const state: State = {
 };
 
 describe('normalized world map presentation', () => {
-  it('uses the approved semantic utility rail without a navigation toolbar', () => {
+  it('shows only location context on the left and Pokédex-style actions on the right', () => {
     const openAreaDex = vi.fn();
     const openSettings = vi.fn();
     const { container } = render(<MapPage catalog={catalog} state={state} onOpenAreaDex={openAreaDex} onOpenSettings={openSettings} />);
 
     expect(screen.getByText('CURRENT')).toBeTruthy();
-    const rail = container.querySelector('.map-utility-rail')!;
-    const buttons = [...rail.querySelectorAll(':scope > button')];
-    expect(buttons.map(button => button.getAttribute('aria-label')).slice(0, 2)).toEqual([
-      'Map settings and legend',
+    expect(container.querySelector('.map-page-title')).toBeNull();
+    expect(screen.queryByText('EMERALD')).toBeNull();
+    expect(screen.queryByText('WORLD MAP')).toBeNull();
+    expect(container.querySelector('.map-current-location strong')?.textContent).toBe('Route 101');
+
+    const actions = container.querySelector('.map-header-actions')!;
+    const buttons = [...actions.querySelectorAll(':scope > button')];
+    expect(buttons.map(button => button.getAttribute('aria-label'))).toEqual([
+      'Settings',
       'Open Area Pokédex',
     ]);
-    expect(buttons[0].querySelector('svg')?.dataset.semanticIcon).toBe('map');
+    expect(buttons[0].querySelector('svg')?.dataset.semanticIcon).toBe('settings');
     expect(buttons[1].querySelector('svg')?.dataset.semanticIcon).toBe('pokedex');
     expect(container.querySelector('[data-map-navigation-row]')).toBeNull();
+    expect(container.querySelector('.map-plane')?.classList.contains('map-framed-plane')).toBe(true);
 
     fireEvent.click(buttons[0]);
-    fireEvent.click(screen.getByRole('button', { name: 'Open Settings' }));
     expect(openSettings).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'Oldale Town' }));
     fireEvent.click(buttons[1]);

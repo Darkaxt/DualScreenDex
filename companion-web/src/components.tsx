@@ -80,8 +80,8 @@ export function DexIcon() {
   </svg>;
 }
 
-function SettingsIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true">
+export function SettingsIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" data-semantic-icon="settings">
     <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.64 5.64l1.42 1.42M16.94 16.94l1.42 1.42M18.36 5.64l-1.42 1.42M7.06 16.94l-1.42 1.42" />
     <circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" />
   </svg>;

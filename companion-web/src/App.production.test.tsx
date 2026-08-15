@@ -84,12 +84,14 @@ describe('production application shell', () => {
     expect(action).toHaveBeenCalledWith('OPEN_TRAINER', {});
   });
 
-  it('shows an indeterminate loading state without a misleading percentage', async () => {
+  it('replaces setup actions with real catalog loading progress', async () => {
     vi.mocked(bootstrap).mockResolvedValueOnce({
       ...fixture,
+      catalog: null,
       state: {
         ...fixture.state,
         version: 2,
+        catalogReady: false,
         loading: { active: true, phase: 'IDENTIFYING', completedUnits: 0, totalUnits: 5 },
       },
     });
@@ -99,6 +101,26 @@ describe('production application shell', () => {
     const loading = await screen.findByRole('status', { name: 'Loading ROM identity' });
     expect(loading.textContent).toBe('Loading ROM identity');
     expect(loading.textContent).not.toContain('%');
+    const progress = screen.getByRole('progressbar', { name: 'Loading ROM identity' });
+    expect(progress.getAttribute('aria-valuemin')).toBe('0');
+    expect(progress.getAttribute('aria-valuemax')).toBe('5');
+    expect(progress.getAttribute('aria-valuenow')).toBe('0');
+    expect(screen.queryByText('LOAD ROM OR ZIP')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'CONNECT RETROARCH' })).toBeNull();
+  });
+
+  it('shows indeterminate companion progress while bootstrap is pending', async () => {
+    let resolveBootstrap!: (value: Bootstrap) => void;
+    vi.mocked(bootstrap).mockImplementationOnce(() => new Promise(resolve => { resolveBootstrap = resolve; }));
+
+    render(<App />);
+
+    const loading = await screen.findByRole('status', { name: 'Loading companion state' });
+    expect(screen.getByRole('progressbar', { name: 'Loading companion state' }).hasAttribute('aria-valuenow')).toBe(false);
+    expect(screen.queryByText('LOAD ROM OR ZIP')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'CONNECT RETROARCH' })).toBeNull();
+
+    resolveBootstrap(fixture);
   });
 
   it('uses concise names for every parser module and humanizes future phases', () => {
