@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.family
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.Gen1DetachedSpeciesResolver
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.TableLayout
@@ -205,6 +206,13 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             val validationCount = if (generation == 1) it.count else speciesCount ?: it.count
             TableValidators.baseStats(rom, it.offset, validationCount, it.recordSize, generation)
         } ?: missing("species base-stat table not resolved")
+        if (generation == 1 && baseStatsLayout != null) {
+            stats = Gen1DetachedSpeciesResolver.completeEvidence(
+                stats,
+                Gen1DetachedSpeciesResolver.resolve(rom, baseStatsLayout),
+                "base-stat record",
+            )
+        }
         if (generation == 2 && !stats.compatible && speciesCount != null) {
             TableValidators.locateBaseStatTable(rom, speciesCount, 28..64, generation)?.let { relocated ->
                 baseStatsLayout = TableLayout(

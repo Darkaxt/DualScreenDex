@@ -230,7 +230,7 @@ object CatalogMaterializer {
             move.copy(
                 effectText = when {
                     effectText != null -> CatalogField.available(effectText)
-                    layout.generation < 3 -> CatalogField.notApplicable(
+                    layout.generation == 1 -> CatalogField.notApplicable(
                         "this engine does not expose a compatible move-description pointer table",
                     )
                     else -> CatalogField.notFound("move description was not resolved from the ROM")
@@ -257,14 +257,24 @@ object CatalogMaterializer {
         val balls = if (layout.generation == 3) BallSpriteMaterializer.captureBalls(rom) else emptyMap()
         val capabilities = initialCapabilities.toMutableMap()
         capabilities[RomCapability.MOVE_DESCRIPTIONS] = if (moveDescriptions != null) {
+            val expected = moves.keys.count { it > 0 }
+            val covered = moveDescriptions.descriptions.keys.count { it > 0 && it in moves }
+            val complete = covered >= expected
             CapabilityEvidence(
                 capability = RomCapability.MOVE_DESCRIPTIONS,
                 compatible = true,
                 confidence = moveDescriptions.confidence,
                 offset = moveDescriptions.sourceOffset,
-                count = moveDescriptions.descriptions.size,
-                reasons = listOf("decoded a validated move-description pointer table"),
-                status = CapabilityStatus.AVAILABLE,
+                count = covered,
+                reasons = listOf(
+                    if (complete) "decoded a validated move-description pointer table"
+                    else "decoded a partial move-description pointer table ($covered/$expected)",
+                ),
+                status = if (complete) CapabilityStatus.AVAILABLE else CapabilityStatus.PARTIAL,
+                validRecords = covered,
+                totalRecords = expected,
+                coveredRecords = covered,
+                expectedRecords = expected,
             )
         } else {
             CapabilityEvidence(
@@ -272,10 +282,10 @@ object CatalogMaterializer {
                 compatible = false,
                 confidence = 0.0,
                 reasons = listOf(
-                    if (layout.generation < 3) "this engine has no compatible move-description pointer table"
+                    if (layout.generation == 1) "this engine has no compatible move-description pointer table"
                     else "move-description pointer table was not resolved",
                 ),
-                status = if (layout.generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
+                status = if (layout.generation == 1) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
             )
         }
         capabilities[RomCapability.ABILITY_DESCRIPTIONS] = if (abilityDescriptions != null) {

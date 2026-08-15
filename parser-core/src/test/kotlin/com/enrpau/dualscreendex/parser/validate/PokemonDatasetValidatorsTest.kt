@@ -61,6 +61,34 @@ class PokemonDatasetValidatorsTest {
     }
 
     @Test
+    fun gen1PokedexCoverageUsesThePositiveDexDomainWithoutHidingMissingEntries() {
+        val bytes = ByteArray(0x10000)
+        repeat(4) { index -> putU16(bytes, 0x100 + index * 2, 0x4200 + index * 0x20) }
+        repeat(3) { index ->
+            val entry = 0x8200 + index * 0x20
+            putGbText(bytes, entry, "SEED")
+            var cursor = entry + 5
+            repeat(4) { bytes[cursor++] = 1 }
+            bytes[cursor++] = 0x17
+            putU16(bytes, cursor, 0x4300 + index * 0x20)
+            cursor += 2
+            bytes[cursor] = 2
+            bytes[0x8300 + index * 0x20] = 0
+            putGbText(bytes, 0x8301 + index * 0x20, "A SEED GROWS")
+        }
+
+        val result = PokemonDatasetValidators.gen1Descriptions(
+            RomImage(bytes), pointerTableOffset = 0x100, count = 4, entryBank = 2,
+            codec = PokemonTextCodec.gbEnglish, expectedDexCount = 4,
+        )
+
+        assertTrue(result.compatible)
+        assertEquals(3, result.coveredRecords)
+        assertEquals(4, result.expectedRecords)
+        assertEquals(1, result.incompleteRecords)
+    }
+
+    @Test
     fun acceptsGen2MultiBankDexEntryPointers() {
         val bytes = ByteArray(0x14000)
         putU16(bytes, 0x100, 0x4200)

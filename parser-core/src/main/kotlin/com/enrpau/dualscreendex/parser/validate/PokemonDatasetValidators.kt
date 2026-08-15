@@ -50,6 +50,7 @@ object PokemonDatasetValidators {
         count: Int,
         entryBank: Int,
         codec: PokemonTextCodec,
+        expectedDexCount: Int = count,
     ): ValidationEvidence = safely(pointerTableOffset, 2, count) {
         var valid = 0
         repeat(count) { index ->
@@ -57,7 +58,13 @@ object PokemonDatasetValidators {
             if (entry != null && validGen1Description(rom, entry, codec)) valid++
         }
         // The 190-slot Gen I internal index contains MissingNo entries without Pokédex data.
-        result(valid, count, pointerTableOffset, 2, "valid Gen 1 Pokédex entries", 0.75)
+        val raw = result(valid, count, pointerTableOffset, 2, "valid Gen 1 Pokédex entries", 0.75)
+        val expected = expectedDexCount.coerceIn(0, count)
+        raw.copy(
+            coveredRecords = minOf(valid, expected),
+            expectedRecords = expected,
+            incompleteRecords = (expected - valid).coerceAtLeast(0),
+        )
     }
 
     fun gen2Descriptions(

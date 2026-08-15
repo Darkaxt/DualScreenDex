@@ -29,6 +29,11 @@ object RecordMaterializers {
             return SpeciesMaterialization(emptyMap(), indexResolution)
         }
         val dexNumbers = indexResolution.values
+        val detachedGen1 = if (layout.generation == 1 && stats != null) {
+            Gen1DetachedSpeciesResolver.resolve(rom, stats)
+        } else {
+            emptyMap()
+        }
         val expansion = layout.pokeemeraldExpansion
         val unified = layout.headerlessUnifiedSpecies
         val nameIndexes = if (unified != null) {
@@ -49,13 +54,19 @@ object RecordMaterializers {
                 2 -> id - 1
                 else -> id
             }
-            val statsOffset = stats?.let {
+            val ordinaryStatsOffset = stats?.let {
                 validatedRecordOffset(rom, it, statsIndex, baseStatBytes(layout.generation))
+            }
+            val ordinaryBaseStats = ordinaryStatsOffset?.let { readBaseStats(rom, it, layout.generation) }
+            val statsOffset = if (ordinaryBaseStats != null) {
+                ordinaryStatsOffset
+            } else {
+                detachedGen1[dexNumber]?.offset
             }
             val baseStats = statsOffset?.let { readBaseStats(rom, it, layout.generation) }
             val typeIds = baseStats?.second
             val validRetailEcologyTail = layout.generation == 3 && expansion == null && unified == null &&
-                statsOffset != null &&
+                stats != null && statsOffset != null &&
                 validGen3RetailEcologyTail(rom, statsOffset, stats.recordSize)
             val abilities = when {
                 layout.generation != 3 -> CatalogField.notApplicable("abilities are not part of this engine")

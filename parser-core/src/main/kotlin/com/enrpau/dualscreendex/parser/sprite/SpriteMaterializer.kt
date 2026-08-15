@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.sprite
 
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.Gen1DetachedSpeciesResolver
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import kotlin.math.sqrt
@@ -168,6 +169,11 @@ object SpriteMaterializer {
                     }
                 }
                 if (indexed != null) put(index + 1, TileRenderer.applyArgbPalette(indexed, GB_GRAYSCALE))
+            }
+            Gen1DetachedSpeciesResolver.resolve(rom, table).forEach { (dexNumber, record) ->
+                Gen1DetachedSpeciesResolver.decodeFrontSprite(rom, record)?.let { indexed ->
+                    put(dexNumber, TileRenderer.applyArgbPalette(indexed, GB_GRAYSCALE))
+                }
             }
         }
     }

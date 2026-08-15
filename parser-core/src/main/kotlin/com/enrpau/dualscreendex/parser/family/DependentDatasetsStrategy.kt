@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.family
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.Gen1DetachedSpeciesResolver
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionResolver
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionTableLayout
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EmbeddedEvolutionPointerResolver
@@ -64,7 +65,7 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
         val profile = identity.baseProfile
         val tables = core.candidateTables
 
-        val sprites = when (generation) {
+        var sprites = when (generation) {
             1 -> tables.sprites?.let {
                 SpriteValidators.gen1(rom, it.offset, it.count, it.recordSize, it.banks.toIntArray())
             } ?: missingEvidence("Gen 1 sprite references not resolved")
@@ -78,6 +79,13 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
                     SpriteValidators.gen3(rom, it.offset, core.speciesCount ?: it.count, it.recordSize)
                 } ?: missingEvidence("Gen 3 sprite pointer table not resolved")
             }
+        }
+        if (generation == 1 && tables.sprites != null) {
+            sprites = Gen1DetachedSpeciesResolver.completeEvidence(
+                sprites,
+                Gen1DetachedSpeciesResolver.resolve(rom, tables.sprites),
+                "sprite record",
+            )
         }
 
         val evolutionAndLearnset = if (generation < 3) {
