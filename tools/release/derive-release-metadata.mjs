@@ -49,22 +49,25 @@ function deriveVersionCode(major, minor, patch, qualifier) {
 }
 
 function parseReleaseTag(tag) {
-  const match = /^v(\d+)\.(\d+)\.(\d+)(?:-rc\.([1-9]\d*))?$/.exec(tag ?? "");
+  const match = /^v(\d+)\.(\d+)\.(\d+)(?:-rc\.([1-9]\d*)(?:-hotfix\.([1-9]\d*))?)?$/.exec(tag ?? "");
   if (!match) return undefined;
 
-  const [, majorText, minorText, patchText, rcText] = match;
+  const [, majorText, minorText, patchText, rcText, hotfixText] = match;
   const major = Number(majorText);
   const minor = Number(minorText);
   const patch = Number(patchText);
   const isCandidate = rcText !== undefined;
-  const qualifier = isCandidate ? Number(rcText) : FINAL_VERSION_QUALIFIER;
-  if (isCandidate && qualifier > MAX_RC_NUMBER) {
+  const rcNumber = isCandidate ? Number(rcText) : undefined;
+  const hotfixNumber = hotfixText === undefined ? 0 : Number(hotfixText);
+  const qualifier = isCandidate ? rcNumber + hotfixNumber : FINAL_VERSION_QUALIFIER;
+  if (isCandidate && (rcNumber > MAX_RC_NUMBER || qualifier > MAX_RC_NUMBER)) {
     throw new Error(`RC number must be between 1 and ${MAX_RC_NUMBER}`);
   }
   return {
     tag,
     versionName: `${major}.${minor}.${patch}`,
     isCandidate,
+    releaseVersionName: tag.slice(1),
     qualifier,
     versionCode: deriveVersionCode(major, minor, patch, qualifier),
   };
@@ -162,9 +165,7 @@ export function deriveReleaseMetadata({
 
   return {
     tag,
-    version_name: parsedTag.isCandidate
-      ? `${parsedTag.versionName}-rc.${parsedTag.qualifier}`
-      : parsedTag.versionName,
+    version_name: parsedTag.releaseVersionName,
     version_code: String(parsedTag.versionCode),
     release_kind: parsedTag.isCandidate ? "candidate" : "final",
     draft: "false",

@@ -78,6 +78,21 @@ test("derives a monotonic, public prerelease identity for an RC", () => {
   });
 });
 
+test("derives a monotonic RC hotfix identity without replacing the original candidate", () => {
+  const result = runMetadata(
+    "v1.1.0-rc.4-hotfix.1",
+    undefined,
+    ["v1.1.0-rc.4"],
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.outputs.tag, "v1.1.0-rc.4-hotfix.1");
+  assert.equal(result.outputs.version_name, "1.1.0-rc.4-hotfix.1");
+  assert.equal(result.outputs.version_code, "1010005");
+  assert.equal(result.outputs.release_kind, "candidate");
+  assert.equal(result.outputs.prerelease, "true");
+});
+
 test("reserves the highest qualifier for the final release", () => {
   const candidate = runMetadata("v1.1.0-rc.98");
   const invalidCandidate = runMetadata("v1.1.0-rc.99");
