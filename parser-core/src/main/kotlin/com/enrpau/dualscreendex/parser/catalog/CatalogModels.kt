@@ -308,6 +308,7 @@ data class CatalogGen3RuntimeMemoryLayout(
     val saveBlock1MapNumberOffset: Int,
     val saveBlock1PositionXOffset: Int = 0,
     val saveBlock1PositionYOffset: Int = 2,
+    val liveClockAddress: Long? = null,
     val multiUsePlayerCursorAddress: Long? = null,
     val multiUsePlayerCursorEvidence: RuntimeMemoryEvidence? = null,
     val playerPartyCountAddress: Long? = null,
@@ -325,6 +326,9 @@ data class CatalogGen3RuntimeMemoryLayout(
     init {
         require(saveBlock1PositionXOffset >= 0 && saveBlock1PositionYOffset == saveBlock1PositionXOffset + 2) {
             "SaveBlock1 position must be two adjacent signed 16-bit coordinates"
+        }
+        require(liveClockAddress == null || liveClockAddress in 0x03000000L..0x03007FFAL) {
+            "live clock window must fit in IWRAM"
         }
         require((playerPartyCountAddress == null) == (playerPartyAddress == null)) {
             "live party count and record addresses must be present together"

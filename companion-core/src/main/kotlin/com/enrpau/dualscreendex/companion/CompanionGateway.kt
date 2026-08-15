@@ -127,7 +127,11 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             liveMapPosition = state.liveMapPosition.takeIf { action.areaBaseId == state.liveAreaBaseId },
         )
         is CompanionAction.LiveMapPositionChanged -> state.copy(liveMapPosition = action.position)
-        is CompanionAction.LiveGameStateChanged -> state.copy(trainer = action.trainer, party = action.party)
+        is CompanionAction.LiveGameStateChanged -> state.copy(
+            trainer = action.trainer,
+            party = action.party,
+            gameTime = action.gameTime,
+        )
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
         is CompanionAction.Failure -> state.copy(error = action.message)
     }

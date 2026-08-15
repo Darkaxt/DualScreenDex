@@ -104,9 +104,9 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     if (mapOpen && (catalog.worldMaps?.length ?? 0) > 0) return <MapPage
       catalog={catalog}
       state={state}
-      onOpenAreaDex={(regionKey, location) => {
+      onOpenPokedex={() => {
         setMapOpen(false);
-        void send('MAP_AREA', { regionKey, locationKey: location.key });
+        void send('SCREEN', { screen: 'POKEDEX' });
       }}
       onOpenSettings={() => {
         setMapOpen(false);
@@ -179,9 +179,9 @@ export function loadingModuleLabel(phase: string): string {
 
 function Welcome({ busy, loading, loadingLabel, error, onUpload, openSetup }: { busy: boolean; loading: State['loading']; loadingLabel: string; error: string | null; onUpload: (file: File) => void; openSetup: () => void }) {
   const active = busy || loading.active;
-  return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><p class="eyebrow">PASSIVE RETROARCH COMPANION</p><h1>DUALDEX</h1><p>Choose a Pokémon game to begin.</p>{active
+  return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><p class="eyebrow">PASSIVE RETROARCH COMPANION</p><h1>DUALDEX</h1>{active
     ? <WelcomeLoadingProgress label={loadingLabel} loading={loading} />
-    : <div class="welcome-actions"><label class="welcome-upload"><span>LOAD ROM OR ZIP</span><input type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>CONNECT RETROARCH</button></div>}{error && <div class="welcome-error">{error}</div>}</section>;
+    : <><p>Choose a Pokémon game to begin.</p><div class="welcome-actions"><label class="welcome-upload"><span>LOAD ROM OR ZIP</span><input type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>CONNECT RETROARCH</button></div></>}{error && <div class="welcome-error">{error}</div>}</section>;
 }
 
 function WelcomeLoadingProgress({ label, loading }: { label: string; loading: State['loading'] }) {

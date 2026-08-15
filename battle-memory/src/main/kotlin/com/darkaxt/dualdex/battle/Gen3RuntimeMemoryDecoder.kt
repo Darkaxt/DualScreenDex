@@ -8,6 +8,7 @@ data class Gen3RuntimeMemoryLayout(
     val saveBlock1MapNumberOffset: Int,
     val saveBlock1PositionXOffset: Int = 0,
     val saveBlock1PositionYOffset: Int = 2,
+    val liveClockAddress: Long? = null,
     val multiUsePlayerCursorAddress: Long? = null,
     val playerPartyCountAddress: Long? = null,
     val playerPartyAddress: Long? = null,
@@ -30,6 +31,7 @@ data class Gen3RuntimeMemoryLayout(
         require(saveBlock1MapNumberOffset == saveBlock1MapGroupOffset + 1)
         require(saveBlock1PositionXOffset >= 0)
         require(saveBlock1PositionYOffset == saveBlock1PositionXOffset + 2)
+        require(liveClockAddress == null || liveClockAddress in IWRAM_START..IWRAM_END - 4)
         require(multiUsePlayerCursorAddress == null || multiUsePlayerCursorAddress in IWRAM_START..IWRAM_END)
         require((playerPartyCountAddress == null) == (playerPartyAddress == null))
         require(playerPartyCountAddress == null || playerPartyCountAddress in EWRAM_START..EWRAM_END)

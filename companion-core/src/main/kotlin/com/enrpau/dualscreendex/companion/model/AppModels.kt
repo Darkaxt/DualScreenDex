@@ -98,6 +98,13 @@ data class CatalogLoadingState(
 
 data class LiveMapPosition(val x: Int, val y: Int)
 
+data class GameClock(val hours: Int, val minutes: Int) {
+    init {
+        require(hours in 0..23)
+        require(minutes in 0..59)
+    }
+}
+
 data class AppSnapshot(
     val version: Long = 0,
     val screen: AppScreen = AppScreen.POKEDEX,
@@ -115,6 +122,7 @@ data class AppSnapshot(
     val trainer: TrainerSnapshot? = null,
     val party: List<OwnedIndividual> = emptyList(),
     val liveMapPosition: LiveMapPosition? = null,
+    val gameTime: GameClock? = null,
     val battle: BattleState? = null,
     val battleReturnScreen: AppScreen = AppScreen.POKEDEX,
     val catalogReady: Boolean = false,
@@ -145,6 +153,7 @@ sealed interface CompanionAction {
     data class LiveGameStateChanged(
         val trainer: TrainerSnapshot?,
         val party: List<OwnedIndividual>,
+        val gameTime: GameClock? = null,
     ) : CompanionAction
     data class LiveMapPositionChanged(val position: LiveMapPosition?) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction

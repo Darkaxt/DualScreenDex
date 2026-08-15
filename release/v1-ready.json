@@ -41,5 +41,8 @@
   "v11Rc8CatalogCacheRebuild": true,
   "v11Rc9CompleteLocalMapCatalog": true,
   "v11Rc9TruthfulAtlasLocation": true,
+  "v11Rc10LiveGameClock": true,
+  "v11Rc10NavigationAndLoadingPolish": true,
+  "v11Rc10AtlasLocationMarkers": true,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

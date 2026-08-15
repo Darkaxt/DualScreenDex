@@ -20,6 +20,7 @@ const fixture: Bootstrap = {
   state: {
     version: 1, screen: 'POKEDEX', priorScreen: 'POKEDEX', settingsReturnScreen: 'POKEDEX',
     selectedSpeciesId: null, filter: 'ALL', selectedAreaId: null, currentAreaBaseId: 16, revealedAreaBaseIds: [16, 17], battleTab: 'ENTRY',
+    gameTime: { hours: 16, minutes: 48 },
     settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
     speciesState: {}, observedMoves: {}, battle: null, catalogReady: true,
     trainer: {
@@ -121,6 +122,7 @@ describe('production application shell', () => {
     expect(progress.getAttribute('aria-valuenow')).toBe('0');
     expect(screen.queryByText('LOAD ROM OR ZIP')).toBeNull();
     expect(screen.queryByRole('button', { name: 'CONNECT RETROARCH' })).toBeNull();
+    expect(screen.queryByText('Choose a Pokémon game to begin.')).toBeNull();
   });
 
   it('shows indeterminate companion progress while bootstrap is pending', async () => {
@@ -133,6 +135,7 @@ describe('production application shell', () => {
     expect(screen.getByRole('progressbar', { name: 'Loading companion state' }).hasAttribute('aria-valuenow')).toBe(false);
     expect(screen.queryByText('LOAD ROM OR ZIP')).toBeNull();
     expect(screen.queryByRole('button', { name: 'CONNECT RETROARCH' })).toBeNull();
+    expect(screen.queryByText('Choose a Pokémon game to begin.')).toBeNull();
 
     resolveBootstrap(fixture);
   });
@@ -157,17 +160,25 @@ describe('production application shell', () => {
     expect(screen.queryByText('ISSUE REPORT MEMORY CAPTURE')).toBeNull();
   });
 
-  it('opens the normalized Map locally and returns to Area Pokédex without a new server screen', async () => {
+  it('opens the normalized Map locally and returns to the retained Pokédex view', async () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
     expect(screen.getByRole('region', { name: 'Interactive world map' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Oldale Town' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Open Area Pokédex' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Pokédex' }));
 
-    expect(action).toHaveBeenCalledWith('MAP_AREA', { regionKey: 'gen3-region-0', locationKey: 'section-17' });
+    expect(action).toHaveBeenCalledWith('SCREEN', { screen: 'POKEDEX' });
     expect(screen.queryByRole('region', { name: 'Interactive world map' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Open Map' })).toBeTruthy();
+  });
+
+  it('shows the live game clock centered in the root Pokédex header', async () => {
+    render(<App />);
+
+    const clock = await screen.findByText('16:48');
+    expect(clock.tagName).toBe('TIME');
+    expect(clock.closest('.app-header')).toBeTruthy();
+    expect(document.querySelector('.app-header-root .header-title strong')?.textContent).toBe('POKÉDEX');
   });
 });
 

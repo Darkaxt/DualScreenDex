@@ -37,6 +37,13 @@ data class Gen3LivePointers(
 
 data class Gen3LiveBattleState(val active: Boolean)
 
+data class Gen3GameClock(val hours: Int, val minutes: Int) {
+    init {
+        require(hours in 0..23)
+        require(minutes in 0..59)
+    }
+}
+
 data class Gen3LiveBattleUiState(
     val targetBattler: Int?,
     val encounterKind: BattleEncounterKind,
@@ -50,6 +57,7 @@ data class Gen3LiveGameSnapshot(
     val bag: Map<BagPocket, Gen3LiveSection<BagPocketSnapshot>>,
     val battle: Gen3LiveSection<Gen3LiveBattleState>,
     val battleUi: Gen3LiveSection<Gen3LiveBattleUiState>,
+    val clock: Gen3LiveSection<Gen3GameClock> = Gen3LiveSection.unavailable("live game clock was unavailable"),
 )
 
 object Gen3LiveGameState {
@@ -59,6 +67,7 @@ object Gen3LiveGameState {
     const val PARTY_ID = "live-party"
     const val SAVE_BLOCK1_POINTER_ID = "live-save-block-1-pointer"
     const val SAVE_BLOCK2_POINTER_ID = "live-save-block-2-pointer"
+    const val CLOCK_ID = "live-game-clock"
 
     fun pointerWindows(layout: Gen3RuntimeMemoryLayout): List<Gen3LiveReadWindow> {
         val saveBlock1Pointer = layout.saveBlock1PointerAddress ?: return emptyList()
@@ -98,6 +107,9 @@ object Gen3LiveGameState {
                     requireNotNull(layout.playerPartyCapacity) * requireNotNull(layout.playerPartyRecordSize),
                 ),
             )
+        }
+        layout.liveClockAddress?.let { address ->
+            add(Gen3LiveReadWindow(CLOCK_ID, address, CLOCK_BYTES))
         }
     }
 
@@ -159,7 +171,20 @@ object Gen3LiveGameState {
             battleUi = battleActive?.let {
                 Gen3LiveSection.available(Gen3LiveBattleUiState(targetBattler, encounterKind))
             } ?: Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
+            clock = decodeClock(regions[CLOCK_ID]),
         )
+    }
+
+    private fun decodeClock(bytes: ByteArray?): Gen3LiveSection<Gen3GameClock> {
+        if (bytes?.size != CLOCK_BYTES) return Gen3LiveSection.unavailable("live game clock bytes were unavailable")
+        val hours = bytes[CLOCK_HOUR_OFFSET].toInt() and 0xFF
+        val minutes = bytes[CLOCK_MINUTE_OFFSET].toInt() and 0xFF
+        val seconds = bytes[CLOCK_SECOND_OFFSET].toInt() and 0xFF
+        return if (hours in 0..23 && minutes in 0..59 && seconds in 0..59) {
+            Gen3LiveSection.available(Gen3GameClock(hours, minutes))
+        } else {
+            Gen3LiveSection.unavailable("live game clock fields were invalid")
+        }
     }
 
     private fun decodeParty(
@@ -205,6 +230,10 @@ object Gen3LiveGameState {
 
     private const val POINTER_BYTES = 4
     private const val PARTY_LEVEL_OFFSET = 4
+    private const val CLOCK_BYTES = 5
+    private const val CLOCK_HOUR_OFFSET = 2
+    private const val CLOCK_MINUTE_OFFSET = 3
+    private const val CLOCK_SECOND_OFFSET = 4
     private const val EWRAM_START = 0x02000000L
     private const val EWRAM_END_EXCLUSIVE = 0x02040000L
 }

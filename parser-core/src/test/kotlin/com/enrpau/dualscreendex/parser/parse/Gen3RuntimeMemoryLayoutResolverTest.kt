@@ -127,6 +127,7 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                 inBattleMask = 0x02,
                 saveBlock1MapGroupOffset = 4,
                 saveBlock1MapNumberOffset = 5,
+                liveClockAddress = 0x030039E8,
                 multiUsePlayerCursorAddress = null,
                 multiUsePlayerCursorEvidence = null,
                 playerPartyCountAddress = 0x0201D9C5,

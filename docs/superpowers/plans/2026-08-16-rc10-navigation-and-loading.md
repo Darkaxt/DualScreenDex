@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the Atlas Pokédex icon return to the last-used Pokédex tab, use truthful cyan-square Atlas markers, and hide idle guidance during loading.
+**Goal:** Make the Atlas Pokédex icon return to the last-used Pokédex tab, use truthful cyan-square Atlas markers, hide idle guidance during loading, and display validated live game time in a correctly aligned upper toolbar.
 
-**Architecture:** Keep both changes inside the existing Preact application boundary. `MapPage` exposes a parameterless global Pokédex callback, while `App` owns the normal `SCREEN=POKEDEX` action; `Welcome` conditionally renders its idle sentence from the same loading predicate already used for actions and progress.
+**Architecture:** Keep navigation, marker, loading, and alignment changes inside the existing Preact application boundary. Extend the existing parser-owned Gen III runtime descriptor with an optional structurally resolved live-clock address; the battle-memory coordinator validates and publishes hours/minutes through the existing companion state/API stream. `MapPage` exposes a parameterless global Pokédex callback, while `App` owns the normal `SCREEN=POKEDEX` action; `Welcome` conditionally renders its idle sentence from the same loading predicate already used for actions and progress.
 
-**Tech Stack:** Preact, TypeScript, Vitest, Testing Library, Vite
+**Tech Stack:** Kotlin, parser-core, battle-memory, companion-core, Android runtime, Preact, TypeScript, Vitest, Testing Library, Vite
 
 ---
 
@@ -89,7 +89,35 @@ Run: `npm.cmd test -- --run src/pages/MapPage.test.tsx`
 
 Expected: marker semantics and navigation tests pass.
 
-### Task 4: Verify and release RC10
+### Task 4: Resolve and publish the live game clock
+
+**Files:**
+- Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/CatalogModels.kt`
+- Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/parse/Gen3RuntimeMemoryLayoutResolver.kt`
+- Modify: `battle-memory/src/main/kotlin/com/darkaxt/dualscreendex/battle/Gen3RuntimeMemoryDecoder.kt`
+- Modify: `app/src/main/java/com/darkaxt/dualscreendex/battle/BattleMemoryCoordinator.kt`
+- Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/model/AppModels.kt`
+- Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/api/ApiModels.kt`
+- Modify: `companion-web/src/models.ts`
+- Modify: `companion-web/src/components.tsx`
+
+- [ ] **Step 1: Freeze the real Modern Emerald contract**
+
+Add a real-ROM parser control that proves one unambiguous EWRAM clock root through compiled hour/minute consumers and publishes the signed-byte field layout. Production selection must not consume fixture identity, source symbols, or fixed ROM/RAM offsets.
+
+- [ ] **Step 2: Publish only validated live time**
+
+Read the clock through the existing live-memory cycle. Accept hours `0..23` and minutes `0..59`; otherwise publish no time. Propagate the optional value through companion state and API without substituting Android wall time or trainer play time.
+
+- [ ] **Step 3: Render and align the header**
+
+Render zero-padded `HH:MM` at the geometric center of the upper toolbar when available. Keep the Pokédex title left-aligned in its own column and ensure the clock never intercepts toolbar actions.
+
+- [ ] **Step 4: Run focused real/runtime/UI verification**
+
+Run the exact Modern parser control, runtime decoder/coordinator tests, companion API tests, and focused header tests. Confirm unavailable/invalid clocks remain absent.
+
+### Task 5: Verify and release RC10
 
 **Files:**
 - Modify: `README.md`

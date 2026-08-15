@@ -180,6 +180,7 @@ export interface State {
   currentAreaBaseId?: number | null;
   currentAreaName?: string | null;
   currentMapPosition?: { x: number; y: number } | null;
+  gameTime?: { hours: number; minutes: number } | null;
   currentAreaSpeciesIds?: number[];
   revealedAreaBaseIds?: number[];
   observedAreaBaseIdsBySpecies?: Record<number, number[]>;

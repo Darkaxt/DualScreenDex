@@ -20,12 +20,14 @@ object Gen3RuntimeMemoryLayoutResolver {
         val liveParty = resolveLiveParty(analysis.references)
         val battleLayout = resolveBattleLayout(analysis.references)
         val battleTypeFlags = resolveBattleTypeFlags(rom)
+        val liveClock = resolveLiveClock(rom, analysis.references)
         val base = CatalogGen3RuntimeMemoryLayout(
             mainAddress = mainBase,
             inBattleAddress = battleField.address,
             inBattleMask = battleField.mask,
             saveBlock1MapGroupOffset = SAVE_MAP_GROUP_OFFSET,
             saveBlock1MapNumberOffset = SAVE_MAP_NUMBER_OFFSET,
+            liveClockAddress = liveClock,
             multiUsePlayerCursorAddress = null,
             multiUsePlayerCursorEvidence = null,
             playerPartyCountAddress = liveParty?.countAddress,
@@ -40,6 +42,79 @@ object Gen3RuntimeMemoryLayoutResolver {
         } else {
             base
         }
+    }
+
+    /**
+     * Resolves the source-defined Gen III `struct Time` from compiled day/night consumers.
+     * The address comes from ROM literal pools. A candidate must expose the hour/minute/second
+     * byte fields and at least two complete night-range predicates (`hour <= 5 || hour >= 21`).
+     */
+    private fun resolveLiveClock(rom: RomImage, references: Map<Long, Int>): Long? {
+        val eligible = references.keys.filterTo(linkedSetOf()) {
+            it in IWRAM_START..IWRAM_END - CLOCK_BYTES + 1 && it and 3L == 0L
+        }
+        val evidence = linkedMapOf<Long, ClockEvidence>()
+        var offset = 0
+        while (offset <= rom.size - 2) {
+            val raw = rom.u16le(offset)
+            val address = if (raw and 0xF800 == 0x4800) literalValue(rom, offset) else null
+            if (address != null && address in eligible) {
+                val candidate = evidence.getOrPut(address) { ClockEvidence() }
+                val pointerRegister = (raw ushr 8) and 7
+                var cursor = offset + 2
+                val end = minOf(rom.size - 2, offset + CLOCK_FIELD_TRACE_BYTES)
+                while (cursor <= end) {
+                    val instruction = rom.u16le(cursor)
+                    if (
+                        instruction and 0xF800 == 0x7800 &&
+                        (instruction ushr 3) and 7 == pointerRegister
+                    ) {
+                        val fieldOffset = (instruction ushr 6) and 0x1F
+                        if (fieldOffset in CLOCK_HOUR_OFFSET..CLOCK_SECOND_OFFSET) {
+                            candidate.byteFields += fieldOffset
+                        }
+                        if (fieldOffset == CLOCK_HOUR_OFFSET && hasNightRangePredicate(rom, cursor, instruction and 7)) {
+                            candidate.nightPredicateSites += cursor
+                        }
+                    }
+                    if (instruction and 0xFF87 == 0x4700 || instruction and 0xFF00 == 0xBD00) break
+                    cursor += if (instruction and 0xF800 == 0xF000) 4 else 2
+                }
+            }
+            offset += 2
+        }
+        return evidence.filterValues {
+            it.byteFields.containsAll(setOf(CLOCK_HOUR_OFFSET, CLOCK_MINUTE_OFFSET, CLOCK_SECOND_OFFSET)) &&
+                it.nightPredicateSites.size >= MIN_NIGHT_RANGE_PREDICATES
+        }.keys.singleOrNull()
+    }
+
+    private fun hasNightRangePredicate(rom: RomImage, hourLoadOffset: Int, hourRegister: Int): Boolean {
+        var sawEarlyNight = false
+        var sawLateNight = false
+        var offset = hourLoadOffset + 2
+        val end = minOf(rom.size - 2, hourLoadOffset + NIGHT_PREDICATE_BYTES)
+        while (offset <= end) {
+            val instruction = rom.u16le(offset)
+            if (
+                instruction and 0xF800 == 0x2800 &&
+                (instruction ushr 8) and 7 == hourRegister &&
+                instruction and 0xFF == EARLY_NIGHT_LAST_HOUR
+            ) sawEarlyNight = true
+            if (
+                instruction and 0xF800 == 0x3800 &&
+                (instruction ushr 8) and 7 == hourRegister &&
+                instruction and 0xFF == LATE_NIGHT_FIRST_HOUR
+            ) sawLateNight = true
+            offset += 2
+        }
+        return sawEarlyNight && sawLateNight
+    }
+
+    private fun literalValue(rom: RomImage, instructionOffset: Int): Long? {
+        val raw = rom.u16le(instructionOffset)
+        val literalOffset = ((instructionOffset + 4) and -4) + (raw and 0xFF) * 4
+        return if (literalOffset <= rom.size - 4) rom.u32le(literalOffset) else null
     }
 
     private fun sourceDefinedBattleField(
@@ -316,11 +391,24 @@ object Gen3RuntimeMemoryLayoutResolver {
     private const val MIN_TUTORIAL_TESTS = 1
     private const val TRAINER_BATTLE_MASK = 1 shl 3
     private const val NON_WILD_BATTLE_MASK = 0x8FFF8B72.toInt()
+    private const val CLOCK_BYTES = 5L
+    private const val CLOCK_HOUR_OFFSET = 2
+    private const val CLOCK_MINUTE_OFFSET = 3
+    private const val CLOCK_SECOND_OFFSET = 4
+    private const val CLOCK_FIELD_TRACE_BYTES = 96
+    private const val NIGHT_PREDICATE_BYTES = 24
+    private const val EARLY_NIGHT_LAST_HOUR = 5
+    private const val LATE_NIGHT_FIRST_HOUR = 21
+    private const val MIN_NIGHT_RANGE_PREDICATES = 2
     private const val OR_OPERATION = 12
     private const val BIT_CLEAR_OPERATION = 14
     private val NON_MUTATING_ALU_OPERATIONS = setOf(8, 10)
 
     private data class ReferenceScore(val base: Int, val tail: Int)
+    private data class ClockEvidence(
+        val byteFields: MutableSet<Int> = linkedSetOf(),
+        val nightPredicateSites: MutableSet<Int> = linkedSetOf(),
+    )
     private data class ReferenceAnalysis(
         val references: Map<Long, Int>,
         val scores: Map<Long, ReferenceScore>,

@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.9` adds capability-driven Trainer Card and Party presentation, module-aware loading progress, and the integrated Atlas/local-map experience. RC9 expands structurally complete Gen III map-group catalogs beyond encounter-only maps, so the live location can open its local map even when that map has no wild encounters. Atlas selection now remains truthful instead of substituting another revealed location. Unsupported features disappear instead of exposing dead controls. Display recovery remains a later stage.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.10` adds capability-driven Trainer Card and Party presentation, module-aware loading progress, the integrated Atlas/local-map experience, and a source-derived live game clock for validated layouts. RC10 keeps loading guidance out of the active progress state, makes the Atlas Pokédex shortcut return to the last-used Pokédex view, distinguishes revealed Atlas locations with cyan squares, and keeps the live player marker visually separate. Unsupported features disappear instead of exposing dead controls. Display recovery remains a later stage.
 
 ## Thor-first UI direction
 
@@ -222,9 +222,9 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Thor-first companion UI and settings | Implemented in the packaged Android companion |
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses; identical SHA-256 copies resolve deterministically |
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
-| Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC9 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
+| Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC10 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | `v1.1.0-rc.9` is prepared for the protected signing workflow with checksums and provenance. |
+| Signed candidate target | `v1.1.0-rc.10` is prepared for the protected signing workflow with checksums and provenance. |
 
 ## Parser development
 

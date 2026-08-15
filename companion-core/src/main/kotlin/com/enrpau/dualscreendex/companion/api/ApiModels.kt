@@ -202,7 +202,9 @@ data class StateView(
     val loading: CatalogLoadingView,
     val retroArch: RetroArchView = RetroArchView(),
     val saveRam: SaveRamView = SaveRamView(),
+    val gameTime: GameClockView? = null,
 )
+data class GameClockView(val hours: Int, val minutes: Int)
 data class TrainerView(
     val name: String,
     val gender: String,
@@ -648,6 +650,7 @@ object ApiViewBuilder {
             ),
             retroArch,
             saveRam,
+            snapshot.gameTime?.let { GameClockView(it.hours, it.minutes) },
         )
     }
 

@@ -24,6 +24,7 @@ import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.api.StateView
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
+import com.enrpau.dualscreendex.companion.model.GameClock
 import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
 import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.BattleEncounterKind as CompanionBattleEncounterKind
@@ -348,6 +349,7 @@ class ProductionCompanionRuntime(
                     saveBlock1MapNumberOffset = layout.saveBlock1MapNumberOffset,
                     saveBlock1PositionXOffset = layout.saveBlock1PositionXOffset,
                     saveBlock1PositionYOffset = layout.saveBlock1PositionYOffset,
+                    liveClockAddress = layout.liveClockAddress,
                     multiUsePlayerCursorAddress = layout.multiUsePlayerCursorAddress,
                     playerPartyCountAddress = layout.partyAbi?.countAddress ?: layout.playerPartyCountAddress,
                     playerPartyAddress = layout.partyAbi?.partyAddress ?: layout.playerPartyAddress,
@@ -601,7 +603,11 @@ class ProductionCompanionRuntime(
     }
 
     private fun publishSelectedPlayerSnapshot() {
-        gateway.dispatch(CompanionAction.LiveGameStateChanged(selectedTrainer(), selectedParty()))
+        val gameTime = liveGameState?.clock
+            ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+            ?.value
+            ?.let { GameClock(it.hours, it.minutes) }
+        gateway.dispatch(CompanionAction.LiveGameStateChanged(selectedTrainer(), selectedParty(), gameTime))
     }
 
     private fun publishSelectedPlayerState() {

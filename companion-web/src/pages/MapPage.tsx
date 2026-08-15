@@ -7,7 +7,7 @@ import type { Catalog, State, WorldMapLocation, WorldMapRegion } from '../models
 interface MapPageProps {
   catalog: Catalog;
   state: State;
-  onOpenAreaDex: (regionKey: string, location: WorldMapLocation) => void;
+  onOpenPokedex: () => void;
   onOpenSettings: () => void;
 }
 
@@ -15,7 +15,7 @@ type MapMode = 'LOCAL' | 'ATLAS';
 
 const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
 
-export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPageProps) {
+export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPageProps) {
   const maps = catalog.worldMaps ?? [];
   const localMap = (catalog.localMaps ?? []).find(map => map.baseAreaId === state.currentAreaBaseId);
   const selectedArea = catalog.areas.find(area => area.id === state.selectedAreaId);
@@ -55,9 +55,6 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   const selectedLocation = fogVisible
     ? revealedLocations.find(location => location.key === selectedCandidate?.key) ?? currentLocation
     : selectedCandidate ?? currentLocation;
-  const selectedHasEncounterAreas = selectedLocation != null && catalog.areas.some(area =>
-    selectedLocation.baseAreaIds.includes(area.baseAreaId ?? Math.floor(area.id / 10)),
-  );
   const playerPosition = activeMode === 'LOCAL' && localMap && state.currentMapPosition &&
     state.currentMapPosition.x >= 0 && state.currentMapPosition.x < localMap.gridWidth &&
     state.currentMapPosition.y >= 0 && state.currentMapPosition.y < localMap.gridHeight
@@ -184,8 +181,9 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
         <strong>{activeMode === 'LOCAL' ? displayName : selectedLocation?.displayName ?? state.currentAreaName ?? 'Atlas'}</strong>
         <span>{activeMode === 'LOCAL' || selectedIsCurrent ? 'CURRENT' : selectedLocation ? 'MAP POINT' : 'ATLAS'}</span>
       </div>
+      {state.gameTime && <time class="header-game-time map-game-time" dateTime={`${String(state.gameTime.hours).padStart(2, '0')}:${String(state.gameTime.minutes).padStart(2, '0')}`}>{String(state.gameTime.hours).padStart(2, '0')}:{String(state.gameTime.minutes).padStart(2, '0')}</time>}
       <div class="header-actions map-header-actions">
-        <button class="header-action map-dex-action" aria-label="Open Area Pokédex" disabled={!region || !selectedHasEncounterAreas} onClick={() => region && selectedLocation && selectedHasEncounterAreas && onOpenAreaDex(region.key, selectedLocation)}><DexIcon /></button>
+        <button class="header-action map-dex-action" aria-label="Open Pokédex" onClick={onOpenPokedex}><DexIcon /></button>
         <button class="header-action settings-action" aria-label="Settings" onClick={onOpenSettings}><SettingsIcon /></button>
       </div>
     </header>
@@ -212,7 +210,7 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
           const position = markerPosition(location, region!);
           return <button
             key={location.key}
-            class={`map-marker ${location.key === currentLocation?.key ? 'is-current' : ''} ${location.key === selectedLocation?.key ? 'is-selected' : ''}`}
+            class={`map-marker atlas-location-marker ${location.key === currentLocation?.key ? 'is-current' : ''} ${location.key === selectedLocation?.key ? 'is-selected' : ''}`}
             data-marker-key={location.key}
             style={{ left: `${position.x}%`, top: `${position.y}%` }}
             aria-label={location.key === currentLocation?.key ? `Current location: ${location.displayName}` : location.displayName}

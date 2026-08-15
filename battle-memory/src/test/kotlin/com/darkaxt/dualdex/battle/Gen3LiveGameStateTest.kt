@@ -30,9 +30,37 @@ class Gen3LiveGameStateTest {
                 Gen3LiveGameState.SAVE_BLOCK1_ID,
                 Gen3LiveGameState.PARTY_COUNT_ID,
                 Gen3LiveGameState.PARTY_ID,
+                Gen3LiveGameState.CLOCK_ID,
             ),
             Gen3LiveGameState.dependentWindows(layout, pointers).map { it.id },
         )
+    }
+
+    @Test
+    fun decodesTheSourceDefinedFiveByteLiveClockAndRejectsInvalidFields() {
+        val valid = Gen3LiveGameState.decode(
+            romIdentity = "rom",
+            regions = mapOf(Gen3LiveGameState.CLOCK_ID to byteArrayOf(0, 0, 16, 48, 12)),
+            layout = layout(),
+            saveContext = null,
+            savedTrainer = null,
+            battleActive = null,
+            targetBattler = null,
+            encounterKind = BattleEncounterKind.UNKNOWN,
+        )
+        val invalid = Gen3LiveGameState.decode(
+            romIdentity = "rom",
+            regions = mapOf(Gen3LiveGameState.CLOCK_ID to byteArrayOf(0, 0, 24, 0, 0)),
+            layout = layout(),
+            saveContext = null,
+            savedTrainer = null,
+            battleActive = null,
+            targetBattler = null,
+            encounterKind = BattleEncounterKind.UNKNOWN,
+        )
+
+        assertEquals(Gen3GameClock(16, 48), valid.clock.value)
+        assertEquals(Gen3LiveSectionState.UNAVAILABLE, invalid.clock.state)
     }
 
     @Test
@@ -70,6 +98,7 @@ class Gen3LiveGameStateTest {
         inBattleMask = 1,
         saveBlock1MapGroupOffset = 4,
         saveBlock1MapNumberOffset = 5,
+        liveClockAddress = 0x030039E8,
         playerPartyCountAddress = 0x02000200,
         playerPartyAddress = 0x02000300,
         saveBlock1PointerAddress = 0x03001000,
