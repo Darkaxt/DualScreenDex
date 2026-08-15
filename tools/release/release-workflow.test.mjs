@@ -116,6 +116,9 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.uniqueSha256Identities == 332/);
   assert.match(workflow, /\.mapFirst50Available == 26/);
   assert.match(workflow, /\.evolutionFirst50Complete == 50/);
+  assert.match(workflow, /\.v11Stage1NormalizedLiveStateModels == true/);
+  assert.match(workflow, /\.v11Stage1DetailedGen3PartyCodec == true/);
+  assert.match(workflow, /\.v11Stage1Gen3TrainerBagSaveCodec == true/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });
 

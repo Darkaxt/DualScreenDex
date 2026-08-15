@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "versionName": "1.0.0",
+  "versionName": "1.1.0",
   "applicationId": "com.darkaxt.dualdex",
   "stage": 7,
   "status": "ready-for-github-signing",
-  "verifiedDate": "2026-08-14",
+  "verifiedDate": "2026-08-15",
   "openV1LedgerItems": 0,
   "baseFirst50Selected": 50,
   "mapFirst50Available": 26,
@@ -20,5 +20,8 @@
   "officialGen3AbilityDomain": 77,
   "officialGen3AbilityBehaviorComplete": 5,
   "officialGen3AbilityControls": 5,
+  "v11Stage1NormalizedLiveStateModels": true,
+  "v11Stage1DetailedGen3PartyCodec": true,
+  "v11Stage1Gen3TrainerBagSaveCodec": true,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }
