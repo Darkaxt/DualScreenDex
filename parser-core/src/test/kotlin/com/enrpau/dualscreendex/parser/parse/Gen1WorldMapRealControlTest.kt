@@ -23,6 +23,44 @@ class Gen1WorldMapRealControlTest {
     @Test fun shinBlueResolvesRelocatedCompiledNamesAndMap() = assertControl(CONTROLS[4])
     @Test fun beyondRedResolvesCompiledExpandedCoreAndMap() = assertControl(CONTROLS[5])
     @Test fun beyondBlueResolvesCompiledExpandedCoreAndMap() = assertControl(CONTROLS[6])
+    @Test fun redPlusPlusResolvesDirectTilemapAndPixelEntries() = assertDirectControl(RED_PLUS_PLUS)
+    @Test fun redPlusPlusHardResolvesDirectTilemapAndPixelEntries() = assertDirectControl(RED_PLUS_PLUS_HARD)
+
+    private fun assertDirectControl(control: DirectControl) {
+        val rom = realRom(control.env, control.romSha256)
+        val analysis = ParserOrchestrator.analyze(rom)
+        assertEquals(control.env, SelectionStatus.SELECTED, analysis.status)
+        val layout = requireNotNull(analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout)
+        val baseAreaIds = EncounterMaterializer.materialize(rom, layout).mapTo(linkedSetOf()) { it.id / 10 }
+
+        val result = Gen1WorldMapResolver.resolve(
+            RomAnalysisSession(rom, RomHeaderReader.read(rom)),
+            baseAreaIds,
+        )
+
+        assertTrue("${control.env}: $result", result is WorldMapResolution.Resolved)
+        val catalog = (result as WorldMapResolution.Resolved).catalog.validate()
+        val region = catalog.regions.single()
+        assertEquals(160, region.pixelWidth)
+        assertEquals(144, region.pixelHeight)
+        assertEquals(20, region.gridWidth)
+        assertEquals(18, region.gridHeight)
+        assertEquals(baseAreaIds, region.locations.flatMapTo(linkedSetOf()) { it.baseAreaIds })
+        assertLocationCell(region, 12, 4, 9)
+        assertLocationCell(region, 51, 4, 6)
+        assertEquals(RED_PLUS_PLUS_RASTER_SHA, sha256(catalog.assets.getValue(region.imageAssetKey)))
+    }
+
+    private fun assertLocationCell(
+        region: com.enrpau.dualscreendex.parser.catalog.WorldMapRegion,
+        mapId: Int,
+        x: Int,
+        y: Int,
+    ) {
+        val cell = region.locations.single { it.key == "map-$mapId" }.geometry.single()
+        assertEquals(x, cell.x)
+        assertEquals(y, cell.y)
+    }
 
     private fun assertControl(control: Control) {
         val rom = realRom(control)
@@ -60,12 +98,14 @@ class Gen1WorldMapRealControlTest {
         assertEquals(control.locationSha256, locationSha256)
     }
 
-    private fun realRom(control: Control): RomImage {
-        val configured = System.getenv(control.env)
-        assumeTrue("set ${control.env} to run this source-built control", !configured.isNullOrBlank())
+    private fun realRom(control: Control): RomImage = realRom(control.env, control.romSha256)
+
+    private fun realRom(env: String, romSha256: String): RomImage {
+        val configured = System.getenv(env)
+        assumeTrue("set $env to run this source-built control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("source-built ROM does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also { assertEquals(control.romSha256, it.sha256) }
+        return RomImage(Files.readAllBytes(path)).also { assertEquals(romSha256, it.sha256) }
     }
 
     private fun locationFingerprint(region: com.enrpau.dualscreendex.parser.catalog.WorldMapRegion): String {
@@ -87,6 +127,11 @@ class Gen1WorldMapRealControlTest {
     private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).toHex()
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
+    private data class DirectControl(
+        val env: String,
+        val romSha256: String,
+    )
+
     private data class Control(
         val env: String,
         val romSha256: String,
@@ -100,6 +145,15 @@ class Gen1WorldMapRealControlTest {
 
     private companion object {
         const val RASTER_SHA = "d55384218790ed7744af655bef486bcba8b1a932aa81e3d5701871f8ac60eca4"
+        const val RED_PLUS_PLUS_RASTER_SHA = "00b0f3aa709b13639345f41ce447b10aa668ffa0e088d822f3601f1b00e1a661"
+        val RED_PLUS_PLUS = DirectControl(
+            "DUALDEX_RED_PLUS_PLUS_ROM",
+            "f244f8c31ff3dfa907b6730fce410ba96f74bc1f920bb318c7065288fa13fc3b",
+        )
+        val RED_PLUS_PLUS_HARD = DirectControl(
+            "DUALDEX_RED_PLUS_PLUS_HARD_ROM",
+            "f207d55284b44ba8d5db3701758fbe8f7197147c6419145a8fa4710215ef319b",
+        )
         val CONTROLS = listOf(
             Control(
                 "DUALDEX_POKERED_ROM",

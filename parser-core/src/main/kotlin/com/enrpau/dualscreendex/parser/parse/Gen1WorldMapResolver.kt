@@ -61,7 +61,7 @@ object Gen1WorldMapResolver {
         return WorldMapResolution.Resolved(
             catalog,
             listOf(
-                "validated one 16-tile 2bpp and 360-cell nibble-RLE loader",
+                "validated one structurally complete Gen I Town Map graphics and tilemap loader",
                 "joined ${locations.size} encounter map IDs through the compiled entry lookup",
             ),
         )
@@ -99,20 +99,25 @@ object Gen1WorldMapResolver {
             rom.u8(offset) != LOAD_HL_IMMEDIATE ||
             rom.u8(offset + 3) != LOAD_DE_IMMEDIATE ||
             rom.u8(offset + 6) != LOAD_BC_IMMEDIATE ||
-            rom.u16le(offset + 7) != TILE_BYTES ||
             rom.u8(offset + 9) != LOAD_A_IMMEDIATE ||
             rom.u8(offset + 11) != CALL
         ) return@runCatching null
 
+        val tileBytes = rom.u16le(offset + 7)
+        if (tileBytes % TILE_BYTES_PER_TILE != 0) return@runCatching null
+        val tileCount = tileBytes / TILE_BYTES_PER_TILE
+        if (tileCount !in 1..MAX_TILE_COUNT) return@runCatching null
         val destination = rom.u16le(offset + 4)
-        if (destination !in VRAM_TILE_RANGE || (destination - VRAM_TILE_ORIGIN) % TILE_BYTES_PER_TILE != 0) {
-            return@runCatching null
-        }
+        if (
+            destination !in VRAM_TILE_RANGE ||
+            (destination - VRAM_TILE_ORIGIN) % TILE_BYTES_PER_TILE != 0 ||
+            destination + tileBytes > VRAM_TILE_END_EXCLUSIVE
+        ) return@runCatching null
         val tileBase = (destination - VRAM_TILE_ORIGIN) / TILE_BYTES_PER_TILE
-        if (tileBase !in 0..0xff - TILE_COUNT) return@runCatching null
         val source = rom.gbBankAddress(rom.u8(offset + 10), rom.u16le(offset + 1))
             ?: return@runCatching null
-        if (source + TILE_BYTES > rom.size) return@runCatching null
+        if (source + tileBytes > rom.size) return@runCatching null
+        val tiles = rom.slice(source, tileBytes)
 
         val windowEnd = minOf(offset + LOADER_WINDOW_BYTES, bankEnd)
         val maps = buildList {
@@ -120,16 +125,79 @@ object Gen1WorldMapResolver {
             while (cursor + 3 < windowEnd) {
                 if (rom.u8(cursor) == LOAD_DE_IMMEDIATE) {
                     val rle = rom.gbBankAddress(bank, rom.u16le(cursor + 1))
-                    if (rle != null && provesRleLoop(rom, cursor + 3, windowEnd, tileBase)) {
-                        decodeRle(rom, rle)?.let(::add)
+                    if (
+                        rle != null && tileCount == LEGACY_TILE_COUNT &&
+                        provesRleLoop(rom, cursor + 3, windowEnd, tileBase)
+                    ) {
+                        decodeRle(rom, rle)?.let { add(DecodedMap(tiles, it)) }
                     }
                 }
+                decodeDirectMapAt(rom, bank, cursor, windowEnd, tiles, tileBase, tileCount)?.let(::add)
                 cursor++
             }
-        }.distinctBy(ByteArray::contentHashCode)
+        }.distinctMaps()
         if (maps.size != 1) return@runCatching null
-        LoaderAsset(offset, rom.slice(source, TILE_BYTES), maps.single())
+        LoaderAsset(offset, maps.single().tiles, maps.single().tilemap)
     }.getOrNull()
+
+    private fun List<DecodedMap>.distinctMaps(): List<DecodedMap> = buildList {
+        this@distinctMaps.forEach { candidate ->
+            if (none { it.tiles.contentEquals(candidate.tiles) && it.tilemap.contentEquals(candidate.tilemap) }) {
+                add(candidate)
+            }
+        }
+    }
+
+    private fun decodeDirectMapAt(
+        rom: RomImage,
+        bank: Int,
+        offset: Int,
+        end: Int,
+        tiles: ByteArray,
+        tileBase: Int,
+        tileCount: Int,
+    ): DecodedMap? = runCatching {
+        if (
+            offset + DIRECT_COPY_BYTES > end ||
+            rom.u8(offset) != LOAD_HL_IMMEDIATE ||
+            rom.u8(offset + 3) != LOAD_DE_IMMEDIATE ||
+            rom.u8(offset + 6) != LOAD_BC_IMMEDIATE ||
+            rom.u16le(offset + 7) != GRID_AREA ||
+            rom.u8(offset + 9) != CALL
+        ) return@runCatching null
+        val destination = rom.u16le(offset + 4)
+        if (destination !in WRAM_RANGE || destination + GRID_AREA > WRAM_END_EXCLUSIVE) {
+            return@runCatching null
+        }
+        val source = rom.gbBankAddress(bank, rom.u16le(offset + 1)) ?: return@runCatching null
+        if (source + GRID_AREA > rom.size) return@runCatching null
+
+        val raw = rom.slice(source, GRID_AREA)
+        val unbacked = raw.asSequence()
+            .map { it.toInt() and 0xff }
+            .filterNot { it in tileBase until tileBase + tileCount }
+            .distinct()
+            .toList()
+        if (unbacked.size > 1) return@runCatching null
+        val blankId = unbacked.singleOrNull()
+        if (blankId != null && raw.indices.any { index ->
+                (raw[index].toInt() and 0xff) == blankId && !isPerimeterCell(index)
+            }
+        ) return@runCatching null
+
+        val tilemap = ByteArray(GRID_AREA) { index ->
+            val rawId = raw[index].toInt() and 0xff
+            if (rawId == blankId) tileCount.toByte() else (rawId - tileBase).toByte()
+        }
+        val normalizedTiles = if (blankId == null) tiles else tiles + ByteArray(TILE_BYTES_PER_TILE)
+        DecodedMap(normalizedTiles, tilemap)
+    }.getOrNull()
+
+    private fun isPerimeterCell(index: Int): Boolean {
+        val x = index % GRID_WIDTH
+        val y = index / GRID_WIDTH
+        return x == 0 || x == GRID_WIDTH - 1 || y == 0 || y == GRID_HEIGHT - 1
+    }
 
     private fun provesRleLoop(rom: RomImage, start: Int, end: Int, tileBase: Int): Boolean {
         var sawRead = false
@@ -164,7 +232,7 @@ object Gen1WorldMapResolver {
             if (value == 0) return@runCatching result.takeIf { written == GRID_AREA }
             val count = value and 0x0f
             val tile = value ushr 4
-            if (count == 0 || tile !in 0 until TILE_COUNT || written + count > GRID_AREA) {
+            if (count == 0 || tile !in 0 until LEGACY_TILE_COUNT || written + count > GRID_AREA) {
                 return@runCatching null
             }
             repeat(count) { result[written++] = tile.toByte() }
@@ -193,9 +261,14 @@ object Gen1WorldMapResolver {
     ): EntryTable? = runCatching {
         if (
             rom.u8(offset) != COMPARE_IMMEDIATE || rom.u8(offset + 2) != JR_C ||
-            rom.u8(offset + 4) != LOAD_BC_IMMEDIATE || rom.u16le(offset + 5) != INTERNAL_ENTRY_BYTES ||
+            rom.u8(offset + 4) != LOAD_BC_IMMEDIATE ||
             rom.u8(offset + 7) != LOAD_HL_IMMEDIATE
         ) return@runCatching null
+        val format = when (rom.u16le(offset + 5)) {
+            PACKED_INTERNAL_ENTRY_BYTES -> EntryFormat.PACKED
+            PIXEL_INTERNAL_ENTRY_BYTES -> EntryFormat.PIXEL
+            else -> return@runCatching null
+        }
         val threshold = rom.u8(offset + 1)
         if (threshold !in MIN_EXTERNAL_MAPS..MAX_MAP_ID) return@runCatching null
         val branchTarget = offset + 4 + rom.u8(offset + 3).toByte().toInt()
@@ -203,12 +276,29 @@ object Gen1WorldMapResolver {
             return@runCatching null
         }
         if (rom.u8(branchTarget) != LOAD_HL_IMMEDIATE) return@runCatching null
+        if (format == EntryFormat.PIXEL && !provesPixelEntryLookup(rom, offset, branchTarget, bankEnd)) {
+            return@runCatching null
+        }
         val internal = rom.gbBankAddress(bank, rom.u16le(offset + 8)) ?: return@runCatching null
         val external = rom.gbBankAddress(bank, rom.u16le(branchTarget + 1)) ?: return@runCatching null
-        val entries = parseEntryTables(rom, bank, threshold, external, internal, requiredMaps)
+        val entries = parseEntryTables(rom, bank, threshold, external, internal, requiredMaps, format)
             ?: return@runCatching null
         EntryTable(offset, entries)
     }.getOrNull()
+
+    private fun provesPixelEntryLookup(rom: RomImage, offset: Int, externalBranch: Int, bankEnd: Int): Boolean {
+        if (
+            offset + LOOKUP_PREFIX_BYTES + PIXEL_INTERNAL_LOOKUP.size > bankEnd ||
+            externalBranch + LOAD_HL_BYTES + PIXEL_EXTERNAL_LOOKUP.size > bankEnd
+        ) {
+            return false
+        }
+        return matches(rom, offset + LOOKUP_PREFIX_BYTES, PIXEL_INTERNAL_LOOKUP) &&
+            matches(rom, externalBranch + LOAD_HL_BYTES, PIXEL_EXTERNAL_LOOKUP)
+    }
+
+    private fun matches(rom: RomImage, offset: Int, expected: IntArray): Boolean =
+        expected.indices.all { index -> rom.u8(offset + index) == expected[index] }
 
     private fun parseEntryTables(
         rom: RomImage,
@@ -217,21 +307,22 @@ object Gen1WorldMapResolver {
         external: Int,
         internal: Int,
         requiredMaps: Set<Int>,
+        format: EntryFormat,
     ): Map<Int, MapEntry>? = runCatching {
         val externalEntries = List(threshold) { mapId ->
-            parseEntry(rom, bank, external + mapId * EXTERNAL_ENTRY_BYTES) ?: return@runCatching null
+            parseEntry(rom, bank, external + mapId * format.externalBytes, format) ?: return@runCatching null
         }
         val internalEntries = mutableListOf<InternalEntry>()
         var cursor = internal
-        // The compiled lookup accepts the first greater limit. Duplicate or decreasing rows are
+        var groupCount = 0
+        // The compiled lookup accepts the first matching limit. Duplicate or decreasing rows are
         // unreachable, but do not make the remaining lookup nondeterministic.
-        repeat(MAX_INTERNAL_GROUPS) {
-            if (cursor >= rom.size) return@runCatching null
+        while (groupCount < MAX_INTERNAL_GROUPS && cursor < rom.size && rom.u8(cursor) != END_MARKER) {
             val limit = rom.u8(cursor)
-            if (limit == END_MARKER) return@repeat
-            val entry = parseEntry(rom, bank, cursor + 1) ?: return@runCatching null
+            val entry = parseEntry(rom, bank, cursor + 1, format) ?: return@runCatching null
             internalEntries += InternalEntry(limit, entry)
-            cursor += INTERNAL_ENTRY_BYTES
+            cursor += format.internalBytes
+            groupCount++
         }
         if (cursor >= rom.size || rom.u8(cursor) != END_MARKER || internalEntries.isEmpty()) {
             return@runCatching null
@@ -241,20 +332,41 @@ object Gen1WorldMapResolver {
             val entry = if (mapId < threshold) {
                 externalEntries[mapId]
             } else {
-                internalEntries.firstOrNull { mapId < it.limit }?.entry ?: return@runCatching null
+                internalEntries.firstOrNull { candidate ->
+                    if (format.inclusiveLimit) mapId <= candidate.limit else mapId < candidate.limit
+                }?.entry ?: return@runCatching null
             }
             resolved[mapId] = entry
         }
         resolved
     }.getOrNull()
 
-    private fun parseEntry(rom: RomImage, bank: Int, offset: Int): MapEntry? = runCatching {
-        if (offset + EXTERNAL_ENTRY_BYTES > rom.size) return@runCatching null
-        val packed = rom.u8(offset)
-        val x = packed and 0x0f
-        val y = packed ushr 4
+    private fun parseEntry(rom: RomImage, bank: Int, offset: Int, format: EntryFormat): MapEntry? = runCatching {
+        if (offset + format.externalBytes > rom.size) return@runCatching null
+        val x: Int
+        val y: Int
+        val pointerOffset: Int
+        when (format) {
+            EntryFormat.PACKED -> {
+                val packed = rom.u8(offset)
+                x = packed and 0x0f
+                y = packed ushr 4
+                pointerOffset = offset + 1
+            }
+            EntryFormat.PIXEL -> {
+                val pixelY = rom.u8(offset)
+                val pixelX = rom.u8(offset + 1)
+                // Direct cursor coordinates include the 24-pixel map border and 4-pixel sprite inset.
+                if (pixelX < PIXEL_COORDINATE_ORIGIN || pixelY < PIXEL_COORDINATE_ORIGIN) {
+                    return@runCatching null
+                }
+                x = (pixelX - PIXEL_COORDINATE_ORIGIN) / TILE_EDGE
+                y = (pixelY - PIXEL_COORDINATE_ORIGIN) / TILE_EDGE
+                pointerOffset = offset + 2
+            }
+        }
         if (x !in 0 until GRID_WIDTH || y !in 0 until GRID_HEIGHT) return@runCatching null
-        val nameOffset = rom.gbBankAddress(bank, rom.u16le(offset + 1)) ?: return@runCatching null
+        val nameOffset = rom.gbBankAddress(bank, rom.u16le(pointerOffset)) ?: return@runCatching null
         val name = decodeTownMapName(rom, nameOffset) ?: return@runCatching null
         MapEntry(x, y, name)
     }.getOrNull()
@@ -311,9 +423,18 @@ object Gen1WorldMapResolver {
     }
 
     private data class LoaderAsset(val offset: Int, val tiles: ByteArray, val tilemap: ByteArray)
+    private data class DecodedMap(val tiles: ByteArray, val tilemap: ByteArray)
     private data class EntryTable(val offset: Int, val entries: Map<Int, MapEntry>)
     private data class MapEntry(val x: Int, val y: Int, val name: String)
     private data class InternalEntry(val limit: Int, val entry: MapEntry)
+    private enum class EntryFormat(
+        val externalBytes: Int,
+        val internalBytes: Int,
+        val inclusiveLimit: Boolean,
+    ) {
+        PACKED(PACKED_EXTERNAL_ENTRY_BYTES, PACKED_INTERNAL_ENTRY_BYTES, false),
+        PIXEL(PIXEL_EXTERNAL_ENTRY_BYTES, PIXEL_INTERNAL_ENTRY_BYTES, true),
+    }
     private data class TownMapChain(
         val loaderOffset: Int,
         val tableOffset: Int,
@@ -324,25 +445,30 @@ object Gen1WorldMapResolver {
 
     private const val BANK_BYTES = 0x4000
     private const val TILE_EDGE = 8
-    private const val TILE_COUNT = 16
+    private const val LEGACY_TILE_COUNT = 16
+    private const val MAX_TILE_COUNT = 128
     private const val TILE_BYTES_PER_TILE = 16
-    private const val TILE_BYTES = TILE_COUNT * TILE_BYTES_PER_TILE
     private const val GRID_WIDTH = 20
     private const val GRID_HEIGHT = 18
     private const val GRID_AREA = GRID_WIDTH * GRID_HEIGHT
     private const val PIXEL_WIDTH = GRID_WIDTH * TILE_EDGE
     private const val PIXEL_HEIGHT = GRID_HEIGHT * TILE_EDGE
+    private const val PIXEL_COORDINATE_ORIGIN = 28
     private const val MAX_RLE_BYTES = GRID_AREA + 1
     private const val FAR_COPY_BYTES = 14
+    private const val DIRECT_COPY_BYTES = 12
     private const val LOADER_WINDOW_BYTES = 160
     private const val RLE_LOOP_WINDOW_BYTES = 72
     private const val LOOKUP_PREFIX_BYTES = 10
     private const val LOOKUP_WINDOW_BYTES = 96
+    private const val LOAD_HL_BYTES = 3
     private const val MIN_EXTERNAL_MAPS = 16
     private const val MAX_MAP_ID = 0xff
     private const val MAX_INTERNAL_GROUPS = 256
-    private const val EXTERNAL_ENTRY_BYTES = 3
-    private const val INTERNAL_ENTRY_BYTES = 4
+    private const val PACKED_EXTERNAL_ENTRY_BYTES = 3
+    private const val PACKED_INTERNAL_ENTRY_BYTES = 4
+    private const val PIXEL_EXTERNAL_ENTRY_BYTES = 4
+    private const val PIXEL_INTERNAL_ENTRY_BYTES = 5
     private const val END_MARKER = 0xff
     private const val MAX_NAME_BYTES = 32
     private const val MIN_TEXT_RATIO = 0.85
@@ -351,7 +477,10 @@ object Gen1WorldMapResolver {
     private const val GB_POKE_PREFIX = 0x54
     private val WHITESPACE = Regex("\\s+")
     private const val VRAM_TILE_ORIGIN = 0x9000
-    private val VRAM_TILE_RANGE = 0x9000..0x97f0
+    private const val VRAM_TILE_END_EXCLUSIVE = 0x9800
+    private val VRAM_TILE_RANGE = VRAM_TILE_ORIGIN until VRAM_TILE_END_EXCLUSIVE
+    private const val WRAM_END_EXCLUSIVE = 0xe000
+    private val WRAM_RANGE = 0xc000 until WRAM_END_EXCLUSIVE
     private const val LOAD_HL_IMMEDIATE = 0x21
     private const val LOAD_DE_IMMEDIATE = 0x11
     private const val LOAD_BC_IMMEDIATE = 0x01
@@ -359,6 +488,14 @@ object Gen1WorldMapResolver {
     private const val CALL = 0xcd
     private const val COMPARE_IMMEDIATE = 0xfe
     private const val JR_C = 0x38
+    // Inclusive internal limit loop, then a four-byte external stride and Y/X/pointer consumer.
+    private val PIXEL_INTERNAL_LOOKUP = intArrayOf(
+        0xbe, 0x38, 0x05, 0x28, 0x03, 0x09, 0x18, 0xf8, 0x23, 0x18, 0x0a,
+    )
+    private val PIXEL_EXTERNAL_LOOKUP = intArrayOf(
+        0x4f, 0x06, 0x00, 0x09, 0x09, 0x09, 0x09,
+        0x2a, 0x47, 0x2a, 0x4f, 0x2a, 0x66, 0x6f, 0xc9,
+    )
     private val CONDITIONAL_JUMPS = setOf(0x20, 0x28, 0x30, 0x38)
     private val ZERO_TESTS = setOf(0xa7, 0xb7)
     private val DMG_PALETTE = intArrayOf(
