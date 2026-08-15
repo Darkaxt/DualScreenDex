@@ -43,8 +43,27 @@ class CorpusScannerTest {
             listOf("Pokemon Pack.zip!Pokemon Hack.gbc", "Pokemon Test.gba"),
             found.map { it.displayName }.sorted(),
         )
+        val byName = found.associateBy(CorpusInput::displayName)
+        assertArrayEquals(directBytes, byName.getValue("Pokemon Test.gba").loadRom().slice(0, directBytes.size))
+        assertArrayEquals(
+            ByteArray(0x150),
+            byName.getValue("Pokemon Pack.zip!Pokemon Hack.gbc").loadRom().slice(0, 0x150),
+        )
         assertArrayEquals(directBytes, Files.readAllBytes(direct))
         assertArrayEquals(archiveBefore, Files.readAllBytes(archive))
+    }
+
+    @Test
+    fun defersDirectRomLoadingUntilTheInputIsProcessed() {
+        val root = temporaryFolder.newFolder("lazy-roms").toPath()
+        val path = root.resolve("Pokemon Lazy.gba")
+        Files.write(path, byteArrayOf(1, 2, 3))
+
+        val input = CorpusScanner().scan(root).single()
+        val replacement = byteArrayOf(4, 5, 6, 7)
+        Files.write(path, replacement)
+
+        assertArrayEquals(replacement, input.loadRom().slice(0, replacement.size))
     }
 
     @Test
@@ -55,7 +74,6 @@ class CorpusScannerTest {
         val result = CorpusScanner().scan(root).single()
 
         assertEquals("Pokemon Broken.zip", result.displayName)
-        assertEquals(null, result.rom)
         assertEquals(true, result.error?.contains("ZipException"))
     }
 

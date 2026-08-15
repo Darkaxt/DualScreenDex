@@ -10,9 +10,23 @@ data class CorpusInput(
     val displayName: String,
     val source: String,
     val archiveEntry: String? = null,
-    val rom: RomImage? = null,
+    internal val path: Path? = null,
     val error: String? = null,
-)
+) {
+    internal fun loadRom(): RomImage {
+        val inputPath = requireNotNull(path) { "input has no ROM path" }
+        return if (archiveEntry == null) {
+            Files.newInputStream(inputPath).use(RomImage::from)
+        } else {
+            ZipFile(inputPath.toFile()).use { zip ->
+                val entry = zip.getEntry(archiveEntry)
+                    ?.takeUnless { it.isDirectory }
+                    ?: throw IllegalArgumentException("archive entry is missing: $archiveEntry")
+                zip.getInputStream(entry).use(RomImage::from)
+            }
+        }
+    }
+}
 
 class CorpusScanner(
     private val includeAllRomNames: Boolean = false,
@@ -43,12 +57,7 @@ class CorpusScanner(
         if ((!includeAllRomNames && !isPokemonName(file.fileName.toString())) ||
             isExcludedNonMainlineName(file.fileName.toString())
         ) return emptyList()
-        return try {
-            val rom = Files.newInputStream(file).use(RomImage::from)
-            listOf(CorpusInput(file.fileName.toString(), source, rom = rom))
-        } catch (failure: Exception) {
-            listOf(error(file.fileName.toString(), source, readableMessage(failure)))
-        }
+        return listOf(CorpusInput(file.fileName.toString(), source, path = file))
     }
 
     private fun scanZip(file: Path, source: String): List<CorpusInput> {
@@ -64,12 +73,7 @@ class CorpusScanner(
                     .sortedBy { it.name.lowercase(Locale.ROOT) }
                     .map { entry ->
                         val displayName = "${file.fileName}!${entry.name}"
-                        try {
-                            val rom = zip.getInputStream(entry).use(RomImage::from)
-                            CorpusInput(displayName, source, archiveEntry = entry.name, rom = rom)
-                        } catch (failure: Exception) {
-                            error(displayName, source, readableMessage(failure), entry.name)
-                        }
+                        CorpusInput(displayName, source, archiveEntry = entry.name, path = file)
                     }
                     .toList()
             }

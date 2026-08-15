@@ -245,10 +245,11 @@ Scan one or more user-owned ROM directories read-only:
 .\parser-cli\build\install\parser-cli\bin\parser-cli.bat `
   "D:\path\to\roms" `
   --json "D:\path\to\report.json" `
-  --markdown "D:\path\to\report.md"
+  --markdown "D:\path\to\report.md" `
+  --jobs 8
 ```
 
-The scanner accepts `.gb`, `.gbc`, and `.gba` files plus matching entries inside ZIP archives. ZIP contents are decompressed directly into the parser without extracting temporary ROM files.
+The scanner accepts `.gb`, `.gbc`, and `.gba` files plus matching entries inside ZIP archives. It loads each ROM only when a worker is ready and never extracts temporary ROM files. Scans use up to four workers by default; pass `--jobs N` to select a different positive worker count for the available CPU and memory.
 
 ## Run the browser development harness
 

@@ -10,11 +10,16 @@ import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 import kotlin.system.exitProcess
 import kotlin.time.measureTimedValue
 import kotlin.time.measureTime
 
-private const val USAGE = "parser-cli <root> [<root> ...] --json <path> --markdown <path> [--cache-dir <path>] [--all-roms]"
+private const val USAGE =
+    "parser-cli <root> [<root> ...] --json <path> --markdown <path> " +
+        "[--cache-dir <path>] [--jobs <count>] [--all-roms]"
+private val DEFAULT_JOBS = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
 
 fun main(arguments: Array<String>) {
     if (arguments.any { it == "--help" || it == "-h" }) {
@@ -32,13 +37,16 @@ fun main(arguments: Array<String>) {
     val scanner = CorpusScanner(includeAllRomNames = options.includeAllRomNames)
     val inputs = scanner.scan(options.roots)
     val cache = options.cacheDirectory?.let { CatalogCache(it.toFile(), JdbcCatalogDatabaseFactory) }
-    val results = inputs.mapIndexed { index, input ->
+    val workerCount = minOf(options.jobs, inputs.size).takeIf { it > 0 } ?: 0
+    println("Evaluating ${inputs.size} inputs with $workerCount worker${if (workerCount == 1) "" else "s"}")
+    val results = mapConcurrentlyOrdered(inputs, options.jobs) { index, input ->
         println("[${index + 1}/${inputs.size}] ${input.displayName}")
-        val result = if (input.error != null || input.rom == null) {
-            CorpusResult(input.displayName, input.source, input.archiveEntry, 0, error = input.error ?: "input has no ROM image")
+        val result = if (input.error != null) {
+            CorpusResult(input.displayName, input.source, input.archiveEntry, 0, error = input.error)
         } else {
             try {
-                val measured = measureTimedValue { CatalogParser.parseCatching(input.rom) }
+                val rom = input.loadRom()
+                val measured = measureTimedValue { CatalogParser.parseCatching(rom) }
                 val materialized = measured.value.catalog?.getOrNull()
                 val persisted = if (cache != null && materialized != null) {
                     runCatching { persistCatalog(cache, input, measured.value.analysis, materialized) }
@@ -72,7 +80,7 @@ fun main(arguments: Array<String>) {
             }
         }
         println(
-            "  -> ${result.result?.status ?: "ERROR"}" +
+            "[${index + 1}/${inputs.size}] -> ${result.result?.status ?: "ERROR"}" +
                 (result.result?.selectedFamily?.let { " / $it" } ?: "") +
                 (result.persistence?.let { " / SQLite ${it.bytes} bytes, reopen ${it.reopenMillis} ms" } ?: ""),
         )
@@ -92,6 +100,25 @@ fun main(arguments: Array<String>) {
     println("Evaluated ${results.size} inputs: $selected selected, $ambiguous ambiguous, $noFamilyMatch with no mainline-family match, $errors errors")
     println("JSON: ${options.json.toAbsolutePath()}")
     println("Markdown: ${options.markdown.toAbsolutePath()}")
+}
+
+internal fun <T, R> mapConcurrentlyOrdered(
+    inputs: List<T>,
+    jobs: Int,
+    transform: (Int, T) -> R,
+): List<R> {
+    require(jobs > 0) { "jobs must be positive" }
+    if (inputs.isEmpty()) return emptyList()
+    if (jobs == 1) return inputs.mapIndexed(transform)
+
+    val executor = Executors.newFixedThreadPool(minOf(jobs, inputs.size))
+    return try {
+        inputs.mapIndexed { index, input ->
+            executor.submit(Callable { transform(index, input) })
+        }.map { future -> future.get() }
+    } finally {
+        executor.shutdownNow()
+    }
 }
 
 private fun persistCatalog(
@@ -150,6 +177,7 @@ internal data class CliOptions(
     val markdown: Path,
     val cacheDirectory: Path?,
     val includeAllRomNames: Boolean,
+    val jobs: Int,
 ) {
     companion object {
         fun parse(arguments: Array<String>): CliOptions {
@@ -158,12 +186,14 @@ internal data class CliOptions(
             var markdown: Path? = null
             var cacheDirectory: Path? = null
             var includeAllRomNames = false
+            var jobs = DEFAULT_JOBS
             var index = 0
             while (index < arguments.size) {
                 when (val argument = arguments[index]) {
                     "--json" -> json = valueAfter(arguments, ++index, argument)
                     "--markdown" -> markdown = valueAfter(arguments, ++index, argument)
                     "--cache-dir" -> cacheDirectory = valueAfter(arguments, ++index, argument)
+                    "--jobs" -> jobs = jobCountAfter(arguments, ++index)
                     "--all-roms" -> includeAllRomNames = true
                     else -> {
                         require(!argument.startsWith("--")) { "unknown option: $argument" }
@@ -179,8 +209,13 @@ internal data class CliOptions(
                 markdown = requireNotNull(markdown) { "--markdown is required" },
                 cacheDirectory = cacheDirectory,
                 includeAllRomNames = includeAllRomNames,
+                jobs = jobs,
             )
         }
+
+        private fun jobCountAfter(arguments: Array<String>, index: Int): Int =
+            arguments.getOrNull(index)?.toIntOrNull()?.takeIf { it > 0 }
+                ?: throw IllegalArgumentException("--jobs requires a positive integer")
 
         private fun valueAfter(arguments: Array<String>, index: Int, option: String): Path {
             require(index < arguments.size) { "$option requires a path" }
