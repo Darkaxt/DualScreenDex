@@ -22,6 +22,12 @@ const fixture: Bootstrap = {
     selectedSpeciesId: null, filter: 'ALL', selectedAreaId: null, currentAreaBaseId: 16, revealedAreaBaseIds: [16, 17], battleTab: 'ENTRY',
     settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
     speciesState: {}, observedMoves: {}, battle: null, catalogReady: true,
+    trainer: {
+      name: 'MAY', gender: 'FEMALE', publicTrainerId: 12345, money: 98765, playTimeHours: 12, playTimeMinutes: 34,
+      dexSeen: 42, dexCaught: 7, stars: 2, avatarUrl: null,
+      badges: Array.from({ length: 8 }, (_, index) => ({ index, earned: index === 0, imageUrl: null })),
+    },
+    party: [{ slot: 0, occupied: true, speciesId: 25, speciesName: 'PIKACHU', spriteUrl: null, typeIds: [], nickname: 'SPARK', level: 18, isEgg: false, gender: null, nature: null, abilityId: null, abilityName: null, heldItemId: null, heldItemName: null, currentHp: null, maximumHp: null, status: null, experienceProgress: null, stats: {}, moves: [] }],
     catalogName: 'Pokemon Modern Emerald.gba', error: null, activeRulesetId: null,
     rulesetAssumed: true, loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 }
   }
@@ -63,6 +69,19 @@ describe('production application shell', () => {
     expect(screen.queryByText('Encounter feed')).toBeNull();
     expect(screen.queryByText('GENERATE ENCOUNTER')).toBeNull();
     expect(screen.queryByText(/Generate an encounter/i)).toBeNull();
+  });
+
+  it('keeps Trainer and Party shortcuts inside the existing application header', async () => {
+    render(<App />);
+
+    const trainer = await screen.findByRole('button', { name: 'Trainer Card' });
+    const party = screen.getByRole('button', { name: 'Party' });
+    expect(trainer.closest('.app-header')).toBeTruthy();
+    expect(party.closest('.app-header')).toBeTruthy();
+    expect(document.querySelector('[data-player-navigation-row]')).toBeNull();
+
+    fireEvent.click(trainer);
+    expect(action).toHaveBeenCalledWith('OPEN_TRAINER', {});
   });
 
   it('shows an indeterminate loading state without a misleading percentage', async () => {

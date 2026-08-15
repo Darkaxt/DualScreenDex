@@ -42,7 +42,14 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
   }), [activeFilter, areaSpeciesIds, catalog.species, policy, search, state.speciesState]);
 
   return <section class="screen pokedex-screen">
-    <Header title="POKÉDEX" kicker={`${catalog.family.replaceAll('_', ' ')} · ${policy}`} onSettings={() => send('SCREEN', { screen: 'SETTINGS' })} onMap={(catalog.worldMaps?.length ?? 0) > 0 ? onOpenMap : undefined} />
+    <Header
+      title="POKÉDEX"
+      kicker={`${catalog.family.replaceAll('_', ' ')} · ${policy}`}
+      onTrainer={state.trainer ? () => send('OPEN_TRAINER') : undefined}
+      onParty={state.party?.some(member => member.occupied) ? () => send('OPEN_PARTY') : undefined}
+      onSettings={() => send('SCREEN', { screen: 'SETTINGS' })}
+      onMap={(catalog.worldMaps?.length ?? 0) > 0 ? onOpenMap : undefined}
+    />
     <div class="browse-tools">
       <label class="search-box"><span>SEARCH</span><input value={search} onInput={event => setSearch(event.currentTarget.value)} placeholder="NAME OR NUMBER" /></label>
       <div class="filter-strip" aria-label="Pokédex filters">

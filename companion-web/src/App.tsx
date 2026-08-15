@@ -12,6 +12,8 @@ import { SetupPage } from './pages/SetupPage';
 import { MemoryMapperPage } from './pages/MemoryMapperPage';
 import { CapabilityReportPage } from './pages/CapabilityReportPage';
 import { MapPage } from './pages/MapPage';
+import { TrainerCardPage } from './pages/TrainerCardPage';
+import { PartyPage } from './pages/PartyPage';
 
 export interface DevelopmentToolsProps {
   catalog: Catalog | null;
@@ -31,6 +33,7 @@ const emptyState: State = {
   battleTab: 'ENTRY',
   settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', theme: 'GAME', displayTarget: 'AUTO' },
   speciesState: {}, observedMoves: {}, battle: null, catalogReady: false, catalogName: null, error: null,
+  trainer: null, party: [],
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'IDLE', completedUnits: 0, totalUnits: 0 },
   retroArch: { storageGrant: 'MISSING', configGrant: 'MISSING', romGrant: 'MISSING', configState: 'NOT_CONFIGURED', restartRequired: false, connection: 'DISCONNECTED', systemId: null, gameBasename: null, contentCrc32: null, resolution: 'NO_CONTENT', activeSource: null, savefileDirectory: null, indexedRoms: 0, message: null }
 };
@@ -47,6 +50,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [mapperOpen, setMapperOpen] = useState(false);
   const [capabilityReportOpen, setCapabilityReportOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [partySelection, setPartySelection] = useState<{ catalogHash: string; slot: number | null }>({ catalogHash: '', slot: null });
   const lastCatalogRefresh = useRef('');
 
   useEffect(() => {
@@ -108,10 +112,32 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
       }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={() => setMapOpen(true)} />;
+      case 'TRAINER': return <TrainerCardPage state={state} onBack={() => void send('BACK')} />;
+      case 'PARTY': {
+        const occupied = new Set((state.party ?? []).filter(member => member.occupied).map(member => member.slot));
+        const selectedSlot = partySelection.catalogHash === catalog.hash && partySelection.slot != null && occupied.has(partySelection.slot)
+          ? partySelection.slot
+          : state.selectedPartySlot != null && occupied.has(state.selectedPartySlot)
+            ? state.selectedPartySlot
+            : [...occupied][0] ?? null;
+        return <PartyPage
+          catalog={catalog}
+          state={state}
+          selectedSlot={selectedSlot}
+          onSelectSlot={slot => setPartySelection({ catalogHash: catalog.hash, slot })}
+          onBack={() => void send('BACK')}
+          openMove={setMoveDetailId}
+          openAbility={setAbilityDetailId}
+          openSpecies={speciesId => {
+            setDetailTab('ENTRY');
+            void send('OPEN_SPECIES', { speciesId });
+          }}
+        />;
+      }
       case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => setCapabilityReportOpen(true)} onOpenMapper={() => setMapperOpen(true)} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={() => setMapOpen(true)} />;
     }
-  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen, capabilityReportOpen, mapOpen]);
+  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen, capabilityReportOpen, mapOpen, partySelection]);
   const loadingLabel = `Loading ${loadingModuleLabel(state.loading.phase)}`;
 
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>

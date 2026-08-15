@@ -87,15 +87,33 @@ function SettingsIcon() {
   </svg>;
 }
 
-export function Header({ title, kicker, onBack, onSettings, onMap }: { title: string; kicker?: string; onBack?: () => void; onSettings?: () => void; onMap?: () => void }) {
+function TrainerIcon() {
+  return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="trainer">
+    <rect x="3" y="5" width="22" height="18" rx="2" />
+    <circle cx="10" cy="12" r="3" />
+    <path d="M6 19c.8-2.8 2.2-4 4-4s3.2 1.2 4 4M17 10h5M17 14h5M17 18h3" />
+  </svg>;
+}
+
+function PartyIcon() {
+  return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="party">
+    <circle cx="9" cy="10" r="5" /><circle cx="19" cy="17" r="5" />
+    <path d="M4 10h10M9 5v10M14 17h10M19 12v10" />
+  </svg>;
+}
+
+export function Header({ title, kicker, onBack, onSettings, onMap, onTrainer, onParty }: { title: string; kicker?: string; onBack?: () => void; onSettings?: () => void; onMap?: () => void; onTrainer?: () => void; onParty?: () => void }) {
+  const hasActions = Boolean(onTrainer || onParty || onMap || onSettings);
   return (
     <header class="app-header">
       {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
       <div class="header-title"><strong>{title}</strong>{kicker && <small>{kicker}</small>}</div>
-      {onMap ? <div class="header-actions">
-        <button class="header-action map-action" onClick={onMap} aria-label="Open Map"><MapIcon /></button>
+      {hasActions ? <div class="header-actions">
+        {onTrainer && <button class="header-action trainer-action" onClick={onTrainer} aria-label="Trainer Card"><TrainerIcon /></button>}
+        {onParty && <button class="header-action party-action" onClick={onParty} aria-label="Party"><PartyIcon /></button>}
+        {onMap && <button class="header-action map-action" onClick={onMap} aria-label="Open Map"><MapIcon /></button>}
         {onSettings && <button class="header-action settings-action" onClick={onSettings} aria-label="Settings"><SettingsIcon /></button>}
-      </div> : onSettings ? <button class="header-action settings-action" onClick={onSettings} aria-label="Settings"><SettingsIcon /></button> : <span class="header-spacer" />}
+      </div> : <span class="header-spacer" />}
     </header>
   );
 }
