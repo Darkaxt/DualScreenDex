@@ -4,7 +4,7 @@ import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.TrainerSnapshot
 
 enum class KnowledgeMode { DISCOVERED, ORGANIC, HIDDEN }
-enum class AppScreen { POKEDEX, DETAIL, BATTLE, SETTINGS, SETUP }
+enum class AppScreen { POKEDEX, DETAIL, BATTLE, TRAINER, PARTY, SETTINGS, SETUP }
 enum class PokedexFilter { ALL, CAUGHT, SEEN, TEAM, AREA }
 enum class BattleTab { ENTRY, ATTACK, RARITY, MOVES }
 enum class BattleEncounterKind { WILD, TRAINER, UNKNOWN }
@@ -104,6 +104,7 @@ data class AppSnapshot(
     val priorScreen: AppScreen = AppScreen.POKEDEX,
     val settingsReturnScreen: AppScreen = AppScreen.POKEDEX,
     val selectedSpeciesId: Int? = null,
+    val selectedPartySlot: Int? = null,
     val filter: PokedexFilter = PokedexFilter.ALL,
     val selectedAreaId: Int? = null,
     val selectedAreaIds: Set<Int> = emptySet(),
@@ -126,6 +127,9 @@ sealed interface CompanionAction {
     data class CatalogLoaded(val name: String) : CompanionAction
     data class CatalogLoadingChanged(val loading: CatalogLoadingState, val name: String? = null) : CompanionAction
     data class OpenSpecies(val speciesId: Int) : CompanionAction
+    data object OpenTrainer : CompanionAction
+    data object OpenParty : CompanionAction
+    data class OpenPartyMember(val slot: Int) : CompanionAction
     data object BackToPokedex : CompanionAction
     data class SetScreen(val screen: AppScreen) : CompanionAction
     data class SetFilter(val filter: PokedexFilter, val areaId: Int? = null) : CompanionAction

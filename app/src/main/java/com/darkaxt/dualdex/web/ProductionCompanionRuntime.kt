@@ -619,6 +619,9 @@ class ProductionCompanionRuntime(
     fun action(type: String, values: Map<String, String?>): StateView {
         when (type.uppercase()) {
             "OPEN_SPECIES" -> gateway.dispatch(CompanionAction.OpenSpecies(requireInt(values, "speciesId")))
+            "OPEN_TRAINER" -> gateway.dispatch(CompanionAction.OpenTrainer)
+            "OPEN_PARTY" -> gateway.dispatch(CompanionAction.OpenParty)
+            "OPEN_PARTY_MEMBER" -> gateway.dispatch(CompanionAction.OpenPartyMember(requireInt(values, "slot")))
             "BACK" -> gateway.dispatch(CompanionAction.BackToPokedex)
             "SCREEN" -> gateway.dispatch(CompanionAction.SetScreen(AppScreen.valueOf(requireNotNull(values["screen"]).uppercase())))
             "FILTER" -> gateway.dispatch(

@@ -139,6 +139,9 @@ class DualDexRuntime(
             }
             "END_BATTLE" -> gateway.dispatch(CompanionAction.BattleEnded)
             "OPEN_SPECIES" -> gateway.dispatch(CompanionAction.OpenSpecies(requireInt(values, "speciesId")))
+            "OPEN_TRAINER" -> gateway.dispatch(CompanionAction.OpenTrainer)
+            "OPEN_PARTY" -> gateway.dispatch(CompanionAction.OpenParty)
+            "OPEN_PARTY_MEMBER" -> gateway.dispatch(CompanionAction.OpenPartyMember(requireInt(values, "slot")))
             "BACK" -> gateway.dispatch(CompanionAction.BackToPokedex)
             "SCREEN" -> gateway.dispatch(CompanionAction.SetScreen(AppScreen.valueOf(values["screen"]!!.uppercase())))
             "FILTER" -> gateway.dispatch(

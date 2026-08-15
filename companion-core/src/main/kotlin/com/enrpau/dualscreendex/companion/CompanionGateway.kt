@@ -32,7 +32,12 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
     }
 
     private fun reduce(state: AppSnapshot, action: CompanionAction): AppSnapshot = when (action) {
-        is CompanionAction.CatalogLoaded -> state.copy(catalogReady = true, catalogName = action.name, error = null)
+        is CompanionAction.CatalogLoaded -> state.copy(
+            catalogReady = true,
+            catalogName = action.name,
+            selectedPartySlot = state.selectedPartySlot.takeIf { action.name == state.catalogName },
+            error = null,
+        )
         is CompanionAction.CatalogLoadingChanged -> state.copy(
             catalogLoading = action.loading,
             catalogReady = when {
@@ -51,6 +56,19 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             screen = AppScreen.DETAIL,
             priorScreen = state.screen.takeUnless { it == AppScreen.DETAIL } ?: state.priorScreen,
             selectedSpeciesId = action.speciesId,
+        )
+        CompanionAction.OpenTrainer -> state.copy(
+            screen = AppScreen.TRAINER,
+            priorScreen = state.screen.takeUnless { it == AppScreen.TRAINER } ?: state.priorScreen,
+        )
+        CompanionAction.OpenParty -> state.copy(
+            screen = AppScreen.PARTY,
+            priorScreen = state.screen.takeUnless { it == AppScreen.PARTY } ?: state.priorScreen,
+        )
+        is CompanionAction.OpenPartyMember -> state.copy(
+            screen = AppScreen.PARTY,
+            priorScreen = state.screen.takeUnless { it == AppScreen.PARTY } ?: state.priorScreen,
+            selectedPartySlot = action.slot.takeIf { it in 0 until PARTY_SLOT_COUNT },
         )
         CompanionAction.BackToPokedex -> state.copy(screen = state.priorScreen)
         is CompanionAction.SetScreen -> if (action.screen == AppScreen.SETTINGS && state.screen != AppScreen.SETTINGS) {
@@ -114,6 +132,8 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         is CompanionAction.Failure -> state.copy(error = action.message)
     }
 }
+
+private const val PARTY_SLOT_COUNT = 6
 
 fun initialBattleTab(
     encounterKind: BattleEncounterKind,
