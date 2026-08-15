@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
 import java.nio.file.Files
@@ -63,6 +64,21 @@ class DirectRomLibraryIndexerTest {
 
         assertEquals(setOf(direct.name, "${archive.name}!Emerald.gba"), loaded.keys)
         assertTrue(loaded.values.all { it.rom.sha256 == loaded.values.first().rom.sha256 })
+    }
+
+    @Test
+    fun `streams the exact official Emerald identity without materializing the ROM`() {
+        val configured = System.getenv("DUALDEX_OFFICIAL_EMERALD_ROM")
+        assumeTrue("set DUALDEX_OFFICIAL_EMERALD_ROM to run this real-ROM control", !configured.isNullOrBlank())
+        val source = File(requireNotNull(configured))
+        assumeTrue("official Emerald ROM does not exist: $source", source.isFile)
+
+        val identity = StreamingRomSourceReader.read(source)
+
+        assertEquals(source.name, identity.displayName)
+        assertEquals(RomPlatform.GBA, identity.platform)
+        assertEquals("1F1C08FB", identity.crc32)
+        assertEquals("a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af", identity.sha256)
     }
 
     private fun temporaryRoot(): File = Files.createTempDirectory("dualdex-direct-rom-").toFile().also(roots::add)
