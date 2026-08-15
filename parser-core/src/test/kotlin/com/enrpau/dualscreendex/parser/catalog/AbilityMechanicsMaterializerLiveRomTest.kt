@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.catalog
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import java.nio.file.Files
 import java.nio.file.Path
@@ -21,6 +22,13 @@ class AbilityMechanicsMaterializerLiveRomTest {
         ).load()
 
         val catalog = CatalogMaterializer.materialize(loaded.rom, loaded.parse, loaded.layout)
+
+        assertEquals(0x67F958, GbaPublishedHeaderResolver.resolve(loaded.rom).abilityDescriptions)
+        val descriptions = catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS)
+        assertEquals(CapabilityStatus.AVAILABLE, descriptions.status)
+        assertEquals(81, descriptions.count)
+        assertEquals("Helps repel wild Pokémon.", catalog.abilitiesById.getValue(1).description.value)
+        assertEquals("Normal moves become Fairy.", catalog.abilitiesById.getValue(81).description.value)
 
         val capability = catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS)
         assertEquals(CapabilityStatus.AVAILABLE, capability.status)

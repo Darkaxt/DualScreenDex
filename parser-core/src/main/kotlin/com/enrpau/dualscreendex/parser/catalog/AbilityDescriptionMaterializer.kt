@@ -54,12 +54,14 @@ object AbilityDescriptionMaterializer {
         val referenceIndex = layout.compiledGbaReferences
         if (publishedRoot == null && (referenceIndex == null || referenceIndex.overflowed)) return null
         val references = referenceIndex?.takeUnless { it.overflowed }?.counts.orEmpty()
-        var eligibleCandidates = 0
-        references.keys.forEach { offset ->
-            if (!isCompletePointerSpanCandidate(rom, offset, names.count)) return@forEach
-            eligibleCandidates++
-            if (eligibleCandidates > MAX_DESCRIPTION_CANDIDATES) return null
-            candidates += offset
+        if (publishedRoot == null) {
+            var eligibleCandidates = 0
+            references.keys.forEach { offset ->
+                if (!isCompletePointerSpanCandidate(rom, offset, names.count)) return@forEach
+                eligibleCandidates++
+                if (eligibleCandidates > MAX_DESCRIPTION_CANDIDATES) return null
+                candidates += offset
+            }
         }
         val prefix = abilityNamePrefix(rom, names)
 

@@ -64,6 +64,8 @@ class WorldMapCatalogApiRealControlTest {
         val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
         val expectedIds = setOf(22, 37, 55, 61, 62, 74, 81)
         assertEquals(expectedIds, catalog.abilitiesById.filterValues { it.mechanics.value?.isNotEmpty() == true }.keys)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
+        assertEquals("Helps repel wild Pokémon.", catalog.abilitiesById.getValue(1).description.value)
 
         val root = newRoot()
         var server: AndroidLoopbackServer? = null
@@ -79,6 +81,10 @@ class WorldMapCatalogApiRealControlTest {
                 catalog.abilitiesById.mapValues { it.value.mechanics },
                 reopened.abilitiesById.mapValues { it.value.mechanics },
             )
+            assertEquals(
+                catalog.abilitiesById.mapValues { it.value.description },
+                reopened.abilitiesById.mapValues { it.value.description },
+            )
 
             val runtime = ProductionCompanionRuntime().apply { loadCatalog(romPath.fileName.toString(), reopened) }
             val apiAbilities = requireNotNull(runtime.bootstrap().catalog).species
@@ -90,6 +96,7 @@ class WorldMapCatalogApiRealControlTest {
                 .intersect(expectedIds)
             assertEquals(expectedIds, referencedExpectedIds)
             assertEquals(referencedExpectedIds, apiAbilities.keys.intersect(expectedIds))
+            assertEquals("Helps repel wild Pokémon.", apiAbilities.getValue(1).description)
             assertEquals("Switch-in", apiAbilities.getValue(22).mechanics.single().conditions.single().label)
             assertEquals("While affected by status", apiAbilities.getValue(62).mechanics.single().conditions.single().label)
             if (81 in referencedExpectedIds) {
@@ -98,6 +105,7 @@ class WorldMapCatalogApiRealControlTest {
 
             server = AndroidLoopbackServer(runtime) { null }.also { it.start() }
             val json = URI("http://127.0.0.1:${server.address.port}/api/bootstrap").toURL().readText()
+            assertTrue(json.contains("Helps repel wild Pokémon."))
             assertTrue(json.contains("\"name\":\"Intimidate\""))
             assertTrue(json.contains("\"label\":\"Switch-in\""))
             if (81 in referencedExpectedIds) {
