@@ -36,5 +36,6 @@
   "v11Stage4DynamicFeatureNavigation": true,
   "v11Stage4LocalMapConvergence": true,
   "v11Rc4HotfixBoundedRomIndex": true,
+  "v11Rc4HotfixBoundedAbilityCfg": true,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

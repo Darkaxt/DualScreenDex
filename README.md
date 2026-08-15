@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.4-hotfix.1` adds capability-driven Trainer Card and Party presentation over the normalized read-only state, converges the local world-map experience, and streams background ROM-library identity scans within a bounded memory footprint. Trainer, Party, Map, and Settings share the existing compact header; unsupported features disappear instead of exposing dead controls. Display recovery remains a later stage.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.4-hotfix.2` adds capability-driven Trainer Card and Party presentation over the normalized read-only state, converges the local world-map experience, and bounds both background ROM-library identity scans and cold ability control-flow analysis. Trainer, Party, Map, and Settings share the existing compact header; unsupported features disappear instead of exposing dead controls. Display recovery remains a later stage.
 
 ## Thor-first UI direction
 
@@ -224,7 +224,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in signed RC9; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | `v1.1.0-rc.4-hotfix.1` is prepared for the protected signing workflow with checksums and provenance. |
+| Signed candidate target | `v1.1.0-rc.4-hotfix.2` is prepared for the protected signing workflow with checksums and provenance. |
 
 ## Parser development
 
