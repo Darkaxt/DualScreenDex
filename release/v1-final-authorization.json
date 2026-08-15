@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "versionName": "1.0.0",
+  "sourceCandidateTag": "v1.0.0-rc.30",
+  "githubSignedCandidateSha256": "C619F229952D4211D79E3BF5679DF22250845C7E7E7D8BF06E965BAB1426F607",
+  "validatedSignerSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
+  "validationMode": "automated-passive-catalog",
+  "userAuthorizedAutomatedPromotion": true,
+  "gameplayRuntimeChanged": false,
+  "exactRomControls": 5,
+  "catalogPersistenceValidated": true,
+  "runtimeApiValidated": true,
+  "webPresentationValidated": true,
+  "releaseCiValidated": true,
+  "avdValidated": false,
+  "thorValidated": false,
+  "authorizedDate": "2026-08-15"
+}
