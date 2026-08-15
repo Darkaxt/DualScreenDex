@@ -23,6 +23,7 @@ internal data class CatalogAnalysisContext(
     val analysis: ParseResult,
     val resolveGen3AreaNames: (Set<Int>) -> Map<Int, String>,
     val resolveWorldMap: (Int, Set<Int>) -> WorldMapResolution,
+    val resolveLocalMaps: (Int, Set<Int>) -> LocalMapResolution,
 )
 
 object ParserOrchestrator {
@@ -45,6 +46,16 @@ object ParserOrchestrator {
                     emptyMap()
                 } else {
                     Gen3MapLocationResolver.resolve(sharedSession.rom, baseAreaIds, references)
+                }
+            },
+            resolveLocalMaps = { generation, baseAreaIds ->
+                if (generation == 3) {
+                    Gen3LocalMapResolver.resolve(sharedSession, baseAreaIds)
+                } else {
+                    LocalMapResolution.Unavailable(
+                        "generation",
+                        "local maps are not part of this engine's normalized parser path",
+                    )
                 }
             },
             resolveWorldMap = { generation, baseAreaIds ->

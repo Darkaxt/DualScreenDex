@@ -201,6 +201,8 @@ data class CatalogGen3RuntimeMemoryLayout(
     val inBattleMask: Int,
     val saveBlock1MapGroupOffset: Int,
     val saveBlock1MapNumberOffset: Int,
+    val saveBlock1PositionXOffset: Int = 0,
+    val saveBlock1PositionYOffset: Int = 2,
     val multiUsePlayerCursorAddress: Long? = null,
     val multiUsePlayerCursorEvidence: RuntimeMemoryEvidence? = null,
     val playerPartyCountAddress: Long? = null,
@@ -211,6 +213,9 @@ data class CatalogGen3RuntimeMemoryLayout(
     val nonWildBattleMask: Int? = null,
 ) {
     init {
+        require(saveBlock1PositionXOffset >= 0 && saveBlock1PositionYOffset == saveBlock1PositionXOffset + 2) {
+            "SaveBlock1 position must be two adjacent signed 16-bit coordinates"
+        }
         require((playerPartyCountAddress == null) == (playerPartyAddress == null)) {
             "live party count and record addresses must be present together"
         }
@@ -232,6 +237,78 @@ data class CatalogRuntimeMetadata(
     val gen3SaveBlock1PointerAddress: Long? = null,
     val gen3RuntimeMemoryLayout: CatalogGen3RuntimeMemoryLayout? = null,
     val areaNamesByBaseId: Map<Int, String> = emptyMap(),
+)
+
+data class PngMapAsset(
+    val bytes: ByteArray,
+) {
+    init {
+        require(bytes.size >= PNG_SIGNATURE.size && bytes.copyOfRange(0, PNG_SIGNATURE.size).contentEquals(PNG_SIGNATURE)) {
+            "local-map assets must be PNG images"
+        }
+    }
+
+    override fun equals(other: Any?): Boolean = other is PngMapAsset && bytes.contentEquals(other.bytes)
+
+    override fun hashCode(): Int = bytes.contentHashCode()
+
+    private companion object {
+        val PNG_SIGNATURE = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
+    }
+}
+
+data class LocalMapCatalog(
+    val maps: List<LocalMap> = emptyList(),
+    val assets: Map<String, PngMapAsset> = emptyMap(),
+) {
+    init {
+        validate()
+    }
+
+    fun validate(): LocalMapCatalog = apply {
+        require(maps.map(LocalMap::key).toSet().size == maps.size) {
+            "local-map keys must be unique"
+        }
+        require(maps.map(LocalMap::baseAreaId).toSet().size == maps.size) {
+            "local maps must bind unique base-area IDs"
+        }
+        val referencedAssetKeys = maps.map(LocalMap::imageAssetKey).toSet()
+        require(assets.keys == referencedAssetKeys) {
+            "local-map assets must exactly match map asset keys"
+        }
+        maps.forEach { map ->
+            require(map.key.isNotBlank()) { "local-map keys must not be blank" }
+            require(map.baseAreaId in 0..0xFFFF) { "local-map base-area IDs must fit group/map identity" }
+            require(map.pixelWidth > 0 && map.pixelHeight > 0) {
+                "local-map pixel dimensions must be positive"
+            }
+            require(map.gridWidth > 0 && map.gridHeight > 0) {
+                "local-map grid dimensions must be positive"
+            }
+            require(
+                map.pixelWidth.toLong() == map.gridWidth.toLong() * LOCAL_METATILE_PIXELS &&
+                    map.pixelHeight.toLong() == map.gridHeight.toLong() * LOCAL_METATILE_PIXELS,
+            ) { "local-map pixel dimensions must match the metatile grid" }
+            require(assets.containsKey(map.imageAssetKey)) {
+                "local map ${map.key} has no raster"
+            }
+        }
+    }
+
+    private companion object {
+        const val LOCAL_METATILE_PIXELS = 16
+    }
+}
+
+data class LocalMap(
+    val key: String,
+    val displayName: String?,
+    val baseAreaId: Int,
+    val pixelWidth: Int,
+    val pixelHeight: Int,
+    val gridWidth: Int,
+    val gridHeight: Int,
+    val imageAssetKey: String,
 )
 
 data class WorldMapCatalog(
@@ -332,6 +409,7 @@ data class ParsedCatalog(
     val learnsetRulesets: List<LearnsetRuleset> = emptyList(),
     val runtimeMetadata: CatalogRuntimeMetadata = CatalogRuntimeMetadata(),
     val worldMaps: WorldMapCatalog = WorldMapCatalog(),
+    val localMaps: LocalMapCatalog = LocalMapCatalog(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),
 ) {

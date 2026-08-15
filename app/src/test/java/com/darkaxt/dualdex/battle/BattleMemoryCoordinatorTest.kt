@@ -337,26 +337,32 @@ class BattleMemoryCoordinatorTest {
     @Test
     fun publishesTheLiveMapOutsideBattleFromTheRomProvenSaveBlockPointer() {
         val ewram = ByteArray(0x40000)
+        putU16(ewram, 0x1000, 12)
+        putU16(ewram, 0x1002, 7)
         ewram[0x1004] = 0
         ewram[0x1005] = 16
         val pointer = byteArrayOf(0x00, 0x10, 0x00, 0x02)
         val updates = mutableListOf<BattleTrackingUpdate>()
         val liveAreas = mutableListOf<Int?>()
+        val positions = mutableListOf<Gen3MapPosition?>()
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x030036F0L to pointer))
         val coordinator = BattleMemoryCoordinator(
-            catalogProvider = { context(saveBlock1Pointer = 0x030036F0L) },
+            catalogProvider = { context(saveBlock1Pointer = 0x030036F0L, runtimeLayout = gen3RuntimeLayout()) },
             publisher = updates::add,
             locationPublisher = { liveAreas.add(it) },
+            positionPublisher = positions::add,
             transportFactory = { transport },
             autoStart = false,
         )
         coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
 
-        repeat(3) { coordinator.heartbeat() }
+        repeat(4) { coordinator.heartbeat() }
 
         assertTrue(updates.isEmpty())
         assertEquals(0x0010, liveAreas.last())
+        assertEquals(Gen3MapPosition(12, 7), positions.last())
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 30036f0 4") })
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 2001000 6") })
         coordinator.close()
     }
 

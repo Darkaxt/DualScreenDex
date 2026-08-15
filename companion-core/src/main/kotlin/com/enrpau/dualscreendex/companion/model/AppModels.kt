@@ -93,6 +93,8 @@ data class CatalogLoadingState(
     val totalUnits: Int = 0,
 )
 
+data class LiveMapPosition(val x: Int, val y: Int)
+
 data class AppSnapshot(
     val version: Long = 0,
     val screen: AppScreen = AppScreen.POKEDEX,
@@ -106,6 +108,7 @@ data class AppSnapshot(
     val settings: CompanionSettings = CompanionSettings(),
     val ledger: KnowledgeLedger = KnowledgeLedger(),
     val liveAreaBaseId: Int? = null,
+    val liveMapPosition: LiveMapPosition? = null,
     val battle: BattleState? = null,
     val battleReturnScreen: AppScreen = AppScreen.POKEDEX,
     val catalogReady: Boolean = false,
@@ -130,6 +133,7 @@ sealed interface CompanionAction {
     data class SelectTarget(val index: Int) : CompanionAction
     data class SelectMove(val moveId: Int) : CompanionAction
     data class LiveAreaChanged(val areaBaseId: Int?) : CompanionAction
+    data class LiveMapPositionChanged(val position: LiveMapPosition?) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction
     data class Failure(val message: String) : CompanionAction
 }

@@ -12,6 +12,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
+private data class Gen3LiveLocation(val areaBaseId: Int, val position: Gen3MapPosition?)
+
 data class BattleCatalogContext(
     val romIdentity: String,
     val generation: Int,
@@ -47,6 +49,7 @@ class BattleMemoryCoordinator(
     private val catalogProvider: () -> BattleCatalogContext?,
     private val publisher: (BattleTrackingUpdate) -> Unit,
     private val locationPublisher: (Int?) -> Unit = {},
+    private val positionPublisher: (Gen3MapPosition?) -> Unit = {},
     private val partyPublisher: (List<OwnedIndividual>?) -> Unit = {},
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     private val pollingIntervalProvider: () -> Int = { 5 },
@@ -100,6 +103,7 @@ class BattleMemoryCoordinator(
         val hadBattle = tracker.missed().active
         if (!nextEligible || sessionIdentity != nextIdentity) {
             locationPublisher(null)
+            positionPublisher(null)
             lastPublishedLiveParty = null
             partyPublisher(null)
         }
@@ -219,10 +223,11 @@ class BattleMemoryCoordinator(
                 }
                 pointerGlobal?.let { add(CoreMemoryRegion("save-block-pointer", it, 4)) }
                 requestedSaveBlock1Address?.let { saveBlock ->
+                    val decoder = Gen3RuntimeMemoryDecoder(runtimeLayout)
                     add(CoreMemoryRegion(
                         "save-block-location",
-                        saveBlock + runtimeLayout.saveBlock1MapGroupOffset,
-                        Gen3RuntimeMemoryDecoder.MAP_ID_BYTES,
+                        saveBlock + decoder.locationWindowOffset,
+                        decoder.locationWindowBytes,
                     ))
                 }
                 addAll(livePartyRegions(context))
@@ -275,12 +280,14 @@ class BattleMemoryCoordinator(
                     ))
                 }
                 pointerGlobal?.let { add(CoreMemoryRegion("save-block-pointer", it, 4)) }
-                val mapGroupOffset = contextRuntimeLayout()?.saveBlock1MapGroupOffset ?: SAVE_LOCATION_GROUP_OFFSET
+                val runtimeDecoder = contextRuntimeLayout()?.let(::Gen3RuntimeMemoryDecoder)
+                val locationOffset = runtimeDecoder?.locationWindowOffset ?: SAVE_LOCATION_GROUP_OFFSET
+                val locationBytes = runtimeDecoder?.locationWindowBytes ?: Gen3RuntimeMemoryDecoder.MAP_ID_BYTES
                 requestedSaveBlock1Address?.let { saveBlock ->
                     add(CoreMemoryRegion(
                         "save-block-location",
-                        saveBlock + mapGroupOffset,
-                        Gen3RuntimeMemoryDecoder.MAP_ID_BYTES,
+                        saveBlock + locationOffset,
+                        locationBytes,
                     ))
                 }
                 addAll(livePartyRegions(context))
@@ -337,11 +344,17 @@ class BattleMemoryCoordinator(
             ReadMode.RUNTIME -> null
         }
         val mainState = resolveGen3MainState(regions, context)
+        val liveLocation = if (context.generation == 3 && supportsLiveArea(context)) {
+            resolveCurrentGen3Location(regions, context)
+        } else {
+            null
+        }
         val gen3Runtime = if (context.generation == 3) {
             val battleActive = resolveGen3BattleActive(regions, context)
             Gen3RuntimeSnapshot(
                 battleActive = battleActive,
-                areaBaseId = if (supportsLiveArea(context)) resolveCurrentArea(regions, context) else null,
+                areaBaseId = liveLocation?.areaBaseId,
+                mapPosition = liveLocation?.position,
                 targetBattler = resolveGen3LiveTarget(regions, context),
                 encounterKind = if (battleActive == true) {
                     resolveGen3EncounterKind(regions, context)
@@ -370,6 +383,7 @@ class BattleMemoryCoordinator(
             locationPublisher(
                 if (context.generation == 3) gen3Runtime?.areaBaseId else resolveCurrentArea(regions, context),
             )
+            if (context.generation == 3) positionPublisher(gen3Runtime?.mapPosition)
         }
         val sample = when {
             context.generation != 3 -> resolvedSample
@@ -579,25 +593,31 @@ class BattleMemoryCoordinator(
         return if (group in 0..63 && map != 0xFF) (group shl 8) or map else null
     }
 
-    private fun resolveCurrentGen3Area(regions: Map<String, ByteArray>, context: BattleCatalogContext): Int? {
+    private fun resolveCurrentGen3Area(regions: Map<String, ByteArray>, context: BattleCatalogContext): Int? =
+        resolveCurrentGen3Location(regions, context)?.areaBaseId
+
+    private fun resolveCurrentGen3Location(
+        regions: Map<String, ByteArray>,
+        context: BattleCatalogContext,
+    ): Gen3LiveLocation? {
         if (context.gen3SaveBlock1PointerAddress == null) return null
         val pointerBytes = regions["save-block-pointer"] ?: return null
         if (pointerBytes.size != 4) return null
         val pointer = pointerBytes.foldIndexed(0L) { index, value, byte ->
             value or ((byte.toInt() and 0xFF).toLong() shl (index * 8))
         }
-        val runtimeLayout = context.gen3RuntimeMemoryLayout
-        val groupOffset = runtimeLayout?.saveBlock1MapGroupOffset ?: SAVE_LOCATION_GROUP_OFFSET
-        val numberOffset = runtimeLayout?.saveBlock1MapNumberOffset ?: SAVE_LOCATION_NUMBER_OFFSET
-        if (pointer < EWRAM_BASE || pointer + maxOf(groupOffset, numberOffset) >= EWRAM_BASE + EWRAM_BYTES) {
+        val runtimeDecoder = context.gen3RuntimeMemoryLayout?.let(::Gen3RuntimeMemoryDecoder)
+        val windowOffset = runtimeDecoder?.locationWindowOffset ?: SAVE_LOCATION_GROUP_OFFSET
+        val windowBytes = runtimeDecoder?.locationWindowBytes ?: Gen3RuntimeMemoryDecoder.MAP_ID_BYTES
+        if (pointer < EWRAM_BASE || pointer + windowOffset + windowBytes > EWRAM_BASE + EWRAM_BYTES) {
             cachedSaveBlock1Address = null
             return null
         }
         val location = if (readMode == ReadMode.DISCOVERY) {
             val ewram = regions["ewram"] ?: return null
-            val offset = (pointer - EWRAM_BASE).toInt() + groupOffset
-            if (offset < 0 || offset + Gen3RuntimeMemoryDecoder.MAP_ID_BYTES > ewram.size) return null
-            ewram.copyOfRange(offset, offset + Gen3RuntimeMemoryDecoder.MAP_ID_BYTES)
+            val offset = (pointer - EWRAM_BASE).toInt() + windowOffset
+            if (offset < 0 || offset + windowBytes > ewram.size) return null
+            ewram.copyOfRange(offset, offset + windowBytes)
         } else {
             if (pointer != requestedSaveBlock1Address) {
                 cachedSaveBlock1Address = pointer
@@ -606,13 +626,14 @@ class BattleMemoryCoordinator(
             regions["save-block-location"] ?: return null
         }
         cachedSaveBlock1Address = pointer
-        return runtimeLayout
-            ?.let { Gen3RuntimeMemoryDecoder(it).decodeArea(location) }
+        val areaBaseId = runtimeDecoder?.decodeArea(location)
             ?: if (location.size == Gen3RuntimeMemoryDecoder.MAP_ID_BYTES) {
                 ((location[0].toInt() and 0xFF) shl 8) or (location[1].toInt() and 0xFF)
             } else {
                 null
             }
+            ?: return null
+        return Gen3LiveLocation(areaBaseId, runtimeDecoder?.decodePosition(location))
     }
 
     private fun contextLiveAreaOffset(generation: Int): Int? = catalogProvider()
@@ -765,7 +786,6 @@ class BattleMemoryCoordinator(
         private const val IWRAM_BASE = 0x03000000L
         private const val IWRAM_BYTES = 0x8000
         private const val SAVE_LOCATION_GROUP_OFFSET = 4
-        private const val SAVE_LOCATION_NUMBER_OFFSET = 5
         private const val COUNT_DELTA = 0x1C
         private const val POSITIONS_DELTA = 0x10
         private const val OUTCOME_DELTA = 0x2B2

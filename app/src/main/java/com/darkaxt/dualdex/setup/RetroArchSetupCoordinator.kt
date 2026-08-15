@@ -73,6 +73,7 @@ class RetroArchSetupCoordinator(
         catalogProvider = runtime::battleCatalogContext,
         publisher = runtime::applyBattleTracking,
         locationPublisher = runtime::updateLiveArea,
+        positionPublisher = runtime::updateLiveMapPosition,
         partyPublisher = runtime::updateLiveParty,
         transportFactory = { UdpNetworkCommandTransport(commandPort) },
         pollingIntervalProvider = runtime::battlePollingIntervalMs,

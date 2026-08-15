@@ -141,3 +141,45 @@ describe('normalized world map presentation', () => {
     expect(openAreaDex).not.toHaveBeenCalled();
   });
 });
+
+describe('optional local map presentation', () => {
+  const localCatalog: Catalog = {
+    ...catalog,
+    localMaps: [{
+      key: 'local/0010', displayName: 'Route 101', baseAreaId: 0x10,
+      pixelWidth: 320, pixelHeight: 320, gridWidth: 20, gridHeight: 20,
+      imageUrl: '/api/maps/local%2F0010%2Fmap.png',
+    }],
+  };
+
+  it('defaults to Local, shows the live player cell, and switches to Atlas with the tiny overlay control', () => {
+    const { container } = render(<MapPage
+      catalog={localCatalog}
+      state={{ ...state, currentMapPosition: { x: 12, y: 7 } }}
+      onOpenAreaDex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    const localStage = screen.getByRole('region', { name: 'Interactive local map' });
+    expect(localStage.dataset.mapMode).toBe('LOCAL');
+    expect(container.querySelector('.map-plane img')?.getAttribute('src')).toBe('/api/maps/local%2F0010%2Fmap.png');
+    expect(container.querySelector('.map-player-marker')?.getAttribute('aria-label')).toBe('Player position 12, 7');
+    expect(screen.queryByRole('button', { name: 'Toggle map markers' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show Atlas' }));
+    expect(screen.getByRole('region', { name: 'Interactive world map' }).dataset.mapMode).toBe('ATLAS');
+    expect(screen.getByRole('button', { name: 'Show Local map' })).toBeTruthy();
+  });
+
+  it('falls back to Atlas and disables the switch when the current local map is unavailable', () => {
+    render(<MapPage
+      catalog={localCatalog}
+      state={{ ...state, currentAreaBaseId: 0x99, currentAreaName: 'Unknown' }}
+      onOpenAreaDex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    expect(screen.getByRole('region', { name: 'Interactive world map' }).dataset.mapMode).toBe('ATLAS');
+    expect(screen.queryByRole('button', { name: 'Show Local map' })).toBeNull();
+  });
+});

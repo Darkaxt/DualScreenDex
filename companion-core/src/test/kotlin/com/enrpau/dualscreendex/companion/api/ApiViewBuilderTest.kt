@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.companion.api
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.companion.model.LiveMapPosition
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
@@ -14,7 +15,10 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
+import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
@@ -59,6 +63,12 @@ class ApiViewBuilderTest {
                 ),
                 assets = mapOf("world/gen3-region-0" to RgbaSprite(224, 120, IntArray(224 * 120))),
             ),
+            localMaps = LocalMapCatalog(
+                maps = listOf(LocalMap("local/0010", "Route 101", 0x10, 320, 320, 20, 20, "local/0010/map")),
+                assets = mapOf(
+                    "local/0010/map" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                ),
+            ),
         )
 
         val map = ApiViewBuilder.catalog(catalog).worldMaps.single()
@@ -72,6 +82,11 @@ class ApiViewBuilderTest {
         assertEquals("/api/maps/world%2Fgen3-region-0.png", map.imageUrl)
         assertEquals(listOf(0x10, 0x11), map.locations.single().baseAreaIds)
         assertEquals(WorldMapCellView(3, 11, 2, 1), map.locations.single().geometry.single())
+        val local = ApiViewBuilder.catalog(catalog).localMaps.single()
+        assertEquals(0x10, local.baseAreaId)
+        assertEquals(320, local.pixelWidth)
+        assertEquals(20, local.gridWidth)
+        assertEquals("/api/maps/local%2F0010%2Fmap.png", local.imageUrl)
     }
 
     @Test
@@ -175,6 +190,7 @@ class ApiViewBuilderTest {
             selectedAreaId = oldale,
             selectedAreaIds = setOf(oldaleWater, oldale),
             liveAreaBaseId = 0x0010,
+            liveMapPosition = LiveMapPosition(12, 7),
             ledger = KnowledgeLedger(
                 visitedAreaBaseIds = setOf(0x0010, 0x0011),
                 seenSpeciesByArea = mapOf(0x0011 to setOf(2), 0x0012 to setOf(1)),
@@ -185,6 +201,7 @@ class ApiViewBuilderTest {
 
         assertEquals(0x0010, state.currentAreaBaseId)
         assertEquals("Route 101", state.currentAreaName)
+        assertEquals(MapPositionView(12, 7), state.currentMapPosition)
         assertEquals(listOf(oldale, oldaleWater), state.selectedAreaIds)
         assertEquals(listOf(oldale, oldaleWater), state.currentAreaIds)
         assertEquals(listOf(1, 2), state.currentAreaSpeciesIds)

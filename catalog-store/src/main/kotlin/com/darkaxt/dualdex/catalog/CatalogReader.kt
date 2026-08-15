@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
+import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
@@ -129,6 +130,7 @@ internal class CatalogSectionCodec {
     private val rulesetsType = type<List<LearnsetRuleset>>()
     private val runtimeMetadataType = type<CatalogRuntimeMetadata>()
     private val worldMapsType = type<WorldMapCatalog>()
+    private val localMapsType = type<LocalMapCatalog>()
     private val capabilitiesType = type<Map<RomCapability, CapabilityEvidence>>()
     private val diagnosticsType = type<List<String>>()
 
@@ -143,6 +145,7 @@ internal class CatalogSectionCodec {
         "learnset_rulesets" to encode(catalog.learnsetRulesets, rulesetsType),
         "runtime_metadata" to encode(catalog.runtimeMetadata, runtimeMetadataType),
         "world_maps" to encode(catalog.worldMaps, worldMapsType),
+        "local_maps" to encode(catalog.localMaps, localMapsType),
         "capabilities" to encode(catalog.capabilities, capabilitiesType),
         "diagnostics" to encode(catalog.diagnostics, diagnosticsType),
     ).filterKeys(included::contains)
@@ -174,6 +177,7 @@ internal class CatalogSectionCodec {
         learnsetRulesets = decode(sections.getValue("learnset_rulesets"), rulesetsType),
         runtimeMetadata = decode(sections.getValue("runtime_metadata"), runtimeMetadataType),
         worldMaps = decode<WorldMapCatalog>(sections.getValue("world_maps"), worldMapsType).validate(),
+        localMaps = decode<LocalMapCatalog>(sections.getValue("local_maps"), localMapsType).validate(),
         capabilities = decode(sections.getValue("capabilities"), capabilitiesType),
         diagnostics = decode(sections.getValue("diagnostics"), diagnosticsType),
         )

@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.companion.model.BattleTab
 import com.enrpau.dualscreendex.companion.model.CompanionAction
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
 import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
+import com.enrpau.dualscreendex.companion.model.LiveMapPosition
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -149,6 +150,19 @@ class CompanionGatewayTest {
         assertEquals(AppScreen.DETAIL, updated.screen)
         assertEquals(AppScreen.DETAIL, ended.screen)
         assertEquals(AppScreen.POKEDEX, returned.screen)
+    }
+
+    @Test
+    fun liveAreaChangeClearsAPlayerPositionFromThePriorMap() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.LiveAreaChanged(0x0010))
+        gateway.dispatch(CompanionAction.LiveMapPositionChanged(LiveMapPosition(12, 7)))
+
+        val sameArea = gateway.dispatch(CompanionAction.LiveAreaChanged(0x0010))
+        val nextArea = gateway.dispatch(CompanionAction.LiveAreaChanged(0x0011))
+
+        assertEquals(LiveMapPosition(12, 7), sameArea.liveMapPosition)
+        assertEquals(null, nextArea.liveMapPosition)
     }
 
     @Test
