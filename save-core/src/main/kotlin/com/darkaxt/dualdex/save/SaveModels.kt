@@ -1,10 +1,14 @@
 package com.darkaxt.dualdex.save
 
+import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
+
 data class SaveSpeciesContext(
     val speciesId: Int,
     val dexNumber: Int?,
     val growthRate: Int?,
     val formId: Int = 0,
+    val genderRatio: Int? = null,
+    val abilityIds: List<Int> = emptyList(),
 )
 
 data class SaveParseContext(
@@ -12,6 +16,8 @@ data class SaveParseContext(
     val speciesById: Map<Int, SaveSpeciesContext>,
     val captureBallIds: Set<Int> = (1..15).toSet(),
     val levelUpRulesetSelectors: List<SaveByteSelector> = emptyList(),
+    val movePpById: Map<Int, Int> = emptyMap(),
+    val gen3TextEncoding: Gen3TextEncoding? = null,
 ) {
     val internalSpeciesCount: Int = (speciesById.keys.maxOrNull() ?: 0) + 1
     val maximumDexNumber: Int = speciesById.values.mapNotNull { it.dexNumber }.maxOrNull() ?: 0
