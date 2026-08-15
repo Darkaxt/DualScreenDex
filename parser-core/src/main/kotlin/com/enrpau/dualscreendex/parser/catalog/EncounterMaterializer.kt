@@ -134,6 +134,13 @@ object EncounterMaterializer {
     }.getOrDefault(false)
 
     private fun gen1(rom: RomImage, speciesCount: Int): List<EncounterArea> {
+        val compiled = Gen1CompiledEncounterResolver.resolve(rom, speciesCount)
+        if (compiled.detected) {
+            return compiled.layout?.let { layout ->
+                materializeGen1(rom, speciesCount, layout.offset, layout.bank, layout.count)
+            }.orEmpty()
+        }
+
         val pointerCount = 248
         var best: Gen1PointerTable? = null
         rom.findAll(byteArrayOf(0xFF.toByte(), 0xFF.toByte())).forEach { sentinel ->
@@ -159,13 +166,21 @@ object EncounterMaterializer {
             }
         }
         val table = best ?: return emptyList()
-        return buildList {
-            repeat(pointerCount) { mapId ->
-                val target = rom.gbBankAddress(table.bank, rom.u16le(table.offset + mapId * 2)) ?: return@repeat
-                val (grass, water) = readGen1Record(rom, target, speciesCount) ?: return@repeat
-                if (grass.isNotEmpty()) add(area(mapId, EncounterMethods.GRASS, "Map $mapId - grass", grass))
-                if (water.isNotEmpty()) add(area(mapId, EncounterMethods.WATER, "Map $mapId - water", water))
-            }
+        return materializeGen1(rom, speciesCount, table.offset, table.bank, pointerCount)
+    }
+
+    private fun materializeGen1(
+        rom: RomImage,
+        speciesCount: Int,
+        pointerTable: Int,
+        bank: Int,
+        pointerCount: Int,
+    ): List<EncounterArea> = buildList {
+        repeat(pointerCount) { mapId ->
+            val target = rom.gbBankAddress(bank, rom.u16le(pointerTable + mapId * 2)) ?: return@repeat
+            val (grass, water) = readGen1Record(rom, target, speciesCount) ?: return@repeat
+            if (grass.isNotEmpty()) add(area(mapId, EncounterMethods.GRASS, "Map $mapId - grass", grass))
+            if (water.isNotEmpty()) add(area(mapId, EncounterMethods.WATER, "Map $mapId - water", water))
         }
     }
 

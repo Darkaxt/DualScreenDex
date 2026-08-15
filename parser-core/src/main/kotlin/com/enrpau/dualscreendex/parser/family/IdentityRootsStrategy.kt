@@ -18,6 +18,7 @@ import com.enrpau.dualscreendex.parser.parse.GbaPublishedDataState
 import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolution
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
+import com.enrpau.dualscreendex.parser.parse.Gen1CompiledBaseResolver
 import com.enrpau.dualscreendex.parser.parse.Gen1CompiledNameResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledCoreResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledMoveResolver
@@ -153,14 +154,34 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                 tables = inheritedTableResolution.tables.copy(speciesNames = speciesNames),
             )
         } ?: inheritedTableResolution
-        val compiledCoreTableResolution = gen2CompiledCore?.let { compiled ->
+        val compiledGen1Base = if (generation == 1 && exact == null) {
+            compiledGen1NameTableResolution.tables.baseStats?.let { inherited ->
+                Gen1CompiledBaseResolver.resolve(session.rom, inherited.count)
+            }
+        } else {
+            null
+        }
+        val compiledGen1BaseTableResolution = compiledGen1Base?.let { baseStats ->
+            val inheritedSprites = compiledGen1NameTableResolution.tables.sprites
             compiledGen1NameTableResolution.copy(
                 tables = compiledGen1NameTableResolution.tables.copy(
+                    baseStats = baseStats,
+                    sprites = inheritedSprites?.copy(
+                        offset = baseStats.offset,
+                        count = baseStats.count,
+                        recordSize = baseStats.recordSize,
+                    ),
+                ),
+            )
+        } ?: compiledGen1NameTableResolution
+        val compiledCoreTableResolution = gen2CompiledCore?.let { compiled ->
+            compiledGen1BaseTableResolution.copy(
+                tables = compiledGen1BaseTableResolution.tables.copy(
                     speciesNames = compiled.tables.speciesNames,
                     baseStats = compiled.tables.baseStats,
                 ),
             )
-        } ?: compiledGen1NameTableResolution
+        } ?: compiledGen1BaseTableResolution
         val compiledMoveData = if (generation == 2 && exact == null) {
             compiledCoreTableResolution.tables.moveData?.let { inherited ->
                 Gen2CompiledMoveResolver.resolve(session.rom, inherited.count)

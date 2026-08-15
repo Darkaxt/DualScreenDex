@@ -75,6 +75,9 @@ class WorldMapCatalogApiRealControlTest {
     @Test
     fun shinRedSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[15])
 
+    @Test
+    fun beyondRedSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[16])
+
     private fun assertRoundTrip(control: Control) {
         val configured = System.getenv(control.environmentVariable)
         assumeTrue("set ${control.environmentVariable} to run this real-ROM control", !configured.isNullOrBlank())
@@ -323,6 +326,12 @@ class WorldMapCatalogApiRealControlTest {
                 "024a1c4dab1b12d0b963c6cf756d2c1082de0ccd53fe31384787dcf34edef718",
                 listOf("gen1-kanto"),
                 listOf("aa70952cb3c34789bc63639861d304b05b1c034dfb57e58720520de72d2ed098"),
+            ),
+            Control(
+                "DUALDEX_BEYOND_RED_ROM",
+                "3640ed0493287136cd9321cb3428f44113e87354cf90402665ba60e41c8fc61a",
+                listOf("gen1-kanto"),
+                listOf("8a958b8ada1dd6f1b25be40fe207f86dff88b016d443f70a20052cd6e6aa1275"),
             ),
         )
     }

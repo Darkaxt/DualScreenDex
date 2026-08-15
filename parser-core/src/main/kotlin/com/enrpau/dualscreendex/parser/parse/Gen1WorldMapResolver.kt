@@ -223,15 +223,14 @@ object Gen1WorldMapResolver {
         }
         val internalEntries = mutableListOf<InternalEntry>()
         var cursor = internal
-        var previousLimit = threshold
+        // The compiled lookup accepts the first greater limit. Duplicate or decreasing rows are
+        // unreachable, but do not make the remaining lookup nondeterministic.
         repeat(MAX_INTERNAL_GROUPS) {
             if (cursor >= rom.size) return@runCatching null
             val limit = rom.u8(cursor)
             if (limit == END_MARKER) return@repeat
-            if (limit <= previousLimit) return@runCatching null
             val entry = parseEntry(rom, bank, cursor + 1) ?: return@runCatching null
             internalEntries += InternalEntry(limit, entry)
-            previousLimit = limit
             cursor += INTERNAL_ENTRY_BYTES
         }
         if (cursor >= rom.size || rom.u8(cursor) != END_MARKER || internalEntries.isEmpty()) {
@@ -256,12 +255,38 @@ object Gen1WorldMapResolver {
         val y = packed ushr 4
         if (x !in 0 until GRID_WIDTH || y !in 0 until GRID_HEIGHT) return@runCatching null
         val nameOffset = rom.gbBankAddress(bank, rom.u16le(offset + 1)) ?: return@runCatching null
-        val available = minOf(MAX_NAME_BYTES, rom.size - nameOffset)
-        val decoded = PokemonTextCodec.gbEnglish.decodeDetailed(rom.slice(nameOffset, available))
-        val name = decoded.text.takeIf {
-            decoded.terminated && decoded.validRatio >= MIN_TEXT_RATIO && it.isNotBlank()
-        } ?: return@runCatching null
+        val name = decodeTownMapName(rom, nameOffset) ?: return@runCatching null
         MapEntry(x, y, name)
+    }.getOrNull()
+
+    private fun decodeTownMapName(rom: RomImage, offset: Int): String? = runCatching {
+        val output = StringBuilder()
+        var valid = 0
+        var content = 0
+        var terminated = false
+        val available = minOf(MAX_NAME_BYTES, rom.size - offset)
+        for (index in 0 until available) {
+            val value = rom.u8(offset + index)
+            if (value == PokemonTextCodec.gbEnglish.terminator) {
+                terminated = true
+                break
+            }
+            content++
+            val token = when (value) {
+                GB_LINE_FEED -> " "
+                GB_POKEMON_ABBREVIATION -> "PKMN"
+                GB_POKE_PREFIX -> "POKé"
+                else -> PokemonTextCodec.gbEnglish.decodeByte(value)?.toString()
+            }
+            if (token != null) {
+                output.append(token)
+                valid++
+            }
+        }
+        val text = output.toString().replace(WHITESPACE, " ").trim()
+        text.takeIf {
+            terminated && content > 0 && valid.toDouble() / content >= MIN_TEXT_RATIO && it.isNotBlank()
+        }
     }.getOrNull()
 
     private fun compose(tiles: ByteArray, tilemap: ByteArray): RgbaSprite {
@@ -321,6 +346,10 @@ object Gen1WorldMapResolver {
     private const val END_MARKER = 0xff
     private const val MAX_NAME_BYTES = 32
     private const val MIN_TEXT_RATIO = 0.85
+    private const val GB_LINE_FEED = 0x1f
+    private const val GB_POKEMON_ABBREVIATION = 0x4a
+    private const val GB_POKE_PREFIX = 0x54
+    private val WHITESPACE = Regex("\\s+")
     private const val VRAM_TILE_ORIGIN = 0x9000
     private val VRAM_TILE_RANGE = 0x9000..0x97f0
     private const val LOAD_HL_IMMEDIATE = 0x21

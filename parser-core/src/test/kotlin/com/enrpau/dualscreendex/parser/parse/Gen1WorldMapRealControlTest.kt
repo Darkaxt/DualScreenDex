@@ -21,13 +21,18 @@ class Gen1WorldMapRealControlTest {
     @Test fun yellowResolvesItsExactSourceOracle() = assertControl(CONTROLS[2])
     @Test fun shinRedResolvesRelocatedCompiledNamesAndMap() = assertControl(CONTROLS[3])
     @Test fun shinBlueResolvesRelocatedCompiledNamesAndMap() = assertControl(CONTROLS[4])
+    @Test fun beyondRedResolvesCompiledExpandedCoreAndMap() = assertControl(CONTROLS[5])
+    @Test fun beyondBlueResolvesCompiledExpandedCoreAndMap() = assertControl(CONTROLS[6])
 
     private fun assertControl(control: Control) {
         val rom = realRom(control)
         val analysis = ParserOrchestrator.analyze(rom)
         assertEquals(control.env, SelectionStatus.SELECTED, analysis.status)
         val layout = requireNotNull(analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout)
+        control.speciesCount?.let { assertEquals(it, layout.speciesCount) }
+        control.baseRecordSize?.let { assertEquals(it, layout.tables.baseStats?.recordSize) }
         val baseAreaIds = EncounterMaterializer.materialize(rom, layout).mapTo(linkedSetOf()) { it.id / 10 }
+        control.baseAreaCount?.let { assertEquals(it, baseAreaIds.size) }
 
         val result = Gen1WorldMapResolver.resolve(
             RomAnalysisSession(rom, RomHeaderReader.read(rom)),
@@ -44,8 +49,15 @@ class Gen1WorldMapRealControlTest {
         assertEquals(20, region.gridWidth)
         assertEquals(18, region.gridHeight)
         assertEquals(baseAreaIds, region.locations.flatMapTo(linkedSetOf()) { it.baseAreaIds })
-        assertEquals(control.argbSha256, sha256(catalog.assets.getValue(region.imageAssetKey)))
-        assertEquals(control.locationSha256, locationFingerprint(region))
+        val locationNames = region.locations.mapTo(linkedSetOf()) { it.displayName }
+        assertTrue(
+            "${control.env}: missing ${control.locationNames - locationNames}; actual=$locationNames",
+            locationNames.containsAll(control.locationNames),
+        )
+        val argbSha256 = sha256(catalog.assets.getValue(region.imageAssetKey))
+        val locationSha256 = locationFingerprint(region)
+        assertEquals(control.argbSha256, argbSha256)
+        assertEquals(control.locationSha256, locationSha256)
     }
 
     private fun realRom(control: Control): RomImage {
@@ -80,6 +92,10 @@ class Gen1WorldMapRealControlTest {
         val romSha256: String,
         val argbSha256: String,
         val locationSha256: String,
+        val speciesCount: Int? = null,
+        val baseRecordSize: Int? = null,
+        val baseAreaCount: Int? = null,
+        val locationNames: Set<String> = emptySet(),
     )
 
     private companion object {
@@ -114,6 +130,26 @@ class Gen1WorldMapRealControlTest {
                 "25e39e5ef5ef0de0f7faf481827927a4033ac1d31782a2b9be9a8412d8fd1158",
                 RASTER_SHA,
                 "165454e8cc5450e8a1edd0c6dcbfebb47e3254f1eb198d396efcdd5ef97d4433",
+            ),
+            Control(
+                "DUALDEX_BEYOND_RED_ROM",
+                "3640ed0493287136cd9321cb3428f44113e87354cf90402665ba60e41c8fc61a",
+                "f4f50cf1b04029ca5dfcc853e8e164c76da9105a6ec578c666d828f7716de16e",
+                "3cced54dde0a817beb6458f9f406337457b049e6ad92a8c072b004e045abd527",
+                speciesCount = 254,
+                baseRecordSize = 29,
+                baseAreaCount = 83,
+                locationNames = setOf("POKéMON TOWER", "DIGLETT CAVE", "POKéMON MANSION"),
+            ),
+            Control(
+                "DUALDEX_BEYOND_BLUE_ROM",
+                "33eacb9917498505ac0dc669323d506cde7ee4c2e3a17a80ca2f9d8944ef217c",
+                "f4f50cf1b04029ca5dfcc853e8e164c76da9105a6ec578c666d828f7716de16e",
+                "3cced54dde0a817beb6458f9f406337457b049e6ad92a8c072b004e045abd527",
+                speciesCount = 254,
+                baseRecordSize = 29,
+                baseAreaCount = 83,
+                locationNames = setOf("POKéMON TOWER", "DIGLETT CAVE", "POKéMON MANSION"),
             ),
         )
     }

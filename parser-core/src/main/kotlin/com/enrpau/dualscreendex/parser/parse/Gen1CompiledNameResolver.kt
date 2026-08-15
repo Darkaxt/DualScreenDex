@@ -46,22 +46,30 @@ internal object Gen1CompiledNameResolver {
 
         val bank = rom.u8(offset + 5)
         val root = rom.gbBankAddress(bank, rom.u16le(offset + 16)) ?: return@runCatching null
+        val resolvedCount = TableValidators.inferFixedNameCount(
+            rom,
+            root,
+            recordSize,
+            PokemonTextCodec.gbEnglish,
+            minimumCount = count,
+            maximumCount = MAX_NAME_COUNT,
+        ) ?: count
         val evidence = TableValidators.fixedNames(
             rom,
             root,
-            count,
+            resolvedCount,
             recordSize,
             PokemonTextCodec.gbEnglish,
         )
         if (!evidence.compatible) return@runCatching null
-        TableLayout(root, count, recordSize)
+        TableLayout(root, resolvedCount, recordSize)
     }.getOrNull()
 
     private const val BANK_BYTES = 0x4000
     private const val CONSUMER_BYTES = 49
     private const val MIN_NAME_BYTES = 5
     private const val MAX_NAME_BYTES = 16
-    private const val MAX_NAME_COUNT = 255
+    private const val MAX_NAME_COUNT = 254
     private const val LOAD_BC_IMMEDIATE = 0x01
     private const val LOAD_B_IMMEDIATE = 0x06
     private const val LOAD_C_IMMEDIATE = 0x0e
