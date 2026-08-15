@@ -4,7 +4,7 @@ import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
-/** Resolves semantic map identities from encounter-proven map headers and region-map data. */
+/** Resolves semantic map identities from compiled map-header consumers and region-map data. */
 object Gen3MapLocationResolver {
     fun resolve(rom: RomImage, encounterBaseIds: Set<Int>): Map<Int, String> {
         val requiredMaps = requiredMaps(encounterBaseIds)
@@ -26,11 +26,20 @@ object Gen3MapLocationResolver {
     ): Gen3MapLocationResolution? {
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return null
-        val sections = resolveMapSections(rom, requiredMaps, references) ?: return null
+        val requiredSections = resolveMapSections(rom, requiredMaps, references) ?: return null
         mapTrace(
-            "map-sections count=${sections.values.toSet().size} ids=${sections.values.toSortedSet()}",
+            "map-sections count=${requiredSections.values.toSet().size} ids=${requiredSections.values.toSortedSet()}",
         )
-        val entries = findRegionEntries(rom, sections.values.toSet()).orEmpty()
+        val regionEntries = findRegionEntryResolution(rom, requiredSections.values.toSet()) ?: return null
+        val preferredSections = resolveHeaderByBaseArea(rom, encounterBaseIds, references)
+            .mapValues { (_, header) -> rom.u8(header + REGION_SECTION_OFFSET) }
+        val enrichedSections = preferredSections.filterValues { section ->
+            decodeRegionEntry(rom, regionEntries.root, section) != null
+        }
+        val sections = enrichedSections.takeIf { it.keys.containsAll(requiredSections.keys) } ?: requiredSections
+        val entries = sections.values.toSet().mapNotNull { section ->
+            decodeRegionEntry(rom, regionEntries.root, section)?.let { section to it }
+        }.toMap(linkedMapOf())
         return Gen3MapLocationResolution(sections, entries).takeIf { it.entriesBySection.isNotEmpty() }
     }
 
@@ -61,7 +70,7 @@ object Gen3MapLocationResolver {
             val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return emptyMap()
             roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull()
         } ?: return emptyMap()
-        return enumerateRequiredMapHeaders(rom, root, requiredMaps).orEmpty()
+        return enumeratePreferredMapHeaders(rom, root, requiredMaps).orEmpty()
     }
 
     private fun resolveMapSections(
@@ -76,7 +85,7 @@ object Gen3MapLocationResolver {
                 enumerateRequiredMapSections(rom, root, requiredMaps)?.also { sections ->
                     mapTrace(
                         "map-groups root=0x${root.toString(16)} " +
-                            "required=${sections.size}/$requiredCount",
+                            "resolved=${sections.size} required=$requiredCount",
                     )
                 }
             }.distinct()
@@ -91,6 +100,20 @@ object Gen3MapLocationResolver {
         val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return null
         val root = roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull() ?: return null
         return enumerateMapSections(rom, root)
+    }
+
+    /**
+     * A complete, structurally valid gMapGroups catalog is authoritative even when a map has no
+     * wild-encounter row. Sparse or relocated hacks retain the encounter-keyed fallback.
+     */
+    private fun enumeratePreferredMapHeaders(
+        rom: RomImage,
+        root: Int,
+        requiredMaps: Map<Int, Set<Int>>,
+    ): Map<Int, Int>? {
+        val required = enumerateRequiredMapHeaders(rom, root, requiredMaps) ?: return null
+        val complete = enumerateMapHeaders(rom, root)
+        return complete?.takeIf { headers -> headers.keys.containsAll(required.keys) } ?: required
     }
 
     private fun enumerateRequiredMapSections(
@@ -265,7 +288,13 @@ object Gen3MapLocationResolver {
         return rom.u16le(offset + 0x12) != 0
     }
 
-    private fun findRegionEntries(rom: RomImage, sectionIds: Set<Int>): Map<Int, Gen3RegionMapEntry>? {
+    private fun findRegionEntries(rom: RomImage, sectionIds: Set<Int>): Map<Int, Gen3RegionMapEntry>? =
+        findRegionEntryResolution(rom, sectionIds)?.entries
+
+    private fun findRegionEntryResolution(
+        rom: RomImage,
+        sectionIds: Set<Int>,
+    ): RegionEntryResolution? {
         if (sectionIds.isEmpty()) return null
         val maxSection = sectionIds.maxOrNull() ?: return null
         val requiredAnchorCount = minOf(REGION_ENTRY_ANCHORS, sectionIds.size)
@@ -310,7 +339,7 @@ object Gen3MapLocationResolver {
                 "winners=${winners.joinToString { "0x${it.toString(16)}" }}",
         )
         val winner = winners.singleOrNull() ?: return null
-        return candidates.getValue(winner)
+        return RegionEntryResolution(winner, candidates.getValue(winner))
     }
 
     private fun emptyRegionEntry(rom: RomImage, root: Int, sectionId: Int): Boolean {
@@ -419,6 +448,11 @@ object Gen3MapLocationResolver {
     private const val THUMB_REGISTER_SHIFT = 8
     private const val THUMB_REGISTER_MASK = 0x7
 }
+
+private data class RegionEntryResolution(
+    val root: Int,
+    val entries: Map<Int, Gen3RegionMapEntry>,
+)
 
 internal data class Gen3MapLocationResolution(
     val sectionByBaseArea: Map<Int, Int>,

@@ -286,6 +286,18 @@ class WorldMapCatalogApiRealControlTest {
                 sha256(bytes)
             }
             assertEquals(control.pngHashes, actualPngHashes)
+            control.localBaseAreaId?.let { baseAreaId ->
+                val localMap = reopened.localMaps.maps.single { it.baseAreaId == baseAreaId }
+                val key = URLEncoder.encode(localMap.imageAssetKey, StandardCharsets.UTF_8)
+                val response = URI("$base/api/maps/$key.png").toURL().openConnection() as HttpURLConnection
+                assertEquals(localMap.imageAssetKey, 200, response.responseCode)
+                assertEquals(localMap.imageAssetKey, "image/png", response.contentType)
+                assertTrue(
+                    localMap.imageAssetKey,
+                    response.inputStream.use { it.readBytes() }
+                        .contentEquals(reopened.localMaps.assets.getValue(localMap.imageAssetKey).bytes),
+                )
+            }
         } finally {
             server?.close()
             deleteTree(root)
@@ -360,6 +372,7 @@ class WorldMapCatalogApiRealControlTest {
         val romSha256: String,
         val regionKeys: List<String>,
         val pngHashes: List<String>,
+        val localBaseAreaId: Int? = null,
     )
 
     private companion object {
@@ -415,6 +428,7 @@ class WorldMapCatalogApiRealControlTest {
                 "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
                 listOf("gen3-region-0"),
                 listOf("80c4a69b9372276818768123dcd7cad09bcced88720704c8f424bc4501931ffe"),
+                localBaseAreaId = 0x0009,
             ),
             Control(
                 "DUALDEX_CLASSIC_ROM",

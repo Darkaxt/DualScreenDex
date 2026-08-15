@@ -51,22 +51,23 @@ describe('normalized world map presentation', () => {
     expect(screen.queryByText('EMERALD')).toBeNull();
     expect(screen.queryByText('WORLD MAP')).toBeNull();
     expect(container.querySelector('.map-current-location strong')?.textContent).toBe('Route 101');
+    expect(container.querySelectorAll('.map-marker.is-current')).toHaveLength(1);
 
     const actions = container.querySelector('.map-header-actions')!;
     const buttons = [...actions.querySelectorAll(':scope > button')];
     expect(buttons.map(button => button.getAttribute('aria-label'))).toEqual([
-      'Settings',
       'Open Area Pokédex',
+      'Settings',
     ]);
-    expect(buttons[0].querySelector('svg')?.dataset.semanticIcon).toBe('settings');
-    expect(buttons[1].querySelector('svg')?.dataset.semanticIcon).toBe('pokedex');
+    expect(buttons[0].querySelector('svg')?.dataset.semanticIcon).toBe('pokedex');
+    expect(buttons[1].querySelector('svg')?.dataset.semanticIcon).toBe('settings');
     expect(container.querySelector('[data-map-navigation-row]')).toBeNull();
     expect(container.querySelector('.map-plane')?.classList.contains('map-framed-plane')).toBe(true);
 
-    fireEvent.click(buttons[0]);
+    fireEvent.click(buttons[1]);
     expect(openSettings).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'Oldale Town' }));
-    fireEvent.click(buttons[1]);
+    fireEvent.click(buttons[0]);
     expect(openAreaDex).toHaveBeenCalledWith('gen3-region-0', expect.objectContaining({ key: 'section-17' }));
   });
 
@@ -90,7 +91,10 @@ describe('normalized world map presentation', () => {
       onOpenSettings={vi.fn()}
     />);
 
-    expect(screen.getByText('Unknown location')).toBeTruthy();
+    expect(screen.getByText('Atlas')).toBeTruthy();
+    expect(screen.getByText('ATLAS')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Interactive world map' }).dataset.selectedKey).toBeUndefined();
+    expect(document.querySelectorAll('.map-marker.is-current')).toHaveLength(0);
     expect(screen.queryByRole('button', { name: 'Route 101' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Open Area Pokédex' }).hasAttribute('disabled')).toBe(true);
   });

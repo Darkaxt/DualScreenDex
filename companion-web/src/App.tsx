@@ -179,9 +179,9 @@ export function loadingModuleLabel(phase: string): string {
 
 function Welcome({ busy, loading, loadingLabel, error, onUpload, openSetup }: { busy: boolean; loading: State['loading']; loadingLabel: string; error: string | null; onUpload: (file: File) => void; openSetup: () => void }) {
   const active = busy || loading.active;
-  return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><p class="eyebrow">PASSIVE RETROARCH COMPANION</p><h1>DUALDEX</h1><p>Load a Game Boy, Game Boy Color, or Game Boy Advance Pokémon ROM. Its own Pokédex, moves, types, areas and artwork become the companion.</p>{active
+  return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><p class="eyebrow">PASSIVE RETROARCH COMPANION</p><h1>DUALDEX</h1><p>Choose a Pokémon game to begin.</p>{active
     ? <WelcomeLoadingProgress label={loadingLabel} loading={loading} />
-    : <div class="welcome-actions"><label class="welcome-upload"><span>LOAD ROM OR ZIP</span><input type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>CONNECT RETROARCH</button></div>}{error && <div class="welcome-error">{error}</div>}<small>ROM bytes and extracted assets stay local.</small></section>;
+    : <div class="welcome-actions"><label class="welcome-upload"><span>LOAD ROM OR ZIP</span><input type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>CONNECT RETROARCH</button></div>}{error && <div class="welcome-error">{error}</div>}</section>;
 }
 
 function WelcomeLoadingProgress({ label, loading }: { label: string; loading: State['loading'] }) {

@@ -71,6 +71,20 @@ describe('production application shell', () => {
     expect(screen.queryByText(/Generate an encounter/i)).toBeNull();
   });
 
+  it('uses a concise welcome prompt without implementation commentary', async () => {
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      catalog: null,
+      state: { ...fixture.state, catalogReady: false },
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText('Choose a Pokémon game to begin.')).toBeTruthy();
+    expect(screen.queryByText(/Game Boy Advance Pokémon ROM/)).toBeNull();
+    expect(screen.queryByText(/extracted assets stay local/)).toBeNull();
+  });
+
   it('keeps Trainer and Party shortcuts inside the existing application header', async () => {
     render(<App />);
 

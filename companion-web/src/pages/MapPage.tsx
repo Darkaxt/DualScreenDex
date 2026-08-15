@@ -53,8 +53,8 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   );
   const selectedCandidate = region?.locations.find(location => location.key === selectedKey);
   const selectedLocation = fogVisible
-    ? revealedLocations.find(location => location.key === selectedCandidate?.key) ?? currentLocation ?? revealedLocations[0]
-    : selectedCandidate ?? currentLocation ?? region?.locations[0];
+    ? revealedLocations.find(location => location.key === selectedCandidate?.key) ?? currentLocation
+    : selectedCandidate ?? currentLocation;
   const selectedHasEncounterAreas = selectedLocation != null && catalog.areas.some(area =>
     selectedLocation.baseAreaIds.includes(area.baseAreaId ?? Math.floor(area.id / 10)),
   );
@@ -173,7 +173,7 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   }
 
   const transform = `translate(calc(-50% + ${viewport.panX}px), calc(-50% + ${viewport.panY}px)) scale(${viewport.scale})`;
-  const selectedIsCurrent = selectedLocation?.key === currentLocation?.key;
+  const selectedIsCurrent = selectedLocation != null && currentLocation != null && selectedLocation.key === currentLocation.key;
   const displayName = activeMode === 'LOCAL'
     ? localMap?.displayName ?? state.currentAreaName ?? 'LOCAL MAP'
     : region?.displayName ?? 'WORLD MAP';
@@ -181,12 +181,12 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   return <section class="screen map-screen">
     <header class="map-page-header">
       <div class="map-current-location">
-        <strong>{activeMode === 'LOCAL' ? displayName : selectedLocation?.displayName ?? state.currentAreaName ?? 'Unknown location'}</strong>
-        <span>{activeMode === 'LOCAL' || selectedIsCurrent ? 'CURRENT' : 'MAP POINT'}</span>
+        <strong>{activeMode === 'LOCAL' ? displayName : selectedLocation?.displayName ?? state.currentAreaName ?? 'Atlas'}</strong>
+        <span>{activeMode === 'LOCAL' || selectedIsCurrent ? 'CURRENT' : selectedLocation ? 'MAP POINT' : 'ATLAS'}</span>
       </div>
       <div class="header-actions map-header-actions">
-        <button class="header-action settings-action" aria-label="Settings" onClick={onOpenSettings}><SettingsIcon /></button>
         <button class="header-action map-dex-action" aria-label="Open Area Pokédex" disabled={!region || !selectedHasEncounterAreas} onClick={() => region && selectedLocation && selectedHasEncounterAreas && onOpenAreaDex(region.key, selectedLocation)}><DexIcon /></button>
+        <button class="header-action settings-action" aria-label="Settings" onClick={onOpenSettings}><SettingsIcon /></button>
       </div>
     </header>
     <main

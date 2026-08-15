@@ -316,7 +316,9 @@ internal object Gen3LocalMapResolver {
                     primaryMetatiles = 512,
                     metatileIdMask = 0x03FF,
                     primaryPalettes = 6,
-                    totalPalettes = 12,
+                    // Tileset arrays retain all hardware-addressable BG banks. Maps may reference
+                    // dynamically loaded banks above the engine's routinely copied palette range.
+                    totalPalettes = HARDWARE_BG_PALETTES,
                     layersPerMetatile = 2,
                 )
                 EngineFamily.EMERALD -> Gen3LocalMapFormat(
@@ -326,7 +328,7 @@ internal object Gen3LocalMapResolver {
                     primaryMetatiles = 512,
                     metatileIdMask = 0x03FF,
                     primaryPalettes = 6,
-                    totalPalettes = 13,
+                    totalPalettes = HARDWARE_BG_PALETTES,
                     layersPerMetatile = 2,
                 )
                 EngineFamily.FIRERED_LEAFGREEN -> Gen3LocalMapFormat(
@@ -336,7 +338,7 @@ internal object Gen3LocalMapResolver {
                     primaryMetatiles = 640,
                     metatileIdMask = 0x03FF,
                     primaryPalettes = 7,
-                    totalPalettes = 13,
+                    totalPalettes = HARDWARE_BG_PALETTES,
                     layersPerMetatile = 2,
                 )
                 else -> null
@@ -385,6 +387,7 @@ internal object Gen3LocalMapResolver {
     private const val PALETTE_SHIFT = 12
     private const val PALETTE_MASK = 0x0F
     private const val COLORS_PER_PALETTE = 16
+    private const val HARDWARE_BG_PALETTES = 16
     private const val TILE_BYTES = 32
     private const val TILE_PIXELS = 8
     private const val TILES_PER_LAYER = 4
