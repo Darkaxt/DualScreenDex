@@ -55,6 +55,11 @@ object ParserOrchestrator {
                         baseAreaIds,
                         requireNotNull(analysis.selectedFamily),
                     )
+                    2 -> Gen2LocalMapResolver.resolve(
+                        sharedSession,
+                        baseAreaIds,
+                        requireNotNull(analysis.selectedFamily),
+                    )
                     3 -> Gen3LocalMapResolver.resolve(
                         sharedSession,
                         baseAreaIds,

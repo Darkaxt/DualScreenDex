@@ -53,8 +53,8 @@ data class LiveAreaMemoryLayout(
 internal fun liveAreaMemoryLayout(family: EngineFamily): LiveAreaMemoryLayout? = when (family) {
     EngineFamily.RED_BLUE -> LiveAreaMemoryLayout(0x135E, 1, 0x1362, 0x1361)
     EngineFamily.YELLOW -> LiveAreaMemoryLayout(0x135D, 1, 0x1361, 0x1360)
-    EngineFamily.GOLD_SILVER -> LiveAreaMemoryLayout(0x1A00, 2)
-    EngineFamily.CRYSTAL -> LiveAreaMemoryLayout(0x1CB5, 2)
+    EngineFamily.GOLD_SILVER -> LiveAreaMemoryLayout(0x1A00, 2, 0x1A03, 0x1A02)
+    EngineFamily.CRYSTAL -> LiveAreaMemoryLayout(0x1CB5, 2, 0x1CB8, 0x1CB7)
     else -> null
 }
 
@@ -386,8 +386,8 @@ class BattleMemoryCoordinator(
         } else {
             null
         }
-        val gen1MapPosition = if (context.generation == 1 && supportsLiveArea(context)) {
-            resolveCurrentGen1Position(regions, context)
+        val gbMapPosition = if (context.generation in 1..2 && supportsLiveArea(context)) {
+            resolveCurrentGbPosition(regions, context)
         } else {
             null
         }
@@ -426,7 +426,7 @@ class BattleMemoryCoordinator(
                 if (context.generation == 3) gen3Runtime?.areaBaseId else resolveCurrentArea(regions, context),
             )
             when (context.generation) {
-                1 -> positionPublisher(gen1MapPosition)
+                1, 2 -> positionPublisher(gbMapPosition)
                 3 -> positionPublisher(gen3Runtime?.mapPosition)
             }
         }
@@ -629,7 +629,7 @@ class BattleMemoryCoordinator(
         return value.takeUnless { it == 0xFF }
     }
 
-    private fun resolveCurrentGen1Position(
+    private fun resolveCurrentGbPosition(
         regions: Map<String, ByteArray>,
         context: BattleCatalogContext,
     ): RuntimeMapPosition? {

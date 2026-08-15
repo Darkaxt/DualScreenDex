@@ -15,8 +15,8 @@ class BattleMemoryCoordinatorTest {
     fun publishesGen1AndGen2LiveAreasBeforeAnyBattleStarts() {
         assertEquals(LiveAreaMemoryLayout(0x135e, 1, 0x1362, 0x1361), liveAreaMemoryLayout(EngineFamily.RED_BLUE))
         assertEquals(LiveAreaMemoryLayout(0x135d, 1, 0x1361, 0x1360), liveAreaMemoryLayout(EngineFamily.YELLOW))
-        assertEquals(LiveAreaMemoryLayout(0x1a00, 2), liveAreaMemoryLayout(EngineFamily.GOLD_SILVER))
-        assertEquals(LiveAreaMemoryLayout(0x1cb5, 2), liveAreaMemoryLayout(EngineFamily.CRYSTAL))
+        assertEquals(LiveAreaMemoryLayout(0x1a00, 2, 0x1a03, 0x1a02), liveAreaMemoryLayout(EngineFamily.GOLD_SILVER))
+        assertEquals(LiveAreaMemoryLayout(0x1cb5, 2, 0x1cb8, 0x1cb7), liveAreaMemoryLayout(EngineFamily.CRYSTAL))
 
         val yellowWram = ByteArray(0x2000).apply {
             this[0x135d] = 0x28
@@ -49,18 +49,23 @@ class BattleMemoryCoordinatorTest {
         val crystalWram = ByteArray(0x2000).apply {
             this[0x1cb5] = 24
             this[0x1cb6] = 3
+            this[0x1cb7] = 9
+            this[0x1cb8] = 14
         }
         val crystalAreas = mutableListOf<Int?>()
+        val crystalPositions = mutableListOf<RuntimeMapPosition?>()
         val crystal = BattleMemoryCoordinator(
             catalogProvider = { gen2Context() },
             publisher = {},
             locationPublisher = crystalAreas::add,
+            positionPublisher = crystalPositions::add,
             transportFactory = { MemoryTransport(crystalWram, 0xc000) },
             autoStart = false,
         )
         crystal.updateSession(connected = true, systemId = "game_boy_color", romIdentity = "rom")
         repeat(2) { crystal.heartbeat() }
         assertEquals(0x1803, crystalAreas.last())
+        assertEquals(RuntimeMapPosition(14, 9), crystalPositions.last())
         crystal.close()
     }
 
@@ -509,13 +514,17 @@ class BattleMemoryCoordinatorTest {
         wram[0x06e3] = 33
         wram[0x1cb5] = 24
         wram[0x1cb6] = 3
+        wram[0x1cb7] = 9
+        wram[0x1cb8] = 14
         val updates = mutableListOf<BattleTrackingUpdate>()
         val liveAreas = mutableListOf<Int?>()
+        val positions = mutableListOf<RuntimeMapPosition?>()
         val transport = MemoryTransport(wram, 0xc000)
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { gen2Context() },
             publisher = updates::add,
             locationPublisher = liveAreas::add,
+            positionPublisher = positions::add,
             transportFactory = { transport },
             autoStart = false,
         )
@@ -527,15 +536,20 @@ class BattleMemoryCoordinatorTest {
         assertEquals(19, updates.last().sample?.opponents?.single()?.speciesId)
         assertEquals(33, updates.last().sample?.selectedMoveId)
         assertEquals(0x1803, liveAreas.last())
+        assertEquals(RuntimeMapPosition(14, 9), positions.last())
         assertTrue(transport.commands.all { it.startsWith("READ_CORE_MEMORY ") })
 
         wram[0x120e] = 34
         wram[0x071c] = 33
         wram[0x1cb6] = 4
+        wram[0x1cb7] = 10
+        wram[0x1cb8] = 15
         repeat(2) { coordinator.heartbeat() }
         assertEquals(mapOf(19 to mapOf(33 to 1)), updates.last().observations)
         assertEquals(0x1804, liveAreas.last())
+        assertEquals(RuntimeMapPosition(15, 10), positions.last())
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY dcb5 2") })
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY dcb7 2") })
 
         repeat(2) { coordinator.heartbeat() }
         assertTrue(updates.last().observations.isEmpty())
@@ -669,7 +683,7 @@ class BattleMemoryCoordinatorTest {
     private fun gen2Context() = BattleCatalogContext(
         romIdentity = "rom",
         generation = 2,
-        liveAreaMemoryLayout = LiveAreaMemoryLayout(0x1cb5, 2),
+        liveAreaMemoryLayout = LiveAreaMemoryLayout(0x1cb5, 2, 0x1cb8, 0x1cb7),
         catalog = BattleCatalogView(
             species = mapOf(
                 155 to BattleSpecies(155, listOf(20, 20)),

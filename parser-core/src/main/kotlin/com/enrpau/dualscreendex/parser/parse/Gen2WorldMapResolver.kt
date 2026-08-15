@@ -12,6 +12,32 @@ import com.enrpau.dualscreendex.parser.sprite.TileRenderer
 
 /** Resolves the Gen II Town Map through compiled asset, map-header, and landmark consumers. */
 object Gen2WorldMapResolver {
+    internal fun resolveLandmarkNames(
+        session: RomAnalysisSession,
+        mapIds: Set<Int>,
+        landmarkIds: Set<Int> = emptySet(),
+    ): Map<Int, String> {
+        val requiredMaps = mapIds.filterTo(sortedSetOf()) { base ->
+            val group = base ushr 8
+            val map = base and 0xff
+            group in 1..MAX_MAP_GROUPS && map in 1..MAX_MAPS_PER_GROUP
+        }
+        if (requiredMaps.isEmpty()) return emptyMap()
+        val binding = findBindingChains(session.rom, requiredMaps).chains.singleOrNull() ?: return emptyMap()
+        val known = (binding.johto + binding.kanto).associate { it.id to it.name }
+        val requestedIds = (known.keys + landmarkIds.filter { it in FIRST_STATIC_LANDMARK..MAX_STATIC_LANDMARK })
+            .toSet()
+        val candidates = findLandmarkAuthorities(session.rom).mapNotNull { authority ->
+            val encoding = resolveLandmarkNameEncoding(session.rom, authority, requestedIds)
+                ?: return@mapNotNull null
+            val names = requestedIds.associateWith { id ->
+                decodeLandmarkName(session.rom, authority, id, encoding) ?: return@mapNotNull null
+            }
+            names.takeIf { decoded -> known.all { (id, name) -> decoded[id] == name } }
+        }
+        return candidates.singleOrNull() ?: known
+    }
+
     fun resolve(session: RomAnalysisSession, encounterBaseIds: Set<Int>): WorldMapResolution {
         val requiredMaps = encounterBaseIds.filterTo(sortedSetOf()) { base ->
             val group = base ushr 8
@@ -530,7 +556,7 @@ object Gen2WorldMapResolver {
         return BindingSearch(chains, groupRoots.size, landmarkAuthorities.size, classifiers.size)
     }
 
-    private fun findMapGroupRoots(rom: RomImage, requiredMaps: Set<Int>): List<MapGroupAuthority> = buildList {
+    internal fun findMapGroupRoots(rom: RomImage, requiredMaps: Set<Int>): List<MapGroupAuthority> = buildList {
         var offset = 0
         while (offset + MAP_POINTER_CONSUMER_BYTES <= minOf(BANK_BYTES, rom.size)) {
             val authority = parseMapPointerConsumerAt(rom, offset, requiredMaps)
@@ -998,7 +1024,7 @@ object Gen2WorldMapResolver {
         val paletteMap: ByteArray,
         val palettes: ShortArray,
     )
-    private data class MapGroupAuthority(val bank: Int, val tableOffset: Int)
+    internal data class MapGroupAuthority(val bank: Int, val tableOffset: Int)
     private data class LandmarkAuthority(
         val bank: Int,
         val tableOffset: Int,
@@ -1058,6 +1084,7 @@ object Gen2WorldMapResolver {
     private const val MAX_LANDMARK_MASK = 0x7f
     private const val SPECIAL_LANDMARK = 0
     private const val FIRST_STATIC_LANDMARK = 1
+    private const val MAX_STATIC_LANDMARK = 127
     private const val COORDINATE_X_BIAS = 8
     private const val COORDINATE_Y_BIAS = 16
     private const val MAX_NAME_BYTES = 32
