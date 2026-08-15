@@ -26,6 +26,12 @@ pwsh -File tools/android/validate-signed-candidate.ps1 `
 
 Verify the real user flow on the lower display: launch, ROM selection, catalog reopen, ROM-scoped settings persistence, capability report, and Docked/Overlay display behavior. Do not claim the candidate is Thor-validated from signer or installation evidence alone.
 
+For a release whose changes are limited to passive catalog generation and presentation, the user
+may instead authorize automated promotion. That path must record the exact signed candidate hash,
+pinned signer, at least five exact real-ROM controls, CatalogStore reopen, runtime API projection,
+web presentation verification, successful release CI, and `gameplayRuntimeChanged: false`. It must
+not claim AVD or Thor validation.
+
 ## 3. Refresh the existing GAFT registry entry
 
 Only after sections 1 and 2 pass, refresh <https://github.com/andreyvelsk/GAFT>. Locate the existing DualScreenDex `content/<slug>/index.md`; update it instead of creating a duplicate.

@@ -111,8 +111,21 @@ function validateFinalAuthorization(authorization, versionName, certificateSha25
   if (authorizedCertificate !== certificateSha256) {
     throw new Error("Final authorization was validated with a different signer");
   }
-  if (authorization.avdValidated !== true || authorization.thorValidated !== true) {
-    throw new Error("Final authorization requires successful AVD and Thor validation");
+  const deviceValidated =
+    authorization.avdValidated === true && authorization.thorValidated === true;
+  const automatedPassiveChangeValidated =
+    authorization.validationMode === "automated-passive-catalog" &&
+    authorization.userAuthorizedAutomatedPromotion === true &&
+    authorization.gameplayRuntimeChanged === false &&
+    authorization.exactRomControls >= 5 &&
+    authorization.catalogPersistenceValidated === true &&
+    authorization.runtimeApiValidated === true &&
+    authorization.webPresentationValidated === true &&
+    authorization.releaseCiValidated === true;
+  if (!deviceValidated && !automatedPassiveChangeValidated) {
+    throw new Error(
+      "Final authorization requires device validation or complete automated passive-catalog validation",
+    );
   }
 }
 

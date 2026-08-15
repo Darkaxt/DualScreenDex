@@ -142,3 +142,51 @@ test("accepts a final release only after the GitHub candidate passed both device
   assert.equal(result.outputs.draft, "false");
   assert.equal(result.outputs.prerelease, "false");
 });
+
+test("accepts user-authorized automated promotion for a passive catalog-only change", () => {
+  const result = runMetadata("v1.0.0", {
+    schema: 1,
+    versionName: "1.0.0",
+    sourceCandidateTag: "v1.0.0-rc.30",
+    githubSignedCandidateSha256: "B".repeat(64),
+    validatedSignerSha256:
+      "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
+    validationMode: "automated-passive-catalog",
+    userAuthorizedAutomatedPromotion: true,
+    gameplayRuntimeChanged: false,
+    exactRomControls: 5,
+    catalogPersistenceValidated: true,
+    runtimeApiValidated: true,
+    webPresentationValidated: true,
+    releaseCiValidated: true,
+    avdValidated: false,
+    thorValidated: false,
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.outputs.version_code, "1000099");
+  assert.equal(result.outputs.release_kind, "final");
+  assert.equal(result.outputs.prerelease, "false");
+});
+
+test("rejects incomplete automated promotion evidence", () => {
+  const result = runMetadata("v1.0.0", {
+    schema: 1,
+    versionName: "1.0.0",
+    sourceCandidateTag: "v1.0.0-rc.30",
+    githubSignedCandidateSha256: "B".repeat(64),
+    validatedSignerSha256:
+      "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
+    validationMode: "automated-passive-catalog",
+    userAuthorizedAutomatedPromotion: true,
+    gameplayRuntimeChanged: false,
+    exactRomControls: 5,
+    catalogPersistenceValidated: true,
+    runtimeApiValidated: true,
+    webPresentationValidated: true,
+    releaseCiValidated: false,
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /complete automated passive-catalog validation/i);
+});
