@@ -127,6 +127,10 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Stage3IndependentLiveSections == true/);
   assert.match(workflow, /\.v11Stage3LiveOverSaveAuthority == true/);
   assert.match(workflow, /\.v11Stage3LifecycleFallback == true/);
+  assert.match(workflow, /\.v11Stage4TrainerCard == true/);
+  assert.match(workflow, /\.v11Stage4PartyPresentation == true/);
+  assert.match(workflow, /\.v11Stage4DynamicFeatureNavigation == true/);
+  assert.match(workflow, /\.v11Stage4LocalMapConvergence == true/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });
 

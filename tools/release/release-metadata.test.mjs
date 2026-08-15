@@ -63,13 +63,13 @@ function runMetadata(tag, finalAuthorization, existingTags = []) {
 }
 
 test("derives a monotonic, public prerelease identity for an RC", () => {
-  const result = runMetadata("v1.1.0-rc.3");
+  const result = runMetadata("v1.1.0-rc.4");
 
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(result.outputs, {
-    tag: "v1.1.0-rc.3",
-    version_name: "1.1.0-rc.3",
-    version_code: "1010003",
+    tag: "v1.1.0-rc.4",
+    version_name: "1.1.0-rc.4",
+    version_code: "1010004",
     release_kind: "candidate",
     draft: "false",
     prerelease: "true",
