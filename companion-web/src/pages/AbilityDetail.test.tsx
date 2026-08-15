@@ -13,7 +13,7 @@ describe('ability detail', () => {
       description: 'Ups Fire moves in a pinch.',
       mechanics: [
         { kind: 'ACTIVATION_THRESHOLD', label: 'Activation', value: 'HP ≤ 1/3', numerator: 1, denominator: 3 },
-        { kind: 'MULTIPLIER', label: 'Power', value: 'Fire move power ×1.5', numerator: 150, denominator: 100 },
+        { kind: 'MULTIPLIER', label: 'Power', value: 'Fire move power ×1.5', numerator: 150, denominator: 100, conditions: [{ kind: 'MOVE_SPLIT', value: 1, label: 'Special moves' }] },
       ],
     };
     const catalog = {
@@ -35,5 +35,6 @@ describe('ability detail', () => {
     expect(screen.getByText('KNOWN VALUES')).toBeTruthy();
     expect(screen.getByText('HP ≤ 1/3')).toBeTruthy();
     expect(screen.getByText('Fire move power ×1.5')).toBeTruthy();
+    expect(screen.getByText('Power · Special moves')).toBeTruthy();
   });
 });

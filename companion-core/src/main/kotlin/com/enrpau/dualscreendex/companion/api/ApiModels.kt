@@ -83,7 +83,9 @@ data class AbilityMechanicView(
     val value: String,
     val numerator: Int,
     val denominator: Int,
+    val conditions: List<AbilityMechanicConditionView> = emptyList(),
 )
+data class AbilityMechanicConditionView(val kind: String, val value: Long, val label: String)
 data class AbilityView(
     val id: Int,
     val name: String,
@@ -331,6 +333,13 @@ object ApiViewBuilder {
                                 mechanic.value,
                                 mechanic.numerator,
                                 mechanic.denominator,
+                                mechanic.conditions.map { condition ->
+                                    AbilityMechanicConditionView(
+                                        condition.kind.name,
+                                        condition.value,
+                                        condition.label,
+                                    )
+                                },
                             )
                         },
                     )

@@ -1,6 +1,8 @@
 package com.darkaxt.dualdex.catalog
 
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicCondition
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
@@ -88,7 +90,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(9, CatalogSchema.parserSchemaVersion)
+        assertEquals(10, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(raster.argb.toList(), reopened?.catalog?.worldMaps?.assets?.get("world/region-0")?.argb?.toList())
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
@@ -212,7 +214,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(9, CatalogSchema.parserSchemaVersion)
+        assertEquals(10, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -389,7 +391,18 @@ class CatalogStoreTest {
             name = CatalogField.available("Blaze"),
             description = CatalogField.available("Powers up Fire-type moves in a pinch."),
             mechanics = CatalogField.available(
-                listOf(AbilityMechanic(AbilityMechanicKind.MULTIPLIER, "Fire power", "1.5x", 3, 2)),
+                listOf(AbilityMechanic(
+                    AbilityMechanicKind.MULTIPLIER,
+                    "Fire power",
+                    "1.5x",
+                    3,
+                    2,
+                    listOf(AbilityMechanicCondition(
+                        AbilityMechanicConditionKind.MOVE_SPLIT,
+                        1,
+                        "Special moves",
+                    )),
+                )),
             ),
         )
         return ParsedCatalog(

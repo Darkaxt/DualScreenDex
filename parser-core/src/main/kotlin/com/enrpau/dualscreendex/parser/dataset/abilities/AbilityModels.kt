@@ -370,12 +370,25 @@ sealed interface AbilityDescriptionTableOutcome {
     ) : AbilityDescriptionTableOutcome
 }
 
+enum class SourceBackedAbilityMechanicKind { MULTIPLIER, STAT_STAGE, STATUS_CURE, TYPE_CHANGE }
+
+data class SourceBackedAbilityMechanic(
+    val abilityId: Int,
+    val kind: SourceBackedAbilityMechanicKind,
+    val label: String,
+    val value: String,
+    val numerator: Int,
+    val denominator: Int,
+    val condition: String? = null,
+)
+
 /** Complete parser-selected ARM7TDMI mechanic proof propagated to catalog consumers. */
 class ResolvedAbilityMechanicsLayout(
     val routineEntry: Int,
     val abi: BattleMechanicsAbi,
     mechanics: Collection<AttackMechanic>,
     proof: RetailBattleMechanicsProof,
+    sourceBackedMechanics: Collection<SourceBackedAbilityMechanic> = emptyList(),
 ) : ImmutableDatasetLayout<ResolvedAbilityMechanicsLayout> {
     val mechanics: List<AttackMechanic> = Collections.unmodifiableList(mechanics.map { mechanic ->
         mechanic.copy(predicates = Collections.unmodifiableSet(mechanic.predicates.toSet()))
@@ -386,25 +399,33 @@ class ResolvedAbilityMechanicsLayout(
         moveTableReferenceSites = Collections.unmodifiableList(proof.moveTableReferenceSites.toList()),
         literalVeneerSites = Collections.unmodifiableList(proof.literalVeneerSites.toList()),
     )
+    val sourceBackedMechanics: List<SourceBackedAbilityMechanic> = Collections.unmodifiableList(
+        sourceBackedMechanics.distinct().sortedWith(compareBy(SourceBackedAbilityMechanic::abilityId, SourceBackedAbilityMechanic::kind)),
+    )
     override val layoutIdentity: CandidateLayoutIdentity = CandidateLayoutIdentity(
-        "ability-mechanics:arm7tdmi:${routineEntry.toString(16)}:${abi.record.stride}:${this.mechanics.size}",
+        "ability-mechanics:arm7tdmi:${routineEntry.toString(16)}:${abi.record.stride}:" +
+            "${this.mechanics.size}:${this.sourceBackedMechanics.size}",
     )
 
     init {
         require(routineEntry >= 0) { "ability-mechanics routine entry must not be negative" }
-        require(this.mechanics.isNotEmpty()) { "ability-mechanics proof must emit at least one mechanic" }
+        require(this.mechanics.isNotEmpty() || this.sourceBackedMechanics.isNotEmpty()) {
+            "ability-mechanics proof must emit at least one mechanic"
+        }
     }
 
     override fun immutableSnapshot(): ResolvedAbilityMechanicsLayout = this
 
     override fun equals(other: Any?): Boolean = other is ResolvedAbilityMechanicsLayout &&
-        routineEntry == other.routineEntry && abi == other.abi && mechanics == other.mechanics && proof == other.proof
+        routineEntry == other.routineEntry && abi == other.abi && mechanics == other.mechanics &&
+            proof == other.proof && sourceBackedMechanics == other.sourceBackedMechanics
 
     override fun hashCode(): Int {
         var result = routineEntry
         result = 31 * result + abi.hashCode()
         result = 31 * result + mechanics.hashCode()
         result = 31 * result + proof.hashCode()
+        result = 31 * result + sourceBackedMechanics.hashCode()
         return result
     }
 }

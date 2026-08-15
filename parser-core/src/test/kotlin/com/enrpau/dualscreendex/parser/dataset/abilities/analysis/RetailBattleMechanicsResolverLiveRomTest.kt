@@ -16,6 +16,58 @@ import org.junit.Test
 
 class RetailBattleMechanicsResolverLiveRomTest {
     @Test
+    fun `Modern Emerald selected ABI resolves its recompiled retail battle routine`() {
+        val control = Control(
+            path = "D:/Temp/dualdex-expanded-corpus/roms/0116-a0b4e5e9c0c4/Modern Emerald (v3.5).gba",
+            sha256 = "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+            routineEntry = 0x18FBE8,
+            callerSites = emptySet(),
+        )
+        val image = control.load()
+        val parse = ParserOrchestrator.analyze(image)
+        val layout = parse.probes.single { it.family == parse.selectedFamily }.resolvedLayout!!
+        val moves = layout.resolvedDatasets.moveDetails!!
+        val abilityIds = layout.resolvedDatasets.abilityNames!!.decodedDirectAbilityIds()
+        val selectedAbi = BattleMechanicsAbi(
+            record = BattleRecordAbi(
+                stride = 0x58,
+                attack = ScalarField(0x02, ScalarWidth.U16),
+                ability = ScalarField(0x20, ScalarWidth.U8),
+                status = ScalarField(0x4C, ScalarWidth.U32),
+            ),
+            move = MoveMechanicsAbi(
+                tableRoot = 0x0800_0000 + moves.table.offset.toInt(),
+                stride = moves.table.abi.recordSize,
+                effect = ScalarField(0, ScalarWidth.U8),
+                power = ScalarField(1, ScalarWidth.U8),
+                type = ScalarField(2, ScalarWidth.U8),
+            ),
+            activeAbilityIds = abilityIds,
+            roleContract = BattleRoleContract.DirectPointers(0, 1),
+        )
+
+        val automaticallyResolved = requireNotNull(layout.resolvedDatasets.abilityMechanics)
+        assertEquals(control.routineEntry, automaticallyResolved.routineEntry)
+        assertEquals(0x58, automaticallyResolved.abi.record.stride)
+        assertEquals(ScalarField(0x02, ScalarWidth.U16), automaticallyResolved.abi.record.attack)
+        assertEquals(ScalarField(0x20, ScalarWidth.U8), automaticallyResolved.abi.record.ability)
+        assertEquals(setOf(37, 74), automaticallyResolved.mechanics.map { it.abilityId }.toSet())
+
+        val result = RetailBattleMechanicsResolver.resolve(
+            RomAnalysisSession(image, RomHeaderReader.read(image)),
+            moves,
+            abilityIds,
+            selectedAbi,
+        )
+
+        assertTrue(result.toString(), result is RetailBattleMechanicsResolution.Resolved)
+        val resolved = (result as RetailBattleMechanicsResolution.Resolved).layout
+        assertEquals(control.routineEntry, resolved.routineEntry)
+        assertEquals(selectedAbi, resolved.abi)
+        assertEquals(setOf(37, 74), resolved.mechanics.map { it.abilityId }.toSet())
+    }
+
+    @Test
     fun `official Emerald and FRLG derive one typed retail battle routine from compiled roles`() {
         listOf(
             Control(

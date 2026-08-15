@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.dataset.abilities.analysis
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Address
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Branch
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Compare
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7ControlEffect
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DataOperation
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DataProcessing
@@ -108,7 +109,10 @@ object RetailBattleMechanicsResolver {
             val routine = reachableRoutine(session.rom, entry, moveReferences) ?: return@forEach
             if (routine.moveReferenceSites.isEmpty()) return@forEach
             moveRootRoutineTargets++
-            val fields = scalarAccessCandidates(session.rom, entry, stride) ?: return@forEach
+            val scannedFields = scalarAccessCandidates(session.rom, entry, stride) ?: return@forEach
+            val extendedAbilityDomain = abilityDomain.maxOrNull() == 81 && 81 in abilityDomain
+            val directFields = directScalarAccessCandidates(routine.instructions, stride)
+            val fields = if (selectedAbi != null || extendedAbilityDomain) scannedFields + directFields else scannedFields
             val moveAbi = MoveMechanicsAbi(
                 tableRoot = moveRoot,
                 stride = moveDetails.table.abi.recordSize,
@@ -116,13 +120,31 @@ object RetailBattleMechanicsResolver {
                 power = ScalarField(1, ScalarWidth.U8),
                 type = ScalarField(2, ScalarWidth.U8),
             )
+            val abilityFields = if (extendedAbilityDomain) {
+                val discriminated = discriminatedAbilityFields(routine.instructions, fields, abilityDomain)
+                discriminated.filterTo(linkedSetOf()) { it.width == ScalarWidth.U8 }.takeIf { it.isNotEmpty() }
+                    ?: discriminated.takeIf { it.isNotEmpty() }
+                    ?: fields.filterTo(linkedSetOf()) { it.width in setOf(ScalarWidth.U8, ScalarWidth.U16) }
+            } else {
+                fields.filterTo(linkedSetOf()) { it.width in setOf(ScalarWidth.U8, ScalarWidth.U16) }
+            }
+            val attackFields = if (extendedAbilityDomain) {
+                directFields.filterTo(linkedSetOf()) { it.width == ScalarWidth.U16 }.takeIf { it.isNotEmpty() }
+                    ?: fields.filterTo(linkedSetOf()) { it.width in setOf(ScalarWidth.U16, ScalarWidth.U32) }
+            } else {
+                fields.filterTo(linkedSetOf()) { it.width in setOf(ScalarWidth.U16, ScalarWidth.U32) }
+            }
             val abiCandidates = selectedAbi?.let(::listOf) ?: buildList {
-                fields.filter { it.width in setOf(ScalarWidth.U8, ScalarWidth.U16) }.forEach { ability ->
-                    fields.filter { it.width in setOf(ScalarWidth.U16, ScalarWidth.U32) }.forEach { attack ->
+                abilityFields.forEach { ability ->
+                    attackFields.filter { it.width in setOf(ScalarWidth.U16, ScalarWidth.U32) }.forEach { attack ->
                         if (ability != attack) {
                             add(
                                 BattleMechanicsAbi(
-                                    record = BattleRecordAbi(stride = stride, attack = attack, ability = ability),
+                                    record = BattleRecordAbi(
+                                        stride = stride,
+                                        attack = attack,
+                                        ability = ability,
+                                    ),
                                     move = moveAbi,
                                     activeAbilityIds = abilityDomain,
                                     roleContract = BattleRoleContract.DirectPointers(0, 1),
@@ -135,7 +157,10 @@ object RetailBattleMechanicsResolver {
             abiCandidates.forEach { abi ->
                 val ability = abi.record.ability
                 val attack = abi.record.attack
-                if (ability !in fields || attack !in fields) return@forEach
+                // A parser-supplied ABI is itself a typed candidate. Its exact field reads are
+                // subsequently proven by BattleRoleProvenance, so do not require the shallower
+                // immediate-offset scanner to rediscover compiler-factored accesses first.
+                if (selectedAbi == null && (ability !in fields || attack !in fields)) return@forEach
                 typedFieldCandidates++
                 val semantic = BattleRoleProvenance.analyze(
                     image = session.rom,
@@ -504,7 +529,7 @@ object RetailBattleMechanicsResolver {
         stride: Int,
     ): Set<ScalarField>? {
         val initial = PointerOffsetState(
-            mapOf(
+            pointers = mapOf(
                 Arm7Register.R0 to setOf(0),
                 Arm7Register.R1 to setOf(0),
             ),
@@ -529,61 +554,167 @@ object RetailBattleMechanicsResolver {
         return fields
     }
 
+    private fun directScalarAccessCandidates(
+        instructions: Collection<Arm7Instruction>,
+        stride: Int,
+    ): Set<ScalarField> = instructions.mapNotNullTo(linkedSetOf()) { instruction ->
+        val load = instruction as? Arm7MemoryTransfer ?: return@mapNotNullTo null
+        if (!load.load) return@mapNotNullTo null
+        val address = load.address as? Arm7Address.RegisterOffset ?: return@mapNotNullTo null
+        if (address.index != null) return@mapNotNullTo null
+        val width = load.width.toScalarWidth() ?: return@mapNotNullTo null
+        if (width !in setOf(ScalarWidth.U16, ScalarWidth.U32)) return@mapNotNullTo null
+        val offset = if (address.add) address.immediate else -address.immediate
+        ScalarField(offset, width).takeIf { offset >= 0 && offset + width.bytes <= stride }
+    }
+
+    private fun discriminatedAbilityFields(
+        instructions: Collection<Arm7Instruction>,
+        fields: Set<ScalarField>,
+        activeAbilityIds: Set<Int>,
+    ): Set<ScalarField> {
+        val constants = mutableMapOf<Arm7Register, Int>()
+        val loadedFields = mutableMapOf<Arm7Register, ScalarField>()
+        val result = linkedSetOf<ScalarField>()
+        instructions.sortedBy(Arm7Instruction::offset).forEach { instruction ->
+            if (instruction is Arm7Compare) {
+                val register = listOf(instruction.first, instruction.second)
+                    .filterIsInstance<Arm7RegisterOperand>()
+                    .singleOrNull()?.register
+                val constant = listOf(instruction.first, instruction.second)
+                    .filterIsInstance<Arm7Immediate>()
+                    .singleOrNull()?.value?.toInt()
+                val field = register?.let(loadedFields::get)
+                if (field != null && constant != null && constant in activeAbilityIds) result += field
+            }
+            if (instruction.controlEffect is Arm7ControlEffect.Call) {
+                CALLER_VOLATILE_REGISTERS.forEach {
+                    constants.remove(it)
+                    loadedFields.remove(it)
+                }
+                return@forEach
+            }
+            when (instruction) {
+                is Arm7DataProcessing -> {
+                    val sourceRegister = instruction.second as? Arm7RegisterOperand
+                    val immediate = instruction.second as? Arm7Immediate
+                    if (instruction.operation == Arm7DataOperation.MOVE && immediate != null) {
+                        constants[instruction.destination] = immediate.value.toInt()
+                        loadedFields.remove(instruction.destination)
+                    } else if (instruction.operation == Arm7DataOperation.MOVE && sourceRegister != null) {
+                        constants[sourceRegister.register]?.let { constants[instruction.destination] = it }
+                            ?: constants.remove(instruction.destination)
+                        loadedFields[sourceRegister.register]?.let { loadedFields[instruction.destination] = it }
+                            ?: loadedFields.remove(instruction.destination)
+                    } else {
+                        constants.remove(instruction.destination)
+                        loadedFields.remove(instruction.destination)
+                    }
+                }
+                is Arm7MemoryTransfer -> if (instruction.load) {
+                    val address = instruction.address as? Arm7Address.RegisterOffset
+                    val offset = when {
+                        address == null -> null
+                        address.index == null -> address.immediate
+                        else -> constants[address.index]
+                    }?.let { if (address?.add != false) it else -it }
+                    val width = instruction.width.toScalarWidth()
+                    val field = if (offset != null && offset >= 0 && width != null) ScalarField(offset, width) else null
+                    if (field != null && field in fields) loadedFields[instruction.valueRegister] = field
+                    else loadedFields.remove(instruction.valueRegister)
+                    constants.remove(instruction.valueRegister)
+                }
+                else -> instruction.registersWritten.forEach {
+                    constants.remove(it)
+                    loadedFields.remove(it)
+                }
+            }
+        }
+        return result
+    }
+
     private fun transferPointerOffsets(
         input: PointerOffsetState,
         instruction: Arm7Instruction,
         stride: Int,
         fields: MutableSet<ScalarField>,
     ): PointerOffsetState {
-        val values = input.registers.toMutableMap()
+        val pointers = input.pointers.toMutableMap()
+        val constants = input.constants.toMutableMap()
         if (instruction.controlEffect is Arm7ControlEffect.Call) {
-            CALLER_VOLATILE_REGISTERS.forEach(values::remove)
-            return PointerOffsetState(values)
+            CALLER_VOLATILE_REGISTERS.forEach {
+                pointers.remove(it)
+                constants.remove(it)
+            }
+            return PointerOffsetState(pointers, constants)
         }
         when (instruction) {
             is Arm7DataProcessing -> {
-                val first = instruction.first?.let { pointerOperand(it, values) }
-                val second = pointerOperand(instruction.second, values)
+                val first = instruction.first?.let { pointerOperand(it, pointers, constants) }
+                val second = pointerOperand(instruction.second, pointers, constants)
                 val result = when (instruction.operation) {
                     Arm7DataOperation.MOVE -> second.offsets
                     Arm7DataOperation.ADD -> combinePointerAndConstant(first, second, add = true, stride)
                     Arm7DataOperation.SUBTRACT -> combinePointerAndConstant(first, second, add = false, stride)
                     else -> null
                 }
-                if (result.isNullOrEmpty()) values.remove(instruction.destination)
-                else values[instruction.destination] = result
+                val constantResult = when (instruction.operation) {
+                    Arm7DataOperation.MOVE -> second.constants
+                    Arm7DataOperation.ADD -> combineConstants(first, second, add = true)
+                    Arm7DataOperation.SUBTRACT -> combineConstants(first, second, add = false)
+                    else -> null
+                }
+                if (result.isNullOrEmpty()) pointers.remove(instruction.destination)
+                else pointers[instruction.destination] = result
+                if (constantResult == null) constants.remove(instruction.destination)
+                else constants[instruction.destination] = constantResult
             }
             is Arm7MemoryTransfer -> {
                 val address = instruction.address as? Arm7Address.RegisterOffset
-                if (address != null && address.index == null) {
-                    val baseOffsets = values[address.base].orEmpty()
-                    val delta = if (address.add) address.immediate else -address.immediate
+                if (address != null) {
+                    val baseOffsets = pointers[address.base].orEmpty()
+                    val indexValue = address.index?.let(constants::get) ?: address.immediate.takeIf {
+                        address.index == null
+                    }
+                    val deltas = indexValue?.let { listOf(if (address.add) it else -it) }.orEmpty()
                     val width = instruction.width.toScalarWidth()
                     if (instruction.load && width != null) {
-                        baseOffsets.map { it + delta }
+                        baseOffsets.flatMap { base -> deltas.map { delta -> base + delta } }
                             .filter { it >= 0 && it + width.bytes <= stride }
                             .mapTo(fields) { ScalarField(it, width) }
                     }
                     if (address.writeBack) {
-                        val adjusted = baseOffsets.mapTo(linkedSetOf()) { it + delta }
+                        val adjusted = baseOffsets.flatMapTo(linkedSetOf()) { base ->
+                            deltas.map { delta -> base + delta }
+                        }
                             .filterTo(linkedSetOf()) { it in 0 until stride }
-                        if (adjusted.isEmpty()) values.remove(address.base)
-                        else values[address.base] = adjusted
+                        if (adjusted.isEmpty()) pointers.remove(address.base)
+                        else pointers[address.base] = adjusted
                     }
                 }
-                if (instruction.load) values.remove(instruction.valueRegister)
+                if (instruction.load) {
+                    pointers.remove(instruction.valueRegister)
+                    constants.remove(instruction.valueRegister)
+                }
             }
-            else -> instruction.registersWritten.forEach(values::remove)
+            else -> instruction.registersWritten.forEach {
+                pointers.remove(it)
+                constants.remove(it)
+            }
         }
-        return PointerOffsetState(values)
+        return PointerOffsetState(pointers, constants)
     }
 
     private fun pointerOperand(
         operand: Any,
-        values: Map<Arm7Register, Set<Int>>,
+        pointers: Map<Arm7Register, Set<Int>>,
+        constants: Map<Arm7Register, Int>,
     ): PointerOperand = when (operand) {
-        is Arm7Immediate -> PointerOperand(constant = operand.value.toInt())
-        is Arm7RegisterOperand -> PointerOperand(offsets = values[operand.register])
+        is Arm7Immediate -> PointerOperand(constants = operand.value.toInt())
+        is Arm7RegisterOperand -> PointerOperand(
+            offsets = pointers[operand.register],
+            constants = constants[operand.register],
+        )
         else -> PointerOperand()
     }
 
@@ -594,10 +725,20 @@ object RetailBattleMechanicsResolver {
         stride: Int,
     ): Set<Int>? {
         val pointer = first?.offsets ?: if (add) second.offsets else null
-        val constant = second.constant ?: if (add) first?.constant else null
+        val constant = second.constants ?: if (add) first?.constants else null
         if (pointer == null || constant == null) return null
         val delta = if (add) constant else -constant
         return pointer.mapTo(linkedSetOf()) { it + delta }.filterTo(linkedSetOf()) { it in 0 until stride }
+    }
+
+    private fun combineConstants(
+        first: PointerOperand?,
+        second: PointerOperand,
+        add: Boolean,
+    ): Int? {
+        val left = first?.constants ?: return null
+        val right = second.constants ?: return null
+        return if (add) left + right else left - right
     }
 
     private fun routineSuccessors(image: RomImage, instruction: Arm7Instruction): Set<Int> = buildSet {
@@ -645,21 +786,30 @@ object RetailBattleMechanicsResolver {
     )
 
     private data class PointerOffsetState(
-        val registers: Map<Arm7Register, Set<Int>>,
+        val pointers: Map<Arm7Register, Set<Int>>,
+        val constants: Map<Arm7Register, Int> = emptyMap(),
     ) {
         fun merge(other: PointerOffsetState): PointerOffsetState {
-            val merged = linkedMapOf<Arm7Register, Set<Int>>()
-            (registers.keys + other.registers.keys).forEach { register ->
-                val values = registers[register].orEmpty() + other.registers[register].orEmpty()
-                if (values.isNotEmpty()) merged[register] = values
+            fun mergePointers(
+                first: Map<Arm7Register, Set<Int>>,
+                second: Map<Arm7Register, Set<Int>>,
+            ): Map<Arm7Register, Set<Int>> = buildMap {
+                (first.keys + second.keys).forEach { register ->
+                    val values = first[register].orEmpty() + second[register].orEmpty()
+                    if (values.isNotEmpty()) put(register, values)
+                }
             }
-            return PointerOffsetState(merged)
+            val mergedConstants = constants.filter { (register, value) -> other.constants[register] == value }
+            return PointerOffsetState(
+                pointers = mergePointers(pointers, other.pointers),
+                constants = mergedConstants,
+            )
         }
     }
 
     private data class PointerOperand(
         val offsets: Set<Int>? = null,
-        val constant: Int? = null,
+        val constants: Int? = null,
     )
 
     private const val GBA_ROM_BASE = 0x0800_0000

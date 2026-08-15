@@ -13,6 +13,71 @@ import org.junit.Test
 
 class AbilityMechanicsMaterializerLiveRomTest {
     @Test
+    fun `Modern Emerald publishes every source and binary normalized ability mechanic`() {
+        val loaded = Control(
+            "Modern Emerald",
+            "D:/Temp/dualdex-expanded-corpus/roms/0116-a0b4e5e9c0c4/Modern Emerald (v3.5).gba",
+            "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+        ).load()
+
+        val catalog = CatalogMaterializer.materialize(loaded.rom, loaded.parse, loaded.layout)
+
+        val capability = catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS)
+        assertEquals(CapabilityStatus.AVAILABLE, capability.status)
+        assertEquals(7, capability.count)
+        assertEquals(
+            AbilityMechanic(
+                AbilityMechanicKind.STAT_STAGE,
+                "Opponents' Attack",
+                "−1 stage on switch-in",
+                -1,
+                1,
+                listOf(AbilityMechanicCondition(AbilityMechanicConditionKind.SWITCH_IN, 1, "Switch-in")),
+            ),
+            catalog.abilitiesById.getValue(22).mechanics.value?.single(),
+        )
+        assertEquals(
+            AbilityMechanic(AbilityMechanicKind.MULTIPLIER, "Attack", "Attack ×1.5", 3, 2),
+            catalog.abilitiesById.getValue(55).mechanics.value?.single(),
+        )
+        assertEquals(
+            AbilityMechanic(
+                AbilityMechanicKind.STATUS_CURE,
+                "Nonvolatile status",
+                "1/3 chance to cure",
+                1,
+                3,
+                listOf(AbilityMechanicCondition(
+                    AbilityMechanicConditionKind.ATTACKER_STATUS_NON_ZERO,
+                    0xFFFF_FFFFL,
+                    "While affected by status",
+                )),
+            ),
+            catalog.abilitiesById.getValue(61).mechanics.value?.single(),
+        )
+        assertEquals(
+            AbilityMechanic(
+                AbilityMechanicKind.TYPE_CHANGE,
+                "Move type",
+                "Normal → Fairy",
+                1,
+                1,
+                listOf(AbilityMechanicCondition(
+                    AbilityMechanicConditionKind.MOVE_POWER_NON_ZERO,
+                    1,
+                    "Damaging Normal-type moves",
+                )),
+            ),
+            catalog.abilitiesById.getValue(81).mechanics.value?.single(),
+        )
+        assertEquals("Attack ×2", catalog.abilitiesById.getValue(37).mechanics.value?.single()?.value)
+        val guts = catalog.abilitiesById.getValue(62).mechanics.value?.single()
+        assertEquals("Attack ×1.5", guts?.value)
+        assertEquals("While affected by status", guts?.conditions?.single()?.label)
+        assertEquals("Attack ×2", catalog.abilitiesById.getValue(74).mechanics.value?.single()?.value)
+    }
+
+    @Test
     fun `official retail catalog publishes the semantic proof and truthful capability`() {
         val loaded = Control(
             "Emerald",

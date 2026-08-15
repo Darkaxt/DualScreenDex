@@ -3,10 +3,10 @@ package com.enrpau.dualscreendex.parser.validate
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
 
-/** Decodes the two published Gen III base-stat ability ABIs. */
+/** Decodes the published Gen III base-stat ability ABIs. */
 internal object Gen3BaseStatAbilitySlots {
     fun supportsLayout(rom: RomImage, table: TableLayout, count: Int = table.count): Boolean {
-        if (table.recordSize != STANDARD_RECORD_SIZE && table.recordSize != BATTLE_ENGINE_RECORD_SIZE) return false
+        if (table.recordSize !in SUPPORTED_RECORD_SIZES) return false
         val stride = table.stride ?: table.recordSize
         if (table.offset < 0 || table.count <= 0 || count <= 0 || count > table.count || stride < table.recordSize) {
             return false
@@ -22,7 +22,7 @@ internal object Gen3BaseStatAbilitySlots {
     }
 
     fun read(rom: RomImage, recordOffset: Int, recordSize: Int): List<Int> {
-        if ((recordSize != STANDARD_RECORD_SIZE && recordSize != BATTLE_ENGINE_RECORD_SIZE) ||
+        if (recordSize !in SUPPORTED_RECORD_SIZES ||
             recordOffset < 0 || recordOffset.toLong() + recordSize > rom.size.toLong()
         ) {
             return emptyList()
@@ -40,5 +40,11 @@ internal object Gen3BaseStatAbilitySlots {
     private const val ABILITY_OFFSET = 22
     private const val STANDARD_RECORD_SIZE = 28
     private const val BATTLE_ENGINE_RECORD_SIZE = 32
+    private const val MODERN_EMERALD_RECORD_SIZE = 40
     private const val BATTLE_ENGINE_SLOT_COUNT = 3
+    private val SUPPORTED_RECORD_SIZES = setOf(
+        STANDARD_RECORD_SIZE,
+        BATTLE_ENGINE_RECORD_SIZE,
+        MODERN_EMERALD_RECORD_SIZE,
+    )
 }

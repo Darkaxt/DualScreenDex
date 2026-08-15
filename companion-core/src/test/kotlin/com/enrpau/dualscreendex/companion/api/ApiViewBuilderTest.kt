@@ -6,6 +6,8 @@ import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicCondition
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
@@ -94,7 +96,18 @@ class ApiViewBuilderTest {
                     id = 37,
                     name = CatalogField.available("Huge Power"),
                     mechanics = CatalogField.available(
-                        listOf(AbilityMechanic(AbilityMechanicKind.MULTIPLIER, "Attack", "Attack ×2", 2, 1)),
+                        listOf(AbilityMechanic(
+                            AbilityMechanicKind.MULTIPLIER,
+                            "Attack",
+                            "Attack ×2",
+                            2,
+                            1,
+                            listOf(AbilityMechanicCondition(
+                                AbilityMechanicConditionKind.MOVE_SPLIT,
+                                0,
+                                "Physical moves",
+                            )),
+                        )),
                     ),
                 ),
             ),
@@ -107,6 +120,7 @@ class ApiViewBuilderTest {
         assertEquals("Attack ×2", mechanic.value)
         assertEquals(2, mechanic.numerator)
         assertEquals(1, mechanic.denominator)
+        assertEquals("Physical moves", mechanic.conditions.single().label)
     }
 
     @Test

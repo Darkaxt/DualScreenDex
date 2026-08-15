@@ -52,6 +52,65 @@ class WorldMapCatalogApiRealControlTest {
     fun modernEmeraldSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[7])
 
     @Test
+    fun modernEmeraldAbilityMechanicsSurviveCatalogStoreAndApi() {
+        val control = controls[7]
+        val configured = System.getenv(control.environmentVariable)
+        assumeTrue("set ${control.environmentVariable} to run this real-ROM control", !configured.isNullOrBlank())
+        val romPath = Path.of(requireNotNull(configured))
+        assumeTrue("real ROM does not exist: $romPath", Files.isRegularFile(romPath))
+        val rom = RomImage(Files.readAllBytes(romPath))
+        assertEquals(control.romSha256, rom.sha256)
+
+        val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
+        val expectedIds = setOf(22, 37, 55, 61, 62, 74, 81)
+        assertEquals(expectedIds, catalog.abilitiesById.filterValues { it.mechanics.value?.isNotEmpty() == true }.keys)
+
+        val root = newRoot()
+        var server: AndroidLoopbackServer? = null
+        try {
+            val cache = CatalogCache(root.toFile(), JdbcTestCatalogDatabaseFactory)
+            cache.write(
+                catalog,
+                CatalogSourceMetadata.direct(romPath.fileName.toString(), rom.size, "REAL-CONTROL"),
+                CatalogWriteProgress.complete(),
+            )
+            val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
+            assertEquals(
+                catalog.abilitiesById.mapValues { it.value.mechanics },
+                reopened.abilitiesById.mapValues { it.value.mechanics },
+            )
+
+            val runtime = ProductionCompanionRuntime().apply { loadCatalog(romPath.fileName.toString(), reopened) }
+            val apiAbilities = requireNotNull(runtime.bootstrap().catalog).species
+                .flatMap { it.abilities }
+                .associateBy { it.id }
+            val referencedExpectedIds = reopened.speciesById.values
+                .flatMap { it.abilityIds.value.orEmpty() }
+                .toSet()
+                .intersect(expectedIds)
+            assertEquals(expectedIds, referencedExpectedIds)
+            assertEquals(referencedExpectedIds, apiAbilities.keys.intersect(expectedIds))
+            assertEquals("Switch-in", apiAbilities.getValue(22).mechanics.single().conditions.single().label)
+            assertEquals("While affected by status", apiAbilities.getValue(62).mechanics.single().conditions.single().label)
+            if (81 in referencedExpectedIds) {
+                assertEquals("Damaging Normal-type moves", apiAbilities.getValue(81).mechanics.single().conditions.single().label)
+            }
+
+            server = AndroidLoopbackServer(runtime) { null }.also { it.start() }
+            val json = URI("http://127.0.0.1:${server.address.port}/api/bootstrap").toURL().readText()
+            assertTrue(json.contains("\"name\":\"Intimidate\""))
+            assertTrue(json.contains("\"label\":\"Switch-in\""))
+            if (81 in referencedExpectedIds) {
+                assertTrue(json.contains("\"name\":\"Pixilate\""))
+                assertTrue(json.contains("\"value\":\"Normal → Fairy\""))
+            }
+        } finally {
+            server?.close()
+            deleteTree(root)
+        }
+    }
+
+    @Test
     fun classicSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[8])
 
     @Test

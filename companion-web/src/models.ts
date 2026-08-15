@@ -18,7 +18,14 @@ export interface Species {
     id: number;
     name: string;
     description: string | null;
-    mechanics: { kind: string; label: string; value: string; numerator: number; denominator: number }[];
+    mechanics: {
+      kind: string;
+      label: string;
+      value: string;
+      numerator: number;
+      denominator: number;
+      conditions?: { kind: string; value: number; label: string }[];
+    }[];
   }[];
   evolutions: { targetSpeciesId: number; targetName: string; methodId: number; parameter: number; condition: string }[];
   hasSprite: boolean;

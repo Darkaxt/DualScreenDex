@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.family
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityMechanicsResolver
 import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityMechanicsLayout
+import com.enrpau.dualscreendex.parser.dataset.abilities.SourceBackedAbilityMechanicsResolver
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolution
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -197,12 +198,16 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
         )) {
             is RetailBattleMechanicsResolution.Resolved -> {
                 val resolved = resolution.layout
+                val sourceBacked = SourceBackedAbilityMechanicsResolver.resolve(abilityNames, resolved)
                 val layout = ResolvedAbilityMechanicsLayout(
                     resolved.routineEntry,
                     resolved.abi,
                     resolved.mechanics,
                     resolved.proof,
+                    sourceBacked,
                 )
+                val mechanicIds = (resolved.mechanics.map { it.abilityId } + sourceBacked.map { it.abilityId })
+                    .distinct()
                 AbilityMechanicsPhaseResult(
                     layout,
                     CapabilityEvidence(
@@ -210,10 +215,12 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                         compatible = true,
                         confidence = 1.0,
                         offset = resolved.routineEntry,
-                        count = resolved.mechanics.map { it.abilityId }.distinct().size,
+                        count = mechanicIds.size,
                         reasons = listOf(
                             "decoded complete caller-role, typed field, predicate, effect, and writeback proofs",
-                        ),
+                        ) + if (sourceBacked.isNotEmpty()) listOf(
+                            "source-backed values joined to the independently selected 81-ability compiled ABI",
+                        ) else emptyList(),
                         status = CapabilityStatus.AVAILABLE,
                     ),
                 )

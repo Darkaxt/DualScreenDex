@@ -12,7 +12,7 @@ class Gen3BaseStatAbilitySlotsTest {
         bytes[22] = 7
         bytes[23] = 9
 
-        listOf(24, 26, 30).forEach { recordSize ->
+        listOf(24, 26, 30, 36).forEach { recordSize ->
             assertTrue("recordSize=$recordSize", Gen3BaseStatAbilitySlots.read(RomImage(bytes), 0, recordSize).isEmpty())
         }
     }
@@ -35,9 +35,13 @@ class Gen3BaseStatAbilitySlotsTest {
         writeU16(battleEngine, 22, 9)
         writeU16(battleEngine, 24, 0)
         writeU16(battleEngine, 26, 145)
+        val modernEmerald = ByteArray(40)
+        modernEmerald[22] = 37
+        modernEmerald[23] = 74
 
         assertEquals(listOf(7), Gen3BaseStatAbilitySlots.read(RomImage(legacy), 0, 28))
         assertEquals(listOf(9, 145), Gen3BaseStatAbilitySlots.read(RomImage(battleEngine), 0, 32))
+        assertEquals(listOf(37, 74), Gen3BaseStatAbilitySlots.read(RomImage(modernEmerald), 0, 40))
     }
 
     private fun writeU16(target: ByteArray, offset: Int, value: Int) {
