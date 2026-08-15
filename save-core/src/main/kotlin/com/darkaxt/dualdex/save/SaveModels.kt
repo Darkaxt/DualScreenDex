@@ -38,6 +38,7 @@ data class OwnedIndividual(
     val dvs: List<Int>? = null,
     val captureBallId: Int? = null,
     val experience: Long? = null,
+    val details: PartyMemberDetails? = null,
 )
 
 data class SaveSnapshot(
@@ -55,6 +56,8 @@ data class SaveSnapshot(
     val detectedLevelUpRulesetId: String? = null,
     val levelUpRulesetDetectionResolved: Boolean = false,
     val levelUpRulesetDetectionFingerprint: String? = null,
+    val trainer: TrainerSnapshot? = null,
+    val bag: List<BagPocketSnapshot> = emptyList(),
 ) {
     val allIndividuals: List<OwnedIndividual> get() = party + storedIndividuals
 }
