@@ -62,7 +62,7 @@ class WorldMapCatalogApiRealControlTest {
         assertEquals(control.romSha256, rom.sha256)
 
         val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
-        val expectedIds = setOf(22, 37, 55, 61, 62, 74, 81)
+        val expectedIds = (1..81).toSet()
         assertEquals(expectedIds, catalog.abilitiesById.filterValues { it.mechanics.value?.isNotEmpty() == true }.keys)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.SPRITES).status)
@@ -101,10 +101,19 @@ class WorldMapCatalogApiRealControlTest {
             assertEquals(expectedIds, referencedExpectedIds)
             assertEquals(referencedExpectedIds, apiAbilities.keys.intersect(expectedIds))
             assertEquals("Helps repel wild Pokémon.", apiAbilities.getValue(1).description)
-            assertEquals("Switch-in", apiAbilities.getValue(22).mechanics.single().conditions.single().label)
-            assertEquals("While affected by status", apiAbilities.getValue(62).mechanics.single().conditions.single().label)
+            assertEquals(
+                "Switch-in",
+                apiAbilities.getValue(22).mechanics.single { it.kind == "STAT_STAGE" }.conditions.single().label,
+            )
+            assertEquals(
+                "While affected by status",
+                apiAbilities.getValue(62).mechanics.single { it.kind == "MULTIPLIER" }.conditions.single().label,
+            )
             if (81 in referencedExpectedIds) {
-                assertEquals("Damaging Normal-type moves", apiAbilities.getValue(81).mechanics.single().conditions.single().label)
+                assertEquals(
+                    "Damaging Normal-type moves",
+                    apiAbilities.getValue(81).mechanics.single { it.kind == "TYPE_CHANGE" }.conditions.single().label,
+                )
             }
 
             server = AndroidLoopbackServer(runtime) { null }.also { it.start() }
@@ -120,6 +129,82 @@ class WorldMapCatalogApiRealControlTest {
         } finally {
             server?.close()
             deleteTree(root)
+        }
+    }
+
+    @Test
+    fun officialGen3AbilityBehaviorsSurviveCatalogStoreAndApi() {
+        val controls = listOf(
+            Triple(
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
+                "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
+                "Ruby",
+            ),
+            Triple(
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
+                "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb",
+                "Sapphire",
+            ),
+            Triple(
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Emerald Version (USA, Europe).gba",
+                "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
+                "Emerald",
+            ),
+            Triple(
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
+                "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+                "FireRed",
+            ),
+            Triple(
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
+                "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825",
+                "LeafGreen",
+            ),
+        )
+        controls.forEach { (rawPath, expectedSha, label) ->
+            val romPath = Path.of(rawPath)
+            assumeTrue("real ROM does not exist: $romPath", Files.isRegularFile(romPath))
+            val rom = RomImage(Files.readAllBytes(romPath))
+            assertEquals(label, expectedSha, rom.sha256)
+            val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
+            assertEquals(label, (1..77).toSet(), catalog.abilitiesById.keys)
+            assertEquals(
+                label,
+                (1..77).toSet(),
+                catalog.abilitiesById.filterValues { ability ->
+                    ability.mechanics.value.orEmpty().any { it.kind.name == "BEHAVIOR" }
+                }.keys,
+            )
+
+            val root = newRoot()
+            try {
+                val cache = CatalogCache(root.toFile(), JdbcTestCatalogDatabaseFactory)
+                cache.write(
+                    catalog,
+                    CatalogSourceMetadata.direct(romPath.fileName.toString(), rom.size, label),
+                    CatalogWriteProgress.complete(),
+                )
+                val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
+                assertEquals(label, catalog.abilitiesById, reopened.abilitiesById)
+                assertEquals(
+                    label,
+                    "Defined but inactive in this engine",
+                    reopened.abilitiesById.getValue(76).mechanics.value.orEmpty()
+                        .single { it.kind.name == "BEHAVIOR" }.value,
+                )
+                val api = requireNotNull(
+                    ProductionCompanionRuntime().apply {
+                        loadCatalog(romPath.fileName.toString(), reopened)
+                    }.bootstrap().catalog,
+                )
+                val referencedAbilities = api.species.flatMap { it.abilities }.distinctBy { it.id }
+                assertTrue(
+                    "$label API omitted source-backed behavior",
+                    referencedAbilities.all { ability -> ability.mechanics.any { it.kind == "BEHAVIOR" } },
+                )
+            } finally {
+                deleteTree(root)
+            }
         }
     }
 

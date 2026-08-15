@@ -321,14 +321,25 @@ object CatalogMaterializer {
             )
         }
         capabilities[RomCapability.ABILITY_MECHANICS] = if (abilityMechanics != null) {
+            val covered = abilityMechanics.mechanicsByAbility.size
+            val expected = abilities.size
+            val numericCovered = abilityMechanics.mechanicsByAbility.count { (_, mechanics) ->
+                mechanics.any { it.kind != AbilityMechanicKind.BEHAVIOR }
+            }
             CapabilityEvidence(
                 capability = RomCapability.ABILITY_MECHANICS,
                 compatible = true,
                 confidence = abilityMechanics.confidence,
                 offset = abilityMechanics.sourceOffset,
-                count = abilityMechanics.mechanicsByAbility.size,
-                reasons = listOf("validated structured ability values against compiled Thumb battle code"),
-                status = CapabilityStatus.AVAILABLE,
+                count = covered,
+                coveredRecords = covered,
+                expectedRecords = expected,
+                incompleteRecords = (expected - covered).coerceAtLeast(0),
+                reasons = listOf(
+                    "mapped source-backed behavior for $covered/$expected abilities",
+                    "decoded numeric mechanics for $numericCovered/$expected abilities",
+                ),
+                status = if (covered == expected) CapabilityStatus.AVAILABLE else CapabilityStatus.PARTIAL,
             )
         } else {
             initialCapabilities[RomCapability.ABILITY_MECHANICS] ?: CapabilityEvidence(

@@ -17,5 +17,8 @@
   "securityAdvisoriesCovered": 48,
   "arm7Applicable": 46,
   "arm7ProductionComplete": 38,
+  "officialGen3AbilityDomain": 77,
+  "officialGen3AbilityBehaviorComplete": 5,
+  "officialGen3AbilityControls": 5,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

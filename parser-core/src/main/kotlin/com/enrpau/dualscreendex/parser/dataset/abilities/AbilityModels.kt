@@ -370,7 +370,7 @@ sealed interface AbilityDescriptionTableOutcome {
     ) : AbilityDescriptionTableOutcome
 }
 
-enum class SourceBackedAbilityMechanicKind { MULTIPLIER, STAT_STAGE, STATUS_CURE, TYPE_CHANGE }
+enum class SourceBackedAbilityMechanicKind { BEHAVIOR, MULTIPLIER, STAT_STAGE, STATUS_CURE, TYPE_CHANGE }
 
 data class SourceBackedAbilityMechanic(
     val abilityId: Int,

@@ -11,7 +11,8 @@ The source oracle is `resetes12/pokeemerald` Release 3.5 at commit
 - ROM comparisons linked to the typed battle-ability field: 78 of 81 abilities.
 - Binary-decoded normalized mechanics: 2 of 81 abilities (Huge Power and Pure Power).
 - Source-backed normalized mechanics admitted by the compiled ROM contract: 5 additional abilities.
-- Mechanics currently presented in Ability Detail: 7 of 81 abilities.
+- Implementation behavior currently presented in Ability Detail: 81 of 81 abilities.
+- Normalized numeric or structured values currently presented: 7 of 81 abilities.
 
 The 78 field-linked abilities are not claimed as decoded mechanics. They establish where the
 compiled code consumes the battle-record ability field; a comparison alone does not prove the
@@ -38,9 +39,9 @@ selectors.
 
 ## Production path
 
-The exact control is verified through parser selection, catalog materialization, schema-10 SQLite
+The exact control is verified through parser selection, catalog materialization, schema-11 SQLite
 write/reopen, typed runtime projection, loopback `/api/bootstrap`, and Ability Detail condition
-labels. Cache schema 10 prevents older entries without structured mechanic conditions from being
+labels. Cache schema 11 prevents older entries without complete behavior profiles from being
 reused.
 
 The standalone source/binary audit is frozen at commit

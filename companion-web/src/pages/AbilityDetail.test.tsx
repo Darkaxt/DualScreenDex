@@ -12,6 +12,7 @@ describe('ability detail', () => {
       name: 'Blaze',
       description: 'Ups Fire moves in a pinch.',
       mechanics: [
+        { kind: 'BEHAVIOR', label: 'Implementation', value: 'Compiled source behavior', numerator: 1, denominator: 1 },
         { kind: 'ACTIVATION_THRESHOLD', label: 'Activation', value: 'HP ≤ 1/3', numerator: 1, denominator: 3 },
         { kind: 'MULTIPLIER', label: 'Power', value: 'Fire move power ×1.5', numerator: 150, denominator: 100, conditions: [{ kind: 'MOVE_SPLIT', value: 1, label: 'Special moves' }] },
       ],
@@ -32,7 +33,8 @@ describe('ability detail', () => {
     expect(screen.getByText('Ups Fire moves in a pinch.')).toBeTruthy();
     expect(screen.getByText('Charizard')).toBeTruthy();
     expect(screen.queryByText(/ROM ABILITY|ROM-VALIDATED/i)).toBeNull();
-    expect(screen.getByText('KNOWN VALUES')).toBeTruthy();
+    expect(screen.getByText('IMPLEMENTATION & KNOWN VALUES')).toBeTruthy();
+    expect(screen.getByText('Compiled source behavior')).toBeTruthy();
     expect(screen.getByText('HP ≤ 1/3')).toBeTruthy();
     expect(screen.getByText('Fire move power ×1.5')).toBeTruthy();
     expect(screen.getByText('Power · Special moves')).toBeTruthy();

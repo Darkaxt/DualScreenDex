@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Release candidate `v1.0.0-rc.29` adds source-backed compiled Pokédex-description recovery and a Dependabot-audited build-toolchain gate to RC28's broader first-50 move-table coverage, complete evolution catalogs, consistent Organic identity artwork, normalized ROM-derived maps, semantic ARM7TDMI mechanics, and proven-wild Rarity behavior. Stable `v1.0.0` has not been released.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. The current v1 candidate adds complete source-backed behavior coverage for all 77 named abilities in the five official Generation III ROMs to RC29's Pokédex-description recovery, Dependabot-audited build gate, broader move-table coverage, complete evolution catalogs, normalized ROM-derived maps, semantic ARM7TDMI mechanics, and proven-wild Rarity behavior. Stable `v1.0.0` has not been released.
 
 ## Thor-first UI direction
 
@@ -189,7 +189,7 @@ The frozen release gates distinguish base parsing from optional capability cover
 - evolution data is complete and available on **50/50** exact first-corpus ROMs, with zero malformed rows, deterministic semantic edge maps, and exact SQLite reopen parity;
 - the broader unique-ROM baseline covers **332** rehashed identities: 230 selected, 100 explicit no-family matches, two ambiguous, and zero per-ROM parser errors;
 - normalized world maps are completely available on **26/50** exact first-corpus rows, producing 81 regions; the other 24 rows expose no map assets and retain the ordinary Pokédex/Area experience; and
-- semantic ARM7TDMI ability proof is complete on **38/46** applicable GBA rows. Those proofs publish only exact attacker Attack ×2 mechanics for abilities 37 and 74; four GB/GBC controls are not applicable and incomplete GBA proofs publish nothing.
+- the five official Generation III ROMs expose source-backed implementation behavior for **77/77** named abilities. Decoded ROM comparisons link 55/77 in Ruby/Sapphire, 58/77 in Emerald, and 57/77 in FireRed/LeafGreen to the typed ability field; independently normalized numeric formulas remain exact Attack ×2 mechanics for abilities 37 and 74. The broader first-50 ARM7 survey remains **38/46** applicable production proofs.
 
 These denominators are deliberately different. A selected base catalog is not counted as a working map or proven mechanic, and a fail-closed optional capability is never counted as a success.
 
@@ -211,7 +211,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Species and capture-ball sprite decoding | Implemented without AWT/Android dependencies |
 | Area encounters, type colors, and type chart | Implemented and reported independently |
 | Ability descriptions and focused detail pages | Implemented for validated ROMs |
-| Numeric ability mechanics | Semantic ARM7TDMI proof complete on 38/46 applicable first-corpus GBA ROMs; unresolved mechanics remain description-only |
+| Ability implementation | Five official Gen III ROMs: 77/77 source-backed behavior records; binary linkage 55–58/77; normalized numeric mechanics remain 2/77 |
 | ROM-derived world maps | Complete on 26/50 exact first-corpus rows with normalized raster/geometry/location evidence; unresolved maps fail closed to the normal Pokédex/Area UI |
 | Packaged production UI | Implemented and exact-viewport browser/WebView validated |
 | Browser-hosted plausible simulator | Retained as a development harness; absent from production assets |

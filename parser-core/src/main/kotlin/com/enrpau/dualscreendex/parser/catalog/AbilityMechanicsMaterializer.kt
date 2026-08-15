@@ -9,7 +9,7 @@ import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import java.util.Locale
 
 enum class AbilityMechanicKind {
-    ACTIVATION_THRESHOLD, MULTIPLIER, STAT_STAGE, STATUS_CURE, TYPE_CHANGE, AI_RATING, FLAG,
+    BEHAVIOR, ACTIVATION_THRESHOLD, MULTIPLIER, STAT_STAGE, STATUS_CURE, TYPE_CHANGE, AI_RATING, FLAG,
 }
 
 enum class AbilityMechanicConditionKind {
@@ -116,6 +116,7 @@ object AbilityMechanicsMaterializer {
     private fun SourceBackedAbilityMechanic.toCatalogMechanic(): Pair<Int, AbilityMechanic> = abilityId to
         AbilityMechanic(
             kind = when (kind) {
+                SourceBackedAbilityMechanicKind.BEHAVIOR -> AbilityMechanicKind.BEHAVIOR
                 SourceBackedAbilityMechanicKind.MULTIPLIER -> AbilityMechanicKind.MULTIPLIER
                 SourceBackedAbilityMechanicKind.STAT_STAGE -> AbilityMechanicKind.STAT_STAGE
                 SourceBackedAbilityMechanicKind.STATUS_CURE -> AbilityMechanicKind.STATUS_CURE

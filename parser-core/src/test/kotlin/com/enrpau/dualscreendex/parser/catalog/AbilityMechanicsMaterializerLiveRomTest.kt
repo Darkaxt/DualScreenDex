@@ -32,7 +32,15 @@ class AbilityMechanicsMaterializerLiveRomTest {
 
         val capability = catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS)
         assertEquals(CapabilityStatus.AVAILABLE, capability.status)
-        assertEquals(7, capability.count)
+        assertEquals(81, capability.count)
+        assertEquals(81, capability.coveredRecords)
+        assertEquals(81, capability.expectedRecords)
+        assertEquals(
+            (1..81).toSet(),
+            catalog.abilitiesById.filterValues { ability ->
+                ability.mechanics.value.orEmpty().any { it.kind.name == "BEHAVIOR" }
+            }.keys,
+        )
         assertEquals(
             AbilityMechanic(
                 AbilityMechanicKind.STAT_STAGE,
@@ -42,11 +50,11 @@ class AbilityMechanicsMaterializerLiveRomTest {
                 1,
                 listOf(AbilityMechanicCondition(AbilityMechanicConditionKind.SWITCH_IN, 1, "Switch-in")),
             ),
-            catalog.abilitiesById.getValue(22).mechanics.value?.single(),
+            catalog.abilitiesById.getValue(22).mechanics.value?.single { it.kind == AbilityMechanicKind.STAT_STAGE },
         )
         assertEquals(
             AbilityMechanic(AbilityMechanicKind.MULTIPLIER, "Attack", "Attack ×1.5", 3, 2),
-            catalog.abilitiesById.getValue(55).mechanics.value?.single(),
+            catalog.abilitiesById.getValue(55).mechanics.value?.single { it.kind == AbilityMechanicKind.MULTIPLIER },
         )
         assertEquals(
             AbilityMechanic(
@@ -61,7 +69,7 @@ class AbilityMechanicsMaterializerLiveRomTest {
                     "While affected by status",
                 )),
             ),
-            catalog.abilitiesById.getValue(61).mechanics.value?.single(),
+            catalog.abilitiesById.getValue(61).mechanics.value?.single { it.kind == AbilityMechanicKind.STATUS_CURE },
         )
         assertEquals(
             AbilityMechanic(
@@ -76,61 +84,92 @@ class AbilityMechanicsMaterializerLiveRomTest {
                     "Damaging Normal-type moves",
                 )),
             ),
-            catalog.abilitiesById.getValue(81).mechanics.value?.single(),
+            catalog.abilitiesById.getValue(81).mechanics.value?.single { it.kind == AbilityMechanicKind.TYPE_CHANGE },
         )
-        assertEquals("Attack ×2", catalog.abilitiesById.getValue(37).mechanics.value?.single()?.value)
-        val guts = catalog.abilitiesById.getValue(62).mechanics.value?.single()
+        assertEquals(
+            "Attack ×2",
+            catalog.abilitiesById.getValue(37).mechanics.value?.single { it.kind == AbilityMechanicKind.MULTIPLIER }?.value,
+        )
+        val guts = catalog.abilitiesById.getValue(62).mechanics.value
+            ?.single { it.kind == AbilityMechanicKind.MULTIPLIER }
         assertEquals("Attack ×1.5", guts?.value)
         assertEquals("While affected by status", guts?.conditions?.single()?.label)
-        assertEquals("Attack ×2", catalog.abilitiesById.getValue(74).mechanics.value?.single()?.value)
-    }
-
-    @Test
-    fun `official retail catalog publishes the semantic proof and truthful capability`() {
-        val loaded = Control(
-            "Emerald",
-            "D:/Temp/dualdex-official-roms/Pokemon - Emerald Version (USA, Europe).gba",
-            "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
-        ).load()
-
-        val catalog = CatalogMaterializer.materialize(loaded.rom, loaded.parse, loaded.layout)
-
-        val capability = catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS)
-        assertEquals(CapabilityStatus.AVAILABLE, capability.status)
-        assertEquals(2, capability.count)
         assertEquals(
-            listOf(AbilityMechanic(AbilityMechanicKind.MULTIPLIER, "Attack", "Attack ×2", 2, 1)),
-            catalog.abilitiesById.getValue(37).mechanics.value,
+            "Attack ×2",
+            catalog.abilitiesById.getValue(74).mechanics.value?.single { it.kind == AbilityMechanicKind.MULTIPLIER }?.value,
         )
-        assertEquals(CapabilityStatus.NOT_FOUND, catalog.abilitiesById.getValue(65).mechanics.status)
     }
 
     @Test
-    fun `official retail catalogs expose only semantically proven attack mechanics`() {
+    fun `all five official retail catalogs publish every source-backed behavior and only decoded numeric mechanics`() {
         listOf(
             Control(
+                "Ruby",
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
+                "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
+            ),
+            Control(
+                "Sapphire",
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
+                "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb",
+            ),
+            Control(
                 "Emerald",
-                "D:/Temp/dualdex-official-roms/Pokemon - Emerald Version (USA, Europe).gba",
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Emerald Version (USA, Europe).gba",
                 "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
             ),
             Control(
                 "FireRed",
-                "D:/Temp/dualdex-official-roms/Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
                 "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+            ),
+            Control(
+                "LeafGreen",
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
+                "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825",
             ),
         ).forEach { control ->
             val loaded = control.load()
             val rom = loaded.rom
             val layout = loaded.layout
             val abilities = RecordMaterializers.abilities(rom, layout)
-            val result = AbilityMechanicsMaterializer.materialize(rom, layout, abilities)
+            val catalog = CatalogMaterializer.materialize(rom, loaded.parse, layout)
+            val result = requireNotNull(AbilityMechanicsMaterializer.materialize(rom, layout, abilities))
 
-            assertEquals("${control.name}: ${result?.mechanicsByAbility}", setOf(37, 74), result?.mechanicsByAbility?.keys)
+            val capability = catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS)
+            assertEquals("${control.name}: ${capability.reasons}", CapabilityStatus.AVAILABLE, capability.status)
+            assertEquals(control.name, 77, capability.count)
+            assertEquals(control.name, 77, capability.coveredRecords)
+            assertEquals(control.name, 77, capability.expectedRecords)
+            assertEquals(control.name, (1..77).toSet(), result.mechanicsByAbility.keys)
+            assertEquals(
+                control.name,
+                (1..77).toSet(),
+                result.mechanicsByAbility.filterValues { mechanics ->
+                    mechanics.any { it.kind.name == "BEHAVIOR" }
+                }.keys,
+            )
+            assertEquals(
+                control.name,
+                "Defined but inactive in this engine",
+                result.mechanicsByAbility.getValue(76).single { it.kind.name == "BEHAVIOR" }.value,
+            )
+
             assertEquals(
                 listOf(AbilityMechanic(AbilityMechanicKind.MULTIPLIER, "Attack", "Attack ×2", 2, 1)),
-                result?.mechanicsByAbility?.get(37),
+                result.mechanicsByAbility.getValue(37).filterNot { it.kind.name == "BEHAVIOR" },
             )
-            assertEquals(result?.mechanicsByAbility?.get(37), result?.mechanicsByAbility?.get(74))
+            assertEquals(
+                result.mechanicsByAbility.getValue(37).filterNot { it.kind.name == "BEHAVIOR" },
+                result.mechanicsByAbility.getValue(74).filterNot { it.kind.name == "BEHAVIOR" },
+            )
+            assertEquals(
+                control.name,
+                setOf(37, 74),
+                result.mechanicsByAbility.filterValues { mechanics ->
+                    mechanics.any { it.kind.name != "BEHAVIOR" }
+                }.keys,
+            )
         }
     }
 

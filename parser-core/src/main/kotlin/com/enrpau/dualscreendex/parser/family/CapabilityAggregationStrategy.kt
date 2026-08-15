@@ -198,7 +198,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
         )) {
             is RetailBattleMechanicsResolution.Resolved -> {
                 val resolved = resolution.layout
-                val sourceBacked = SourceBackedAbilityMechanicsResolver.resolve(abilityNames, resolved)
+                val sourceBacked = SourceBackedAbilityMechanicsResolver.resolve(definition.family, abilityNames, resolved)
                 val layout = ResolvedAbilityMechanicsLayout(
                     resolved.routineEntry,
                     resolved.abi,
@@ -208,6 +208,8 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                 )
                 val mechanicIds = (resolved.mechanics.map { it.abilityId } + sourceBacked.map { it.abilityId })
                     .distinct()
+                val expectedAbilityCount = abilityNames.catalogAbilities().size
+                val complete = mechanicIds.size == expectedAbilityCount
                 AbilityMechanicsPhaseResult(
                     layout,
                     CapabilityEvidence(
@@ -216,12 +218,16 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                         confidence = 1.0,
                         offset = resolved.routineEntry,
                         count = mechanicIds.size,
+                        coveredRecords = mechanicIds.size,
+                        expectedRecords = expectedAbilityCount,
+                        incompleteRecords = (expectedAbilityCount - mechanicIds.size).coerceAtLeast(0),
                         reasons = listOf(
-                            "decoded complete caller-role, typed field, predicate, effect, and writeback proofs",
+                            "decoded ${resolved.mechanics.map { it.abilityId }.distinct().size} numeric mechanic " +
+                                "abilities with complete caller-role, typed field, predicate, effect, and writeback proofs",
                         ) + if (sourceBacked.isNotEmpty()) listOf(
-                            "source-backed values joined to the independently selected 81-ability compiled ABI",
+                            "source-oracle behavior profile joined to the complete parser-selected ability domain",
                         ) else emptyList(),
-                        status = CapabilityStatus.AVAILABLE,
+                        status = if (complete) CapabilityStatus.AVAILABLE else CapabilityStatus.PARTIAL,
                     ),
                 )
             }
