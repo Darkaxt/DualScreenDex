@@ -22,13 +22,16 @@ object Gen3SaveReader {
         val saveBlock2 = newest.sections.getValue(0)
         val saveBlock1 = concatenate(newest.sections, 1..4, newest.chunkSize)
         val storage = concatenate(newest.sections, 5..13, newest.chunkSize)
+        val effectiveContext = context.gen3SaveRuntimeAbi?.let { abi ->
+            context.copy(gen3TextEncoding = abi.textEncoding)
+        } ?: context
         val flagBytes = (context.internalSpeciesCount + 7) / 8
         if (DEFAULT_OWNED_OFFSET + flagBytes * 2 > saveBlock2.size) {
             return SaveParseResult.Unsupported(listOf("ROM species count does not fit the Gen III Pokédex save block"))
         }
         val currentArea = readArea(saveBlock1)
-        val partyResult = readParty(saveBlock1, context)
-        val storageResult = readStorage(storage, newest.storageBoxCount, context)
+        val partyResult = readParty(saveBlock1, effectiveContext)
+        val storageResult = readStorage(storage, newest.storageBoxCount, effectiveContext)
         val individuals = partyResult.records + storageResult.records
         val pokedex = resolvePokedexLayout(saveBlock2, flagBytes, context, partyResult.records)
         val levelUpRuleset = detectLevelUpRuleset(saveBlock1, context)
@@ -37,6 +40,17 @@ object Gen3SaveReader {
         }
         val caught = pokedex.caught
         val seen = pokedex.seen
+        val playerState = context.gen3SaveRuntimeAbi?.let { abi ->
+            Gen3PlayerStateCodec.decode(
+                saveBlock1 = saveBlock1,
+                saveBlock2 = saveBlock2,
+                abi = abi,
+                dexSeen = seen.size,
+                dexCaught = caught.size,
+            )
+        }
+        val bagSections = playerState?.bag.orEmpty()
+        val availableBag = bagSections.values.mapNotNull { it.value }
         val capabilities = linkedMapOf(
             SaveCapability.SAVE_SLOT to available(SaveCapability.SAVE_SLOT, 14),
             SaveCapability.SEEN to available(SaveCapability.SEEN, seen.size),
@@ -51,6 +65,13 @@ object Gen3SaveReader {
             SaveCapability.EGG to available(SaveCapability.EGG, individuals.count { it.isEgg }),
             SaveCapability.IVS to evidenceForField(SaveCapability.IVS, individuals, { it.ivs?.size == 6 }),
             SaveCapability.CAPTURE_BALL to evidenceForField(SaveCapability.CAPTURE_BALL, individuals, { it.captureBallId != null }),
+            SaveCapability.TRAINER to (
+                playerState?.trainer?.let { section ->
+                    if (section.value != null) available(SaveCapability.TRAINER, 1)
+                    else notFound(SaveCapability.TRAINER, section.reasons.joinToString("; "))
+                } ?: notFound(SaveCapability.TRAINER, "typed Gen III Trainer ABI was unavailable")
+                ),
+            SaveCapability.BAG to bagEvidence(bagSections),
         )
         return SaveParseResult.Parsed(
             SaveSnapshot(
@@ -67,8 +88,32 @@ object Gen3SaveReader {
                 detectedLevelUpRulesetId = levelUpRuleset.first,
                 levelUpRulesetDetectionResolved = levelUpRuleset.second && levelUpRulesetFingerprint != null,
                 levelUpRulesetDetectionFingerprint = levelUpRulesetFingerprint,
+                trainer = playerState?.trainer?.value,
+                bag = availableBag,
             ),
         )
+    }
+
+    private fun bagEvidence(
+        sections: Map<com.darkaxt.dualdex.save.BagPocket, SaveSectionResult<com.darkaxt.dualdex.save.BagPocketSnapshot>>,
+    ): SaveCapabilityEvidence {
+        if (sections.isEmpty()) return notFound(SaveCapability.BAG, "typed Gen III Bag ABI was unavailable")
+        val available = sections.values.mapNotNull { it.value }
+        val records = available.sumOf { it.entries.size }
+        val unavailable = sections.values.filter { it.value == null }
+        return when {
+            unavailable.isEmpty() -> available(SaveCapability.BAG, records)
+            available.isEmpty() -> notFound(
+                SaveCapability.BAG,
+                unavailable.flatMap { it.reasons }.distinct().joinToString("; "),
+            )
+            else -> SaveCapabilityEvidence(
+                capability = SaveCapability.BAG,
+                status = SaveCapabilityStatus.PARTIAL,
+                records = records,
+                reasons = unavailable.flatMap { it.reasons }.distinct(),
+            )
+        }
     }
 
     private fun detectLevelUpRuleset(

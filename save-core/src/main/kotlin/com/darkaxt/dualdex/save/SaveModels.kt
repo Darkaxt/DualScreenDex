@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.save
 
 import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
+import com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi
 
 data class SaveSpeciesContext(
     val speciesId: Int,
@@ -18,6 +19,7 @@ data class SaveParseContext(
     val levelUpRulesetSelectors: List<SaveByteSelector> = emptyList(),
     val movePpById: Map<Int, Int> = emptyMap(),
     val gen3TextEncoding: Gen3TextEncoding? = null,
+    val gen3SaveRuntimeAbi: Gen3SaveRuntimeAbi? = null,
 ) {
     val internalSpeciesCount: Int = (speciesById.keys.maxOrNull() ?: 0) + 1
     val maximumDexNumber: Int = speciesById.values.mapNotNull { it.dexNumber }.maxOrNull() ?: 0

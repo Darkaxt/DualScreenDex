@@ -1260,13 +1260,28 @@ class ProductionCompanionRuntimeTest {
                         typeIds = CatalogField.available(emptyList()),
                         baseStats = CatalogField.notFound("fixture"),
                         sprite = CatalogField.notFound("fixture"),
+                        abilityIds = CatalogField.available(listOf(9, 31)),
                         growthRate = CatalogField.available(0),
+                    ),
+                ),
+                movesById = mapOf(
+                    33 to MoveRecord(
+                        id = 33,
+                        name = CatalogField.available("TACKLE"),
+                        typeId = CatalogField.available(0),
+                        category = CatalogField.notFound("fixture"),
+                        power = CatalogField.available(40),
+                        accuracy = CatalogField.available(100),
+                        pp = CatalogField.available(35),
                     ),
                 ),
             ),
         )
         val context = requireNotNull(runtime.saveParseContext())
         assertEquals(25, context.speciesById.getValue(25).dexNumber)
+        assertEquals(listOf(9, 31), context.speciesById.getValue(25).abilityIds)
+        assertEquals(35, context.movePpById.getValue(33))
+        assertEquals(com.darkaxt.dualdex.save.gen3.Gen3TextEncoding.ENGLISH, context.gen3TextEncoding)
         val snapshot = SaveSnapshot(
             romIdentity = hash,
             saveIdentity = "save",

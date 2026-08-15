@@ -48,10 +48,12 @@ import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -243,10 +245,20 @@ class ProductionCompanionRuntime(
     private fun saveParseContext(current: ParsedCatalog): SaveParseContext = SaveParseContext(
         romIdentity = current.romSha256,
         speciesById = current.speciesById.mapValues { (id, species) ->
-            SaveSpeciesContext(id, species.dexNumber.value, species.growthRate.value, species.formId)
+            SaveSpeciesContext(
+                speciesId = id,
+                dexNumber = species.dexNumber.value,
+                growthRate = species.growthRate.value,
+                formId = species.formId,
+                abilityIds = species.abilityIds.value.orEmpty().filter { it > 0 },
+            )
         },
         captureBallIds = current.captureBallsById.keys.ifEmpty { (1..15).toSet() },
         levelUpRulesetSelectors = completeLevelUpRulesetSelectors(current),
+        movePpById = current.movesById.mapNotNull { (id, move) ->
+            move.pp.value?.takeIf { it > 0 }?.let { id to it }
+        }.toMap(),
+        gen3TextEncoding = Gen3TextEncoding.ENGLISH.takeIf { current.platform == Platform.GBA },
     )
 
     @Synchronized

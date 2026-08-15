@@ -11,7 +11,7 @@ object Gen3Experience {
         if (level == 100) return 1.0
         val current = required(growthRate!!, level!!)
         val next = required(growthRate, level + 1)
-        if (experience !in current..next || next <= current) return null
+        if (experience < current || experience >= next || next <= current) return null
         return (experience - current).toDouble() / (next - current).toDouble()
     }
 
