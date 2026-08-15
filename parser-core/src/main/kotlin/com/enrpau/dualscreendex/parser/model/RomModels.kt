@@ -43,6 +43,7 @@ enum class RomCapability {
     TYPE_PRESENTATION,
     BALL_CATALOG,
     WORLD_MAP,
+    LOCAL_MAP,
 }
 
 enum class CapabilityStatus { AVAILABLE, PARTIAL, AMBIGUOUS, NOT_FOUND, NOT_APPLICABLE }

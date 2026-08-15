@@ -4,6 +4,9 @@ import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
+import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
@@ -96,6 +99,14 @@ class AndroidLoopbackServerTest {
                         ),
                         assets = mapOf("world/region-0" to RgbaSprite(8, 8, pixels)),
                     ),
+                    localMaps = LocalMapCatalog(
+                        maps = listOf(LocalMap("local/0001", "Local", 1, 16, 16, 1, 1, "local/0001/map")),
+                        assets = mapOf(
+                            "local/0001/map" to PngMapAsset(
+                                byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10),
+                            ),
+                        ),
+                    ),
                 ),
             )
         }
@@ -107,6 +118,10 @@ class AndroidLoopbackServerTest {
             assertEquals(200, map.responseCode)
             assertEquals("image/png", map.contentType)
             assertTrue(map.inputStream.readBytes().copyOfRange(1, 4).contentEquals("PNG".toByteArray()))
+            val local = URI("$base/api/maps/local%2F0001%2Fmap.png").toURL().openConnection() as HttpURLConnection
+            assertEquals(200, local.responseCode)
+            assertEquals("image/png", local.contentType)
+            assertTrue(local.inputStream.readBytes().copyOfRange(1, 4).contentEquals("PNG".toByteArray()))
 
             val missing = URI("$base/api/maps/world%2Fmissing.png").toURL().openConnection() as HttpURLConnection
             assertEquals(404, missing.responseCode)

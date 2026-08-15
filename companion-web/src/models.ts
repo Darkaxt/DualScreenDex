@@ -66,7 +66,19 @@ export interface Catalog {
   areas: { id: number; baseAreaId?: number; name: string; methodId: number; speciesIds: number[]; windows: EncounterWindow[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
   worldMaps?: WorldMapRegion[];
+  localMaps?: LocalMapView[];
   capabilities: Record<string, string>;
+}
+
+export interface LocalMapView {
+  key: string;
+  displayName: string | null;
+  baseAreaId: number;
+  pixelWidth: number;
+  pixelHeight: number;
+  gridWidth: number;
+  gridHeight: number;
+  imageUrl: string;
 }
 
 export interface WorldMapRegion {
@@ -166,6 +178,7 @@ export interface State {
   currentAreaIds?: number[];
   currentAreaBaseId?: number | null;
   currentAreaName?: string | null;
+  currentMapPosition?: { x: number; y: number } | null;
   currentAreaSpeciesIds?: number[];
   revealedAreaBaseIds?: number[];
   observedAreaBaseIdsBySpecies?: Record<number, number[]>;

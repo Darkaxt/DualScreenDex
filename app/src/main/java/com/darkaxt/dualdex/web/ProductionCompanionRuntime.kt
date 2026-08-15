@@ -10,6 +10,7 @@ import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.darkaxt.dualdex.battle.BattleMove
 import com.darkaxt.dualdex.battle.BattleSpecies
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
+import com.darkaxt.dualdex.battle.Gen3MapPosition
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
 import com.darkaxt.dualdex.battle.Gen3LiveGameSnapshot
 import com.darkaxt.dualdex.battle.Gen3LiveSectionState
@@ -35,6 +36,7 @@ import com.enrpau.dualscreendex.companion.model.Density
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
 import com.enrpau.dualscreendex.companion.model.Effectiveness
+import com.enrpau.dualscreendex.companion.model.LiveMapPosition
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.MatchupKey
@@ -66,6 +68,7 @@ import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
+import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import java.io.InputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -343,6 +346,8 @@ class ProductionCompanionRuntime(
                     inBattleMask = layout.inBattleMask,
                     saveBlock1MapGroupOffset = layout.saveBlock1MapGroupOffset,
                     saveBlock1MapNumberOffset = layout.saveBlock1MapNumberOffset,
+                    saveBlock1PositionXOffset = layout.saveBlock1PositionXOffset,
+                    saveBlock1PositionYOffset = layout.saveBlock1PositionYOffset,
                     multiUsePlayerCursorAddress = layout.multiUsePlayerCursorAddress,
                     playerPartyCountAddress = layout.partyAbi?.countAddress ?: layout.playerPartyCountAddress,
                     playerPartyAddress = layout.partyAbi?.partyAddress ?: layout.playerPartyAddress,
@@ -482,6 +487,14 @@ class ProductionCompanionRuntime(
     @Synchronized
     fun clearLiveBattle() {
         if (gateway.bootstrap().battle != null) gateway.dispatch(CompanionAction.BattleEnded)
+    }
+
+    @Synchronized
+    fun updateLiveMapPosition(position: Gen3MapPosition?) {
+        val mapped = position?.let { LiveMapPosition(it.x, it.y) }
+        if (gateway.bootstrap().liveMapPosition != mapped) {
+            gateway.dispatch(CompanionAction.LiveMapPositionChanged(mapped))
+        }
     }
 
     fun battlePollingIntervalMs(): Int = gateway.bootstrap().settings.battlePollingIntervalMs.coerceIn(1, 20)
@@ -646,7 +659,9 @@ class ProductionCompanionRuntime(
     fun ballSprite(id: Int) = catalog?.captureBallsById?.get(id)?.sprite?.value
 
     @Synchronized
-    fun worldMapAsset(key: String) = catalog?.worldMaps?.assets?.get(key)
+    fun mapAsset(key: String): ByteArray? = catalog?.let { current ->
+        current.localMaps.assets[key]?.bytes ?: current.worldMaps.assets[key]?.let(PngEncoder::encode)
+    }
 
     @Synchronized
     fun trainerAsset(key: String) = catalog?.trainerAssets?.assets?.get(key)

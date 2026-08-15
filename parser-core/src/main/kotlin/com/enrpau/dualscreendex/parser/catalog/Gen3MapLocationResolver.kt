@@ -44,6 +44,26 @@ object Gen3MapLocationResolver {
         return resolveMapSections(rom, requiredMaps, references).orEmpty()
     }
 
+    internal fun resolveHeaderByBaseArea(
+        rom: RomImage,
+        encounterBaseIds: Set<Int>,
+        references: GbaReferenceIndex,
+    ): Map<Int, Int> {
+        val requiredMaps = requiredMaps(encounterBaseIds)
+        if (requiredMaps.isEmpty()) return emptyMap()
+        val compiledRoots = findCompiledMapGroupsConsumerRoots(rom)
+        val root = if (compiledRoots.isNotEmpty()) {
+            compiledRoots.filter { candidate ->
+                enumerateRequiredMapHeaders(rom, candidate, requiredMaps) != null
+            }.singleOrNull()
+        } else {
+            val roots = findMapGroupsRoots(rom, requiredMaps)
+            val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return emptyMap()
+            roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull()
+        } ?: return emptyMap()
+        return enumerateRequiredMapHeaders(rom, root, requiredMaps).orEmpty()
+    }
+
     private fun resolveMapSections(
         rom: RomImage,
         requiredMaps: Map<Int, Set<Int>>,
@@ -77,9 +97,17 @@ object Gen3MapLocationResolver {
         rom: RomImage,
         root: Int,
         requiredMaps: Map<Int, Set<Int>>,
+    ): Map<Int, Int>? = enumerateRequiredMapHeaders(rom, root, requiredMaps)?.mapValues { (_, header) ->
+        rom.u8(header + REGION_SECTION_OFFSET)
+    }
+
+    private fun enumerateRequiredMapHeaders(
+        rom: RomImage,
+        root: Int,
+        requiredMaps: Map<Int, Set<Int>>,
     ): Map<Int, Int>? {
         val requiredCount = requiredMaps.values.sumOf(Set<Int>::size)
-        val sections = linkedMapOf<Int, Int>()
+        val headers = linkedMapOf<Int, Int>()
         var unbindableHeaders = 0
         requiredMaps.toSortedMap().forEach groupLoop@{ (group, maps) ->
             val groupPointerOffset = root.toLong() + group.toLong() * 4L
@@ -99,14 +127,14 @@ object Gen3MapLocationResolver {
                     return@mapLoop
                 }
                 if (!validMapHeader(rom, header)) return@mapLoop
-                sections[(group shl 8) or map] = rom.u8(header + REGION_SECTION_OFFSET)
+                headers[(group shl 8) or map] = header
             }
         }
         mapTrace(
-            "map-groups root=0x${root.toString(16)} bound=${sections.size}/$requiredCount " +
+            "map-groups root=0x${root.toString(16)} bound=${headers.size}/$requiredCount " +
                 "unbindable=$unbindableHeaders",
         )
-        return sections.takeIf {
+        return headers.takeIf {
             it.isNotEmpty() && it.size + unbindableHeaders == requiredCount
         }
     }
@@ -197,7 +225,10 @@ object Gen3MapLocationResolver {
         return roots
     }
 
-    private fun enumerateMapSections(rom: RomImage, root: Int): Map<Int, Int>? {
+    private fun enumerateMapSections(rom: RomImage, root: Int): Map<Int, Int>? =
+        enumerateMapHeaders(rom, root)?.mapValues { (_, header) -> rom.u8(header + REGION_SECTION_OFFSET) }
+
+    private fun enumerateMapHeaders(rom: RomImage, root: Int): Map<Int, Int>? {
         val groupRoots = mutableListOf<Int>()
         var cursor = root
         while (cursor + 4 <= rom.size) {
@@ -207,7 +238,7 @@ object Gen3MapLocationResolver {
         }
         if (groupRoots.isEmpty() || groupRoots.distinct().size != groupRoots.size) return null
         val boundaries = (groupRoots + root).distinct().sorted()
-        val sections = linkedMapOf<Int, Int>()
+        val headers = linkedMapOf<Int, Int>()
         groupRoots.forEachIndexed { group, groupRoot ->
             val end = boundaries.firstOrNull { it > groupRoot } ?: return null
             if (end <= groupRoot || (end - groupRoot) % 4 != 0) return null
@@ -216,10 +247,10 @@ object Gen3MapLocationResolver {
             repeat(mapCount) { map ->
                 val header = rom.gbaPointer(groupRoot + map * 4) ?: return null
                 if (!validMapHeader(rom, header)) return null
-                sections[(group shl 8) or map] = rom.u8(header + REGION_SECTION_OFFSET)
+                headers[(group shl 8) or map] = header
             }
         }
-        return sections
+        return headers
     }
 
     private fun validMapHeader(rom: RomImage, offset: Int): Boolean {

@@ -25,6 +25,7 @@ import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
+import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -55,6 +56,54 @@ class CatalogParserTest {
         val evidence = catalog.capabilities.getValue(RomCapability.WORLD_MAP)
         assertEquals(CapabilityStatus.NOT_FOUND, evidence.status)
         assertTrue(evidence.reasons.any { it.contains("world-map stage: resolver-exception") })
+    }
+
+    @Test
+    fun optionalLocalMapResolverFailureKeepsTheAtlasUsable() {
+        val rom = RomImage(ByteArray(0x200))
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, 0, 0, ProfileTables(),
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+        val region = WorldMapRegion(
+            key = "world/test",
+            displayName = "Test",
+            pixelWidth = 8,
+            pixelHeight = 8,
+            gridWidth = 1,
+            gridHeight = 1,
+            imageAssetKey = "world/test/map",
+            locations = listOf(
+                WorldMapLocation("test", "Test", setOf(1), listOf(WorldMapCell(0, 0, 1, 1))),
+            ),
+        )
+
+        val catalog = CatalogMaterializer.materialize(
+            rom = rom,
+            analysis = analysis,
+            layout = layout,
+            resolveWorldMap = { _, _ ->
+                WorldMapResolution.Resolved(
+                    WorldMapCatalog(
+                        listOf(region),
+                        mapOf(region.imageAssetKey to RgbaSprite(8, 8, IntArray(64))),
+                    ),
+                    listOf("test atlas"),
+                )
+            },
+            resolveLocalMaps = { _, _ -> error("deliberate optional resolver failure") },
+        )
+
+        assertEquals(1, catalog.worldMaps.regions.size)
+        assertTrue(catalog.localMaps.maps.isEmpty())
+        assertTrue(catalog.localMaps.assets.isEmpty())
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
+        val evidence = catalog.capabilities.getValue(RomCapability.LOCAL_MAP)
+        assertEquals(CapabilityStatus.NOT_FOUND, evidence.status)
+        assertTrue(evidence.reasons.any { it.contains("local-map stage: resolver-exception") })
     }
 
     @Test

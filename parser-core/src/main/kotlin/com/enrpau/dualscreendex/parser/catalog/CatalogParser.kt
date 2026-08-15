@@ -9,6 +9,7 @@ import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
+import com.enrpau.dualscreendex.parser.parse.LocalMapResolution
 import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3RuntimeMemoryLayoutResolver
@@ -73,6 +74,7 @@ object CatalogParser {
                     onProgress,
                     context.resolveGen3AreaNames,
                     context.resolveWorldMap,
+                    context.resolveLocalMaps,
                 )
             },
         )
@@ -87,6 +89,7 @@ object CatalogMaterializer {
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
         resolveGen3AreaNames: ((Set<Int>) -> Map<Int, String>)? = null,
         resolveWorldMap: ((Int, Set<Int>) -> WorldMapResolution)? = null,
+        resolveLocalMaps: ((Int, Set<Int>) -> LocalMapResolution)? = null,
     ): ParsedCatalog {
         val rawSpecies = RecordMaterializers.species(rom, layout)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
@@ -463,6 +466,70 @@ object CatalogMaterializer {
                 status = CapabilityStatus.NOT_APPLICABLE,
             )
         }
+        val encounterBaseIds = encounters.mapTo(linkedSetOf()) { it.id / encounterAreaIdStride }
+        val localMapResolution = if (layout.generation == 3 && resolveLocalMaps != null) {
+            try {
+                resolveLocalMaps(layout.generation, encounterBaseIds).also { resolution ->
+                    if (resolution is LocalMapResolution.Resolved) resolution.catalog.validate()
+                }
+            } catch (failure: Exception) {
+                LocalMapResolution.Unavailable(
+                    stage = "resolver-exception",
+                    reason = "optional local-map resolution failed closed (${failure.javaClass.simpleName})",
+                )
+            }
+        } else {
+            null
+        }
+        val localMaps = (localMapResolution as? LocalMapResolution.Resolved)?.catalog ?: LocalMapCatalog()
+        capabilities[RomCapability.LOCAL_MAP] = when (localMapResolution) {
+            is LocalMapResolution.Resolved -> {
+                val total = localMapResolution.catalog.maps.size + localMapResolution.skippedMaps
+                CapabilityEvidence(
+                    capability = RomCapability.LOCAL_MAP,
+                    compatible = true,
+                    confidence = localMapResolution.catalog.maps.size.toDouble() / total.coerceAtLeast(1),
+                    count = localMapResolution.catalog.maps.size,
+                    reasons = localMapResolution.reasons + if (localMapResolution.skippedMaps > 0) {
+                        listOf("skipped ${localMapResolution.skippedMaps} maps that failed bounded rendering")
+                    } else {
+                        emptyList()
+                    },
+                    status = if (localMapResolution.skippedMaps == 0) {
+                        CapabilityStatus.AVAILABLE
+                    } else {
+                        CapabilityStatus.PARTIAL
+                    },
+                )
+            }
+            is LocalMapResolution.BudgetExceeded -> CapabilityEvidence(
+                capability = RomCapability.LOCAL_MAP,
+                compatible = false,
+                confidence = 0.0,
+                reasons = listOf(
+                    "local-map stage: ${localMapResolution.stage}",
+                    localMapResolution.reason,
+                ),
+                status = CapabilityStatus.NOT_FOUND,
+            )
+            is LocalMapResolution.Unavailable -> CapabilityEvidence(
+                capability = RomCapability.LOCAL_MAP,
+                compatible = false,
+                confidence = 0.0,
+                reasons = listOf(
+                    "local-map stage: ${localMapResolution.stage}",
+                    localMapResolution.reason,
+                ),
+                status = CapabilityStatus.NOT_FOUND,
+            )
+            null -> CapabilityEvidence(
+                capability = RomCapability.LOCAL_MAP,
+                compatible = false,
+                confidence = 0.0,
+                reasons = listOf("local maps are not part of this engine's normalized parser path"),
+                status = CapabilityStatus.NOT_APPLICABLE,
+            )
+        }
         val catalog = ParsedCatalog(
             romSha256 = analysis.sha256,
             family = layout.family,
@@ -479,6 +546,7 @@ object CatalogMaterializer {
             runtimeMetadata = runtimeMetadata,
             worldMaps = worldMaps,
             trainerAssets = trainerAssets,
+            localMaps = localMaps,
             capabilities = capabilities,
             diagnostics = buildList {
                 moveDescriptions?.let {

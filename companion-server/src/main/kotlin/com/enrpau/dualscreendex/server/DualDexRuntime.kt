@@ -21,6 +21,7 @@ import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
+import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.simulator.EncounterSimulator
 import com.enrpau.dualscreendex.simulator.SimulationRequest
 import java.nio.file.Path
@@ -158,6 +159,11 @@ class DualDexRuntime(
 
     @Synchronized
     fun ballSprite(id: Int) = catalog?.captureBallsById?.get(id)?.sprite?.value
+
+    @Synchronized
+    fun mapAsset(key: String): ByteArray? = catalog?.let { current ->
+        current.localMaps.assets[key]?.bytes ?: current.worldMaps.assets[key]?.let(PngEncoder::encode)
+    }
 
     @Synchronized
     fun catalogHash(): String? = catalog?.romSha256

@@ -18,6 +18,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogGen3PartyAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3SaveRuntimeAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TrainerCardAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.RuntimeMemoryEvidence
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
@@ -27,12 +28,15 @@ import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetEntry
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
+import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisition
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.PresentationSource
+import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
@@ -49,6 +53,8 @@ import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import java.nio.file.Files
 import java.nio.file.Path
 import java.io.ByteArrayInputStream
@@ -61,11 +67,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class CatalogStoreTest {
     @Test
-    fun `normalized world map regions and raster assets survive a complete catalog round trip`() {
+    fun `normalized world and local maps survive a complete catalog round trip`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val raster = RgbaSprite(2, 2, intArrayOf(0xff102030.toInt(), 0xff405060.toInt(), 0xff708090.toInt(), 0xffa0b0c0.toInt()))
@@ -91,7 +98,14 @@ class CatalogStoreTest {
             ),
             assets = mapOf("world/region-0" to raster),
         )
-        val catalog = completeCatalog("7".repeat(64)).copy(worldMaps = worldMaps)
+        val localPng = PngMapAsset(PngEncoder.encode(RgbaSprite(32, 32, IntArray(32 * 32) { 0xff102030.toInt() })))
+        val localMaps = LocalMapCatalog(
+            maps = listOf(
+                LocalMap("local/0102", "Route Test", 0x0102, 32, 32, 2, 2, "local/0102/map"),
+            ),
+            assets = mapOf("local/0102/map" to localPng),
+        )
+        val catalog = completeCatalog("7".repeat(64)).copy(worldMaps = worldMaps, localMaps = localMaps)
 
         cache.write(
             catalog,
@@ -100,10 +114,42 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(12, CatalogSchema.parserSchemaVersion)
+        assertEquals(13, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
+        assertEquals(localMaps, reopened?.catalog?.localMaps)
+        assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
         assertEquals(raster.argb.toList(), reopened?.catalog?.worldMaps?.assets?.get("world/region-0")?.argb?.toList())
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
+    }
+
+    @Test
+    fun `Modern Emerald local map assets survive a complete cache round trip`() {
+        val configured = System.getenv("DUALDEX_MODERN_EMERALD_ROM")
+        assumeTrue("set DUALDEX_MODERN_EMERALD_ROM to run this real-ROM control", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals("21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", rom.sha256)
+        val catalog = requireNotNull(CatalogParser.parseCatching(rom).catalog).getOrThrow()
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "POKEMON EMER"),
+            CatalogWriteProgress.complete(),
+        )
+        val reopened = requireNotNull(cache.readComplete(catalog.romSha256)).catalog
+
+        assertEquals(133, reopened.localMaps.maps.size)
+        assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
+        assertEquals(catalog.localMaps.assets.keys, reopened.localMaps.assets.keys)
+        val route102Asset = catalog.localMaps.maps.single { it.baseAreaId == 0x0011 }.imageAssetKey
+        assertTrue(
+            catalog.localMaps.assets.getValue(route102Asset).bytes.contentEquals(
+                reopened.localMaps.assets.getValue(route102Asset).bytes,
+            ),
+        )
     }
 
     @Test
@@ -224,7 +270,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(12, CatalogSchema.parserSchemaVersion)
+        assertEquals(13, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(

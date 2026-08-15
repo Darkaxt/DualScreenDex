@@ -6,6 +6,8 @@ data class Gen3RuntimeMemoryLayout(
     val inBattleMask: Int,
     val saveBlock1MapGroupOffset: Int,
     val saveBlock1MapNumberOffset: Int,
+    val saveBlock1PositionXOffset: Int = 0,
+    val saveBlock1PositionYOffset: Int = 2,
     val multiUsePlayerCursorAddress: Long? = null,
     val playerPartyCountAddress: Long? = null,
     val playerPartyAddress: Long? = null,
@@ -26,6 +28,8 @@ data class Gen3RuntimeMemoryLayout(
         require(inBattleMask in 1..0xFF && inBattleMask.countOneBits() == 1)
         require(saveBlock1MapGroupOffset >= 0)
         require(saveBlock1MapNumberOffset == saveBlock1MapGroupOffset + 1)
+        require(saveBlock1PositionXOffset >= 0)
+        require(saveBlock1PositionYOffset == saveBlock1PositionXOffset + 2)
         require(multiUsePlayerCursorAddress == null || multiUsePlayerCursorAddress in IWRAM_START..IWRAM_END)
         require((playerPartyCountAddress == null) == (playerPartyAddress == null))
         require(playerPartyCountAddress == null || playerPartyCountAddress in EWRAM_START..EWRAM_END)
@@ -70,24 +74,60 @@ data class Gen3RuntimeMemoryLayout(
     }
 }
 
+data class Gen3MapPosition(val x: Int, val y: Int)
+
 data class Gen3RuntimeSnapshot(
     val battleActive: Boolean?,
     val areaBaseId: Int?,
+    val mapPosition: Gen3MapPosition? = null,
     val targetBattler: Int? = null,
     val encounterKind: BattleEncounterKind = BattleEncounterKind.UNKNOWN,
 )
 
 class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
+    val locationWindowOffset: Int = minOf(
+        layout.saveBlock1PositionXOffset,
+        layout.saveBlock1PositionYOffset,
+        layout.saveBlock1MapGroupOffset,
+        layout.saveBlock1MapNumberOffset,
+    )
+    val locationWindowBytes: Int = maxOf(
+        layout.saveBlock1PositionXOffset + 2,
+        layout.saveBlock1PositionYOffset + 2,
+        layout.saveBlock1MapGroupOffset + 1,
+        layout.saveBlock1MapNumberOffset + 1,
+    ) - locationWindowOffset
+
     fun decodeBattleActive(bytes: ByteArray?): Boolean? = bytes
         ?.singleOrNull()
         ?.let { value -> value.toInt() and layout.inBattleMask != 0 }
 
     fun decodeArea(bytes: ByteArray?): Int? {
-        if (bytes?.size != MAP_ID_BYTES) return null
-        val group = bytes[0].toInt() and 0xFF
-        val map = bytes[1].toInt() and 0xFF
+        if (bytes == null) return null
+        if (bytes.size == MAP_ID_BYTES) {
+            val group = bytes[0].toInt() and 0xFF
+            val map = bytes[1].toInt() and 0xFF
+            return (group shl 8) or map
+        }
+        val groupIndex = layout.saveBlock1MapGroupOffset - locationWindowOffset
+        val mapIndex = layout.saveBlock1MapNumberOffset - locationWindowOffset
+        if (groupIndex !in bytes.indices || mapIndex !in bytes.indices) return null
+        val group = bytes[groupIndex].toInt() and 0xFF
+        val map = bytes[mapIndex].toInt() and 0xFF
         return (group shl 8) or map
     }
+
+    fun decodePosition(bytes: ByteArray?): Gen3MapPosition? {
+        if (bytes == null) return null
+        val xIndex = layout.saveBlock1PositionXOffset - locationWindowOffset
+        val yIndex = layout.saveBlock1PositionYOffset - locationWindowOffset
+        if (xIndex < 0 || yIndex < 0 || xIndex + 1 !in bytes.indices || yIndex + 1 !in bytes.indices) return null
+        return Gen3MapPosition(s16le(bytes, xIndex), s16le(bytes, yIndex))
+            .takeIf { it.x >= 0 && it.y >= 0 }
+    }
+
+    private fun s16le(bytes: ByteArray, offset: Int): Int =
+        ((bytes[offset].toInt() and 0xFF) or (bytes[offset + 1].toInt() shl 8)).toShort().toInt()
 
     fun decodeTargetBattler(bytes: ByteArray?): Int? = bytes
         ?.singleOrNull()

@@ -203,11 +203,11 @@ class AndroidLoopbackServer(
         val key = runCatching { URLDecoder.decode(encoded, Charsets.UTF_8.name()) }.getOrNull()
             ?: return textResponse("map not available", 404)
         if (key.split('/').any { it == ".." }) return textResponse("map not available", 404)
-        val sprite = runtime.worldMapAsset(key) ?: return textResponse("map not available", 404)
+        val bytes = runtime.mapAsset(key) ?: return textResponse("map not available", 404)
         return Response(
             200,
             "image/png",
-            PngEncoder.encode(sprite),
+            bytes,
             buildMap {
                 put("Cache-Control", "public, max-age=31536000, immutable")
                 runtime.catalogHash()?.let { put("ETag", "\"$it-map-${key.hashCode()}\"") }

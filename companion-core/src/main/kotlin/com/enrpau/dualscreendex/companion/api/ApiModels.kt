@@ -26,7 +26,19 @@ data class CatalogView(
     val areas: List<AreaView>,
     val balls: List<BallView>,
     val worldMaps: List<WorldMapRegionView>,
+    val localMaps: List<LocalMapView>,
     val capabilities: Map<String, String>,
+)
+
+data class LocalMapView(
+    val key: String,
+    val displayName: String?,
+    val baseAreaId: Int,
+    val pixelWidth: Int,
+    val pixelHeight: Int,
+    val gridWidth: Int,
+    val gridHeight: Int,
+    val imageUrl: String,
 )
 
 data class WorldMapRegionView(
@@ -170,6 +182,7 @@ data class StateView(
     val currentAreaIds: List<Int>,
     val currentAreaBaseId: Int?,
     val currentAreaName: String?,
+    val currentMapPosition: MapPositionView?,
     val currentAreaSpeciesIds: List<Int>,
     val revealedAreaBaseIds: List<Int>,
     val observedAreaBaseIdsBySpecies: Map<Int, List<Int>>,
@@ -187,6 +200,7 @@ data class StateView(
     val retroArch: RetroArchView = RetroArchView(),
     val saveRam: SaveRamView = SaveRamView(),
 )
+data class MapPositionView(val x: Int, val y: Int)
 data class RetroArchView(
     val storageGrant: String = "MISSING",
     val configGrant: String = "MISSING",
@@ -417,6 +431,18 @@ object ApiViewBuilder {
                 },
             )
         },
+        localMaps = catalog.localMaps.maps.map { map ->
+            LocalMapView(
+                key = map.key,
+                displayName = map.displayName,
+                baseAreaId = map.baseAreaId,
+                pixelWidth = map.pixelWidth,
+                pixelHeight = map.pixelHeight,
+                gridWidth = map.gridWidth,
+                gridHeight = map.gridHeight,
+                imageUrl = "/api/maps/${URLEncoder.encode(map.imageAssetKey, StandardCharsets.UTF_8)}.png",
+            )
+        },
         capabilities = catalog.capabilities.mapKeys { it.key.name }.mapValues { it.value.status.name },
     )
 
@@ -501,6 +527,7 @@ object ApiViewBuilder {
             currentAreaIds,
             effectiveAreaBaseId,
             currentAreaName,
+            snapshot.liveMapPosition?.let { MapPositionView(it.x, it.y) },
             currentAreaSpeciesIds,
             revealedAreaBaseIds,
             observedAreaBaseIdsBySpecies,

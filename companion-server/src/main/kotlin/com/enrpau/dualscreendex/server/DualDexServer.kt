@@ -59,6 +59,7 @@ class DualDexServer(
         }
         server.createContext("/api/sprites/species/") { exchange -> handleSprite(exchange, species = true) }
         server.createContext("/api/sprites/balls/") { exchange -> handleSprite(exchange, species = false) }
+        server.createContext("/api/maps/", ::handleMap)
         server.createContext("/", ::handleStatic)
     }
 
@@ -124,6 +125,23 @@ class DualDexServer(
                 exchange.sendResponseHeaders(200, bytes.size.toLong())
                 exchange.responseBody.use { it.write(bytes) }
             }
+        }
+    }
+
+    private fun handleMap(exchange: HttpExchange) {
+        if (exchange.requestMethod != "GET") return methodNotAllowed(exchange)
+        safely(exchange) {
+            val encoded = exchange.requestURI.rawPath.removePrefix("/api/maps/").removeSuffix(".png")
+            val key = URLDecoder.decode(encoded, Charsets.UTF_8)
+            if (encoded.isBlank() || key.split('/').any { it == ".." }) {
+                return@safely text(exchange, 404, "map not available")
+            }
+            val bytes = runtime.mapAsset(key) ?: return@safely text(exchange, 404, "map not available")
+            exchange.responseHeaders.add("Content-Type", "image/png")
+            exchange.responseHeaders.add("Cache-Control", "public, max-age=31536000, immutable")
+            runtime.catalogHash()?.let { exchange.responseHeaders.add("ETag", "\"$it-map-${key.hashCode()}\"") }
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
         }
     }
 
