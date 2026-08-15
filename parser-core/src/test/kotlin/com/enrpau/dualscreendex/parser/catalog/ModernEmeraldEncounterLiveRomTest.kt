@@ -54,6 +54,8 @@ class ModernEmeraldEncounterLiveRomTest {
                 battleTypeFlagsAddress = 0x020003A0,
                 trainerBattleMask = 1 shl 3,
                 nonWildBattleMask = 0x8FFF8B72.toInt(),
+                partyAbi = CatalogGen3PartyAbi(0x0201D9C5, 0x0201D9C8, 6, 100),
+                battleUiAbi = CatalogGen3BattleUiAbi(0x0200141C, 0x02001864, 0x02001868, 0x020015C4),
             ),
             catalog.runtimeMetadata.gen3RuntimeMemoryLayout,
         )

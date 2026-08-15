@@ -135,6 +135,7 @@ class AndroidLoopbackServer(
         request.method == "GET" && request.path.startsWith("/api/sprites/species/") -> spriteResponse(request.path, true)
         request.method == "GET" && request.path.startsWith("/api/sprites/balls/") -> spriteResponse(request.path, false)
         request.method == "GET" && request.path.startsWith("/api/maps/") -> worldMapResponse(request.path)
+        request.method == "GET" && request.path.startsWith("/api/trainer-assets/") -> trainerAssetResponse(request.path)
         request.path.startsWith("/api/") -> if (request.method in setOf("GET", "POST")) {
             textResponse("not found", 404)
         } else {
@@ -210,6 +211,26 @@ class AndroidLoopbackServer(
             buildMap {
                 put("Cache-Control", "public, max-age=31536000, immutable")
                 runtime.catalogHash()?.let { put("ETag", "\"$it-map-${key.hashCode()}\"") }
+            },
+        )
+    }
+
+    private fun trainerAssetResponse(path: String): Response {
+        val encoded = path.removePrefix("/api/trainer-assets/").removeSuffix(".png")
+        if (encoded.isBlank() || encoded.contains('/') || encoded.contains("..")) {
+            return textResponse("trainer asset not available", 404)
+        }
+        val key = runCatching { URLDecoder.decode(encoded, Charsets.UTF_8.name()) }.getOrNull()
+            ?: return textResponse("trainer asset not available", 404)
+        if (key.split('/').any { it == ".." }) return textResponse("trainer asset not available", 404)
+        val sprite = runtime.trainerAsset(key) ?: return textResponse("trainer asset not available", 404)
+        return Response(
+            200,
+            "image/png",
+            PngEncoder.encode(sprite),
+            buildMap {
+                put("Cache-Control", "public, max-age=31536000, immutable")
+                runtime.catalogHash()?.let { put("ETag", "\"$it-trainer-${key.hashCode()}\"") }
             },
         )
     }

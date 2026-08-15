@@ -596,6 +596,9 @@ class ProductionCompanionRuntime(
     fun worldMapAsset(key: String) = catalog?.worldMaps?.assets?.get(key)
 
     @Synchronized
+    fun trainerAsset(key: String) = catalog?.trainerAssets?.assets?.get(key)
+
+    @Synchronized
     fun catalogHash(): String? = catalog?.romSha256
 
     @Synchronized

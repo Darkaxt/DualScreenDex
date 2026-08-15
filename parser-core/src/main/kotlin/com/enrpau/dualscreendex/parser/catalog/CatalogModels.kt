@@ -456,6 +456,7 @@ data class ParsedCatalog(
     val learnsetRulesets: List<LearnsetRuleset> = emptyList(),
     val runtimeMetadata: CatalogRuntimeMetadata = CatalogRuntimeMetadata(),
     val worldMaps: WorldMapCatalog = WorldMapCatalog(),
+    val trainerAssets: TrainerAssetCatalog = TrainerAssetCatalog(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),
 ) {

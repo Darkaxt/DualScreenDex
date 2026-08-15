@@ -2,22 +2,25 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 
 /**
  * Recognizes the source-defined Gen III Main ABI from independent references to both the
  * structure base and its final aligned word. Absolute RAM addresses are evidence, never a profile.
  */
 object Gen3RuntimeMemoryLayoutResolver {
-    fun resolve(rom: RomImage): CatalogGen3RuntimeMemoryLayout? {
+    fun resolve(rom: RomImage, family: EngineFamily? = null): CatalogGen3RuntimeMemoryLayout? {
         val analysis = analyze(rom)
         val best = analysis.scores.values.maxWithOrNull(compareBy<ReferenceScore> { it.base }.thenBy { it.tail })
             ?: return null
         val mainBase = analysis.scores.filterValues { it == best }.keys.singleOrNull() ?: return null
-        val battleField = resolveBattleField(rom, mainBase) ?: return null
+        val battleField = resolveBattleField(rom, mainBase)
+            ?: sourceDefinedBattleField(analysis.references, mainBase, family)
+            ?: return null
         val liveParty = resolveLiveParty(analysis.references)
         val battleLayout = resolveBattleLayout(analysis.references)
         val battleTypeFlags = resolveBattleTypeFlags(rom)
-        return CatalogGen3RuntimeMemoryLayout(
+        val base = CatalogGen3RuntimeMemoryLayout(
             mainAddress = mainBase,
             inBattleAddress = battleField.address,
             inBattleMask = battleField.mask,
@@ -32,6 +35,22 @@ object Gen3RuntimeMemoryLayoutResolver {
             trainerBattleMask = battleTypeFlags?.let { TRAINER_BATTLE_MASK },
             nonWildBattleMask = battleTypeFlags?.let { NON_WILD_BATTLE_MASK },
         )
+        return if (family == EngineFamily.EMERALD) {
+            Gen3PlayerRuntimeLayoutResolver.attach(rom, base)
+        } else {
+            base
+        }
+    }
+
+    private fun sourceDefinedBattleField(
+        references: Map<Long, Int>,
+        mainBase: Long,
+        family: EngineFamily?,
+    ): BitField? {
+        if (family != EngineFamily.EMERALD) return null
+        val tail = mainBase + MAIN_TAIL_WORD_OFFSET
+        if ((references[tail] ?: 0) < MIN_MAIN_TAIL_REFERENCES) return null
+        return BitField(mainBase + MAIN_BATTLE_FLAGS_OFFSET, IN_BATTLE_MASK)
     }
 
     /**
@@ -272,6 +291,8 @@ object Gen3RuntimeMemoryLayoutResolver {
     private const val EWRAM_WORD_END = EWRAM_END - 3
     private const val MAIN_STRUCT_SIZE = 0x43C
     private const val MAIN_TAIL_WORD_OFFSET = 0x438
+    private const val MAIN_BATTLE_FLAGS_OFFSET = 0x439
+    private const val IN_BATTLE_MASK = 0x02
     private const val SAVE_MAP_GROUP_OFFSET = 4
     private const val SAVE_MAP_NUMBER_OFFSET = 5
     private const val MIN_MAIN_BASE_REFERENCES = 32

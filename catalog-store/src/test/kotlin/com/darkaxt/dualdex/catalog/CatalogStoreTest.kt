@@ -38,6 +38,7 @@ import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.TypePresentation
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
+import com.enrpau.dualscreendex.parser.catalog.TrainerAssetCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
@@ -343,6 +344,9 @@ class CatalogStoreTest {
 
     private fun completeCatalog(hash: String): ParsedCatalog {
         val sprite = RgbaSprite(2, 2, intArrayOf(0x00000000, 0xffff0000.toInt(), 0xff00ff00.toInt(), 0xff0000ff.toInt()))
+        val avatar = RgbaSprite(64, 64, IntArray(64 * 64) { 0xff406080.toInt() })
+        val badge = RgbaSprite(16, 16, IntArray(16 * 16) { 0xffc0a020.toInt() })
+        val badgeKeys = (1..8).map { "trainer/badge/$it" }
         val typePresentation = TypePresentation(PresentationSource.ROM_EXTRACTED, 0xffffffff.toInt(), 0xffff4422.toInt(), 0xff772211.toInt())
         val move = MoveRecord(
             id = 53,
@@ -430,6 +434,18 @@ class CatalogStoreTest {
                     primary = true,
                     levelUpSelector = LevelUpRulesetSelector(0x3DA6, 0x02, 0x02),
                 ),
+            ),
+            trainerAssets = TrainerAssetCatalog(
+                avatarAssetKeys = mapOf(
+                    0 to "trainer/avatar/male",
+                    1 to "trainer/avatar/female",
+                ),
+                badgeAssetKeys = badgeKeys,
+                assets = buildMap {
+                    put("trainer/avatar/male", avatar)
+                    put("trainer/avatar/female", avatar)
+                    badgeKeys.forEach { put(it, badge) }
+                },
             ),
             runtimeMetadata = CatalogRuntimeMetadata(
                 gen3SaveBlock1PointerAddress = 0x030036F0L,

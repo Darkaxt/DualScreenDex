@@ -15,6 +15,7 @@ object CatalogSchema {
         "learnset_rulesets",
         "runtime_metadata",
         "world_maps",
+        "trainer_assets",
         "capabilities",
         "diagnostics",
     )
