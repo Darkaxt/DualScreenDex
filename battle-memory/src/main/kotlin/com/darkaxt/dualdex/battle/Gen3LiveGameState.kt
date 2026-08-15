@@ -96,6 +96,10 @@ object Gen3LiveGameState {
         pointers.saveBlock2Address?.let { address ->
             add(Gen3LiveReadWindow(SAVE_BLOCK2_ID, address, requireNotNull(layout.saveBlock2Size)))
         }
+        addAll(independentWindows(layout))
+    }
+
+    fun independentWindows(layout: Gen3RuntimeMemoryLayout): List<Gen3LiveReadWindow> = buildList {
         layout.playerPartyCountAddress?.let { address ->
             add(Gen3LiveReadWindow(PARTY_COUNT_ID, address, 1))
         }

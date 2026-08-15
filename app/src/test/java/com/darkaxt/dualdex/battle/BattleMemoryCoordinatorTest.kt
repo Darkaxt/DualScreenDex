@@ -600,6 +600,38 @@ class BattleMemoryCoordinatorTest {
     }
 
     @Test
+    fun publishesTheRomDecodedClockWithoutSaveBlockPointers() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
+        iwram[0x19AD] = 0
+        iwram[0x39E8] = 0
+        iwram[0x39E9] = 0
+        iwram[0x39EA] = 19
+        iwram[0x39EB] = 18
+        iwram[0x39EC] = 48
+        val snapshots = mutableListOf<Gen3LiveGameSnapshot?>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = {
+                context(runtimeLayout = gen3RuntimeLayout(liveClockAddress = 0x030039E8))
+            },
+            publisher = {},
+            liveGamePublisher = snapshots::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(20) { coordinator.heartbeat() }
+
+        assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 30039e8 5" })
+        assertEquals(Gen3LiveSectionState.AVAILABLE, requireNotNull(snapshots.last()).clock.state)
+        assertEquals(Gen3GameClock(hours = 19, minutes = 18), requireNotNull(snapshots.last()).clock.value)
+        coordinator.close()
+    }
+
+    @Test
     fun rereadsSavePointersBeforeEachUnifiedLiveSnapshotAndKeepsIndependentSections() {
         val ewram = ByteArray(0x40000)
         val iwram = ByteArray(0x8000)
@@ -674,12 +706,14 @@ class BattleMemoryCoordinatorTest {
         playerPartyOffset: Int? = null,
         battleMonsOffset: Int? = null,
         saveBlockPointers: Boolean = false,
+        liveClockAddress: Long? = null,
     ) = Gen3RuntimeMemoryLayout(
         mainAddress = 0x03001574,
         inBattleAddress = 0x030019AD,
         inBattleMask = 0x02,
         saveBlock1MapGroupOffset = 4,
         saveBlock1MapNumberOffset = 5,
+        liveClockAddress = liveClockAddress,
         multiUsePlayerCursorAddress = liveTargetOffset?.let { 0x03001574L + it },
         playerPartyCountAddress = playerPartyOffset?.let { 0x02000000L + it - 3 },
         playerPartyAddress = playerPartyOffset?.let { 0x02000000L + it },

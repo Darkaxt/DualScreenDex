@@ -289,7 +289,7 @@ class BattleMemoryCoordinator(
                         decoder.locationWindowBytes,
                     ))
                 }
-                addAll(livePartyRegions(context))
+                addAll(liveIndependentRegions(context))
             })
             reader = session
             return
@@ -302,7 +302,7 @@ class BattleMemoryCoordinator(
                 add(CoreMemoryRegion("ewram", EWRAM_BASE, EWRAM_BYTES))
                 add(CoreMemoryRegion("iwram", IWRAM_BASE, IWRAM_BYTES))
                 pointerGlobal?.let { add(CoreMemoryRegion("save-block-pointer", it, 4)) }
-                addAll(livePartyRegions(context))
+                addAll(liveIndependentRegions(context))
             })
         } else {
             readMode = ReadMode.CACHED
@@ -349,7 +349,7 @@ class BattleMemoryCoordinator(
                         locationBytes,
                     ))
                 }
-                addAll(livePartyRegions(context))
+                addAll(liveIndependentRegions(context))
             })
         }
         reader = session
@@ -433,9 +433,9 @@ class BattleMemoryCoordinator(
         } else {
             null
         }
-        if (readMode == ReadMode.LIVE_DEPENDENT) {
+        if (readMode == ReadMode.LIVE_DEPENDENT || regions.keys.any(::isLiveIndependentRegion)) {
             publishLiveGame(regions, context, gen3Runtime)
-            pendingLivePointers = null
+            if (readMode == ReadMode.LIVE_DEPENDENT) pendingLivePointers = null
         } else {
             publishLiveParty(regions, context)
         }
@@ -731,16 +731,20 @@ class BattleMemoryCoordinator(
         )
     }
 
-    private fun livePartyRegions(context: BattleCatalogContext?): List<CoreMemoryRegion> {
+    private fun liveIndependentRegions(context: BattleCatalogContext?): List<CoreMemoryRegion> {
         val layout = context?.gen3RuntimeMemoryLayout ?: return emptyList()
-        if (context.saveParseContext == null) return emptyList()
-        val countAddress = layout.playerPartyCountAddress ?: return emptyList()
-        val partyAddress = layout.playerPartyAddress ?: return emptyList()
-        return listOf(
-            CoreMemoryRegion("live-party-count", countAddress, 1),
-            CoreMemoryRegion("live-party", partyAddress, Gen3LivePartyDecoder.PARTY_BYTES),
-        )
+        return Gen3LiveGameState.independentWindows(layout)
+            .filter { window ->
+                context.saveParseContext != null ||
+                    (window.id != Gen3LiveGameState.PARTY_COUNT_ID && window.id != Gen3LiveGameState.PARTY_ID)
+            }
+            .map { window -> CoreMemoryRegion(window.id, window.address, window.byteCount) }
     }
+
+    private fun isLiveIndependentRegion(id: String): Boolean =
+        id == Gen3LiveGameState.PARTY_COUNT_ID ||
+            id == Gen3LiveGameState.PARTY_ID ||
+            id == Gen3LiveGameState.CLOCK_ID
 
     private fun publishLiveParty(regions: Map<String, ByteArray>, context: BattleCatalogContext) {
         if (context.generation != 3) return

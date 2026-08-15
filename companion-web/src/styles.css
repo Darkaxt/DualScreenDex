@@ -47,7 +47,7 @@ button { cursor: pointer; }
 .back-action span::before { top: 26px; rotate: -45deg; }.back-action span::after { top: 25px; rotate: 45deg; }
 .settings-action svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .header-spacer { width: 54px; }
-.app-header:has(.header-actions) { grid-template-columns: 54px minmax(0, 1fr) auto; }
+.app-header:not(.app-header-root):has(.header-actions) { grid-template-columns: 54px minmax(0, 1fr) auto; }
 .header-actions { height: 100%; display: grid; grid-auto-flow: column; grid-auto-columns: 54px; }
 .header-game-time { position: absolute; z-index: 1; left: 50%; top: 50%; translate: -50% -50%; color: #f1efd8; font: 900 .86em/1 "Arial Black", Bahnschrift, sans-serif; letter-spacing: .08em; pointer-events: none; }
 .header-title, .header-actions, .header-action { position: relative; z-index: 2; }
