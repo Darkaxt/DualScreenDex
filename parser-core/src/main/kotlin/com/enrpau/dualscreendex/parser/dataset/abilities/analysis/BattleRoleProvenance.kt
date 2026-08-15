@@ -1217,31 +1217,11 @@ object BattleRoleProvenance {
         }
         if (queue.isNotEmpty() || entry !in successors) return null
 
-        val exit = CfgNode(-1, instructionSet)
-        val nodes = successors.keys + exit
-        val postDominators = nodes.associateWithTo(mutableMapOf()) { node ->
-            if (node == exit) mutableSetOf(exit) else nodes.toMutableSet()
-        }
-        var changed: Boolean
-        do {
-            changed = false
-            successors.entries.reversed().forEach { (node, rawEdges) ->
-                val edges = rawEdges.ifEmpty { setOf(exit) }
-                val intersection = edges
-                    .map { postDominators[it] ?: mutableSetOf(exit) }
-                    .reduce { left, right -> left.intersect(right).toMutableSet() }
-                val updated = (intersection + node).toMutableSet()
-                if (postDominators[node] != updated) {
-                    postDominators[node] = updated
-                    changed = true
-                }
-            }
-        } while (changed)
-
-        return postDominators[entry]
-            ?.filter { it != entry && it != exit }
-            ?.maxByOrNull { postDominators[it]?.size ?: 0 }
-            ?.offset
+        return ImmediatePostDominator.find(
+            entry = entry,
+            exit = CfgNode(-1, instructionSet),
+            successors = successors,
+        )?.offset
     }
 
     private fun decode(image: RomImage, offset: Int, set: Arm7InstructionSet): Arm7DecodeResult = when (set) {
