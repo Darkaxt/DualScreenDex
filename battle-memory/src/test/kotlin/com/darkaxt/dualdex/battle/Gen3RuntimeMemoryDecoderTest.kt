@@ -27,7 +27,7 @@ class Gen3RuntimeMemoryDecoderTest {
         assertEquals(0, decoder.locationWindowOffset)
         assertEquals(6, decoder.locationWindowBytes)
         assertEquals(0x0202, decoder.decodeArea(location))
-        assertEquals(Gen3MapPosition(12, 34), decoder.decodePosition(location))
+        assertEquals(RuntimeMapPosition(12, 34), decoder.decodePosition(location))
         assertEquals(3, decoder.decodeTargetBattler(byteArrayOf(3)))
         assertEquals(BattleEncounterKind.WILD, decoder.decodeBattleEncounterKind(u32(1 shl 2)))
         assertEquals(BattleEncounterKind.WILD, decoder.decodeBattleEncounterKind(u32((1 shl 2) or 1)))

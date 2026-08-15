@@ -12,7 +12,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
-private data class Gen3LiveLocation(val areaBaseId: Int, val position: Gen3MapPosition?)
+private data class Gen3LiveLocation(val areaBaseId: Int, val position: RuntimeMapPosition?)
 
 data class BattleCatalogContext(
     val romIdentity: String,
@@ -24,16 +24,35 @@ data class BattleCatalogContext(
     val saveParseContext: SaveParseContext? = null,
 )
 
-data class LiveAreaMemoryLayout(val wramOffset: Int, val byteCount: Int) {
+data class LiveAreaMemoryLayout(
+    val wramOffset: Int,
+    val byteCount: Int,
+    val positionXWramOffset: Int? = null,
+    val positionYWramOffset: Int? = null,
+) {
     init {
         require(wramOffset in 0 until 0x2000)
         require(byteCount in 1..2 && wramOffset + byteCount <= 0x2000)
+        require((positionXWramOffset == null) == (positionYWramOffset == null))
+        require(positionXWramOffset == null || positionXWramOffset in 0 until 0x2000)
+        require(positionYWramOffset == null || positionYWramOffset in 0 until 0x2000)
     }
+
+    val positionWindowOffset: Int?
+        get() = positionXWramOffset?.let { minOf(it, requireNotNull(positionYWramOffset)) }
+
+    val positionWindowBytes: Int
+        get() = if (positionXWramOffset == null) {
+            0
+        } else {
+            maxOf(positionXWramOffset, requireNotNull(positionYWramOffset)) -
+                requireNotNull(positionWindowOffset) + 1
+        }
 }
 
 internal fun liveAreaMemoryLayout(family: EngineFamily): LiveAreaMemoryLayout? = when (family) {
-    EngineFamily.RED_BLUE -> LiveAreaMemoryLayout(0x135E, 1)
-    EngineFamily.YELLOW -> LiveAreaMemoryLayout(0x135D, 1)
+    EngineFamily.RED_BLUE -> LiveAreaMemoryLayout(0x135E, 1, 0x1362, 0x1361)
+    EngineFamily.YELLOW -> LiveAreaMemoryLayout(0x135D, 1, 0x1361, 0x1360)
     EngineFamily.GOLD_SILVER -> LiveAreaMemoryLayout(0x1A00, 2)
     EngineFamily.CRYSTAL -> LiveAreaMemoryLayout(0x1CB5, 2)
     else -> null
@@ -49,7 +68,7 @@ class BattleMemoryCoordinator(
     private val catalogProvider: () -> BattleCatalogContext?,
     private val publisher: (BattleTrackingUpdate) -> Unit,
     private val locationPublisher: (Int?) -> Unit = {},
-    private val positionPublisher: (Gen3MapPosition?) -> Unit = {},
+    private val positionPublisher: (RuntimeMapPosition?) -> Unit = {},
     private val partyPublisher: (List<OwnedIndividual>?) -> Unit = {},
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     private val pollingIntervalProvider: () -> Int = { 5 },
@@ -165,6 +184,15 @@ class BattleMemoryCoordinator(
                     )
                     catalogProvider()?.liveAreaMemoryLayout?.let { location ->
                         add(CoreMemoryRegion("live-location", GEN1_WRAM_BASE + location.wramOffset, location.byteCount))
+                        location.positionWindowOffset?.let { positionOffset ->
+                            add(
+                                CoreMemoryRegion(
+                                    "live-position",
+                                    GEN1_WRAM_BASE + positionOffset,
+                                    location.positionWindowBytes,
+                                ),
+                            )
+                        }
                     }
                 })
             }
@@ -187,6 +215,15 @@ class BattleMemoryCoordinator(
                     add(CoreMemoryRegion("enemy-state", GEN1_WRAM_BASE + enemyStart, enemyEnd - enemyStart))
                     catalogProvider()?.liveAreaMemoryLayout?.let { location ->
                         add(CoreMemoryRegion("live-location", GEN1_WRAM_BASE + location.wramOffset, location.byteCount))
+                        location.positionWindowOffset?.let { positionOffset ->
+                            add(
+                                CoreMemoryRegion(
+                                    "live-position",
+                                    GEN1_WRAM_BASE + positionOffset,
+                                    location.positionWindowBytes,
+                                ),
+                            )
+                        }
                     }
                 })
             }
@@ -349,6 +386,11 @@ class BattleMemoryCoordinator(
         } else {
             null
         }
+        val gen1MapPosition = if (context.generation == 1 && supportsLiveArea(context)) {
+            resolveCurrentGen1Position(regions, context)
+        } else {
+            null
+        }
         val gen3Runtime = if (context.generation == 3) {
             val battleActive = resolveGen3BattleActive(regions, context)
             Gen3RuntimeSnapshot(
@@ -383,7 +425,10 @@ class BattleMemoryCoordinator(
             locationPublisher(
                 if (context.generation == 3) gen3Runtime?.areaBaseId else resolveCurrentArea(regions, context),
             )
-            if (context.generation == 3) positionPublisher(gen3Runtime?.mapPosition)
+            when (context.generation) {
+                1 -> positionPublisher(gen1MapPosition)
+                3 -> positionPublisher(gen3Runtime?.mapPosition)
+            }
         }
         val sample = when {
             context.generation != 3 -> resolvedSample
@@ -582,6 +627,27 @@ class BattleMemoryCoordinator(
             ?: regions["wram"]?.getOrNull(offset)?.toInt()?.and(0xFF)
             ?: return null
         return value.takeUnless { it == 0xFF }
+    }
+
+    private fun resolveCurrentGen1Position(
+        regions: Map<String, ByteArray>,
+        context: BattleCatalogContext,
+    ): RuntimeMapPosition? {
+        val layout = context.liveAreaMemoryLayout ?: return null
+        val xOffset = layout.positionXWramOffset ?: return null
+        val yOffset = layout.positionYWramOffset ?: return null
+        val positionWindow = regions["live-position"]
+        val x = if (positionWindow != null) {
+            positionWindow.getOrNull(xOffset - requireNotNull(layout.positionWindowOffset))
+        } else {
+            regions["wram"]?.getOrNull(xOffset)
+        }?.toInt()?.and(0xFF) ?: return null
+        val y = if (positionWindow != null) {
+            positionWindow.getOrNull(yOffset - requireNotNull(layout.positionWindowOffset))
+        } else {
+            regions["wram"]?.getOrNull(yOffset)
+        }?.toInt()?.and(0xFF) ?: return null
+        return RuntimeMapPosition(x, y).takeUnless { x == 0xFF || y == 0xFF }
     }
 
     private fun resolveCurrentGen2Area(regions: Map<String, ByteArray>): Int? {

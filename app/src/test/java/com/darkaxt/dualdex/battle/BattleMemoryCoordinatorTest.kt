@@ -13,27 +13,37 @@ import java.util.ArrayDeque
 class BattleMemoryCoordinatorTest {
     @Test
     fun publishesGen1AndGen2LiveAreasBeforeAnyBattleStarts() {
-        assertEquals(LiveAreaMemoryLayout(0x135e, 1), liveAreaMemoryLayout(EngineFamily.RED_BLUE))
-        assertEquals(LiveAreaMemoryLayout(0x135d, 1), liveAreaMemoryLayout(EngineFamily.YELLOW))
+        assertEquals(LiveAreaMemoryLayout(0x135e, 1, 0x1362, 0x1361), liveAreaMemoryLayout(EngineFamily.RED_BLUE))
+        assertEquals(LiveAreaMemoryLayout(0x135d, 1, 0x1361, 0x1360), liveAreaMemoryLayout(EngineFamily.YELLOW))
         assertEquals(LiveAreaMemoryLayout(0x1a00, 2), liveAreaMemoryLayout(EngineFamily.GOLD_SILVER))
         assertEquals(LiveAreaMemoryLayout(0x1cb5, 2), liveAreaMemoryLayout(EngineFamily.CRYSTAL))
 
-        val yellowWram = ByteArray(0x2000).apply { this[0x135d] = 0x28 }
+        val yellowWram = ByteArray(0x2000).apply {
+            this[0x135d] = 0x28
+            this[0x1360] = 7
+            this[0x1361] = 12
+        }
         val yellowAreas = mutableListOf<Int?>()
+        val yellowPositions = mutableListOf<RuntimeMapPosition?>()
         val yellow = BattleMemoryCoordinator(
             catalogProvider = { gen1Context() },
             publisher = {},
             locationPublisher = yellowAreas::add,
+            positionPublisher = yellowPositions::add,
             transportFactory = { MemoryTransport(yellowWram, 0xc000) },
             autoStart = false,
         )
         yellow.updateSession(connected = true, systemId = "game_boy", romIdentity = "rom")
         repeat(2) { yellow.heartbeat() }
         assertEquals(0x28, yellowAreas.last())
+        assertEquals(RuntimeMapPosition(12, 7), yellowPositions.last())
 
         yellowWram[0x135d] = 0xFF.toByte()
+        yellowWram[0x1360] = 0xFF.toByte()
+        yellowWram[0x1361] = 0xFF.toByte()
         repeat(2) { yellow.heartbeat() }
         assertNull(yellowAreas.last())
+        assertNull(yellowPositions.last())
         yellow.close()
 
         val crystalWram = ByteArray(0x2000).apply {
@@ -344,7 +354,7 @@ class BattleMemoryCoordinatorTest {
         val pointer = byteArrayOf(0x00, 0x10, 0x00, 0x02)
         val updates = mutableListOf<BattleTrackingUpdate>()
         val liveAreas = mutableListOf<Int?>()
-        val positions = mutableListOf<Gen3MapPosition?>()
+        val positions = mutableListOf<RuntimeMapPosition?>()
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x030036F0L to pointer))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(saveBlock1Pointer = 0x030036F0L, runtimeLayout = gen3RuntimeLayout()) },
@@ -360,7 +370,7 @@ class BattleMemoryCoordinatorTest {
 
         assertTrue(updates.isEmpty())
         assertEquals(0x0010, liveAreas.last())
-        assertEquals(Gen3MapPosition(12, 7), positions.last())
+        assertEquals(RuntimeMapPosition(12, 7), positions.last())
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 30036f0 4") })
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 2001000 6") })
         coordinator.close()
@@ -468,10 +478,11 @@ class BattleMemoryCoordinatorTest {
         coordinator.heartbeat()
         coordinator.heartbeat()
 
-        assertEquals(2, transport.commands.size - discoveryReads)
+        assertEquals(3, transport.commands.size - discoveryReads)
         assertEquals(mapOf(0x66 to mapOf(0x21 to 1)), updates.last().observations)
         assertEquals(0x28, liveAreas.last())
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY d35d 1") })
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY d360 2") })
 
         coordinator.heartbeat()
         coordinator.heartbeat()
@@ -641,7 +652,7 @@ class BattleMemoryCoordinatorTest {
     private fun gen1Context() = BattleCatalogContext(
         romIdentity = "rom",
         generation = 1,
-        liveAreaMemoryLayout = LiveAreaMemoryLayout(0x135d, 1),
+        liveAreaMemoryLayout = LiveAreaMemoryLayout(0x135d, 1, 0x1361, 0x1360),
         catalog = BattleCatalogView(
             species = mapOf(
                 0x54 to BattleSpecies(0x54, listOf(0x17, 0x17)),

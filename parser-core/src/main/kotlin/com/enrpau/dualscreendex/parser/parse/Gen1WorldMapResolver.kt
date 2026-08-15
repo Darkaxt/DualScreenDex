@@ -11,6 +11,14 @@ import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 /** Resolves a Gen I Town Map from one structurally complete loader and entry-lookup chain. */
 object Gen1WorldMapResolver {
+    internal fun resolveNames(session: RomAnalysisSession, mapIds: Set<Int>): Map<Int, String> {
+        val requiredMaps = mapIds.filterTo(sortedSetOf()) { it in 0..MAX_MAP_ID }
+        if (requiredMaps.isEmpty()) return emptyMap()
+        return findChains(session.rom, requiredMaps).singleOrNull()?.entries
+            ?.mapValues { (_, entry) -> entry.name }
+            .orEmpty()
+    }
+
     fun resolve(session: RomAnalysisSession, encounterBaseIds: Set<Int>): WorldMapResolution {
         val requiredMaps = encounterBaseIds.filterTo(sortedSetOf()) { it in 0..MAX_MAP_ID }
         if (requiredMaps.isEmpty()) {

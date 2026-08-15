@@ -457,7 +457,9 @@ object CatalogMaterializer {
             )
         }
         val encounterBaseIds = encounters.mapTo(linkedSetOf()) { it.id / encounterAreaIdStride }
-        val localMapResolution = if (layout.generation == 3 && resolveLocalMaps != null) {
+        val localMapResolution = if (
+            (layout.generation == 1 || layout.generation == 3) && resolveLocalMaps != null
+        ) {
             try {
                 resolveLocalMaps(layout.generation, encounterBaseIds).also { resolution ->
                     if (resolution is LocalMapResolution.Resolved) resolution.catalog.validate()

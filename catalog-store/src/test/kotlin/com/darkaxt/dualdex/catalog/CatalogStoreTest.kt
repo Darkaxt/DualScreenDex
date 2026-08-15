@@ -104,7 +104,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(12, CatalogSchema.parserSchemaVersion)
+        assertEquals(13, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps, reopened?.catalog?.localMaps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -138,6 +138,36 @@ class CatalogStoreTest {
         assertTrue(
             catalog.localMaps.assets.getValue(route102Asset).bytes.contentEquals(
                 reopened.localMaps.assets.getValue(route102Asset).bytes,
+            ),
+        )
+    }
+
+    @Test
+    fun `official Gen I local map assets survive a complete cache round trip`() {
+        val configured = System.getenv("DUALDEX_POKERED_ROM")
+        assumeTrue("set DUALDEX_POKERED_ROM to run this real-ROM control", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals("5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b", rom.sha256)
+        val catalog = requireNotNull(CatalogParser.parseCatching(rom).catalog).getOrThrow()
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "POKEMON RED"),
+            CatalogWriteProgress.complete(),
+        )
+        val reopened = requireNotNull(cache.readComplete(catalog.romSha256)).catalog
+
+        assertEquals(226, reopened.localMaps.maps.size)
+        assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
+        assertEquals(catalog.localMaps.assets.keys, reopened.localMaps.assets.keys)
+        val palletTownAsset = catalog.localMaps.maps.single { it.baseAreaId == 0x00 }.imageAssetKey
+        assertTrue(
+            catalog.localMaps.assets.getValue(palletTownAsset).bytes.contentEquals(
+                reopened.localMaps.assets.getValue(palletTownAsset).bytes,
             ),
         )
     }
@@ -260,7 +290,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(12, CatalogSchema.parserSchemaVersion)
+        assertEquals(13, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(

@@ -10,7 +10,7 @@ import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.darkaxt.dualdex.battle.BattleMove
 import com.darkaxt.dualdex.battle.BattleSpecies
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
-import com.darkaxt.dualdex.battle.Gen3MapPosition
+import com.darkaxt.dualdex.battle.RuntimeMapPosition
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
 import com.darkaxt.dualdex.battle.TargetMode
 import com.enrpau.dualscreendex.companion.CompanionGateway
@@ -421,7 +421,7 @@ class ProductionCompanionRuntime(
     }
 
     @Synchronized
-    fun updateLiveMapPosition(position: Gen3MapPosition?) {
+    fun updateLiveMapPosition(position: RuntimeMapPosition?) {
         val mapped = position?.let { LiveMapPosition(it.x, it.y) }
         if (gateway.bootstrap().liveMapPosition != mapped) {
             gateway.dispatch(CompanionAction.LiveMapPositionChanged(mapped))

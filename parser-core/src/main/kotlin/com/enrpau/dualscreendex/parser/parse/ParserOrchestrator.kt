@@ -49,14 +49,18 @@ object ParserOrchestrator {
                 }
             },
             resolveLocalMaps = { generation, baseAreaIds ->
-                if (generation == 3) {
-                    Gen3LocalMapResolver.resolve(
+                when (generation) {
+                    1 -> Gen1LocalMapResolver.resolve(
                         sharedSession,
                         baseAreaIds,
                         requireNotNull(analysis.selectedFamily),
                     )
-                } else {
-                    LocalMapResolution.Unavailable(
+                    3 -> Gen3LocalMapResolver.resolve(
+                        sharedSession,
+                        baseAreaIds,
+                        requireNotNull(analysis.selectedFamily),
+                    )
+                    else -> LocalMapResolution.Unavailable(
                         "generation",
                         "local maps are not part of this engine's normalized parser path",
                     )

@@ -46,12 +46,10 @@ data class Gen3RuntimeMemoryLayout(
     }
 }
 
-data class Gen3MapPosition(val x: Int, val y: Int)
-
 data class Gen3RuntimeSnapshot(
     val battleActive: Boolean?,
     val areaBaseId: Int?,
-    val mapPosition: Gen3MapPosition? = null,
+    val mapPosition: RuntimeMapPosition? = null,
     val targetBattler: Int? = null,
     val encounterKind: BattleEncounterKind = BattleEncounterKind.UNKNOWN,
 )
@@ -89,12 +87,12 @@ class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
         return (group shl 8) or map
     }
 
-    fun decodePosition(bytes: ByteArray?): Gen3MapPosition? {
+    fun decodePosition(bytes: ByteArray?): RuntimeMapPosition? {
         if (bytes == null) return null
         val xIndex = layout.saveBlock1PositionXOffset - locationWindowOffset
         val yIndex = layout.saveBlock1PositionYOffset - locationWindowOffset
         if (xIndex < 0 || yIndex < 0 || xIndex + 1 !in bytes.indices || yIndex + 1 !in bytes.indices) return null
-        return Gen3MapPosition(s16le(bytes, xIndex), s16le(bytes, yIndex))
+        return RuntimeMapPosition(s16le(bytes, xIndex), s16le(bytes, yIndex))
             .takeIf { it.x >= 0 && it.y >= 0 }
     }
 
