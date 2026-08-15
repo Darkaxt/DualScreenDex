@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: New signed tag, such as v1.1.0-rc.4 or v1.1.0
+        description: New signed tag, such as v1.1.0-rc.4-hotfix.1 or v1.1.0
         required: true
         type: string
 
@@ -108,7 +108,7 @@ jobs:
             docs/reports/2026-08-13-map-first50-release-gate-raw.json >/dev/null
           jq -e '.summary.identities == 50 and .summary.completeTables == 50 and .summary.malformedRows == 0 and .summary.deterministicHashes == 50 and .summary.sqliteReopenExact == 50 and .summary.originalCompleteTablesPreserved == .summary.originalCompleteTables and (.rows | length) == 50' \
             docs/reports/2026-08-14-first50-evolution-completeness-raw.json >/dev/null
-          jq -e '.baseFirst50Selected == 50 and .mapFirst50Available == 26 and .evolutionFirst50Complete == 50 and .secureBuildDependencyGate == true and .securityAdvisoriesCovered == 48 and .arm7Applicable == 46 and .arm7ProductionComplete == 38 and .v11Stage1NormalizedLiveStateModels == true and .v11Stage1DetailedGen3PartyCodec == true and .v11Stage1Gen3TrainerBagSaveCodec == true and .v11Stage2EmeraldRuntimeLayout == true and .v11Stage2TrainerAssets == true and .v11Stage2CatalogPersistence == true and .v11Stage2TrainerAssetApi == true and .v11Stage3PointerFirstSnapshot == true and .v11Stage3IndependentLiveSections == true and .v11Stage3LiveOverSaveAuthority == true and .v11Stage3LifecycleFallback == true and .v11Stage4TrainerCard == true and .v11Stage4PartyPresentation == true and .v11Stage4DynamicFeatureNavigation == true and .v11Stage4LocalMapConvergence == true and (has("debugApkSha256") | not)' \
+          jq -e '.baseFirst50Selected == 50 and .mapFirst50Available == 26 and .evolutionFirst50Complete == 50 and .secureBuildDependencyGate == true and .securityAdvisoriesCovered == 48 and .arm7Applicable == 46 and .arm7ProductionComplete == 38 and .v11Stage1NormalizedLiveStateModels == true and .v11Stage1DetailedGen3PartyCodec == true and .v11Stage1Gen3TrainerBagSaveCodec == true and .v11Stage2EmeraldRuntimeLayout == true and .v11Stage2TrainerAssets == true and .v11Stage2CatalogPersistence == true and .v11Stage2TrainerAssetApi == true and .v11Stage3PointerFirstSnapshot == true and .v11Stage3IndependentLiveSections == true and .v11Stage3LiveOverSaveAuthority == true and .v11Stage3LifecycleFallback == true and .v11Stage4TrainerCard == true and .v11Stage4PartyPresentation == true and .v11Stage4DynamicFeatureNavigation == true and .v11Stage4LocalMapConvergence == true and .v11Rc4HotfixBoundedRomIndex == true and (has("debugApkSha256") | not)' \
             release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
@@ -355,7 +355,7 @@ jobs:
           cp docs/reports/2026-08-14-first50-evolution-completeness-raw.json "$ASSETS/dualdex-evolution-first50-release-gate.json"
           cp docs/reports/2026-08-14-first50-evolution-completeness.md "$ASSETS/dualdex-evolution-first50-release-gate.md"
           cp docs/reports/arm7-first50-compatibility-survey.md "$ASSETS/dualdex-arm7-first50-compatibility.md"
-          cp release/RELEASE_NOTES_1.1.0-rc.4.md "$ASSETS/RELEASE_NOTES.md"
+          cp release/RELEASE_NOTES_1.1.0-rc.4-hotfix.1.md "$ASSETS/RELEASE_NOTES.md"
 
           apk_sha256="$(sha256sum "$APK" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')"
           jq -n \
