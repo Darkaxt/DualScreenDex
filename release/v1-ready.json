@@ -27,5 +27,9 @@
   "v11Stage2TrainerAssets": true,
   "v11Stage2CatalogPersistence": true,
   "v11Stage2TrainerAssetApi": true,
+  "v11Stage3PointerFirstSnapshot": true,
+  "v11Stage3IndependentLiveSections": true,
+  "v11Stage3LiveOverSaveAuthority": true,
+  "v11Stage3LifecycleFallback": true,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }
