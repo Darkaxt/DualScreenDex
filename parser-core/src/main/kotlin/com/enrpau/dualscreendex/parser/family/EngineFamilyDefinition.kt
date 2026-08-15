@@ -78,7 +78,11 @@ object EngineFamilyDefinitions {
             setOf(Platform.GB, Platform.GBC),
             setOf(EngineLineage.GEN1_RETAIL),
             gen1Capabilities,
-        ) { it.title.startsWith("POKEMON RED") || it.title.startsWith("POKEMON BLUE") },
+        ) {
+            it.title.startsWith("POKEMON RED") ||
+                it.title.startsWith("POKEMON BLUE") ||
+                it.title.startsWith("POKEMON GREEN")
+        },
         definition(
             EngineFamily.YELLOW,
             1,

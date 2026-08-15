@@ -390,6 +390,14 @@ class FamilyProbeCoordinatorTest {
     }
 
     @Test
+    fun redBlueFamilyRecognizesTheGreenRetailBuildIdentity() {
+        val green = RomHeader(Platform.GBC, "POKEMON GREEN")
+
+        assertTrue(EngineFamilyDefinitions.byFamily.getValue(EngineFamily.RED_BLUE).matchesIdentity(green))
+        assertFalse(EngineFamilyDefinitions.byFamily.getValue(EngineFamily.YELLOW).matchesIdentity(green))
+    }
+
+    @Test
     fun aggregationUsesDeclaredApplicabilityInsteadOfNumericGenerationOrGlobalDefaults() {
         val abilityApplicable = EngineFamilyDefinition(
             family = EngineFamily.RED_BLUE,
