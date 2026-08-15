@@ -1,5 +1,8 @@
 package com.enrpau.dualscreendex.companion.model
 
+import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.TrainerSnapshot
+
 enum class KnowledgeMode { DISCOVERED, ORGANIC, HIDDEN }
 enum class AppScreen { POKEDEX, DETAIL, BATTLE, SETTINGS, SETUP }
 enum class PokedexFilter { ALL, CAUGHT, SEEN, TEAM, AREA }
@@ -106,6 +109,8 @@ data class AppSnapshot(
     val settings: CompanionSettings = CompanionSettings(),
     val ledger: KnowledgeLedger = KnowledgeLedger(),
     val liveAreaBaseId: Int? = null,
+    val trainer: TrainerSnapshot? = null,
+    val party: List<OwnedIndividual> = emptyList(),
     val battle: BattleState? = null,
     val battleReturnScreen: AppScreen = AppScreen.POKEDEX,
     val catalogReady: Boolean = false,
@@ -130,6 +135,10 @@ sealed interface CompanionAction {
     data class SelectTarget(val index: Int) : CompanionAction
     data class SelectMove(val moveId: Int) : CompanionAction
     data class LiveAreaChanged(val areaBaseId: Int?) : CompanionAction
+    data class LiveGameStateChanged(
+        val trainer: TrainerSnapshot?,
+        val party: List<OwnedIndividual>,
+    ) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction
     data class Failure(val message: String) : CompanionAction
 }

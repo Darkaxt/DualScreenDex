@@ -105,6 +105,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         }
         is CompanionAction.SelectMove -> state.copy(battle = state.battle?.copy(selectedMoveId = action.moveId))
         is CompanionAction.LiveAreaChanged -> state.copy(liveAreaBaseId = action.areaBaseId)
+        is CompanionAction.LiveGameStateChanged -> state.copy(trainer = action.trainer, party = action.party)
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
         is CompanionAction.Failure -> state.copy(error = action.message)
     }

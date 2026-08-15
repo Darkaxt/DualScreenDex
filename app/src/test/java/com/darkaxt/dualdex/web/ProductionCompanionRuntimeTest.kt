@@ -19,6 +19,11 @@ import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SavedArea
+import com.darkaxt.dualdex.save.TrainerSnapshot
+import com.darkaxt.dualdex.battle.Gen3LiveBattleState
+import com.darkaxt.dualdex.battle.Gen3LiveBattleUiState
+import com.darkaxt.dualdex.battle.Gen3LiveGameSnapshot
+import com.darkaxt.dualdex.battle.Gen3LiveSection
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
@@ -1376,6 +1381,125 @@ class ProductionCompanionRuntimeTest {
         assertTrue(state.speciesState.getValue(25).caught)
         runtime.close()
     }
+
+    @Test
+    fun liveTrainerAndValidatedPartyOverrideSaveAndDisconnectRestoresIt() {
+        val hash = "b".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(25 to saveSpecies(25), 277 to saveSpecies(277)),
+            ),
+        )
+        val savedTrainer = trainer("SAVE", money = 100)
+        val liveTrainer = trainer("LIVE", money = 999)
+        val saved = SaveSnapshot(
+            romIdentity = hash,
+            saveIdentity = "save",
+            saveGeneration = 3,
+            saveCounter = 1,
+            currentArea = SavedArea(0, 0),
+            seenDexNumbers = setOf(25),
+            caughtDexNumbers = setOf(25),
+            party = listOf(OwnedIndividual("party-0", 25, level = 9)),
+            storedIndividuals = emptyList(),
+            capabilities = emptyMap(),
+            trainer = savedTrainer,
+        )
+        assertTrue(runtime.applySaveSnapshot(saved, SaveRamView(status = "MATCHED")))
+
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                hash,
+                Gen3LiveSection.available(liveTrainer),
+                Gen3LiveSection.available(listOf(OwnedIndividual("party-0", 277, level = 5))),
+            ),
+        )
+        assertEquals("LIVE", runtime.gateway.bootstrap().trainer?.name)
+        assertEquals(listOf(277), runtime.gateway.bootstrap().party.map { it.speciesId })
+        assertTrue(runtime.stateView().speciesState.getValue(277).team)
+
+        runtime.updateLiveGameState(
+            liveSnapshot(hash, Gen3LiveSection.unavailable("trainer bytes invalid"), Gen3LiveSection.available(emptyList())),
+        )
+        assertEquals("SAVE", runtime.gateway.bootstrap().trainer?.name)
+        assertTrue(runtime.gateway.bootstrap().party.isEmpty())
+        assertTrue(runtime.gateway.bootstrap().ledger.teamSpecies.isEmpty())
+
+        runtime.updateLiveGameState(null)
+        assertEquals("SAVE", runtime.gateway.bootstrap().trainer?.name)
+        assertEquals(listOf(25), runtime.gateway.bootstrap().party.map { it.speciesId })
+        assertTrue(runtime.stateView().speciesState.getValue(25).team)
+        runtime.close()
+    }
+
+    @Test
+    fun ignoresAnotherRomsLiveSnapshotAndDropsPriorLiveStateWhenCatalogSwitches() {
+        val first = "c".repeat(64)
+        val second = "d".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "first.gba",
+            ParsedCatalog(first, EngineFamily.EMERALD, Platform.GBA, speciesById = mapOf(25 to saveSpecies(25))),
+        )
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                first,
+                Gen3LiveSection.available(trainer("FIRST", 1)),
+                Gen3LiveSection.available(listOf(OwnedIndividual("party-0", 25, level = 5))),
+            ),
+        )
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                second,
+                Gen3LiveSection.available(trainer("WRONG", 2)),
+                Gen3LiveSection.available(emptyList()),
+            ),
+        )
+        assertEquals("FIRST", runtime.gateway.bootstrap().trainer?.name)
+
+        runtime.loadCatalog(
+            "second.gba",
+            ParsedCatalog(second, EngineFamily.EMERALD, Platform.GBA, speciesById = mapOf(25 to saveSpecies(25))),
+        )
+        assertNull(runtime.gateway.bootstrap().trainer)
+        assertTrue(runtime.gateway.bootstrap().party.isEmpty())
+        runtime.close()
+    }
+
+    private fun trainer(name: String, money: Long) = TrainerSnapshot(
+        name = name,
+        gender = 0,
+        publicTrainerId = 7,
+        money = money,
+        playTimeHours = 2,
+        playTimeMinutes = 3,
+        badgeFlags = 1,
+        dexSeen = 1,
+        dexCaught = 1,
+    )
+
+    private fun liveSnapshot(
+        romIdentity: String,
+        trainer: Gen3LiveSection<TrainerSnapshot>,
+        party: Gen3LiveSection<List<OwnedIndividual>>,
+    ) = Gen3LiveGameSnapshot(
+        romIdentity = romIdentity,
+        trainer = trainer,
+        location = Gen3LiveSection.unavailable("not part of runtime merge test"),
+        party = party,
+        bag = com.darkaxt.dualdex.save.BagPocket.entries.associateWith {
+            Gen3LiveSection.unavailable("not part of runtime merge test")
+        },
+        battle = Gen3LiveSection.available(Gen3LiveBattleState(false)),
+        battleUi = Gen3LiveSection.available(
+            Gen3LiveBattleUiState(null, com.darkaxt.dualdex.battle.BattleEncounterKind.UNKNOWN),
+        ),
+    )
 
     private fun saveSpecies(id: Int) = SpeciesRecord(
         id = id,

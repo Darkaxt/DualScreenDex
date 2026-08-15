@@ -11,6 +11,8 @@ import com.darkaxt.dualdex.battle.BattleMove
 import com.darkaxt.dualdex.battle.BattleSpecies
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
+import com.darkaxt.dualdex.battle.Gen3LiveGameSnapshot
+import com.darkaxt.dualdex.battle.Gen3LiveSectionState
 import com.darkaxt.dualdex.battle.TargetMode
 import com.enrpau.dualscreendex.companion.CompanionGateway
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
@@ -96,6 +98,8 @@ class ProductionCompanionRuntime(
     private var detectedLevelUpRulesetId: String? = null
     private var levelUpRulesetDetectionResolved = false
     private var liveParty: List<OwnedIndividual>? = null
+    private var liveGameState: Gen3LiveGameSnapshot? = null
+    private var savedPlayerState: SaveSnapshot? = null
     private var catalogPublicationInProgress = false
     private var cachedState: CachedState? = null
     private val loadGeneration = AtomicLong()
@@ -356,20 +360,23 @@ class ProductionCompanionRuntime(
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),
             saveParseContext = saveParseContext(current),
+            savedTrainer = savedPlayerState?.trainer,
         )
     }
 
     @Synchronized
     fun updateLiveParty(party: List<OwnedIndividual>?) {
         liveParty = party
-        if (party == null) return
-        val current = catalog ?: return
-        val before = gateway.bootstrap().ledger
-        val merged = LivePartyKnowledgeMapper.merge(before, current, party, generation = 3)
-        if (merged != before) {
-            gateway.dispatch(CompanionAction.ReplaceLedger(merged))
-            persistKnowledge(merged)
-        }
+        publishSelectedPlayerState()
+    }
+
+    @Synchronized
+    fun updateLiveGameState(snapshot: Gen3LiveGameSnapshot?) {
+        val current = catalog
+        if (snapshot != null && (current == null || !snapshot.romIdentity.equals(current.romSha256, true))) return
+        liveGameState = snapshot
+        if (snapshot == null) liveParty = null
+        publishSelectedPlayerState()
     }
 
     @Synchronized
@@ -529,10 +536,8 @@ class ProductionCompanionRuntime(
     fun applySaveSnapshot(snapshot: SaveSnapshot, state: SaveRamView): Boolean {
         val current = catalog ?: return false
         if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return false
-        val fromSave = SaveKnowledgeMapper.merge(gateway.bootstrap().ledger, current, snapshot)
-        val merged = liveParty?.let { party ->
-            LivePartyKnowledgeMapper.merge(fromSave, current, party, generation = 3)
-        } ?: fromSave
+        savedPlayerState = snapshot
+        val merged = mergedPlayerKnowledge(current)
         val selectors = completeLevelUpRulesetSelectors(current)
         val detected = snapshot.detectedLevelUpRulesetId?.takeIf { id ->
             val expectedFingerprint = LevelUpRulesetDetectionFingerprint.create(selectors, id)
@@ -546,8 +551,56 @@ class ProductionCompanionRuntime(
         saveRam = state
         cachedState = null
         gateway.dispatch(CompanionAction.ReplaceLedger(merged))
+        publishSelectedPlayerSnapshot()
         persistKnowledge(merged)
         return true
+    }
+
+    private fun selectedParty(): List<OwnedIndividual> = liveGameState
+        ?.party
+        ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+        ?.value
+        ?: liveParty
+        ?: savedPlayerState?.party
+        ?: emptyList()
+
+    private fun selectedTrainer() = liveGameState
+        ?.trainer
+        ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+        ?.value
+        ?: savedPlayerState?.trainer
+
+    private fun mergedPlayerKnowledge(current: ParsedCatalog): KnowledgeLedger {
+        val before = gateway.bootstrap().ledger
+        val fromSave = savedPlayerState
+            ?.takeIf { it.romIdentity.equals(current.romSha256, true) }
+            ?.let { SaveKnowledgeMapper.merge(before, current, it) }
+            ?: before
+        val livePartySelection = when {
+            liveGameState?.party?.state == Gen3LiveSectionState.AVAILABLE -> liveGameState?.party?.value
+            liveParty != null -> liveParty
+            savedPlayerState != null -> null
+            else -> emptyList()
+        }
+        return livePartySelection?.let { party ->
+            LivePartyKnowledgeMapper.merge(fromSave, current, party, generation = 3)
+        } ?: fromSave
+    }
+
+    private fun publishSelectedPlayerSnapshot() {
+        gateway.dispatch(CompanionAction.LiveGameStateChanged(selectedTrainer(), selectedParty()))
+    }
+
+    private fun publishSelectedPlayerState() {
+        val current = catalog
+        if (current != null) {
+            val merged = mergedPlayerKnowledge(current)
+            if (merged != gateway.bootstrap().ledger) {
+                gateway.dispatch(CompanionAction.ReplaceLedger(merged))
+                persistKnowledge(merged)
+            }
+        }
+        publishSelectedPlayerSnapshot()
     }
 
     fun action(type: String, values: Map<String, String?>): StateView {
@@ -762,6 +815,8 @@ class ProductionCompanionRuntime(
         val generation = loadGeneration.incrementAndGet()
         catalog = null
         liveParty = null
+        liveGameState = null
+        savedPlayerState = null
         settingsRomSha256 = null
         settingsWritesEnabled = false
         clearLevelUpRulesetDetection()
@@ -774,6 +829,7 @@ class ProductionCompanionRuntime(
         clearLiveBattle()
         saveRam = SaveRamView()
         gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
+        gateway.dispatch(CompanionAction.LiveGameStateChanged(null, emptyList()))
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
         return generation
     }
