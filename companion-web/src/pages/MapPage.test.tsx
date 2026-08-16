@@ -117,7 +117,7 @@ describe('normalized world map presentation', () => {
     expect(screen.getByRole('region', { name: 'Interactive world map' }).dataset.selectedKey).toBe('section-17');
   });
 
-  it('keeps zoom, recenter, markers, and knowledge-mode fog functional without a fog override', () => {
+  it('keeps zoom, recenter, permanent eligible markers, and knowledge-mode fog functional', () => {
     const { container } = render(<MapPage catalog={catalog} state={state} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
     const stage = screen.getByRole('region', { name: 'Interactive world map' });
 
@@ -129,13 +129,12 @@ describe('normalized world map presentation', () => {
     expect(stage.dataset.panX).toBe('0');
     expect(stage.dataset.panY).toBe('0');
 
-    const markers = screen.getByRole('button', { name: 'Toggle map markers' });
     expect(screen.queryByRole('button', { name: 'Toggle fog of war' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Toggle map markers' })).toBeNull();
     expect(container.querySelector('.map-fog')).toBeTruthy();
-    expect(markers.getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(markers);
-    expect(markers.getAttribute('aria-pressed')).toBe('false');
-    expect(container.querySelector('.map-marker')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Current location: Route 101' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Oldale Town' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Petalburg City' })).toBeNull();
   });
 
   it('shows the whole map in Discovered mode and keeps global Pokédex navigation available', () => {

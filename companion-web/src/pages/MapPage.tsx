@@ -37,7 +37,6 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
   const [fit, setFit] = useState({ width: activeMap?.pixelWidth ?? 1, height: activeMap?.pixelHeight ?? 1, scale: 1 });
   const fogVisible = activeMode === 'ATLAS' && state.settings.knowledgeMode !== 'DISCOVERED';
-  const [markersVisible, setMarkersVisible] = useState(true);
   const [legendOpen, setLegendOpen] = useState(false);
   const stageRef = useRef<HTMLElement>(null);
   const fogRef = useRef<HTMLCanvasElement>(null);
@@ -104,9 +103,9 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   }, [region?.key, revealedLocations, fogVisible]);
 
   const markerLocations = useMemo(() => {
-    if (activeMode !== 'ATLAS' || !region || !markersVisible) return [];
+    if (activeMode !== 'ATLAS' || !region) return [];
     return fogVisible ? revealedLocations : region.locations;
-  }, [activeMode, region?.key, revealedLocations, fogVisible, markersVisible]);
+  }, [activeMode, region?.key, revealedLocations, fogVisible]);
 
   if (!activeMap) return null;
 
@@ -236,7 +235,6 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
 
       <nav class="map-utility-rail" aria-label="Map utilities">
         {activeMode === 'ATLAS' && maps.length > 1 && <button class="map-control" aria-label="Choose map region" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>}
-        {activeMode === 'ATLAS' && <button class="map-control marker-control" aria-label="Toggle map markers" aria-pressed={markersVisible} onClick={() => setMarkersVisible(value => !value)}><span class="pin-icon" /></button>}
         {legendOpen && activeMode === 'ATLAS' && maps.length > 1 && <div class="map-legend-panel">
           <small>{activeMode}</small>
           <strong>{displayName}</strong>
