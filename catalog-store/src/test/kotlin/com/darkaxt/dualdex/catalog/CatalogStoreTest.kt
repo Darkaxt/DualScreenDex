@@ -114,7 +114,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(16, CatalogSchema.parserSchemaVersion)
+        assertEquals(17, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps, reopened?.catalog?.localMaps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -123,24 +123,27 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun `Modern Emerald local map assets survive a complete cache round trip`() {
+    fun `Modern Emerald world and local maps survive the production incremental cache round trip`() {
         val configured = System.getenv("DUALDEX_MODERN_EMERALD_ROM")
         assumeTrue("set DUALDEX_MODERN_EMERALD_ROM to run this real-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
         val rom = RomImage(Files.readAllBytes(path))
         assertEquals("21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", rom.sha256)
-        val catalog = requireNotNull(CatalogParser.parseCatching(rom).catalog).getOrThrow()
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
-
-        cache.write(
-            catalog,
-            CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "POKEMON EMER"),
-            CatalogWriteProgress.complete(),
+        val source = CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "POKEMON EMER")
+        val catalog = requireNotNull(
+            CatalogParser.parse(rom) { progress ->
+                cache.write(progress.catalog, source, catalogWriteProgress(progress))
+            }.catalog,
         )
-        val reopened = requireNotNull(cache.readComplete(catalog.romSha256)).catalog
 
+        val stored = requireNotNull(cache.readComplete(catalog.romSha256))
+        val reopened = stored.catalog
+
+        assertEquals(CatalogSchema.requiredSections, stored.committedSections)
+        assertEquals(1, reopened.worldMaps.regions.size)
         assertEquals(557, reopened.localMaps.maps.size)
         assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
         assertEquals(catalog.localMaps.assets.keys, reopened.localMaps.assets.keys)
@@ -160,6 +163,11 @@ class CatalogStoreTest {
                 reopened.localMaps.assets.getValue(route102Asset).bytes,
             ),
         )
+
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 16 WHERE id = 1")
+        }
+        assertNull(cache.readComplete(catalog.romSha256))
     }
 
     @Test
@@ -280,7 +288,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(16, CatalogSchema.parserSchemaVersion)
+        assertEquals(17, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(

@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.web
 import com.darkaxt.dualdex.catalog.CatalogRepository
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
+import com.darkaxt.dualdex.catalog.catalogWriteProgress
 import com.darkaxt.dualdex.knowledge.KnowledgeRepository
 import com.darkaxt.dualdex.battle.BattleCatalogContext
 import com.darkaxt.dualdex.battle.liveAreaMemoryLayout
@@ -762,13 +763,7 @@ class ProductionCompanionRuntime(
         catalogRepository?.write(
             progress.catalog,
             source,
-            CatalogWriteProgress(
-                phase = progress.phase.name,
-                completedUnits = progress.completedUnits,
-                totalUnits = progress.totalUnits,
-                complete = progress.completedUnits == progress.totalUnits,
-                changedSections = changedCatalogSections(progress.phase.name),
-            ),
+            catalogWriteProgress(progress),
         )
     }
 
@@ -796,23 +791,6 @@ class ProductionCompanionRuntime(
         } finally {
             catalogPublicationInProgress = false
         }
-    }
-
-    private fun changedCatalogSections(phase: String): Set<String> = when (phase) {
-        "ESSENTIAL" -> com.darkaxt.dualdex.catalog.CatalogSchema.requiredSections
-        "SPECIES_MEDIA" -> setOf("species")
-        "RELATIONSHIPS" -> setOf("species", "encounters", "runtime_metadata")
-        "EXTENDED" -> setOf(
-            "species",
-            "moves",
-            "abilities",
-            "capture_balls",
-            "learnset_rulesets",
-            "capabilities",
-            "diagnostics",
-        )
-        "COMPLETE" -> emptySet()
-        else -> com.darkaxt.dualdex.catalog.CatalogSchema.requiredSections
     }
 
     private fun requireInt(values: Map<String, String?>, key: String): Int =

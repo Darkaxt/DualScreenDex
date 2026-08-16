@@ -1,5 +1,7 @@
 package com.darkaxt.dualdex.catalog
 
+import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
+import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 
 enum class CatalogSourceKind { DIRECT, ARCHIVE }
@@ -51,6 +53,21 @@ data class CatalogWriteProgress(
         fun complete(totalUnits: Int = 5) = CatalogWriteProgress("COMPLETE", totalUnits, totalUnits, complete = true)
     }
 }
+
+fun catalogWriteProgress(progress: CatalogMaterializationProgress): CatalogWriteProgress = CatalogWriteProgress(
+    phase = progress.phase.name,
+    completedUnits = progress.completedUnits,
+    totalUnits = progress.totalUnits,
+    complete = progress.completedUnits == progress.totalUnits,
+    changedSections = when (progress.phase) {
+        CatalogMaterializationPhase.ESSENTIAL -> CatalogSchema.requiredSections
+        CatalogMaterializationPhase.SPECIES_MEDIA -> setOf("species")
+        CatalogMaterializationPhase.RELATIONSHIPS -> setOf("species", "encounters", "runtime_metadata")
+        // EXTENDED is the final coherent snapshot; COMPLETE only commits its metadata.
+        CatalogMaterializationPhase.EXTENDED -> CatalogSchema.requiredSections
+        CatalogMaterializationPhase.COMPLETE -> emptySet()
+    },
+)
 
 class CatalogWriter(
     private val database: CatalogDatabase,

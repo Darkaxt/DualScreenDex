@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: New signed tag, such as v1.1.0-rc.11 or v1.1.0
+        description: New signed tag, such as v1.1.0-rc.12 or v1.1.0
         required: true
         type: string
 
@@ -355,7 +355,7 @@ jobs:
           cp docs/reports/2026-08-14-first50-evolution-completeness-raw.json "$ASSETS/dualdex-evolution-first50-release-gate.json"
           cp docs/reports/2026-08-14-first50-evolution-completeness.md "$ASSETS/dualdex-evolution-first50-release-gate.md"
           cp docs/reports/arm7-first50-compatibility-survey.md "$ASSETS/dualdex-arm7-first50-compatibility.md"
-          cp release/RELEASE_NOTES_1.1.0-rc.11.md "$ASSETS/RELEASE_NOTES.md"
+          cp release/RELEASE_NOTES_1.1.0-rc.12.md "$ASSETS/RELEASE_NOTES.md"
 
           apk_sha256="$(sha256sum "$APK" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')"
           jq -n \
