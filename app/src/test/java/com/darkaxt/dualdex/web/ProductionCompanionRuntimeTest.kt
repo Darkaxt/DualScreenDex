@@ -23,6 +23,7 @@ import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.battle.Gen3LiveBattleState
 import com.darkaxt.dualdex.battle.Gen3LiveBattleUiState
 import com.darkaxt.dualdex.battle.Gen3LiveGameSnapshot
+import com.darkaxt.dualdex.battle.Gen3GameClock
 import com.darkaxt.dualdex.battle.Gen3LiveSection
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
@@ -32,6 +33,9 @@ import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
+import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
+import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
@@ -65,6 +69,44 @@ import com.darkaxt.dualdex.battle.ResolvedBattleLayout
 import com.darkaxt.dualdex.battle.TargetMode
 
 class ProductionCompanionRuntimeTest {
+    @Test
+    fun projectsOnlyCatalogValidatedClockPhasesIntoCompanionState() {
+        val hash = "e".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "clock.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                runtimeMetadata = CatalogRuntimeMetadata(
+                    gen3RuntimeMemoryLayout = CatalogGen3RuntimeMemoryLayout(
+                        mainAddress = 0x03001574,
+                        inBattleAddress = 0x030019AD,
+                        inBattleMask = 2,
+                        saveBlock1MapGroupOffset = 4,
+                        saveBlock1MapNumberOffset = 5,
+                        liveClockAddress = 0x030039E8,
+                        liveClockSchedule = CatalogGameClockSchedule(6, 21),
+                    ),
+                ),
+            ),
+        )
+
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                hash,
+                Gen3LiveSection.unavailable("trainer omitted"),
+                Gen3LiveSection.available(emptyList()),
+                Gen3LiveSection.available(Gen3GameClock(21, 0)),
+            ),
+        )
+
+        assertEquals("NIGHT", runtime.stateView().gameTime?.phase)
+        assertEquals(0.0, requireNotNull(runtime.stateView().gameTime?.phaseProgress), 0.0)
+        runtime.close()
+    }
+
     @Test
     fun provenWildBattleOpensUsableRarityOnceWithoutLaterTabOverrides() {
         val runtime = ProductionCompanionRuntime()
@@ -1487,6 +1529,7 @@ class ProductionCompanionRuntimeTest {
         romIdentity: String,
         trainer: Gen3LiveSection<TrainerSnapshot>,
         party: Gen3LiveSection<List<OwnedIndividual>>,
+        clock: Gen3LiveSection<Gen3GameClock> = Gen3LiveSection.unavailable("clock omitted"),
     ) = Gen3LiveGameSnapshot(
         romIdentity = romIdentity,
         trainer = trainer,
@@ -1499,6 +1542,7 @@ class ProductionCompanionRuntimeTest {
         battleUi = Gen3LiveSection.available(
             Gen3LiveBattleUiState(null, com.darkaxt.dualdex.battle.BattleEncounterKind.UNKNOWN),
         ),
+        clock = clock,
     )
 
     private fun saveSpecies(id: Int) = SpeciesRecord(

@@ -4,6 +4,8 @@ import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.PartyMemberDetails
 import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
+import com.enrpau.dualscreendex.companion.model.GameClock
+import com.enrpau.dualscreendex.companion.model.GameClockPhase
 import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.LiveMapPosition
@@ -39,6 +41,19 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ApiViewBuilderTest {
+    @Test
+    fun exposesNormalizedGameClockPhaseWithoutReinterpretingIt() {
+        val state = ApiViewBuilder.state(
+            AppSnapshot(gameTime = GameClock(21, 0, GameClockPhase.NIGHT, 0.0)),
+            catalog = null,
+        )
+
+        assertEquals(21, state.gameTime?.hours)
+        assertEquals(0, state.gameTime?.minutes)
+        assertEquals("NIGHT", state.gameTime?.phase)
+        assertEquals(0.0, requireNotNull(state.gameTime?.phaseProgress), 0.0)
+    }
+
     @Test
     fun presentsTrainerAndPartyThroughCatalogLabelsAndNormalizedAssets() {
         val species = com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(

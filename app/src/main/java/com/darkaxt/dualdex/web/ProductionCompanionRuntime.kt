@@ -25,7 +25,7 @@ import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.api.StateView
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
-import com.enrpau.dualscreendex.companion.model.GameClock
+import com.enrpau.dualscreendex.companion.model.projectGameClock
 import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
 import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.BattleEncounterKind as CompanionBattleEncounterKind
@@ -604,10 +604,18 @@ class ProductionCompanionRuntime(
     }
 
     private fun publishSelectedPlayerSnapshot() {
+        val schedule = catalog?.runtimeMetadata?.gen3RuntimeMemoryLayout?.liveClockSchedule
         val gameTime = liveGameState?.clock
             ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
             ?.value
-            ?.let { GameClock(it.hours, it.minutes) }
+            ?.let {
+                projectGameClock(
+                    it.hours,
+                    it.minutes,
+                    schedule?.dayStartHour,
+                    schedule?.nightStartHour,
+                )
+            }
         gateway.dispatch(CompanionAction.LiveGameStateChanged(selectedTrainer(), selectedParty(), gameTime))
     }
 

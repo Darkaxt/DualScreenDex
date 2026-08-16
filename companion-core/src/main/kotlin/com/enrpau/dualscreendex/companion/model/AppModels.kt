@@ -98,10 +98,19 @@ data class CatalogLoadingState(
 
 data class LiveMapPosition(val x: Int, val y: Int)
 
-data class GameClock(val hours: Int, val minutes: Int) {
+enum class GameClockPhase { DAY, NIGHT }
+
+data class GameClock(
+    val hours: Int,
+    val minutes: Int,
+    val phase: GameClockPhase? = null,
+    val phaseProgress: Double? = null,
+) {
     init {
         require(hours in 0..23)
         require(minutes in 0..59)
+        require((phase == null) == (phaseProgress == null))
+        require(phaseProgress == null || phaseProgress in 0.0..1.0)
     }
 }
 
