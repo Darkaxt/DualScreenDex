@@ -300,6 +300,17 @@ data class CatalogGen3BattleUiAbi(
     }
 }
 
+data class CatalogGameClockSchedule(
+    val dayStartHour: Int,
+    val nightStartHour: Int,
+) {
+    init {
+        require(dayStartHour in 0..23)
+        require(nightStartHour in 0..23)
+        require(dayStartHour != nightStartHour)
+    }
+}
+
 data class CatalogGen3RuntimeMemoryLayout(
     val mainAddress: Long,
     val inBattleAddress: Long,
@@ -309,6 +320,7 @@ data class CatalogGen3RuntimeMemoryLayout(
     val saveBlock1PositionXOffset: Int = 0,
     val saveBlock1PositionYOffset: Int = 2,
     val liveClockAddress: Long? = null,
+    val liveClockSchedule: CatalogGameClockSchedule? = null,
     val multiUsePlayerCursorAddress: Long? = null,
     val multiUsePlayerCursorEvidence: RuntimeMemoryEvidence? = null,
     val playerPartyCountAddress: Long? = null,
@@ -329,6 +341,9 @@ data class CatalogGen3RuntimeMemoryLayout(
         }
         require(liveClockAddress == null || liveClockAddress in 0x03000000L..0x03007FFAL) {
             "live clock window must fit in IWRAM"
+        }
+        require(liveClockSchedule == null || liveClockAddress != null) {
+            "live clock schedule requires a validated clock address"
         }
         require((playerPartyCountAddress == null) == (playerPartyAddress == null)) {
             "live party count and record addresses must be present together"

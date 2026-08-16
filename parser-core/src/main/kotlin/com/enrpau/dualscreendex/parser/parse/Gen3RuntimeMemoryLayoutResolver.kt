@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
+import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 
@@ -27,7 +28,8 @@ object Gen3RuntimeMemoryLayoutResolver {
             inBattleMask = battleField.mask,
             saveBlock1MapGroupOffset = SAVE_MAP_GROUP_OFFSET,
             saveBlock1MapNumberOffset = SAVE_MAP_NUMBER_OFFSET,
-            liveClockAddress = liveClock,
+            liveClockAddress = liveClock?.address,
+            liveClockSchedule = liveClock?.schedule,
             multiUsePlayerCursorAddress = null,
             multiUsePlayerCursorEvidence = null,
             playerPartyCountAddress = liveParty?.countAddress,
@@ -49,7 +51,7 @@ object Gen3RuntimeMemoryLayoutResolver {
      * The address comes from ROM literal pools. A candidate must expose the hour/minute/second
      * byte fields and at least two complete night-range predicates (`hour <= 5 || hour >= 21`).
      */
-    private fun resolveLiveClock(rom: RomImage, references: Map<Long, Int>): Long? {
+    private fun resolveLiveClock(rom: RomImage, references: Map<Long, Int>): ResolvedLiveClock? {
         val eligible = references.keys.filterTo(linkedSetOf()) {
             it in IWRAM_START..IWRAM_END - CLOCK_BYTES + 1 && it and 3L == 0L
         }
@@ -83,10 +85,18 @@ object Gen3RuntimeMemoryLayoutResolver {
             }
             offset += 2
         }
-        return evidence.filterValues {
+        val address = evidence.filterValues {
             it.byteFields.containsAll(setOf(CLOCK_HOUR_OFFSET, CLOCK_MINUTE_OFFSET, CLOCK_SECOND_OFFSET)) &&
                 it.nightPredicateSites.size >= MIN_NIGHT_RANGE_PREDICATES
         }.keys.singleOrNull()
+            ?: return null
+        return ResolvedLiveClock(
+            address = address,
+            schedule = CatalogGameClockSchedule(
+                dayStartHour = EARLY_NIGHT_LAST_HOUR + 1,
+                nightStartHour = LATE_NIGHT_FIRST_HOUR,
+            ),
+        )
     }
 
     private fun hasNightRangePredicate(rom: RomImage, hourLoadOffset: Int, hourRegister: Int): Boolean {
@@ -116,6 +126,11 @@ object Gen3RuntimeMemoryLayoutResolver {
         val literalOffset = ((instructionOffset + 4) and -4) + (raw and 0xFF) * 4
         return if (literalOffset <= rom.size - 4) rom.u32le(literalOffset) else null
     }
+
+    private data class ResolvedLiveClock(
+        val address: Long,
+        val schedule: CatalogGameClockSchedule,
+    )
 
     private fun sourceDefinedBattleField(
         references: Map<Long, Int>,

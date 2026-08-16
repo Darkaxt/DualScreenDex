@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
+import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3PartyAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BattleUiAbi
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -128,6 +129,7 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                 saveBlock1MapGroupOffset = 4,
                 saveBlock1MapNumberOffset = 5,
                 liveClockAddress = 0x030039E8,
+                liveClockSchedule = CatalogGameClockSchedule(6, 21),
                 multiUsePlayerCursorAddress = null,
                 multiUsePlayerCursorEvidence = null,
                 playerPartyCountAddress = 0x0201D9C5,

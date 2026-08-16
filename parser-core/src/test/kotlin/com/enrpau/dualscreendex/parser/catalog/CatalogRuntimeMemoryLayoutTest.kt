@@ -32,6 +32,8 @@ class CatalogRuntimeMemoryLayoutTest {
             saveRuntimeAbi = saveAbi,
             partyAbi = partyAbi,
             battleUiAbi = battleUiAbi,
+            liveClockAddress = 0x030039E8,
+            liveClockSchedule = CatalogGameClockSchedule(dayStartHour = 6, nightStartHour = 21),
         )
 
         assertEquals(0x03005D8CL, layout.saveBlock1PointerAddress)
@@ -39,6 +41,7 @@ class CatalogRuntimeMemoryLayoutTest {
         assertEquals(saveAbi, layout.saveRuntimeAbi)
         assertEquals(partyAbi, layout.partyAbi)
         assertEquals(battleUiAbi, layout.battleUiAbi)
+        assertEquals(CatalogGameClockSchedule(6, 21), layout.liveClockSchedule)
     }
 
     @Test
@@ -53,6 +56,20 @@ class CatalogRuntimeMemoryLayoutTest {
                 saveBlock1PointerAddress = 0x03005D8C,
                 saveBlock2PointerAddress = null,
                 saveRuntimeAbi = saveAbi(),
+            )
+        }
+    }
+
+    @Test
+    fun `clock schedule requires a validated live clock address`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            CatalogGen3RuntimeMemoryLayout(
+                mainAddress = 0x030022C0,
+                inBattleAddress = 0x03002748,
+                inBattleMask = 0x02,
+                saveBlock1MapGroupOffset = 4,
+                saveBlock1MapNumberOffset = 5,
+                liveClockSchedule = CatalogGameClockSchedule(6, 21),
             )
         }
     }

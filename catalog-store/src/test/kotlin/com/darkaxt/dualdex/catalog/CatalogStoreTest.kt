@@ -9,6 +9,7 @@ import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
+import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocketAbi
@@ -114,7 +115,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(17, CatalogSchema.parserSchemaVersion)
+        assertEquals(18, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps, reopened?.catalog?.localMaps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -288,7 +289,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(17, CatalogSchema.parserSchemaVersion)
+        assertEquals(18, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -519,6 +520,8 @@ class CatalogStoreTest {
                     inBattleMask = 0x02,
                     saveBlock1MapGroupOffset = 4,
                     saveBlock1MapNumberOffset = 5,
+                    liveClockAddress = 0x030039E8,
+                    liveClockSchedule = CatalogGameClockSchedule(6, 21),
                     multiUsePlayerCursorAddress = 0x03002378,
                     multiUsePlayerCursorEvidence = RuntimeMemoryEvidence.SOURCE_PROVEN_UNTESTED,
                     playerPartyCountAddress = 0x02001001,
