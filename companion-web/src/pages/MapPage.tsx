@@ -1,6 +1,7 @@
 import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DexIcon, MapIcon, SettingsIcon } from '../components';
+import { GameClockIndicator } from '../GameClockIndicator';
 import { anchoredZoom, containFit, GestureTracker, type MapViewport } from '../mapEngine';
 import type { Catalog, State, WorldMapLocation, WorldMapRegion } from '../models';
 
@@ -181,7 +182,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
         <strong>{activeMode === 'LOCAL' ? displayName : selectedLocation?.displayName ?? state.currentAreaName ?? 'Atlas'}</strong>
         <span>{activeMode === 'LOCAL' || selectedIsCurrent ? 'CURRENT' : selectedLocation ? 'MAP POINT' : 'ATLAS'}</span>
       </div>
-      {state.gameTime && <time class="header-game-time map-game-time" dateTime={`${String(state.gameTime.hours).padStart(2, '0')}:${String(state.gameTime.minutes).padStart(2, '0')}`}>{String(state.gameTime.hours).padStart(2, '0')}:{String(state.gameTime.minutes).padStart(2, '0')}</time>}
+      {state.gameTime && <GameClockIndicator clock={state.gameTime} />}
       <div class="header-actions map-header-actions">
         <button class="header-action map-dex-action" aria-label="Open Pokédex" onClick={onOpenPokedex}><DexIcon /></button>
         <button class="header-action settings-action" aria-label="Settings" onClick={onOpenSettings}><SettingsIcon /></button>

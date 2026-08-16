@@ -38,6 +38,7 @@ const state: State = {
   settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
   speciesState: {}, observedMoves: {}, battle: null, catalogReady: true, catalogName: 'fixture.gba', error: null,
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
+  gameTime: { hours: 16, minutes: 48, phase: 'DAY', phaseProgress: 0.72 },
 };
 
 describe('normalized world map presentation', () => {
@@ -65,6 +66,8 @@ describe('normalized world map presentation', () => {
     expect(buttons[1].querySelector('svg')?.dataset.semanticIcon).toBe('settings');
     expect(container.querySelector('[data-map-navigation-row]')).toBeNull();
     expect(container.querySelector('.map-plane')?.classList.contains('map-framed-plane')).toBe(true);
+    expect(container.querySelectorAll('.header-game-clock')).toHaveLength(1);
+    expect(container.querySelector('[data-semantic-icon="sun"]')).toBeTruthy();
 
     fireEvent.click(buttons[1]);
     expect(openSettings).toHaveBeenCalledOnce();

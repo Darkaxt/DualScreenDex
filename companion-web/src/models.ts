@@ -180,7 +180,7 @@ export interface State {
   currentAreaBaseId?: number | null;
   currentAreaName?: string | null;
   currentMapPosition?: { x: number; y: number } | null;
-  gameTime?: { hours: number; minutes: number } | null;
+  gameTime?: GameTime | null;
   currentAreaSpeciesIds?: number[];
   revealedAreaBaseIds?: number[];
   observedAreaBaseIdsBySpecies?: Record<number, number[]>;
@@ -207,6 +207,13 @@ export interface State {
   loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number };
   retroArch?: RetroArchState;
   saveRam?: SaveRamState;
+}
+
+export interface GameTime {
+  hours: number;
+  minutes: number;
+  phase?: 'DAY' | 'NIGHT' | null;
+  phaseProgress?: number | null;
 }
 
 export interface TrainerView {

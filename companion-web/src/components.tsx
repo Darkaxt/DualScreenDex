@@ -1,4 +1,5 @@
-import type { Catalog, KnowledgeMode, SpeciesState, TypeInfo } from './models';
+import { GameClockIndicator } from './GameClockIndicator';
+import type { Catalog, GameTime, KnowledgeMode, SpeciesState, TypeInfo } from './models';
 
 export type SpeciesIdentityKnowledge = 'unknown' | 'seen' | 'captured';
 
@@ -102,13 +103,13 @@ function PartyIcon() {
   </svg>;
 }
 
-export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty }: { title: string; kicker?: string; gameTime?: { hours: number; minutes: number } | null; onBack?: () => void; onSettings?: () => void; onMap?: () => void; onTrainer?: () => void; onParty?: () => void }) {
+export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty }: { title: string; kicker?: string; gameTime?: GameTime | null; onBack?: () => void; onSettings?: () => void; onMap?: () => void; onTrainer?: () => void; onParty?: () => void }) {
   const hasActions = Boolean(onTrainer || onParty || onMap || onSettings);
   return (
     <header class={`app-header ${onBack ? '' : 'app-header-root'}`}>
       {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
       <div class="header-title"><strong>{title}</strong>{kicker && <small>{kicker}</small>}</div>
-      {gameTime && <time class="header-game-time" dateTime={`${padClock(gameTime.hours)}:${padClock(gameTime.minutes)}`}>{padClock(gameTime.hours)}:{padClock(gameTime.minutes)}</time>}
+      {gameTime && <GameClockIndicator clock={gameTime} />}
       {hasActions ? <div class="header-actions">
         {onTrainer && <button class="header-action trainer-action" onClick={onTrainer} aria-label="Trainer Card"><TrainerIcon /></button>}
         {onParty && <button class="header-action party-action" onClick={onParty} aria-label="Party"><PartyIcon /></button>}
@@ -117,10 +118,6 @@ export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onT
       </div> : <span class="header-spacer" />}
     </header>
   );
-}
-
-function padClock(value: number): string {
-  return String(value).padStart(2, '0');
 }
 
 export function Segmented({ values, active, onSelect, label, disabledValues = [] }: { values: string[]; active: string; onSelect: (value: string) => void; label: string; disabledValues?: string[] }) {
