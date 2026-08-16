@@ -9,6 +9,8 @@ import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.EOFException
 import java.io.InputStream
+import java.io.OutputStream
+import java.io.OutputStreamWriter
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -244,11 +246,16 @@ class AndroidLoopbackServer(
     }
 
     private fun jsonResponse(value: Any, status: Int = 200): Response = Response(
-        status,
-        "application/json; charset=utf-8",
-        gson.toJson(value).toByteArray(Charsets.UTF_8),
-        mapOf("Cache-Control" to "no-store"),
-    )
+        status = status,
+        contentType = "application/json; charset=utf-8",
+        contentLength = null,
+        headers = mapOf("Cache-Control" to "no-store"),
+    ) { output ->
+        OutputStreamWriter(output, Charsets.UTF_8).also { writer ->
+            gson.toJson(value, writer)
+            writer.flush()
+        }
+    }
 
     private fun textResponse(value: String, status: Int): Response =
         Response(status, "text/plain; charset=utf-8", value.toByteArray(Charsets.UTF_8))
@@ -294,7 +301,9 @@ class AndroidLoopbackServer(
             val sizeLine = readLine(input) ?: throw EOFException("missing chunk size")
             val size = sizeLine.substringBefore(';').trim().toLong(16)
             if (size == 0L) {
-                while (!readLine(input).isNullOrEmpty()) Unit
+                while (true) {
+                    if (readLine(input).isNullOrEmpty()) break
+                }
                 return output.toByteArray()
             }
             require(output.size().toLong() + size <= MAX_BODY_BYTES) { "request body is too large" }
@@ -329,13 +338,15 @@ class AndroidLoopbackServer(
         }
         output.write("HTTP/1.1 ${response.status} $reason\r\n".toByteArray(Charsets.US_ASCII))
         output.write("Content-Type: ${response.contentType}\r\n".toByteArray(Charsets.US_ASCII))
-        output.write("Content-Length: ${response.body.size}\r\n".toByteArray(Charsets.US_ASCII))
+        response.contentLength?.let { length ->
+            output.write("Content-Length: $length\r\n".toByteArray(Charsets.US_ASCII))
+        }
         output.write("Connection: close\r\n".toByteArray(Charsets.US_ASCII))
         response.headers.forEach { (name, value) ->
             output.write("$name: $value\r\n".toByteArray(Charsets.US_ASCII))
         }
         output.write("\r\n".toByteArray(Charsets.US_ASCII))
-        output.write(response.body)
+        response.writeBody(output)
         output.flush()
     }
 
@@ -362,12 +373,20 @@ class AndroidLoopbackServer(
         val body: ByteArray,
     )
 
-    private data class Response(
+    private class Response(
         val status: Int,
         val contentType: String,
-        val body: ByteArray,
+        val contentLength: Long?,
         val headers: Map<String, String> = emptyMap(),
-    )
+        val writeBody: (OutputStream) -> Unit,
+    ) {
+        constructor(
+            status: Int,
+            contentType: String,
+            body: ByteArray,
+            headers: Map<String, String> = emptyMap(),
+        ) : this(status, contentType, body.size.toLong(), headers, { output -> output.write(body) })
+    }
 
     companion object {
         const val LOOPBACK_HOST = "127.0.0.1"

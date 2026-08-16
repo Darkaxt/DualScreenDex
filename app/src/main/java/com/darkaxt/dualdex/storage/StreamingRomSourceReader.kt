@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.storage
 import com.darkaxt.dualdex.retroarch.RomPlatform
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.model.Platform
 import java.io.BufferedInputStream
 import java.io.File
@@ -28,8 +29,28 @@ internal object StreamingRomSourceReader {
                 readRom(source.name, archiveEntry = null, input)
             }
             "zip" -> readZip(source)
-            else -> error("supported sources are .gb, .gbc, .gba, and .zip")
+            "7z" -> readSevenZip(source)
+            else -> error("supported sources are .gb, .gbc, .gba, .zip, and .7z")
         }
+    }
+
+    private fun readSevenZip(source: File): StreamingRomSourceIdentity {
+        val inspected = RomSourceLoader.inspect(source.toPath())
+        val entryName = inspected.displayName.substringAfter('!', "")
+        require(entryName.isNotBlank()) { "archive contains no supported ROM entry" }
+        val platform = when (inspected.platform) {
+            Platform.GB -> RomPlatform.GB
+            Platform.GBC -> RomPlatform.GBC
+            Platform.GBA -> RomPlatform.GBA
+            Platform.UNKNOWN -> error("ROM header platform was not recognized")
+        }
+        return StreamingRomSourceIdentity(
+            displayName = inspected.displayName,
+            archiveEntry = entryName,
+            platform = platform,
+            crc32 = inspected.crc32,
+            sha256 = inspected.sha256,
+        )
     }
 
     private fun readZip(source: File): StreamingRomSourceIdentity {

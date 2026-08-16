@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import java.net.URI
 import java.nio.file.Files
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -79,6 +80,28 @@ class DirectRomLibraryIndexerTest {
         assertEquals(RomPlatform.GBA, identity.platform)
         assertEquals("1F1C08FB", identity.crc32)
         assertEquals("a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af", identity.sha256)
+    }
+
+    @Test
+    fun `indexes real Unbound ZIP and 7z as the same SHA authoritative ROM`() {
+        val zip = configuredFile("DUALDEX_UNBOUND_ZIP")
+        val sevenZip = configuredFile("DUALDEX_UNBOUND_7Z")
+
+        val result = DirectRomLibraryIndexer().index(listOf(zip, sevenZip))
+
+        assertEquals(2, result.entries.size)
+        assertTrue(result.warnings.isEmpty())
+        assertEquals(setOf("zip", "7z"), result.entries.map { File(URI(it.sourceId)).extension }.toSet())
+        assertEquals(setOf("7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7"), result.entries.map { it.sha256 }.toSet())
+        assertEquals(setOf("4B3D4957"), result.entries.map { it.crc32 }.toSet())
+    }
+
+    private fun configuredFile(name: String): File {
+        val configured = System.getenv(name)
+        assumeTrue("set $name to run this real-ROM control", !configured.isNullOrBlank())
+        return File(requireNotNull(configured)).also { source ->
+            assumeTrue("configured ROM archive does not exist: $source", source.isFile)
+        }
     }
 
     private fun temporaryRoot(): File = Files.createTempDirectory("dualdex-direct-rom-").toFile().also(roots::add)

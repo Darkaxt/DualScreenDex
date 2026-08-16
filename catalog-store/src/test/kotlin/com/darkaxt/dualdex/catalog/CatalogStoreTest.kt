@@ -55,6 +55,7 @@ import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import java.nio.file.Files
 import java.nio.file.Path
@@ -72,6 +73,57 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class CatalogStoreTest {
+    @Test
+    fun `Unbound completes the production incremental cache round trip`() {
+        val configured = System.getenv("DUALDEX_UNBOUND_ROM")
+        assumeTrue("set DUALDEX_UNBOUND_ROM to run this real-ROM control", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomSourceLoader.load(path).rom
+        assertEquals("7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7", rom.sha256)
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val source = CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "POKEMON FIRE")
+
+        val catalog = requireNotNull(
+            CatalogParser.parse(rom) { progress ->
+                cache.write(progress.catalog, source, catalogWriteProgress(progress))
+            }.catalog,
+        )
+        val stored = requireNotNull(cache.readComplete(catalog.romSha256))
+
+        assertEquals(catalog.romSha256, stored.catalog.romSha256)
+        assertEquals(CatalogSchema.requiredSections, stored.committedSections)
+        assertTrue(cache.fileFor(catalog.romSha256).length() > 0)
+    }
+
+    @Test
+    fun `large binary catalog section survives streamed gzip json persistence`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val bytes = ByteArray(12 * 1024 * 1024) { index -> (index * 31 + index / 257).toByte() }.also { png ->
+            byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10).copyInto(png)
+        }
+        val map = LocalMap("local/0001", "Large", 1, 16, 16, 1, 1, "local/0001/map")
+        val catalog = completeCatalog("6".repeat(64)).copy(
+            localMaps = LocalMapCatalog(listOf(map), mapOf(map.imageAssetKey to PngMapAsset(bytes))),
+        )
+
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Large.gba", 32 * 1024 * 1024, "LARGE"),
+            CatalogWriteProgress.complete(),
+        )
+        val reopened = requireNotNull(cache.readComplete(catalog.romSha256))
+
+        assertTrue(reopened.catalog.localMaps.assets.getValue(map.imageAssetKey).bytes.contentEquals(bytes))
+        assertEquals("gzip+json", JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.query(
+                "SELECT encoding FROM catalog_sections WHERE name = 'local_maps'",
+            ) { row -> row.string("encoding") }.single()
+        })
+    }
+
     @Test
     fun `normalized world and local maps survive a complete catalog round trip`() {
         val root = newRoot()

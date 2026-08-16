@@ -79,8 +79,6 @@ class CatalogWriter(
         require(catalog.romSha256.matches(Regex("[0-9a-fA-F]{64}"))) { "catalog SHA-256 is invalid" }
         require(catalog.romCrc32.matches(Regex("[0-9a-fA-F]{8}"))) { "catalog CRC32 is invalid" }
         val now = clock()
-        val sections = codec.encode(catalog, progress.changedSections)
-
         CatalogMigration.prepare(database)
         database.transaction {
             database.execute(
@@ -110,7 +108,8 @@ class CatalogWriter(
                     now,
                 ),
             )
-            sections.forEach { (name, payload) ->
+            progress.changedSections.forEach { name ->
+                val payload = codec.encodeSection(catalog, name)
                 database.execute(
                     """
                     INSERT OR REPLACE INTO catalog_sections

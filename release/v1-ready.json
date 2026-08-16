@@ -4,7 +4,7 @@
   "applicationId": "com.darkaxt.dualdex",
   "stage": 7,
   "status": "ready-for-github-signing",
-  "verifiedDate": "2026-08-16",
+  "verifiedDate": "2026-08-17",
   "openV1LedgerItems": 0,
   "baseFirst50Selected": 50,
   "mapFirst50Available": 26,
@@ -50,5 +50,8 @@
   "v11Rc12MapCacheRebuild": true,
   "v11Rc13PermanentAtlasMarkers": true,
   "v11Rc13SourceAwareClockOrbit": true,
+  "v11Rc14ZipSevenZipParity": true,
+  "v11Rc14StreamingCatalogCache": true,
+  "v11Rc14BoundedRomMemory": true,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

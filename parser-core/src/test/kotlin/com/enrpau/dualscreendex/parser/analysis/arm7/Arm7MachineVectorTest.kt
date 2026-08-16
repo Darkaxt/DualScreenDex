@@ -1,10 +1,20 @@
 package com.enrpau.dualscreendex.parser.analysis.arm7
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Arm7MachineVectorTest {
+    @Test
+    fun `memory reuses an immutable ROM image without cloning the full ROM`() {
+        val image = com.enrpau.dualscreendex.parser.io.RomImage(ByteArray(32 * 1024 * 1024))
+
+        val memory = Arm7Memory(image)
+
+        assertSame(image, memory.romImage)
+    }
+
     @Test
     fun executesUpstreamArmArithmeticAndFlagVectors() {
         val machine = armMachine(0xE3A0002A, 0xE0802001, 0xE0500001)

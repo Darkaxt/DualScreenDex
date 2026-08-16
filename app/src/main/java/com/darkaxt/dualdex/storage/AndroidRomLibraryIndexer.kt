@@ -5,7 +5,6 @@ import android.net.Uri
 import com.darkaxt.dualdex.retroarch.RomIndexEntry
 import com.darkaxt.dualdex.retroarch.RomPlatform
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
-import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.model.Platform
 
 data class RomLibraryIndexResult(
@@ -23,8 +22,7 @@ class AndroidRomLibraryIndexer(
             .filter { it.name.substringAfterLast('.', "").lowercase() in SUPPORTED_EXTENSIONS }
             .forEach { document ->
                 runCatching {
-                    val loaded = resolver.openInputStream(document.uri)?.use { RomSourceLoader.load(document.name, it) }
-                        ?: error("document provider did not open ${document.name}")
+                    val loaded = AndroidRomSourceLoader.load(resolver, document.uri, document.name)
                     val header = RomHeaderReader.read(loaded.rom)
                     val platform = when (header.platform) {
                         Platform.GB -> RomPlatform.GB
@@ -48,6 +46,6 @@ class AndroidRomLibraryIndexer(
     }
 
     private companion object {
-        val SUPPORTED_EXTENSIONS = setOf("gb", "gbc", "gba", "zip")
+        val SUPPORTED_EXTENSIONS = setOf("gb", "gbc", "gba", "zip", "7z")
     }
 }

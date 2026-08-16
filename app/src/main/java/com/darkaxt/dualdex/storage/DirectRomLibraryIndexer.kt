@@ -55,7 +55,7 @@ class DirectRomLibraryIndexer {
             name.lowercase() in PROTECTED_ANDROID_DIRECTORIES
 
     private companion object {
-        val SUPPORTED_EXTENSIONS = setOf("gb", "gbc", "gba", "zip")
+        val SUPPORTED_EXTENSIONS = setOf("gb", "gbc", "gba", "zip", "7z")
         val PROTECTED_ANDROID_DIRECTORIES = setOf("data", "obb")
     }
 }
