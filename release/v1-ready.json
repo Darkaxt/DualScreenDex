@@ -48,5 +48,7 @@
   "v11Rc11RootHeaderAlignment": true,
   "v11Rc12CompleteExtendedCatalogSnapshot": true,
   "v11Rc12MapCacheRebuild": true,
+  "v11Rc13PermanentAtlasMarkers": true,
+  "v11Rc13SourceAwareClockOrbit": true,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

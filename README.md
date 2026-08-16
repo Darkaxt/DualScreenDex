@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.12` adds capability-driven Trainer Card and Party presentation, module-aware loading progress, the integrated Atlas/local-map experience, and a source-derived live game clock for validated layouts. RC12 preserves RC11's clock and header repairs while fixing incremental SQLite materialization so the final Atlas and local-map catalogs reopen instead of remaining at their initial empty state. Unsupported features disappear instead of exposing dead controls. Display recovery remains a later stage.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.13` adds capability-driven Trainer Card and Party presentation, module-aware loading progress, the integrated Atlas/local-map experience, and a source-derived live game clock for validated layouts. RC13 keeps Atlas nodes permanently integrated under Organic/Discovered visibility rules and adds a larger clock with one source-authorized sun-or-moon phase indicator. Unsupported features disappear instead of exposing dead controls. Display recovery remains a later stage.
 
 ## Thor-first UI direction
 
@@ -222,9 +222,9 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Thor-first companion UI and settings | Implemented in the packaged Android companion |
 | Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses; identical SHA-256 copies resolve deterministically |
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
-| Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC12 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
+| Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC13 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | `v1.1.0-rc.12` is prepared for the protected signing workflow with checksums and provenance. |
+| Signed candidate target | `v1.1.0-rc.13` is prepared for the protected signing workflow with checksums and provenance. |
 
 ## Parser development
 
