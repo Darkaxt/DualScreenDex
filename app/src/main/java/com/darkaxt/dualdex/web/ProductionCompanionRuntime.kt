@@ -116,6 +116,8 @@ class ProductionCompanionRuntime(
 
     fun load(name: String, input: InputStream): BootstrapView = load(RomSourceLoader.load(name, input))
 
+    fun load(name: String, source: ByteArray): BootstrapView = load(RomSourceLoader.load(name, source))
+
     fun load(source: LoadedRom): BootstrapView {
         load(source.displayName, source.rom)
         return bootstrap()

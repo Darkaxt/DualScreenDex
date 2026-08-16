@@ -65,6 +65,22 @@ object RomSourceLoader {
         }
     }
 
+    /** Consumes [source] so raw uploads do not allocate a second full-ROM byte array. */
+    fun load(name: String, source: ByteArray): LoadedRom {
+        val extension = name.substringAfterLast('.', "").lowercase()
+        if (extension in extensions) return LoadedRom(name, RomImage.consume(source))
+        return when (extension) {
+            "zip" -> loadZip(name, source.inputStream())
+            "7z" -> SevenZFile.builder()
+                .setSeekableByteChannel(SeekableInMemoryByteChannel(source))
+                .setDefaultName(name)
+                .setMaxMemoryLimitKiB(SEVEN_Z_MEMORY_LIMIT_KIB)
+                .get()
+                .use { sevenZip -> loadSevenZip(name, sevenZip) }
+            else -> error("supported sources are .gb, .gbc, .gba, .zip, and .7z")
+        }
+    }
+
     fun load(name: String, channel: SeekableByteChannel): LoadedRom {
         require(name.substringAfterLast('.', "").equals("7z", ignoreCase = true)) {
             "seekable archive loading is supported only for .7z sources"

@@ -19,6 +19,16 @@ class RomImageTest {
     }
 
     @Test
+    fun consumesExclusiveByteArrayWithoutAllocatingAnotherRomCopy() {
+        val source = byteArrayOf(0x12, 0x34, 0x56)
+
+        val rom = RomImage.consume(source)
+        source[0] = 0x21
+
+        assertEquals(0x21, rom.u8(0))
+    }
+
+    @Test
     fun convertsFixedGbAddressToRomOffset() {
         val rom = RomImage(ByteArray(0x20000))
 

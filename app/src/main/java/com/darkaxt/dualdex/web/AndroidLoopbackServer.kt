@@ -177,7 +177,7 @@ class AndroidLoopbackServer(
 
     private fun handleLoad(request: Request): Response {
         val name = request.query["name"] ?: error("upload name is required")
-        return jsonResponse(runtime.load(name, request.body.inputStream()))
+        return jsonResponse(runtime.load(name, request.body))
     }
 
     private fun spriteResponse(path: String, species: Boolean): Response {

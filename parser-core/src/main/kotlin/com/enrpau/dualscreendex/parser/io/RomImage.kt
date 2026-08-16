@@ -92,5 +92,11 @@ class RomImage private constructor(source: ByteArray, copySource: Boolean) {
     companion object {
         /** Consumes but does not close [input], leaving stream ownership with the caller. */
         fun from(input: InputStream): RomImage = RomImage(input.readBytes(), copySource = false)
+
+        /**
+         * Takes exclusive ownership of [source] without copying it. The caller must never mutate
+         * the array after this call.
+         */
+        fun consume(source: ByteArray): RomImage = RomImage(source, copySource = false)
     }
 }

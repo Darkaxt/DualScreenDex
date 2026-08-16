@@ -15,6 +15,7 @@ RC14 fixes the Pokemon Unbound loading crash and treats ZIP and 7z as equal, sta
 - Cache writes encode and commit one changed section at a time; cache reopen fetches and expands one section at a time while preserving the existing `gzip+json` schema.
 - ARM7/THUMB helper proofs reuse the parser's immutable ROM instead of cloning a full ROM repeatedly.
 - Catalog JSON responses stream directly to the loopback connection instead of staging a second complete catalog representation.
+- Raw browser uploads transfer their request buffer directly into the immutable ROM image instead of allocating a second full-ROM byte array.
 
 ## Verification
 
