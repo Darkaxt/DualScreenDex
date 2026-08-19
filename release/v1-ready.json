@@ -4,7 +4,7 @@
   "applicationId": "com.darkaxt.dualdex",
   "stage": 7,
   "status": "ready-for-github-signing",
-  "verifiedDate": "2026-08-17",
+  "verifiedDate": "2026-08-20",
   "openV1LedgerItems": 0,
   "baseFirst50Selected": 50,
   "mapFirst50Available": 26,
@@ -35,6 +35,11 @@
   "v11Stage4PartyPresentation": true,
   "v11Stage4DynamicFeatureNavigation": true,
   "v11Stage4LocalMapConvergence": true,
+  "v11Stage5DisplayContinuityPolicy": true,
+  "v11Stage5DisplayLifecycleRecovery": true,
+  "v11Stage6OfficialEmeraldVertical": true,
+  "v11Stage6UnsupportedDescriptorFallback": true,
+  "v11Stage6OpponentMovePrivacy": true,
   "v11Rc4HotfixBoundedRomIndex": true,
   "v11Rc4HotfixBoundedAbilityCfg": true,
   "v11Rc7LoadingProgressAndAtlasChrome": true,
@@ -53,5 +58,7 @@
   "v11Rc14ZipSevenZipParity": true,
   "v11Rc14StreamingCatalogCache": true,
   "v11Rc14BoundedRomMemory": true,
+  "v11Rc15PlayerStateIntegrationGate": true,
+  "v11Rc15DisplayRecovery": true,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

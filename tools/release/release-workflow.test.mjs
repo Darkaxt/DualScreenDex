@@ -105,6 +105,7 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
     "dualdex-evolution-first50-release-gate.json",
     "dualdex-evolution-first50-release-gate.md",
     "dualdex-arm7-first50-compatibility.md",
+    "dualdex-v1.1-player-state-verification.md",
   ];
 
   for (const asset of requiredEvidence) {
@@ -131,6 +132,11 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Stage4PartyPresentation == true/);
   assert.match(workflow, /\.v11Stage4DynamicFeatureNavigation == true/);
   assert.match(workflow, /\.v11Stage4LocalMapConvergence == true/);
+  assert.match(workflow, /\.v11Stage5DisplayContinuityPolicy == true/);
+  assert.match(workflow, /\.v11Stage5DisplayLifecycleRecovery == true/);
+  assert.match(workflow, /\.v11Stage6OfficialEmeraldVertical == true/);
+  assert.match(workflow, /\.v11Stage6UnsupportedDescriptorFallback == true/);
+  assert.match(workflow, /\.v11Stage6OpponentMovePrivacy == true/);
   assert.match(workflow, /\.v11Rc4HotfixBoundedRomIndex == true/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });
