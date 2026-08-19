@@ -1,5 +1,25 @@
 package com.darkaxt.dualdex.battle
 
+data class Gen3BattleUiMemoryLayout(
+    val activeBattlerAddress: Long,
+    val actionCursorAddress: Long,
+    val moveCursorAddress: Long,
+) {
+    init {
+        listOf(activeBattlerAddress, actionCursorAddress, moveCursorAddress).forEach { address ->
+            require(address in 0x02000000L..0x0203FFFFL) { "battle UI address must be in EWRAM" }
+        }
+        require(actionCursorAddress <= 0x0203FFFCL) { "action cursor array must fit in EWRAM" }
+        require(moveCursorAddress <= 0x0203FFFCL) { "move cursor array must fit in EWRAM" }
+    }
+}
+
+data class Gen3BattleCommandState(
+    val activeBattler: Int,
+    val moveSlot: Int,
+    val targetBattler: Int? = null,
+)
+
 data class Gen3RuntimeMemoryLayout(
     val mainAddress: Long,
     val inBattleAddress: Long,
@@ -16,6 +36,7 @@ data class Gen3RuntimeMemoryLayout(
     val playerPartyRecordSize: Int? = if (playerPartyAddress == null) null else 100,
     val battleMonsAddress: Long? = null,
     val battleTypeFlagsAddress: Long? = null,
+    val battleUi: Gen3BattleUiMemoryLayout? = null,
     val trainerBattleMask: Int? = null,
     val nonWildBattleMask: Int? = null,
     val saveBlock1PointerAddress: Long? = null,
@@ -84,6 +105,7 @@ data class Gen3RuntimeSnapshot(
     val mapPosition: Gen3MapPosition? = null,
     val targetBattler: Int? = null,
     val encounterKind: BattleEncounterKind = BattleEncounterKind.UNKNOWN,
+    val battleCommand: Gen3BattleCommandState? = null,
 )
 
 class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
@@ -137,6 +159,21 @@ class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
         ?.and(0xFF)
         ?.takeIf { it in 0 until MAX_BATTLERS }
 
+    fun decodeSelectedBattleCommand(
+        activeBattler: ByteArray?,
+        actionCursors: ByteArray?,
+        moveCursors: ByteArray?,
+    ): Gen3BattleCommandState? {
+        if (layout.battleUi == null) return null
+        val active = activeBattler?.singleOrNull()?.toInt()?.and(0xFF)
+            ?.takeIf { it in 0 until MAX_BATTLERS } ?: return null
+        if (actionCursors?.size != MAX_BATTLERS || moveCursors?.size != MAX_BATTLERS) return null
+        if (actionCursors[active].toInt() and 0xFF != ACTION_USE_MOVE) return null
+        val moveSlot = moveCursors[active].toInt() and 0xFF
+        if (moveSlot !in 0 until MOVE_SLOTS) return null
+        return Gen3BattleCommandState(active, moveSlot)
+    }
+
     fun decodeBattleEncounterKind(bytes: ByteArray?): BattleEncounterKind {
         val trainerMask = layout.trainerBattleMask ?: return BattleEncounterKind.UNKNOWN
         val nonWildMask = layout.nonWildBattleMask ?: return BattleEncounterKind.UNKNOWN
@@ -157,7 +194,36 @@ class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
         const val MAP_ID_BYTES = 2
         const val BATTLE_TYPE_FLAGS_BYTES = 4
         private const val MAX_BATTLERS = 4
+        private const val MOVE_SLOTS = 4
+        private const val ACTION_USE_MOVE = 0
     }
+}
+
+fun BattleMemorySample.withLiveBattleCommand(command: Gen3BattleCommandState?): BattleMemorySample {
+    if (opponents.size <= 1 && command == null) return this
+    val owner = command?.let { state ->
+        battlers.singleOrNull { battler ->
+            battler.battlerIndex == state.activeBattler && battler.position and 1 == 0
+        }
+    }
+    val move = command?.let { owner?.moves?.getOrNull(it.moveSlot) }?.takeIf { it != 0 }
+    val opponentIndex = command?.targetBattler
+        ?.let { target -> opponents.indexOfFirst { it.battlerIndex == target } }
+        ?: -1
+    val resolvedMove = owner != null && move != null
+    val resolvedTarget = opponents.size == 1 || resolvedMove && opponentIndex >= 0
+    return copy(
+        selectedMoveId = move.takeIf { resolvedMove },
+        commandOwnerBattlerIndex = owner?.battlerIndex?.takeIf { resolvedMove },
+        target = BattleTarget(
+            opponentIndex = opponentIndex.takeIf { it >= 0 } ?: 0,
+            mode = if (resolvedTarget) TargetMode.AUTOMATIC else TargetMode.MANUAL_TARGET_FALLBACK,
+        ),
+        capabilities = capabilities + mapOf(
+            BattleCapability.SELECTED_MOVE to if (resolvedMove) CapabilityState.AVAILABLE else CapabilityState.NOT_FOUND,
+            BattleCapability.SELECTED_TARGET to if (resolvedTarget) CapabilityState.AVAILABLE else CapabilityState.NOT_FOUND,
+        ),
+    )
 }
 
 fun BattleMemorySample.withLiveTargetBattler(targetBattler: Int?): BattleMemorySample {

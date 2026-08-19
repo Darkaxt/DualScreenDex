@@ -34,6 +34,7 @@ import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BattleUiAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
@@ -261,9 +262,25 @@ class ProductionCompanionRuntimeTest {
                 CatalogField.available(40), CatalogField.available(100), CatalogField.available(35),
             )),
             typesById = mapOf(0 to TypeRecord(0, CatalogField.available("NORMAL"))),
+            runtimeMetadata = CatalogRuntimeMetadata(
+                gen3RuntimeMemoryLayout = CatalogGen3RuntimeMemoryLayout(
+                    mainAddress = 0x03001574,
+                    inBattleAddress = 0x030019AD,
+                    inBattleMask = 2,
+                    saveBlock1MapGroupOffset = 4,
+                    saveBlock1MapNumberOffset = 5,
+                    battleUiAbi = CatalogGen3BattleUiAbi(
+                        activeBattlerAddress = 0x02024064,
+                        actionCursorAddress = 0x020244AC,
+                        moveCursorAddress = 0x020244B0,
+                        targetCursorAddress = 0x0202420C,
+                    ),
+                ),
+            ),
         ))
         assertEquals("sha", runtime.battleCatalogContext()?.romIdentity)
         assertEquals(3, runtime.battleCatalogContext()?.generation)
+        assertEquals(0x02024064L, runtime.battleCatalogContext()?.gen3RuntimeMemoryLayout?.battleUi?.activeBattlerAddress)
 
         runtime.loadCatalog("fixture.gbc", ParsedCatalog(
             "yellow", EngineFamily.YELLOW, Platform.GBC,

@@ -12,6 +12,7 @@ import com.darkaxt.dualdex.battle.BattleMove
 import com.darkaxt.dualdex.battle.BattleSpecies
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
 import com.darkaxt.dualdex.battle.Gen3MapPosition
+import com.darkaxt.dualdex.battle.Gen3BattleUiMemoryLayout
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
 import com.darkaxt.dualdex.battle.Gen3LiveGameSnapshot
 import com.darkaxt.dualdex.battle.Gen3LiveSectionState
@@ -360,6 +361,13 @@ class ProductionCompanionRuntime(
                     playerPartyRecordSize = layout.partyAbi?.recordSize ?: layout.playerPartyAddress?.let { 100 },
                     battleMonsAddress = layout.battleMonsAddress,
                     battleTypeFlagsAddress = layout.battleTypeFlagsAddress,
+                    battleUi = layout.battleUiAbi?.let { battleUi ->
+                        Gen3BattleUiMemoryLayout(
+                            activeBattlerAddress = battleUi.activeBattlerAddress,
+                            actionCursorAddress = battleUi.actionCursorAddress,
+                            moveCursorAddress = battleUi.moveCursorAddress,
+                        )
+                    },
                     trainerBattleMask = layout.trainerBattleMask,
                     nonWildBattleMask = layout.nonWildBattleMask,
                     saveBlock1PointerAddress = layout.saveBlock1PointerAddress,

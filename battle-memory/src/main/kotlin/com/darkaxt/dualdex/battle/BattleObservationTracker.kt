@@ -32,6 +32,7 @@ class BattleObservationTracker(
         require(romIdentity.isNotBlank()) { "ROM identity is required" }
         if (this.romIdentity != romIdentity) reset(romIdentity)
         validatedNonBattleSamples = 0
+        val priorSample = lastSample
 
         val increments = mutableMapOf<Int, MutableMap<Int, Int>>()
         val activeBattlerIndexes = sample.opponents.mapTo(mutableSetOf()) { it.battlerIndex }
@@ -68,20 +69,34 @@ class BattleObservationTracker(
         }
 
         val discoveredMatchups = mutableSetOf<BattleMatchupObservation>()
-        val target = sample.opponents.getOrNull(sample.target.opponentIndex)
         val players = sample.battlers.filter { it.position and 1 == 0 }
         playerBaselines.keys.retainAll(players.mapTo(mutableSetOf()) { it.battlerIndex })
         players.forEach { player ->
             val identity = BattlerIdentity(player.position, player.speciesId, player.personality)
             val previous = playerBaselines[player.battlerIndex]
-            if (previous?.identity == identity && target != null) {
+            if (previous?.identity == identity) {
                 player.moves.indices.forEach { slot ->
                     val moveId = player.moves[slot]
                     val oldMoveId = previous.moves.getOrNull(slot)
                     val oldPp = previous.pp.getOrNull(slot)
                     val currentPp = player.pp.getOrNull(slot)
                     if (moveId != 0 && moveId == oldMoveId && oldPp != null && currentPp != null && currentPp < oldPp) {
-                        discoveredMatchups += BattleMatchupObservation(target.speciesId, moveId, target.typeIds.distinct())
+                        val commandSample = priorSample
+                            ?.takeIf { prior ->
+                                val priorPlayers = prior.battlers.filter { it.position and 1 == 0 }
+                                val ownsCommand = prior.commandOwnerBattlerIndex == player.battlerIndex ||
+                                    (priorPlayers.size == 1 && priorPlayers.single().battlerIndex == player.battlerIndex)
+                                ownsCommand && prior.selectedMoveId == moveId
+                            }
+                            ?.takeIf { it.target.mode == TargetMode.AUTOMATIC }
+                        val target = commandSample?.opponents?.getOrNull(commandSample.target.opponentIndex)
+                        if (target != null) {
+                            discoveredMatchups += BattleMatchupObservation(
+                                target.speciesId,
+                                moveId,
+                                target.typeIds.distinct(),
+                            )
+                        }
                     }
                 }
             }

@@ -229,6 +229,7 @@ class BattleMemoryCoordinator(
                     })
                     add(CoreMemoryRegion("main-state", runtimeLayout.mainAddress, Gen3MainStateResolver.HEADER_BYTES))
                     add(CoreMemoryRegion("main-lifecycle", runtimeLayout.inBattleAddress, 1))
+                    addAll(gen3BattleUiRegions(runtimeLayout))
                     runtimeLayout.multiUsePlayerCursorAddress?.let { address ->
                         add(CoreMemoryRegion("main-target-cursor", address, 1))
                     }
@@ -270,6 +271,7 @@ class BattleMemoryCoordinator(
                     runtimeLayout.inBattleAddress,
                     1,
                 ))
+                addAll(gen3BattleUiRegions(runtimeLayout))
                 runtimeLayout.multiUsePlayerCursorAddress?.let { cursorAddress ->
                     add(CoreMemoryRegion("main-target-cursor", cursorAddress, 1))
                 }
@@ -321,6 +323,7 @@ class BattleMemoryCoordinator(
                         Gen3MainStateResolver.HEADER_BYTES,
                     ))
                     add(CoreMemoryRegion("main-lifecycle", runtime.inBattleAddress, 1))
+                    addAll(gen3BattleUiRegions(runtime))
                     runtime.multiUsePlayerCursorAddress?.let { cursorAddress ->
                         add(CoreMemoryRegion("main-target-cursor", cursorAddress, 1))
                     }
@@ -419,16 +422,19 @@ class BattleMemoryCoordinator(
         }
         val gen3Runtime = if (context.generation == 3) {
             val battleActive = resolveGen3BattleActive(regions, context)
+            val selectedTargetBattler = resolveGen3LiveTarget(regions, context)
+            val battleCommand = resolveGen3BattleCommand(regions, context, selectedTargetBattler)
             Gen3RuntimeSnapshot(
                 battleActive = battleActive,
                 areaBaseId = liveLocation?.areaBaseId,
                 mapPosition = liveLocation?.position,
-                targetBattler = resolveGen3LiveTarget(regions, context),
+                targetBattler = selectedTargetBattler,
                 encounterKind = if (battleActive == true) {
                     resolveGen3EncounterKind(regions, context)
                 } else {
                     BattleEncounterKind.UNKNOWN
                 },
+                battleCommand = battleCommand,
             )
         } else {
             null
@@ -466,7 +472,11 @@ class BattleMemoryCoordinator(
             else -> resolvedSample
         }?.let { resolved ->
             if (context.generation == 3) {
-                resolved.withLiveTargetBattler(gen3Runtime?.targetBattler)
+                if (context.gen3RuntimeMemoryLayout?.battleUi != null) {
+                    resolved.withLiveBattleCommand(gen3Runtime?.battleCommand)
+                } else {
+                    resolved.withLiveTargetBattler(gen3Runtime?.targetBattler)
+                }
                     .copy(encounterKind = gen3Runtime?.encounterKind ?: BattleEncounterKind.UNKNOWN)
             } else {
                 resolved
@@ -595,6 +605,24 @@ class BattleMemoryCoordinator(
             if (offset !in iwram.indices) null else byteArrayOf(iwram[offset])
         }
         return Gen3RuntimeMemoryDecoder(layout).decodeTargetBattler(bytes)
+    }
+
+    private fun resolveGen3BattleCommand(
+        regions: Map<String, ByteArray>,
+        context: BattleCatalogContext,
+        selectedTargetBattler: Int?,
+    ): Gen3BattleCommandState? {
+        val layout = context.gen3RuntimeMemoryLayout ?: return null
+        val battleUi = layout.battleUi ?: return null
+        fun bytes(id: String, address: Long, count: Int): ByteArray? = regions[id] ?: regions["ewram"]?.let { ewram ->
+            val offset = (address - EWRAM_BASE).toInt()
+            if (offset < 0 || offset + count > ewram.size) null else ewram.copyOfRange(offset, offset + count)
+        }
+        return Gen3RuntimeMemoryDecoder(layout).decodeSelectedBattleCommand(
+            activeBattler = bytes(BATTLE_UI_ACTIVE_ID, battleUi.activeBattlerAddress, 1),
+            actionCursors = bytes(BATTLE_UI_ACTION_ID, battleUi.actionCursorAddress, MAX_BATTLERS),
+            moveCursors = bytes(BATTLE_UI_MOVE_ID, battleUi.moveCursorAddress, MAX_BATTLERS),
+        )?.copy(targetBattler = selectedTargetBattler)
     }
 
     private fun resolveGen3EncounterKind(
@@ -739,6 +767,15 @@ class BattleMemoryCoordinator(
                     (window.id != Gen3LiveGameState.PARTY_COUNT_ID && window.id != Gen3LiveGameState.PARTY_ID)
             }
             .map { window -> CoreMemoryRegion(window.id, window.address, window.byteCount) }
+    }
+
+    private fun gen3BattleUiRegions(layout: Gen3RuntimeMemoryLayout): List<CoreMemoryRegion> {
+        val battleUi = layout.battleUi ?: return emptyList()
+        return listOf(
+            CoreMemoryRegion(BATTLE_UI_ACTIVE_ID, battleUi.activeBattlerAddress, 1),
+            CoreMemoryRegion(BATTLE_UI_ACTION_ID, battleUi.actionCursorAddress, MAX_BATTLERS),
+            CoreMemoryRegion(BATTLE_UI_MOVE_ID, battleUi.moveCursorAddress, MAX_BATTLERS),
+        )
     }
 
     private fun isLiveIndependentRegion(id: String): Boolean =
@@ -899,6 +936,10 @@ class BattleMemoryCoordinator(
         private const val OUTCOME_DELTA = 0x2B2
         private const val MOVE_CURSOR_DELTA = 0x438
         private const val TARGET_CURSOR_DELTA = 0x43C
+        private const val MAX_BATTLERS = 4
+        private const val BATTLE_UI_ACTIVE_ID = "battle-ui-active"
+        private const val BATTLE_UI_ACTION_ID = "battle-ui-action"
+        private const val BATTLE_UI_MOVE_ID = "battle-ui-move"
         private const val CACHED_WINDOW_BYTES = 0x45C
         private const val PRODUCTION_CHUNK_BYTES = 1024
         private const val REQUIRED_STABLE_OVERWORLD_OBSERVATIONS = 2

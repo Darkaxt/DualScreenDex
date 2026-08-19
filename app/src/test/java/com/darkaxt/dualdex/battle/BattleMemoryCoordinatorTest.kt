@@ -12,6 +12,57 @@ import java.util.ArrayDeque
 
 class BattleMemoryCoordinatorTest {
     @Test
+    fun publishesTheRightPlayerBattlersMoveWithAnIndependentDoubleBattleTarget() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        val anchor = 0x1000
+        ewram[anchor - 0x1C] = 4
+        repeat(4) { ewram[anchor - 0x10 + it] = it.toByte() }
+        mon(ewram, anchor, 252, 20, 11, 11, 10, 35, 65)
+        mon(ewram, anchor + 0x58, 13, 18, 6, 3, 40, 35, 19)
+        mon(ewram, anchor + 0xB0, 1, 19, 11, 11, 11, 25, 65)
+        mon(ewram, anchor + 0x108, 16, 18, 0, 2, 40, 35, 65)
+        ewram[0x3000] = 2
+        ewram[0x3012] = 0
+        ewram[0x3022] = 0
+        iwram[0x2378] = 3
+        iwram[0x19AD] = 2
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 200)
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = {
+                context(
+                    runtimeLayout = gen3RuntimeLayout(
+                        battleMonsOffset = anchor,
+                        battleUi = Gen3BattleUiMemoryLayout(
+                            activeBattlerAddress = 0x02003000,
+                            actionCursorAddress = 0x02003010,
+                            moveCursorAddress = 0x02003020,
+                        ),
+                        liveTargetOffset = 0x0E04,
+                    ),
+                )
+            },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(12) { coordinator.heartbeat() }
+
+        val sample = requireNotNull(updates.last().sample)
+        assertEquals(2, sample.commandOwnerBattlerIndex)
+        assertEquals(11, sample.selectedMoveId)
+        assertEquals(1, sample.target.opponentIndex)
+        assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 2003000 1" })
+        assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 2003020 4" })
+        assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 3002378 1" })
+        coordinator.close()
+    }
+
+    @Test
     fun publishesGen1AndGen2LiveAreasBeforeAnyBattleStarts() {
         assertEquals(LiveAreaMemoryLayout(0x135e, 1), liveAreaMemoryLayout(EngineFamily.RED_BLUE))
         assertEquals(LiveAreaMemoryLayout(0x135d, 1), liveAreaMemoryLayout(EngineFamily.YELLOW))
@@ -695,9 +746,11 @@ class BattleMemoryCoordinatorTest {
             species = mapOf(
                 252 to BattleSpecies(252, listOf(11), setOf(65)),
                 13 to BattleSpecies(13, listOf(6, 3), setOf(19)),
+                1 to BattleSpecies(1, listOf(11), setOf(65)),
+                16 to BattleSpecies(16, listOf(0, 2), setOf(65)),
             ),
-            moves = mapOf(10 to BattleMove(10, 35), 40 to BattleMove(40, 35)),
-            typeIds = setOf(3, 6, 11),
+            moves = mapOf(10 to BattleMove(10, 35), 11 to BattleMove(11, 25), 40 to BattleMove(40, 35)),
+            typeIds = setOf(0, 2, 3, 6, 11),
         ),
     )
 
@@ -707,6 +760,7 @@ class BattleMemoryCoordinatorTest {
         battleMonsOffset: Int? = null,
         saveBlockPointers: Boolean = false,
         liveClockAddress: Long? = null,
+        battleUi: Gen3BattleUiMemoryLayout? = null,
     ) = Gen3RuntimeMemoryLayout(
         mainAddress = 0x03001574,
         inBattleAddress = 0x030019AD,
@@ -714,6 +768,7 @@ class BattleMemoryCoordinatorTest {
         saveBlock1MapGroupOffset = 4,
         saveBlock1MapNumberOffset = 5,
         liveClockAddress = liveClockAddress,
+        battleUi = battleUi,
         multiUsePlayerCursorAddress = liveTargetOffset?.let { 0x03001574L + it },
         playerPartyCountAddress = playerPartyOffset?.let { 0x02000000L + it - 3 },
         playerPartyAddress = playerPartyOffset?.let { 0x02000000L + it },

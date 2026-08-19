@@ -52,6 +52,35 @@ class Gen3RuntimeMemoryDecoderTest {
     }
 
     @Test
+    fun decodesThePlayerCommandOwnerWithoutBorrowingAnExecutionTarget() {
+        val decoder = Gen3RuntimeMemoryDecoder(
+            layout.copy(
+                battleUi = Gen3BattleUiMemoryLayout(
+                    activeBattlerAddress = 0x02024064,
+                    actionCursorAddress = 0x020244AC,
+                    moveCursorAddress = 0x020244B0,
+                ),
+            ),
+        )
+
+        assertEquals(
+            Gen3BattleCommandState(activeBattler = 2, moveSlot = 1),
+            decoder.decodeSelectedBattleCommand(
+                activeBattler = byteArrayOf(2),
+                actionCursors = byteArrayOf(0, 1, 0, 1),
+                moveCursors = byteArrayOf(0, 0, 1, 0),
+            ),
+        )
+        assertNull(
+            decoder.decodeSelectedBattleCommand(
+                activeBattler = byteArrayOf(2),
+                actionCursors = byteArrayOf(0, 1, 2, 1),
+                moveCursors = byteArrayOf(0, 0, 1, 0),
+            ),
+        )
+    }
+
+    @Test
     fun preservesCompletePointerFirstReadPlan() {
         val complete = layout.copy(
             saveBlock1PointerAddress = 0x03005D8C,

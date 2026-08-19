@@ -64,7 +64,12 @@ data class KnowledgeLedger(
     val observedMoves: Map<Int, List<MoveObservation>> = emptyMap(),
     val discoveredMatchups: Map<MatchupKey, Effectiveness> = emptyMap(),
     val knownMoves: Set<Int> = emptySet(),
-)
+    val matchupEvidenceVersion: Int = CURRENT_MATCHUP_EVIDENCE_VERSION,
+) {
+    companion object {
+        const val CURRENT_MATCHUP_EVIDENCE_VERSION = 1
+    }
+}
 
 data class OpponentState(
     val speciesId: Int,
