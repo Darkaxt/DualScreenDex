@@ -455,6 +455,7 @@ jobs:
             "$ASSETS/dualdex-evolution-first50-release-gate.json" \
             "$ASSETS/dualdex-evolution-first50-release-gate.md" \
             "$ASSETS/dualdex-arm7-first50-compatibility.md" \
+            "$ASSETS/dualdex-v1.1-player-state-verification.md" \
             "$ASSETS/RELEASE_NOTES.md"
 
           echo "GitHub created the non-replacing $RELEASE_KIND release for $RELEASE_TAG." >> "$GITHUB_STEP_SUMMARY"

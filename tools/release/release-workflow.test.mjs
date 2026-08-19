@@ -110,6 +110,11 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
 
   for (const asset of requiredEvidence) {
     assert.match(workflow, new RegExp(asset.replaceAll(".", "\\.")));
+    assert.match(
+      workflow.slice(workflow.indexOf("gh release create")),
+      new RegExp(asset.replaceAll(".", "\\.")),
+      `release upload list is missing ${asset}`,
+    );
   }
   assert.match(workflow, /\.summary\.available >= 25/);
   assert.match(workflow, /\.summary\.statusDistribution\.SELECTED == 50/);
