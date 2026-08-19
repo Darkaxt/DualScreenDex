@@ -2,7 +2,7 @@
   "schema": 1,
   "versionName": "1.1.0",
   "applicationId": "com.darkaxt.dualdex",
-  "stage": 7,
+  "stage": 8,
   "status": "ready-for-github-signing",
   "verifiedDate": "2026-08-20",
   "openV1LedgerItems": 0,
@@ -62,5 +62,8 @@
   "v11Rc15DisplayRecovery": true,
   "v11Rc16DoubleBattleCommandOwnership": true,
   "v11Rc16MatchupEvidenceMigration": true,
+  "v11Stage8NormalizedPartyArtwork": true,
+  "v11Stage8PrivacySafePartyFallbacks": true,
+  "v11Stage8PartyBrowserGate": true,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

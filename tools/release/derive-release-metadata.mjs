@@ -74,11 +74,11 @@ function parseReleaseTag(tag) {
 }
 
 function validateReadyMarker(ready, versionName, certificateSha256) {
-  if (ready.schema !== 1 || ready.stage !== 7 || ready.status !== "ready-for-github-signing") {
-    throw new Error("Stage 7 release marker is not ready for GitHub signing");
+  if (ready.schema !== 1 || ready.stage !== 8 || ready.status !== "ready-for-github-signing") {
+    throw new Error("Stage 8 release marker is not ready for GitHub signing");
   }
   if (ready.openV1LedgerItems !== 0) {
-    throw new Error("Stage 7 release marker still has open v1 ledger items");
+    throw new Error("Stage 8 release marker still has open v1 ledger items");
   }
   if (ready.applicationId !== EXPECTED_APPLICATION_ID) {
     throw new Error(`Unexpected application ID in release marker: ${ready.applicationId}`);
@@ -177,7 +177,7 @@ export function deriveReleaseMetadata({
 
 function runCli() {
   const argumentsMap = parseArguments(process.argv.slice(2));
-  const ready = requireJson(argumentsMap.ready, "Stage 7 release marker");
+  const ready = requireJson(argumentsMap.ready, "Stage 8 release marker");
   const certificateFingerprint = readFileSync(
     argumentsMap["certificate-fingerprint"],
     "utf8",
