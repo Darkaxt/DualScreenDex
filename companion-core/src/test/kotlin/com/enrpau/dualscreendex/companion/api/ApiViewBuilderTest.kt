@@ -136,8 +136,10 @@ class ApiViewBuilderTest {
         assertNull(lead.moves[1].name)
         assertNull(lead.heldItemId)
         assertNull(lead.heldItemName)
+        assertEquals(true, lead.hasHeldItem)
         assertEquals("PAR", lead.status)
         assertEquals(false, state.party[1].occupied)
+        assertNull(state.party[1].hasHeldItem)
     }
 
     @Test

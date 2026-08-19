@@ -89,25 +89,46 @@ button { cursor: pointer; }
 .party-slot { min-width: 0; min-height: 82px; display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 8px; padding: 7px; border: 1px solid #899878; color: var(--ink); background: #f5f1da; text-align: left; }
 .party-slot.active { border: 3px solid var(--forest-700); padding: 5px; background: #eaf0d0; box-shadow: 3px 3px 0 #81926b55; }
 .party-slot.empty { opacity: .45; cursor: default; }
+.party-slot.fainted { border-color: #766d72; background: #e5dfe0; }
+.party-slot.fainted .party-sprite img { filter: grayscale(1) contrast(.8); opacity: .65; }
+.party-slot.statused { border-color: #9a613f; }
 .party-slot span:not(.party-sprite) { min-width: 0; }
 .party-slot strong, .party-slot small, .party-slot i { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .party-slot strong { font-size: .72em; }
 .party-slot small { margin-top: 4px; color: #59665c; font-size: .56em; }
-.party-slot i { margin-top: 5px; color: #6e796b; font-size: .55em; font-style: normal; font-weight: 800; }
+.party-slot > span > i { margin-top: 5px; color: #6e796b; font-size: .55em; font-style: normal; font-weight: 800; }
+.party-status-dot { padding: 1px 4px; border-radius: 2px; color: #fff; background: #875637; font-style: normal; }
 .party-sprite { width: 60px; height: 60px; display: grid; place-items: center; overflow: hidden; border: 1px solid #a0aa91; background: linear-gradient(135deg, #fbf7e4, #d9dfc7); image-rendering: pixelated; }
 .party-sprite.large { width: 88px; height: 88px; }
 .party-sprite img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
-.party-silhouette { width: 32px; height: 23px; border: 2px dashed #7e8979; filter: brightness(0); opacity: .62; }
+.party-silhouette { position: relative; width: 42px; height: 38px; display: block; opacity: .72; }
+.party-silhouette > span { position: absolute; left: 5px; bottom: 1px; width: 32px; height: 25px; border-radius: 52% 48% 44% 56%; background: #24322a; transform: rotate(-7deg); }
+.party-silhouette > b { position: absolute; left: 14px; top: 1px; width: 17px; height: 18px; border-radius: 50% 48% 45% 55%; background: #24322a; }
+.party-silhouette > b::before, .party-silhouette > b::after { content: ""; position: absolute; top: -4px; width: 7px; height: 11px; background: #24322a; }
+.party-silhouette > b::before { left: -2px; rotate: -25deg; }.party-silhouette > b::after { right: -2px; rotate: 25deg; }
+.party-art-missing { width: 30px; height: 23px; display: block; border: 2px dashed #899282; }
+.party-art-missing::after { content: "?"; display: grid; place-items: center; height: 100%; color: #707b70; font-style: normal; font-weight: 950; }
+.party-empty-mark { width: 30px; height: 30px; display: block; border: 1px solid #a0aa91; border-radius: 50%; opacity: .5; }
+.party-empty-mark::after { content: "+"; display: grid; place-items: center; height: 100%; color: #7b8678; font-style: normal; }
 .party-detail { min-width: 0; margin: 0; overflow: visible; }
 .party-detail > header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid #c5ccb5; }
-.party-detail h1 { margin: 1px 0 7px; font-family: Georgia, serif; font-size: 1.3em; }
+.party-detail h1 { min-width: 0; margin: 1px 0 7px; overflow-wrap: anywhere; font-family: Georgia, serif; font-size: 1.3em; }
 .party-detail-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .party-detail-meta strong, .party-detail-meta b { padding: 3px 6px; color: #edf1d4; background: var(--forest-700); font-size: .61em; }
 .party-detail-meta b { background: #8b4a26; }
+.party-fainted-mark { background: #574f55 !important; }
+.party-status-art { min-width: 34px; min-height: 23px; display: inline-grid; place-items: center; padding: 2px 6px; border: 1px solid #613b25; border-radius: 3px; color: #fff; background: #8b4a26; box-shadow: inset 0 0 0 1px #ffffff2e; }
+.party-status-art i { margin: 0; color: inherit; font-size: .78em; font-style: normal; font-weight: 950; letter-spacing: .05em; }
+.party-status-art.status-PAR { color: #2b2400; background: #e7c93d; border-color: #917c15; }.party-status-art.status-PSN, .party-status-art.status-TOX { background: #7e5398; border-color: #4d2c64; }.party-status-art.status-BRN { background: #bd4f31; border-color: #722b18; }.party-status-art.status-FRZ { color: #153746; background: #91d7e8; border-color: #4e8f9e; }.party-status-art.status-SLP { background: #657190; border-color: #3d455d; }
+.party-types { display: flex; flex-wrap: wrap; gap: 6px; }
+.party-type-art { min-width: 0; display: inline-flex; align-items: center; overflow: hidden; border: 1px solid var(--type-border); border-radius: 999px; background: var(--type-bg); box-shadow: inset 0 0 0 1px #ffffff38; }
+.party-type-art abbr { width: 27px; height: 27px; display: grid; place-items: center; flex: none; border-right: 1px solid var(--type-border); border-radius: 50%; color: var(--type-fg); background: var(--type-bg); font-size: .54em; font-weight: 950; text-decoration: none; }
+.party-type-art .type-chip { min-width: 0; max-width: 120px; overflow: hidden; border: 0; text-overflow: ellipsis; white-space: nowrap; }
 .party-dex-link { width: 42px; height: 42px; border: 1px solid var(--forest-700); color: var(--forest-800); background: #dfe6c9; font-size: .57em; font-weight: 950; }
 .party-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
 .party-summary-grid > span { min-width: 0; padding: 8px; background: #e1e6cf; }
 .party-summary-grid button { width: 100%; margin-top: 4px; padding: 0; border: 0; color: var(--forest-700); background: transparent; font-weight: 900; text-align: left; text-decoration: underline; }
+.party-item { display: flex !important; align-items: center; gap: 5px; }.party-item svg { width: 18px; height: 18px; flex: none; fill: #b68639; stroke: #59411d; stroke-width: 1.3; }.party-item.unavailable { color: #717a70; font-weight: 750; }.party-item.none { color: #59665c; }
 .party-exp { height: 7px; margin: 8px 0; background: #c8cfb8; overflow: hidden; }
 .party-exp i { display: block; height: 100%; background: #4f91a3; }
 .party-stat-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }

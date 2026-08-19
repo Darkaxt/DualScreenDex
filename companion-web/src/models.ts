@@ -246,6 +246,7 @@ export interface PartyMemberView {
   abilityName: string | null;
   heldItemId: number | null;
   heldItemName: string | null;
+  hasHeldItem?: boolean | null;
   currentHp: number | null;
   maximumHp: number | null;
   status: string | null;
