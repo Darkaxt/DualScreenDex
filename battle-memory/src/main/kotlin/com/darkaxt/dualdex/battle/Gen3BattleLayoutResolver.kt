@@ -46,7 +46,8 @@ class Gen3BattleLayoutResolver {
         val players = battlers.filter { it.position and 1 == 0 }
         if (opponents.size != count / 2 || players.size != count / 2) return null
 
-        val selectedMove = players.minByOrNull(BattleMonSnapshot::position)?.let { player ->
+        val commandOwner = players.singleOrNull()
+        val selectedMove = commandOwner?.let { player ->
             val slot = bytes.u8(moveCursorOffset + player.battlerIndex)
             player.moves.getOrNull(slot)?.takeIf { it != 0 }
         }
@@ -75,6 +76,7 @@ class Gen3BattleLayoutResolver {
                 BattleCapability.OPPONENT_PP to CapabilityState.AVAILABLE,
             ),
             battleOutcome = battleOutcome,
+            commandOwnerBattlerIndex = commandOwner?.battlerIndex,
         )
     }
 

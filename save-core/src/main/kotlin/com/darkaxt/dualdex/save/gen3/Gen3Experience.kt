@@ -6,6 +6,15 @@ object Gen3Experience {
         return (1..100).lastOrNull { required(growthRate!!, it) <= experience } ?: 1
     }
 
+    fun progress(growthRate: Int?, experience: Long, level: Int?): Double? {
+        if (growthRate !in 0..5 || level !in 1..100 || experience < 0) return null
+        if (level == 100) return 1.0
+        val current = required(growthRate!!, level!!)
+        val next = required(growthRate, level + 1)
+        if (experience < current || experience >= next || next <= current) return null
+        return (experience - current).toDouble() / (next - current).toDouble()
+    }
+
     internal fun required(growthRate: Int, level: Int): Long {
         require(growthRate in 0..5 && level in 1..100)
         val n = level.toLong()

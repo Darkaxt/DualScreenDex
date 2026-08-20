@@ -20,8 +20,15 @@ const fixture: Bootstrap = {
   state: {
     version: 1, screen: 'POKEDEX', priorScreen: 'POKEDEX', settingsReturnScreen: 'POKEDEX',
     selectedSpeciesId: null, filter: 'ALL', selectedAreaId: null, currentAreaBaseId: 16, revealedAreaBaseIds: [16, 17], battleTab: 'ENTRY',
+    gameTime: { hours: 16, minutes: 48 },
     settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
     speciesState: {}, observedMoves: {}, battle: null, catalogReady: true,
+    trainer: {
+      name: 'MAY', gender: 'FEMALE', publicTrainerId: 12345, money: 98765, playTimeHours: 12, playTimeMinutes: 34,
+      dexSeen: 42, dexCaught: 7, stars: 2, avatarUrl: null,
+      badges: Array.from({ length: 8 }, (_, index) => ({ index, earned: index === 0, imageUrl: null })),
+    },
+    party: [{ slot: 0, occupied: true, speciesId: 25, speciesName: 'PIKACHU', spriteUrl: null, typeIds: [], nickname: 'SPARK', level: 18, isEgg: false, gender: null, nature: null, abilityId: null, abilityName: null, heldItemId: null, heldItemName: null, currentHp: null, maximumHp: null, status: null, experienceProgress: null, stats: {}, moves: [] }],
     catalogName: 'Pokemon Modern Emerald.gba', error: null, activeRulesetId: null,
     rulesetAssumed: true, loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 }
   }
@@ -65,12 +72,41 @@ describe('production application shell', () => {
     expect(screen.queryByText(/Generate an encounter/i)).toBeNull();
   });
 
-  it('shows an indeterminate loading state without a misleading percentage', async () => {
+  it('uses a concise welcome prompt without implementation commentary', async () => {
     vi.mocked(bootstrap).mockResolvedValueOnce({
       ...fixture,
+      catalog: null,
+      state: { ...fixture.state, catalogReady: false },
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText('Choose a Pokémon game to begin.')).toBeTruthy();
+    expect(screen.queryByText(/Game Boy Advance Pokémon ROM/)).toBeNull();
+    expect(screen.queryByText(/extracted assets stay local/)).toBeNull();
+  });
+
+  it('keeps Trainer and Party shortcuts inside the existing application header', async () => {
+    render(<App />);
+
+    const trainer = await screen.findByRole('button', { name: 'Trainer Card' });
+    const party = screen.getByRole('button', { name: 'Party' });
+    expect(trainer.closest('.app-header')).toBeTruthy();
+    expect(party.closest('.app-header')).toBeTruthy();
+    expect(document.querySelector('[data-player-navigation-row]')).toBeNull();
+
+    fireEvent.click(trainer);
+    expect(action).toHaveBeenCalledWith('OPEN_TRAINER', {});
+  });
+
+  it('replaces setup actions with real catalog loading progress', async () => {
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      catalog: null,
       state: {
         ...fixture.state,
         version: 2,
+        catalogReady: false,
         loading: { active: true, phase: 'IDENTIFYING', completedUnits: 0, totalUnits: 5 },
       },
     });
@@ -80,6 +116,28 @@ describe('production application shell', () => {
     const loading = await screen.findByRole('status', { name: 'Loading ROM identity' });
     expect(loading.textContent).toBe('Loading ROM identity');
     expect(loading.textContent).not.toContain('%');
+    const progress = screen.getByRole('progressbar', { name: 'Loading ROM identity' });
+    expect(progress.getAttribute('aria-valuemin')).toBe('0');
+    expect(progress.getAttribute('aria-valuemax')).toBe('5');
+    expect(progress.getAttribute('aria-valuenow')).toBe('0');
+    expect(screen.queryByText('LOAD ROM OR ZIP')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'CONNECT RETROARCH' })).toBeNull();
+    expect(screen.queryByText('Choose a Pokémon game to begin.')).toBeNull();
+  });
+
+  it('shows indeterminate companion progress while bootstrap is pending', async () => {
+    let resolveBootstrap!: (value: Bootstrap) => void;
+    vi.mocked(bootstrap).mockImplementationOnce(() => new Promise(resolve => { resolveBootstrap = resolve; }));
+
+    render(<App />);
+
+    const loading = await screen.findByRole('status', { name: 'Loading companion state' });
+    expect(screen.getByRole('progressbar', { name: 'Loading companion state' }).hasAttribute('aria-valuenow')).toBe(false);
+    expect(screen.queryByText('LOAD ROM OR ZIP')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'CONNECT RETROARCH' })).toBeNull();
+    expect(screen.queryByText('Choose a Pokémon game to begin.')).toBeNull();
+
+    resolveBootstrap(fixture);
   });
 
   it('uses concise names for every parser module and humanizes future phases', () => {
@@ -102,17 +160,25 @@ describe('production application shell', () => {
     expect(screen.queryByText('ISSUE REPORT MEMORY CAPTURE')).toBeNull();
   });
 
-  it('opens the normalized Map locally and returns to Area Pokédex without a new server screen', async () => {
+  it('opens the normalized Map locally and returns to the retained Pokédex view', async () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
     expect(screen.getByRole('region', { name: 'Interactive world map' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Oldale Town' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Open Area Pokédex' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Pokédex' }));
 
-    expect(action).toHaveBeenCalledWith('MAP_AREA', { regionKey: 'gen3-region-0', locationKey: 'section-17' });
+    expect(action).toHaveBeenCalledWith('SCREEN', { screen: 'POKEDEX' });
     expect(screen.queryByRole('region', { name: 'Interactive world map' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Open Map' })).toBeTruthy();
+  });
+
+  it('shows the live game clock centered in the root Pokédex header', async () => {
+    render(<App />);
+
+    const clock = await screen.findByText('16:48');
+    expect(clock.tagName).toBe('TIME');
+    expect(clock.closest('.app-header')).toBeTruthy();
+    expect(document.querySelector('.app-header-root .header-title strong')?.textContent).toBe('POKÉDEX');
   });
 });
 

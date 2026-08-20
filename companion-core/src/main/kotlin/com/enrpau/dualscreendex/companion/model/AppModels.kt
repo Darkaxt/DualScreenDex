@@ -1,7 +1,10 @@
 package com.enrpau.dualscreendex.companion.model
 
+import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.TrainerSnapshot
+
 enum class KnowledgeMode { DISCOVERED, ORGANIC, HIDDEN }
-enum class AppScreen { POKEDEX, DETAIL, BATTLE, SETTINGS, SETUP }
+enum class AppScreen { POKEDEX, DETAIL, BATTLE, TRAINER, PARTY, SETTINGS, SETUP }
 enum class PokedexFilter { ALL, CAUGHT, SEEN, TEAM, AREA }
 enum class BattleTab { ENTRY, ATTACK, RARITY, MOVES }
 enum class BattleEncounterKind { WILD, TRAINER, UNKNOWN }
@@ -61,7 +64,12 @@ data class KnowledgeLedger(
     val observedMoves: Map<Int, List<MoveObservation>> = emptyMap(),
     val discoveredMatchups: Map<MatchupKey, Effectiveness> = emptyMap(),
     val knownMoves: Set<Int> = emptySet(),
-)
+    val matchupEvidenceVersion: Int = CURRENT_MATCHUP_EVIDENCE_VERSION,
+) {
+    companion object {
+        const val CURRENT_MATCHUP_EVIDENCE_VERSION = 1
+    }
+}
 
 data class OpponentState(
     val speciesId: Int,
@@ -95,12 +103,29 @@ data class CatalogLoadingState(
 
 data class LiveMapPosition(val x: Int, val y: Int)
 
+enum class GameClockPhase { DAY, NIGHT }
+
+data class GameClock(
+    val hours: Int,
+    val minutes: Int,
+    val phase: GameClockPhase? = null,
+    val phaseProgress: Double? = null,
+) {
+    init {
+        require(hours in 0..23)
+        require(minutes in 0..59)
+        require((phase == null) == (phaseProgress == null))
+        require(phaseProgress == null || phaseProgress in 0.0..1.0)
+    }
+}
+
 data class AppSnapshot(
     val version: Long = 0,
     val screen: AppScreen = AppScreen.POKEDEX,
     val priorScreen: AppScreen = AppScreen.POKEDEX,
     val settingsReturnScreen: AppScreen = AppScreen.POKEDEX,
     val selectedSpeciesId: Int? = null,
+    val selectedPartySlot: Int? = null,
     val filter: PokedexFilter = PokedexFilter.ALL,
     val selectedAreaId: Int? = null,
     val selectedAreaIds: Set<Int> = emptySet(),
@@ -108,7 +133,10 @@ data class AppSnapshot(
     val settings: CompanionSettings = CompanionSettings(),
     val ledger: KnowledgeLedger = KnowledgeLedger(),
     val liveAreaBaseId: Int? = null,
+    val trainer: TrainerSnapshot? = null,
+    val party: List<OwnedIndividual> = emptyList(),
     val liveMapPosition: LiveMapPosition? = null,
+    val gameTime: GameClock? = null,
     val battle: BattleState? = null,
     val battleReturnScreen: AppScreen = AppScreen.POKEDEX,
     val catalogReady: Boolean = false,
@@ -121,6 +149,9 @@ sealed interface CompanionAction {
     data class CatalogLoaded(val name: String) : CompanionAction
     data class CatalogLoadingChanged(val loading: CatalogLoadingState, val name: String? = null) : CompanionAction
     data class OpenSpecies(val speciesId: Int) : CompanionAction
+    data object OpenTrainer : CompanionAction
+    data object OpenParty : CompanionAction
+    data class OpenPartyMember(val slot: Int) : CompanionAction
     data object BackToPokedex : CompanionAction
     data class SetScreen(val screen: AppScreen) : CompanionAction
     data class SetFilter(val filter: PokedexFilter, val areaId: Int? = null) : CompanionAction
@@ -133,6 +164,11 @@ sealed interface CompanionAction {
     data class SelectTarget(val index: Int) : CompanionAction
     data class SelectMove(val moveId: Int) : CompanionAction
     data class LiveAreaChanged(val areaBaseId: Int?) : CompanionAction
+    data class LiveGameStateChanged(
+        val trainer: TrainerSnapshot?,
+        val party: List<OwnedIndividual>,
+        val gameTime: GameClock? = null,
+    ) : CompanionAction
     data class LiveMapPositionChanged(val position: LiveMapPosition?) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction
     data class Failure(val message: String) : CompanionAction

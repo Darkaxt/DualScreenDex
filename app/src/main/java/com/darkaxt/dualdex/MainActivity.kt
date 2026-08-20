@@ -32,15 +32,110 @@ import com.darkaxt.dualdex.rom.RomDocumentPicker
 import com.darkaxt.dualdex.setup.SetupDocumentPicker
 import com.darkaxt.dualdex.web.DualDexWebView
 import com.darkaxt.dualdex.web.NativeSetupRoute
-import com.darkaxt.dualdex.display.CompanionDisplay
-import com.darkaxt.dualdex.display.DisplayTargetController
+import com.darkaxt.dualdex.display.DisplayCandidate
+import com.darkaxt.dualdex.display.DisplayContinuityDecision
+import com.darkaxt.dualdex.display.DisplayContinuityPolicy
+import com.darkaxt.dualdex.display.DisplayEvent
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
+
+internal data class DisplayEnvironment(
+    val target: DisplayTarget,
+    val currentDisplayId: Int,
+    val candidates: List<DisplayCandidate>,
+    val webRouteMarker: String?,
+)
+
+internal data class DisplayLaunch(
+    val displayId: Int,
+    val webRouteMarker: String?,
+)
+
+internal interface MainActivityDisplayPort {
+    fun environment(): DisplayEnvironment
+    fun register(listener: (DisplayEvent) -> Unit)
+    fun unregister()
+    fun launch(request: DisplayLaunch)
+}
+
+/** Lifecycle shell around the pure display policy. Android details stay behind [MainActivityDisplayPort]. */
+internal class MainActivityDisplayContinuity(
+    private val port: MainActivityDisplayPort,
+    attemptedDisplayId: Int? = null,
+) {
+    private var started = false
+    private var attemptedDisplayId: Int? = attemptedDisplayId
+
+    fun onStart() {
+        if (started) return
+        started = true
+        port.register(::onDisplayEvent)
+    }
+
+    fun onStop() {
+        if (!started) return
+        started = false
+        port.unregister()
+    }
+
+    fun onResume() = evaluate(port.environment().target, DisplayEvent.Resumed)
+
+    fun onTargetChanged(target: DisplayTarget) {
+        attemptedDisplayId = null
+        evaluate(target, DisplayEvent.TargetChanged)
+    }
+
+    private fun onDisplayEvent(event: DisplayEvent) {
+        if (event is DisplayEvent.Removed && event.displayId == attemptedDisplayId) {
+            attemptedDisplayId = null
+        }
+        evaluate(port.environment().target, event)
+    }
+
+    private fun evaluate(target: DisplayTarget, event: DisplayEvent) {
+        val environment = port.environment()
+        if (environment.currentDisplayId == attemptedDisplayId) attemptedDisplayId = null
+        when (
+            val decision = DisplayContinuityPolicy.decide(
+                target = target,
+                currentDisplayId = environment.currentDisplayId,
+                candidates = environment.candidates,
+                event = event,
+                attemptedDisplayId = attemptedDisplayId,
+            )
+        ) {
+            is DisplayContinuityDecision.Move -> {
+                attemptedDisplayId = decision.displayId
+                port.launch(DisplayLaunch(decision.displayId, environment.webRouteMarker))
+            }
+            DisplayContinuityDecision.ReevaluateOnResume,
+            DisplayContinuityDecision.Stay,
+            -> Unit
+        }
+    }
+}
 
 class MainActivity : AppCompatActivity() {
     private lateinit var picker: RomDocumentPicker
     private lateinit var setupPicker: SetupDocumentPicker
+    private lateinit var displayManager: DisplayManager
+    private lateinit var displayContinuity: MainActivityDisplayContinuity
     private var companionWebView: DualDexWebView? = null
+    private var activeDisplayId = Display.DEFAULT_DISPLAY
+    private var displayEventSink: ((DisplayEvent) -> Unit)? = null
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) {
+            displayEventSink?.invoke(DisplayEvent.Added(displayId))
+        }
+
+        override fun onDisplayChanged(displayId: Int) {
+            displayEventSink?.invoke(DisplayEvent.Changed(displayId))
+        }
+
+        override fun onDisplayRemoved(displayId: Int) {
+            displayEventSink?.invoke(DisplayEvent.Removed(displayId))
+        }
+    }
     private val mapperExportPicker = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) {
             runCatching {
@@ -66,6 +161,26 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        displayManager = getSystemService(DisplayManager::class.java)
+        activeDisplayId = display?.displayId ?: Display.DEFAULT_DISPLAY
+        displayContinuity = MainActivityDisplayContinuity(
+            port = object : MainActivityDisplayPort {
+                override fun environment(): DisplayEnvironment = displayEnvironment()
+
+                override fun register(listener: (DisplayEvent) -> Unit) {
+                    displayEventSink = listener
+                    displayManager.registerDisplayListener(displayListener, null)
+                }
+
+                override fun unregister() {
+                    displayManager.unregisterDisplayListener(displayListener)
+                    displayEventSink = null
+                }
+
+                override fun launch(request: DisplayLaunch) = launchOnDisplay(request)
+            },
+            attemptedDisplayId = intent.displayAttempt(),
+        )
         WebView.setWebContentsDebuggingEnabled((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0)
         picker = RomDocumentPicker(this)
         setupPicker = SetupDocumentPicker(
@@ -81,6 +196,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        displayContinuity.onStart()
+    }
+
+    override fun onStop() {
+        displayContinuity.onStop()
+        super.onStop()
+    }
+
     override fun onDestroy() {
         picker.cancel()
         companionWebView?.destroy()
@@ -90,10 +215,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        activeDisplayId = display?.displayId ?: activeDisplayId
         val application = application as DualDexApplication
         application.activityResumed(this)
         application.retroArchSetup?.refreshStorageAccess()
-        moveToDisplayTarget(application.currentDisplayTarget())
+        displayContinuity.onResume()
     }
 
     override fun onPause() {
@@ -149,7 +275,8 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(host)
         keepContentInsideSystemBars(host)
-        webView.open()
+        val routeMarker = normalizedWebRoute(intent.getStringExtra(EXTRA_WEB_ROUTE))
+        if (routeMarker == null) webView.open() else webView.loadUrl("$origin$routeMarker")
     }
 
     private fun showOverlay() {
@@ -192,28 +319,51 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun moveToDisplayTarget(target: DisplayTarget) {
-        val manager = getSystemService(DisplayManager::class.java)
-        val presentationIds = manager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION).map { it.displayId }.toSet()
-        val displays = manager.displays.map { candidate ->
-            CompanionDisplay(
+        displayContinuity.onTargetChanged(target)
+    }
+
+    private fun displayEnvironment(): DisplayEnvironment {
+        val presentationIds = displayManager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
+            .map { it.displayId }
+            .toSet()
+        val candidates = displayManager.displays.map { candidate ->
+            DisplayCandidate(
                 id = candidate.displayId,
                 isDefault = candidate.displayId == Display.DEFAULT_DISPLAY,
                 isPresentation = candidate.displayId in presentationIds,
             )
         }
-        val currentId = display?.displayId ?: Display.DEFAULT_DISPLAY
-        val targetId = DisplayTargetController.resolve(target, currentId, displays)
-        if (targetId == currentId) return
-        if (intent.getIntExtra(EXTRA_DISPLAY_ATTEMPT, Int.MIN_VALUE) == targetId) return
-        val options = ActivityOptions.makeBasic().setLaunchDisplayId(targetId)
+        return DisplayEnvironment(
+            target = (application as DualDexApplication).currentDisplayTarget(),
+            currentDisplayId = activeDisplayId,
+            candidates = candidates,
+            webRouteMarker = currentWebRouteMarker(),
+        )
+    }
+
+    private fun launchOnDisplay(request: DisplayLaunch) {
+        val options = ActivityOptions.makeBasic().setLaunchDisplayId(request.displayId)
+        val launchIntent = Intent(this, MainActivity::class.java)
+            .putExtra(EXTRA_DISPLAY_ATTEMPT, request.displayId)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        request.webRouteMarker?.let { launchIntent.putExtra(EXTRA_WEB_ROUTE, it) }
         startActivity(
-            Intent(this, MainActivity::class.java)
-                .putExtra(EXTRA_DISPLAY_ATTEMPT, targetId)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            launchIntent,
             options.toBundle(),
         )
         finish()
     }
+
+    private fun currentWebRouteMarker(): String? {
+        val origin = (application as DualDexApplication).localOrigin ?: return null
+        val currentUrl = companionWebView?.url ?: return null
+        if (!currentUrl.startsWith(origin)) return null
+        return normalizedWebRoute(currentUrl.removePrefix(origin))
+    }
+
+    private fun normalizedWebRoute(candidate: String?): String? = candidate
+        ?.takeIf { it.startsWith('/') && !it.startsWith("//") }
+        ?.takeIf { '\r' !in it && '\n' !in it }
 
     private fun showRecovery(failure: Throwable?) {
         val application = application as DualDexApplication
@@ -266,5 +416,9 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_EXPORT_MAPPER = "com.darkaxt.dualdex.EXPORT_MAPPER"
         private const val EXTRA_DISPLAY_ATTEMPT = "com.darkaxt.dualdex.DISPLAY_ATTEMPT"
+        private const val EXTRA_WEB_ROUTE = "com.darkaxt.dualdex.WEB_ROUTE"
+
+        private fun Intent.displayAttempt(): Int? = getIntExtra(EXTRA_DISPLAY_ATTEMPT, Int.MIN_VALUE)
+            .takeUnless { it == Int.MIN_VALUE }
     }
 }

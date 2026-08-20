@@ -22,18 +22,21 @@ data class Arm7HostMemoryRegion(
 }
 
 class Arm7Memory(
-    romBytes: ByteArray,
+    val romImage: RomImage,
     hostRegions: List<Arm7HostMemoryRegion> = emptyList(),
 ) {
-    private val rom = romBytes.copyOf()
     private val ewram = ByteArray(EWRAM_SIZE)
     private val iwram = ByteArray(IWRAM_SIZE)
     private val trace = mutableListOf<Arm7MemoryTrace>()
     private val hostRegions = hostRegions.map { it.copy(bytes = it.bytes.copyOf()) }
     private var sequence = 0L
 
-    val romImage: RomImage = RomImage(rom)
-    val romSize: Int get() = rom.size
+    constructor(
+        romBytes: ByteArray,
+        hostRegions: List<Arm7HostMemoryRegion> = emptyList(),
+    ) : this(RomImage(romBytes), hostRegions)
+
+    val romSize: Int get() = romImage.size
 
     fun traces(): List<Arm7MemoryTrace> = trace.toList()
 
@@ -70,7 +73,7 @@ class Arm7Memory(
     fun romOffset(address: Long, length: Int): Int? {
         val offset = address - ROM_START
         return offset.toInt().takeIf {
-            offset >= 0 && offset + length.toLong() <= rom.size.toLong()
+            offset >= 0 && offset + length.toLong() <= romImage.size.toLong()
         }
     }
 
@@ -79,6 +82,15 @@ class Arm7Memory(
         width: Arm7MemoryWidth,
         read: (ByteArray, Int) -> Long,
     ): Long {
+        romOffset(address, width.bytes)?.let { offset ->
+            val value = when (width) {
+                Arm7MemoryWidth.BYTE -> romImage.u8(offset).toLong()
+                Arm7MemoryWidth.HALFWORD -> romImage.u16le(offset).toLong()
+                Arm7MemoryWidth.WORD -> romImage.u32le(offset)
+            } and 0xFFFF_FFFFL
+            trace += Arm7MemoryTrace(sequence++, Arm7MemoryDirection.READ, address, width, value)
+            return value
+        }
         val (bytes, offset) = mapped(address, width.bytes, write = false)
         val value = read(bytes, offset) and 0xFFFF_FFFFL
         trace += Arm7MemoryTrace(sequence++, Arm7MemoryDirection.READ, address, width, value)
@@ -91,6 +103,9 @@ class Arm7Memory(
         value: Long,
         write: (ByteArray, Int) -> Unit,
     ) {
+        if (romOffset(address, width.bytes) != null) {
+            throw Arm7MemoryAccessException("write to immutable ROM at 0x${address.toString(16)}")
+        }
         val (bytes, offset) = mapped(address, width.bytes, write = true)
         write(bytes, offset)
         trace += Arm7MemoryTrace(sequence++, Arm7MemoryDirection.WRITE, address, width, value and 0xFFFF_FFFFL)
@@ -101,10 +116,6 @@ class Arm7Memory(
             it >= 0 && it + length.toLong() <= size.toLong()
         }?.toInt()
 
-        within(ROM_START, rom.size)?.let { offset ->
-            if (write) throw Arm7MemoryAccessException("write to immutable ROM at 0x${address.toString(16)}")
-            return rom to offset
-        }
         if (address ushr 24 == 0x02L) return ewram to ((address - EWRAM_START).toInt() and (EWRAM_SIZE - 1))
         if (address ushr 24 == 0x03L) return iwram to ((address - IWRAM_START).toInt() and (IWRAM_SIZE - 1))
         hostRegions.forEach { region ->

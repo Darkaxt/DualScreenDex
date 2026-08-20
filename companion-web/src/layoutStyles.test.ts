@@ -5,6 +5,14 @@ import { join } from 'node:path'
 const styles = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8')
 
 describe('screen layout containment', () => {
+  it('keeps root titles left aligned when the header also has actions', () => {
+    const rootRule = styles.match(/\.app-header\.app-header-root\s*\{([^}]*)\}/)?.[1]
+    const actionRule = styles.match(/\.app-header:not\(\.app-header-root\):has\(\.header-actions\)\s*\{([^}]*)\}/)?.[1]
+
+    expect(rootRule).toMatch(/grid-template-columns\s*:\s*12px minmax\(0, 1fr\) auto/)
+    expect(actionRule).toMatch(/grid-template-columns\s*:\s*54px minmax\(0, 1fr\) auto/)
+  })
+
   it('clips screen overflow so the declared content region owns scrolling', () => {
     const screenRule = styles.match(/\.screen\s*\{([^}]*)\}/)?.[1]
 

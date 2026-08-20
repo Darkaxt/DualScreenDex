@@ -9,6 +9,8 @@ import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.EOFException
 import java.io.InputStream
+import java.io.OutputStream
+import java.io.OutputStreamWriter
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -135,6 +137,7 @@ class AndroidLoopbackServer(
         request.method == "GET" && request.path.startsWith("/api/sprites/species/") -> spriteResponse(request.path, true)
         request.method == "GET" && request.path.startsWith("/api/sprites/balls/") -> spriteResponse(request.path, false)
         request.method == "GET" && request.path.startsWith("/api/maps/") -> worldMapResponse(request.path)
+        request.method == "GET" && request.path.startsWith("/api/trainer-assets/") -> trainerAssetResponse(request.path)
         request.path.startsWith("/api/") -> if (request.method in setOf("GET", "POST")) {
             textResponse("not found", 404)
         } else {
@@ -174,7 +177,7 @@ class AndroidLoopbackServer(
 
     private fun handleLoad(request: Request): Response {
         val name = request.query["name"] ?: error("upload name is required")
-        return jsonResponse(runtime.load(name, request.body.inputStream()))
+        return jsonResponse(runtime.load(name, request.body))
     }
 
     private fun spriteResponse(path: String, species: Boolean): Response {
@@ -214,6 +217,26 @@ class AndroidLoopbackServer(
         )
     }
 
+    private fun trainerAssetResponse(path: String): Response {
+        val encoded = path.removePrefix("/api/trainer-assets/").removeSuffix(".png")
+        if (encoded.isBlank() || encoded.contains('/') || encoded.contains("..")) {
+            return textResponse("trainer asset not available", 404)
+        }
+        val key = runCatching { URLDecoder.decode(encoded, Charsets.UTF_8.name()) }.getOrNull()
+            ?: return textResponse("trainer asset not available", 404)
+        if (key.split('/').any { it == ".." }) return textResponse("trainer asset not available", 404)
+        val sprite = runtime.trainerAsset(key) ?: return textResponse("trainer asset not available", 404)
+        return Response(
+            200,
+            "image/png",
+            PngEncoder.encode(sprite),
+            buildMap {
+                put("Cache-Control", "public, max-age=31536000, immutable")
+                runtime.catalogHash()?.let { put("ETag", "\"$it-trainer-${key.hashCode()}\"") }
+            },
+        )
+    }
+
     private fun staticResponse(rawPath: String): Response {
         val requested = rawPath.removePrefix("/").ifBlank { "index.html" }
         require(requested.split('/').none { it == ".." }) { "invalid asset path" }
@@ -223,11 +246,16 @@ class AndroidLoopbackServer(
     }
 
     private fun jsonResponse(value: Any, status: Int = 200): Response = Response(
-        status,
-        "application/json; charset=utf-8",
-        gson.toJson(value).toByteArray(Charsets.UTF_8),
-        mapOf("Cache-Control" to "no-store"),
-    )
+        status = status,
+        contentType = "application/json; charset=utf-8",
+        contentLength = null,
+        headers = mapOf("Cache-Control" to "no-store"),
+    ) { output ->
+        OutputStreamWriter(output, Charsets.UTF_8).also { writer ->
+            gson.toJson(value, writer)
+            writer.flush()
+        }
+    }
 
     private fun textResponse(value: String, status: Int): Response =
         Response(status, "text/plain; charset=utf-8", value.toByteArray(Charsets.UTF_8))
@@ -273,7 +301,9 @@ class AndroidLoopbackServer(
             val sizeLine = readLine(input) ?: throw EOFException("missing chunk size")
             val size = sizeLine.substringBefore(';').trim().toLong(16)
             if (size == 0L) {
-                while (!readLine(input).isNullOrEmpty()) Unit
+                while (true) {
+                    if (readLine(input).isNullOrEmpty()) break
+                }
                 return output.toByteArray()
             }
             require(output.size().toLong() + size <= MAX_BODY_BYTES) { "request body is too large" }
@@ -308,13 +338,15 @@ class AndroidLoopbackServer(
         }
         output.write("HTTP/1.1 ${response.status} $reason\r\n".toByteArray(Charsets.US_ASCII))
         output.write("Content-Type: ${response.contentType}\r\n".toByteArray(Charsets.US_ASCII))
-        output.write("Content-Length: ${response.body.size}\r\n".toByteArray(Charsets.US_ASCII))
+        response.contentLength?.let { length ->
+            output.write("Content-Length: $length\r\n".toByteArray(Charsets.US_ASCII))
+        }
         output.write("Connection: close\r\n".toByteArray(Charsets.US_ASCII))
         response.headers.forEach { (name, value) ->
             output.write("$name: $value\r\n".toByteArray(Charsets.US_ASCII))
         }
         output.write("\r\n".toByteArray(Charsets.US_ASCII))
-        output.write(response.body)
+        response.writeBody(output)
         output.flush()
     }
 
@@ -341,12 +373,20 @@ class AndroidLoopbackServer(
         val body: ByteArray,
     )
 
-    private data class Response(
+    private class Response(
         val status: Int,
         val contentType: String,
-        val body: ByteArray,
+        val contentLength: Long?,
         val headers: Map<String, String> = emptyMap(),
-    )
+        val writeBody: (OutputStream) -> Unit,
+    ) {
+        constructor(
+            status: Int,
+            contentType: String,
+            body: ByteArray,
+            headers: Map<String, String> = emptyMap(),
+        ) : this(status, contentType, body.size.toLong(), headers, { output -> output.write(body) })
+    }
 
     companion object {
         const val LOOPBACK_HOST = "127.0.0.1"

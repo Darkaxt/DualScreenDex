@@ -151,7 +151,10 @@ class AndroidLoopbackServerTest {
             assertEquals(200, root.responseCode)
             assertTrue(root.inputStream.reader().readText().contains("DualDex production"))
 
-            val bootstrap = URI("http://127.0.0.1:${server.address.port}/api/bootstrap").toURL().readText()
+            val bootstrapConnection = URI("http://127.0.0.1:${server.address.port}/api/bootstrap")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(-1L, bootstrapConnection.contentLengthLong)
+            val bootstrap = bootstrapConnection.inputStream.reader().readText()
             assertTrue(bootstrap.contains("\"crc32\":\"89ABCDEF\""))
             assertTrue(bootstrap.contains("\"battle\":null"))
         } finally {

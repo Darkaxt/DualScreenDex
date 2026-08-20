@@ -13,6 +13,8 @@ enum class SaveCapability {
     EGG,
     IVS,
     CAPTURE_BALL,
+    TRAINER,
+    BAG,
 }
 
 enum class SaveCapabilityStatus { AVAILABLE, PARTIAL, NOT_FOUND, NOT_APPLICABLE }

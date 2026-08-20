@@ -1,5 +1,7 @@
 package com.darkaxt.dualdex.catalog
 
+import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
+import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 
 enum class CatalogSourceKind { DIRECT, ARCHIVE }
@@ -52,6 +54,21 @@ data class CatalogWriteProgress(
     }
 }
 
+fun catalogWriteProgress(progress: CatalogMaterializationProgress): CatalogWriteProgress = CatalogWriteProgress(
+    phase = progress.phase.name,
+    completedUnits = progress.completedUnits,
+    totalUnits = progress.totalUnits,
+    complete = progress.completedUnits == progress.totalUnits,
+    changedSections = when (progress.phase) {
+        CatalogMaterializationPhase.ESSENTIAL -> CatalogSchema.requiredSections
+        CatalogMaterializationPhase.SPECIES_MEDIA -> setOf("species")
+        CatalogMaterializationPhase.RELATIONSHIPS -> setOf("species", "encounters", "runtime_metadata")
+        // EXTENDED is the final coherent snapshot; COMPLETE only commits its metadata.
+        CatalogMaterializationPhase.EXTENDED -> CatalogSchema.requiredSections
+        CatalogMaterializationPhase.COMPLETE -> emptySet()
+    },
+)
+
 class CatalogWriter(
     private val database: CatalogDatabase,
     private val clock: () -> Long = System::currentTimeMillis,
@@ -62,8 +79,6 @@ class CatalogWriter(
         require(catalog.romSha256.matches(Regex("[0-9a-fA-F]{64}"))) { "catalog SHA-256 is invalid" }
         require(catalog.romCrc32.matches(Regex("[0-9a-fA-F]{8}"))) { "catalog CRC32 is invalid" }
         val now = clock()
-        val sections = codec.encode(catalog, progress.changedSections)
-
         CatalogMigration.prepare(database)
         database.transaction {
             database.execute(
@@ -93,7 +108,8 @@ class CatalogWriter(
                     now,
                 ),
             )
-            sections.forEach { (name, payload) ->
+            progress.changedSections.forEach { name ->
+                val payload = codec.encodeSection(catalog, name)
                 database.execute(
                     """
                     INSERT OR REPLACE INTO catalog_sections

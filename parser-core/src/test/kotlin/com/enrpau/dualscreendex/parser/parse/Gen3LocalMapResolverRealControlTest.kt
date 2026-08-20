@@ -13,40 +13,47 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import javax.imageio.ImageIO
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class Gen3LocalMapResolverRealControlTest {
     @Test
-    fun officialRubyResolvesCanonicalRseLocalMaps() = assertControl(controls[0])
+    fun officialRubyResolvesCanonicalRseLocalMaps() { assertControl(controls[0]) }
 
     @Test
-    fun officialSapphireResolvesCanonicalRseLocalMaps() = assertControl(controls[1])
+    fun officialSapphireResolvesCanonicalRseLocalMaps() { assertControl(controls[1]) }
 
     @Test
-    fun officialEmeraldResolvesCanonicalEmeraldLocalMaps() = assertControl(controls[2])
+    fun officialEmeraldResolvesCanonicalEmeraldLocalMaps() { assertControl(controls[2]) }
 
     @Test
-    fun officialFireRedResolvesCanonicalFrlgLocalMaps() = assertControl(controls[3])
+    fun officialFireRedResolvesCanonicalFrlgLocalMaps() { assertControl(controls[3]) }
 
     @Test
-    fun officialLeafGreenResolvesCanonicalFrlgLocalMaps() = assertControl(controls[4])
+    fun officialLeafGreenResolvesCanonicalFrlgLocalMaps() { assertControl(controls[4]) }
 
     @Test
-    fun modernEmeraldRetainsPrimaryAndSecondaryTilesetLocalMaps() = assertControl(controls[5])
+    fun modernEmeraldRetainsPrimaryAndSecondaryTilesetLocalMaps() {
+        val localMaps = assertControl(controls[5])
+        assertTrue(localMaps.maps.any { it.baseAreaId == 0x0009 && it.displayName == "Littleroot Town" })
+    }
 
-    private fun assertControl(control: Control) {
+    private fun assertControl(control: Control): LocalMapCatalog {
         val attempt = CatalogParser.parseCatching(realRom(control))
         assertEquals(SelectionStatus.SELECTED, attempt.analysis.status)
         val catalog = requireNotNull(attempt.catalog).getOrThrow()
         val localMaps = catalog.localMaps
 
         assertEquals(control.mapCount, localMaps.maps.size)
-        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LOCAL_MAP).status)
-        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
+        val localMapEvidence = catalog.capabilities.getValue(RomCapability.LOCAL_MAP)
+        assertEquals(localMapEvidence.reasons.joinToString("; "), CapabilityStatus.AVAILABLE, localMapEvidence.status)
+        val worldMapEvidence = catalog.capabilities.getValue(RomCapability.WORLD_MAP)
+        assertEquals(worldMapEvidence.reasons.joinToString("; "), CapabilityStatus.AVAILABLE, worldMapEvidence.status)
         control.maps.forEach { expected ->
             assertMap(localMaps, expected)
         }
+        return localMaps
     }
 
     private fun assertMap(catalog: LocalMapCatalog, expected: ExpectedMap) {
@@ -129,19 +136,19 @@ class Gen3LocalMapResolverRealControlTest {
             Control(
                 environmentVariable = "DUALDEX_OFFICIAL_RUBY_ROM",
                 romSha256 = "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
-                mapCount = 97,
+                mapCount = 394,
                 maps = rseMaps,
             ),
             Control(
                 environmentVariable = "DUALDEX_OFFICIAL_SAPPHIRE_ROM",
                 romSha256 = "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb",
-                mapCount = 97,
+                mapCount = 394,
                 maps = rseMaps,
             ),
             Control(
                 environmentVariable = "DUALDEX_OFFICIAL_EMERALD_ROM",
                 romSha256 = "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
-                mapCount = 116,
+                mapCount = 518,
                 maps = listOf(
                     ExpectedMap(
                         baseAreaId = 0x0010,
@@ -160,20 +167,26 @@ class Gen3LocalMapResolverRealControlTest {
             Control(
                 environmentVariable = "DUALDEX_FIRERED_ROM",
                 romSha256 = "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
-                mapCount = 124,
+                mapCount = 425,
                 maps = frlgMaps,
             ),
             Control(
                 environmentVariable = "DUALDEX_LEAFGREEN_ROM",
                 romSha256 = "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825",
-                mapCount = 124,
+                mapCount = 425,
                 maps = frlgMaps,
             ),
             Control(
                 environmentVariable = "DUALDEX_MODERN_EMERALD_ROM",
                 romSha256 = "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
-                mapCount = 133,
+                mapCount = 557,
                 maps = listOf(
+                    ExpectedMap(
+                        baseAreaId = 0x0009,
+                        gridWidth = 20,
+                        gridHeight = 20,
+                        argbSha256 = "fab7c44f6cadecb33a10733242c35b5632f86c645b13fd66dfd72131b58f7654",
+                    ),
                     ExpectedMap(
                         baseAreaId = 0x0010,
                         gridWidth = 20,

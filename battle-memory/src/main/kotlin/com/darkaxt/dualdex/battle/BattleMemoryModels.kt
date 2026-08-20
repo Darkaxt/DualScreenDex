@@ -73,6 +73,7 @@ data class BattleMemorySample(
     val playerExecutedMoveId: Int? = null,
     val opponentExecutedMoveId: Int? = null,
     val encounterKind: BattleEncounterKind = BattleEncounterKind.UNKNOWN,
+    val commandOwnerBattlerIndex: Int? = null,
 )
 
 sealed interface LayoutResolution {

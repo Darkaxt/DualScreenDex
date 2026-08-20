@@ -153,10 +153,9 @@ class DualDexServer(
         val file = requested.takeIf { it.startsWith(normalizedRoot) && Files.isRegularFile(it) }
             ?: normalizedRoot.resolve("index.html").takeIf(Files::isRegularFile)
         if (file == null) return text(exchange, 404, "web bundle not built")
-        val bytes = Files.readAllBytes(file)
         exchange.responseHeaders.add("Content-Type", contentType(file))
-        exchange.sendResponseHeaders(200, bytes.size.toLong())
-        exchange.responseBody.use { it.write(bytes) }
+        exchange.sendResponseHeaders(200, Files.size(file))
+        exchange.responseBody.use { output -> Files.newInputStream(file).use { input -> input.copyTo(output) } }
     }
 
     private fun safely(exchange: HttpExchange, action: () -> Unit) {
@@ -170,11 +169,10 @@ class DualDexServer(
     }
 
     private fun json(exchange: HttpExchange, value: Any, status: Int = 200) {
-        val bytes = gson.toJson(value).toByteArray(Charsets.UTF_8)
         exchange.responseHeaders.add("Content-Type", "application/json; charset=utf-8")
         exchange.responseHeaders.add("Cache-Control", "no-store")
-        exchange.sendResponseHeaders(status, bytes.size.toLong())
-        exchange.responseBody.use { it.write(bytes) }
+        exchange.sendResponseHeaders(status, 0)
+        exchange.responseBody.bufferedWriter(Charsets.UTF_8).use { writer -> gson.toJson(value, writer) }
     }
 
     private fun text(exchange: HttpExchange, status: Int, value: String) {

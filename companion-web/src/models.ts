@@ -1,5 +1,5 @@
 export type KnowledgeMode = 'DISCOVERED' | 'ORGANIC' | 'HIDDEN';
-export type Screen = 'POKEDEX' | 'DETAIL' | 'BATTLE' | 'SETTINGS' | 'SETUP';
+export type Screen = 'POKEDEX' | 'DETAIL' | 'BATTLE' | 'TRAINER' | 'PARTY' | 'SETTINGS' | 'SETUP';
 
 export interface Species {
   id: number;
@@ -172,6 +172,7 @@ export interface State {
   priorScreen: Screen;
   settingsReturnScreen: Screen;
   selectedSpeciesId: number | null;
+  selectedPartySlot?: number | null;
   filter: 'ALL' | 'CAUGHT' | 'SEEN' | 'TEAM' | 'AREA';
   selectedAreaId: number | null;
   selectedAreaIds?: number[];
@@ -179,6 +180,7 @@ export interface State {
   currentAreaBaseId?: number | null;
   currentAreaName?: string | null;
   currentMapPosition?: { x: number; y: number } | null;
+  gameTime?: GameTime | null;
   currentAreaSpeciesIds?: number[];
   revealedAreaBaseIds?: number[];
   observedAreaBaseIdsBySpecies?: Record<number, number[]>;
@@ -186,6 +188,8 @@ export interface State {
   settings: Settings;
   speciesState: Record<number, SpeciesState>;
   observedMoves: Record<number, { moveId: number; frequency: number }[]>;
+  trainer?: TrainerView | null;
+  party?: PartyMemberView[];
   battle: null | {
     opponents: { speciesId: number; level: number; typeIds: number[]; rarity: Rarity; moves: { moveId: number; frequency: number }[] }[];
     targetIndex: number;
@@ -203,6 +207,52 @@ export interface State {
   loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number };
   retroArch?: RetroArchState;
   saveRam?: SaveRamState;
+}
+
+export interface GameTime {
+  hours: number;
+  minutes: number;
+  phase?: 'DAY' | 'NIGHT' | null;
+  phaseProgress?: number | null;
+}
+
+export interface TrainerView {
+  name: string;
+  gender: 'MALE' | 'FEMALE';
+  publicTrainerId: number;
+  money: number;
+  playTimeHours: number;
+  playTimeMinutes: number;
+  dexSeen: number;
+  dexCaught: number;
+  stars: number | null;
+  avatarUrl: string | null;
+  badges: { index: number; earned: boolean; imageUrl: string | null }[];
+}
+
+export interface PartyMemberView {
+  slot: number;
+  occupied: boolean;
+  speciesId: number | null;
+  speciesName: string | null;
+  spriteUrl: string | null;
+  typeIds: number[];
+  nickname: string | null;
+  level: number | null;
+  isEgg: boolean;
+  gender: 'MALE' | 'FEMALE' | 'GENDERLESS' | null;
+  nature: string | null;
+  abilityId: number | null;
+  abilityName: string | null;
+  heldItemId: number | null;
+  heldItemName: string | null;
+  hasHeldItem?: boolean | null;
+  currentHp: number | null;
+  maximumHp: number | null;
+  status: string | null;
+  experienceProgress: number | null;
+  stats: Record<string, number>;
+  moves: { slot: number; moveId: number | null; name: string | null; currentPp: number | null; maximumPp: number | null }[];
 }
 
 export interface Bootstrap {

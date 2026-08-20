@@ -845,7 +845,7 @@ object BattleRoleProvenance {
             Q412_ONE * 2 to Q412_ONE / 2,
         )
         return probes.all { (current, factor) ->
-            val memory = Arm7Memory(image.slice(0, image.size))
+            val memory = Arm7Memory(image)
             val state = Arm7State(instructionSet, Arm7Memory.ROM_START + entry).apply {
                 this[Arm7Register.SP] = HELPER_STACK
                 this[Arm7Register.LR] = HELPER_RETURN or 1L
@@ -908,7 +908,7 @@ object BattleRoleProvenance {
         if (!isAlignedAndInBounds(image, entry, instructionSet)) return false
         val probes = listOf(1L to 2L, 19L to 7L, 256L to 16L, 0x7FFF_FFFFL to 257L)
         return probes.all { (dividend, divisor) ->
-            val memory = Arm7Memory(image.slice(0, image.size))
+            val memory = Arm7Memory(image)
             val machineState = Arm7State(instructionSet, Arm7Memory.ROM_START + entry).apply {
                 this[Arm7Register.SP] = HELPER_STACK
                 this[Arm7Register.LR] = HELPER_RETURN or 1L
@@ -938,7 +938,7 @@ object BattleRoleProvenance {
             Q412_ONE * 3 / 2 to 337,
         )
         return probes.all { (modifier, attack) ->
-            val memory = Arm7Memory(image.slice(0, image.size))
+            val memory = Arm7Memory(image)
             val state = Arm7State(instructionSet, Arm7Memory.ROM_START + entry).apply {
                 this[Arm7Register.SP] = HELPER_STACK
                 this[Arm7Register.LR] = HELPER_RETURN or 1L
@@ -1217,31 +1217,11 @@ object BattleRoleProvenance {
         }
         if (queue.isNotEmpty() || entry !in successors) return null
 
-        val exit = CfgNode(-1, instructionSet)
-        val nodes = successors.keys + exit
-        val postDominators = nodes.associateWithTo(mutableMapOf()) { node ->
-            if (node == exit) mutableSetOf(exit) else nodes.toMutableSet()
-        }
-        var changed: Boolean
-        do {
-            changed = false
-            successors.entries.reversed().forEach { (node, rawEdges) ->
-                val edges = rawEdges.ifEmpty { setOf(exit) }
-                val intersection = edges
-                    .map { postDominators[it] ?: mutableSetOf(exit) }
-                    .reduce { left, right -> left.intersect(right).toMutableSet() }
-                val updated = (intersection + node).toMutableSet()
-                if (postDominators[node] != updated) {
-                    postDominators[node] = updated
-                    changed = true
-                }
-            }
-        } while (changed)
-
-        return postDominators[entry]
-            ?.filter { it != entry && it != exit }
-            ?.maxByOrNull { postDominators[it]?.size ?: 0 }
-            ?.offset
+        return ImmediatePostDominator.find(
+            entry = entry,
+            exit = CfgNode(-1, instructionSet),
+            successors = successors,
+        )?.offset
     }
 
     private fun decode(image: RomImage, offset: Int, set: Arm7InstructionSet): Arm7DecodeResult = when (set) {

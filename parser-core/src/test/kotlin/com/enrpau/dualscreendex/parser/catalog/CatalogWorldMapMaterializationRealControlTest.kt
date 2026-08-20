@@ -75,6 +75,8 @@ class CatalogWorldMapMaterializationRealControlTest {
         "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
         listOf("gen3-region-0"),
         listOf("0163d9b5e747d788db925776c25a087a1cc4bbfa34fd3e021580aa8756717fb0"),
+        expectedLocationBaseId = 0x0009,
+        expectedLocationName = "Littleroot Town",
     )
 
     @Test
@@ -160,6 +162,8 @@ class CatalogWorldMapMaterializationRealControlTest {
         expectedArgb: List<String>,
         expectedLocationCounts: List<Int>? = null,
         expectedBindingSha: String? = null,
+        expectedLocationBaseId: Int? = null,
+        expectedLocationName: String? = null,
     ) {
         val configured = System.getenv(environmentVariable)
         assumeTrue("set $environmentVariable to run this real-ROM control", !configured.isNullOrBlank())
@@ -176,6 +180,12 @@ class CatalogWorldMapMaterializationRealControlTest {
         assertEquals(expectedRegionKeys, catalog.worldMaps.regions.map { it.key })
         expectedLocationCounts?.let { expected ->
             assertEquals(expected, catalog.worldMaps.regions.map { it.locations.size })
+        }
+        expectedLocationBaseId?.let { baseAreaId ->
+            val location = catalog.worldMaps.regions
+                .flatMap { it.locations }
+                .single { baseAreaId in it.baseAreaIds }
+            assertEquals(expectedLocationName, location.displayName)
         }
         assertEquals(
             expectedArgb,

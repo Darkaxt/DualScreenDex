@@ -60,14 +60,48 @@ class BattleObservationTrackerTest {
     @Test
     fun recordsThePlayerMoveAndTargetTypesAfterPpConsumption() {
         val tracker = BattleObservationTracker()
-        tracker.update("rom-a", sample(pp = listOf(35, 40), playerPp = 35))
+        tracker.update(
+            "rom-a",
+            sample(pp = listOf(35, 40), playerPp = 35).copy(commandOwnerBattlerIndex = null),
+        )
 
-        val update = tracker.update("rom-a", sample(pp = listOf(35, 40), playerPp = 34))
+        val update = tracker.update(
+            "rom-a",
+            sample(pp = listOf(35, 40), playerPp = 34).copy(commandOwnerBattlerIndex = null),
+        )
 
         assertEquals(
             setOf(BattleMatchupObservation(speciesId = 13, moveId = 10, defendingTypeIds = listOf(6, 3))),
             update.discoveredMatchups,
         )
+    }
+
+    @Test
+    fun bindsADoubleBattlePpDropToThePriorCommandOwnerAndTarget() {
+        val tracker = BattleObservationTracker()
+        val first = doubleSample(leftPp = 35, rightPp = 25).copy(
+            commandOwnerBattlerIndex = 2,
+            selectedMoveId = 11,
+            target = BattleTarget(1, TargetMode.AUTOMATIC),
+        )
+        tracker.update("rom-a", first)
+
+        val update = tracker.update("rom-a", doubleSample(leftPp = 35, rightPp = 24))
+
+        assertEquals(
+            setOf(BattleMatchupObservation(speciesId = 16, moveId = 11, defendingTypeIds = listOf(0, 2))),
+            update.discoveredMatchups,
+        )
+    }
+
+    @Test
+    fun withholdsDoubleBattleMatchupsWithoutAPriorOwnedCommandPair() {
+        val tracker = BattleObservationTracker()
+        tracker.update("rom-a", doubleSample(leftPp = 35, rightPp = 25))
+
+        val update = tracker.update("rom-a", doubleSample(leftPp = 34, rightPp = 24))
+
+        assertTrue(update.discoveredMatchups.isEmpty())
     }
 
     @Test
@@ -119,9 +153,40 @@ class BattleObservationTrackerTest {
             battlers = listOfNotNull(player, opponent),
             opponents = listOf(opponent),
             selectedMoveId = 10,
+            commandOwnerBattlerIndex = player?.battlerIndex,
             target = BattleTarget(0, TargetMode.AUTOMATIC),
             capabilities = emptyMap(),
             opponentExecutedMoveId = opponentExecutedMove,
+        )
+    }
+
+    private fun doubleSample(leftPp: Int, rightPp: Int): BattleMemorySample {
+        fun battler(index: Int, position: Int, species: Int, move: Int, pp: Int, types: List<Int>) =
+            BattleMonSnapshot(
+                battlerIndex = index,
+                position = position,
+                speciesId = species,
+                level = 20,
+                hp = 50,
+                maxHp = 50,
+                ivs = List(6) { 15 },
+                moves = listOf(move, 0, 0, 0),
+                pp = listOf(pp, 0, 0, 0),
+                typeIds = types,
+                abilityId = 65,
+                personality = (100 + index).toLong(),
+            )
+        val left = battler(0, 0, 252, 10, leftPp, listOf(11, 11))
+        val firstOpponent = battler(1, 1, 13, 40, 35, listOf(6, 3))
+        val right = battler(2, 2, 1, 11, rightPp, listOf(11, 11))
+        val secondOpponent = battler(3, 3, 16, 40, 35, listOf(0, 2))
+        return BattleMemorySample(
+            layout = ResolvedBattleLayout(0x1000, 0x0FE4, 0x0FF0, 0x12B2, 0x1438, 0x143C, 4),
+            battlers = listOf(left, firstOpponent, right, secondOpponent),
+            opponents = listOf(firstOpponent, secondOpponent),
+            selectedMoveId = null,
+            target = BattleTarget(0, TargetMode.MANUAL_TARGET_FALLBACK),
+            capabilities = emptyMap(),
         )
     }
 }

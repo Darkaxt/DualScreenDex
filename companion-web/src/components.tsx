@@ -1,4 +1,5 @@
-import type { Catalog, KnowledgeMode, SpeciesState, TypeInfo } from './models';
+import { GameClockIndicator } from './GameClockIndicator';
+import type { Catalog, GameTime, KnowledgeMode, SpeciesState, TypeInfo } from './models';
 
 export type SpeciesIdentityKnowledge = 'unknown' | 'seen' | 'captured';
 
@@ -80,22 +81,41 @@ export function DexIcon() {
   </svg>;
 }
 
-function SettingsIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true">
+export function SettingsIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" data-semantic-icon="settings">
     <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.64 5.64l1.42 1.42M16.94 16.94l1.42 1.42M18.36 5.64l-1.42 1.42M7.06 16.94l-1.42 1.42" />
     <circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" />
   </svg>;
 }
 
-export function Header({ title, kicker, onBack, onSettings, onMap }: { title: string; kicker?: string; onBack?: () => void; onSettings?: () => void; onMap?: () => void }) {
+function TrainerIcon() {
+  return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="trainer">
+    <rect x="3" y="5" width="22" height="18" rx="2" />
+    <circle cx="10" cy="12" r="3" />
+    <path d="M6 19c.8-2.8 2.2-4 4-4s3.2 1.2 4 4M17 10h5M17 14h5M17 18h3" />
+  </svg>;
+}
+
+function PartyIcon() {
+  return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="party">
+    <circle cx="9" cy="10" r="5" /><circle cx="19" cy="17" r="5" />
+    <path d="M4 10h10M9 5v10M14 17h10M19 12v10" />
+  </svg>;
+}
+
+export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty }: { title: string; kicker?: string; gameTime?: GameTime | null; onBack?: () => void; onSettings?: () => void; onMap?: () => void; onTrainer?: () => void; onParty?: () => void }) {
+  const hasActions = Boolean(onTrainer || onParty || onMap || onSettings);
   return (
-    <header class="app-header">
+    <header class={`app-header ${onBack ? '' : 'app-header-root'}`}>
       {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
       <div class="header-title"><strong>{title}</strong>{kicker && <small>{kicker}</small>}</div>
-      {onMap ? <div class="header-actions">
-        <button class="header-action map-action" onClick={onMap} aria-label="Open Map"><MapIcon /></button>
+      {gameTime && <GameClockIndicator clock={gameTime} />}
+      {hasActions ? <div class="header-actions">
+        {onTrainer && <button class="header-action trainer-action" onClick={onTrainer} aria-label="Trainer Card"><TrainerIcon /></button>}
+        {onParty && <button class="header-action party-action" onClick={onParty} aria-label="Party"><PartyIcon /></button>}
+        {onMap && <button class="header-action map-action" onClick={onMap} aria-label="Open Map"><MapIcon /></button>}
         {onSettings && <button class="header-action settings-action" onClick={onSettings} aria-label="Settings"><SettingsIcon /></button>}
-      </div> : onSettings ? <button class="header-action settings-action" onClick={onSettings} aria-label="Settings"><SettingsIcon /></button> : <span class="header-spacer" />}
+      </div> : <span class="header-spacer" />}
     </header>
   );
 }

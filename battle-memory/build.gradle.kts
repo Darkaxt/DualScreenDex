@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":save-core"))
     testImplementation("junit:junit:4.13.2")
 }
 

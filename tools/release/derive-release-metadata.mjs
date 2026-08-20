@@ -49,33 +49,36 @@ function deriveVersionCode(major, minor, patch, qualifier) {
 }
 
 function parseReleaseTag(tag) {
-  const match = /^v(\d+)\.(\d+)\.(\d+)(?:-rc\.([1-9]\d*))?$/.exec(tag ?? "");
+  const match = /^v(\d+)\.(\d+)\.(\d+)(?:-rc\.([1-9]\d*)(?:-hotfix\.([1-9]\d*))?)?$/.exec(tag ?? "");
   if (!match) return undefined;
 
-  const [, majorText, minorText, patchText, rcText] = match;
+  const [, majorText, minorText, patchText, rcText, hotfixText] = match;
   const major = Number(majorText);
   const minor = Number(minorText);
   const patch = Number(patchText);
   const isCandidate = rcText !== undefined;
-  const qualifier = isCandidate ? Number(rcText) : FINAL_VERSION_QUALIFIER;
-  if (isCandidate && qualifier > MAX_RC_NUMBER) {
+  const rcNumber = isCandidate ? Number(rcText) : undefined;
+  const hotfixNumber = hotfixText === undefined ? 0 : Number(hotfixText);
+  const qualifier = isCandidate ? rcNumber + hotfixNumber : FINAL_VERSION_QUALIFIER;
+  if (isCandidate && (rcNumber > MAX_RC_NUMBER || qualifier > MAX_RC_NUMBER)) {
     throw new Error(`RC number must be between 1 and ${MAX_RC_NUMBER}`);
   }
   return {
     tag,
     versionName: `${major}.${minor}.${patch}`,
     isCandidate,
+    releaseVersionName: tag.slice(1),
     qualifier,
     versionCode: deriveVersionCode(major, minor, patch, qualifier),
   };
 }
 
 function validateReadyMarker(ready, versionName, certificateSha256) {
-  if (ready.schema !== 1 || ready.stage !== 7 || ready.status !== "ready-for-github-signing") {
-    throw new Error("Stage 7 release marker is not ready for GitHub signing");
+  if (ready.schema !== 1 || ready.stage !== 8 || ready.status !== "ready-for-github-signing") {
+    throw new Error("Stage 8 release marker is not ready for GitHub signing");
   }
   if (ready.openV1LedgerItems !== 0) {
-    throw new Error("Stage 7 release marker still has open v1 ledger items");
+    throw new Error("Stage 8 release marker still has open v1 ledger items");
   }
   if (ready.applicationId !== EXPECTED_APPLICATION_ID) {
     throw new Error(`Unexpected application ID in release marker: ${ready.applicationId}`);
@@ -162,9 +165,7 @@ export function deriveReleaseMetadata({
 
   return {
     tag,
-    version_name: parsedTag.isCandidate
-      ? `${parsedTag.versionName}-rc.${parsedTag.qualifier}`
-      : parsedTag.versionName,
+    version_name: parsedTag.releaseVersionName,
     version_code: String(parsedTag.versionCode),
     release_kind: parsedTag.isCandidate ? "candidate" : "final",
     draft: "false",
@@ -176,7 +177,7 @@ export function deriveReleaseMetadata({
 
 function runCli() {
   const argumentsMap = parseArguments(process.argv.slice(2));
-  const ready = requireJson(argumentsMap.ready, "Stage 7 release marker");
+  const ready = requireJson(argumentsMap.ready, "Stage 8 release marker");
   const certificateFingerprint = readFileSync(
     argumentsMap["certificate-fingerprint"],
     "utf8",

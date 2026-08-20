@@ -1,10 +1,15 @@
 package com.darkaxt.dualdex.save
 
+import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
+import com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi
+
 data class SaveSpeciesContext(
     val speciesId: Int,
     val dexNumber: Int?,
     val growthRate: Int?,
     val formId: Int = 0,
+    val genderRatio: Int? = null,
+    val abilityIds: List<Int> = emptyList(),
 )
 
 data class SaveParseContext(
@@ -12,6 +17,9 @@ data class SaveParseContext(
     val speciesById: Map<Int, SaveSpeciesContext>,
     val captureBallIds: Set<Int> = (1..15).toSet(),
     val levelUpRulesetSelectors: List<SaveByteSelector> = emptyList(),
+    val movePpById: Map<Int, Int> = emptyMap(),
+    val gen3TextEncoding: Gen3TextEncoding? = null,
+    val gen3SaveRuntimeAbi: Gen3SaveRuntimeAbi? = null,
 ) {
     val internalSpeciesCount: Int = (speciesById.keys.maxOrNull() ?: 0) + 1
     val maximumDexNumber: Int = speciesById.values.mapNotNull { it.dexNumber }.maxOrNull() ?: 0
@@ -38,6 +46,7 @@ data class OwnedIndividual(
     val dvs: List<Int>? = null,
     val captureBallId: Int? = null,
     val experience: Long? = null,
+    val details: PartyMemberDetails? = null,
 )
 
 data class SaveSnapshot(
@@ -55,6 +64,8 @@ data class SaveSnapshot(
     val detectedLevelUpRulesetId: String? = null,
     val levelUpRulesetDetectionResolved: Boolean = false,
     val levelUpRulesetDetectionFingerprint: String? = null,
+    val trainer: TrainerSnapshot? = null,
+    val bag: List<BagPocketSnapshot> = emptyList(),
 ) {
     val allIndividuals: List<OwnedIndividual> get() = party + storedIndividuals
 }

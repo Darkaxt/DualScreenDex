@@ -66,6 +66,7 @@ class FileKnowledgeRepository(
         val observedMoves: List<StoredSpeciesMoves> = emptyList(),
         val discoveredMatchups: List<StoredMatchup> = emptyList(),
         val knownMoves: List<Int> = emptyList(),
+        val matchupEvidenceVersion: Int = 0,
     ) {
         fun toLedger() = KnowledgeLedger(
             seenSpecies = seenSpecies.toSet(),
@@ -84,12 +85,17 @@ class FileKnowledgeRepository(
                     .filter { it.moveId > 0 && it.frequency > 0 }
                     .sortedWith(compareByDescending<MoveObservation> { it.frequency }.thenBy { it.moveId })
             },
-            discoveredMatchups = discoveredMatchups.mapNotNull { matchup ->
-                runCatching {
-                    MatchupKey(matchup.speciesId, matchup.moveId) to Effectiveness.valueOf(matchup.effectiveness)
-                }.getOrNull()
-            }.toMap(),
+            discoveredMatchups = if (matchupEvidenceVersion >= KnowledgeLedger.CURRENT_MATCHUP_EVIDENCE_VERSION) {
+                discoveredMatchups.mapNotNull { matchup ->
+                    runCatching {
+                        MatchupKey(matchup.speciesId, matchup.moveId) to Effectiveness.valueOf(matchup.effectiveness)
+                    }.getOrNull()
+                }.toMap()
+            } else {
+                emptyMap()
+            },
             knownMoves = knownMoves.toSet(),
+            matchupEvidenceVersion = KnowledgeLedger.CURRENT_MATCHUP_EVIDENCE_VERSION,
         )
 
         companion object {
@@ -112,6 +118,7 @@ class FileKnowledgeRepository(
                     .sortedWith(compareBy({ it.key.speciesId }, { it.key.moveId }))
                     .map { StoredMatchup(it.key.speciesId, it.key.moveId, it.value.name) },
                 knownMoves = ledger.knownMoves.sorted(),
+                matchupEvidenceVersion = ledger.matchupEvidenceVersion,
             )
         }
     }
@@ -133,7 +140,7 @@ class FileKnowledgeRepository(
     )
 
     private companion object {
-        const val SCHEMA = 2
-        val SUPPORTED_SCHEMAS = setOf(1, SCHEMA)
+        const val SCHEMA = 3
+        val SUPPORTED_SCHEMAS = setOf(1, 2, SCHEMA)
     }
 }

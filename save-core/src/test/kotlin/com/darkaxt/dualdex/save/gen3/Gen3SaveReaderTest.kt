@@ -21,6 +21,63 @@ class Gen3SaveReaderTest {
     )
 
     @Test
+    fun attachesTypedTrainerAndBagStateToTheChecksumValidSnapshot() {
+        val abi = Gen3SaveRuntimeAbi(
+            saveBlock1Size = 0x3D88,
+            saveBlock2Size = 0xF2C,
+            textEncoding = Gen3TextEncoding.ENGLISH,
+            trainer = Gen3TrainerCardAbi(
+                playerNameOffset = 0,
+                playerNameLength = 8,
+                genderOffset = 0x08,
+                trainerIdOffset = 0x0A,
+                playTimeHoursOffset = 0x0E,
+                playTimeMinutesOffset = 0x10,
+                encryptionKeyOffset = 0xAC,
+                moneyOffset = 0x490,
+                maximumMoney = 999_999,
+                badgeFlags = (0x867..0x86E).map { flag ->
+                    Gen3BitFlag(0x1270 + flag / 8, 1 shl (flag % 8))
+                },
+            ),
+            bag = Gen3BagAbi(
+                listOf(
+                    Gen3BagPocketAbi(com.darkaxt.dualdex.save.BagPocket.ITEMS, 0x560, 30),
+                    Gen3BagPocketAbi(com.darkaxt.dualdex.save.BagPocket.KEY_ITEMS, 0x5D8, 30),
+                    Gen3BagPocketAbi(com.darkaxt.dualdex.save.BagPocket.BALLS, 0x650, 16),
+                    Gen3BagPocketAbi(com.darkaxt.dualdex.save.BagPocket.TM_HM, 0x690, 64),
+                    Gen3BagPocketAbi(com.darkaxt.dualdex.save.BagPocket.BERRIES, 0x790, 46),
+                ),
+            ),
+        )
+        val typedContext = context.copy(gen3SaveRuntimeAbi = abi)
+        val slot = fixtureSlot(counter = 18, species = 6, context = typedContext)
+        val saveBlock2 = slot.sections.getValue(0)
+        intArrayOf(0xC7, 0xBB, 0xD3, 0xFF).forEachIndexed { index, value -> saveBlock2[index] = value.toByte() }
+        saveBlock2[0x08] = 1
+        saveBlock2.putU16le(0x0E, 25)
+        saveBlock2[0x10] = 17
+        val key = 0x1357_2468L
+        saveBlock2.putU32le(0xAC, key)
+        val saveBlock1 = concatenate(slot.sections, 1..4)
+        saveBlock1.putU32le(0x490, 12_345L xor key)
+        val firstBadge = abi.trainer.badgeFlags.first()
+        saveBlock1[firstBadge.byteOffset] = firstBadge.mask.toByte()
+        saveBlock1.putU16le(0x650, 4)
+        saveBlock1.putU16le(0x652, 12 xor key.toInt())
+        split(saveBlock1, slot.sections, 1..4)
+        val save = ByteArray(128 * 1024).also { writeSlot(it, 0, slot, rotation = 2) }
+
+        val parsed = SaveParser.parse(save, typedContext) as SaveParseResult.Parsed
+
+        assertEquals("MAY", parsed.snapshot.trainer?.name)
+        assertEquals(12_345L, parsed.snapshot.trainer?.money)
+        assertEquals(4, parsed.snapshot.bag.single { it.pocket == com.darkaxt.dualdex.save.BagPocket.BALLS }.entries.single().itemId)
+        assertEquals(SaveCapabilityStatus.AVAILABLE, parsed.snapshot.capabilities.getValue(SaveCapability.TRAINER).status)
+        assertEquals(SaveCapabilityStatus.AVAILABLE, parsed.snapshot.capabilities.getValue(SaveCapability.BAG).status)
+    }
+
+    @Test
     fun selectsNewestCompleteSlotAndDecodesKnowledgePartyBoxesAndArea() {
         val old = fixtureSlot(counter = 4, species = 1, partyLevel = 9, boxSpecies = null)
         val current = fixtureSlot(counter = 5, species = 6, partyLevel = 36, boxSpecies = 25)

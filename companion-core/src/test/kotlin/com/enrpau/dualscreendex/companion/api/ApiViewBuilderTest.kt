@@ -1,6 +1,11 @@
 package com.enrpau.dualscreendex.companion.api
 
+import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.PartyMemberDetails
+import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
+import com.enrpau.dualscreendex.companion.model.GameClock
+import com.enrpau.dualscreendex.companion.model.GameClockPhase
 import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.LiveMapPosition
@@ -20,6 +25,7 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.TrainerAssetCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
@@ -35,6 +41,121 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ApiViewBuilderTest {
+    @Test
+    fun exposesNormalizedGameClockPhaseWithoutReinterpretingIt() {
+        val state = ApiViewBuilder.state(
+            AppSnapshot(gameTime = GameClock(21, 0, GameClockPhase.NIGHT, 0.0)),
+            catalog = null,
+        )
+
+        assertEquals(21, state.gameTime?.hours)
+        assertEquals(0, state.gameTime?.minutes)
+        assertEquals("NIGHT", state.gameTime?.phase)
+        assertEquals(0.0, requireNotNull(state.gameTime?.phaseProgress), 0.0)
+    }
+
+    @Test
+    fun presentsTrainerAndPartyThroughCatalogLabelsAndNormalizedAssets() {
+        val species = com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
+            id = 25,
+            dexNumber = CatalogField.available(25),
+            name = CatalogField.available("PIKACHU"),
+            typeIds = CatalogField.available(listOf(13)),
+            baseStats = CatalogField.notFound("fixture"),
+            sprite = CatalogField.available(RgbaSprite(64, 64, IntArray(64 * 64))),
+            abilityIds = CatalogField.available(listOf(9)),
+        )
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = mapOf(25 to species),
+            movesById = mapOf(
+                85 to com.enrpau.dualscreendex.parser.catalog.MoveRecord(
+                    id = 85,
+                    name = CatalogField.available("Thunderbolt"),
+                    typeId = CatalogField.available(13),
+                    category = CatalogField.available(com.enrpau.dualscreendex.parser.catalog.MoveCategory.SPECIAL),
+                    power = CatalogField.available(90),
+                    accuracy = CatalogField.available(100),
+                    pp = CatalogField.available(15),
+                ),
+            ),
+            abilitiesById = mapOf(
+                9 to AbilityRecord(id = 9, name = CatalogField.available("Static")),
+            ),
+            trainerAssets = TrainerAssetCatalog(
+                avatarAssetKeys = mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"),
+                badgeAssetKeys = (1..8).map { "trainer/badge/$it" },
+                assets = buildMap {
+                    put("trainer/avatar/male", RgbaSprite(64, 64, IntArray(64 * 64)))
+                    put("trainer/avatar/female", RgbaSprite(64, 64, IntArray(64 * 64)))
+                    (1..8).forEach { put("trainer/badge/$it", RgbaSprite(16, 16, IntArray(16 * 16))) }
+                },
+            ),
+        )
+        val snapshot = AppSnapshot(
+            trainer = TrainerSnapshot("MAY", 1, 12345, 98765, 12, 34, 0b0000_0101, 42, 7, 2),
+            party = listOf(
+                OwnedIndividual(
+                    stableLocation = "party-0",
+                    speciesId = 25,
+                    level = 18,
+                    experience = 9000,
+                    details = PartyMemberDetails(
+                        nickname = "SPARK",
+                        natureId = 3,
+                        heldItemId = 999,
+                        abilityId = 9,
+                        currentHp = 31,
+                        maximumHp = 45,
+                        status = 0x40,
+                        stats = listOf(45, 28, 22, 38, 30, 26),
+                        moveIds = listOf(85, 999, 0, 0),
+                        movePp = listOf(12, 4, 0, 0),
+                        experienceProgress = 0.5,
+                    ),
+                ),
+            ),
+        )
+
+        val state = ApiViewBuilder.state(snapshot, catalog)
+
+        assertEquals("MAY", state.trainer?.name)
+        assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainer?.avatarUrl)
+        assertEquals(listOf(true, false, true), state.trainer?.badges?.take(3)?.map { it.earned })
+        assertEquals("/api/trainer-assets/trainer%2Fbadge%2F1.png", state.trainer?.badges?.first()?.imageUrl)
+        assertEquals(6, state.party.size)
+        val lead = state.party.first()
+        assertEquals(true, lead.occupied)
+        assertEquals("PIKACHU", lead.speciesName)
+        assertEquals("/api/sprites/species/25.png", lead.spriteUrl)
+        assertEquals("Static", lead.abilityName)
+        assertEquals("Thunderbolt", lead.moves[0].name)
+        assertNull(lead.moves[1].moveId)
+        assertNull(lead.moves[1].name)
+        assertNull(lead.heldItemId)
+        assertNull(lead.heldItemName)
+        assertEquals(true, lead.hasHeldItem)
+        assertEquals("PAR", lead.status)
+        assertEquals(false, state.party[1].occupied)
+        assertNull(state.party[1].hasHeldItem)
+    }
+
+    @Test
+    fun serializedBattleStateNeverInventsUnobservedEnemyMoves() {
+        val snapshot = AppSnapshot(
+            battle = BattleState(
+                opponents = listOf(OpponentState(25, 12, moveHistory = emptyList())),
+            ),
+            ledger = KnowledgeLedger(observedMoves = mapOf(25 to emptyList())),
+        )
+
+        val state = ApiViewBuilder.state(snapshot, catalog = null)
+
+        assertEquals(emptyList<ObservedMoveView>(), state.battle?.opponents?.single()?.moves)
+    }
+
     @Test
     fun exposesOnlyNormalizedWorldMapPresentationData() {
         val catalog = ParsedCatalog(

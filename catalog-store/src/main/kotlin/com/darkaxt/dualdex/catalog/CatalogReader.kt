@@ -13,6 +13,7 @@ import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.TrainerAssetCatalog
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -22,6 +23,8 @@ import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.lang.reflect.Type
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
@@ -71,15 +74,22 @@ class CatalogReader(private val database: CatalogDatabase) {
         ) return null
 
         val sections = database.query(
-            "SELECT name, encoding, payload FROM catalog_sections",
+            "SELECT name, encoding FROM catalog_sections",
         ) { row ->
             require(row.requiredString("encoding") == "gzip+json") { "unsupported catalog section encoding" }
-            row.requiredString("name") to requireNotNull(row.bytes("payload")) { "catalog section payload is null" }
-        }.toMap()
-        require(sections.keys == CatalogSchema.requiredSections) { "completed catalog has missing or unknown sections" }
+            row.requiredString("name")
+        }.toSet()
+        require(sections == CatalogSchema.requiredSections) { "completed catalog has missing or unknown sections" }
 
         return StoredCatalog(
-            catalog = codec.decode(metadata.sha256, metadata.crc32, metadata.family, metadata.platform, sections),
+            catalog = codec.decode(metadata.sha256, metadata.crc32, metadata.family, metadata.platform) { name ->
+                database.query(
+                    "SELECT payload FROM catalog_sections WHERE name = ?",
+                    listOf(name),
+                ) { row ->
+                    requireNotNull(row.bytes("payload")) { "catalog section payload is null" }
+                }.single()
+            },
             source = CatalogSourceMetadata(
                 metadata.sourceName,
                 metadata.romSize,
@@ -93,7 +103,7 @@ class CatalogReader(private val database: CatalogDatabase) {
                 metadata.totalUnits,
                 metadata.complete,
             ),
-            committedSections = sections.keys,
+            committedSections = sections,
             writtenAtEpochMs = metadata.writtenAt,
         )
     }
@@ -130,25 +140,31 @@ internal class CatalogSectionCodec {
     private val rulesetsType = type<List<LearnsetRuleset>>()
     private val runtimeMetadataType = type<CatalogRuntimeMetadata>()
     private val worldMapsType = type<WorldMapCatalog>()
+    private val trainerAssetsType = type<TrainerAssetCatalog>()
     private val localMapsType = type<LocalMapCatalog>()
     private val capabilitiesType = type<Map<RomCapability, CapabilityEvidence>>()
     private val diagnosticsType = type<List<String>>()
 
-    fun encode(catalog: ParsedCatalog, included: Set<String>): Map<String, ByteArray> = linkedMapOf(
-        "species" to encode(catalog.speciesById, speciesType),
-        "moves" to encode(catalog.movesById, movesType),
-        "types" to encode(catalog.typesById, typesType),
-        "abilities" to encode(catalog.abilitiesById, abilitiesType),
-        "type_chart" to encode(catalog.typeChart, chartType),
-        "encounters" to encode(catalog.encounterAreas, encountersType),
-        "capture_balls" to encode(catalog.captureBallsById, ballsType),
-        "learnset_rulesets" to encode(catalog.learnsetRulesets, rulesetsType),
-        "runtime_metadata" to encode(catalog.runtimeMetadata, runtimeMetadataType),
-        "world_maps" to encode(catalog.worldMaps, worldMapsType),
-        "local_maps" to encode(catalog.localMaps, localMapsType),
-        "capabilities" to encode(catalog.capabilities, capabilitiesType),
-        "diagnostics" to encode(catalog.diagnostics, diagnosticsType),
-    ).filterKeys(included::contains)
+    fun encode(catalog: ParsedCatalog, included: Set<String>): Map<String, ByteArray> =
+        included.associateWithTo(linkedMapOf()) { name -> encodeSection(catalog, name) }
+
+    fun encodeSection(catalog: ParsedCatalog, name: String): ByteArray = when (name) {
+        "species" -> encode(catalog.speciesById, speciesType)
+        "moves" -> encode(catalog.movesById, movesType)
+        "types" -> encode(catalog.typesById, typesType)
+        "abilities" -> encode(catalog.abilitiesById, abilitiesType)
+        "type_chart" -> encode(catalog.typeChart, chartType)
+        "encounters" -> encode(catalog.encounterAreas, encountersType)
+        "capture_balls" -> encode(catalog.captureBallsById, ballsType)
+        "learnset_rulesets" -> encode(catalog.learnsetRulesets, rulesetsType)
+        "runtime_metadata" -> encode(catalog.runtimeMetadata, runtimeMetadataType)
+        "world_maps" -> encode(catalog.worldMaps, worldMapsType)
+        "trainer_assets" -> encode(catalog.trainerAssets, trainerAssetsType)
+        "local_maps" -> encode(catalog.localMaps, localMapsType)
+        "capabilities" -> encode(catalog.capabilities, capabilitiesType)
+        "diagnostics" -> encode(catalog.diagnostics, diagnosticsType)
+        else -> error("unknown catalog section: $name")
+    }
 
     fun decode(
         sha256: String,
@@ -156,8 +172,16 @@ internal class CatalogSectionCodec {
         family: EngineFamily,
         platform: Platform,
         sections: Map<String, ByteArray>,
+    ): ParsedCatalog = decode(sha256, crc32, family, platform, sections::getValue)
+
+    fun decode(
+        sha256: String,
+        crc32: String,
+        family: EngineFamily,
+        platform: Platform,
+        section: (String) -> ByteArray,
     ): ParsedCatalog {
-        val encounterAreas = decode<List<EncounterArea>>(sections.getValue("encounters"), encountersType)
+        val encounterAreas = decode<List<EncounterArea>>(section("encounters"), encountersType)
             .map { area ->
                 val windows = runCatching { area.windows }.getOrNull()
                 if (windows.isNullOrEmpty()) area.copy(windows = setOf(EncounterWindow.ANY)) else area
@@ -167,32 +191,35 @@ internal class CatalogSectionCodec {
         romCrc32 = crc32,
         family = family,
         platform = platform,
-        speciesById = decode(sections.getValue("species"), speciesType),
-        movesById = decode(sections.getValue("moves"), movesType),
-        typesById = decode(sections.getValue("types"), typesType),
-        abilitiesById = decode(sections.getValue("abilities"), abilitiesType),
-        typeChart = decode(sections.getValue("type_chart"), chartType),
+        speciesById = decode(section("species"), speciesType),
+        movesById = decode(section("moves"), movesType),
+        typesById = decode(section("types"), typesType),
+        abilitiesById = decode(section("abilities"), abilitiesType),
+        typeChart = decode(section("type_chart"), chartType),
         encounterAreas = encounterAreas,
-        captureBallsById = decode(sections.getValue("capture_balls"), ballsType),
-        learnsetRulesets = decode(sections.getValue("learnset_rulesets"), rulesetsType),
-        runtimeMetadata = decode(sections.getValue("runtime_metadata"), runtimeMetadataType),
-        worldMaps = decode<WorldMapCatalog>(sections.getValue("world_maps"), worldMapsType).validate(),
-        localMaps = decode<LocalMapCatalog>(sections.getValue("local_maps"), localMapsType).validate(),
-        capabilities = decode(sections.getValue("capabilities"), capabilitiesType),
-        diagnostics = decode(sections.getValue("diagnostics"), diagnosticsType),
+        captureBallsById = decode(section("capture_balls"), ballsType),
+        learnsetRulesets = decode(section("learnset_rulesets"), rulesetsType),
+        runtimeMetadata = decode(section("runtime_metadata"), runtimeMetadataType),
+        worldMaps = decode<WorldMapCatalog>(section("world_maps"), worldMapsType).validate(),
+        trainerAssets = decode<TrainerAssetCatalog>(section("trainer_assets"), trainerAssetsType).validate(),
+        localMaps = decode<LocalMapCatalog>(section("local_maps"), localMapsType).validate(),
+        capabilities = decode(section("capabilities"), capabilitiesType),
+        diagnostics = decode(section("diagnostics"), diagnosticsType),
         )
     }
 
     private fun encode(value: Any, type: Type): ByteArray {
-        val json = gson.toJson(value, type).toByteArray(Charsets.UTF_8)
         val output = ByteArrayOutputStream()
-        GZIPOutputStream(output).use { it.write(json) }
+        GZIPOutputStream(output).use { gzip ->
+            OutputStreamWriter(gzip, Charsets.UTF_8).use { writer -> gson.toJson(value, type, writer) }
+        }
         return output.toByteArray()
     }
 
     private fun <T> decode(payload: ByteArray, type: Type): T {
-        val json = GZIPInputStream(ByteArrayInputStream(payload)).use { it.readBytes().toString(Charsets.UTF_8) }
-        return gson.fromJson(json, type)
+        return GZIPInputStream(ByteArrayInputStream(payload)).use { gzip ->
+            InputStreamReader(gzip, Charsets.UTF_8).use { reader -> gson.fromJson(reader, type) }
+        }
     }
 
     private inline fun <reified T> type(): Type = object : TypeToken<T>() {}.type

@@ -12,6 +12,57 @@ import java.util.ArrayDeque
 
 class BattleMemoryCoordinatorTest {
     @Test
+    fun publishesTheRightPlayerBattlersMoveWithAnIndependentDoubleBattleTarget() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        val anchor = 0x1000
+        ewram[anchor - 0x1C] = 4
+        repeat(4) { ewram[anchor - 0x10 + it] = it.toByte() }
+        mon(ewram, anchor, 252, 20, 11, 11, 10, 35, 65)
+        mon(ewram, anchor + 0x58, 13, 18, 6, 3, 40, 35, 19)
+        mon(ewram, anchor + 0xB0, 1, 19, 11, 11, 11, 25, 65)
+        mon(ewram, anchor + 0x108, 16, 18, 0, 2, 40, 35, 65)
+        ewram[0x3000] = 2
+        ewram[0x3012] = 0
+        ewram[0x3022] = 0
+        iwram[0x2378] = 3
+        iwram[0x19AD] = 2
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 200)
+        val updates = mutableListOf<BattleTrackingUpdate>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = {
+                context(
+                    runtimeLayout = gen3RuntimeLayout(
+                        battleMonsOffset = anchor,
+                        battleUi = Gen3BattleUiMemoryLayout(
+                            activeBattlerAddress = 0x02003000,
+                            actionCursorAddress = 0x02003010,
+                            moveCursorAddress = 0x02003020,
+                        ),
+                        liveTargetOffset = 0x0E04,
+                    ),
+                )
+            },
+            publisher = updates::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(12) { coordinator.heartbeat() }
+
+        val sample = requireNotNull(updates.last().sample)
+        assertEquals(2, sample.commandOwnerBattlerIndex)
+        assertEquals(11, sample.selectedMoveId)
+        assertEquals(1, sample.target.opponentIndex)
+        assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 2003000 1" })
+        assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 2003020 4" })
+        assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 3002378 1" })
+        coordinator.close()
+    }
+
+    @Test
     fun publishesGen1AndGen2LiveAreasBeforeAnyBattleStarts() {
         assertEquals(LiveAreaMemoryLayout(0x135e, 1, 0x1362, 0x1361), liveAreaMemoryLayout(EngineFamily.RED_BLUE))
         assertEquals(LiveAreaMemoryLayout(0x135d, 1, 0x1361, 0x1360), liveAreaMemoryLayout(EngineFamily.YELLOW))
@@ -624,6 +675,88 @@ class BattleMemoryCoordinatorTest {
         coordinator.close()
     }
 
+    @Test
+    fun publishesTheRomDecodedClockWithoutSaveBlockPointers() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
+        iwram[0x19AD] = 0
+        iwram[0x39E8] = 0
+        iwram[0x39E9] = 0
+        iwram[0x39EA] = 19
+        iwram[0x39EB] = 18
+        iwram[0x39EC] = 48
+        val snapshots = mutableListOf<Gen3LiveGameSnapshot?>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = {
+                context(runtimeLayout = gen3RuntimeLayout(liveClockAddress = 0x030039E8))
+            },
+            publisher = {},
+            liveGamePublisher = snapshots::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(20) { coordinator.heartbeat() }
+
+        assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 30039e8 5" })
+        assertEquals(Gen3LiveSectionState.AVAILABLE, requireNotNull(snapshots.last()).clock.state)
+        assertEquals(Gen3GameClock(hours = 19, minutes = 18), requireNotNull(snapshots.last()).clock.value)
+        coordinator.close()
+    }
+
+    @Test
+    fun rereadsSavePointersBeforeEachUnifiedLiveSnapshotAndKeepsIndependentSections() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        putU32(iwram, 0x36F0, 0x02001000)
+        putU32(iwram, 0x36F4, 0x01002000)
+        ewram[0x1004] = 3
+        ewram[0x1005] = 12
+        ewram[0x0200] = 0
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
+        val snapshots = mutableListOf<Gen3LiveGameSnapshot?>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = {
+                context(
+                    runtimeLayout = gen3RuntimeLayout(
+                        playerPartyOffset = 0x300,
+                        saveBlockPointers = true,
+                    ),
+                    saveContext = SaveParseContext("rom", mapOf(252 to SaveSpeciesContext(252, 252, 0))),
+                )
+            },
+            publisher = {},
+            liveGamePublisher = snapshots::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(30) { coordinator.heartbeat() }
+        assertEquals(0x030C, requireNotNull(snapshots.last()).location.value)
+        assertEquals(emptyList<Any>(), requireNotNull(snapshots.last()).party.value)
+        assertEquals(Gen3LiveSectionState.UNAVAILABLE, requireNotNull(snapshots.last()).trainer.state)
+        val firstDataRead = transport.commands.indexOfFirst { it.startsWith("READ_CORE_MEMORY 2001000 ") }
+        assertTrue(firstDataRead > 1)
+        assertTrue(transport.commands[0].startsWith("READ_CORE_MEMORY 30036f0 4"))
+        assertTrue(transport.commands[1].startsWith("READ_CORE_MEMORY 30036f4 4"))
+
+        putU32(iwram, 0x36F0, 0x02001200)
+        ewram[0x1204] = 7
+        ewram[0x1205] = 9
+        val oldCount = snapshots.size
+        repeat(30) { coordinator.heartbeat() }
+
+        assertTrue(snapshots.size > oldCount)
+        assertEquals(0x0709, requireNotNull(snapshots.last()).location.value)
+        assertTrue(transport.commands.count { it.startsWith("READ_CORE_MEMORY 30036f0 4") } >= 2)
+        coordinator.close()
+    }
+
     private fun context(
         saveBlock1Pointer: Long? = null,
         runtimeLayout: Gen3RuntimeMemoryLayout? = null,
@@ -638,9 +771,11 @@ class BattleMemoryCoordinatorTest {
             species = mapOf(
                 252 to BattleSpecies(252, listOf(11), setOf(65)),
                 13 to BattleSpecies(13, listOf(6, 3), setOf(19)),
+                1 to BattleSpecies(1, listOf(11), setOf(65)),
+                16 to BattleSpecies(16, listOf(0, 2), setOf(65)),
             ),
-            moves = mapOf(10 to BattleMove(10, 35), 40 to BattleMove(40, 35)),
-            typeIds = setOf(3, 6, 11),
+            moves = mapOf(10 to BattleMove(10, 35), 11 to BattleMove(11, 25), 40 to BattleMove(40, 35)),
+            typeIds = setOf(0, 2, 3, 6, 11),
         ),
     )
 
@@ -648,12 +783,17 @@ class BattleMemoryCoordinatorTest {
         liveTargetOffset: Int? = null,
         playerPartyOffset: Int? = null,
         battleMonsOffset: Int? = null,
+        saveBlockPointers: Boolean = false,
+        liveClockAddress: Long? = null,
+        battleUi: Gen3BattleUiMemoryLayout? = null,
     ) = Gen3RuntimeMemoryLayout(
         mainAddress = 0x03001574,
         inBattleAddress = 0x030019AD,
         inBattleMask = 0x02,
         saveBlock1MapGroupOffset = 4,
         saveBlock1MapNumberOffset = 5,
+        liveClockAddress = liveClockAddress,
+        battleUi = battleUi,
         multiUsePlayerCursorAddress = liveTargetOffset?.let { 0x03001574L + it },
         playerPartyCountAddress = playerPartyOffset?.let { 0x02000000L + it - 3 },
         playerPartyAddress = playerPartyOffset?.let { 0x02000000L + it },
@@ -661,6 +801,10 @@ class BattleMemoryCoordinatorTest {
         battleTypeFlagsAddress = 0x020003A0,
         trainerBattleMask = 1 shl 3,
         nonWildBattleMask = 0x8FFF8B72.toInt(),
+        saveBlock1PointerAddress = 0x030036F0L.takeIf { saveBlockPointers },
+        saveBlock2PointerAddress = 0x030036F4L.takeIf { saveBlockPointers },
+        saveBlock1Size = 0x100.takeIf { saveBlockPointers },
+        saveBlock2Size = 0x80.takeIf { saveBlockPointers },
     )
 
     private fun gen1Context() = BattleCatalogContext(

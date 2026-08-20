@@ -63,13 +63,13 @@ function runMetadata(tag, finalAuthorization, existingTags = []) {
 }
 
 test("derives a monotonic, public prerelease identity for an RC", () => {
-  const result = runMetadata("v1.0.0-rc.1");
+  const result = runMetadata("v1.1.0-rc.4");
 
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(result.outputs, {
-    tag: "v1.0.0-rc.1",
-    version_name: "1.0.0-rc.1",
-    version_code: "1000001",
+    tag: "v1.1.0-rc.4",
+    version_name: "1.1.0-rc.4",
+    version_code: "1010004",
     release_kind: "candidate",
     draft: "false",
     prerelease: "true",
@@ -78,57 +78,72 @@ test("derives a monotonic, public prerelease identity for an RC", () => {
   });
 });
 
+test("derives a monotonic RC hotfix identity without replacing the original candidate", () => {
+  const result = runMetadata(
+    "v1.1.0-rc.4-hotfix.1",
+    undefined,
+    ["v1.1.0-rc.4"],
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.outputs.tag, "v1.1.0-rc.4-hotfix.1");
+  assert.equal(result.outputs.version_name, "1.1.0-rc.4-hotfix.1");
+  assert.equal(result.outputs.version_code, "1010005");
+  assert.equal(result.outputs.release_kind, "candidate");
+  assert.equal(result.outputs.prerelease, "true");
+});
+
 test("reserves the highest qualifier for the final release", () => {
-  const candidate = runMetadata("v1.0.0-rc.98");
-  const invalidCandidate = runMetadata("v1.0.0-rc.99");
+  const candidate = runMetadata("v1.1.0-rc.98");
+  const invalidCandidate = runMetadata("v1.1.0-rc.99");
 
   assert.equal(candidate.status, 0, candidate.stderr);
-  assert.equal(candidate.outputs.version_code, "1000098");
+  assert.equal(candidate.outputs.version_code, "1010098");
   assert.notEqual(invalidCandidate.status, 0);
   assert.match(invalidCandidate.stderr, /RC number must be between 1 and 98/);
 });
 
 test("rejects a candidate whose versionCode is not newer than an existing release tag", () => {
   const olderCandidate = runMetadata(
-    "v1.0.0-rc.2",
+    "v1.1.0-rc.2",
     undefined,
-    ["v1.0.0-rc.1", "v1.0.0-rc.3", "unrelated-tag"],
+    ["v1.1.0-rc.1", "v1.1.0-rc.3", "unrelated-tag"],
   );
   const newerCandidate = runMetadata(
-    "v1.0.0-rc.4",
+    "v1.1.0-rc.4",
     undefined,
-    ["v1.0.0-rc.1", "v1.0.0-rc.3", "unrelated-tag"],
+    ["v1.1.0-rc.1", "v1.1.0-rc.3", "unrelated-tag"],
   );
 
   assert.notEqual(olderCandidate.status, 0);
   assert.match(olderCandidate.stderr, /not monotonic/i);
   assert.equal(newerCandidate.status, 0, newerCandidate.stderr);
-  assert.equal(newerCandidate.outputs.version_code, "1000004");
+  assert.equal(newerCandidate.outputs.version_code, "1010004");
 });
 
 test("ignores semantic tags from a different application version lineage", () => {
   const result = runMetadata(
-    "v1.0.0-rc.1",
+    "v1.1.0-rc.1",
     undefined,
-    ["v2.0.1", "v1.1.0", "v0.9.9"],
+    ["v2.0.1", "v1.0.0", "v0.9.9"],
   );
 
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.outputs.version_code, "1000001");
+  assert.equal(result.outputs.version_code, "1010001");
 });
 
 test("refuses a final release without signed-candidate device authorization", () => {
-  const result = runMetadata("v1.0.0");
+  const result = runMetadata("v1.1.0");
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /final authorization/i);
 });
 
 test("accepts a final release only after the GitHub candidate passed both devices", () => {
-  const result = runMetadata("v1.0.0", {
+  const result = runMetadata("v1.1.0", {
     schema: 1,
-    versionName: "1.0.0",
-    sourceCandidateTag: "v1.0.0-rc.1",
+    versionName: "1.1.0",
+    sourceCandidateTag: "v1.1.0-rc.1",
     githubSignedCandidateSha256: "A".repeat(64),
     validatedSignerSha256:
       "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
@@ -137,17 +152,17 @@ test("accepts a final release only after the GitHub candidate passed both device
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.outputs.version_code, "1000099");
+  assert.equal(result.outputs.version_code, "1010099");
   assert.equal(result.outputs.release_kind, "final");
   assert.equal(result.outputs.draft, "false");
   assert.equal(result.outputs.prerelease, "false");
 });
 
 test("accepts user-authorized automated promotion for a passive catalog-only change", () => {
-  const result = runMetadata("v1.0.0", {
+  const result = runMetadata("v1.1.0", {
     schema: 1,
-    versionName: "1.0.0",
-    sourceCandidateTag: "v1.0.0-rc.30",
+    versionName: "1.1.0",
+    sourceCandidateTag: "v1.1.0-rc.1",
     githubSignedCandidateSha256: "B".repeat(64),
     validatedSignerSha256:
       "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
@@ -164,16 +179,16 @@ test("accepts user-authorized automated promotion for a passive catalog-only cha
   });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.outputs.version_code, "1000099");
+  assert.equal(result.outputs.version_code, "1010099");
   assert.equal(result.outputs.release_kind, "final");
   assert.equal(result.outputs.prerelease, "false");
 });
 
 test("rejects incomplete automated promotion evidence", () => {
-  const result = runMetadata("v1.0.0", {
+  const result = runMetadata("v1.1.0", {
     schema: 1,
-    versionName: "1.0.0",
-    sourceCandidateTag: "v1.0.0-rc.30",
+    versionName: "1.1.0",
+    sourceCandidateTag: "v1.1.0-rc.1",
     githubSignedCandidateSha256: "B".repeat(64),
     validatedSignerSha256:
       "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",

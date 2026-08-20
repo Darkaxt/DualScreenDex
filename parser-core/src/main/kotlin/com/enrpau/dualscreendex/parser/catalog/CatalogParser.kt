@@ -13,6 +13,7 @@ import com.enrpau.dualscreendex.parser.parse.LocalMapResolution
 import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3RuntimeMemoryLayoutResolver
+import com.enrpau.dualscreendex.parser.parse.Gen3TrainerAssetResolver
 import com.enrpau.dualscreendex.parser.sprite.BallSpriteMaterializer
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 import java.util.Locale
@@ -162,9 +163,11 @@ object CatalogMaterializer {
         val encounterMaterialization = EncounterMaterializer.materializeWithEvidence(rom, layout)
         val rawEncounters = encounterMaterialization.areas
         val runtimeMetadata = if (layout.generation == 3) {
+            val runtimeLayout = Gen3RuntimeMemoryLayoutResolver.resolve(rom, layout.family)
             CatalogRuntimeMetadata(
-                gen3SaveBlock1PointerAddress = Gen3SaveBlock1PointerResolver.resolve(rom),
-                gen3RuntimeMemoryLayout = Gen3RuntimeMemoryLayoutResolver.resolve(rom),
+                gen3SaveBlock1PointerAddress = runtimeLayout?.saveBlock1PointerAddress
+                    ?: Gen3SaveBlock1PointerResolver.resolve(rom),
+                gen3RuntimeMemoryLayout = runtimeLayout,
                 areaNamesByBaseId = if (layout.pokeemeraldExpansion == null && resolveGen3AreaNames != null) {
                     resolveGen3AreaNames(rawEncounters.mapTo(linkedSetOf()) { it.id / 10 })
                 } else {
@@ -408,6 +411,13 @@ object CatalogMaterializer {
             null
         }
         val worldMaps = (worldMapResolution as? WorldMapResolution.Resolved)?.catalog ?: WorldMapCatalog()
+        val trainerAssets = if (layout.generation == 3) {
+            runCatching { Gen3TrainerAssetResolver.resolve(rom, layout.family) }
+                .getOrNull()
+                ?: TrainerAssetCatalog()
+        } else {
+            TrainerAssetCatalog()
+        }
         capabilities[RomCapability.WORLD_MAP] = when (worldMapResolution) {
             is WorldMapResolution.Resolved -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
@@ -541,6 +551,7 @@ object CatalogMaterializer {
             learnsetRulesets = learnsetRulesets,
             runtimeMetadata = finalRuntimeMetadata,
             worldMaps = worldMaps,
+            trainerAssets = trainerAssets,
             localMaps = localMaps,
             capabilities = capabilities,
             diagnostics = buildList {

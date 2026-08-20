@@ -105,10 +105,16 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
     "dualdex-evolution-first50-release-gate.json",
     "dualdex-evolution-first50-release-gate.md",
     "dualdex-arm7-first50-compatibility.md",
+    "dualdex-v1.1-player-state-verification.md",
   ];
 
   for (const asset of requiredEvidence) {
     assert.match(workflow, new RegExp(asset.replaceAll(".", "\\.")));
+    assert.match(
+      workflow.slice(workflow.indexOf("gh release create")),
+      new RegExp(asset.replaceAll(".", "\\.")),
+      `release upload list is missing ${asset}`,
+    );
   }
   assert.match(workflow, /\.summary\.available >= 25/);
   assert.match(workflow, /\.summary\.statusDistribution\.SELECTED == 50/);
@@ -116,6 +122,32 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.uniqueSha256Identities == 332/);
   assert.match(workflow, /\.mapFirst50Available == 26/);
   assert.match(workflow, /\.evolutionFirst50Complete == 50/);
+  assert.match(workflow, /\.v11Stage1NormalizedLiveStateModels == true/);
+  assert.match(workflow, /\.v11Stage1DetailedGen3PartyCodec == true/);
+  assert.match(workflow, /\.v11Stage1Gen3TrainerBagSaveCodec == true/);
+  assert.match(workflow, /\.v11Stage2EmeraldRuntimeLayout == true/);
+  assert.match(workflow, /\.v11Stage2TrainerAssets == true/);
+  assert.match(workflow, /\.v11Stage2CatalogPersistence == true/);
+  assert.match(workflow, /\.v11Stage2TrainerAssetApi == true/);
+  assert.match(workflow, /\.v11Stage3PointerFirstSnapshot == true/);
+  assert.match(workflow, /\.v11Stage3IndependentLiveSections == true/);
+  assert.match(workflow, /\.v11Stage3LiveOverSaveAuthority == true/);
+  assert.match(workflow, /\.v11Stage3LifecycleFallback == true/);
+  assert.match(workflow, /\.v11Stage4TrainerCard == true/);
+  assert.match(workflow, /\.v11Stage4PartyPresentation == true/);
+  assert.match(workflow, /\.v11Stage4DynamicFeatureNavigation == true/);
+  assert.match(workflow, /\.v11Stage4LocalMapConvergence == true/);
+  assert.match(workflow, /\.v11Stage5DisplayContinuityPolicy == true/);
+  assert.match(workflow, /\.v11Stage5DisplayLifecycleRecovery == true/);
+  assert.match(workflow, /\.v11Stage6OfficialEmeraldVertical == true/);
+  assert.match(workflow, /\.v11Stage6UnsupportedDescriptorFallback == true/);
+  assert.match(workflow, /\.v11Stage6OpponentMovePrivacy == true/);
+  assert.match(workflow, /\.v11Rc16DoubleBattleCommandOwnership == true/);
+  assert.match(workflow, /\.v11Rc16MatchupEvidenceMigration == true/);
+  assert.match(workflow, /\.v11Stage8NormalizedPartyArtwork == true/);
+  assert.match(workflow, /\.v11Stage8PrivacySafePartyFallbacks == true/);
+  assert.match(workflow, /\.v11Stage8PartyBrowserGate == true/);
+  assert.match(workflow, /\.v11Rc4HotfixBoundedRomIndex == true/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });
 

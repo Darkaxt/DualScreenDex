@@ -195,6 +195,122 @@ data class CaptureBallRecord(
 
 enum class RuntimeMemoryEvidence { SOURCE_PROVEN_UNTESTED, LIVE_VALIDATED }
 
+enum class CatalogGen3TextEncoding { ENGLISH }
+
+enum class CatalogGen3BagPocket { ITEMS, KEY_ITEMS, BALLS, TM_HM, BERRIES }
+
+data class CatalogGen3BitFlag(
+    val byteOffset: Int,
+    val mask: Int,
+) {
+    init {
+        require(byteOffset >= 0)
+        require(mask in 1..0x80 && mask.countOneBits() == 1)
+    }
+}
+
+data class CatalogGen3TrainerCardAbi(
+    val playerNameOffset: Int,
+    val playerNameLength: Int,
+    val genderOffset: Int,
+    val trainerIdOffset: Int,
+    val playTimeHoursOffset: Int,
+    val playTimeMinutesOffset: Int,
+    val encryptionKeyOffset: Int,
+    val moneyOffset: Int,
+    val maximumMoney: Long,
+    val badgeFlags: List<CatalogGen3BitFlag>,
+) {
+    init {
+        require(playerNameLength > 0)
+        require(maximumMoney >= 0)
+        require(badgeFlags.size <= 8 && badgeFlags.distinct().size == badgeFlags.size)
+    }
+}
+
+data class CatalogGen3BagPocketAbi(
+    val pocket: CatalogGen3BagPocket,
+    val byteOffset: Int,
+    val capacity: Int,
+    val slotSize: Int = 4,
+) {
+    init {
+        require(byteOffset >= 0)
+        require(capacity > 0)
+        require(slotSize >= 4)
+    }
+}
+
+data class CatalogGen3BagAbi(val pockets: List<CatalogGen3BagPocketAbi>) {
+    init {
+        require(pockets.isNotEmpty())
+        require(pockets.map(CatalogGen3BagPocketAbi::pocket).distinct().size == pockets.size)
+    }
+}
+
+data class CatalogGen3SaveRuntimeAbi(
+    val saveBlock1Size: Int,
+    val saveBlock2Size: Int,
+    val textEncoding: CatalogGen3TextEncoding,
+    val trainer: CatalogGen3TrainerCardAbi,
+    val bag: CatalogGen3BagAbi,
+) {
+    init {
+        require(saveBlock1Size > 0 && saveBlock2Size > 0)
+        requireRange(trainer.playerNameOffset, trainer.playerNameLength, saveBlock2Size)
+        requireRange(trainer.genderOffset, 1, saveBlock2Size)
+        requireRange(trainer.trainerIdOffset, 4, saveBlock2Size)
+        requireRange(trainer.playTimeHoursOffset, 2, saveBlock2Size)
+        requireRange(trainer.playTimeMinutesOffset, 1, saveBlock2Size)
+        requireRange(trainer.encryptionKeyOffset, 4, saveBlock2Size)
+        requireRange(trainer.moneyOffset, 4, saveBlock1Size)
+        trainer.badgeFlags.forEach { requireRange(it.byteOffset, 1, saveBlock1Size) }
+        bag.pockets.forEach { requireRange(it.byteOffset, it.capacity * it.slotSize, saveBlock1Size) }
+    }
+
+    private fun requireRange(offset: Int, length: Int, limit: Int) {
+        require(offset >= 0 && length > 0 && offset.toLong() + length <= limit.toLong())
+    }
+}
+
+data class CatalogGen3PartyAbi(
+    val countAddress: Long,
+    val partyAddress: Long,
+    val capacity: Int,
+    val recordSize: Int,
+) {
+    init {
+        require(countAddress in 0x02000000L..0x0203FFFFL)
+        require(capacity > 0 && recordSize >= 80)
+        require(partyAddress in 0x02000000L..0x0203FFFFL)
+        require(partyAddress + capacity.toLong() * recordSize <= 0x02040000L)
+    }
+}
+
+data class CatalogGen3BattleUiAbi(
+    val activeBattlerAddress: Long,
+    val actionCursorAddress: Long,
+    val moveCursorAddress: Long,
+    val targetCursorAddress: Long,
+) {
+    init {
+        listOf(activeBattlerAddress, actionCursorAddress, moveCursorAddress, targetCursorAddress).forEach {
+            require(it in 0x02000000L..0x0203FFFFL)
+        }
+    }
+}
+
+data class CatalogGameClockSchedule(
+    val dayStartHour: Int,
+    val nightStartHour: Int,
+) {
+    init {
+        require(dayStartHour in 0..23)
+        require(nightStartHour in 0..23)
+        require(dayStartHour != nightStartHour)
+    }
+}
+
 data class CatalogGen3RuntimeMemoryLayout(
     val mainAddress: Long,
     val inBattleAddress: Long,
@@ -203,6 +319,8 @@ data class CatalogGen3RuntimeMemoryLayout(
     val saveBlock1MapNumberOffset: Int,
     val saveBlock1PositionXOffset: Int = 0,
     val saveBlock1PositionYOffset: Int = 2,
+    val liveClockAddress: Long? = null,
+    val liveClockSchedule: CatalogGameClockSchedule? = null,
     val multiUsePlayerCursorAddress: Long? = null,
     val multiUsePlayerCursorEvidence: RuntimeMemoryEvidence? = null,
     val playerPartyCountAddress: Long? = null,
@@ -211,10 +329,21 @@ data class CatalogGen3RuntimeMemoryLayout(
     val battleTypeFlagsAddress: Long? = null,
     val trainerBattleMask: Int? = null,
     val nonWildBattleMask: Int? = null,
+    val saveBlock1PointerAddress: Long? = null,
+    val saveBlock2PointerAddress: Long? = null,
+    val saveRuntimeAbi: CatalogGen3SaveRuntimeAbi? = null,
+    val partyAbi: CatalogGen3PartyAbi? = null,
+    val battleUiAbi: CatalogGen3BattleUiAbi? = null,
 ) {
     init {
         require(saveBlock1PositionXOffset >= 0 && saveBlock1PositionYOffset == saveBlock1PositionXOffset + 2) {
             "SaveBlock1 position must be two adjacent signed 16-bit coordinates"
+        }
+        require(liveClockAddress == null || liveClockAddress in 0x03000000L..0x03007FFAL) {
+            "live clock window must fit in IWRAM"
+        }
+        require(liveClockSchedule == null || liveClockAddress != null) {
+            "live clock schedule requires a validated clock address"
         }
         require((playerPartyCountAddress == null) == (playerPartyAddress == null)) {
             "live party count and record addresses must be present together"
@@ -230,6 +359,20 @@ data class CatalogGen3RuntimeMemoryLayout(
         ) { "battle type descriptor must be complete" }
         require(battleTypeFlagsAddress == null || battleTypeFlagsAddress in 0x02000000L..0x0203FFFCL)
         require(trainerBattleMask == null || trainerBattleMask.countOneBits() == 1)
+        require(
+            listOf(saveBlock1PointerAddress, saveBlock2PointerAddress, saveRuntimeAbi).all { it == null } ||
+                listOf(saveBlock1PointerAddress, saveBlock2PointerAddress, saveRuntimeAbi).all { it != null },
+        ) { "save-block pointer and ABI descriptor must be complete" }
+        require(saveBlock1PointerAddress == null || saveBlock1PointerAddress in 0x02000000L..0x03007FFCL)
+        require(saveBlock2PointerAddress == null || saveBlock2PointerAddress in 0x02000000L..0x03007FFCL)
+        require(
+            partyAbi == null ||
+                (playerPartyCountAddress == null && playerPartyAddress == null) ||
+                (
+                    partyAbi.countAddress == playerPartyCountAddress &&
+                        partyAbi.partyAddress == playerPartyAddress
+                    ),
+        ) { "legacy and typed party descriptors disagree" }
     }
 }
 
@@ -511,6 +654,7 @@ data class ParsedCatalog(
     val learnsetRulesets: List<LearnsetRuleset> = emptyList(),
     val runtimeMetadata: CatalogRuntimeMetadata = CatalogRuntimeMetadata(),
     val worldMaps: WorldMapCatalog = WorldMapCatalog(),
+    val trainerAssets: TrainerAssetCatalog = TrainerAssetCatalog(),
     val localMaps: LocalMapCatalog = LocalMapCatalog(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),

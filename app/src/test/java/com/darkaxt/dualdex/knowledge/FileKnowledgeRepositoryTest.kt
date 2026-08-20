@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.OwnedPokemon
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -59,5 +60,21 @@ class FileKnowledgeRepositoryTest {
         val migrated = FileKnowledgeRepository(root).read(identity)!!
 
         assertEquals(setOf(2, 3), migrated.visitedAreaBaseIds)
+    }
+
+    @Test
+    fun invalidatesOnlyLegacyMatchupEvidenceThatCouldHaveUsedUnownedDoubleCommands() {
+        val identity = "f".repeat(64)
+        val root = temporary.newFolder("knowledge")
+        root.resolve("$identity.json").writeText(
+            """{"schema":2,"romIdentity":"$identity","seenSpecies":[25],"observedMoves":[{"speciesId":25,"moves":[{"moveId":33,"frequency":2}]}],"discoveredMatchups":[{"speciesId":25,"moveId":33,"effectiveness":"SUPER_EFFECTIVE"}]}""",
+        )
+
+        val migrated = FileKnowledgeRepository(root).read(identity)!!
+
+        assertEquals(setOf(25), migrated.seenSpecies)
+        assertEquals(listOf(MoveObservation(33, 2)), migrated.observedMoves[25])
+        assertTrue(migrated.discoveredMatchups.isEmpty())
+        assertEquals(KnowledgeLedger.CURRENT_MATCHUP_EVIDENCE_VERSION, migrated.matchupEvidenceVersion)
     }
 }

@@ -1,10 +1,6 @@
 package com.darkaxt.dualdex.storage
 
 import com.darkaxt.dualdex.retroarch.RomIndexEntry
-import com.darkaxt.dualdex.retroarch.RomPlatform
-import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
-import com.enrpau.dualscreendex.parser.io.RomSourceLoader
-import com.enrpau.dualscreendex.parser.model.Platform
 import java.io.File
 import java.util.ArrayDeque
 
@@ -14,23 +10,16 @@ class DirectRomLibraryIndexer {
         val warnings = mutableListOf<String>()
         discoverSources(roots).forEach { source ->
             runCatching {
-                val loaded = RomSourceLoader.load(source.toPath())
-                val header = RomHeaderReader.read(loaded.rom)
-                val platform = when (header.platform) {
-                    Platform.GB -> RomPlatform.GB
-                    Platform.GBC -> RomPlatform.GBC
-                    Platform.GBA -> RomPlatform.GBA
-                    Platform.UNKNOWN -> error("ROM header platform was not recognized")
-                }
-                val entryName = loaded.displayName.substringAfter('!', loaded.displayName)
+                val identity = StreamingRomSourceReader.read(source)
+                val entryName = identity.archiveEntry ?: identity.displayName
                 entries += RomIndexEntry(
                     sourceId = source.toURI().normalize().toString(),
-                    sourceName = loaded.displayName,
-                    archiveEntry = loaded.displayName.substringAfter('!', "").ifBlank { null },
-                    platform = platform,
+                    sourceName = identity.displayName,
+                    archiveEntry = identity.archiveEntry,
+                    platform = identity.platform,
                     gameBasename = entryName.substringBeforeLast('.', entryName),
-                    crc32 = loaded.rom.crc32,
-                    sha256 = loaded.rom.sha256,
+                    crc32 = identity.crc32,
+                    sha256 = identity.sha256,
                 )
             }.onFailure { failure ->
                 warnings += "${source.name}: ${failure.message ?: failure.javaClass.simpleName}"
@@ -66,7 +55,7 @@ class DirectRomLibraryIndexer {
             name.lowercase() in PROTECTED_ANDROID_DIRECTORIES
 
     private companion object {
-        val SUPPORTED_EXTENSIONS = setOf("gb", "gbc", "gba", "zip")
+        val SUPPORTED_EXTENSIONS = setOf("gb", "gbc", "gba", "zip", "7z")
         val PROTECTED_ANDROID_DIRECTORIES = setOf("data", "obb")
     }
 }

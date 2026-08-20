@@ -1,5 +1,25 @@
 package com.darkaxt.dualdex.battle
 
+data class Gen3BattleUiMemoryLayout(
+    val activeBattlerAddress: Long,
+    val actionCursorAddress: Long,
+    val moveCursorAddress: Long,
+) {
+    init {
+        listOf(activeBattlerAddress, actionCursorAddress, moveCursorAddress).forEach { address ->
+            require(address in 0x02000000L..0x0203FFFFL) { "battle UI address must be in EWRAM" }
+        }
+        require(actionCursorAddress <= 0x0203FFFCL) { "action cursor array must fit in EWRAM" }
+        require(moveCursorAddress <= 0x0203FFFCL) { "move cursor array must fit in EWRAM" }
+    }
+}
+
+data class Gen3BattleCommandState(
+    val activeBattler: Int,
+    val moveSlot: Int,
+    val targetBattler: Int? = null,
+)
+
 data class Gen3RuntimeMemoryLayout(
     val mainAddress: Long,
     val inBattleAddress: Long,
@@ -8,13 +28,21 @@ data class Gen3RuntimeMemoryLayout(
     val saveBlock1MapNumberOffset: Int,
     val saveBlock1PositionXOffset: Int = 0,
     val saveBlock1PositionYOffset: Int = 2,
+    val liveClockAddress: Long? = null,
     val multiUsePlayerCursorAddress: Long? = null,
     val playerPartyCountAddress: Long? = null,
     val playerPartyAddress: Long? = null,
+    val playerPartyCapacity: Int? = if (playerPartyAddress == null) null else 6,
+    val playerPartyRecordSize: Int? = if (playerPartyAddress == null) null else 100,
     val battleMonsAddress: Long? = null,
     val battleTypeFlagsAddress: Long? = null,
+    val battleUi: Gen3BattleUiMemoryLayout? = null,
     val trainerBattleMask: Int? = null,
     val nonWildBattleMask: Int? = null,
+    val saveBlock1PointerAddress: Long? = null,
+    val saveBlock2PointerAddress: Long? = null,
+    val saveBlock1Size: Int? = null,
+    val saveBlock2Size: Int? = null,
 ) {
     init {
         require(mainAddress in IWRAM_START..IWRAM_END)
@@ -24,10 +52,23 @@ data class Gen3RuntimeMemoryLayout(
         require(saveBlock1MapNumberOffset == saveBlock1MapGroupOffset + 1)
         require(saveBlock1PositionXOffset >= 0)
         require(saveBlock1PositionYOffset == saveBlock1PositionXOffset + 2)
+        require(liveClockAddress == null || liveClockAddress in IWRAM_START..IWRAM_END - 4)
         require(multiUsePlayerCursorAddress == null || multiUsePlayerCursorAddress in IWRAM_START..IWRAM_END)
         require((playerPartyCountAddress == null) == (playerPartyAddress == null))
         require(playerPartyCountAddress == null || playerPartyCountAddress in EWRAM_START..EWRAM_END)
         require(playerPartyAddress == null || playerPartyAddress in EWRAM_START..EWRAM_END)
+        require(
+            listOf(playerPartyCountAddress, playerPartyAddress, playerPartyCapacity, playerPartyRecordSize)
+                .all { it == null } ||
+                listOf(playerPartyCountAddress, playerPartyAddress, playerPartyCapacity, playerPartyRecordSize)
+                    .all { it != null },
+        ) { "party read-plan descriptor must be complete" }
+        require(playerPartyCapacity == null || playerPartyCapacity > 0)
+        require(playerPartyRecordSize == null || playerPartyRecordSize >= 80)
+        require(
+            playerPartyAddress == null ||
+                playerPartyAddress + playerPartyCapacity!!.toLong() * playerPartyRecordSize!! <= EWRAM_END + 1,
+        ) { "party read-plan window must fit in EWRAM" }
         require(battleMonsAddress == null || battleMonsAddress in EWRAM_START..EWRAM_END - BATTLE_WINDOW_TAIL_BYTES)
         require(
             listOf(battleTypeFlagsAddress, trainerBattleMask, nonWildBattleMask).all { it == null } ||
@@ -35,6 +76,16 @@ data class Gen3RuntimeMemoryLayout(
         ) { "battle type descriptor must be complete" }
         require(battleTypeFlagsAddress == null || battleTypeFlagsAddress in EWRAM_START..EWRAM_END - 3)
         require(trainerBattleMask == null || trainerBattleMask.countOneBits() == 1)
+        require(
+            listOf(saveBlock1PointerAddress, saveBlock2PointerAddress, saveBlock1Size, saveBlock2Size)
+                .all { it == null } ||
+                listOf(saveBlock1PointerAddress, saveBlock2PointerAddress, saveBlock1Size, saveBlock2Size)
+                    .all { it != null },
+        ) { "save-block pointer read-plan descriptor must be complete" }
+        require(saveBlock1PointerAddress == null || saveBlock1PointerAddress in IWRAM_START..IWRAM_END - 3)
+        require(saveBlock2PointerAddress == null || saveBlock2PointerAddress in IWRAM_START..IWRAM_END - 3)
+        require(saveBlock1Size == null || saveBlock1Size > 0)
+        require(saveBlock2Size == null || saveBlock2Size > 0)
     }
 
     companion object {
@@ -52,6 +103,7 @@ data class Gen3RuntimeSnapshot(
     val mapPosition: RuntimeMapPosition? = null,
     val targetBattler: Int? = null,
     val encounterKind: BattleEncounterKind = BattleEncounterKind.UNKNOWN,
+    val battleCommand: Gen3BattleCommandState? = null,
 )
 
 class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
@@ -105,6 +157,21 @@ class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
         ?.and(0xFF)
         ?.takeIf { it in 0 until MAX_BATTLERS }
 
+    fun decodeSelectedBattleCommand(
+        activeBattler: ByteArray?,
+        actionCursors: ByteArray?,
+        moveCursors: ByteArray?,
+    ): Gen3BattleCommandState? {
+        if (layout.battleUi == null) return null
+        val active = activeBattler?.singleOrNull()?.toInt()?.and(0xFF)
+            ?.takeIf { it in 0 until MAX_BATTLERS } ?: return null
+        if (actionCursors?.size != MAX_BATTLERS || moveCursors?.size != MAX_BATTLERS) return null
+        if (actionCursors[active].toInt() and 0xFF != ACTION_USE_MOVE) return null
+        val moveSlot = moveCursors[active].toInt() and 0xFF
+        if (moveSlot !in 0 until MOVE_SLOTS) return null
+        return Gen3BattleCommandState(active, moveSlot)
+    }
+
     fun decodeBattleEncounterKind(bytes: ByteArray?): BattleEncounterKind {
         val trainerMask = layout.trainerBattleMask ?: return BattleEncounterKind.UNKNOWN
         val nonWildMask = layout.nonWildBattleMask ?: return BattleEncounterKind.UNKNOWN
@@ -125,7 +192,36 @@ class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
         const val MAP_ID_BYTES = 2
         const val BATTLE_TYPE_FLAGS_BYTES = 4
         private const val MAX_BATTLERS = 4
+        private const val MOVE_SLOTS = 4
+        private const val ACTION_USE_MOVE = 0
     }
+}
+
+fun BattleMemorySample.withLiveBattleCommand(command: Gen3BattleCommandState?): BattleMemorySample {
+    if (opponents.size <= 1 && command == null) return this
+    val owner = command?.let { state ->
+        battlers.singleOrNull { battler ->
+            battler.battlerIndex == state.activeBattler && battler.position and 1 == 0
+        }
+    }
+    val move = command?.let { owner?.moves?.getOrNull(it.moveSlot) }?.takeIf { it != 0 }
+    val opponentIndex = command?.targetBattler
+        ?.let { target -> opponents.indexOfFirst { it.battlerIndex == target } }
+        ?: -1
+    val resolvedMove = owner != null && move != null
+    val resolvedTarget = opponents.size == 1 || resolvedMove && opponentIndex >= 0
+    return copy(
+        selectedMoveId = move.takeIf { resolvedMove },
+        commandOwnerBattlerIndex = owner?.battlerIndex?.takeIf { resolvedMove },
+        target = BattleTarget(
+            opponentIndex = opponentIndex.takeIf { it >= 0 } ?: 0,
+            mode = if (resolvedTarget) TargetMode.AUTOMATIC else TargetMode.MANUAL_TARGET_FALLBACK,
+        ),
+        capabilities = capabilities + mapOf(
+            BattleCapability.SELECTED_MOVE to if (resolvedMove) CapabilityState.AVAILABLE else CapabilityState.NOT_FOUND,
+            BattleCapability.SELECTED_TARGET to if (resolvedTarget) CapabilityState.AVAILABLE else CapabilityState.NOT_FOUND,
+        ),
+    )
 }
 
 fun BattleMemorySample.withLiveTargetBattler(targetBattler: Int?): BattleMemorySample {

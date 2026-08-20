@@ -9,6 +9,16 @@ import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
+import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocketAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BattleUiAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BitFlag
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3PartyAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3SaveRuntimeAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TrainerCardAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.RuntimeMemoryEvidence
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
@@ -33,6 +43,7 @@ import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.TypePresentation
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
+import com.enrpau.dualscreendex.parser.catalog.TrainerAssetCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
@@ -44,6 +55,7 @@ import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import java.nio.file.Files
 import java.nio.file.Path
@@ -61,6 +73,57 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class CatalogStoreTest {
+    @Test
+    fun `Unbound completes the production incremental cache round trip`() {
+        val configured = System.getenv("DUALDEX_UNBOUND_ROM")
+        assumeTrue("set DUALDEX_UNBOUND_ROM to run this real-ROM control", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomSourceLoader.load(path).rom
+        assertEquals("7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7", rom.sha256)
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val source = CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "POKEMON FIRE")
+
+        val catalog = requireNotNull(
+            CatalogParser.parse(rom) { progress ->
+                cache.write(progress.catalog, source, catalogWriteProgress(progress))
+            }.catalog,
+        )
+        val stored = requireNotNull(cache.readComplete(catalog.romSha256))
+
+        assertEquals(catalog.romSha256, stored.catalog.romSha256)
+        assertEquals(CatalogSchema.requiredSections, stored.committedSections)
+        assertTrue(cache.fileFor(catalog.romSha256).length() > 0)
+    }
+
+    @Test
+    fun `large binary catalog section survives streamed gzip json persistence`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val bytes = ByteArray(12 * 1024 * 1024) { index -> (index * 31 + index / 257).toByte() }.also { png ->
+            byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10).copyInto(png)
+        }
+        val map = LocalMap("local/0001", "Large", 1, 16, 16, 1, 1, "local/0001/map")
+        val catalog = completeCatalog("6".repeat(64)).copy(
+            localMaps = LocalMapCatalog(listOf(map), mapOf(map.imageAssetKey to PngMapAsset(bytes))),
+        )
+
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Large.gba", 32 * 1024 * 1024, "LARGE"),
+            CatalogWriteProgress.complete(),
+        )
+        val reopened = requireNotNull(cache.readComplete(catalog.romSha256))
+
+        assertTrue(reopened.catalog.localMaps.assets.getValue(map.imageAssetKey).bytes.contentEquals(bytes))
+        assertEquals("gzip+json", JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.query(
+                "SELECT encoding FROM catalog_sections WHERE name = 'local_maps'",
+            ) { row -> row.string("encoding") }.single()
+        })
+    }
+
     @Test
     fun `normalized world and local maps survive a complete catalog round trip`() {
         val root = newRoot()
@@ -104,7 +167,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(14, CatalogSchema.parserSchemaVersion)
+        assertEquals(19, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps, reopened?.catalog?.localMaps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -113,33 +176,51 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun `Modern Emerald local map assets survive a complete cache round trip`() {
+    fun `Modern Emerald world and local maps survive the production incremental cache round trip`() {
         val configured = System.getenv("DUALDEX_MODERN_EMERALD_ROM")
         assumeTrue("set DUALDEX_MODERN_EMERALD_ROM to run this real-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
         val rom = RomImage(Files.readAllBytes(path))
         assertEquals("21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", rom.sha256)
-        val catalog = requireNotNull(CatalogParser.parseCatching(rom).catalog).getOrThrow()
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
-
-        cache.write(
-            catalog,
-            CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "POKEMON EMER"),
-            CatalogWriteProgress.complete(),
+        val source = CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "POKEMON EMER")
+        val catalog = requireNotNull(
+            CatalogParser.parse(rom) { progress ->
+                cache.write(progress.catalog, source, catalogWriteProgress(progress))
+            }.catalog,
         )
-        val reopened = requireNotNull(cache.readComplete(catalog.romSha256)).catalog
 
-        assertEquals(133, reopened.localMaps.maps.size)
+        val stored = requireNotNull(cache.readComplete(catalog.romSha256))
+        val reopened = stored.catalog
+
+        assertEquals(CatalogSchema.requiredSections, stored.committedSections)
+        assertEquals(1, reopened.worldMaps.regions.size)
+        assertEquals(557, reopened.localMaps.maps.size)
         assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
         assertEquals(catalog.localMaps.assets.keys, reopened.localMaps.assets.keys)
+        assertEquals(
+            "Littleroot Town",
+            reopened.localMaps.maps.single { it.baseAreaId == 0x0009 }.displayName,
+        )
+        assertEquals(
+            "Littleroot Town",
+            reopened.worldMaps.regions.flatMap { it.locations }
+                .single { 0x0009 in it.baseAreaIds }
+                .displayName,
+        )
         val route102Asset = catalog.localMaps.maps.single { it.baseAreaId == 0x0011 }.imageAssetKey
         assertTrue(
             catalog.localMaps.assets.getValue(route102Asset).bytes.contentEquals(
                 reopened.localMaps.assets.getValue(route102Asset).bytes,
             ),
         )
+
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 16 WHERE id = 1")
+        }
+        assertNull(cache.readComplete(catalog.romSha256))
     }
 
     @Test
@@ -320,7 +401,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(14, CatalogSchema.parserSchemaVersion)
+        assertEquals(19, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -338,21 +419,7 @@ class CatalogStoreTest {
         assertEquals(setOf(EncounterWindow.NIGHT), reopened?.catalog?.encounterAreas?.single()?.windows)
         assertEquals(0x030036F0L, reopened?.catalog?.runtimeMetadata?.gen3SaveBlock1PointerAddress)
         assertEquals(
-            CatalogGen3RuntimeMemoryLayout(
-                mainAddress = 0x03001574,
-                inBattleAddress = 0x030019AD,
-                inBattleMask = 0x02,
-                saveBlock1MapGroupOffset = 4,
-                saveBlock1MapNumberOffset = 5,
-                multiUsePlayerCursorAddress = 0x03002378,
-                multiUsePlayerCursorEvidence = RuntimeMemoryEvidence.SOURCE_PROVEN_UNTESTED,
-                playerPartyCountAddress = 0x02001001,
-                playerPartyAddress = 0x02001004,
-                battleMonsAddress = 0x0200143C,
-                battleTypeFlagsAddress = 0x020003A0,
-                trainerBattleMask = 1 shl 3,
-                nonWildBattleMask = 0x8FFF8B72.toInt(),
-            ),
+            catalog.runtimeMetadata.gen3RuntimeMemoryLayout,
             reopened?.catalog?.runtimeMetadata?.gen3RuntimeMemoryLayout,
         )
         assertEquals("Route 101", reopened?.catalog?.runtimeMetadata?.areaNamesByBaseId?.get(0x0010))
@@ -411,7 +478,7 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun `parser schema changes invalidate stale content so a current reparse can replace it`() {
+    fun `revision 14 encounter-only local maps are invalidated so the current parser can rebuild them`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("d".repeat(64))
@@ -419,7 +486,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
 
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
-            database.execute("UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1", listOf(-1))
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1", listOf(14))
         }
 
         assertNull(cache.readComplete(catalog.romSha256))
@@ -454,6 +521,9 @@ class CatalogStoreTest {
 
     private fun completeCatalog(hash: String): ParsedCatalog {
         val sprite = RgbaSprite(2, 2, intArrayOf(0x00000000, 0xffff0000.toInt(), 0xff00ff00.toInt(), 0xff0000ff.toInt()))
+        val avatar = RgbaSprite(64, 64, IntArray(64 * 64) { 0xff406080.toInt() })
+        val badge = RgbaSprite(16, 16, IntArray(16 * 16) { 0xffc0a020.toInt() })
+        val badgeKeys = (1..8).map { "trainer/badge/$it" }
         val typePresentation = TypePresentation(PresentationSource.ROM_EXTRACTED, 0xffffffff.toInt(), 0xffff4422.toInt(), 0xff772211.toInt())
         val move = MoveRecord(
             id = 53,
@@ -542,6 +612,18 @@ class CatalogStoreTest {
                     levelUpSelector = LevelUpRulesetSelector(0x3DA6, 0x02, 0x02),
                 ),
             ),
+            trainerAssets = TrainerAssetCatalog(
+                avatarAssetKeys = mapOf(
+                    0 to "trainer/avatar/male",
+                    1 to "trainer/avatar/female",
+                ),
+                badgeAssetKeys = badgeKeys,
+                assets = buildMap {
+                    put("trainer/avatar/male", avatar)
+                    put("trainer/avatar/female", avatar)
+                    badgeKeys.forEach { put(it, badge) }
+                },
+            ),
             runtimeMetadata = CatalogRuntimeMetadata(
                 gen3SaveBlock1PointerAddress = 0x030036F0L,
                 gen3RuntimeMemoryLayout = CatalogGen3RuntimeMemoryLayout(
@@ -550,6 +632,8 @@ class CatalogStoreTest {
                     inBattleMask = 0x02,
                     saveBlock1MapGroupOffset = 4,
                     saveBlock1MapNumberOffset = 5,
+                    liveClockAddress = 0x030039E8,
+                    liveClockSchedule = CatalogGameClockSchedule(6, 21),
                     multiUsePlayerCursorAddress = 0x03002378,
                     multiUsePlayerCursorEvidence = RuntimeMemoryEvidence.SOURCE_PROVEN_UNTESTED,
                     playerPartyCountAddress = 0x02001001,
@@ -558,6 +642,35 @@ class CatalogStoreTest {
                     battleTypeFlagsAddress = 0x020003A0,
                     trainerBattleMask = 1 shl 3,
                     nonWildBattleMask = 0x8FFF8B72.toInt(),
+                    saveBlock1PointerAddress = 0x030036F0L,
+                    saveBlock2PointerAddress = 0x030036F4L,
+                    saveRuntimeAbi = CatalogGen3SaveRuntimeAbi(
+                        saveBlock1Size = 0x3D88,
+                        saveBlock2Size = 0x0F2C,
+                        textEncoding = CatalogGen3TextEncoding.ENGLISH,
+                        trainer = CatalogGen3TrainerCardAbi(
+                            playerNameOffset = 0,
+                            playerNameLength = 8,
+                            genderOffset = 8,
+                            trainerIdOffset = 0x0A,
+                            playTimeHoursOffset = 0x0E,
+                            playTimeMinutesOffset = 0x10,
+                            encryptionKeyOffset = 0xAC,
+                            moneyOffset = 0x490,
+                            maximumMoney = 999_999,
+                            badgeFlags = (0 until 8).map { CatalogGen3BitFlag(0x1270, 1 shl it) },
+                        ),
+                        bag = CatalogGen3BagAbi(
+                            listOf(CatalogGen3BagPocketAbi(CatalogGen3BagPocket.ITEMS, 0x560, 30)),
+                        ),
+                    ),
+                    partyAbi = CatalogGen3PartyAbi(0x02001001, 0x02001004, 6, 100),
+                    battleUiAbi = CatalogGen3BattleUiAbi(
+                        0x02001000,
+                        0x02001002,
+                        0x0200143C + 0x438,
+                        0x0200143C + 0x43C,
+                    ),
                 ),
                 areaNamesByBaseId = mapOf(0x0010 to "Route 101"),
             ),

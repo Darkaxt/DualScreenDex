@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.battle
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -51,6 +52,8 @@ class Gen3BattleLayoutResolverTest {
         val resolved = Gen3BattleLayoutResolver().resolve(region, catalog) as LayoutResolution.Resolved
 
         assertEquals(listOf(13, 16), resolved.sample.opponents.map { it.speciesId })
+        assertNull(resolved.sample.selectedMoveId)
+        assertNull(resolved.sample.commandOwnerBattlerIndex)
         assertEquals(TargetMode.MANUAL_TARGET_FALLBACK, resolved.sample.target.mode)
     }
 
@@ -65,11 +68,57 @@ class Gen3BattleLayoutResolverTest {
         ), targetBattler = 1)
 
         val resolved = Gen3BattleLayoutResolver().resolve(region, catalog) as LayoutResolution.Resolved
-        val liveTarget = resolved.sample.withLiveTargetBattler(3)
+        val liveTarget = resolved.sample.withLiveBattleCommand(
+            Gen3BattleCommandState(activeBattler = 2, moveSlot = 0, targetBattler = 3),
+        )
 
         assertEquals(listOf(13, 16), liveTarget.opponents.map { it.speciesId })
+        assertEquals(2, liveTarget.commandOwnerBattlerIndex)
+        assertEquals(10, liveTarget.selectedMoveId)
         assertEquals(TargetMode.AUTOMATIC, liveTarget.target.mode)
         assertEquals(1, liveTarget.target.opponentIndex)
+    }
+
+    @Test
+    fun keepsTheRightPlayersMoveWhileWithholdingAnUnavailableDoubleTarget() {
+        val region = ByteArray(0x3000)
+        fixture(region, 0x1000, listOf(
+            mon(252, 20, 11, 11, intArrayOf(10), intArrayOf(35), personality = 100),
+            mon(13, 18, 6, 3, intArrayOf(40), intArrayOf(35), personality = 200),
+            mon(1, 19, 11, 11, intArrayOf(11), intArrayOf(25), personality = 300),
+            mon(16, 18, 0, 2, intArrayOf(10), intArrayOf(35), personality = 400),
+        ))
+        val resolved = Gen3BattleLayoutResolver().resolve(region, catalog) as LayoutResolution.Resolved
+
+        val liveMove = resolved.sample.withLiveBattleCommand(
+            Gen3BattleCommandState(activeBattler = 2, moveSlot = 0),
+        )
+
+        assertEquals(2, liveMove.commandOwnerBattlerIndex)
+        assertEquals(11, liveMove.selectedMoveId)
+        assertEquals(TargetMode.MANUAL_TARGET_FALLBACK, liveMove.target.mode)
+        assertEquals(CapabilityState.AVAILABLE, liveMove.capabilities[BattleCapability.SELECTED_MOVE])
+        assertEquals(CapabilityState.NOT_FOUND, liveMove.capabilities[BattleCapability.SELECTED_TARGET])
+    }
+
+    @Test
+    fun withholdsTheWholeCommandPairWhenTheActiveBattlerIsNotAPlayer() {
+        val region = ByteArray(0x3000)
+        fixture(region, 0x1000, listOf(
+            mon(252, 20, 11, 11, intArrayOf(10), intArrayOf(35), personality = 100),
+            mon(13, 18, 6, 3, intArrayOf(40), intArrayOf(35), personality = 200),
+            mon(1, 19, 11, 11, intArrayOf(11), intArrayOf(25), personality = 300),
+            mon(16, 18, 0, 2, intArrayOf(10), intArrayOf(35), personality = 400),
+        ))
+        val resolved = Gen3BattleLayoutResolver().resolve(region, catalog) as LayoutResolution.Resolved
+
+        val withheld = resolved.sample.withLiveBattleCommand(
+            Gen3BattleCommandState(activeBattler = 1, moveSlot = 0, targetBattler = 3),
+        )
+
+        assertNull(withheld.commandOwnerBattlerIndex)
+        assertNull(withheld.selectedMoveId)
+        assertEquals(TargetMode.MANUAL_TARGET_FALLBACK, withheld.target.mode)
     }
 
     @Test

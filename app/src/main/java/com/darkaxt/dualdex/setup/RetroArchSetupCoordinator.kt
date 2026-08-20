@@ -29,7 +29,7 @@ import com.darkaxt.dualdex.save.SavePollingMonitor
 import com.darkaxt.dualdex.storage.AndroidRomLibraryIndexer
 import com.darkaxt.dualdex.storage.DirectRomLibraryIndexer
 import com.darkaxt.dualdex.storage.RomIndexStore
-import com.darkaxt.dualdex.storage.RomSourceInput
+import com.darkaxt.dualdex.storage.AndroidRomSourceLoader
 import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.darkaxt.dualdex.storage.StorageAccessPolicy
 import com.darkaxt.dualdex.storage.StorageIndexAction
@@ -75,6 +75,7 @@ class RetroArchSetupCoordinator(
         locationPublisher = runtime::updateLiveArea,
         positionPublisher = runtime::updateLiveMapPosition,
         partyPublisher = runtime::updateLiveParty,
+        liveGamePublisher = runtime::updateLiveGameState,
         transportFactory = { UdpNetworkCommandTransport(commandPort) },
         pollingIntervalProvider = runtime::battlePollingIntervalMs,
     )
@@ -434,11 +435,15 @@ class RetroArchSetupCoordinator(
         update { it.copy(resolution = "LOADING", message = "Verifying the active ROM before opening its catalog…") }
         worker.execute {
             try {
-                val sourceInput = RomSourceInput { sourceId ->
-                    context.contentResolver.openInputStream(Uri.parse(sourceId))
-                }
-                val loaded = sourceInput.open(entry.sourceId).use {
-                    RomSourceLoader.load(entry.sourceName.substringBefore('!'), it)
+                val sourceUri = URI(entry.sourceId)
+                val loaded = if (sourceUri.scheme.equals("file", ignoreCase = true)) {
+                    RomSourceLoader.load(File(sourceUri).toPath())
+                } else {
+                    AndroidRomSourceLoader.load(
+                        context.contentResolver,
+                        Uri.parse(entry.sourceId),
+                        entry.sourceName.substringBefore('!'),
+                    )
                 }
                 require(RomSessionResolver.verifySha(entry, loaded.rom.sha256)) {
                     "the matched ROM changed after indexing; reselect the ROM library"

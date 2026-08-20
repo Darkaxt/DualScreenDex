@@ -19,6 +19,12 @@ import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SavedArea
+import com.darkaxt.dualdex.save.TrainerSnapshot
+import com.darkaxt.dualdex.battle.Gen3LiveBattleState
+import com.darkaxt.dualdex.battle.Gen3LiveBattleUiState
+import com.darkaxt.dualdex.battle.Gen3LiveGameSnapshot
+import com.darkaxt.dualdex.battle.Gen3GameClock
+import com.darkaxt.dualdex.battle.Gen3LiveSection
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
@@ -27,6 +33,10 @@ import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
+import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BattleUiAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
+import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
@@ -60,6 +70,44 @@ import com.darkaxt.dualdex.battle.ResolvedBattleLayout
 import com.darkaxt.dualdex.battle.TargetMode
 
 class ProductionCompanionRuntimeTest {
+    @Test
+    fun projectsOnlyCatalogValidatedClockPhasesIntoCompanionState() {
+        val hash = "e".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "clock.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                runtimeMetadata = CatalogRuntimeMetadata(
+                    gen3RuntimeMemoryLayout = CatalogGen3RuntimeMemoryLayout(
+                        mainAddress = 0x03001574,
+                        inBattleAddress = 0x030019AD,
+                        inBattleMask = 2,
+                        saveBlock1MapGroupOffset = 4,
+                        saveBlock1MapNumberOffset = 5,
+                        liveClockAddress = 0x030039E8,
+                        liveClockSchedule = CatalogGameClockSchedule(6, 21),
+                    ),
+                ),
+            ),
+        )
+
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                hash,
+                Gen3LiveSection.unavailable("trainer omitted"),
+                Gen3LiveSection.available(emptyList()),
+                Gen3LiveSection.available(Gen3GameClock(21, 0)),
+            ),
+        )
+
+        assertEquals("NIGHT", runtime.stateView().gameTime?.phase)
+        assertEquals(0.0, requireNotNull(runtime.stateView().gameTime?.phaseProgress), 0.0)
+        runtime.close()
+    }
+
     @Test
     fun provenWildBattleOpensUsableRarityOnceWithoutLaterTabOverrides() {
         val runtime = ProductionCompanionRuntime()
@@ -214,9 +262,25 @@ class ProductionCompanionRuntimeTest {
                 CatalogField.available(40), CatalogField.available(100), CatalogField.available(35),
             )),
             typesById = mapOf(0 to TypeRecord(0, CatalogField.available("NORMAL"))),
+            runtimeMetadata = CatalogRuntimeMetadata(
+                gen3RuntimeMemoryLayout = CatalogGen3RuntimeMemoryLayout(
+                    mainAddress = 0x03001574,
+                    inBattleAddress = 0x030019AD,
+                    inBattleMask = 2,
+                    saveBlock1MapGroupOffset = 4,
+                    saveBlock1MapNumberOffset = 5,
+                    battleUiAbi = CatalogGen3BattleUiAbi(
+                        activeBattlerAddress = 0x02024064,
+                        actionCursorAddress = 0x020244AC,
+                        moveCursorAddress = 0x020244B0,
+                        targetCursorAddress = 0x0202420C,
+                    ),
+                ),
+            ),
         ))
         assertEquals("sha", runtime.battleCatalogContext()?.romIdentity)
         assertEquals(3, runtime.battleCatalogContext()?.generation)
+        assertEquals(0x02024064L, runtime.battleCatalogContext()?.gen3RuntimeMemoryLayout?.battleUi?.activeBattlerAddress)
 
         runtime.loadCatalog("fixture.gbc", ParsedCatalog(
             "yellow", EngineFamily.YELLOW, Platform.GBC,
@@ -1260,13 +1324,62 @@ class ProductionCompanionRuntimeTest {
                         typeIds = CatalogField.available(emptyList()),
                         baseStats = CatalogField.notFound("fixture"),
                         sprite = CatalogField.notFound("fixture"),
+                        abilityIds = CatalogField.available(listOf(9, 31)),
                         growthRate = CatalogField.available(0),
+                    ),
+                ),
+                movesById = mapOf(
+                    33 to MoveRecord(
+                        id = 33,
+                        name = CatalogField.available("TACKLE"),
+                        typeId = CatalogField.available(0),
+                        category = CatalogField.notFound("fixture"),
+                        power = CatalogField.available(40),
+                        accuracy = CatalogField.available(100),
+                        pp = CatalogField.available(35),
+                    ),
+                ),
+                runtimeMetadata = com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata(
+                    gen3RuntimeMemoryLayout = com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout(
+                        mainAddress = 0x030022C0,
+                        inBattleAddress = 0x03002748,
+                        inBattleMask = 2,
+                        saveBlock1MapGroupOffset = 4,
+                        saveBlock1MapNumberOffset = 5,
+                        saveBlock1PointerAddress = 0x03005D8C,
+                        saveBlock2PointerAddress = 0x03005D90,
+                        saveRuntimeAbi = com.enrpau.dualscreendex.parser.catalog.CatalogGen3SaveRuntimeAbi(
+                            saveBlock1Size = 0x3D88,
+                            saveBlock2Size = 0x0F2C,
+                            textEncoding = com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding.ENGLISH,
+                            trainer = com.enrpau.dualscreendex.parser.catalog.CatalogGen3TrainerCardAbi(
+                                0, 8, 8, 0x0A, 0x0E, 0x10, 0xAC, 0x490, 999_999,
+                                listOf(com.enrpau.dualscreendex.parser.catalog.CatalogGen3BitFlag(0x1270, 1)),
+                            ),
+                            bag = com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagAbi(
+                                listOf(
+                                    com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocketAbi(
+                                        com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.ITEMS,
+                                        0x560,
+                                        30,
+                                    ),
+                                ),
+                            ),
+                        ),
                     ),
                 ),
             ),
         )
         val context = requireNotNull(runtime.saveParseContext())
         assertEquals(25, context.speciesById.getValue(25).dexNumber)
+        assertEquals(listOf(9, 31), context.speciesById.getValue(25).abilityIds)
+        assertEquals(35, context.movePpById.getValue(33))
+        assertEquals(com.darkaxt.dualdex.save.gen3.Gen3TextEncoding.ENGLISH, context.gen3TextEncoding)
+        val saveAbi = requireNotNull(context.gen3SaveRuntimeAbi)
+        assertEquals(0x3D88, saveAbi.saveBlock1Size)
+        assertEquals(0x0F2C, saveAbi.saveBlock2Size)
+        assertEquals(0xAC, saveAbi.trainer.encryptionKeyOffset)
+        assertEquals(com.darkaxt.dualdex.save.BagPocket.ITEMS, saveAbi.bag.pockets.single().pocket)
         val snapshot = SaveSnapshot(
             romIdentity = hash,
             saveIdentity = "save",
@@ -1327,6 +1440,127 @@ class ProductionCompanionRuntimeTest {
         assertTrue(state.speciesState.getValue(25).caught)
         runtime.close()
     }
+
+    @Test
+    fun liveTrainerAndValidatedPartyOverrideSaveAndDisconnectRestoresIt() {
+        val hash = "b".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(25 to saveSpecies(25), 277 to saveSpecies(277)),
+            ),
+        )
+        val savedTrainer = trainer("SAVE", money = 100)
+        val liveTrainer = trainer("LIVE", money = 999)
+        val saved = SaveSnapshot(
+            romIdentity = hash,
+            saveIdentity = "save",
+            saveGeneration = 3,
+            saveCounter = 1,
+            currentArea = SavedArea(0, 0),
+            seenDexNumbers = setOf(25),
+            caughtDexNumbers = setOf(25),
+            party = listOf(OwnedIndividual("party-0", 25, level = 9)),
+            storedIndividuals = emptyList(),
+            capabilities = emptyMap(),
+            trainer = savedTrainer,
+        )
+        assertTrue(runtime.applySaveSnapshot(saved, SaveRamView(status = "MATCHED")))
+
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                hash,
+                Gen3LiveSection.available(liveTrainer),
+                Gen3LiveSection.available(listOf(OwnedIndividual("party-0", 277, level = 5))),
+            ),
+        )
+        assertEquals("LIVE", runtime.gateway.bootstrap().trainer?.name)
+        assertEquals(listOf(277), runtime.gateway.bootstrap().party.map { it.speciesId })
+        assertTrue(runtime.stateView().speciesState.getValue(277).team)
+
+        runtime.updateLiveGameState(
+            liveSnapshot(hash, Gen3LiveSection.unavailable("trainer bytes invalid"), Gen3LiveSection.available(emptyList())),
+        )
+        assertEquals("SAVE", runtime.gateway.bootstrap().trainer?.name)
+        assertTrue(runtime.gateway.bootstrap().party.isEmpty())
+        assertTrue(runtime.gateway.bootstrap().ledger.teamSpecies.isEmpty())
+
+        runtime.updateLiveGameState(null)
+        assertEquals("SAVE", runtime.gateway.bootstrap().trainer?.name)
+        assertEquals(listOf(25), runtime.gateway.bootstrap().party.map { it.speciesId })
+        assertTrue(runtime.stateView().speciesState.getValue(25).team)
+        runtime.close()
+    }
+
+    @Test
+    fun ignoresAnotherRomsLiveSnapshotAndDropsPriorLiveStateWhenCatalogSwitches() {
+        val first = "c".repeat(64)
+        val second = "d".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "first.gba",
+            ParsedCatalog(first, EngineFamily.EMERALD, Platform.GBA, speciesById = mapOf(25 to saveSpecies(25))),
+        )
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                first,
+                Gen3LiveSection.available(trainer("FIRST", 1)),
+                Gen3LiveSection.available(listOf(OwnedIndividual("party-0", 25, level = 5))),
+            ),
+        )
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                second,
+                Gen3LiveSection.available(trainer("WRONG", 2)),
+                Gen3LiveSection.available(emptyList()),
+            ),
+        )
+        assertEquals("FIRST", runtime.gateway.bootstrap().trainer?.name)
+
+        runtime.loadCatalog(
+            "second.gba",
+            ParsedCatalog(second, EngineFamily.EMERALD, Platform.GBA, speciesById = mapOf(25 to saveSpecies(25))),
+        )
+        assertNull(runtime.gateway.bootstrap().trainer)
+        assertTrue(runtime.gateway.bootstrap().party.isEmpty())
+        runtime.close()
+    }
+
+    private fun trainer(name: String, money: Long) = TrainerSnapshot(
+        name = name,
+        gender = 0,
+        publicTrainerId = 7,
+        money = money,
+        playTimeHours = 2,
+        playTimeMinutes = 3,
+        badgeFlags = 1,
+        dexSeen = 1,
+        dexCaught = 1,
+    )
+
+    private fun liveSnapshot(
+        romIdentity: String,
+        trainer: Gen3LiveSection<TrainerSnapshot>,
+        party: Gen3LiveSection<List<OwnedIndividual>>,
+        clock: Gen3LiveSection<Gen3GameClock> = Gen3LiveSection.unavailable("clock omitted"),
+    ) = Gen3LiveGameSnapshot(
+        romIdentity = romIdentity,
+        trainer = trainer,
+        location = Gen3LiveSection.unavailable("not part of runtime merge test"),
+        party = party,
+        bag = com.darkaxt.dualdex.save.BagPocket.entries.associateWith {
+            Gen3LiveSection.unavailable("not part of runtime merge test")
+        },
+        battle = Gen3LiveSection.available(Gen3LiveBattleState(false)),
+        battleUi = Gen3LiveSection.available(
+            Gen3LiveBattleUiState(null, com.darkaxt.dualdex.battle.BattleEncounterKind.UNKNOWN),
+        ),
+        clock = clock,
+    )
 
     private fun saveSpecies(id: Int) = SpeciesRecord(
         id = id,

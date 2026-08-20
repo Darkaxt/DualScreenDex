@@ -111,6 +111,22 @@ class CompanionGatewayTest {
     }
 
     @Test
+    fun trainerAndPartyShortcutsPreserveTheirReturnScreenAndSelectedSlot() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.OpenSpecies(25))
+
+        val trainer = gateway.dispatch(CompanionAction.OpenTrainer)
+        val returned = gateway.dispatch(CompanionAction.BackToPokedex)
+        val party = gateway.dispatch(CompanionAction.OpenPartyMember(4))
+
+        assertEquals(AppScreen.TRAINER, trainer.screen)
+        assertEquals(AppScreen.DETAIL, trainer.priorScreen)
+        assertEquals(AppScreen.DETAIL, returned.screen)
+        assertEquals(AppScreen.PARTY, party.screen)
+        assertEquals(4, party.selectedPartySlot)
+    }
+
+    @Test
     fun settingsReturnToBattleWithoutLosingItsOutOfBattleDestination() {
         val gateway = CompanionGateway()
         gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))

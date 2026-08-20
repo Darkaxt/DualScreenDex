@@ -38,63 +38,77 @@ const state: State = {
   settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
   speciesState: {}, observedMoves: {}, battle: null, catalogReady: true, catalogName: 'fixture.gba', error: null,
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
+  gameTime: { hours: 16, minutes: 48, phase: 'DAY', phaseProgress: 0.72 },
 };
 
 describe('normalized world map presentation', () => {
-  it('uses the approved semantic utility rail without a navigation toolbar', () => {
+  it('shows only location context on the left and Pokédex-style actions on the right', () => {
     const openAreaDex = vi.fn();
     const openSettings = vi.fn();
-    const { container } = render(<MapPage catalog={catalog} state={state} onOpenAreaDex={openAreaDex} onOpenSettings={openSettings} />);
+    const { container } = render(<MapPage catalog={catalog} state={state} onOpenPokedex={openAreaDex} onOpenSettings={openSettings} />);
 
     expect(screen.getByText('CURRENT')).toBeTruthy();
-    const rail = container.querySelector('.map-utility-rail')!;
-    const buttons = [...rail.querySelectorAll(':scope > button')];
-    expect(buttons.map(button => button.getAttribute('aria-label')).slice(0, 2)).toEqual([
-      'Map settings and legend',
-      'Open Area Pokédex',
-    ]);
-    expect(buttons[0].querySelector('svg')?.dataset.semanticIcon).toBe('map');
-    expect(buttons[1].querySelector('svg')?.dataset.semanticIcon).toBe('pokedex');
-    expect(container.querySelector('[data-map-navigation-row]')).toBeNull();
+    expect(container.querySelector('.map-page-title')).toBeNull();
+    expect(screen.queryByText('EMERALD')).toBeNull();
+    expect(screen.queryByText('WORLD MAP')).toBeNull();
+    expect(container.querySelector('.map-current-location strong')?.textContent).toBe('Route 101');
+    expect(container.querySelectorAll('.map-marker.is-current')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Current location: Route 101' }).classList.contains('atlas-location-marker')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Oldale Town' }).classList.contains('atlas-location-marker')).toBe(true);
 
-    fireEvent.click(buttons[0]);
-    fireEvent.click(screen.getByRole('button', { name: 'Open Settings' }));
+    const actions = container.querySelector('.map-header-actions')!;
+    const buttons = [...actions.querySelectorAll(':scope > button')];
+    expect(buttons.map(button => button.getAttribute('aria-label'))).toEqual([
+      'Open Pokédex',
+      'Settings',
+    ]);
+    expect(buttons[0].querySelector('svg')?.dataset.semanticIcon).toBe('pokedex');
+    expect(buttons[1].querySelector('svg')?.dataset.semanticIcon).toBe('settings');
+    expect(container.querySelector('[data-map-navigation-row]')).toBeNull();
+    expect(container.querySelector('.map-plane')?.classList.contains('map-framed-plane')).toBe(true);
+    expect(container.querySelectorAll('.header-game-clock')).toHaveLength(1);
+    expect(container.querySelector('[data-semantic-icon="sun"]')).toBeTruthy();
+
+    fireEvent.click(buttons[1]);
     expect(openSettings).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'Oldale Town' }));
-    fireEvent.click(buttons[1]);
-    expect(openAreaDex).toHaveBeenCalledWith('gen3-region-0', expect.objectContaining({ key: 'section-17' }));
+    fireEvent.click(buttons[0]);
+    expect(openAreaDex).toHaveBeenCalledOnce();
   });
 
-  it('keeps every persisted discovered location revealed and passes the chosen marker to Area Dex', () => {
+  it('keeps every persisted discovered location revealed and returns to the retained Pokédex view', () => {
     const openAreaDex = vi.fn();
-    render(<MapPage catalog={catalog} state={state} onOpenAreaDex={openAreaDex} onOpenSettings={vi.fn()} />);
+    render(<MapPage catalog={catalog} state={state} onOpenPokedex={openAreaDex} onOpenSettings={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: 'Oldale Town' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Petalburg City' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Oldale Town' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Open Area Pokédex' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Pokédex' }));
 
-    expect(openAreaDex).toHaveBeenCalledWith('gen3-region-0', expect.objectContaining({ key: 'section-17', baseAreaIds: [0x11] }));
+    expect(openAreaDex).toHaveBeenCalledOnce();
   });
 
   it('does not expose or route an undiscovered location while fog is active', () => {
     render(<MapPage
       catalog={catalog}
       state={{ ...state, currentAreaBaseId: null, currentAreaName: null, revealedAreaBaseIds: [] }}
-      onOpenAreaDex={vi.fn()}
+      onOpenPokedex={vi.fn()}
       onOpenSettings={vi.fn()}
     />);
 
-    expect(screen.getByText('Unknown location')).toBeTruthy();
+    expect(screen.getByText('Atlas')).toBeTruthy();
+    expect(screen.getByText('ATLAS')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Interactive world map' }).dataset.selectedKey).toBeUndefined();
+    expect(document.querySelectorAll('.map-marker.is-current')).toHaveLength(0);
     expect(screen.queryByRole('button', { name: 'Route 101' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Open Area Pokédex' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Open Pokédex' }).hasAttribute('disabled')).toBe(false);
   });
 
   it('restores the selected Area Dex location instead of replacing it with the physical current marker', () => {
     const { container } = render(<MapPage
       catalog={catalog}
       state={{ ...state, selectedAreaId: 0x11 * 10 + 1 }}
-      onOpenAreaDex={vi.fn()}
+      onOpenPokedex={vi.fn()}
       onOpenSettings={vi.fn()}
     />);
 
@@ -103,8 +117,8 @@ describe('normalized world map presentation', () => {
     expect(screen.getByRole('region', { name: 'Interactive world map' }).dataset.selectedKey).toBe('section-17');
   });
 
-  it('keeps zoom, recenter, markers, and knowledge-mode fog functional without a fog override', () => {
-    const { container } = render(<MapPage catalog={catalog} state={state} onOpenAreaDex={vi.fn()} onOpenSettings={vi.fn()} />);
+  it('keeps zoom, recenter, permanent eligible markers, and knowledge-mode fog functional', () => {
+    const { container } = render(<MapPage catalog={catalog} state={state} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
     const stage = screen.getByRole('region', { name: 'Interactive world map' });
 
     expect(stage.dataset.scale).toBe('1');
@@ -115,30 +129,29 @@ describe('normalized world map presentation', () => {
     expect(stage.dataset.panX).toBe('0');
     expect(stage.dataset.panY).toBe('0');
 
-    const markers = screen.getByRole('button', { name: 'Toggle map markers' });
     expect(screen.queryByRole('button', { name: 'Toggle fog of war' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Toggle map markers' })).toBeNull();
     expect(container.querySelector('.map-fog')).toBeTruthy();
-    expect(markers.getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(markers);
-    expect(markers.getAttribute('aria-pressed')).toBe('false');
-    expect(container.querySelector('.map-marker')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Current location: Route 101' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Oldale Town' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Petalburg City' })).toBeNull();
   });
 
-  it('shows the whole map in Discovered mode and disables Area Dex for a point without encounters', () => {
+  it('shows the whole map in Discovered mode and keeps global Pokédex navigation available', () => {
     const openAreaDex = vi.fn();
     const { container } = render(<MapPage
       catalog={catalog}
       state={{ ...state, settings: { ...state.settings, knowledgeMode: 'DISCOVERED' } }}
-      onOpenAreaDex={openAreaDex}
+      onOpenPokedex={openAreaDex}
       onOpenSettings={vi.fn()}
     />);
 
     expect(container.querySelector('.map-fog')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Petalburg City' }));
-    const areaDex = screen.getByRole('button', { name: 'Open Area Pokédex' });
-    expect(areaDex.hasAttribute('disabled')).toBe(true);
+    const areaDex = screen.getByRole('button', { name: 'Open Pokédex' });
+    expect(areaDex.hasAttribute('disabled')).toBe(false);
     fireEvent.click(areaDex);
-    expect(openAreaDex).not.toHaveBeenCalled();
+    expect(openAreaDex).toHaveBeenCalledOnce();
   });
 });
 
@@ -156,7 +169,7 @@ describe('optional local map presentation', () => {
     const { container } = render(<MapPage
       catalog={localCatalog}
       state={{ ...state, currentMapPosition: { x: 12, y: 7 } }}
-      onOpenAreaDex={vi.fn()}
+      onOpenPokedex={vi.fn()}
       onOpenSettings={vi.fn()}
     />);
 
@@ -164,6 +177,7 @@ describe('optional local map presentation', () => {
     expect(localStage.dataset.mapMode).toBe('LOCAL');
     expect(container.querySelector('.map-plane img')?.getAttribute('src')).toBe('/api/maps/local%2F0010%2Fmap.png');
     expect(container.querySelector('.map-player-marker')?.getAttribute('aria-label')).toBe('Player position 12, 7');
+    expect(container.querySelector('.map-player-marker')?.classList.contains('atlas-location-marker')).toBe(false);
     expect(screen.queryByRole('button', { name: 'Toggle map markers' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show Atlas' }));
@@ -175,7 +189,7 @@ describe('optional local map presentation', () => {
     render(<MapPage
       catalog={localCatalog}
       state={{ ...state, currentAreaBaseId: 0x99, currentAreaName: 'Unknown' }}
-      onOpenAreaDex={vi.fn()}
+      onOpenPokedex={vi.fn()}
       onOpenSettings={vi.fn()}
     />);
 

@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.web
 import com.darkaxt.dualdex.catalog.CatalogRepository
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
+import com.darkaxt.dualdex.catalog.catalogWriteProgress
 import com.darkaxt.dualdex.knowledge.KnowledgeRepository
 import com.darkaxt.dualdex.battle.BattleCatalogContext
 import com.darkaxt.dualdex.battle.liveAreaMemoryLayout
@@ -11,7 +12,10 @@ import com.darkaxt.dualdex.battle.BattleMove
 import com.darkaxt.dualdex.battle.BattleSpecies
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
 import com.darkaxt.dualdex.battle.RuntimeMapPosition
+import com.darkaxt.dualdex.battle.Gen3BattleUiMemoryLayout
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
+import com.darkaxt.dualdex.battle.Gen3LiveGameSnapshot
+import com.darkaxt.dualdex.battle.Gen3LiveSectionState
 import com.darkaxt.dualdex.battle.TargetMode
 import com.enrpau.dualscreendex.companion.CompanionGateway
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
@@ -22,6 +26,7 @@ import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.api.StateView
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
+import com.enrpau.dualscreendex.companion.model.projectGameClock
 import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
 import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.BattleEncounterKind as CompanionBattleEncounterKind
@@ -50,10 +55,18 @@ import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.BagPocket
+import com.darkaxt.dualdex.save.gen3.Gen3BagAbi
+import com.darkaxt.dualdex.save.gen3.Gen3BagPocketAbi
+import com.darkaxt.dualdex.save.gen3.Gen3BitFlag
+import com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi
+import com.darkaxt.dualdex.save.gen3.Gen3TrainerCardAbi
+import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -91,6 +104,8 @@ class ProductionCompanionRuntime(
     private var detectedLevelUpRulesetId: String? = null
     private var levelUpRulesetDetectionResolved = false
     private var liveParty: List<OwnedIndividual>? = null
+    private var liveGameState: Gen3LiveGameSnapshot? = null
+    private var savedPlayerState: SaveSnapshot? = null
     private var catalogPublicationInProgress = false
     private var cachedState: CachedState? = null
     private val loadGeneration = AtomicLong()
@@ -101,6 +116,8 @@ class ProductionCompanionRuntime(
     )
 
     fun load(name: String, input: InputStream): BootstrapView = load(RomSourceLoader.load(name, input))
+
+    fun load(name: String, source: ByteArray): BootstrapView = load(RomSourceLoader.load(name, source))
 
     fun load(source: LoadedRom): BootstrapView {
         load(source.displayName, source.rom)
@@ -246,10 +263,58 @@ class ProductionCompanionRuntime(
     private fun saveParseContext(current: ParsedCatalog): SaveParseContext = SaveParseContext(
         romIdentity = current.romSha256,
         speciesById = current.speciesById.mapValues { (id, species) ->
-            SaveSpeciesContext(id, species.dexNumber.value, species.growthRate.value, species.formId)
+            SaveSpeciesContext(
+                speciesId = id,
+                dexNumber = species.dexNumber.value,
+                growthRate = species.growthRate.value,
+                formId = species.formId,
+                abilityIds = species.abilityIds.value.orEmpty().filter { it > 0 },
+            )
         },
         captureBallIds = current.captureBallsById.keys.ifEmpty { (1..15).toSet() },
         levelUpRulesetSelectors = completeLevelUpRulesetSelectors(current),
+        movePpById = current.movesById.mapNotNull { (id, move) ->
+            move.pp.value?.takeIf { it > 0 }?.let { id to it }
+        }.toMap(),
+        gen3TextEncoding = Gen3TextEncoding.ENGLISH.takeIf { current.platform == Platform.GBA },
+        gen3SaveRuntimeAbi = current.runtimeMetadata.gen3RuntimeMemoryLayout?.saveRuntimeAbi?.let { abi ->
+            Gen3SaveRuntimeAbi(
+                saveBlock1Size = abi.saveBlock1Size,
+                saveBlock2Size = abi.saveBlock2Size,
+                textEncoding = when (abi.textEncoding) {
+                    com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding.ENGLISH ->
+                        Gen3TextEncoding.ENGLISH
+                },
+                trainer = Gen3TrainerCardAbi(
+                    playerNameOffset = abi.trainer.playerNameOffset,
+                    playerNameLength = abi.trainer.playerNameLength,
+                    genderOffset = abi.trainer.genderOffset,
+                    trainerIdOffset = abi.trainer.trainerIdOffset,
+                    playTimeHoursOffset = abi.trainer.playTimeHoursOffset,
+                    playTimeMinutesOffset = abi.trainer.playTimeMinutesOffset,
+                    encryptionKeyOffset = abi.trainer.encryptionKeyOffset,
+                    moneyOffset = abi.trainer.moneyOffset,
+                    maximumMoney = abi.trainer.maximumMoney,
+                    badgeFlags = abi.trainer.badgeFlags.map { Gen3BitFlag(it.byteOffset, it.mask) },
+                ),
+                bag = Gen3BagAbi(
+                    abi.bag.pockets.map { pocket ->
+                        Gen3BagPocketAbi(
+                            pocket = when (pocket.pocket) {
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.ITEMS -> BagPocket.ITEMS
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.KEY_ITEMS -> BagPocket.KEY_ITEMS
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.BALLS -> BagPocket.BALLS
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.TM_HM -> BagPocket.TM_HM
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket.BERRIES -> BagPocket.BERRIES
+                            },
+                            byteOffset = pocket.byteOffset,
+                            capacity = pocket.capacity,
+                            slotSize = pocket.slotSize,
+                        )
+                    },
+                ),
+            )
+        },
     )
 
     @Synchronized
@@ -288,31 +353,48 @@ class ProductionCompanionRuntime(
                     saveBlock1MapNumberOffset = layout.saveBlock1MapNumberOffset,
                     saveBlock1PositionXOffset = layout.saveBlock1PositionXOffset,
                     saveBlock1PositionYOffset = layout.saveBlock1PositionYOffset,
+                    liveClockAddress = layout.liveClockAddress,
                     multiUsePlayerCursorAddress = layout.multiUsePlayerCursorAddress,
-                    playerPartyCountAddress = layout.playerPartyCountAddress,
-                    playerPartyAddress = layout.playerPartyAddress,
+                    playerPartyCountAddress = layout.partyAbi?.countAddress ?: layout.playerPartyCountAddress,
+                    playerPartyAddress = layout.partyAbi?.partyAddress ?: layout.playerPartyAddress,
+                    playerPartyCapacity = layout.partyAbi?.capacity ?: layout.playerPartyAddress?.let { 6 },
+                    playerPartyRecordSize = layout.partyAbi?.recordSize ?: layout.playerPartyAddress?.let { 100 },
                     battleMonsAddress = layout.battleMonsAddress,
                     battleTypeFlagsAddress = layout.battleTypeFlagsAddress,
+                    battleUi = layout.battleUiAbi?.let { battleUi ->
+                        Gen3BattleUiMemoryLayout(
+                            activeBattlerAddress = battleUi.activeBattlerAddress,
+                            actionCursorAddress = battleUi.actionCursorAddress,
+                            moveCursorAddress = battleUi.moveCursorAddress,
+                        )
+                    },
                     trainerBattleMask = layout.trainerBattleMask,
                     nonWildBattleMask = layout.nonWildBattleMask,
+                    saveBlock1PointerAddress = layout.saveBlock1PointerAddress,
+                    saveBlock2PointerAddress = layout.saveBlock2PointerAddress,
+                    saveBlock1Size = layout.saveRuntimeAbi?.saveBlock1Size,
+                    saveBlock2Size = layout.saveRuntimeAbi?.saveBlock2Size,
                 )
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),
             saveParseContext = saveParseContext(current),
+            savedTrainer = savedPlayerState?.trainer,
         )
     }
 
     @Synchronized
     fun updateLiveParty(party: List<OwnedIndividual>?) {
         liveParty = party
-        if (party == null) return
-        val current = catalog ?: return
-        val before = gateway.bootstrap().ledger
-        val merged = LivePartyKnowledgeMapper.merge(before, current, party, generation = 3)
-        if (merged != before) {
-            gateway.dispatch(CompanionAction.ReplaceLedger(merged))
-            persistKnowledge(merged)
-        }
+        publishSelectedPlayerState()
+    }
+
+    @Synchronized
+    fun updateLiveGameState(snapshot: Gen3LiveGameSnapshot?) {
+        val current = catalog
+        if (snapshot != null && (current == null || !snapshot.romIdentity.equals(current.romSha256, true))) return
+        liveGameState = snapshot
+        if (snapshot == null) liveParty = null
+        publishSelectedPlayerState()
     }
 
     @Synchronized
@@ -480,10 +562,8 @@ class ProductionCompanionRuntime(
     fun applySaveSnapshot(snapshot: SaveSnapshot, state: SaveRamView): Boolean {
         val current = catalog ?: return false
         if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return false
-        val fromSave = SaveKnowledgeMapper.merge(gateway.bootstrap().ledger, current, snapshot)
-        val merged = liveParty?.let { party ->
-            LivePartyKnowledgeMapper.merge(fromSave, current, party, generation = 3)
-        } ?: fromSave
+        savedPlayerState = snapshot
+        val merged = mergedPlayerKnowledge(current)
         val selectors = completeLevelUpRulesetSelectors(current)
         val detected = snapshot.detectedLevelUpRulesetId?.takeIf { id ->
             val expectedFingerprint = LevelUpRulesetDetectionFingerprint.create(selectors, id)
@@ -497,13 +577,76 @@ class ProductionCompanionRuntime(
         saveRam = state
         cachedState = null
         gateway.dispatch(CompanionAction.ReplaceLedger(merged))
+        publishSelectedPlayerSnapshot()
         persistKnowledge(merged)
         return true
+    }
+
+    private fun selectedParty(): List<OwnedIndividual> = liveGameState
+        ?.party
+        ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+        ?.value
+        ?: liveParty
+        ?: savedPlayerState?.party
+        ?: emptyList()
+
+    private fun selectedTrainer() = liveGameState
+        ?.trainer
+        ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+        ?.value
+        ?: savedPlayerState?.trainer
+
+    private fun mergedPlayerKnowledge(current: ParsedCatalog): KnowledgeLedger {
+        val before = gateway.bootstrap().ledger
+        val fromSave = savedPlayerState
+            ?.takeIf { it.romIdentity.equals(current.romSha256, true) }
+            ?.let { SaveKnowledgeMapper.merge(before, current, it) }
+            ?: before
+        val livePartySelection = when {
+            liveGameState?.party?.state == Gen3LiveSectionState.AVAILABLE -> liveGameState?.party?.value
+            liveParty != null -> liveParty
+            savedPlayerState != null -> null
+            else -> emptyList()
+        }
+        return livePartySelection?.let { party ->
+            LivePartyKnowledgeMapper.merge(fromSave, current, party, generation = 3)
+        } ?: fromSave
+    }
+
+    private fun publishSelectedPlayerSnapshot() {
+        val schedule = catalog?.runtimeMetadata?.gen3RuntimeMemoryLayout?.liveClockSchedule
+        val gameTime = liveGameState?.clock
+            ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+            ?.value
+            ?.let {
+                projectGameClock(
+                    it.hours,
+                    it.minutes,
+                    schedule?.dayStartHour,
+                    schedule?.nightStartHour,
+                )
+            }
+        gateway.dispatch(CompanionAction.LiveGameStateChanged(selectedTrainer(), selectedParty(), gameTime))
+    }
+
+    private fun publishSelectedPlayerState() {
+        val current = catalog
+        if (current != null) {
+            val merged = mergedPlayerKnowledge(current)
+            if (merged != gateway.bootstrap().ledger) {
+                gateway.dispatch(CompanionAction.ReplaceLedger(merged))
+                persistKnowledge(merged)
+            }
+        }
+        publishSelectedPlayerSnapshot()
     }
 
     fun action(type: String, values: Map<String, String?>): StateView {
         when (type.uppercase()) {
             "OPEN_SPECIES" -> gateway.dispatch(CompanionAction.OpenSpecies(requireInt(values, "speciesId")))
+            "OPEN_TRAINER" -> gateway.dispatch(CompanionAction.OpenTrainer)
+            "OPEN_PARTY" -> gateway.dispatch(CompanionAction.OpenParty)
+            "OPEN_PARTY_MEMBER" -> gateway.dispatch(CompanionAction.OpenPartyMember(requireInt(values, "slot")))
             "BACK" -> gateway.dispatch(CompanionAction.BackToPokedex)
             "SCREEN" -> gateway.dispatch(CompanionAction.SetScreen(AppScreen.valueOf(requireNotNull(values["screen"]).uppercase())))
             "FILTER" -> gateway.dispatch(
@@ -547,6 +690,9 @@ class ProductionCompanionRuntime(
     fun mapAsset(key: String): ByteArray? = catalog?.let { current ->
         current.localMaps.assets[key]?.bytes ?: current.worldMaps.assets[key]?.let(PngEncoder::encode)
     }
+
+    @Synchronized
+    fun trainerAsset(key: String) = catalog?.trainerAssets?.assets?.get(key)
 
     @Synchronized
     fun catalogHash(): String? = catalog?.romSha256
@@ -635,13 +781,7 @@ class ProductionCompanionRuntime(
         catalogRepository?.write(
             progress.catalog,
             source,
-            CatalogWriteProgress(
-                phase = progress.phase.name,
-                completedUnits = progress.completedUnits,
-                totalUnits = progress.totalUnits,
-                complete = progress.completedUnits == progress.totalUnits,
-                changedSections = changedCatalogSections(progress.phase.name),
-            ),
+            catalogWriteProgress(progress),
         )
     }
 
@@ -671,23 +811,6 @@ class ProductionCompanionRuntime(
         }
     }
 
-    private fun changedCatalogSections(phase: String): Set<String> = when (phase) {
-        "ESSENTIAL" -> com.darkaxt.dualdex.catalog.CatalogSchema.requiredSections
-        "SPECIES_MEDIA" -> setOf("species")
-        "RELATIONSHIPS" -> setOf("species", "encounters", "runtime_metadata")
-        "EXTENDED" -> setOf(
-            "species",
-            "moves",
-            "abilities",
-            "capture_balls",
-            "learnset_rulesets",
-            "capabilities",
-            "diagnostics",
-        )
-        "COMPLETE" -> emptySet()
-        else -> com.darkaxt.dualdex.catalog.CatalogSchema.requiredSections
-    }
-
     private fun requireInt(values: Map<String, String?>, key: String): Int =
         requireNotNull(values[key]?.toIntOrNull()) { "$key is required" }
 
@@ -712,6 +835,8 @@ class ProductionCompanionRuntime(
         val generation = loadGeneration.incrementAndGet()
         catalog = null
         liveParty = null
+        liveGameState = null
+        savedPlayerState = null
         settingsRomSha256 = null
         settingsWritesEnabled = false
         clearLevelUpRulesetDetection()
@@ -724,6 +849,7 @@ class ProductionCompanionRuntime(
         clearLiveBattle()
         saveRam = SaveRamView()
         gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
+        gateway.dispatch(CompanionAction.LiveGameStateChanged(null, emptyList()))
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
         return generation
     }

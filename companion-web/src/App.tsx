@@ -12,6 +12,8 @@ import { SetupPage } from './pages/SetupPage';
 import { MemoryMapperPage } from './pages/MemoryMapperPage';
 import { CapabilityReportPage } from './pages/CapabilityReportPage';
 import { MapPage } from './pages/MapPage';
+import { TrainerCardPage } from './pages/TrainerCardPage';
+import { PartyPage } from './pages/PartyPage';
 
 export interface DevelopmentToolsProps {
   catalog: Catalog | null;
@@ -31,6 +33,7 @@ const emptyState: State = {
   battleTab: 'ENTRY',
   settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', theme: 'GAME', displayTarget: 'AUTO' },
   speciesState: {}, observedMoves: {}, battle: null, catalogReady: false, catalogName: null, error: null,
+  trainer: null, party: [],
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'IDLE', completedUnits: 0, totalUnits: 0 },
   retroArch: { storageGrant: 'MISSING', configGrant: 'MISSING', romGrant: 'MISSING', configState: 'NOT_CONFIGURED', restartRequired: false, connection: 'DISCONNECTED', systemId: null, gameBasename: null, contentCrc32: null, resolution: 'NO_CONTENT', activeSource: null, savefileDirectory: null, indexedRoms: 0, message: null }
 };
@@ -47,6 +50,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [mapperOpen, setMapperOpen] = useState(false);
   const [capabilityReportOpen, setCapabilityReportOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [partySelection, setPartySelection] = useState<{ catalogHash: string; slot: number | null }>({ catalogHash: '', slot: null });
   const lastCatalogRefresh = useRef('');
 
   useEffect(() => {
@@ -83,17 +87,26 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     finally { setBusy(false); }
   };
 
+  const loadingLabel = `Loading ${loadingModuleLabel(state.loading.phase)}`;
+
   const screen = useMemo(() => {
     if (mapperOpen) return <MemoryMapperPage onBack={() => setMapperOpen(false)} />;
     if (capabilityReportOpen && catalog) return <CapabilityReportPage romHash={catalog.hash} refreshMarker={catalogRefreshMarker(state)} onBack={() => setCapabilityReportOpen(false)} />;
     if (state.screen === 'SETUP') return <SetupPage state={state} send={send} />;
-    if (!catalog) return <Welcome busy={busy || state.loading.active} error={error} onUpload={onUpload} openSetup={() => void send('SCREEN', { screen: 'SETUP' })} />;
+    if (!catalog) return <Welcome
+      busy={busy}
+      loading={state.loading}
+      loadingLabel={state.loading.active ? loadingLabel : 'Loading companion state'}
+      error={error}
+      onUpload={onUpload}
+      openSetup={() => void send('SCREEN', { screen: 'SETUP' })}
+    />;
     if (mapOpen && (catalog.worldMaps?.length ?? 0) > 0) return <MapPage
       catalog={catalog}
       state={state}
-      onOpenAreaDex={(regionKey, location) => {
+      onOpenPokedex={() => {
         setMapOpen(false);
-        void send('MAP_AREA', { regionKey, locationKey: location.key });
+        void send('SCREEN', { screen: 'POKEDEX' });
       }}
       onOpenSettings={() => {
         setMapOpen(false);
@@ -108,12 +121,32 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
       }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={() => setMapOpen(true)} />;
+      case 'TRAINER': return <TrainerCardPage state={state} onBack={() => void send('BACK')} />;
+      case 'PARTY': {
+        const occupied = new Set((state.party ?? []).filter(member => member.occupied).map(member => member.slot));
+        const selectedSlot = partySelection.catalogHash === catalog.hash && partySelection.slot != null && occupied.has(partySelection.slot)
+          ? partySelection.slot
+          : state.selectedPartySlot != null && occupied.has(state.selectedPartySlot)
+            ? state.selectedPartySlot
+            : [...occupied][0] ?? null;
+        return <PartyPage
+          catalog={catalog}
+          state={state}
+          selectedSlot={selectedSlot}
+          onSelectSlot={slot => setPartySelection({ catalogHash: catalog.hash, slot })}
+          onBack={() => void send('BACK')}
+          openMove={setMoveDetailId}
+          openAbility={setAbilityDetailId}
+          openSpecies={speciesId => {
+            setDetailTab('ENTRY');
+            void send('OPEN_SPECIES', { speciesId });
+          }}
+        />;
+      }
       case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => setCapabilityReportOpen(true)} onOpenMapper={() => setMapperOpen(true)} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={() => setMapOpen(true)} />;
     }
-  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen, capabilityReportOpen, mapOpen]);
-  const loadingLabel = `Loading ${loadingModuleLabel(state.loading.phase)}`;
-
+  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen, capabilityReportOpen, mapOpen, partySelection]);
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
     <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={{ '--font-scale': state.settings.fontScale }} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>
@@ -121,7 +154,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       <div class="device-screen">
         {catalog && <div class="rom-status" title={state.catalogName ?? undefined}><strong>{state.catalogName ?? 'Unnamed ROM'}</strong><span>{catalog.family.replaceAll('_', ' ')} · CRC32 {catalog.crc32 || 'N/F'}</span></div>}
         <div class={catalog ? 'screen-host with-rom-status' : 'screen-host'}>{screen}</div>
-        {state.loading.active && <div class="loading-indicator" role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
+        {catalog && state.loading.active && <div class="loading-indicator" role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
       </div>
     </div>
   </main>;
@@ -144,6 +177,25 @@ export function loadingModuleLabel(phase: string): string {
   return labels[phase] ?? phase.replaceAll('_', ' ').toLowerCase();
 }
 
-function Welcome({ busy, error, onUpload, openSetup }: { busy: boolean; error: string | null; onUpload: (file: File) => void; openSetup: () => void }) {
-  return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><p class="eyebrow">PASSIVE RETROARCH COMPANION</p><h1>DUALDEX</h1><p>Load a Game Boy, Game Boy Color, or Game Boy Advance Pokémon ROM. Its own Pokédex, moves, types, areas and artwork become the companion.</p><div class="welcome-actions"><label class="welcome-upload"><span>{busy ? 'CHECKING SERVER' : 'LOAD ROM OR ZIP'}</span><input disabled={busy} type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>CONNECT RETROARCH</button></div>{error && <div class="welcome-error">{error}</div>}<small>ROM bytes and extracted assets stay local.</small></section>;
+function Welcome({ busy, loading, loadingLabel, error, onUpload, openSetup }: { busy: boolean; loading: State['loading']; loadingLabel: string; error: string | null; onUpload: (file: File) => void; openSetup: () => void }) {
+  const active = busy || loading.active;
+  return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><p class="eyebrow">PASSIVE RETROARCH COMPANION</p><h1>DUALDEX</h1>{active
+    ? <WelcomeLoadingProgress label={loadingLabel} loading={loading} />
+    : <><p>Choose a Pokémon game to begin.</p><div class="welcome-actions"><label class="welcome-upload"><span>LOAD ROM OR ZIP</span><input type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>CONNECT RETROARCH</button></div></>}{error && <div class="welcome-error">{error}</div>}</section>;
+}
+
+function WelcomeLoadingProgress({ label, loading }: { label: string; loading: State['loading'] }) {
+  const determinate = loading.active && loading.totalUnits > 0;
+  const ratio = determinate ? Math.max(0, Math.min(1, loading.completedUnits / loading.totalUnits)) : 0;
+  return <div class="welcome-loading" role="status" aria-label={label}>
+    <strong>{label}</strong>
+    <div
+      class={`welcome-progress ${determinate ? '' : 'is-indeterminate'}`}
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={determinate ? 0 : undefined}
+      aria-valuemax={determinate ? loading.totalUnits : undefined}
+      aria-valuenow={determinate ? loading.completedUnits : undefined}
+    ><span style={determinate ? { width: `${ratio * 100}%` } : undefined} /></div>
+  </div>;
 }

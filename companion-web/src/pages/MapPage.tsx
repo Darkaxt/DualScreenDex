@@ -1,13 +1,14 @@
 import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { DexIcon, MapIcon } from '../components';
+import { DexIcon, MapIcon, SettingsIcon } from '../components';
+import { GameClockIndicator } from '../GameClockIndicator';
 import { anchoredZoom, containFit, GestureTracker, type MapViewport } from '../mapEngine';
 import type { Catalog, State, WorldMapLocation, WorldMapRegion } from '../models';
 
 interface MapPageProps {
   catalog: Catalog;
   state: State;
-  onOpenAreaDex: (regionKey: string, location: WorldMapLocation) => void;
+  onOpenPokedex: () => void;
   onOpenSettings: () => void;
 }
 
@@ -15,7 +16,7 @@ type MapMode = 'LOCAL' | 'ATLAS';
 
 const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
 
-export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPageProps) {
+export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPageProps) {
   const maps = catalog.worldMaps ?? [];
   const localMap = (catalog.localMaps ?? []).find(map => map.baseAreaId === state.currentAreaBaseId);
   const selectedArea = catalog.areas.find(area => area.id === state.selectedAreaId);
@@ -36,7 +37,6 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
   const [fit, setFit] = useState({ width: activeMap?.pixelWidth ?? 1, height: activeMap?.pixelHeight ?? 1, scale: 1 });
   const fogVisible = activeMode === 'ATLAS' && state.settings.knowledgeMode !== 'DISCOVERED';
-  const [markersVisible, setMarkersVisible] = useState(true);
   const [legendOpen, setLegendOpen] = useState(false);
   const stageRef = useRef<HTMLElement>(null);
   const fogRef = useRef<HTMLCanvasElement>(null);
@@ -53,11 +53,8 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   );
   const selectedCandidate = region?.locations.find(location => location.key === selectedKey);
   const selectedLocation = fogVisible
-    ? revealedLocations.find(location => location.key === selectedCandidate?.key) ?? currentLocation ?? revealedLocations[0]
-    : selectedCandidate ?? currentLocation ?? region?.locations[0];
-  const selectedHasEncounterAreas = selectedLocation != null && catalog.areas.some(area =>
-    selectedLocation.baseAreaIds.includes(area.baseAreaId ?? Math.floor(area.id / 10)),
-  );
+    ? revealedLocations.find(location => location.key === selectedCandidate?.key) ?? currentLocation
+    : selectedCandidate ?? currentLocation;
   const playerPosition = activeMode === 'LOCAL' && localMap && state.currentMapPosition &&
     state.currentMapPosition.x >= 0 && state.currentMapPosition.x < localMap.gridWidth &&
     state.currentMapPosition.y >= 0 && state.currentMapPosition.y < localMap.gridHeight
@@ -106,9 +103,9 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   }, [region?.key, revealedLocations, fogVisible]);
 
   const markerLocations = useMemo(() => {
-    if (activeMode !== 'ATLAS' || !region || !markersVisible) return [];
+    if (activeMode !== 'ATLAS' || !region) return [];
     return fogVisible ? revealedLocations : region.locations;
-  }, [activeMode, region?.key, revealedLocations, fogVisible, markersVisible]);
+  }, [activeMode, region?.key, revealedLocations, fogVisible]);
 
   if (!activeMap) return null;
 
@@ -173,20 +170,21 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
   }
 
   const transform = `translate(calc(-50% + ${viewport.panX}px), calc(-50% + ${viewport.panY}px)) scale(${viewport.scale})`;
-  const selectedIsCurrent = selectedLocation?.key === currentLocation?.key;
+  const selectedIsCurrent = selectedLocation != null && currentLocation != null && selectedLocation.key === currentLocation.key;
   const displayName = activeMode === 'LOCAL'
     ? localMap?.displayName ?? state.currentAreaName ?? 'LOCAL MAP'
     : region?.displayName ?? 'WORLD MAP';
 
   return <section class="screen map-screen">
     <header class="map-page-header">
-      <div class="map-page-title">
-        <small>{activeMode === 'LOCAL' ? 'LOCAL MAP' : displayName}</small>
-        <h1>{catalog.family.replaceAll('_', ' ')}</h1>
-      </div>
       <div class="map-current-location">
-        <strong>{activeMode === 'LOCAL' ? displayName : selectedLocation?.displayName ?? state.currentAreaName ?? 'Unknown location'}</strong>
-        <span>{activeMode === 'LOCAL' || selectedIsCurrent ? 'CURRENT' : 'MAP POINT'}</span>
+        <strong>{activeMode === 'LOCAL' ? displayName : selectedLocation?.displayName ?? state.currentAreaName ?? 'Atlas'}</strong>
+        <span>{activeMode === 'LOCAL' || selectedIsCurrent ? 'CURRENT' : selectedLocation ? 'MAP POINT' : 'ATLAS'}</span>
+      </div>
+      {state.gameTime && <GameClockIndicator clock={state.gameTime} />}
+      <div class="header-actions map-header-actions">
+        <button class="header-action map-dex-action" aria-label="Open Pokédex" onClick={onOpenPokedex}><DexIcon /></button>
+        <button class="header-action settings-action" aria-label="Settings" onClick={onOpenSettings}><SettingsIcon /></button>
       </div>
     </header>
     <main
@@ -205,14 +203,14 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
       onPointerCancel={event => finishPointer(event, true)}
       onWheel={onWheel}
     >
-      <div class="map-plane" style={{ width: fit.width, height: fit.height, transform }}>
+      <div class="map-plane map-framed-plane" style={{ width: fit.width, height: fit.height, transform }}>
         <img src={activeMap.imageUrl} alt={`${displayName} ${activeMode === 'LOCAL' ? 'local' : 'region'} map`} draggable={false} />
         {fogVisible && region && <canvas ref={fogRef} class="map-fog" width={region.pixelWidth} height={region.pixelHeight} aria-hidden="true" />}
         {markerLocations.map(location => {
           const position = markerPosition(location, region!);
           return <button
             key={location.key}
-            class={`map-marker ${location.key === currentLocation?.key ? 'is-current' : ''} ${location.key === selectedLocation?.key ? 'is-selected' : ''}`}
+            class={`map-marker atlas-location-marker ${location.key === currentLocation?.key ? 'is-current' : ''} ${location.key === selectedLocation?.key ? 'is-selected' : ''}`}
             data-marker-key={location.key}
             style={{ left: `${position.x}%`, top: `${position.y}%` }}
             aria-label={location.key === currentLocation?.key ? `Current location: ${location.displayName}` : location.displayName}
@@ -236,14 +234,11 @@ export function MapPage({ catalog, state, onOpenAreaDex, onOpenSettings }: MapPa
       </div>
 
       <nav class="map-utility-rail" aria-label="Map utilities">
-        <button class="map-control" aria-label="Map settings and legend" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>
-        <button class="map-control" aria-label="Open Area Pokédex" disabled={!region || !selectedHasEncounterAreas} onClick={() => region && selectedLocation && selectedHasEncounterAreas && onOpenAreaDex(region.key, selectedLocation)}><DexIcon /></button>
-        {activeMode === 'ATLAS' && <button class="map-control marker-control" aria-label="Toggle map markers" aria-pressed={markersVisible} onClick={() => setMarkersVisible(value => !value)}><span class="pin-icon" /></button>}
-        {legendOpen && <div class="map-legend-panel">
+        {activeMode === 'ATLAS' && maps.length > 1 && <button class="map-control" aria-label="Choose map region" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>}
+        {legendOpen && activeMode === 'ATLAS' && maps.length > 1 && <div class="map-legend-panel">
           <small>{activeMode}</small>
           <strong>{displayName}</strong>
-          {activeMode === 'ATLAS' && maps.length > 1 && <div class="map-region-options">{maps.map(item => <button key={item.key} aria-pressed={item.key === region?.key} onClick={() => setRegionKey(item.key)}>{item.displayName ?? item.key}</button>)}</div>}
-          <button onClick={onOpenSettings}>Open Settings</button>
+          <div class="map-region-options">{maps.map(item => <button key={item.key} aria-pressed={item.key === region?.key} onClick={() => setRegionKey(item.key)}>{item.displayName ?? item.key}</button>)}</div>
         </div>}
       </nav>
 
