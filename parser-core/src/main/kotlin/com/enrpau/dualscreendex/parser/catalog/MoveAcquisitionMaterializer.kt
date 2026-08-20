@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.parse.Gen1CompiledMachineResolver
 
 data class MoveAcquisitionMaterialization(
     val acquisitionsBySpecies: Map<Int, List<MoveAcquisition>>,
@@ -151,34 +152,21 @@ object MoveAcquisitionMaterializer {
     private fun embeddedGenOneMachines(rom: RomImage, layout: ResolvedRomLayout): Candidate? {
         val stats = layout.tables.baseStats ?: return null
         val moveCount = layout.moveCount ?: return null
-        val machineCount = 55
         val flagOffset = 20
         val flagBytes = 7
         if (stats.recordSize < flagOffset + flagBytes) return null
 
-        val lists = mutableListOf<Pair<List<Int>, Int>>()
-        var offset = 0
-        while (offset + machineCount <= rom.size) {
-            val first = rom.u8(offset)
-            if (first !in 1 until moveCount) {
-                offset++
-                continue
-            }
-            val moves = ArrayList<Int>(machineCount)
-            var valid = true
-            repeat(machineCount) { index ->
-                val move = rom.u8(offset + index)
-                if (move !in 1 until moveCount || move in moves) valid = false else moves += move
-            }
-            val before = if (offset > 0) rom.u8(offset - 1) else 0
-            val after = if (offset + machineCount < rom.size) rom.u8(offset + machineCount) else 0
-            if (valid && before !in 1 until moveCount && after !in 1 until moveCount) lists += moves to offset
-            offset++
-        }
-        val distinct = lists.distinctBy { it.first }
-        if (distinct.size != 1) return null
-        val (moves, sourceOffset) = distinct.single()
-        return embeddedFlagCandidate(rom, stats, flagOffset, moves, 0, MoveAcquisitionMethod.MACHINE, sourceOffset)
+        val machines = Gen1CompiledMachineResolver.resolve(rom, moveCount) ?: return null
+        val moves = List(machines.count) { index -> rom.u8(machines.offset + index) }
+        return embeddedFlagCandidate(
+            rom,
+            stats,
+            flagOffset,
+            moves,
+            0,
+            MoveAcquisitionMethod.MACHINE,
+            machines.offset,
+        )
     }
 
     private fun embeddedGenTwoAcquisitions(rom: RomImage, layout: ResolvedRomLayout): LegacyAcquisitions {

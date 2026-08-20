@@ -13,10 +13,11 @@ import org.junit.Test
 
 class MoveAcquisitionMaterializerTest {
     @Test
-    fun decodesEmbeddedGenOneMachineFlagsUsingValidatedRomMoveList() {
+    fun decodesEmbeddedGenOneMachineFlagsUsingCompiledMoveListConsumers() {
         val bytes = ByteArray(1024)
         val stats = 0x100
         val moves = 0x300
+        writeGenOneMachineConsumers(bytes, 0x10, 0x40, moves)
         repeat(55) { bytes[moves + it] = (it + 1).toByte() }
         repeat(56) { bytes[0x200 + it] = (it + 1).toByte() } // unrelated longer unique byte run
         repeat(4) { species ->
@@ -602,6 +603,24 @@ class MoveAcquisitionMaterializerTest {
 
         assertTrue(result.acquisitionsBySpecies.isEmpty())
         assertTrue(result.evidence.values.none { it.compatible })
+    }
+
+    private fun writeGenOneMachineConsumers(
+        bytes: ByteArray,
+        searchOffset: Int,
+        lookupOffset: Int,
+        root: Int,
+    ) {
+        byteArrayOf(
+            0xE5.toByte(), 0xFA.toByte(), 0x00, 0xD0.toByte(), 0x47, 0x0E, 0x00,
+            0x21, root.toByte(), (root ushr 8).toByte(),
+            0x2A, 0xB8.toByte(), 0x28, 0x03, 0x0C, 0x18, 0xF9.toByte(), 0xE1.toByte(),
+        ).copyInto(bytes, searchOffset)
+        byteArrayOf(
+            0xFA.toByte(), 0x21, 0xD1.toByte(), 0x3D,
+            0x21, root.toByte(), (root ushr 8).toByte(),
+            0x06, 0x00, 0x4F, 0x09, 0x7E, 0xEA.toByte(), 0x21, 0xD1.toByte(), 0xC9.toByte(),
+        ).copyInto(bytes, lookupOffset)
     }
 
     private fun layout(

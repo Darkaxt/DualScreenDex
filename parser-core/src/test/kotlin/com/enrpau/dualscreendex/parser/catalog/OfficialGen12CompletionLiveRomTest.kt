@@ -78,6 +78,8 @@ class OfficialGen12CompletionLiveRomTest {
         assertCapability(catalog.capabilities.getValue(RomCapability.BASE_STATS), 151)
         assertCapability(catalog.capabilities.getValue(RomCapability.SPRITES), 151)
         assertCapability(catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS), 151)
+        assertCapability(catalog.capabilities.getValue(RomCapability.MOVE_CATALOG), 165)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MACHINE_MOVES).status)
         assertCapability(catalog.capabilities.getValue(RomCapability.EVOLUTIONS), 190)
         assertCapability(catalog.capabilities.getValue(RomCapability.LEARNSETS), 190)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.TYPE_CHART).status)

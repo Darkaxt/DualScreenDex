@@ -274,7 +274,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(22, CatalogSchema.parserSchemaVersion)
+        assertEquals(23, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -533,7 +533,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(22, CatalogSchema.parserSchemaVersion)
+        assertEquals(23, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
