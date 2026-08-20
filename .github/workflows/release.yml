@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: New signed tag, such as v1.1.0-rc.18 or v1.1.0
+        description: New signed tag, such as v1.1.0-rc.19 or v1.1.0
         required: true
         type: string
 
@@ -99,6 +99,7 @@ jobs:
             docs/reports/2026-08-20-unbound-odyssey-save-runtime-completion.md \
             docs/reports/2026-08-20-unbound-odyssey-parser-completion.md \
             docs/reports/2026-08-20-rom-derived-companion-theme.md \
+            docs/reports/2026-08-20-gen2-gen3-dynamic-local-map-lighting.md \
             release/POST_RELEASE_CHECKLIST.md; do
             test -s "$document"
           done
@@ -114,7 +115,7 @@ jobs:
             docs/reports/2026-08-13-map-first50-release-gate-raw.json >/dev/null
           jq -e '.summary.identities == 50 and .summary.completeTables == 50 and .summary.malformedRows == 0 and .summary.deterministicHashes == 50 and .summary.sqliteReopenExact == 50 and .summary.originalCompleteTablesPreserved == .summary.originalCompleteTables and (.rows | length) == 50' \
             docs/reports/2026-08-14-first50-evolution-completeness-raw.json >/dev/null
-          jq -e '.baseFirst50Selected == 50 and .mapFirst50Available == 26 and .evolutionFirst50Complete == 50 and .secureBuildDependencyGate == true and .securityAdvisoriesCovered == 48 and .arm7Applicable == 46 and .arm7ProductionComplete == 38 and .v11Stage1NormalizedLiveStateModels == true and .v11Stage1DetailedGen3PartyCodec == true and .v11Stage1Gen3TrainerBagSaveCodec == true and .v11Stage2EmeraldRuntimeLayout == true and .v11Stage2TrainerAssets == true and .v11Stage2CatalogPersistence == true and .v11Stage2TrainerAssetApi == true and .v11Stage3PointerFirstSnapshot == true and .v11Stage3IndependentLiveSections == true and .v11Stage3LiveOverSaveAuthority == true and .v11Stage3LifecycleFallback == true and .v11Stage4TrainerCard == true and .v11Stage4PartyPresentation == true and .v11Stage4DynamicFeatureNavigation == true and .v11Stage4LocalMapConvergence == true and .v11Stage5DisplayContinuityPolicy == true and .v11Stage5DisplayLifecycleRecovery == true and .v11Stage6OfficialEmeraldVertical == true and .v11Stage6UnsupportedDescriptorFallback == true and .v11Stage6OpponentMovePrivacy == true and .v11Rc4HotfixBoundedRomIndex == true and .v11Rc4HotfixBoundedAbilityCfg == true and .v11Rc7LoadingProgressAndAtlasChrome == true and .v11Rc8CatalogCacheRebuild == true and .v11Rc9CompleteLocalMapCatalog == true and .v11Rc9TruthfulAtlasLocation == true and .v11Rc13PermanentAtlasMarkers == true and .v11Rc13SourceAwareClockOrbit == true and .v11Rc15PlayerStateIntegrationGate == true and .v11Rc15DisplayRecovery == true and .v11Rc16DoubleBattleCommandOwnership == true and .v11Rc16MatchupEvidenceMigration == true and .v11Stage8NormalizedPartyArtwork == true and .v11Stage8PrivacySafePartyFallbacks == true and .v11Stage8PartyBrowserGate == true and .v11Rc18UnboundOdysseyParserComplete == true and .v11Rc18UnboundOdysseyMapComplete == true and .v11Rc18OdysseySaveRuntimeComplete == true and .v11Rc18UnboundExpandedSaveAbi == true and .v11Rc18RomDerivedTheme == true and .v11Rc18ThemePersistenceAndApi == true and .v11Rc18ThemeBrowserGate == true and (has("debugApkSha256") | not)' \
+          jq -e '.baseFirst50Selected == 50 and .mapFirst50Available == 26 and .evolutionFirst50Complete == 50 and .secureBuildDependencyGate == true and .securityAdvisoriesCovered == 48 and .arm7Applicable == 46 and .arm7ProductionComplete == 38 and .v11Stage1NormalizedLiveStateModels == true and .v11Stage1DetailedGen3PartyCodec == true and .v11Stage1Gen3TrainerBagSaveCodec == true and .v11Stage2EmeraldRuntimeLayout == true and .v11Stage2TrainerAssets == true and .v11Stage2CatalogPersistence == true and .v11Stage2TrainerAssetApi == true and .v11Stage3PointerFirstSnapshot == true and .v11Stage3IndependentLiveSections == true and .v11Stage3LiveOverSaveAuthority == true and .v11Stage3LifecycleFallback == true and .v11Stage4TrainerCard == true and .v11Stage4PartyPresentation == true and .v11Stage4DynamicFeatureNavigation == true and .v11Stage4LocalMapConvergence == true and .v11Stage5DisplayContinuityPolicy == true and .v11Stage5DisplayLifecycleRecovery == true and .v11Stage6OfficialEmeraldVertical == true and .v11Stage6UnsupportedDescriptorFallback == true and .v11Stage6OpponentMovePrivacy == true and .v11Rc4HotfixBoundedRomIndex == true and .v11Rc4HotfixBoundedAbilityCfg == true and .v11Rc7LoadingProgressAndAtlasChrome == true and .v11Rc8CatalogCacheRebuild == true and .v11Rc9CompleteLocalMapCatalog == true and .v11Rc9TruthfulAtlasLocation == true and .v11Rc13PermanentAtlasMarkers == true and .v11Rc13SourceAwareClockOrbit == true and .v11Rc15PlayerStateIntegrationGate == true and .v11Rc15DisplayRecovery == true and .v11Rc16DoubleBattleCommandOwnership == true and .v11Rc16MatchupEvidenceMigration == true and .v11Stage8NormalizedPartyArtwork == true and .v11Stage8PrivacySafePartyFallbacks == true and .v11Stage8PartyBrowserGate == true and .v11Rc18UnboundOdysseyParserComplete == true and .v11Rc18UnboundOdysseyMapComplete == true and .v11Rc18OdysseySaveRuntimeComplete == true and .v11Rc18UnboundExpandedSaveAbi == true and .v11Rc18RomDerivedTheme == true and .v11Rc18ThemePersistenceAndApi == true and .v11Rc18ThemeBrowserGate == true and .v11Rc19Gen2DynamicLocalMaps == true and .v11Rc19Gen3TimedLocalMaps == true and .v11Rc19DynamicMapPersistenceAndApi == true and .v11Rc19DynamicMapWebGate == true and (has("debugApkSha256") | not)' \
             release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
@@ -135,7 +136,8 @@ jobs:
             docs/reports/2026-08-20-unbound-odyssey-map-completion.md \
             docs/reports/2026-08-20-unbound-odyssey-save-runtime-completion.md \
             docs/reports/2026-08-20-unbound-odyssey-parser-completion.md \
-            docs/reports/2026-08-20-rom-derived-companion-theme.md; then
+            docs/reports/2026-08-20-rom-derived-companion-theme.md \
+            docs/reports/2026-08-20-gen2-gen3-dynamic-local-map-lighting.md; then
             echo 'Compatibility documentation contains a private path.'
             exit 1
           fi
@@ -373,7 +375,8 @@ jobs:
           cp docs/reports/2026-08-20-unbound-odyssey-save-runtime-completion.md "$ASSETS/dualdex-unbound-odyssey-save-runtime-completion.md"
           cp docs/reports/2026-08-20-unbound-odyssey-parser-completion.md "$ASSETS/dualdex-unbound-odyssey-parser-completion.md"
           cp docs/reports/2026-08-20-rom-derived-companion-theme.md "$ASSETS/dualdex-rom-derived-companion-theme.md"
-          cp release/RELEASE_NOTES_1.1.0-rc.18.md "$ASSETS/RELEASE_NOTES.md"
+          cp docs/reports/2026-08-20-gen2-gen3-dynamic-local-map-lighting.md "$ASSETS/dualdex-gen2-gen3-dynamic-local-map-lighting.md"
+          cp release/RELEASE_NOTES_1.1.0-rc.19.md "$ASSETS/RELEASE_NOTES.md"
 
           apk_sha256="$(sha256sum "$APK" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')"
           jq -n \
@@ -427,6 +430,7 @@ jobs:
               dualdex-unbound-odyssey-save-runtime-completion.md \
               dualdex-unbound-odyssey-parser-completion.md \
               dualdex-rom-derived-companion-theme.md \
+              dualdex-gen2-gen3-dynamic-local-map-lighting.md \
               RELEASE_NOTES.md \
               provenance.json > SHA256SUMS.txt
           )
@@ -481,6 +485,7 @@ jobs:
             "$ASSETS/dualdex-unbound-odyssey-save-runtime-completion.md" \
             "$ASSETS/dualdex-unbound-odyssey-parser-completion.md" \
             "$ASSETS/dualdex-rom-derived-companion-theme.md" \
+            "$ASSETS/dualdex-gen2-gen3-dynamic-local-map-lighting.md" \
             "$ASSETS/RELEASE_NOTES.md"
 
           echo "GitHub created the non-replacing $RELEASE_KIND release for $RELEASE_TAG." >> "$GITHUB_STEP_SUMMARY"

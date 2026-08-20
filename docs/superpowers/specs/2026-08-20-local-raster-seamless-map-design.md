@@ -2,7 +2,7 @@
 
 ## Status
 
-Stage 1 is implemented and lab-validated for official Gold, Silver, and Crystal. The next implementation target is Gen III dynamic Local-map support because that is the active live-testing path. Scene topology, slippy-map delivery, unified viewport work, and interactables remain separately scoped later stages.
+Stage 1 is implemented and lab-validated for official Gold, Silver, and Crystal. The follow-on Gen III dynamic raster scope is also implemented and lab-validated against official Ruby, Sapphire, Emerald, FireRed, LeafGreen, and source-backed Modern Emerald 3.5 controls. Scene topology, slippy-map delivery, unified viewport work, and interactables remain separately scoped later stages.
 
 ## Goal
 
@@ -18,6 +18,7 @@ DualScreenDex currently has two independent representations:
 - Official Gen I, Gen II, and selected Gen III Local-map controls are supported.
 - The integrated release clock stack already publishes `AppSnapshot.gameTime`, projects Gen III day/night schedules, and renders `GameClockIndicator` on the Map page.
 - Gen II Local maps are indexed rasters with four palette rows; the bounded runtime selector, lazy Android/desktop endpoints, ETag variants, phase-only clock presentation, and viewport-preserving web updates are connected and validated.
+- Source-backed Gen III natural-light maps can use compressed 256-index timed assets with base/alternate palettes and a structurally decoded blend schedule. Numeric `gameTime` drives lazy rendering, while official and unsupported controls retain static PNG fallbacks.
 
 The separate Local/Atlas implementation remains the compatibility fallback while the seamless scene pipeline is incomplete.
 

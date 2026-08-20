@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.18` retains RC17's Trainer, Party, Atlas, local-map, clock, archive-loading, display-recovery, and privacy behavior. RC18 completes all 23 parser capabilities for the exact Pokémon Unbound v2.1.1.1 and Pokémon Odyssey v4.1.1 controls, expands their map and runtime support, and derives the GAME color theme deterministically from normalized ROM artwork. Dark, Light, and high-contrast themes remain fixed alternatives. Unsupported features disappear instead of exposing dead controls.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.19` retains RC18's completed Pokémon Unbound/Odyssey support and ROM-derived GAME theme, and adds live time-of-day Local-map rendering for official Gen II games and source-backed Modern Emerald. Gen II uses one compressed indexed raster with four palettes per map; proven Gen III natural-light maps use one timed indexed raster with compiled blend-table evidence. Unsupported maps retain static fallbacks, and unsupported features disappear instead of exposing dead controls.
 
 ## Thor-first UI direction
 
@@ -176,6 +176,7 @@ The release candidate contains:
 - resident runtime-selectable learnset variants, with `Auto` plus diagnostic manual selection and no ROM reparse when switching;
 - materialized species, forms, types, stats, sprites, descriptions, evolutions, moves, move descriptions, normalized learnsets, abilities, ability descriptions, encounters, type presentation, type matchups, and capture-ball artwork;
 - normalized ROM-derived world maps with intrinsic rasters, semantic location geometry, fog, markers, pan, visible zoom controls, midpoint-preserving pinch zoom, recenter, and direct Area Pokédex navigation;
+- dynamic Local-map lighting with compressed four-palette Gen II rasters and structurally proven timed Gen III rasters, rendered lazily from the shared game clock with static fallbacks;
 - independent tri-state capability evidence (`AVAILABLE`, `NOT_FOUND`, `NOT_APPLICABLE`);
 - checksum-valid per-ROM SaveRAM snapshots persisted in the catalog database, including seen/caught, Team, Area, preferred individual, IV/DV quality, and capture-ball provenance where applicable;
 - Area-filter sun/moon markers derived from the parsed encounter windows;
@@ -224,7 +225,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC13 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | `v1.1.0-rc.18` is prepared for the protected signing workflow with checksums and provenance. |
+| Signed candidate target | `v1.1.0-rc.19` is prepared for the protected signing workflow with checksums and provenance. |
 
 ## Parser development
 

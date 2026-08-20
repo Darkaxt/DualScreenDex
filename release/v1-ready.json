@@ -72,5 +72,9 @@
   "v11Rc18RomDerivedTheme": true,
   "v11Rc18ThemePersistenceAndApi": true,
   "v11Rc18ThemeBrowserGate": true,
+  "v11Rc19Gen2DynamicLocalMaps": true,
+  "v11Rc19Gen3TimedLocalMaps": true,
+  "v11Rc19DynamicMapPersistenceAndApi": true,
+  "v11Rc19DynamicMapWebGate": true,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

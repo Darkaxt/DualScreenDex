@@ -111,6 +111,7 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
     "dualdex-unbound-odyssey-save-runtime-completion.md",
     "dualdex-unbound-odyssey-parser-completion.md",
     "dualdex-rom-derived-companion-theme.md",
+    "dualdex-gen2-gen3-dynamic-local-map-lighting.md",
   ];
 
   for (const asset of requiredEvidence) {
@@ -159,6 +160,11 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc18RomDerivedTheme == true/);
   assert.match(workflow, /\.v11Rc18ThemePersistenceAndApi == true/);
   assert.match(workflow, /\.v11Rc18ThemeBrowserGate == true/);
+  assert.match(workflow, /\.v11Rc19Gen2DynamicLocalMaps == true/);
+  assert.match(workflow, /\.v11Rc19Gen3TimedLocalMaps == true/);
+  assert.match(workflow, /\.v11Rc19DynamicMapPersistenceAndApi == true/);
+  assert.match(workflow, /\.v11Rc19DynamicMapWebGate == true/);
+  assert.match(workflow, /RELEASE_NOTES_1\.1\.0-rc\.19\.md/);
   assert.match(workflow, /\.v11Rc4HotfixBoundedRomIndex == true/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });
