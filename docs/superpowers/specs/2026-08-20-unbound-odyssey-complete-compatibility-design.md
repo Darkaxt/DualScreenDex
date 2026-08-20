@@ -15,7 +15,7 @@ Bring the exact Pokémon Unbound v2.1.1.1 and Pokémon Odyssey v4.1.1 controls t
 - Complete static domains: 1,266 species/names/types/stats/sprites; 1,266 displayed Pokédex descriptions backed by 906 source description records; 1,294 evolution rows and 732 edges; 20 types and 128 matchups; 922 moves/details; 1,266 learnsets with 21,862 entries; 3,954 egg, 45,381 machine, and 19,524 tutor links; 254 ability names/descriptions; 339 encounter areas; 20 type presentations; 12 balls.
 - Static hole: 868/922 move descriptions, with 54 unresolved records.
 - Parser holes: 0 ability mechanics, 0 world-map regions, and 0 local-map rasters.
-- Save/runtime baseline: 0/14. Three exact 131,072-byte saves are readable but currently rejected because the stock Gen III sector/checksum layout does not yield a complete valid slot.
+- Save/runtime baseline: 0/14. Locally discovered 131,072-byte artifacts are readable but rejected because the stock Gen III sector/checksum layout does not yield a complete valid slot. They were not supplied by the user and are not acceptance evidence.
 - Persistence baseline: 14 SQLite catalog sections, successful reopen, zero reference errors.
 
 ### Pokémon Odyssey v4.1.1
@@ -25,19 +25,19 @@ Bring the exact Pokémon Unbound v2.1.1.1 and Pokémon Odyssey v4.1.1 controls t
 - Complete static domains: 411 battle species/names/types/stats/sprites, of which 409 are ordinary Pokédex species and 2 are source-documented battle-only boss entities; 409 Pokédex descriptions; 412 evolution rows and 205 edges; 18 types and 116 matchups; 477 moves/details/descriptions; 411 learnsets with 5,609 entries; 973 egg, 8,707 machine, and 2,127 tutor links; 129 ability names/descriptions; 24 encounter areas; 18 type presentations; 12 balls.
 - Static hole: the parser incorrectly treated the two battle-only entities as missing Pokédex descriptions instead of preserving their battle data while marking Pokédex-only fields `NOT_APPLICABLE`.
 - Parser holes: 0 ability mechanics, 0 world-map regions, and 0 local-map rasters. Local-map structural discovery currently admits a false extent of 105,010,432 pixels and correctly stops at the 100,000,000-pixel safety boundary; the fix must prove the real map extent rather than raise that boundary.
-- Save/runtime baseline: 12/14. The exact revision-5 save resolves 14 sections, 41 seen, 40 caught, one current area, six party members, 26 stored Pokémon, and 32 Pokémon identity/stat/IV/ball records. Trainer and Bag remain unresolved because no typed Odyssey Trainer/Bag ABI is selected.
+- Save/runtime baseline: 12/14 on a locally discovered revision-5 artifact, which resolves 14 sections, 41 seen, 40 caught, one current area, six party members, 26 stored Pokémon, and 32 Pokémon identity/stat/IV/ball records. The artifact was not supplied by the user. Trainer and Bag remain unresolved because no typed Odyssey Trainer/Bag ABI is selected.
 - Persistence baseline: 14 SQLite catalog sections, successful reopen, zero reference errors.
 
 ## Source authority and limitations
 
-Sources are semantic oracles. Production code must recover the corresponding structures from the supplied ROM/save and must not select behavior from a ROM filename, SHA, title, source symbol, absolute address, fixed per-ROM offset, or byte signature.
+Sources are semantic oracles. Production code must recover the corresponding structures from an analyzed ROM/save and must not select behavior from a ROM filename, SHA, title, source symbol, absolute address, fixed per-ROM offset, or byte signature.
 
 - `Dynamic-Pokemon-Expansion-Unbound`, branch `Unbound`, commit `fe058e0e3ac23cf968cf950de43332135bc1549d`, provides the expanded species, evolution, Pokédex, sprite, move, and ability data model used by the Unbound ecosystem.
 - `Complete-Fire-Red-Upgrade`, commit `b637a27898b14e25dd24d0f69a3e302f0069deb8`, provides the related battle-engine and expanded save/runtime semantics. It is not proof that every linked address or optional feature is identical in the shipped Unbound ROM.
 - `Pokemon-Odyssey-Docs-App`, commit `31b1effbda21e23c706e6713cd8fec5cd989c89f`, contains creator-authored Odyssey data workbooks and generated data. These are authoritative for documented static content, not for GBA binary layout, maps, saves, or ARM/Thumb control flow.
 - `bernardoennes/pokemon-odyssey`, commit `8c5911e4`, is an RPG Maker XP / Pokémon Essentials project rather than the GBA v4.1.1 source. It must not be used as a binary-layout oracle for this work.
 
-The exact ROMs and saves are the final binary authority. Test-only SHA checks bind evidence to those controls; they do not enter production selection.
+The exact ROMs and locally discovered save artifacts are the final binary authority for the tests that use them. Their presence does not attribute them to the user or establish user acceptance. Test-only SHA checks bind evidence to those controls; they do not enter production selection.
 
 ## Architecture
 

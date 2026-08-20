@@ -69,8 +69,9 @@ ROM-specific UI path was added.
 ## Save/runtime boundary
 
 Odyssey remains **14/14** on the populated exact revision-5 save, including Trainer Card and all
-five Bag pockets. Unbound's CFRU-style expanded-save ABI is resolved and persisted, but the only
-supplied Unbound SaveRAM is 128 KiB of `FF`. It correctly remains **0/14 decoded runtime values**;
+five Bag pockets on a locally discovered artifact that was not supplied by the user. Unbound's
+CFRU-style expanded-save ABI is resolved and persisted, but the locally discovered Unbound
+SaveRAM is 128 KiB of `FF`. It correctly remains **0/14 decoded runtime values**;
 a populated Unbound save is required to verify those fourteen values end to end. The erased file is
 not counted as a successful save.
 

@@ -46,4 +46,4 @@ The complete affected-module gate passed in 6m13s:
 
 ## Remaining applicable gaps
 
-For both exact controls, the remaining parser gaps are ability mechanics, world maps, and local maps. Save/runtime completion is a later stage: Unbound remains 0/14 on the supplied expanded saves; Odyssey remains 12/14 with Trainer and Bag unresolved. These gaps remain applicable and are not counted as success.
+For both exact controls, the remaining parser gaps are ability mechanics, world maps, and local maps. Save/runtime completion is a later stage: Unbound remains 0/14 on locally discovered expanded-save artifacts; Odyssey remains 12/14 on a locally discovered save artifact with Trainer and Bag unresolved. These artifacts were not supplied by the user. These gaps remain applicable and are not counted as success.

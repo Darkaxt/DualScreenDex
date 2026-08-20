@@ -11,12 +11,13 @@ to select production layouts.
 | Control | SHA-256 |
 | --- | --- |
 | Pokémon Unbound v2.1.1.1 ROM | `7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7` |
-| Supplied Unbound SaveRAM | `b5a41c3758763bbec72769fab4a2533bf2db0b6312d93d25a695f9e4b9e02260` |
+| Locally discovered Unbound SaveRAM artifact | `b5a41c3758763bbec72769fab4a2533bf2db0b6312d93d25a695f9e4b9e02260` |
 | Pokémon Odyssey v4.1.1 ROM | `44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0` |
-| Populated Odyssey SaveRAM | `645282db3d0f6e5723930cc35793a39f2044f96cf1d658f139f04af5482fdcf3` |
+| Locally discovered populated Odyssey SaveRAM artifact | `645282db3d0f6e5723930cc35793a39f2044f96cf1d658f139f04af5482fdcf3` |
 
-The supplied Unbound SaveRAM is exactly 128 KiB of `FF`. It is not a populated or checksum-valid
-slot, so the parser continues to reject it instead of publishing empty runtime values.
+Neither SaveRAM artifact was supplied by the user. The Unbound artifact is exactly 128 KiB of
+`FF`. It is not a populated or checksum-valid slot, so the parser continues to reject it instead
+of publishing empty runtime values.
 
 ## Numeric result
 
@@ -64,7 +65,7 @@ decoded RAM-root assignments, the complete five-pocket descriptor, and the compl
 fragment boundary lattice. Tests freeze the exact addresses for the reference binary; production
 code does not contain them.
 
-The supplied all-`FF` SaveRAM remains **0/14 decoded runtime domains** because it is not a valid
+The locally discovered all-`FF` SaveRAM remains **0/14 decoded runtime domains** because it is not a valid
 save. This is an evidence limitation, not a parser claim. A populated exact Unbound save is still
 required to measure the fourteen decoded values end to end.
 
@@ -94,7 +95,7 @@ SaveBlock2 `0x0F24`, no expanded-save window, and standard Bag capacities
 - pret/pokefirered is the official FireRed structural control.
 
 The DPE and CFRU snapshots are semantic format authorities, not claims that their current commits
-produce the exact supplied Unbound ROM.
+produce the exact analyzed Unbound ROM.
 
 ## Verification
 
