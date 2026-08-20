@@ -24,6 +24,7 @@ The Party page gives the six stable party positions to one two-column grid. The 
 
 - portrait or truthful fallback/silhouette;
 - nickname/species name and level;
+- a thin blue experience-progress line, directly above the HP bar and half its height, when normalized progress is available;
 - HP value and proportional HP bar when both values are available;
 - status text when present.
 

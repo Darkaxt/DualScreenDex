@@ -71,9 +71,9 @@ git commit -m "Refine Pokédex caught badges"
 
 Assert six `.party-slot` buttons and a `.party-grid` whose contract is two columns. Assert nature, ability, moves, and the dialog are absent initially. Click an occupied card and assert the named dialog and existing details appear. Assert close and Escape remove it, while an empty slot does not open it.
 
-- [ ] **Step 2: Add HP-bar and disappearing-selection tests**
+- [ ] **Step 2: Add EXP/HP-bar and disappearing-selection tests**
 
-Assert an occupied member with known HP renders a proportional `.party-hp-fill`; rerender with the selected slot empty and assert the dialog closes.
+Assert an occupied member with normalized experience renders a proportional `.party-exp-fill` above the HP track and an occupied member with known HP renders a proportional `.party-hp-fill`; rerender with the selected slot empty and assert the dialog closes.
 
 - [ ] **Step 3: Run the Party test and verify RED**
 
@@ -95,9 +95,9 @@ Expected: FAIL because Party details are initially present and no dialog/close i
 
 Keep the selected detail slot as nullable local state. Do not initialize it from the first occupied member. Card clicks set the slot and preserve the existing `onSelectSlot` callback. Close and Escape clear it. A party refresh that empties the selected slot also clears it.
 
-- [ ] **Step 2: Add truthful HP bars to occupied cards**
+- [ ] **Step 2: Add truthful EXP and HP bars to occupied cards**
 
-Render `.party-hp-track > .party-hp-fill` only when current and maximum HP are known and the maximum is positive. Clamp the displayed percentage to 0–100 and retain numeric HP text.
+Render a thin blue `.party-exp-track > .party-exp-fill` only when normalized experience progress is available, directly above the HP track and at half its height. Render `.party-hp-track > .party-hp-fill` only when current and maximum HP are known and the maximum is positive. Clamp both displayed percentages to 0–100 and retain numeric HP text.
 
 - [ ] **Step 3: Move PartyDetail into an accessible layer**
 

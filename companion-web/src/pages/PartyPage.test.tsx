@@ -17,6 +17,8 @@ describe('Party', () => {
     expect(container.querySelector('.party-grid')?.getAttribute('data-layout')).toBe('2x3');
     expect(screen.getByText('SPARK')).toBeTruthy();
     expect(screen.getByText('PIKACHU · Lv 18')).toBeTruthy();
+    expect(container.querySelector('.party-exp-track')?.getAttribute('aria-label')).toBe('Experience 50%');
+    expect(container.querySelector('.party-exp-fill')?.getAttribute('style')).toContain('width: 50%');
     expect(container.querySelector('.party-hp-fill')?.getAttribute('style')).toContain('width: 69%');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByText('Adamant')).toBeNull();
@@ -92,12 +94,13 @@ describe('Party', () => {
     const state = partyState('DISCOVERED');
     state.party = [{
       ...state.party![0], speciesName: 'A VERY LONG PARTNER NAME', nickname: null, spriteUrl: null, typeIds: [99], status: 'CUSTOM',
-      heldItemId: null, heldItemName: null, hasHeldItem: null, currentHp: null, maximumHp: null, stats: {}, moves: [],
+      heldItemId: null, heldItemName: null, hasHeldItem: null, currentHp: null, maximumHp: null, experienceProgress: null, stats: {}, moves: [],
     }];
     const customCatalog = { ...catalog, types: [{ id: 99, name: 'COSMIC-LIGHT', foreground: '#fff', background: '#4256a6', border: '#101c55' }] };
 
     const { container } = render(<PartyPage catalog={customCatalog} state={state} onBack={vi.fn()} openMove={vi.fn()} openAbility={vi.fn()} />);
 
+    expect(container.querySelector('.party-exp-track')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: A VERY LONG PARTNER NAME' }));
     expect(screen.getAllByText('COSMIC-LIGHT').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('img', { name: 'CUSTOM status' }).length).toBeGreaterThan(0);

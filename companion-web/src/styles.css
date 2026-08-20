@@ -120,6 +120,8 @@ button { cursor: pointer; }
 .party-slot strong { font-size: .78em; }
 .party-slot small { margin-top: 4px; color: #59665c; font-size: .56em; }
 .party-slot > span > i { margin-top: 5px; color: #6e796b; font-size: .55em; font-style: normal; font-weight: 800; }
+.party-exp-track { height: 4px; display: block; margin-top: 7px; overflow: hidden; border: 1px solid #536379; background: #bcc5cf; box-shadow: inset 0 1px 1px #1f304755; }
+.party-exp-fill { height: 100%; display: block; background: linear-gradient(90deg, #4d86bc, #75b8e8); }
 .party-hp-track { height: 8px; display: block; margin-top: 7px; overflow: hidden; border: 1px solid #556154; background: #c3c8b2; box-shadow: inset 0 1px 2px #24312655; }
 .party-hp-fill { height: 100%; display: block; background: linear-gradient(90deg, #4b9a5f, #79c26b); }
 .party-status-dot { padding: 1px 4px; border-radius: 2px; color: #fff; background: #875637; font-style: normal; }
@@ -175,6 +177,7 @@ button { cursor: pointer; }
   .party-slot { grid-template-columns: 46px minmax(0, 1fr); gap: 6px; padding: 6px; }
   .party-sprite { width: 44px; height: 44px; }
   .party-slot small { margin-top: 2px; }
+  .party-exp-track { height: 3px; margin-top: 4px; }
   .party-hp-track { height: 6px; margin-top: 4px; }
   .trainer-card-content { padding: 8px; }
   .trainer-card-body { grid-template-columns: minmax(0, 1fr) 112px; gap: 9px; padding: 10px; }

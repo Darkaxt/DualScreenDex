@@ -57,6 +57,7 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openS
           <span class="party-slot-copy"><strong>{member.occupied ? member.nickname || member.speciesName || 'UNKNOWN PARTNER' : 'EMPTY'}</strong>
             <small>{member.occupied ? `${member.speciesName ?? 'Species unavailable'}${member.level != null ? ` · Lv ${member.level}` : ''}` : 'OPEN SLOT'}</small>
             {member.occupied && <i>{hpLabel(member)}{member.status ? <><span aria-hidden="true"> · </span><em class={`party-status-dot status-${statusKey(member.status)}`}>{member.status}</em></> : ''}</i>}
+            {partyExperiencePercent(member) != null && <span class="party-exp-track" aria-label={`Experience ${partyExperiencePercent(member)}%`}><b class="party-exp-fill" style={{ width: `${partyExperiencePercent(member)}%` }} /></span>}
             {partyHpPercent(member) != null && <span class="party-hp-track" aria-label={`HP ${hpLabel(member)}`}><b class="party-hp-fill" style={{ width: `${partyHpPercent(member)}%` }} /></span>}
           </span>
         </button>)}
@@ -145,6 +146,11 @@ function hpLabel(member: PartyMemberView): string {
 function partyHpPercent(member: PartyMemberView): number | null {
   if (member.currentHp == null || member.maximumHp == null || member.maximumHp <= 0) return null;
   return Math.round(Math.max(0, Math.min(1, member.currentHp / member.maximumHp)) * 100);
+}
+
+function partyExperiencePercent(member: PartyMemberView): number | null {
+  if (member.experienceProgress == null || !Number.isFinite(member.experienceProgress)) return null;
+  return Math.round(Math.max(0, Math.min(1, member.experienceProgress)) * 100);
 }
 
 function memberCondition(member: PartyMemberView): 'healthy' | 'statused' | 'fainted' | 'partial' {
