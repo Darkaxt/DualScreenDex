@@ -4,6 +4,18 @@
   background: #111514;
   color: #16281f;
   font-synthesis: none;
+  --theme-field: #536052;
+  --theme-field-pattern: #5e6a5c;
+  --theme-header: #315b43;
+  --theme-header-shadow: #1c3426;
+  --theme-menu: #e2d7ac;
+  --theme-menu-shadow: #776c4f;
+  --theme-panel: #f8f2da;
+  --theme-border: #514538;
+  --theme-text: #1b211c;
+  --theme-text-shadow: #ffffff;
+  --theme-accent: #a53e2f;
+  --theme-accent-text: #ffffff;
   --forest-950: #071e18;
   --forest-900: #0d3026;
   --forest-800: #134535;
@@ -257,6 +269,50 @@ button { cursor: pointer; }
 .empty-state { margin: auto; max-width: 360px; padding: 30px 24px; text-align: center; color: #657064; }.empty-state strong { display: block; color: #415345; letter-spacing: .08em; }.empty-state p { font-family: Georgia, serif; line-height: 1.4; }
 .welcome-screen { place-items: center; align-content: center; padding: 36px; text-align: center; color: #e9edd0; background: radial-gradient(circle at 50% 42%, #1c5d47, var(--forest-950) 70%); }.welcome-screen h1 { margin: 0; color: var(--acid); font: 900 3em/1 Georgia, serif; letter-spacing: -.06em; }.welcome-screen > p:not(.eyebrow) { max-width: 390px; line-height: 1.5; color: #d4dbc0; }.welcome-screen small { color: #99aa99; }.welcome-mark { position: relative; width: 78px; height: 78px; margin-bottom: 18px; border: 5px solid var(--acid); border-radius: 50%; }.welcome-mark::before { content: ""; position: absolute; top: 32px; left: -5px; right: -5px; height: 5px; background: var(--acid); }.welcome-mark span { position: absolute; width: 24px; height: 24px; top: 22px; left: 22px; border: 5px solid var(--acid); border-radius: 50%; background: var(--forest-950); z-index: 1; }.welcome-actions { display: flex; gap: 8px; }.welcome-upload, .file-picker, .welcome-actions button { position: relative; display: grid; place-items: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--acid); color: var(--acid); background: transparent; font-size: .74em; font-weight: 900; letter-spacing: .08em; cursor: pointer; }.welcome-actions button { color: var(--forest-950); background: var(--acid); }.welcome-upload input, .file-picker input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }.welcome-loading { width: min(360px, 78vw); display: grid; gap: 8px; color: #eff7cf; text-align: left; }.welcome-loading strong { font-size: .68em; letter-spacing: .08em; }.welcome-progress { height: 10px; overflow: hidden; border: 1px solid #d9f47a88; background: #071e18cc; box-shadow: inset 0 0 0 1px #0007; }.welcome-progress > span { height: 100%; display: block; background: linear-gradient(90deg, #88a94b, var(--acid)); transition: width .2s ease; }.welcome-progress.is-indeterminate > span { width: 38%; animation: welcome-progress-scan 1.1s ease-in-out infinite alternate; } @keyframes welcome-progress-scan { from { translate: -100% 0; } to { translate: 265% 0; } }.welcome-error { max-width: 390px; margin-top: 10px; color: #ffb6ac; font-size: .75em; }
 .error-toast { position: absolute; z-index: 20; left: 10px; right: 10px; bottom: 10px; padding: 10px; color: white; background: #8d2428; box-shadow: 0 4px 16px #0006; font-size: .75em; }.loading-indicator { position: absolute; z-index: 40; top: 32px; right: 52px; height: 22px; display: flex; align-items: center; min-width: 75px; padding: 0 7px; border: 1px solid #d9f47a55; border-radius: 4px; color: #eff7cf; background: #071e18b8; backdrop-filter: blur(4px); font-size: .59em; font-weight: 900; letter-spacing: .06em; white-space: nowrap; pointer-events: none; }.loading-indicator i::after { content: ""; animation: loading-dots 1.2s steps(1, end) infinite; } @keyframes loading-dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75%, 100% { content: "..."; } }
+
+[data-theme="game"][data-contrast="normal"] {
+  --forest-950: var(--theme-header-shadow);
+  --forest-900: var(--theme-header);
+  --forest-800: var(--theme-header);
+  --forest-700: var(--theme-border);
+  --acid: var(--theme-accent);
+  --acid-deep: var(--theme-menu-shadow);
+  --paper: var(--theme-panel);
+  --paper-deep: var(--theme-menu);
+  --ink: var(--theme-text);
+  --muted: var(--theme-menu-shadow);
+  --line: var(--theme-border);
+}
+[data-theme="game"][data-contrast="normal"] .app-header {
+  color: var(--theme-accent-text);
+  background: var(--theme-header);
+  border-bottom-color: var(--theme-accent);
+  box-shadow: 0 3px 0 var(--theme-header-shadow);
+}
+[data-theme="game"][data-contrast="normal"] .header-title small { color: var(--theme-accent-text); opacity: .82; }
+[data-theme="game"][data-contrast="normal"] .screen:not(.map-screen):not(.welcome-screen):not(.battle-screen) {
+  background-color: var(--theme-panel);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--theme-field-pattern) 16%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--theme-field-pattern) 16%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+[data-theme="game"][data-contrast="normal"] .browse-tools, [data-theme="game"][data-contrast="normal"] .settings-content { background: var(--theme-menu); }
+[data-theme="game"][data-contrast="normal"] .species-row, [data-theme="game"][data-contrast="normal"] .paper-panel, [data-theme="game"][data-contrast="normal"] .setup-step {
+  color: var(--theme-text);
+  background: var(--theme-panel);
+  border-color: var(--theme-border);
+}
+[data-theme="game"][data-contrast="normal"] .paper-panel, [data-theme="game"][data-contrast="normal"] .setup-step {
+  border-radius: 3px;
+  box-shadow: 3px 3px 0 var(--theme-menu-shadow), inset 0 0 0 2px color-mix(in srgb, var(--theme-panel) 74%, white);
+}
+[data-theme="game"][data-contrast="normal"] .filter-strip button.active, [data-theme="game"][data-contrast="normal"] .segmented button.active {
+  color: var(--theme-accent-text);
+  background: var(--theme-accent);
+  border-color: var(--theme-border);
+  box-shadow: 2px 2px 0 var(--theme-menu-shadow);
+}
 
 [data-contrast="high"] { --paper: #fffde8; --paper-deep: #e4ebc7; --ink: #07170f; --line: #556048; }
 [data-theme="dark"] { --paper: #17231d; --paper-deep: #223128; --ink: #edf1dc; --muted: #b7c1ae; --line: #56665a; }

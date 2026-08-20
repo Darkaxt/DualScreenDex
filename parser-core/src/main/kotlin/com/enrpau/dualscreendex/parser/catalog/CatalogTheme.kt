@@ -48,6 +48,7 @@ data class CatalogTheme(
         require(method != CatalogThemeMethod.NEUTRAL_FALLBACK || assetClasses.isEmpty())
         require(contrastRatio(tokens.text, tokens.panel) >= NORMAL_TEXT_CONTRAST)
         require(contrastRatio(tokens.accentText, tokens.accent) >= NORMAL_TEXT_CONTRAST)
+        require(contrastRatio(tokens.accentText, tokens.header) >= NORMAL_TEXT_CONTRAST)
         require(contrastRatio(tokens.border, tokens.panel) >= CONTROL_CONTRAST)
     }
 

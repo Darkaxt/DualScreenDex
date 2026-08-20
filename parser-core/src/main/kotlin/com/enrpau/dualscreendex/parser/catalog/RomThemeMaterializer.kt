@@ -105,14 +105,24 @@ object RomThemeMaterializer {
         val panel = blend(lightest.rgb, WHITE, 0.72)
         val menu = blend(lightest.rgb, WHITE, 0.38)
         val fieldRgb = blend(field.rgb, BLACK, 0.08)
-        val headerRgb = blend(header.rgb, BLACK, 0.12)
+        var headerRgb = blend(header.rgb, BLACK, 0.12)
+        var accentRgb = accent.rgb
         var corrected = false
         val text = readableForeground(darkest.rgb, panel, CatalogTheme.NORMAL_TEXT_CONTRAST).also {
             corrected = corrected || it != darkest.rgb
         }
-        val accentText = readableForeground(lightest.rgb, accent.rgb, CatalogTheme.NORMAL_TEXT_CONTRAST).also {
+        val accentText = readableForegroundForSurfaces(
+            lightest.rgb,
+            listOf(accentRgb, headerRgb),
+            CatalogTheme.NORMAL_TEXT_CONTRAST,
+        ).also {
             corrected = corrected || it != lightest.rgb
         }
+        val correctedHeader = readableSurface(headerRgb, accentText, CatalogTheme.NORMAL_TEXT_CONTRAST)
+        val correctedAccent = readableSurface(accentRgb, accentText, CatalogTheme.NORMAL_TEXT_CONTRAST)
+        corrected = corrected || correctedHeader != headerRgb || correctedAccent != accentRgb
+        headerRgb = correctedHeader
+        accentRgb = correctedAccent
         val initialBorder = blend(darkest.rgb, BLACK, 0.46)
         val border = readableForeground(initialBorder, panel, CatalogTheme.CONTROL_CONTRAST).also {
             corrected = corrected || it != initialBorder
@@ -132,7 +142,7 @@ object RomThemeMaterializer {
                 border = border,
                 text = text,
                 textShadow = if (text == BLACK) WHITE else BLACK,
-                accent = accent.rgb,
+                accent = accentRgb,
                 accentText = accentText,
             ),
         )
@@ -141,6 +151,21 @@ object RomThemeMaterializer {
     private fun readableForeground(candidate: Int, background: Int, minimumContrast: Double): Int {
         if (CatalogTheme.contrastRatio(candidate, background) >= minimumContrast) return candidate
         return listOf(BLACK, WHITE).maxWith(compareBy<Int>({ CatalogTheme.contrastRatio(it, background) }, { -it }))
+    }
+
+    private fun readableForegroundForSurfaces(candidate: Int, backgrounds: List<Int>, minimumContrast: Double): Int {
+        if (backgrounds.all { CatalogTheme.contrastRatio(candidate, it) >= minimumContrast }) return candidate
+        return listOf(BLACK, WHITE).maxWith(
+            compareBy<Int>({ foreground -> backgrounds.minOf { CatalogTheme.contrastRatio(foreground, it) } }, { -it }),
+        )
+    }
+
+    private fun readableSurface(background: Int, foreground: Int, minimumContrast: Double): Int {
+        if (CatalogTheme.contrastRatio(background, foreground) >= minimumContrast) return background
+        val target = if (foreground == BLACK) WHITE else BLACK
+        return (1..20).asSequence()
+            .map { step -> blend(background, target, step / 20.0) }
+            .first { corrected -> CatalogTheme.contrastRatio(corrected, foreground) >= minimumContrast }
     }
 
     private fun quantize(rgb: Int): Int {

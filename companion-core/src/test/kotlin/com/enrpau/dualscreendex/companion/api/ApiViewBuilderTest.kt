@@ -17,6 +17,10 @@ import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
+import com.enrpau.dualscreendex.parser.catalog.CatalogTheme
+import com.enrpau.dualscreendex.parser.catalog.CatalogThemeAssetClass
+import com.enrpau.dualscreendex.parser.catalog.CatalogThemeMethod
+import com.enrpau.dualscreendex.parser.catalog.CatalogThemeTokens
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
@@ -41,6 +45,35 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ApiViewBuilderTest {
+    @Test
+    fun exposesTheCompletePersistedRomThemeWithoutReinterpretingTokens() {
+        val theme = CatalogTheme(
+            CatalogThemeMethod.MULTI_ASSET_QUANTIZATION,
+            setOf(CatalogThemeAssetClass.SPECIES, CatalogThemeAssetClass.WORLD_MAP),
+            true,
+            CatalogThemeTokens(
+                0x123456, 0x234567, 0x345678, 0x102030,
+                0xE4D6A8, 0x75694B, 0xFFF7DB, 0x4D4032,
+                0x1C201D, 0xFFFFFF, 0x9D302A, 0xFFFFFF,
+            ),
+        )
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            theme = theme,
+        )
+
+        val view = ApiViewBuilder.catalog(catalog).theme
+
+        assertEquals("MULTI_ASSET_QUANTIZATION", view.method)
+        assertEquals(listOf("WORLD_MAP", "SPECIES"), view.assetClasses)
+        assertEquals(true, view.contrastCorrected)
+        assertEquals("#123456", view.tokens.field)
+        assertEquals("#fff7db", view.tokens.panel)
+        assertEquals("#ffffff", view.tokens.accentText)
+    }
+
     @Test
     fun exposesNormalizedGameClockPhaseWithoutReinterpretingIt() {
         val state = ApiViewBuilder.state(

@@ -28,6 +28,43 @@ import org.junit.Test
 
 class WorldMapCatalogApiRealControlTest {
     @Test
+    fun exactReferenceThemesSurviveCatalogStoreAndApiProjection() {
+        themeControls.forEach { control ->
+            val configured = System.getenv(control.environmentVariable)
+            assumeTrue("set ${control.environmentVariable} to run this exact theme control", !configured.isNullOrBlank())
+            val path = Path.of(requireNotNull(configured))
+            assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+            val rom = RomImage(Files.readAllBytes(path))
+            assertEquals(control.romSha256, rom.sha256)
+            val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
+            val root = newRoot()
+            try {
+                val cache = CatalogCache(root.toFile(), JdbcTestCatalogDatabaseFactory)
+                cache.write(
+                    catalog,
+                    CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "THEME-CONTROL"),
+                    CatalogWriteProgress.complete(),
+                )
+                val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
+                assertEquals(catalog.theme, reopened.theme)
+
+                val runtime = ProductionCompanionRuntime().apply { loadCatalog(path.fileName.toString(), reopened) }
+                val apiTheme = requireNotNull(runtime.bootstrap().catalog).theme
+                assertEquals(reopened.theme.method.name, apiTheme.method)
+                assertEquals(reopened.theme.assetClasses.sortedBy { it.ordinal }.map { it.name }, apiTheme.assetClasses)
+                assertEquals(reopened.theme.contrastCorrected, apiTheme.contrastCorrected)
+                assertEquals("#%06x".format(reopened.theme.tokens.field), apiTheme.tokens.field)
+                assertEquals("#%06x".format(reopened.theme.tokens.header), apiTheme.tokens.header)
+                assertEquals("#%06x".format(reopened.theme.tokens.panel), apiTheme.tokens.panel)
+                assertEquals("#%06x".format(reopened.theme.tokens.accent), apiTheme.tokens.accent)
+                assertDatabaseIntegrity(cache.fileFor(rom.sha256))
+            } finally {
+                deleteTree(root)
+            }
+        }
+    }
+
+    @Test
     fun redSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[0])
 
     @Test
@@ -370,7 +407,16 @@ class WorldMapCatalogApiRealControlTest {
         val localBaseAreaId: Int? = null,
     )
 
+    private data class ThemeControl(val environmentVariable: String, val romSha256: String)
+
     private companion object {
+        val themeControls = listOf(
+            ThemeControl("DUALDEX_POKERED_ROM", "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b"),
+            ThemeControl("DUALDEX_POKECRYSTAL_ROM", "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2"),
+            ThemeControl("DUALDEX_OFFICIAL_EMERALD_ROM", "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af"),
+            ThemeControl("DUALDEX_UNBOUND_ROM", "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7"),
+            ThemeControl("DUALDEX_ODYSSEY_ROM", "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0"),
+        )
         val GEN2_PNGS = listOf(
             "23739bddf01b2c98a03ca1c4af28ade7d751623ec8063311dd2b8b366c81c516",
             "c06748683d60a89e4d2984bbcb565dc854ddd7942295d5039b80bcabe223258d",

@@ -56,12 +56,12 @@
 - Modify: `companion-web/src/App.production.test.tsx`
 - Modify: `companion-web/src/pages/SettingsPage.test.tsx`
 
-- [ ] Add a complete API theme view with lowercase CSS hex tokens plus method, asset classes, and contrast-correction provenance.
-- [ ] Write RED API and web tests proving exact token projection and root CSS-variable application.
-- [ ] In `App.tsx`, apply the persisted tokens as typed inline custom properties only when the selected setting is `GAME`; omit them for `DARK` and `LIGHT`.
-- [ ] Refactor the default shell variables in `styles.css` to semantic `--theme-*` tokens and add the approved Emerald-hybrid grammar: subtle field pattern, compact chromatic header, cream/menu surface, hard paired borders, restrained pixel shadow, and readable panels.
-- [ ] Preserve semantic type/status/HP colors and all raster images. Keep fixed Dark/Light selectors and high-contrast overrides authoritative over the ROM theme.
-- [ ] Run the focused API/Vitest suites and a production web build.
+- [x] Add a complete API theme view with lowercase CSS hex tokens plus method, asset classes, and contrast-correction provenance.
+- [x] Write RED API and web tests proving exact token projection and root CSS-variable application.
+- [x] In `App.tsx`, apply the persisted tokens as typed inline custom properties only when the selected setting is `GAME`; omit them for `DARK` and `LIGHT`.
+- [x] Refactor the default shell variables in `styles.css` to semantic `--theme-*` tokens and add the approved Emerald-hybrid grammar: subtle field pattern, compact chromatic header, cream/menu surface, hard paired borders, restrained pixel shadow, and readable panels.
+- [x] Preserve semantic type/status/HP colors and all raster images. Keep fixed Dark/Light selectors and high-contrast overrides authoritative over the ROM theme.
+- [x] Run the focused API/Vitest suites and a production web build.
 
 ## Task 4: Freeze exact real-ROM themes and the user-visible visual contract
 
@@ -72,19 +72,19 @@
 - Create: `companion-web/e2e/rom-derived-theme.spec.ts`
 - Create: `docs/reports/2026-08-20-rom-derived-companion-theme.md`
 
-- [ ] Parse official Red, official Crystal, official Emerald, Unbound v2.1.1.1, and Odyssey v4.1.1 twice from the consolidated/reference fixture paths; assert exact rehash, complete theme, deterministic tokens, method, and contributor classes.
-- [ ] Require every exact control to persist/reopen the same theme and return the same API JSON. Record direct, multi-asset, or neutral provenance truthfully; do not count fallback as decoded palette evidence.
-- [ ] Serve representative fixture states for Atlas, local map, Pokédex, detail, Trainer Card, Party, Battle, loading, and Settings in a production 4:3 Helium viewport.
-- [ ] Assert the same GAME variables on every screen, fixed Dark/Light variables after switching, effective high-contrast overrides, unchanged navigation targets, unchanged map pixels/fog, and no layout overflow.
-- [ ] Capture screenshots under `D:\Temp\dualdex-rom-theme-evidence` and visually inspect the approved Emerald-hybrid grammar before freezing the report.
+- [x] Parse official Red, official Crystal, official Emerald, Unbound v2.1.1.1, and Odyssey v4.1.1 twice from the consolidated/reference fixture paths; assert exact rehash, complete theme, deterministic tokens, method, and contributor classes.
+- [x] Require every exact control to persist/reopen the same theme and return the same API JSON. Record direct, multi-asset, or neutral provenance truthfully; do not count fallback as decoded palette evidence.
+- [x] Serve representative fixture states for Atlas, local map, Pokédex, detail, Trainer Card, Party, Battle, loading, and Settings in a production 4:3 Helium viewport.
+- [x] Assert the same GAME variables on every screen, fixed Dark/Light variables after switching, effective high-contrast overrides, unchanged navigation targets, unchanged map pixels/fog, and no layout overflow.
+- [x] Capture screenshots under `D:\Temp\dualdex-rom-theme-evidence` and visually inspect the approved Emerald-hybrid grammar before freezing the report.
 
 ## Task 5: Verify, document, clean, and commit
 
-- [ ] Run the focused theme tests first, then one affected-module gate: `:parser-core:test`, `:catalog-store:test`, `:companion-core:test`, relevant `:app:testDebugUnitTest`, `companion-web` Vitest, production build, and the theme Playwright spec.
-- [ ] Search production code for ROM names, titles, hashes, fixed addresses, base-ROM theme switches, and partial theme construction; require zero identity selectors.
-- [ ] Run `git diff --check`, remove task-owned diagnostics/evidence not referenced by the report, and keep unrelated/map work untouched.
-- [ ] Complete the report with exact per-ROM tokens/provenance, fallback boundaries, persistence/API evidence, visual evidence, commands, and hashes.
-- [ ] Commit the completed ROM-derived theme stage as one implementation commit after all gates are GREEN.
+- [x] Run the focused theme tests first, then one affected-module gate: `:parser-core:test`, `:catalog-store:test`, `:companion-core:test`, relevant `:app:testDebugUnitTest`, `companion-web` Vitest, production build, and the theme Playwright spec.
+- [x] Search production code for ROM names, titles, hashes, fixed addresses, base-ROM theme switches, and partial theme construction; require zero identity selectors.
+- [x] Run `git diff --check`, remove task-owned diagnostics/evidence not referenced by the report, and keep unrelated/map work untouched.
+- [x] Complete the report with exact per-ROM tokens/provenance, fallback boundaries, persistence/API evidence, visual evidence, commands, and hashes.
+- [x] Commit the completed ROM-derived theme stage as one implementation commit after all gates are GREEN.
 
 ## Completion boundary
 

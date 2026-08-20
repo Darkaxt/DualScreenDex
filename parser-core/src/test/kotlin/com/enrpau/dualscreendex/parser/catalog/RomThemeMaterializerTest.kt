@@ -97,6 +97,7 @@ class RomThemeMaterializerTest {
         theme.validate()
         assertTrue(CatalogTheme.contrastRatio(theme.tokens.text, theme.tokens.panel) >= 4.5)
         assertTrue(CatalogTheme.contrastRatio(theme.tokens.accentText, theme.tokens.accent) >= 4.5)
+        assertTrue(CatalogTheme.contrastRatio(theme.tokens.accentText, theme.tokens.header) >= 4.5)
         assertTrue(CatalogTheme.contrastRatio(theme.tokens.border, theme.tokens.panel) >= 3.0)
         assertFalse(theme.assetClasses.isEmpty())
     }

@@ -8,6 +8,14 @@ const fixture: Bootstrap = {
     species: [], moves: [], types: [],
     areas: [{ id: 0x11 * 10 + 1, baseAreaId: 0x11, name: 'Oldale grass', methodId: 1, speciesIds: [], windows: ['ANY'], slots: [] }],
     balls: [], capabilities: {},
+    theme: {
+      method: 'MULTI_ASSET_QUANTIZATION', assetClasses: ['WORLD_MAP', 'SPECIES'], contrastCorrected: true,
+      tokens: {
+        field: '#123456', fieldPattern: '#234567', header: '#345678', headerShadow: '#102030',
+        menu: '#e4d6a8', menuShadow: '#75694b', panel: '#fff7db', border: '#4d4032',
+        text: '#1c201d', textShadow: '#ffffff', accent: '#9d302a', accentText: '#ffffff',
+      },
+    },
     worldMaps: [{
       key: 'gen3-region-0', displayName: 'Hoenn', pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15,
       imageUrl: '/api/maps/world%2Fgen3-region-0.png',
@@ -70,6 +78,26 @@ describe('production application shell', () => {
     expect(screen.queryByText('Encounter feed')).toBeNull();
     expect(screen.queryByText('GENERATE ENCOUNTER')).toBeNull();
     expect(screen.queryByText(/Generate an encounter/i)).toBeNull();
+  });
+
+  it('applies the complete ROM palette only to GAME and leaves fixed themes authoritative', async () => {
+    const first = render(<App />);
+    await waitFor(() => expect(screen.getByText('Pokemon Modern Emerald.gba')).toBeTruthy());
+    const gameShell = document.querySelector('.production-device') as HTMLElement;
+    expect(gameShell.dataset.theme).toBe('game');
+    expect(gameShell.style.getPropertyValue('--theme-field')).toBe('#123456');
+    expect(gameShell.style.getPropertyValue('--theme-accent-text')).toBe('#ffffff');
+    first.unmount();
+
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      state: { ...fixture.state, settings: { ...fixture.state.settings, theme: 'DARK' } },
+    });
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Pokemon Modern Emerald.gba')).toBeTruthy());
+    const darkShell = document.querySelector('.production-device') as HTMLElement;
+    expect(darkShell.dataset.theme).toBe('dark');
+    expect(darkShell.style.getPropertyValue('--theme-field')).toBe('');
   });
 
   it('uses a concise welcome prompt without implementation commentary', async () => {
