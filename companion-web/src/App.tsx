@@ -1,4 +1,4 @@
-import type { ComponentType } from 'preact';
+import type { ComponentType, JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { action, bootstrap, events, uploadRom } from './gateway';
 import type { Bootstrap, Catalog, State } from './models';
@@ -149,7 +149,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   }, [catalog, state, busy, error, moveDetailId, abilityDetailId, detailTab, mapperOpen, capabilityReportOpen, mapOpen, partySelection]);
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
-    <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={{ '--font-scale': state.settings.fontScale }} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>
+    <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={applicationThemeStyle(catalog, state.settings)} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>
       {showDevelopmentTools && <div class="device-sensor" />}
       <div class="device-screen">
         {catalog && <div class="rom-status" title={state.catalogName ?? undefined}><strong>{state.catalogName ?? 'Unnamed ROM'}</strong><span>{catalog.family.replaceAll('_', ' ')} · CRC32 {catalog.crc32 || 'N/F'}</span></div>}
@@ -158,6 +158,27 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       </div>
     </div>
   </main>;
+}
+
+export function applicationThemeStyle(catalog: Catalog | null, settings: State['settings']): JSX.CSSProperties {
+  const style = { '--font-scale': settings.fontScale } as JSX.CSSProperties;
+  if (!catalog?.theme || (settings.theme ?? 'GAME') !== 'GAME' || settings.highContrast) return style;
+  const tokens = catalog.theme.tokens;
+  Object.assign(style, {
+    '--theme-field': tokens.field,
+    '--theme-field-pattern': tokens.fieldPattern,
+    '--theme-header': tokens.header,
+    '--theme-header-shadow': tokens.headerShadow,
+    '--theme-menu': tokens.menu,
+    '--theme-menu-shadow': tokens.menuShadow,
+    '--theme-panel': tokens.panel,
+    '--theme-border': tokens.border,
+    '--theme-text': tokens.text,
+    '--theme-text-shadow': tokens.textShadow,
+    '--theme-accent': tokens.accent,
+    '--theme-accent-text': tokens.accentText,
+  });
+  return style;
 }
 
 export function catalogRefreshMarker(state: Pick<State, 'catalogName' | 'loading'>): string {

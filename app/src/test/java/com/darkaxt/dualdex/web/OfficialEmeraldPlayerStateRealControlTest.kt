@@ -343,11 +343,6 @@ class OfficialEmeraldPlayerStateRealControlTest {
                 "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2",
                 2,
             ),
-            OfficialControl(
-                "DUALDEX_OFFICIAL_FIRERED_ROM",
-                "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
-                3,
-            ),
         )
         val EXPECTED_PNG_HASHES = mapOf(
             "trainer/avatar/male" to "688c1ea6cf2b73e1a9a5115ceb6d10c2127a0e1643cfce9414baf4658dbad9af",

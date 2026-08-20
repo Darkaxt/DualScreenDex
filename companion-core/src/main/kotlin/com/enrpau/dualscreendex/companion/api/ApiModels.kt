@@ -27,7 +27,30 @@ data class CatalogView(
     val balls: List<BallView>,
     val worldMaps: List<WorldMapRegionView>,
     val localMaps: List<LocalMapView>,
+    val theme: CatalogThemeView,
     val capabilities: Map<String, String>,
+)
+
+data class CatalogThemeView(
+    val method: String,
+    val assetClasses: List<String>,
+    val contrastCorrected: Boolean,
+    val tokens: CatalogThemeTokensView,
+)
+
+data class CatalogThemeTokensView(
+    val field: String,
+    val fieldPattern: String,
+    val header: String,
+    val headerShadow: String,
+    val menu: String,
+    val menuShadow: String,
+    val panel: String,
+    val border: String,
+    val text: String,
+    val textShadow: String,
+    val accent: String,
+    val accentText: String,
 )
 
 data class LocalMapView(
@@ -501,6 +524,27 @@ object ApiViewBuilder {
                     map.imageAssetKey in catalog.localMaps.timedAssets,
             )
         },
+        theme = CatalogThemeView(
+            method = catalog.theme.method.name,
+            assetClasses = catalog.theme.assetClasses.sortedBy { it.ordinal }.map { it.name },
+            contrastCorrected = catalog.theme.contrastCorrected,
+            tokens = catalog.theme.tokens.let { tokens ->
+                CatalogThemeTokensView(
+                    field = tokens.field.toCssRgb(),
+                    fieldPattern = tokens.fieldPattern.toCssRgb(),
+                    header = tokens.header.toCssRgb(),
+                    headerShadow = tokens.headerShadow.toCssRgb(),
+                    menu = tokens.menu.toCssRgb(),
+                    menuShadow = tokens.menuShadow.toCssRgb(),
+                    panel = tokens.panel.toCssRgb(),
+                    border = tokens.border.toCssRgb(),
+                    text = tokens.text.toCssRgb(),
+                    textShadow = tokens.textShadow.toCssRgb(),
+                    accent = tokens.accent.toCssRgb(),
+                    accentText = tokens.accentText.toCssRgb(),
+                )
+            },
+        ),
         capabilities = catalog.capabilities.mapKeys { it.key.name }.mapValues { it.value.status.name },
     )
 
@@ -713,6 +757,8 @@ object ApiViewBuilder {
         this and 0xFF,
         this ushr 24 and 0xFF,
     )
+
+    private fun Int.toCssRgb(): String = "#%06x".format(this and 0xFFFFFF)
 
     private fun List<MoveObservation>.toObservedMoveViews(): List<ObservedMoveView> =
         sortedWith(compareByDescending<MoveObservation> { it.frequency }.thenBy { it.moveId })

@@ -2,6 +2,12 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolver
+import com.enrpau.dualscreendex.parser.catalog.AbilityDescriptionResult
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicsMaterializer
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicsResult
+import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
+import com.enrpau.dualscreendex.parser.catalog.MoveDescriptionMaterializer
+import com.enrpau.dualscreendex.parser.catalog.MoveDescriptionResult
 import com.enrpau.dualscreendex.parser.catalog.RelationshipMaterializers
 import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
@@ -15,15 +21,18 @@ import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.RomProfile
+import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 
 internal data class CatalogAnalysisContext(
     val analysis: ParseResult,
+    val resolveMoveDescriptions: (ResolvedRomLayout) -> MoveDescriptionResult?,
     val resolveGen3AreaNames: (Set<Int>) -> Map<Int, String>,
     val resolveWorldMap: (Int, Set<Int>) -> WorldMapResolution,
     val resolveLocalMaps: (Int, Set<Int>) -> LocalMapResolution,
+    val resolveAbilityMechanics: (ResolvedRomLayout, Map<Int, AbilityRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?,
 )
 
 object ParserOrchestrator {
@@ -40,6 +49,12 @@ object ParserOrchestrator {
         }
         return CatalogAnalysisContext(
             analysis = analysis,
+            resolveMoveDescriptions = { layout ->
+                MoveDescriptionMaterializer.materialize(sharedSession.rom, layout, sharedSession.gbaReferenceIndex)
+            },
+            resolveAbilityMechanics = { layout, abilities, descriptions ->
+                AbilityMechanicsMaterializer.materialize(sharedSession, layout, abilities, descriptions)
+            },
             resolveGen3AreaNames = { baseAreaIds ->
                 val references = sharedSession.gbaReferenceIndex
                 if (references == null || references.overflowed) {

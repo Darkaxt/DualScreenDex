@@ -59,6 +59,7 @@ import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.gen3.Gen3BagAbi
+import com.darkaxt.dualdex.save.gen3.Gen3BagDataSource
 import com.darkaxt.dualdex.save.gen3.Gen3BagPocketAbi
 import com.darkaxt.dualdex.save.gen3.Gen3BitFlag
 import com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi
@@ -287,6 +288,7 @@ class ProductionCompanionRuntime(
             Gen3SaveRuntimeAbi(
                 saveBlock1Size = abi.saveBlock1Size,
                 saveBlock2Size = abi.saveBlock2Size,
+                extendedSaveDataSize = abi.extendedSaveDataSize,
                 textEncoding = when (abi.textEncoding) {
                     com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding.ENGLISH ->
                         Gen3TextEncoding.ENGLISH
@@ -316,6 +318,12 @@ class ProductionCompanionRuntime(
                             byteOffset = pocket.byteOffset,
                             capacity = pocket.capacity,
                             slotSize = pocket.slotSize,
+                            dataSource = when (pocket.dataSource) {
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagDataSource.SAVE_BLOCK1 ->
+                                    Gen3BagDataSource.SAVE_BLOCK1
+                                com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagDataSource.EXTENDED_SAVE ->
+                                    Gen3BagDataSource.EXTENDED_SAVE
+                            },
                         )
                     },
                 ),
@@ -381,6 +389,8 @@ class ProductionCompanionRuntime(
                     saveBlock2PointerAddress = layout.saveBlock2PointerAddress,
                     saveBlock1Size = layout.saveRuntimeAbi?.saveBlock1Size,
                     saveBlock2Size = layout.saveRuntimeAbi?.saveBlock2Size,
+                    extendedSaveAddress = layout.extendedSaveAddress,
+                    extendedSaveSize = layout.saveRuntimeAbi?.extendedSaveDataSize?.takeIf { it > 0 },
                 )
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),

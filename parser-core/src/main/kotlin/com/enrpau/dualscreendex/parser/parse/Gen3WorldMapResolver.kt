@@ -251,6 +251,14 @@ object Gen3WorldMapResolver {
             )
         }
         val baseAreasBySection = sectionByBaseArea.entries.groupBy({ it.value }, { it.key })
+        mapTrace(
+            "text-bindings semanticCandidates=${semanticCandidates.size} sections=${baseAreasBySection.size} " +
+                "perRegion=${semanticCandidates.joinToString { candidate ->
+                    candidate.joinToString(prefix = "[", postfix = "]") { layout ->
+                        textLocations(layout, baseAreasBySection).size.toString()
+                    }
+                }}",
+        )
         val layoutWinner = when (semanticCandidates.size) {
             1 -> semanticCandidates.single()
             else -> {
@@ -327,13 +335,14 @@ object Gen3WorldMapResolver {
     private fun textLocations(
         layout: SemanticLayout,
         baseAreasBySection: Map<Int, List<Int>>,
-    ): List<WorldMapLocation> = layout.cellsBySection.entries.sortedBy { it.key }.mapNotNull { (section, cells) ->
-        val baseAreaIds = baseAreasBySection[section].orEmpty().toSet()
-        if (baseAreaIds.isEmpty()) return@mapNotNull null
+    ): List<WorldMapLocation> = baseAreasBySection.entries.sortedBy { it.key }.mapNotNull { (section, baseAreas) ->
+        val cells = layout.primaryCellsBySection[section]
+            ?: layout.secondaryCellsBySection[section]
+            ?: return@mapNotNull null
         WorldMapLocation(
             key = "section-$section",
             displayName = "Map section $section",
-            baseAreaIds = baseAreaIds,
+            baseAreaIds = baseAreas.toSet(),
             geometry = cells,
         )
     }
@@ -665,9 +674,9 @@ object Gen3WorldMapResolver {
         return buildList {
             functionsWithTextMaps(references, functionIndex, maps).forEach { functionStart ->
                 val referencedMaps = maps.filter { functionStart in loaderFunctions(references, functionIndex, it.offset) }
-                val mapsBySlot = referencedMaps.mapNotNull { map ->
-                    compressedDestinationOffset(rom, references, functionIndex, map.offset, functionStart)
-                        ?.let { destination -> destination to map }
+                val mapsBySlot = referencedMaps.flatMap { map ->
+                    compressedDestinationOffsets(rom, references, functionIndex, map.offset, functionStart)
+                        .map { destination -> destination to map }
                 }.groupBy({ it.first }, { it.second })
                 val destinations = mapsBySlot.keys.sorted()
                 val baseDestination = destinations.firstOrNull() ?: return@forEach
@@ -684,6 +693,14 @@ object Gen3WorldMapResolver {
 
                 val bundles = graphics.mapNotNull { graphicsStream ->
                     if (functionStart !in loaderFunctions(references, functionIndex, graphicsStream.offset)) return@mapNotNull null
+                    val graphicsBg = textGraphicsBgRole(
+                        rom,
+                        references,
+                        functionIndex,
+                        functionStart,
+                        graphicsStream.offset,
+                    )
+                    if (graphicsBg != null && graphicsBg != TEXT_WORLD_BG) return@mapNotNull null
                     val palettes = paletteCandidatesInFunction(
                         rom,
                         references,
@@ -692,6 +709,21 @@ object Gen3WorldMapResolver {
                         excludedOffsets = intArrayOf(graphicsStream.offset) + referencedMaps.map(CompressedStream::offset),
                     )
                     palettes.mapNotNull { palette ->
+                        val paletteDestination = textPaletteDestination(
+                            rom,
+                            references,
+                            functionIndex,
+                            functionStart,
+                            palette.offset,
+                        )
+                        if (paletteDestination != null && paletteDestination != TEXT_WORLD_PALETTE_START) {
+                            return@mapNotNull null
+                        }
+                        mapTrace(
+                            "text-role function=0x${functionStart.toString(16)} " +
+                                "gfx=0x${graphicsStream.offset.toString(16)} bg=$graphicsBg " +
+                                "palette=0x${palette.offset.toString(16)} destination=$paletteDestination",
+                        )
                         val graphicsSlot = branchSelectionSlot(
                             rom,
                             references,
@@ -709,13 +741,20 @@ object Gen3WorldMapResolver {
                         if (graphicsSlot != null && paletteSlot != null && graphicsSlot != paletteSlot) {
                             return@mapNotNull null
                         }
-                        TextAssetBundle(graphicsStream, palette, graphicsSlot ?: paletteSlot)
+                        TextAssetBundle(
+                            graphics = graphicsStream,
+                            palette = palette,
+                            branchSlot = graphicsSlot ?: paletteSlot,
+                            worldRoleProven = graphicsBg == TEXT_WORLD_BG &&
+                                paletteDestination == TEXT_WORLD_PALETTE_START,
+                        )
                     }
                 }.flatten()
 
-                val regionAssets = slotByDestination.entries.mapNotNull { (destination, slot) ->
+                val loadedRegionAssets = slotByDestination.entries.mapNotNull { (destination, slot) ->
                     if (slot == TEXT_BACKGROUND_SLOT) return@mapNotNull null
-                    val map = mapsBySlot[destination]?.singleOrNull() ?: return@mapNotNull null
+                    val map = mapsBySlot[destination]?.distinctBy(CompressedStream::offset)?.singleOrNull()
+                        ?: return@mapNotNull null
                     val eligible = bundles.mapNotNull { bundle ->
                         if (bundle.branchSlot != null && bundle.branchSlot != slot) return@mapNotNull null
                         val result = GbaWorldMapCompositor.compose(bundle.graphics.decoded, map.decoded, bundle.palette.colors)
@@ -739,6 +778,12 @@ object Gen3WorldMapResolver {
                         eligible.isEmpty() -> null
                         else -> eligible.singleOrNull { candidate ->
                             bundles.any { bundle ->
+                                bundle.worldRoleProven &&
+                                    bundle.graphics.offset == candidate.asset.graphicsOffset &&
+                                    bundle.palette.offset == candidate.asset.paletteOffset
+                            }
+                        } ?: eligible.singleOrNull { candidate ->
+                            bundles.any { bundle ->
                                 bundle.branchSlot == slot &&
                                     bundle.graphics.offset == candidate.asset.graphicsOffset &&
                                     bundle.palette.offset == candidate.asset.paletteOffset
@@ -747,9 +792,30 @@ object Gen3WorldMapResolver {
                     }
                 }.sortedBy(TextRegionAsset::slot)
 
+                val aliasedSingleRegion = loadedRegionAssets.isNotEmpty() &&
+                    loadedRegionAssets.first().slot == 0 &&
+                    loadedRegionAssets.map { it.asset.identity }.distinct().size == 1 &&
+                    TEXT_BACKGROUND_SLOT in slotByDestination.values &&
+                    bundles.any { bundle ->
+                        bundle.worldRoleProven &&
+                            bundle.graphics.offset == loadedRegionAssets.first().asset.graphicsOffset &&
+                            bundle.palette.offset == loadedRegionAssets.first().asset.paletteOffset
+                    }
+                val regionAssets = if (aliasedSingleRegion) {
+                    listOf(loadedRegionAssets.first())
+                } else {
+                    loadedRegionAssets
+                }
+                if (aliasedSingleRegion) {
+                    mapTrace(
+                        "text-loader function=0x${functionStart.toString(16)} " +
+                            "collapsed ${loadedRegionAssets.size} identical region-plane loads to one region",
+                    )
+                }
+
                 if (regionAssets.isNotEmpty() &&
                     regionAssets.map(TextRegionAsset::slot) == (0 until regionAssets.size).toList() &&
-                    (regionAssets.size > 1 || destinations.size == TEXT_LOADER_DESTINATION_COUNT)
+                    (regionAssets.size > 1 || destinations.size == TEXT_LOADER_DESTINATION_COUNT || aliasedSingleRegion)
                 ) {
                     add(TextAssetCandidate(functionStart, regionAssets))
                 }
@@ -941,6 +1007,80 @@ object Gen3WorldMapResolver {
         readPalette(rom, offset, byteCount / 2)
     }
 
+    /**
+     * Proves the source-family world graphics role from the actual loader call: the referenced
+     * compressed stream must remain in r1 while the background argument in r0 reaches the next
+     * direct call. A known non-zero background is a separate background layer, not world tiles.
+     */
+    private fun textGraphicsBgRole(
+        rom: RomImage,
+        references: GbaReferenceIndex,
+        functionIndex: ThumbFunctionIndex,
+        functionStart: Int,
+        graphicsOffset: Int,
+    ): Int? = completeSites(references, graphicsOffset).orEmpty()
+        .filter { functionIndex.functionStart(it) == functionStart }
+        .mapNotNull { site -> graphicsBgArgumentAtNextCall(rom, functionStart, site) }
+        .distinct()
+        .singleOrNull()
+
+    private fun graphicsBgArgumentAtNextCall(
+        rom: RomImage,
+        functionStart: Int,
+        sourceSite: Int,
+    ): Int? {
+        if (sourceSite < functionStart || sourceSite + 2 > rom.size) return null
+        val sourceInstruction = rom.u16le(sourceSite)
+        if (
+            sourceInstruction and THUMB_LITERAL_LOAD_MASK != THUMB_LITERAL_LOAD_OPCODE ||
+            sourceInstruction ushr THUMB_REGISTER_SHIFT and THUMB_REGISTER_MASK != 1
+        ) {
+            return null
+        }
+        var blockStart = sourceSite
+        while (blockStart - 2 >= functionStart && !isThumbControlFlow(rom, blockStart - 2)) {
+            blockStart -= 2
+        }
+        var background: Int? = null
+        var sourceLive = false
+        var cursor = blockStart
+        while (cursor + 2 <= rom.size) {
+            val instruction = rom.u16le(cursor)
+            if (isThumbBl(rom, cursor)) {
+                if (cursor <= sourceSite || !sourceLive) return null
+                return background
+            }
+            if (cursor != blockStart && isThumbControlFlow(rom, cursor)) return null
+            val destination = thumbDestinationRegister(instruction)
+            if (cursor == sourceSite) sourceLive = true
+            if (cursor > sourceSite && destination == 1) sourceLive = false
+            if (destination == 0) {
+                background = if (instruction and THUMB_MOVE_IMMEDIATE_MASK == THUMB_MOVE_IMMEDIATE_OPCODE) {
+                    instruction and 0xff
+                } else {
+                    null
+                }
+            }
+            cursor += 2
+        }
+        return null
+    }
+
+    /** The FRLG text-map palette is loaded at hardware palette entry zero. */
+    private fun textPaletteDestination(
+        rom: RomImage,
+        references: GbaReferenceIndex,
+        functionIndex: ThumbFunctionIndex,
+        functionStart: Int,
+        paletteOffset: Int,
+    ): Int? = completeSites(references, paletteOffset).orEmpty()
+        .filter { functionIndex.functionStart(it) == functionStart }
+        .mapNotNull { site ->
+            if (!isPaletteSourceLoad(rom, site)) null else immediateArgumentsAtNextCall(rom, site)?.first
+        }
+        .distinct()
+        .singleOrNull()
+
     private fun paletteLoadByteCount(rom: RomImage, site: Int): Int? {
         val immediate = immediatePaletteLoadByteCount(rom, site)
         if (immediate != null) return immediate
@@ -1093,14 +1233,13 @@ object Gen3WorldMapResolver {
         else -> null
     }
 
-    private fun compressedDestinationOffset(
+    private fun compressedDestinationOffsets(
         rom: RomImage,
         references: GbaReferenceIndex,
         functionIndex: ThumbFunctionIndex,
         target: Int,
         functionStart: Int,
-    ): Int? {
-        val offsets = completeSites(references, target).orEmpty().mapNotNull { site ->
+    ): List<Int> = completeSites(references, target).orEmpty().mapNotNull { site ->
             if (functionIndex.functionStart(site) != functionStart) return@mapNotNull null
             val sourceLoad = rom.u16le(site)
             if (sourceLoad and THUMB_LITERAL_LOAD_MASK != THUMB_LITERAL_LOAD_OPCODE ||
@@ -1123,9 +1262,7 @@ object Gen3WorldMapResolver {
                 cursor += 2
             }
             null
-        }.distinct()
-        return offsets.singleOrNull()
-    }
+        }.distinct().sorted()
 
     private fun paletteCandidates(
         rom: RomImage,
@@ -1175,7 +1312,7 @@ object Gen3WorldMapResolver {
                     right.first - left.first != TABLE_SEMANTIC_LAYOUT_BYTES
                 }
             ) return@mapNotNull null
-            val sectionOwners = members.flatMap { (_, layout) -> layout.cellsBySection.keys }
+            val sectionOwners = members.flatMap { (_, layout) -> layout.primaryCellsBySection.keys }
                 .groupingBy { it }
                 .eachCount()
             if (sectionOwners.values.any { it != 1 }) return@mapNotNull null
@@ -1300,16 +1437,25 @@ object Gen3WorldMapResolver {
             ?.takeIf { it.value >= SEMANTIC_GRID_CELLS }?.key ?: return null
         val mapLayer = bytes.copyOfRange(0, SEMANTIC_GRID_CELLS)
         if (mapLayer.count { (it.toInt() and 0xff) != empty } < MIN_SEMANTIC_CELLS) return null
-        val cellsBySection = linkedMapOf<Int, MutableList<WorldMapCell>>()
+        val dungeonLayer = bytes.copyOfRange(SEMANTIC_GRID_CELLS, SEMANTIC_LAYOUT_BYTES)
+        val primaryCellsBySection = linkedMapOf<Int, MutableList<WorldMapCell>>()
         mapLayer.forEachIndexed { index, value ->
             val section = value.toInt() and 0xff
             if (section != empty) {
-                cellsBySection.getOrPut(section, ::mutableListOf) +=
+                primaryCellsBySection.getOrPut(section, ::mutableListOf) +=
                     WorldMapCell(index % TEXT_GRID_WIDTH, index / TEXT_GRID_WIDTH, 1, 1)
             }
         }
-        if (cellsBySection.size < MIN_SEMANTIC_SECTIONS) return null
-        return SemanticLayout(cellsBySection)
+        if (primaryCellsBySection.size < MIN_SEMANTIC_SECTIONS) return null
+        val secondaryCellsBySection = linkedMapOf<Int, MutableList<WorldMapCell>>()
+        dungeonLayer.forEachIndexed { index, value ->
+            val section = value.toInt() and 0xff
+            if (section != empty) {
+                secondaryCellsBySection.getOrPut(section, ::mutableListOf) +=
+                    WorldMapCell(index % TEXT_GRID_WIDTH, index / TEXT_GRID_WIDTH, 1, 1)
+            }
+        }
+        return SemanticLayout(primaryCellsBySection, secondaryCellsBySection)
     }
 
     private fun decodeReferencedStreams(rom: RomImage, references: GbaReferenceIndex): List<CompressedStream> =
@@ -1423,7 +1569,10 @@ object Gen3WorldMapResolver {
     private data class BranchArm(val branchOffset: Int, val taken: Boolean)
     private data class CompressedStream(val offset: Int, val decoded: ByteArray)
     private data class PaletteCandidate(val offset: Int, val colors: ShortArray)
-    private data class SemanticLayout(val cellsBySection: Map<Int, List<WorldMapCell>>)
+    private data class SemanticLayout(
+        val primaryCellsBySection: Map<Int, List<WorldMapCell>>,
+        val secondaryCellsBySection: Map<Int, List<WorldMapCell>> = emptyMap(),
+    )
     private data class AssetCandidate(
         val graphicsOffset: Int,
         val mapOffset: Int,
@@ -1437,6 +1586,7 @@ object Gen3WorldMapResolver {
         val graphics: CompressedStream,
         val palette: PaletteCandidate,
         val branchSlot: Int?,
+        val worldRoleProven: Boolean,
     )
     private data class TextRegionAsset(val slot: Int, val asset: AssetCandidate)
     private data class TableRecordShell(val fields: IntArray, val paletteBytes: Int)
@@ -1536,6 +1686,8 @@ object Gen3WorldMapResolver {
     private const val MAX_TEXT_PALETTE_BYTES = 16 * 16 * 2
     private const val BYTES_PER_PALETTE_BANK = 16 * 2
     private const val PALETTE_BANK_COLORS = 16
+    private const val TEXT_WORLD_BG = 0
+    private const val TEXT_WORLD_PALETTE_START = 0
     private const val TEXT_BACKGROUND_SLOT = 4
     private const val TEXT_LOADER_DESTINATION_COUNT = 5
     private const val TEXT_GRID_WIDTH = 22

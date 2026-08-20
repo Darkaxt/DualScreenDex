@@ -25,49 +25,51 @@ internal object Gen3LocalMapResolver {
         val references = session.gbaReferenceIndex
             ?.takeUnless { it.overflowed }
             ?: return LocalMapResolution.Unavailable("reference-index", "compiled GBA reference index is unavailable")
-        val headers = Gen3MapLocationResolver.resolveHeaderByBaseArea(session.rom, encounterBaseIds, references)
-        if (headers.isEmpty()) {
+        val completeHeaders = Gen3MapLocationResolver.resolveHeaderByBaseArea(session.rom, encounterBaseIds, references)
+        if (completeHeaders.isEmpty()) {
             return LocalMapResolution.Unavailable("map-groups", "no unique compiled gMapGroups authority was resolved")
         }
-        if (headers.size > MAX_MAPS) {
+        if (completeHeaders.size > MAX_MAPS) {
             return LocalMapResolution.BudgetExceeded(
                 "map-count",
-                "resolved ${headers.size} map headers (limit $MAX_MAPS)",
+                "resolved ${completeHeaders.size} map headers (limit $MAX_MAPS)",
             )
         }
 
         val names = Gen3MapLocationResolver.resolveDetailed(session.rom, encounterBaseIds, references)
-        val descriptors = mutableListOf<MapDescriptor>()
-        val skippedReasons = mutableListOf<String>()
-        headers.toSortedMap().forEach { (baseAreaId, header) ->
-            runCatching { readDescriptor(session.rom, baseAreaId, header, names) }
-                .onSuccess(descriptors::add)
-                .onFailure { failure ->
-                    skippedReasons += "map 0x${baseAreaId.toString(16).padStart(4, '0')} metadata: ${failure.message}"
-                }
-        }
-        val totalPixels = descriptors.sumOf { it.pixelCount.toLong() }
-        if (totalPixels > MAX_TOTAL_PIXELS) {
-            return LocalMapResolution.BudgetExceeded(
-                "raster-pixels",
-                "resolved $totalPixels local-map pixels (limit $MAX_TOTAL_PIXELS)",
+        var descriptorBatch = readDescriptors(session.rom, completeHeaders, names)
+        if (descriptorBatch.descriptors.sumOf { it.pixelCount.toLong() } > MAX_TOTAL_PIXELS) {
+            val reachableHeaders = Gen3MapLocationResolver.resolveReachableHeaderByBaseArea(
+                session.rom,
+                encounterBaseIds,
+                references,
             )
+            if (reachableHeaders.isEmpty()) {
+                return LocalMapResolution.BudgetExceeded(
+                    "raster-pixels",
+                    "complete local-map catalog exceeds $MAX_TOTAL_PIXELS pixels and no complete reachable graph resolved",
+                )
+            }
+            descriptorBatch = readDescriptors(session.rom, reachableHeaders, names)
         }
-
+        val descriptors = descriptorBatch.descriptors
+        val skippedReasons = descriptorBatch.skippedReasons
         val lightingModel = Gen3MapLightingResolver.resolve(session.rom)
         val tilesets = mutableMapOf<Int, TilesetData>()
         val maps = mutableListOf<LocalMap>()
         val assets = linkedMapOf<String, PngMapAsset>()
         val timedAssets = linkedMapOf<String, TimedIndexedMapAsset>()
+        val assetKeyByPng = linkedMapOf<PngMapAsset, String>()
+        val assetKeyByTimed = linkedMapOf<TimedIndexedMapAsset, String>()
         var encodedBytes = 0L
+        var uniquePixels = 0L
         descriptors.forEach { descriptor ->
             runCatching {
                 val dynamicLighting = lightingModel != null && descriptor.naturalLighting
                 val raster = renderIndexed(session.rom, descriptor, format, tilesets, dynamicLighting)
-                if (dynamicLighting) {
+                val assetKey = if (dynamicLighting) {
                     val compressed = LocalMapRasterCodec.compress(raster.indices)
-                    encodedBytes += compressed.size + TIMED_PALETTE_BYTES
-                    timedAssets[descriptor.assetKey] = TimedIndexedMapAsset(
+                    val asset = TimedIndexedMapAsset(
                         pixelWidth = raster.pixelWidth,
                         pixelHeight = raster.pixelHeight,
                         compressedIndices = compressed,
@@ -76,18 +78,46 @@ internal object Gen3LocalMapResolver {
                         alternatePaletteMask = raster.palettes.alternateMask,
                         paletteModel = requireNotNull(lightingModel),
                     )
+                    assetKeyByTimed[asset] ?: descriptor.assetKey.also { newAssetKey ->
+                        uniquePixels += descriptor.pixelCount
+                        if (uniquePixels > MAX_TOTAL_PIXELS) {
+                            return LocalMapResolution.BudgetExceeded(
+                                "raster-pixels",
+                                "resolved $uniquePixels unique local-map pixels (limit $MAX_TOTAL_PIXELS)",
+                            )
+                        }
+                        encodedBytes += compressed.size + TIMED_PALETTE_BYTES
+                        if (encodedBytes > MAX_ENCODED_BYTES) {
+                            return LocalMapResolution.BudgetExceeded(
+                                "encoded-assets",
+                                "unique local-map assets exceed $MAX_ENCODED_BYTES bytes",
+                            )
+                        }
+                        assetKeyByTimed[asset] = newAssetKey
+                        timedAssets[newAssetKey] = asset
+                    }
                 } else {
-                    val png = PngEncoder.encode(raster.toRgbaSprite())
-                    encodedBytes += png.size
-                    assets[descriptor.assetKey] = PngMapAsset(png)
+                    val asset = PngMapAsset(PngEncoder.encode(raster.toRgbaSprite()))
+                    assetKeyByPng[asset] ?: descriptor.assetKey.also { newAssetKey ->
+                        uniquePixels += descriptor.pixelCount
+                        if (uniquePixels > MAX_TOTAL_PIXELS) {
+                            return LocalMapResolution.BudgetExceeded(
+                                "raster-pixels",
+                                "resolved $uniquePixels unique local-map pixels (limit $MAX_TOTAL_PIXELS)",
+                            )
+                        }
+                        encodedBytes += asset.bytes.size
+                        if (encodedBytes > MAX_ENCODED_BYTES) {
+                            return LocalMapResolution.BudgetExceeded(
+                                "encoded-assets",
+                                "unique local-map assets exceed $MAX_ENCODED_BYTES bytes",
+                            )
+                        }
+                        assetKeyByPng[asset] = newAssetKey
+                        assets[newAssetKey] = asset
+                    }
                 }
-                if (encodedBytes > MAX_ENCODED_BYTES) {
-                    return LocalMapResolution.BudgetExceeded(
-                        "encoded-assets",
-                        "local-map assets exceed $MAX_ENCODED_BYTES bytes",
-                    )
-                }
-                maps += descriptor.toLocalMap()
+                maps += descriptor.toLocalMap(assetKey)
             }.onFailure { failure ->
                 skippedReasons += "map 0x${descriptor.baseAreaId.toString(16).padStart(4, '0')} render: ${failure.message}"
             }
@@ -100,7 +130,8 @@ internal object Gen3LocalMapResolver {
             catalog = catalog,
             reasons = listOf(
                 "resolved ${maps.size} local maps from a compiled gMapGroups consumer",
-                "rendered bounded ${format.label} 16x16 metatile rasters from ROM tilesets and palettes",
+                "rendered ${assets.size + timedAssets.size} unique bounded ${format.label} 16x16 metatile rasters " +
+                    "from ROM tilesets and palettes",
             ) + if (lightingModel != null) {
                 listOf("retained ${timedAssets.size} source-backed natural-light maps as indexed timed rasters")
             } else {
@@ -108,6 +139,23 @@ internal object Gen3LocalMapResolver {
             } + skippedReasons,
             skippedMaps = skippedReasons.size,
         )
+    }
+
+    private fun readDescriptors(
+        rom: RomImage,
+        headers: Map<Int, Int>,
+        names: com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolution?,
+    ): DescriptorBatch {
+        val descriptors = mutableListOf<MapDescriptor>()
+        val skippedReasons = mutableListOf<String>()
+        headers.toSortedMap().forEach { (baseAreaId, header) ->
+            runCatching { readDescriptor(rom, baseAreaId, header, names) }
+                .onSuccess(descriptors::add)
+                .onFailure { failure ->
+                    skippedReasons += "map 0x${baseAreaId.toString(16).padStart(4, '0')} metadata: ${failure.message}"
+                }
+        }
+        return DescriptorBatch(descriptors, skippedReasons)
     }
 
     private fun readDescriptor(
@@ -423,7 +471,7 @@ internal object Gen3LocalMapResolver {
         val key: String = "local/${baseAreaId.toString(16).padStart(4, '0')}"
         val assetKey: String = "$key/map"
 
-        fun toLocalMap(): LocalMap = LocalMap(
+        fun toLocalMap(imageAssetKey: String): LocalMap = LocalMap(
             key = key,
             displayName = displayName,
             baseAreaId = baseAreaId,
@@ -431,9 +479,14 @@ internal object Gen3LocalMapResolver {
             pixelHeight = height * METATILE_PIXELS,
             gridWidth = width,
             gridHeight = height,
-            imageAssetKey = assetKey,
+            imageAssetKey = imageAssetKey,
         )
     }
+
+    private data class DescriptorBatch(
+        val descriptors: MutableList<MapDescriptor>,
+        val skippedReasons: MutableList<String>,
+    )
 
     private data class TilesetData(
         val secondary: Boolean,

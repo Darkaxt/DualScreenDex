@@ -8,6 +8,10 @@ import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
+import com.enrpau.dualscreendex.parser.catalog.CatalogTheme
+import com.enrpau.dualscreendex.parser.catalog.CatalogThemeAssetClass
+import com.enrpau.dualscreendex.parser.catalog.CatalogThemeMethod
+import com.enrpau.dualscreendex.parser.catalog.CatalogThemeTokens
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
 import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagAbi
@@ -81,27 +85,89 @@ import org.junit.Test
 
 class CatalogStoreTest {
     @Test
-    fun `Unbound completes the production incremental cache round trip`() {
+    fun `Unbound completed move descriptions survive the production incremental cache round trip`() {
         val configured = System.getenv("DUALDEX_UNBOUND_ROM")
         assumeTrue("set DUALDEX_UNBOUND_ROM to run this real-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomSourceLoader.load(path).rom
-        assertEquals("7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7", rom.sha256)
+        val firstRom = RomSourceLoader.load(path).rom
+        val secondRom = RomSourceLoader.load(path).rom
+        assertEquals("7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7", firstRom.sha256)
+        assertEquals(firstRom.sha256, secondRom.sha256)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
-        val source = CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "POKEMON FIRE")
+        val source = CatalogSourceMetadata.direct(path.fileName.toString(), secondRom.size, "POKEMON FIRE")
 
-        val catalog = requireNotNull(
-            CatalogParser.parse(rom) { progress ->
+        val first = requireNotNull(CatalogParser.parse(firstRom).catalog)
+        val second = requireNotNull(
+            CatalogParser.parse(secondRom) { progress ->
                 cache.write(progress.catalog, source, catalogWriteProgress(progress))
             }.catalog,
         )
-        val stored = requireNotNull(cache.readComplete(catalog.romSha256))
+        val stored = requireNotNull(cache.readComplete(second.romSha256))
+        val reopened = stored.catalog
+        val firstDescriptions = first.movesById.values
+            .filter { it.id > 0 }
+            .associate { it.id to it.effectText }
+        val secondDescriptions = second.movesById.values
+            .filter { it.id > 0 }
+            .associate { it.id to it.effectText }
 
-        assertEquals(catalog.romSha256, stored.catalog.romSha256)
+        assertEquals(922, firstDescriptions.size)
+        assertEquals(firstDescriptions, secondDescriptions)
+        assertEquals(secondDescriptions, reopened.movesById.values.filter { it.id > 0 }.associate { it.id to it.effectText })
+        assertEquals("-", reopened.movesById.getValue(769).effectText.value)
+        assertEquals(
+            "Normal-Type Dynamax move. It lowers the target's Speed stat.",
+            reopened.movesById.getValue(821).effectText.value,
+        )
+        assertCatalogReferencesClose(reopened)
+        assertEquals(second.romSha256, reopened.romSha256)
         assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-        assertTrue(cache.fileFor(catalog.romSha256).length() > 0)
+        assertEquals(15, stored.committedSections.size)
+        assertDatabaseIntegrity(cache.fileFor(second.romSha256))
+    }
+
+    @Test
+    fun `Odyssey completed Pokedex descriptions and battle-only species survive cache round trip`() {
+        val configured = System.getenv("DUALDEX_ODYSSEY_ROM")
+        assumeTrue("set DUALDEX_ODYSSEY_ROM to run this real-ROM control", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+        val firstRom = RomSourceLoader.load(path).rom
+        val secondRom = RomSourceLoader.load(path).rom
+        assertEquals("44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0", firstRom.sha256)
+        assertEquals(firstRom.sha256, secondRom.sha256)
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val source = CatalogSourceMetadata.direct(path.fileName.toString(), secondRom.size, "POKEMON FIRE")
+
+        val first = requireNotNull(CatalogParser.parse(firstRom).catalog)
+        val second = requireNotNull(
+            CatalogParser.parse(secondRom) { progress ->
+                cache.write(progress.catalog, source, catalogWriteProgress(progress))
+            }.catalog,
+        )
+        val stored = requireNotNull(cache.readComplete(second.romSha256))
+        val reopened = stored.catalog
+        val firstDescriptions = first.navigableSpecies().associate { it.id to it.description }
+        val secondDescriptions = second.navigableSpecies().associate { it.id to it.description }
+
+        assertEquals(409, firstDescriptions.size)
+        assertEquals(firstDescriptions, secondDescriptions)
+        assertEquals(secondDescriptions, reopened.navigableSpecies().associate { it.id to it.description })
+        listOf(275, 276).forEach { speciesId ->
+            val species = reopened.speciesById.getValue(speciesId)
+            assertEquals(CapabilityStatus.NOT_APPLICABLE, species.dexNumber.status)
+            assertEquals(CapabilityStatus.NOT_APPLICABLE, species.description.status)
+            assertEquals(CapabilityStatus.AVAILABLE, species.name.status)
+            assertEquals(CapabilityStatus.AVAILABLE, species.baseStats.status)
+            assertEquals(CapabilityStatus.AVAILABLE, species.sprite.status)
+        }
+        assertCatalogReferencesClose(reopened)
+        assertEquals(CatalogSchema.requiredSections, stored.committedSections)
+        assertEquals(15, stored.committedSections.size)
+        assertDatabaseIntegrity(cache.fileFor(second.romSha256))
     }
 
     @Test
@@ -208,7 +274,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(20, CatalogSchema.parserSchemaVersion)
+        assertEquals(21, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -467,7 +533,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(20, CatalogSchema.parserSchemaVersion)
+        assertEquals(21, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -490,6 +556,25 @@ class CatalogStoreTest {
         )
         assertEquals("Route 101", reopened?.catalog?.runtimeMetadata?.areaNamesByBaseId?.get(0x0010))
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
+        assertEquals(catalog.theme, reopened?.catalog?.theme)
+    }
+
+    @Test
+    fun `revision 19 caches without the required theme section are invalidated`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("2".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Legacy.gba", 16_777_216, "POKEMON EMER"),
+            CatalogWriteProgress.complete(),
+        )
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("DELETE FROM catalog_sections WHERE name = 'theme'")
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 19 WHERE id = 1")
+        }
+
+        assertNull(cache.readComplete(catalog.romSha256))
     }
 
     @Test
@@ -583,6 +668,39 @@ class CatalogStoreTest {
         }
         roots.add(root)
         return root
+    }
+
+    private fun assertDatabaseIntegrity(file: java.io.File) {
+        assertTrue(file.length() > 0)
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            assertEquals(listOf("ok"), database.query("PRAGMA quick_check") { row -> row.string("quick_check") })
+            assertTrue(database.query("PRAGMA foreign_key_check") { row -> row.string("table") }.isEmpty())
+            assertEquals(
+                listOf(14L),
+                database.query("SELECT COUNT(*) AS count FROM catalog_sections") { row -> row.long("count") },
+            )
+        }
+    }
+
+    private fun assertCatalogReferencesClose(catalog: ParsedCatalog) {
+        catalog.navigableSpecies().forEach { species ->
+            species.typeIds.value.orEmpty().forEach { assertTrue("missing type $it", it in catalog.typesById) }
+            species.abilityIds.value.orEmpty().filter { it > 0 }.forEach {
+                assertTrue("missing ability $it", it in catalog.abilitiesById)
+            }
+            species.evolutionEdges.value.orEmpty().forEach {
+                assertTrue("missing evolution target ${it.targetSpeciesId}", it.targetSpeciesId in catalog.speciesById)
+            }
+            species.learnset.value.orEmpty().forEach {
+                assertTrue("missing learned move ${it.moveId}", it.moveId in catalog.movesById)
+            }
+            species.moveAcquisitions.value.orEmpty().filter { it.moveId > 0 }.forEach {
+                assertTrue("missing acquired move ${it.moveId}", it.moveId in catalog.movesById)
+            }
+        }
+        catalog.encounterAreas.flatMap { it.slots }.forEach {
+            assertTrue("missing encounter species ${it.speciesId}", it.speciesId in catalog.speciesById)
+        }
     }
 
     private fun completeCatalog(hash: String): ParsedCatalog {
@@ -689,6 +807,25 @@ class CatalogStoreTest {
                     put("trainer/avatar/female", avatar)
                     badgeKeys.forEach { put(it, badge) }
                 },
+            ),
+            theme = CatalogTheme(
+                method = CatalogThemeMethod.MULTI_ASSET_QUANTIZATION,
+                assetClasses = setOf(CatalogThemeAssetClass.TRAINER, CatalogThemeAssetClass.SPECIES),
+                contrastCorrected = true,
+                tokens = CatalogThemeTokens(
+                    field = 0x244936,
+                    fieldPattern = 0x315943,
+                    header = 0x183A5C,
+                    headerShadow = 0x0B1B2B,
+                    menu = 0xE4D6A8,
+                    menuShadow = 0x75694B,
+                    panel = 0xFFF7DB,
+                    border = 0x4D4032,
+                    text = 0x1C201D,
+                    textShadow = 0xFFFFFF,
+                    accent = 0x9D302A,
+                    accentText = 0xFFFFFF,
+                ),
             ),
             runtimeMetadata = CatalogRuntimeMetadata(
                 gen3SaveBlock1PointerAddress = 0x030036F0L,

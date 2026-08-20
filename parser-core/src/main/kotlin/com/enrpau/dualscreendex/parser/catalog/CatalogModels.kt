@@ -199,6 +199,8 @@ enum class CatalogGen3TextEncoding { ENGLISH }
 
 enum class CatalogGen3BagPocket { ITEMS, KEY_ITEMS, BALLS, TM_HM, BERRIES }
 
+enum class CatalogGen3BagDataSource { SAVE_BLOCK1, EXTENDED_SAVE }
+
 data class CatalogGen3BitFlag(
     val byteOffset: Int,
     val mask: Int,
@@ -233,6 +235,7 @@ data class CatalogGen3BagPocketAbi(
     val byteOffset: Int,
     val capacity: Int,
     val slotSize: Int = 4,
+    val dataSource: CatalogGen3BagDataSource = CatalogGen3BagDataSource.SAVE_BLOCK1,
 ) {
     init {
         require(byteOffset >= 0)
@@ -251,12 +254,13 @@ data class CatalogGen3BagAbi(val pockets: List<CatalogGen3BagPocketAbi>) {
 data class CatalogGen3SaveRuntimeAbi(
     val saveBlock1Size: Int,
     val saveBlock2Size: Int,
+    val extendedSaveDataSize: Int = 0,
     val textEncoding: CatalogGen3TextEncoding,
     val trainer: CatalogGen3TrainerCardAbi,
     val bag: CatalogGen3BagAbi,
 ) {
     init {
-        require(saveBlock1Size > 0 && saveBlock2Size > 0)
+        require(saveBlock1Size > 0 && saveBlock2Size > 0 && extendedSaveDataSize >= 0)
         requireRange(trainer.playerNameOffset, trainer.playerNameLength, saveBlock2Size)
         requireRange(trainer.genderOffset, 1, saveBlock2Size)
         requireRange(trainer.trainerIdOffset, 4, saveBlock2Size)
@@ -265,7 +269,13 @@ data class CatalogGen3SaveRuntimeAbi(
         requireRange(trainer.encryptionKeyOffset, 4, saveBlock2Size)
         requireRange(trainer.moneyOffset, 4, saveBlock1Size)
         trainer.badgeFlags.forEach { requireRange(it.byteOffset, 1, saveBlock1Size) }
-        bag.pockets.forEach { requireRange(it.byteOffset, it.capacity * it.slotSize, saveBlock1Size) }
+        bag.pockets.forEach { pocket ->
+            val limit = when (pocket.dataSource) {
+                CatalogGen3BagDataSource.SAVE_BLOCK1 -> saveBlock1Size
+                CatalogGen3BagDataSource.EXTENDED_SAVE -> extendedSaveDataSize
+            }
+            requireRange(pocket.byteOffset, pocket.capacity * pocket.slotSize, limit)
+        }
     }
 
     private fun requireRange(offset: Int, length: Int, limit: Int) {
@@ -331,6 +341,7 @@ data class CatalogGen3RuntimeMemoryLayout(
     val nonWildBattleMask: Int? = null,
     val saveBlock1PointerAddress: Long? = null,
     val saveBlock2PointerAddress: Long? = null,
+    val extendedSaveAddress: Long? = null,
     val saveRuntimeAbi: CatalogGen3SaveRuntimeAbi? = null,
     val partyAbi: CatalogGen3PartyAbi? = null,
     val battleUiAbi: CatalogGen3BattleUiAbi? = null,
@@ -365,6 +376,13 @@ data class CatalogGen3RuntimeMemoryLayout(
         ) { "save-block pointer and ABI descriptor must be complete" }
         require(saveBlock1PointerAddress == null || saveBlock1PointerAddress in 0x02000000L..0x03007FFCL)
         require(saveBlock2PointerAddress == null || saveBlock2PointerAddress in 0x02000000L..0x03007FFCL)
+        require(extendedSaveAddress == null || extendedSaveAddress in 0x02000000L..0x0203FFFFL)
+        require(
+            saveRuntimeAbi?.extendedSaveDataSize?.let { size ->
+                (size == 0 && extendedSaveAddress == null) ||
+                    (size > 0 && extendedSaveAddress != null && extendedSaveAddress + size <= 0x02040000L)
+            } ?: (extendedSaveAddress == null),
+        ) { "extended-save runtime address and ABI size must be present together" }
         require(
             partyAbi == null ||
                 (playerPartyCountAddress == null && playerPartyAddress == null) ||
@@ -750,6 +768,7 @@ data class ParsedCatalog(
     val worldMaps: WorldMapCatalog = WorldMapCatalog(),
     val trainerAssets: TrainerAssetCatalog = TrainerAssetCatalog(),
     val localMaps: LocalMapCatalog = LocalMapCatalog(),
+    val theme: CatalogTheme = CatalogTheme.neutral(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),
 ) {

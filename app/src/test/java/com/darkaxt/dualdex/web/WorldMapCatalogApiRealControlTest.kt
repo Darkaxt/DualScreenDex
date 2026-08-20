@@ -28,6 +28,43 @@ import org.junit.Test
 
 class WorldMapCatalogApiRealControlTest {
     @Test
+    fun exactReferenceThemesSurviveCatalogStoreAndApiProjection() {
+        themeControls.forEach { control ->
+            val configured = System.getenv(control.environmentVariable)
+            assumeTrue("set ${control.environmentVariable} to run this exact theme control", !configured.isNullOrBlank())
+            val path = Path.of(requireNotNull(configured))
+            assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+            val rom = RomImage(Files.readAllBytes(path))
+            assertEquals(control.romSha256, rom.sha256)
+            val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
+            val root = newRoot()
+            try {
+                val cache = CatalogCache(root.toFile(), JdbcTestCatalogDatabaseFactory)
+                cache.write(
+                    catalog,
+                    CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "THEME-CONTROL"),
+                    CatalogWriteProgress.complete(),
+                )
+                val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
+                assertEquals(catalog.theme, reopened.theme)
+
+                val runtime = ProductionCompanionRuntime().apply { loadCatalog(path.fileName.toString(), reopened) }
+                val apiTheme = requireNotNull(runtime.bootstrap().catalog).theme
+                assertEquals(reopened.theme.method.name, apiTheme.method)
+                assertEquals(reopened.theme.assetClasses.sortedBy { it.ordinal }.map { it.name }, apiTheme.assetClasses)
+                assertEquals(reopened.theme.contrastCorrected, apiTheme.contrastCorrected)
+                assertEquals("#%06x".format(reopened.theme.tokens.field), apiTheme.tokens.field)
+                assertEquals("#%06x".format(reopened.theme.tokens.header), apiTheme.tokens.header)
+                assertEquals("#%06x".format(reopened.theme.tokens.panel), apiTheme.tokens.panel)
+                assertEquals("#%06x".format(reopened.theme.tokens.accent), apiTheme.tokens.accent)
+                assertDatabaseIntegrity(cache.fileFor(rom.sha256))
+            } finally {
+                deleteTree(root)
+            }
+        }
+    }
+
+    @Test
     fun redSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[0])
 
     @Test
@@ -77,6 +114,7 @@ class WorldMapCatalogApiRealControlTest {
                 CatalogSourceMetadata.direct(romPath.fileName.toString(), rom.size, "REAL-CONTROL"),
                 CatalogWriteProgress.complete(),
             )
+            assertDatabaseIntegrity(cache.fileFor(rom.sha256))
             val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
             assertEquals(
                 catalog.abilitiesById.mapValues { it.value.mechanics },
@@ -218,7 +256,7 @@ class WorldMapCatalogApiRealControlTest {
     fun leafGreenFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[10])
 
     @Test
-    fun darkCryLocationBindingFailurePersistsAndExposesNoMapAssets() = assertNoMapRoundTrip(controls[11])
+    fun darkCryDungeonBindingSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[11])
 
     @Test
     fun darkVioletFourRegionsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[12])
@@ -234,6 +272,12 @@ class WorldMapCatalogApiRealControlTest {
 
     @Test
     fun beyondRedSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[16])
+
+    @Test
+    fun unboundMapsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[17])
+
+    @Test
+    fun odysseyMapsSurviveCatalogStoreAndServeExactPngBytes() = assertRoundTrip(controls[18])
 
     private fun assertRoundTrip(control: Control) {
         val configured = System.getenv(control.environmentVariable)
@@ -259,8 +303,10 @@ class WorldMapCatalogApiRealControlTest {
                 CatalogSourceMetadata.direct(romPath.fileName.toString(), rom.size, "REAL-CONTROL"),
                 CatalogWriteProgress.complete(),
             )
+            assertDatabaseIntegrity(cache.fileFor(rom.sha256))
             val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
             assertEquals(catalog.worldMaps, reopened.worldMaps)
+            assertEquals(catalog.abilitiesById, reopened.abilitiesById)
             val parsedEvolutionEdges = catalog.navigableSpecies().associate { species ->
                 species.id to species.evolutionEdges.value.orEmpty()
             }
@@ -270,9 +316,22 @@ class WorldMapCatalogApiRealControlTest {
             assertEquals(parsedEvolutionEdges, reopenedEvolutionEdges)
 
             val runtime = ProductionCompanionRuntime().apply { loadCatalog(romPath.fileName.toString(), reopened) }
+            val apiCatalog = requireNotNull(runtime.bootstrap().catalog)
+            val referencedAbilities = apiCatalog.species.flatMap { it.abilities }.associateBy { it.id }
+            val expectedReferencedAbilityIds = reopened.navigableSpecies()
+                .flatMap { it.abilityIds.value.orEmpty() }
+                .filter(reopened.abilitiesById::containsKey)
+                .toSet()
+            assertEquals(expectedReferencedAbilityIds, referencedAbilities.keys)
+            if (reopened.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status == CapabilityStatus.AVAILABLE) {
+                assertTrue(
+                    "${control.environmentVariable} omitted persisted ability mechanics from the API",
+                    referencedAbilities.values.all { it.mechanics.isNotEmpty() },
+                )
+            }
             assertEquals(
                 reopenedEvolutionEdges.values.sumOf(List<*>::size),
-                requireNotNull(runtime.bootstrap().catalog).species.sumOf { it.evolutions.size },
+                apiCatalog.species.sumOf { it.evolutions.size },
             )
             server = AndroidLoopbackServer(runtime) { null }.also { it.start() }
             val base = "http://127.0.0.1:${server.address.port}"
@@ -286,8 +345,13 @@ class WorldMapCatalogApiRealControlTest {
                 sha256(bytes)
             }
             assertEquals(control.pngHashes, actualPngHashes)
-            control.localBaseAreaId?.let { baseAreaId ->
-                val localMap = reopened.localMaps.maps.single { it.baseAreaId == baseAreaId }
+            val localMapsToServe = buildList {
+                control.localBaseAreaId?.let { baseAreaId ->
+                    add(reopened.localMaps.maps.single { it.baseAreaId == baseAreaId })
+                }
+                reopened.localMaps.maps.firstOrNull()?.let(::add)
+            }.distinctBy { it.imageAssetKey }
+            localMapsToServe.forEach { localMap ->
                 val key = URLEncoder.encode(localMap.imageAssetKey, StandardCharsets.UTF_8)
                 val response = URI("$base/api/maps/$key.png").toURL().openConnection() as HttpURLConnection
                 assertEquals(localMap.imageAssetKey, 200, response.responseCode)
@@ -304,47 +368,15 @@ class WorldMapCatalogApiRealControlTest {
         }
     }
 
-    private fun assertNoMapRoundTrip(control: Control) {
-        val configured = System.getenv(control.environmentVariable)
-        assumeTrue("set ${control.environmentVariable} to run this real-ROM control", !configured.isNullOrBlank())
-        val romPath = Path.of(requireNotNull(configured))
-        assumeTrue("real ROM does not exist: $romPath", Files.isRegularFile(romPath))
-        val rom = RomImage(Files.readAllBytes(romPath))
-        assertEquals(control.romSha256, rom.sha256)
-        assertTrue(control.regionKeys.isEmpty())
-        assertTrue(control.pngHashes.isEmpty())
-
-        val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
-        val capability = catalog.capabilities.getValue(RomCapability.WORLD_MAP)
-        assertEquals(CapabilityStatus.NOT_FOUND, capability.status)
-        assertTrue(capability.reasons.contains("world-map stage: encounter-binding"))
-        assertTrue(capability.reasons.contains("text-map region 3 retained no encounter binding"))
-        assertTrue(catalog.worldMaps.regions.isEmpty())
-        assertTrue(catalog.worldMaps.assets.isEmpty())
-
-        val root = newRoot()
-        var server: AndroidLoopbackServer? = null
-        try {
-            val cache = CatalogCache(root.toFile(), JdbcTestCatalogDatabaseFactory)
-            cache.write(
-                catalog,
-                CatalogSourceMetadata.direct(romPath.fileName.toString(), rom.size, "REAL-CONTROL"),
-                CatalogWriteProgress.complete(),
+    private fun assertDatabaseIntegrity(file: File) {
+        JdbcTestCatalogDatabaseFactory.open(file).use { database ->
+            assertEquals(
+                listOf("ok"),
+                database.query("PRAGMA quick_check") { row -> row.string("quick_check") },
             )
-            val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
-            assertEquals(capability, reopened.capabilities.getValue(RomCapability.WORLD_MAP))
-            assertTrue(reopened.worldMaps.regions.isEmpty())
-            assertTrue(reopened.worldMaps.assets.isEmpty())
-
-            val runtime = ProductionCompanionRuntime().apply { loadCatalog(romPath.fileName.toString(), reopened) }
-            server = AndroidLoopbackServer(runtime) { null }.also { it.start() }
-            val key = URLEncoder.encode("world/gen3-region-0", StandardCharsets.UTF_8)
-            val response = URI("http://127.0.0.1:${server.address.port}/api/maps/$key.png")
-                .toURL().openConnection() as HttpURLConnection
-            assertEquals(404, response.responseCode)
-        } finally {
-            server?.close()
-            deleteTree(root)
+            assertTrue(
+                database.query("PRAGMA foreign_key_check") { row -> row.string("table") }.isEmpty(),
+            )
         }
     }
 
@@ -375,7 +407,16 @@ class WorldMapCatalogApiRealControlTest {
         val localBaseAreaId: Int? = null,
     )
 
+    private data class ThemeControl(val environmentVariable: String, val romSha256: String)
+
     private companion object {
+        val themeControls = listOf(
+            ThemeControl("DUALDEX_POKERED_ROM", "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b"),
+            ThemeControl("DUALDEX_POKECRYSTAL_ROM", "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2"),
+            ThemeControl("DUALDEX_OFFICIAL_EMERALD_ROM", "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af"),
+            ThemeControl("DUALDEX_UNBOUND_ROM", "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7"),
+            ThemeControl("DUALDEX_ODYSSEY_ROM", "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0"),
+        )
         val GEN2_PNGS = listOf(
             "23739bddf01b2c98a03ca1c4af28ade7d751623ec8063311dd2b8b366c81c516",
             "c06748683d60a89e4d2984bbcb565dc854ddd7942295d5039b80bcabe223258d",
@@ -461,8 +502,13 @@ class WorldMapCatalogApiRealControlTest {
             Control(
                 "DUALDEX_DARK_CRY_ROM",
                 "e61d4f66e2d4d39798bcd18f5abfb3db75282508fffd12401b9a1e9d0c1b08ed",
-                emptyList(),
-                emptyList(),
+                (0..3).map { "gen3-region-$it" },
+                listOf(
+                    "9bc538416978211d88e36bd8440a423957517718c51c838895e0f67432ef35c0",
+                    "4556ba8ff635a8a1f234c4825ed7825bfc3a50515e306bb3af1ddaf908b8b13e",
+                    "6f1acba35c5bed020c07f060506bb9761bb2f8cc137fd670cf51eb3c03a580d9",
+                    "cfec5c171fa388debf9fe8745be2b812589fda2cfe12ca487d7bebd5cf8e64f5",
+                ),
             ),
             Control(
                 "DUALDEX_DARK_VIOLET_ROM",
@@ -503,6 +549,23 @@ class WorldMapCatalogApiRealControlTest {
                 "3640ed0493287136cd9321cb3428f44113e87354cf90402665ba60e41c8fc61a",
                 listOf("gen1-kanto"),
                 listOf("8a958b8ada1dd6f1b25be40fe207f86dff88b016d443f70a20052cd6e6aa1275"),
+            ),
+            Control(
+                "DUALDEX_UNBOUND_ROM",
+                "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7",
+                listOf("gen3-region-0"),
+                listOf("47e97e55526df3a85db6776d3554d84169f21d1618468fac2592238ef2e5cc7d"),
+            ),
+            Control(
+                "DUALDEX_ODYSSEY_ROM",
+                "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
+                (0..3).map { "gen3-region-$it" },
+                listOf(
+                    "70b94d44f4ee45651b3147395b7f40a65092e8774c84fd3b94c23647f1ae417a",
+                    "7532f93f3c1070c8fbd341315981753cb3df60dce8d8e048f49ee6b9d76bcc33",
+                    "790abca2ec290c272f3a99f678158ef14c7fa615316f823574b4b107e9a0ffa7",
+                    "5ecec734a5eb76c0d59997fd95151083033cc910f03814135a4f0968805d18c5",
+                ),
             ),
         )
     }

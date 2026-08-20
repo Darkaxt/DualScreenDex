@@ -241,7 +241,7 @@ internal object SpeciesSemanticDomainResolver {
             resolveCompiledSpeciesToDexMap(
                 rom = rom,
                 rawSpeciesCount = rawCount,
-                dexNumbers = species.associate { it.id to (it.dexNumber.value ?: 0) },
+                dexNumbers = materialization.indexResolution.values,
                 references = compiledReferences,
                 descriptionCount = layout.tables.descriptions?.count,
             )

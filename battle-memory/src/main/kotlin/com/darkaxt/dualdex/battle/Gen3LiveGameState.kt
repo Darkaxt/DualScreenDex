@@ -67,6 +67,7 @@ object Gen3LiveGameState {
     const val PARTY_ID = "live-party"
     const val SAVE_BLOCK1_POINTER_ID = "live-save-block-1-pointer"
     const val SAVE_BLOCK2_POINTER_ID = "live-save-block-2-pointer"
+    const val EXTENDED_SAVE_ID = "live-extended-save"
     const val CLOCK_ID = "live-game-clock"
 
     fun pointerWindows(layout: Gen3RuntimeMemoryLayout): List<Gen3LiveReadWindow> {
@@ -95,6 +96,9 @@ object Gen3LiveGameState {
         }
         pointers.saveBlock2Address?.let { address ->
             add(Gen3LiveReadWindow(SAVE_BLOCK2_ID, address, requireNotNull(layout.saveBlock2Size)))
+        }
+        layout.extendedSaveAddress?.let { address ->
+            add(Gen3LiveReadWindow(EXTENDED_SAVE_ID, address, requireNotNull(layout.extendedSaveSize)))
         }
         addAll(independentWindows(layout))
     }
@@ -139,6 +143,7 @@ object Gen3LiveGameState {
                 saveAbi,
                 savedTrainer.dexSeen,
                 savedTrainer.dexCaught,
+                regions[EXTENDED_SAVE_ID],
             )
         } else {
             null

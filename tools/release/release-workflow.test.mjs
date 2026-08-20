@@ -106,6 +106,11 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
     "dualdex-evolution-first50-release-gate.md",
     "dualdex-arm7-first50-compatibility.md",
     "dualdex-v1.1-player-state-verification.md",
+    "dualdex-unbound-odyssey-static-completion.md",
+    "dualdex-unbound-odyssey-map-completion.md",
+    "dualdex-unbound-odyssey-save-runtime-completion.md",
+    "dualdex-unbound-odyssey-parser-completion.md",
+    "dualdex-rom-derived-companion-theme.md",
   ];
 
   for (const asset of requiredEvidence) {
@@ -147,6 +152,13 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Stage8NormalizedPartyArtwork == true/);
   assert.match(workflow, /\.v11Stage8PrivacySafePartyFallbacks == true/);
   assert.match(workflow, /\.v11Stage8PartyBrowserGate == true/);
+  assert.match(workflow, /\.v11Rc18UnboundOdysseyParserComplete == true/);
+  assert.match(workflow, /\.v11Rc18UnboundOdysseyMapComplete == true/);
+  assert.match(workflow, /\.v11Rc18OdysseySaveRuntimeComplete == true/);
+  assert.match(workflow, /\.v11Rc18UnboundExpandedSaveAbi == true/);
+  assert.match(workflow, /\.v11Rc18RomDerivedTheme == true/);
+  assert.match(workflow, /\.v11Rc18ThemePersistenceAndApi == true/);
+  assert.match(workflow, /\.v11Rc18ThemeBrowserGate == true/);
   assert.match(workflow, /\.v11Rc4HotfixBoundedRomIndex == true/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });

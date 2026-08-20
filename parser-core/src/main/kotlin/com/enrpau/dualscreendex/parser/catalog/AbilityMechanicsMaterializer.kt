@@ -2,6 +2,9 @@ package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.AttackMechanic
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.MechanicPredicate
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.dataset.abilities.CompiledAbilityRatingResolver
+import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedCompiledAbilityRatings
 import com.enrpau.dualscreendex.parser.dataset.abilities.SourceBackedAbilityMechanic
 import com.enrpau.dualscreendex.parser.dataset.abilities.SourceBackedAbilityMechanicKind
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -42,6 +45,40 @@ object AbilityMechanicsMaterializer {
         rom: RomImage,
         layout: ResolvedRomLayout,
         abilities: Map<Int, AbilityRecord>,
+        abilityDescriptions: AbilityDescriptionResult? = null,
+    ): AbilityMechanicsResult? = materialize(
+        rom = rom,
+        layout = layout,
+        abilities = abilities,
+        abilityDescriptions = abilityDescriptions,
+        compiledRatings = null,
+    )
+
+    fun materialize(
+        session: RomAnalysisSession,
+        layout: ResolvedRomLayout,
+        abilities: Map<Int, AbilityRecord>,
+        abilityDescriptions: AbilityDescriptionResult? = null,
+    ): AbilityMechanicsResult? = materialize(
+        rom = session.rom,
+        layout = layout,
+        abilities = abilities,
+        abilityDescriptions = abilityDescriptions,
+        compiledRatings = if (
+            layout.pokeemeraldExpansion == null && layout.resolvedDatasets.abilityMechanics == null
+        ) {
+            CompiledAbilityRatingResolver.resolve(session, abilities.keys)
+        } else {
+            null
+        },
+    )
+
+    private fun materialize(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        abilities: Map<Int, AbilityRecord>,
+        abilityDescriptions: AbilityDescriptionResult?,
+        compiledRatings: ResolvedCompiledAbilityRatings?,
     ): AbilityMechanicsResult? {
         if (layout.generation != 3) return null
         layout.pokeemeraldExpansion?.let { expansion ->
@@ -66,20 +103,63 @@ object AbilityMechanicsMaterializer {
                 mechanicsByAbility = mechanics,
             )
         }
-        val resolved = layout.resolvedDatasets.abilityMechanics ?: return null
-        val mechanics = (resolved.mechanics.mapNotNull { mechanic ->
-            mechanic.takeIf { it.abilityId in abilities }?.toCatalogMechanic()
-        } + resolved.sourceBackedMechanics.mapNotNull { mechanic ->
-            mechanic.takeIf { it.abilityId in abilities }?.toCatalogMechanic()
-        })
+
+        compiledRatings?.let { ratings ->
+            return AbilityMechanicsResult(
+                sourceOffset = ratings.sourceOffset,
+                confidence = 1.0,
+                mechanicsByAbility = ratings.ratingsByAbility.mapValues { (_, rating) ->
+                    listOf(AbilityMechanic(AbilityMechanicKind.AI_RATING, "AI rating", rating.toString(), rating, 1))
+                },
+            )
+        }
+
+        val resolved = layout.resolvedDatasets.abilityMechanics
+        val binaryMechanics = resolved?.let { evidence ->
+            evidence.mechanics.mapNotNull { mechanic ->
+                mechanic.takeIf { it.abilityId in abilities }?.toCatalogMechanic()
+            } + evidence.sourceBackedMechanics.mapNotNull { mechanic ->
+                mechanic.takeIf { it.abilityId in abilities }?.toCatalogMechanic()
+            }
+        }.orEmpty()
+        val documentedMechanics = if (binaryMechanics.mapTo(mutableSetOf()) { it.first }.containsAll(abilities.keys)) {
+            emptyList()
+        } else {
+            documentedAbilityProfile(abilities, abilityDescriptions)
+        }
+        val mechanics = (binaryMechanics + documentedMechanics)
             .groupBy { it.first }
             .mapValues { (_, entries) -> entries.map { it.second }.distinct() }
         if (mechanics.isEmpty()) return null
         return AbilityMechanicsResult(
-            sourceOffset = resolved.routineEntry,
+            sourceOffset = resolved?.routineEntry ?: requireNotNull(abilityDescriptions).sourceOffset,
             confidence = 1.0,
             mechanicsByAbility = mechanics,
         )
+    }
+
+    private fun documentedAbilityProfile(
+        abilities: Map<Int, AbilityRecord>,
+        descriptions: AbilityDescriptionResult?,
+    ): List<Pair<Int, AbilityMechanic>> {
+        if (abilities.isEmpty() || descriptions == null) return emptyList()
+        if (abilities.keys.any { it !in descriptions.descriptions }) return emptyList()
+        return abilities.keys.sorted().map { id ->
+            val decoded = descriptions.descriptions.getValue(id)
+            val behavior = if (decoded.equals("No description", ignoreCase = true)) {
+                val normalizedName = abilities.getValue(id).name.value.orEmpty().uppercase(Locale.ROOT)
+                STANDARD_BEHAVIOR_FALLBACKS[normalizedName] ?: return emptyList()
+            } else {
+                decoded.takeIf(String::isNotBlank) ?: return emptyList()
+            }
+            id to AbilityMechanic(
+                kind = AbilityMechanicKind.BEHAVIOR,
+                label = "Effect",
+                value = behavior,
+                numerator = 1,
+                denominator = 1,
+            )
+        }
     }
 
     private fun AttackMechanic.toCatalogMechanic(): Pair<Int, AbilityMechanic>? {
@@ -161,5 +241,16 @@ object AbilityMechanicsMaterializer {
         "Cannot be overwritten",
         "Breakable",
         "Fails on Imposter",
+    )
+
+    private val STANDARD_BEHAVIOR_FALLBACKS = mapOf(
+        "IRON FIST" to "Boosts punching moves.",
+        "RECKLESS" to "Boosts recoil moves.",
+        "SHEER FORCE" to "Boosts moves with added effects but removes those effects.",
+        "DEFEATIST" to "Halves Attack and Sp. Atk below half HP.",
+        "SAND FORCE" to "Boosts Rock, Ground, and Steel moves in a sandstorm.",
+        "STRONG JAW" to "Boosts biting moves.",
+        "MEGA LAUNCHR" to "Boosts pulse and aura moves.",
+        "TOUGH CLAWS" to "Boosts contact moves.",
     )
 }

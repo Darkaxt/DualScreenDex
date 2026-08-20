@@ -43,6 +43,8 @@ data class Gen3RuntimeMemoryLayout(
     val saveBlock2PointerAddress: Long? = null,
     val saveBlock1Size: Int? = null,
     val saveBlock2Size: Int? = null,
+    val extendedSaveAddress: Long? = null,
+    val extendedSaveSize: Int? = null,
 ) {
     init {
         require(mainAddress in IWRAM_START..IWRAM_END)
@@ -86,6 +88,14 @@ data class Gen3RuntimeMemoryLayout(
         require(saveBlock2PointerAddress == null || saveBlock2PointerAddress in IWRAM_START..IWRAM_END - 3)
         require(saveBlock1Size == null || saveBlock1Size > 0)
         require(saveBlock2Size == null || saveBlock2Size > 0)
+        require((extendedSaveAddress == null) == (extendedSaveSize == null)) {
+            "extended-save read-plan address and size must be present together"
+        }
+        require(extendedSaveAddress == null || extendedSaveAddress in EWRAM_START..EWRAM_END)
+        require(
+            extendedSaveAddress == null ||
+                extendedSaveSize!! > 0 && extendedSaveAddress + extendedSaveSize <= EWRAM_END + 1,
+        ) { "extended-save read-plan window must fit in EWRAM" }
     }
 
     companion object {

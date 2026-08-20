@@ -74,6 +74,37 @@ class CatalogRuntimeMemoryLayoutTest {
         }
     }
 
+    @Test
+    fun `extended save descriptor requires a matching EWRAM window`() {
+        val expanded = saveAbi().copy(
+            extendedSaveDataSize = 0x2EA4,
+            bag = CatalogGen3BagAbi(
+                listOf(
+                    CatalogGen3BagPocketAbi(
+                        CatalogGen3BagPocket.ITEMS,
+                        0x09AC,
+                        450,
+                        dataSource = CatalogGen3BagDataSource.EXTENDED_SAVE,
+                    ),
+                ),
+            ),
+        )
+        val layout = CatalogGen3RuntimeMemoryLayout(
+            mainAddress = 0x030022C0,
+            inBattleAddress = 0x03002748,
+            inBattleMask = 0x02,
+            saveBlock1MapGroupOffset = 4,
+            saveBlock1MapNumberOffset = 5,
+            saveBlock1PointerAddress = 0x03005008,
+            saveBlock2PointerAddress = 0x0300500C,
+            extendedSaveAddress = 0x0203B174,
+            saveRuntimeAbi = expanded,
+        )
+
+        assertEquals(0x0203B174L, layout.extendedSaveAddress)
+        assertThrows(IllegalArgumentException::class.java) { layout.copy(extendedSaveAddress = null) }
+    }
+
     private fun saveAbi() = CatalogGen3SaveRuntimeAbi(
         saveBlock1Size = 0x3D88,
         saveBlock2Size = 0x0F2C,

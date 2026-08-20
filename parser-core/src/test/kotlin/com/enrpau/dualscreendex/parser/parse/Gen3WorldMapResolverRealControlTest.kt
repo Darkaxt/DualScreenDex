@@ -32,26 +32,7 @@ class Gen3WorldMapResolverRealControlTest {
     fun leafGreenResolvesFourExactSourceOracleRegions() = assertControl(controls[4])
 
     @Test
-    fun darkCryFailsClosedWithoutAFourthRegionLocationBinding() {
-        val control = controls[5]
-        val rom = realRom(control)
-        val analysis = ParserOrchestrator.analyze(rom)
-        assertEquals(SelectionStatus.SELECTED, analysis.status)
-        val layout = requireNotNull(analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout)
-        val encounterIdDivisor = if (layout.pokeemeraldExpansion == null) 10 else 100
-        val encounterBaseIds = EncounterMaterializer.materialize(rom, layout)
-            .mapTo(linkedSetOf()) { it.id / encounterIdDivisor }
-
-        val resolution = Gen3WorldMapResolver.resolve(
-            RomAnalysisSession(rom, RomHeaderReader.read(rom)),
-            encounterBaseIds,
-        )
-
-        assertTrue("$resolution", resolution is WorldMapResolution.Unavailable)
-        resolution as WorldMapResolution.Unavailable
-        assertEquals("encounter-binding", resolution.stage)
-        assertEquals("text-map region 3 retained no encounter binding", resolution.reason)
-    }
+    fun darkCryResolvesDungeonLayerEncounterBinding() = assertControl(controls[5])
 
     @Test
     fun darkVioletResolvesItsExactLoaderAndCompactHeaderConsumerRegions() = assertControl(controls[6])
@@ -203,6 +184,7 @@ class Gen3WorldMapResolverRealControlTest {
                     "182c44baf94103874a3aa76867b6640d74bc6b0709cdd551bcd30ba358f2e4e6",
                     "9aa8f8db6faf3d0317a5a3dececeac4fed923816f7b1ff105293111c129de19c",
                 ),
+                locationCounts = listOf(28, 3, 2, 1),
             ),
             Control(
                 "DUALDEX_DARK_VIOLET_ROM",

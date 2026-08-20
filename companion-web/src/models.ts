@@ -67,7 +67,28 @@ export interface Catalog {
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
   worldMaps?: WorldMapRegion[];
   localMaps?: LocalMapView[];
+  theme?: CatalogTheme;
   capabilities: Record<string, string>;
+}
+
+export interface CatalogTheme {
+  method: 'DIRECT_UI_PALETTE' | 'MULTI_ASSET_QUANTIZATION' | 'NEUTRAL_FALLBACK';
+  assetClasses: ('INTERFACE' | 'TRAINER' | 'WORLD_MAP' | 'LOCAL_MAP' | 'SPECIES')[];
+  contrastCorrected: boolean;
+  tokens: {
+    field: string;
+    fieldPattern: string;
+    header: string;
+    headerShadow: string;
+    menu: string;
+    menuShadow: string;
+    panel: string;
+    border: string;
+    text: string;
+    textShadow: string;
+    accent: string;
+    accentText: string;
+  };
 }
 
 export interface LocalMapView {

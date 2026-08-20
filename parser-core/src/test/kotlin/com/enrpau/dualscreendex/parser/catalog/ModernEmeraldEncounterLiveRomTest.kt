@@ -46,6 +46,8 @@ class ModernEmeraldEncounterLiveRomTest {
                 inBattleMask = 0x02,
                 saveBlock1MapGroupOffset = 4,
                 saveBlock1MapNumberOffset = 5,
+                liveClockAddress = 0x030039E8,
+                liveClockSchedule = CatalogGameClockSchedule(dayStartHour = 6, nightStartHour = 21),
                 multiUsePlayerCursorAddress = null,
                 multiUsePlayerCursorEvidence = null,
                 playerPartyCountAddress = 0x0201D9C5,
