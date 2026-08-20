@@ -14,6 +14,14 @@ describe('game clock indicator', () => {
     expect(container.querySelector('.game-time-celestial')).toBeNull();
   });
 
+  it('renders a phase-only Gen II clock without inventing numeric time', () => {
+    const { container } = render(<GameClockIndicator clock={{ hours: null, minutes: null, phase: 'MORNING' }} />);
+
+    expect(container.querySelector('time')).toBeNull();
+    expect(container.querySelector('.header-game-time')?.textContent).toBe('Morning');
+    expect(container.querySelector('.game-time-orbit')).toBeNull();
+  });
+
   it('renders only the sun at normalized day progress', () => {
     const { container } = render(<GameClockIndicator clock={{ hours: 16, minutes: 48, phase: 'DAY', phaseProgress: 0.75 }} />);
 

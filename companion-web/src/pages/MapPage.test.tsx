@@ -161,7 +161,7 @@ describe('optional local map presentation', () => {
     localMaps: [{
       key: 'local/0010', displayName: 'Route 101', baseAreaId: 0x10,
       pixelWidth: 320, pixelHeight: 320, gridWidth: 20, gridHeight: 20,
-      imageUrl: '/api/maps/local%2F0010%2Fmap.png',
+      imageUrl: '/api/maps/local%2F0010%2Fmap.png', dynamicLighting: false,
     }],
   };
 
@@ -183,6 +183,46 @@ describe('optional local map presentation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show Atlas' }));
     expect(screen.getByRole('region', { name: 'Interactive world map' }).dataset.mapMode).toBe('ATLAS');
     expect(screen.getByRole('button', { name: 'Show Local map' })).toBeTruthy();
+  });
+
+  it('changes only a dynamic Local image when game lighting changes and preserves zoom', () => {
+    const dynamicCatalog: Catalog = {
+      ...localCatalog,
+      localMaps: localCatalog.localMaps!.map(map => ({ ...map, dynamicLighting: true })),
+    };
+    const view = render(<MapPage
+      catalog={dynamicCatalog}
+      state={{ ...state, gameTime: { hours: null, minutes: null, phase: 'DAY', phaseProgress: null } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    const stage = screen.getByRole('region', { name: 'Interactive local map' });
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    const zoomedScale = stage.dataset.scale;
+    expect(view.container.querySelector('.map-plane img')?.getAttribute('src'))
+      .toBe('/api/maps/local%2F0010%2Fmap.png?lighting=DAY');
+
+    view.rerender(<MapPage
+      catalog={dynamicCatalog}
+      state={{ ...state, gameTime: { hours: null, minutes: null, phase: 'NIGHT', phaseProgress: null } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    expect(view.container.querySelector('.map-plane img')?.getAttribute('src'))
+      .toBe('/api/maps/local%2F0010%2Fmap.png?lighting=NIGHT');
+    expect(stage.dataset.scale).toBe(zoomedScale);
+    expect(view.container.querySelector('.header-game-time')?.textContent).toBe('Night');
+
+    view.rerender(<MapPage
+      catalog={dynamicCatalog}
+      state={{ ...state, gameTime: null }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    expect(view.container.querySelector('.map-plane img')?.getAttribute('src'))
+      .toBe('/api/maps/local%2F0010%2Fmap.png?lighting=DAY');
+    expect(stage.dataset.scale).toBe(zoomedScale);
   });
 
   it('falls back to Atlas and disables the switch when the current local map is unavailable', () => {

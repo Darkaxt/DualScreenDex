@@ -79,6 +79,7 @@ export interface LocalMapView {
   gridWidth: number;
   gridHeight: number;
   imageUrl: string;
+  dynamicLighting: boolean;
 }
 
 export interface WorldMapRegion {
@@ -209,10 +210,12 @@ export interface State {
   saveRam?: SaveRamState;
 }
 
+export type MapLighting = 'MORNING' | 'DAY' | 'NIGHT' | 'DARK';
+
 export interface GameTime {
-  hours: number;
-  minutes: number;
-  phase?: 'DAY' | 'NIGHT' | null;
+  hours: number | null;
+  minutes: number | null;
+  phase?: MapLighting | null;
   phaseProgress?: number | null;
 }
 

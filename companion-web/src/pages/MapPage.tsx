@@ -174,6 +174,10 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const displayName = activeMode === 'LOCAL'
     ? localMap?.displayName ?? state.currentAreaName ?? 'LOCAL MAP'
     : region?.displayName ?? 'WORLD MAP';
+  const localImageUrl = localMap?.dynamicLighting
+    ? `${localMap.imageUrl}?lighting=${state.gameTime?.phase ?? 'DAY'}`
+    : localMap?.imageUrl;
+  const activeImageUrl = activeMode === 'LOCAL' ? localImageUrl : region?.imageUrl;
 
   return <section class="screen map-screen">
     <header class="map-page-header">
@@ -204,7 +208,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       onWheel={onWheel}
     >
       <div class="map-plane map-framed-plane" style={{ width: fit.width, height: fit.height, transform }}>
-        <img src={activeMap.imageUrl} alt={`${displayName} ${activeMode === 'LOCAL' ? 'local' : 'region'} map`} draggable={false} />
+        <img src={activeImageUrl} alt={`${displayName} ${activeMode === 'LOCAL' ? 'local' : 'region'} map`} draggable={false} />
         {fogVisible && region && <canvas ref={fogRef} class="map-fog" width={region.pixelWidth} height={region.pixelHeight} aria-hidden="true" />}
         {markerLocations.map(location => {
           const position = markerPosition(location, region!);
