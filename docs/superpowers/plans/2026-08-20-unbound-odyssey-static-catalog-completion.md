@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Complete Unbound's exact 922-move description domain and Odyssey's exact 411-species Pokédex-description domain without ROM-identity selection.
+**Goal:** Complete Unbound's exact 922-move description domain and Odyssey's exact 409-entry Pokédex-description domain while preserving its two battle-only boss species, without ROM-identity selection.
 
 **Architecture:** Keep resolution inside the existing shared `RomAnalysisSession`, typed layout, and `CatalogParser` materialization paths. Real ROMs establish the failure and source repositories explain the expected semantics; production admits only candidates nominated by compiled consumers or an independently selected typed parent record, and preserves partial/fail-closed outcomes when the binary evidence is incomplete or contradictory.
 
@@ -15,11 +15,11 @@
 **Files:**
 - Create: `parser-core/src/test/kotlin/com/enrpau/dualscreendex/parser/catalog/UnboundOdysseyStaticCompletionLiveRomTest.kt`
 
-- [ ] Load `DUALDEX_UNBOUND_ROM` and assert SHA-256 `7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7`.
-- [ ] Parse Unbound through the normal `CatalogParser` path and require 922 move identities/details, then assert the intended 922/922 descriptions. Retain the observed RED showing only 868/922.
-- [ ] Load `DUALDEX_ODYSSEY_ROM` and assert SHA-256 `44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0`.
-- [ ] Parse Odyssey through the normal path and require 411 active species, then assert the intended 411/411 descriptions. Retain the observed RED showing only 409/411.
-- [ ] Record the exact missing IDs, typed layout roots/strides/pointer fields, and relevant compiled-reference targets in assertion output so diagnosis follows real evidence.
+- [x] Load `DUALDEX_UNBOUND_ROM` and assert SHA-256 `7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7`.
+- [x] Parse Unbound through the normal `CatalogParser` path and require 922 move identities/details, then assert the intended 922/922 descriptions. Retain the observed RED showing only 868/922.
+- [x] Load `DUALDEX_ODYSSEY_ROM` and assert SHA-256 `44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0`.
+- [x] Parse Odyssey through the normal path and require 411 battle species. Retain the observed RED showing 409 decoded descriptions plus 2 incorrectly classified missing Pokédex rows.
+- [x] Record the exact missing IDs, typed layout roots/strides/pointer fields, and relevant compiled-reference targets in assertion output so diagnosis follows real evidence.
 
 Run:
 
@@ -39,11 +39,11 @@ Expected RED: Unbound reports exactly 868/922 described moves and Odyssey exactl
 - Reference read-only: `D:/Temp/PokemonHacks/sources/Complete-Fire-Red-Upgrade`
 - Reference read-only: `D:/Temp/PokemonHacks/sources/Pokemon-Odyssey-Docs-App`
 
-- [ ] For each unresolved Unbound move ID, compare its selected 48-byte move record and description pointer with the DPE/CFRU semantic model; determine whether the binary expresses a shared pointer, fallback pointer, alternate text encoding, or a truly absent description.
-- [ ] Prove the selected move root/stride and the exact 1..922 ordinary domain from existing typed layout evidence; do not infer a new domain from the description table.
-- [ ] For the two unresolved Odyssey species IDs, compare the selected description rows, species-to-Dex mapping, and creator-authored workbook entries; determine whether the ROM uses shared/fallback Dex rows, sparse IDs, or alternate pointer pages.
-- [ ] Add exact assertions over the real binary relationships that distinguish the correct behavior from an ordinary null/malformed row. SHA and source paths remain test-only.
-- [ ] If either source corpus lacks a corresponding static record, stop that individual row as unresolved and update the numeric target honestly rather than manufacturing text.
+- [x] For each unresolved Unbound move ID, compare its selected 48-byte move record and description pointer with the DPE/CFRU semantic model; determine whether the binary expresses a shared pointer, fallback pointer, alternate text encoding, or a truly absent description.
+- [x] Prove the selected move root/stride and the exact 1..922 ordinary domain from existing typed layout evidence; do not infer a new domain from the description table.
+- [x] For the two unresolved Odyssey species IDs, compare the selected description rows, species-to-Dex mapping, and creator-authored workbook entries; determine whether the ROM uses shared/fallback Dex rows, sparse IDs, alternate pointer pages, or source-defined battle-only records.
+- [x] Add exact assertions over the real binary relationships that distinguish the correct behavior from an ordinary null/malformed row. SHA and source paths remain test-only.
+- [x] If either source corpus lacks a corresponding static record, stop that individual row as unresolved and update the numeric target honestly rather than manufacturing text.
 
 ### Task 3: Implement Unbound move-description completion
 
@@ -52,12 +52,12 @@ Expected RED: Unbound reports exactly 868/922 described moves and Odyssey exactl
 - Modify: `parser-core/src/test/kotlin/com/enrpau/dualscreendex/parser/catalog/MoveDescriptionMaterializerTest.kt`
 - Modify: `parser-core/src/test/kotlin/com/enrpau/dualscreendex/parser/catalog/UnboundOdysseyStaticCompletionLiveRomTest.kt`
 
-- [ ] Add the minimal source-shaped decoder behavior demonstrated by the real Unbound RED.
-- [ ] Scope recovery to the independently selected unified move table and its exact move domain; do not scan arbitrary raw text to fill IDs.
-- [ ] Preserve original move IDs and decoded text provenance. A shared/fallback pointer may populate multiple IDs only when the ROM record itself points to it.
-- [ ] Reject invalid pointers, unterminated/invalid text, contradictory candidate semantics, and out-of-domain IDs.
-- [ ] Run the exact Unbound control and require 922/922 described moves, `MOVE_DESCRIPTIONS` fully covered, zero reference errors, and identical semantic hashes across two fresh parses.
-- [ ] Run the existing move-description tests to preserve Gen I/II/III behavior.
+- [x] Add the minimal source-shaped decoder behavior demonstrated by the real Unbound RED.
+- [x] Scope recovery to the independently selected unified move table and its exact move domain; do not scan arbitrary raw text to fill IDs.
+- [x] Preserve original move IDs and decoded text provenance. A shared/fallback pointer may populate multiple IDs only when the ROM record itself points to it.
+- [x] Reject invalid pointers, unterminated/invalid text, contradictory candidate semantics, and out-of-domain IDs.
+- [x] Run the exact Unbound control and require 922/922 described moves, `MOVE_DESCRIPTIONS` fully covered, zero reference errors, and identical semantic hashes across two fresh parses.
+- [x] Run the existing move-description tests to preserve Gen I/II/III behavior.
 
 Run:
 
@@ -65,19 +65,20 @@ Run:
 .\gradlew.bat :parser-core:test --tests '*MoveDescriptionMaterializerTest' --tests '*UnboundOdysseyStaticCompletionLiveRomTest.unbound*' --rerun-tasks --no-daemon --console=plain
 ```
 
-### Task 4: Implement Odyssey Pokédex-description completion
+### Task 4: Implement Odyssey Pokédex-domain completion
 
 **Files:**
-- Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/dataset/descriptions/DescriptionResolver.kt`
-- Modify if the binary proof requires it: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/dataset/descriptions/DescriptionCodec.kt`
-- Modify: `parser-core/src/test/kotlin/com/enrpau/dualscreendex/parser/dataset/descriptions/DescriptionResolverTest.kt`
+- Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/RecordMaterializers.kt`
+- Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/CatalogParser.kt`
+- Modify: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/parse/SpeciesSemanticDomainResolver.kt`
+- Modify: `parser-core/src/test/kotlin/com/enrpau/dualscreendex/parser/catalog/RecordMaterializersTest.kt`
 - Modify: `parser-core/src/test/kotlin/com/enrpau/dualscreendex/parser/catalog/UnboundOdysseyStaticCompletionLiveRomTest.kt`
 
-- [ ] Add the minimal typed row/fallback behavior demonstrated by the two exact Odyssey rows.
-- [ ] Require the selected description table, selected species-to-Dex mapping, and active species domain to agree before recovering either row.
-- [ ] Keep malformed pointers, unmapped species, contradictory shared rows, and unproven workbook-only text unresolved.
-- [ ] Run the exact Odyssey control and require 411/411 described active species, full capability coverage, zero reference errors, and identical semantic hashes across two fresh parses.
-- [ ] Run the existing description codec/resolver/live tests to preserve partial-table semantics.
+- [x] Add the minimal typed applicability behavior demonstrated by the two exact Odyssey rows.
+- [x] Require the selected compiled-referenced description table, complete compiled species-to-Dex mapping, erased post-table record, and exact 1..409 description domain to agree before excluding any record from Pokédex applicability.
+- [x] Keep malformed pointers, unmapped species, contradictory shared rows, and unproven workbook-only text unresolved.
+- [x] Run the exact Odyssey control and require 409/409 described Pokédex species, two preserved battle-only species with Pokédex-only fields `NOT_APPLICABLE`, full capability coverage, zero reference errors, and identical semantic hashes across two fresh parses.
+- [x] Run the existing description codec/resolver/live tests to preserve partial-table semantics.
 
 Run:
 
@@ -91,11 +92,11 @@ Run:
 - Modify: `catalog-store/src/test/kotlin/com/darkaxt/dualdex/catalog/CatalogStoreTest.kt`
 - Create: `docs/reports/2026-08-20-unbound-odyssey-static-completion.md`
 
-- [ ] Persist and reopen both exact catalogs and compare move/species description ID-to-text hashes before and after SQLite.
-- [ ] Assert 14 persisted sections, `PRAGMA quick_check = ok`, zero foreign-key violations, and zero parser/catalog reference errors.
-- [ ] Run the focused parser and catalog-store tests, then the complete affected modules.
-- [ ] Report before/after numerically: Unbound 868/922 to 922/922; Odyssey 409/411 to 411/411; parser capability totals become 20/23 for each until maps and mechanics are implemented.
-- [ ] Run `git diff --check`, review for production ROM names/SHA/source symbols/absolute offsets, and commit the static completion as one stage.
+- [x] Persist and reopen both exact catalogs and compare move/species description ID-to-text semantics before and after SQLite.
+- [x] Assert 14 persisted sections, `PRAGMA quick_check = ok`, zero foreign-key violations, and zero parser/catalog reference errors.
+- [x] Run the focused parser and catalog-store tests, then the complete affected modules.
+- [x] Report before/after numerically: Unbound 868/922 to 922/922; Odyssey 409 decoded plus 2 misclassified rows to 409/409 applicable Pokédex entries plus 2/2 preserved battle-only entities; parser capability totals become 20/23 for each until maps and mechanics are implemented.
+- [x] Run `git diff --check`, review for production ROM names/SHA/source symbols/absolute offsets, and commit the static completion as one stage.
 
 Verification commands:
 

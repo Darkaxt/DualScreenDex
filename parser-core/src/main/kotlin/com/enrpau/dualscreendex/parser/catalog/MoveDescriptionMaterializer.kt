@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
@@ -12,7 +13,11 @@ data class MoveDescriptionResult(
 )
 
 object MoveDescriptionMaterializer {
-    fun materialize(rom: RomImage, layout: ResolvedRomLayout): MoveDescriptionResult? {
+    fun materialize(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        gbaReferenceIndex: GbaReferenceIndex? = null,
+    ): MoveDescriptionResult? {
         if (layout.generation == 2) return materializeGen2(rom, layout.moveCount ?: return null)
         if (layout.generation != 3) return null
         val table = layout.tables.moveData
@@ -41,9 +46,32 @@ object MoveDescriptionMaterializer {
         val moveCount = layout.moveCount ?: return null
         if (moveCount < 4) return null
         val pointerCount = moveCount - 1
+        referencedPointerTable(rom, pointerCount, gbaReferenceIndex)?.let { return it }
         return candidateOffsets(rom, pointerCount)
             .mapNotNull { offset -> decodeCandidate(rom, offset, pointerCount) }
             .maxWithOrNull(compareBy<MoveDescriptionResult> { it.confidence }.thenBy { it.descriptions.size })
+    }
+
+    private fun referencedPointerTable(
+        rom: RomImage,
+        pointerCount: Int,
+        references: GbaReferenceIndex?,
+    ): MoveDescriptionResult? {
+        if (references == null || references.overflowed) return null
+        val tableBytes = pointerCount.toLong() * 4L
+        val candidates = references.targets.asSequence()
+            .filter { (_, evidence) -> evidence.count > 0 }
+            .map { (offset, _) -> offset }
+            .filter { offset ->
+                offset % 4 == 0 && offset >= 0 && offset.toLong() + tableBytes <= rom.size.toLong()
+            }
+            .filter { offset ->
+                (0 until pointerCount).all { index -> rom.gbaPointer(offset + index * 4) != null }
+            }
+            .mapNotNull { offset -> decodeCandidate(rom, offset, pointerCount, allowExplicitPlaceholders = true) }
+            .filter { candidate -> candidate.descriptions.size == pointerCount }
+            .toList()
+        return candidates.singleOrNull()
     }
 
     private fun materializeGen2(rom: RomImage, moveCount: Int): MoveDescriptionResult? {
@@ -181,7 +209,12 @@ object MoveDescriptionMaterializer {
         return output
     }
 
-    private fun decodeCandidate(rom: RomImage, offset: Int, pointerCount: Int): MoveDescriptionResult? {
+    private fun decodeCandidate(
+        rom: RomImage,
+        offset: Int,
+        pointerCount: Int,
+        allowExplicitPlaceholders: Boolean = false,
+    ): MoveDescriptionResult? {
         val codec = PokemonTextCodec.gbaEnglish
         val descriptions = linkedMapOf<Int, String>()
         repeat(pointerCount) { index ->
@@ -189,7 +222,10 @@ object MoveDescriptionMaterializer {
             val length = minOf(192, rom.size - textOffset)
             val decoded = runCatching { codec.decodeDetailed(rom.slice(textOffset, length)) }.getOrNull() ?: return@repeat
             val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
-            if (decoded.terminated && decoded.validRatio >= 0.85 && normalized.length >= 5) {
+            if (
+                decoded.terminated && decoded.validRatio >= 0.85 &&
+                (normalized.length >= 5 || allowExplicitPlaceholders && isExplicitPlaceholder(normalized))
+            ) {
                 descriptions[index + 1] = normalized
             }
         }
@@ -209,6 +245,8 @@ object MoveDescriptionMaterializer {
         val words = value.split(Regex("\\s+")).count { it.any(Char::isLetter) }
         return value.length >= 12 && words >= 3 && value.any(Char::isLowerCase)
     }
+
+    private fun isExplicitPlaceholder(value: String): Boolean = value == "-" || value == "—"
 
     private fun decodeText(rom: RomImage, offset: Int): String? {
         val length = minOf(256, rom.size - offset)

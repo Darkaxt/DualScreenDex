@@ -10,9 +10,14 @@ import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameCodec
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableLayout
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableOutcome
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilitySemanticDomain
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionCodec
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableLayout
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableOutcome
+import com.enrpau.dualscreendex.parser.dataset.descriptions.ResolvedDescriptionLayout
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
@@ -27,6 +32,72 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RecordMaterializersTest {
+    @Test
+    fun completeCompiledPokedexDomainExcludesOnlyItsConsecutiveOverflowBlock() {
+        val speciesCount = 8
+        val namesOffset = 0x100
+        val statsOffset = 0x200
+        val descriptionsOffset = 0x400
+        val descriptionTextOffset = 0x600
+        val dexMapOffset = 0x700
+        val descriptionCount = 6
+        val bytes = ByteArray(0x900) { 0xFF.toByte() }
+        repeat(speciesCount) { id ->
+            encodeGbaName(bytes, namesOffset + id * 11, if (id == 0) "NONE" else "MON")
+            if (id > 0) {
+                val base = statsOffset + id * 28
+                repeat(6) { stat -> bytes[base + stat] = (40 + stat).toByte() }
+                bytes[base + 6] = 1
+                bytes[base + 7] = 2
+            }
+        }
+        val dexValues = listOf(1, 2, 3, 6, 7, 4, 5)
+        dexValues.forEachIndexed { index, dex -> writeU16(bytes, dexMapOffset + index * 2, dex) }
+        repeat(descriptionCount) { dex ->
+            val base = descriptionsOffset + dex * 32
+            encodeGbaName(bytes, base, if (dex == 0) "UNKNOWN" else "ENTRY")
+            writeU16(bytes, base + 12, dex + 1)
+            writeU16(bytes, base + 14, dex + 2)
+            writeGbaPointer(bytes, base + 16, descriptionTextOffset)
+        }
+        encodeGbaName(bytes, descriptionTextOffset, "DESCRIPTION")
+        val descriptionTable = DescriptionTableLayout(
+            descriptionsOffset.toLong(), descriptionCount.toLong(), 32, listOf(16),
+        )
+        val rom = RomImage(bytes)
+        val decoded = DescriptionCodec().decode(
+            RomAnalysisSession(rom, RomHeader(Platform.GBA, "POKEDEX DOMAIN TEST")),
+            descriptionTable,
+        ) as DescriptionTableOutcome.Decoded
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.FIRERED_LEAFGREEN,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = speciesCount,
+            moveCount = 1,
+            tables = ProfileTables(
+                speciesNames = TableLayout(namesOffset, speciesCount, 11),
+                baseStats = TableLayout(statsOffset, speciesCount, 28),
+                descriptions = TableLayout(descriptionsOffset, descriptionCount, 32, pointerOffsets = listOf(16)),
+            ),
+            compiledGbaReferences = GbaCompiledReferenceIndex(
+                counts = mapOf(descriptionsOffset to 2, dexMapOffset to 2),
+            ),
+            resolvedDatasets = ResolvedDatasetLayouts(
+                descriptions = ResolvedDescriptionLayout(descriptionTable, decoded.rows),
+            ),
+        )
+
+        val records = RecordMaterializers.species(rom, layout)
+
+        assertEquals(
+            (1..5).toSet(),
+            records.values.mapNotNull { it.dexNumber.value }.filter { it > 0 }.toSet(),
+        )
+        assertEquals(CapabilityStatus.NOT_APPLICABLE, records.getValue(4).dexNumber.status)
+        assertEquals(CapabilityStatus.NOT_APPLICABLE, records.getValue(5).dexNumber.status)
+    }
+
     @Test
     fun unresolvedExpandedSpeciesIndexDoesNotMaterializeAllZeroDexRecords() {
         val speciesCount = 420

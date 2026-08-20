@@ -29,6 +29,12 @@ object RecordMaterializers {
             return SpeciesMaterialization(emptyMap(), indexResolution)
         }
         val dexNumbers = indexResolution.values
+        val nonPokedexSpeciesIds = compiledNonPokedexSpeciesIds(
+            rom = rom,
+            layout = layout,
+            names = names,
+            indexResolution = indexResolution,
+        )
         val detachedGen1 = if (layout.generation == 1 && stats != null) {
             Gen1DetachedSpeciesResolver.resolve(rom, stats)
         } else {
@@ -109,7 +115,13 @@ object RecordMaterializers {
             }
             id to SpeciesRecord(
                 id = id,
-                dexNumber = CatalogField.available(dexNumber),
+                dexNumber = if (id in nonPokedexSpeciesIds) {
+                    CatalogField.notApplicable(
+                        "compiled species record is outside the ROM's complete Pokédex-entry domain",
+                    )
+                } else {
+                    CatalogField.available(dexNumber)
+                },
                 name = CatalogField.available(name),
                 typeIds = typeIds?.let(CatalogField.Companion::available)
                     ?: CatalogField.notFound("base stats were not resolved for species $id"),
@@ -121,6 +133,64 @@ object RecordMaterializers {
             )
         }
         return SpeciesMaterialization(records, indexResolution)
+    }
+
+    /**
+     * Separates battle-only species records from the ROM's Pokédex domain. This is
+     * admitted only when the compiled species-to-Dex map covers the complete 1..N description
+     * domain exactly, a consecutive overflow block continues at N alongside that ordinary mapping, and
+     * the selected compiled-referenced description table ends in an erased record rather than
+     * hidden rows.
+     */
+    private fun compiledNonPokedexSpeciesIds(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        names: TableLayout,
+        indexResolution: SpeciesIndexResolution,
+    ): Set<Int> {
+        if (layout.generation != 3 || layout.pokeemeraldExpansion != null) return emptySet()
+        if (indexResolution !is SpeciesIndexResolution.Resolved) return emptySet()
+        val references = layout.compiledGbaReferences?.takeUnless { it.overflowed }?.counts ?: return emptySet()
+        val descriptions = layout.resolvedDatasets.descriptions?.table ?: return emptySet()
+        val descriptionOffset = descriptions.offset.takeIf { it in 0..Int.MAX_VALUE.toLong() }?.toInt()
+            ?: return emptySet()
+        val descriptionCount = descriptions.count.takeIf { it in 2..Int.MAX_VALUE.toLong() }?.toInt()
+            ?: return emptySet()
+        if ((references[descriptionOffset] ?: 0) < MINIMUM_COMPILED_POKEDEX_REFERENCES) return emptySet()
+        val tableEnd = descriptionOffset.toLong() + descriptions.count * descriptions.recordSize
+        if (tableEnd < 0 || tableEnd + descriptions.recordSize > rom.size.toLong()) return emptySet()
+        if ((0 until descriptions.recordSize).any { rom.u8(tableEnd.toInt() + it) != 0xFF }) return emptySet()
+
+        val storedIds = (1 until names.count).toList()
+        val dexValues = storedIds.map { id -> indexResolution.values[id] ?: return emptySet() }
+        val encodedMap = ByteArray(dexValues.size * 2)
+        dexValues.forEachIndexed { index, dex ->
+            if (dex !in 0..0xFFFF) return emptySet()
+            encodedMap[index * 2] = dex.toByte()
+            encodedMap[index * 2 + 1] = (dex ushr 8).toByte()
+        }
+        val compiledMapRoots = references.asSequence()
+            .filter { (_, count) -> count >= MINIMUM_COMPILED_POKEDEX_REFERENCES }
+            .map { (root, _) -> root }
+            .filter { root ->
+                root >= 0 && root.toLong() + encodedMap.size <= rom.size.toLong() &&
+                    encodedMap.indices.all { index ->
+                        rom.u8(root + index) == (encodedMap[index].toInt() and 0xFF)
+                    }
+            }
+            .toList()
+        if (compiledMapRoots.size != 1) return emptySet()
+
+        val mapped = storedIds.zip(dexValues).filter { (_, dex) -> dex > 0 }
+        val ordinaryDex = mapped.mapNotNull { (_, dex) -> dex.takeIf { it < descriptionCount } }.toSet()
+        if (ordinaryDex != (1 until descriptionCount).toSet()) return emptySet()
+        val overflow = mapped.filter { (_, dex) -> dex >= descriptionCount }
+        if (overflow.isEmpty()) return emptySet()
+        val overflowIds = overflow.map(Pair<Int, Int>::first)
+        if (overflowIds.zipWithNext().any { (first, second) -> second != first + 1 }) return emptySet()
+        val overflowDex = overflow.map(Pair<Int, Int>::second)
+        if (overflowDex != (descriptionCount until descriptionCount + overflow.size).toList()) return emptySet()
+        return overflowIds.toSet()
     }
 
     fun moves(rom: RomImage, layout: ResolvedRomLayout): Map<Int, MoveRecord> {
@@ -279,6 +349,8 @@ object RecordMaterializers {
             )
         }
     }
+
+    private const val MINIMUM_COMPILED_POKEDEX_REFERENCES = 2
 
     fun abilities(
         rom: RomImage,

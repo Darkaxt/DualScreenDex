@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -10,6 +11,33 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class MoveDescriptionMaterializerTest {
+    @Test
+    fun selectsTheCompiledReferencedTableAndRetainsExplicitBlankDescriptions() {
+        val bytes = ByteArray(0x2000)
+        val adjacentDecoy = 0x0FC
+        val tableOffset = 0x100
+        putGbaPointer(bytes, adjacentDecoy, 0x700)
+        encodeGbaText(bytes, 0x700, "No move information.")
+        listOf("A small flame attack.", "-", "Raises the user's Defense.", "A strong water attack.")
+            .forEachIndexed { index, value ->
+                val textOffset = 0x800 + index * 0x80
+                putGbaPointer(bytes, tableOffset + index * 4, textOffset)
+                encodeGbaText(bytes, textOffset, value)
+            }
+        val references = GbaReferenceIndex.countsOnlyForTesting(mapOf(tableOffset to 2))
+
+        val result = MoveDescriptionMaterializer.materialize(
+            RomImage(bytes),
+            layout(moveCount = 5),
+            references,
+        )
+
+        assertEquals(tableOffset, result?.sourceOffset)
+        assertEquals(4, result?.descriptions?.size)
+        assertEquals("-", result?.descriptions?.get(2))
+        assertEquals("A strong water attack.", result?.descriptions?.get(4))
+    }
+
     @Test
     fun decodesAValidatedGbaMoveDescriptionPointerTable() {
         val bytes = ByteArray(0x1000)

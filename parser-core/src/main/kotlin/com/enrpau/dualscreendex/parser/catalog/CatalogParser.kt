@@ -68,13 +68,14 @@ object CatalogParser {
             layout,
             runCatching {
                 CatalogMaterializer.materialize(
-                    rom,
-                    analysis,
-                    layout,
-                    onProgress,
-                    context.resolveGen3AreaNames,
-                    context.resolveWorldMap,
-                    context.resolveLocalMaps,
+                    rom = rom,
+                    analysis = analysis,
+                    layout = layout,
+                    onProgress = onProgress,
+                    resolveGen3AreaNames = context.resolveGen3AreaNames,
+                    resolveWorldMap = context.resolveWorldMap,
+                    resolveLocalMaps = context.resolveLocalMaps,
+                    resolveMoveDescriptions = context.resolveMoveDescriptions,
                 )
             },
         )
@@ -90,6 +91,7 @@ object CatalogMaterializer {
         resolveGen3AreaNames: ((Set<Int>) -> Map<Int, String>)? = null,
         resolveWorldMap: ((Int, Set<Int>) -> WorldMapResolution)? = null,
         resolveLocalMaps: ((Int, Set<Int>) -> LocalMapResolution)? = null,
+        resolveMoveDescriptions: ((ResolvedRomLayout) -> MoveDescriptionResult?)? = null,
     ): ParsedCatalog {
         val rawSpecies = RecordMaterializers.species(rom, layout)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
@@ -144,15 +146,25 @@ object CatalogMaterializer {
             }
             val description = descriptions[descriptionKey]
             val sprite = resolvedSprites[id]
+            val pokedexApplicable = record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE
             record.copy(
                 sprite = sprite?.let { CatalogField(CapabilityStatus.AVAILABLE, it.sprite, it.reasons) }
                     ?: CatalogField.notFound("sprite could not be decoded for species $id"),
-                description = description?.text?.let(CatalogField.Companion::available)
-                    ?: CatalogField.notFound("description could not be decoded for species $id"),
-                height = description?.height?.let(CatalogField.Companion::available)
-                    ?: CatalogField.notFound("height could not be decoded for species $id"),
-                weight = description?.weight?.let(CatalogField.Companion::available)
-                    ?: CatalogField.notFound("weight could not be decoded for species $id"),
+                description = when {
+                    !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's Pokédex domain")
+                    description != null -> CatalogField.available(description.text)
+                    else -> CatalogField.notFound("description could not be decoded for species $id")
+                },
+                height = when {
+                    !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's Pokédex domain")
+                    description?.height != null -> CatalogField.available(description.height)
+                    else -> CatalogField.notFound("height could not be decoded for species $id")
+                },
+                weight = when {
+                    !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's Pokédex domain")
+                    description?.weight != null -> CatalogField.available(description.weight)
+                    else -> CatalogField.notFound("weight could not be decoded for species $id")
+                },
             )
         }
         val mediaCatalog = essentialCatalog.copy(speciesById = mediaSpecies)
@@ -208,7 +220,8 @@ object CatalogMaterializer {
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.RELATIONSHIPS, 3, 5, relationshipCatalog))
 
         val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
-        val moveDescriptions = MoveDescriptionMaterializer.materialize(rom, layout)
+        val moveDescriptions = resolveMoveDescriptions?.invoke(layout)
+            ?: MoveDescriptionMaterializer.materialize(rom, layout)
         val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
         val abilityMechanics = AbilityMechanicsMaterializer.materialize(rom, layout, abilities)
         val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)

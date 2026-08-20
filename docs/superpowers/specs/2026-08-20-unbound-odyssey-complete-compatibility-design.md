@@ -22,8 +22,8 @@ Bring the exact Pokémon Unbound v2.1.1.1 and Pokémon Odyssey v4.1.1 controls t
 
 - Exact ROM SHA-256: `44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0`.
 - Parser baseline: 86.94%, calculated as `(19 complete capabilities + 409/411 Pokédex descriptions) / 23`.
-- Complete static domains: 411 species/names/types/stats/sprites; 412 evolution rows and 205 edges; 18 types and 116 matchups; 477 moves/details/descriptions; 411 learnsets with 5,609 entries; 973 egg, 8,707 machine, and 2,127 tutor links; 129 ability names/descriptions; 24 encounter areas; 18 type presentations; 12 balls.
-- Static hole: 409/411 Pokédex descriptions, with 2 unresolved species.
+- Complete static domains: 411 battle species/names/types/stats/sprites, of which 409 are ordinary Pokédex species and 2 are source-documented battle-only boss entities; 409 Pokédex descriptions; 412 evolution rows and 205 edges; 18 types and 116 matchups; 477 moves/details/descriptions; 411 learnsets with 5,609 entries; 973 egg, 8,707 machine, and 2,127 tutor links; 129 ability names/descriptions; 24 encounter areas; 18 type presentations; 12 balls.
+- Static hole: the parser incorrectly treated the two battle-only entities as missing Pokédex descriptions instead of preserving their battle data while marking Pokédex-only fields `NOT_APPLICABLE`.
 - Parser holes: 0 ability mechanics, 0 world-map regions, and 0 local-map rasters. Local-map structural discovery currently admits a false extent of 105,010,432 pixels and correctly stops at the 100,000,000-pixel safety boundary; the fix must prove the real map extent rather than raise that boundary.
 - Save/runtime baseline: 12/14. The exact revision-5 save resolves 14 sections, 41 seen, 40 caught, one current area, six party members, 26 stored Pokémon, and 32 Pokémon identity/stat/IV/ball records. Trainer and Bag remain unresolved because no typed Odyssey Trainer/Bag ABI is selected.
 - Persistence baseline: 14 SQLite catalog sections, successful reopen, zero reference errors.
@@ -45,7 +45,7 @@ The exact ROMs and saves are the final binary authority. Test-only SHA checks bi
 
 Static recovery remains inside the existing parser session and catalog materializer. A source-shaped candidate is eligible only when a compiled consumer or independently selected typed parent table nominates it, its decoded domain agrees with the already selected move/species identity domain, and every accepted row validates under the relevant text/pointer ABI.
 
-Unbound move-description recovery must account for all 922 ordinary move IDs and distinguish shared/fallback descriptions from missing pointers without inventing text. Odyssey Pokédex recovery must determine why two active species lack ordinary description rows and materialize the source-defined fallback/shared representation only when the ROM itself proves it.
+Unbound move-description recovery must account for all 922 ordinary move IDs and distinguish explicit ROM placeholders from missing pointers without inventing text. Odyssey recovery must preserve all 411 battle species while deriving the exact 409-entry Pokédex domain from the complete compiled species-to-Dex map and compiled-referenced description table. The two source-documented boss entities remain available to battle/party features, but their Dex number, description, height, and weight are `NOT_APPLICABLE` because the ROM has no Pokédex rows for them.
 
 Partial or contradictory evidence remains partial or unavailable. A dense-looking raw table cannot nominate itself.
 
@@ -69,7 +69,7 @@ Mechanics are last because they require ARM/Thumb role and predicate proof. The 
 
 ## Staged delivery
 
-1. Complete the two static description domains and freeze exact 922/922 and 411/411 controls.
+1. Complete the two static description domains and freeze exact 922/922 Unbound move descriptions plus 409/409 Odyssey Pokédex descriptions with 2/2 battle-only entities truthfully excluded from Pokédex applicability.
 2. Resolve world/local maps through compiled loader and map-group authority, including full catalog-to-API vertical tests.
 3. Resolve Unbound expanded saves and Odyssey Trainer/Bag for 14/14 runtime domains each.
 4. Decode and project ability mechanics with exact role/predicate/effect evidence.
@@ -80,7 +80,7 @@ Each stage is a separate reviewed commit. Later stages build on prior committed 
 ## Completion gates
 
 - Unbound parser: 23/23, including 922/922 move descriptions and non-empty world/local map catalogs.
-- Odyssey parser: 23/23, including 411/411 Pokédex descriptions and structurally bounded local maps.
+- Odyssey parser: 23/23, including 409/409 applicable Pokédex descriptions, 2/2 preserved battle-only entities, and structurally bounded local maps.
 - Unbound save/runtime: 14/14 on all three exact saves.
 - Odyssey save/runtime: 14/14 on the exact revision-5 save.
 - Ability mechanics: every published row has typed semantic proof; unsupported rows remain explicitly unresolved and therefore block a 23/23 claim until completed.
