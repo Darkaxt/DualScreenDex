@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.catalog
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
+import com.enrpau.dualscreendex.parser.catalog.CatalogTheme
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
@@ -142,6 +143,7 @@ internal class CatalogSectionCodec {
     private val worldMapsType = type<WorldMapCatalog>()
     private val trainerAssetsType = type<TrainerAssetCatalog>()
     private val localMapsType = type<LocalMapCatalog>()
+    private val themeType = type<CatalogTheme>()
     private val capabilitiesType = type<Map<RomCapability, CapabilityEvidence>>()
     private val diagnosticsType = type<List<String>>()
 
@@ -161,6 +163,7 @@ internal class CatalogSectionCodec {
         "world_maps" -> encode(catalog.worldMaps, worldMapsType)
         "trainer_assets" -> encode(catalog.trainerAssets, trainerAssetsType)
         "local_maps" -> encode(catalog.localMaps, localMapsType)
+        "theme" -> encode(catalog.theme, themeType)
         "capabilities" -> encode(catalog.capabilities, capabilitiesType)
         "diagnostics" -> encode(catalog.diagnostics, diagnosticsType)
         else -> error("unknown catalog section: $name")
@@ -203,6 +206,7 @@ internal class CatalogSectionCodec {
         worldMaps = decode<WorldMapCatalog>(section("world_maps"), worldMapsType).validate(),
         trainerAssets = decode<TrainerAssetCatalog>(section("trainer_assets"), trainerAssetsType).validate(),
         localMaps = decode<LocalMapCatalog>(section("local_maps"), localMapsType).validate(),
+        theme = decode<CatalogTheme>(section("theme"), themeType).validate(),
         capabilities = decode(section("capabilities"), capabilitiesType),
         diagnostics = decode(section("diagnostics"), diagnosticsType),
         )

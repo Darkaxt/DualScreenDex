@@ -572,6 +572,7 @@ data class ParsedCatalog(
     val worldMaps: WorldMapCatalog = WorldMapCatalog(),
     val trainerAssets: TrainerAssetCatalog = TrainerAssetCatalog(),
     val localMaps: LocalMapCatalog = LocalMapCatalog(),
+    val theme: CatalogTheme = CatalogTheme.neutral(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),
 ) {

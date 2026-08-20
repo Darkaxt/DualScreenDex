@@ -16,7 +16,10 @@ import com.enrpau.dualscreendex.parser.parse.Gen3RuntimeMemoryLayoutResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3TrainerAssetResolver
 import com.enrpau.dualscreendex.parser.sprite.BallSpriteMaterializer
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.util.Locale
+import java.util.zip.InflaterInputStream
 
 data class CatalogParseResult(
     val analysis: ParseResult,
@@ -94,6 +97,8 @@ object CatalogMaterializer {
         resolveLocalMaps: ((Int, Set<Int>) -> LocalMapResolution)? = null,
         resolveMoveDescriptions: ((ResolvedRomLayout) -> MoveDescriptionResult?)? = null,
         resolveAbilityMechanics: ((ResolvedRomLayout, Map<Int, AbilityRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?)? = null,
+        materializeTheme: ((Map<CatalogThemeAssetClass, List<RgbaSprite>>, List<DirectCatalogThemePalette>) -> CatalogTheme) =
+            RomThemeMaterializer::materialize,
     ): ParsedCatalog {
         val rawSpecies = RecordMaterializers.species(rom, layout)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
@@ -546,6 +551,12 @@ object CatalogMaterializer {
                 status = CapabilityStatus.NOT_APPLICABLE,
             )
         }
+        val theme = runCatching {
+            materializeTheme(
+                catalogThemeAssets(species, trainerAssets, worldMaps, localMaps),
+                emptyList(),
+            ).validate()
+        }.getOrElse { CatalogTheme.neutral() }
         val catalog = ParsedCatalog(
             romSha256 = analysis.sha256,
             family = layout.family,
@@ -563,6 +574,7 @@ object CatalogMaterializer {
             worldMaps = worldMaps,
             trainerAssets = trainerAssets,
             localMaps = localMaps,
+            theme = theme,
             capabilities = capabilities,
             diagnostics = buildList {
                 moveDescriptions?.let {
@@ -606,6 +618,111 @@ object CatalogMaterializer {
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, catalog))
         return catalog
     }
+
+    internal fun catalogThemeAssets(
+        species: Map<Int, SpeciesRecord>,
+        trainerAssets: TrainerAssetCatalog,
+        worldMaps: WorldMapCatalog,
+        localMaps: LocalMapCatalog,
+    ): Map<CatalogThemeAssetClass, List<RgbaSprite>> = buildMap {
+        species.entries.asSequence()
+            .sortedBy { it.key }
+            .mapNotNull { (_, record) -> record.sprite.value }
+            .take(MAX_THEME_SPECIES_ASSETS)
+            .toList()
+            .takeIf { it.isNotEmpty() }
+            ?.let { put(CatalogThemeAssetClass.SPECIES, it) }
+        trainerAssets.assets.toSortedMap().values.toList()
+            .takeIf { it.isNotEmpty() }
+            ?.let { put(CatalogThemeAssetClass.TRAINER, it) }
+        worldMaps.assets.toSortedMap().values.toList()
+            .takeIf { it.isNotEmpty() }
+            ?.let { put(CatalogThemeAssetClass.WORLD_MAP, it) }
+        localMaps.assets.toSortedMap().values.mapNotNull { asset ->
+            runCatching { decodeNormalizedPng(asset.bytes) }.getOrNull()
+        }.takeIf { it.isNotEmpty() }
+            ?.let { put(CatalogThemeAssetClass.LOCAL_MAP, it) }
+    }
+
+    private fun decodeNormalizedPng(bytes: ByteArray): RgbaSprite {
+        require(bytes.size >= 33 && bytes.copyOfRange(0, PNG_SIGNATURE.size).contentEquals(PNG_SIGNATURE))
+        var cursor = PNG_SIGNATURE.size
+        var width = 0
+        var height = 0
+        val compressed = ByteArrayOutputStream()
+        while (cursor + 12 <= bytes.size) {
+            val length = readBigEndianInt(bytes, cursor)
+            require(length >= 0 && cursor.toLong() + 12L + length <= bytes.size.toLong())
+            val type = bytes.copyOfRange(cursor + 4, cursor + 8).toString(Charsets.US_ASCII)
+            val dataOffset = cursor + 8
+            when (type) {
+                "IHDR" -> {
+                    require(length == 13)
+                    width = readBigEndianInt(bytes, dataOffset)
+                    height = readBigEndianInt(bytes, dataOffset + 4)
+                    require(width > 0 && height > 0)
+                    require(bytes[dataOffset + 8].toInt() == 8 && bytes[dataOffset + 9].toInt() == 6)
+                    require(bytes[dataOffset + 10].toInt() == 0 && bytes[dataOffset + 11].toInt() == 0)
+                    require(bytes[dataOffset + 12].toInt() == 0)
+                }
+                "IDAT" -> compressed.write(bytes, dataOffset, length)
+                "IEND" -> break
+            }
+            cursor += length + 12
+        }
+        require(width > 0 && height > 0 && compressed.size() > 0)
+        val stride = Math.multiplyExact(width, 4)
+        val expectedSize = Math.multiplyExact(height, stride + 1)
+        val filtered = InflaterInputStream(ByteArrayInputStream(compressed.toByteArray())).use { it.readBytes() }
+        require(filtered.size == expectedSize)
+        val decoded = ByteArray(Math.multiplyExact(height, stride))
+        repeat(height) { y ->
+            val filter = filtered[y * (stride + 1)].toInt() and 0xff
+            require(filter in 0..4)
+            repeat(stride) { x ->
+                val raw = filtered[y * (stride + 1) + 1 + x].toInt() and 0xff
+                val left = if (x >= 4) decoded[y * stride + x - 4].toInt() and 0xff else 0
+                val up = if (y > 0) decoded[(y - 1) * stride + x].toInt() and 0xff else 0
+                val upperLeft = if (y > 0 && x >= 4) decoded[(y - 1) * stride + x - 4].toInt() and 0xff else 0
+                val value = when (filter) {
+                    0 -> raw
+                    1 -> raw + left
+                    2 -> raw + up
+                    3 -> raw + ((left + up) ushr 1)
+                    else -> raw + paeth(left, up, upperLeft)
+                }
+                decoded[y * stride + x] = value.toByte()
+            }
+        }
+        return RgbaSprite(width, height, IntArray(width * height) { index ->
+            val offset = index * 4
+            ((decoded[offset + 3].toInt() and 0xff) shl 24) or
+                ((decoded[offset].toInt() and 0xff) shl 16) or
+                ((decoded[offset + 1].toInt() and 0xff) shl 8) or
+                (decoded[offset + 2].toInt() and 0xff)
+        })
+    }
+
+    private fun readBigEndianInt(bytes: ByteArray, offset: Int): Int =
+        ((bytes[offset].toInt() and 0xff) shl 24) or
+            ((bytes[offset + 1].toInt() and 0xff) shl 16) or
+            ((bytes[offset + 2].toInt() and 0xff) shl 8) or
+            (bytes[offset + 3].toInt() and 0xff)
+
+    private fun paeth(left: Int, up: Int, upperLeft: Int): Int {
+        val estimate = left + up - upperLeft
+        val leftDistance = kotlin.math.abs(estimate - left)
+        val upDistance = kotlin.math.abs(estimate - up)
+        val upperLeftDistance = kotlin.math.abs(estimate - upperLeft)
+        return when {
+            leftDistance <= upDistance && leftDistance <= upperLeftDistance -> left
+            upDistance <= upperLeftDistance -> up
+            else -> upperLeft
+        }
+    }
+
+    private const val MAX_THEME_SPECIES_ASSETS = 16
+    private val PNG_SIGNATURE = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
 
     private fun applyResolvedAreaNames(
         areas: List<EncounterArea>,

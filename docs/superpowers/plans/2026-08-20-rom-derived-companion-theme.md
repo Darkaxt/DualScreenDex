@@ -18,13 +18,13 @@
 - Create: `parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/RomThemeMaterializer.kt`
 - Create: `parser-core/src/test/kotlin/com/enrpau/dualscreendex/parser/catalog/RomThemeMaterializerTest.kt`
 
-- [ ] Add `CatalogThemeMethod` (`DIRECT_UI_PALETTE`, `MULTI_ASSET_QUANTIZATION`, `NEUTRAL_FALLBACK`), `CatalogThemeAssetClass`, complete semantic RGB tokens, provenance, and a valid readable neutral factory.
-- [ ] Write RED tests for deterministic output under reordered assets, equal per-class influence, transparent-pixel exclusion, single-class rejection, malformed/empty evidence fallback, neutral DMG treatment, and complete output.
-- [ ] Implement a pure materializer over normalized `RgbaSprite` inputs. Cap samples per asset and per class, reduce RGB precision before histogramming, use stable count/RGB ordering, and never depend on input iteration order.
-- [ ] Assign field/header/menu/panel/border/text/accent roles by luminance, chroma, population, and distance. Derive related shadows/patterns without altering source rasters.
-- [ ] Enforce WCAG contrast: 4.5:1 for normal text and 3:1 for large/control surfaces. Record whether token correction was required; fall back to neutral if a complete readable set cannot be produced.
-- [ ] Add a direct-palette input seam that succeeds only when one complete structurally nominated palette is supplied; multiple nominees fall through to multi-asset resolution.
-- [ ] Run only `RomThemeMaterializerTest` until GREEN.
+- [x] Add `CatalogThemeMethod` (`DIRECT_UI_PALETTE`, `MULTI_ASSET_QUANTIZATION`, `NEUTRAL_FALLBACK`), `CatalogThemeAssetClass`, complete semantic RGB tokens, provenance, and a valid readable neutral factory.
+- [x] Write RED tests for deterministic output under reordered assets, equal per-class influence, transparent-pixel exclusion, single-class rejection, malformed/empty evidence fallback, neutral DMG treatment, and complete output.
+- [x] Implement a pure materializer over normalized `RgbaSprite` inputs. Cap samples per asset and per class, reduce RGB precision before histogramming, use stable count/RGB ordering, and never depend on input iteration order.
+- [x] Assign field/header/menu/panel/border/text/accent roles by luminance, chroma, population, and distance. Derive related shadows/patterns without altering source rasters.
+- [x] Enforce WCAG contrast: 4.5:1 for normal text and 3:1 for large/control surfaces. Record whether token correction was required; fall back to neutral if a complete readable set cannot be produced.
+- [x] Add a direct-palette input seam that succeeds only when one complete structurally nominated palette is supplied; multiple nominees fall through to multi-asset resolution.
+- [x] Run only `RomThemeMaterializerTest` until GREEN.
 
 ## Task 2: Materialize and persist one stable theme per catalog
 
@@ -37,12 +37,12 @@
 - Modify: `catalog-store/src/main/kotlin/com/darkaxt/dualdex/catalog/CatalogReader.kt`
 - Modify: `catalog-store/src/test/kotlin/com/darkaxt/dualdex/catalog/CatalogStoreTest.kt`
 
-- [ ] Add non-null `theme: CatalogTheme` to `ParsedCatalog`, defaulting to the explicit neutral theme for source compatibility and failure safety.
-- [ ] Build normalized evidence after species sprites, Trainer assets, world maps, and local maps have resolved. Use bounded representative species IDs and every available independent non-species asset class; do not read ROM title/family/SHA or raw linked offsets.
-- [ ] Wrap only optional theme materialization in `runCatching`; any exception publishes `NEUTRAL_FALLBACK` while preserving the rest of the catalog.
-- [ ] Add `theme` as a required CatalogStore section and bump `parserSchemaVersion` from 19 to 20 so stale caches are rebuilt rather than silently receiving a synthetic theme.
-- [ ] Write RED/GREEN tests for complete catalog themes, optional failure isolation, exact token/provenance SQLite round-trip, required-section enforcement, and schema invalidation.
-- [ ] Run the focused parser/catalog tests and commit the core/persistence checkpoint.
+- [x] Add non-null `theme: CatalogTheme` to `ParsedCatalog`, defaulting to the explicit neutral theme for source compatibility and failure safety.
+- [x] Build normalized evidence after species sprites, Trainer assets, world maps, and local maps have resolved. Use bounded representative species IDs and every available independent non-species asset class; do not read ROM title/family/SHA or raw linked offsets.
+- [x] Wrap only optional theme materialization in `runCatching`; any exception publishes `NEUTRAL_FALLBACK` while preserving the rest of the catalog.
+- [x] Add `theme` as a required CatalogStore section and bump `parserSchemaVersion` from 19 to 20 so stale caches are rebuilt rather than silently receiving a synthetic theme.
+- [x] Write RED/GREEN tests for complete catalog themes, optional failure isolation, exact token/provenance SQLite round-trip, required-section enforcement, and schema invalidation.
+- [x] Run the focused parser/catalog tests and commit the core/persistence checkpoint.
 
 ## Task 3: Project the theme through the API and apply it only to GAME
 

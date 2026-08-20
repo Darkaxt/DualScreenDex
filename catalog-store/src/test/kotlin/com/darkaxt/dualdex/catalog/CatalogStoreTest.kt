@@ -8,6 +8,10 @@ import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
+import com.enrpau.dualscreendex.parser.catalog.CatalogTheme
+import com.enrpau.dualscreendex.parser.catalog.CatalogThemeAssetClass
+import com.enrpau.dualscreendex.parser.catalog.CatalogThemeMethod
+import com.enrpau.dualscreendex.parser.catalog.CatalogThemeTokens
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
 import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagAbi
@@ -113,7 +117,7 @@ class CatalogStoreTest {
         assertCatalogReferencesClose(reopened)
         assertEquals(second.romSha256, reopened.romSha256)
         assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-        assertEquals(14, stored.committedSections.size)
+        assertEquals(15, stored.committedSections.size)
         assertDatabaseIntegrity(cache.fileFor(second.romSha256))
     }
 
@@ -155,7 +159,7 @@ class CatalogStoreTest {
         }
         assertCatalogReferencesClose(reopened)
         assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-        assertEquals(14, stored.committedSections.size)
+        assertEquals(15, stored.committedSections.size)
         assertDatabaseIntegrity(cache.fileFor(second.romSha256))
     }
 
@@ -229,7 +233,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(19, CatalogSchema.parserSchemaVersion)
+        assertEquals(20, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps, reopened?.catalog?.localMaps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -403,7 +407,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(19, CatalogSchema.parserSchemaVersion)
+        assertEquals(20, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -426,6 +430,25 @@ class CatalogStoreTest {
         )
         assertEquals("Route 101", reopened?.catalog?.runtimeMetadata?.areaNamesByBaseId?.get(0x0010))
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
+        assertEquals(catalog.theme, reopened?.catalog?.theme)
+    }
+
+    @Test
+    fun `revision 19 caches without the required theme section are invalidated`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("2".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Legacy.gba", 16_777_216, "POKEMON EMER"),
+            CatalogWriteProgress.complete(),
+        )
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("DELETE FROM catalog_sections WHERE name = 'theme'")
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 19 WHERE id = 1")
+        }
+
+        assertNull(cache.readComplete(catalog.romSha256))
     }
 
     @Test
@@ -658,6 +681,25 @@ class CatalogStoreTest {
                     put("trainer/avatar/female", avatar)
                     badgeKeys.forEach { put(it, badge) }
                 },
+            ),
+            theme = CatalogTheme(
+                method = CatalogThemeMethod.MULTI_ASSET_QUANTIZATION,
+                assetClasses = setOf(CatalogThemeAssetClass.TRAINER, CatalogThemeAssetClass.SPECIES),
+                contrastCorrected = true,
+                tokens = CatalogThemeTokens(
+                    field = 0x244936,
+                    fieldPattern = 0x315943,
+                    header = 0x183A5C,
+                    headerShadow = 0x0B1B2B,
+                    menu = 0xE4D6A8,
+                    menuShadow = 0x75694B,
+                    panel = 0xFFF7DB,
+                    border = 0x4D4032,
+                    text = 0x1C201D,
+                    textShadow = 0xFFFFFF,
+                    accent = 0x9D302A,
+                    accentText = 0xFFFFFF,
+                ),
             ),
             runtimeMetadata = CatalogRuntimeMetadata(
                 gen3SaveBlock1PointerAddress = 0x030036F0L,

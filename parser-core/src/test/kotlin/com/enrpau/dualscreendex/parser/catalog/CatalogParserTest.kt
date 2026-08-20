@@ -25,6 +25,7 @@ import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
+import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import java.util.Base64
 import org.junit.Assert.assertEquals
@@ -104,6 +105,131 @@ class CatalogParserTest {
         val evidence = catalog.capabilities.getValue(RomCapability.LOCAL_MAP)
         assertEquals(CapabilityStatus.NOT_FOUND, evidence.status)
         assertTrue(evidence.reasons.any { it.contains("local-map stage: resolver-exception") })
+    }
+
+    @Test
+    fun themeMaterializerRunsAfterNormalizedWorldMapAssetsResolve() {
+        val rom = RomImage(ByteArray(0x200))
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, 0, 0, ProfileTables(),
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+        val raster = RgbaSprite(2, 2, intArrayOf(
+            0xff16324f.toInt(), 0xfff6c453.toInt(), 0xff2f7d50.toInt(), 0xfff5ead7.toInt(),
+        ))
+        val expected = RomThemeMaterializer.materialize(
+            mapOf(
+                CatalogThemeAssetClass.WORLD_MAP to listOf(raster),
+                CatalogThemeAssetClass.SPECIES to listOf(raster.copy(argb = raster.argb.reversedArray())),
+            ),
+        )
+
+        val catalog = CatalogMaterializer.materialize(
+            rom = rom,
+            analysis = analysis,
+            layout = layout,
+            resolveWorldMap = { _, _ ->
+                WorldMapResolution.Resolved(
+                    WorldMapCatalog(
+                        regions = listOf(
+                            WorldMapRegion(
+                                "world/test", "Test", 2, 2, 1, 1, "world/test/map",
+                                listOf(WorldMapLocation("test", "Test", setOf(1), listOf(WorldMapCell(0, 0, 1, 1)))),
+                            ),
+                        ),
+                        assets = mapOf("world/test/map" to raster),
+                    ),
+                    listOf("test atlas"),
+                )
+            },
+            materializeTheme = { assets, _ ->
+                assertEquals(listOf(raster), assets.getValue(CatalogThemeAssetClass.WORLD_MAP))
+                expected
+            },
+        )
+
+        assertEquals(expected, catalog.theme)
+        assertEquals(1, catalog.worldMaps.regions.size)
+    }
+
+    @Test
+    fun optionalThemeMaterializerFailureKeepsTheCompletedCatalogUsable() {
+        val rom = RomImage(ByteArray(0x200))
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, 0, 0, ProfileTables(),
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+
+        val catalog = CatalogMaterializer.materialize(
+            rom = rom,
+            analysis = analysis,
+            layout = layout,
+            materializeTheme = { _, _ -> error("deliberate optional theme failure") },
+        )
+
+        assertEquals(CatalogTheme.neutral(), catalog.theme)
+        assertEquals(rom.sha256, catalog.romSha256)
+    }
+
+    @Test
+    fun catalogThemeEvidenceIncludesEveryNormalizedAssetClassAndBoundsSpecies() {
+        fun pixel(width: Int, height: Int, rgb: Int) =
+            RgbaSprite(width, height, IntArray(width * height) { 0xff000000.toInt() or rgb })
+        val species = (1..20).associateWith { id ->
+            SpeciesRecord(
+                id = id,
+                dexNumber = CatalogField.available(id),
+                name = CatalogField.available("Species $id"),
+                typeIds = CatalogField.available(listOf(1)),
+                baseStats = CatalogField.available(BaseStats(1, 1, 1, 1, 1, 1)),
+                sprite = CatalogField.available(pixel(1, 1, id)),
+            )
+        }
+        val badgeKeys = (1..8).map { "trainer/badge/$it" }
+        val trainer = TrainerAssetCatalog(
+            avatarAssetKeys = mapOf(0 to "trainer/male", 1 to "trainer/female"),
+            badgeAssetKeys = badgeKeys,
+            assets = buildMap {
+                put("trainer/male", pixel(64, 64, 0x123456))
+                put("trainer/female", pixel(64, 64, 0x654321))
+                badgeKeys.forEachIndexed { index, key -> put(key, pixel(16, 16, 0x220000 + index)) }
+            },
+        )
+        val worldRaster = pixel(2, 2, 0xabcdef)
+        val world = WorldMapCatalog(
+            regions = listOf(WorldMapRegion(
+                "world", "World", 2, 2, 1, 1, "world/map",
+                listOf(WorldMapLocation("location", "Location", setOf(1), listOf(WorldMapCell(0, 0, 1, 1)))),
+            )),
+            assets = mapOf("world/map" to worldRaster),
+        )
+        val localRaster = pixel(16, 16, 0xfedcba)
+        val local = LocalMapCatalog(
+            maps = listOf(LocalMap("local/1", "Local", 1, 16, 16, 1, 1, "local/1/map")),
+            assets = mapOf("local/1/map" to PngMapAsset(PngEncoder.encode(localRaster))),
+        )
+
+        val evidence = CatalogMaterializer.catalogThemeAssets(species, trainer, world, local)
+
+        assertEquals(
+            setOf(
+                CatalogThemeAssetClass.SPECIES,
+                CatalogThemeAssetClass.TRAINER,
+                CatalogThemeAssetClass.WORLD_MAP,
+                CatalogThemeAssetClass.LOCAL_MAP,
+            ),
+            evidence.keys,
+        )
+        assertEquals(16, evidence.getValue(CatalogThemeAssetClass.SPECIES).size)
+        assertEquals((1..16).toList(), evidence.getValue(CatalogThemeAssetClass.SPECIES).map { it.argb.single() and 0xffffff })
+        assertEquals(worldRaster, evidence.getValue(CatalogThemeAssetClass.WORLD_MAP).single())
+        assertEquals(localRaster, evidence.getValue(CatalogThemeAssetClass.LOCAL_MAP).single())
     }
 
     @Test
