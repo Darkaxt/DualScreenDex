@@ -65,5 +65,12 @@
   "v11Stage8NormalizedPartyArtwork": true,
   "v11Stage8PrivacySafePartyFallbacks": true,
   "v11Stage8PartyBrowserGate": true,
+  "v11Rc18UnboundOdysseyParserComplete": true,
+  "v11Rc18UnboundOdysseyMapComplete": true,
+  "v11Rc18OdysseySaveRuntimeComplete": true,
+  "v11Rc18UnboundExpandedSaveAbi": true,
+  "v11Rc18RomDerivedTheme": true,
+  "v11Rc18ThemePersistenceAndApi": true,
+  "v11Rc18ThemeBrowserGate": true,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

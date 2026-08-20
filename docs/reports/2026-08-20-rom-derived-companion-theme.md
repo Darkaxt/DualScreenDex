@@ -79,8 +79,8 @@ Local-map-first navigation, explicit Atlas switching, Pokédex return, Organic
 fog with opaque outer edges and a revealed current area, map pixels, and map
 geometry remained intact.
 
-Screenshots are stored under `D:\Temp\dualdex-rom-theme-evidence`. Representative
-final hashes:
+Screenshots were retained as local task evidence and are not included in the public repository.
+Representative final hashes:
 
 | Screenshot | SHA-256 |
 |---|---|
