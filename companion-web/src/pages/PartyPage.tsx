@@ -15,44 +15,60 @@ interface PartyPageProps {
 
 export function PartyPage({ catalog, state, onBack, openMove, openAbility, openSpecies, selectedSlot, onSelectSlot }: PartyPageProps) {
   const members = useMemo(() => normalizeParty(state.party), [state.party]);
-  const firstOccupied = members.find(member => member.occupied)?.slot ?? null;
-  const [localSlot, setLocalSlot] = useState<number | null>(selectedSlot ?? state.selectedPartySlot ?? firstOccupied);
-  const requestedSlot = selectedSlot ?? localSlot;
-  const activeSlot = members.some(member => member.slot === requestedSlot && member.occupied) ? requestedSlot : firstOccupied;
-  const active = activeSlot == null ? null : members[activeSlot];
+  const [detailSlot, setDetailSlot] = useState<number | null>(null);
+  const highlightedSlot = detailSlot ?? (selectedSlot != null && members[selectedSlot]?.occupied ? selectedSlot : null);
+  const active = detailSlot == null || !members[detailSlot]?.occupied ? null : members[detailSlot];
   const occupancy = members.map(member => member.occupied ? '1' : '0').join('');
 
   useEffect(() => {
-    if (selectedSlot == null && activeSlot !== localSlot) setLocalSlot(activeSlot);
-  }, [catalog.hash, occupancy, activeSlot, localSlot, selectedSlot]);
+    if (detailSlot != null && occupancy[detailSlot] !== '1') setDetailSlot(null);
+  }, [catalog.hash, detailSlot, occupancy]);
+
+  useEffect(() => {
+    if (detailSlot == null) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDetailSlot(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [detailSlot]);
 
   const select = (slot: number) => {
     if (!members[slot]?.occupied) return;
-    setLocalSlot(slot);
+    setDetailSlot(slot);
     onSelectSlot?.(slot);
   };
+
+  const closeDetails = () => setDetailSlot(null);
 
   return <section class="screen party-screen">
     <Header title="PARTY" kicker="LIVE · OWNED POKÉMON" onBack={onBack} />
     <div class="party-content" data-scroll-region>
-      <div class="party-grid" aria-label="Party slots">
+      <div class="party-grid" data-layout="2x3" aria-label="Party slots">
         {members.map(member => <button
           type="button"
           key={member.slot}
-          class={`party-slot ${member.slot === activeSlot ? 'active' : ''} ${member.occupied ? memberCondition(member) : 'empty'}`}
+          class={`party-slot ${member.slot === highlightedSlot ? 'active' : ''} ${member.occupied ? memberCondition(member) : 'empty'}`}
           disabled={!member.occupied}
           aria-label={member.occupied ? `Party slot ${member.slot + 1}: ${member.nickname || member.speciesName || 'Unknown partner'}` : `Party slot ${member.slot + 1}: Empty`}
           onClick={() => select(member.slot)}
         >
           <PartySprite member={member} />
-          <span><strong>{member.occupied ? member.nickname || member.speciesName || 'UNKNOWN PARTNER' : 'EMPTY'}</strong>
+          <span class="party-slot-copy"><strong>{member.occupied ? member.nickname || member.speciesName || 'UNKNOWN PARTNER' : 'EMPTY'}</strong>
             <small>{member.occupied ? `${member.speciesName ?? 'Species unavailable'}${member.level != null ? ` · Lv ${member.level}` : ''}` : 'OPEN SLOT'}</small>
             {member.occupied && <i>{hpLabel(member)}{member.status ? <><span aria-hidden="true"> · </span><em class={`party-status-dot status-${statusKey(member.status)}`}>{member.status}</em></> : ''}</i>}
+            {partyHpPercent(member) != null && <span class="party-hp-track" aria-label={`HP ${hpLabel(member)}`}><b class="party-hp-fill" style={{ width: `${partyHpPercent(member)}%` }} /></span>}
           </span>
         </button>)}
       </div>
-      {active ? <PartyDetail member={active} catalog={catalog} openMove={openMove} openAbility={openAbility} openSpecies={openSpecies} /> :
-        <div class="empty-state party-empty"><strong>NO PARTY DATA</strong><p>The party will appear when a supported live or SaveRAM snapshot is available.</p></div>}
+      {!members.some(member => member.occupied) && <div class="empty-state party-empty"><strong>NO PARTY DATA</strong><p>The party will appear when a supported live or SaveRAM snapshot is available.</p></div>}
+      {active && <div class="party-detail-layer">
+        <div class="party-detail-backdrop" onClick={closeDetails} />
+        <div class="party-detail-window" role="dialog" aria-modal="true" aria-label={`${active.nickname || active.speciesName || 'Party member'} details`}>
+          <button type="button" class="party-detail-close" aria-label={`Close ${active.nickname || active.speciesName || 'party member'} details`} onClick={closeDetails} autoFocus>×</button>
+          <PartyDetail member={active} catalog={catalog} openMove={openMove} openAbility={openAbility} openSpecies={openSpecies} />
+        </div>
+      </div>}
     </div>
   </section>;
 }
@@ -124,6 +140,11 @@ function HeldItemArtwork({ member }: { member: PartyMemberView }) {
 function hpLabel(member: PartyMemberView): string {
   if (member.currentHp == null || member.maximumHp == null) return 'HP —';
   return `${member.currentHp} / ${member.maximumHp}`;
+}
+
+function partyHpPercent(member: PartyMemberView): number | null {
+  if (member.currentHp == null || member.maximumHp == null || member.maximumHp <= 0) return null;
+  return Math.round(Math.max(0, Math.min(1, member.currentHp / member.maximumHp)) * 100);
 }
 
 function memberCondition(member: PartyMemberView): 'healthy' | 'statused' | 'fainted' | 'partial' {

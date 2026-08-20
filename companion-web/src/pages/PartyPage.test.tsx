@@ -6,7 +6,7 @@ import { PartyPage } from './PartyPage';
 afterEach(cleanup);
 
 describe('Party', () => {
-  it('renders six stable slots and presentation-safe details for the selected member', () => {
+  it('renders a six-slot 2x3 roster and opens details only after selecting a member', () => {
     const openMove = vi.fn();
     const openAbility = vi.fn();
     const state = partyState('ORGANIC');
@@ -14,8 +14,16 @@ describe('Party', () => {
     const { container } = render(<PartyPage catalog={catalog} state={state} onBack={vi.fn()} openMove={openMove} openAbility={openAbility} />);
 
     expect(container.querySelectorAll('.party-slot')).toHaveLength(6);
-    expect(screen.getAllByText('SPARK').length).toBeGreaterThan(0);
+    expect(container.querySelector('.party-grid')?.getAttribute('data-layout')).toBe('2x3');
+    expect(screen.getByText('SPARK')).toBeTruthy();
     expect(screen.getByText('PIKACHU · Lv 18')).toBeTruthy();
+    expect(container.querySelector('.party-hp-fill')?.getAttribute('style')).toContain('width: 69%');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText('Adamant')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: SPARK' }));
+
+    expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy();
     expect(screen.getByText('Lv 18')).toBeTruthy();
     expect(screen.getAllByText('31 / 45').length).toBeGreaterThan(0);
     expect(screen.getAllByText('PAR').length).toBeGreaterThan(0);
@@ -32,6 +40,25 @@ describe('Party', () => {
     expect(openMove).toHaveBeenCalledWith(85);
     fireEvent.click(screen.getByRole('button', { name: 'Static' }));
     expect(openAbility).toHaveBeenCalledWith(9);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close SPARK details' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('closes selected details with Escape and when the live slot disappears', () => {
+    const props = { catalog, onBack: vi.fn(), openMove: vi.fn(), openAbility: vi.fn() };
+    const rendered = render(<PartyPage {...props} state={partyState('ORGANIC')} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: SPARK' }));
+    expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: SPARK' }));
+    const emptied = partyState('ORGANIC');
+    emptied.party = [];
+    rendered.rerender(<PartyPage {...props} state={emptied} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('keeps the owned party visible in Organic and Hidden modes', () => {
@@ -71,6 +98,7 @@ describe('Party', () => {
 
     const { container } = render(<PartyPage catalog={customCatalog} state={state} onBack={vi.fn()} openMove={vi.fn()} openAbility={vi.fn()} />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: A VERY LONG PARTNER NAME' }));
     expect(screen.getAllByText('COSMIC-LIGHT').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('img', { name: 'CUSTOM status' }).length).toBeGreaterThan(0);
     expect(screen.getByText('Held item unavailable')).toBeTruthy();
