@@ -92,13 +92,24 @@ describe('Pokédex knowledge modes', () => {
   });
 
   it('shows only an affirmative Poké Ball for captured Organic entries', () => {
-    render(<PokedexBrowse catalog={catalog} state={{
+    const { container } = render(<PokedexBrowse catalog={catalog} state={{
       ...state,
       speciesState: { ...state.speciesState, 1: { ...state.speciesState[1], caught: true } },
     }} send={vi.fn()} />);
 
-    expect(screen.getByLabelText('Caught')).toBeTruthy();
+    const caught = screen.getByLabelText('Caught');
+    expect(caught.closest('.pokedex-avatar')).toBeTruthy();
+    expect(caught.closest('.caught-avatar-badge')).toBeTruthy();
+    expect(container.querySelector('.species-row-meta [aria-label="Caught"]')).toBeNull();
     expect(screen.queryByLabelText('Seen')).toBeNull();
+  });
+
+  it('does not reserve an avatar badge for an uncaught species', () => {
+    const { container } = render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
+
+    expect(container.querySelector('.pokedex-avatar')).toBeTruthy();
+    expect(container.querySelector('.caught-avatar-badge')).toBeNull();
+    expect(screen.queryByLabelText('Not caught')).toBeNull();
   });
 
   it('allows full ROM navigation in Discovered mode', () => {

@@ -1,5 +1,5 @@
 import type { Catalog, State } from '../models';
-import { Header, identitySpriteClass, maskIdentityName, Segmented, speciesIdentityKnowledge, Sprite, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
+import { Header, identitySpriteClass, maskIdentityName, PokedexAvatar, Segmented, speciesIdentityKnowledge, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
 import { PokemonAreaMap } from './PokemonAreaMap';
 
@@ -43,7 +43,7 @@ export function PokedexDetail({
   return <section class="screen detail-screen">
     <Header title={species.name} kicker={`#${String(species.dex).padStart(3, '0')}`} onBack={() => send('BACK')} />
     <div class="identity-card">
-      <Sprite speciesId={species.id} name={species.name} available={species.hasSprite} large knowledge={identityKnowledge} />
+      <PokedexAvatar speciesId={species.id} name={species.name} available={species.hasSprite} large knowledge={identityKnowledge} state={status} catalog={catalog} />
       <div class="identity-copy"><h1>{species.name}</h1><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
     </div>
     <Segmented values={['ENTRY', 'STATS', 'MOVES', 'AREA', 'MORE']} active={displayTab} disabledValues={unlocked ? [] : ['STATS', 'MORE']} onSelect={value => setTab(value as DetailTab)} label="Pokédex detail" />

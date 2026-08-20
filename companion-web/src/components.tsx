@@ -22,6 +22,13 @@ export function Sprite({ speciesId, name, available, large = false, knowledge = 
   );
 }
 
+export function PokedexAvatar({ speciesId, name, available, state, catalog, large = false, knowledge = 'captured' }: { speciesId: number; name: string; available: boolean; state?: SpeciesState; catalog: Catalog; large?: boolean; knowledge?: SpeciesIdentityKnowledge }) {
+  return <span class={`pokedex-avatar ${large ? 'pokedex-avatar-large' : ''}`}>
+    <Sprite speciesId={speciesId} name={name} available={available} large={large} knowledge={knowledge} />
+    <CaughtBadge state={state} catalog={catalog} />
+  </span>;
+}
+
 export function maskIdentityName(name: string): string {
   return Array.from(name).map(character => /\s/u.test(character) ? character : '?').join('');
 }
@@ -41,20 +48,20 @@ export function uniqueTypeIds(typeIds: number[]): number[] {
 }
 
 export function StatusMarks({ state, catalog, mode }: { state?: SpeciesState; catalog: Catalog; mode: KnowledgeMode }) {
-  const caught = state?.caught ?? false;
   const seen = state?.seen ?? false;
+  void catalog;
+  if (mode === 'ORGANIC') return null;
+  return <span class="status-marks"><EyeStatus seen={seen} /></span>;
+}
+
+export function CaughtBadge({ state, catalog }: { state?: SpeciesState; catalog: Catalog }) {
+  const caught = state?.caught ?? false;
+  if (!caught) return null;
   const ball = state?.ballId != null && catalog.balls.some(item => item.id === state.ballId && item.hasSprite);
-  if (mode === 'ORGANIC' && !caught) return null;
-  return (
-    <span class="status-marks">
-      {mode !== 'ORGANIC' && <EyeStatus seen={seen} />}
-      {caught && ball ? (
-        <img class="ball-art" src={`/api/sprites/balls/${state!.ballId}.png`} alt="Caught" />
-      ) : caught || mode !== 'ORGANIC' ? (
-        <span class={`ball-mark ${caught ? 'ball-caught' : ''}`} aria-label={caught ? 'Caught' : 'Not caught'}><i /></span>
-      ) : null}
-    </span>
-  );
+  return <span class="caught-avatar-badge">{ball
+    ? <img class="ball-art" src={`/api/sprites/balls/${state!.ballId}.png`} alt="Caught" />
+    : <span class="ball-mark ball-caught" aria-label="Caught"><i /></span>}
+  </span>;
 }
 
 export function EyeStatus({ seen }: { seen: boolean }) {

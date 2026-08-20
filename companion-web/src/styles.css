@@ -192,6 +192,11 @@ button { cursor: pointer; }
 
 .sprite-frame { width: 48px; height: 48px; display: grid; place-items: center; background: linear-gradient(135deg, #faf7e4, #d8dec6); border: 1px solid #9ca589; overflow: hidden; image-rendering: pixelated; }
 .sprite-frame img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.pokedex-avatar { position: relative; width: 48px; height: 48px; display: inline-grid; place-items: center; overflow: visible; }
+.pokedex-avatar-large { width: 108px; height: 108px; }
+.caught-avatar-badge { position: absolute; right: -5px; bottom: -4px; z-index: 2; width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid #52634d; border-radius: 50%; background: #f8f1d5; box-shadow: 2px 2px 0 #14281f99; }
+.caught-avatar-badge .ball-art { width: 23px; height: 23px; }
+.caught-avatar-badge .ball-mark { width: 19px; height: 19px; }
 .sprite-large { width: 108px; height: 108px; border: 2px solid #385344; box-shadow: 5px 5px 0 #b8c49f; }
 .sprite-missing { width: 24px; height: 18px; border: 2px dashed #899282; }
 .status-marks { display: inline-flex; align-items: center; gap: 9px; min-width: 47px; justify-content: flex-end; }

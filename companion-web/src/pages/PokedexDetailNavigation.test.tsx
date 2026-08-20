@@ -100,6 +100,10 @@ describe('Pokédex evolution navigation', () => {
     const captured = screen.getByAltText('Charmeleon sprite');
     expect(captured.classList.contains('identity-seen')).toBe(false);
     expect(captured.classList.contains('identity-silhouette')).toBe(false);
+    const caught = screen.getByLabelText('Caught');
+    expect(caught.closest('.pokedex-avatar')).toBeTruthy();
+    expect(caught.closest('.caught-avatar-badge')).toBeTruthy();
+    expect(caught.closest('.identity-line')).toBeNull();
   });
 
   it('embeds the normalized world map on AREA and exposes only organically observed habitats', () => {

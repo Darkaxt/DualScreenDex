@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { Catalog, EncounterWindow, State } from '../models';
-import { Header, maskIdentityName, speciesIdentityKnowledge, Sprite, StatusMarks } from '../components';
+import { Header, maskIdentityName, PokedexAvatar, speciesIdentityKnowledge, StatusMarks } from '../components';
 
 export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Catalog; state: State; send: (type: string, values?: Record<string, string | number | boolean | null>) => void; onOpenMap?: () => void }) {
   const [search, setSearch] = useState('');
@@ -59,7 +59,7 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
     </div>
     <div class="species-list" data-scroll-region>
       {visible.map(species => { const knowledge = speciesIdentityKnowledge(policy, state.speciesState[species.id]); const hidden = knowledge === 'unknown'; return <button key={species.id} class={`species-row ${hidden ? 'identity-hidden' : ''}`} disabled={hidden} aria-label={hidden ? 'Unidentified encounter' : undefined} onClick={() => send('OPEN_SPECIES', { speciesId: species.id })}>
-        <Sprite speciesId={species.id} name={species.name} available={species.hasSprite} knowledge={knowledge} />
+        <PokedexAvatar speciesId={species.id} name={species.name} available={species.hasSprite} knowledge={knowledge} state={state.speciesState[species.id]} catalog={catalog} />
         <span class="species-number">{hidden ? '#???' : `#${String(species.dex).padStart(3, '0')}`}</span>
         <strong>{hidden ? maskIdentityName(species.name) : species.name}</strong>
         <span class="species-row-meta">

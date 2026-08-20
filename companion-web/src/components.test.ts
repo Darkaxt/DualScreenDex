@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/preact';
 import { h } from 'preact';
 import { afterEach } from 'vitest';
-import { EyeStatus, speciesIdentityKnowledge, StatusMarks, uniqueTypeIds } from './components';
+import { CaughtBadge, EyeStatus, speciesIdentityKnowledge, StatusMarks, uniqueTypeIds } from './components';
 import type { Catalog, SpeciesState } from './models';
 
 afterEach(cleanup);
@@ -45,9 +45,8 @@ describe('capture marker', () => {
       balls: [{ id: 4, name: 'Poké Ball', generic: false, hasSprite: true }]
     } as Catalog;
 
-    render(h(StatusMarks, {
+    render(h(CaughtBadge, {
       catalog,
-      mode: 'DISCOVERED',
       state: { seen: true, caught: true, team: false, ballId: 4 }
     }));
 
@@ -55,28 +54,32 @@ describe('capture marker', () => {
     expect(marker.src).toContain('/api/sprites/balls/4.png');
   });
 
-  it('shows only affirmative capture in Organic mode', () => {
+  it('keeps Organic status marks empty and renders capture only through the affirmative badge', () => {
     const catalog = { balls: [] } as unknown as Catalog;
-    const { container, rerender } = render(h(StatusMarks, {
+    const { container, rerender } = render(h(CaughtBadge, {
       catalog,
-      mode: 'ORGANIC',
       state: { seen: true, caught: false, team: false, ballId: null }
     }));
 
-    expect(container.querySelector('.eye-icon')).toBeNull();
     expect(screen.queryByLabelText('Not caught')).toBeNull();
-    expect(container.querySelector('.status-marks')).toBeNull();
+    expect(container.querySelector('.caught-avatar-badge')).toBeNull();
+
+    rerender(h(CaughtBadge, {
+      catalog,
+      state: { seen: true, caught: true, team: false, ballId: null }
+    }));
+    expect(container.querySelector('.caught-avatar-badge')).toBeTruthy();
+    expect(screen.getByLabelText('Caught')).toBeTruthy();
 
     rerender(h(StatusMarks, {
       catalog,
       mode: 'ORGANIC',
       state: { seen: true, caught: true, team: false, ballId: null }
     }));
-    expect(container.querySelector('.eye-icon')).toBeNull();
-    expect(screen.getByLabelText('Caught')).toBeTruthy();
+    expect(container.querySelector('.status-marks')).toBeNull();
   });
 
-  it('retains explicit seen and uncaught marks outside Organic mode', () => {
+  it('retains explicit seen state outside Organic mode without a negative ball placeholder', () => {
     const { container } = render(h(StatusMarks, {
       catalog: { balls: [] } as unknown as Catalog,
       mode: 'DISCOVERED',
@@ -84,6 +87,6 @@ describe('capture marker', () => {
     }));
 
     expect(container.querySelector('[aria-label="Not seen"]')).toBeTruthy();
-    expect(container.querySelector('[aria-label="Not caught"]')).toBeTruthy();
+    expect(container.querySelector('[aria-label="Not caught"]')).toBeNull();
   });
 });
