@@ -11,30 +11,36 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 interface KnowledgeRepository {
-    fun read(romIdentity: String): KnowledgeLedger?
-    fun write(romIdentity: String, ledger: KnowledgeLedger)
+    fun read(romIdentity: String, saveIdentity: String): KnowledgeLedger?
+    fun write(romIdentity: String, saveIdentity: String, ledger: KnowledgeLedger)
 }
 
 class FileKnowledgeRepository(
     private val root: File,
     private val gson: Gson = Gson(),
 ) : KnowledgeRepository {
-    override fun read(romIdentity: String): KnowledgeLedger? {
-        val identity = normalize(romIdentity)
-        val document = root.resolve("$identity.json")
+    override fun read(romIdentity: String, saveIdentity: String): KnowledgeLedger? {
+        val identity = normalize(romIdentity, "ROM")
+        val save = normalize(saveIdentity, "save")
+        val document = root.resolve("$identity.$save.json")
         if (!document.isFile) return null
         val stored = runCatching { gson.fromJson(document.readText(), StoredLedger::class.java) }.getOrNull()
             ?: return null
-        if (stored.schema !in SUPPORTED_SCHEMAS || !stored.romIdentity.equals(identity, ignoreCase = true)) return null
+        if (
+            stored.schema != SCHEMA ||
+            !stored.romIdentity.equals(identity, ignoreCase = true) ||
+            !stored.saveIdentity.equals(save, ignoreCase = true)
+        ) return null
         return stored.toLedger()
     }
 
-    override fun write(romIdentity: String, ledger: KnowledgeLedger) {
-        val identity = normalize(romIdentity)
+    override fun write(romIdentity: String, saveIdentity: String, ledger: KnowledgeLedger) {
+        val identity = normalize(romIdentity, "ROM")
+        val save = normalize(saveIdentity, "save")
         check(root.isDirectory || root.mkdirs()) { "knowledge directory could not be created" }
-        val destination = root.resolve("$identity.json")
-        val temporary = root.resolve("$identity.tmp")
-        temporary.writeText(gson.toJson(StoredLedger.from(identity, ledger)))
+        val destination = root.resolve("$identity.$save.json")
+        val temporary = root.resolve("$identity.$save.tmp")
+        temporary.writeText(gson.toJson(StoredLedger.from(identity, save, ledger)))
         runCatching {
             Files.move(
                 temporary.toPath(),
@@ -47,15 +53,16 @@ class FileKnowledgeRepository(
         }
     }
 
-    private fun normalize(identity: String): String {
+    private fun normalize(identity: String, kind: String): String {
         val normalized = identity.lowercase()
-        require(normalized.matches(Regex("[0-9a-f]{64}"))) { "ROM identity must be a SHA-256 hash" }
+        require(normalized.matches(Regex("[0-9a-f]{64}"))) { "$kind identity must be a SHA-256 hash" }
         return normalized
     }
 
     private data class StoredLedger(
         val schema: Int = 0,
         val romIdentity: String = "",
+        val saveIdentity: String = "",
         val seenSpecies: List<Int> = emptyList(),
         val caughtSpecies: List<Int> = emptyList(),
         val owned: List<OwnedPokemon> = emptyList(),
@@ -99,9 +106,10 @@ class FileKnowledgeRepository(
         )
 
         companion object {
-            fun from(identity: String, ledger: KnowledgeLedger) = StoredLedger(
+            fun from(identity: String, saveIdentity: String, ledger: KnowledgeLedger) = StoredLedger(
                 schema = SCHEMA,
                 romIdentity = identity,
+                saveIdentity = saveIdentity,
                 seenSpecies = ledger.seenSpecies.sorted(),
                 caughtSpecies = ledger.caughtSpecies.sorted(),
                 owned = ledger.owned,
@@ -140,7 +148,6 @@ class FileKnowledgeRepository(
     )
 
     private companion object {
-        const val SCHEMA = 3
-        val SUPPORTED_SCHEMAS = setOf(1, 2, SCHEMA)
+        const val SCHEMA = 4
     }
 }

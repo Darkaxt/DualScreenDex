@@ -7,7 +7,6 @@ import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.OwnedPokemon
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -16,8 +15,9 @@ class FileKnowledgeRepositoryTest {
     @get:Rule val temporary = TemporaryFolder()
 
     @Test
-    fun roundTripsKnowledgeInAPerRomDocument() {
+    fun roundTripsKnowledgeInAPerSaveDocument() {
         val identity = "a".repeat(64)
+        val saveIdentity = "1".repeat(64)
         val ledger = KnowledgeLedger(
             seenSpecies = setOf(25, 133),
             caughtSpecies = setOf(25),
@@ -34,47 +34,46 @@ class FileKnowledgeRepositoryTest {
         )
         val repository = FileKnowledgeRepository(temporary.newFolder("knowledge"))
 
-        repository.write(identity, ledger)
+        repository.write(identity, saveIdentity, ledger)
 
-        assertEquals(ledger, repository.read(identity.uppercase()))
-        assertNull(repository.read("b".repeat(64)))
+        assertEquals(ledger, repository.read(identity.uppercase(), saveIdentity.uppercase()))
+        assertNull(repository.read(identity, "2".repeat(64)))
+        assertNull(repository.read("b".repeat(64), saveIdentity))
     }
 
     @Test
     fun invalidOrMismatchedDocumentsAreIgnored() {
         val identity = "c".repeat(64)
+        val saveIdentity = "3".repeat(64)
         val root = temporary.newFolder("knowledge")
-        root.resolve("$identity.json").writeText("""{"schema":1,"romIdentity":"${"d".repeat(64)}"}""")
+        root.resolve("$identity.$saveIdentity.json").writeText(
+            """{"schema":4,"romIdentity":"${"d".repeat(64)}","saveIdentity":"$saveIdentity"}""",
+        )
 
-        assertNull(FileKnowledgeRepository(root).read(identity))
+        assertNull(FileKnowledgeRepository(root).read(identity, saveIdentity))
     }
 
     @Test
-    fun migratesVisitedAreasFromSchemaOneKnowledge() {
+    fun doesNotAutomaticallyTrustLegacyRomOnlyKnowledge() {
         val identity = "e".repeat(64)
+        val saveIdentity = "5".repeat(64)
         val root = temporary.newFolder("knowledge")
         root.resolve("$identity.json").writeText(
             """{"schema":1,"romIdentity":"$identity","currentAreaBaseId":3,"seenSpeciesByArea":[{"areaBaseId":2,"speciesIds":[25]}]}""",
         )
 
-        val migrated = FileKnowledgeRepository(root).read(identity)!!
-
-        assertEquals(setOf(2, 3), migrated.visitedAreaBaseIds)
+        assertNull(FileKnowledgeRepository(root).read(identity, saveIdentity))
     }
 
     @Test
-    fun invalidatesOnlyLegacyMatchupEvidenceThatCouldHaveUsedUnownedDoubleCommands() {
+    fun rejectsDocumentsForAnotherSaveLineage() {
         val identity = "f".repeat(64)
+        val saveIdentity = "6".repeat(64)
         val root = temporary.newFolder("knowledge")
-        root.resolve("$identity.json").writeText(
-            """{"schema":2,"romIdentity":"$identity","seenSpecies":[25],"observedMoves":[{"speciesId":25,"moves":[{"moveId":33,"frequency":2}]}],"discoveredMatchups":[{"speciesId":25,"moveId":33,"effectiveness":"SUPER_EFFECTIVE"}]}""",
+        root.resolve("$identity.$saveIdentity.json").writeText(
+            """{"schema":4,"romIdentity":"$identity","saveIdentity":"${"7".repeat(64)}","seenSpecies":[25]}""",
         )
 
-        val migrated = FileKnowledgeRepository(root).read(identity)!!
-
-        assertEquals(setOf(25), migrated.seenSpecies)
-        assertEquals(listOf(MoveObservation(33, 2)), migrated.observedMoves[25])
-        assertTrue(migrated.discoveredMatchups.isEmpty())
-        assertEquals(KnowledgeLedger.CURRENT_MATCHUP_EVIDENCE_VERSION, migrated.matchupEvidenceVersion)
+        assertNull(FileKnowledgeRepository(root).read(identity, saveIdentity))
     }
 }

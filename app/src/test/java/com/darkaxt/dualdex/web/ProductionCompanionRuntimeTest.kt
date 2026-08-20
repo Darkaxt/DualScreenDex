@@ -331,10 +331,28 @@ class ProductionCompanionRuntimeTest {
     @Test
     fun persistsBattleKnowledgeAndRestoresItWhenTheSameRomReopens() {
         val identity = "e".repeat(64)
+        val saveIdentity = "1".repeat(64)
         val repository = InMemoryKnowledgeRepository()
-        val catalog = ParsedCatalog(identity, EngineFamily.YELLOW, Platform.GB)
+        val catalog = ParsedCatalog(
+            identity,
+            EngineFamily.YELLOW,
+            Platform.GB,
+            speciesById = mapOf(0x66 to saveSpecies(0x66)),
+            movesById = mapOf(
+                0x21 to MoveRecord(
+                    0x21,
+                    CatalogField.available("MOVE"),
+                    CatalogField.notFound("fixture"),
+                    CatalogField.notFound("fixture"),
+                    CatalogField.notFound("fixture"),
+                    CatalogField.notFound("fixture"),
+                    CatalogField.notFound("fixture"),
+                ),
+            ),
+        )
         val first = ProductionCompanionRuntime(knowledgeRepository = repository)
         first.loadCatalog("yellow.gb", catalog)
+        assertTrue(first.applySaveSnapshot(emptySave(identity, saveIdentity), SaveRamView(status = "MATCHED")))
         first.applyBattleTracking(
             BattleTrackingUpdate(
                 active = false,
@@ -347,6 +365,8 @@ class ProductionCompanionRuntimeTest {
 
         val reopened = ProductionCompanionRuntime(knowledgeRepository = repository)
         reopened.loadCatalog("yellow.gb", catalog)
+        assertTrue(reopened.gateway.bootstrap().ledger.observedMoves.isEmpty())
+        assertTrue(reopened.applySaveSnapshot(emptySave(identity, saveIdentity), SaveRamView(status = "MATCHED")))
 
         assertEquals(2, reopened.gateway.bootstrap().ledger.observedMoves.getValue(0x66).single().frequency)
         reopened.close()
@@ -355,9 +375,20 @@ class ProductionCompanionRuntimeTest {
     @Test
     fun recordsObservedOpponentsAgainstTheCurrentLiveArea() {
         val identity = "f".repeat(64)
+        val saveIdentity = "2".repeat(64)
         val repository = InMemoryKnowledgeRepository()
         val runtime = ProductionCompanionRuntime(knowledgeRepository = repository)
-        runtime.loadCatalog("fixture.gba", ParsedCatalog(identity, EngineFamily.EMERALD, Platform.GBA))
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                identity,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(13 to saveSpecies(13), 16 to saveSpecies(16)),
+                encounterAreas = listOf(EncounterArea(0x0010 * 10 + 1, CatalogField.available("Area"), 1, emptyList())),
+            ),
+        )
+        assertTrue(runtime.applySaveSnapshot(emptySave(identity, saveIdentity), SaveRamView(status = "MATCHED")))
         runtime.updateLiveArea(0x0010)
         val first = BattleMonSnapshot(
             battlerIndex = 1, position = 1, speciesId = 13, level = 3, hp = 15, maxHp = 15,
@@ -378,13 +409,14 @@ class ProductionCompanionRuntimeTest {
         val ledger = runtime.gateway.bootstrap().ledger
         assertEquals(setOf(13, 16), ledger.seenSpeciesByArea.getValue(0x0010))
         assertEquals(setOf(16), ledger.seenSpeciesByArea.getValue(0x0011))
-        assertEquals(ledger, repository.read(identity))
+        assertEquals(ledger, repository.read(identity, saveIdentity))
         runtime.close()
     }
 
     @Test
     fun persistsVisitedAreasAndRoutesTheSelectedMapLocationIntoAreaDex() {
         val identity = "9".repeat(64)
+        val saveIdentity = "3".repeat(64)
         val repository = InMemoryKnowledgeRepository()
         val selectedAreaId = 0x0011 * 10 + 1
         val runtime = ProductionCompanionRuntime(knowledgeRepository = repository)
@@ -426,17 +458,71 @@ class ProductionCompanionRuntimeTest {
                 ),
             ),
         )
+        assertTrue(runtime.applySaveSnapshot(emptySave(identity, saveIdentity), SaveRamView(status = "MATCHED")))
 
         runtime.action("OPEN_SPECIES", mapOf("speciesId" to "1"))
         runtime.updateLiveArea(0x0011)
         val state = runtime.action("MAP_AREA", mapOf("regionKey" to "hoenn", "locationKey" to "oldale"))
 
         assertEquals(setOf(0x0011), runtime.gateway.bootstrap().ledger.visitedAreaBaseIds)
-        assertEquals(setOf(0x0011), repository.read(identity)!!.visitedAreaBaseIds)
+        assertEquals(setOf(0x0011), repository.read(identity, saveIdentity)!!.visitedAreaBaseIds)
         assertEquals("AREA", state.filter)
         assertEquals(AppScreen.POKEDEX.name, state.screen)
         assertEquals(selectedAreaId, state.selectedAreaId)
         assertEquals(listOf(selectedAreaId, 0x0012 * 10 + 1), state.currentAreaIds)
+        runtime.close()
+    }
+
+    @Test
+    fun neverPublishesRomOnlyKnowledgeAndLetsTheValidatedSaveReplaceOwnership() {
+        val identity = "8".repeat(64)
+        val saveIdentity = "4".repeat(64)
+        val repository = InMemoryKnowledgeRepository().apply {
+            write(
+                identity,
+                saveIdentity,
+                com.enrpau.dualscreendex.companion.model.KnowledgeLedger(
+                    seenSpecies = setOf(25, 999),
+                    caughtSpecies = setOf(25, 999),
+                    observedMoves = mapOf(
+                        25 to listOf(com.enrpau.dualscreendex.companion.model.MoveObservation(33, 2)),
+                        999 to listOf(com.enrpau.dualscreendex.companion.model.MoveObservation(999, 1)),
+                    ),
+                ),
+            )
+        }
+        val runtime = ProductionCompanionRuntime(knowledgeRepository = repository)
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                identity,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(25 to saveSpecies(25)),
+                movesById = mapOf(
+                    33 to MoveRecord(
+                        33,
+                        CatalogField.available("TACKLE"),
+                        CatalogField.notFound("fixture"),
+                        CatalogField.notFound("fixture"),
+                        CatalogField.notFound("fixture"),
+                        CatalogField.notFound("fixture"),
+                        CatalogField.notFound("fixture"),
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue(runtime.gateway.bootstrap().ledger.seenSpecies.isEmpty())
+        assertTrue(runtime.gateway.bootstrap().ledger.caughtSpecies.isEmpty())
+
+        assertTrue(runtime.applySaveSnapshot(emptySave(identity, saveIdentity), SaveRamView(status = "MATCHED")))
+
+        val restored = runtime.gateway.bootstrap().ledger
+        assertTrue(restored.seenSpecies.isEmpty())
+        assertTrue(restored.caughtSpecies.isEmpty())
+        assertEquals(listOf(com.enrpau.dualscreendex.companion.model.MoveObservation(33, 2)), restored.observedMoves[25])
+        assertFalse(999 in restored.observedMoves)
         runtime.close()
     }
     @Test
@@ -1619,13 +1705,14 @@ class ProductionCompanionRuntimeTest {
     private class InMemoryKnowledgeRepository : KnowledgeRepository {
         private val documents = mutableMapOf<String, com.enrpau.dualscreendex.companion.model.KnowledgeLedger>()
 
-        override fun read(romIdentity: String) = documents[romIdentity]
+        override fun read(romIdentity: String, saveIdentity: String) = documents["$romIdentity:$saveIdentity"]
 
         override fun write(
             romIdentity: String,
+            saveIdentity: String,
             ledger: com.enrpau.dualscreendex.companion.model.KnowledgeLedger,
         ) {
-            documents[romIdentity] = ledger
+            documents["$romIdentity:$saveIdentity"] = ledger
         }
     }
 
@@ -1714,5 +1801,18 @@ class ProductionCompanionRuntimeTest {
         detectedLevelUpRulesetId = detectedId,
         levelUpRulesetDetectionResolved = true,
         levelUpRulesetDetectionFingerprint = fingerprint,
+    )
+
+    private fun emptySave(romIdentity: String, saveIdentity: String) = SaveSnapshot(
+        romIdentity = romIdentity,
+        saveIdentity = saveIdentity,
+        saveGeneration = 3,
+        saveCounter = 1,
+        currentArea = null,
+        seenDexNumbers = emptySet(),
+        caughtDexNumbers = emptySet(),
+        party = emptyList(),
+        storedIndividuals = emptyList(),
+        capabilities = emptyMap(),
     )
 }

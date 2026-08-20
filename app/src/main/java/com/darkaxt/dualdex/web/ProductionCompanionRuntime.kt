@@ -5,6 +5,7 @@ import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.catalog.catalogWriteProgress
 import com.darkaxt.dualdex.knowledge.KnowledgeRepository
+import com.darkaxt.dualdex.knowledge.KnowledgeLedgerSanitizer
 import com.darkaxt.dualdex.battle.BattleCatalogContext
 import com.darkaxt.dualdex.battle.liveAreaMemoryLayout
 import com.darkaxt.dualdex.battle.BattleCatalogView
@@ -119,6 +120,7 @@ class ProductionCompanionRuntime(
     private var liveParty: List<OwnedIndividual>? = null
     private var liveGameState: Gen3LiveGameSnapshot? = null
     private var savedPlayerState: SaveSnapshot? = null
+    private var activeSaveIdentity: String? = null
     private var catalogPublicationInProgress = false
     private var cachedState: CachedState? = null
     private val loadGeneration = AtomicLong()
@@ -188,7 +190,7 @@ class ProductionCompanionRuntime(
         applyWinningCatalogSettings(parsed.romSha256)
         catalog = parsed
         settingsWritesEnabled = true
-        gateway.dispatch(CompanionAction.ReplaceLedger(readKnowledge(parsed.romSha256)))
+        gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
         gateway.dispatch(
             CompanionAction.CatalogLoadingChanged(
                 CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 5, totalUnits = 5),
@@ -601,6 +603,12 @@ class ProductionCompanionRuntime(
     fun applySaveSnapshot(snapshot: SaveSnapshot, state: SaveRamView): Boolean {
         val current = catalog ?: return false
         if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return false
+        activeSaveIdentity = snapshot.saveIdentity
+        gateway.dispatch(
+            CompanionAction.ReplaceLedger(
+                readKnowledge(current.romSha256, snapshot.saveIdentity, current),
+            ),
+        )
         savedPlayerState = snapshot
         val merged = mergedPlayerKnowledge(current)
         val selectors = completeLevelUpRulesetSelectors(current)
@@ -843,7 +851,7 @@ class ProductionCompanionRuntime(
             clearLevelUpRulesetDetection()
             clearLiveBattle()
             applyWinningCatalogSettings(reopened.romSha256)
-            gateway.dispatch(CompanionAction.ReplaceLedger(readKnowledge(reopened.romSha256)))
+            gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
             gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
             catalog = reopened
             settingsWritesEnabled = true
@@ -863,16 +871,19 @@ class ProductionCompanionRuntime(
     private fun requireInt(values: Map<String, String?>, key: String): Int =
         requireNotNull(values[key]?.toIntOrNull()) { "$key is required" }
 
-    private fun restoreKnowledge(romIdentity: String) {
-        gateway.dispatch(CompanionAction.ReplaceLedger(readKnowledge(romIdentity)))
-    }
-
-    private fun readKnowledge(romIdentity: String): KnowledgeLedger =
-        runCatching { knowledgeRepository?.read(romIdentity) }.getOrNull() ?: KnowledgeLedger()
+    private fun readKnowledge(
+        romIdentity: String,
+        saveIdentity: String,
+        currentCatalog: ParsedCatalog,
+    ): KnowledgeLedger = KnowledgeLedgerSanitizer.sanitize(
+        runCatching { knowledgeRepository?.read(romIdentity, saveIdentity) }.getOrNull() ?: KnowledgeLedger(),
+        currentCatalog,
+    )
 
     private fun persistKnowledge(ledger: KnowledgeLedger) {
         val romIdentity = catalog?.romSha256 ?: return
-        runCatching { knowledgeRepository?.write(romIdentity, ledger) }
+        val saveIdentity = activeSaveIdentity ?: return
+        runCatching { knowledgeRepository?.write(romIdentity, saveIdentity, ledger) }
     }
 
     private fun notifyCompletion(callback: ((Result<Unit>) -> Unit)?, result: Result<Unit>) {
@@ -886,6 +897,7 @@ class ProductionCompanionRuntime(
         liveParty = null
         liveGameState = null
         savedPlayerState = null
+        activeSaveIdentity = null
         settingsRomSha256 = null
         settingsWritesEnabled = false
         clearLevelUpRulesetDetection()
@@ -938,7 +950,7 @@ class ProductionCompanionRuntime(
         applyWinningCatalogSettings(parsed.romSha256)
         catalog = parsed
         settingsWritesEnabled = true
-        restoreKnowledge(parsed.romSha256)
+        gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
         onCatalogCommitted(parsed.romSha256, name)
         gateway.dispatch(
             CompanionAction.CatalogLoadingChanged(
