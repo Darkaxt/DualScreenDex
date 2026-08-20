@@ -63,6 +63,7 @@ object RetailBattleMechanicsResolver {
         if (abilityDomain.isEmpty()) {
             return RetailBattleMechanicsResolution.Unavailable("typed active ability domain is empty")
         }
+        val maximumAbilityId = abilityDomain.max()
         val calls = decodedThumbCalls(session.rom)
             ?: return RetailBattleMechanicsResolution.BudgetExceeded("decoded Thumb call-edge budget exceeded")
         val moveRoot = GBA_ROM_BASE + moveDetails.table.offset.toInt()
@@ -127,6 +128,8 @@ object RetailBattleMechanicsResolver {
                     ?: fields.filterTo(linkedSetOf()) { it.width in setOf(ScalarWidth.U8, ScalarWidth.U16) }
             } else {
                 fields.filterTo(linkedSetOf()) { it.width in setOf(ScalarWidth.U8, ScalarWidth.U16) }
+            }.filterTo(linkedSetOf()) { field ->
+                field.width.canRepresentUnsigned(maximumAbilityId)
             }
             val attackFields = if (extendedAbilityDomain) {
                 directFields.filterTo(linkedSetOf()) { it.width == ScalarWidth.U16 }.takeIf { it.isNotEmpty() }
@@ -337,6 +340,12 @@ object RetailBattleMechanicsResolver {
             return "selected ABI move layout contradicts the parser-selected retail-12 layout"
         }
         return null
+    }
+
+    private fun ScalarWidth.canRepresentUnsigned(value: Int): Boolean = when (this) {
+        ScalarWidth.U8 -> value <= 0xFF
+        ScalarWidth.U16 -> value <= 0xFFFF
+        ScalarWidth.U32 -> true
     }
 
     private fun decodedThumbCalls(image: RomImage): Map<Int, List<Int>>? {

@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.catalog
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -15,6 +16,23 @@ import org.junit.Test
 
 /** Opt-in regressions bound to the real corpus ROMs that exposed cross-catalog reference failures. */
 class CatalogReferenceLiveRomTest {
+    @Test
+    fun radicalRedKeepsItsCatalogWhenTheAbilityDomainDoesNotFitARejectedBattleField() {
+        val configuredPath = System.getenv("DUALDEX_RADICAL_RED_ROM")
+        assumeTrue("set DUALDEX_RADICAL_RED_ROM to run this live-ROM regression", !configuredPath.isNullOrBlank())
+        val path = Path.of(requireNotNull(configuredPath))
+        assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals("679d112cdfe699c2793d82c7e7999ac9dfca9e222ad5a85d4f8f1e457cd0283f", rom.sha256)
+
+        val parsed = CatalogParser.parse(rom)
+        val catalog = requireNotNull(parsed.catalog)
+
+        assertEquals(SelectionStatus.SELECTED, parsed.analysis.status)
+        assertTrue(catalog.speciesById.isNotEmpty())
+        assertTrue(catalog.abilitiesById.keys.max() > 0xFF)
+    }
+
     @Test
     fun crystalAdvanceMaterializesReferencedAbilityTargetsPastTheInferredNamePrefix() {
         val catalog = parseLiveRom(
