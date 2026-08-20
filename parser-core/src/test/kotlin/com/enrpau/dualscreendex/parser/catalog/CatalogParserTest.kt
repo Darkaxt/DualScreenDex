@@ -100,6 +100,8 @@ class CatalogParserTest {
         assertEquals(1, catalog.worldMaps.regions.size)
         assertTrue(catalog.localMaps.maps.isEmpty())
         assertTrue(catalog.localMaps.assets.isEmpty())
+        assertTrue(catalog.localMaps.indexedAssets.isEmpty())
+        assertEquals(null, catalog.runtimeMetadata.gen2TimeOfDayWramOffset)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
         val evidence = catalog.capabilities.getValue(RomCapability.LOCAL_MAP)
         assertEquals(CapabilityStatus.NOT_FOUND, evidence.status)

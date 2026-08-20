@@ -234,10 +234,21 @@ data class CatalogGen3RuntimeMemoryLayout(
 }
 
 data class CatalogRuntimeMetadata(
+    val gen2TimeOfDayWramOffset: Int? = null,
     val gen3SaveBlock1PointerAddress: Long? = null,
     val gen3RuntimeMemoryLayout: CatalogGen3RuntimeMemoryLayout? = null,
     val areaNamesByBaseId: Map<Int, String> = emptyMap(),
-)
+) {
+    fun validate(): CatalogRuntimeMetadata = apply {
+        require(gen2TimeOfDayWramOffset == null || gen2TimeOfDayWramOffset in 0 until GEN2_WRAM_BYTES) {
+            "Gen II time-of-day offset must remain inside WRAM"
+        }
+    }
+
+    private companion object {
+        const val GEN2_WRAM_BYTES = 0x2000
+    }
+}
 
 enum class MapLighting { MORNING, DAY, NIGHT, DARK }
 

@@ -1,15 +1,16 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.IndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
-import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
-import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
+import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.sprite.IndexedSprite
 import com.enrpau.dualscreendex.parser.sprite.Lz3Decoder
-import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
 
 internal object Gen2LocalMapResolver {
@@ -73,6 +74,9 @@ internal object Gen2LocalMapResolver {
                 authority.tilesets.root,
                 authority.roofs.table,
                 authority.palettes.environmentPointers,
+                authority.palettes.tilesetPalettes,
+                authority.palettes.roofPalettes,
+                authority.palettes.timeOfDayWramOffset,
                 authority.tilePaletteBank,
             )
         }
@@ -113,10 +117,10 @@ internal object Gen2LocalMapResolver {
         val namedMapCount = authority.descriptors.count { landmarkNames.containsKey(it.landmarkId) }
 
         val maps = mutableListOf<LocalMap>()
-        val assets = linkedMapOf<String, PngMapAsset>()
+        val assets = linkedMapOf<String, IndexedMapAsset>()
         val skippedReasons = mutableListOf<String>()
         val tileVariants = mutableMapOf<TilesetVariant, IndexedSprite>()
-        var encodedBytes = 0L
+        var compressedBytes = 0L
         authority.descriptors.forEach { descriptor ->
             runCatching {
                 val tileset = authority.tilesetData.getValue(descriptor.tilesetId)
@@ -125,23 +129,23 @@ internal object Gen2LocalMapResolver {
                 val tiles = tileVariants.getOrPut(variant) {
                     tileset.renderTiles(session.rom, authority.roofs, roofIndex)
                 }
-                val png = PngEncoder.encode(
-                    render(
-                        descriptor,
-                        tileset,
-                        tiles,
-                        authority.palettes.colorsFor(session.rom, descriptor),
-                    ),
-                )
-                encodedBytes += png.size
-                if (encodedBytes > MAX_ENCODED_BYTES) {
+                val indices = renderIndices(descriptor, tileset, tiles)
+                val asset = IndexedMapAsset(
+                    pixelWidth = descriptor.gridWidth * METATILE_PIXELS,
+                    pixelHeight = descriptor.gridHeight * METATILE_PIXELS,
+                    compressedIndices = LocalMapRasterCodec.compress(indices),
+                    lightingPolicy = descriptor.lightingPolicy,
+                    palettes = authority.palettes.palettesFor(session.rom, descriptor),
+                ).validate()
+                compressedBytes += asset.compressedIndices.size
+                if (compressedBytes > MAX_COMPRESSED_ASSET_BYTES) {
                     return LocalMapResolution.BudgetExceeded(
-                        "encoded-assets",
-                        "local-map PNG assets exceed $MAX_ENCODED_BYTES bytes",
+                        "compressed-assets",
+                        "compressed local-map index assets exceed $MAX_COMPRESSED_ASSET_BYTES bytes",
                     )
                 }
                 maps += descriptor.toLocalMap(landmarkNames[descriptor.landmarkId])
-                assets[descriptor.assetKey] = PngMapAsset(png)
+                assets[descriptor.assetKey] = asset
             }.onFailure { failure ->
                 skippedReasons += "map 0x${descriptor.baseAreaId.toString(16).padStart(4, '0')} render: ${failure.message}"
             }
@@ -151,15 +155,16 @@ internal object Gen2LocalMapResolver {
         }
 
         return LocalMapResolution.Resolved(
-            catalog = LocalMapCatalog(maps, assets).validate(),
+            catalog = LocalMapCatalog(maps = maps, indexedAssets = assets).validate(),
             reasons = listOf(
                 "resolved compiled Gen II map-group, tileset, roof, environment-color, and palette consumers",
                 "rendered ${maps.size} bounded $label maps from 32x32 ROM blocks and LZ3 2bpp tiles",
                 "resolved $namedMapCount map display names through the compiled landmark lookup",
-                "rendered native GBC colors from tileset palette maps and a daytime baseline respecting explicit map modes",
+                "stored time-independent indexed rasters with native morning, day, night, and dark GBC palettes",
                 "bound all ${requiredMaps.size} encounter-authoritative group/map IDs",
             ) + skippedReasons,
             skippedMaps = skippedReasons.size,
+            gen2TimeOfDayWramOffset = authority.palettes.timeOfDayWramOffset,
         )
     }
 
@@ -256,7 +261,9 @@ internal object Gen2LocalMapResolver {
             parsePaletteAuthorityAt(rom, offset)?.let(::add)
             offset++
         }
-    }.distinctBy { Triple(it.environmentPointers, it.tilesetPalettes, it.roofPalettes) }
+    }.distinctBy {
+        listOf(it.environmentPointers, it.tilesetPalettes, it.roofPalettes, it.timeOfDayWramOffset)
+    }
 
     private fun parsePaletteAuthorityAt(rom: RomImage, offset: Int): PaletteAuthority? = runCatching {
         if (
@@ -275,6 +282,8 @@ internal object Gen2LocalMapResolver {
         ) return@runCatching null
 
         val bank = offset / BANK_BYTES
+        val timeOfDayAddress = rom.u16le(offset + 17)
+        require(timeOfDayAddress in WRAM_START until WRAM_END)
         val environmentPointers = rom.gbBankAddress(bank, rom.u16le(offset + 9)) ?: return@runCatching null
         val searchEnd = minOf(offset + PALETTE_CONSUMER_BYTES, bankEnd(rom, bank))
         val tilesetOperand = (offset + 30 until searchEnd - 11).firstOrNull { candidate ->
@@ -293,9 +302,16 @@ internal object Gen2LocalMapResolver {
                 rom.u8(candidate + 14) == DAYTIME_MASK && rom.u8(candidate + 15) == COMPARE_IMMEDIATE &&
                 rom.u8(candidate + 16) == NITE_TIME
         } ?: return@runCatching null
+        require(rom.u16le(roofOperand + 11) == timeOfDayAddress)
         val tilesetPalettes = rom.gbBankAddress(bank, rom.u16le(tilesetOperand + 7)) ?: return@runCatching null
         val roofPalettes = rom.gbBankAddress(bank, rom.u16le(roofOperand + 7)) ?: return@runCatching null
-        PaletteAuthority(bank, environmentPointers, tilesetPalettes, roofPalettes)
+        PaletteAuthority(
+            bank,
+            environmentPointers,
+            tilesetPalettes,
+            roofPalettes,
+            timeOfDayAddress - WRAM_START,
+        )
     }.getOrNull()
 
     private fun buildAuthority(
@@ -483,24 +499,22 @@ internal object Gen2LocalMapResolver {
         return TilesetData(vramTiles, metatiles, rom.slice(paletteMapRoot, paletteMapBytes))
     }
 
-    private fun render(
+    private fun renderIndices(
         map: MapDescriptor,
         tileset: TilesetData,
         tiles: IndexedSprite,
-        palettes: IntArray,
-    ): RgbaSprite {
+    ): ByteArray {
         val pixelWidth = map.gridWidth * METATILE_PIXELS
-        val pixels = IntArray(map.pixelCount.toInt())
+        val pixels = ByteArray(map.pixelCount.toInt())
         repeat(map.blockHeight) { blockY ->
             repeat(map.blockWidth) { blockX ->
                 val blockId = map.blockIds[blockY * map.blockWidth + blockX].toInt() and 0xff
                 repeat(TILES_PER_BLOCK) { tileIndex ->
                     val tileId = tileset.metatiles[blockId * TILES_PER_BLOCK + tileIndex].toInt() and 0xff
-                    drawTile(
+                    drawIndexedTile(
                         tiles,
                         tileId,
                         tileset.paletteIndex(tileId),
-                        palettes,
                         pixels,
                         pixelWidth,
                         blockX * BLOCK_PIXELS + tileIndex % BLOCK_TILE_EDGE * TILE_PIXELS,
@@ -509,24 +523,23 @@ internal object Gen2LocalMapResolver {
                 }
             }
         }
-        return RgbaSprite(pixelWidth, map.gridHeight * METATILE_PIXELS, pixels)
+        return pixels
     }
 
-    private fun drawTile(
+    private fun drawIndexedTile(
         tiles: IndexedSprite,
         tileId: Int,
         paletteIndex: Int,
-        palettes: IntArray,
-        pixels: IntArray,
+        pixels: ByteArray,
         pixelWidth: Int,
         originX: Int,
         originY: Int,
     ) {
-        val paletteOffset = paletteIndex * COLORS_PER_PALETTE
         repeat(TILE_PIXELS) { y ->
             repeat(TILE_PIXELS) { x ->
                 val colorIndex = tiles.indexAt(tileId * TILE_PIXELS + x, y)
-                pixels[(originY + y) * pixelWidth + originX + x] = palettes[paletteOffset + colorIndex]
+                pixels[(originY + y) * pixelWidth + originX + x] =
+                    (paletteIndex * COLORS_PER_PALETTE + colorIndex).toByte()
             }
         }
     }
@@ -541,6 +554,7 @@ internal object Gen2LocalMapResolver {
         val environmentPointers: Int,
         val tilesetPalettes: Int,
         val roofPalettes: Int,
+        val timeOfDayWramOffset: Int,
     ) {
         fun validate(rom: RomImage, groupCount: Int) {
             require(environmentPointers + ENVIRONMENT_COUNT * 2 <= bankEnd(rom, bank)) {
@@ -572,8 +586,15 @@ internal object Gen2LocalMapResolver {
             }
         }
 
-        fun colorsFor(rom: RomImage, map: MapDescriptor): IntArray {
-            val time = map.paletteTime
+        fun palettesFor(rom: RomImage, map: MapDescriptor): MapLightingPalettes = MapLightingPalettes(
+            morning = colorsFor(rom, map, MORN_TIME),
+            day = colorsFor(rom, map, DAY_TIME),
+            night = colorsFor(rom, map, NITE_TIME),
+            dark = colorsFor(rom, map, DARK_TIME),
+        )
+
+        private fun colorsFor(rom: RomImage, map: MapDescriptor, time: Int): IntArray {
+            require(time in MORN_TIME..DARK_TIME)
             val environmentColors = requireNotNull(
                 rom.gbBankAddress(bank, rom.u16le(environmentPointers + map.environment * 2)),
             )
@@ -681,11 +702,12 @@ internal object Gen2LocalMapResolver {
         val gridHeight: Int = blockHeight * BLOCK_METATILE_EDGE
         val pixelCount: Long = gridWidth.toLong() * METATILE_PIXELS * gridHeight * METATILE_PIXELS
         val usedBlockIds: Set<Int> = blockIds.mapTo(sortedSetOf()) { it.toInt() and 0xff }
-        val paletteTime: Int = when (paletteMode) {
-            PALETTE_AUTO, PALETTE_DAY -> DAY_TIME
-            PALETTE_NITE -> NITE_TIME
-            PALETTE_MORN -> MORN_TIME
-            PALETTE_DARK -> DARK_TIME
+        val lightingPolicy: LocalMapLightingPolicy = when (paletteMode) {
+            PALETTE_AUTO -> LocalMapLightingPolicy.AUTO
+            PALETTE_DAY -> LocalMapLightingPolicy.DAY
+            PALETTE_NITE -> LocalMapLightingPolicy.NIGHT
+            PALETTE_MORN -> LocalMapLightingPolicy.MORNING
+            PALETTE_DARK -> LocalMapLightingPolicy.DARK
             else -> error("unsupported Gen II map palette mode $paletteMode")
         }
         val key: String = "local/${baseAreaId.toString(16).padStart(4, '0')}"
@@ -754,13 +776,15 @@ internal object Gen2LocalMapResolver {
     private const val ROOF_PALETTE_INDEX = 6
     private const val ROOF_OVERRIDE_COLOR_START = 1
     private const val ROOF_OVERRIDE_COLOR_COUNT = 2
+    private const val WRAM_START = 0xc000
+    private const val WRAM_END = 0xe000
     private const val VRAM_TILE_START = 0x9000
     private const val VRAM_TILE_END = 0x9800
     private val OUTDOOR_ENVIRONMENTS = setOf(1, 2)
     private const val MAX_MAPS = 512
     private const val MAX_MAP_PIXELS = 2_000_000L
     private const val MAX_TOTAL_PIXELS = 100_000_000L
-    private const val MAX_ENCODED_BYTES = 64L * 1024 * 1024
+    private const val MAX_COMPRESSED_ASSET_BYTES = 64L * 1024 * 1024
 
     private const val TILESET_CONSUMER_BYTES = 23
     private const val ROOF_CONSUMER_BYTES = 32

@@ -474,6 +474,10 @@ object CatalogMaterializer {
             null
         }
         val localMaps = (localMapResolution as? LocalMapResolution.Resolved)?.catalog ?: LocalMapCatalog()
+        val finalRuntimeMetadata = runtimeMetadata.copy(
+            gen2TimeOfDayWramOffset =
+                (localMapResolution as? LocalMapResolution.Resolved)?.gen2TimeOfDayWramOffset,
+        ).validate()
         capabilities[RomCapability.LOCAL_MAP] = when (localMapResolution) {
             is LocalMapResolution.Resolved -> {
                 val total = localMapResolution.catalog.maps.size + localMapResolution.skippedMaps
@@ -535,7 +539,7 @@ object CatalogMaterializer {
             encounterAreas = encounters,
             captureBallsById = balls,
             learnsetRulesets = learnsetRulesets,
-            runtimeMetadata = runtimeMetadata,
+            runtimeMetadata = finalRuntimeMetadata,
             worldMaps = worldMaps,
             localMaps = localMaps,
             capabilities = capabilities,

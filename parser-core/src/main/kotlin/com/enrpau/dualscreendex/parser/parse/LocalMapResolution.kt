@@ -7,6 +7,7 @@ sealed interface LocalMapResolution {
         val catalog: LocalMapCatalog,
         val reasons: List<String>,
         val skippedMaps: Int = 0,
+        val gen2TimeOfDayWramOffset: Int? = null,
     ) : LocalMapResolution
 
     data class Unavailable(val stage: String, val reason: String) : LocalMapResolution
