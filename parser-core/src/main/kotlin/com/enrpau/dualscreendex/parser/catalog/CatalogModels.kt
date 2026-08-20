@@ -239,6 +239,91 @@ data class CatalogRuntimeMetadata(
     val areaNamesByBaseId: Map<Int, String> = emptyMap(),
 )
 
+enum class MapLighting { MORNING, DAY, NIGHT, DARK }
+
+enum class LocalMapLightingPolicy {
+    AUTO, MORNING, DAY, NIGHT, DARK;
+
+    fun resolve(requested: MapLighting): MapLighting = when (this) {
+        AUTO -> requested
+        MORNING -> MapLighting.MORNING
+        DAY -> MapLighting.DAY
+        NIGHT -> MapLighting.NIGHT
+        DARK -> MapLighting.DARK
+    }
+}
+
+data class MapLightingPalettes(
+    val morning: IntArray,
+    val day: IntArray,
+    val night: IntArray,
+    val dark: IntArray,
+) {
+    fun validate(): MapLightingPalettes = apply {
+        listOf(morning, day, night, dark).forEach { colors ->
+            require(colors.size == COLORS_PER_LIGHTING) {
+                "indexed map lighting palettes must contain 32 colors"
+            }
+        }
+    }
+
+    operator fun get(lighting: MapLighting): IntArray = when (lighting) {
+        MapLighting.MORNING -> morning
+        MapLighting.DAY -> day
+        MapLighting.NIGHT -> night
+        MapLighting.DARK -> dark
+    }
+
+    override fun equals(other: Any?): Boolean = other is MapLightingPalettes &&
+        morning.contentEquals(other.morning) && day.contentEquals(other.day) &&
+        night.contentEquals(other.night) && dark.contentEquals(other.dark)
+
+    override fun hashCode(): Int = listOf(
+        morning.contentHashCode(),
+        day.contentHashCode(),
+        night.contentHashCode(),
+        dark.contentHashCode(),
+    ).fold(1) { result, value -> 31 * result + value }
+
+    private companion object {
+        const val COLORS_PER_LIGHTING = 32
+    }
+}
+
+data class IndexedMapAsset(
+    val pixelWidth: Int,
+    val pixelHeight: Int,
+    val compressedIndices: ByteArray,
+    val lightingPolicy: LocalMapLightingPolicy,
+    val palettes: MapLightingPalettes,
+) {
+    val pixelCount: Int
+        get() = (pixelWidth.toLong() * pixelHeight).also {
+            require(it in 1..Int.MAX_VALUE.toLong()) { "indexed map pixel count is invalid" }
+        }.toInt()
+
+    fun validate(): IndexedMapAsset = apply {
+        require(pixelWidth > 0 && pixelHeight > 0) { "indexed map dimensions must be positive" }
+        require(compressedIndices.isNotEmpty()) { "indexed map data must not be empty" }
+        palettes.validate()
+        LocalMapRasterCodec.inflate(this).forEach { value ->
+            require((value.toInt() and 0xff) in 0..31) {
+                "indexed map pixels must fit the 32-color domain"
+            }
+        }
+    }
+
+    override fun equals(other: Any?): Boolean = other is IndexedMapAsset &&
+        pixelWidth == other.pixelWidth && pixelHeight == other.pixelHeight &&
+        lightingPolicy == other.lightingPolicy && compressedIndices.contentEquals(other.compressedIndices) &&
+        palettes == other.palettes
+
+    override fun hashCode(): Int = 31 * (
+        31 * (31 * (31 * pixelWidth + pixelHeight) + lightingPolicy.hashCode()) +
+            compressedIndices.contentHashCode()
+        ) + palettes.hashCode()
+}
+
 data class PngMapAsset(
     val bytes: ByteArray,
 ) {
@@ -260,6 +345,7 @@ data class PngMapAsset(
 data class LocalMapCatalog(
     val maps: List<LocalMap> = emptyList(),
     val assets: Map<String, PngMapAsset> = emptyMap(),
+    val indexedAssets: Map<String, IndexedMapAsset> = emptyMap(),
 ) {
     init {
         validate()
@@ -272,10 +358,14 @@ data class LocalMapCatalog(
         require(maps.map(LocalMap::baseAreaId).toSet().size == maps.size) {
             "local maps must bind unique base-area IDs"
         }
+        require(assets.keys.intersect(indexedAssets.keys).isEmpty()) {
+            "local-map asset keys must belong to exactly one raster store"
+        }
         val referencedAssetKeys = maps.map(LocalMap::imageAssetKey).toSet()
-        require(assets.keys == referencedAssetKeys) {
+        require(assets.keys + indexedAssets.keys == referencedAssetKeys) {
             "local-map assets must exactly match map asset keys"
         }
+        indexedAssets.values.forEach(IndexedMapAsset::validate)
         maps.forEach { map ->
             require(map.key.isNotBlank()) { "local-map keys must not be blank" }
             require(map.baseAreaId in 0..0xFFFF) { "local-map base-area IDs must fit group/map identity" }
@@ -289,8 +379,9 @@ data class LocalMapCatalog(
                 map.pixelWidth.toLong() == map.gridWidth.toLong() * LOCAL_METATILE_PIXELS &&
                     map.pixelHeight.toLong() == map.gridHeight.toLong() * LOCAL_METATILE_PIXELS,
             ) { "local-map pixel dimensions must match the metatile grid" }
-            require(assets.containsKey(map.imageAssetKey)) {
-                "local map ${map.key} has no raster"
+            val indexed = indexedAssets[map.imageAssetKey]
+            require(indexed == null || indexed.pixelWidth == map.pixelWidth && indexed.pixelHeight == map.pixelHeight) {
+                "local map ${map.key} indexed raster dimensions do not match metadata"
             }
         }
     }
