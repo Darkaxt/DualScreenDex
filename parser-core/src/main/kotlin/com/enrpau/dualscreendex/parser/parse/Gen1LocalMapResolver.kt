@@ -1,14 +1,15 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.IndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
-import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
-import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
+import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.sprite.IndexedSprite
-import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
 
 internal object Gen1LocalMapResolver {
@@ -57,22 +58,28 @@ internal object Gen1LocalMapResolver {
         }
 
         val maps = mutableListOf<LocalMap>()
-        val assets = linkedMapOf<String, PngMapAsset>()
+        val assets = linkedMapOf<String, IndexedMapAsset>()
         val skippedReasons = mutableListOf<String>()
         var encodedBytes = 0L
         authority.descriptors.forEach { descriptor ->
             runCatching {
-                val raster = render(descriptor, authority.tilesets.getValue(descriptor.tilesetId))
-                val png = PngEncoder.encode(raster)
-                encodedBytes += png.size
+                val indices = renderIndices(descriptor, authority.tilesets.getValue(descriptor.tilesetId))
+                val compressed = LocalMapRasterCodec.compress(indices)
+                encodedBytes += compressed.size
                 if (encodedBytes > MAX_ENCODED_BYTES) {
                     return LocalMapResolution.BudgetExceeded(
                         "encoded-assets",
-                        "local-map PNG assets exceed $MAX_ENCODED_BYTES bytes",
+                        "compressed local-map assets exceed $MAX_ENCODED_BYTES bytes",
                     )
                 }
                 maps += descriptor.toLocalMap(mapNames[descriptor.mapId])
-                assets[descriptor.assetKey] = PngMapAsset(png)
+                assets[descriptor.assetKey] = IndexedMapAsset(
+                    pixelWidth = descriptor.gridWidth * METATILE_PIXELS,
+                    pixelHeight = descriptor.gridHeight * METATILE_PIXELS,
+                    compressedIndices = compressed,
+                    lightingPolicy = LocalMapLightingPolicy.DAY,
+                    palettes = FIXED_DMG_PALETTES,
+                )
             }.onFailure { failure ->
                 skippedReasons += "map 0x${descriptor.mapId.toString(16).padStart(2, '0')} render: ${failure.message}"
             }
@@ -82,10 +89,10 @@ internal object Gen1LocalMapResolver {
         }
 
         return LocalMapResolution.Resolved(
-            catalog = LocalMapCatalog(maps, assets).validate(),
+            catalog = LocalMapCatalog(maps = maps, indexedAssets = assets).validate(),
             reasons = listOf(
                 "resolved paired compiled Gen I map-bank, map-pointer, and tileset consumers",
-                "rendered ${maps.size} bounded ${format.label} maps from 32x32 ROM blocks and 2bpp tiles",
+                "rendered ${maps.size} bounded ${format.label} maps as fixed-palette compressed indexed rasters",
                 "resolved ${mapNames.size} map names through the compiled Town Map lookup",
                 "bound all ${requiredMaps.size} encounter-authoritative map IDs",
             ) + skippedReasons,
@@ -372,9 +379,9 @@ internal object Gen1LocalMapResolver {
         return TilesetHeader(bank, blockset, graphics)
     }
 
-    private fun render(map: MapDescriptor, tileset: TilesetData): RgbaSprite {
+    private fun renderIndices(map: MapDescriptor, tileset: TilesetData): ByteArray {
         val pixelWidth = map.gridWidth * METATILE_PIXELS
-        val pixels = IntArray(map.pixelCount.toInt())
+        val indices = ByteArray(map.pixelCount.toInt())
         repeat(map.blockHeight) { blockY ->
             repeat(map.blockWidth) { blockX ->
                 val blockId = map.blockIds[blockY * map.blockWidth + blockX].toInt() and 0xff
@@ -383,7 +390,7 @@ internal object Gen1LocalMapResolver {
                     drawTile(
                         tileset.tiles,
                         tileId,
-                        pixels,
+                        indices,
                         pixelWidth,
                         blockX * BLOCK_PIXELS + tileIndex % BLOCK_TILE_EDGE * TILE_PIXELS,
                         blockY * BLOCK_PIXELS + tileIndex / BLOCK_TILE_EDGE * TILE_PIXELS,
@@ -391,21 +398,21 @@ internal object Gen1LocalMapResolver {
                 }
             }
         }
-        return RgbaSprite(pixelWidth, map.gridHeight * METATILE_PIXELS, pixels)
+        return indices
     }
 
     private fun drawTile(
         tiles: IndexedSprite,
         tileId: Int,
-        pixels: IntArray,
+        indices: ByteArray,
         pixelWidth: Int,
         originX: Int,
         originY: Int,
     ) {
         repeat(TILE_PIXELS) { y ->
             repeat(TILE_PIXELS) { x ->
-                val color = tiles.indexAt(tileId * TILE_PIXELS + x, y)
-                pixels[(originY + y) * pixelWidth + originX + x] = DMG_PALETTE[color]
+                indices[(originY + y) * pixelWidth + originX + x] =
+                    tiles.indexAt(tileId * TILE_PIXELS + x, y).toByte()
             }
         }
     }
@@ -522,4 +529,12 @@ internal object Gen1LocalMapResolver {
         0xff555555.toInt(),
         0xff000000.toInt(),
     )
+    private val FIXED_DMG_PALETTES = IntArray(32) { DMG_PALETTE[it % DMG_PALETTE.size] }.let { colors ->
+        MapLightingPalettes(
+            morning = colors.copyOf(),
+            day = colors.copyOf(),
+            night = colors.copyOf(),
+            dark = colors.copyOf(),
+        )
+    }
 }

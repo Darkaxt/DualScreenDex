@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.owned.PreferredIndividualSelector
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
+import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -520,7 +521,8 @@ object ApiViewBuilder {
                 gridWidth = map.gridWidth,
                 gridHeight = map.gridHeight,
                 imageUrl = "/api/maps/${URLEncoder.encode(map.imageAssetKey, StandardCharsets.UTF_8)}.png",
-                dynamicLighting = map.imageAssetKey in catalog.localMaps.indexedAssets ||
+                dynamicLighting = catalog.localMaps.indexedAssets[map.imageAssetKey]
+                    ?.lightingPolicy == LocalMapLightingPolicy.AUTO ||
                     map.imageAssetKey in catalog.localMaps.timedAssets,
             )
         },

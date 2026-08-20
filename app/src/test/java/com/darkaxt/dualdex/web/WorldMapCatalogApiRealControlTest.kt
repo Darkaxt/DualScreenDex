@@ -429,18 +429,21 @@ class WorldMapCatalogApiRealControlTest {
                 "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
                 listOf("gen1-kanto"),
                 listOf("aa70952cb3c34789bc63639861d304b05b1c034dfb57e58720520de72d2ed098"),
+                localBaseAreaId = 0x00,
             ),
             Control(
                 "DUALDEX_POKEBLUE_ROM",
                 "2a951313c2640e8c2cb21f25d1db019ae6245d9c7121f754fa61afd7bee6452d",
                 listOf("gen1-kanto"),
                 listOf("aa70952cb3c34789bc63639861d304b05b1c034dfb57e58720520de72d2ed098"),
+                localBaseAreaId = 0x00,
             ),
             Control(
                 "DUALDEX_POKEYELLOW_ROM",
                 "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
                 listOf("gen1-kanto"),
                 listOf("aa70952cb3c34789bc63639861d304b05b1c034dfb57e58720520de72d2ed098"),
+                localBaseAreaId = 0x00,
             ),
             Control(
                 "DUALDEX_POKEGOLD_ROM",

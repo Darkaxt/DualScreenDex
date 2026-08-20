@@ -274,7 +274,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(21, CatalogSchema.parserSchemaVersion)
+        assertEquals(22, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -371,13 +371,14 @@ class CatalogStoreTest {
 
         assertEquals(226, reopened.localMaps.maps.size)
         assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
-        assertEquals(catalog.localMaps.assets.keys, reopened.localMaps.assets.keys)
+        assertEquals(emptySet<String>(), reopened.localMaps.assets.keys)
+        assertEquals(catalog.localMaps.indexedAssets.keys, reopened.localMaps.indexedAssets.keys)
         val palletTownAsset = catalog.localMaps.maps.single { it.baseAreaId == 0x00 }.imageAssetKey
-        assertTrue(
-            catalog.localMaps.assets.getValue(palletTownAsset).bytes.contentEquals(
-                reopened.localMaps.assets.getValue(palletTownAsset).bytes,
-            ),
-        )
+        val expected = catalog.localMaps.indexedAssets.getValue(palletTownAsset)
+        val actual = reopened.localMaps.indexedAssets.getValue(palletTownAsset)
+        assertTrue(expected.compressedIndices.contentEquals(actual.compressedIndices))
+        assertEquals(expected.lightingPolicy, actual.lightingPolicy)
+        assertEquals(expected.palettes, actual.palettes)
     }
 
     @Test
@@ -533,7 +534,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(21, CatalogSchema.parserSchemaVersion)
+        assertEquals(22, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(

@@ -2,16 +2,17 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterRenderer
+import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
-import java.io.ByteArrayInputStream
 import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
-import javax.imageio.ImageIO
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -34,7 +35,13 @@ class Gen1LocalMapResolverRealControlTest {
         val localMaps = catalog.localMaps
 
         assertEquals(control.mapCount, localMaps.maps.size)
-        assertEquals(control.mapCount, localMaps.assets.size)
+        assertEquals(0, localMaps.assets.size)
+        assertEquals(control.mapCount, localMaps.indexedAssets.size)
+        assertEquals(0, localMaps.timedAssets.size)
+        assertTrue(
+            localMaps.indexedAssets.values.sumOf { it.compressedIndices.size.toLong() } <
+                localMaps.maps.sumOf { it.pixelWidth.toLong() * it.pixelHeight },
+        )
         assertTrue(localMaps.maps.all { !it.displayName.isNullOrBlank() })
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LOCAL_MAP).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
@@ -48,18 +55,15 @@ class Gen1LocalMapResolverRealControlTest {
         assertEquals(expected.gridHeight, map.gridHeight)
         assertEquals(expected.gridWidth * 16, map.pixelWidth)
         assertEquals(expected.gridHeight * 16, map.pixelHeight)
-        val png = catalog.assets.getValue(map.imageAssetKey).bytes
-        val image = requireNotNull(ImageIO.read(ByteArrayInputStream(png)))
-        val digest = MessageDigest.getInstance("SHA-256")
-        val buffer = ByteBuffer.allocate(Int.SIZE_BYTES)
-        repeat(image.height) { y ->
-            repeat(image.width) { x ->
-                buffer.clear()
-                buffer.putInt(image.getRGB(x, y))
-                digest.update(buffer.array())
-            }
+        val asset = catalog.indexedAssets.getValue(map.imageAssetKey)
+        assertEquals(LocalMapLightingPolicy.DAY, asset.lightingPolicy)
+        assertEquals(map.pixelWidth, asset.pixelWidth)
+        assertEquals(map.pixelHeight, asset.pixelHeight)
+        val hashes = MapLighting.entries.map { lighting ->
+            LocalMapRasterRenderer.render(asset, lighting).argb.argbSha256()
         }
-        assertEquals(expected.argbSha256, digest.digest().toHex())
+        assertEquals(1, hashes.toSet().size)
+        assertEquals(expected.argbSha256, hashes.first())
     }
 
     private fun realRom(control: Control): RomImage {
@@ -68,6 +72,17 @@ class Gen1LocalMapResolverRealControlTest {
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
         return RomImage(Files.readAllBytes(path)).also { assertEquals(control.romSha256, it.sha256) }
+    }
+
+    private fun IntArray.argbSha256(): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteBuffer.allocate(Int.SIZE_BYTES)
+        forEach { color ->
+            buffer.clear()
+            buffer.putInt(color)
+            digest.update(buffer.array())
+        }
+        return digest.digest().toHex()
     }
 
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it.toInt() and 0xff) }

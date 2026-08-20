@@ -233,6 +233,7 @@ class ApiViewBuilderTest {
                 maps = listOf(
                     LocalMap("local/0010", "Route 101", 0x10, 320, 320, 20, 20, "local/0010/map"),
                     LocalMap("local/0011", "Route 102", 0x11, 16, 16, 1, 1, "local/0011/map"),
+                    LocalMap("local/0012", "Fixed", 0x12, 16, 16, 1, 1, "local/0012/map"),
                 ),
                 assets = mapOf(
                     "local/0010/map" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
@@ -243,6 +244,18 @@ class ApiViewBuilderTest {
                         pixelHeight = 16,
                         compressedIndices = LocalMapRasterCodec.compress(ByteArray(16 * 16)),
                         lightingPolicy = LocalMapLightingPolicy.AUTO,
+                        palettes = MapLightingPalettes(
+                            morning = IntArray(32),
+                            day = IntArray(32),
+                            night = IntArray(32),
+                            dark = IntArray(32),
+                        ),
+                    ),
+                    "local/0012/map" to IndexedMapAsset(
+                        pixelWidth = 16,
+                        pixelHeight = 16,
+                        compressedIndices = LocalMapRasterCodec.compress(ByteArray(16 * 16)),
+                        lightingPolicy = LocalMapLightingPolicy.DAY,
                         palettes = MapLightingPalettes(
                             morning = IntArray(32),
                             day = IntArray(32),
@@ -273,6 +286,7 @@ class ApiViewBuilderTest {
         assertEquals("/api/maps/local%2F0010%2Fmap.png", local.imageUrl)
         assertEquals(false, local.dynamicLighting)
         assertEquals(true, localMaps.single { it.baseAreaId == 0x11 }.dynamicLighting)
+        assertEquals(false, localMaps.single { it.baseAreaId == 0x12 }.dynamicLighting)
     }
 
     @Test
