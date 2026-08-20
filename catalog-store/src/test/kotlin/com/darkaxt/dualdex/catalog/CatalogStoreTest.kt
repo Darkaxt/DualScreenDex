@@ -28,9 +28,13 @@ import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetEntry
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
+import com.enrpau.dualscreendex.parser.catalog.IndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
+import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisition
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
@@ -152,13 +156,32 @@ class CatalogStoreTest {
             assets = mapOf("world/region-0" to raster),
         )
         val localPng = PngMapAsset(PngEncoder.encode(RgbaSprite(32, 32, IntArray(32 * 32) { 0xff102030.toInt() })))
+        val indexedPalettes = MapLightingPalettes(
+            morning = IntArray(32) { 0xff100000.toInt() + it },
+            day = IntArray(32) { 0xff200000.toInt() + it },
+            night = IntArray(32) { 0xff300000.toInt() + it },
+            dark = IntArray(32) { 0xff400000.toInt() + it },
+        )
+        val indexedAsset = IndexedMapAsset(
+            pixelWidth = 32,
+            pixelHeight = 32,
+            compressedIndices = LocalMapRasterCodec.compress(ByteArray(32 * 32) { (it % 32).toByte() }),
+            lightingPolicy = LocalMapLightingPolicy.AUTO,
+            palettes = indexedPalettes,
+        )
         val localMaps = LocalMapCatalog(
             maps = listOf(
                 LocalMap("local/0102", "Route Test", 0x0102, 32, 32, 2, 2, "local/0102/map"),
+                LocalMap("local/0103", "Indexed Test", 0x0103, 32, 32, 2, 2, "local/0103/map"),
             ),
             assets = mapOf("local/0102/map" to localPng),
+            indexedAssets = mapOf("local/0103/map" to indexedAsset),
         )
-        val catalog = completeCatalog("7".repeat(64)).copy(worldMaps = worldMaps, localMaps = localMaps)
+        val catalog = completeCatalog("7".repeat(64)).copy(
+            runtimeMetadata = CatalogRuntimeMetadata(gen2TimeOfDayWramOffset = 0x1841),
+            worldMaps = worldMaps,
+            localMaps = localMaps,
+        )
 
         cache.write(
             catalog,
@@ -169,8 +192,18 @@ class CatalogStoreTest {
 
         assertEquals(19, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
-        assertEquals(localMaps, reopened?.catalog?.localMaps)
+        assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
+        val reopenedIndexed = reopened?.catalog?.localMaps?.indexedAssets?.get("local/0103/map")
+        assertEquals(indexedAsset.pixelWidth, reopenedIndexed?.pixelWidth)
+        assertEquals(indexedAsset.pixelHeight, reopenedIndexed?.pixelHeight)
+        assertEquals(indexedAsset.compressedIndices.toList(), reopenedIndexed?.compressedIndices?.toList())
+        assertEquals(indexedAsset.lightingPolicy, reopenedIndexed?.lightingPolicy)
+        assertEquals(indexedAsset.palettes.morning.toList(), reopenedIndexed?.palettes?.morning?.toList())
+        assertEquals(indexedAsset.palettes.day.toList(), reopenedIndexed?.palettes?.day?.toList())
+        assertEquals(indexedAsset.palettes.night.toList(), reopenedIndexed?.palettes?.night?.toList())
+        assertEquals(indexedAsset.palettes.dark.toList(), reopenedIndexed?.palettes?.dark?.toList())
+        assertEquals(0x1841, reopened?.catalog?.runtimeMetadata?.gen2TimeOfDayWramOffset)
         assertEquals(raster.argb.toList(), reopened?.catalog?.worldMaps?.assets?.get("world/region-0")?.argb?.toList())
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
     }
@@ -274,13 +307,18 @@ class CatalogStoreTest {
 
         assertEquals(388, reopened.localMaps.maps.size)
         assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
-        assertEquals(catalog.localMaps.assets.keys, reopened.localMaps.assets.keys)
+        assertTrue(reopened.localMaps.assets.isEmpty())
+        assertEquals(catalog.localMaps.indexedAssets.keys, reopened.localMaps.indexedAssets.keys)
         val battleTowerAsset = catalog.localMaps.maps.single { it.baseAreaId == 0x1610 }.imageAssetKey
-        assertTrue(
-            catalog.localMaps.assets.getValue(battleTowerAsset).bytes.contentEquals(
-                reopened.localMaps.assets.getValue(battleTowerAsset).bytes,
-            ),
-        )
+        val expectedAsset = catalog.localMaps.indexedAssets.getValue(battleTowerAsset)
+        val reopenedAsset = reopened.localMaps.indexedAssets.getValue(battleTowerAsset)
+        assertEquals(expectedAsset.compressedIndices.toList(), reopenedAsset.compressedIndices.toList())
+        assertEquals(expectedAsset.lightingPolicy, reopenedAsset.lightingPolicy)
+        assertEquals(expectedAsset.palettes.morning.toList(), reopenedAsset.palettes.morning.toList())
+        assertEquals(expectedAsset.palettes.day.toList(), reopenedAsset.palettes.day.toList())
+        assertEquals(expectedAsset.palettes.night.toList(), reopenedAsset.palettes.night.toList())
+        assertEquals(expectedAsset.palettes.dark.toList(), reopenedAsset.palettes.dark.toList())
+        assertEquals(0x1841, reopened.runtimeMetadata.gen2TimeOfDayWramOffset)
     }
 
     @Test

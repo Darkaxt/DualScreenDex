@@ -199,7 +199,10 @@ internal class CatalogSectionCodec {
         encounterAreas = encounterAreas,
         captureBallsById = decode(section("capture_balls"), ballsType),
         learnsetRulesets = decode(section("learnset_rulesets"), rulesetsType),
-        runtimeMetadata = decode(section("runtime_metadata"), runtimeMetadataType),
+        runtimeMetadata = decode<CatalogRuntimeMetadata>(
+            section("runtime_metadata"),
+            runtimeMetadataType,
+        ).validate(),
         worldMaps = decode<WorldMapCatalog>(section("world_maps"), worldMapsType).validate(),
         trainerAssets = decode<TrainerAssetCatalog>(section("trainer_assets"), trainerAssetsType).validate(),
         localMaps = decode<LocalMapCatalog>(section("local_maps"), localMapsType).validate(),
