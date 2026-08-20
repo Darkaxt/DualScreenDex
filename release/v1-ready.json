@@ -77,8 +77,9 @@
   "v11Rc19DynamicMapPersistenceAndApi": true,
   "v11Rc19DynamicMapWebGate": true,
   "v11Rc20ArchiveContainerIdentity": true,
+  "v11Rc21WideAbilityDomainFailClosed": true,
   "gen1Gen3CoverageUniqueRoms": 331,
   "gen1Gen3CoverageTables": 23,
-  "gen1Gen3CoverageParserErrors": 1,
+  "gen1Gen3CoverageParserErrors": 0,
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

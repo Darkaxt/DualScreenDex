@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.19` retains RC18's completed Pokémon Unbound/Odyssey support and ROM-derived GAME theme, and adds live time-of-day Local-map rendering for official Gen II games and source-backed Modern Emerald. Gen II uses one compressed indexed raster with four palettes per map; proven Gen III natural-light maps use one timed indexed raster with compiled blend-table evidence. Unsupported maps retain static fallbacks, and unsupported features disappear instead of exposing dead controls.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.21` retains the completed Pokémon Unbound/Odyssey support, ROM-derived GAME theme, dynamic Local maps, and renamed ZIP/7z matching, and corrects the Radical Red v4.1 wide-ability-domain parser regression. Unsupported features remain explicit instead of aborting otherwise valid catalogs.
 
 ## Thor-first UI direction
 
@@ -194,7 +194,7 @@ The frozen release gates distinguish base parsing from optional capability cover
 
 These denominators are deliberately different. A selected base catalog is not counted as a working map or proven mechanic, and a fail-closed optional capability is never counted as a success.
 
-The fresh RC18-wide [Gen I–III table coverage report](docs/reports/2026-08-20-gen1-gen3-table-coverage.md), with its [machine-readable JSON](docs/reports/2026-08-20-gen1-gen3-table-coverage.json), publishes percentage coverage for all 23 table types across 331 unique ROMs. Its generation and overall result cells contain percentages only; genuinely inapplicable generation/table combinations remain `N/A` rather than being counted as either success or failure.
+The RC21-corrected [Gen I–III table coverage report](docs/reports/2026-08-20-gen1-gen3-table-coverage.md), with its [machine-readable JSON](docs/reports/2026-08-20-gen1-gen3-table-coverage.json), publishes percentage coverage for all 23 table types across 331 unique ROMs. It records zero parser errors and zero selected catalogs without persistence. Its generation and overall result cells contain percentages only; genuinely inapplicable generation/table combinations remain `N/A` rather than being counted as either success or failure.
 
 Numeric ability mechanics are tracked separately from names and descriptions. The production resolver follows decoded calls and use-def relationships from parser-selected layouts into typed battle fields, predicates, arithmetic, and writeback. It never substitutes familiar series values, names, hashes, symbols, or fixed routine addresses for missing proof.
 
@@ -227,7 +227,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC13 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | `v1.1.0-rc.19` is prepared for the protected signing workflow with checksums and provenance. |
+| Signed candidate target | `v1.1.0-rc.21` is prepared for the protected signing workflow with checksums and provenance. |
 
 ## Parser development
 
@@ -311,7 +311,7 @@ The labeled [Modern Emerald analysis](docs/reports/modern-emerald-memory-mapper-
 - [ROM parser and passive companion foundation](docs/superpowers/specs/2026-08-08-dualdex-rom-parser-companion-design.md)
 - [ROM Hacks Compatibility](reports/dualdex-rom-hacks-compatibility.md)
 - [Parser Compatibility](reports/dualdex-parser-compatibility.md)
-- [RC18 Gen I–III table coverage](docs/reports/2026-08-20-gen1-gen3-table-coverage.md)
+- [RC21-corrected Gen I–III table coverage](docs/reports/2026-08-20-gen1-gen3-table-coverage.md)
 
 ## Relationship to Kanto Gear
 

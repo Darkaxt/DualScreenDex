@@ -167,10 +167,11 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc19DynamicMapPersistenceAndApi == true/);
   assert.match(workflow, /\.v11Rc19DynamicMapWebGate == true/);
   assert.match(workflow, /\.v11Rc20ArchiveContainerIdentity == true/);
+  assert.match(workflow, /\.v11Rc21WideAbilityDomainFailClosed == true/);
   assert.match(workflow, /\.gen1Gen3CoverageUniqueRoms == 331/);
   assert.match(workflow, /\.gen1Gen3CoverageTables == 23/);
-  assert.match(workflow, /\.gen1Gen3CoverageParserErrors == 1/);
-  assert.match(workflow, /RELEASE_NOTES_1\.1\.0-rc\.20\.md/);
+  assert.match(workflow, /\.gen1Gen3CoverageParserErrors == 0/);
+  assert.match(workflow, /RELEASE_NOTES_1\.1\.0-rc\.21\.md/);
   assert.match(workflow, /\.v11Rc4HotfixBoundedRomIndex == true/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });
