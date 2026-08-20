@@ -49,6 +49,29 @@ class RomSessionResolverTest {
     }
 
     @Test
+    fun retroArchArchiveBasenameResolvesTheIndexedMemberFromTheObservedModernEmerald7z() {
+        val modernEmerald = emerald.copy(
+            sourceId = "modern-emerald-7z",
+            sourceName = "Pokemon Modern Emerald (v3.5).7z!Modern Emerald (v3.5).gba",
+            archiveEntry = "Modern Emerald (v3.5).gba",
+            gameBasename = "Modern Emerald (v3.5)",
+            crc32 = "8C7DBECA",
+        )
+
+        val result = RomSessionResolver.resolve(
+            RetroArchStatus.Running(
+                paused = false,
+                systemId = "game_boy_advance",
+                gameBasename = "Pokemon Modern Emerald (v3.5)",
+                crc32 = null,
+            ),
+            listOf(emerald, modernEmerald),
+        )
+
+        assertEquals(SessionResolution.Resolved(modernEmerald), result)
+    }
+
+    @Test
     fun aReportedCrcMismatchNeverFallsBackToBasename() {
         val result = RomSessionResolver.resolve(
             RetroArchStatus.Running(

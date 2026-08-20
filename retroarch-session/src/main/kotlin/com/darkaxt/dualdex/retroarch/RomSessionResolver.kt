@@ -37,7 +37,7 @@ object RomSessionResolver {
             compatible.filter { it.crc32.equals(status.crc32, ignoreCase = true) }
         } else {
             val basename = normalizedBasename(status.gameBasename)
-            compatible.filter { normalizedBasename(it.gameBasename) == basename }
+            compatible.filter { entry -> basename in entry.normalizedBasenames() }
         }
         return when (matches.size) {
             0 -> SessionResolution.NotFound(
@@ -67,9 +67,26 @@ object RomSessionResolver {
     }
 
     private fun normalizedBasename(value: String): String = value
-        .substringBeforeLast('.', value)
+        .removeKnownContentExtension()
         .lowercase()
         .filter(Char::isLetterOrDigit)
 
+    private fun String.removeKnownContentExtension(): String {
+        val extension = substringAfterLast('.', "").lowercase()
+        return if (extension in CONTENT_EXTENSIONS) dropLast(extension.length + 1) else this
+    }
+
+    private fun RomIndexEntry.normalizedBasenames(): Set<String> = buildSet {
+        add(normalizedBasename(gameBasename))
+        if (archiveEntry != null) {
+            val containerName = sourceName
+                .substringBefore('!')
+                .substringAfterLast('/')
+                .substringAfterLast('\\')
+            add(normalizedBasename(containerName))
+        }
+    }
+
     private val SHA_256 = Regex("[0-9a-f]{64}")
+    private val CONTENT_EXTENSIONS = setOf("gb", "gbc", "gba", "zip", "7z")
 }
