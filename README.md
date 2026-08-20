@@ -5,7 +5,7 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.22` adds truthful module-by-module loading, save-scoped knowledge integrity, positive-only Organic status marks, and theme-safe clock contrast while retaining the completed Pokémon Unbound/Odyssey, dynamic-map, archive, and Radical Red support. Unsupported features remain explicit instead of aborting otherwise valid catalogs.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.23` adds generic compiled-table discovery for Gen I evolutions, learnsets, and type matchups while retaining RC22's loading, save-integrity, Organic-status, and clock-contrast fixes plus the completed Pokémon Unbound/Odyssey, dynamic-map, archive, and Radical Red support. Unsupported features remain explicit instead of aborting otherwise valid catalogs.
 
 ## Thor-first UI direction
 
@@ -227,7 +227,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC13 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | `v1.1.0-rc.22` is prepared for the protected signing workflow with checksums and provenance. |
+| Signed candidate target | `v1.1.0-rc.23` is prepared for the protected signing workflow with checksums and provenance. |
 
 ## Parser development
 
