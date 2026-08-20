@@ -7,6 +7,7 @@ import com.darkaxt.dualdex.save.SaveParseResult
 import com.darkaxt.dualdex.save.SaveParser
 import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.darkaxt.dualdex.save.SaveByteSelector
+import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -19,6 +20,56 @@ class Gen3SaveReaderTest {
         speciesById = (1..412).associateWith { SaveSpeciesContext(it, it.takeIf { value -> value <= 386 }, 0) },
         captureBallIds = (1..12).toSet(),
     )
+
+    @Test
+    fun reconstructsCfruExtendedSaveBagAndWithholdsItWhenASpecialSectorIsCorrupt() {
+        val abi = Gen3SaveRuntimeAbi(
+            saveBlock1Size = 0x3D68,
+            saveBlock2Size = 0xF24,
+            extendedSaveDataSize = 0x2EA4,
+            textEncoding = Gen3TextEncoding.ENGLISH,
+            trainer = Gen3TrainerCardAbi(
+                playerNameOffset = 0,
+                playerNameLength = 8,
+                genderOffset = 8,
+                trainerIdOffset = 0x0A,
+                playTimeHoursOffset = 0x0E,
+                playTimeMinutesOffset = 0x10,
+                encryptionKeyOffset = 0xF20,
+                moneyOffset = 0x290,
+                maximumMoney = 999_999,
+                badgeFlags = (0 until 8).map { Gen3BitFlag(0xFE4, 1 shl it) },
+            ),
+            bag = Gen3BagAbi(
+                listOf(
+                    Gen3BagPocketAbi(BagPocket.ITEMS, 0x09AC, 450, dataSource = Gen3BagDataSource.EXTENDED_SAVE),
+                    Gen3BagPocketAbi(BagPocket.KEY_ITEMS, 0x10B4, 75, dataSource = Gen3BagDataSource.EXTENDED_SAVE),
+                    Gen3BagPocketAbi(BagPocket.BALLS, 0x11E0, 50, dataSource = Gen3BagDataSource.EXTENDED_SAVE),
+                    Gen3BagPocketAbi(BagPocket.TM_HM, 0x12A8, 128, dataSource = Gen3BagDataSource.EXTENDED_SAVE),
+                    Gen3BagPocketAbi(BagPocket.BERRIES, 0x14A8, 75, dataSource = Gen3BagDataSource.EXTENDED_SAVE),
+                ),
+            ),
+        )
+        val typedContext = context.copy(gen3SaveRuntimeAbi = abi)
+        val save = cfruExtendedSaveFixture(typedContext, abi)
+
+        val parsed = SaveParser.parse(save, typedContext) as SaveParseResult.Parsed
+
+        assertEquals(25, parsed.snapshot.trainer?.playTimeHours)
+        assertEquals(12_345L, parsed.snapshot.trainer?.money)
+        val bagEvidence = parsed.snapshot.capabilities.getValue(SaveCapability.BAG)
+        assertEquals(bagEvidence.reasons.joinToString(), SaveCapabilityStatus.AVAILABLE, bagEvidence.status)
+        assertEquals(
+            4,
+            parsed.snapshot.bag.single { it.pocket == BagPocket.BALLS }.entries.single().itemId,
+        )
+
+        val corrupt = save.copyOf().also { it[30 * Gen3Checksums.SECTOR_SIZE] = 1 }
+        val partial = SaveParser.parse(corrupt, typedContext) as SaveParseResult.Parsed
+        assertEquals(SaveCapabilityStatus.AVAILABLE, partial.snapshot.capabilities.getValue(SaveCapability.TRAINER).status)
+        assertEquals(SaveCapabilityStatus.NOT_FOUND, partial.snapshot.capabilities.getValue(SaveCapability.BAG).status)
+        assertTrue(partial.snapshot.bag.isEmpty())
+    }
 
     @Test
     fun attachesTypedTrainerAndBagStateToTheChecksumValidSnapshot() {
@@ -343,6 +394,65 @@ class Gen3SaveReaderTest {
         return FixtureSlot(counter, sections)
     }
 
+    private fun cfruExtendedSaveFixture(context: SaveParseContext, abi: Gen3SaveRuntimeAbi): ByteArray {
+        val sections = (0 until 14).associateWith { ByteArray(Gen3Checksums.SECTOR_DATA_SIZE) }.toMutableMap()
+        val saveBlock2 = sections.getValue(0)
+        intArrayOf(0xC7, 0xBB, 0xD3, 0xFF).forEachIndexed { index, value -> saveBlock2[index] = value.toByte() }
+        saveBlock2[8] = 1
+        saveBlock2.putU32le(0x0A, 0x1234_5678)
+        saveBlock2.putU16le(0x0E, 25)
+        saveBlock2[0x10] = 17
+        val key = 0x1357_2468L
+        saveBlock2.putU32le(0xF20, key)
+        val flagBytes = (context.internalSpeciesCount + 7) / 8
+        setFlag(saveBlock2, 0x28, 6)
+        setFlag(saveBlock2, 0x28 + flagBytes, 6)
+
+        val saveBlock1 = ByteArray(4 * CFRU_SECTION_STRIDE)
+        saveBlock1[4] = 2
+        saveBlock1[5] = 14
+        saveBlock1[0x34] = 1
+        pokemonRecord(6, 20, ball = 4, personality = 17).copyInto(saveBlock1, 0x38)
+        saveBlock1.putU32le(0x290, 12_345L xor key)
+        saveBlock1[0xFE4] = 1
+        splitWithStride(saveBlock1, sections, 1..4, CFRU_SECTION_STRIDE)
+
+        val extended = ByteArray(abi.extendedSaveDataSize)
+        extended.putU16le(0x09AC, 1)
+        extended.putU16le(0x09AE, 2 xor key.toInt())
+        extended.putU16le(0x11E0, 4)
+        extended.putU16le(0x11E2, 12 xor key.toInt())
+        extended.copyInto(sections.getValue(0), 0xF24, 0, 0xCC)
+        extended.copyInto(sections.getValue(4), 0xD98, 0xCC, 0x324)
+        extended.copyInto(sections.getValue(13), 0x450, 0x324, 0xEC4)
+
+        val save = ByteArray(128 * 1024)
+        writeCfruSlot(save, sections, counter = 21)
+        writeSpecialSector(save, 30, extended.copyOfRange(0xEC4, 0x1EB4))
+        writeSpecialSector(save, 31, extended.copyOfRange(0x1EB4, 0x2EA4))
+        return save
+    }
+
+    private fun writeCfruSlot(target: ByteArray, sections: Map<Int, ByteArray>, counter: Long) {
+        CFRU_SECTION_SIZES.forEachIndexed { logical, checksumSize ->
+            val offset = logical * Gen3Checksums.SECTOR_SIZE
+            val data = sections.getValue(logical)
+            data.copyInto(target, offset)
+            target.putU16le(offset + 0xFF4, logical)
+            target.putU16le(offset + 0xFF6, Gen3Checksums.sector(data, size = checksumSize))
+            target.putU32le(offset + 0xFF8, Gen3Checksums.SECTOR_SIGNATURE)
+            target.putU32le(offset + 0xFFC, counter)
+        }
+    }
+
+    private fun writeSpecialSector(target: ByteArray, physical: Int, data: ByteArray) {
+        require(data.size == CFRU_SECTION_STRIDE)
+        val offset = physical * Gen3Checksums.SECTOR_SIZE
+        data.copyInto(target, offset)
+        target.putU16le(offset + 0xFF4, Gen3Checksums.sector(data, size = data.size))
+        target.putU32le(offset + 0xFF8, Gen3Checksums.SECTOR_SIGNATURE)
+    }
+
     private fun pokemonRecord(species: Int, level: Int, ball: Int, personality: Long): ByteArray {
         val record = ByteArray(Gen3PokemonCodec.PARTY_RECORD_SIZE)
         val otId = 0x10203040L
@@ -418,6 +528,17 @@ class Gen3SaveReaderTest {
         }
     }
 
+    private fun splitWithStride(
+        bytes: ByteArray,
+        sections: MutableMap<Int, ByteArray>,
+        range: IntRange,
+        stride: Int,
+    ) {
+        range.forEachIndexed { index, section ->
+            bytes.copyInto(sections.getValue(section), 0, index * stride, (index + 1) * stride)
+        }
+    }
+
     private fun ByteArray.putU16le(offset: Int, value: Int) {
         this[offset] = value.toByte()
         this[offset + 1] = (value ushr 8).toByte()
@@ -430,6 +551,12 @@ class Gen3SaveReaderTest {
     private data class FixtureSlot(val counter: Long, val sections: MutableMap<Int, ByteArray>)
 
     private companion object {
+        const val CFRU_SECTION_STRIDE = 0xFF0
+        val CFRU_SECTION_SIZES = listOf(
+            0xF24,
+            0xFF0, 0xFF0, 0xFF0, 0xD98,
+            0xFF0, 0xFF0, 0xFF0, 0xFF0, 0xFF0, 0xFF0, 0xFF0, 0xFF0, 0x450,
+        )
         val ORDERS = arrayOf(
             intArrayOf(0, 1, 2, 3), intArrayOf(0, 1, 3, 2), intArrayOf(0, 2, 1, 3),
             intArrayOf(0, 3, 1, 2), intArrayOf(0, 2, 3, 1), intArrayOf(0, 3, 2, 1),

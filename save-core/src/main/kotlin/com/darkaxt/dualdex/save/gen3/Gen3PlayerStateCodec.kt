@@ -33,6 +33,7 @@ object Gen3PlayerStateCodec {
         abi: Gen3SaveRuntimeAbi,
         dexSeen: Int,
         dexCaught: Int,
+        extendedSaveData: ByteArray? = null,
     ): Gen3PlayerStateResult {
         val blocksComplete = saveBlock1.size >= abi.saveBlock1Size && saveBlock2.size >= abi.saveBlock2Size
         if (!blocksComplete) {
@@ -46,7 +47,7 @@ object Gen3PlayerStateCodec {
         val encryptionKey = saveBlock2.u32le(abi.trainer.encryptionKeyOffset)
         return Gen3PlayerStateResult(
             trainer = decodeTrainer(saveBlock1, saveBlock2, abi, encryptionKey, dexSeen, dexCaught),
-            bag = decodeBag(saveBlock1, abi, encryptionKey),
+            bag = decodeBag(saveBlock1, extendedSaveData, abi, encryptionKey),
         )
     }
 
@@ -97,6 +98,7 @@ object Gen3PlayerStateCodec {
 
     private fun decodeBag(
         saveBlock1: ByteArray,
+        extendedSaveData: ByteArray?,
         abi: Gen3SaveRuntimeAbi,
         encryptionKey: Long,
     ): Map<BagPocket, SaveSectionResult<BagPocketSnapshot>> {
@@ -105,12 +107,18 @@ object Gen3PlayerStateCodec {
             val layout = layouts[pocket]
                 ?: return@associateWith SaveSectionResult.unavailable("$pocket pocket ABI was absent")
             runCatching {
+                val source = when (layout.dataSource) {
+                    Gen3BagDataSource.SAVE_BLOCK1 -> saveBlock1
+                    Gen3BagDataSource.EXTENDED_SAVE -> requireNotNull(extendedSaveData) {
+                        "extended save data was unavailable"
+                    }
+                }
                 val entries = buildList {
                     repeat(layout.capacity) { index ->
                         val offset = layout.byteOffset + index * layout.slotSize
-                        val itemId = saveBlock1.u16le(offset)
+                        val itemId = source.u16le(offset)
                         if (itemId != 0) {
-                            val quantity = saveBlock1.u16le(offset + 2) xor (encryptionKey.toInt() and 0xFFFF)
+                            val quantity = source.u16le(offset + 2) xor (encryptionKey.toInt() and 0xFFFF)
                             require(quantity > 0) { "$pocket pocket contained an occupied zero-quantity slot" }
                             add(BagEntry(itemId, quantity))
                         }

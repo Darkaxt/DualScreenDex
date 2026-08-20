@@ -39,8 +39,8 @@ object Gen3RuntimeMemoryLayoutResolver {
             trainerBattleMask = battleTypeFlags?.let { TRAINER_BATTLE_MASK },
             nonWildBattleMask = battleTypeFlags?.let { NON_WILD_BATTLE_MASK },
         )
-        return if (family == EngineFamily.EMERALD) {
-            Gen3PlayerRuntimeLayoutResolver.attach(rom, base)
+        return if (family in PLAYER_RUNTIME_FAMILIES) {
+            Gen3PlayerRuntimeLayoutResolver.attach(rom, base, requireNotNull(family))
         } else {
             base
         }
@@ -137,7 +137,7 @@ object Gen3RuntimeMemoryLayoutResolver {
         mainBase: Long,
         family: EngineFamily?,
     ): BitField? {
-        if (family != EngineFamily.EMERALD) return null
+        if (family !in SOURCE_DEFINED_MAIN_FAMILIES) return null
         val tail = mainBase + MAIN_TAIL_WORD_OFFSET
         if ((references[tail] ?: 0) < MIN_MAIN_TAIL_REFERENCES) return null
         return BitField(mainBase + MAIN_BATTLE_FLAGS_OFFSET, IN_BATTLE_MASK)
@@ -418,6 +418,8 @@ object Gen3RuntimeMemoryLayoutResolver {
     private const val OR_OPERATION = 12
     private const val BIT_CLEAR_OPERATION = 14
     private val NON_MUTATING_ALU_OPERATIONS = setOf(8, 10)
+    private val SOURCE_DEFINED_MAIN_FAMILIES = setOf(EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN)
+    private val PLAYER_RUNTIME_FAMILIES = SOURCE_DEFINED_MAIN_FAMILIES
 
     private data class ReferenceScore(val base: Int, val tail: Int)
     private data class ClockEvidence(

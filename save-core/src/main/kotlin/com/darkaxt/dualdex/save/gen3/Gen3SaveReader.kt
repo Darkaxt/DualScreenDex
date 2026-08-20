@@ -14,14 +14,18 @@ object Gen3SaveReader {
     fun read(bytes: ByteArray, context: SaveParseContext): SaveParseResult {
         if (bytes.size != SAVE_SIZE) return SaveParseResult.Unsupported(listOf("Gen III SaveRAM must be exactly 128 KiB"))
         if (context.speciesById.isEmpty()) return SaveParseResult.Unsupported(listOf("a parsed ROM species index is required"))
-        val slots = readCompleteSlots(bytes)
+        val slots = readCompleteSlots(bytes, context.gen3SaveRuntimeAbi?.extendedSaveDataSize ?: 0)
         val newest = slots.reduceOrNull { current, candidate ->
             if (counterIsNewer(candidate.counter, current.counter)) candidate else current
         } ?: return SaveParseResult.Unsupported(listOf("no complete checksum-valid Gen III save slot was found"))
 
         val saveBlock2 = newest.sections.getValue(0)
-        val saveBlock1 = concatenate(newest.sections, 1..4, newest.chunkSize)
-        val storage = concatenate(newest.sections, 5..13, newest.chunkSize)
+        val saveBlock1 = concatenate(newest.sections, 1..4, newest.layout.sectionStride)
+        val storage = concatenate(newest.sections, 5..13, newest.layout.sectionStride)
+        val extendedSaveData = context.gen3SaveRuntimeAbi
+            ?.extendedSaveDataSize
+            ?.takeIf { it > 0 }
+            ?.let { reconstructExtendedSave(bytes, newest, it) }
         val effectiveContext = context.gen3SaveRuntimeAbi?.let { abi ->
             context.copy(gen3TextEncoding = abi.textEncoding)
         } ?: context
@@ -47,6 +51,7 @@ object Gen3SaveReader {
                 abi = abi,
                 dexSeen = seen.size,
                 dexCaught = caught.size,
+                extendedSaveData = extendedSaveData,
             )
         }
         val bagSections = playerState?.bag.orEmpty()
@@ -138,7 +143,7 @@ object Gen3SaveReader {
         return if (matches.size == 1) matches.single().rulesetId to true else null to false
     }
 
-    private fun readCompleteSlots(bytes: ByteArray): List<Slot> {
+    private fun readCompleteSlots(bytes: ByteArray, expectedExtendedSaveSize: Int): List<Slot> {
         val sectors = (0 until DATA_SECTORS).mapNotNull { physical ->
             val offset = physical * Gen3Checksums.SECTOR_SIZE
             val id = bytes.u16le(offset + ID_OFFSET)
@@ -150,15 +155,52 @@ object Gen3SaveReader {
         }
         return sectors.groupBy { it.counter }.mapNotNull { (counter, group) ->
             if (group.size != SECTIONS_PER_SLOT || group.map { it.id }.toSet().size != SECTIONS_PER_SLOT) return@mapNotNull null
-            val chunkSize = inferChunkSize(group) ?: return@mapNotNull null
+            val layout = inferSaveSlotLayout(group, expectedExtendedSaveSize > 0) ?: return@mapNotNull null
             val terminal = group.single { it.id == STORAGE_END_SECTION_ID }
             Slot(
                 counter,
-                chunkSize,
-                inferStorageBoxCount(chunkSize, terminal),
+                layout,
+                inferStorageBoxCount(layout, terminal),
                 group.associate { it.id to it.data },
             )
         }
+    }
+
+    private fun reconstructExtendedSave(bytes: ByteArray, slot: Slot, expectedSize: Int): ByteArray? {
+        if (slot.layout !== CFRU_LAYOUT_MARKER) return null
+        val parasite = buildList<Byte>() {
+            CFRU_PARASITE_SECTIONS.forEach { sectionId ->
+                val data = slot.sections.getValue(sectionId)
+                val start = slot.layout.sizeFor(sectionId)
+                addAll(data.copyOfRange(start, slot.layout.sectionStride).asIterable())
+            }
+        }.toByteArray()
+        val sector30 = readSpecialSector(bytes, 30) ?: return null
+        val sector31 = readSpecialSector(bytes, 31) ?: return null
+        val result = parasite + sector30 + sector31
+        return result.takeIf { it.size == expectedSize }
+    }
+
+    private fun readSpecialSector(bytes: ByteArray, physicalSector: Int): ByteArray? {
+        val offset = physicalSector * Gen3Checksums.SECTOR_SIZE
+        if (offset < 0 || offset + Gen3Checksums.SECTOR_SIZE > bytes.size) return null
+        if (bytes.u32le(offset + SIGNATURE_OFFSET) != Gen3Checksums.SECTOR_SIGNATURE) return null
+        val data = bytes.copyOfRange(offset, offset + CFRU_SECTION_STRIDE)
+        val storedChecksum = bytes.u16le(offset + ID_OFFSET)
+        return data.takeIf { Gen3Checksums.sector(it, size = it.size) == storedChecksum }
+    }
+
+    private fun inferSaveSlotLayout(sectors: List<Sector>, expectCfru: Boolean): SaveSlotLayout? {
+        val cfru = CFRU_LAYOUT_MARKER
+        val cfruValid = sectors.all { sector -> sector.checksumMatchesExactly(cfru.sizeFor(sector.id)) }
+        val cfruDiscriminated = sectors.any { sector ->
+            !sector.checksumMatchesExactly(LEGACY_CHUNK_SIZE) &&
+                !sector.checksumMatchesExactly(FULL_CHUNK_SIZE)
+        }
+        if (cfruValid && (expectCfru || cfruDiscriminated)) return cfru
+
+        val chunkSize = inferChunkSize(sectors) ?: return null
+        return SaveSlotLayout(chunkSize, List(SECTIONS_PER_SLOT) { chunkSize })
     }
 
     private fun inferChunkSize(sectors: List<Sector>): Int? {
@@ -176,10 +218,13 @@ object Gen3SaveReader {
     }
 
     private fun Sector.checksumMatches(chunkSize: Int): Boolean {
-        if (Gen3Checksums.sector(data, size = chunkSize) == checksum) return true
+        if (checksumMatchesExactly(chunkSize)) return true
         if (id !in TERMINAL_SECTION_IDS) return false
         return matchingTerminalPrefix(chunkSize) != null
     }
+
+    private fun Sector.checksumMatchesExactly(size: Int): Boolean =
+        size in 4..data.size && size % 4 == 0 && Gen3Checksums.sector(data, size = size) == checksum
 
     private fun Sector.matchingTerminalPrefix(chunkSize: Int): Int? =
         (MIN_TERMINAL_DATA_SIZE..chunkSize step 4).firstOrNull { size ->
@@ -187,9 +232,13 @@ object Gen3SaveReader {
                 hasZeroRun(data, size, chunkSize)
         }
 
-    private fun inferStorageBoxCount(chunkSize: Int, terminal: Sector): Int {
-        val terminalPrefix = terminal.matchingTerminalPrefix(chunkSize) ?: chunkSize
-        val approximateStorageSize = STORAGE_FULL_SECTIONS * chunkSize + terminalPrefix
+    private fun inferStorageBoxCount(layout: SaveSlotLayout, terminal: Sector): Int {
+        val terminalSize = if (layout === CFRU_LAYOUT_MARKER) {
+            layout.sizeFor(STORAGE_END_SECTION_ID)
+        } else {
+            terminal.matchingTerminalPrefix(layout.sectionStride) ?: layout.sectionStride
+        }
+        val approximateStorageSize = STORAGE_FULL_SECTIONS * layout.sectionStride + terminalSize
         return ((approximateStorageSize - STORAGE_RECORDS_OFFSET) / BYTES_PER_BOX)
             .coerceIn(MIN_STORAGE_BOXES, MAX_STORAGE_BOXES)
     }
@@ -391,10 +440,16 @@ object Gen3SaveReader {
     private data class Sector(val id: Int, val counter: Long, val checksum: Int, val data: ByteArray)
     private data class Slot(
         val counter: Long,
-        val chunkSize: Int,
+        val layout: SaveSlotLayout,
         val storageBoxCount: Int,
         val sections: Map<Int, ByteArray>,
     )
+    private data class SaveSlotLayout(
+        val sectionStride: Int,
+        val sectionSizes: List<Int>,
+    ) {
+        fun sizeFor(sectionId: Int): Int = sectionSizes[sectionId]
+    }
     private data class DecodeResult(
         val records: List<com.darkaxt.dualdex.save.OwnedIndividual>,
         val evidence: SaveCapabilityEvidence,
@@ -430,6 +485,7 @@ object Gen3SaveReader {
     private const val STORAGE_RECORDS_OFFSET = 0x04
     private const val LEGACY_CHUNK_SIZE = 3968
     private const val FULL_CHUNK_SIZE = Gen3Checksums.SECTOR_DATA_SIZE
+    private const val CFRU_SECTION_STRIDE = 0xFF0
     private const val MIN_TERMINAL_DATA_SIZE = 512
     private const val TERMINAL_ZERO_RUN = 128
     private const val STORAGE_END_SECTION_ID = 13
@@ -439,6 +495,13 @@ object Gen3SaveReader {
     private const val MIN_STORAGE_BOXES = 14
     private const val MAX_STORAGE_BOXES = 15
     private val CHUNK_SIZE_CANDIDATES = listOf(LEGACY_CHUNK_SIZE, FULL_CHUNK_SIZE)
+    private val CFRU_SECTION_SIZES = listOf(
+        0xF24,
+        0xFF0, 0xFF0, 0xFF0, 0xD98,
+        0xFF0, 0xFF0, 0xFF0, 0xFF0, 0xFF0, 0xFF0, 0xFF0, 0xFF0, 0x450,
+    )
+    private val CFRU_LAYOUT_MARKER = SaveSlotLayout(CFRU_SECTION_STRIDE, CFRU_SECTION_SIZES)
+    private val CFRU_PARASITE_SECTIONS = listOf(0, 4, 13)
     private val TERMINAL_SECTION_IDS = setOf(0, 4, 13)
     private val PARTY_LAYOUTS = listOf(
         PartyLayout("Hoenn", countOffset = 0x234, partyOffset = 0x238),

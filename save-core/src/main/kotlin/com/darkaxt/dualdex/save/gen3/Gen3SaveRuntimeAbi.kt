@@ -2,6 +2,8 @@ package com.darkaxt.dualdex.save.gen3
 
 import com.darkaxt.dualdex.save.BagPocket
 
+enum class Gen3BagDataSource { SAVE_BLOCK1, EXTENDED_SAVE }
+
 data class Gen3BitFlag(
     val byteOffset: Int,
     val mask: Int,
@@ -37,6 +39,7 @@ data class Gen3BagPocketAbi(
     val byteOffset: Int,
     val capacity: Int,
     val slotSize: Int = 4,
+    val dataSource: Gen3BagDataSource = Gen3BagDataSource.SAVE_BLOCK1,
 ) {
     init {
         require(byteOffset >= 0) { "bag pocket offset must not be negative" }
@@ -57,12 +60,15 @@ data class Gen3BagAbi(val pockets: List<Gen3BagPocketAbi>) {
 data class Gen3SaveRuntimeAbi(
     val saveBlock1Size: Int,
     val saveBlock2Size: Int,
+    val extendedSaveDataSize: Int = 0,
     val textEncoding: Gen3TextEncoding,
     val trainer: Gen3TrainerCardAbi,
     val bag: Gen3BagAbi,
 ) {
     init {
-        require(saveBlock1Size > 0 && saveBlock2Size > 0) { "save-block sizes must be positive" }
+        require(saveBlock1Size > 0 && saveBlock2Size > 0 && extendedSaveDataSize >= 0) {
+            "save-block sizes must be positive and extended-save size must not be negative"
+        }
         requireRange(trainer.playerNameOffset, trainer.playerNameLength, saveBlock2Size, "player name")
         requireRange(trainer.genderOffset, 1, saveBlock2Size, "player gender")
         requireRange(trainer.trainerIdOffset, 4, saveBlock2Size, "trainer ID")
@@ -72,7 +78,11 @@ data class Gen3SaveRuntimeAbi(
         requireRange(trainer.moneyOffset, 4, saveBlock1Size, "money")
         trainer.badgeFlags.forEach { requireRange(it.byteOffset, 1, saveBlock1Size, "badge flag") }
         bag.pockets.forEach { pocket ->
-            requireRange(pocket.byteOffset, pocket.capacity * pocket.slotSize, saveBlock1Size, "${pocket.pocket} pocket")
+            val limit = when (pocket.dataSource) {
+                Gen3BagDataSource.SAVE_BLOCK1 -> saveBlock1Size
+                Gen3BagDataSource.EXTENDED_SAVE -> extendedSaveDataSize
+            }
+            requireRange(pocket.byteOffset, pocket.capacity * pocket.slotSize, limit, "${pocket.pocket} pocket")
         }
     }
 

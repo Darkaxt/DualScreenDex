@@ -12,6 +12,32 @@ import org.junit.Test
 
 class Gen3PlayerRuntimeLayoutResolverRealControlTest {
     @Test
+    fun officialFireRedPublishesItsSourceDefinedSaveRuntimeDescriptor() {
+        val configured = System.getenv("DUALDEX_OFFICIAL_FIRERED_ROM")
+        assumeTrue("set DUALDEX_OFFICIAL_FIRERED_ROM to run this live-ROM regression", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+
+        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        assertEquals(OFFICIAL_FIRERED_SHA256, parsed.analysis.sha256)
+        val runtime = requireNotNull(requireNotNull(parsed.catalog).runtimeMetadata.gen3RuntimeMemoryLayout)
+
+        assertEquals(0x03005008L, runtime.saveBlock1PointerAddress)
+        assertEquals(0x0300500CL, runtime.saveBlock2PointerAddress)
+        assertEquals(null, runtime.extendedSaveAddress)
+        val save = requireNotNull(runtime.saveRuntimeAbi)
+        assertEquals(0x3D68, save.saveBlock1Size)
+        assertEquals(0x0F24, save.saveBlock2Size)
+        assertEquals(0, save.extendedSaveDataSize)
+        assertEquals(0x290, save.trainer.moneyOffset)
+        assertEquals(0xF20, save.trainer.encryptionKeyOffset)
+        assertEquals(
+            listOf(42, 30, 13, 58, 43),
+            save.bag.pockets.map { it.capacity },
+        )
+    }
+
+    @Test
     fun officialEmeraldPublishesTheCompleteSourceVerifiedPlayerRuntimeDescriptor() {
         val configured = System.getenv("DUALDEX_OFFICIAL_EMERALD_ROM")
         assumeTrue("set DUALDEX_OFFICIAL_EMERALD_ROM to run this live-ROM regression", !configured.isNullOrBlank())
@@ -77,5 +103,7 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
     private companion object {
         const val OFFICIAL_EMERALD_SHA256 =
             "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af"
+        const val OFFICIAL_FIRERED_SHA256 =
+            "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059"
     }
 }

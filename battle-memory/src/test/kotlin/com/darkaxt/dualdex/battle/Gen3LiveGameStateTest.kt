@@ -10,7 +10,7 @@ import org.junit.Test
 class Gen3LiveGameStateTest {
     @Test
     fun readsPointerGlobalsBeforeValidatedDependentWindows() {
-        val layout = layout()
+        val layout = layout().copy(extendedSaveAddress = 0x02030000, extendedSaveSize = 0x2000)
         assertEquals(
             listOf(0x03001000L, 0x03001004L),
             Gen3LiveGameState.pointerWindows(layout).map { it.address },
@@ -28,6 +28,7 @@ class Gen3LiveGameStateTest {
         assertEquals(
             listOf(
                 Gen3LiveGameState.SAVE_BLOCK1_ID,
+                Gen3LiveGameState.EXTENDED_SAVE_ID,
                 Gen3LiveGameState.PARTY_COUNT_ID,
                 Gen3LiveGameState.PARTY_ID,
                 Gen3LiveGameState.CLOCK_ID,
