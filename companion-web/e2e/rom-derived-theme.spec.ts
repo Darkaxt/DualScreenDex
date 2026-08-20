@@ -92,6 +92,11 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
 
   await page.goto('/');
   await assertGameTheme();
+  await expect.poll(() => page.locator('.caught-avatar-badge').first().evaluate(node => {
+    const badge = node.getBoundingClientRect();
+    const mark = node.querySelector('.ball-mark')!.getBoundingClientRect();
+    return { badgeWidth: badge.width, badgeHeight: badge.height, markWidth: mark.width, markHeight: mark.height };
+  })).toEqual({ badgeWidth: 22, badgeHeight: 22, markWidth: 15, markHeight: 15 });
   await page.screenshot({ path: join(artifactDir, 'pokedex.png') });
   await show('detail', { screen: 'DETAIL', selectedSpeciesId: 1 });
   await show('trainer', { screen: 'TRAINER' });

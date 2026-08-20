@@ -24,17 +24,27 @@ describe('Party', () => {
     expect(container.querySelectorAll('.party-slot')).toHaveLength(6);
     expect(container.querySelector('.party-grid')?.getAttribute('data-layout')).toBe('2x3');
     expect(screen.getByText('SPARK')).toBeTruthy();
-    expect(screen.getByText('PIKACHU · Lv 18')).toBeTruthy();
+    const occupied = container.querySelector('.party-slot:not(.empty)')!;
+    expect(occupied.querySelector('.party-slot-heading strong')?.textContent).toBe('SPARK');
+    expect(occupied.querySelector('.party-slot-gender')?.textContent).toBe('♀');
+    expect(occupied.querySelector('.party-slot-level')?.textContent).toBe('Lv 18');
+    expect(occupied.querySelector('.party-slot-species')?.textContent).toBe('PIKACHU');
+    expect(occupied.querySelector('.party-slot-vitals')?.textContent).toContain('HP31 / 45');
     expect(container.querySelector('.party-exp-track')?.getAttribute('aria-label')).toBe('Experience 50%');
     expect(container.querySelector('.party-exp-fill')?.getAttribute('style')).toContain('width: 50%');
     expect(container.querySelector('.party-hp-fill')?.getAttribute('style')).toContain('width: 69%');
+    const exp = occupied.querySelector('.party-exp-track')!;
+    const hp = occupied.querySelector('.party-hp-track')!;
+    expect(Boolean(exp.compareDocumentPosition(hp) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(container.querySelectorAll('.party-slot.empty .party-empty-mark')).toHaveLength(5);
+    expect(screen.queryByText('OPEN SLOT')).toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByText('Adamant')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: SPARK' }));
 
     expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy();
-    expect(screen.getByText('Lv 18')).toBeTruthy();
+    expect(screen.getAllByText('Lv 18').length).toBeGreaterThan(0);
     expect(screen.getAllByText('31 / 45').length).toBeGreaterThan(0);
     expect(screen.getAllByText('PAR').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('img', { name: 'Paralyzed' }).length).toBeGreaterThan(0);

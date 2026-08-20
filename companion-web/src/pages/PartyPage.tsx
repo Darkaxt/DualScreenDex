@@ -45,22 +45,33 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openS
     <Header title="PARTY" onBack={onBack} />
     <div class="party-content" data-scroll-region>
       <div class="party-grid" data-layout="2x3" aria-label="Party slots">
-        {members.map(member => <button
-          type="button"
-          key={member.slot}
-          class={`party-slot ${member.slot === highlightedSlot ? 'active' : ''} ${member.occupied ? memberCondition(member) : 'empty'}`}
-          disabled={!member.occupied}
-          aria-label={member.occupied ? `Party slot ${member.slot + 1}: ${member.nickname || member.speciesName || 'Unknown partner'}` : `Party slot ${member.slot + 1}: Empty`}
-          onClick={() => select(member.slot)}
-        >
-          <PartySprite member={member} />
-          <span class="party-slot-copy"><strong>{member.occupied ? member.nickname || member.speciesName || 'UNKNOWN PARTNER' : 'EMPTY'}</strong>
-            <small>{member.occupied ? `${member.speciesName ?? 'Species unavailable'}${member.level != null ? ` · Lv ${member.level}` : ''}` : 'OPEN SLOT'}</small>
-            {member.occupied && <i>{hpLabel(member)}{member.status ? <><span aria-hidden="true"> · </span><em class={`party-status-dot status-${statusKey(member.status)}`}>{member.status}</em></> : ''}</i>}
-            {partyExperiencePercent(member) != null && <span class="party-exp-track" aria-label={`Experience ${partyExperiencePercent(member)}%`}><b class="party-exp-fill" style={{ width: `${partyExperiencePercent(member)}%` }} /></span>}
-            {partyHpPercent(member) != null && <span class="party-hp-track" aria-label={`HP ${hpLabel(member)}`}><b class="party-hp-fill" style={{ width: `${partyHpPercent(member)}%` }} /></span>}
-          </span>
-        </button>)}
+        {members.map(member => {
+          const accessibleName = member.nickname || member.speciesName || 'Unknown partner';
+          const displayName = member.nickname || member.speciesName || 'UNKNOWN PARTNER';
+          const nicknameDiffers = Boolean(member.nickname && member.speciesName && member.nickname !== member.speciesName);
+          const gender = partyGenderMark(member.gender);
+          return <button
+            type="button"
+            key={member.slot}
+            class={`party-slot ${member.slot === highlightedSlot ? 'active' : ''} ${member.occupied ? memberCondition(member) : 'empty'}`}
+            disabled={!member.occupied}
+            aria-label={member.occupied ? `Party slot ${member.slot + 1}: ${accessibleName}` : `Party slot ${member.slot + 1}: Empty`}
+            onClick={() => select(member.slot)}
+          >
+            <PartySprite member={member} />
+            {member.occupied && <span class="party-slot-copy">
+              <span class="party-slot-heading">
+                <strong>{displayName}</strong>
+                {gender && <i class="party-slot-gender" aria-label={member.gender ?? undefined}>{gender}</i>}
+                {member.level != null && <small class="party-slot-level">Lv {member.level}</small>}
+              </span>
+              {nicknameDiffers && <span class="party-slot-species">{member.speciesName}</span>}
+              <span class="party-slot-vitals"><b>HP</b><i>{hpLabel(member)}</i>{member.status && <em class={`party-status-dot status-${statusKey(member.status)}`}>{member.status}</em>}</span>
+              {partyExperiencePercent(member) != null && <span class="party-exp-track" aria-label={`Experience ${partyExperiencePercent(member)}%`}><b class="party-exp-fill" style={{ width: `${partyExperiencePercent(member)}%` }} /></span>}
+              {partyHpPercent(member) != null && <span class="party-hp-track" aria-label={`HP ${hpLabel(member)}`}><b class="party-hp-fill" style={{ width: `${partyHpPercent(member)}%` }} /></span>}
+            </span>}
+          </button>;
+        })}
       </div>
       {!members.some(member => member.occupied) && <div class="empty-state party-empty"><strong>NO PARTY DATA</strong><p>The party will appear when a supported live or SaveRAM snapshot is available.</p></div>}
       {active && <div class="party-detail-layer">
@@ -162,6 +173,14 @@ function memberCondition(member: PartyMemberView): 'healthy' | 'statused' | 'fai
 
 function statusKey(status: string): string {
   return status.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '') || 'UNKNOWN';
+}
+
+function partyGenderMark(gender: string | null): string | null {
+  if (!gender) return null;
+  const normalized = gender.trim().toUpperCase();
+  if (normalized === 'F' || normalized === 'FEMALE') return '♀';
+  if (normalized === 'M' || normalized === 'MALE') return '♂';
+  return gender;
 }
 
 const STATUS_LABELS: Record<string, string> = {
