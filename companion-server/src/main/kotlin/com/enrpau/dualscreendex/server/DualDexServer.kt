@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.server
 
+import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.google.gson.GsonBuilder
@@ -12,6 +13,7 @@ import java.net.InetSocketAddress
 import java.net.URLDecoder
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 
@@ -136,12 +138,25 @@ class DualDexServer(
             if (encoded.isBlank() || key.split('/').any { it == ".." }) {
                 return@safely text(exchange, 404, "map not available")
             }
-            val bytes = runtime.mapAsset(key) ?: return@safely text(exchange, 404, "map not available")
+            val requestedLighting = requestedLighting(query(exchange.requestURI.rawQuery)["lighting"])
+            val rendered = runCatching { runtime.mapAsset(key, requestedLighting) }.getOrNull()
+                ?: return@safely text(exchange, 404, "map not available")
+            val variant = rendered.effectiveLighting?.name ?: "STATIC"
             exchange.responseHeaders.add("Content-Type", "image/png")
             exchange.responseHeaders.add("Cache-Control", "public, max-age=31536000, immutable")
-            runtime.catalogHash()?.let { exchange.responseHeaders.add("ETag", "\"$it-map-${key.hashCode()}\"") }
-            exchange.sendResponseHeaders(200, bytes.size.toLong())
-            exchange.responseBody.use { it.write(bytes) }
+            runtime.catalogHash()?.let {
+                exchange.responseHeaders.add("ETag", "\"$it-map-${key.hashCode()}-$variant\"")
+            }
+            exchange.sendResponseHeaders(200, rendered.bytes.size.toLong())
+            exchange.responseBody.use { it.write(rendered.bytes) }
+        }
+    }
+
+    private fun requestedLighting(value: String?): MapLighting = if (value == null) {
+        MapLighting.DAY
+    } else {
+        requireNotNull(MapLighting.entries.singleOrNull { it.name == value.uppercase(Locale.ROOT) }) {
+            "unsupported map lighting: $value"
         }
     }
 

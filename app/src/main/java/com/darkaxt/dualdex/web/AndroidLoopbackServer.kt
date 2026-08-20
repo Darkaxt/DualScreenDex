@@ -1,5 +1,6 @@
 package com.darkaxt.dualdex.web
 
+import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -136,7 +137,7 @@ class AndroidLoopbackServer(
         )
         request.method == "GET" && request.path.startsWith("/api/sprites/species/") -> spriteResponse(request.path, true)
         request.method == "GET" && request.path.startsWith("/api/sprites/balls/") -> spriteResponse(request.path, false)
-        request.method == "GET" && request.path.startsWith("/api/maps/") -> worldMapResponse(request.path)
+        request.method == "GET" && request.path.startsWith("/api/maps/") -> mapResponse(request)
         request.method == "GET" && request.path.startsWith("/api/trainer-assets/") -> trainerAssetResponse(request.path)
         request.path.startsWith("/api/") -> if (request.method in setOf("GET", "POST")) {
             textResponse("not found", 404)
@@ -197,24 +198,35 @@ class AndroidLoopbackServer(
         )
     }
 
-    private fun worldMapResponse(path: String): Response {
-        val encoded = path.removePrefix("/api/maps/").removeSuffix(".png")
+    private fun mapResponse(request: Request): Response {
+        val encoded = request.path.removePrefix("/api/maps/").removeSuffix(".png")
         if (encoded.isBlank() || encoded.contains('/') || encoded.contains("..")) {
             return textResponse("map not available", 404)
         }
         val key = runCatching { URLDecoder.decode(encoded, Charsets.UTF_8.name()) }.getOrNull()
             ?: return textResponse("map not available", 404)
         if (key.split('/').any { it == ".." }) return textResponse("map not available", 404)
-        val bytes = runtime.mapAsset(key) ?: return textResponse("map not available", 404)
+        val requestedLighting = requestedLighting(request.query["lighting"])
+        val rendered = runCatching { runtime.mapAsset(key, requestedLighting) }.getOrNull()
+            ?: return textResponse("map not available", 404)
+        val variant = rendered.effectiveLighting?.name ?: "STATIC"
         return Response(
             200,
             "image/png",
-            bytes,
+            rendered.bytes,
             buildMap {
                 put("Cache-Control", "public, max-age=31536000, immutable")
-                runtime.catalogHash()?.let { put("ETag", "\"$it-map-${key.hashCode()}\"") }
+                runtime.catalogHash()?.let { put("ETag", "\"$it-map-${key.hashCode()}-$variant\"") }
             },
         )
+    }
+
+    private fun requestedLighting(value: String?): MapLighting = if (value == null) {
+        MapLighting.DAY
+    } else {
+        requireNotNull(MapLighting.entries.singleOrNull { it.name == value.uppercase(Locale.ROOT) }) {
+            "unsupported map lighting: $value"
+        }
     }
 
     private fun trainerAssetResponse(path: String): Response {

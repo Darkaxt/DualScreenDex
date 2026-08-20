@@ -4,8 +4,12 @@ import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
+import com.enrpau.dualscreendex.parser.catalog.IndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
+import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
@@ -17,8 +21,10 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.ByteArrayInputStream
 import java.net.HttpURLConnection
 import java.net.URI
+import javax.imageio.ImageIO
 
 class AndroidLoopbackServerTest {
     @Test
@@ -70,6 +76,13 @@ class AndroidLoopbackServerTest {
     @Test
     fun servesOnlyCatalogOwnedNormalizedMapPngAssets() {
         val pixels = IntArray(8 * 8) { 0xff123456.toInt() }
+        val palettes = MapLightingPalettes(
+            morning = IntArray(32) { 0xff110000.toInt() + it },
+            day = IntArray(32) { 0xff220000.toInt() + it },
+            night = IntArray(32) { 0xff330000.toInt() + it },
+            dark = IntArray(32) { 0xff440000.toInt() + it },
+        )
+        val corruptIndices = LocalMapRasterCodec.compress(ByteArray(256))
         val runtime = ProductionCompanionRuntime().apply {
             loadCatalog(
                 "map.gba",
@@ -100,10 +113,30 @@ class AndroidLoopbackServerTest {
                         assets = mapOf("world/region-0" to RgbaSprite(8, 8, pixels)),
                     ),
                     localMaps = LocalMapCatalog(
-                        maps = listOf(LocalMap("local/0001", "Local", 1, 16, 16, 1, 1, "local/0001/map")),
+                        maps = listOf(
+                            LocalMap("local/0001", "Local", 1, 16, 16, 1, 1, "local/0001/map"),
+                            LocalMap("local/0002", "Dynamic", 2, 16, 16, 1, 1, "local/0002/map"),
+                            LocalMap("local/0003", "Corrupt", 3, 16, 16, 1, 1, "local/0003/map"),
+                        ),
                         assets = mapOf(
                             "local/0001/map" to PngMapAsset(
                                 byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10),
+                            ),
+                        ),
+                        indexedAssets = mapOf(
+                            "local/0002/map" to IndexedMapAsset(
+                                16,
+                                16,
+                                LocalMapRasterCodec.compress(ByteArray(256) { (it % 32).toByte() }),
+                                LocalMapLightingPolicy.AUTO,
+                                palettes,
+                            ),
+                            "local/0003/map" to IndexedMapAsset(
+                                16,
+                                16,
+                                corruptIndices,
+                                LocalMapLightingPolicy.AUTO,
+                                palettes,
                             ),
                         ),
                     ),
@@ -112,6 +145,7 @@ class AndroidLoopbackServerTest {
         }
         val server = AndroidLoopbackServer(runtime) { null }
         try {
+            corruptIndices.fill(0)
             server.start()
             val base = "http://127.0.0.1:${server.address.port}"
             val map = URI("$base/api/maps/world%2Fregion-0.png").toURL().openConnection() as HttpURLConnection
@@ -121,7 +155,31 @@ class AndroidLoopbackServerTest {
             val local = URI("$base/api/maps/local%2F0001%2Fmap.png").toURL().openConnection() as HttpURLConnection
             assertEquals(200, local.responseCode)
             assertEquals("image/png", local.contentType)
-            assertTrue(local.inputStream.readBytes().copyOfRange(1, 4).contentEquals("PNG".toByteArray()))
+            val localBytes = local.inputStream.readBytes()
+            assertTrue(localBytes.copyOfRange(1, 4).contentEquals("PNG".toByteArray()))
+            val staticNight = URI("$base/api/maps/local%2F0001%2Fmap.png?lighting=NIGHT")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(localBytes.toList(), staticNight.inputStream.readBytes().toList())
+            assertEquals(local.getHeaderField("ETag"), staticNight.getHeaderField("ETag"))
+
+            val omitted = URI("$base/api/maps/local%2F0002%2Fmap.png").toURL().openConnection() as HttpURLConnection
+            val day = URI("$base/api/maps/local%2F0002%2Fmap.png?lighting=DAY")
+                .toURL().openConnection() as HttpURLConnection
+            val night = URI("$base/api/maps/local%2F0002%2Fmap.png?lighting=NIGHT")
+                .toURL().openConnection() as HttpURLConnection
+            val omittedBytes = omitted.inputStream.readBytes()
+            val dayBytes = day.inputStream.readBytes()
+            val nightBytes = night.inputStream.readBytes()
+            assertEquals(dayBytes.toList(), omittedBytes.toList())
+            assertEquals(palettes.day[0], ImageIO.read(ByteArrayInputStream(dayBytes)).getRGB(0, 0))
+            assertEquals(palettes.night[0], ImageIO.read(ByteArrayInputStream(nightBytes)).getRGB(0, 0))
+            assertTrue(day.getHeaderField("ETag") != night.getHeaderField("ETag"))
+            val invalid = URI("$base/api/maps/local%2F0002%2Fmap.png?lighting=INVALID")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(400, invalid.responseCode)
+            val corrupt = URI("$base/api/maps/local%2F0003%2Fmap.png?lighting=DAY")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(404, corrupt.responseCode)
 
             val missing = URI("$base/api/maps/world%2Fmissing.png").toURL().openConnection() as HttpURLConnection
             assertEquals(404, missing.responseCode)
