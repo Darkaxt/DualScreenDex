@@ -6,6 +6,14 @@ import { PartyPage } from './PartyPage';
 afterEach(cleanup);
 
 describe('Party', () => {
+  it('uses a title-only header without redundant live ownership diagnostics', () => {
+    const { container } = render(<PartyPage catalog={catalog} state={partyState('ORGANIC')} onBack={vi.fn()} openMove={vi.fn()} openAbility={vi.fn()} />);
+
+    expect(screen.getByText('PARTY')).toBeTruthy();
+    expect(container.querySelector('.header-title small')).toBeNull();
+    expect(screen.queryByText(/LIVE|OWNED POKÉMON/)).toBeNull();
+  });
+
   it('renders a six-slot 2x3 roster and opens details only after selecting a member', () => {
     const openMove = vi.fn();
     const openAbility = vi.fn();

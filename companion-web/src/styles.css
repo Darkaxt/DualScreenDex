@@ -40,10 +40,6 @@ button { cursor: pointer; }
 .production-device .device-screen { width: 100%; height: 100%; border-radius: 0; }
 .device-screen { position: relative; height: 100%; overflow: hidden; border-radius: 10px; background: var(--paper); font-size: calc(15px * var(--font-scale)); }
 .screen-host { position: absolute; inset: 0; min-width: 0; min-height: 0; }
-.screen-host.with-rom-status { top: 25px; }
-.rom-status { position: absolute; z-index: 12; inset: 0 0 auto; height: 25px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 0 9px; color: #dfe8d3; background: #071e18; border-bottom: 1px solid #466b57; font-size: .58em; letter-spacing: .04em; }
-.rom-status strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rom-status span { color: #aabaad; white-space: nowrap; }
 .screen { position: absolute; inset: 0; display: grid; min-width: 0; min-height: 0; overflow: hidden; background: var(--paper); animation: screen-in 170ms ease-out both; }
 @keyframes screen-in { from { opacity: .65; translate: 0 5px; } }
 

@@ -152,8 +152,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={applicationThemeStyle(catalog, state.settings)} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>
       {showDevelopmentTools && <div class="device-sensor" />}
       <div class="device-screen">
-        {catalog && <div class="rom-status" title={state.catalogName ?? undefined}><strong>{state.catalogName ?? 'Unnamed ROM'}</strong><span>{catalog.family.replaceAll('_', ' ')} · CRC32 {catalog.crc32 || 'N/F'}</span></div>}
-        <div class={catalog ? 'screen-host with-rom-status' : 'screen-host'}>{screen}</div>
+        <div class="screen-host">{screen}</div>
         {catalog && state.loading.active && <div class="loading-indicator" role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
       </div>
     </div>

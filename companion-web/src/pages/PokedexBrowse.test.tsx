@@ -27,6 +27,14 @@ const state: State = {
 };
 
 describe('Pokédex knowledge modes', () => {
+  it('uses a title-only header without parser family or policy diagnostics', () => {
+    const { container } = render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
+
+    expect(screen.getByText('POKÉDEX')).toBeTruthy();
+    expect(container.querySelector('.header-title small')).toBeNull();
+    expect(screen.queryByText(/EMERALD|ORGANIC/)).toBeNull();
+  });
+
   it('places a semantic Map shortcut in the existing header only for normalized maps', () => {
     const onOpenMap = vi.fn();
     const mappedCatalog: Catalog = {

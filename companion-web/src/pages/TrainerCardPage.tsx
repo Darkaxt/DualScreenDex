@@ -4,7 +4,7 @@ import { Header } from '../components';
 export function TrainerCardPage({ state, onBack }: { state: State; onBack: () => void }) {
   const trainer = state.trainer;
   return <section class="screen trainer-screen">
-    <Header title="TRAINER CARD" kicker="LIVE · READ ONLY" onBack={onBack} />
+    <Header title="TRAINER CARD" onBack={onBack} />
     {!trainer ? <div class="empty-state trainer-unavailable"><strong>TRAINER DATA UNAVAILABLE</strong><p>This ROM or session has not published a safe Trainer record.</p></div> :
       <div class="trainer-card-content" data-scroll-region>
         <article class="trainer-card-shell">

@@ -13,7 +13,7 @@ export function BattlePage({ catalog, state, send, openMove, openSpecies }: { ca
   const hidden = state.settings.knowledgeMode === 'HIDDEN';
   const manualTargets = battle.opponents.length > 1 && battle.targetMode === 'MANUAL_TARGET_FALLBACK';
   return <section class={`screen battle-screen ${manualTargets ? 'battle-double' : 'battle-single'}`}>
-    <Header title="BATTLE" kicker={`${catalog.family.replaceAll('_', ' ')} · ${state.settings.knowledgeMode}`} onSettings={() => send('SCREEN', { screen: 'SETTINGS' })} />
+    <Header title="BATTLE" onSettings={() => send('SCREEN', { screen: 'SETTINGS' })} />
     {manualTargets && <div class="target-switch">{battle.opponents.map((target, index) => {
       const targetSpecies = catalog.species.find(item => item.id === target.speciesId);
       return <button key={`${target.speciesId}-${index}`} class={index === battle.targetIndex ? 'active' : ''} onClick={() => send('TARGET', { index })}>{targetSpecies?.name}<span>LV {target.level}</span></button>;

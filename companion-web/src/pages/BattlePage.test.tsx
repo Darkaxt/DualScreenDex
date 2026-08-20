@@ -19,6 +19,15 @@ const rarityAssessments = [
 afterEach(cleanup);
 
 describe('battle layout', () => {
+  it('uses a title-only header without parser family or knowledge-policy diagnostics', () => {
+    const { catalog, state } = fixture(1);
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('BATTLE')).toBeTruthy();
+    expect(container.querySelector('.header-title small')).toBeNull();
+    expect(screen.queryByText(/EMERALD|DISCOVERED/)).toBeNull();
+  });
+
   it.each(rarityAssessments)('uses the approved recruitment assessment at %s stars', (stars, assessment) => {
     expect(rarityAssessment(stars)).toBe(assessment);
   });

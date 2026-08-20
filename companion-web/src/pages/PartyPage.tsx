@@ -42,7 +42,7 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openS
   const closeDetails = () => setDetailSlot(null);
 
   return <section class="screen party-screen">
-    <Header title="PARTY" kicker="LIVE · OWNED POKÉMON" onBack={onBack} />
+    <Header title="PARTY" onBack={onBack} />
     <div class="party-content" data-scroll-region>
       <div class="party-grid" data-layout="2x3" aria-label="Party slots">
         {members.map(member => <button

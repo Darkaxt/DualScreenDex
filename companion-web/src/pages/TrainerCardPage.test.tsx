@@ -6,6 +6,14 @@ import { TrainerCardPage } from './TrainerCardPage';
 afterEach(cleanup);
 
 describe('Trainer Card', () => {
+  it('uses a title-only header without redundant live or read-only diagnostics', () => {
+    const { container } = render(<TrainerCardPage state={trainerState()} onBack={vi.fn()} />);
+
+    expect(screen.getAllByText('TRAINER CARD').length).toBeGreaterThan(0);
+    expect(container.querySelector('.header-title small')).toBeNull();
+    expect(screen.queryByText(/LIVE|READ ONLY/)).toBeNull();
+  });
+
   it('composes every published trainer field inside one cohesive card shell', () => {
     const { container } = render(<TrainerCardPage state={trainerState()} onBack={vi.fn()} />);
 

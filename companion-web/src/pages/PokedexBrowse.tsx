@@ -44,7 +44,6 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
   return <section class="screen pokedex-screen">
     <Header
       title="POKÉDEX"
-      kicker={`${catalog.family.replaceAll('_', ' ')} · ${policy}`}
       gameTime={state.gameTime}
       onTrainer={state.trainer ? () => send('OPEN_TRAINER') : undefined}
       onParty={state.party?.some(member => member.occupied) ? () => send('OPEN_PARTY') : undefined}

@@ -70,11 +70,14 @@ describe('production application shell', () => {
     HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as typeof HTMLCanvasElement.prototype.getContext;
   });
 
-  it('keeps ROM identity visible without rendering simulator controls', async () => {
+  it('keeps ROM diagnostics out of the production shell', async () => {
     render(<App />);
 
-    await waitFor(() => expect(screen.getByText('Pokemon Modern Emerald.gba')).toBeTruthy());
-    expect(screen.getByText(/CRC32 C3A9F204/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
+    expect(screen.queryByText('Pokemon Modern Emerald.gba')).toBeNull();
+    expect(screen.queryByText(/CRC32 C3A9F204/)).toBeNull();
+    expect(document.querySelector('.rom-status')).toBeNull();
+    expect(document.querySelector('.screen-host')?.classList.contains('with-rom-status')).toBe(false);
     expect(screen.queryByText('Encounter feed')).toBeNull();
     expect(screen.queryByText('GENERATE ENCOUNTER')).toBeNull();
     expect(screen.queryByText(/Generate an encounter/i)).toBeNull();
@@ -82,7 +85,7 @@ describe('production application shell', () => {
 
   it('applies the complete ROM palette only to GAME and leaves fixed themes authoritative', async () => {
     const first = render(<App />);
-    await waitFor(() => expect(screen.getByText('Pokemon Modern Emerald.gba')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
     const gameShell = document.querySelector('.production-device') as HTMLElement;
     expect(gameShell.dataset.theme).toBe('game');
     expect(gameShell.style.getPropertyValue('--theme-field')).toBe('#123456');
@@ -94,7 +97,7 @@ describe('production application shell', () => {
       state: { ...fixture.state, settings: { ...fixture.state.settings, theme: 'DARK' } },
     });
     render(<App />);
-    await waitFor(() => expect(screen.getByText('Pokemon Modern Emerald.gba')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
     const darkShell = document.querySelector('.production-device') as HTMLElement;
     expect(darkShell.dataset.theme).toBe('dark');
     expect(darkShell.style.getPropertyValue('--theme-field')).toBe('');
