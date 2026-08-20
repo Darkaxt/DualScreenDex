@@ -35,6 +35,33 @@ data class CatalogParseAttempt(
 
 enum class CatalogMaterializationPhase { ESSENTIAL, SPECIES_MEDIA, RELATIONSHIPS, EXTENDED, COMPLETE }
 
+enum class CatalogWorkModule {
+    ROM_IDENTITY,
+    FAMILY_AND_TABLES,
+    CORE_RECORDS,
+    SPECIES_MEDIA,
+    EVOLUTIONS_AND_LEARNSETS,
+    ENCOUNTERS,
+    MOVE_DATA,
+    ABILITY_DATA,
+    MAPS,
+    TRAINER_AND_THEME,
+    CATALOG_STORAGE,
+}
+
+data class CatalogWorkProgress(
+    val module: CatalogWorkModule,
+    val completedUnits: Int = module.ordinal,
+    val totalUnits: Int = CatalogWorkModule.entries.size,
+)
+
+internal fun reportCatalogWork(
+    onWork: ((CatalogWorkProgress) -> Unit)?,
+    module: CatalogWorkModule,
+) {
+    if (onWork != null) runCatching { onWork(CatalogWorkProgress(module)) }
+}
+
 data class CatalogMaterializationProgress(
     val phase: CatalogMaterializationPhase,
     val completedUnits: Int,
@@ -46,8 +73,9 @@ object CatalogParser {
     fun parse(
         rom: RomImage,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+        onWork: ((CatalogWorkProgress) -> Unit)? = null,
     ): CatalogParseResult {
-        val attempt = parseCatching(rom, onProgress)
+        val attempt = parseCatching(rom, onProgress, onWork)
         return CatalogParseResult(
             attempt.analysis,
             attempt.layout,
@@ -58,8 +86,9 @@ object CatalogParser {
     fun parseCatching(
         rom: RomImage,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+        onWork: ((CatalogWorkProgress) -> Unit)? = null,
     ): CatalogParseAttempt {
-        val context = ParserOrchestrator.analyzeForCatalog(rom)
+        val context = ParserOrchestrator.analyzeForCatalog(rom, onWork)
         val analysis = context.analysis
         if (analysis.status != SelectionStatus.SELECTED || analysis.selectedFamily == null) {
             return CatalogParseAttempt(analysis, null, null)
@@ -75,6 +104,7 @@ object CatalogParser {
                     analysis = analysis,
                     layout = layout,
                     onProgress = onProgress,
+                    onWork = onWork,
                     resolveGen3AreaNames = context.resolveGen3AreaNames,
                     resolveWorldMap = context.resolveWorldMap,
                     resolveLocalMaps = context.resolveLocalMaps,
@@ -92,6 +122,7 @@ object CatalogMaterializer {
         analysis: ParseResult,
         layout: ResolvedRomLayout,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+        onWork: ((CatalogWorkProgress) -> Unit)? = null,
         resolveGen3AreaNames: ((Set<Int>) -> Map<Int, String>)? = null,
         resolveWorldMap: ((Int, Set<Int>) -> WorldMapResolution)? = null,
         resolveLocalMaps: ((Int, Set<Int>) -> LocalMapResolution)? = null,
@@ -100,6 +131,7 @@ object CatalogMaterializer {
         materializeTheme: ((Map<CatalogThemeAssetClass, List<RgbaSprite>>, List<DirectCatalogThemePalette>) -> CatalogTheme) =
             RomThemeMaterializer::materialize,
     ): ParsedCatalog {
+        reportCatalogWork(onWork, CatalogWorkModule.CORE_RECORDS)
         val rawSpecies = RecordMaterializers.species(rom, layout)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
             layout.resolvedDatasets.abilityNames?.catalogDirectAbilityIds()?.let { catalogIds ->
@@ -141,6 +173,7 @@ object CatalogMaterializer {
         )
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, essentialCatalog))
 
+        reportCatalogWork(onWork, CatalogWorkModule.SPECIES_MEDIA)
         val descriptions = RelationshipMaterializers.descriptions(rom, layout)
         val sprites = SpriteMaterializer.pokemon(rom, layout)
         val resolvedSprites = resolveSpriteAliases(baseSpecies, sprites, layout.generation)
@@ -177,8 +210,10 @@ object CatalogMaterializer {
         val mediaCatalog = essentialCatalog.copy(speciesById = mediaSpecies)
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.SPECIES_MEDIA, 2, 5, mediaCatalog))
 
+        reportCatalogWork(onWork, CatalogWorkModule.EVOLUTIONS_AND_LEARNSETS)
         val evolutions = RelationshipMaterializers.evolutions(rom, layout)
         val learnsets = RelationshipMaterializers.learnsets(rom, layout)
+        reportCatalogWork(onWork, CatalogWorkModule.ENCOUNTERS)
         val encounterMaterialization = EncounterMaterializer.materializeWithEvidence(rom, layout)
         val rawEncounters = encounterMaterialization.areas
         val runtimeMetadata = if (layout.generation == 3) {
@@ -226,13 +261,15 @@ object CatalogMaterializer {
         )
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.RELATIONSHIPS, 3, 5, relationshipCatalog))
 
+        reportCatalogWork(onWork, CatalogWorkModule.MOVE_DATA)
         val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
         val moveDescriptions = resolveMoveDescriptions?.invoke(layout)
             ?: MoveDescriptionMaterializer.materialize(rom, layout)
+        val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
+        reportCatalogWork(onWork, CatalogWorkModule.ABILITY_DATA)
         val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
         val abilityMechanics = resolveAbilityMechanics?.invoke(layout, abilities, abilityDescriptions)
             ?: AbilityMechanicsMaterializer.materialize(rom, layout, abilities, abilityDescriptions)
-        val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
         val species = closedRelationshipSpecies.mapValues { (id, record) ->
             record.copy(
                 moveAcquisitions = if (moveAcquisitions.evidence.values.any { it.compatible }) {
@@ -413,6 +450,7 @@ object CatalogMaterializer {
                 status = if (layout.generation == 3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
             )
         }
+        reportCatalogWork(onWork, CatalogWorkModule.MAPS)
         val encounterAreaIdStride = if (layout.pokeemeraldExpansion == null) 10 else 100
         val worldMapResolution = if (layout.generation in 1..3 && resolveWorldMap != null) {
             try {
@@ -432,13 +470,6 @@ object CatalogMaterializer {
             null
         }
         val worldMaps = (worldMapResolution as? WorldMapResolution.Resolved)?.catalog ?: WorldMapCatalog()
-        val trainerAssets = if (layout.generation == 3) {
-            runCatching { Gen3TrainerAssetResolver.resolve(rom, layout.family) }
-                .getOrNull()
-                ?: TrainerAssetCatalog()
-        } else {
-            TrainerAssetCatalog()
-        }
         capabilities[RomCapability.WORLD_MAP] = when (worldMapResolution) {
             is WorldMapResolution.Resolved -> CapabilityEvidence(
                 capability = RomCapability.WORLD_MAP,
@@ -557,12 +588,21 @@ object CatalogMaterializer {
                 status = CapabilityStatus.NOT_APPLICABLE,
             )
         }
+        reportCatalogWork(onWork, CatalogWorkModule.TRAINER_AND_THEME)
+        val trainerAssets = if (layout.generation == 3) {
+            runCatching { Gen3TrainerAssetResolver.resolve(rom, layout.family) }
+                .getOrNull()
+                ?: TrainerAssetCatalog()
+        } else {
+            TrainerAssetCatalog()
+        }
         val theme = runCatching {
             materializeTheme(
                 catalogThemeAssets(species, trainerAssets, worldMaps, localMaps),
                 emptyList(),
             ).validate()
         }.getOrElse { CatalogTheme.neutral() }
+        reportCatalogWork(onWork, CatalogWorkModule.CATALOG_STORAGE)
         val catalog = ParsedCatalog(
             romSha256 = analysis.sha256,
             family = layout.family,

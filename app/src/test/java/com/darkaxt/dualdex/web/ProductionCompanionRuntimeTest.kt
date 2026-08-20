@@ -33,6 +33,8 @@ import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
+import com.enrpau.dualscreendex.parser.catalog.CatalogWorkModule
+import com.enrpau.dualscreendex.parser.catalog.CatalogWorkProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BattleUiAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
@@ -762,7 +764,7 @@ class ProductionCompanionRuntimeTest {
         val runtime = ProductionCompanionRuntime(
             parserWorker = executor,
             catalogRepository = writes,
-            parseCatalog = { _, progress ->
+            parseCatalog = { _, progress, _ ->
                 progress(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, incoming))
                 error("synthetic parse failure")
             },
@@ -790,8 +792,9 @@ class ProductionCompanionRuntimeTest {
         val executor = HoldingExecutorService()
         val runtime = ProductionCompanionRuntime(
             parserWorker = executor,
-            parseCatalog = { _, progress ->
-                progress(CatalogMaterializationProgress(CatalogMaterializationPhase.SPECIES_MEDIA, 2, 5, incoming))
+            parseCatalog = { _, checkpoint, work ->
+                checkpoint(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, incoming))
+                work(CatalogWorkProgress(CatalogWorkModule.EVOLUTIONS_AND_LEARNSETS, 4, 11))
                 incoming
             },
         )
@@ -801,7 +804,10 @@ class ProductionCompanionRuntimeTest {
         runtime.load("incoming.gba", RomImage(ByteArray(0xC0)))
         executor.runNext()
 
-        assertTrue(phases.any { it.active && it.phase == "SPECIES_MEDIA" && it.completedUnits == 2 && it.totalUnits == 5 })
+        assertTrue(phases.any {
+            it.active && it.phase == "EVOLUTIONS_AND_LEARNSETS" && it.completedUnits == 4 && it.totalUnits == 11
+        })
+        assertTrue(phases.none { it.active && it.phase == "ESSENTIAL" })
         subscription.close()
         runtime.close()
     }
@@ -844,7 +850,7 @@ class ProductionCompanionRuntimeTest {
         runtime = ProductionCompanionRuntime(
             parserWorker = executor,
             settingsForRom = { sha -> CompanionSettings(theme = if (sha == winner.romSha256) Theme.LIGHT else Theme.DARK) },
-            parseCatalog = { _, progress ->
+            parseCatalog = { _, progress, _ ->
                 progress(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, stale))
                 runtime.loadCatalog("winner.gba", winner)
                 stale

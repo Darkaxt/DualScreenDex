@@ -66,6 +66,8 @@ import com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi
 import com.darkaxt.dualdex.save.gen3.Gen3TrainerCardAbi
 import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
+import com.enrpau.dualscreendex.parser.catalog.CatalogWorkModule
+import com.enrpau.dualscreendex.parser.catalog.CatalogWorkProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
@@ -99,8 +101,12 @@ class ProductionCompanionRuntime(
     private val onRomDisplayModeChanged: (DisplayMode) -> Unit = {},
     private val onCatalogCleared: () -> Unit = {},
     private val knowledgeRepository: KnowledgeRepository? = null,
-    private val parseCatalog: (RomImage, (CatalogMaterializationProgress) -> Unit) -> ParsedCatalog? = { rom, progress ->
-        CatalogParser.parse(rom, progress).catalog
+    private val parseCatalog: (
+        RomImage,
+        (CatalogMaterializationProgress) -> Unit,
+        (CatalogWorkProgress) -> Unit,
+    ) -> ParsedCatalog? = { rom, progress, work ->
+        CatalogParser.parse(rom, progress, work).catalog
     },
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
@@ -142,7 +148,7 @@ class ProductionCompanionRuntime(
     private fun loadInternal(name: String, rom: RomImage, onComplete: ((Result<Unit>) -> Unit)?) {
         val header = RomHeaderReader.read(rom)
         val source = CatalogSourceMetadata.fromDisplayName(name, rom.size, header.title)
-        val generation = beginCatalogTransition(rom.sha256, name, "IDENTIFYING")
+        val generation = beginCatalogTransition(rom.sha256, name, CatalogWorkModule.ROM_IDENTITY.name)
         parserWorker.execute {
             try {
                 val cached = catalogRepository?.readComplete(rom.sha256)
@@ -156,7 +162,11 @@ class ProductionCompanionRuntime(
                     notifyCompletion(onComplete, Result.success(Unit))
                     return@execute
                 }
-                val parsed = parseCatalog(rom) { progress -> publishProgress(generation, progress, source) }
+                val parsed = parseCatalog(
+                    rom,
+                    { progress -> publishCheckpoint(generation, progress, source) },
+                    { work -> publishWork(generation, work, source.displayName) },
+                )
                     ?: error("ROM did not produce a supported mainline-family catalog")
                 if (generation != loadGeneration.get()) {
                     notifyCompletion(onComplete, Result.failure(IllegalStateException("catalog load was superseded")))
@@ -795,27 +805,32 @@ class ProductionCompanionRuntime(
     }
 
     @Synchronized
-    private fun publishProgress(
+    private fun publishCheckpoint(
         generation: Long,
         progress: CatalogMaterializationProgress,
         source: CatalogSourceMetadata,
     ) {
         if (generation != loadGeneration.get()) return
-        gateway.dispatch(
-            CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(
-                    active = true,
-                    phase = progress.phase.name,
-                    completedUnits = progress.completedUnits,
-                    totalUnits = progress.totalUnits,
-                ),
-                source.displayName,
-            ),
-        )
         catalogRepository?.write(
             progress.catalog,
             source,
             catalogWriteProgress(progress),
+        )
+    }
+
+    @Synchronized
+    private fun publishWork(generation: Long, work: CatalogWorkProgress, name: String) {
+        if (generation != loadGeneration.get()) return
+        gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(
+                    active = true,
+                    phase = work.module.name,
+                    completedUnits = work.completedUnits,
+                    totalUnits = work.totalUnits,
+                ),
+                name,
+            ),
         )
     }
 
@@ -876,7 +891,12 @@ class ProductionCompanionRuntime(
         clearLevelUpRulesetDetection()
         gateway.dispatch(
             CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(active = true, phase = phase, completedUnits = 0, totalUnits = 5),
+                CatalogLoadingState(
+                    active = true,
+                    phase = phase,
+                    completedUnits = 0,
+                    totalUnits = CatalogWorkModule.entries.size,
+                ),
                 name,
             ),
         )
@@ -906,7 +926,7 @@ class ProductionCompanionRuntime(
                     active = false,
                     phase = phase,
                     completedUnits = 0,
-                    totalUnits = if (phase == "IDLE") 0 else 5,
+                    totalUnits = if (phase == "IDLE") 0 else CatalogWorkModule.entries.size,
                 ),
             ),
         )
@@ -922,7 +942,12 @@ class ProductionCompanionRuntime(
         onCatalogCommitted(parsed.romSha256, name)
         gateway.dispatch(
             CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(active = false, phase = "COMPLETE", completedUnits = 5, totalUnits = 5),
+                CatalogLoadingState(
+                    active = false,
+                    phase = "COMPLETE",
+                    completedUnits = CatalogWorkModule.entries.size,
+                    totalUnits = CatalogWorkModule.entries.size,
+                ),
                 name,
             ),
         )

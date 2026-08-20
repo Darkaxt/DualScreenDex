@@ -188,11 +188,17 @@ export function catalogRefreshMarker(state: Pick<State, 'catalogName' | 'loading
 
 export function loadingModuleLabel(phase: string): string {
   const labels: Record<string, string> = {
-    IDENTIFYING: 'ROM identity',
-    ESSENTIAL: 'core catalog',
+    ROM_IDENTITY: 'ROM identity',
+    FAMILY_AND_TABLES: 'game data layout',
+    CORE_RECORDS: 'Pokémon & moves',
     SPECIES_MEDIA: 'sprites & entries',
-    RELATIONSHIPS: 'evolutions & areas',
-    EXTENDED: 'extended data',
+    EVOLUTIONS_AND_LEARNSETS: 'evolutions & learnsets',
+    ENCOUNTERS: 'wild encounters',
+    MOVE_DATA: 'move details',
+    ABILITY_DATA: 'ability details',
+    MAPS: 'maps',
+    TRAINER_AND_THEME: 'trainer & theme',
+    CATALOG_STORAGE: 'catalog storage',
     CACHE_REOPEN: 'saved catalog',
   };
   return labels[phase] ?? phase.replaceAll('_', ' ').toLowerCase();

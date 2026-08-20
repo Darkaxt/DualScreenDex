@@ -135,7 +135,7 @@ describe('production application shell', () => {
         ...fixture.state,
         version: 2,
         catalogReady: false,
-        loading: { active: true, phase: 'IDENTIFYING', completedUnits: 0, totalUnits: 5 },
+        loading: { active: true, phase: 'ROM_IDENTITY', completedUnits: 0, totalUnits: 11 },
       },
     });
 
@@ -146,7 +146,7 @@ describe('production application shell', () => {
     expect(loading.textContent).not.toContain('%');
     const progress = screen.getByRole('progressbar', { name: 'Loading ROM identity' });
     expect(progress.getAttribute('aria-valuemin')).toBe('0');
-    expect(progress.getAttribute('aria-valuemax')).toBe('5');
+    expect(progress.getAttribute('aria-valuemax')).toBe('11');
     expect(progress.getAttribute('aria-valuenow')).toBe('0');
     expect(screen.queryByText('LOAD ROM OR ZIP')).toBeNull();
     expect(screen.queryByRole('button', { name: 'CONNECT RETROARCH' })).toBeNull();
@@ -169,11 +169,17 @@ describe('production application shell', () => {
   });
 
   it('uses concise names for every parser module and humanizes future phases', () => {
-    expect(loadingModuleLabel('IDENTIFYING')).toBe('ROM identity');
-    expect(loadingModuleLabel('ESSENTIAL')).toBe('core catalog');
+    expect(loadingModuleLabel('ROM_IDENTITY')).toBe('ROM identity');
+    expect(loadingModuleLabel('FAMILY_AND_TABLES')).toBe('game data layout');
+    expect(loadingModuleLabel('CORE_RECORDS')).toBe('Pokémon & moves');
     expect(loadingModuleLabel('SPECIES_MEDIA')).toBe('sprites & entries');
-    expect(loadingModuleLabel('RELATIONSHIPS')).toBe('evolutions & areas');
-    expect(loadingModuleLabel('EXTENDED')).toBe('extended data');
+    expect(loadingModuleLabel('EVOLUTIONS_AND_LEARNSETS')).toBe('evolutions & learnsets');
+    expect(loadingModuleLabel('ENCOUNTERS')).toBe('wild encounters');
+    expect(loadingModuleLabel('MOVE_DATA')).toBe('move details');
+    expect(loadingModuleLabel('ABILITY_DATA')).toBe('ability details');
+    expect(loadingModuleLabel('MAPS')).toBe('maps');
+    expect(loadingModuleLabel('TRAINER_AND_THEME')).toBe('trainer & theme');
+    expect(loadingModuleLabel('CATALOG_STORAGE')).toBe('catalog storage');
     expect(loadingModuleLabel('CACHE_REOPEN')).toBe('saved catalog');
     expect(loadingModuleLabel('FUTURE_PHASE')).toBe('future phase');
   });

@@ -10,6 +10,9 @@ import com.enrpau.dualscreendex.parser.catalog.MoveDescriptionMaterializer
 import com.enrpau.dualscreendex.parser.catalog.MoveDescriptionResult
 import com.enrpau.dualscreendex.parser.catalog.RelationshipMaterializers
 import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
+import com.enrpau.dualscreendex.parser.catalog.CatalogWorkModule
+import com.enrpau.dualscreendex.parser.catalog.CatalogWorkProgress
+import com.enrpau.dualscreendex.parser.catalog.reportCatalogWork
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.family.FamilyProbeCoordinator
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -42,9 +45,12 @@ object ParserOrchestrator {
 
     fun analyze(rom: RomImage): ParseResult = analyze(rom, ::newSession)
 
-    internal fun analyzeForCatalog(rom: RomImage): CatalogAnalysisContext {
+    internal fun analyzeForCatalog(
+        rom: RomImage,
+        onWork: ((CatalogWorkProgress) -> Unit)? = null,
+    ): CatalogAnalysisContext {
         lateinit var sharedSession: RomAnalysisSession
-        val analysis = analyze(rom) { analyzedRom, header, exactProfile ->
+        val analysis = analyze(rom, onWork) { analyzedRom, header, exactProfile ->
             newSession(analyzedRom, header, exactProfile).also { sharedSession = it }
         }
         return CatalogAnalysisContext(
@@ -103,10 +109,18 @@ object ParserOrchestrator {
     internal fun analyze(
         rom: RomImage,
         sessionFactory: (RomImage, RomHeader, RomProfile?) -> RomAnalysisSession,
+    ): ParseResult = analyze(rom, null, sessionFactory)
+
+    private fun analyze(
+        rom: RomImage,
+        onWork: ((CatalogWorkProgress) -> Unit)?,
+        sessionFactory: (RomImage, RomHeader, RomProfile?) -> RomAnalysisSession,
     ): ParseResult {
+        reportCatalogWork(onWork, CatalogWorkModule.ROM_IDENTITY)
         val header = RomHeaderReader.read(rom)
         val exact = KnownProfiles.bySha256(rom.sha256)
         val session = sessionFactory(rom, header, exact)
+        reportCatalogWork(onWork, CatalogWorkModule.FAMILY_AND_TABLES)
         val probes = familyProbeCoordinator.probeAll(session)
         val selection = if (exact != null) {
             val probe = probes.first { it.family == exact.family }

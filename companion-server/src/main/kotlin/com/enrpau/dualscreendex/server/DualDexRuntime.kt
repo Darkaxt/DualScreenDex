@@ -63,7 +63,10 @@ class DualDexRuntime(
         )
         parserWorker.execute {
             try {
-                val parsed = CatalogParser.parse(rom) { progress -> publishProgress(generation, progress) }.catalog
+                val parsed = CatalogParser.parse(
+                    rom = rom,
+                    onProgress = { progress -> publishProgress(generation, progress) },
+                ).catalog
                     ?: error("ROM did not produce a selected mainline-family catalog")
                 if (generation != loadGeneration.get()) return@execute
                 synchronized(this) {
