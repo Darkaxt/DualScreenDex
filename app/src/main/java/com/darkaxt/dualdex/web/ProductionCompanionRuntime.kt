@@ -107,7 +107,7 @@ class ProductionCompanionRuntime(
         (CatalogMaterializationProgress) -> Unit,
         (CatalogWorkProgress) -> Unit,
     ) -> ParsedCatalog? = { rom, progress, work ->
-        CatalogParser.parse(rom, progress, work).catalog
+        CatalogParser.parseWithWork(rom, progress, work).catalog
     },
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null

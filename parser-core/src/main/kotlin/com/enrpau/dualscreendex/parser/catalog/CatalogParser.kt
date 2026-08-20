@@ -73,9 +73,14 @@ object CatalogParser {
     fun parse(
         rom: RomImage,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+    ): CatalogParseResult = parseWithWork(rom, onProgress, null)
+
+    fun parseWithWork(
+        rom: RomImage,
+        onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
         onWork: ((CatalogWorkProgress) -> Unit)? = null,
     ): CatalogParseResult {
-        val attempt = parseCatching(rom, onProgress, onWork)
+        val attempt = parseCatchingWithWork(rom, onProgress, onWork)
         return CatalogParseResult(
             attempt.analysis,
             attempt.layout,
@@ -84,6 +89,11 @@ object CatalogParser {
     }
 
     fun parseCatching(
+        rom: RomImage,
+        onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+    ): CatalogParseAttempt = parseCatchingWithWork(rom, onProgress, null)
+
+    fun parseCatchingWithWork(
         rom: RomImage,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
         onWork: ((CatalogWorkProgress) -> Unit)? = null,
