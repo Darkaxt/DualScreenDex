@@ -175,13 +175,17 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc23Gen1CompiledRelationships == true/);
   assert.match(workflow, /\.v11Rc23Gen1CompiledTypeChart == true/);
   assert.match(workflow, /\.v11Rc23Gen1OptionalFailureIsolation == true/);
+  assert.match(workflow, /\.v11Rc24PokedexCaughtPortraitBadge == true/);
+  assert.match(workflow, /\.v11Rc24InteractivePartyRoster == true/);
+  assert.match(workflow, /\.v11Rc24CohesiveTrainerCard == true/);
+  assert.match(workflow, /\.v11Rc24PartyExperienceProgress == true/);
   assert.match(workflow, /\.gen1CompiledEvolutionCoveragePercent == 96\.62/);
   assert.match(workflow, /\.gen1CompiledLearnsetCoveragePercent == 89\.47/);
   assert.match(workflow, /\.gen1CompiledTypeChartCoveragePercent == 95\.79/);
   assert.match(workflow, /\.gen1Gen3CoverageUniqueRoms == 331/);
   assert.match(workflow, /\.gen1Gen3CoverageTables == 23/);
   assert.match(workflow, /\.gen1Gen3CoverageParserErrors == 0/);
-  assert.match(workflow, /RELEASE_NOTES_1\.1\.0-rc\.23\.md/);
+  assert.match(workflow, /RELEASE_NOTES_1\.1\.0-rc\.24\.md/);
   assert.match(workflow, /\.v11Rc4HotfixBoundedRomIndex == true/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });
