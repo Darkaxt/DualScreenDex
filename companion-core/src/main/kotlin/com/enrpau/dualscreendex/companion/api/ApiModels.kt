@@ -497,7 +497,8 @@ object ApiViewBuilder {
                 gridWidth = map.gridWidth,
                 gridHeight = map.gridHeight,
                 imageUrl = "/api/maps/${URLEncoder.encode(map.imageAssetKey, StandardCharsets.UTF_8)}.png",
-                dynamicLighting = map.imageAssetKey in catalog.localMaps.indexedAssets,
+                dynamicLighting = map.imageAssetKey in catalog.localMaps.indexedAssets ||
+                    map.imageAssetKey in catalog.localMaps.timedAssets,
             )
         },
         capabilities = catalog.capabilities.mapKeys { it.key.name }.mapValues { it.value.status.name },

@@ -2,6 +2,8 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
+import com.enrpau.dualscreendex.parser.catalog.TimedLocalMapRasterRenderer
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -37,6 +39,17 @@ class Gen3LocalMapResolverRealControlTest {
     fun modernEmeraldRetainsPrimaryAndSecondaryTilesetLocalMaps() {
         val localMaps = assertControl(controls[5])
         assertTrue(localMaps.maps.any { it.baseAreaId == 0x0009 && it.displayName == "Littleroot Town" })
+        assertTrue(localMaps.timedAssets.isNotEmpty())
+        assertTrue(localMaps.assets.isNotEmpty())
+        val route102Key = localMaps.maps.single { it.baseAreaId == 0x0011 }.imageAssetKey
+        val route102 = localMaps.timedAssets.getValue(route102Key)
+        val timeHashes = listOf(
+            MapTimeOfDay(12, 0),
+            MapTimeOfDay(19, 0),
+            MapTimeOfDay(21, 0),
+            MapTimeOfDay(23, 0),
+        ).map { time -> argbSha256(TimedLocalMapRasterRenderer.render(route102, time).argb) }
+        assertEquals(4, timeHashes.toSet().size)
     }
 
     private fun assertControl(control: Control): LocalMapCatalog {
@@ -62,21 +75,24 @@ class Gen3LocalMapResolverRealControlTest {
         assertEquals(expected.gridHeight, map.gridHeight)
         assertEquals(expected.gridWidth * 16, map.pixelWidth)
         assertEquals(expected.gridHeight * 16, map.pixelHeight)
-        val png = requireNotNull(catalog.assets[map.imageAssetKey]).bytes
-        val image = requireNotNull(ImageIO.read(ByteArrayInputStream(png)))
+        val argb = catalog.assets[map.imageAssetKey]?.let { png ->
+            val image = requireNotNull(ImageIO.read(ByteArrayInputStream(png.bytes)))
+            IntArray(image.width * image.height) { index -> image.getRGB(index % image.width, index / image.width) }
+        } ?: catalog.timedAssets[map.imageAssetKey]?.let { timed ->
+            TimedLocalMapRasterRenderer.render(timed, MapTimeOfDay(12, 0)).argb
+        } ?: error("map has no raster asset")
+        assertEquals(expected.argbSha256, argbSha256(argb))
+    }
+
+    private fun argbSha256(argb: IntArray): String {
         val digest = MessageDigest.getInstance("SHA-256")
         val buffer = ByteBuffer.allocate(Int.SIZE_BYTES)
-        repeat(image.height) { y ->
-            repeat(image.width) { x ->
-                buffer.clear()
-                buffer.putInt(image.getRGB(x, y))
-                digest.update(buffer.array())
-            }
+        argb.forEach { pixel ->
+            buffer.clear()
+            buffer.putInt(pixel)
+            digest.update(buffer.array())
         }
-        assertEquals(
-            expected.argbSha256,
-            digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) },
-        )
+        return digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
     }
 
     private fun realRom(control: Control): RomImage {

@@ -4,8 +4,10 @@ import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolver
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
@@ -52,23 +54,40 @@ internal object Gen3LocalMapResolver {
             )
         }
 
+        val lightingModel = Gen3MapLightingResolver.resolve(session.rom)
         val tilesets = mutableMapOf<Int, TilesetData>()
         val maps = mutableListOf<LocalMap>()
         val assets = linkedMapOf<String, PngMapAsset>()
+        val timedAssets = linkedMapOf<String, TimedIndexedMapAsset>()
         var encodedBytes = 0L
         descriptors.forEach { descriptor ->
             runCatching {
-                val raster = render(session.rom, descriptor, format, tilesets)
-                val png = PngEncoder.encode(raster)
-                encodedBytes += png.size
+                val dynamicLighting = lightingModel != null && descriptor.naturalLighting
+                val raster = renderIndexed(session.rom, descriptor, format, tilesets, dynamicLighting)
+                if (dynamicLighting) {
+                    val compressed = LocalMapRasterCodec.compress(raster.indices)
+                    encodedBytes += compressed.size + TIMED_PALETTE_BYTES
+                    timedAssets[descriptor.assetKey] = TimedIndexedMapAsset(
+                        pixelWidth = raster.pixelWidth,
+                        pixelHeight = raster.pixelHeight,
+                        compressedIndices = compressed,
+                        baseColors = raster.palettes.base,
+                        alternateColors = raster.palettes.alternate,
+                        alternatePaletteMask = raster.palettes.alternateMask,
+                        paletteModel = requireNotNull(lightingModel),
+                    )
+                } else {
+                    val png = PngEncoder.encode(raster.toRgbaSprite())
+                    encodedBytes += png.size
+                    assets[descriptor.assetKey] = PngMapAsset(png)
+                }
                 if (encodedBytes > MAX_ENCODED_BYTES) {
                     return LocalMapResolution.BudgetExceeded(
                         "encoded-assets",
-                        "local-map PNG assets exceed $MAX_ENCODED_BYTES bytes",
+                        "local-map assets exceed $MAX_ENCODED_BYTES bytes",
                     )
                 }
                 maps += descriptor.toLocalMap()
-                assets[descriptor.assetKey] = PngMapAsset(png)
             }.onFailure { failure ->
                 skippedReasons += "map 0x${descriptor.baseAreaId.toString(16).padStart(4, '0')} render: ${failure.message}"
             }
@@ -76,13 +95,17 @@ internal object Gen3LocalMapResolver {
         if (maps.isEmpty()) {
             return LocalMapResolution.Unavailable("render", "no local map could be rendered from resolved map headers")
         }
-        val catalog = LocalMapCatalog(maps, assets).validate()
+        val catalog = LocalMapCatalog(maps = maps, assets = assets, timedAssets = timedAssets).validate()
         return LocalMapResolution.Resolved(
             catalog = catalog,
             reasons = listOf(
                 "resolved ${maps.size} local maps from a compiled gMapGroups consumer",
                 "rendered bounded ${format.label} 16x16 metatile rasters from ROM tilesets and palettes",
-            ) + skippedReasons,
+            ) + if (lightingModel != null) {
+                listOf("retained ${timedAssets.size} source-backed natural-light maps as indexed timed rasters")
+            } else {
+                emptyList()
+            } + skippedReasons,
             skippedMaps = skippedReasons.size,
         )
     }
@@ -114,6 +137,7 @@ internal object Gen3LocalMapResolver {
             mapCells = mapCells,
             primaryTileset = primaryTileset,
             secondaryTileset = secondaryTileset,
+            mapType = rom.u8(header + MAP_TYPE_OFFSET),
         )
     }
 
@@ -122,25 +146,26 @@ internal object Gen3LocalMapResolver {
         return raw.toInt()
     }
 
-    private fun render(
+    private fun renderIndexed(
         rom: RomImage,
         map: MapDescriptor,
         format: Gen3LocalMapFormat,
         tilesetCache: MutableMap<Int, TilesetData>,
-    ): RgbaSprite {
+        dynamicLighting: Boolean,
+    ): IndexedRaster {
         val primary = tilesetCache.getOrPut(map.primaryTileset) { readTileset(rom, map.primaryTileset, format) }
         val secondary = tilesetCache.getOrPut(map.secondaryTileset) { readTileset(rom, map.secondaryTileset, format) }
         require(!primary.secondary && secondary.secondary) { "map layout has invalid primary/secondary tileset roles" }
-        val palettes = readPalettes(rom, primary, secondary, format)
-        val metatileCache = mutableMapOf<Int, IntArray>()
+        val palettes = readPalettes(rom, primary, secondary, format, dynamicLighting)
+        val metatileCache = mutableMapOf<Int, ByteArray>()
         val pixelWidth = map.width * METATILE_PIXELS
-        val pixels = IntArray(map.pixelCount)
+        val pixels = ByteArray(map.pixelCount)
         repeat(map.height) { mapY ->
             repeat(map.width) { mapX ->
                 val cell = rom.u16le(map.mapCells + (mapY * map.width + mapX) * 2)
                 val metatileId = cell and format.metatileIdMask
                 val metatile = metatileCache.getOrPut(metatileId) {
-                    renderMetatile(rom, metatileId, primary, secondary, palettes, format)
+                    renderMetatile(rom, metatileId, primary, secondary, format)
                 }
                 repeat(METATILE_PIXELS) { row ->
                     metatile.copyInto(
@@ -152,16 +177,17 @@ internal object Gen3LocalMapResolver {
                 }
             }
         }
-        return RgbaSprite(pixelWidth, map.height * METATILE_PIXELS, pixels)
+        return IndexedRaster(pixelWidth, map.height * METATILE_PIXELS, pixels, palettes)
     }
 
     private fun readTileset(rom: RomImage, offset: Int, format: Gen3LocalMapFormat): TilesetData {
         require(offset >= 0 && offset.toLong() + TILESET_BYTES <= rom.size.toLong()) { "tileset is truncated" }
+        val flags = rom.u8(offset)
         val secondary = rom.u8(offset + 1) != 0
         val graphicsOffset = requireNotNull(rom.gbaPointer(offset + 4)) { "tileset has no graphics" }
         val tileCount = if (secondary) format.totalTiles - format.primaryTiles else format.primaryTiles
         val graphicsBytes = tileCount * TILE_BYTES
-        val graphics = if (rom.u8(offset) and COMPRESSED_FLAG != 0) {
+        val graphics = if (flags and COMPRESSED_FLAG != 0) {
             val decoded = GbaRomCompression.decodeAt(rom, graphicsOffset)
             require(decoded.size <= graphicsBytes) {
                 "compressed tileset graphics exceed canonical ${format.label} capacity"
@@ -181,6 +207,9 @@ internal object Gen3LocalMapResolver {
             graphics = graphics,
             palettes = requireNotNull(rom.gbaPointer(offset + 8)) { "tileset has no palettes" },
             metatiles = requireNotNull(rom.gbaPointer(offset + 12)) { "tileset has no metatiles" },
+            alternatePaletteMask = flags ushr 1,
+            lightPaletteMask = rom.u8(offset + 2),
+            customLightColorMask = rom.u8(offset + 3),
         )
     }
 
@@ -189,16 +218,55 @@ internal object Gen3LocalMapResolver {
         primary: TilesetData,
         secondary: TilesetData,
         format: Gen3LocalMapFormat,
-    ): IntArray {
-        val colors = IntArray(format.totalPalettes * COLORS_PER_PALETTE)
+        dynamicLighting: Boolean,
+    ): PaletteData {
+        val base = IntArray(format.totalPalettes * COLORS_PER_PALETTE)
+        val alternate = IntArray(base.size)
         repeat(format.primaryPalettes) { palette ->
-            readPalette(rom, primary.palettes, palette, colors, palette)
+            readPalette(rom, primary.palettes, palette, base, palette)
+            if (dynamicLighting) {
+                readPalette(
+                    rom,
+                    primary.palettes,
+                    (palette + ALTERNATE_PALETTE_DELTA) % HARDWARE_BG_PALETTES,
+                    alternate,
+                    palette,
+                )
+            }
         }
         repeat(format.totalPalettes - format.primaryPalettes) { index ->
             val palette = index + format.primaryPalettes
-            readPalette(rom, secondary.palettes, palette, colors, palette)
+            readPalette(rom, secondary.palettes, palette, base, palette)
+            if (dynamicLighting) {
+                val alternatePalette = (palette + ALTERNATE_PALETTE_DELTA) % HARDWARE_BG_PALETTES
+                readPalette(rom, secondary.palettes, alternatePalette, alternate, palette)
+            }
         }
-        return colors
+        if (!dynamicLighting) return PaletteData(base, base.copyOf(), 0)
+        markLightColors(base, primary, 0, format.primaryPalettes)
+        markLightColors(base, secondary, format.primaryPalettes, MAP_PALETTES)
+        val alternateMask = (
+            (primary.alternatePaletteMask and ((1 shl format.primaryPalettes) - 1)) or
+                (secondary.alternatePaletteMask shl format.primaryPalettes)
+            ) and MAP_PALETTE_MASK and 0xFFFE
+        return PaletteData(base, alternate, alternateMask)
+    }
+
+    private fun markLightColors(colors: IntArray, tileset: TilesetData, low: Int, high: Int) {
+        repeat(high - low) { localPalette ->
+            if (tileset.lightPaletteMask and (1 shl localPalette) == 0) return@repeat
+            val start = (low + localPalette) * COLORS_PER_PALETTE
+            var markedColors = colors[start]
+            var color = 1
+            while (color < COLORS_PER_PALETTE && markedColors != 0) {
+                if (markedColors and 1 != 0) colors[start + color] = colors[start + color] or LIGHT_MARKER
+                markedColors = markedColors ushr 1
+                color++
+            }
+            if (tileset.customLightColorMask and (1 shl localPalette) != 0) {
+                colors[start] = colors[start + COLORS_PER_PALETTE - 1] or LIGHT_MARKER
+            }
+        }
     }
 
     private fun readPalette(
@@ -213,10 +281,7 @@ internal object Gen3LocalMapResolver {
             "tileset palette is truncated"
         }
         repeat(COLORS_PER_PALETTE) { color ->
-            colors[destinationPalette * COLORS_PER_PALETTE + color] = TileRenderer.bgr555ToArgb(
-                rom.u16le(offset.toInt() + color * 2),
-                transparent = false,
-            )
+            colors[destinationPalette * COLORS_PER_PALETTE + color] = rom.u16le(offset.toInt() + color * 2)
         }
     }
 
@@ -225,9 +290,8 @@ internal object Gen3LocalMapResolver {
         metatileId: Int,
         primary: TilesetData,
         secondary: TilesetData,
-        palettes: IntArray,
         format: Gen3LocalMapFormat,
-    ): IntArray {
+    ): ByteArray {
         val tileset = if (metatileId < format.primaryMetatiles) primary else secondary
         val localId = if (metatileId < format.primaryMetatiles) {
             metatileId
@@ -238,7 +302,7 @@ internal object Gen3LocalMapResolver {
         require(metatileOffset >= 0 && metatileOffset + format.metatileBytes <= rom.size.toLong()) {
             "metatile definition is truncated"
         }
-        val pixels = IntArray(METATILE_PIXELS * METATILE_PIXELS)
+        val pixels = ByteArray(METATILE_PIXELS * METATILE_PIXELS)
         repeat(format.layersPerMetatile) { layer ->
             repeat(4) { quadrant ->
                 val entry = rom.u16le(metatileOffset.toInt() + (layer * 4 + quadrant) * 2)
@@ -246,7 +310,6 @@ internal object Gen3LocalMapResolver {
                     entry = entry,
                     primary = primary,
                     secondary = secondary,
-                    palettes = palettes,
                     format = format,
                     pixels = pixels,
                     originX = (quadrant and 1) * TILE_PIXELS,
@@ -262,9 +325,8 @@ internal object Gen3LocalMapResolver {
         entry: Int,
         primary: TilesetData,
         secondary: TilesetData,
-        palettes: IntArray,
         format: Gen3LocalMapFormat,
-        pixels: IntArray,
+        pixels: ByteArray,
         originX: Int,
         originY: Int,
         transparentZero: Boolean,
@@ -289,7 +351,7 @@ internal object Gen3LocalMapResolver {
                 val colorIndex = if (sourceX and 1 == 0) packed and 0x0F else packed ushr 4
                 if (!transparentZero || colorIndex != 0) {
                     pixels[(originY + y) * METATILE_PIXELS + originX + x] =
-                        palettes[palette * COLORS_PER_PALETTE + colorIndex]
+                        (palette * COLORS_PER_PALETTE + colorIndex).toByte()
                 }
             }
         }
@@ -354,8 +416,10 @@ internal object Gen3LocalMapResolver {
         val mapCells: Int,
         val primaryTileset: Int,
         val secondaryTileset: Int,
+        val mapType: Int,
     ) {
         val pixelCount: Int = width * METATILE_PIXELS * height * METATILE_PIXELS
+        val naturalLighting: Boolean = mapType in NATURAL_LIGHT_MAP_TYPES
         val key: String = "local/${baseAreaId.toString(16).padStart(4, '0')}"
         val assetKey: String = "$key/map"
 
@@ -376,9 +440,34 @@ internal object Gen3LocalMapResolver {
         val graphics: ByteArray,
         val palettes: Int,
         val metatiles: Int,
+        val alternatePaletteMask: Int,
+        val lightPaletteMask: Int,
+        val customLightColorMask: Int,
     )
 
+    private data class PaletteData(
+        val base: IntArray,
+        val alternate: IntArray,
+        val alternateMask: Int,
+    )
+
+    private data class IndexedRaster(
+        val pixelWidth: Int,
+        val pixelHeight: Int,
+        val indices: ByteArray,
+        val palettes: PaletteData,
+    ) {
+        fun toRgbaSprite(): RgbaSprite = RgbaSprite(
+            pixelWidth,
+            pixelHeight,
+            IntArray(indices.size) { index ->
+                TileRenderer.bgr555ToArgb(palettes.base[indices[index].toInt() and 0xff] and 0x7FFF, false)
+            },
+        )
+    }
+
     private const val MAP_SECTION_OFFSET = 0x14
+    private const val MAP_TYPE_OFFSET = 0x17
     private const val TILESET_BYTES = 24
     private const val COMPRESSED_FLAG = 1
     private const val TILE_ID_MASK = 0x03FF
@@ -388,6 +477,12 @@ internal object Gen3LocalMapResolver {
     private const val PALETTE_MASK = 0x0F
     private const val COLORS_PER_PALETTE = 16
     private const val HARDWARE_BG_PALETTES = 16
+    private const val MAP_PALETTES = 13
+    private const val MAP_PALETTE_MASK = (1 shl MAP_PALETTES) - 1
+    private const val ALTERNATE_PALETTE_DELTA = 9
+    private const val LIGHT_MARKER = 0x8000
+    private const val TIMED_PALETTE_BYTES = HARDWARE_BG_PALETTES * COLORS_PER_PALETTE * 2 * Int.SIZE_BYTES
+    private val NATURAL_LIGHT_MAP_TYPES = setOf(1, 2, 3, 6)
     private const val TILE_BYTES = 32
     private const val TILE_PIXELS = 8
     private const val TILES_PER_LAYER = 4

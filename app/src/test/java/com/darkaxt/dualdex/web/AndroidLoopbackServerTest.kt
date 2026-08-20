@@ -10,6 +10,9 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
+import com.enrpau.dualscreendex.parser.catalog.MapTimeBlend
+import com.enrpau.dualscreendex.parser.catalog.MapTimePaletteModel
+import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
@@ -117,6 +120,7 @@ class AndroidLoopbackServerTest {
                             LocalMap("local/0001", "Local", 1, 16, 16, 1, 1, "local/0001/map"),
                             LocalMap("local/0002", "Dynamic", 2, 16, 16, 1, 1, "local/0002/map"),
                             LocalMap("local/0003", "Corrupt", 3, 16, 16, 1, 1, "local/0003/map"),
+                            LocalMap("local/0004", "Timed", 4, 16, 16, 1, 1, "local/0004/map"),
                         ),
                         assets = mapOf(
                             "local/0001/map" to PngMapAsset(
@@ -139,6 +143,7 @@ class AndroidLoopbackServerTest {
                                 palettes,
                             ),
                         ),
+                        timedAssets = mapOf("local/0004/map" to timedAsset()),
                     ),
                 ),
             )
@@ -180,6 +185,16 @@ class AndroidLoopbackServerTest {
             val corrupt = URI("$base/api/maps/local%2F0003%2Fmap.png?lighting=DAY")
                 .toURL().openConnection() as HttpURLConnection
             assertEquals(404, corrupt.responseCode)
+
+            val noon = URI("$base/api/maps/local%2F0004%2Fmap.png?hour=12&minute=0")
+                .toURL().openConnection() as HttpURLConnection
+            val lateNight = URI("$base/api/maps/local%2F0004%2Fmap.png?hour=23&minute=0")
+                .toURL().openConnection() as HttpURLConnection
+            assertTrue(noon.inputStream.readBytes().toList() != lateNight.inputStream.readBytes().toList())
+            assertTrue(noon.getHeaderField("ETag") != lateNight.getHeaderField("ETag"))
+            val invalidTime = URI("$base/api/maps/local%2F0004%2Fmap.png?hour=24&minute=0")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(400, invalidTime.responseCode)
 
             val missing = URI("$base/api/maps/world%2Fmissing.png").toURL().openConnection() as HttpURLConnection
             assertEquals(404, missing.responseCode)
@@ -238,6 +253,24 @@ class AndroidLoopbackServerTest {
         } finally {
             server.close()
         }
+    }
+
+    private fun timedAsset(): TimedIndexedMapAsset {
+        val base = IntArray(256).also { it[17] = 0x001F }
+        val alternate = base.copyOf().also { it[17] = 0x7C00 }
+        return TimedIndexedMapAsset(
+            pixelWidth = 16,
+            pixelHeight = 16,
+            compressedIndices = LocalMapRasterCodec.compress(ByteArray(256) { 17 }),
+            baseColors = base,
+            alternateColors = alternate,
+            alternatePaletteMask = 1 shl 1,
+            paletteModel = MapTimePaletteModel(
+                night = MapTimeBlend(0x808080, tint = true, coefficient = 10),
+                twilight = MapTimeBlend(0xA8B0E0, tint = true, coefficient = 4),
+                day = MapTimeBlend(0, tint = false, coefficient = 0),
+            ),
+        )
     }
 
     private fun post(url: String, body: String): String {

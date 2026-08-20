@@ -225,6 +225,22 @@ describe('optional local map presentation', () => {
     expect(stage.dataset.scale).toBe(zoomedScale);
   });
 
+  it('uses numeric game time for a dynamic Gen III Local image', () => {
+    const dynamicCatalog: Catalog = {
+      ...localCatalog,
+      localMaps: localCatalog.localMaps!.map(map => ({ ...map, dynamicLighting: true })),
+    };
+    const { container } = render(<MapPage
+      catalog={dynamicCatalog}
+      state={{ ...state, gameTime: { hours: 18, minutes: 37, phase: 'DAY', phaseProgress: 0.8 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    expect(container.querySelector('.map-plane img')?.getAttribute('src'))
+      .toBe('/api/maps/local%2F0010%2Fmap.png?hour=18&minute=37');
+  });
+
   it('falls back to Atlas and disables the switch when the current local map is unavailable', () => {
     render(<MapPage
       catalog={localCatalog}

@@ -478,6 +478,90 @@ data class IndexedMapAsset(
         ) + palettes.hashCode()
 }
 
+data class MapTimeOfDay(val hours: Int, val minutes: Int) {
+    init {
+        require(hours in 0..23) { "map-render hour must be in 0..23" }
+        require(minutes in 0..59) { "map-render minute must be in 0..59" }
+    }
+
+    val minuteOfDay: Int = hours * 60 + minutes
+}
+
+data class MapTimeBlend(
+    val blendColor: Int,
+    val tint: Boolean,
+    val coefficient: Int,
+) {
+    fun validate(): MapTimeBlend = apply {
+        require(blendColor in 0..0xFFFFFF) { "map time blend color must fit 24 bits" }
+        require(coefficient in 0..31) { "map time blend coefficient must fit five bits" }
+    }
+}
+
+data class MapTimePaletteModel(
+    val night: MapTimeBlend,
+    val twilight: MapTimeBlend,
+    val day: MapTimeBlend,
+) {
+    fun validate(): MapTimePaletteModel = apply {
+        night.validate()
+        twilight.validate()
+        day.validate()
+    }
+}
+
+data class TimedIndexedMapAsset(
+    val pixelWidth: Int,
+    val pixelHeight: Int,
+    val compressedIndices: ByteArray,
+    val baseColors: IntArray,
+    val alternateColors: IntArray,
+    val alternatePaletteMask: Int,
+    val paletteModel: MapTimePaletteModel,
+) {
+    val pixelCount: Int
+        get() = (pixelWidth.toLong() * pixelHeight).also {
+            require(it in 1..Int.MAX_VALUE.toLong()) { "timed map pixel count is invalid" }
+        }.toInt()
+
+    fun validate(): TimedIndexedMapAsset = apply {
+        require(pixelWidth > 0 && pixelHeight > 0) { "timed map dimensions must be positive" }
+        require(compressedIndices.isNotEmpty()) { "timed map data must not be empty" }
+        require(baseColors.size == COLORS_PER_MAP && alternateColors.size == COLORS_PER_MAP) {
+            "timed map palettes must contain 256 colors"
+        }
+        require(baseColors.all { it in 0..0xFFFF } && alternateColors.all { it in 0..0xFFFF }) {
+            "timed map palette colors must fit BGR555 plus the light marker bit"
+        }
+        require(alternatePaletteMask and PALETTE_MASK.inv() == 0) {
+            "timed map alternate palette mask exceeds the map palette domain"
+        }
+        paletteModel.validate()
+        LocalMapRasterCodec.inflate(this)
+    }
+
+    override fun equals(other: Any?): Boolean = other is TimedIndexedMapAsset &&
+        pixelWidth == other.pixelWidth && pixelHeight == other.pixelHeight &&
+        compressedIndices.contentEquals(other.compressedIndices) &&
+        baseColors.contentEquals(other.baseColors) && alternateColors.contentEquals(other.alternateColors) &&
+        alternatePaletteMask == other.alternatePaletteMask && paletteModel == other.paletteModel
+
+    override fun hashCode(): Int = listOf(
+        pixelWidth,
+        pixelHeight,
+        compressedIndices.contentHashCode(),
+        baseColors.contentHashCode(),
+        alternateColors.contentHashCode(),
+        alternatePaletteMask,
+        paletteModel.hashCode(),
+    ).fold(1) { result, value -> 31 * result + value }
+
+    private companion object {
+        const val COLORS_PER_MAP = 256
+        const val PALETTE_MASK = 0x1FFF
+    }
+}
+
 data class PngMapAsset(
     val bytes: ByteArray,
 ) {
@@ -500,6 +584,7 @@ data class LocalMapCatalog(
     val maps: List<LocalMap> = emptyList(),
     val assets: Map<String, PngMapAsset> = emptyMap(),
     val indexedAssets: Map<String, IndexedMapAsset> = emptyMap(),
+    val timedAssets: Map<String, TimedIndexedMapAsset> = emptyMap(),
 ) {
     init {
         validate()
@@ -512,14 +597,19 @@ data class LocalMapCatalog(
         require(maps.map(LocalMap::baseAreaId).toSet().size == maps.size) {
             "local maps must bind unique base-area IDs"
         }
-        require(assets.keys.intersect(indexedAssets.keys).isEmpty()) {
+        require(
+            assets.keys.intersect(indexedAssets.keys).isEmpty() &&
+                assets.keys.intersect(timedAssets.keys).isEmpty() &&
+                indexedAssets.keys.intersect(timedAssets.keys).isEmpty()
+        ) {
             "local-map asset keys must belong to exactly one raster store"
         }
         val referencedAssetKeys = maps.map(LocalMap::imageAssetKey).toSet()
-        require(assets.keys + indexedAssets.keys == referencedAssetKeys) {
+        require(assets.keys + indexedAssets.keys + timedAssets.keys == referencedAssetKeys) {
             "local-map assets must exactly match map asset keys"
         }
         indexedAssets.values.forEach(IndexedMapAsset::validate)
+        timedAssets.values.forEach(TimedIndexedMapAsset::validate)
         maps.forEach { map ->
             require(map.key.isNotBlank()) { "local-map keys must not be blank" }
             require(map.baseAreaId in 0..0xFFFF) { "local-map base-area IDs must fit group/map identity" }
@@ -536,6 +626,10 @@ data class LocalMapCatalog(
             val indexed = indexedAssets[map.imageAssetKey]
             require(indexed == null || indexed.pixelWidth == map.pixelWidth && indexed.pixelHeight == map.pixelHeight) {
                 "local map ${map.key} indexed raster dimensions do not match metadata"
+            }
+            val timed = timedAssets[map.imageAssetKey]
+            require(timed == null || timed.pixelWidth == map.pixelWidth && timed.pixelHeight == map.pixelHeight) {
+                "local map ${map.key} timed raster dimensions do not match metadata"
             }
         }
     }

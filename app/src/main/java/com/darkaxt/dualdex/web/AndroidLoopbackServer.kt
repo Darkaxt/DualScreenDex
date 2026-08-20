@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.web
 
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
+import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -207,9 +208,10 @@ class AndroidLoopbackServer(
             ?: return textResponse("map not available", 404)
         if (key.split('/').any { it == ".." }) return textResponse("map not available", 404)
         val requestedLighting = requestedLighting(request.query["lighting"])
-        val rendered = runCatching { runtime.mapAsset(key, requestedLighting) }.getOrNull()
+        val time = requestedTime(request.query["hour"], request.query["minute"])
+        val rendered = runCatching { runtime.mapAsset(key, requestedLighting, time) }.getOrNull()
             ?: return textResponse("map not available", 404)
-        val variant = rendered.effectiveLighting?.name ?: "STATIC"
+        val variant = rendered.cacheVariant
         return Response(
             200,
             "image/png",
@@ -227,6 +229,15 @@ class AndroidLoopbackServer(
         requireNotNull(MapLighting.entries.singleOrNull { it.name == value.uppercase(Locale.ROOT) }) {
             "unsupported map lighting: $value"
         }
+    }
+
+    private fun requestedTime(hour: String?, minute: String?): MapTimeOfDay? {
+        if (hour == null && minute == null) return null
+        require(hour != null && minute != null) { "map time requires hour and minute" }
+        return MapTimeOfDay(
+            requireNotNull(hour.toIntOrNull()) { "unsupported map hour: $hour" },
+            requireNotNull(minute.toIntOrNull()) { "unsupported map minute: $minute" },
+        )
     }
 
     private fun trainerAssetResponse(path: String): Response {

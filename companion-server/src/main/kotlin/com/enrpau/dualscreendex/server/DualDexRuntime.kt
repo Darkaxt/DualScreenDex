@@ -19,6 +19,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
+import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.RenderedMapAsset
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -167,8 +168,12 @@ class DualDexRuntime(
     fun ballSprite(id: Int) = catalog?.captureBallsById?.get(id)?.sprite?.value
 
     @Synchronized
-    fun mapAsset(key: String, requestedLighting: MapLighting): RenderedMapAsset? = catalog?.let { current ->
-        LocalMapAssetRenderer.render(current.localMaps, key, requestedLighting)
+    fun mapAsset(
+        key: String,
+        requestedLighting: MapLighting,
+        time: MapTimeOfDay? = null,
+    ): RenderedMapAsset? = catalog?.let { current ->
+        LocalMapAssetRenderer.render(current.localMaps, key, requestedLighting, time)
             ?: current.worldMaps.assets[key]?.let { RenderedMapAsset(PngEncoder.encode(it), null) }
     }
 

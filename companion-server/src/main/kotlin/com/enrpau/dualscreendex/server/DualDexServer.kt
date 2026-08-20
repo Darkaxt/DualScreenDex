@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.server
 
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
+import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.google.gson.GsonBuilder
@@ -138,10 +139,12 @@ class DualDexServer(
             if (encoded.isBlank() || key.split('/').any { it == ".." }) {
                 return@safely text(exchange, 404, "map not available")
             }
-            val requestedLighting = requestedLighting(query(exchange.requestURI.rawQuery)["lighting"])
-            val rendered = runCatching { runtime.mapAsset(key, requestedLighting) }.getOrNull()
+            val parameters = query(exchange.requestURI.rawQuery)
+            val requestedLighting = requestedLighting(parameters["lighting"])
+            val time = requestedTime(parameters["hour"], parameters["minute"])
+            val rendered = runCatching { runtime.mapAsset(key, requestedLighting, time) }.getOrNull()
                 ?: return@safely text(exchange, 404, "map not available")
-            val variant = rendered.effectiveLighting?.name ?: "STATIC"
+            val variant = rendered.cacheVariant
             exchange.responseHeaders.add("Content-Type", "image/png")
             exchange.responseHeaders.add("Cache-Control", "public, max-age=31536000, immutable")
             runtime.catalogHash()?.let {
@@ -158,6 +161,15 @@ class DualDexServer(
         requireNotNull(MapLighting.entries.singleOrNull { it.name == value.uppercase(Locale.ROOT) }) {
             "unsupported map lighting: $value"
         }
+    }
+
+    private fun requestedTime(hour: String?, minute: String?): MapTimeOfDay? {
+        if (hour == null && minute == null) return null
+        require(hour != null && minute != null) { "map time requires hour and minute" }
+        return MapTimeOfDay(
+            requireNotNull(hour.toIntOrNull()) { "unsupported map hour: $hour" },
+            requireNotNull(minute.toIntOrNull()) { "unsupported map minute: $minute" },
+        )
     }
 
     private fun handleStatic(exchange: HttpExchange) {

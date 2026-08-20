@@ -6,6 +6,9 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
+import com.enrpau.dualscreendex.parser.catalog.MapTimeBlend
+import com.enrpau.dualscreendex.parser.catalog.MapTimePaletteModel
+import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -67,6 +70,7 @@ class ServerContractTest {
                         LocalMap("local/0010", "Route 101", 0x0010, 16, 16, 1, 1, "local/0010/map"),
                         LocalMap("local/0011", "Route 102", 0x0011, 16, 16, 1, 1, "local/0011/map"),
                         LocalMap("local/0012", "Corrupt", 0x0012, 16, 16, 1, 1, "local/0012/map"),
+                        LocalMap("local/0013", "Timed", 0x0013, 16, 16, 1, 1, "local/0013/map"),
                     ),
                     assets = mapOf(
                         "local/0010/map" to PngMapAsset(
@@ -88,6 +92,9 @@ class ServerContractTest {
                             LocalMapLightingPolicy.AUTO,
                             palettes,
                         ),
+                    ),
+                    timedAssets = mapOf(
+                        "local/0013/map" to timedAsset(),
                     ),
                 ),
             ),
@@ -127,6 +134,16 @@ class ServerContractTest {
                 .toURL().openConnection() as HttpURLConnection
             assertEquals(404, corrupt.responseCode)
 
+            val noon = URI("$base/api/maps/local%2F0013%2Fmap.png?hour=12&minute=0")
+                .toURL().openConnection() as HttpURLConnection
+            val lateNight = URI("$base/api/maps/local%2F0013%2Fmap.png?hour=23&minute=0")
+                .toURL().openConnection() as HttpURLConnection
+            assertTrue(noon.inputStream.readBytes().toList() != lateNight.inputStream.readBytes().toList())
+            assertTrue(noon.getHeaderField("ETag") != lateNight.getHeaderField("ETag"))
+            val incompleteTime = URI("$base/api/maps/local%2F0013%2Fmap.png?hour=12")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(400, incompleteTime.responseCode)
+
             val missing = URI("$base/api/maps/local%2Fmissing.png").toURL().openConnection() as HttpURLConnection
             assertEquals(404, missing.responseCode)
         } finally {
@@ -155,5 +172,23 @@ class ServerContractTest {
             server.close()
             Files.deleteIfExists(root)
         }
+    }
+
+    private fun timedAsset(): TimedIndexedMapAsset {
+        val base = IntArray(256).also { it[17] = 0x001F }
+        val alternate = base.copyOf().also { it[17] = 0x7C00 }
+        return TimedIndexedMapAsset(
+            pixelWidth = 16,
+            pixelHeight = 16,
+            compressedIndices = LocalMapRasterCodec.compress(ByteArray(256) { 17 }),
+            baseColors = base,
+            alternateColors = alternate,
+            alternatePaletteMask = 1 shl 1,
+            paletteModel = MapTimePaletteModel(
+                night = MapTimeBlend(0x808080, tint = true, coefficient = 10),
+                twilight = MapTimeBlend(0xA8B0E0, tint = true, coefficient = 4),
+                day = MapTimeBlend(0, tint = false, coefficient = 0),
+            ),
+        )
     }
 }

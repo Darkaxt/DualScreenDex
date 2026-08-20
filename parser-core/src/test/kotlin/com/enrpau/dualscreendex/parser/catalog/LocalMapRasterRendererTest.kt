@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.sprite.TileRenderer
+
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -125,6 +127,39 @@ class LocalMapRasterRendererTest {
         assertThrows(IllegalArgumentException::class.java) {
             LocalMapRasterRenderer.render(valid, MapLighting.DAY, RasterRect(2, 1, 2, 1))
         }
+    }
+
+    @Test
+    fun timedRasterUsesNumericClockAndAlternateNightPalette() {
+        val base = IntArray(256).also { it[17] = 0x001F }
+        val alternate = base.copyOf().also { it[17] = 0x7C00 }
+        val model = MapTimePaletteModel(
+            night = MapTimeBlend(0x808080, tint = true, coefficient = 10),
+            twilight = MapTimeBlend(0xA8B0E0, tint = true, coefficient = 4),
+            day = MapTimeBlend(0, tint = false, coefficient = 0),
+        )
+        val asset = TimedIndexedMapAsset(
+            pixelWidth = 2,
+            pixelHeight = 1,
+            compressedIndices = LocalMapRasterCodec.compress(byteArrayOf(17, 17)),
+            baseColors = base,
+            alternateColors = alternate,
+            alternatePaletteMask = 1 shl 1,
+            paletteModel = model,
+        ).validate()
+
+        val day = TimedLocalMapRasterRenderer.render(asset, MapTimeOfDay(12, 0))
+        val night = TimedLocalMapRasterRenderer.render(asset, MapTimeOfDay(23, 0))
+        val clipped = TimedLocalMapRasterRenderer.render(
+            asset,
+            MapTimeOfDay(23, 0),
+            RasterRect(1, 0, 1, 1),
+        )
+
+        assertArrayEquals(IntArray(2) { TileRenderer.bgr555ToArgb(0x001F, false) }, day.argb)
+        assertArrayEquals(IntArray(2) { TileRenderer.bgr555ToArgb(0x3C00, false) }, night.argb)
+        assertArrayEquals(intArrayOf(night.argb[1]), clipped.argb)
+        assertEquals("TIME-1380", TimedLocalMapRasterRenderer.renderPng(asset, MapTimeOfDay(23, 0)).cacheVariant)
     }
 
     @Test

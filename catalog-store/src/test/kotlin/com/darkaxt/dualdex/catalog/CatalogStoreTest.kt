@@ -35,6 +35,9 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
+import com.enrpau.dualscreendex.parser.catalog.MapTimeBlend
+import com.enrpau.dualscreendex.parser.catalog.MapTimePaletteModel
+import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisition
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
@@ -169,13 +172,28 @@ class CatalogStoreTest {
             lightingPolicy = LocalMapLightingPolicy.AUTO,
             palettes = indexedPalettes,
         )
+        val timedAsset = TimedIndexedMapAsset(
+            pixelWidth = 32,
+            pixelHeight = 32,
+            compressedIndices = LocalMapRasterCodec.compress(ByteArray(32 * 32) { (it % 256).toByte() }),
+            baseColors = IntArray(256) { it },
+            alternateColors = IntArray(256) { 0x7FFF - it },
+            alternatePaletteMask = 0x124,
+            paletteModel = MapTimePaletteModel(
+                night = MapTimeBlend(0x9D7474, tint = true, coefficient = 10),
+                twilight = MapTimeBlend(0xA8B0E0, tint = true, coefficient = 4),
+                day = MapTimeBlend(0, tint = false, coefficient = 0),
+            ),
+        )
         val localMaps = LocalMapCatalog(
             maps = listOf(
                 LocalMap("local/0102", "Route Test", 0x0102, 32, 32, 2, 2, "local/0102/map"),
                 LocalMap("local/0103", "Indexed Test", 0x0103, 32, 32, 2, 2, "local/0103/map"),
+                LocalMap("local/0104", "Timed Test", 0x0104, 32, 32, 2, 2, "local/0104/map"),
             ),
             assets = mapOf("local/0102/map" to localPng),
             indexedAssets = mapOf("local/0103/map" to indexedAsset),
+            timedAssets = mapOf("local/0104/map" to timedAsset),
         )
         val catalog = completeCatalog("7".repeat(64)).copy(
             runtimeMetadata = CatalogRuntimeMetadata(gen2TimeOfDayWramOffset = 0x1841),
@@ -190,7 +208,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(19, CatalogSchema.parserSchemaVersion)
+        assertEquals(20, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -203,6 +221,12 @@ class CatalogStoreTest {
         assertEquals(indexedAsset.palettes.day.toList(), reopenedIndexed?.palettes?.day?.toList())
         assertEquals(indexedAsset.palettes.night.toList(), reopenedIndexed?.palettes?.night?.toList())
         assertEquals(indexedAsset.palettes.dark.toList(), reopenedIndexed?.palettes?.dark?.toList())
+        val reopenedTimed = reopened?.catalog?.localMaps?.timedAssets?.get("local/0104/map")
+        assertEquals(timedAsset.compressedIndices.toList(), reopenedTimed?.compressedIndices?.toList())
+        assertEquals(timedAsset.baseColors.toList(), reopenedTimed?.baseColors?.toList())
+        assertEquals(timedAsset.alternateColors.toList(), reopenedTimed?.alternateColors?.toList())
+        assertEquals(timedAsset.alternatePaletteMask, reopenedTimed?.alternatePaletteMask)
+        assertEquals(timedAsset.paletteModel, reopenedTimed?.paletteModel)
         assertEquals(0x1841, reopened?.catalog?.runtimeMetadata?.gen2TimeOfDayWramOffset)
         assertEquals(raster.argb.toList(), reopened?.catalog?.worldMaps?.assets?.get("world/region-0")?.argb?.toList())
         assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
@@ -233,6 +257,8 @@ class CatalogStoreTest {
         assertEquals(557, reopened.localMaps.maps.size)
         assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
         assertEquals(catalog.localMaps.assets.keys, reopened.localMaps.assets.keys)
+        assertEquals(catalog.localMaps.timedAssets.keys, reopened.localMaps.timedAssets.keys)
+        assertTrue(reopened.localMaps.timedAssets.isNotEmpty())
         assertEquals(
             "Littleroot Town",
             reopened.localMaps.maps.single { it.baseAreaId == 0x0009 }.displayName,
@@ -244,11 +270,13 @@ class CatalogStoreTest {
                 .displayName,
         )
         val route102Asset = catalog.localMaps.maps.single { it.baseAreaId == 0x0011 }.imageAssetKey
-        assertTrue(
-            catalog.localMaps.assets.getValue(route102Asset).bytes.contentEquals(
-                reopened.localMaps.assets.getValue(route102Asset).bytes,
-            ),
-        )
+        val expectedTimed = catalog.localMaps.timedAssets.getValue(route102Asset)
+        val reopenedTimed = reopened.localMaps.timedAssets.getValue(route102Asset)
+        assertEquals(expectedTimed.compressedIndices.toList(), reopenedTimed.compressedIndices.toList())
+        assertEquals(expectedTimed.baseColors.toList(), reopenedTimed.baseColors.toList())
+        assertEquals(expectedTimed.alternateColors.toList(), reopenedTimed.alternateColors.toList())
+        assertEquals(expectedTimed.alternatePaletteMask, reopenedTimed.alternatePaletteMask)
+        assertEquals(expectedTimed.paletteModel, reopenedTimed.paletteModel)
 
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
             database.execute("UPDATE catalog_metadata SET parser_schema_version = 16 WHERE id = 1")
@@ -439,7 +467,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(19, CatalogSchema.parserSchemaVersion)
+        assertEquals(20, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(

@@ -174,8 +174,11 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const displayName = activeMode === 'LOCAL'
     ? localMap?.displayName ?? state.currentAreaName ?? 'LOCAL MAP'
     : region?.displayName ?? 'WORLD MAP';
+  const localLightingQuery = state.gameTime?.hours != null && state.gameTime.minutes != null
+    ? `hour=${state.gameTime.hours}&minute=${state.gameTime.minutes}`
+    : `lighting=${state.gameTime?.phase ?? 'DAY'}`;
   const localImageUrl = localMap?.dynamicLighting
-    ? `${localMap.imageUrl}?lighting=${state.gameTime?.phase ?? 'DAY'}`
+    ? `${localMap.imageUrl}?${localLightingQuery}`
     : localMap?.imageUrl;
   const activeImageUrl = activeMode === 'LOCAL' ? localImageUrl : region?.imageUrl;
 
