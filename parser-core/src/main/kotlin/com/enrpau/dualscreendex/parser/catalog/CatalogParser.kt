@@ -76,6 +76,7 @@ object CatalogParser {
                     resolveWorldMap = context.resolveWorldMap,
                     resolveLocalMaps = context.resolveLocalMaps,
                     resolveMoveDescriptions = context.resolveMoveDescriptions,
+                    resolveAbilityMechanics = context.resolveAbilityMechanics,
                 )
             },
         )
@@ -92,6 +93,7 @@ object CatalogMaterializer {
         resolveWorldMap: ((Int, Set<Int>) -> WorldMapResolution)? = null,
         resolveLocalMaps: ((Int, Set<Int>) -> LocalMapResolution)? = null,
         resolveMoveDescriptions: ((ResolvedRomLayout) -> MoveDescriptionResult?)? = null,
+        resolveAbilityMechanics: ((ResolvedRomLayout, Map<Int, AbilityRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?)? = null,
     ): ParsedCatalog {
         val rawSpecies = RecordMaterializers.species(rom, layout)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
@@ -223,7 +225,8 @@ object CatalogMaterializer {
         val moveDescriptions = resolveMoveDescriptions?.invoke(layout)
             ?: MoveDescriptionMaterializer.materialize(rom, layout)
         val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
-        val abilityMechanics = AbilityMechanicsMaterializer.materialize(rom, layout, abilities)
+        val abilityMechanics = resolveAbilityMechanics?.invoke(layout, abilities, abilityDescriptions)
+            ?: AbilityMechanicsMaterializer.materialize(rom, layout, abilities, abilityDescriptions)
         val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
         val species = closedRelationshipSpecies.mapValues { (id, record) ->
             record.copy(

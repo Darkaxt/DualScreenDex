@@ -17,7 +17,7 @@ class AbilityMechanicsMaterializerLiveRomTest {
     fun `Modern Emerald publishes every source and binary normalized ability mechanic`() {
         val loaded = Control(
             "Modern Emerald",
-            "D:/Temp/dualdex-expanded-corpus/roms/0116-a0b4e5e9c0c4/Modern Emerald (v3.5).gba",
+            "D:/Temp/PokemonHacks/corpus/expanded/roms/0116-a0b4e5e9c0c4/Modern Emerald (v3.5).gba",
             "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
         ).load()
 
@@ -178,12 +178,12 @@ class AbilityMechanicsMaterializerLiveRomTest {
         listOf(
             Control(
                 "Classic",
-                "D:/Temp/dualdex-expanded-corpus/roms/0029-a5f22adc2c2f/Classic (v1.5.0b).gba",
+                "D:/Temp/PokemonHacks/corpus/expanded/roms/0029-a5f22adc2c2f/Classic (v1.5.0b).gba",
                 "01c0177b2498e1842a1bf9ee2ddac145fb95275321bd3813dbf17341d63ad16c",
             ) to CapabilityStatus.NOT_FOUND,
             Control(
                 "Clover",
-                "D:/Temp/dualdex-expanded-corpus/roms/0033-ae1f81f2f6ea/Clover (v1.3.3).gba",
+                "D:/Temp/PokemonHacks/corpus/expanded/roms/0033-ae1f81f2f6ea/Clover (v1.3.3).gba",
                 "42f99abd548934d77999ac3eb563fb9bc70a34701d37a262b21b882a43a8bdd9",
             ) to CapabilityStatus.AMBIGUOUS,
         ).forEach { (control, expectedStatus) ->
