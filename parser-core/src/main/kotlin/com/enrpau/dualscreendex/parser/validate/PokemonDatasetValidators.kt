@@ -578,7 +578,7 @@ object PokemonDatasetValidators {
             val level = rom.u8(cursor)
             if (level == 0) break
             val move = rom.u8(cursor + 1)
-            if (level !in 1..100 || move !in 1..moveCount) {
+            if ((generation != 1 && level !in 1..100) || move !in 1..moveCount) {
                 learnsetValid = false
                 break
             }

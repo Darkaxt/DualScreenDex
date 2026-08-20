@@ -711,7 +711,11 @@ object TableValidators {
         offset: Int,
         generation: Int,
         maximumEntries: Int = 256,
-        maximumType: Int = if (generation == 3) 18 else 27,
+        maximumType: Int = when (generation) {
+            1 -> 63
+            3 -> 18
+            else -> 27
+        },
     ): ValidationEvidence = safely(offset, 3, maximumEntries) {
         var cursor = offset
         var valid = 0

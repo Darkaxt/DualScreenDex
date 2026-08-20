@@ -20,6 +20,8 @@ import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolution
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
 import com.enrpau.dualscreendex.parser.parse.Gen1CompiledBaseResolver
 import com.enrpau.dualscreendex.parser.parse.Gen1CompiledNameResolver
+import com.enrpau.dualscreendex.parser.parse.Gen1CompiledRelationshipResolver
+import com.enrpau.dualscreendex.parser.parse.Gen1CompiledTypeChartResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledCoreResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledMoveResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledSpriteResolver
@@ -174,14 +176,47 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                 ),
             )
         } ?: compiledGen1NameTableResolution
-        val compiledCoreTableResolution = gen2CompiledCore?.let { compiled ->
+        val compiledGen1Relationships = if (generation == 1 && exact == null) {
+            val candidateTables = compiledGen1BaseTableResolution.tables
+            candidateTables.speciesNames?.count?.let { preferredCount ->
+                Gen1CompiledRelationshipResolver.resolve(
+                    rom = session.rom,
+                    preferredCount = preferredCount,
+                    fallbackCounts = listOfNotNull(
+                        candidateTables.baseStats?.count,
+                        candidateTables.evolutions?.count,
+                    ),
+                )
+            }
+        } else {
+            null
+        }
+        val compiledGen1RelationshipTableResolution = compiledGen1Relationships?.let { relationships ->
             compiledGen1BaseTableResolution.copy(
                 tables = compiledGen1BaseTableResolution.tables.copy(
+                    evolutions = relationships,
+                    learnsets = relationships,
+                ),
+            )
+        } ?: compiledGen1BaseTableResolution
+        val compiledGen1TypeChart = if (generation == 1 && exact == null) {
+            Gen1CompiledTypeChartResolver.resolve(session.rom)
+        } else {
+            null
+        }
+        val compiledGen1TableResolution = compiledGen1TypeChart?.let { typeChart ->
+            compiledGen1RelationshipTableResolution.copy(
+                tables = compiledGen1RelationshipTableResolution.tables.copy(typeChart = typeChart),
+            )
+        } ?: compiledGen1RelationshipTableResolution
+        val compiledCoreTableResolution = gen2CompiledCore?.let { compiled ->
+            compiledGen1TableResolution.copy(
+                tables = compiledGen1TableResolution.tables.copy(
                     speciesNames = compiled.tables.speciesNames,
                     baseStats = compiled.tables.baseStats,
                 ),
             )
-        } ?: compiledGen1BaseTableResolution
+        } ?: compiledGen1TableResolution
         val compiledMoveData = if (generation == 2 && exact == null) {
             compiledCoreTableResolution.tables.moveData?.let { inherited ->
                 Gen2CompiledMoveResolver.resolve(session.rom, inherited.count)

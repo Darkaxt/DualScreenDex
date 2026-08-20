@@ -212,19 +212,22 @@ class PokemonDatasetValidatorsTest {
     }
 
     @Test
-    fun rejectsGen1AndGen2LearnsetsWithIllegalLevels() {
-        listOf(1, 2).forEach { generation ->
-            val bytes = ByteArray(0x10000)
-            putU16(bytes, 0x100, 0x4200)
-            byteArrayOf(0, 101, 1, 0).copyInto(bytes, 0x8200)
+    fun acceptsGen1FullByteLearnsetLevelsAndKeepsGen2Bounded() {
+        val bytes = ByteArray(0x10000)
+        putU16(bytes, 0x100, 0x4200)
+        byteArrayOf(0, 101, 1, 0xFF.toByte(), 2, 0).copyInto(bytes, 0x8200)
 
-            val result = PokemonDatasetValidators.gen12EvolutionsAndLearnsets(
-                RomImage(bytes), pointerTableOffset = 0x100, speciesCount = 1,
-                tableBank = 2, moveCount = 30, generation = generation,
-            )
+        val gen1 = PokemonDatasetValidators.gen12EvolutionsAndLearnsets(
+            RomImage(bytes), pointerTableOffset = 0x100, speciesCount = 1,
+            tableBank = 2, moveCount = 30, generation = 1,
+        )
+        val gen2 = PokemonDatasetValidators.gen12EvolutionsAndLearnsets(
+            RomImage(bytes), pointerTableOffset = 0x100, speciesCount = 1,
+            tableBank = 2, moveCount = 30, generation = 2,
+        )
 
-            assertFalse("Gen $generation illegal level", result.learnsets.compatible)
-        }
+        assertTrue(gen1.learnsets.compatible)
+        assertFalse(gen2.learnsets.compatible)
     }
 
     @Test

@@ -588,6 +588,22 @@ class TableValidatorsTest {
     }
 
     @Test
+    fun validatesExtendedGen1TypeIdsUsedByCompiledConsumers() {
+        val records = mutableListOf<Byte>()
+        repeat(10) { index ->
+            records += (28 + index % 2).toByte()
+            records += (index % 29).toByte()
+            records += if (index % 2 == 0) 5 else 20
+        }
+        records += 0xFF.toByte()
+
+        val result = TableValidators.typeChart(RomImage(records.toByteArray()), 0, generation = 1)
+
+        assertTrue(result.compatible)
+        assertEquals(10, result.validRecords)
+    }
+
+    @Test
     fun resolvesRelocatedGen3TypeChartWhenInheritedOffsetIsInvalid() {
         val relocatedOffset = 37
         val chart = byteArrayOf(

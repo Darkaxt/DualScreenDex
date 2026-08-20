@@ -78,6 +78,12 @@ class OfficialGen12CompletionLiveRomTest {
         assertCapability(catalog.capabilities.getValue(RomCapability.BASE_STATS), 151)
         assertCapability(catalog.capabilities.getValue(RomCapability.SPRITES), 151)
         assertCapability(catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS), 151)
+        assertCapability(catalog.capabilities.getValue(RomCapability.EVOLUTIONS), 190)
+        assertCapability(catalog.capabilities.getValue(RomCapability.LEARNSETS), 190)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.TYPE_CHART).status)
+        assertTrue(catalog.typeChart.isNotEmpty())
+        assertTrue(catalog.speciesById.values.any { it.evolutionEdges.value?.isNotEmpty() == true })
+        assertTrue(catalog.speciesById.values.any { it.learnset.value?.isNotEmpty() == true })
     }
 
     private fun assertGen2(environment: String, sha256: String, family: EngineFamily, tableOffset: Int) {

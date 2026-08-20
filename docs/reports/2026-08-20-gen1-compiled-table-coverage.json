@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "scope": "gen1-compiled-tables",
+  "denominator": {
+    "roms": 95,
+    "weighting": "equal-per-rom",
+    "partialContribution": "coveredRecords/expectedRecords",
+    "notFoundContribution": 0
+  },
+  "baseline": {
+    "release": "v1.1.0-rc.18",
+    "tables": {
+      "evolutions": {
+        "coveragePercent": 12.43,
+        "statusCounts": {
+          "available": 0,
+          "partial": 12,
+          "notFound": 83
+        }
+      },
+      "learnsets": {
+        "coveragePercent": 0.0,
+        "statusCounts": {
+          "available": 0,
+          "partial": 0,
+          "notFound": 95
+        }
+      },
+      "typeChart": {
+        "coveragePercent": 10.53,
+        "statusCounts": {
+          "available": 10,
+          "partial": 0,
+          "notFound": 85
+        }
+      }
+    }
+  },
+  "candidate": {
+    "release": "commit-containing-this-report",
+    "tables": {
+      "evolutions": {
+        "coveragePercent": 96.62,
+        "percentagePointGain": 84.19,
+        "statusCounts": {
+          "available": 87,
+          "partial": 5,
+          "notFound": 3
+        }
+      },
+      "learnsets": {
+        "coveragePercent": 89.47,
+        "percentagePointGain": 89.47,
+        "statusCounts": {
+          "available": 85,
+          "partial": 0,
+          "notFound": 10
+        }
+      },
+      "typeChart": {
+        "coveragePercent": 95.79,
+        "percentagePointGain": 85.26,
+        "statusCounts": {
+          "available": 91,
+          "partial": 0,
+          "notFound": 4
+        }
+      }
+    }
+  },
+  "controls": [
+    "Pokemon Red",
+    "Pokemon Blue",
+    "Pokemon Yellow",
+    "Intense Indigo Red",
+    "Beyond Red",
+    "Shin Red",
+    "Unova Red Vanilla + QoL"
+  ],
+  "unresolvedLedger": [
+    {
+      "id": "G1-TBL-REL-01",
+      "target": "Complete the structurally resolved evolution domains in Brown, Nova, and both Red++ v3.0 variants.",
+      "acceptance": "Every row in each resolved species domain validates and materializes without lowering validator thresholds."
+    },
+    {
+      "id": "G1-TBL-REL-02",
+      "target": "Resolve Grape's alternate relationship consumer and complete its 252-row domain.",
+      "acceptance": "A unique compiled consumer resolves the table and all 252 evolution rows validate from raw ROM bytes."
+    },
+    {
+      "id": "G1-TBL-LEARN-01",
+      "target": "Resolve expanded move domains used by Beyond, Brown, Grape, Nova, and Red++.",
+      "acceptance": "Learnsets validate for every resolved species row and every move reference resolves through an independently validated move catalog."
+    },
+    {
+      "id": "G1-TBL-TYPE-01",
+      "target": "Decode Brown's nonstandard type-effect multiplier ABI.",
+      "acceptance": "The compiled consumer and raw table uniquely establish the multiplier encoding and publish a complete type chart."
+    },
+    {
+      "id": "G1-TBL-TCG-01",
+      "target": "Classify the three TCG-derived GB/GBC entries outside the mainline Gen I engine families.",
+      "acceptance": "Either a structurally validated dedicated family publishes their applicable tables or the corpus taxonomy excludes them from the mainline Gen I denominator."
+    },
+    {
+      "id": "G1-CAT-MOVE-01",
+      "target": "Raise Gen I move-catalog coverage from the unchanged 50.24% baseline.",
+      "acceptance": "Source-backed expanded move domains resolve generically and retain valid move references across dependent datasets."
+    },
+    {
+      "id": "G1-CAT-MACHINE-01",
+      "target": "Raise Gen I machine-move coverage from the unchanged 42.11% baseline.",
+      "acceptance": "Compiled machine compatibility consumers resolve uniquely and materialize valid species-to-machine links."
+    },
+    {
+      "id": "G1-CAT-SPRITE-01",
+      "target": "Raise Gen I sprite coverage from the unchanged 44.18% baseline.",
+      "acceptance": "Shifted and expanded sprite tables resolve structurally and every published sprite decodes within validated bounds."
+    },
+    {
+      "id": "G1-CAT-DEX-01",
+      "target": "Raise Gen I Pokédex-description coverage from the unchanged 41.73% baseline.",
+      "acceptance": "Description pointer consumers resolve structurally and all published text terminates and decodes within validated bounds."
+    }
+  ]
+}
