@@ -11,20 +11,22 @@ export function GameClockIndicator({ clock }: { clock: GameTime }) {
   const phaseLabel = phase ? phase.charAt(0) + phase.slice(1).toLowerCase() : '--:--';
 
   return <span class="header-game-clock">
-    {time
-      ? <time class="header-game-time" dateTime={time}>{time}</time>
-      : <span class="header-game-time">{phaseLabel}</span>}
-    {hasOrbit && <span class="game-time-orbit" aria-hidden="true">
-      <svg class="game-time-orbit-track" viewBox="0 0 48 14" preserveAspectRatio="none">
-        <path d="M1 13C8 2 40 2 47 13" />
-      </svg>
-      <span
-        class={`game-time-celestial ${phase === 'DAY' ? 'is-day' : 'is-night'}`}
-        style={{ left: `${boundedProgress * 100}%`, bottom: `${arcHeight}px` }}
-      >
-        {phase === 'DAY' ? <SunIcon /> : <MoonIcon />}
-      </span>
-    </span>}
+    <span class="game-time-contrast-plate">
+      {time
+        ? <time class="header-game-time" dateTime={time}>{time}</time>
+        : <span class="header-game-time">{phaseLabel}</span>}
+      {hasOrbit && <span class="game-time-orbit" aria-hidden="true">
+        <svg class="game-time-orbit-track" viewBox="0 0 48 14" preserveAspectRatio="none">
+          <path d="M1 13C8 2 40 2 47 13" />
+        </svg>
+        <span
+          class={`game-time-celestial ${phase === 'DAY' ? 'is-day' : 'is-night'}`}
+          style={{ left: `${boundedProgress * 100}%`, bottom: `${arcHeight}px` }}
+        >
+          {phase === 'DAY' ? <SunIcon /> : <MoonIcon />}
+        </span>
+      </span>}
+    </span>
   </span>;
 }
 

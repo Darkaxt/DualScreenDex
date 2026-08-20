@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/preact';
+import { cleanup, render, screen } from '@testing-library/preact';
 import { h } from 'preact';
+import { afterEach } from 'vitest';
 import { EyeStatus, speciesIdentityKnowledge, StatusMarks, uniqueTypeIds } from './components';
 import type { Catalog, SpeciesState } from './models';
+
+afterEach(cleanup);
 
 describe('type presentation', () => {
   it('shows a monotype only once when the ROM repeats both type slots', () => {
@@ -44,10 +47,43 @@ describe('capture marker', () => {
 
     render(h(StatusMarks, {
       catalog,
+      mode: 'DISCOVERED',
       state: { seen: true, caught: true, team: false, ballId: 4 }
     }));
 
     const marker = screen.getByAltText('Caught') as HTMLImageElement;
     expect(marker.src).toContain('/api/sprites/balls/4.png');
+  });
+
+  it('shows only affirmative capture in Organic mode', () => {
+    const catalog = { balls: [] } as unknown as Catalog;
+    const { container, rerender } = render(h(StatusMarks, {
+      catalog,
+      mode: 'ORGANIC',
+      state: { seen: true, caught: false, team: false, ballId: null }
+    }));
+
+    expect(container.querySelector('.eye-icon')).toBeNull();
+    expect(screen.queryByLabelText('Not caught')).toBeNull();
+    expect(container.querySelector('.status-marks')).toBeNull();
+
+    rerender(h(StatusMarks, {
+      catalog,
+      mode: 'ORGANIC',
+      state: { seen: true, caught: true, team: false, ballId: null }
+    }));
+    expect(container.querySelector('.eye-icon')).toBeNull();
+    expect(screen.getByLabelText('Caught')).toBeTruthy();
+  });
+
+  it('retains explicit seen and uncaught marks outside Organic mode', () => {
+    const { container } = render(h(StatusMarks, {
+      catalog: { balls: [] } as unknown as Catalog,
+      mode: 'DISCOVERED',
+      state: { seen: false, caught: false, team: false, ballId: null }
+    }));
+
+    expect(container.querySelector('[aria-label="Not seen"]')).toBeTruthy();
+    expect(container.querySelector('[aria-label="Not caught"]')).toBeTruthy();
   });
 });

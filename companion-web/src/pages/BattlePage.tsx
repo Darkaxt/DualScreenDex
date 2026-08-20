@@ -28,7 +28,7 @@ export function BattlePage({ catalog, state, send, openMove, openSpecies }: { ca
           <circle class="dex-lens" cx="9" cy="7" r="2" />
           <path class="dex-detail" d="M9 14h6v2H9zM7 22h4M14 22h6" />
         </svg>
-      </button></div><div class="identity-line"><StatusMarks state={status} catalog={catalog} />{uniqueTypeIds(opponent.typeIds?.length ? opponent.typeIds : species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
+      </button></div><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(opponent.typeIds?.length ? opponent.typeIds : species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
     </div>
     {!hidden && <Segmented values={tabs} active={state.battleTab} onSelect={tab => send('TAB', { tab })} label="Battle information" />}
     <div class="battle-content" data-scroll-region>

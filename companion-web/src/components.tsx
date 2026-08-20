@@ -40,18 +40,19 @@ export function uniqueTypeIds(typeIds: number[]): number[] {
   return typeIds.filter((id, index) => typeIds.indexOf(id) === index);
 }
 
-export function StatusMarks({ state, catalog }: { state?: SpeciesState; catalog: Catalog }) {
+export function StatusMarks({ state, catalog, mode }: { state?: SpeciesState; catalog: Catalog; mode: KnowledgeMode }) {
   const caught = state?.caught ?? false;
   const seen = state?.seen ?? false;
   const ball = state?.ballId != null && catalog.balls.some(item => item.id === state.ballId && item.hasSprite);
+  if (mode === 'ORGANIC' && !caught) return null;
   return (
     <span class="status-marks">
-      <EyeStatus seen={seen} />
+      {mode !== 'ORGANIC' && <EyeStatus seen={seen} />}
       {caught && ball ? (
         <img class="ball-art" src={`/api/sprites/balls/${state!.ballId}.png`} alt="Caught" />
-      ) : (
+      ) : caught || mode !== 'ORGANIC' ? (
         <span class={`ball-mark ${caught ? 'ball-caught' : ''}`} aria-label={caught ? 'Caught' : 'Not caught'}><i /></span>
-      )}
+      ) : null}
     </span>
   );
 }

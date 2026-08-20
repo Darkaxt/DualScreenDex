@@ -29,6 +29,7 @@ describe('game clock indicator', () => {
     expect(container.querySelector('[data-semantic-icon="sun"]')).toBeTruthy();
     expect(container.querySelector('[data-semantic-icon="moon"]')).toBeNull();
     expect(container.querySelector<HTMLElement>('.game-time-celestial')?.style.left).toBe('75%');
+    expect(container.querySelector('.game-time-contrast-plate')).toBeTruthy();
   });
 
   it('renders only the moon at normalized night progress', () => {

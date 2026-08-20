@@ -87,6 +87,18 @@ describe('Pokédex knowledge modes', () => {
 
     expect(screen.getByText('Bulbasaur')).toBeTruthy();
     expect(screen.queryByText('Charmander')).toBeNull();
+    expect(screen.queryByLabelText('Seen')).toBeNull();
+    expect(screen.queryByLabelText('Not caught')).toBeNull();
+  });
+
+  it('shows only an affirmative Poké Ball for captured Organic entries', () => {
+    render(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      speciesState: { ...state.speciesState, 1: { ...state.speciesState[1], caught: true } },
+    }} send={vi.fn()} />);
+
+    expect(screen.getByLabelText('Caught')).toBeTruthy();
+    expect(screen.queryByLabelText('Seen')).toBeNull();
   });
 
   it('allows full ROM navigation in Discovered mode', () => {

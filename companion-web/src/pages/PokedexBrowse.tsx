@@ -64,7 +64,7 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
         <strong>{hidden ? maskIdentityName(species.name) : species.name}</strong>
         <span class="species-row-meta">
           {activeFilter === 'AREA' && <EncounterWindowMark windows={encounterWindows(catalog, state.currentAreaIds ?? [], species.id)} />}
-          <StatusMarks state={state.speciesState[species.id]} catalog={catalog} />
+          <StatusMarks state={state.speciesState[species.id]} catalog={catalog} mode={policy} />
         </span>
       </button>; })}
       {visible.length === 0 && <div class="empty-state"><strong>NO POKÉMON FOUND</strong><p>Pokémon you discover will appear here.</p></div>}
