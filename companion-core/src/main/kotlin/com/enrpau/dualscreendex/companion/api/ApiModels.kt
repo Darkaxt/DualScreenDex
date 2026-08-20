@@ -39,6 +39,7 @@ data class LocalMapView(
     val gridWidth: Int,
     val gridHeight: Int,
     val imageUrl: String,
+    val dynamicLighting: Boolean,
 )
 
 data class WorldMapRegionView(
@@ -205,8 +206,8 @@ data class StateView(
     val gameTime: GameClockView? = null,
 )
 data class GameClockView(
-    val hours: Int,
-    val minutes: Int,
+    val hours: Int?,
+    val minutes: Int?,
     val phase: String? = null,
     val phaseProgress: Double? = null,
 )
@@ -496,6 +497,7 @@ object ApiViewBuilder {
                 gridWidth = map.gridWidth,
                 gridHeight = map.gridHeight,
                 imageUrl = "/api/maps/${URLEncoder.encode(map.imageAssetKey, StandardCharsets.UTF_8)}.png",
+                dynamicLighting = map.imageAssetKey in catalog.localMaps.indexedAssets,
             )
         },
         capabilities = catalog.capabilities.mapKeys { it.key.name }.mapValues { it.value.status.name },

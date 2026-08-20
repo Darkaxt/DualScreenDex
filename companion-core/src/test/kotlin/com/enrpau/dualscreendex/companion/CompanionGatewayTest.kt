@@ -8,6 +8,8 @@ import com.enrpau.dualscreendex.companion.model.BattleTab
 import com.enrpau.dualscreendex.companion.model.CompanionAction
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
 import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
+import com.enrpau.dualscreendex.companion.model.GameClock
+import com.enrpau.dualscreendex.companion.model.GameClockPhase
 import com.enrpau.dualscreendex.companion.model.LiveMapPosition
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import org.junit.Assert.assertEquals
@@ -179,6 +181,25 @@ class CompanionGatewayTest {
 
         assertEquals(LiveMapPosition(12, 7), sameArea.liveMapPosition)
         assertEquals(null, nextArea.liveMapPosition)
+    }
+
+    @Test
+    fun phaseOnlyGameClockChangesWithoutClearingMapState() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.LiveAreaChanged(0x0010))
+        gateway.dispatch(CompanionAction.LiveMapPositionChanged(LiveMapPosition(12, 7)))
+
+        val night = gateway.dispatch(
+            CompanionAction.LiveGameClockChanged(GameClock(phase = GameClockPhase.NIGHT)),
+        )
+        val disconnected = gateway.dispatch(CompanionAction.LiveGameClockChanged(null))
+
+        assertEquals(GameClockPhase.NIGHT, night.gameTime?.phase)
+        assertEquals(null, night.gameTime?.hours)
+        assertEquals(0x0010, night.liveAreaBaseId)
+        assertEquals(LiveMapPosition(12, 7), night.liveMapPosition)
+        assertEquals(null, disconnected.gameTime)
+        assertEquals(0x0010, disconnected.liveAreaBaseId)
     }
 
     @Test

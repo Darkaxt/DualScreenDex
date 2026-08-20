@@ -103,18 +103,19 @@ data class CatalogLoadingState(
 
 data class LiveMapPosition(val x: Int, val y: Int)
 
-enum class GameClockPhase { DAY, NIGHT }
+enum class GameClockPhase { MORNING, DAY, NIGHT, DARK }
 
 data class GameClock(
-    val hours: Int,
-    val minutes: Int,
+    val hours: Int? = null,
+    val minutes: Int? = null,
     val phase: GameClockPhase? = null,
     val phaseProgress: Double? = null,
 ) {
     init {
-        require(hours in 0..23)
-        require(minutes in 0..59)
-        require((phase == null) == (phaseProgress == null))
+        require((hours == null) == (minutes == null))
+        require(hours == null || hours in 0..23)
+        require(minutes == null || minutes in 0..59)
+        require(phaseProgress == null || phase != null)
         require(phaseProgress == null || phaseProgress in 0.0..1.0)
     }
 }
@@ -169,6 +170,7 @@ sealed interface CompanionAction {
         val party: List<OwnedIndividual>,
         val gameTime: GameClock? = null,
     ) : CompanionAction
+    data class LiveGameClockChanged(val gameTime: GameClock?) : CompanionAction
     data class LiveMapPositionChanged(val position: LiveMapPosition?) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction
     data class Failure(val message: String) : CompanionAction

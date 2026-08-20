@@ -20,8 +20,12 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
+import com.enrpau.dualscreendex.parser.catalog.IndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
+import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
@@ -47,11 +51,19 @@ class ApiViewBuilderTest {
             AppSnapshot(gameTime = GameClock(21, 0, GameClockPhase.NIGHT, 0.0)),
             catalog = null,
         )
+        val phaseOnly = ApiViewBuilder.state(
+            AppSnapshot(gameTime = GameClock(phase = GameClockPhase.DARK)),
+            catalog = null,
+        )
 
         assertEquals(21, state.gameTime?.hours)
         assertEquals(0, state.gameTime?.minutes)
         assertEquals("NIGHT", state.gameTime?.phase)
         assertEquals(0.0, requireNotNull(state.gameTime?.phaseProgress), 0.0)
+        assertNull(phaseOnly.gameTime?.hours)
+        assertNull(phaseOnly.gameTime?.minutes)
+        assertEquals("DARK", phaseOnly.gameTime?.phase)
+        assertNull(phaseOnly.gameTime?.phaseProgress)
     }
 
     @Test
@@ -185,9 +197,26 @@ class ApiViewBuilderTest {
                 assets = mapOf("world/gen3-region-0" to RgbaSprite(224, 120, IntArray(224 * 120))),
             ),
             localMaps = LocalMapCatalog(
-                maps = listOf(LocalMap("local/0010", "Route 101", 0x10, 320, 320, 20, 20, "local/0010/map")),
+                maps = listOf(
+                    LocalMap("local/0010", "Route 101", 0x10, 320, 320, 20, 20, "local/0010/map"),
+                    LocalMap("local/0011", "Route 102", 0x11, 16, 16, 1, 1, "local/0011/map"),
+                ),
                 assets = mapOf(
                     "local/0010/map" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                ),
+                indexedAssets = mapOf(
+                    "local/0011/map" to IndexedMapAsset(
+                        pixelWidth = 16,
+                        pixelHeight = 16,
+                        compressedIndices = LocalMapRasterCodec.compress(ByteArray(16 * 16)),
+                        lightingPolicy = LocalMapLightingPolicy.AUTO,
+                        palettes = MapLightingPalettes(
+                            morning = IntArray(32),
+                            day = IntArray(32),
+                            night = IntArray(32),
+                            dark = IntArray(32),
+                        ),
+                    ),
                 ),
             ),
         )
@@ -203,11 +232,14 @@ class ApiViewBuilderTest {
         assertEquals("/api/maps/world%2Fgen3-region-0.png", map.imageUrl)
         assertEquals(listOf(0x10, 0x11), map.locations.single().baseAreaIds)
         assertEquals(WorldMapCellView(3, 11, 2, 1), map.locations.single().geometry.single())
-        val local = ApiViewBuilder.catalog(catalog).localMaps.single()
+        val localMaps = ApiViewBuilder.catalog(catalog).localMaps
+        val local = localMaps.single { it.baseAreaId == 0x10 }
         assertEquals(0x10, local.baseAreaId)
         assertEquals(320, local.pixelWidth)
         assertEquals(20, local.gridWidth)
         assertEquals("/api/maps/local%2F0010%2Fmap.png", local.imageUrl)
+        assertEquals(false, local.dynamicLighting)
+        assertEquals(true, localMaps.single { it.baseAreaId == 0x11 }.dynamicLighting)
     }
 
     @Test

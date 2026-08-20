@@ -23,6 +23,16 @@ class GameClockProjectionTest {
         assertNull(clock.phaseProgress)
     }
 
+    @Test
+    fun `phase only clock does not invent numeric time or progress`() {
+        val clock = GameClock(phase = GameClockPhase.MORNING)
+
+        assertNull(clock.hours)
+        assertNull(clock.minutes)
+        assertEquals(GameClockPhase.MORNING, clock.phase)
+        assertNull(clock.phaseProgress)
+    }
+
     private fun assertClock(hours: Int, minutes: Int, phase: GameClockPhase, progress: Double) {
         val clock = projectGameClock(hours, minutes, dayStartHour = 6, nightStartHour = 21)
 

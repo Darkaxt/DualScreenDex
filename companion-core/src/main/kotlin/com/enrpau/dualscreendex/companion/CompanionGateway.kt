@@ -132,6 +132,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             party = action.party,
             gameTime = action.gameTime,
         )
+        is CompanionAction.LiveGameClockChanged -> state.copy(gameTime = action.gameTime)
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
         is CompanionAction.Failure -> state.copy(error = action.message)
     }
