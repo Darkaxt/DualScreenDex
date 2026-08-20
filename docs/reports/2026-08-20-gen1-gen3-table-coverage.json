@@ -1,0 +1,405 @@
+{
+  "schemaVersion": 1,
+  "measuredRelease": "v1.1.0-rc.18",
+  "measuredCommit": "49c07f9f456f3076c4e0dd9237cf59bf073a7c6e",
+  "uniqueRomCount": 331,
+  "generationRomCounts": {
+    "1": 95,
+    "2": 27,
+    "3": 209
+  },
+  "corpusAudit": {
+    "inputRows": 333,
+    "duplicateRowsRemoved": 2,
+    "parserErrors": 1,
+    "selectedWithoutPersistence": 0
+  },
+  "formula": "100 * sum(per-ROM table coverage) / applicable ROM count; NOT_APPLICABLE cells are excluded",
+  "tableCoverage": [
+    {
+      "capability": "SPECIES_CATALOG",
+      "tableType": "Species catalog",
+      "percent": {
+        "gen1": 85.05,
+        "gen2": 61.28,
+        "gen3": 69.68,
+        "overall": 73.41
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "SPECIES_NAMES",
+      "tableType": "Species names",
+      "percent": {
+        "gen1": 78.46,
+        "gen2": 69.62,
+        "gen3": 86.66,
+        "overall": 82.92
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "SPECIES_TYPES",
+      "tableType": "Species types",
+      "percent": {
+        "gen1": 87.56,
+        "gen2": 61.79,
+        "gen3": 75.35,
+        "overall": 77.75
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "TYPE_CHART",
+      "tableType": "Type chart",
+      "percent": {
+        "gen1": 10.53,
+        "gen2": 25.93,
+        "gen3": 84.21,
+        "overall": 58.31
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "BASE_STATS",
+      "tableType": "Base stats",
+      "percent": {
+        "gen1": 87.56,
+        "gen2": 61.79,
+        "gen3": 75.35,
+        "overall": 77.75
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "SPRITES",
+      "tableType": "Sprites",
+      "percent": {
+        "gen1": 44.18,
+        "gen2": 73.75,
+        "gen3": 76.47,
+        "overall": 66.98
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "POKEDEX_DESCRIPTIONS",
+      "tableType": "Pok\u00e9dex descriptions",
+      "percent": {
+        "gen1": 41.73,
+        "gen2": 39.93,
+        "gen3": 67.42,
+        "overall": 57.8
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "EVOLUTIONS",
+      "tableType": "Evolutions",
+      "percent": {
+        "gen1": 12.43,
+        "gen2": 18.16,
+        "gen3": 87.83,
+        "overall": 60.51
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "MOVE_CATALOG",
+      "tableType": "Move catalog",
+      "percent": {
+        "gen1": 50.24,
+        "gen2": 79.64,
+        "gen3": 87.08,
+        "overall": 75.9
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "MOVE_DETAILS",
+      "tableType": "Move details",
+      "percent": {
+        "gen1": 88.42,
+        "gen2": 44.24,
+        "gen3": 72.73,
+        "overall": 74.91
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "MOVE_DESCRIPTIONS",
+      "tableType": "Move descriptions",
+      "percent": {
+        "gen1": null,
+        "gen2": 62.96,
+        "gen3": 73.17,
+        "overall": 72.0
+      },
+      "denominator": {
+        "gen1": 0,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 236
+      }
+    },
+    {
+      "capability": "LEARNSETS",
+      "tableType": "Learnsets",
+      "percent": {
+        "gen1": 0.0,
+        "gen2": 18.16,
+        "gen3": 67.62,
+        "overall": 44.18
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "EGG_MOVES",
+      "tableType": "Egg moves",
+      "percent": {
+        "gen1": null,
+        "gen2": 33.33,
+        "gen3": 66.03,
+        "overall": 62.29
+      },
+      "denominator": {
+        "gen1": 0,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 236
+      }
+    },
+    {
+      "capability": "MACHINE_MOVES",
+      "tableType": "Machine moves",
+      "percent": {
+        "gen1": 42.11,
+        "gen2": 44.44,
+        "gen3": 63.16,
+        "overall": 55.59
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "TUTOR_MOVES",
+      "tableType": "Tutor moves",
+      "percent": {
+        "gen1": null,
+        "gen2": 39.13,
+        "gen3": 71.51,
+        "overall": 67.94
+      },
+      "denominator": {
+        "gen1": 0,
+        "gen2": 23,
+        "gen3": 186,
+        "overall": 209
+      }
+    },
+    {
+      "capability": "ABILITIES",
+      "tableType": "Abilities",
+      "percent": {
+        "gen1": null,
+        "gen2": null,
+        "gen3": 73.18,
+        "overall": 73.18
+      },
+      "denominator": {
+        "gen1": 0,
+        "gen2": 0,
+        "gen3": 209,
+        "overall": 209
+      }
+    },
+    {
+      "capability": "ABILITY_DESCRIPTIONS",
+      "tableType": "Ability descriptions",
+      "percent": {
+        "gen1": null,
+        "gen2": null,
+        "gen3": 65.89,
+        "overall": 65.89
+      },
+      "denominator": {
+        "gen1": 0,
+        "gen2": 0,
+        "gen3": 209,
+        "overall": 209
+      }
+    },
+    {
+      "capability": "ABILITY_MECHANICS",
+      "tableType": "Ability mechanics",
+      "percent": {
+        "gen1": null,
+        "gen2": null,
+        "gen3": 64.6,
+        "overall": 64.6
+      },
+      "denominator": {
+        "gen1": 0,
+        "gen2": 0,
+        "gen3": 209,
+        "overall": 209
+      }
+    },
+    {
+      "capability": "AREA_ENCOUNTERS",
+      "tableType": "Area encounters",
+      "percent": {
+        "gen1": 86.32,
+        "gen2": 62.96,
+        "gen3": 68.42,
+        "overall": 73.11
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "TYPE_PRESENTATION",
+      "tableType": "Type presentation",
+      "percent": {
+        "gen1": 86.32,
+        "gen2": 62.96,
+        "gen3": 73.68,
+        "overall": 76.44
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "BALL_CATALOG",
+      "tableType": "Ball catalog",
+      "percent": {
+        "gen1": null,
+        "gen2": null,
+        "gen3": 71.29,
+        "overall": 71.29
+      },
+      "denominator": {
+        "gen1": 0,
+        "gen2": 0,
+        "gen3": 209,
+        "overall": 209
+      }
+    },
+    {
+      "capability": "WORLD_MAP",
+      "tableType": "World map",
+      "percent": {
+        "gen1": 86.32,
+        "gen2": 40.74,
+        "gen3": 54.07,
+        "overall": 62.24
+      },
+      "denominator": {
+        "gen1": 95,
+        "gen2": 27,
+        "gen3": 209,
+        "overall": 331
+      }
+    },
+    {
+      "capability": "LOCAL_MAP",
+      "tableType": "Local maps",
+      "percent": {
+        "gen1": null,
+        "gen2": null,
+        "gen3": 48.33,
+        "overall": 48.33
+      },
+      "denominator": {
+        "gen1": 0,
+        "gen2": 0,
+        "gen3": 209,
+        "overall": 209
+      }
+    }
+  ],
+  "memory": {
+    "gen2FourWorkerCorpus": {
+      "samples": 102,
+      "peakWorkingSetMiB": 1343.78,
+      "peakPrivateMiB": 1758.52
+    },
+    "gen3FourWorkerCorpus": {
+      "samples": 1305,
+      "peakWorkingSetMiB": 8076.18,
+      "peakPrivateMiB": 8556.44
+    },
+    "unboundSingleRom": {
+      "samples": 13,
+      "peakWorkingSetMiB": 2067.02,
+      "peakPrivateMiB": 2227.0
+    }
+  }
+}

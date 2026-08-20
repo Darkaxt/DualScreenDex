@@ -194,6 +194,8 @@ The frozen release gates distinguish base parsing from optional capability cover
 
 These denominators are deliberately different. A selected base catalog is not counted as a working map or proven mechanic, and a fail-closed optional capability is never counted as a success.
 
+The fresh RC18-wide [Gen I–III table coverage report](docs/reports/2026-08-20-gen1-gen3-table-coverage.md), with its [machine-readable JSON](docs/reports/2026-08-20-gen1-gen3-table-coverage.json), publishes percentage coverage for all 23 table types across 331 unique ROMs. Its generation and overall result cells contain percentages only; genuinely inapplicable generation/table combinations remain `N/A` rather than being counted as either success or failure.
+
 Numeric ability mechanics are tracked separately from names and descriptions. The production resolver follows decoded calls and use-def relationships from parser-selected layouts into typed battle fields, predicates, arithmetic, and writeback. It never substitutes familiar series values, names, hashes, symbols, or fixed routine addresses for missing proof.
 
 Read the player-facing [ROM Hacks Compatibility report](reports/dualdex-rom-hacks-compatibility.md), with its [machine-readable JSON](reports/dualdex-rom-hacks-compatibility.json), for the reviewed first 50 ROMs grouped by generation and engine family. The separate [Parser Compatibility report](reports/dualdex-parser-compatibility.md) and [schema-11 JSON evidence](reports/dualdex-parser-compatibility.json) retain the reviewed RC24 evidence contract; the independent [exact first-50 base release gate](docs/reports/2026-08-13-base-first50-release-gate.md) records RC25's 50/50 result without rewriting that historical report. Optional capability evidence is published independently in the [exact first-50 evolution gate](docs/reports/2026-08-14-first50-evolution-completeness.md), [Celia Pokédex-description closure](docs/reports/2026-08-14-first50-celia-pokedex-descriptions.md), [world-map first-50 release gate](docs/reports/2026-08-13-map-first50-release-gate.md), and [ARM7TDMI first-50 survey](docs/reports/arm7-first50-compatibility-survey.md). The [full unique-ROM base audit](docs/reports/2026-08-13-base-full332-compatibility.md) keeps broader coverage visible without treating every optional feature as resolved. Reports contain structural evidence and hashes, but no decoded bulk tables, sprites, ROM bytes, saves, trainer data, or private paths.
@@ -309,6 +311,7 @@ The labeled [Modern Emerald analysis](docs/reports/modern-emerald-memory-mapper-
 - [ROM parser and passive companion foundation](docs/superpowers/specs/2026-08-08-dualdex-rom-parser-companion-design.md)
 - [ROM Hacks Compatibility](reports/dualdex-rom-hacks-compatibility.md)
 - [Parser Compatibility](reports/dualdex-parser-compatibility.md)
+- [RC18 Gen I–III table coverage](docs/reports/2026-08-20-gen1-gen3-table-coverage.md)
 
 ## Relationship to Kanto Gear
 
