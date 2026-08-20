@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved architecture direction. This document defines the end state and its independently deliverable stages. Only Stage 1, the dynamic Gen II raster foundation, proceeds to an implementation plan after specification review. Scene topology, slippy-map delivery, and interactables receive separate implementation plans before code changes in those areas.
+Stage 1 is implemented and lab-validated for official Gold, Silver, and Crystal. The next implementation target is Gen III dynamic Local-map support because that is the active live-testing path. Scene topology, slippy-map delivery, unified viewport work, and interactables remain separately scoped later stages.
 
 ## Goal
 
@@ -16,7 +16,8 @@ DualScreenDex currently has two independent representations:
 - `WorldMapCatalog` contains a simplified official Town/World Map raster and location cells.
 - `MapPage` switches between Local and Atlas modes.
 - Official Gen I, Gen II, and selected Gen III Local-map controls are supported.
-- Gen II Local maps are currently baked with a deterministic daytime palette.
+- The integrated release clock stack already publishes `AppSnapshot.gameTime`, projects Gen III day/night schedules, and renders `GameClockIndicator` on the Map page.
+- Gen II Local maps are indexed rasters with four palette rows; the bounded runtime selector, lazy Android/desktop endpoints, ETag variants, phase-only clock presentation, and viewport-preserving web updates are connected and validated.
 
 The separate Local/Atlas implementation remains the compatibility fallback while the seamless scene pipeline is incomplete.
 
@@ -28,6 +29,7 @@ The separate Local/Atlas implementation remains the compatibility fallback while
 4. **Optional features fail independently.** Lighting, scene placement, tiled delivery, and interactables cannot crash catalog creation or disable otherwise usable maps.
 5. **Memory stays bounded.** Assets remain individually compressed after catalog deserialization, and rendered output caches have hard byte limits.
 6. **Geometry is proven, not invented.** Connection metadata may place maps; warps may link scenes but cannot imply physical adjacency.
+7. **One clock state owns time presentation.** Gen II normalized lighting extends the existing `gameTime` projection; Stage 1 does not add a parallel clock snapshot, reducer field, or second widget.
 
 ## Architecture
 
@@ -98,7 +100,7 @@ Runtime values normalize as:
 3 → DARK
 ```
 
-The parser should publish a structurally resolved Gen II time-of-day WRAM offset through runtime metadata rather than select it by ROM identity. Official controls are expected to resolve Gold/Silver offset `0x1568` and Crystal offset `0x1841`. The battle-memory session adds one bounded byte region and publishes only lighting changes.
+The parser publishes a structurally resolved Gen II time-of-day WRAM offset through runtime metadata rather than selecting it by ROM identity. Official controls resolve Gold/Silver offset `0x1568` and Crystal offset `0x1841`. The battle-memory session adds one bounded byte region, normalizes it to the four existing palette modes, and publishes only changes into the shared game-clock state. It does not create a second live-lighting state machine.
 
 ### Renderer boundary
 
@@ -120,18 +122,22 @@ Static PNG assets ignore the lighting query. Dynamic assets render lazily. A mis
 
 ### Live state and UI
 
-The companion snapshot and API add nullable current map lighting. The web model uses:
+Stage 1 extends the existing clock path rather than introducing `liveMapLighting`, `LiveMapLightingChanged`, or `currentMapLighting` fields. The shared `GameClock` model supports two valid shapes:
 
 ```text
-MORNING | DAY | NIGHT | DARK | null
+numeric clock: hours + minutes + optional DAY/NIGHT phase/progress
+phase-only:    null hours/minutes + MORNING|DAY|NIGHT|DARK + null progress
 ```
 
-For a dynamic Local map, `MapPage` appends the normalized live lighting—or `DAY` fallback—to its image URL. The endpoint applies the map's explicit or `AUTO` policy. Lighting changes replace the image without resetting pan, zoom, selected map, or player position.
+Gen III keeps its current numeric clock extraction and DAY/NIGHT orbit behavior unchanged. A valid Gen II `wTimeOfDayPal` byte publishes a phase-only `gameTime`; disconnect, invalid data, or missing metadata publishes no game time. `GameClockIndicator` remains the only Map-page clock widget and renders phase-only Gen II state without inventing an `HH:mm` value.
+
+For a dynamic Local map, `MapPage` appends `state.gameTime.phase`—when it is one of the four normalized map-lighting values—or `DAY` fallback to its image URL. The endpoint still applies the map's explicit or `AUTO` policy. Lighting changes replace the image without resetting pan, zoom, selected map, player position, or the existing clock widget.
 
 ### Stage 1 failure behavior
 
-- Unavailable runtime lighting uses day; it is not a parser failure.
+- Unavailable runtime lighting clears the phase-only Gen II `gameTime` and map rendering uses day; it is not a parser failure.
 - Invalid runtime values are treated as unavailable.
+- Existing Gen III numeric `gameTime`, schedule projection, and clock widget behavior are unchanged.
 - A failed dynamic Local-map resolution disables `LOCAL_MAP` through the existing optional-capability path.
 - Catalog and Atlas materialization continue.
 - Static Gen I/III Local assets are unchanged.
@@ -237,7 +243,8 @@ Validate only the directly affected GBC path:
 - Day output pixel-equivalent to the current accepted daytime render.
 - Explicit morning/day/night/dark map-policy precedence.
 - `AUTO` runtime transitions and day fallback.
-- One-byte bounded memory reads and change-only publication.
+- One-byte bounded memory reads and change-only publication through `AppSnapshot.gameTime`.
+- Phase-only Gen II clock presentation without fabricated hours/minutes, while existing Gen III numeric clock/orbit tests remain unchanged.
 - Catalog-store round trip of individually compressed indexed assets.
 - Full-render versus clipped-render pixel equivalence.
 - Android and server endpoint ETag separation by effective lighting.
@@ -267,11 +274,11 @@ No GBA investigation is part of Stage 1.
 
 ## Delivery Sequence
 
-1. **Dynamic Gen II raster foundation** — indexed asset, four palettes, runtime lighting, clipped renderer, current Local endpoint.
-2. **Official Gen II scene topology** — connection parser, constraint solver, scene catalog, failure isolation.
-3. **Scene tile service** — spatial selection, clipped composition, zoom pyramid, bounded cache.
-4. **Unified viewport** — visible-tile management, seamless zoom, player placement, compatibility fallbacks.
-5. **Generation expansion** — validate and enable Gen I, then Gen III, under separate scopes.
+1. **Dynamic Gen II raster foundation (complete)** — indexed asset, four palettes, runtime lighting, clipped renderer, current Local endpoint.
+2. **Gen III live-testing expansion (next)** — adapt the dynamic raster contract to source-backed Gen III controls while preserving its existing numeric clock extraction and widget.
+3. **Official scene topology** — connection parser, constraint solver, scene catalog, failure isolation, beginning with the best source-backed generation.
+4. **Scene tile service** — spatial selection, clipped composition, zoom pyramid, bounded cache.
+5. **Unified viewport** — visible-tile management, seamless zoom, player placement, compatibility fallbacks.
 6. **Interactables** — separately designed event layers and live proximity.
 
-Each numbered item must end in a working, independently testable checkpoint. The next implementation plan covers item 1 only.
+Each numbered item ends in a working, independently testable checkpoint. Gen III dynamic Local-map support receives its own focused scope before implementation.

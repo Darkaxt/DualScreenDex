@@ -1,10 +1,10 @@
 # Gen II Dynamic Lighting Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task inline. Steps use checkbox (`- [ ]`) syntax for tracking. Do not dispatch subagents for this reverse-engineering work.
+> **Status:** Implemented and validated. This is a historical execution record, not an active plan. The merge of `fork/release/v1.1.0-rc.17` superseded the detailed clock-state instructions below: the shipped implementation extends `AppSnapshot.gameTime`, `GameClockView`, and `GameClockIndicator` and does **not** add `liveMapLighting`, `LiveMapLightingChanged`, or `currentMapLighting`.
 
 **Goal:** Replace baked daytime Gen II Local-map PNGs with one compressed indexed raster plus four palette tables per map, follow the game clock through a bounded WRAM read, and render only the requested lighting PNG without changing Gen I/III maps.
 
-**Architecture:** `LocalMapCatalog` keeps existing PNG assets and adds a disjoint indexed-asset map. A parser-core codec/renderer inflates one active index surface, applies the map policy and requested game lighting, supports clipped rendering, and emits PNG bytes lazily. Structurally resolved Gen II WRAM metadata flows through catalog persistence into battle-memory, companion state, the map endpoint, and the existing `<img>` Local-map UI.
+**Implemented architecture:** `LocalMapCatalog` retains existing PNG assets and adds a disjoint indexed-asset map. A bounded parser-core codec/renderer applies map policy and requested game lighting and emits PNG bytes lazily. The structurally resolved Gen II byte is projected as a phase-only value through the existing shared game-clock API/widget path; Gen III numeric clock behavior remains unchanged.
 
 **Tech Stack:** Kotlin/JVM 17, JUnit 4, Gradle 9.4.1, Gson gzip+JSON catalog persistence, Android loopback HTTP, JDK `HttpServer`, Preact, TypeScript, Vite, Vitest.
 
