@@ -77,6 +77,7 @@ class WorldMapCatalogApiRealControlTest {
                 CatalogSourceMetadata.direct(romPath.fileName.toString(), rom.size, "REAL-CONTROL"),
                 CatalogWriteProgress.complete(),
             )
+            assertDatabaseIntegrity(cache.fileFor(rom.sha256))
             val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
             assertEquals(
                 catalog.abilitiesById.mapValues { it.value.mechanics },
@@ -265,8 +266,10 @@ class WorldMapCatalogApiRealControlTest {
                 CatalogSourceMetadata.direct(romPath.fileName.toString(), rom.size, "REAL-CONTROL"),
                 CatalogWriteProgress.complete(),
             )
+            assertDatabaseIntegrity(cache.fileFor(rom.sha256))
             val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
             assertEquals(catalog.worldMaps, reopened.worldMaps)
+            assertEquals(catalog.abilitiesById, reopened.abilitiesById)
             val parsedEvolutionEdges = catalog.navigableSpecies().associate { species ->
                 species.id to species.evolutionEdges.value.orEmpty()
             }
@@ -276,9 +279,22 @@ class WorldMapCatalogApiRealControlTest {
             assertEquals(parsedEvolutionEdges, reopenedEvolutionEdges)
 
             val runtime = ProductionCompanionRuntime().apply { loadCatalog(romPath.fileName.toString(), reopened) }
+            val apiCatalog = requireNotNull(runtime.bootstrap().catalog)
+            val referencedAbilities = apiCatalog.species.flatMap { it.abilities }.associateBy { it.id }
+            val expectedReferencedAbilityIds = reopened.navigableSpecies()
+                .flatMap { it.abilityIds.value.orEmpty() }
+                .filter(reopened.abilitiesById::containsKey)
+                .toSet()
+            assertEquals(expectedReferencedAbilityIds, referencedAbilities.keys)
+            if (reopened.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status == CapabilityStatus.AVAILABLE) {
+                assertTrue(
+                    "${control.environmentVariable} omitted persisted ability mechanics from the API",
+                    referencedAbilities.values.all { it.mechanics.isNotEmpty() },
+                )
+            }
             assertEquals(
                 reopenedEvolutionEdges.values.sumOf(List<*>::size),
-                requireNotNull(runtime.bootstrap().catalog).species.sumOf { it.evolutions.size },
+                apiCatalog.species.sumOf { it.evolutions.size },
             )
             server = AndroidLoopbackServer(runtime) { null }.also { it.start() }
             val base = "http://127.0.0.1:${server.address.port}"
@@ -312,6 +328,18 @@ class WorldMapCatalogApiRealControlTest {
         } finally {
             server?.close()
             deleteTree(root)
+        }
+    }
+
+    private fun assertDatabaseIntegrity(file: File) {
+        JdbcTestCatalogDatabaseFactory.open(file).use { database ->
+            assertEquals(
+                listOf("ok"),
+                database.query("PRAGMA quick_check") { row -> row.string("quick_check") },
+            )
+            assertTrue(
+                database.query("PRAGMA foreign_key_check") { row -> row.string("table") }.isEmpty(),
+            )
         }
     }
 
