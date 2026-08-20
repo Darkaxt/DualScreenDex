@@ -7,26 +7,31 @@ export function TrainerCardPage({ state, onBack }: { state: State; onBack: () =>
     <Header title="TRAINER CARD" kicker="LIVE · READ ONLY" onBack={onBack} />
     {!trainer ? <div class="empty-state trainer-unavailable"><strong>TRAINER DATA UNAVAILABLE</strong><p>This ROM or session has not published a safe Trainer record.</p></div> :
       <div class="trainer-card-content" data-scroll-region>
-        <section class="trainer-identity">
-          <div class="trainer-avatar">
-            {trainer.avatarUrl
-              ? <img src={trainer.avatarUrl} alt={`${trainer.name} avatar`} />
-              : <span class="trainer-avatar-fallback" role="img" aria-label="Trainer avatar unavailable"><i /></span>}
+        <article class="trainer-card-shell">
+          <header class="trainer-card-strip"><strong>TRAINER CARD</strong><span>ID {String(trainer.publicTrainerId).padStart(5, '0')}</span></header>
+          <div class="trainer-card-body">
+            <div class="trainer-card-copy">
+              <div class="trainer-card-name"><small>NAME</small><h1>{trainer.name}</h1><span>{trainer.gender}</span></div>
+              <dl class="trainer-card-facts">
+                <div><dt>MONEY</dt><dd>₽{trainer.money.toLocaleString('en-US')}</dd></div>
+                <div><dt>PLAY TIME</dt><dd>{trainer.playTimeHours}:{String(trainer.playTimeMinutes).padStart(2, '0')}</dd></div>
+                <div><dt>POKÉDEX SEEN</dt><dd>{trainer.dexSeen}</dd></div>
+                <div><dt>POKÉDEX CAUGHT</dt><dd>{trainer.dexCaught}</dd></div>
+                <div><dt>CARD STARS</dt><dd>{trainer.stars ?? '—'}</dd></div>
+              </dl>
+            </div>
+            <div class="trainer-avatar">
+              {trainer.avatarUrl
+                ? <img src={trainer.avatarUrl} alt={`${trainer.name} avatar`} />
+                : <span class="trainer-avatar-fallback" role="img" aria-label="Trainer avatar unavailable"><i /></span>}
+            </div>
           </div>
-          <div><p class="eyebrow">TRAINER</p><h1>{trainer.name}</h1><strong>ID {String(trainer.publicTrainerId).padStart(5, '0')}</strong><small>{trainer.gender}</small></div>
-        </section>
-        <section class="trainer-facts paper-panel">
-          <div><small>MONEY</small><strong>₽{trainer.money.toLocaleString('en-US')}</strong></div>
-          <div><small>PLAY TIME</small><strong>{trainer.playTimeHours}:{String(trainer.playTimeMinutes).padStart(2, '0')}</strong></div>
-          <div><small>SEEN</small><strong>{trainer.dexSeen}</strong></div>
-          <div><small>CAUGHT</small><strong>{trainer.dexCaught}</strong></div>
-          <div><small>CARD STARS</small><strong>{trainer.stars ?? '—'}</strong></div>
-        </section>
-        <section class="trainer-badges paper-panel"><p class="eyebrow">BADGES</p><div>
-          {trainer.badges.map(badge => <span key={badge.index} class={`trainer-badge ${badge.earned ? 'earned' : ''}`} aria-label={`Badge ${badge.index + 1}${badge.earned ? ' earned' : ' not earned'}`}>
-            {badge.imageUrl ? <img src={badge.imageUrl} alt="" /> : <i />}
-          </span>)}
-        </div></section>
+          <section class="trainer-card-badges"><p class="eyebrow">BADGES</p><div>
+            {trainer.badges.map(badge => <span key={badge.index} class={`trainer-badge ${badge.earned ? 'earned' : ''}`} aria-label={`Badge ${badge.index + 1}${badge.earned ? ' earned' : ' not earned'}`}>
+              {badge.imageUrl ? <img src={badge.imageUrl} alt="" /> : <i />}
+            </span>)}
+          </div></section>
+        </article>
       </div>}
   </section>;
 }

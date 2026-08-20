@@ -6,6 +6,25 @@ import { TrainerCardPage } from './TrainerCardPage';
 afterEach(cleanup);
 
 describe('Trainer Card', () => {
+  it('composes every published trainer field inside one cohesive card shell', () => {
+    const { container } = render(<TrainerCardPage state={trainerState()} onBack={vi.fn()} />);
+
+    const card = container.querySelector('.trainer-card-shell');
+    expect(card).toBeTruthy();
+    expect(card?.textContent).toContain('MAY');
+    expect(card?.textContent).toContain('ID 12345');
+    expect(card?.textContent).toContain('₽98,765');
+    expect(card?.textContent).toContain('12:34');
+    expect(card?.textContent).toContain('42');
+    expect(card?.textContent).toContain('7');
+    expect(card?.textContent).toContain('2');
+    expect(card?.querySelector('.trainer-avatar')).toBeTruthy();
+    expect(card?.querySelectorAll('.trainer-badge')).toHaveLength(8);
+    expect(container.querySelector('.trainer-identity')).toBeNull();
+    expect(container.querySelector('.trainer-facts')).toBeNull();
+    expect(container.querySelector('.trainer-badges.paper-panel')).toBeNull();
+  });
+
   it('renders normalized identity, progress, earned badges, and the existing back action', () => {
     const back = vi.fn();
     const state = trainerState();
