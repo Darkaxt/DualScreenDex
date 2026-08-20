@@ -9,8 +9,15 @@ object Gen3MapLocationResolver {
     fun resolve(rom: RomImage, encounterBaseIds: Set<Int>): Map<Int, String> {
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return emptyMap()
-        val root = findMapGroupsRoots(rom, requiredMaps).singleOrNull() ?: return emptyMap()
-        return resolveFromRoot(rom, root).namesByBaseArea
+        val compiled = findCompiledMapGroupsConsumerRoots(rom).filter { layout ->
+            enumerateRequiredMapHeaders(rom, layout, requiredMaps) != null
+        }
+        val layout = if (compiled.isNotEmpty()) {
+            compiled.singleOrNull()
+        } else {
+            findMapGroupsRoots(rom, requiredMaps).singleOrNull()?.let(::MapGroupsLayout)
+        } ?: return emptyMap()
+        return resolveFromRoot(rom, layout).namesByBaseArea
     }
 
     fun resolve(
@@ -60,17 +67,46 @@ object Gen3MapLocationResolver {
     ): Map<Int, Int> {
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return emptyMap()
+        val layout = selectMapGroupsLayout(rom, requiredMaps, references) ?: return emptyMap()
+        return enumeratePreferredMapHeaders(rom, layout, requiredMaps).orEmpty()
+    }
+
+    internal fun resolveReachableHeaderByBaseArea(
+        rom: RomImage,
+        encounterBaseIds: Set<Int>,
+        references: GbaReferenceIndex,
+    ): Map<Int, Int> {
+        val requiredMaps = requiredMaps(encounterBaseIds)
+        if (requiredMaps.isEmpty()) return emptyMap()
+        val layout = selectMapGroupsLayout(rom, requiredMaps, references) ?: return emptyMap()
+        val required = enumerateRequiredMapHeaders(rom, layout, requiredMaps) ?: return emptyMap()
+        val complete = enumerateMapHeaders(rom, layout)
+            ?.takeIf { headers -> headers.keys.containsAll(required.keys) }
+            ?: return required
+        return enumerateReachableMapHeaders(rom, complete, required.keys).orEmpty().also { reachable ->
+            mapTrace(
+                "map-groups root=0x${layout.root.toString(16)} reachable=${reachable.size}/${complete.size} " +
+                    "from=${required.size} encounter maps",
+            )
+        }
+    }
+
+    private fun selectMapGroupsLayout(
+        rom: RomImage,
+        requiredMaps: Map<Int, Set<Int>>,
+        references: GbaReferenceIndex,
+    ): MapGroupsLayout? {
         val compiledRoots = findCompiledMapGroupsConsumerRoots(rom)
-        val root = if (compiledRoots.isNotEmpty()) {
-            compiledRoots.filter { candidate ->
+        if (compiledRoots.isNotEmpty()) {
+            return compiledRoots.filter { candidate ->
                 enumerateRequiredMapHeaders(rom, candidate, requiredMaps) != null
             }.singleOrNull()
-        } else {
-            val roots = findMapGroupsRoots(rom, requiredMaps)
-            val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return emptyMap()
-            roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull()
-        } ?: return emptyMap()
-        return enumeratePreferredMapHeaders(rom, root, requiredMaps).orEmpty()
+        }
+        val roots = findMapGroupsRoots(rom, requiredMaps)
+        val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return null
+        return roots.filter { references.referenceCount(it) == maximumReferences }
+            .singleOrNull()
+            ?.let(::MapGroupsLayout)
     }
 
     private fun resolveMapSections(
@@ -81,16 +117,16 @@ object Gen3MapLocationResolver {
         val compiledRoots = findCompiledMapGroupsConsumerRoots(rom)
         if (compiledRoots.isNotEmpty()) {
             val requiredCount = requiredMaps.values.sumOf { maps -> maps.size }
-            val resolved = compiledRoots.mapNotNull { root ->
-                enumerateRequiredMapSections(rom, root, requiredMaps)?.also { sections ->
+            val resolved = compiledRoots.mapNotNull { layout ->
+                enumerateRequiredMapSections(rom, layout, requiredMaps)?.also { sections ->
                     mapTrace(
-                        "map-groups root=0x${root.toString(16)} " +
+                        "map-groups root=0x${layout.root.toString(16)} " +
                             "resolved=${sections.size} required=$requiredCount",
                     )
                 }
             }.distinct()
             mapTrace(
-                "map-groups compiledRoots=${compiledRoots.joinToString { "0x${it.toString(16)}" }} " +
+                "map-groups compiledRoots=${compiledRoots.joinToString { "0x${it.root.toString(16)}" }} " +
                     "validLayouts=${resolved.size} requiredGroups=${requiredMaps.keys.sorted()} " +
                     "maxMaps=${requiredMaps.mapValues { it.value.maxOrNull() }}",
             )
@@ -99,7 +135,7 @@ object Gen3MapLocationResolver {
         val roots = findMapGroupsRoots(rom, requiredMaps)
         val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return null
         val root = roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull() ?: return null
-        return enumerateMapSections(rom, root)
+        return enumerateMapSections(rom, MapGroupsLayout(root))
     }
 
     /**
@@ -108,36 +144,103 @@ object Gen3MapLocationResolver {
      */
     private fun enumeratePreferredMapHeaders(
         rom: RomImage,
-        root: Int,
+        layout: MapGroupsLayout,
         requiredMaps: Map<Int, Set<Int>>,
     ): Map<Int, Int>? {
-        val required = enumerateRequiredMapHeaders(rom, root, requiredMaps) ?: return null
-        val complete = enumerateMapHeaders(rom, root)
+        val required = enumerateRequiredMapHeaders(rom, layout, requiredMaps) ?: return null
+        val complete = enumerateMapHeaders(rom, layout)
         return complete?.takeIf { headers -> headers.keys.containsAll(required.keys) } ?: required
+    }
+
+    /**
+     * Keeps the complete statically playable map graph rather than packaging unreferenced editor,
+     * cut-scene, and retired layouts. The graph starts at every encounter-backed map and follows
+     * the source-defined WarpEvent and MapConnection destinations in their gameplay direction.
+     */
+    private fun enumerateReachableMapHeaders(
+        rom: RomImage,
+        headers: Map<Int, Int>,
+        startingMaps: Set<Int>,
+    ): Map<Int, Int>? {
+        if (startingMaps.isEmpty() || !headers.keys.containsAll(startingMaps)) return null
+        val reached = linkedSetOf<Int>()
+        val pending = ArrayDeque<Int>()
+        startingMaps.sorted().forEach { baseAreaId ->
+            reached += baseAreaId
+            pending += baseAreaId
+        }
+        while (pending.isNotEmpty()) {
+            val baseAreaId = pending.removeFirst()
+            val destinations = staticMapDestinations(rom, headers.getValue(baseAreaId), headers.keys) ?: return null
+            destinations.sorted().forEach { destination ->
+                if (reached.add(destination)) pending += destination
+            }
+        }
+        return reached.associateWithTo(linkedMapOf()) { headers.getValue(it) }
+    }
+
+    private fun staticMapDestinations(
+        rom: RomImage,
+        header: Int,
+        knownMaps: Set<Int>,
+    ): Set<Int>? {
+        val destinations = linkedSetOf<Int>()
+        val events = rom.gbaPointer(header + MAP_EVENTS_OFFSET)
+        if (events != null) {
+            if (events.toLong() + MAP_EVENTS_BYTES > rom.size.toLong()) return null
+            val warpCount = rom.u8(events + MAP_EVENTS_WARP_COUNT_OFFSET)
+            if (warpCount > 0) {
+                val warps = rom.gbaPointer(events + MAP_EVENTS_WARPS_OFFSET) ?: return null
+                if (warps.toLong() + warpCount.toLong() * WARP_EVENT_BYTES > rom.size.toLong()) return null
+                repeat(warpCount) { index ->
+                    val warp = warps + index * WARP_EVENT_BYTES
+                    val destination = (rom.u8(warp + WARP_EVENT_GROUP_OFFSET) shl 8) or
+                        rom.u8(warp + WARP_EVENT_MAP_OFFSET)
+                    if (destination in knownMaps) destinations += destination
+                }
+            }
+        }
+        val connections = rom.gbaPointer(header + MAP_CONNECTIONS_OFFSET)
+        if (connections != null) {
+            if (connections.toLong() + MAP_CONNECTIONS_BYTES > rom.size.toLong()) return null
+            val count = rom.u32le(connections)
+            if (count > MAX_MAP_CONNECTIONS.toLong()) return null
+            if (count > 0) {
+                val entries = rom.gbaPointer(connections + MAP_CONNECTIONS_ENTRIES_OFFSET) ?: return null
+                if (entries.toLong() + count * MAP_CONNECTION_BYTES > rom.size.toLong()) return null
+                repeat(count.toInt()) { index ->
+                    val connection = entries + index * MAP_CONNECTION_BYTES
+                    val destination = (rom.u8(connection + MAP_CONNECTION_GROUP_OFFSET) shl 8) or
+                        rom.u8(connection + MAP_CONNECTION_MAP_OFFSET)
+                    if (destination in knownMaps) destinations += destination
+                }
+            }
+        }
+        return destinations
     }
 
     private fun enumerateRequiredMapSections(
         rom: RomImage,
-        root: Int,
+        layout: MapGroupsLayout,
         requiredMaps: Map<Int, Set<Int>>,
-    ): Map<Int, Int>? = enumerateRequiredMapHeaders(rom, root, requiredMaps)?.mapValues { (_, header) ->
+    ): Map<Int, Int>? = enumerateRequiredMapHeaders(rom, layout, requiredMaps)?.mapValues { (_, header) ->
         rom.u8(header + REGION_SECTION_OFFSET)
     }
 
     private fun enumerateRequiredMapHeaders(
         rom: RomImage,
-        root: Int,
+        layout: MapGroupsLayout,
         requiredMaps: Map<Int, Set<Int>>,
     ): Map<Int, Int>? {
         val requiredCount = requiredMaps.values.sumOf(Set<Int>::size)
         val headers = linkedMapOf<Int, Int>()
         var unbindableHeaders = 0
         requiredMaps.toSortedMap().forEach groupLoop@{ (group, maps) ->
-            val groupPointerOffset = root.toLong() + group.toLong() * 4L
+            val groupPointerOffset = layout.root.toLong() + group.toLong() * 4L
             if (groupPointerOffset < 0 || groupPointerOffset + 4L > rom.size.toLong()) {
                 return@groupLoop
             }
-            val groupRoot = rom.gbaPointer(groupPointerOffset.toInt()) ?: return@groupLoop
+            val groupRoot = decodeGroupRoot(rom, layout, group) ?: return@groupLoop
             maps.sorted().forEach mapLoop@{ map ->
                 val headerPointerOffset = groupRoot.toLong() + map.toLong() * 4L
                 if (headerPointerOffset < 0 || headerPointerOffset + 4L > rom.size.toLong()) {
@@ -154,7 +257,7 @@ object Gen3MapLocationResolver {
             }
         }
         mapTrace(
-            "map-groups root=0x${root.toString(16)} bound=${headers.size}/$requiredCount " +
+            "map-groups root=0x${layout.root.toString(16)} bound=${headers.size}/$requiredCount " +
                 "unbindable=$unbindableHeaders",
         )
         return headers.takeIf {
@@ -167,7 +270,7 @@ object Gen3MapLocationResolver {
      * zero-extension and four-byte pointer indexing. The data arrays may be sparse or relocated;
      * only the required encounter keys are authoritative.
      */
-    private fun findCompiledMapGroupsConsumerRoots(rom: RomImage): List<Int> = buildList {
+    private fun findCompiledMapGroupsConsumerRoots(rom: RomImage): List<MapGroupsLayout> = buildList {
         var offset = 0
         while (offset.toLong() + MAP_GROUP_LOOKUP_NARROW_BYTES <= rom.size.toLong()) {
             val u16Arguments = offset.toLong() + MAP_GROUP_LOOKUP_U16_BYTES <= rom.size.toLong() &&
@@ -201,11 +304,60 @@ object Gen3MapLocationResolver {
                 val literalOffset = if (u16Arguments) offset + 4 else offset
                 val literalInstruction = rom.u16le(literalOffset)
                 val literal = ((literalOffset + 4) and -4) + (literalInstruction and 0xff) * 4
-                if (literal.toLong() + 4L <= rom.size.toLong()) rom.gbaPointer(literal)?.let(::add)
+                if (literal.toLong() + 4L <= rom.size.toLong()) {
+                    rom.gbaPointer(literal)?.let { root -> add(MapGroupsLayout(root)) }
+                }
             }
+            encodedMapGroupsLayoutAt(rom, offset)?.let(::add)
             offset += 2
         }
     }.distinct()
+
+    /**
+     * Matches a source-compatible hardened `gMapGroups[group][map]` consumer where only the
+     * group-array pointers are stored XOR-encoded. Both the table and key come from the decoded
+     * consumer; map-header pointers remain ordinary ROM pointers and receive the normal structural
+     * validation below.
+     */
+    private fun encodedMapGroupsLayoutAt(rom: RomImage, offset: Int): MapGroupsLayout? {
+        if (offset.toLong() + MAP_GROUP_LOOKUP_ENCODED_BYTES > rom.size.toLong()) return null
+        if (
+            !isLiteralLoadR3(rom.u16le(offset)) ||
+            rom.u16le(offset + 2) != THUMB_LSL_R0_2 ||
+            rom.u16le(offset + 4) != THUMB_LDR_R2_R0_R3 ||
+            !isLiteralLoadR3(rom.u16le(offset + 6)) ||
+            rom.u16le(offset + 8) != THUMB_LSL_R1_2 ||
+            rom.u16le(offset + 10) != THUMB_EOR_R3_R2 ||
+            rom.u16le(offset + 12) != THUMB_LDR_R0_R1_R3 ||
+            rom.u16le(offset + 14) != THUMB_BX_LR
+        ) return null
+        val tableLiteral = thumbLiteralOffset(offset, rom.u16le(offset)) ?: return null
+        val keyLiteral = thumbLiteralOffset(offset + 6, rom.u16le(offset + 6)) ?: return null
+        if (tableLiteral.toLong() + 4L > rom.size.toLong() || keyLiteral.toLong() + 4L > rom.size.toLong()) {
+            return null
+        }
+        val root = rom.gbaPointer(tableLiteral) ?: return null
+        val key = rom.u32le(keyLiteral)
+        if (key == 0L) return null
+        val layout = MapGroupsLayout(root, key)
+        val first = decodeGroupRoot(rom, layout, 0) ?: return null
+        val second = decodeGroupRoot(rom, layout, 1) ?: return null
+        if (first == second) return null
+        return layout
+    }
+
+    private fun thumbLiteralOffset(instructionOffset: Int, instruction: Int): Int? {
+        val literal = ((instructionOffset + 4) and -4) + (instruction and 0xff) * 4
+        return literal.takeIf { it >= 0 }
+    }
+
+    private fun decodeGroupRoot(rom: RomImage, layout: MapGroupsLayout, group: Int): Int? {
+        val pointerOffset = layout.root.toLong() + group.toLong() * 4L
+        if (pointerOffset < 0 || pointerOffset + 4L > rom.size.toLong()) return null
+        val address = rom.u32le(pointerOffset.toInt()) xor layout.groupPointerXor
+        val decoded = address - GBA_ROM_BASE
+        return decoded.takeIf { it >= 0 && it + 4L <= rom.size.toLong() }?.toInt()
+    }
 
     private fun isLiteralLoadR2(instruction: Int): Boolean =
         isLiteralLoad(instruction, 2)
@@ -222,8 +374,8 @@ object Gen3MapLocationResolver {
         .groupBy({ it ushr 8 }, { it and 0xFF })
         .mapValues { (_, maps) -> maps.toSet() }
 
-    private fun resolveFromRoot(rom: RomImage, root: Int): Gen3MapLocationResolution {
-        val sections = enumerateMapSections(rom, root).orEmpty()
+    private fun resolveFromRoot(rom: RomImage, layout: MapGroupsLayout): Gen3MapLocationResolution {
+        val sections = enumerateMapSections(rom, layout).orEmpty()
         val entries = findRegionEntries(rom, sections.values.toSet()).orEmpty()
         return Gen3MapLocationResolution(sections, entries)
     }
@@ -242,25 +394,26 @@ object Gen3MapLocationResolver {
                         rom.gbaPointer(pointerOffset.toInt())?.let { validMapHeader(rom, it) } == true
                 }
             }
-            if (valid && enumerateMapSections(rom, root) != null) roots += root
+            if (valid && enumerateMapSections(rom, MapGroupsLayout(root)) != null) roots += root
             root += 4
         }
         return roots
     }
 
-    private fun enumerateMapSections(rom: RomImage, root: Int): Map<Int, Int>? =
-        enumerateMapHeaders(rom, root)?.mapValues { (_, header) -> rom.u8(header + REGION_SECTION_OFFSET) }
+    private fun enumerateMapSections(rom: RomImage, layout: MapGroupsLayout): Map<Int, Int>? =
+        enumerateMapHeaders(rom, layout)?.mapValues { (_, header) -> rom.u8(header + REGION_SECTION_OFFSET) }
 
-    private fun enumerateMapHeaders(rom: RomImage, root: Int): Map<Int, Int>? {
+    private fun enumerateMapHeaders(rom: RomImage, layout: MapGroupsLayout): Map<Int, Int>? {
+        if (layout.groupPointerXor != 0L) return enumerateEncodedMapHeaders(rom, layout)
         val groupRoots = mutableListOf<Int>()
-        var cursor = root
+        var cursor = layout.root
         while (cursor + 4 <= rom.size) {
             val groupRoot = rom.gbaPointer(cursor) ?: break
             groupRoots += groupRoot
             cursor += 4
         }
         if (groupRoots.isEmpty() || groupRoots.distinct().size != groupRoots.size) return null
-        val boundaries = (groupRoots + root).distinct().sorted()
+        val boundaries = (groupRoots + layout.root).distinct().sorted()
         val headers = linkedMapOf<Int, Int>()
         groupRoots.forEachIndexed { group, groupRoot ->
             val end = boundaries.firstOrNull { it > groupRoot } ?: return null
@@ -274,6 +427,31 @@ object Gen3MapLocationResolver {
             }
         }
         return headers
+    }
+
+    private fun enumerateEncodedMapHeaders(rom: RomImage, layout: MapGroupsLayout): Map<Int, Int>? {
+        val groupRoots = mutableListOf<Pair<Int, Int>>()
+        var group = 0
+        while (group < MAX_MAP_GROUPS) {
+            val groupRoot = decodeGroupRoot(rom, layout, group) ?: break
+            groupRoots += group to groupRoot
+            group++
+        }
+        if (groupRoots.isEmpty() || groupRoots.map { it.second }.distinct().size != groupRoots.size) return null
+        val headers = linkedMapOf<Int, Int>()
+        groupRoots.forEach { (group, groupRoot) ->
+            var added = 0
+            for (map in 0 until MAX_MAPS_PER_GROUP) {
+                val pointerOffset = groupRoot.toLong() + map.toLong() * 4L
+                if (pointerOffset < 0 || pointerOffset + 4L > rom.size.toLong()) break
+                val header = rom.gbaPointer(pointerOffset.toInt()) ?: break
+                if (!validMapHeader(rom, header)) break
+                headers[(group shl 8) or map] = header
+                added++
+            }
+            if (added == 0) return null
+        }
+        return headers.takeIf { it.isNotEmpty() }
     }
 
     private fun validMapHeader(rom: RomImage, offset: Int): Boolean {
@@ -419,6 +597,20 @@ object Gen3MapLocationResolver {
     }
 
     private const val MAP_HEADER_BYTES = 28
+    private const val MAP_EVENTS_OFFSET = 4
+    private const val MAP_CONNECTIONS_OFFSET = 12
+    private const val MAP_EVENTS_BYTES = 20
+    private const val MAP_EVENTS_WARP_COUNT_OFFSET = 1
+    private const val MAP_EVENTS_WARPS_OFFSET = 8
+    private const val WARP_EVENT_BYTES = 8
+    private const val WARP_EVENT_GROUP_OFFSET = 5
+    private const val WARP_EVENT_MAP_OFFSET = 6
+    private const val MAP_CONNECTIONS_BYTES = 8
+    private const val MAP_CONNECTIONS_ENTRIES_OFFSET = 4
+    private const val MAP_CONNECTION_BYTES = 12
+    private const val MAP_CONNECTION_GROUP_OFFSET = 8
+    private const val MAP_CONNECTION_MAP_OFFSET = 9
+    private const val MAX_MAP_CONNECTIONS = 256
     private const val GBA_ROM_BASE = 0x08000000L
     private const val REGION_SECTION_OFFSET = 0x14
     private const val REGION_ENTRY_BYTES = 8
@@ -430,11 +622,14 @@ object Gen3MapLocationResolver {
     private const val MIN_TEXT_RATIO = 0.85
     private const val MAP_GROUP_LOOKUP_U16_BYTES = 20L
     private const val MAP_GROUP_LOOKUP_NARROW_BYTES = 16L
+    private const val MAP_GROUP_LOOKUP_ENCODED_BYTES = 16L
     private const val THUMB_LSL_R0_16 = 0x0400
     private const val THUMB_LSL_R1_16 = 0x0409
     private const val THUMB_LSR_R0_14 = 0x0B80
     private const val THUMB_LDR_R3_R0_R3 = 0x58C3
+    private const val THUMB_LDR_R2_R0_R3 = 0x58C2
     private const val THUMB_LDR_R0_R1_R3 = 0x58C8
+    private const val THUMB_EOR_R3_R2 = 0x4053
     private const val THUMB_LSL_R0_2 = 0x0080
     private const val THUMB_ADD_R0_R0_R2 = 0x1880
     private const val THUMB_LDR_R0_R0 = 0x6800
@@ -447,7 +642,14 @@ object Gen3MapLocationResolver {
     private const val THUMB_LITERAL_LOAD_OPCODE = 0x4800
     private const val THUMB_REGISTER_SHIFT = 8
     private const val THUMB_REGISTER_MASK = 0x7
+    private const val MAX_MAP_GROUPS = 256
+    private const val MAX_MAPS_PER_GROUP = 256
 }
+
+private data class MapGroupsLayout(
+    val root: Int,
+    val groupPointerXor: Long = 0L,
+)
 
 private data class RegionEntryResolution(
     val root: Int,
