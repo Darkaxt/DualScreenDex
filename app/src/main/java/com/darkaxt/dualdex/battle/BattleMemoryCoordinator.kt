@@ -5,6 +5,7 @@ import com.darkaxt.dualdex.retroarch.CoreMemoryReadState
 import com.darkaxt.dualdex.retroarch.CoreMemoryRegion
 import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
+import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.SaveParseContext
@@ -19,12 +20,17 @@ data class BattleCatalogContext(
     val romIdentity: String,
     val generation: Int,
     val catalog: BattleCatalogView,
+    val gen2TimeOfDayWramOffset: Int? = null,
     val gen3SaveBlock1PointerAddress: Long? = null,
     val gen3RuntimeMemoryLayout: Gen3RuntimeMemoryLayout? = null,
     val liveAreaMemoryLayout: LiveAreaMemoryLayout? = null,
     val saveParseContext: SaveParseContext? = null,
     val savedTrainer: TrainerSnapshot? = null,
-)
+) {
+    init {
+        require(gen2TimeOfDayWramOffset == null || gen2TimeOfDayWramOffset in 0 until 0x2000)
+    }
+}
 
 data class LiveAreaMemoryLayout(
     val wramOffset: Int,
@@ -73,6 +79,7 @@ class BattleMemoryCoordinator(
     private val positionPublisher: (RuntimeMapPosition?) -> Unit = {},
     private val partyPublisher: (List<OwnedIndividual>?) -> Unit = {},
     private val liveGamePublisher: (Gen3LiveGameSnapshot?) -> Unit = {},
+    private val gen2LightingPublisher: (MapLighting?) -> Unit = {},
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     private val pollingIntervalProvider: () -> Int = { 5 },
     autoStart: Boolean = true,
@@ -106,6 +113,7 @@ class BattleMemoryCoordinator(
     private var lastPublishedLiveParty: List<OwnedIndividual>? = null
     private var pendingLivePointers: Gen3LivePointers? = null
     private var lastPublishedLiveGame: Gen3LiveGameSnapshot? = null
+    private var lastPublishedGen2Lighting: MapLighting? = null
     @Volatile private var closed = false
 
     init {
@@ -132,6 +140,7 @@ class BattleMemoryCoordinator(
             partyPublisher(null)
             lastPublishedLiveGame = null
             liveGamePublisher(null)
+            publishGen2Lighting(null)
         }
         resetReader()
         tracker.reset(nextIdentity)
@@ -169,6 +178,7 @@ class BattleMemoryCoordinator(
             }
             is CoreMemoryReadState.Failed -> {
                 reader = null
+                publishGen2Lighting(null)
                 closeTransport()
                 tracker.missed().takeIf(BattleTrackingUpdate::active)?.let(publisher)
             }
@@ -237,6 +247,9 @@ class BattleMemoryCoordinator(
                                 ),
                             )
                         }
+                    }
+                    catalogProvider()?.gen2TimeOfDayWramOffset?.let { offset ->
+                        add(CoreMemoryRegion("live-game-clock", GEN1_WRAM_BASE + offset, 1))
                     }
                 })
             }
@@ -396,6 +409,9 @@ class BattleMemoryCoordinator(
     }
 
     private fun process(regions: Map<String, ByteArray>, context: BattleCatalogContext) {
+        if (context.generation == 2) {
+            publishGen2Lighting(resolveCurrentGen2Lighting(regions, context))
+        }
         val validatedGen2NoBattle = context.generation == 2 && knownGen2NonBattle(regions)
         val resolvedSample = if (context.generation == 1) {
             val source = requireNotNull(regions["wram"] ?: regions["battle-window"])
@@ -893,6 +909,24 @@ class BattleMemoryCoordinator(
         }
     }
 
+    private fun resolveCurrentGen2Lighting(
+        regions: Map<String, ByteArray>,
+        context: BattleCatalogContext,
+    ): MapLighting? {
+        val offset = context.gen2TimeOfDayWramOffset ?: return null
+        val value = regions["live-game-clock"]?.singleOrNull()?.toInt()?.and(0xff)
+            ?: regions["wram"]?.getOrNull(offset)?.toInt()?.and(0xff)
+            ?: return null
+        return MapLighting.entries.getOrNull(value)
+    }
+
+    private fun publishGen2Lighting(lighting: MapLighting?) {
+        if (lighting != lastPublishedGen2Lighting) {
+            lastPublishedGen2Lighting = lighting
+            gen2LightingPublisher(lighting)
+        }
+    }
+
     private fun reconstructGen2Wram(regions: Map<String, ByteArray>): ByteArray {
         val layout = requireNotNull(cachedLayout)
         return ByteArray(GEN1_WRAM_BYTES).also { wram ->
@@ -926,7 +960,9 @@ class BattleMemoryCoordinator(
     )
 
     private fun safeHeartbeat() {
-        runCatching(::heartbeat)
+        runCatching(::heartbeat).onFailure {
+            synchronized(this) { publishGen2Lighting(null) }
+        }
     }
 
     private fun scheduleHeartbeat(delayMillis: Long) {
@@ -973,6 +1009,7 @@ class BattleMemoryCoordinator(
         closed = true
         heartbeatExecutor.shutdown()
         synchronized(this) {
+            publishGen2Lighting(null)
             resetReader()
             eligible = false
             sessionIdentity = null

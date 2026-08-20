@@ -26,6 +26,8 @@ import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.api.StateView
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
+import com.enrpau.dualscreendex.companion.model.GameClock
+import com.enrpau.dualscreendex.companion.model.GameClockPhase
 import com.enrpau.dualscreendex.companion.model.projectGameClock
 import com.enrpau.dualscreendex.companion.model.CatalogLoadingState
 import com.enrpau.dualscreendex.companion.model.BattleState
@@ -64,6 +66,7 @@ import com.darkaxt.dualdex.save.gen3.Gen3TrainerCardAbi
 import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
+import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -343,6 +346,7 @@ class ProductionCompanionRuntime(
             romIdentity = current.romSha256,
             generation = generation,
             catalog = BattleCatalogView(species, moves, current.typesById.keys),
+            gen2TimeOfDayWramOffset = current.runtimeMetadata.gen2TimeOfDayWramOffset,
             gen3SaveBlock1PointerAddress = current.runtimeMetadata.gen3SaveBlock1PointerAddress,
             gen3RuntimeMemoryLayout = current.runtimeMetadata.gen3RuntimeMemoryLayout?.let { layout ->
                 Gen3RuntimeMemoryLayout(
@@ -395,6 +399,18 @@ class ProductionCompanionRuntime(
         liveGameState = snapshot
         if (snapshot == null) liveParty = null
         publishSelectedPlayerState()
+    }
+
+    @Synchronized
+    fun updateGen2GameClock(lighting: MapLighting?) {
+        val family = catalog?.family
+        if (family != EngineFamily.GOLD_SILVER && family != EngineFamily.CRYSTAL) return
+        val gameTime = lighting?.let {
+            GameClock(phase = GameClockPhase.valueOf(it.name))
+        }
+        if (gateway.bootstrap().gameTime != gameTime) {
+            gateway.dispatch(CompanionAction.LiveGameClockChanged(gameTime))
+        }
     }
 
     @Synchronized

@@ -40,6 +40,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
+import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
@@ -310,9 +311,18 @@ class ProductionCompanionRuntimeTest {
                 CatalogField.available(35), CatalogField.available(95), CatalogField.available(35),
             )),
             typesById = mapOf(0 to TypeRecord(0, CatalogField.available("NORMAL"))),
+            runtimeMetadata = CatalogRuntimeMetadata(gen2TimeOfDayWramOffset = 0x1841),
         ))
         assertEquals("crystal", runtime.battleCatalogContext()?.romIdentity)
         assertEquals(2, runtime.battleCatalogContext()?.generation)
+        assertEquals(0x1841, runtime.battleCatalogContext()?.gen2TimeOfDayWramOffset)
+
+        runtime.updateGen2GameClock(MapLighting.NIGHT)
+        assertEquals("NIGHT", runtime.stateView().gameTime?.phase)
+        assertNull(runtime.stateView().gameTime?.hours)
+        assertNull(runtime.stateView().gameTime?.minutes)
+        runtime.updateGen2GameClock(null)
+        assertNull(runtime.stateView().gameTime)
         runtime.close()
     }
 

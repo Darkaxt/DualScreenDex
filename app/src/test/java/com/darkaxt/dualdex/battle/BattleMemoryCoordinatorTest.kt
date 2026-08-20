@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.battle
 import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveSpeciesContext
+import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -567,15 +568,18 @@ class BattleMemoryCoordinatorTest {
         wram[0x1cb6] = 3
         wram[0x1cb7] = 9
         wram[0x1cb8] = 14
+        wram[0x1841] = 2
         val updates = mutableListOf<BattleTrackingUpdate>()
         val liveAreas = mutableListOf<Int?>()
         val positions = mutableListOf<RuntimeMapPosition?>()
+        val lightings = mutableListOf<MapLighting?>()
         val transport = MemoryTransport(wram, 0xc000)
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { gen2Context() },
             publisher = updates::add,
             locationPublisher = liveAreas::add,
             positionPublisher = positions::add,
+            gen2LightingPublisher = lightings::add,
             transportFactory = { transport },
             autoStart = false,
         )
@@ -588,6 +592,7 @@ class BattleMemoryCoordinatorTest {
         assertEquals(33, updates.last().sample?.selectedMoveId)
         assertEquals(0x1803, liveAreas.last())
         assertEquals(RuntimeMapPosition(14, 9), positions.last())
+        assertEquals(listOf(MapLighting.NIGHT), lightings)
         assertTrue(transport.commands.all { it.startsWith("READ_CORE_MEMORY ") })
 
         wram[0x120e] = 34
@@ -595,20 +600,32 @@ class BattleMemoryCoordinatorTest {
         wram[0x1cb6] = 4
         wram[0x1cb7] = 10
         wram[0x1cb8] = 15
+        wram[0x1841] = 3
         repeat(2) { coordinator.heartbeat() }
         assertEquals(mapOf(19 to mapOf(33 to 1)), updates.last().observations)
         assertEquals(0x1804, liveAreas.last())
         assertEquals(RuntimeMapPosition(15, 10), positions.last())
+        assertEquals(MapLighting.DARK, lightings.last())
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY dcb5 2") })
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY dcb7 2") })
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY d841 1") })
 
+        val lightingPublications = lightings.size
         repeat(2) { coordinator.heartbeat() }
         assertTrue(updates.last().observations.isEmpty())
+        assertEquals(lightingPublications, lightings.size)
 
         wram[0x122d] = 0
         repeat(4) { coordinator.heartbeat() }
         assertTrue(updates.last().ended)
         assertTrue(!updates.last().active)
+
+        wram[0x1841] = 4
+        repeat(2) { coordinator.heartbeat() }
+        assertNull(lightings.last())
+        val nullPublications = lightings.count { it == null }
+        coordinator.updateSession(false, null, null)
+        assertEquals(nullPublications, lightings.count { it == null })
         coordinator.close()
     }
 
@@ -827,6 +844,7 @@ class BattleMemoryCoordinatorTest {
     private fun gen2Context() = BattleCatalogContext(
         romIdentity = "rom",
         generation = 2,
+        gen2TimeOfDayWramOffset = 0x1841,
         liveAreaMemoryLayout = LiveAreaMemoryLayout(0x1cb5, 2, 0x1cb8, 0x1cb7),
         catalog = BattleCatalogView(
             species = mapOf(
