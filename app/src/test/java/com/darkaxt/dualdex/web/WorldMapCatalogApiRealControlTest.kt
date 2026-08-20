@@ -7,6 +7,8 @@ import com.darkaxt.dualdex.catalog.CatalogRow
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
+import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
+import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -356,11 +358,11 @@ class WorldMapCatalogApiRealControlTest {
                 val response = URI("$base/api/maps/$key.png").toURL().openConnection() as HttpURLConnection
                 assertEquals(localMap.imageAssetKey, 200, response.responseCode)
                 assertEquals(localMap.imageAssetKey, "image/png", response.contentType)
-                assertTrue(
-                    localMap.imageAssetKey,
-                    response.inputStream.use { it.readBytes() }
-                        .contentEquals(reopened.localMaps.assets.getValue(localMap.imageAssetKey).bytes),
-                )
+                val bytes = response.inputStream.use { it.readBytes() }
+                val expected = requireNotNull(
+                    LocalMapAssetRenderer.render(reopened.localMaps, localMap.imageAssetKey, MapLighting.DAY),
+                ).bytes
+                assertTrue(localMap.imageAssetKey, bytes.contentEquals(expected))
             }
         } finally {
             server?.close()
