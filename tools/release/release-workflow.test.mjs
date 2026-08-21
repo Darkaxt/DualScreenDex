@@ -192,6 +192,7 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc31ThemeConsolidation == true/);
   assert.match(workflow, /\.v11Rc31NatureResolutionSupport == true/);
   assert.match(workflow, /\.v11Rc31GlobalLocalMapRendering == true/);
+  assert.match(workflow, /\.v11Rc32PersistentLocalMapDiscovery == true/);
   assert.match(workflow, /\.gen1CompiledEvolutionCoveragePercent == 96\.62/);
   assert.match(workflow, /\.gen1CompiledLearnsetCoveragePercent == 93\.56/);
   assert.match(workflow, /\.gen1CompiledTypeChartCoveragePercent == 95\.79/);
@@ -203,7 +204,7 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.gen1Gen3CoverageUniqueRoms == 331/);
   assert.match(workflow, /\.gen1Gen3CoverageTables == 23/);
   assert.match(workflow, /\.gen1Gen3CoverageParserErrors == 0/);
-  assert.match(workflow, /RELEASE_NOTES_1\.1\.0-rc\.31\.md/);
+  assert.match(workflow, /RELEASE_NOTES_1\.1\.0-rc\.32\.md/);
   assert.match(workflow, /\.v11Rc4HotfixBoundedRomIndex == true/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });

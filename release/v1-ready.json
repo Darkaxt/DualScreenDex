@@ -102,6 +102,7 @@
   "v11Rc31ThemeConsolidation": true,
   "v11Rc31NatureResolutionSupport": true,
   "v11Rc31GlobalLocalMapRendering": true,
+  "v11Rc32PersistentLocalMapDiscovery": true,
   "gen1CompiledEvolutionCoveragePercent": 96.62,
   "gen1CompiledLearnsetCoveragePercent": 93.56,
   "gen1CompiledTypeChartCoveragePercent": 95.79,
