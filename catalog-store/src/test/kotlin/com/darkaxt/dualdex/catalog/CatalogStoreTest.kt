@@ -305,7 +305,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(29, CatalogSchema.parserSchemaVersion)
+        assertEquals(30, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -688,7 +688,7 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun `revision 14 encounter-only local maps are invalidated so the current parser can rebuild them`() {
+    fun `previous parser revision is invalidated so corrected local map POIs are rebuilt`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("d".repeat(64))
@@ -696,7 +696,10 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
 
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
-            database.execute("UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1", listOf(14))
+            database.execute(
+                "UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1",
+                listOf(CatalogSchema.parserSchemaVersion - 1),
+            )
         }
 
         assertNull(cache.readComplete(catalog.romSha256))

@@ -224,10 +224,10 @@ describe('optional local map presentation', () => {
     const stage = screen.getByRole('region', { name: 'Interactive local map' });
     expect(stage.dataset.poiZoomPercent).toBe('0');
     expect(container.querySelectorAll('.map-poi-marker')).toHaveLength(5);
-    expect(container.querySelectorAll('.map-poi-label')).toHaveLength(5);
+    expect(container.querySelectorAll('.map-poi-label')).toHaveLength(3);
     expect(screen.getByText('Route gate')).toBeTruthy();
-    expect(screen.getByText('Item')).toBeTruthy();
-    expect(screen.getByText('Unknown')).toBeTruthy();
+    expect(screen.queryByText('Place')).toBeNull();
+    expect(screen.queryByText('Unknown')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Map POI filters' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Available items' }));
@@ -238,7 +238,7 @@ describe('optional local map presentation', () => {
     const thresholdState = {
       ...state,
       currentMapPosition: { x: 12, y: 7 },
-      localMapPois: [{ key: 'item', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 3, tileY: 3, category: 'AVAILABLE_ITEM', state: 'SILHOUETTE', displayName: null, service: null, itemId: null, itemName: null, destinationBaseAreaId: null }],
+      localMapPois: [{ key: 'item', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 3, tileY: 3, category: 'AVAILABLE_ITEM', state: 'IDENTIFIED', displayName: null, service: null, itemId: 13, itemName: 'Potion', destinationBaseAreaId: null }],
       localMapPoiPreferences: {
         showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
         iconZoomThresholdPercent: 20, labelZoomThresholdPercent: 60,
@@ -354,7 +354,7 @@ describe('optional local map presentation', () => {
     const fog = view.container.querySelectorAll('.map-scene-placement-fog');
     expect(fog).toHaveLength(1);
     expect(fog[0].getAttribute('data-local-map-key')).toBe('local/0011');
-    expect([...view.container.querySelectorAll('.map-local-poi-label')].map(label => label.textContent)).toEqual(['Route 101']);
+    expect([...view.container.querySelectorAll('.map-local-poi-label')].map(label => label.textContent)).toEqual([]);
 
     view.rerender(<MapPage
       catalog={connectedCatalog}
@@ -365,10 +365,7 @@ describe('optional local map presentation', () => {
     expect(view.container.querySelectorAll('.map-scene-tile')).toHaveLength(2);
     expect(view.container.querySelectorAll('.map-scene-placement-fog')).toHaveLength(0);
     expect(view.container.querySelector('.map-scene-atlas-fallback')).toBeNull();
-    expect([...view.container.querySelectorAll('.map-local-poi-label')].map(label => label.textContent)).toEqual([
-      'Route 101',
-      'Oldale Town',
-    ]);
+    expect([...view.container.querySelectorAll('.map-local-poi-label')].map(label => label.textContent)).toEqual(['Oldale Town']);
   });
 
   it('renders final raster dimensions and recenters on the player without changing zoom', () => {

@@ -33,6 +33,25 @@ class Gen3LocalMapPoiResolverRealControlTest {
     }
 
     @Test
+    fun `official Emerald merges Littleroot signs with their named destinations`() {
+        val pois = parse("DUALDEX_OFFICIAL_EMERALD_ROM", EMERALD_SHA)
+            .localMaps.pois.filter { it.baseAreaId == 0x0009 }
+
+        assertEquals(4, pois.size)
+        assertEquals(emptyList<LocalMapPoiKind>(), pois.filter { it.kind != LocalMapPoiKind.PLACE }.map { it.kind })
+        assertEquals(
+            setOf(0x0100, 0x0102, 0x0104),
+            pois.mapNotNullTo(mutableSetOf()) { it.destinationBaseAreaId },
+        )
+        assertEquals(
+            setOf("LITTLEROOT TOWN", "PROF. BIRCH'S POKéMON LAB"),
+            pois.mapNotNullTo(mutableSetOf()) { it.displayName },
+        )
+        assertTrue(pois.all { it.organicVisibility == LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY })
+        assertTrue(pois.none { "/warp/" in it.key })
+    }
+
+    @Test
     fun `official FireRed exposes Celadon hidden PP Up from MapEvents`() {
         val pois = parse("DUALDEX_FIRERED_ROM", FIRERED_SHA)
             .localMaps.pois.filter { it.baseAreaId == 0x0306 }

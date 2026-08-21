@@ -372,10 +372,10 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           />)}
         {localScene && visibleScenePlacements.map(placement => {
           const name = localMapNames.get(placement.localMapKey);
-          if (!name) return null;
+          if (!name || placement.localMapKey === activePlacement?.localMapKey) return null;
           return <span
             key={`poi/${placement.localMapKey}`}
-            class={`map-local-poi-label ${placement.localMapKey === activePlacement?.localMapKey ? 'is-current' : ''}`}
+            class="map-local-poi-label"
             aria-label={`Map location: ${name}`}
             style={{
               left: `${(placement.pixelX + placement.pixelWidth / 2) / localScene.pixelWidth * 100}%`,
@@ -421,7 +421,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           onClick={() => setSelectedPoiKey(current => current === poi.key ? null : poi.key)}
         >
           <span class="map-poi-symbol" aria-hidden="true">{poiSymbol(poi)}</span>
-          {poiLabelsVisible && <span class="map-poi-label">{poiLabel(poi)}</span>}
+          {poiLabelsVisible && poiDisplayLabel(poi) && <span class="map-poi-label">{poiDisplayLabel(poi)}</span>}
         </button>)}
       </div>
 
@@ -495,7 +495,17 @@ function poiCategoryEnabled(poi: LocalMapPoiView, preferences: LocalMapPoiPrefer
 }
 
 function poiLabel(poi: LocalMapPoiView) {
-  return poi.itemName ?? poi.displayName ?? (poi.category === 'AVAILABLE_ITEM' || poi.category === 'COLLECTED_ITEM' ? 'Item' : poi.category === 'SERVICE' ? 'Service' : poi.category === 'PLACE' ? 'Place' : 'Unknown');
+  return poiDisplayLabel(poi) ?? (poi.category === 'AVAILABLE_ITEM' || poi.category === 'COLLECTED_ITEM'
+    ? 'Unidentified item'
+    : poi.category === 'SERVICE'
+      ? 'Unidentified service'
+      : poi.category === 'PLACE'
+        ? 'Unidentified entrance'
+        : 'Unidentified point');
+}
+
+function poiDisplayLabel(poi: LocalMapPoiView) {
+  return poi.itemName ?? poi.displayName;
 }
 
 function poiCategoryLabel(poi: LocalMapPoiView) {

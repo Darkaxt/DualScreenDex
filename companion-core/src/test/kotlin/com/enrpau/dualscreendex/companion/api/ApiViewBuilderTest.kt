@@ -111,6 +111,44 @@ class ApiViewBuilderTest {
     }
 
     @Test
+    fun identifiedEntranceUsesItsDestinationMapNameInsteadOfAGenericPlaceLabel() {
+        val outside = LocalMap("local/0009", "Littleroot Town", 0x0009, 320, 320, 20, 20, "local/0009/map")
+        val house = LocalMap("local/0100", "Brendan's House", 0x0100, 160, 160, 10, 10, "local/0100/map")
+        val entrance = LocalMapPoi(
+            "local/0009/bg/2", outside.key, outside.baseAreaId, 7, 8,
+            LocalMapPoiKind.PLACE,
+            LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
+            destinationBaseAreaId = house.baseAreaId,
+        )
+        val catalog = ParsedCatalog(
+            "a".repeat(64), EngineFamily.EMERALD, Platform.GBA,
+            localMaps = LocalMapCatalog(
+                maps = listOf(outside, house),
+                assets = mapOf(
+                    outside.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                    house.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                ),
+                pois = listOf(entrance),
+            ),
+        )
+
+        val view = ApiViewBuilder.state(
+            AppSnapshot(
+                settings = CompanionSettings(knowledgeMode = KnowledgeMode.ORGANIC),
+                ledger = KnowledgeLedger(
+                    proximityRevealedPoiKeys = setOf(entrance.key),
+                    identifiedPoiKeys = setOf(entrance.key),
+                ),
+            ),
+            catalog,
+        ).localMapPois.single()
+
+        assertEquals("IDENTIFIED", view.state)
+        assertEquals("Brendan's House", view.displayName)
+        assertEquals(house.baseAreaId, view.destinationBaseAreaId)
+    }
+
+    @Test
     fun exposesTheCompletePersistedRomThemeWithoutReinterpretingTokens() {
         val theme = CatalogTheme(
             CatalogThemeMethod.MULTI_ASSET_QUANTIZATION,

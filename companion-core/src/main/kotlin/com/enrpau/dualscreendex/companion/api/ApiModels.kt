@@ -693,6 +693,9 @@ object ApiViewBuilder {
             .flatMap { (areaBaseId, speciesIds) -> speciesIds.map { speciesId -> speciesId to areaBaseId } }
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, areaBaseIds) -> areaBaseIds.distinct().sorted() }
+        val localMapNamesByBaseId = catalog?.localMaps?.maps.orEmpty()
+            .mapNotNull { map -> map.displayName?.let { map.baseAreaId to it } }
+            .toMap()
         val localMapPois = catalog?.localMaps?.pois.orEmpty().mapNotNull { poi ->
             val collected = poi.key in snapshot.ledger.collectedPoiKeys
             val explicitlyIdentified = poi.key in snapshot.ledger.identifiedPoiKeys || poi.key in snapshot.ledger.enteredPoiKeys
@@ -727,7 +730,11 @@ object ApiViewBuilder {
                 tileY = poi.tileY,
                 category = category,
                 state = state,
-                displayName = poi.displayName.takeIf { identified },
+                displayName = (
+                    poi.displayName
+                        ?: poi.destinationBaseAreaId?.let(localMapNamesByBaseId::get)
+                        ?: poi.destinationBaseAreaId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
+                    ).takeIf { identified },
                 service = poi.service?.name,
                 itemId = poi.item?.itemId.takeIf { identified },
                 itemName = poi.item?.displayName.takeIf { identified },

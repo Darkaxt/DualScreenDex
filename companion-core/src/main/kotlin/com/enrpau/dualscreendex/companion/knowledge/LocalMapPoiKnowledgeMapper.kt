@@ -38,8 +38,14 @@ object LocalMapPoiKnowledgeMapper {
             .map { it.key }
             .toSet()
         if (newlyRevealed.isEmpty()) return previous
+        val newlyIdentified = catalog.localMaps.pois.asSequence()
+            .filter { it.key in newlyRevealed }
+            .filter { it.organicVisibility == LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY }
+            .map { it.key }
+            .toSet()
         return previous.copy(
             proximityRevealedPoiKeys = previous.proximityRevealedPoiKeys + newlyRevealed,
+            identifiedPoiKeys = previous.identifiedPoiKeys + newlyIdentified,
         )
     }
 }

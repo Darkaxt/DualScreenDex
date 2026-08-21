@@ -26,6 +26,14 @@ class LocalMapPoiKnowledgeMapperTest {
     }
 
     @Test
+    fun `same or adjacent tile identifies an entrance while hidden items remain silhouettes`() {
+        val merged = LocalMapPoiKnowledgeMapper.mergeProximity(KnowledgeLedger(), CATALOG, 0x0102, 5, 4)
+
+        assertEquals(setOf(HIDDEN_KEY, ENTRANCE_KEY), merged.proximityRevealedPoiKeys)
+        assertEquals(setOf(ENTRANCE_KEY), merged.identifiedPoiKeys)
+    }
+
+    @Test
     fun `two tiles away or another map does not reveal hidden item`() {
         val distant = LocalMapPoiKnowledgeMapper.mergeProximity(KnowledgeLedger(), CATALOG, 0x0102, 2, 4)
         val anotherMap = LocalMapPoiKnowledgeMapper.mergeProximity(KnowledgeLedger(), CATALOG, 0x0103, 4, 4)
@@ -87,8 +95,19 @@ class LocalMapPoiKnowledgeMapperTest {
                         LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
                         item = LocalMapPoiItem(13, collectionFlagId = 1007),
                     ),
+                    LocalMapPoi(
+                        ENTRANCE_KEY,
+                        MAP.key,
+                        MAP.baseAreaId,
+                        6,
+                        4,
+                        LocalMapPoiKind.PLACE,
+                        LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
+                        destinationBaseAreaId = 0x0103,
+                    ),
                 ),
             ),
         )
+        const val ENTRANCE_KEY = "local/0102/bg/entrance"
     }
 }
