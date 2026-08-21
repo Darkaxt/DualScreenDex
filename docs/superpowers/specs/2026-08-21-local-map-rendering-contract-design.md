@@ -10,7 +10,9 @@ The Local scene continues to use parser-produced local-map rasters and scene pla
 
 The initial scene camera still fits the current Local placement exactly as the pre-scene Local view did. Moving between connected placements preserves the viewport. Recenter changes only pan: it centers the live player cell and retains the current scale. If no valid player cell exists, it centers the current placement at the retained scale.
 
-Player and POI markers remain fixed-size screen-readable elements because the map plane is resized instead of transform-scaled. Their positions remain tied to scene coordinates.
+Player and POI markers remain fixed-size screen-readable elements because the map plane is resized instead of transform-scaled. Their positions remain tied to scene coordinates. When live trainer data exposes the ROM-derived avatar, that sprite replaces the abstract player dot at its intrinsic 64×64 size; the compact dot remains only as a fail-safe when the avatar asset is unavailable. Local maximum zoom is bounded by the same size: a source map tile may grow only until its rendered width matches the 64-pixel avatar. For Gen III's 16-pixel tiles, the maximum effective raster scale is therefore 4×.
+
+Trainer portraits and badge artwork are independent parser roles. A structurally decoded portrait pair remains available even when the ROM's badge sheet does not resolve; one missing role must not suppress the other.
 
 ## Discovery and fog
 
@@ -30,8 +32,7 @@ The DOM contains raster elements only for maps eligible under the current knowle
 
 ## Verification contract
 
-- Unit tests prove player-centered recentering preserves scale.
+- Unit tests prove player-centered recentering preserves scale and that the Local zoom bound derives from the avatar and source-tile sizes.
 - Page tests prove hidden Local images are absent, fog placeholders are opaque, Atlas is absent from Local scenes, POIs obey knowledge mode, and current-map transitions preserve zoom.
 - A production build must pass.
-- A real-browser check against parser-produced Modern Emerald maps must prove initial Local detail, sharp nearest-neighbour rendering at maximum zoom, fixed-size player marker, player-centered recentering with unchanged scale, hidden-image non-loading, opaque fog, and visible eligible POI names.
-
+- A real-browser check against parser-produced Modern Emerald maps must prove initial Local detail, sharp nearest-neighbour rendering at a 4× effective maximum, a 64×64 ROM-derived player sprite, player-centered recentering with unchanged scale, hidden-image non-loading, opaque fog, and visible eligible POI names.

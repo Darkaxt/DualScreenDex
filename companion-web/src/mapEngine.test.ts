@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anchoredZoom, containFit, edgesAreBlack, focusMapRect, GestureTracker } from './mapEngine';
+import { anchoredZoom, centerMapPoint, containFit, edgesAreBlack, focusMapRect, GestureTracker, maximumScaleForMarker } from './mapEngine';
 
 describe('world map viewport engine', () => {
   it('contain-fits the intrinsic raster without stretching it', () => {
@@ -43,6 +43,26 @@ describe('world map viewport engine', () => {
     const gesture = new GestureTracker(focused.viewport, focused.maximumScale);
     gesture.setViewport({ ...focused.viewport, scale: 16 });
     expect(gesture.viewport.scale).toBe(16);
+  });
+
+  it('centers a live player point without changing the current zoom', () => {
+    const centered = centerMapPoint(
+      { scale: 7.5, panX: 31, panY: -18 },
+      { x: 0, y: 0, width: 704, height: 320 },
+      { width: 1240, height: 563.6363636364 },
+      { x: 344, y: 120 },
+    );
+
+    expect(centered.scale).toBe(7.5);
+    expect(centered.panX).toBeCloseTo(105.6818181818, 8);
+    expect(centered.panY).toBeCloseTo(528.4090909091, 8);
+    expect(centered.panX + ((344 / 704) - 0.5) * 1240 * centered.scale).toBeCloseTo(0, 8);
+    expect(centered.panY + ((120 / 320) - 0.5) * 563.6363636364 * centered.scale).toBeCloseTo(0, 8);
+  });
+
+  it('caps local zoom when a map tile reaches the intrinsic trainer-marker size', () => {
+    expect(maximumScaleForMarker(0.08, 16, 64)).toBe(50);
+    expect(0.08 * maximumScaleForMarker(0.08, 16, 64) * 16).toBe(64);
   });
 
   it('pans with one pointer and clears a canceled gesture', () => {

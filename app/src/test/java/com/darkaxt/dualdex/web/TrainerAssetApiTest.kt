@@ -24,14 +24,10 @@ class TrainerAssetApiTest {
                     Platform.GBA,
                     trainerAssets = TrainerAssetCatalog(
                         avatarAssetKeys = mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"),
-                        badgeAssetKeys = (1..8).map { "trainer/badge/$it" },
-                        assets = buildMap {
-                            put("trainer/avatar/male", sprite)
-                            put("trainer/avatar/female", sprite)
-                            repeat(8) { badge ->
-                                put("trainer/badge/${badge + 1}", RgbaSprite(16, 16, IntArray(256)))
-                            }
-                        },
+                        assets = mapOf(
+                            "trainer/avatar/male" to sprite,
+                            "trainer/avatar/female" to sprite,
+                        ),
                     ),
                 ),
             )

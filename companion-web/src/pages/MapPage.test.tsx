@@ -208,6 +208,40 @@ describe('optional local map presentation', () => {
     expect(screen.queryByRole('button', { name: 'Show Local map' })).toBeNull();
   });
 
+  it('uses the ROM-derived trainer avatar for the live player marker', () => {
+    const bounds = {
+      x: 0, y: 0, top: 0, right: 1240, bottom: 825, left: 0,
+      width: 1240, height: 825,
+      toJSON: () => ({}),
+    } as DOMRect;
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(bounds);
+    const { container } = render(<MapPage
+      catalog={connectedCatalog}
+      state={{
+        ...state,
+        currentMapPosition: { x: 12, y: 7 },
+        trainer: {
+          name: 'May', gender: 'FEMALE', publicTrainerId: 7, money: 3000,
+          playTimeHours: 1, playTimeMinutes: 23, dexSeen: 4, dexCaught: 2,
+          stars: 0, avatarUrl: '/api/trainer-assets/trainer%2Favatar%2Ffemale.png', badges: [],
+        },
+      }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    const marker = container.querySelector('.map-player-marker');
+    expect(marker?.classList.contains('has-sprite')).toBe(true);
+    expect(marker?.querySelector('img')?.getAttribute('src')).toBe('/api/trainer-assets/trainer%2Favatar%2Ffemale.png');
+    expect(marker?.querySelector('img')?.getAttribute('alt')).toBe('May');
+    expect(marker?.querySelector('.map-player-dot')).toBeNull();
+    expect((marker as HTMLElement).style.width).toBe('64px');
+    expect((marker as HTMLElement).style.height).toBe('64px');
+    for (let index = 0; index < 12; index += 1) fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(Number(screen.getByRole('region', { name: 'Interactive local map' }).dataset.effectiveRasterScale)).toBeCloseTo(4, 8);
+    rect.mockRestore();
+  });
+
   it('renders a connected Local scene and preserves the viewport across its map boundary', () => {
     const view = render(<MapPage
       catalog={connectedCatalog}
@@ -239,7 +273,7 @@ describe('optional local map presentation', () => {
     expect(view.container.querySelector('.map-player-marker')?.getAttribute('aria-label')).toBe('Player position 1, 7');
   });
 
-  it('uses a fogged Atlas underlay for inaccessible scene gaps and hides undiscovered Local maps', () => {
+  it('does not load undiscovered Local rasters or an Atlas underlay in Organic mode', () => {
     const view = render(<MapPage
       catalog={connectedCatalog}
       state={{ ...state, revealedAreaBaseIds: [] }}
@@ -247,12 +281,15 @@ describe('optional local map presentation', () => {
       onOpenSettings={vi.fn()}
     />);
 
-    const fallback = view.container.querySelector('.map-scene-atlas-fallback');
-    expect(fallback?.getAttribute('src')).toBe('/api/maps/world%2Fgen3-region-0.png');
-    expect(fallback?.classList.contains('is-fogged')).toBe(true);
+    expect(view.container.querySelector('.map-scene-atlas-fallback')).toBeNull();
+    const images = view.container.querySelectorAll('.map-scene-tile');
+    expect(images).toHaveLength(1);
+    expect(images[0].getAttribute('data-local-map-key')).toBe('local/0010');
+    expect(view.container.querySelector('img[data-local-map-key="local/0011"]')).toBeNull();
     const fog = view.container.querySelectorAll('.map-scene-placement-fog');
     expect(fog).toHaveLength(1);
     expect(fog[0].getAttribute('data-local-map-key')).toBe('local/0011');
+    expect([...view.container.querySelectorAll('.map-local-poi-label')].map(label => label.textContent)).toEqual(['Route 101']);
 
     view.rerender(<MapPage
       catalog={connectedCatalog}
@@ -260,11 +297,16 @@ describe('optional local map presentation', () => {
       onOpenPokedex={vi.fn()}
       onOpenSettings={vi.fn()}
     />);
+    expect(view.container.querySelectorAll('.map-scene-tile')).toHaveLength(2);
     expect(view.container.querySelectorAll('.map-scene-placement-fog')).toHaveLength(0);
-    expect(view.container.querySelector('.map-scene-atlas-fallback')?.classList.contains('is-fogged')).toBe(false);
+    expect(view.container.querySelector('.map-scene-atlas-fallback')).toBeNull();
+    expect([...view.container.querySelectorAll('.map-local-poi-label')].map(label => label.textContent)).toEqual([
+      'Route 101',
+      'Oldale Town',
+    ]);
   });
 
-  it('restores Local-map zoom depth and recenters on the current scene placement', () => {
+  it('renders final raster dimensions and recenters on the player without changing zoom', () => {
     const bounds = {
       x: 0, y: 0, top: 0, right: 1240, bottom: 825, left: 0,
       width: 1240, height: 825,
@@ -273,19 +315,27 @@ describe('optional local map presentation', () => {
     const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(bounds);
     const { container } = render(<MapPage
       catalog={connectedCatalog}
-      state={state}
+      state={{ ...state, currentMapPosition: { x: 19, y: 7 } }}
       onOpenPokedex={vi.fn()}
       onOpenSettings={vi.fn()}
     />);
     const stage = screen.getByRole('region', { name: 'Interactive local map' });
+    const plane = container.querySelector<HTMLElement>('.map-plane')!;
 
     expect(Number(stage.dataset.scale)).toBeGreaterThan(1);
     expect(Number(stage.dataset.panX)).toBeGreaterThan(0);
+    expect(parseFloat(plane.style.width)).toBeCloseTo(1240 * Number(stage.dataset.scale), 5);
+    expect(parseFloat(plane.style.height)).toBeCloseTo((1240 / 704 * 320) * Number(stage.dataset.scale), 5);
+    expect(plane.style.transform).not.toContain('scale(');
     for (let index = 0; index < 12; index += 1) fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     expect(Number(stage.dataset.scale)).toBeGreaterThan(4);
+    const zoomedScale = Number(stage.dataset.scale);
     fireEvent.click(screen.getByRole('button', { name: 'Recenter map' }));
-    expect(Number(stage.dataset.scale)).toBeGreaterThan(1);
+    expect(Number(stage.dataset.scale)).toBe(zoomedScale);
+    expect(Number(stage.dataset.panX)).toBeCloseTo(-(((19.5 / 44) - 0.5) * 1240 * zoomedScale), 5);
+    expect(Number(stage.dataset.panY)).toBeCloseTo(-(((7.5 / 20) - 0.5) * (1240 / 704 * 320) * zoomedScale), 5);
     expect(container.querySelectorAll('.map-scene-tile')).toHaveLength(2);
+    expect(container.querySelector<HTMLElement>('.map-player-marker')?.style.width).toBe('');
     rect.mockRestore();
   });
 

@@ -14,9 +14,13 @@ data class TrainerAssetCatalog(
             require(avatarAssetKeys.isEmpty() && badgeAssetKeys.isEmpty())
             return@apply
         }
-        require(avatarAssetKeys.keys == setOf(0, 1)) { "trainer avatars must cover both player genders" }
-        require(badgeAssetKeys.size == 8 && badgeAssetKeys.distinct().size == 8) {
-            "trainer assets must contain exactly eight distinct badges"
+        if (avatarAssetKeys.isNotEmpty()) {
+            require(avatarAssetKeys.keys == setOf(0, 1)) { "trainer avatars must cover both player genders" }
+        }
+        if (badgeAssetKeys.isNotEmpty()) {
+            require(badgeAssetKeys.size == 8 && badgeAssetKeys.distinct().size == 8) {
+                "trainer assets must contain exactly eight distinct badges"
+            }
         }
         require(assets.keys == avatarAssetKeys.values.toSet() + badgeAssetKeys) {
             "trainer assets must exactly match the referenced keys"

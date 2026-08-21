@@ -16,17 +16,17 @@
 - Modify: `companion-web/src/mapEngine.ts`
 - Test: `companion-web/src/mapEngine.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add a test that calls a new `centerMapPoint` helper with a non-default viewport scale and asserts the scale is unchanged while the requested scene point maps to stage center.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npm.cmd test -- mapEngine.test.ts`
 
 Expected: FAIL because `centerMapPoint` is not exported.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement:
 
@@ -45,7 +45,7 @@ export function centerMapPoint(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npm.cmd test -- mapEngine.test.ts`
 
@@ -57,21 +57,21 @@ Expected: PASS.
 - Modify: `companion-web/src/pages/MapPage.test.tsx`
 - Modify: `companion-web/src/pages/MapPage.tsx`
 
-- [ ] **Step 1: Write failing page tests**
+- [x] **Step 1: Write failing page tests**
 
 Assert that Organic mode creates no image for an undiscovered placement, creates one opaque placeholder, never creates `.map-scene-atlas-fallback`, exposes only eligible `.map-local-poi-label` elements, and exposes all placements/labels in Discovered mode.
 
-- [ ] **Step 2: Run tests to verify RED**
+- [x] **Step 2: Run tests to verify RED**
 
 Run: `npm.cmd test -- MapPage.test.tsx`
 
 Expected: FAIL because RC29 renders all placement images, renders the Atlas underlay, and has no Local POI labels.
 
-- [ ] **Step 3: Implement eligible placement selection**
+- [x] **Step 3: Implement eligible placement selection**
 
 Derive `visibleScenePlacements` from `revealedBaseIds` in Organic and all placements in Discovered. Map only that list to `<img>` and named POI elements. Map the remaining list to opaque placeholders. Remove the Local-scene Atlas image entirely.
 
-- [ ] **Step 4: Run page tests to verify GREEN**
+- [x] **Step 4: Run page tests to verify GREEN**
 
 Run: `npm.cmd test -- MapPage.test.tsx`
 
@@ -84,21 +84,21 @@ Expected: PASS.
 - Modify: `companion-web/src/pages/MapPage.tsx`
 - Modify: `companion-web/src/styles.css`
 
-- [ ] **Step 1: Write failing behavior tests**
+- [x] **Step 1: Write failing behavior tests**
 
-Assert that the plane width and height include `viewport.scale`, its transform contains translation only, the player marker keeps fixed CSS dimensions, and recenter preserves the zoomed scale while changing pan to the live player coordinate.
+Assert that the plane width and height include `viewport.scale`, its transform contains translation only, the ROM-derived trainer avatar replaces the player dot at no less than its intrinsic 64×64 size, maximum Local zoom stops when one source tile reaches that size, and recenter preserves the zoomed scale while changing pan to the live player coordinate.
 
-- [ ] **Step 2: Run tests to verify RED**
+- [x] **Step 2: Run tests to verify RED**
 
 Run: `npm.cmd test -- MapPage.test.tsx`
 
 Expected: FAIL because RC29 uses parent `scale()` and resets recenter to placement-fit scale.
 
-- [ ] **Step 3: Implement final-size raster layout**
+- [x] **Step 3: Implement final-size raster layout**
 
 Set plane dimensions to `fit.width * viewport.scale` and `fit.height * viewport.scale`; remove `scale()` from the transform. Use `centerMapPoint` for recenter, with current placement center as the no-player fallback. Remove `will-change: transform`; retain `image-rendering: pixelated`; make hidden placeholders `#000`.
 
-- [ ] **Step 4: Run focused tests and build**
+- [x] **Step 4: Run focused tests and build**
 
 Run: `npm.cmd test -- mapEngine.test.ts MapPage.test.tsx`
 
@@ -111,19 +111,19 @@ Expected: both commands PASS.
 **Files:**
 - Create only ignored evidence under: `output/playwright/rc29-local-map-rendering/`
 
-- [ ] **Step 1: Start the existing companion server with the exact Modern Emerald ROM**
+- [x] **Step 1: Start the existing companion server with the exact Modern Emerald ROM**
 
 Use the parser-produced catalog and map assets; do not use a synthetic map fixture.
 
-- [ ] **Step 2: Verify the user-visible contract in Helium**
+- [x] **Step 2: Verify the user-visible contract in Helium**
 
 Measure initial/current-map size, maximum zoom raster sampling, recenter scale and player screen offset, player marker dimensions, requested map-image URLs, hidden placement DOM, fog color, and visible POI labels.
 
-- [ ] **Step 3: Capture report and screenshots**
+- [x] **Step 3: Capture report and screenshots**
 
 Store JSON plus Organic/Discovered/max-zoom screenshots under the evidence directory.
 
-- [ ] **Step 4: Run final focused regression and commit**
+- [x] **Step 4: Run final focused regression and commit**
 
 Run: `npm.cmd test -- mapEngine.test.ts MapPage.test.tsx`
 
@@ -132,4 +132,3 @@ Run: `npm.cmd run build`
 Run: `git diff --check`
 
 Commit production, tests, spec, and plan together after all evidence is green.
-

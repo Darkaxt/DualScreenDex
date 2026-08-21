@@ -12,19 +12,27 @@ import com.enrpau.dualscreendex.parser.sprite.TileRenderer
 object Gen3TrainerAssetResolver {
     fun resolve(rom: RomImage, family: EngineFamily): TrainerAssetCatalog? {
         if (family !in setOf(EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD)) return null
-        val avatars = resolvePlayerAvatars(rom) ?: return null
-        val badgeSheet = resolveHoennBadgeSheet(rom) ?: return null
-        val assets = linkedMapOf(
-            MALE_AVATAR_KEY to avatars.first,
-            FEMALE_AVATAR_KEY to avatars.second,
-        )
-        val badgeKeys = (1..BADGE_COUNT).map { badge ->
-            val key = "trainer/badge/$badge"
-            assets[key] = crop(badgeSheet, (badge - 1) * BADGE_PIXELS, 0, BADGE_PIXELS, BADGE_PIXELS)
-            key
+        val avatars = resolvePlayerAvatars(rom)
+        val badgeSheet = resolveHoennBadgeSheet(rom)
+        if (avatars == null && badgeSheet == null) return null
+
+        val assets = linkedMapOf<String, RgbaSprite>()
+        val avatarAssetKeys = if (avatars != null) {
+            assets[MALE_AVATAR_KEY] = avatars.first
+            assets[FEMALE_AVATAR_KEY] = avatars.second
+            mapOf(0 to MALE_AVATAR_KEY, 1 to FEMALE_AVATAR_KEY)
+        } else {
+            emptyMap()
         }
+        val badgeKeys = badgeSheet?.let { sheet ->
+            (1..BADGE_COUNT).map { badge ->
+                val key = "trainer/badge/$badge"
+                assets[key] = crop(sheet, (badge - 1) * BADGE_PIXELS, 0, BADGE_PIXELS, BADGE_PIXELS)
+                key
+            }
+        }.orEmpty()
         return TrainerAssetCatalog(
-            avatarAssetKeys = mapOf(0 to MALE_AVATAR_KEY, 1 to FEMALE_AVATAR_KEY),
+            avatarAssetKeys = avatarAssetKeys,
             badgeAssetKeys = badgeKeys,
             assets = assets,
         ).validate()

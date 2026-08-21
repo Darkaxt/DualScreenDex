@@ -64,6 +64,28 @@ export function anchoredZoom(
   };
 }
 
+export function centerMapPoint(
+  viewport: MapViewport,
+  intrinsic: MapRect,
+  fit: { width: number; height: number },
+  point: MapPoint,
+): MapViewport {
+  if (intrinsic.width <= 0 || intrinsic.height <= 0) return { ...viewport };
+  return {
+    scale: viewport.scale,
+    panX: -((point.x / intrinsic.width) - 0.5) * fit.width * viewport.scale,
+    panY: -((point.y / intrinsic.height) - 0.5) * fit.height * viewport.scale,
+  };
+}
+
+export function maximumScaleForMarker(fitScale: number, tilePixels: number, markerPixels: number): number {
+  const values = [fitScale, tilePixels, markerPixels];
+  if (values.some(value => !Number.isFinite(value) || value <= 0)) {
+    throw new RangeError('marker scale dimensions must be positive finite numbers');
+  }
+  return clampScale(markerPixels / tilePixels / fitScale, MAX_SCENE_MAP_SCALE);
+}
+
 type GestureMode = 'idle' | 'pan' | 'pinch' | 'pinch-tail';
 
 export class GestureTracker {

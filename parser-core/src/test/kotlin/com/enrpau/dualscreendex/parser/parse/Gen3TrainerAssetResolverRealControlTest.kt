@@ -42,6 +42,23 @@ class Gen3TrainerAssetResolverRealControlTest {
         assertEquals(EXPECTED_ARGB_HASHES, catalog.assets.mapValues { argbHash(it.value.argb) })
     }
 
+    @Test
+    fun modernEmeraldPreservesPlayerPortraitsWhenBadgeArtworkDoesNotResolve() {
+        val configured = System.getenv("DUALDEX_MODERN_EMERALD_ROM")
+        assumeTrue("set DUALDEX_MODERN_EMERALD_ROM to run this live-ROM regression", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals(MODERN_EMERALD_SHA256, rom.sha256.lowercase())
+        val catalog = requireNotNull(Gen3TrainerAssetResolver.resolve(rom, EngineFamily.EMERALD))
+
+        assertEquals(mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"), catalog.avatarAssetKeys)
+        assertEquals(emptyList<String>(), catalog.badgeAssetKeys)
+        assertEquals(catalog.avatarAssetKeys.values.toSet(), catalog.assets.keys)
+        assertEquals(MODERN_AVATAR_ARGB_HASHES, catalog.assets.mapValues { argbHash(it.value.argb) })
+    }
+
     private fun argbHash(argb: IntArray): String {
         val bytes = ByteBuffer.allocate(argb.size * 4).order(ByteOrder.BIG_ENDIAN)
         argb.forEach(bytes::putInt)
@@ -49,6 +66,11 @@ class Gen3TrainerAssetResolverRealControlTest {
     }
 
     private companion object {
+        const val MODERN_EMERALD_SHA256 = "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895"
+        val MODERN_AVATAR_ARGB_HASHES = mapOf(
+            "trainer/avatar/male" to "86a27bea1436640e331f6faedbcad9a6b1af097d54c07b5fe489565dd62e8235",
+            "trainer/avatar/female" to "88ef40596e677e75ba4dc105d6ea8df727232fdb806f6ee5611611230b196593",
+        )
         val EXPECTED_ARGB_HASHES = mapOf(
             "trainer/avatar/male" to "86a27bea1436640e331f6faedbcad9a6b1af097d54c07b5fe489565dd62e8235",
             "trainer/avatar/female" to "88ef40596e677e75ba4dc105d6ea8df727232fdb806f6ee5611611230b196593",

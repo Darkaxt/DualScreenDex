@@ -2,7 +2,7 @@ import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DexIcon, MapIcon, SettingsIcon } from '../components';
 import { GameClockIndicator } from '../GameClockIndicator';
-import { anchoredZoom, containFit, focusMapRect, GestureTracker, MAX_MAP_SCALE, type MapViewport } from '../mapEngine';
+import { anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, type MapViewport } from '../mapEngine';
 import type { Catalog, State, WorldMapLocation, WorldMapRegion } from '../models';
 
 interface MapPageProps {
@@ -15,6 +15,7 @@ interface MapPageProps {
 type MapMode = 'LOCAL' | 'ATLAS';
 
 const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
+const TRAINER_MARKER_PIXELS = 64;
 
 export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPageProps) {
   const maps = catalog.worldMaps ?? [];
@@ -35,10 +36,10 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const [selectedKey, setSelectedKey] = useState(() => focusedLocation?.key ?? '');
   const activeMode: MapMode = localScene || localMap ? 'LOCAL' : 'ATLAS';
   const activeMap = localScene ?? localMap ?? region;
+  const playerAvatarUrl = state.trainer?.avatarUrl;
   const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
   const [fit, setFit] = useState({ width: activeMap?.pixelWidth ?? 1, height: activeMap?.pixelHeight ?? 1, scale: 1 });
   const fogVisible = activeMode === 'ATLAS' && state.settings.knowledgeMode !== 'DISCOVERED';
-  const sceneFogVisible = localScene != null && state.settings.knowledgeMode !== 'DISCOVERED';
   const [legendOpen, setLegendOpen] = useState(false);
   const stageRef = useRef<HTMLElement>(null);
   const fogRef = useRef<HTMLCanvasElement>(null);
@@ -55,6 +56,19 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const revealedLocations = useMemo(
     () => region?.locations.filter(location => location.baseAreaIds.some(baseAreaId => revealedBaseIds.has(baseAreaId))) ?? [],
     [region?.key, revealedBaseIds],
+  );
+  const visibleScenePlacements = useMemo(
+    () => localScene?.placements.filter(placement =>
+      state.settings.knowledgeMode === 'DISCOVERED' || revealedBaseIds.has(placement.baseAreaId)) ?? [],
+    [localScene?.key, localScene?.placements, revealedBaseIds, state.settings.knowledgeMode],
+  );
+  const hiddenScenePlacements = useMemo(
+    () => localScene?.placements.filter(placement => !visibleScenePlacements.includes(placement)) ?? [],
+    [localScene?.key, localScene?.placements, visibleScenePlacements],
+  );
+  const localMapNames = useMemo(
+    () => new Map((catalog.localMaps ?? []).map(map => [map.key, map.displayName])),
+    [catalog.localMaps],
   );
   const selectedCandidate = region?.locations.find(location => location.key === selectedKey);
   const selectedLocation = fogVisible
@@ -103,9 +117,21 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
           availableHeight,
         )
         : null;
-      setFit(focused?.fit ?? containFit(activeMap.pixelWidth, activeMap.pixelHeight, availableWidth, availableHeight));
+      const nextFit = focused?.fit ?? containFit(activeMap.pixelWidth, activeMap.pixelHeight, availableWidth, availableHeight);
+      setFit(nextFit);
       gestureRef.current.setCenter(availableWidth / 2, availableHeight / 2);
-      maximumScaleRef.current = focused?.maximumScale ?? MAX_MAP_SCALE;
+      const genericMaximum = focused?.maximumScale ?? MAX_MAP_SCALE;
+      const avatarMaximum = playerAvatarUrl
+        ? maximumScaleForMarker(
+          nextFit.scale,
+          activeMap.pixelWidth / activeMap.gridWidth,
+          TRAINER_MARKER_PIXELS,
+        )
+        : genericMaximum;
+      maximumScaleRef.current = Math.max(
+        focused?.viewport.scale ?? 1,
+        Math.min(genericMaximum, avatarMaximum),
+      );
       const clamped = gestureRef.current.setMaximumScale(maximumScaleRef.current);
       if (focused && initializedSceneKeyRef.current !== localScene?.key) {
         initializedSceneKeyRef.current = localScene!.key;
@@ -128,6 +154,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
     activePlacement?.pixelY,
     activePlacement?.pixelWidth,
     activePlacement?.pixelHeight,
+    activeMap?.gridWidth,
+    playerAvatarUrl,
   ]);
 
   useEffect(() => {
@@ -154,25 +182,25 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   }
 
   function recenter() {
+    if (activeMode === 'LOCAL' && playerPosition) {
+      setViewport(centerMapPoint(
+        viewport,
+        { x: 0, y: 0, width: activeMap!.gridWidth, height: activeMap!.gridHeight },
+        fit,
+        { x: playerPosition.sceneX + 0.5, y: playerPosition.sceneY + 0.5 },
+      ));
+      return;
+    }
     if (localScene && activePlacement) {
-      const bounds = stageRef.current?.getBoundingClientRect();
-      const availableWidth = bounds?.width || localScene.pixelWidth;
-      const availableHeight = bounds?.height || localScene.pixelHeight;
-      const focused = focusMapRect(
-        localScene.pixelWidth,
-        localScene.pixelHeight,
+      setViewport(centerMapPoint(
+        viewport,
+        { x: 0, y: 0, width: localScene.pixelWidth, height: localScene.pixelHeight },
+        fit,
         {
-          x: activePlacement.pixelX,
-          y: activePlacement.pixelY,
-          width: activePlacement.pixelWidth,
-          height: activePlacement.pixelHeight,
+          x: activePlacement.pixelX + activePlacement.pixelWidth / 2,
+          y: activePlacement.pixelY + activePlacement.pixelHeight / 2,
         },
-        availableWidth,
-        availableHeight,
-      );
-      maximumScaleRef.current = focused.maximumScale;
-      gestureRef.current.setMaximumScale(focused.maximumScale);
-      setViewport(focused.viewport);
+      ));
       return;
     }
     setViewport(HOME_VIEWPORT);
@@ -222,7 +250,9 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
     event.preventDefault();
   }
 
-  const transform = `translate(calc(-50% + ${viewport.panX}px), calc(-50% + ${viewport.panY}px)) scale(${viewport.scale})`;
+  const renderedWidth = fit.width * viewport.scale;
+  const renderedHeight = fit.height * viewport.scale;
+  const transform = `translate(calc(-50% + ${viewport.panX}px), calc(-50% + ${viewport.panY}px))`;
   const selectedIsCurrent = selectedLocation != null && currentLocation != null && selectedLocation.key === currentLocation.key;
   const displayName = activeMode === 'LOCAL'
     ? localMap?.displayName ?? state.currentAreaName ?? 'LOCAL MAP'
@@ -254,6 +284,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       data-scale={viewport.scale}
       data-pan-x={viewport.panX}
       data-pan-y={viewport.panY}
+      data-effective-raster-scale={renderedWidth / activeMap.pixelWidth}
       data-selected-key={activeMode === 'ATLAS' ? selectedLocation?.key : localScene?.key ?? localMap?.key}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -261,16 +292,9 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       onPointerCancel={event => finishPointer(event, true)}
       onWheel={onWheel}
     >
-      <div class="map-plane map-framed-plane" style={{ width: fit.width, height: fit.height, transform }}>
-        {localScene && region && <img
-          class={`map-scene-atlas-fallback ${sceneFogVisible ? 'is-fogged' : ''}`}
-          src={region.imageUrl}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-        />}
+      <div class="map-plane map-framed-plane" style={{ width: renderedWidth, height: renderedHeight, transform }}>
         {localScene
-          ? localScene.placements.map(placement => <img
+          ? visibleScenePlacements.map(placement => <img
             key={placement.localMapKey}
             class="map-scene-tile"
             data-local-map-key={placement.localMapKey}
@@ -286,9 +310,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
             }}
           />)
           : <img src={activeImageUrl} alt={`${displayName} ${activeMode === 'LOCAL' ? 'local' : 'region'} map`} draggable={false} />}
-        {localScene && sceneFogVisible && localScene.placements
-          .filter(placement => !revealedBaseIds.has(placement.baseAreaId))
-          .map(placement => <span
+        {localScene && hiddenScenePlacements.map(placement => <span
             key={`fog/${placement.localMapKey}`}
             class="map-scene-placement-fog"
             data-local-map-key={placement.localMapKey}
@@ -300,6 +322,19 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
               height: `${placement.pixelHeight / localScene.pixelHeight * 100}%`,
             }}
           />)}
+        {localScene && visibleScenePlacements.map(placement => {
+          const name = localMapNames.get(placement.localMapKey);
+          if (!name) return null;
+          return <span
+            key={`poi/${placement.localMapKey}`}
+            class={`map-local-poi-label ${placement.localMapKey === activePlacement?.localMapKey ? 'is-current' : ''}`}
+            aria-label={`Map location: ${name}`}
+            style={{
+              left: `${(placement.pixelX + placement.pixelWidth / 2) / localScene.pixelWidth * 100}%`,
+              top: `${placement.pixelY / localScene.pixelHeight * 100}%`,
+            }}
+          >{name}</span>;
+        })}
         {fogVisible && region && <canvas ref={fogRef} class="map-fog" width={region.pixelWidth} height={region.pixelHeight} aria-hidden="true" />}
         {markerLocations.map(location => {
           const position = markerPosition(location, region!);
@@ -319,13 +354,16 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
           ><span /></button>;
         })}
         {playerPosition && <span
-          class="map-marker map-player-marker is-current"
+          class={`map-marker map-player-marker is-current ${playerAvatarUrl ? 'has-sprite' : 'is-fallback'}`}
           style={{
             left: `${((playerPosition.sceneX + 0.5) / activeMap.gridWidth) * 100}%`,
             top: `${((playerPosition.sceneY + 0.5) / activeMap.gridHeight) * 100}%`,
+            ...(playerAvatarUrl ? { width: `${TRAINER_MARKER_PIXELS}px`, height: `${TRAINER_MARKER_PIXELS}px` } : {}),
           }}
           aria-label={`Player position ${playerPosition.mapX}, ${playerPosition.mapY}`}
-        ><span /></span>}
+        >{playerAvatarUrl
+            ? <img src={playerAvatarUrl} alt={state.trainer?.name ?? 'Player'} draggable={false} />
+            : <span class="map-player-dot" />}</span>}
       </div>
 
       <nav class="map-utility-rail" aria-label="Map utilities">
