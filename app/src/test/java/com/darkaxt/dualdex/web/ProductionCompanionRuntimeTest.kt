@@ -414,7 +414,7 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
-    fun persistsVisitedAreasAndRoutesTheSelectedMapLocationIntoAreaDex() {
+    fun persistsVisitedMapsWithoutEncountersAndRoutesTheSelectedMapLocationIntoAreaDex() {
         val identity = "9".repeat(64)
         val saveIdentity = "3".repeat(64)
         val repository = InMemoryKnowledgeRepository()
@@ -444,7 +444,10 @@ class ProductionCompanionRuntimeTest {
                     regions = listOf(
                         WorldMapRegion(
                             "hoenn", "Hoenn", 8, 8, 1, 1, "world/hoenn",
-                            listOf(WorldMapLocation("oldale", "Oldale Town", setOf(0x0011, 0x0012), listOf(WorldMapCell(0, 0, 1, 1)))),
+                            listOf(
+                                WorldMapLocation("littleroot", "Littleroot Town", setOf(0x0009), listOf(WorldMapCell(0, 0, 1, 1))),
+                                WorldMapLocation("oldale", "Oldale Town", setOf(0x0011, 0x0012), listOf(WorldMapCell(0, 0, 1, 1))),
+                            ),
                         ),
                         WorldMapRegion(
                             "decoy", "Decoy", 8, 8, 1, 1, "world/decoy",
@@ -461,15 +464,17 @@ class ProductionCompanionRuntimeTest {
         assertTrue(runtime.applySaveSnapshot(emptySave(identity, saveIdentity), SaveRamView(status = "MATCHED")))
 
         runtime.action("OPEN_SPECIES", mapOf("speciesId" to "1"))
+        runtime.updateLiveArea(0x0009)
         runtime.updateLiveArea(0x0011)
         val state = runtime.action("MAP_AREA", mapOf("regionKey" to "hoenn", "locationKey" to "oldale"))
 
-        assertEquals(setOf(0x0011), runtime.gateway.bootstrap().ledger.visitedAreaBaseIds)
-        assertEquals(setOf(0x0011), repository.read(identity, saveIdentity)!!.visitedAreaBaseIds)
+        assertEquals(setOf(0x0009, 0x0011), runtime.gateway.bootstrap().ledger.visitedAreaBaseIds)
+        assertEquals(setOf(0x0009, 0x0011), repository.read(identity, saveIdentity)!!.visitedAreaBaseIds)
         assertEquals("AREA", state.filter)
         assertEquals(AppScreen.POKEDEX.name, state.screen)
         assertEquals(selectedAreaId, state.selectedAreaId)
         assertEquals(listOf(selectedAreaId, 0x0012 * 10 + 1), state.currentAreaIds)
+        assertEquals(listOf(0x0009, 0x0011), state.revealedAreaBaseIds)
         runtime.close()
     }
 

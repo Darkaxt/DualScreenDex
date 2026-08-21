@@ -8,7 +8,7 @@ object KnowledgeLedgerSanitizer {
     fun sanitize(ledger: KnowledgeLedger, catalog: ParsedCatalog): KnowledgeLedger {
         val speciesIds = catalog.speciesById.keys
         val moveIds = catalog.movesById.keys
-        val areaBaseIds = catalog.encounterAreas.mapTo(linkedSetOf()) { it.id / 10 }
+        val areaBaseIds = catalog.discoverableAreaBaseIds()
         val caught = ledger.caughtSpecies.filterTo(linkedSetOf()) { it in speciesIds }
         val observedMoves = ledger.observedMoves.entries.mapNotNull { (speciesId, observations) ->
             if (speciesId !in speciesIds) return@mapNotNull null

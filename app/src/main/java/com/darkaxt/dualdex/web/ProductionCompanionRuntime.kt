@@ -6,6 +6,7 @@ import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.catalog.catalogWriteProgress
 import com.darkaxt.dualdex.knowledge.KnowledgeRepository
 import com.darkaxt.dualdex.knowledge.KnowledgeLedgerSanitizer
+import com.darkaxt.dualdex.knowledge.discoverableAreaBaseIds
 import com.darkaxt.dualdex.battle.BattleCatalogContext
 import com.darkaxt.dualdex.battle.liveAreaMemoryLayout
 import com.darkaxt.dualdex.battle.BattleCatalogView
@@ -559,7 +560,7 @@ class ProductionCompanionRuntime(
             gateway.dispatch(CompanionAction.LiveAreaChanged(areaBaseId))
         }
         val validAreaBaseId = areaBaseId?.takeIf { candidate ->
-            catalog?.encounterAreas?.any { it.id / 10 == candidate } == true
+            candidate in (catalog?.discoverableAreaBaseIds() ?: emptySet())
         } ?: return
         val before = gateway.bootstrap().ledger
         if (validAreaBaseId !in before.visitedAreaBaseIds) {
