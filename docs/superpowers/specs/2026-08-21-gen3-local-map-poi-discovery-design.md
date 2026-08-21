@@ -159,10 +159,10 @@ The Local-map utility rail gains one POI-filter button. It opens a compact panel
 - Places;
 - Services;
 - Available items;
-- Collected items, off by default;
+- Collected items;
 - Unknown POIs.
 
-The panel includes `Show all` and `Reset`. Filtering changes presentation only; it never changes discovery or collection state. Selections persist under the same ROM-and-save identity as POI knowledge.
+All categories are enabled by default, so the initial Local-map view shows every POI permitted by the active knowledge mode. The panel includes `Show all` and `Reset`. Filtering changes presentation only; it never changes discovery or collection state. Selections persist under the same ROM-and-save identity as POI knowledge.
 
 ## Zoom and interaction
 
@@ -173,7 +173,7 @@ POIs are a detail layer, not a route-scale overlay.
 - At the independently configured label threshold, short labels become visible.
 - Each threshold is stored as a normalized `0..100%` position between the active map's supported minimum and maximum zoom. It is not stored as one absolute scale that would behave differently across maps.
 - The label threshold is constrained to be equal to or greater than the icon threshold.
-- Defaults are `60%` for icons and `80%` for labels, preserving an uncluttered route view while exposing details before maximum zoom.
+- Defaults are `0%` for both icons and labels. The starting Local-map zoom is the supported minimum and therefore shows every knowledge-permitted POI and label immediately.
 - Setting a threshold to `0%` enables that behavior at minimum zoom; `100%` restricts it to maximum zoom.
 - POIs outside the visible viewport are not mounted.
 - Tapping a POI opens a compact anchored card; it does not navigate away or change the game.
