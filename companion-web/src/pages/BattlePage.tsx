@@ -72,7 +72,7 @@ function RarityStars({ rarity }: { rarity: RarityModel }) {
 
 function Rarity({ rarity }: { rarity: RarityModel }) {
   const title = rarity.innateTier == null
-    ? 'RARITY UNAVAILABLE'
+    ? 'NO RECRUITMENT READING'
     : [rarity.relativeTier, rarity.innateTier].filter(Boolean).join(' ');
   return <div class="rarity-card"><small>RECRUITMENT IMPRESSION</small><strong>{title}</strong>{rarity.stars != null && <p>{rarityAssessment(rarity.stars)}</p>}</div>;
 }

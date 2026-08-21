@@ -21,7 +21,9 @@ describe('Pokédex evolution navigation', () => {
       openAbility={vi.fn()}
     />);
 
-    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
+    expect(document.querySelector('.app-header .header-title strong')?.textContent).toBe('POKÉDEX');
+    expect(screen.getAllByText('Charmeleon')).toHaveLength(1);
+    expect(screen.getByText('No Pokédex entry is available for this Pokémon.')).toBeTruthy();
     expect(screen.queryByText(/resolved from this ROM/i)).toBeNull();
   });
 
@@ -143,7 +145,9 @@ describe('Pokédex evolution navigation', () => {
       openAbility={vi.fn()}
     />);
 
-    expect(screen.getByText('MAP UNAVAILABLE')).toBeTruthy();
+    expect(screen.getByText('NO HABITAT MAP')).toBeTruthy();
+    expect(screen.getByText('No habitat map is available for this game.')).toBeTruthy();
+    expect(screen.queryByText(/ROM|normalized world map/i)).toBeNull();
   });
 });
 

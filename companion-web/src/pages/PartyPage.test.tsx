@@ -81,6 +81,19 @@ describe('Party', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('closes member details before companion Back can leave Party', () => {
+    const onBack = vi.fn();
+    render(<PartyPage catalog={catalog} state={partyState('ORGANIC')} onBack={onBack} openMove={vi.fn()} openAbility={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: SPARK' }));
+    const back = new Event('dualdexback', { cancelable: true });
+    fireEvent(window, back);
+
+    expect(back.defaultPrevented).toBe(true);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(onBack).not.toHaveBeenCalled();
+  });
+
   it('keeps the owned party visible in Organic and Hidden modes', () => {
     const props = { catalog, onBack: vi.fn(), openMove: vi.fn(), openAbility: vi.fn() };
     const rendered = render(<PartyPage {...props} state={partyState('ORGANIC')} />);

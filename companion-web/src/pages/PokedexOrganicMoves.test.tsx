@@ -28,7 +28,7 @@ describe('Organic Pokédex move knowledge', () => {
     renderDetail(uncaughtState, 'STATS');
 
     expect(screen.getByRole('tab', { name: 'ENTRY' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByText('DATA NOT AVAILABLE')).toBeTruthy();
+    expect(screen.getByText('NOT YET KNOWN')).toBeTruthy();
     expect(screen.getByText('Catch this Pokémon to add its full Pokédex data.')).toBeTruthy();
   });
 

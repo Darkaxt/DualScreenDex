@@ -23,6 +23,7 @@ import java.util.Date
 import java.util.Locale
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.OnBackPressedCallback
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.darkaxt.dualdex.overlay.FloatingCompanionService
@@ -50,6 +51,13 @@ internal data class DisplayLaunch(
     val displayId: Int,
     val webRouteMarker: String?,
 )
+
+internal enum class MainActivityBackAction { DISPATCH_TO_COMPANION, BACKGROUND_TASK }
+
+internal object MainActivityBackPolicy {
+    fun resolve(webViewAlive: Boolean): MainActivityBackAction =
+        if (webViewAlive) MainActivityBackAction.DISPATCH_TO_COMPANION else MainActivityBackAction.BACKGROUND_TASK
+}
 
 internal interface MainActivityDisplayPort {
     fun environment(): DisplayEnvironment
@@ -189,6 +197,14 @@ class MainActivity : AppCompatActivity() {
             onRomTree = { uri -> (application as DualDexApplication).retroArchSetup?.applyRomTree(uri) },
         )
         showCompanionOrRecovery()
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                when (MainActivityBackPolicy.resolve(companionWebView != null)) {
+                    MainActivityBackAction.DISPATCH_TO_COMPANION -> companionWebView?.dispatchCompanionBack()
+                    MainActivityBackAction.BACKGROUND_TASK -> moveTaskToBack(true)
+                }
+            }
+        })
         if (intent.getBooleanExtra(EXTRA_EXPORT_MAPPER, false)) {
             exportMapper()
         } else {
@@ -366,6 +382,8 @@ class MainActivity : AppCompatActivity() {
         ?.takeIf { '\r' !in it && '\n' !in it }
 
     private fun showRecovery(failure: Throwable?) {
+        companionWebView?.destroy()
+        companionWebView = null
         val application = application as DualDexApplication
         val scale = resources.displayMetrics.density
         val content = LinearLayout(this).apply {

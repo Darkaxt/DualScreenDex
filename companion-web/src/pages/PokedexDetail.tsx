@@ -41,7 +41,7 @@ export function PokedexDetail({
     return slots.length ? [{ area, slots }] : [];
   });
   return <section class="screen detail-screen">
-    <Header title={species.name} kicker={`#${String(species.dex).padStart(3, '0')}`} onBack={() => send('BACK')} />
+    <Header title="POKÉDEX" kicker={`#${String(species.dex).padStart(3, '0')}`} onBack={() => send('BACK')} />
     <div class="identity-card">
       <PokedexAvatar speciesId={species.id} name={species.name} available={species.hasSprite} large knowledge={identityKnowledge} state={status} catalog={catalog} />
       <div class="identity-copy"><h1>{species.name}</h1><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
@@ -63,7 +63,7 @@ export function PokedexDetail({
           </i>
           <strong class="stat-range">{item.low}–{item.high}</strong>
         </div>)}</div>
-        {locations.length > 0 && <p class="range-note">Wild encounters in this ROM: <strong>{wildLevelRange(locations.flatMap(item => item.slots))}</strong></p>}
+        {locations.length > 0 && <p class="range-note">Wild encounter levels: <strong>{wildLevelRange(locations.flatMap(item => item.slots))}</strong></p>}
       </div>}
       {unlocked && displayTab === 'MOVES' && <div class="paper-panel move-sections">
         <div class="section-heading"><div><p class="eyebrow">LEVEL-UP MOVES</p><p>{activeRuleset == null ? 'Move list not selected' : `${activeRuleset.label} list`}</p></div></div>
@@ -133,21 +133,21 @@ export function projectedStatRange(base: number, name: string, platform: string,
 }
 
 export function wildLevelRange(slots: { minimumLevel: number; maximumLevel: number }[]): string {
-  if (slots.length === 0) return 'N/F';
+  if (slots.length === 0) return '—';
   const minimum = Math.min(...slots.map(slot => slot.minimumLevel));
   const maximum = Math.max(...slots.map(slot => slot.maximumLevel));
   return minimum === maximum ? `Lv ${minimum}` : `Lv ${minimum}–${maximum}`;
 }
 
 export function formatHeight(value: number | null, platform: string): string {
-  if (value == null) return 'N/F';
+  if (value == null) return '—';
   if (platform === 'GBA') return `${(value / 10).toFixed(1)} m`;
   if (platform === 'GBC') return `${value & 0xff}' ${(value >>> 8) & 0xff}"`;
   return String(value);
 }
 
 export function formatWeight(value: number | null, platform: string): string {
-  if (value == null) return 'N/F';
+  if (value == null) return '—';
   if (platform === 'GBA') return `${(value / 10).toFixed(1)} kg`;
   if (platform === 'GBC') return `${(value / 10).toFixed(1)} lb`;
   return String(value);

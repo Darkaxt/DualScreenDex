@@ -53,14 +53,19 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [partySelection, setPartySelection] = useState<{ catalogHash: string; slot: number | null }>({ catalogHash: '', slot: null });
   const lastCatalogRefresh = useRef('');
 
+  const reportFailure = (failure: unknown, message: string) => {
+    console.error(failure);
+    setError(message);
+  };
+
   useEffect(() => {
-    bootstrap().then(applyBootstrap).catch(failure => setError(failure.message)).finally(() => setBusy(false));
+    bootstrap().then(applyBootstrap).catch(failure => reportFailure(failure, 'The companion could not start. Please try again.')).finally(() => setBusy(false));
     return events(incoming => {
       setState(current => incoming.version >= current.version ? incoming : current);
       const marker = catalogRefreshMarker(incoming);
       if (marker && marker !== lastCatalogRefresh.current) {
         lastCatalogRefresh.current = marker;
-        bootstrap().then(applyBootstrap).catch(failure => setError(failure.message));
+        bootstrap().then(applyBootstrap).catch(failure => reportFailure(failure, 'Your game guide could not be refreshed. Please try again.'));
       }
     });
   }, []);
@@ -76,18 +81,36 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       setState(await action(type, values));
       setError(null);
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : String(failure));
+      reportFailure(failure, 'That action could not be completed. Please try again.');
     }
   };
 
   const onUpload = async (file: File) => {
     setBusy(true);
     try { applyBootstrap(await uploadRom(file)); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
+    catch (failure) { reportFailure(failure, 'This game could not be opened. Try another file or retry.'); }
     finally { setBusy(false); }
   };
 
-  const loadingLabel = `Loading ${loadingModuleLabel(state.loading.phase)}`;
+  const loadingLabel = loadingModuleLabel(state.loading.phase);
+
+  useEffect(() => {
+    const handleCompanionBack = (event: Event) => {
+      const backEvent = event as Event & { dualdexHandled?: boolean };
+      event.preventDefault();
+      queueMicrotask(() => {
+        if (backEvent.dualdexHandled) return;
+        if (mapperOpen) setMapperOpen(false);
+        else if (capabilityReportOpen) setCapabilityReportOpen(false);
+        else if (mapOpen) setMapOpen(false);
+        else if (moveDetailId != null) setMoveDetailId(null);
+        else if (abilityDetailId != null) setAbilityDetailId(null);
+        else if (state.screen !== 'POKEDEX') void send('BACK');
+      });
+    };
+    window.addEventListener('dualdexback', handleCompanionBack);
+    return () => window.removeEventListener('dualdexback', handleCompanionBack);
+  }, [abilityDetailId, capabilityReportOpen, mapOpen, mapperOpen, moveDetailId, state.screen]);
 
   const screen = useMemo(() => {
     if (mapperOpen) return <MemoryMapperPage onBack={() => setMapperOpen(false)} />;
@@ -96,7 +119,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     if (!catalog) return <Welcome
       busy={busy}
       loading={state.loading}
-      loadingLabel={state.loading.active ? loadingLabel : 'Loading companion state'}
+      loadingLabel={state.loading.active ? loadingLabel : 'Preparing your companion'}
       error={error}
       onUpload={onUpload}
       openSetup={() => void send('SCREEN', { screen: 'SETUP' })}
@@ -187,25 +210,25 @@ export function catalogRefreshMarker(state: Pick<State, 'catalogName' | 'loading
 
 export function loadingModuleLabel(phase: string): string {
   const labels: Record<string, string> = {
-    ROM_IDENTITY: 'ROM identity',
-    FAMILY_AND_TABLES: 'game data layout',
-    CORE_RECORDS: 'Pokémon & moves',
-    SPECIES_MEDIA: 'sprites & entries',
-    EVOLUTIONS_AND_LEARNSETS: 'evolutions & learnsets',
-    ENCOUNTERS: 'wild encounters',
-    MOVE_DATA: 'move details',
-    ABILITY_DATA: 'ability details',
-    MAPS: 'maps',
-    TRAINER_AND_THEME: 'trainer & theme',
-    CATALOG_STORAGE: 'catalog storage',
-    CACHE_REOPEN: 'saved catalog',
+    ROM_IDENTITY: 'Checking the game',
+    FAMILY_AND_TABLES: 'Finding game data',
+    CORE_RECORDS: 'Reading Pokémon and moves',
+    SPECIES_MEDIA: 'Preparing artwork and entries',
+    EVOLUTIONS_AND_LEARNSETS: 'Reading evolutions and learnsets',
+    ENCOUNTERS: 'Finding wild encounters',
+    MOVE_DATA: 'Reading move details',
+    ABILITY_DATA: 'Reading ability details',
+    MAPS: 'Preparing maps',
+    TRAINER_AND_THEME: 'Preparing your Trainer Card',
+    CATALOG_STORAGE: 'Saving your game guide',
+    CACHE_REOPEN: 'Opening your game guide',
   };
-  return labels[phase] ?? phase.replaceAll('_', ' ').toLowerCase();
+  return labels[phase] ?? 'Preparing your companion';
 }
 
 function Welcome({ busy, loading, loadingLabel, error, onUpload, openSetup }: { busy: boolean; loading: State['loading']; loadingLabel: string; error: string | null; onUpload: (file: File) => void; openSetup: () => void }) {
   const active = busy || loading.active;
-  return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><p class="eyebrow">PASSIVE RETROARCH COMPANION</p><h1>DUALDEX</h1>{active
+  return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><h1>DUALDEX</h1>{active
     ? <WelcomeLoadingProgress label={loadingLabel} loading={loading} />
     : <><p>Choose a Pokémon game to begin.</p><div class="welcome-actions"><label class="welcome-upload"><span>LOAD ROM OR ZIP</span><input type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>CONNECT RETROARCH</button></div></>}{error && <div class="welcome-error">{error}</div>}</section>;
 }

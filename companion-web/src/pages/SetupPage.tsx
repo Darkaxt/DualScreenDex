@@ -22,23 +22,23 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
   const retroArch = state.retroArch ?? disconnected;
   const returnScreen = state.catalogReady ? state.priorScreen : 'POKEDEX';
   return <section class="screen setup-screen">
-    <Header title="RETROARCH" kicker="PASSIVE CONNECTION" onBack={() => send('SCREEN', { screen: returnScreen })} />
+    <Header title="RETROARCH" onBack={() => send('SCREEN', { screen: returnScreen })} />
     <div class="setup-content" data-scroll-region>
       <div class="setup-intro">
         <p class="eyebrow">RETROARCH CONNECTION</p>
-        <p>DualDex watches RetroArch directly. Cocoon and process-ID access are not required.</p>
+        <p>Connect DualDex to a running game in RetroArch.</p>
       </div>
 
       <SetupStep number="1" title="SHARED STORAGE" status={retroArch.storageGrant}>
-        <p>All Files Access automatically finds GB, GBC, GBA, ZIP, and RetroArch SaveRAM folders even when every console uses a separate directory.</p>
+        <p>All Files Access automatically finds supported games and their save files, even when they use separate folders.</p>
         <a class="setup-action setup-action-primary" href="dualdex://grant/files">GRANT ALL FILES ACCESS</a>
-        <small>{retroArch.indexedRoms} ROM sources indexed. ROM and save data remain local.</small>
-        {retroArch.storageGrant === 'MISSING' && <p class="warning-note">SaveRAM cannot be discovered across separate folders until storage access is granted.</p>}
+        <small>{retroArch.indexedRoms} games found.</small>
+        {retroArch.storageGrant === 'MISSING' && <p class="warning-note">Save files in separate folders cannot be found until storage access is granted.</p>}
         <div class="setup-manual-path">
           <strong>FOLDER FALLBACK</strong>
           <p>Use these only when All Files Access is unavailable.</p>
           <a class="setup-action" href="dualdex://grant/retroarch">SELECT RETROARCH FOLDER</a>
-          <a class="setup-action" href="dualdex://grant/roms">SELECT ROM FOLDER</a>
+          <a class="setup-action" href="dualdex://grant/roms">SELECT GAME FOLDER</a>
         </div>
       </SetupStep>
 
@@ -56,22 +56,30 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
 
       <SetupStep number="3" title="LIVE SESSION" status={retroArch.connection}>
         <div class="setup-facts">
-          <span><small>CONTENT</small><strong>{retroArch.gameBasename ?? 'None'}</strong></span>
-          <span><small>MATCH</small><strong>{retroArch.activeSource ?? retroArch.resolution.replaceAll('_', ' ')}</strong></span>
+          <span><small>GAME</small><strong>{retroArch.gameBasename ?? 'No game open'}</strong></span>
+          <span><small>COMPANION</small><strong>{retroArch.connection === 'CONNECTED' ? 'Ready' : 'Waiting for a game'}</strong></span>
         </div>
-        {retroArch.savefileDirectory && <p class="setup-directory"><small>EFFECTIVE SAVE DIRECTORY</small><strong>{retroArch.savefileDirectory}</strong></p>}
         <a class="setup-action setup-action-primary" href="dualdex://open/retroarch">OPEN RETROARCH</a>
       </SetupStep>
 
-      {retroArch.message && <p class="setup-message" role="status">{retroArch.message}</p>}
-      <p class="setup-fallback">Manual ROM loading remains available whenever RetroArch is disconnected, inaccessible, or ambiguous.</p>
+      {retroArch.restartRequired && <p class="setup-message" role="status">Fully restart RetroArch, then return here.</p>}
+      <p class="setup-fallback">Manual game loading remains available whenever RetroArch is not connected.</p>
     </div>
   </section>;
 }
 
 function SetupStep({ number, title, status, children }: { number: string; title: string; status: string; children: preact.ComponentChildren }) {
   return <section class="setup-step">
-    <header><b>{number}</b><strong>{title}</strong><span data-state={status}>{status.replaceAll('_', ' ')}</span></header>
+    <header><b>{number}</b><strong>{title}</strong><span data-state={status}>{setupStatusLabel(status)}</span></header>
     {children}
   </section>;
+}
+
+function setupStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    GRANTED: 'Ready', VERIFIED: 'Ready', CONNECTED: 'Connected',
+    MISSING: 'Needs access', NOT_CONFIGURED: 'Needs setup', RESTART_REQUIRED: 'Restart needed',
+    DISCONNECTED: 'Not connected', CONNECTING: 'Connecting…',
+  };
+  return labels[status] ?? 'Needs attention';
 }

@@ -72,6 +72,11 @@ class DualDexWebView(
 
     fun open() = loadUrl("$origin/")
 
+    fun dispatchCompanionBack() = evaluateJavascript(
+        "window.dispatchEvent(new Event('dualdexback',{cancelable:true}))",
+        null,
+    )
+
     private fun isTrusted(candidate: Uri): Boolean =
         candidate.scheme == trustedOrigin.scheme &&
             candidate.host == trustedOrigin.host &&

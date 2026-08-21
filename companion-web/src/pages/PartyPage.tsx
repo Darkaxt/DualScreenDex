@@ -33,6 +33,17 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openS
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [detailSlot]);
 
+  useEffect(() => {
+    if (detailSlot == null) return;
+    const closeOnCompanionBack = (event: Event) => {
+      (event as Event & { dualdexHandled?: boolean }).dualdexHandled = true;
+      event.preventDefault();
+      setDetailSlot(null);
+    };
+    window.addEventListener('dualdexback', closeOnCompanionBack);
+    return () => window.removeEventListener('dualdexback', closeOnCompanionBack);
+  }, [detailSlot]);
+
   const select = (slot: number) => {
     if (!members[slot]?.occupied) return;
     setDetailSlot(slot);
@@ -73,7 +84,7 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openS
           </button>;
         })}
       </div>
-      {!members.some(member => member.occupied) && <div class="empty-state party-empty"><strong>NO PARTY DATA</strong><p>The party will appear when a supported live or SaveRAM snapshot is available.</p></div>}
+      {!members.some(member => member.occupied) && <div class="empty-state party-empty"><strong>YOUR PARTY IS EMPTY</strong><p>Your Pokémon will appear here when they join the party.</p></div>}
       {active && <div class="party-detail-layer">
         <div class="party-detail-backdrop" onClick={closeDetails} />
         <div class="party-detail-window" role="dialog" aria-modal="true" aria-label={`${active.nickname || active.speciesName || 'Party member'} details`}>

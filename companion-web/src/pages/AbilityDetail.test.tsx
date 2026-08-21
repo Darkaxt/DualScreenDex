@@ -31,9 +31,12 @@ describe('ability detail', () => {
     render(<AbilityDetail catalog={catalog} state={state} abilityId={66} onBack={() => undefined} />);
 
     expect(screen.getByText('Ups Fire moves in a pinch.')).toBeTruthy();
+    expect(screen.getAllByText('Blaze')).toHaveLength(1);
+    expect(screen.queryByText('ABILITY DETAIL')).toBeNull();
     expect(screen.getByText('Charizard')).toBeTruthy();
     expect(screen.queryByText(/ROM ABILITY|ROM-VALIDATED/i)).toBeNull();
-    expect(screen.getByText('IMPLEMENTATION & KNOWN VALUES')).toBeTruthy();
+    expect(screen.getByText('BATTLE EFFECTS')).toBeTruthy();
+    expect(screen.queryByText(/IMPLEMENTATION|KNOWN VALUES/)).toBeNull();
     expect(screen.getByText('Compiled source behavior')).toBeTruthy();
     expect(screen.getByText('HP ≤ 1/3')).toBeTruthy();
     expect(screen.getByText('Fire move power ×1.5')).toBeTruthy();

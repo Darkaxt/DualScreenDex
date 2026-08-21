@@ -10,17 +10,19 @@ describe('RetroArch setup', () => {
     const send = vi.fn();
     render(<SetupPage state={state} send={send} />);
 
+    expect(screen.queryByText('PASSIVE CONNECTION')).toBeNull();
     expect(screen.getByText('RETROARCH CONNECTION')).toBeTruthy();
-    expect(screen.getByText(/automatically finds GB, GBC, GBA, ZIP, and RetroArch SaveRAM/i)).toBeTruthy();
+    expect(screen.getByText(/automatically finds supported games and their save files/i)).toBeTruthy();
     expect(screen.getByText(/fully close RetroArch before setup/i)).toBeTruthy();
     expect(screen.getByText(/not considered active until DualDex verifies/i)).toBeTruthy();
     expect(screen.getByText(/Settings → Network → Network Commands/i)).toBeTruthy();
     expect(screen.getByText(/Saving → SaveRAM Autosave Interval/i)).toBeTruthy();
     expect(screen.getByText(/Directory → Save Files/i)).toBeTruthy();
     expect(screen.getByText(/Save Current Configuration/i)).toBeTruthy();
-    expect(screen.getByText(/manual ROM loading remains available/i)).toBeTruthy();
-    expect(screen.getByText(/12 ROM sources/i)).toBeTruthy();
-    expect(screen.getByText('/storage/emulated/0/RetroArch/saves')).toBeTruthy();
+    expect(screen.getByText(/manual game loading remains available/i)).toBeTruthy();
+    expect(screen.getByText(/12 games found/i)).toBeTruthy();
+    expect(screen.queryByText('/storage/emulated/0/RetroArch/saves')).toBeNull();
+    expect(document.querySelector('.setup-content')?.textContent).not.toMatch(/RESTART_REQUIRED|DISCONNECTED|NO_CONTENT|GRANTED/i);
   });
 
   it('makes All Files Access primary while retaining the two folder fallbacks', () => {
@@ -28,14 +30,14 @@ describe('RetroArch setup', () => {
 
     expect(screen.getByRole('link', { name: 'GRANT ALL FILES ACCESS' }).getAttribute('href')).toBe('dualdex://grant/files');
     expect(screen.getByRole('link', { name: 'SELECT RETROARCH FOLDER' }).getAttribute('href')).toBe('dualdex://grant/retroarch');
-    expect(screen.getByRole('link', { name: 'SELECT ROM FOLDER' }).getAttribute('href')).toBe('dualdex://grant/roms');
+    expect(screen.getByRole('link', { name: 'SELECT GAME FOLDER' }).getAttribute('href')).toBe('dualdex://grant/roms');
     expect(screen.getByRole('link', { name: 'OPEN RETROARCH' }).getAttribute('href')).toBe('dualdex://open/retroarch');
   });
 
-  it('explains why SaveRAM discovery is unavailable before storage access is granted', () => {
+  it('explains why save discovery needs storage access in player-facing language', () => {
     render(<SetupPage state={{ ...state, retroArch: { ...state.retroArch, storageGrant: 'MISSING' } }} send={vi.fn()} />);
 
-    expect(screen.getByText(/SaveRAM cannot be discovered across separate folders until storage access is granted/i)).toBeTruthy();
+    expect(screen.getByText(/Save files in separate folders cannot be found until storage access is granted/i)).toBeTruthy();
   });
 
   it('returns to the previous screen', () => {

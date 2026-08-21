@@ -167,7 +167,7 @@ describe('battle layout', () => {
 
     render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
-    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
+    expect(screen.getByText('No Pokédex entry is available for this Pokémon.')).toBeTruthy();
   });
 
   it('renders only organic recruitment advice even when technical evidence is present', () => {
@@ -194,7 +194,7 @@ describe('battle layout', () => {
 
     const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
-    expect(screen.getByText('RARITY UNAVAILABLE')).toBeTruthy();
+    expect(screen.getByText('NO RECRUITMENT READING')).toBeTruthy();
     expect(container.querySelector('.rarity-stars')).toBeNull();
     expect(container.querySelector('.rarity-card p')).toBeNull();
   });

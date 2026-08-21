@@ -65,8 +65,24 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   let serverState: Record<string, unknown> = { ...baseState };
   await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog, state: serverState }) }));
   await page.route('**/api/state', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(serverState) }));
-  await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(serverState) }));
+  await page.route('**/api/actions', async route => {
+    const request = route.request().postDataJSON() as Record<string, unknown>;
+    if (request.type === 'TAB') serverState = { ...serverState, battleTab: request.tab };
+    if (request.type === 'SCREEN') serverState = { ...serverState, screen: request.screen };
+    if (request.type === 'BACK') serverState = { ...serverState, screen: serverState.priorScreen ?? 'POKEDEX' };
+    serverState = { ...serverState, version: Number(serverState.version ?? 1) + 1 };
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(serverState) });
+  });
   await page.route('**/api/maps/**', route => route.fulfill({ contentType: 'image/png', body: raster }));
+  await page.route('**/api/diagnostics?*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+    romName: baseState.catalogName, sha256: catalog.hash, crc32: catalog.crc32, family: catalog.family, platform: catalog.platform,
+    activeRulesetId: 'default', rulesetAssumed: false, rulesets: catalog.rulesets,
+    capabilities: [{ capability: 'SPECIES_CATALOG', status: 'AVAILABLE', confidence: 1, reasons: [], offset: 4096, validRecords: 2, totalRecords: 2, count: 2, recordSize: 28, elementSize: 1, reviewStatus: 'NONE' }],
+    parserDiagnostics: [], species: null, move: null,
+  }) }));
+  const mapperState = { enabled: false, privacyAcknowledged: false, coreIdentity: null, contentIdentity: null, descriptors: [], captureLabel: null, completedBytes: 0, totalBytes: 0, snapshots: [], latestDiff: null, error: null };
+  await page.route('**/api/mapper/state', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(mapperState) }));
+  await page.route('**/api/mapper/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(mapperState) }));
 
   const assertGameTheme = async () => {
     const shell = page.locator('.production-device');
@@ -82,29 +98,121 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth && document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
   };
+  const expectSurface = async (selector: string, expected: Partial<Record<'backgroundColor' | 'borderTopColor' | 'color', string>>) => {
+    const surface = page.locator(selector).first();
+    await expect(surface).toBeVisible();
+    await expect.poll(() => surface.evaluate((node, keys) => {
+      const style = getComputedStyle(node);
+      return Object.fromEntries(keys.map(key => [key, style[key]]));
+    }, Object.keys(expected) as Array<keyof typeof expected>)).toEqual(expected);
+  };
+  const colors = {
+    header: 'rgb(220, 220, 2)', menu: 'rgb(252, 252, 252)', panel: 'rgb(253, 253, 253)',
+    border: 'rgb(1, 1, 1)', text: 'rgb(3, 3, 3)', accent: 'rgb(53, 111, 251)', accentText: 'rgb(0, 0, 0)',
+  };
+  const assertNoNormalDiagnostics = async () => {
+    const text = await page.locator('.screen').evaluate(node => {
+      const copy = node.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll('.mapper-setting').forEach(element => element.remove());
+      return copy.innerText;
+    });
+    expect(text).not.toMatch(/Pokemon Emerald\.gba|1F1C08FB|CRC32|SHA-?256|\bEMERALD\b|ROM identity|game data layout|parser|capability|RESTART_REQUIRED|DISCONNECTED|NO_CONTENT|UNVERIFIED/i);
+  };
   const show = async (name: string, state: Record<string, unknown>) => {
     serverState = { ...baseState, ...state, version: Number(serverState.version ?? 1) + 1 };
     await page.reload();
     await expect(page.locator('.production-device')).toBeVisible();
     await assertGameTheme();
+    await assertNoNormalDiagnostics();
     await page.screenshot({ path: join(artifactDir, `${name}.png`) });
   };
 
   await page.goto('/');
   await assertGameTheme();
+  await expectSurface('.browse-tools', { backgroundColor: colors.menu });
+  await expectSurface('.filter-strip button:not(.active)', { backgroundColor: colors.panel, borderTopColor: colors.border });
+  await expectSurface('.species-row', { backgroundColor: colors.panel, color: colors.text });
   await expect.poll(() => page.locator('.caught-avatar-badge').first().evaluate(node => {
     const badge = node.getBoundingClientRect();
     const mark = node.querySelector('.ball-mark')!.getBoundingClientRect();
     return { badgeWidth: badge.width, badgeHeight: badge.height, markWidth: mark.width, markHeight: mark.height };
   })).toEqual({ badgeWidth: 22, badgeHeight: 22, markWidth: 15, markHeight: 15 });
   await page.screenshot({ path: join(artifactDir, 'pokedex.png') });
-  await show('detail', { screen: 'DETAIL', selectedSpeciesId: 1 });
+  await show('detail-entry', { screen: 'DETAIL', selectedSpeciesId: 1 });
+  await expectSurface('.identity-card', { backgroundColor: colors.menu, color: colors.text });
+  await expectSurface('.paper-panel', { backgroundColor: colors.panel, borderTopColor: colors.border });
+  await page.getByRole('tab', { name: 'STATS' }).click();
+  await expect(page.locator('.stat-list')).toBeVisible();
+  await page.screenshot({ path: join(artifactDir, 'detail-stats.png') });
+  await page.getByRole('tab', { name: 'MOVES' }).click();
+  await expect(page.getByRole('button', { name: /VINE WHIP/ })).toBeVisible();
+  await page.screenshot({ path: join(artifactDir, 'detail-moves.png') });
+  await page.getByRole('button', { name: /VINE WHIP/ }).click();
+  await expect(page.locator('.move-detail-screen')).toBeVisible();
+  await assertGameTheme();
+  await assertNoNormalDiagnostics();
+  await page.screenshot({ path: join(artifactDir, 'move-detail.png') });
+  await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
+  await expect(page.locator('.detail-screen')).toBeVisible();
+  await page.getByRole('tab', { name: 'MORE' }).click();
+  await expect(page.getByRole('button', { name: /OVERGROW/ })).toBeVisible();
+  await page.screenshot({ path: join(artifactDir, 'detail-more.png') });
+  await page.getByRole('button', { name: /OVERGROW/ }).click();
+  await expect(page.locator('.ability-detail-screen')).toBeVisible();
+  await assertGameTheme();
+  await assertNoNormalDiagnostics();
+  await page.screenshot({ path: join(artifactDir, 'ability-detail.png') });
+  await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
+  await expect(page.locator('.detail-screen')).toBeVisible();
   await show('trainer', { screen: 'TRAINER' });
+  await expectSurface('.trainer-card-content', { backgroundColor: colors.menu });
+  await expectSurface('.trainer-card-shell', { backgroundColor: colors.panel, borderTopColor: colors.border });
+  await expectSurface('.trainer-card-strip', { backgroundColor: colors.header, borderTopColor: colors.border });
+  await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
+  await expect(page.locator('.pokedex-screen')).toBeVisible();
   await show('party', { screen: 'PARTY' });
-  await show('battle', {
+  await expectSurface('.party-content', { backgroundColor: colors.menu });
+  await expectSurface('.party-slot:not(.empty)', { borderTopColor: colors.accent, color: colors.text });
+  await page.getByRole('button', { name: /Party slot 1/ }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.screenshot({ path: join(artifactDir, 'party-detail.png') });
+  await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.party-screen')).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
+  await expect(page.locator('.pokedex-screen')).toBeVisible();
+  await show('battle-entry', {
     screen: 'BATTLE', battle: { opponents: [{ speciesId: 2, level: 10, typeIds: [12], rarity: { relativeTier: 'ORDINARY', innateTier: 'STANDARD', baseStars: 2, areaAdjustment: 0, stars: 2 }, moves: [] }], targetIndex: 0, targetMode: 'AUTOMATIC', capabilities: {}, selectedMoveId: 22, effectiveness: 'NEUTRAL', effectivenessKnown: true },
   });
+  await expectSurface('.battle-identity', { backgroundColor: colors.header, color: colors.accentText });
+  await expectSurface('.battle-content', { backgroundColor: colors.menu, color: colors.text });
+  await expectSurface('.battle-screen .segmented button:not(.active)', { backgroundColor: colors.panel, borderTopColor: colors.border });
+  for (const tab of ['ATTACK', 'RARITY', 'MOVES']) {
+    await page.getByRole('tab', { name: tab }).click();
+    await expect(page.getByRole('tab', { name: tab })).toHaveAttribute('aria-selected', 'true');
+    if (tab === 'RARITY') {
+      await expectSurface('.rarity-card > small', { color: colors.text });
+      await expectSurface('.rarity-card p', { color: colors.text });
+    }
+    await assertNoNormalDiagnostics();
+    await page.screenshot({ path: join(artifactDir, `battle-${tab.toLowerCase()}.png`) });
+  }
   await show('settings', { screen: 'SETTINGS' });
+  await expectSurface('.settings-content', { backgroundColor: colors.menu, color: colors.text });
+  await expectSurface('.settings-content .segmented button:not(.active)', { backgroundColor: colors.panel, borderTopColor: colors.border });
+  await page.getByRole('button', { name: 'CAPABILITY REPORT' }).click();
+  await expect(page.locator('.capability-screen')).toBeVisible();
+  await assertGameTheme();
+  await page.screenshot({ path: join(artifactDir, 'debug-capabilities.png') });
+  await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
+  await expect(page.locator('.settings-screen')).toBeVisible();
+  await page.getByRole('button', { name: 'CAPTURE MEMORY REPORT' }).click();
+  await expect(page.locator('.mapper-screen')).toBeVisible();
+  await assertGameTheme();
+  await page.screenshot({ path: join(artifactDir, 'debug-memory.png') });
+  await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
+  await expect(page.locator('.settings-screen')).toBeVisible();
+  await show('setup', { screen: 'SETUP' });
   await show('loading', { screen: 'POKEDEX', loading: { active: true, phase: 'EXTENDED', completedUnits: 4, totalUnits: 5 } });
 
   serverState = { ...baseState, version: 20 };
@@ -130,6 +238,8 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   });
   expect(fogState).toEqual({ outerEdgesOpaque: true, currentAreaRevealed: true });
   await assertGameTheme();
+  await expectSurface('.map-page-header', { backgroundColor: colors.header, color: colors.accentText });
+  await expectSurface('.map-zoom-rail .map-control', { backgroundColor: colors.menu, borderTopColor: colors.border, color: colors.text });
   const browserRasterHash = await page.evaluate(async () => {
     const payload = await fetch('/api/maps/world%2Fgen3-region-0.png').then(response => response.arrayBuffer());
     const digest = await crypto.subtle.digest('SHA-256', payload);
@@ -140,11 +250,16 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await page.getByRole('button', { name: 'Open Pokédex' }).click();
   await expect(page.locator('.pokedex-screen')).toBeVisible();
 
+  await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
+  await expect(page.locator('.pokedex-screen')).toBeVisible();
+
   serverState = { ...baseState, version: 21, screen: 'DETAIL', selectedSpeciesId: 1 };
   await page.reload();
   await page.getByRole('tab', { name: 'AREA' }).click();
   await expect(page.locator('.pokemon-area-panel')).toBeVisible();
   await assertGameTheme();
+  await expectSurface('.pokemon-area-panel', { backgroundColor: colors.panel, borderTopColor: colors.border, color: colors.text });
+  await expectSurface('.pokemon-area-panel > header', { backgroundColor: colors.header });
   await page.screenshot({ path: join(artifactDir, 'pokemon-area.png') });
 
   for (const fixed of ['DARK', 'LIGHT'] as const) {
