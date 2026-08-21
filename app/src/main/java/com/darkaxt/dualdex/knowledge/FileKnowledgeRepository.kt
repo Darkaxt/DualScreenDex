@@ -2,6 +2,7 @@ package com.darkaxt.dualdex.knowledge
 
 import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.companion.model.LocalMapPoiPreferences
 import com.enrpau.dualscreendex.companion.model.MatchupKey
 import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.OwnedPokemon
@@ -27,7 +28,7 @@ class FileKnowledgeRepository(
         val stored = runCatching { gson.fromJson(document.readText(), StoredLedger::class.java) }.getOrNull()
             ?: return null
         if (
-            stored.schema != SCHEMA ||
+            stored.schema !in setOf(LEGACY_POI_SCHEMA, PREVIOUS_SCHEMA, SCHEMA) ||
             !stored.romIdentity.equals(identity, ignoreCase = true) ||
             !stored.saveIdentity.equals(save, ignoreCase = true)
         ) return null
@@ -73,6 +74,11 @@ class FileKnowledgeRepository(
         val observedMoves: List<StoredSpeciesMoves> = emptyList(),
         val discoveredMatchups: List<StoredMatchup> = emptyList(),
         val knownMoves: List<Int> = emptyList(),
+        val proximityRevealedPoiKeys: List<String> = emptyList(),
+        val identifiedPoiKeys: List<String> = emptyList(),
+        val enteredPoiKeys: List<String> = emptyList(),
+        val collectedPoiKeys: List<String> = emptyList(),
+        val localMapPoiPreferences: LocalMapPoiPreferences = LocalMapPoiPreferences(),
         val matchupEvidenceVersion: Int = 0,
     ) {
         fun toLedger() = KnowledgeLedger(
@@ -102,6 +108,11 @@ class FileKnowledgeRepository(
                 emptyMap()
             },
             knownMoves = knownMoves.toSet(),
+            proximityRevealedPoiKeys = proximityRevealedPoiKeys.filter(String::isNotBlank).toSet(),
+            identifiedPoiKeys = identifiedPoiKeys.filter(String::isNotBlank).toSet(),
+            enteredPoiKeys = enteredPoiKeys.filter(String::isNotBlank).toSet(),
+            collectedPoiKeys = collectedPoiKeys.filter(String::isNotBlank).toSet(),
+            localMapPoiPreferences = sanitizePreferences(localMapPoiPreferences),
             matchupEvidenceVersion = KnowledgeLedger.CURRENT_MATCHUP_EVIDENCE_VERSION,
         )
 
@@ -126,6 +137,11 @@ class FileKnowledgeRepository(
                     .sortedWith(compareBy({ it.key.speciesId }, { it.key.moveId }))
                     .map { StoredMatchup(it.key.speciesId, it.key.moveId, it.value.name) },
                 knownMoves = ledger.knownMoves.sorted(),
+                proximityRevealedPoiKeys = ledger.proximityRevealedPoiKeys.sorted(),
+                identifiedPoiKeys = ledger.identifiedPoiKeys.sorted(),
+                enteredPoiKeys = ledger.enteredPoiKeys.sorted(),
+                collectedPoiKeys = ledger.collectedPoiKeys.sorted(),
+                localMapPoiPreferences = sanitizePreferences(ledger.localMapPoiPreferences),
                 matchupEvidenceVersion = ledger.matchupEvidenceVersion,
             )
         }
@@ -148,6 +164,16 @@ class FileKnowledgeRepository(
     )
 
     private companion object {
-        const val SCHEMA = 4
+        fun sanitizePreferences(preferences: LocalMapPoiPreferences): LocalMapPoiPreferences {
+            val icon = preferences.iconZoomThresholdPercent.coerceIn(0, 100)
+            return preferences.copy(
+                iconZoomThresholdPercent = icon,
+                labelZoomThresholdPercent = preferences.labelZoomThresholdPercent.coerceIn(icon, 100),
+            )
+        }
+
+        const val LEGACY_POI_SCHEMA = 4
+        const val PREVIOUS_SCHEMA = 5
+        const val SCHEMA = 6
     }
 }

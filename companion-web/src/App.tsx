@@ -138,6 +138,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         setMapOpen(false);
         void send('SCREEN', { screen: 'SETTINGS' });
       }}
+      onUpdatePoiPreferences={values => void send('MAP_POI_SETTINGS', values)}
     />;
     if (moveDetailId != null) return <MoveDetail catalog={catalog} state={state} moveId={moveDetailId} onBack={() => setMoveDetailId(null)} />;
     if (abilityDetailId != null) return <AbilityDetail catalog={catalog} state={state} abilityId={abilityDetailId} onBack={() => setAbilityDetailId(null)} />;

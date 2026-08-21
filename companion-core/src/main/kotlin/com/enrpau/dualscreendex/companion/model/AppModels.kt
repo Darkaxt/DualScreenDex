@@ -49,6 +49,21 @@ data class MoveObservation(
 
 data class MatchupKey(val speciesId: Int, val moveId: Int)
 
+data class LocalMapPoiPreferences(
+    val showPlaces: Boolean = true,
+    val showServices: Boolean = true,
+    val showAvailableItems: Boolean = true,
+    val showCollectedItems: Boolean = true,
+    val showUnknownPois: Boolean = true,
+    val iconZoomThresholdPercent: Int = 0,
+    val labelZoomThresholdPercent: Int = 0,
+) {
+    init {
+        require(iconZoomThresholdPercent in 0..100)
+        require(labelZoomThresholdPercent in iconZoomThresholdPercent..100)
+    }
+}
+
 enum class Effectiveness(val multiplierPercent: Int) {
     NO_EFFECT(0), RESISTED(50), NEUTRAL(100), SUPER_EFFECTIVE(200),
 }
@@ -64,6 +79,11 @@ data class KnowledgeLedger(
     val observedMoves: Map<Int, List<MoveObservation>> = emptyMap(),
     val discoveredMatchups: Map<MatchupKey, Effectiveness> = emptyMap(),
     val knownMoves: Set<Int> = emptySet(),
+    val proximityRevealedPoiKeys: Set<String> = emptySet(),
+    val identifiedPoiKeys: Set<String> = emptySet(),
+    val enteredPoiKeys: Set<String> = emptySet(),
+    val collectedPoiKeys: Set<String> = emptySet(),
+    val localMapPoiPreferences: LocalMapPoiPreferences = LocalMapPoiPreferences(),
     val matchupEvidenceVersion: Int = CURRENT_MATCHUP_EVIDENCE_VERSION,
 ) {
     companion object {

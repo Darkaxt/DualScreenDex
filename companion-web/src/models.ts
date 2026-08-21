@@ -141,6 +141,34 @@ export interface LocalMapScenePlacementView {
   dynamicLighting: boolean;
 }
 
+export type LocalMapPoiCategory = 'PLACE' | 'SERVICE' | 'AVAILABLE_ITEM' | 'COLLECTED_ITEM' | 'UNKNOWN';
+export type LocalMapPoiState = 'SILHOUETTE' | 'IDENTIFIED' | 'COLLECTED';
+
+export interface LocalMapPoiView {
+  key: string;
+  localMapKey: string;
+  baseAreaId: number;
+  tileX: number;
+  tileY: number;
+  category: LocalMapPoiCategory;
+  state: LocalMapPoiState;
+  displayName: string | null;
+  service: string | null;
+  itemId: number | null;
+  itemName: string | null;
+  destinationBaseAreaId: number | null;
+}
+
+export interface LocalMapPoiPreferences {
+  showPlaces: boolean;
+  showServices: boolean;
+  showAvailableItems: boolean;
+  showCollectedItems: boolean;
+  showUnknownPois: boolean;
+  iconZoomThresholdPercent: number;
+  labelZoomThresholdPercent: number;
+}
+
 export interface WorldMapRegion {
   key: string;
   displayName: string | null;
@@ -240,6 +268,8 @@ export interface State {
   currentAreaBaseId?: number | null;
   currentAreaName?: string | null;
   currentMapPosition?: { x: number; y: number } | null;
+  localMapPois?: LocalMapPoiView[];
+  localMapPoiPreferences?: LocalMapPoiPreferences;
   gameTime?: GameTime | null;
   currentAreaSpeciesIds?: number[];
   revealedAreaBaseIds?: number[];

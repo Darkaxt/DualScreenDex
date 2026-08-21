@@ -46,6 +46,7 @@ import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.LiveMapPosition
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.companion.knowledge.LocalMapPoiKnowledgeMapper
 import com.enrpau.dualscreendex.companion.model.MatchupKey
 import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.OpponentState
@@ -550,6 +551,7 @@ class ProductionCompanionRuntime(
         if (gateway.bootstrap().liveMapPosition != mapped) {
             gateway.dispatch(CompanionAction.LiveMapPositionChanged(mapped))
         }
+        mergeLivePoiProximity(gateway.bootstrap().liveAreaBaseId, mapped)
     }
 
     fun battlePollingIntervalMs(): Int = gateway.bootstrap().settings.battlePollingIntervalMs.coerceIn(1, 20)
@@ -565,6 +567,25 @@ class ProductionCompanionRuntime(
         val before = gateway.bootstrap().ledger
         if (validAreaBaseId !in before.visitedAreaBaseIds) {
             val updated = before.copy(visitedAreaBaseIds = before.visitedAreaBaseIds + validAreaBaseId)
+            gateway.dispatch(CompanionAction.ReplaceLedger(updated))
+            persistKnowledge(updated)
+        }
+        mergeLivePoiProximity(validAreaBaseId, gateway.bootstrap().liveMapPosition)
+    }
+
+    private fun mergeLivePoiProximity(areaBaseId: Int?, position: LiveMapPosition?) {
+        val currentCatalog = catalog ?: return
+        val validAreaBaseId = areaBaseId ?: return
+        val validPosition = position ?: return
+        val before = gateway.bootstrap().ledger
+        val updated = LocalMapPoiKnowledgeMapper.mergeProximity(
+            previous = before,
+            catalog = currentCatalog,
+            baseAreaId = validAreaBaseId,
+            tileX = validPosition.x,
+            tileY = validPosition.y,
+        )
+        if (updated != before) {
             gateway.dispatch(CompanionAction.ReplaceLedger(updated))
             persistKnowledge(updated)
         }
@@ -720,6 +741,7 @@ class ProductionCompanionRuntime(
                     CompanionAction.OpenAreaPokedex(areaIds),
                 )
             }
+            "MAP_POI_SETTINGS" -> updateLocalMapPoiPreferences(values)
             "SETTINGS" -> updateSettings(values)
             "TAB", "BATTLE_TAB" -> gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.valueOf(requireNotNull(values["tab"]).uppercase())))
             "TARGET", "SELECT_TARGET" -> gateway.dispatch(CompanionAction.SelectTarget(requireInt(values, "index")))
@@ -802,6 +824,32 @@ class ProductionCompanionRuntime(
             CompanionAction.UpdateSettings(updated),
         )
         if (settingsWritesEnabled) onRomSettingsChanged(settingsRomSha256, updated)
+    }
+
+    private fun updateLocalMapPoiPreferences(values: Map<String, String?>) {
+        val before = gateway.bootstrap().ledger
+        val current = before.localMapPoiPreferences
+        val iconThreshold = values["iconZoomThresholdPercent"]
+            ?.toIntOrNull()
+            ?.coerceIn(0, 100)
+            ?: current.iconZoomThresholdPercent
+        val labelThreshold = values["labelZoomThresholdPercent"]
+            ?.toIntOrNull()
+            ?.coerceIn(iconThreshold, 100)
+            ?: current.labelZoomThresholdPercent.coerceAtLeast(iconThreshold)
+        val updated = current.copy(
+            showPlaces = values["showPlaces"]?.toBooleanStrictOrNull() ?: current.showPlaces,
+            showServices = values["showServices"]?.toBooleanStrictOrNull() ?: current.showServices,
+            showAvailableItems = values["showAvailableItems"]?.toBooleanStrictOrNull() ?: current.showAvailableItems,
+            showCollectedItems = values["showCollectedItems"]?.toBooleanStrictOrNull() ?: current.showCollectedItems,
+            showUnknownPois = values["showUnknownPois"]?.toBooleanStrictOrNull() ?: current.showUnknownPois,
+            iconZoomThresholdPercent = iconThreshold,
+            labelZoomThresholdPercent = labelThreshold,
+        )
+        if (updated == current) return
+        val ledger = before.copy(localMapPoiPreferences = updated)
+        gateway.dispatch(CompanionAction.ReplaceLedger(ledger))
+        persistKnowledge(ledger)
     }
 
     private fun resolveRuleset(selection: String) = catalog?.learnsetRulesets?.let { rulesets ->

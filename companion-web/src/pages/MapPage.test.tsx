@@ -191,6 +191,71 @@ describe('optional local map presentation', () => {
     }],
   };
 
+  it('shows every permitted POI and label at the starting Local zoom by default', () => {
+    const updatePoiPreferences = vi.fn();
+    const poiState = {
+      ...state,
+      currentMapPosition: { x: 12, y: 7 },
+      localMapPois: [
+        { key: 'place', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 1, tileY: 1, category: 'PLACE', state: 'IDENTIFIED', displayName: 'Route gate', service: null, itemId: null, itemName: null, destinationBaseAreaId: 0x11 },
+        { key: 'service', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 2, tileY: 2, category: 'SERVICE', state: 'IDENTIFIED', displayName: 'Pokémon Center', service: 'POKEMON_CENTER', itemId: null, itemName: null, destinationBaseAreaId: null },
+        { key: 'item', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 3, tileY: 3, category: 'AVAILABLE_ITEM', state: 'SILHOUETTE', displayName: null, service: null, itemId: null, itemName: null, destinationBaseAreaId: null },
+        { key: 'collected', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 4, tileY: 4, category: 'COLLECTED_ITEM', state: 'COLLECTED', displayName: null, service: null, itemId: 13, itemName: 'Potion', destinationBaseAreaId: null },
+        { key: 'unknown', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 5, tileY: 5, category: 'UNKNOWN', state: 'SILHOUETTE', displayName: null, service: null, itemId: null, itemName: null, destinationBaseAreaId: null },
+      ],
+      localMapPoiPreferences: {
+        showPlaces: true,
+        showServices: true,
+        showAvailableItems: true,
+        showCollectedItems: true,
+        showUnknownPois: true,
+        iconZoomThresholdPercent: 0,
+        labelZoomThresholdPercent: 0,
+      },
+    } as State;
+    const { container } = render(<MapPage
+      catalog={localCatalog}
+      state={poiState}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+      onUpdatePoiPreferences={updatePoiPreferences}
+    />);
+
+    const stage = screen.getByRole('region', { name: 'Interactive local map' });
+    expect(stage.dataset.poiZoomPercent).toBe('0');
+    expect(container.querySelectorAll('.map-poi-marker')).toHaveLength(5);
+    expect(container.querySelectorAll('.map-poi-label')).toHaveLength(5);
+    expect(screen.getByText('Route gate')).toBeTruthy();
+    expect(screen.getByText('Item')).toBeTruthy();
+    expect(screen.getByText('Unknown')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Map POI filters' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Available items' }));
+    expect(updatePoiPreferences).toHaveBeenCalledWith({ showAvailableItems: false });
+  });
+
+  it('applies normalized POI zoom thresholds above the starting Local zoom', () => {
+    const thresholdState = {
+      ...state,
+      currentMapPosition: { x: 12, y: 7 },
+      localMapPois: [{ key: 'item', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 3, tileY: 3, category: 'AVAILABLE_ITEM', state: 'SILHOUETTE', displayName: null, service: null, itemId: null, itemName: null, destinationBaseAreaId: null }],
+      localMapPoiPreferences: {
+        showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
+        iconZoomThresholdPercent: 20, labelZoomThresholdPercent: 60,
+      },
+    } as State;
+    const { container } = render(<MapPage catalog={localCatalog} state={thresholdState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+
+    expect(container.querySelector('.map-poi-marker')).toBeNull();
+    for (let index = 0; index < 4; index += 1) fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(Number(screen.getByRole('region', { name: 'Interactive local map' }).dataset.poiZoomPercent)).toBeGreaterThanOrEqual(20);
+    expect(container.querySelector('.map-poi-marker')).toBeTruthy();
+    expect(container.querySelector('.map-poi-label')).toBeNull();
+    for (let index = 0; index < 4; index += 1) fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(Number(screen.getByRole('region', { name: 'Interactive local map' }).dataset.poiZoomPercent)).toBeGreaterThanOrEqual(60);
+    expect(container.querySelector('.map-poi-label')).toBeTruthy();
+  });
+
   it('uses Local as the only map surface when playable geography is available', () => {
     const { container } = render(<MapPage
       catalog={localCatalog}

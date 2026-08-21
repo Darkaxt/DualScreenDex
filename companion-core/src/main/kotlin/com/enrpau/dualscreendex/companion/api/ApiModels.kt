@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.companion.knowledge.KnowledgePolicy
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.MoveObservation
+import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.owned.PreferredIndividualSelector
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
@@ -91,6 +92,21 @@ data class LocalMapScenePlacementView(
     val gridHeight: Int,
     val imageUrl: String,
     val dynamicLighting: Boolean,
+)
+
+data class LocalMapPoiView(
+    val key: String,
+    val localMapKey: String,
+    val baseAreaId: Int,
+    val tileX: Int,
+    val tileY: Int,
+    val category: String,
+    val state: String,
+    val displayName: String?,
+    val service: String?,
+    val itemId: Int?,
+    val itemName: String?,
+    val destinationBaseAreaId: Int?,
 )
 
 data class WorldMapRegionView(
@@ -247,6 +263,8 @@ data class StateView(
     val currentAreaBaseId: Int?,
     val currentAreaName: String?,
     val currentMapPosition: MapPositionView?,
+    val localMapPois: List<LocalMapPoiView>,
+    val localMapPoiPreferences: com.enrpau.dualscreendex.companion.model.LocalMapPoiPreferences,
     val currentAreaSpeciesIds: List<Int>,
     val revealedAreaBaseIds: List<Int>,
     val observedAreaBaseIdsBySpecies: Map<Int, List<Int>>,
@@ -675,6 +693,47 @@ object ApiViewBuilder {
             .flatMap { (areaBaseId, speciesIds) -> speciesIds.map { speciesId -> speciesId to areaBaseId } }
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, areaBaseIds) -> areaBaseIds.distinct().sorted() }
+        val localMapPois = catalog?.localMaps?.pois.orEmpty().mapNotNull { poi ->
+            val collected = poi.key in snapshot.ledger.collectedPoiKeys
+            val explicitlyIdentified = poi.key in snapshot.ledger.identifiedPoiKeys || poi.key in snapshot.ledger.enteredPoiKeys
+            val proximityRevealed = poi.key in snapshot.ledger.proximityRevealedPoiKeys
+            val identified = snapshot.settings.knowledgeMode == KnowledgeMode.DISCOVERED || collected || explicitlyIdentified
+            val visibleWithoutDiscovery = poi.organicVisibility ==
+                com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility.VISIBLE
+            val included = when (snapshot.settings.knowledgeMode) {
+                KnowledgeMode.HIDDEN -> false
+                KnowledgeMode.DISCOVERED -> true
+                KnowledgeMode.ORGANIC -> visibleWithoutDiscovery || proximityRevealed || identified
+            }
+            if (!included) return@mapNotNull null
+            val state = when {
+                collected -> "COLLECTED"
+                identified -> "IDENTIFIED"
+                else -> "SILHOUETTE"
+            }
+            val category = when {
+                collected -> "COLLECTED_ITEM"
+                poi.kind == com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind.VISIBLE_ITEM ||
+                    poi.kind == com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind.HIDDEN_ITEM -> "AVAILABLE_ITEM"
+                poi.kind == com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind.SERVICE -> "SERVICE"
+                poi.kind == com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind.PLACE -> "PLACE"
+                else -> "UNKNOWN"
+            }
+            LocalMapPoiView(
+                key = poi.key,
+                localMapKey = poi.localMapKey,
+                baseAreaId = poi.baseAreaId,
+                tileX = poi.tileX,
+                tileY = poi.tileY,
+                category = category,
+                state = state,
+                displayName = poi.displayName.takeIf { identified },
+                service = poi.service?.name,
+                itemId = poi.item?.itemId.takeIf { identified },
+                itemName = poi.item?.displayName.takeIf { identified },
+                destinationBaseAreaId = poi.destinationBaseAreaId.takeIf { identified },
+            )
+        }
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
@@ -709,6 +768,8 @@ object ApiViewBuilder {
             effectiveAreaBaseId,
             currentAreaName,
             snapshot.liveMapPosition?.let { MapPositionView(it.x, it.y) },
+            localMapPois,
+            snapshot.ledger.localMapPoiPreferences,
             currentAreaSpeciesIds,
             revealedAreaBaseIds,
             observedAreaBaseIdsBySpecies,

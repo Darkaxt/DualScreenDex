@@ -2,6 +2,7 @@ package com.darkaxt.dualdex.knowledge
 
 import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.companion.model.LocalMapPoiPreferences
 import com.enrpau.dualscreendex.companion.model.MatchupKey
 import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.OwnedPokemon
@@ -31,6 +32,19 @@ class FileKnowledgeRepositoryTest {
             observedMoves = mapOf(133 to listOf(MoveObservation(33, 3), MoveObservation(39, 1))),
             discoveredMatchups = mapOf(MatchupKey(133, 84) to Effectiveness.NEUTRAL),
             knownMoves = setOf(33, 39, 84),
+            proximityRevealedPoiKeys = setOf("local/0001/bg/0"),
+            identifiedPoiKeys = setOf("local/0001/warp/0"),
+            enteredPoiKeys = setOf("local/0001/warp/0"),
+            collectedPoiKeys = setOf("local/0001/object/0"),
+            localMapPoiPreferences = LocalMapPoiPreferences(
+                showPlaces = false,
+                showServices = true,
+                showAvailableItems = false,
+                showCollectedItems = true,
+                showUnknownPois = false,
+                iconZoomThresholdPercent = 35,
+                labelZoomThresholdPercent = 65,
+            ),
         )
         val repository = FileKnowledgeRepository(temporary.newFolder("knowledge"))
 
@@ -75,5 +89,39 @@ class FileKnowledgeRepositoryTest {
         )
 
         assertNull(FileKnowledgeRepository(root).read(identity, saveIdentity))
+    }
+
+    @Test
+    fun migratesThePreviousPerSaveSchemaWithEmptyPoiKnowledge() {
+        val identity = "8".repeat(64)
+        val saveIdentity = "9".repeat(64)
+        val root = temporary.newFolder("knowledge")
+        root.resolve("$identity.$saveIdentity.json").writeText(
+            """{"schema":4,"romIdentity":"$identity","saveIdentity":"$saveIdentity","seenSpecies":[25]}""",
+        )
+
+        val migrated = FileKnowledgeRepository(root).read(identity, saveIdentity)
+
+        assertEquals(setOf(25), migrated?.seenSpecies)
+        assertEquals(emptySet<String>(), migrated?.proximityRevealedPoiKeys)
+        assertEquals(emptySet<String>(), migrated?.identifiedPoiKeys)
+        assertEquals(emptySet<String>(), migrated?.enteredPoiKeys)
+        assertEquals(emptySet<String>(), migrated?.collectedPoiKeys)
+        assertEquals(LocalMapPoiPreferences(), migrated?.localMapPoiPreferences)
+    }
+
+    @Test
+    fun migratesThePreviousPoiSchemaWithDefaultDisplayPreferences() {
+        val identity = "a".repeat(64)
+        val saveIdentity = "b".repeat(64)
+        val root = temporary.newFolder("knowledge")
+        root.resolve("$identity.$saveIdentity.json").writeText(
+            """{"schema":5,"romIdentity":"$identity","saveIdentity":"$saveIdentity","proximityRevealedPoiKeys":["local/1/bg/0"]}""",
+        )
+
+        val migrated = FileKnowledgeRepository(root).read(identity, saveIdentity)
+
+        assertEquals(setOf("local/1/bg/0"), migrated?.proximityRevealedPoiKeys)
+        assertEquals(LocalMapPoiPreferences(), migrated?.localMapPoiPreferences)
     }
 }

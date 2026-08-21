@@ -3,21 +3,31 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DexIcon, MapIcon, SettingsIcon } from '../components';
 import { GameClockIndicator } from '../GameClockIndicator';
 import { anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, type MapViewport } from '../mapEngine';
-import type { Catalog, State, WorldMapLocation, WorldMapRegion } from '../models';
+import type { Catalog, LocalMapPoiPreferences, LocalMapPoiView, State, WorldMapLocation, WorldMapRegion } from '../models';
 
 interface MapPageProps {
   catalog: Catalog;
   state: State;
   onOpenPokedex: () => void;
   onOpenSettings: () => void;
+  onUpdatePoiPreferences?: (values: Partial<LocalMapPoiPreferences>) => void;
 }
 
 type MapMode = 'LOCAL' | 'ATLAS';
 
 const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
 const TRAINER_MARKER_PIXELS = 64;
+const DEFAULT_POI_PREFERENCES: LocalMapPoiPreferences = {
+  showPlaces: true,
+  showServices: true,
+  showAvailableItems: true,
+  showCollectedItems: true,
+  showUnknownPois: true,
+  iconZoomThresholdPercent: 0,
+  labelZoomThresholdPercent: 0,
+};
 
-export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPageProps) {
+export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdatePoiPreferences }: MapPageProps) {
   const maps = catalog.worldMaps ?? [];
   const localMap = (catalog.localMaps ?? []).find(map => map.baseAreaId === state.currentAreaBaseId);
   const localScene = (catalog.mapScenes ?? []).find(scene =>
@@ -41,10 +51,13 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const [fit, setFit] = useState({ width: activeMap?.pixelWidth ?? 1, height: activeMap?.pixelHeight ?? 1, scale: 1 });
   const fogVisible = activeMode === 'ATLAS' && state.settings.knowledgeMode !== 'DISCOVERED';
   const [legendOpen, setLegendOpen] = useState(false);
+  const [poiFiltersOpen, setPoiFiltersOpen] = useState(false);
+  const [selectedPoiKey, setSelectedPoiKey] = useState<string | null>(null);
   const stageRef = useRef<HTMLElement>(null);
   const fogRef = useRef<HTMLCanvasElement>(null);
   const gestureRef = useRef(new GestureTracker(HOME_VIEWPORT));
   const maximumScaleRef = useRef(MAX_MAP_SCALE);
+  const minimumScaleRef = useRef(1);
   const initializedSceneKeyRef = useRef<string | null>(null);
   const allowMarkerSelectionRef = useRef(true);
   const pressedMarkerRef = useRef(new Map<number, string>());
@@ -70,6 +83,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
     () => new Map((catalog.localMaps ?? []).map(map => [map.key, map.displayName])),
     [catalog.localMaps],
   );
+  const poiPreferences = state.localMapPoiPreferences ?? DEFAULT_POI_PREFERENCES;
   const selectedCandidate = region?.locations.find(location => location.key === selectedKey);
   const selectedLocation = fogVisible
     ? revealedLocations.find(location => location.key === selectedCandidate?.key) ?? currentLocation
@@ -132,6 +146,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
         focused?.viewport.scale ?? 1,
         Math.min(genericMaximum, avatarMaximum),
       );
+      minimumScaleRef.current = focused?.viewport.scale ?? 1;
       const clamped = gestureRef.current.setMaximumScale(maximumScaleRef.current);
       if (focused && initializedSceneKeyRef.current !== localScene?.key) {
         initializedSceneKeyRef.current = localScene!.key;
@@ -262,6 +277,38 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
     : `lighting=${state.gameTime?.phase ?? 'DAY'}`;
   const localImageUrl = localMap ? mapImageUrl(localMap.imageUrl, localMap.dynamicLighting, localLightingQuery) : undefined;
   const activeImageUrl = activeMode === 'LOCAL' ? localImageUrl : region?.imageUrl;
+  const poiZoomPercent = normalizedPoiZoom(viewport.scale, minimumScaleRef.current, maximumScaleRef.current);
+  const poiIconsVisible = activeMode === 'LOCAL' && poiZoomPercent >= poiPreferences.iconZoomThresholdPercent;
+  const poiLabelsVisible = poiIconsVisible && poiZoomPercent >= poiPreferences.labelZoomThresholdPercent;
+  const localPoiMarkers = (activeMode === 'LOCAL'
+    ? (state.localMapPois ?? []).flatMap(poi => {
+      if (!poiCategoryEnabled(poi, poiPreferences)) return [];
+      if (localScene) {
+        const placement = visibleScenePlacements.find(candidate => candidate.localMapKey === poi.localMapKey);
+        if (!placement) return [];
+        return [{
+          poi,
+          x: (placement.gridX + poi.tileX + 0.5) / localScene.gridWidth * 100,
+          y: (placement.gridY + poi.tileY + 0.5) / localScene.gridHeight * 100,
+        }];
+      }
+      if (!localMap || poi.localMapKey !== localMap.key) return [];
+      return [{
+        poi,
+        x: (poi.tileX + 0.5) / localMap.gridWidth * 100,
+        y: (poi.tileY + 0.5) / localMap.gridHeight * 100,
+      }];
+    })
+    : []).filter(marker => poiWithinViewport(
+      marker.x,
+      marker.y,
+      renderedWidth,
+      renderedHeight,
+      viewport,
+      stageRef.current?.clientWidth ?? 0,
+      stageRef.current?.clientHeight ?? 0,
+    ));
+  const selectedPoi = localPoiMarkers.find(marker => marker.poi.key === selectedPoiKey)?.poi;
 
   return <section class="screen map-screen">
     <header class="map-page-header">
@@ -285,6 +332,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       data-pan-x={viewport.panX}
       data-pan-y={viewport.panY}
       data-effective-raster-scale={renderedWidth / activeMap.pixelWidth}
+      data-poi-zoom-percent={poiZoomPercent}
       data-selected-key={activeMode === 'ATLAS' ? selectedLocation?.key : localScene?.key ?? localMap?.key}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -364,16 +412,43 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
         >{playerAvatarUrl
             ? <img src={playerAvatarUrl} alt={state.trainer?.name ?? 'Player'} draggable={false} />
             : <span class="map-player-dot" />}</span>}
+        {poiIconsVisible && localPoiMarkers.map(({ poi, x, y }) => <button
+          key={poi.key}
+          class={`map-poi-marker map-poi-${poi.category.toLowerCase().replaceAll('_', '-')} ${poi.state === 'SILHOUETTE' ? 'is-silhouette' : ''} ${poi.key === selectedPoiKey ? 'is-selected' : ''}`}
+          data-poi-key={poi.key}
+          style={{ left: `${x}%`, top: `${y}%` }}
+          aria-label={poiAriaLabel(poi)}
+          onClick={() => setSelectedPoiKey(current => current === poi.key ? null : poi.key)}
+        >
+          <span class="map-poi-symbol" aria-hidden="true">{poiSymbol(poi)}</span>
+          {poiLabelsVisible && <span class="map-poi-label">{poiLabel(poi)}</span>}
+        </button>)}
       </div>
 
       <nav class="map-utility-rail" aria-label="Map utilities">
         {activeMode === 'ATLAS' && maps.length > 1 && <button class="map-control" aria-label="Choose map region" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>}
+        {activeMode === 'LOCAL' && <button class="map-control map-poi-filter-control" aria-label="Map POI filters" aria-expanded={poiFiltersOpen} onClick={() => setPoiFiltersOpen(value => !value)}><span aria-hidden="true">◆</span></button>}
         {legendOpen && activeMode === 'ATLAS' && maps.length > 1 && <div class="map-legend-panel">
           <small>{activeMode}</small>
           <strong>{displayName}</strong>
           <div class="map-region-options">{maps.map(item => <button key={item.key} aria-pressed={item.key === region?.key} onClick={() => setRegionKey(item.key)}>{item.displayName ?? item.key}</button>)}</div>
         </div>}
+        {poiFiltersOpen && activeMode === 'LOCAL' && <div class="map-legend-panel map-poi-filter-panel">
+          <strong>Map details</strong>
+          <PoiToggle label="Places" checked={poiPreferences.showPlaces} onChange={checked => onUpdatePoiPreferences?.({ showPlaces: checked })} />
+          <PoiToggle label="Services" checked={poiPreferences.showServices} onChange={checked => onUpdatePoiPreferences?.({ showServices: checked })} />
+          <PoiToggle label="Available items" checked={poiPreferences.showAvailableItems} onChange={checked => onUpdatePoiPreferences?.({ showAvailableItems: checked })} />
+          <PoiToggle label="Collected items" checked={poiPreferences.showCollectedItems} onChange={checked => onUpdatePoiPreferences?.({ showCollectedItems: checked })} />
+          <PoiToggle label="Unknown POIs" checked={poiPreferences.showUnknownPois} onChange={checked => onUpdatePoiPreferences?.({ showUnknownPois: checked })} />
+        </div>}
       </nav>
+
+      {selectedPoi && <aside class="map-poi-card" aria-label="Map point details">
+        <button aria-label="Close map point details" onClick={() => setSelectedPoiKey(null)}>×</button>
+        <small>{poiCategoryLabel(selectedPoi)}</small>
+        <strong>{poiLabel(selectedPoi)}</strong>
+        {selectedPoi.state === 'COLLECTED' && <span>Collected</span>}
+      </aside>}
 
       <nav class="map-zoom-rail" aria-label="Map view controls">
         <button class="map-control" aria-label="Zoom in" onClick={() => zoom(1.25)}>+</button>
@@ -382,6 +457,63 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       </nav>
     </main>
   </section>;
+}
+
+function PoiToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return <label class="map-poi-toggle"><input type="checkbox" checked={checked} onChange={event => onChange(event.currentTarget.checked)} /><span>{label}</span></label>;
+}
+
+function normalizedPoiZoom(scale: number, minimum: number, maximum: number) {
+  if (!Number.isFinite(scale) || !Number.isFinite(minimum) || !Number.isFinite(maximum) || maximum <= minimum) return 0;
+  return Math.round(Math.min(100, Math.max(0, (scale - minimum) / (maximum - minimum) * 100)));
+}
+
+function poiWithinViewport(
+  xPercent: number,
+  yPercent: number,
+  renderedWidth: number,
+  renderedHeight: number,
+  viewport: MapViewport,
+  stageWidth: number,
+  stageHeight: number,
+) {
+  if (stageWidth <= 0 || stageHeight <= 0) return true;
+  const x = stageWidth / 2 + viewport.panX + (xPercent / 100 - 0.5) * renderedWidth;
+  const y = stageHeight / 2 + viewport.panY + (yPercent / 100 - 0.5) * renderedHeight;
+  const margin = 48;
+  return x >= -margin && x <= stageWidth + margin && y >= -margin && y <= stageHeight + margin;
+}
+
+function poiCategoryEnabled(poi: LocalMapPoiView, preferences: LocalMapPoiPreferences) {
+  switch (poi.category) {
+    case 'PLACE': return preferences.showPlaces;
+    case 'SERVICE': return preferences.showServices;
+    case 'AVAILABLE_ITEM': return preferences.showAvailableItems;
+    case 'COLLECTED_ITEM': return preferences.showCollectedItems;
+    case 'UNKNOWN': return preferences.showUnknownPois;
+  }
+}
+
+function poiLabel(poi: LocalMapPoiView) {
+  return poi.itemName ?? poi.displayName ?? (poi.category === 'AVAILABLE_ITEM' || poi.category === 'COLLECTED_ITEM' ? 'Item' : poi.category === 'SERVICE' ? 'Service' : poi.category === 'PLACE' ? 'Place' : 'Unknown');
+}
+
+function poiCategoryLabel(poi: LocalMapPoiView) {
+  return poi.category === 'COLLECTED_ITEM' ? 'Collected item' : poi.category.replaceAll('_', ' ').toLowerCase();
+}
+
+function poiAriaLabel(poi: LocalMapPoiView) {
+  return `${poiCategoryLabel(poi)}: ${poiLabel(poi)}`;
+}
+
+function poiSymbol(poi: LocalMapPoiView) {
+  switch (poi.category) {
+    case 'PLACE': return '⌂';
+    case 'SERVICE': return '+';
+    case 'AVAILABLE_ITEM':
+    case 'COLLECTED_ITEM': return '◒';
+    case 'UNKNOWN': return '?';
+  }
 }
 
 function mapImageUrl(imageUrl: string, dynamicLighting: boolean, lightingQuery: string) {

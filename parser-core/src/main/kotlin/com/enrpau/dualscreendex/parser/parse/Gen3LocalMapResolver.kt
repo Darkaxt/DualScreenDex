@@ -130,11 +130,13 @@ internal object Gen3LocalMapResolver {
         val scenes = runCatching {
             Gen3MapSceneResolver.resolve(session.rom, selectedHeaders, maps)
         }.getOrDefault(emptyList())
+        val poiResolution = Gen3LocalMapPoiResolver.resolve(session.rom, selectedHeaders, maps, family)
         val catalog = LocalMapCatalog(
             maps = maps,
             assets = assets,
             timedAssets = timedAssets,
             scenes = scenes,
+            pois = poiResolution.pois,
         ).validate()
         return LocalMapResolution.Resolved(
             catalog = catalog,
@@ -150,8 +152,12 @@ internal object Gen3LocalMapResolver {
                 listOf("retained ${timedAssets.size} source-backed natural-light maps as indexed timed rasters")
             } else {
                 emptyList()
-            } + skippedReasons,
-            skippedMaps = skippedReasons.size,
+            } + if (poiResolution.pois.isNotEmpty()) {
+                listOf("resolved ${poiResolution.pois.size} bounded local-map POIs from typed MapEvents records")
+            } else {
+                emptyList()
+            } + skippedReasons + poiResolution.skippedReasons,
+            skippedMaps = skippedReasons.size + poiResolution.skippedReasons.size,
         )
     }
 

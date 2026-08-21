@@ -43,6 +43,13 @@ import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
+import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
+import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
@@ -71,6 +78,7 @@ import com.darkaxt.dualdex.battle.BattleTrackingUpdate
 import com.darkaxt.dualdex.battle.BattleEncounterKind
 import com.darkaxt.dualdex.battle.ResolvedBattleLayout
 import com.darkaxt.dualdex.battle.TargetMode
+import com.darkaxt.dualdex.battle.RuntimeMapPosition
 
 class ProductionCompanionRuntimeTest {
     @Test
@@ -528,6 +536,84 @@ class ProductionCompanionRuntimeTest {
         assertTrue(restored.caughtSpecies.isEmpty())
         assertEquals(listOf(com.enrpau.dualscreendex.companion.model.MoveObservation(33, 2)), restored.observedMoves[25])
         assertFalse(999 in restored.observedMoves)
+        runtime.close()
+    }
+
+    @Test
+    fun liveMapPositionPersistsAdjacentHiddenItemDiscoveryForTheActiveSave() {
+        val identity = "d".repeat(64)
+        val saveIdentity = "4".repeat(64)
+        val repository = InMemoryKnowledgeRepository()
+        val map = LocalMap("local/0102", "Route", 0x0102, 160, 160, 10, 10, "local/0102/map")
+        val poi = LocalMapPoi(
+            key = "local/0102/bg/0",
+            localMapKey = map.key,
+            baseAreaId = map.baseAreaId,
+            tileX = 4,
+            tileY = 4,
+            kind = LocalMapPoiKind.HIDDEN_ITEM,
+            organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
+            item = LocalMapPoiItem(13),
+        )
+        val runtime = ProductionCompanionRuntime(knowledgeRepository = repository)
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                identity,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                localMaps = LocalMapCatalog(
+                    maps = listOf(map),
+                    assets = mapOf(
+                        map.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                    ),
+                    pois = listOf(poi),
+                ),
+            ),
+        )
+        assertTrue(runtime.applySaveSnapshot(emptySave(identity, saveIdentity), SaveRamView(status = "MATCHED")))
+        runtime.updateLiveArea(map.baseAreaId)
+
+        runtime.updateLiveMapPosition(RuntimeMapPosition(3, 3))
+
+        assertEquals(setOf(poi.key), runtime.gateway.bootstrap().ledger.proximityRevealedPoiKeys)
+        assertEquals(setOf(poi.key), repository.read(identity, saveIdentity)?.proximityRevealedPoiKeys)
+        runtime.close()
+    }
+
+    @Test
+    fun mapPoiPreferencesDefaultToShowingEverythingAndPersistForTheActiveRomSave() {
+        val identity = "e".repeat(64)
+        val saveIdentity = "5".repeat(64)
+        val repository = InMemoryKnowledgeRepository()
+        val runtime = ProductionCompanionRuntime(knowledgeRepository = repository)
+        runtime.loadCatalog("fixture.gba", ParsedCatalog(identity, EngineFamily.EMERALD, Platform.GBA))
+        assertTrue(runtime.applySaveSnapshot(emptySave(identity, saveIdentity), SaveRamView(status = "MATCHED")))
+
+        val defaults = runtime.stateView().localMapPoiPreferences
+        assertTrue(defaults.showPlaces)
+        assertTrue(defaults.showServices)
+        assertTrue(defaults.showAvailableItems)
+        assertTrue(defaults.showCollectedItems)
+        assertTrue(defaults.showUnknownPois)
+        assertEquals(0, defaults.iconZoomThresholdPercent)
+        assertEquals(0, defaults.labelZoomThresholdPercent)
+
+        val changed = runtime.action(
+            "MAP_POI_SETTINGS",
+            mapOf(
+                "showPlaces" to "false",
+                "showUnknownPois" to "false",
+                "iconZoomThresholdPercent" to "40",
+                "labelZoomThresholdPercent" to "65",
+            ),
+        ).localMapPoiPreferences
+
+        assertFalse(changed.showPlaces)
+        assertFalse(changed.showUnknownPois)
+        assertEquals(40, changed.iconZoomThresholdPercent)
+        assertEquals(65, changed.labelZoomThresholdPercent)
+        assertEquals(changed, repository.read(identity, saveIdentity)?.localMapPoiPreferences)
         runtime.close()
     }
     @Test

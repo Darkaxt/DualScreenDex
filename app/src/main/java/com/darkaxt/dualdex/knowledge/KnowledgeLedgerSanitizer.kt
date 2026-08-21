@@ -9,6 +9,7 @@ object KnowledgeLedgerSanitizer {
         val speciesIds = catalog.speciesById.keys
         val moveIds = catalog.movesById.keys
         val areaBaseIds = catalog.discoverableAreaBaseIds()
+        val poiKeys = catalog.localMaps.pois.mapTo(hashSetOf()) { it.key }
         val caught = ledger.caughtSpecies.filterTo(linkedSetOf()) { it in speciesIds }
         val observedMoves = ledger.observedMoves.entries.mapNotNull { (speciesId, observations) ->
             if (speciesId !in speciesIds) return@mapNotNull null
@@ -33,6 +34,10 @@ object KnowledgeLedgerSanitizer {
                 key.speciesId in speciesIds && key.moveId in moveIds
             },
             knownMoves = ledger.knownMoves.filterTo(linkedSetOf()) { it in moveIds },
+            proximityRevealedPoiKeys = ledger.proximityRevealedPoiKeys.filterTo(linkedSetOf()) { it in poiKeys },
+            identifiedPoiKeys = ledger.identifiedPoiKeys.filterTo(linkedSetOf()) { it in poiKeys },
+            enteredPoiKeys = ledger.enteredPoiKeys.filterTo(linkedSetOf()) { it in poiKeys },
+            collectedPoiKeys = ledger.collectedPoiKeys.filterTo(linkedSetOf()) { it in poiKeys },
         )
     }
 }

@@ -6,6 +6,10 @@ import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
@@ -36,6 +40,18 @@ class KnowledgeLedgerSanitizerTest {
             localMaps = LocalMapCatalog(
                 maps = listOf(LocalMap("littleroot", "Littleroot Town", 0x0009, 16, 16, 1, 1, "local/littleroot")),
                 assets = mapOf("local/littleroot" to PngMapAsset(PNG_SIGNATURE)),
+                pois = listOf(
+                    LocalMapPoi(
+                        key = "littleroot/bg/0",
+                        localMapKey = "littleroot",
+                        baseAreaId = 0x0009,
+                        tileX = 0,
+                        tileY = 0,
+                        kind = LocalMapPoiKind.HIDDEN_ITEM,
+                        organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
+                        item = LocalMapPoiItem(itemId = 13),
+                    ),
+                ),
             ),
             worldMaps = WorldMapCatalog(
                 regions = listOf(
@@ -50,12 +66,20 @@ class KnowledgeLedgerSanitizerTest {
         val ledger = KnowledgeLedger(
             currentAreaBaseId = 0x0009,
             visitedAreaBaseIds = setOf(0x0009, 0x0010, 0x0011, 0x7FFF),
+            proximityRevealedPoiKeys = setOf("littleroot/bg/0", "stale/bg/7"),
+            identifiedPoiKeys = setOf("littleroot/bg/0", "stale/bg/7"),
+            enteredPoiKeys = setOf("stale/warp/0"),
+            collectedPoiKeys = setOf("littleroot/bg/0", "stale/object/0"),
         )
 
         val sanitized = KnowledgeLedgerSanitizer.sanitize(ledger, catalog)
 
         assertEquals(0x0009, sanitized.currentAreaBaseId)
         assertEquals(setOf(0x0009, 0x0010, 0x0011), sanitized.visitedAreaBaseIds)
+        assertEquals(setOf("littleroot/bg/0"), sanitized.proximityRevealedPoiKeys)
+        assertEquals(setOf("littleroot/bg/0"), sanitized.identifiedPoiKeys)
+        assertEquals(emptySet<String>(), sanitized.enteredPoiKeys)
+        assertEquals(setOf("littleroot/bg/0"), sanitized.collectedPoiKeys)
     }
 
     private companion object {

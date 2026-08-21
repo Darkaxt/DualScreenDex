@@ -83,6 +83,26 @@ describe('production settings copy', () => {
     expect(send).toHaveBeenCalledWith('SETTINGS', { displayTarget: 'EXTERNAL' });
   });
 
+  it('controls normalized Local map POI zoom thresholds without hiding details by default', () => {
+    const send = vi.fn();
+    render(<SettingsPage catalog={catalog} state={{
+      ...state,
+      localMapPoiPreferences: {
+        showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
+        iconZoomThresholdPercent: 0, labelZoomThresholdPercent: 0,
+      },
+    }} send={send} onUpload={vi.fn()} />);
+
+    expect(screen.getByLabelText('Map detail icons')).toHaveProperty('value', '0');
+    expect(screen.getByLabelText('Map detail labels')).toHaveProperty('value', '0');
+    expect(screen.getByText(/visible at the starting Local view/i)).toBeTruthy();
+
+    fireEvent.input(screen.getByLabelText('Map detail icons'), { target: { value: '35' } });
+    fireEvent.input(screen.getByLabelText('Map detail labels'), { target: { value: '65' } });
+    expect(send).toHaveBeenCalledWith('MAP_POI_SETTINGS', { iconZoomThresholdPercent: 35 });
+    expect(send).toHaveBeenCalledWith('MAP_POI_SETTINGS', { labelZoomThresholdPercent: 65 });
+  });
+
   it('does not expose the retired Thor focus setting or status', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
 

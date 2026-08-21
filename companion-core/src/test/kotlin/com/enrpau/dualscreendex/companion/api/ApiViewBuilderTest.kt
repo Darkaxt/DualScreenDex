@@ -8,6 +8,8 @@ import com.enrpau.dualscreendex.companion.model.GameClock
 import com.enrpau.dualscreendex.companion.model.GameClockPhase
 import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.companion.model.CompanionSettings
+import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.LiveMapPosition
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
@@ -28,6 +30,10 @@ import com.enrpau.dualscreendex.parser.catalog.IndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScene
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
@@ -53,6 +59,57 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ApiViewBuilderTest {
+    @Test
+    fun organicPoiProjectionNeverLeaksUndiscoveredHiddenCoordinatesOrItemIdentity() {
+        val map = LocalMap("local/0102", "Route", 0x0102, 160, 160, 10, 10, "local/0102/map")
+        val visible = LocalMapPoi(
+            "local/0102/object/0", map.key, map.baseAreaId, 2, 2,
+            LocalMapPoiKind.VISIBLE_ITEM,
+            item = LocalMapPoiItem(13, "Potion", 0x52),
+        )
+        val hidden = LocalMapPoi(
+            "local/0102/bg/0", map.key, map.baseAreaId, 4, 4,
+            LocalMapPoiKind.HIDDEN_ITEM,
+            LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
+            item = LocalMapPoiItem(110, "Nugget", 0x3E8),
+        )
+        val catalog = ParsedCatalog(
+            "a".repeat(64), EngineFamily.EMERALD, Platform.GBA,
+            localMaps = LocalMapCatalog(
+                maps = listOf(map),
+                assets = mapOf(
+                    map.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                ),
+                pois = listOf(visible, hidden),
+            ),
+        )
+
+        val initial = ApiViewBuilder.state(
+            AppSnapshot(settings = CompanionSettings(knowledgeMode = KnowledgeMode.ORGANIC)),
+            catalog,
+        )
+        val revealed = ApiViewBuilder.state(
+            AppSnapshot(
+                settings = CompanionSettings(knowledgeMode = KnowledgeMode.ORGANIC),
+                ledger = KnowledgeLedger(proximityRevealedPoiKeys = setOf(hidden.key)),
+            ),
+            catalog,
+        )
+        val discovered = ApiViewBuilder.state(
+            AppSnapshot(settings = CompanionSettings(knowledgeMode = KnowledgeMode.DISCOVERED)),
+            catalog,
+        )
+
+        assertEquals(listOf(visible.key), initial.localMapPois.map { it.key })
+        assertEquals("SILHOUETTE", initial.localMapPois.single().state)
+        assertNull(initial.localMapPois.single().itemId)
+        assertEquals(setOf(visible.key, hidden.key), revealed.localMapPois.mapTo(mutableSetOf()) { it.key })
+        assertEquals("SILHOUETTE", revealed.localMapPois.single { it.key == hidden.key }.state)
+        assertNull(revealed.localMapPois.single { it.key == hidden.key }.itemId)
+        assertEquals(setOf(13, 110), discovered.localMapPois.mapNotNullTo(mutableSetOf()) { it.itemId })
+        assertEquals(setOf("IDENTIFIED"), discovered.localMapPois.mapTo(mutableSetOf()) { it.state })
+    }
+
     @Test
     fun exposesTheCompletePersistedRomThemeWithoutReinterpretingTokens() {
         val theme = CatalogTheme(
