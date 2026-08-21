@@ -19,6 +19,7 @@ import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
@@ -135,6 +136,7 @@ internal class CatalogSectionCodec {
     private val movesType = type<Map<Int, MoveRecord>>()
     private val typesType = type<Map<Int, TypeRecord>>()
     private val abilitiesType = type<Map<Int, AbilityRecord>>()
+    private val naturesType = type<Map<Int, NatureRecord>>()
     private val chartType = type<List<TypeMatchup>>()
     private val encountersType = type<List<EncounterArea>>()
     private val ballsType = type<Map<Int, CaptureBallRecord>>()
@@ -155,6 +157,7 @@ internal class CatalogSectionCodec {
         "moves" -> encode(catalog.movesById, movesType)
         "types" -> encode(catalog.typesById, typesType)
         "abilities" -> encode(catalog.abilitiesById, abilitiesType)
+        "natures" -> encode(catalog.naturesById, naturesType)
         "type_chart" -> encode(catalog.typeChart, chartType)
         "encounters" -> encode(catalog.encounterAreas, encountersType)
         "capture_balls" -> encode(catalog.captureBallsById, ballsType)
@@ -198,6 +201,7 @@ internal class CatalogSectionCodec {
         movesById = decode(section("moves"), movesType),
         typesById = decode(section("types"), typesType),
         abilitiesById = decode(section("abilities"), abilitiesType),
+        naturesById = decode(section("natures"), naturesType),
         typeChart = decode(section("type_chart"), chartType),
         encounterAreas = encounterAreas,
         captureBallsById = decode(section("capture_balls"), ballsType),

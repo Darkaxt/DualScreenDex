@@ -13,6 +13,8 @@ import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
 import com.enrpau.dualscreendex.parser.catalog.CatalogWorkModule
 import com.enrpau.dualscreendex.parser.catalog.CatalogWorkProgress
 import com.enrpau.dualscreendex.parser.catalog.reportCatalogWork
+import com.enrpau.dualscreendex.parser.dataset.natures.Gen3NatureResolver
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureResolution
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.family.FamilyProbeCoordinator
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -36,6 +38,7 @@ internal data class CatalogAnalysisContext(
     val resolveWorldMap: (Int, Set<Int>) -> WorldMapResolution,
     val resolveLocalMaps: (Int, Set<Int>) -> LocalMapResolution,
     val resolveAbilityMechanics: (ResolvedRomLayout, Map<Int, AbilityRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?,
+    val resolveNatures: (ResolvedRomLayout) -> NatureResolution,
 )
 
 object ParserOrchestrator {
@@ -60,6 +63,13 @@ object ParserOrchestrator {
             },
             resolveAbilityMechanics = { layout, abilities, descriptions ->
                 AbilityMechanicsMaterializer.materialize(sharedSession, layout, abilities, descriptions)
+            },
+            resolveNatures = { layout ->
+                if (layout.generation == 3) {
+                    Gen3NatureResolver.resolve(sharedSession)
+                } else {
+                    NatureResolution.Unavailable("Natures are not part of this engine")
+                }
             },
             resolveGen3AreaNames = { baseAreaIds ->
                 val references = sharedSession.gbaReferenceIndex

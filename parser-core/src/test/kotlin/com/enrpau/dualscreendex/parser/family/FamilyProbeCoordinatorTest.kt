@@ -383,9 +383,18 @@ class FamilyProbeCoordinatorTest {
         assertTrue(definition.lineages.contains(EngineLineage.GEN3_RETAIL))
         assertTrue(definition.lineages.contains(EngineLineage.CFRU))
         assertTrue(definition.lineages.contains(EngineLineage.POKEEMERALD_EXPANSION))
+        assertTrue(definition.applicableCapabilities.contains(RomCapability.NATURES))
         assertFalse(
             EngineFamilyDefinitions.byFamily.getValue(EngineFamily.RED_BLUE)
                 .applicableCapabilities.contains(RomCapability.ABILITIES),
+        )
+        assertFalse(
+            EngineFamilyDefinitions.byFamily.getValue(EngineFamily.RED_BLUE)
+                .applicableCapabilities.contains(RomCapability.NATURES),
+        )
+        assertFalse(
+            EngineFamilyDefinitions.byFamily.getValue(EngineFamily.CRYSTAL)
+                .applicableCapabilities.contains(RomCapability.NATURES),
         )
     }
 

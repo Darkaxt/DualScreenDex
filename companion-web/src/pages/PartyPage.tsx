@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { Catalog, PartyMemberView, State, TypeInfo } from '../models';
 import { Header, TypeChip, uniqueTypeIds } from '../components';
+import { natureDetailFor } from '../natureDetails';
 
 interface PartyPageProps {
   catalog: Catalog;
@@ -8,12 +9,13 @@ interface PartyPageProps {
   onBack: () => void;
   openMove: (moveId: number) => void;
   openAbility: (abilityId: number) => void;
+  openNature?: (natureId: number) => void;
   openSpecies?: (speciesId: number) => void;
   selectedSlot?: number | null;
   onSelectSlot?: (slot: number) => void;
 }
 
-export function PartyPage({ catalog, state, onBack, openMove, openAbility, openSpecies, selectedSlot, onSelectSlot }: PartyPageProps) {
+export function PartyPage({ catalog, state, onBack, openMove, openAbility, openNature, openSpecies, selectedSlot, onSelectSlot }: PartyPageProps) {
   const members = useMemo(() => normalizeParty(state.party), [state.party]);
   const [detailSlot, setDetailSlot] = useState<number | null>(null);
   const highlightedSlot = detailSlot ?? (selectedSlot != null && members[selectedSlot]?.occupied ? selectedSlot : null);
@@ -67,16 +69,17 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openS
         <div class="party-detail-backdrop" onClick={closeDetails} />
         <div class="party-detail-window" role="dialog" aria-modal="true" aria-label={`${active.nickname || active.speciesName || 'Party member'} details`}>
           <button type="button" class="party-detail-close" aria-label={`Close ${active.nickname || active.speciesName || 'party member'} details`} onClick={closeDetails} autoFocus>×</button>
-          <PartyDetail member={active} catalog={catalog} openMove={openMove} openAbility={openAbility} openSpecies={openSpecies} />
+          <PartyDetail member={active} catalog={catalog} openMove={openMove} openAbility={openAbility} openNature={openNature} openSpecies={openSpecies} />
         </div>
       </div>}
     </div>
   </section>;
 }
 
-function PartyDetail({ member, catalog, openMove, openAbility, openSpecies }: { member: PartyMemberView; catalog: Catalog; openMove: (moveId: number) => void; openAbility: (abilityId: number) => void; openSpecies?: (speciesId: number) => void }) {
+function PartyDetail({ member, catalog, openMove, openAbility, openNature, openSpecies }: { member: PartyMemberView; catalog: Catalog; openMove: (moveId: number) => void; openAbility: (abilityId: number) => void; openNature?: (natureId: number) => void; openSpecies?: (speciesId: number) => void }) {
   const moves = Array.from({ length: 4 }, (_, slot) => member.moves.find(move => move.slot === slot) ?? { slot, moveId: null, name: null, currentPp: null, maximumPp: null });
   const types = uniqueTypeIds(member.typeIds).map(typeId => catalog.types.find(type => type.id === typeId)).filter((type): type is TypeInfo => type != null);
+  const knownNature = natureDetailFor(catalog.natures, member.natureId);
   return <article class="party-detail paper-panel" data-condition={memberCondition(member)}>
     <header>
       <PartySprite member={member} large />
@@ -92,7 +95,7 @@ function PartyDetail({ member, catalog, openMove, openAbility, openSpecies }: { 
       {member.speciesId != null && openSpecies && <button type="button" class="party-dex-link" aria-label={`Open ${member.speciesName ?? 'partner'} in Pokédex`} onClick={() => openSpecies(member.speciesId!)}>DEX</button>}
     </header>
     <div class="party-summary-grid">
-      <span><small>NATURE</small><strong>{member.nature ?? '—'}</strong></span>
+      <span><small>NATURE</small>{knownNature && openNature ? <button type="button" onClick={() => openNature(knownNature.id)}>{knownNature.name}</button> : <strong>{member.nature ?? '—'}</strong>}</span>
       <span><small>ABILITY</small>{member.abilityId != null && member.abilityName ? <button type="button" onClick={() => openAbility(member.abilityId!)}>{member.abilityName}</button> : <strong>—</strong>}</span>
       <span><small>HELD ITEM</small><HeldItemArtwork member={member} /></span>
       <span><small>EXP TO NEXT</small><strong>{member.experienceProgress == null ? '—' : `${Math.round(member.experienceProgress * 100)}%`}</strong></span>
