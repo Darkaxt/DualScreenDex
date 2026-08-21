@@ -110,7 +110,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth && document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
   };
-  const expectSurface = async (selector: string, expected: Partial<Record<'backgroundColor' | 'borderTopColor' | 'borderBottomColor' | 'color', string>>) => {
+  const expectSurface = async (selector: string, expected: Partial<Record<'backgroundColor' | 'borderTopColor' | 'borderBottomColor' | 'boxShadow' | 'color', string>>) => {
     const surface = page.locator(selector).first();
     await expect(surface).toBeVisible();
     await expect.poll(() => surface.evaluate((node, keys) => {
@@ -273,7 +273,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   })).toEqual({ artworkScale: 1.46, topInsetShare: .01 });
   await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
   await expect(page.locator('.pokedex-screen')).toBeVisible();
-  await show('party', { screen: 'PARTY' });
+  await show('party', { screen: 'PARTY', party: [{ ...baseState.party[0], nature: 'Adamant' }] });
   await expectSurface('.party-content', { backgroundColor: 'rgba(0, 0, 0, 0)' });
   await expectSurface('.party-slot:not(.empty)', { borderTopColor: colors.accent, color: colors.text });
   await expect.poll(() => page.locator('.party-content').evaluate(content => {
@@ -331,6 +331,19 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await expectTypography('.party-stat-grid small', 12);
   await expectTypography('.party-move-row span', 12);
   await capture('party-detail');
+  await page.getByRole('button', { name: 'Adamant' }).click();
+  await expect(page.locator('.nature-detail-screen')).toBeVisible();
+  await assertGameTheme();
+  await expect(page.locator('.nature-detail-content')).toContainText('ATTACK ×1.1');
+  await expect(page.locator('.nature-detail-content')).toContainText('SP. ATK ×0.9');
+  await expectTypography('.nature-shift small', 12);
+  await expectTypography('.nature-shift strong', 16.5);
+  await assertNoNormalDiagnostics();
+  await capture('nature-detail');
+  await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
+  await expect(page.locator('.party-screen')).toBeVisible();
+  await page.getByRole('button', { name: /Party slot 1/ }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: 'OVERGROW' }).click();
   await expect(page.locator('.ability-detail-screen')).toBeVisible();
   await assertGameTheme();
@@ -431,7 +444,12 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   });
   expect(fogState).toEqual({ outerEdgesOpaque: true, currentAreaRevealed: true });
   await assertGameTheme();
-  await expectSurface('.map-page-header', { backgroundColor: colors.header, color: colors.accentText });
+  await expectSurface('.map-page-header', {
+    backgroundColor: colors.header,
+    borderBottomColor: colors.accent,
+    boxShadow: 'rgb(0, 0, 0) 0px 4px 0px 0px',
+    color: colors.accentText,
+  });
   await expectTypography('.map-current-location strong', 15.8);
   await expectTypography('.map-current-location span', 11.3);
   await expect(page.locator('.map-dex-action svg')).toHaveAttribute('data-semantic-icon', 'pokedex');

@@ -85,10 +85,12 @@
 - [x] Capture the full 4:3 page/tab matrix with the extreme yellow/blue theme fixture so any legacy green is visually obvious.
 - [x] Compare Party against the lossless crop, measured 2.27:1 reference cards, and `D:\Temp\dualdex-rc25-ui-audit\party-installed-rc24.png`. Final browser geometry is 94% content width, 88% content height, 2.38:1 occupied-card ratio, 52% portrait share, and symmetric 6% top/bottom insets; identity uses two lines and EXP/HP is bottom-aligned.
 - [x] Inspect and correct the shared Pokédex action icon in Atlas, Battle, and Pokémon AREA. One monochrome `currentColor` glyph is used everywhere; Battle now renders it directly on the identity rail with no white or olive tile.
+- [x] Replace Atlas's ROM-colored header blur with the shared accent divider and a crisp neutral-black separation into the map stage.
 - [x] Enrich Rarity with the same accessible five-star meter at the top of the card and a theme-derived shader whose visual intensity follows the rating.
 - [x] Expand Pokédex browse rows to portrait-led roster cards with known type metadata, including the sparse Dark-theme matrix, without leaking locked Organic data.
 - [x] Correct Capability Report and Memory Mapper contrast using the derived accent foreground/background pair.
 - [x] Generate a browser-computed per-layout font matrix, normalize inherited micro-copy to an 11.25px auxiliary tier, and enforce minimum 11.2px plus average 12px across every captured route without flattening title/value hierarchy.
+- [x] Add the canonical 25-entry Gen III Nature detail table, link recognized Party Detail values to a themed Nature Detail page, and keep unknown/Gen I–II values fail-closed as plain text.
 - [x] Fix every observed mismatch and rerun the affected browser cases until the measured matrix is clean.
 
 ### Task 5: Verify and prepare the prerelease
@@ -96,8 +98,8 @@
 **Files:**
 - Modify release metadata and notes only after Tasks 1–4 are GREEN.
 
-- [x] Run focused component tests, then `npm.cmd test -- --run` (22 files, 145 tests).
+- [x] Run focused component tests, then `npm.cmd test -- --run` (24 files, 150 tests).
 - [x] Run `npm.cmd run build` (also executed by the final Playwright web server).
-- [x] Run the full expanded `rom-derived-theme.spec.ts` using Helium and the sanitized fixture (1/1, evidence and font matrix in `theme-objective-final13`).
+- [x] Run the full expanded `rom-derived-theme.spec.ts` using Helium and the sanitized fixture (1/1, including `nature-detail.png`, evidence and font matrix in `theme-objective-final14`).
 - [x] Run `git diff --check` and inspect the complete diff for unrelated changes.
 - [ ] Commit release metadata and publish the next protected prerelease without installing it on a device.

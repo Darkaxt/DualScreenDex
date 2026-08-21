@@ -17,9 +17,10 @@ describe('Party', () => {
   it('renders a six-slot 2x3 roster and opens details only after selecting a member', () => {
     const openMove = vi.fn();
     const openAbility = vi.fn();
+    const openNature = vi.fn();
     const state = partyState('ORGANIC');
 
-    const { container } = render(<PartyPage catalog={catalog} state={state} onBack={vi.fn()} openMove={openMove} openAbility={openAbility} />);
+    const { container } = render(<PartyPage catalog={catalog} state={state} onBack={vi.fn()} openMove={openMove} openAbility={openAbility} openNature={openNature} />);
 
     expect(container.querySelectorAll('.party-slot')).toHaveLength(6);
     expect(container.querySelector('.party-grid')?.getAttribute('data-layout')).toBe('2x3');
@@ -54,7 +55,7 @@ describe('Party', () => {
     expect(screen.getByLabelText('Held item present')).toBeTruthy();
     expect(container.querySelectorAll('.party-type-art')).toHaveLength(2);
     expect(container.querySelector('.party-detail[data-condition="statused"]')).toBeTruthy();
-    expect(screen.getByText('Adamant')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Adamant' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Static' })).toBeTruthy();
     expect(screen.getByText('Held item')).toBeTruthy();
     expect(container.querySelectorAll('.party-move-row')).toHaveLength(4);
@@ -63,6 +64,8 @@ describe('Party', () => {
     expect(openMove).toHaveBeenCalledWith(85);
     fireEvent.click(screen.getByRole('button', { name: 'Static' }));
     expect(openAbility).toHaveBeenCalledWith(9);
+    fireEvent.click(screen.getByRole('button', { name: 'Adamant' }));
+    expect(openNature).toHaveBeenCalledWith('Adamant');
 
     fireEvent.click(screen.getByRole('button', { name: 'Close SPARK details' }));
     expect(screen.queryByRole('dialog')).toBeNull();

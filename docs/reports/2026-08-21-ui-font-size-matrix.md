@@ -12,7 +12,8 @@ This matrix is generated from visible text-bearing DOM elements in the complete 
 | detail-more | 23 | 11.3 | 23.3 | 13.7 |
 | trainer | 17 | 12.0 | 23.3 | 13.9 |
 | party | 6 | 16.8 | 30.0 | 21.2 |
-| party-detail | 43 | 11.3 | 30.0 | 14.7 |
+| party-detail | 43 | 11.3 | 30.0 | 14.6 |
+| nature-detail | 21 | 12.0 | 16.8 | 13.8 |
 | ability-detail | 10 | 12.0 | 16.8 | 13.9 |
 | battle-entry | 18 | 11.4 | 24.8 | 15.9 |
 | battle-attack | 28 | 11.4 | 24.8 | 15.3 |
@@ -30,4 +31,4 @@ This matrix is generated from visible text-bearing DOM elements in the complete 
 | light | 12 | 11.4 | 16.8 | 13.3 |
 | high-contrast | 12 | 11.4 | 16.8 | 13.3 |
 
-Raw JSON, generated Markdown, and the matching route screenshots are retained in `D:\Temp\dualdex-rc25-ui-audit\theme-objective-final13`.
+Raw JSON, generated Markdown, and the matching route screenshots are retained in `D:\Temp\dualdex-rc25-ui-audit\theme-objective-final14`.

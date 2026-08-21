@@ -113,6 +113,8 @@ Atlas, Battle, and Pokémon AREA use one `DexIcon` component. It is a crisp, rec
 
 The action follows the active route theme. In Battle it is a transparent header glyph using the header foreground, not a separate white or legacy olive `#0d3026` square. Atlas keeps the established action position and accessible “Open Pokédex” label.
 
+Atlas uses the same ROM-accent bottom divider as the standard page header, followed by a crisp neutral-black separation into the map stage. It must not reuse the colored elevated-header blur because bright ROM headers otherwise bloom over the black raster and fog surface.
+
 ## Battle rarity composition
 
 The Rarity tab repeats the same five-star meter at the top of its content card so the score remains the dominant visual cue after the identity rail scrolls out of attention. The meter preserves fractional fills and its accessible rating label.
@@ -135,6 +137,10 @@ This correction applies to GAME, Dark, Light, and High Contrast themes. It must 
 ## Trainer Card composition
 
 Trainer Card remains one cohesive card, but its shell, strip, rows, portrait frame, and badge tray use ROM-derived tokens rather than fixed green. The layout keeps the reference hierarchy: title/ID strip, identity and avatar, compact aligned facts, then badges. No existing Trainer field is removed or invented.
+
+## Nature detail
+
+Party Detail turns a recognized Nature into a link to a themed Nature Detail page. The page derives the canonical 25 Gen III natures from their 5×5 raised/lowered-stat order and shows the resulting 110%/90% non-HP stat multipliers plus flavor preference. The five diagonal natures are explicitly neutral. Gen I/II party members and unknown or custom Nature names remain plain text; the UI does not invent a canonical effect for an unrecognized value.
 
 ## Pokédex caught badge
 
