@@ -288,7 +288,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(27, CatalogSchema.parserSchemaVersion)
+        assertEquals(28, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -548,7 +548,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(27, CatalogSchema.parserSchemaVersion)
+        assertEquals(28, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -587,6 +587,23 @@ class CatalogStoreTest {
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
             database.execute("DELETE FROM catalog_sections WHERE name = 'theme'")
             database.execute("UPDATE catalog_metadata SET parser_schema_version = 19 WHERE id = 1")
+        }
+
+        assertNull(cache.readComplete(catalog.romSha256))
+    }
+
+    @Test
+    fun `revision 27 caches are invalidated so partial trainer portraits are rebuilt`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("3".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Legacy trainer assets.gba", 16_777_216, "POKEMON EMER"),
+            CatalogWriteProgress.complete(),
+        )
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 27 WHERE id = 1")
         }
 
         assertNull(cache.readComplete(catalog.romSha256))

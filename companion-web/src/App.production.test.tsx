@@ -70,11 +70,13 @@ describe('production application shell', () => {
     HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as typeof HTMLCanvasElement.prototype.getContext;
   });
 
-  it('keeps ROM identity visible without rendering simulator controls', async () => {
+  it('keeps ROM identity diagnostics out of the production shell', async () => {
     render(<App />);
 
-    await waitFor(() => expect(screen.getByText('Pokemon Modern Emerald.gba')).toBeTruthy());
-    expect(screen.getByText(/CRC32 C3A9F204/)).toBeTruthy();
+    await screen.findByRole('button', { name: 'Trainer Card' });
+    expect(screen.queryByText('Pokemon Modern Emerald.gba')).toBeNull();
+    expect(screen.queryByText(/CRC32 C3A9F204/)).toBeNull();
+    expect(document.querySelector('.rom-status')).toBeNull();
     expect(screen.queryByText('Encounter feed')).toBeNull();
     expect(screen.queryByText('GENERATE ENCOUNTER')).toBeNull();
     expect(screen.queryByText(/Generate an encounter/i)).toBeNull();

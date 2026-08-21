@@ -99,6 +99,10 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await show('battle', {
     screen: 'BATTLE', battle: { opponents: [{ speciesId: 2, level: 10, typeIds: [12], rarity: { relativeTier: 'ORDINARY', innateTier: 'STANDARD', baseStars: 2, areaAdjustment: 0, stars: 2 }, moves: [] }], targetIndex: 0, targetMode: 'AUTOMATIC', capabilities: {}, selectedMoveId: 22, effectiveness: 'NEUTRAL', effectivenessKnown: true },
   });
+  await expect.poll(() => page.locator('.battle-screen').evaluate(node => getComputedStyle(node).backgroundColor)).toBe('rgb(253, 253, 253)');
+  await expect.poll(() => page.locator('.battle-identity').evaluate(node => getComputedStyle(node).backgroundColor)).toBe('rgb(252, 252, 252)');
+  await expect.poll(() => page.locator('.attack-card').evaluate(node => getComputedStyle(node).backgroundColor)).toBe('rgb(253, 253, 253)');
+  await expect.poll(() => page.locator('.battle-dex-link').evaluate(node => getComputedStyle(node).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   await show('settings', { screen: 'SETTINGS' });
   await show('loading', { screen: 'POKEDEX', loading: { active: true, phase: 'EXTENDED', completedUnits: 4, totalUnits: 5 } });
 
