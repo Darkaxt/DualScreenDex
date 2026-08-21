@@ -70,13 +70,14 @@ describe('production application shell', () => {
     HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as typeof HTMLCanvasElement.prototype.getContext;
   });
 
-  it('keeps ROM identity diagnostics out of the production shell', async () => {
+  it('keeps ROM diagnostics out of the production shell', async () => {
     render(<App />);
 
-    await screen.findByRole('button', { name: 'Trainer Card' });
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
     expect(screen.queryByText('Pokemon Modern Emerald.gba')).toBeNull();
     expect(screen.queryByText(/CRC32 C3A9F204/)).toBeNull();
     expect(document.querySelector('.rom-status')).toBeNull();
+    expect(document.querySelector('.screen-host')?.classList.contains('with-rom-status')).toBe(false);
     expect(screen.queryByText('Encounter feed')).toBeNull();
     expect(screen.queryByText('GENERATE ENCOUNTER')).toBeNull();
     expect(screen.queryByText(/Generate an encounter/i)).toBeNull();
@@ -84,7 +85,7 @@ describe('production application shell', () => {
 
   it('applies the complete ROM palette only to GAME and leaves fixed themes authoritative', async () => {
     const first = render(<App />);
-    await waitFor(() => expect(screen.getByText('Pokemon Modern Emerald.gba')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
     const gameShell = document.querySelector('.production-device') as HTMLElement;
     expect(gameShell.dataset.theme).toBe('game');
     expect(gameShell.style.getPropertyValue('--theme-field')).toBe('#123456');
@@ -96,7 +97,7 @@ describe('production application shell', () => {
       state: { ...fixture.state, settings: { ...fixture.state.settings, theme: 'DARK' } },
     });
     render(<App />);
-    await waitFor(() => expect(screen.getByText('Pokemon Modern Emerald.gba')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
     const darkShell = document.querySelector('.production-device') as HTMLElement;
     expect(darkShell.dataset.theme).toBe('dark');
     expect(darkShell.style.getPropertyValue('--theme-field')).toBe('');
@@ -112,6 +113,7 @@ describe('production application shell', () => {
     render(<App />);
 
     expect(await screen.findByText('Choose a Pokémon game to begin.')).toBeTruthy();
+    expect(screen.queryByText('PASSIVE RETROARCH COMPANION')).toBeNull();
     expect(screen.queryByText(/Game Boy Advance Pokémon ROM/)).toBeNull();
     expect(screen.queryByText(/extracted assets stay local/)).toBeNull();
   });
@@ -143,10 +145,10 @@ describe('production application shell', () => {
 
     render(<App />);
 
-    const loading = await screen.findByRole('status', { name: 'Loading ROM identity' });
-    expect(loading.textContent).toBe('Loading ROM identity');
+    const loading = await screen.findByRole('status', { name: 'Checking the game' });
+    expect(loading.textContent).toBe('Checking the game');
     expect(loading.textContent).not.toContain('%');
-    const progress = screen.getByRole('progressbar', { name: 'Loading ROM identity' });
+    const progress = screen.getByRole('progressbar', { name: 'Checking the game' });
     expect(progress.getAttribute('aria-valuemin')).toBe('0');
     expect(progress.getAttribute('aria-valuemax')).toBe('11');
     expect(progress.getAttribute('aria-valuenow')).toBe('0');
@@ -161,8 +163,8 @@ describe('production application shell', () => {
 
     render(<App />);
 
-    const loading = await screen.findByRole('status', { name: 'Loading companion state' });
-    expect(screen.getByRole('progressbar', { name: 'Loading companion state' }).hasAttribute('aria-valuenow')).toBe(false);
+    const loading = await screen.findByRole('status', { name: 'Preparing your companion' });
+    expect(screen.getByRole('progressbar', { name: 'Preparing your companion' }).hasAttribute('aria-valuenow')).toBe(false);
     expect(screen.queryByText('LOAD ROM OR ZIP')).toBeNull();
     expect(screen.queryByRole('button', { name: 'CONNECT RETROARCH' })).toBeNull();
     expect(screen.queryByText('Choose a Pokémon game to begin.')).toBeNull();
@@ -171,19 +173,51 @@ describe('production application shell', () => {
   });
 
   it('uses concise names for every parser module and humanizes future phases', () => {
-    expect(loadingModuleLabel('ROM_IDENTITY')).toBe('ROM identity');
-    expect(loadingModuleLabel('FAMILY_AND_TABLES')).toBe('game data layout');
-    expect(loadingModuleLabel('CORE_RECORDS')).toBe('Pokémon & moves');
-    expect(loadingModuleLabel('SPECIES_MEDIA')).toBe('sprites & entries');
-    expect(loadingModuleLabel('EVOLUTIONS_AND_LEARNSETS')).toBe('evolutions & learnsets');
-    expect(loadingModuleLabel('ENCOUNTERS')).toBe('wild encounters');
-    expect(loadingModuleLabel('MOVE_DATA')).toBe('move details');
-    expect(loadingModuleLabel('ABILITY_DATA')).toBe('ability details');
-    expect(loadingModuleLabel('MAPS')).toBe('maps');
-    expect(loadingModuleLabel('TRAINER_AND_THEME')).toBe('trainer & theme');
-    expect(loadingModuleLabel('CATALOG_STORAGE')).toBe('catalog storage');
-    expect(loadingModuleLabel('CACHE_REOPEN')).toBe('saved catalog');
-    expect(loadingModuleLabel('FUTURE_PHASE')).toBe('future phase');
+    expect(loadingModuleLabel('ROM_IDENTITY')).toBe('Checking the game');
+    expect(loadingModuleLabel('FAMILY_AND_TABLES')).toBe('Finding game data');
+    expect(loadingModuleLabel('CORE_RECORDS')).toBe('Reading Pokémon and moves');
+    expect(loadingModuleLabel('SPECIES_MEDIA')).toBe('Preparing artwork and entries');
+    expect(loadingModuleLabel('EVOLUTIONS_AND_LEARNSETS')).toBe('Reading evolutions and learnsets');
+    expect(loadingModuleLabel('ENCOUNTERS')).toBe('Finding wild encounters');
+    expect(loadingModuleLabel('MOVE_DATA')).toBe('Reading move details');
+    expect(loadingModuleLabel('ABILITY_DATA')).toBe('Reading ability details');
+    expect(loadingModuleLabel('MAPS')).toBe('Preparing maps');
+    expect(loadingModuleLabel('TRAINER_AND_THEME')).toBe('Preparing your Trainer Card');
+    expect(loadingModuleLabel('CATALOG_STORAGE')).toBe('Saving your game guide');
+    expect(loadingModuleLabel('CACHE_REOPEN')).toBe('Opening your game guide');
+    expect(loadingModuleLabel('FUTURE_PHASE')).toBe('Preparing your companion');
+  });
+
+  it('keeps technical failures out of normal screens', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.mocked(bootstrap).mockRejectedValueOnce(new Error('Parser table layout at ROM 0x1234 failed CRC32 DEADBEEF'));
+
+    render(<App />);
+
+    expect(await screen.findByText('The companion could not start. Please try again.')).toBeTruthy();
+    expect(screen.queryByText(/Parser table layout|CRC32 DEADBEEF|0x1234/)).toBeNull();
+    expect(consoleError).toHaveBeenCalledOnce();
+    consoleError.mockRestore();
+  });
+
+  it('consumes companion Back locally and never leaves the root Pokédex', async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
+    expect(screen.getByRole('region', { name: 'Interactive world map' })).toBeTruthy();
+
+    const closeMap = new Event('dualdexback', { cancelable: true });
+    window.dispatchEvent(closeMap);
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Interactive world map' })).toBeNull());
+    expect(closeMap.defaultPrevented).toBe(true);
+    expect(action).not.toHaveBeenCalledWith('BACK', {});
+
+    const rootBack = new Event('dualdexback', { cancelable: true });
+    window.dispatchEvent(rootBack);
+    await Promise.resolve();
+    expect(rootBack.defaultPrevented).toBe(true);
+    expect(action).not.toHaveBeenCalledWith('BACK', {});
+    expect(screen.getByText('POKÉDEX')).toBeTruthy();
   });
 
   it('opens the capability report from Settings without opening memory capture', async () => {

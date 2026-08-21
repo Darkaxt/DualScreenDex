@@ -6,6 +6,14 @@ import { PartyPage } from './PartyPage';
 afterEach(cleanup);
 
 describe('Party', () => {
+  it('uses a title-only header without redundant live ownership diagnostics', () => {
+    const { container } = render(<PartyPage catalog={catalog} state={partyState('ORGANIC')} onBack={vi.fn()} openMove={vi.fn()} openAbility={vi.fn()} />);
+
+    expect(screen.getByText('PARTY')).toBeTruthy();
+    expect(container.querySelector('.header-title small')).toBeNull();
+    expect(screen.queryByText(/LIVE|OWNED POKÉMON/)).toBeNull();
+  });
+
   it('renders a six-slot 2x3 roster and opens details only after selecting a member', () => {
     const openMove = vi.fn();
     const openAbility = vi.fn();
@@ -17,24 +25,37 @@ describe('Party', () => {
     expect(container.querySelectorAll('.party-slot')).toHaveLength(6);
     expect(container.querySelector('.party-grid')?.getAttribute('data-layout')).toBe('2x3');
     expect(screen.getByText('SPARK')).toBeTruthy();
-    expect(screen.getByText('PIKACHU · Lv 18')).toBeTruthy();
+    const occupied = container.querySelector('.party-slot:not(.empty)')!;
+    expect(occupied.querySelector('.party-slot-heading strong')?.textContent).toBe('SPARK');
+    expect(occupied.querySelector('.party-slot-gender')?.textContent).toBe('♀');
+    expect(occupied.querySelector('.party-slot-level')?.textContent).toBe('Lv 18');
+    expect(occupied.querySelector('.party-slot-species')?.textContent).toBe('PIKACHU');
+    const bars = occupied.querySelector('.party-slot-bars')!;
+    expect(bars).toBeTruthy();
+    expect(bars.querySelector('.party-hp-line')?.textContent).toContain('HP');
+    expect(bars.querySelector('.party-hp-value > i')?.textContent).toBe('31 / 45');
     expect(container.querySelector('.party-exp-track')?.getAttribute('aria-label')).toBe('Experience 50%');
     expect(container.querySelector('.party-exp-fill')?.getAttribute('style')).toContain('width: 50%');
     expect(container.querySelector('.party-hp-fill')?.getAttribute('style')).toContain('width: 69%');
+    const exp = bars.querySelector('.party-exp-track')!;
+    const hp = bars.querySelector('.party-hp-track')!;
+    expect(Boolean(exp.compareDocumentPosition(hp) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(container.querySelectorAll('.party-slot.empty .party-empty-mark')).toHaveLength(5);
+    expect(screen.queryByText('OPEN SLOT')).toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByText('Adamant')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: SPARK' }));
 
     expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy();
-    expect(screen.getByText('Lv 18')).toBeTruthy();
+    expect(screen.getAllByText('Lv 18').length).toBeGreaterThan(0);
     expect(screen.getAllByText('31 / 45').length).toBeGreaterThan(0);
     expect(screen.getAllByText('PAR').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('img', { name: 'Paralyzed' }).length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Held item present')).toBeTruthy();
     expect(container.querySelectorAll('.party-type-art')).toHaveLength(2);
     expect(container.querySelector('.party-detail[data-condition="statused"]')).toBeTruthy();
-    expect(screen.getByText('Adamant')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Adamant' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Static' })).toBeTruthy();
     expect(screen.getByText('Held item')).toBeTruthy();
     expect(container.querySelectorAll('.party-move-row')).toHaveLength(4);
@@ -64,6 +85,19 @@ describe('Party', () => {
     emptied.party = [];
     rendered.rerender(<PartyPage {...props} state={emptied} />);
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('closes member details before companion Back can leave Party', () => {
+    const onBack = vi.fn();
+    render(<PartyPage catalog={catalog} state={partyState('ORGANIC')} onBack={onBack} openMove={vi.fn()} openAbility={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: SPARK' }));
+    const back = new Event('dualdexback', { cancelable: true });
+    fireEvent(window, back);
+
+    expect(back.defaultPrevented).toBe(true);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(onBack).not.toHaveBeenCalled();
   });
 
   it('keeps the owned party visible in Organic and Hidden modes', () => {

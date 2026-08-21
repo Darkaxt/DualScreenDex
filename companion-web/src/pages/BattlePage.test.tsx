@@ -19,6 +19,15 @@ const rarityAssessments = [
 afterEach(cleanup);
 
 describe('battle layout', () => {
+  it('uses a title-only header without parser family or knowledge-policy diagnostics', () => {
+    const { catalog, state } = fixture(1);
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('BATTLE')).toBeTruthy();
+    expect(container.querySelector('.header-title small')).toBeNull();
+    expect(screen.queryByText(/EMERALD|DISCOVERED/)).toBeNull();
+  });
+
   it.each(rarityAssessments)('uses the approved recruitment assessment at %s stars', (stars, assessment) => {
     expect(rarityAssessment(stars)).toBe(assessment);
   });
@@ -29,7 +38,9 @@ describe('battle layout', () => {
     const openSpecies = vi.fn();
     render(<BattlePage catalog={catalog} state={state} send={send} openMove={vi.fn()} openSpecies={openSpecies} />);
 
-    screen.getByRole('button', { name: 'Open Hitmonlee in Pokédex' }).click();
+    const shortcut = screen.getByRole('button', { name: 'Open Hitmonlee in Pokédex' });
+    expect(shortcut.querySelector('svg')?.dataset.semanticIcon).toBe('pokedex');
+    shortcut.click();
 
     expect(openSpecies).toHaveBeenCalledWith(1);
   });
@@ -128,10 +139,14 @@ describe('battle layout', () => {
       relativeTier: 'WEAK', innateTier: 'STANDARD', baseStars: 1, areaAdjustment: -0.5, stars: 0.5,
     };
 
-    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
     expect(screen.getByText('WEAK STANDARD')).toBeTruthy();
     expect(screen.queryByText(/CURRENT PARTY/)).toBeNull();
+    const card = container.querySelector('.rarity-card');
+    expect(card?.getAttribute('data-rarity-band')).toBe('low');
+    expect(card?.querySelector('.rarity-stars')).toBeTruthy();
+    expect(card?.querySelectorAll('.rarity-star')).toHaveLength(5);
   });
 
   it('uses final stars for recruitment advice without inventing an unknown tier', () => {
@@ -146,7 +161,7 @@ describe('battle layout', () => {
 
     expect(screen.getByText('TRAINED')).toBeTruthy();
     expect(screen.queryByText(/UNKNOWN TRAINED/)).toBeNull();
-    expect(screen.getByLabelText('2 of 5 stars; TRAINED')).toBeTruthy();
+    expect(screen.getAllByLabelText('2 of 5 stars; TRAINED')).toHaveLength(2);
     expect(screen.getByText('A modest find. It could help for a while, but you may soon outgrow it.')).toBeTruthy();
     expect(screen.queryByText(/UNKNOWN|area|SaveRAM|encounter|formula/i)).toBeNull();
   });
@@ -158,7 +173,7 @@ describe('battle layout', () => {
 
     render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
-    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
+    expect(screen.getByText('No Pokédex entry is available for this Pokémon.')).toBeTruthy();
   });
 
   it('renders only organic recruitment advice even when technical evidence is present', () => {
@@ -185,7 +200,7 @@ describe('battle layout', () => {
 
     const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
-    expect(screen.getByText('RARITY UNAVAILABLE')).toBeTruthy();
+    expect(screen.getByText('NO RECRUITMENT READING')).toBeTruthy();
     expect(container.querySelector('.rarity-stars')).toBeNull();
     expect(container.querySelector('.rarity-card p')).toBeNull();
   });

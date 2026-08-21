@@ -9,7 +9,7 @@ export function MoveDetail({ catalog, state, moveId, onBack }: { catalog: Catalo
     state.speciesState[species.id]?.caught && speciesKnowsMove(species, state.activeRulesetId, moveId),
   );
   return <section class="screen move-detail-screen">
-    <Header title={move.name} kicker="MOVE DETAIL" onBack={onBack} />
+    <Header title={move.name} onBack={onBack} />
     <div class="move-detail-content" data-scroll-region>
       <div class="move-hero">
         <TypeChip type={catalog.types.find(type => type.id === move.typeId)} />
@@ -21,7 +21,7 @@ export function MoveDetail({ catalog, state, moveId, onBack }: { catalog: Catalo
           <span><small>POWER</small><strong>{formatMoveMetric(move.power)}</strong></span>
           <span><small>PRECISION</small><strong>{formatMoveMetric(move.accuracy, '%')}</strong></span>
           <span><small>PP</small><strong>{formatMoveMetric(move.pp)}</strong></span>
-          <span><small>PRIORITY</small><strong>{move.priority == null ? 'N/F' : move.priority > 0 ? `+${move.priority}` : String(move.priority)}</strong></span>
+          <span><small>PRIORITY</small><strong>{move.priority == null ? '—' : move.priority > 0 ? `+${move.priority}` : String(move.priority)}</strong></span>
         </div>
       </div>
       <div class="paper-panel"><p class="eyebrow">EFFECT</p><p class="entry-copy">{move.description || gameplayCopy.moveEffectUnavailable}</p></div>

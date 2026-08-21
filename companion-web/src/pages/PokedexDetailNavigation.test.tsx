@@ -10,6 +10,53 @@ beforeEach(() => {
 });
 
 describe('Pokédex evolution navigation', () => {
+  it('uses MORE space for the selected species ability instead of forcing a sparse detail page', () => {
+    const openAbility = vi.fn();
+    render(<PokedexDetail
+      catalog={{ ...catalog, species: catalog.species.map(species => species.id === 5 ? {
+        ...species,
+        abilities: [{
+          id: 66,
+          name: 'Blaze',
+          description: 'Powers up Fire-type moves in a pinch.',
+          mechanics: [{ kind: 'MULTIPLIER', label: 'Power', value: '×1.5', numerator: 3, denominator: 2 }],
+        }],
+      } : species) }}
+      state={state}
+      send={vi.fn()}
+      tab="MORE"
+      setTab={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={openAbility}
+    />);
+
+    expect(screen.getByText('Powers up Fire-type moves in a pinch.')).toBeTruthy();
+    expect(screen.getByText('×1.5')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Blaze/i })).toBeNull();
+    expect(openAbility).not.toHaveBeenCalled();
+  });
+
+  it('uses catalog height for a scaled Pokémon and human comparison on ENTRY', () => {
+    const avatarUrl = '/api/trainer-assets/trainer%2Favatar%2Ffemale.png';
+    render(<PokedexDetail
+      catalog={{ ...catalog, species: catalog.species.map(species => species.id === 5 ? { ...species, height: 17 } : species) }}
+      state={{ ...state, trainer: {
+        name: 'MAY', gender: 'FEMALE', publicTrainerId: 12345, money: 0, playTimeHours: 0, playTimeMinutes: 0,
+        dexSeen: 1, dexCaught: 1, stars: 0, avatarUrl, badges: [],
+      } }}
+      send={vi.fn()}
+      tab="ENTRY"
+      setTab={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+    />);
+
+    const chart = screen.getByRole('img', { name: 'Height comparison for Charmeleon: 1.7 m beside a 1.7 m person' });
+    expect(chart.querySelectorAll('.height-ruler-line').length).toBeGreaterThanOrEqual(5);
+    expect(chart.querySelector('.height-person img')?.getAttribute('src')).toBe(avatarUrl);
+    expect(chart.querySelector('.height-pokemon img')?.getAttribute('src')).toBe('/api/sprites/species/5.png');
+  });
+
   it('uses a generic Pokédex Entry fallback when compatible text is unavailable', () => {
     render(<PokedexDetail
       catalog={{ ...catalog, species: catalog.species.map(species => species.id === 5 ? { ...species, description: null } : species) }}
@@ -21,7 +68,9 @@ describe('Pokédex evolution navigation', () => {
       openAbility={vi.fn()}
     />);
 
-    expect(screen.getByText('No compatible Pokédex entry is available for this species.')).toBeTruthy();
+    expect(document.querySelector('.app-header .header-title strong')?.textContent).toBe('POKÉDEX');
+    expect(screen.getAllByText('Charmeleon')).toHaveLength(1);
+    expect(screen.getByText('No Pokédex entry is available for this Pokémon.')).toBeTruthy();
     expect(screen.queryByText(/resolved from this ROM/i)).toBeNull();
   });
 
@@ -143,7 +192,9 @@ describe('Pokédex evolution navigation', () => {
       openAbility={vi.fn()}
     />);
 
-    expect(screen.getByText('MAP UNAVAILABLE')).toBeTruthy();
+    expect(screen.getByText('NO HABITAT MAP')).toBeTruthy();
+    expect(screen.getByText('No habitat map is available for this game.')).toBeTruthy();
+    expect(screen.queryByText(/ROM|normalized world map/i)).toBeNull();
   });
 });
 

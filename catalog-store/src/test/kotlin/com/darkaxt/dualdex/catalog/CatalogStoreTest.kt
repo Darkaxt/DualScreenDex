@@ -336,6 +336,15 @@ class CatalogStoreTest {
         assertEquals(CatalogSchema.requiredSections, stored.committedSections)
         assertEquals(1, reopened.worldMaps.regions.size)
         assertEquals(557, reopened.localMaps.maps.size)
+        assertEquals(
+            mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"),
+            reopened.trainerAssets.avatarAssetKeys,
+        )
+        assertEquals(reopened.trainerAssets.avatarAssetKeys.values.toSet(), reopened.trainerAssets.assets.keys)
+        reopened.trainerAssets.avatarAssetKeys.values.forEach { key ->
+            assertEquals(64, reopened.trainerAssets.assets.getValue(key).width)
+            assertEquals(64, reopened.trainerAssets.assets.getValue(key).height)
+        }
         assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
         assertEquals(catalog.localMaps.assets.keys, reopened.localMaps.assets.keys)
         assertEquals(catalog.localMaps.timedAssets.keys, reopened.localMaps.timedAssets.keys)

@@ -6,23 +6,39 @@ import { SettingsPage } from './SettingsPage';
 afterEach(cleanup);
 
 describe('production settings copy', () => {
+  it('keeps the normal settings surface concise and confines ROM diagnostics to Debug', () => {
+    const { container } = render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
+
+    expect(screen.queryByText('PRESENTATION & KNOWLEDGE')).toBeNull();
+    expect(screen.queryByText('ACTIVE GAME')).toBeNull();
+    expect(container.querySelector('.rom-setting .eyebrow')?.textContent).toBe('GAME');
+    expect(screen.getByLabelText('Change ROM or ZIP')).toBeTruthy();
+
+    const debug = container.querySelector('.mapper-setting');
+    expect(debug?.textContent).toContain('fixture.gba');
+    expect(debug?.textContent).toContain('CRC32 1234ABCD');
+    const normalCopy = Array.from(container.querySelectorAll('.setting-group:not(.mapper-setting)')).map(item => item.textContent).join(' ');
+    expect(normalCopy).not.toContain('fixture.gba');
+    expect(normalCopy).not.toContain('CRC32');
+    expect(normalCopy).not.toMatch(/ROM SETTINGS|SaveRAM|catalog|polling|AMBIGUOUS|UNVERIFIED/i);
+    expect(normalCopy).not.toMatch(/debug/i);
+  });
+
   it('describes save-detected level-up Auto and manual recovery without claiming a full movepool switch', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
 
     expect(screen.queryByText(/browser POC/i)).toBeNull();
     expect(screen.queryByText(/memory mapper will/i)).toBeNull();
-    expect(screen.getByText(/Auto uses the only validated level-up table/i)).toBeTruthy();
-    expect(screen.getByText(/table detected from the current save when multiple supported tables exist/i)).toBeTruthy();
-    expect(screen.getByText(/manual choices are recovery\/debug overrides/i)).toBeTruthy();
-    expect(screen.getByText(/do not switch the game's Egg or TM data/i)).toBeTruthy();
-    expect(screen.getByRole('option', { name: 'Auto · unresolved' })).toBeTruthy();
+    expect(screen.getByText(/Auto chooses the matching level-up list/i)).toBeTruthy();
+    expect(screen.getByText(/Choose a list only when Auto cannot decide/i)).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Auto' })).toBeTruthy();
   });
 
   it('distinguishes loaded-ROM choices from global device ownership', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
 
-    expect(screen.getByText(/saved for this loaded ROM/i)).toBeTruthy();
-    expect(screen.getByText(/device-wide.*physical display target.*overlay size/i)).toBeTruthy();
+    expect(screen.getByText(/saved for the current game/i)).toBeTruthy();
+    expect(screen.getByText(/screen choice and overlay size apply to every game/i)).toBeTruthy();
   });
 
   it('can replace the active ROM without exposing simulator controls', () => {
@@ -75,7 +91,7 @@ describe('production settings copy', () => {
     expect(screen.queryByText(/controller focus/i)).toBeNull();
   });
 
-  it('shows SaveRAM health and lets an ambiguous match be selected', () => {
+  it('offers a save choice without leaking raw save state outside Debug', () => {
     const send = vi.fn();
     render(<SettingsPage catalog={catalog} state={{ ...state, saveRam: {
       status: 'AMBIGUOUS', sourceName: null, sourceLastModifiedEpochMs: null, refreshedAtEpochMs: null,
@@ -83,10 +99,12 @@ describe('production settings copy', () => {
       candidates: [{ id: 'content://save/1', path: 'RetroArch/saves/game.srm', lastModifiedEpochMs: 10 }]
     } }} send={send} onUpload={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /RetroArch\/saves\/game.srm/i }));
+    const saveSection = document.querySelector('.save-setting')!;
+    expect(saveSection.textContent).not.toMatch(/AMBIGUOUS|UNVERIFIED|RetroArch\/saves|Choose one/i);
+    fireEvent.click(screen.getByRole('button', { name: /SAVE 1.*game.srm/i }));
 
     expect(send).toHaveBeenCalledWith('SELECT_SAVE', { documentId: 'content://save/1' });
-    expect(screen.getByText(/autosave is unverified/i)).toBeTruthy();
+    expect(document.querySelector('.mapper-setting')?.textContent).toMatch(/AMBIGUOUS|UNVERIFIED|RetroArch\/saves\/game.srm/i);
   });
 
   it('opens the isolated mapper and clears only inactive catalog caches', () => {
@@ -95,7 +113,7 @@ describe('production settings copy', () => {
     render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} onOpenMapper={onOpenMapper} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'CAPTURE MEMORY REPORT' }));
-    fireEvent.click(screen.getByRole('button', { name: 'CLEAR INACTIVE CATALOGS' }));
+    fireEvent.click(screen.getByRole('button', { name: 'REMOVE UNUSED GAME DATA' }));
 
     expect(onOpenMapper).toHaveBeenCalledOnce();
     expect(send).toHaveBeenCalledWith('CLEAR_INACTIVE_CATALOGS');
@@ -118,9 +136,9 @@ describe('production settings copy', () => {
   it('disables the capability report when no ROM is loaded', () => {
     render(<SettingsPage catalog={null} state={{ ...state, catalogReady: false, catalogName: null }} send={vi.fn()} onUpload={vi.fn()} />);
 
-    const button = screen.getByRole('button', { name: 'NO ROM LOADED' });
+    const button = screen.getByRole('button', { name: 'NO GAME LOADED' });
     expect((button as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/No ROM is loaded.*changes below update global defaults/i)).toBeTruthy();
+    expect(screen.getByText(/No game is open.*choices become your defaults/i)).toBeTruthy();
   });
 });
 

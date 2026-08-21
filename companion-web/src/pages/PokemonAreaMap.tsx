@@ -31,11 +31,11 @@ export function PokemonAreaMap({ catalog, state, speciesId, send }: { catalog: C
     if (region && fogRef.current) paintFog(fogRef.current, region, visibleLocations);
   }, [region?.key, visibleLocations]);
 
-  if (!region) return <div class="pokemon-area-empty empty-state"><strong>{organic && habitatBaseIds.size > 0 ? 'NO KNOWN LOCATIONS' : 'MAP UNAVAILABLE'}</strong><p>{organic && habitatBaseIds.size > 0 ? 'Discover this Pokémon in the wild to reveal its habitat.' : 'This ROM has no normalized world map for habitat presentation.'}</p></div>;
+  if (!region) return <div class="pokemon-area-empty empty-state"><strong>{organic && habitatBaseIds.size > 0 ? 'NO KNOWN LOCATIONS' : 'NO HABITAT MAP'}</strong><p>{organic && habitatBaseIds.size > 0 ? 'Discover this Pokémon in the wild to reveal its habitat.' : 'No habitat map is available for this game.'}</p></div>;
 
   return <section class="pokemon-area-panel" aria-label="Pokémon habitat atlas">
     <header>
-      <div><small>HABITAT ATLAS</small><strong>{region.displayName ?? catalog.family.replaceAll('_', ' ')}</strong></div>
+      <div><small>HABITAT</small><strong>{region.displayName ?? 'REGION'}</strong></div>
       {mapRegions.length > 1 && <div class="pokemon-area-regions" aria-label="Habitat regions">{mapRegions.map(candidate =>
         <button key={candidate.key} aria-pressed={candidate.key === region.key} onClick={() => { setRegionKey(candidate.key); setSelectedKey(''); }}>{candidate.displayName ?? candidate.key}</button>
       )}</div>}
@@ -44,7 +44,7 @@ export function PokemonAreaMap({ catalog, state, speciesId, send }: { catalog: C
       class="pokemon-area-canvas"
       style={{ aspectRatio: `${region.pixelWidth} / ${region.pixelHeight}`, maxWidth: `${330 * region.pixelWidth / region.pixelHeight}px` }}
       role="img"
-      aria-label={`${region.displayName ?? catalog.family} ${catalog.species.find(species => species.id === speciesId)?.name ?? 'Pokémon'} habitat map`}
+      aria-label={`${region.displayName ?? 'Region'} ${catalog.species.find(species => species.id === speciesId)?.name ?? 'Pokémon'} habitat map`}
     >
       <img src={region.imageUrl} alt="" draggable={false} />
       <canvas ref={fogRef} width={region.pixelWidth} height={region.pixelHeight} aria-hidden="true" />

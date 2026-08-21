@@ -4,8 +4,8 @@ import { Header } from '../components';
 export function TrainerCardPage({ state, onBack }: { state: State; onBack: () => void }) {
   const trainer = state.trainer;
   return <section class="screen trainer-screen">
-    <Header title="TRAINER CARD" kicker="LIVE · READ ONLY" onBack={onBack} />
-    {!trainer ? <div class="empty-state trainer-unavailable"><strong>TRAINER DATA UNAVAILABLE</strong><p>This ROM or session has not published a safe Trainer record.</p></div> :
+    <Header title="TRAINER CARD" onBack={onBack} />
+    {!trainer ? <div class="empty-state trainer-unavailable"><strong>TRAINER CARD UNAVAILABLE</strong><p>Your Trainer Card will appear here when it can be read from the game.</p></div> :
       <div class="trainer-card-content" data-scroll-region>
         <article class="trainer-card-shell">
           <header class="trainer-card-strip"><strong>TRAINER CARD</strong><span>ID {String(trainer.publicTrainerId).padStart(5, '0')}</span></header>

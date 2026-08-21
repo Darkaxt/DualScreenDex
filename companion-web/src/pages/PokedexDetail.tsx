@@ -1,6 +1,7 @@
 import type { Catalog, State } from '../models';
 import { Header, identitySpriteClass, maskIdentityName, PokedexAvatar, Segmented, speciesIdentityKnowledge, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
+import { AbilityMechanics } from './AbilityDetail';
 import { PokemonAreaMap } from './PokemonAreaMap';
 
 type DetailTab = 'ENTRY' | 'STATS' | 'MOVES' | 'AREA' | 'MORE';
@@ -12,7 +13,7 @@ export function PokedexDetail({
   tab,
   setTab,
   openMove,
-  openAbility
+  openAbility: _openAbility
 }: {
   catalog: Catalog;
   state: State;
@@ -41,7 +42,7 @@ export function PokedexDetail({
     return slots.length ? [{ area, slots }] : [];
   });
   return <section class="screen detail-screen">
-    <Header title={species.name} kicker={`#${String(species.dex).padStart(3, '0')}`} onBack={() => send('BACK')} />
+    <Header title="POKÉDEX" kicker={`#${String(species.dex).padStart(3, '0')}`} onBack={() => send('BACK')} />
     <div class="identity-card">
       <PokedexAvatar speciesId={species.id} name={species.name} available={species.hasSprite} large knowledge={identityKnowledge} state={status} catalog={catalog} />
       <div class="identity-copy"><h1>{species.name}</h1><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
@@ -49,7 +50,10 @@ export function PokedexDetail({
     <Segmented values={['ENTRY', 'STATS', 'MOVES', 'AREA', 'MORE']} active={displayTab} disabledValues={unlocked ? [] : ['STATS', 'MORE']} onSelect={value => setTab(value as DetailTab)} label="Pokédex detail" />
     <div class="detail-content" data-scroll-region>
       {!unlocked && !observedOnly && displayTab !== 'AREA' && <div class="paper-panel withheld"><strong>{gameplayCopy.dataUnavailable}</strong><p>{gameplayCopy.catchForFullData}</p></div>}
-      {unlocked && displayTab === 'ENTRY' && <div class="paper-panel"><p class="eyebrow">POKÉDEX ENTRY</p><p class="entry-copy">{species.description || gameplayCopy.pokedexUnavailable}</p><div class="fact-grid"><span><small>HEIGHT</small><strong>{formatHeight(species.height, catalog.platform)}</strong></span><span><small>WEIGHT</small><strong>{formatWeight(species.weight, catalog.platform)}</strong></span></div></div>}
+      {unlocked && displayTab === 'ENTRY' && <>
+        <div class="paper-panel"><p class="eyebrow">POKÉDEX ENTRY</p><p class="entry-copy">{species.description || gameplayCopy.pokedexUnavailable}</p><div class="fact-grid"><span><small>HEIGHT</small><strong>{formatHeight(species.height, catalog.platform)}</strong></span><span><small>WEIGHT</small><strong>{formatWeight(species.weight, catalog.platform)}</strong></span></div></div>
+        <HeightComparison species={species} platform={catalog.platform} knowledge={identityKnowledge} trainerAvatarUrl={state.trainer?.avatarUrl ?? null} />
+      </>}
       {unlocked && displayTab === 'STATS' && <div class="paper-panel">
         <div class="section-heading"><div><p class="eyebrow">BASE STATS + INNATE RANGE</p><p>Lv 50 projection · no EV/stat experience · neutral nature where applicable.</p></div><strong>BST {baseStatSummary(species.stats)}</strong></div>
         {status?.innateTier && <p class="range-note">Preferred recruit: <strong>{status.innateTier}</strong>{status.preferredLevel ? ` · Lv ${status.preferredLevel}` : ''}</p>}
@@ -63,7 +67,7 @@ export function PokedexDetail({
           </i>
           <strong class="stat-range">{item.low}–{item.high}</strong>
         </div>)}</div>
-        {locations.length > 0 && <p class="range-note">Wild encounters in this ROM: <strong>{wildLevelRange(locations.flatMap(item => item.slots))}</strong></p>}
+        {locations.length > 0 && <p class="range-note">Wild encounter levels: <strong>{wildLevelRange(locations.flatMap(item => item.slots))}</strong></p>}
       </div>}
       {unlocked && displayTab === 'MOVES' && <div class="paper-panel move-sections">
         <div class="section-heading"><div><p class="eyebrow">LEVEL-UP MOVES</p><p>{activeRuleset == null ? 'Move list not selected' : `${activeRuleset.label} list`}</p></div></div>
@@ -87,7 +91,11 @@ export function PokedexDetail({
       </div>}
       {displayTab === 'AREA' && <PokemonAreaMap catalog={catalog} state={state} speciesId={species.id} send={send} />}
       {unlocked && displayTab === 'MORE' && <div class="paper-panel more-sections">
-        {species.abilities.length > 0 && <section><p class="eyebrow">ABILITIES</p>{species.abilities.map(ability => <button class="data-row data-link" key={ability.id} onClick={() => openAbility(ability.id)}><strong>{ability.name}</strong><span>#{ability.id}</span></button>)}</section>}
+        {species.abilities.length > 0 && <section><p class="eyebrow">ABILITIES</p><div class="inline-abilities">{species.abilities.map(ability => <article class="inline-ability" key={ability.id}>
+          <header><strong>{ability.name}</strong><span>#{ability.id}</span></header>
+          <p>{ability.description || gameplayCopy.abilityUnavailable}</p>
+          {ability.mechanics.length > 0 && <AbilityMechanics mechanics={ability.mechanics} />}
+        </article>)}</div></section>}
         {species.evolutions.length > 0 && <section><p class="eyebrow">EVOLUTIONS</p>{species.evolutions.map((evolution, index) => {
           const target = catalog.species.find(candidate => candidate.id === evolution.targetSpeciesId);
           const targetStatus = state.speciesState[evolution.targetSpeciesId];
@@ -133,22 +141,79 @@ export function projectedStatRange(base: number, name: string, platform: string,
 }
 
 export function wildLevelRange(slots: { minimumLevel: number; maximumLevel: number }[]): string {
-  if (slots.length === 0) return 'N/F';
+  if (slots.length === 0) return '—';
   const minimum = Math.min(...slots.map(slot => slot.minimumLevel));
   const maximum = Math.max(...slots.map(slot => slot.maximumLevel));
   return minimum === maximum ? `Lv ${minimum}` : `Lv ${minimum}–${maximum}`;
 }
 
 export function formatHeight(value: number | null, platform: string): string {
-  if (value == null) return 'N/F';
+  if (value == null) return '—';
   if (platform === 'GBA') return `${(value / 10).toFixed(1)} m`;
   if (platform === 'GBC') return `${value & 0xff}' ${(value >>> 8) & 0xff}"`;
   return String(value);
 }
 
 export function formatWeight(value: number | null, platform: string): string {
-  if (value == null) return 'N/F';
+  if (value == null) return '—';
   if (platform === 'GBA') return `${(value / 10).toFixed(1)} kg`;
   if (platform === 'GBC') return `${(value / 10).toFixed(1)} lb`;
   return String(value);
+}
+
+export function heightInMeters(value: number | null, platform: string): number | null {
+  if (value == null) return null;
+  if (platform === 'GBA') return value / 10;
+  if (platform === 'GBC' || platform === 'GB') {
+    const feet = value & 0xff;
+    const inches = (value >>> 8) & 0xff;
+    return feet * .3048 + inches * .0254;
+  }
+  return null;
+}
+
+export function heightChartMaximum(pokemonMeters: number): number {
+  return Math.max(1.7, pokemonMeters) / .8;
+}
+
+function HeightComparison({ species, platform, knowledge, trainerAvatarUrl }: {
+  species: Catalog['species'][number];
+  platform: string;
+  knowledge: ReturnType<typeof speciesIdentityKnowledge>;
+  trainerAvatarUrl: string | null;
+}) {
+  const pokemonMeters = heightInMeters(species.height, platform);
+  if (pokemonMeters == null || pokemonMeters <= 0) return null;
+  const maximum = heightChartMaximum(pokemonMeters);
+  const ticks = Array.from({ length: Math.floor(maximum * 2) + 1 }, (_, index) => Math.floor(maximum * 2) / 2 - index / 2);
+  const style = {
+    '--person-height': `${1.7 / maximum * 100}%`,
+    '--pokemon-height': `${pokemonMeters / maximum * 100}%`,
+  } as Record<string, string>;
+  const metric = `${pokemonMeters.toFixed(1)} m`;
+  return <section
+    class="paper-panel height-comparison"
+    role="img"
+    aria-label={`Height comparison for ${species.name}: ${metric} beside a 1.7 m person`}
+    style={style}
+  >
+    <div class="height-comparison-heading"><p class="eyebrow">HEIGHT COMPARISON</p><strong>{metric}</strong></div>
+    <div class="height-ruler" aria-hidden="true">
+      {ticks.map(tick => <span
+        class={`height-ruler-line ${Number.isInteger(tick) ? 'major' : ''}`}
+        key={tick}
+        style={{ bottom: `${tick / maximum * 100}%` }}
+      ><i>{tick.toFixed(tick % 1 === 0 ? 0 : 1)} m</i></span>)}
+      <span class="height-figure height-person">
+        {trainerAvatarUrl
+          ? <img src={trainerAvatarUrl} alt="" />
+          : <svg viewBox="0 0 64 170"><circle cx="32" cy="17" r="15" /><path d="M22 35h20l7 52-9 2-3-32v50l8 60H33l-5-48-5 48H11l8-60V57l-3 32-9-2 7-52h8Z" /></svg>}
+      </span>
+      <span class="height-figure height-pokemon">
+        {species.hasSprite
+          ? <img class={identitySpriteClass(knowledge)} src={`/api/sprites/species/${species.id}.png`} alt="" />
+          : <svg class="height-pokemon-silhouette" viewBox="0 0 120 100"><path d="M18 65c0-22 13-39 34-43l7-17 10 18c23 6 36 24 33 45l15 12-20 3c-8 10-20 15-36 15-25 0-43-12-43-33Zm12-31L10 20l24 3m61 15 18-13-8 23" /></svg>}
+      </span>
+    </div>
+  </section>;
 }
