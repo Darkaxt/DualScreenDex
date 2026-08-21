@@ -239,6 +239,56 @@ describe('optional local map presentation', () => {
     expect(view.container.querySelector('.map-player-marker')?.getAttribute('aria-label')).toBe('Player position 1, 7');
   });
 
+  it('uses a fogged Atlas underlay for inaccessible scene gaps and hides undiscovered Local maps', () => {
+    const view = render(<MapPage
+      catalog={connectedCatalog}
+      state={{ ...state, revealedAreaBaseIds: [] }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    const fallback = view.container.querySelector('.map-scene-atlas-fallback');
+    expect(fallback?.getAttribute('src')).toBe('/api/maps/world%2Fgen3-region-0.png');
+    expect(fallback?.classList.contains('is-fogged')).toBe(true);
+    const fog = view.container.querySelectorAll('.map-scene-placement-fog');
+    expect(fog).toHaveLength(1);
+    expect(fog[0].getAttribute('data-local-map-key')).toBe('local/0011');
+
+    view.rerender(<MapPage
+      catalog={connectedCatalog}
+      state={{ ...state, settings: { ...state.settings, knowledgeMode: 'DISCOVERED' } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    expect(view.container.querySelectorAll('.map-scene-placement-fog')).toHaveLength(0);
+    expect(view.container.querySelector('.map-scene-atlas-fallback')?.classList.contains('is-fogged')).toBe(false);
+  });
+
+  it('restores Local-map zoom depth and recenters on the current scene placement', () => {
+    const bounds = {
+      x: 0, y: 0, top: 0, right: 1240, bottom: 825, left: 0,
+      width: 1240, height: 825,
+      toJSON: () => ({}),
+    } as DOMRect;
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(bounds);
+    const { container } = render(<MapPage
+      catalog={connectedCatalog}
+      state={state}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    const stage = screen.getByRole('region', { name: 'Interactive local map' });
+
+    expect(Number(stage.dataset.scale)).toBeGreaterThan(1);
+    expect(Number(stage.dataset.panX)).toBeGreaterThan(0);
+    for (let index = 0; index < 12; index += 1) fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(Number(stage.dataset.scale)).toBeGreaterThan(4);
+    fireEvent.click(screen.getByRole('button', { name: 'Recenter map' }));
+    expect(Number(stage.dataset.scale)).toBeGreaterThan(1);
+    expect(container.querySelectorAll('.map-scene-tile')).toHaveLength(2);
+    rect.mockRestore();
+  });
+
   it('updates every dynamic raster in a connected scene from one game clock', () => {
     const dynamicSceneCatalog: Catalog = {
       ...connectedCatalog,

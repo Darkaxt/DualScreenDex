@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anchoredZoom, containFit, edgesAreBlack, GestureTracker } from './mapEngine';
+import { anchoredZoom, containFit, edgesAreBlack, focusMapRect, GestureTracker } from './mapEngine';
 
 describe('world map viewport engine', () => {
   it('contain-fits the intrinsic raster without stretching it', () => {
@@ -23,6 +23,26 @@ describe('world map viewport engine', () => {
 
     expect(mapAt(zoomed, anchor, center).x).toBeCloseTo(mapBefore.x, 8);
     expect(mapAt(zoomed, anchor, center).y).toBeCloseTo(mapBefore.y, 8);
+  });
+
+  it('restores previous Local-map detail inside a larger scene', () => {
+    const focused = focusMapRect(
+      1000,
+      500,
+      { x: 0, y: 0, width: 100, height: 100 },
+      1000,
+      500,
+    );
+
+    expect(focused.fit).toEqual({ width: 1000, height: 500, scale: 1 });
+    expect(focused.viewport).toEqual({ scale: 5, panX: 2250, panY: 1000 });
+    expect(focused.maximumScale).toBe(20);
+    expect(anchoredZoom(focused.viewport, 12, { x: 500, y: 250 }, { x: 500, y: 250 }, focused.maximumScale).scale)
+      .toBe(12);
+
+    const gesture = new GestureTracker(focused.viewport, focused.maximumScale);
+    gesture.setViewport({ ...focused.viewport, scale: 16 });
+    expect(gesture.viewport.scale).toBe(16);
   });
 
   it('pans with one pointer and clears a canceled gesture', () => {

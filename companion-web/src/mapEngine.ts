@@ -1,5 +1,6 @@
 export const MIN_MAP_SCALE = 1;
 export const MAX_MAP_SCALE = 4;
+export const MAX_SCENE_MAP_SCALE = 128;
 
 export interface MapViewport {
   scale: number;
@@ -8,10 +9,11 @@ export interface MapViewport {
 }
 
 export interface MapPoint { x: number; y: number }
+export interface MapRect extends MapPoint { width: number; height: number }
 
-export function clampScale(value: number): number {
+export function clampScale(value: number, maximumScale = MAX_MAP_SCALE): number {
   if (!Number.isFinite(value)) return MIN_MAP_SCALE;
-  return Math.min(MAX_MAP_SCALE, Math.max(MIN_MAP_SCALE, value));
+  return Math.min(maximumScale, Math.max(MIN_MAP_SCALE, value));
 }
 
 export function containFit(intrinsicWidth: number, intrinsicHeight: number, availableWidth: number, availableHeight: number) {
@@ -23,8 +25,37 @@ export function containFit(intrinsicWidth: number, intrinsicHeight: number, avai
   return { width: intrinsicWidth * scale, height: intrinsicHeight * scale, scale };
 }
 
-export function anchoredZoom(viewport: MapViewport, requestedScale: number, anchor: MapPoint, center: MapPoint): MapViewport {
-  const scale = clampScale(requestedScale);
+export function focusMapRect(
+  intrinsicWidth: number,
+  intrinsicHeight: number,
+  focus: MapRect,
+  availableWidth: number,
+  availableHeight: number,
+) {
+  const fit = containFit(intrinsicWidth, intrinsicHeight, availableWidth, availableHeight);
+  const focusFit = containFit(focus.width, focus.height, availableWidth, availableHeight);
+  const scale = clampScale(focusFit.scale / fit.scale, MAX_SCENE_MAP_SCALE);
+  const focusOffsetX = ((focus.x + focus.width / 2) / intrinsicWidth - 0.5) * fit.width;
+  const focusOffsetY = ((focus.y + focus.height / 2) / intrinsicHeight - 0.5) * fit.height;
+  return {
+    fit,
+    viewport: {
+      scale,
+      panX: -focusOffsetX * scale,
+      panY: -focusOffsetY * scale,
+    },
+    maximumScale: clampScale(scale * MAX_MAP_SCALE, MAX_SCENE_MAP_SCALE),
+  };
+}
+
+export function anchoredZoom(
+  viewport: MapViewport,
+  requestedScale: number,
+  anchor: MapPoint,
+  center: MapPoint,
+  maximumScale = MAX_MAP_SCALE,
+): MapViewport {
+  const scale = clampScale(requestedScale, maximumScale);
   const ratio = scale / viewport.scale;
   return {
     scale,
@@ -44,16 +75,29 @@ export class GestureTracker {
   private suppressSelection = false;
   private panStart: (MapPoint & { viewport: MapViewport }) | null = null;
   private pinchStart: ({ distance: number; scale: number; mapX: number; mapY: number }) | null = null;
+  private maximumScale: number;
 
-  constructor(viewport: MapViewport = { scale: 1, panX: 0, panY: 0 }) {
-    this.viewport = { ...viewport };
+  constructor(
+    viewport: MapViewport = { scale: 1, panX: 0, panY: 0 },
+    maximumScale = MAX_MAP_SCALE,
+  ) {
+    this.maximumScale = maximumScale;
+    this.viewport = { ...viewport, scale: clampScale(viewport.scale, maximumScale) };
   }
 
   get activeCount() { return this.pointers.size; }
 
   setCenter(x: number, y: number) { this.center = { x, y }; }
 
-  setViewport(viewport: MapViewport) { this.viewport = { ...viewport, scale: clampScale(viewport.scale) }; }
+  setMaximumScale(maximumScale: number) {
+    this.maximumScale = Math.max(MIN_MAP_SCALE, maximumScale);
+    this.viewport = { ...this.viewport, scale: clampScale(this.viewport.scale, this.maximumScale) };
+    return { ...this.viewport };
+  }
+
+  setViewport(viewport: MapViewport) {
+    this.viewport = { ...viewport, scale: clampScale(viewport.scale, this.maximumScale) };
+  }
 
   down(pointerId: number, x: number, y: number): MapViewport {
     if (this.pointers.size === 0) {
@@ -78,7 +122,7 @@ export class GestureTracker {
     if (this.mode === 'pinch' && this.pointers.size >= 2 && this.pinchStart) {
       const [first, second] = [...this.pointers.values()];
       const midpoint = middle(first, second);
-      const scale = clampScale(this.pinchStart.scale * span(first, second) / this.pinchStart.distance);
+      const scale = clampScale(this.pinchStart.scale * span(first, second) / this.pinchStart.distance, this.maximumScale);
       this.viewport = {
         scale,
         panX: midpoint.x - this.center.x - this.pinchStart.mapX * scale,

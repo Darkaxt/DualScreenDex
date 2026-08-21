@@ -2,7 +2,7 @@ import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DexIcon, MapIcon, SettingsIcon } from '../components';
 import { GameClockIndicator } from '../GameClockIndicator';
-import { anchoredZoom, containFit, GestureTracker, type MapViewport } from '../mapEngine';
+import { anchoredZoom, containFit, focusMapRect, GestureTracker, MAX_MAP_SCALE, type MapViewport } from '../mapEngine';
 import type { Catalog, State, WorldMapLocation, WorldMapRegion } from '../models';
 
 interface MapPageProps {
@@ -38,16 +38,20 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
   const [fit, setFit] = useState({ width: activeMap?.pixelWidth ?? 1, height: activeMap?.pixelHeight ?? 1, scale: 1 });
   const fogVisible = activeMode === 'ATLAS' && state.settings.knowledgeMode !== 'DISCOVERED';
+  const sceneFogVisible = localScene != null && state.settings.knowledgeMode !== 'DISCOVERED';
   const [legendOpen, setLegendOpen] = useState(false);
   const stageRef = useRef<HTMLElement>(null);
   const fogRef = useRef<HTMLCanvasElement>(null);
   const gestureRef = useRef(new GestureTracker(HOME_VIEWPORT));
+  const maximumScaleRef = useRef(MAX_MAP_SCALE);
+  const initializedSceneKeyRef = useRef<string | null>(null);
   const allowMarkerSelectionRef = useRef(true);
   const pressedMarkerRef = useRef(new Map<number, string>());
   const revealedBaseIds = useMemo(() => new Set([
     ...(state.revealedAreaBaseIds ?? []),
     ...(currentLocation?.baseAreaIds ?? []),
-  ]), [state.revealedAreaBaseIds, currentLocation?.key]);
+    ...(state.currentAreaBaseId == null ? [] : [state.currentAreaBaseId]),
+  ]), [state.revealedAreaBaseIds, currentLocation?.key, state.currentAreaBaseId]);
   const revealedLocations = useMemo(
     () => region?.locations.filter(location => location.baseAreaIds.some(baseAreaId => revealedBaseIds.has(baseAreaId))) ?? [],
     [region?.key, revealedBaseIds],
@@ -85,14 +89,46 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       const bounds = stage.getBoundingClientRect();
       const availableWidth = bounds.width || activeMap.pixelWidth;
       const availableHeight = bounds.height || activeMap.pixelHeight;
-      setFit(containFit(activeMap.pixelWidth, activeMap.pixelHeight, availableWidth, availableHeight));
+      const focused = localScene && activePlacement
+        ? focusMapRect(
+          localScene.pixelWidth,
+          localScene.pixelHeight,
+          {
+            x: activePlacement.pixelX,
+            y: activePlacement.pixelY,
+            width: activePlacement.pixelWidth,
+            height: activePlacement.pixelHeight,
+          },
+          availableWidth,
+          availableHeight,
+        )
+        : null;
+      setFit(focused?.fit ?? containFit(activeMap.pixelWidth, activeMap.pixelHeight, availableWidth, availableHeight));
       gestureRef.current.setCenter(availableWidth / 2, availableHeight / 2);
+      maximumScaleRef.current = focused?.maximumScale ?? MAX_MAP_SCALE;
+      const clamped = gestureRef.current.setMaximumScale(maximumScaleRef.current);
+      if (focused && initializedSceneKeyRef.current !== localScene?.key) {
+        initializedSceneKeyRef.current = localScene!.key;
+        setViewport(focused.viewport);
+      } else {
+        if (!focused) initializedSceneKeyRef.current = null;
+        setViewportState(clamped);
+      }
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(stage);
     return () => observer.disconnect();
-  }, [activeMap?.key, activeMap?.pixelWidth, activeMap?.pixelHeight]);
+  }, [
+    activeMap?.key,
+    activeMap?.pixelWidth,
+    activeMap?.pixelHeight,
+    activePlacement?.localMapKey,
+    activePlacement?.pixelX,
+    activePlacement?.pixelY,
+    activePlacement?.pixelWidth,
+    activePlacement?.pixelHeight,
+  ]);
 
   useEffect(() => {
     if (!region || !fogVisible || !fogRef.current) return;
@@ -114,7 +150,32 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   function zoom(multiplier: number, anchor?: { x: number; y: number }) {
     const bounds = stageRef.current?.getBoundingClientRect();
     const center = { x: (bounds?.width ?? activeMap!.pixelWidth) / 2, y: (bounds?.height ?? activeMap!.pixelHeight) / 2 };
-    setViewport(anchoredZoom(viewport, viewport.scale * multiplier, anchor ?? center, center));
+    setViewport(anchoredZoom(viewport, viewport.scale * multiplier, anchor ?? center, center, maximumScaleRef.current));
+  }
+
+  function recenter() {
+    if (localScene && activePlacement) {
+      const bounds = stageRef.current?.getBoundingClientRect();
+      const availableWidth = bounds?.width || localScene.pixelWidth;
+      const availableHeight = bounds?.height || localScene.pixelHeight;
+      const focused = focusMapRect(
+        localScene.pixelWidth,
+        localScene.pixelHeight,
+        {
+          x: activePlacement.pixelX,
+          y: activePlacement.pixelY,
+          width: activePlacement.pixelWidth,
+          height: activePlacement.pixelHeight,
+        },
+        availableWidth,
+        availableHeight,
+      );
+      maximumScaleRef.current = focused.maximumScale;
+      gestureRef.current.setMaximumScale(focused.maximumScale);
+      setViewport(focused.viewport);
+      return;
+    }
+    setViewport(HOME_VIEWPORT);
   }
 
   function pointerPoint(event: JSX.TargetedPointerEvent<HTMLElement>) {
@@ -201,6 +262,13 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       onWheel={onWheel}
     >
       <div class="map-plane map-framed-plane" style={{ width: fit.width, height: fit.height, transform }}>
+        {localScene && region && <img
+          class={`map-scene-atlas-fallback ${sceneFogVisible ? 'is-fogged' : ''}`}
+          src={region.imageUrl}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+        />}
         {localScene
           ? localScene.placements.map(placement => <img
             key={placement.localMapKey}
@@ -218,6 +286,20 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
             }}
           />)
           : <img src={activeImageUrl} alt={`${displayName} ${activeMode === 'LOCAL' ? 'local' : 'region'} map`} draggable={false} />}
+        {localScene && sceneFogVisible && localScene.placements
+          .filter(placement => !revealedBaseIds.has(placement.baseAreaId))
+          .map(placement => <span
+            key={`fog/${placement.localMapKey}`}
+            class="map-scene-placement-fog"
+            data-local-map-key={placement.localMapKey}
+            aria-hidden="true"
+            style={{
+              left: `${placement.pixelX / localScene.pixelWidth * 100}%`,
+              top: `${placement.pixelY / localScene.pixelHeight * 100}%`,
+              width: `${placement.pixelWidth / localScene.pixelWidth * 100}%`,
+              height: `${placement.pixelHeight / localScene.pixelHeight * 100}%`,
+            }}
+          />)}
         {fogVisible && region && <canvas ref={fogRef} class="map-fog" width={region.pixelWidth} height={region.pixelHeight} aria-hidden="true" />}
         {markerLocations.map(location => {
           const position = markerPosition(location, region!);
@@ -258,7 +340,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       <nav class="map-zoom-rail" aria-label="Map view controls">
         <button class="map-control" aria-label="Zoom in" onClick={() => zoom(1.25)}>+</button>
         <button class="map-control" aria-label="Zoom out" onClick={() => zoom(0.8)}>−</button>
-        <button class="map-control recenter-control" aria-label="Recenter map" onClick={() => setViewport(HOME_VIEWPORT)}><span /></button>
+        <button class="map-control recenter-control" aria-label="Recenter map" onClick={recenter}><span /></button>
       </nav>
     </main>
   </section>;
