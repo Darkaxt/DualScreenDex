@@ -37,7 +37,8 @@ internal object Gen3LocalMapResolver {
         }
 
         val names = Gen3MapLocationResolver.resolveDetailed(session.rom, encounterBaseIds, references)
-        var descriptorBatch = readDescriptors(session.rom, completeHeaders, names)
+        var selectedHeaders = completeHeaders
+        var descriptorBatch = readDescriptors(session.rom, selectedHeaders, names)
         if (descriptorBatch.descriptors.sumOf { it.pixelCount.toLong() } > MAX_TOTAL_PIXELS) {
             val reachableHeaders = Gen3MapLocationResolver.resolveReachableHeaderByBaseArea(
                 session.rom,
@@ -50,7 +51,8 @@ internal object Gen3LocalMapResolver {
                     "complete local-map catalog exceeds $MAX_TOTAL_PIXELS pixels and no complete reachable graph resolved",
                 )
             }
-            descriptorBatch = readDescriptors(session.rom, reachableHeaders, names)
+            selectedHeaders = reachableHeaders
+            descriptorBatch = readDescriptors(session.rom, selectedHeaders, names)
         }
         val descriptors = descriptorBatch.descriptors
         val skippedReasons = descriptorBatch.skippedReasons
@@ -125,14 +127,26 @@ internal object Gen3LocalMapResolver {
         if (maps.isEmpty()) {
             return LocalMapResolution.Unavailable("render", "no local map could be rendered from resolved map headers")
         }
-        val catalog = LocalMapCatalog(maps = maps, assets = assets, timedAssets = timedAssets).validate()
+        val scenes = runCatching {
+            Gen3MapSceneResolver.resolve(session.rom, selectedHeaders, maps)
+        }.getOrDefault(emptyList())
+        val catalog = LocalMapCatalog(
+            maps = maps,
+            assets = assets,
+            timedAssets = timedAssets,
+            scenes = scenes,
+        ).validate()
         return LocalMapResolution.Resolved(
             catalog = catalog,
             reasons = listOf(
                 "resolved ${maps.size} local maps from a compiled gMapGroups consumer",
                 "rendered ${assets.size + timedAssets.size} unique bounded ${format.label} 16x16 metatile rasters " +
                     "from ROM tilesets and palettes",
-            ) + if (lightingModel != null) {
+            ) + if (scenes.isNotEmpty()) {
+                listOf("placed ${scenes.sumOf { it.placements.size }} maps in ${scenes.size} connection-derived scenes")
+            } else {
+                emptyList()
+            } + if (lightingModel != null) {
                 listOf("retained ${timedAssets.size} source-backed natural-light maps as indexed timed rasters")
             } else {
                 emptyList()

@@ -164,6 +164,32 @@ describe('optional local map presentation', () => {
       imageUrl: '/api/maps/local%2F0010%2Fmap.png', dynamicLighting: false,
     }],
   };
+  const connectedCatalog: Catalog = {
+    ...localCatalog,
+    localMaps: [
+      ...localCatalog.localMaps!,
+      {
+        key: 'local/0011', displayName: 'Oldale Town', baseAreaId: 0x11,
+        pixelWidth: 384, pixelHeight: 320, gridWidth: 24, gridHeight: 20,
+        imageUrl: '/api/maps/local%2F0011%2Fmap.png', dynamicLighting: false,
+      },
+    ],
+    mapScenes: [{
+      key: 'scene/0010', pixelWidth: 704, pixelHeight: 320, gridWidth: 44, gridHeight: 20,
+      placements: [
+        {
+          localMapKey: 'local/0010', baseAreaId: 0x10, gridX: 0, gridY: 0,
+          pixelX: 0, pixelY: 0, pixelWidth: 320, pixelHeight: 320, gridWidth: 20, gridHeight: 20,
+          imageUrl: '/api/maps/local%2F0010%2Fmap.png', dynamicLighting: false,
+        },
+        {
+          localMapKey: 'local/0011', baseAreaId: 0x11, gridX: 20, gridY: 0,
+          pixelX: 320, pixelY: 0, pixelWidth: 384, pixelHeight: 320, gridWidth: 24, gridHeight: 20,
+          imageUrl: '/api/maps/local%2F0011%2Fmap.png', dynamicLighting: false,
+        },
+      ],
+    }],
+  };
 
   it('uses Local as the only map surface when playable geography is available', () => {
     const { container } = render(<MapPage
@@ -182,18 +208,7 @@ describe('optional local map presentation', () => {
     expect(screen.queryByRole('button', { name: 'Show Local map' })).toBeNull();
   });
 
-  it('preserves the viewport while the live position crosses between Local maps', () => {
-    const connectedCatalog: Catalog = {
-      ...localCatalog,
-      localMaps: [
-        ...localCatalog.localMaps!,
-        {
-          key: 'local/0011', displayName: 'Oldale Town', baseAreaId: 0x11,
-          pixelWidth: 384, pixelHeight: 320, gridWidth: 24, gridHeight: 20,
-          imageUrl: '/api/maps/local%2F0011%2Fmap.png', dynamicLighting: false,
-        },
-      ],
-    };
+  it('renders a connected Local scene and preserves the viewport across its map boundary', () => {
     const view = render(<MapPage
       catalog={connectedCatalog}
       state={{ ...state, currentMapPosition: { x: 19, y: 7 } }}
@@ -201,6 +216,13 @@ describe('optional local map presentation', () => {
       onOpenSettings={vi.fn()}
     />);
     const stage = screen.getByRole('region', { name: 'Interactive local map' });
+    const images = view.container.querySelectorAll('.map-scene-tile');
+    expect(images).toHaveLength(2);
+    expect(images[0].getAttribute('src')).toBe('/api/maps/local%2F0010%2Fmap.png');
+    expect(images[1].getAttribute('src')).toBe('/api/maps/local%2F0011%2Fmap.png');
+    expect(images[1].getAttribute('style')).toContain('left: 45.4545');
+    expect(stage.dataset.selectedKey).toBe('scene/0010');
+    expect(view.container.querySelector('.map-player-marker')?.getAttribute('style')).toContain('left: 44.3181');
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     const zoomedScale = stage.dataset.scale;
 
@@ -211,9 +233,42 @@ describe('optional local map presentation', () => {
       onOpenSettings={vi.fn()}
     />);
 
-    expect(view.container.querySelector('.map-plane img')?.getAttribute('src')).toBe('/api/maps/local%2F0011%2Fmap.png');
+    expect(view.container.querySelectorAll('.map-scene-tile')).toHaveLength(2);
     expect(stage.dataset.scale).toBe(zoomedScale);
+    expect(view.container.querySelector('.map-player-marker')?.getAttribute('style')).toContain('left: 48.8636');
     expect(view.container.querySelector('.map-player-marker')?.getAttribute('aria-label')).toBe('Player position 1, 7');
+  });
+
+  it('updates every dynamic raster in a connected scene from one game clock', () => {
+    const dynamicSceneCatalog: Catalog = {
+      ...connectedCatalog,
+      mapScenes: connectedCatalog.mapScenes!.map(scene => ({
+        ...scene,
+        placements: scene.placements.map(placement => ({ ...placement, dynamicLighting: true })),
+      })),
+    };
+    const view = render(<MapPage
+      catalog={dynamicSceneCatalog}
+      state={{ ...state, gameTime: { hours: 18, minutes: 37, phase: 'DAY', phaseProgress: 0.8 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    expect([...view.container.querySelectorAll('.map-scene-tile')].map(image => image.getAttribute('src'))).toEqual([
+      '/api/maps/local%2F0010%2Fmap.png?hour=18&minute=37',
+      '/api/maps/local%2F0011%2Fmap.png?hour=18&minute=37',
+    ]);
+
+    view.rerender(<MapPage
+      catalog={dynamicSceneCatalog}
+      state={{ ...state, gameTime: { hours: 20, minutes: 4, phase: 'NIGHT', phaseProgress: 0.1 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    expect([...view.container.querySelectorAll('.map-scene-tile')].map(image => image.getAttribute('src'))).toEqual([
+      '/api/maps/local%2F0010%2Fmap.png?hour=20&minute=4',
+      '/api/maps/local%2F0011%2Fmap.png?hour=20&minute=4',
+    ]);
   });
 
   it('changes only a dynamic Local image when game lighting changes and preserves zoom', () => {

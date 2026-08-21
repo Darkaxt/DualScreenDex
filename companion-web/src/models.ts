@@ -67,6 +67,7 @@ export interface Catalog {
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
   worldMaps?: WorldMapRegion[];
   localMaps?: LocalMapView[];
+  mapScenes?: LocalMapSceneView[];
   theme?: CatalogTheme;
   capabilities: Record<string, string>;
 }
@@ -95,6 +96,30 @@ export interface LocalMapView {
   key: string;
   displayName: string | null;
   baseAreaId: number;
+  pixelWidth: number;
+  pixelHeight: number;
+  gridWidth: number;
+  gridHeight: number;
+  imageUrl: string;
+  dynamicLighting: boolean;
+}
+
+export interface LocalMapSceneView {
+  key: string;
+  pixelWidth: number;
+  pixelHeight: number;
+  gridWidth: number;
+  gridHeight: number;
+  placements: LocalMapScenePlacementView[];
+}
+
+export interface LocalMapScenePlacementView {
+  localMapKey: string;
+  baseAreaId: number;
+  gridX: number;
+  gridY: number;
+  pixelX: number;
+  pixelY: number;
   pixelWidth: number;
   pixelHeight: number;
   gridWidth: number;

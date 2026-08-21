@@ -603,6 +603,7 @@ data class LocalMapCatalog(
     val assets: Map<String, PngMapAsset> = emptyMap(),
     val indexedAssets: Map<String, IndexedMapAsset> = emptyMap(),
     val timedAssets: Map<String, TimedIndexedMapAsset> = emptyMap(),
+    val scenes: List<LocalMapScene> = emptyList(),
 ) {
     init {
         validate()
@@ -650,6 +651,47 @@ data class LocalMapCatalog(
                 "local map ${map.key} timed raster dimensions do not match metadata"
             }
         }
+        val mapsByKey = maps.associateBy(LocalMap::key)
+        require(scenes.map(LocalMapScene::key).toSet().size == scenes.size) {
+            "local-map scene keys must be unique"
+        }
+        val placedMapKeys = mutableSetOf<String>()
+        scenes.forEach { scene ->
+            require(scene.key.isNotBlank()) { "local-map scene keys must not be blank" }
+            require(scene.gridWidth > 0 && scene.gridHeight > 0) { "local-map scene dimensions must be positive" }
+            require(scene.placements.size >= 2) { "local-map scenes must connect at least two maps" }
+            require(scene.placements.map(LocalMapScenePlacement::localMapKey).toSet().size == scene.placements.size) {
+                "local-map scene placements must be unique"
+            }
+            scene.placements.forEach { placement ->
+                val map = requireNotNull(mapsByKey[placement.localMapKey]) {
+                    "local-map scene ${scene.key} references an unknown map"
+                }
+                require(map.baseAreaId == placement.baseAreaId) {
+                    "local-map scene placement identity does not match its map"
+                }
+                require(placedMapKeys.add(placement.localMapKey)) {
+                    "local maps may belong to only one generated scene"
+                }
+                require(
+                    placement.gridX >= 0 && placement.gridY >= 0 &&
+                        placement.gridX.toLong() + map.gridWidth <= scene.gridWidth.toLong() &&
+                        placement.gridY.toLong() + map.gridHeight <= scene.gridHeight.toLong(),
+                ) { "local-map scene placement lies outside its bounds" }
+            }
+            scene.placements.forEachIndexed { index, placement ->
+                val map = mapsByKey.getValue(placement.localMapKey)
+                scene.placements.drop(index + 1).forEach { other ->
+                    val otherMap = mapsByKey.getValue(other.localMapKey)
+                    require(
+                        placement.gridX + map.gridWidth <= other.gridX ||
+                            other.gridX + otherMap.gridWidth <= placement.gridX ||
+                            placement.gridY + map.gridHeight <= other.gridY ||
+                            other.gridY + otherMap.gridHeight <= placement.gridY,
+                    ) { "local-map scene placements must not overlap" }
+                }
+            }
+        }
     }
 
     private companion object {
@@ -666,6 +708,23 @@ data class LocalMap(
     val gridWidth: Int,
     val gridHeight: Int,
     val imageAssetKey: String,
+)
+
+data class LocalMapScene(
+    val key: String,
+    val gridWidth: Int,
+    val gridHeight: Int,
+    val placements: List<LocalMapScenePlacement>,
+) {
+    val pixelWidth: Int get() = gridWidth * 16
+    val pixelHeight: Int get() = gridHeight * 16
+}
+
+data class LocalMapScenePlacement(
+    val localMapKey: String,
+    val baseAreaId: Int,
+    val gridX: Int,
+    val gridY: Int,
 )
 
 data class WorldMapCatalog(

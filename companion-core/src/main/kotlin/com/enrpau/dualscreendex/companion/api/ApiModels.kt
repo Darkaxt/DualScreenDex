@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.owned.PreferredIndividualSelector
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
+import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -27,6 +28,7 @@ data class CatalogView(
     val balls: List<BallView>,
     val worldMaps: List<WorldMapRegionView>,
     val localMaps: List<LocalMapView>,
+    val mapScenes: List<LocalMapSceneView>,
     val theme: CatalogThemeView,
     val capabilities: Map<String, String>,
 )
@@ -57,6 +59,30 @@ data class LocalMapView(
     val key: String,
     val displayName: String?,
     val baseAreaId: Int,
+    val pixelWidth: Int,
+    val pixelHeight: Int,
+    val gridWidth: Int,
+    val gridHeight: Int,
+    val imageUrl: String,
+    val dynamicLighting: Boolean,
+)
+
+data class LocalMapSceneView(
+    val key: String,
+    val pixelWidth: Int,
+    val pixelHeight: Int,
+    val gridWidth: Int,
+    val gridHeight: Int,
+    val placements: List<LocalMapScenePlacementView>,
+)
+
+data class LocalMapScenePlacementView(
+    val localMapKey: String,
+    val baseAreaId: Int,
+    val gridX: Int,
+    val gridY: Int,
+    val pixelX: Int,
+    val pixelY: Int,
     val pixelWidth: Int,
     val pixelHeight: Int,
     val gridWidth: Int,
@@ -519,9 +545,34 @@ object ApiViewBuilder {
                 pixelHeight = map.pixelHeight,
                 gridWidth = map.gridWidth,
                 gridHeight = map.gridHeight,
-                imageUrl = "/api/maps/${URLEncoder.encode(map.imageAssetKey, StandardCharsets.UTF_8)}.png",
-                dynamicLighting = map.imageAssetKey in catalog.localMaps.indexedAssets ||
-                    map.imageAssetKey in catalog.localMaps.timedAssets,
+                imageUrl = localMapAssetUrl(map.imageAssetKey),
+                dynamicLighting = catalog.localMaps.isDynamic(map.imageAssetKey),
+            )
+        },
+        mapScenes = catalog.localMaps.scenes.map { scene ->
+            LocalMapSceneView(
+                key = scene.key,
+                pixelWidth = scene.pixelWidth,
+                pixelHeight = scene.pixelHeight,
+                gridWidth = scene.gridWidth,
+                gridHeight = scene.gridHeight,
+                placements = scene.placements.map { placement ->
+                    val map = catalog.localMaps.maps.single { it.key == placement.localMapKey }
+                    LocalMapScenePlacementView(
+                        localMapKey = map.key,
+                        baseAreaId = map.baseAreaId,
+                        gridX = placement.gridX,
+                        gridY = placement.gridY,
+                        pixelX = placement.gridX * 16,
+                        pixelY = placement.gridY * 16,
+                        pixelWidth = map.pixelWidth,
+                        pixelHeight = map.pixelHeight,
+                        gridWidth = map.gridWidth,
+                        gridHeight = map.gridHeight,
+                        imageUrl = localMapAssetUrl(map.imageAssetKey),
+                        dynamicLighting = catalog.localMaps.isDynamic(map.imageAssetKey),
+                    )
+                },
             )
         },
         theme = CatalogThemeView(
@@ -838,6 +889,12 @@ object ApiViewBuilder {
                 },
             )
         }
+
+    private fun localMapAssetUrl(key: String): String =
+        "/api/maps/${URLEncoder.encode(key, StandardCharsets.UTF_8)}.png"
+
+    private fun LocalMapCatalog.isDynamic(key: String): Boolean =
+        key in indexedAssets || key in timedAssets
 
     private fun trainerAssetUrl(key: String): String =
         "/api/trainer-assets/${URLEncoder.encode(key, StandardCharsets.UTF_8)}.png"

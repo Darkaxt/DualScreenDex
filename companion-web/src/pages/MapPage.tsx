@@ -19,6 +19,9 @@ const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
 export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPageProps) {
   const maps = catalog.worldMaps ?? [];
   const localMap = (catalog.localMaps ?? []).find(map => map.baseAreaId === state.currentAreaBaseId);
+  const localScene = (catalog.mapScenes ?? []).find(scene =>
+    scene.placements.some(placement => placement.baseAreaId === state.currentAreaBaseId));
+  const activePlacement = localScene?.placements.find(placement => placement.baseAreaId === state.currentAreaBaseId);
   const selectedArea = catalog.areas.find(area => area.id === state.selectedAreaId);
   const selectedAreaBaseId = state.filter === 'AREA'
     ? selectedArea?.baseAreaId ?? (selectedArea ? Math.floor(selectedArea.id / 10) : undefined)
@@ -30,8 +33,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const currentLocation = region?.locations.find(location => location.baseAreaIds.includes(state.currentAreaBaseId ?? -1));
   const focusedLocation = region?.locations.find(location => location.baseAreaIds.includes(focusedAreaBaseId ?? -1));
   const [selectedKey, setSelectedKey] = useState(() => focusedLocation?.key ?? '');
-  const activeMode: MapMode = localMap ? 'LOCAL' : 'ATLAS';
-  const activeMap = localMap ?? region;
+  const activeMode: MapMode = localScene || localMap ? 'LOCAL' : 'ATLAS';
+  const activeMap = localScene ?? localMap ?? region;
   const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
   const [fit, setFit] = useState({ width: activeMap?.pixelWidth ?? 1, height: activeMap?.pixelHeight ?? 1, scale: 1 });
   const fogVisible = activeMode === 'ATLAS' && state.settings.knowledgeMode !== 'DISCOVERED';
@@ -53,10 +56,15 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const selectedLocation = fogVisible
     ? revealedLocations.find(location => location.key === selectedCandidate?.key) ?? currentLocation
     : selectedCandidate ?? currentLocation;
-  const playerPosition = activeMode === 'LOCAL' && localMap && state.currentMapPosition &&
-    state.currentMapPosition.x >= 0 && state.currentMapPosition.x < localMap.gridWidth &&
-    state.currentMapPosition.y >= 0 && state.currentMapPosition.y < localMap.gridHeight
-    ? state.currentMapPosition
+  const playerPosition = activeMode === 'LOCAL' && state.currentMapPosition &&
+    state.currentMapPosition.x >= 0 && state.currentMapPosition.x < (activePlacement?.gridWidth ?? localMap?.gridWidth ?? 0) &&
+    state.currentMapPosition.y >= 0 && state.currentMapPosition.y < (activePlacement?.gridHeight ?? localMap?.gridHeight ?? 0)
+    ? {
+      mapX: state.currentMapPosition.x,
+      mapY: state.currentMapPosition.y,
+      sceneX: (activePlacement?.gridX ?? 0) + state.currentMapPosition.x,
+      sceneY: (activePlacement?.gridY ?? 0) + state.currentMapPosition.y,
+    }
     : undefined;
 
   useEffect(() => {
@@ -161,9 +169,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const localLightingQuery = state.gameTime?.hours != null && state.gameTime.minutes != null
     ? `hour=${state.gameTime.hours}&minute=${state.gameTime.minutes}`
     : `lighting=${state.gameTime?.phase ?? 'DAY'}`;
-  const localImageUrl = localMap?.dynamicLighting
-    ? `${localMap.imageUrl}?${localLightingQuery}`
-    : localMap?.imageUrl;
+  const localImageUrl = localMap ? mapImageUrl(localMap.imageUrl, localMap.dynamicLighting, localLightingQuery) : undefined;
   const activeImageUrl = activeMode === 'LOCAL' ? localImageUrl : region?.imageUrl;
 
   return <section class="screen map-screen">
@@ -187,7 +193,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       data-scale={viewport.scale}
       data-pan-x={viewport.panX}
       data-pan-y={viewport.panY}
-      data-selected-key={activeMode === 'ATLAS' ? selectedLocation?.key : localMap?.key}
+      data-selected-key={activeMode === 'ATLAS' ? selectedLocation?.key : localScene?.key ?? localMap?.key}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={event => finishPointer(event, false)}
@@ -195,7 +201,23 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       onWheel={onWheel}
     >
       <div class="map-plane map-framed-plane" style={{ width: fit.width, height: fit.height, transform }}>
-        <img src={activeImageUrl} alt={`${displayName} ${activeMode === 'LOCAL' ? 'local' : 'region'} map`} draggable={false} />
+        {localScene
+          ? localScene.placements.map(placement => <img
+            key={placement.localMapKey}
+            class="map-scene-tile"
+            data-local-map-key={placement.localMapKey}
+            src={mapImageUrl(placement.imageUrl, placement.dynamicLighting, localLightingQuery)}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            style={{
+              left: `${placement.pixelX / localScene.pixelWidth * 100}%`,
+              top: `${placement.pixelY / localScene.pixelHeight * 100}%`,
+              width: `${placement.pixelWidth / localScene.pixelWidth * 100}%`,
+              height: `${placement.pixelHeight / localScene.pixelHeight * 100}%`,
+            }}
+          />)
+          : <img src={activeImageUrl} alt={`${displayName} ${activeMode === 'LOCAL' ? 'local' : 'region'} map`} draggable={false} />}
         {fogVisible && region && <canvas ref={fogRef} class="map-fog" width={region.pixelWidth} height={region.pixelHeight} aria-hidden="true" />}
         {markerLocations.map(location => {
           const position = markerPosition(location, region!);
@@ -214,13 +236,13 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
             }}
           ><span /></button>;
         })}
-        {playerPosition && localMap && <span
+        {playerPosition && <span
           class="map-marker map-player-marker is-current"
           style={{
-            left: `${((playerPosition.x + 0.5) / localMap.gridWidth) * 100}%`,
-            top: `${((playerPosition.y + 0.5) / localMap.gridHeight) * 100}%`,
+            left: `${((playerPosition.sceneX + 0.5) / activeMap.gridWidth) * 100}%`,
+            top: `${((playerPosition.sceneY + 0.5) / activeMap.gridHeight) * 100}%`,
           }}
-          aria-label={`Player position ${playerPosition.x}, ${playerPosition.y}`}
+          aria-label={`Player position ${playerPosition.mapX}, ${playerPosition.mapY}`}
         ><span /></span>}
       </div>
 
@@ -240,6 +262,10 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
       </nav>
     </main>
   </section>;
+}
+
+function mapImageUrl(imageUrl: string, dynamicLighting: boolean, lightingQuery: string) {
+  return dynamicLighting ? `${imageUrl}?${lightingQuery}` : imageUrl;
 }
 
 function markerPosition(location: WorldMapLocation, region: WorldMapRegion) {

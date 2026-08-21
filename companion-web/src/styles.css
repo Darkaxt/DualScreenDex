@@ -376,6 +376,7 @@ button { cursor: pointer; }
 .map-stage.is-manipulating { cursor: grabbing; }
 .map-plane { position: absolute; z-index: 1; left: 50%; top: 50%; overflow: hidden; background: #000; transform-origin: center; will-change: transform; }.map-framed-plane { box-shadow: 0 0 0 4px #6b4728, 0 12px 38px #000; }
 .map-plane > img, .map-fog { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; pointer-events: none; }
+.map-plane > img.map-scene-tile { inset: auto; }
 .map-fog { z-index: 2; }
 .map-utility-rail, .map-zoom-rail { position: absolute; z-index: 6; top: 12px; display: grid; gap: 7px; }
 .map-utility-rail { left: 12px; }.map-zoom-rail { right: 12px; }

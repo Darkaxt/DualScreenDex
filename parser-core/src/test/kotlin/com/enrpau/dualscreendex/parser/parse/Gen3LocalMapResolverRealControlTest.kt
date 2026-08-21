@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
 import com.enrpau.dualscreendex.parser.catalog.TimedLocalMapRasterRenderer
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -59,6 +60,20 @@ class Gen3LocalMapResolverRealControlTest {
         val localMaps = catalog.localMaps
 
         assertEquals(control.mapCount, localMaps.maps.size)
+        assertTrue("expected at least one connection-derived Local-map scene", localMaps.scenes.isNotEmpty())
+        val placedBaseAreaIds = localMaps.scenes.flatMap { scene ->
+            scene.placements.map { placement -> placement.baseAreaId }
+        }.toSet()
+        val controlMapsShareScene = control.sceneBaseAreaIds.isEmpty() || localMaps.scenes.any { scene ->
+            scene.placements.mapTo(mutableSetOf(), LocalMapScenePlacement::baseAreaId)
+                .containsAll(control.sceneBaseAreaIds)
+        }
+        assertTrue(
+            "expected control maps in one seamless scene; " +
+                "scenes=${localMaps.scenes.map { it.key to it.placements.size }}; " +
+                "placed=${placedBaseAreaIds.sorted().joinToString { it.toString(16).padStart(4, '0') }}",
+            controlMapsShareScene,
+        )
         val localMapEvidence = catalog.capabilities.getValue(RomCapability.LOCAL_MAP)
         assertEquals(localMapEvidence.reasons.joinToString("; "), CapabilityStatus.AVAILABLE, localMapEvidence.status)
         val worldMapEvidence = catalog.capabilities.getValue(RomCapability.WORLD_MAP)
@@ -110,6 +125,7 @@ class Gen3LocalMapResolverRealControlTest {
         val romSha256: String,
         val mapCount: Int,
         val maps: List<ExpectedMap>,
+        val sceneBaseAreaIds: Set<Int> = emptySet(),
     )
 
     private data class ExpectedMap(
@@ -154,12 +170,14 @@ class Gen3LocalMapResolverRealControlTest {
                 romSha256 = "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
                 mapCount = 394,
                 maps = rseMaps,
+                sceneBaseAreaIds = setOf(0x0010, 0x0011),
             ),
             Control(
                 environmentVariable = "DUALDEX_OFFICIAL_SAPPHIRE_ROM",
                 romSha256 = "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb",
                 mapCount = 394,
                 maps = rseMaps,
+                sceneBaseAreaIds = setOf(0x0010, 0x0011),
             ),
             Control(
                 environmentVariable = "DUALDEX_OFFICIAL_EMERALD_ROM",
@@ -179,6 +197,7 @@ class Gen3LocalMapResolverRealControlTest {
                         argbSha256 = "cf4eb8b377dae9cd7ca7f3e26e42f370540aa1220899953360eaafe4da2668a8",
                     ),
                 ),
+                sceneBaseAreaIds = setOf(0x0010, 0x0011),
             ),
             Control(
                 environmentVariable = "DUALDEX_FIRERED_ROM",
@@ -216,6 +235,7 @@ class Gen3LocalMapResolverRealControlTest {
                         argbSha256 = "39f0b8578ec8933fa817d134d9e7a196bfc6da1c8e9f7d9f21380ce2ae1b1af6",
                     ),
                 ),
+                sceneBaseAreaIds = setOf(0x0009, 0x0010, 0x0011),
             ),
         )
     }

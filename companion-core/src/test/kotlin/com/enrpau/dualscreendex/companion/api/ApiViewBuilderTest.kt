@@ -29,6 +29,8 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
+import com.enrpau.dualscreendex.parser.catalog.LocalMapScene
+import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
@@ -251,6 +253,17 @@ class ApiViewBuilderTest {
                         ),
                     ),
                 ),
+                scenes = listOf(
+                    LocalMapScene(
+                        key = "scene/0010",
+                        gridWidth = 21,
+                        gridHeight = 20,
+                        placements = listOf(
+                            LocalMapScenePlacement("local/0010", 0x10, 0, 0),
+                            LocalMapScenePlacement("local/0011", 0x11, 20, 0),
+                        ),
+                    ),
+                ),
             ),
         )
 
@@ -273,6 +286,13 @@ class ApiViewBuilderTest {
         assertEquals("/api/maps/local%2F0010%2Fmap.png", local.imageUrl)
         assertEquals(false, local.dynamicLighting)
         assertEquals(true, localMaps.single { it.baseAreaId == 0x11 }.dynamicLighting)
+        val scene = ApiViewBuilder.catalog(catalog).mapScenes.single()
+        assertEquals("scene/0010", scene.key)
+        assertEquals(336, scene.pixelWidth)
+        assertEquals(320, scene.pixelHeight)
+        assertEquals(listOf(0x10, 0x11), scene.placements.map { it.baseAreaId })
+        assertEquals("/api/maps/local%2F0011%2Fmap.png", scene.placements.last().imageUrl)
+        assertEquals(true, scene.placements.last().dynamicLighting)
     }
 
     @Test
