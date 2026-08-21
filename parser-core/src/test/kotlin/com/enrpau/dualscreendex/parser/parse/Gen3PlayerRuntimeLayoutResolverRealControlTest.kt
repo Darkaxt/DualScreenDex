@@ -29,6 +29,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         assertEquals(0x3D68, save.saveBlock1Size)
         assertEquals(0x0F24, save.saveBlock2Size)
         assertEquals(0, save.extendedSaveDataSize)
+        assertEquals(0x0EE0, save.eventFlags?.byteOffset)
+        assertEquals(0x0120, save.eventFlags?.byteCount)
         assertEquals(0x290, save.trainer.moneyOffset)
         assertEquals(0xF20, save.trainer.encryptionKeyOffset)
         assertEquals(
@@ -54,6 +56,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         assertEquals(0x3D88, save.saveBlock1Size)
         assertEquals(0x0F2C, save.saveBlock2Size)
         assertEquals(CatalogGen3TextEncoding.ENGLISH, save.textEncoding)
+        assertEquals(0x1270, save.eventFlags?.byteOffset)
+        assertEquals(0x012C, save.eventFlags?.byteCount)
         assertEquals(0x00, save.trainer.playerNameOffset)
         assertEquals(8, save.trainer.playerNameLength)
         assertEquals(0x08, save.trainer.genderOffset)

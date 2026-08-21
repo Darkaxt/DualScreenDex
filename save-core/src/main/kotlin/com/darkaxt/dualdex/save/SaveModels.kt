@@ -66,6 +66,7 @@ data class SaveSnapshot(
     val levelUpRulesetDetectionFingerprint: String? = null,
     val trainer: TrainerSnapshot? = null,
     val bag: List<BagPocketSnapshot> = emptyList(),
+    val eventFlagIds: Set<Int>? = null,
 ) {
     val allIndividuals: List<OwnedIndividual> get() = party + storedIndividuals
 }

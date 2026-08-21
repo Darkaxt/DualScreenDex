@@ -253,6 +253,16 @@ data class CatalogGen3BagAbi(val pockets: List<CatalogGen3BagPocketAbi>) {
     }
 }
 
+data class CatalogGen3EventFlagAbi(
+    val byteOffset: Int,
+    val byteCount: Int,
+) {
+    init {
+        require(byteOffset >= 0)
+        require(byteCount > 0)
+    }
+}
+
 data class CatalogGen3SaveRuntimeAbi(
     val saveBlock1Size: Int,
     val saveBlock2Size: Int,
@@ -260,6 +270,7 @@ data class CatalogGen3SaveRuntimeAbi(
     val textEncoding: CatalogGen3TextEncoding,
     val trainer: CatalogGen3TrainerCardAbi,
     val bag: CatalogGen3BagAbi,
+    val eventFlags: CatalogGen3EventFlagAbi? = null,
 ) {
     init {
         require(saveBlock1Size > 0 && saveBlock2Size > 0 && extendedSaveDataSize >= 0)
@@ -278,6 +289,7 @@ data class CatalogGen3SaveRuntimeAbi(
             }
             requireRange(pocket.byteOffset, pocket.capacity * pocket.slotSize, limit)
         }
+        eventFlags?.let { requireRange(it.byteOffset, it.byteCount, saveBlock1Size) }
     }
 
     private fun requireRange(offset: Int, length: Int, limit: Int) {

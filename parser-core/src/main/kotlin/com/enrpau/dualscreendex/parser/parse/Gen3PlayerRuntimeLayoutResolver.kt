@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagDataSource
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocketAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3EventFlagAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BattleUiAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BitFlag
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3PartyAbi
@@ -231,6 +232,7 @@ object Gen3PlayerRuntimeLayoutResolver {
                 CatalogGen3BagPocketAbi(CatalogGen3BagPocket.BERRIES, 0x790, 46),
             ),
         ),
+        eventFlags = CatalogGen3EventFlagAbi(0x1270, 0x12C),
     )
 
     /**
@@ -278,6 +280,10 @@ object Gen3PlayerRuntimeLayoutResolver {
                     badgeFlags = badges,
                 ),
                 bag = CatalogGen3BagAbi(pockets),
+                eventFlags = CatalogGen3EventFlagAbi(
+                    byteOffset = header.flagsOffset,
+                    byteCount = header.varsOffset - header.flagsOffset,
+                ),
             )
         }.getOrNull()
     }
@@ -474,6 +480,7 @@ object Gen3PlayerRuntimeLayoutResolver {
         val playerNameOffset = rom.u32le(offset + 0xA0).toInt()
         val playerGenderOffset = rom.u32le(offset + 0xA4).toInt()
         val flagsOffset = rom.u32le(offset + 0x50).toInt()
+        val varsOffset = rom.u32le(offset + 0x54).toInt()
         val seen1Offset = rom.u32le(offset + 0x5C).toInt()
         val gameClearFlag = rom.u32le(offset + 0xDC).toInt()
         val playerNameLength = rom.u8(offset + 0x74)
@@ -487,7 +494,8 @@ object Gen3PlayerRuntimeLayoutResolver {
             trainerIdOffset == playerGenderOffset + 2 &&
             partyCountOffset >= 0 && partyOffset in partyCountOffset + 1..partyCountOffset + MAX_PARTY_ALIGNMENT &&
             partyOffset + PARTY_CAPACITY * PARTY_RECORD_SIZE <= saveBlock1Size &&
-            flagsOffset in 0 until saveBlock1Size && seen1Offset in 0 until saveBlock1Size &&
+            flagsOffset in 0 until saveBlock1Size && varsOffset in (flagsOffset + 1)..saveBlock1Size &&
+            seen1Offset in 0 until saveBlock1Size &&
             bagCounts.all { it > 0 } && pcItemsCount > 0 && pcItemsOffset in 0 until saveBlock1Size
         if (!basicRangesValid) return null
         return GfRomHeader(
@@ -499,6 +507,7 @@ object Gen3PlayerRuntimeLayoutResolver {
             playerNameLength = playerNameLength,
             playerGenderOffset = playerGenderOffset,
             flagsOffset = flagsOffset,
+            varsOffset = varsOffset,
             seen1Offset = seen1Offset,
             gameClearFlag = gameClearFlag,
             bagCounts = bagCounts,
@@ -598,6 +607,7 @@ object Gen3PlayerRuntimeLayoutResolver {
         val playerNameLength: Int,
         val playerGenderOffset: Int,
         val flagsOffset: Int,
+        val varsOffset: Int,
         val seen1Offset: Int,
         val gameClearFlag: Int,
         val bagCounts: List<Int>,

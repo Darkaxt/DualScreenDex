@@ -6,6 +6,7 @@ import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.save.gen3.Gen3PlayerStateCodec
+import com.darkaxt.dualdex.save.gen3.Gen3EventFlagSnapshot
 import com.darkaxt.dualdex.save.gen3.Gen3PokemonCodec
 
 enum class Gen3LiveSectionState { AVAILABLE, EMPTY, UNAVAILABLE }
@@ -58,6 +59,7 @@ data class Gen3LiveGameSnapshot(
     val battle: Gen3LiveSection<Gen3LiveBattleState>,
     val battleUi: Gen3LiveSection<Gen3LiveBattleUiState>,
     val clock: Gen3LiveSection<Gen3GameClock> = Gen3LiveSection.unavailable("live game clock was unavailable"),
+    val eventFlags: Gen3LiveSection<Set<Int>> = Gen3LiveSection.unavailable("live event flags were unavailable"),
 )
 
 object Gen3LiveGameState {
@@ -181,7 +183,19 @@ object Gen3LiveGameState {
                 Gen3LiveSection.available(Gen3LiveBattleUiState(targetBattler, encounterKind))
             } ?: Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
             clock = decodeClock(regions[CLOCK_ID]),
+            eventFlags = decodeEventFlags(saveBlock1, saveAbi),
         )
+    }
+
+    private fun decodeEventFlags(
+        saveBlock1: ByteArray?,
+        saveAbi: com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi?,
+    ): Gen3LiveSection<Set<Int>> {
+        val flagAbi = saveAbi?.eventFlags
+            ?: return Gen3LiveSection.unavailable("typed event flag ABI was unavailable")
+        val decoded = saveBlock1?.let { Gen3EventFlagSnapshot.decode(it, flagAbi) }
+            ?: return Gen3LiveSection.unavailable("live event flag bytes were unavailable")
+        return Gen3LiveSection.available(decoded)
     }
 
     private fun decodeClock(bytes: ByteArray?): Gen3LiveSection<Gen3GameClock> {

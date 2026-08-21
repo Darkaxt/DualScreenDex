@@ -2,6 +2,14 @@ package com.darkaxt.dualdex.battle
 
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveSpeciesContext
+import com.darkaxt.dualdex.save.BagPocket
+import com.darkaxt.dualdex.save.gen3.Gen3BagAbi
+import com.darkaxt.dualdex.save.gen3.Gen3BagPocketAbi
+import com.darkaxt.dualdex.save.gen3.Gen3BitFlag
+import com.darkaxt.dualdex.save.gen3.Gen3EventFlagAbi
+import com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi
+import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
+import com.darkaxt.dualdex.save.gen3.Gen3TrainerCardAbi
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -93,6 +101,30 @@ class Gen3LiveGameStateTest {
         assertEquals(false, snapshot.battle.value?.active)
     }
 
+    @Test
+    fun liveSaveBlockPublishesSetEventFlagsFromTheTypedWindow() {
+        val saveBlock1 = ByteArray(0x100).apply {
+            this[0x20 + 1007 / 8] = (1 shl (1007 % 8)).toByte()
+        }
+        val snapshot = Gen3LiveGameState.decode(
+            romIdentity = "rom",
+            regions = mapOf(Gen3LiveGameState.SAVE_BLOCK1_ID to saveBlock1),
+            layout = layout(),
+            saveContext = SaveParseContext(
+                "rom",
+                mapOf(1 to SaveSpeciesContext(1, 1, 0)),
+                gen3SaveRuntimeAbi = saveAbi(),
+            ),
+            savedTrainer = null,
+            battleActive = null,
+            targetBattler = null,
+            encounterKind = BattleEncounterKind.UNKNOWN,
+        )
+
+        assertEquals(Gen3LiveSectionState.AVAILABLE, snapshot.eventFlags.state)
+        assertEquals(setOf(1007), snapshot.eventFlags.value)
+    }
+
     private fun layout() = Gen3RuntimeMemoryLayout(
         mainAddress = 0x03002000,
         inBattleAddress = 0x03002040,
@@ -106,6 +138,26 @@ class Gen3LiveGameStateTest {
         saveBlock2PointerAddress = 0x03001004,
         saveBlock1Size = 0x100,
         saveBlock2Size = 0x80,
+    )
+
+    private fun saveAbi() = Gen3SaveRuntimeAbi(
+        saveBlock1Size = 0x100,
+        saveBlock2Size = 0x80,
+        textEncoding = Gen3TextEncoding.ENGLISH,
+        trainer = Gen3TrainerCardAbi(
+            playerNameOffset = 0,
+            playerNameLength = 8,
+            genderOffset = 8,
+            trainerIdOffset = 10,
+            playTimeHoursOffset = 14,
+            playTimeMinutesOffset = 16,
+            encryptionKeyOffset = 0x40,
+            moneyOffset = 0,
+            maximumMoney = 999_999,
+            badgeFlags = listOf(Gen3BitFlag(1, 1)),
+        ),
+        bag = Gen3BagAbi(listOf(Gen3BagPocketAbi(BagPocket.ITEMS, 4, 1))),
+        eventFlags = Gen3EventFlagAbi(0x20, 0x80),
     )
 
     private fun pointer(address: Long) = ByteArray(4) { index -> (address ushr (index * 8)).toByte() }

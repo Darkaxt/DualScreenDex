@@ -19,6 +19,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocketAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BattleUiAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BitFlag
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3EventFlagAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3PartyAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3SaveRuntimeAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding
@@ -934,6 +935,7 @@ class CatalogStoreTest {
                         bag = CatalogGen3BagAbi(
                             listOf(CatalogGen3BagPocketAbi(CatalogGen3BagPocket.ITEMS, 0x560, 30)),
                         ),
+                        eventFlags = CatalogGen3EventFlagAbi(0x1270, 0x12C),
                     ),
                     partyAbi = CatalogGen3PartyAbi(0x02001001, 0x02001004, 6, 100),
                     battleUiAbi = CatalogGen3BattleUiAbi(

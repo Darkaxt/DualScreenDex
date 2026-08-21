@@ -100,6 +100,7 @@ class Gen3SaveReaderTest {
                     Gen3BagPocketAbi(com.darkaxt.dualdex.save.BagPocket.BERRIES, 0x790, 46),
                 ),
             ),
+            eventFlags = Gen3EventFlagAbi(0x1270, 0x12C),
         )
         val typedContext = context.copy(gen3SaveRuntimeAbi = abi)
         val slot = fixtureSlot(counter = 18, species = 6, context = typedContext)
@@ -116,6 +117,8 @@ class Gen3SaveReaderTest {
         saveBlock1[firstBadge.byteOffset] = firstBadge.mask.toByte()
         saveBlock1.putU16le(0x650, 4)
         saveBlock1.putU16le(0x652, 12 xor key.toInt())
+        saveBlock1[0xF80] = 1 // distinguish the source-defined 0xFF4 section stride from legacy 0xF80
+        saveBlock1[0x1270 + 1007 / 8] = (1 shl (1007 % 8)).toByte()
         split(saveBlock1, slot.sections, 1..4)
         val save = ByteArray(128 * 1024).also { writeSlot(it, 0, slot, rotation = 2) }
 
@@ -126,6 +129,7 @@ class Gen3SaveReaderTest {
         assertEquals(4, parsed.snapshot.bag.single { it.pocket == com.darkaxt.dualdex.save.BagPocket.BALLS }.entries.single().itemId)
         assertEquals(SaveCapabilityStatus.AVAILABLE, parsed.snapshot.capabilities.getValue(SaveCapability.TRAINER).status)
         assertEquals(SaveCapabilityStatus.AVAILABLE, parsed.snapshot.capabilities.getValue(SaveCapability.BAG).status)
+        assertTrue(parsed.snapshot.eventFlagIds.toString(), 1007 in requireNotNull(parsed.snapshot.eventFlagIds))
     }
 
     @Test

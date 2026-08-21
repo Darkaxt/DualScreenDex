@@ -582,6 +582,101 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun saveEventFlagsPersistCollectedLocalMapItemsForTheActiveSave() {
+        val identity = "f".repeat(64)
+        val saveIdentity = "6".repeat(64)
+        val repository = InMemoryKnowledgeRepository()
+        val map = LocalMap("local/0102", "Route", 0x0102, 160, 160, 10, 10, "local/0102/map")
+        val poi = LocalMapPoi(
+            key = "local/0102/bg/0",
+            localMapKey = map.key,
+            baseAreaId = map.baseAreaId,
+            tileX = 4,
+            tileY = 4,
+            kind = LocalMapPoiKind.HIDDEN_ITEM,
+            organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
+            item = LocalMapPoiItem(13, collectionFlagId = 1007),
+        )
+        val runtime = ProductionCompanionRuntime(knowledgeRepository = repository)
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                identity,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                localMaps = LocalMapCatalog(
+                    maps = listOf(map),
+                    assets = mapOf(
+                        map.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                    ),
+                    pois = listOf(poi),
+                ),
+            ),
+        )
+
+        assertTrue(
+            runtime.applySaveSnapshot(
+                emptySave(identity, saveIdentity).copy(eventFlagIds = setOf(1007)),
+                SaveRamView(status = "MATCHED"),
+            ),
+        )
+
+        val ledger = runtime.gateway.bootstrap().ledger
+        assertEquals(setOf(poi.key), ledger.collectedPoiKeys)
+        assertEquals(setOf(poi.key), ledger.identifiedPoiKeys)
+        assertEquals(setOf(poi.key), repository.read(identity, saveIdentity)?.collectedPoiKeys)
+        runtime.close()
+    }
+
+    @Test
+    fun liveEventFlagsPersistCollectedLocalMapItemsForTheActiveSave() {
+        val identity = "9".repeat(64)
+        val saveIdentity = "7".repeat(64)
+        val repository = InMemoryKnowledgeRepository()
+        val map = LocalMap("local/0102", "Route", 0x0102, 160, 160, 10, 10, "local/0102/map")
+        val poi = LocalMapPoi(
+            key = "local/0102/bg/0",
+            localMapKey = map.key,
+            baseAreaId = map.baseAreaId,
+            tileX = 4,
+            tileY = 4,
+            kind = LocalMapPoiKind.HIDDEN_ITEM,
+            organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
+            item = LocalMapPoiItem(13, collectionFlagId = 1007),
+        )
+        val runtime = ProductionCompanionRuntime(knowledgeRepository = repository)
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                identity,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                localMaps = LocalMapCatalog(
+                    maps = listOf(map),
+                    assets = mapOf(
+                        map.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                    ),
+                    pois = listOf(poi),
+                ),
+            ),
+        )
+        assertTrue(runtime.applySaveSnapshot(emptySave(identity, saveIdentity), SaveRamView(status = "MATCHED")))
+
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                identity,
+                Gen3LiveSection.unavailable("trainer omitted"),
+                Gen3LiveSection.unavailable("party omitted"),
+                eventFlags = Gen3LiveSection.available(setOf(1007)),
+            ),
+        )
+
+        assertEquals(setOf(poi.key), runtime.gateway.bootstrap().ledger.collectedPoiKeys)
+        assertEquals(setOf(poi.key), repository.read(identity, saveIdentity)?.collectedPoiKeys)
+        runtime.close()
+    }
+
+    @Test
     fun mapPoiPreferencesDefaultToShowingEverythingAndPersistForTheActiveRomSave() {
         val identity = "e".repeat(64)
         val saveIdentity = "5".repeat(64)
@@ -1740,6 +1835,7 @@ class ProductionCompanionRuntimeTest {
         trainer: Gen3LiveSection<TrainerSnapshot>,
         party: Gen3LiveSection<List<OwnedIndividual>>,
         clock: Gen3LiveSection<Gen3GameClock> = Gen3LiveSection.unavailable("clock omitted"),
+        eventFlags: Gen3LiveSection<Set<Int>> = Gen3LiveSection.unavailable("event flags omitted"),
     ) = Gen3LiveGameSnapshot(
         romIdentity = romIdentity,
         trainer = trainer,
@@ -1753,6 +1849,7 @@ class ProductionCompanionRuntimeTest {
             Gen3LiveBattleUiState(null, com.darkaxt.dualdex.battle.BattleEncounterKind.UNKNOWN),
         ),
         clock = clock,
+        eventFlags = eventFlags,
     )
 
     private fun saveSpecies(id: Int) = SpeciesRecord(

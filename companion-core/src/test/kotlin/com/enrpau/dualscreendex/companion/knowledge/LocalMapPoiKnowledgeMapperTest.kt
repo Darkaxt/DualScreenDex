@@ -46,6 +46,26 @@ class LocalMapPoiKnowledgeMapperTest {
         assertEquals(setOf("local/0102/bg/old"), merged.proximityRevealedPoiKeys)
     }
 
+    @Test
+    fun `set collection flags mark only their mapped items collected and identified`() {
+        val merged = LocalMapPoiKnowledgeMapper.mergeEventFlags(
+            previous = KnowledgeLedger(),
+            catalog = CATALOG,
+            setFlagIds = setOf(1007),
+        )
+
+        assertEquals(setOf(HIDDEN_KEY), merged.collectedPoiKeys)
+        assertEquals(setOf(HIDDEN_KEY), merged.identifiedPoiKeys)
+    }
+
+    @Test
+    fun `unavailable or unrelated collection flags preserve knowledge`() {
+        val previous = KnowledgeLedger(proximityRevealedPoiKeys = setOf(HIDDEN_KEY))
+
+        assertEquals(previous, LocalMapPoiKnowledgeMapper.mergeEventFlags(previous, CATALOG, null))
+        assertEquals(previous, LocalMapPoiKnowledgeMapper.mergeEventFlags(previous, CATALOG, setOf(1008)))
+    }
+
     private companion object {
         const val HIDDEN_KEY = "local/0102/bg/0"
         val MAP = LocalMap("local/0102", "Route", 0x0102, 160, 160, 10, 10, "local/0102/map")
@@ -65,7 +85,7 @@ class LocalMapPoiKnowledgeMapperTest {
                         4,
                         LocalMapPoiKind.HIDDEN_ITEM,
                         LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
-                        item = LocalMapPoiItem(13),
+                        item = LocalMapPoiItem(13, collectionFlagId = 1007),
                     ),
                 ),
             ),

@@ -39,6 +39,7 @@ class CatalogRuntimeMemoryLayoutTest {
         assertEquals(0x03005D8CL, layout.saveBlock1PointerAddress)
         assertEquals(0x03005D90L, layout.saveBlock2PointerAddress)
         assertEquals(saveAbi, layout.saveRuntimeAbi)
+        assertEquals(CatalogGen3EventFlagAbi(0x1270, 0x12C), layout.saveRuntimeAbi?.eventFlags)
         assertEquals(partyAbi, layout.partyAbi)
         assertEquals(battleUiAbi, layout.battleUiAbi)
         assertEquals(CatalogGameClockSchedule(6, 21), layout.liveClockSchedule)
@@ -130,5 +131,6 @@ class CatalogRuntimeMemoryLayoutTest {
                 CatalogGen3BagPocketAbi(CatalogGen3BagPocket.BERRIES, 0x790, 46),
             ),
         ),
+        eventFlags = CatalogGen3EventFlagAbi(0x1270, 0x12C),
     )
 }

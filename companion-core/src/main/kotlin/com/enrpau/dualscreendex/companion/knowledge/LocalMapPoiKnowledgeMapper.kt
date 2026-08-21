@@ -6,6 +6,23 @@ import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import kotlin.math.abs
 
 object LocalMapPoiKnowledgeMapper {
+    fun mergeEventFlags(
+        previous: KnowledgeLedger,
+        catalog: ParsedCatalog,
+        setFlagIds: Set<Int>?,
+    ): KnowledgeLedger {
+        if (setFlagIds == null) return previous
+        val collected = catalog.localMaps.pois.asSequence()
+            .filter { it.item?.collectionFlagId in setFlagIds }
+            .map { it.key }
+            .toSet()
+        if (collected.isEmpty()) return previous
+        return previous.copy(
+            identifiedPoiKeys = previous.identifiedPoiKeys + collected,
+            collectedPoiKeys = previous.collectedPoiKeys + collected,
+        )
+    }
+
     fun mergeProximity(
         previous: KnowledgeLedger,
         catalog: ParsedCatalog,

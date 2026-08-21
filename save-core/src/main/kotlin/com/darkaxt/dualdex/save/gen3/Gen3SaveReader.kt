@@ -95,6 +95,9 @@ object Gen3SaveReader {
                 levelUpRulesetDetectionFingerprint = levelUpRulesetFingerprint,
                 trainer = playerState?.trainer?.value,
                 bag = availableBag,
+                eventFlagIds = context.gen3SaveRuntimeAbi?.eventFlags?.let { abi ->
+                    Gen3EventFlagSnapshot.decode(saveBlock1, abi)
+                },
             ),
         )
     }

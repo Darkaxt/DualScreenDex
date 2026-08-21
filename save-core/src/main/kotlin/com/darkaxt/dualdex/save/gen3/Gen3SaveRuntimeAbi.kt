@@ -57,6 +57,16 @@ data class Gen3BagAbi(val pockets: List<Gen3BagPocketAbi>) {
     }
 }
 
+data class Gen3EventFlagAbi(
+    val byteOffset: Int,
+    val byteCount: Int,
+) {
+    init {
+        require(byteOffset >= 0) { "event flag offset must not be negative" }
+        require(byteCount > 0) { "event flag byte count must be positive" }
+    }
+}
+
 data class Gen3SaveRuntimeAbi(
     val saveBlock1Size: Int,
     val saveBlock2Size: Int,
@@ -64,6 +74,7 @@ data class Gen3SaveRuntimeAbi(
     val textEncoding: Gen3TextEncoding,
     val trainer: Gen3TrainerCardAbi,
     val bag: Gen3BagAbi,
+    val eventFlags: Gen3EventFlagAbi? = null,
 ) {
     init {
         require(saveBlock1Size > 0 && saveBlock2Size > 0 && extendedSaveDataSize >= 0) {
@@ -84,6 +95,7 @@ data class Gen3SaveRuntimeAbi(
             }
             requireRange(pocket.byteOffset, pocket.capacity * pocket.slotSize, limit, "${pocket.pocket} pocket")
         }
+        eventFlags?.let { requireRange(it.byteOffset, it.byteCount, saveBlock1Size, "event flags") }
     }
 
     private fun requireRange(offset: Int, length: Int, limit: Int, label: String) {

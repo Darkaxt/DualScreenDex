@@ -66,6 +66,7 @@ import com.darkaxt.dualdex.save.gen3.Gen3BagDataSource
 import com.darkaxt.dualdex.save.gen3.Gen3BagPocketAbi
 import com.darkaxt.dualdex.save.gen3.Gen3BitFlag
 import com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi
+import com.darkaxt.dualdex.save.gen3.Gen3EventFlagAbi
 import com.darkaxt.dualdex.save.gen3.Gen3TrainerCardAbi
 import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
@@ -341,6 +342,7 @@ class ProductionCompanionRuntime(
                         )
                     },
                 ),
+                eventFlags = abi.eventFlags?.let { Gen3EventFlagAbi(it.byteOffset, it.byteCount) },
             )
         },
     )
@@ -671,6 +673,20 @@ class ProductionCompanionRuntime(
             ?.takeIf { it.romIdentity.equals(current.romSha256, true) }
             ?.let { SaveKnowledgeMapper.merge(before, current, it) }
             ?: before
+        val withSavedFlags = LocalMapPoiKnowledgeMapper.mergeEventFlags(
+            previous = fromSave,
+            catalog = current,
+            setFlagIds = savedPlayerState
+                ?.takeIf { it.romIdentity.equals(current.romSha256, true) }
+                ?.eventFlagIds,
+        )
+        val withLiveFlags = LocalMapPoiKnowledgeMapper.mergeEventFlags(
+            previous = withSavedFlags,
+            catalog = current,
+            setFlagIds = liveGameState?.eventFlags
+                ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+                ?.value,
+        )
         val livePartySelection = when {
             liveGameState?.party?.state == Gen3LiveSectionState.AVAILABLE -> liveGameState?.party?.value
             liveParty != null -> liveParty
@@ -678,8 +694,8 @@ class ProductionCompanionRuntime(
             else -> emptyList()
         }
         return livePartySelection?.let { party ->
-            LivePartyKnowledgeMapper.merge(fromSave, current, party, generation = 3)
-        } ?: fromSave
+            LivePartyKnowledgeMapper.merge(withLiveFlags, current, party, generation = 3)
+        } ?: withLiveFlags
     }
 
     private fun publishSelectedPlayerSnapshot() {
