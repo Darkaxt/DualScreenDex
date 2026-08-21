@@ -301,6 +301,37 @@ class TableValidatorsTest {
     }
 
     @Test
+    fun retainsTrailingRunOfFullWidthGbNamesAtBinaryBoundary() {
+        val width = 10
+        val bytes = ByteArray(width * 12)
+        listOf("ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO")
+            .forEachIndexed { index, name -> writeGbName(bytes, index * width, name, width) }
+        listOf("BELLSPROUT", "WEEPINBELL", "VICTREEBEL", "SCREAMTAIL", "PERRSERKER")
+            .forEachIndexed { index, name -> writeGbName(bytes, (index + 5) * width, name, width) }
+
+        val count = TableValidators.inferFixedNameCount(
+            RomImage(bytes), 0, width, PokemonTextCodec.gbEnglish, minimumCount = 5, maximumCount = 12,
+        )
+
+        assertEquals(10, count)
+    }
+
+    @Test
+    fun rejectsAnUnprovenSingleFullWidthGbNameAtBinaryBoundary() {
+        val width = 10
+        val bytes = ByteArray(width * 8)
+        listOf("ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO")
+            .forEachIndexed { index, name -> writeGbName(bytes, index * width, name, width) }
+        writeGbName(bytes, width * 5, "BELLSPROUT", width)
+
+        val count = TableValidators.inferFixedNameCount(
+            RomImage(bytes), 0, width, PokemonTextCodec.gbEnglish, minimumCount = 5, maximumCount = 8,
+        )
+
+        assertEquals(5, count)
+    }
+
+    @Test
     fun locatesARelocatedFixedNameTableByItsCompleteShape() {
         val count = 24
         val width = 10
@@ -395,7 +426,7 @@ class TableValidatorsTest {
         name.forEachIndexed { index, character ->
             bytes[offset + index] = if (character == ' ') 0x7F else (0x80 + character.code - 'A'.code).toByte()
         }
-        bytes[offset + name.length] = 0x50
+        if (name.length < width) bytes[offset + name.length] = 0x50
         return offset + width
     }
 

@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.Gen3LearnsetEncoding
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
+import com.enrpau.dualscreendex.parser.text.Gen1DescriptionTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.validate.PokemonDatasetValidators
 import com.enrpau.dualscreendex.parser.validate.Gen3PackedLearnsetDecoder
@@ -143,7 +144,8 @@ object RelationshipMaterializers {
                 if (layout.generation == 1) {
                     val text = rom.gbBankAddress(rom.u8(metadata + 7), rom.u16le(metadata + 5))
                         ?: return@repeat
-                    put(index + 1, DescriptionRecord(decodeTerminated(rom, text, 512, codec), category = category))
+                    val description = Gen1DescriptionTextCodec.decode(rom, text, 512) ?: return@repeat
+                    put(index + 1, DescriptionRecord(description, category = category))
                 } else {
                     put(
                         index + 1,

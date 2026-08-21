@@ -104,6 +104,8 @@ object TableValidators {
         if (offset < 0 || width <= 0 || offset >= rom.size) return null
         var lastGood = 0
         var pendingFullWidth = false
+        var fullWidthRunStart = -1
+        var lastFullWidthGood = 0
         var consecutiveInvalid = 0
         for (index in 0 until maximumCount) {
             val recordOffset = offset.toLong() + index.toLong() * width
@@ -112,21 +114,37 @@ object TableValidators {
             val valid = plausibleFixedName(decoded, width, minimumRatio = 0.8)
             if (valid && !decoded.terminated) {
                 if (pendingFullWidth && decoded.text.firstOrNull(Char::isLetterOrDigit)?.isLowerCase() == true) break
+                if (!pendingFullWidth) fullWidthRunStart = index
                 pendingFullWidth = true
+                lastFullWidthGood = index + 1
                 consecutiveInvalid = 0
             } else if (valid) {
                 if (pendingFullWidth && !looksLikeStandaloneFixedName(decoded.text)) break
                 lastGood = index + 1
                 pendingFullWidth = false
+                fullWidthRunStart = -1
+                lastFullWidthGood = 0
                 consecutiveInvalid = 0
             } else {
-                if (pendingFullWidth) break
+                if (pendingFullWidth) {
+                    val fullWidthRunLength = lastFullWidthGood - fullWidthRunStart
+                    if (
+                        codec === PokemonTextCodec.gbEnglish &&
+                        fullWidthRunLength >= MIN_TRAILING_FULL_WIDTH_NAME_RUN &&
+                        lastFullWidthGood >= minimumCount
+                    ) {
+                        lastGood = lastFullWidthGood
+                    }
+                    break
+                }
                 consecutiveInvalid++
                 if (consecutiveInvalid >= 2 && index + 1 >= minimumCount) break
             }
         }
         return lastGood.takeIf { it >= minimumCount }
     }
+
+    private const val MIN_TRAILING_FULL_WIDTH_NAME_RUN = 3
 
     private fun looksLikeStandaloneFixedName(value: String): Boolean {
         val first = value.firstOrNull(Char::isLetterOrDigit) ?: return false

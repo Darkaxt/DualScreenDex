@@ -2,10 +2,15 @@ package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
+import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.parse.Gen1CompiledDescriptionResolver
 import com.enrpau.dualscreendex.parser.parse.Gen1CompiledMachineResolver
+import com.enrpau.dualscreendex.parser.parse.Gen1CompiledMoveResolver
+import com.enrpau.dualscreendex.parser.parse.Gen1CompiledNameResolver
+import com.enrpau.dualscreendex.parser.parse.Gen1CompiledRelationshipResolver
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -25,6 +30,27 @@ class Gen1CompiledTablesLiveRomTest {
 
     @Test
     fun unovaQolFallsBackToItsComplete151RowRelationshipDomain() = assertControl(controls[3])
+
+    @Test
+    fun novaSelectsFromUniqueCompiledGen1LineageEvidence() = assertStructuralIdentity(
+        environment = "DUALDEX_NOVA_ROM",
+        sha256 = "9ff825918dfb23d04dd35bfd92c6790a8b7c8596b93223ea1858758b24e7dad6",
+        moveCount = 239,
+        relationshipCount = 193,
+        evolutionEdges = 110,
+        learnsetEntries = 2134,
+        machineOffset = 0x13C90,
+        machineCount = 60,
+        descriptionOffset = 0x4047A,
+        descriptionRecords = 190,
+    )
+
+    @Test
+    fun grapeSelectsFromUniqueCompiledGen1LineageEvidence() = assertStructuralIdentity(
+        environment = "DUALDEX_GRAPE_ROM",
+        sha256 = "082154ea8e4cc24efc0a7b460eb2e1314a0deb411749649201626e82b3c7d609",
+        moveCount = null,
+    )
 
     @Test
     fun redPlusPlusResolvesItsExpandedMoveDomainWithoutInflatingRelationships() {
@@ -68,6 +94,100 @@ class Gen1CompiledTablesLiveRomTest {
         assertEquals(CapabilityStatus.PARTIAL, learnsets.status)
         assertEquals(196, learnsets.coveredRecords)
         assertEquals(208, learnsets.expectedRecords)
+    }
+
+    private fun assertStructuralIdentity(
+        environment: String,
+        sha256: String,
+        moveCount: Int?,
+        relationshipCount: Int? = null,
+        evolutionEdges: Int? = null,
+        learnsetEntries: Int? = null,
+        machineOffset: Int? = null,
+        machineCount: Int? = null,
+        descriptionOffset: Int? = null,
+        descriptionRecords: Int? = null,
+    ) {
+        val configured = System.getenv(environment)
+        assumeTrue("set $environment to run this live-ROM control", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals(sha256, rom.sha256)
+        moveCount?.let { expectedMoves ->
+            assertEquals(expectedMoves, Gen1CompiledMoveResolver.resolve(rom)?.moveNames?.count)
+        }
+        relationshipCount?.let { expectedRelationships ->
+            assertEquals(expectedRelationships, Gen1CompiledNameResolver.resolve(rom, 190)?.count)
+            val relationships = Gen1CompiledRelationshipResolver.resolve(
+                rom = rom,
+                preferredCount = expectedRelationships,
+                fallbackCounts = listOf(151),
+            )
+            assertEquals(expectedRelationships, relationships?.count)
+            assertEquals(TableRecordFormat.STANDARD, relationships?.format)
+        }
+        if (machineOffset != null && machineCount != null && moveCount != null) {
+            val machines = Gen1CompiledMachineResolver.resolve(rom, moveCount)
+            assertEquals(machineOffset, machines?.offset)
+            assertEquals(machineCount, machines?.count)
+        }
+        if (descriptionOffset != null && relationshipCount != null) {
+            val descriptions = Gen1CompiledDescriptionResolver.resolve(
+                rom = rom,
+                preferredCount = relationshipCount,
+                fallbackCounts = listOf(151),
+            )
+            assertEquals(descriptionOffset, descriptions?.offset)
+            assertEquals(relationshipCount, descriptions?.count)
+        }
+
+        val parsed = CatalogParser.parse(rom)
+        assertEquals(SelectionStatus.SELECTED, parsed.analysis.status)
+        assertEquals(EngineFamily.RED_BLUE, parsed.analysis.selectedFamily)
+        val catalog = requireNotNull(parsed.catalog)
+        moveCount?.let { expectedMoves ->
+            assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MOVE_CATALOG).status)
+            assertEquals(expectedMoves, catalog.movesById.size)
+        }
+        relationshipCount?.let { expectedRelationships ->
+            val speciesNames = catalog.capabilities.getValue(RomCapability.SPECIES_NAMES)
+            val evolutions = catalog.capabilities.getValue(RomCapability.EVOLUTIONS)
+            val learnsets = catalog.capabilities.getValue(RomCapability.LEARNSETS)
+            assertEquals(CapabilityStatus.AVAILABLE, speciesNames.status)
+            assertEquals(expectedRelationships, speciesNames.coveredRecords)
+            assertEquals(CapabilityStatus.AVAILABLE, evolutions.status)
+            assertEquals(expectedRelationships, evolutions.coveredRecords)
+            assertEquals(expectedRelationships, evolutions.expectedRecords)
+            assertEquals(CapabilityStatus.AVAILABLE, learnsets.status)
+            assertEquals(expectedRelationships, learnsets.coveredRecords)
+            assertEquals(expectedRelationships, learnsets.expectedRecords)
+            assertEquals(expectedRelationships, catalog.speciesById.size)
+        }
+        evolutionEdges?.let { expectedEdges ->
+            assertEquals(expectedEdges, catalog.speciesById.values.sumOf { it.evolutionEdges.value.orEmpty().size })
+        }
+        learnsetEntries?.let { expectedEntries ->
+            assertEquals(expectedEntries, catalog.speciesById.values.sumOf { it.learnset.value.orEmpty().size })
+        }
+        if (machineOffset != null && machineCount != null) {
+            val machines = catalog.capabilities.getValue(RomCapability.MACHINE_MOVES)
+            assertEquals(CapabilityStatus.AVAILABLE, machines.status)
+            assertEquals(machineOffset, machines.offset)
+            assertTrue(
+                catalog.speciesById.values.flatMap { it.moveAcquisitions.value.orEmpty() }.any {
+                    it.method == MoveAcquisitionMethod.MACHINE && it.sourceId == machineCount
+                },
+            )
+        }
+        if (descriptionOffset != null && descriptionRecords != null) {
+            val descriptions = catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS)
+            assertEquals(CapabilityStatus.AVAILABLE, descriptions.status)
+            assertEquals(descriptionOffset, descriptions.offset)
+            assertEquals(151, descriptions.coveredRecords)
+            assertEquals(151, descriptions.expectedRecords)
+            assertEquals(descriptionRecords, catalog.speciesById.values.count { it.description.value != null })
+        }
     }
 
     private fun assertControl(control: Control) {

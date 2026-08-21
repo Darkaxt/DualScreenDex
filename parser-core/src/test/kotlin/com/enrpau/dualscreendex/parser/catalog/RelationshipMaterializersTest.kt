@@ -584,6 +584,33 @@ class RelationshipMaterializersTest {
         assertEquals("A SEED", description.text)
     }
 
+    @Test
+    fun stopsGenOneDescriptionAtDoneTextCommand() {
+        val bytes = ByteArray(0x8000)
+        putU16(bytes, 0, 0x4020)
+        encodeGbText(bytes, 0x4020, "SEED")
+        val metadata = 0x4020 + 5
+        bytes[metadata + 4] = 0x17
+        putU16(bytes, metadata + 5, 0x4060)
+        bytes[metadata + 7] = 1
+        byteArrayOf(
+            0x00, 0x80.toByte(), 0x4E, 0x92.toByte(), 0x84.toByte(), 0x84.toByte(), 0x83.toByte(), 0x57,
+            0x89.toByte(), 0x94.toByte(), 0x8D.toByte(), 0x8A.toByte(),
+        ).copyInto(bytes, 0x4060)
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.RED_BLUE,
+            generation = 1,
+            platform = Platform.GB,
+            speciesCount = 1,
+            moveCount = 1,
+            tables = ProfileTables(descriptions = TableLayout(0, 1, 2, bank = 1)),
+        )
+
+        val description = RelationshipMaterializers.descriptions(RomImage(bytes), layout).getValue(1)
+
+        assertEquals("A SEED", description.text)
+    }
+
     private fun layout(
         descriptions: TableLayout? = null,
         evolutions: TableLayout? = null,

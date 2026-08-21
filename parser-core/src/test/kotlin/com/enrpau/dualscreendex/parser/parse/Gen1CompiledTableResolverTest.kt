@@ -174,6 +174,29 @@ class Gen1CompiledTableResolverTest {
     }
 
     @Test
+    fun resolvesPokedexDescriptionsWithDoneTerminatedTextCommands() {
+        val bytes = ByteArray(0xC000)
+        writeDescriptionConsumer(bytes, 0x4100, 0x5000)
+        writeDescriptionTable(
+            bytes,
+            offset = 0x5000,
+            count = 3,
+            firstEntryAddress = 0x5200,
+            textBank = 2,
+            commandText = true,
+        )
+
+        val layout = Gen1CompiledDescriptionResolver.resolve(
+            RomImage(bytes),
+            preferredCount = 3,
+            fallbackCounts = emptyList(),
+        )
+
+        assertNotNull(layout)
+        assertEquals(0x5000, layout?.offset)
+    }
+
+    @Test
     fun rejectsAmbiguousPokedexDescriptionConsumers() {
         val bytes = ByteArray(0x14000)
         writeDescriptionConsumer(bytes, 0x4100, 0x5000)
@@ -224,6 +247,7 @@ class Gen1CompiledTableResolverTest {
         count: Int,
         firstEntryAddress: Int,
         textBank: Int,
+        commandText: Boolean = false,
     ) {
         val tableBank = offset / 0x4000
         repeat(count) { index ->
@@ -237,7 +261,15 @@ class Gen1CompiledTableResolverTest {
                 textAddress.toByte(), (textAddress ushr 8).toByte(), textBank.toByte(), 0,
             ).copyInto(bytes, entry + 4)
             val text = textBank * 0x4000 + textAddress - 0x4000
-            byteArrayOf(0x83.toByte(), 0x84.toByte(), 0x97.toByte(), 0x50).copyInto(bytes, text)
+            val textBytes = if (commandText) {
+                byteArrayOf(
+                    0x00, 0x80.toByte(), 0x4E, 0x92.toByte(), 0x84.toByte(),
+                    0x84.toByte(), 0x83.toByte(), 0x57,
+                )
+            } else {
+                byteArrayOf(0x83.toByte(), 0x84.toByte(), 0x97.toByte(), 0x50)
+            }
+            textBytes.copyInto(bytes, text)
         }
     }
 

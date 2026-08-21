@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.io.RomBoundsException
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
+import com.enrpau.dualscreendex.parser.text.Gen1DescriptionTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.util.Locale
 
@@ -536,7 +537,8 @@ object PokemonDatasetValidators {
         val metadata = categoryEnd + 1
         if (metadata + 9 > rom.size || rom.u8(metadata + 4) != GEN1_TEXT_FAR) return false
         val target = rom.gbBankAddress(rom.u8(metadata + 7), rom.u16le(metadata + 5)) ?: return false
-        return decodeAt(rom, offset, 24, codec, 0.70) && decodeAt(rom, target, 512, codec, 0.55)
+        val description = Gen1DescriptionTextCodec.decodeDetailed(rom, target, 512) ?: return false
+        return decodeAt(rom, offset, 24, codec, 0.70) && description.validRatio >= 0.55
     }
 
     private fun validGen2Description(rom: RomImage, offset: Int, codec: PokemonTextCodec): Boolean {

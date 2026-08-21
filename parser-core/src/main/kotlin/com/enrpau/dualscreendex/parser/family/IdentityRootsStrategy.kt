@@ -31,6 +31,7 @@ import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolution
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.validate.TableValidators
 import java.util.Collections
 
 internal sealed interface IdentityRootsPhaseResult {
@@ -178,7 +179,19 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                 ),
             )
         } ?: compiledGen1NameTableResolution
-        val compiledGen1Moves = if (generation == 1 && exact == null && identityMatched) {
+        val compiledGen1StructuralIdentity = generation == 1 && exact == null && !identityMatched &&
+            compiledGen1Names != null && compiledGen1Base != null &&
+            inheritedTableResolution.tables.moveNames?.let { inherited ->
+                TableValidators.names(
+                    session.rom,
+                    inherited,
+                    inherited.count,
+                    PokemonTextCodec.gbEnglish,
+                    minimumRatio = 0.70,
+                ).compatible
+            } == true
+        val effectiveIdentityMatched = identityMatched || compiledGen1StructuralIdentity
+        val compiledGen1Moves = if (generation == 1 && exact == null && effectiveIdentityMatched) {
             Gen1CompiledMoveResolver.resolve(session.rom)
         } else {
             null
@@ -289,8 +302,19 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         return IdentityRootsPhaseResult.Resolved(
             exactProfile = exact,
             baseProfile = baseProfile,
-            identityMatched = identityMatched,
-            scoreEvidence = score,
+            identityMatched = effectiveIdentityMatched,
+            scoreEvidence = score + if (compiledGen1StructuralIdentity) {
+                listOf(
+                    ScoreEvidence(
+                        "compiled Gen I lineage",
+                        10,
+                        10,
+                        "compiled species consumers and this family's inherited move-name root agree",
+                    ),
+                )
+            } else {
+                emptyList()
+            },
             expansion = expansion,
             headerlessUnifiedSpecies = headerlessUnifiedSpecies,
             compiledGbaReferences = compiledGbaReferences,
