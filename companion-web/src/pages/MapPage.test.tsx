@@ -165,7 +165,7 @@ describe('optional local map presentation', () => {
     }],
   };
 
-  it('defaults to Local, shows the live player cell, and switches to Atlas with the tiny overlay control', () => {
+  it('uses Local as the only map surface when playable geography is available', () => {
     const { container } = render(<MapPage
       catalog={localCatalog}
       state={{ ...state, currentMapPosition: { x: 12, y: 7 } }}
@@ -178,11 +178,42 @@ describe('optional local map presentation', () => {
     expect(container.querySelector('.map-plane img')?.getAttribute('src')).toBe('/api/maps/local%2F0010%2Fmap.png');
     expect(container.querySelector('.map-player-marker')?.getAttribute('aria-label')).toBe('Player position 12, 7');
     expect(container.querySelector('.map-player-marker')?.classList.contains('atlas-location-marker')).toBe(false);
-    expect(screen.queryByRole('button', { name: 'Toggle map markers' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show Atlas' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show Local map' })).toBeNull();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show Atlas' }));
-    expect(screen.getByRole('region', { name: 'Interactive world map' }).dataset.mapMode).toBe('ATLAS');
-    expect(screen.getByRole('button', { name: 'Show Local map' })).toBeTruthy();
+  it('preserves the viewport while the live position crosses between Local maps', () => {
+    const connectedCatalog: Catalog = {
+      ...localCatalog,
+      localMaps: [
+        ...localCatalog.localMaps!,
+        {
+          key: 'local/0011', displayName: 'Oldale Town', baseAreaId: 0x11,
+          pixelWidth: 384, pixelHeight: 320, gridWidth: 24, gridHeight: 20,
+          imageUrl: '/api/maps/local%2F0011%2Fmap.png', dynamicLighting: false,
+        },
+      ],
+    };
+    const view = render(<MapPage
+      catalog={connectedCatalog}
+      state={{ ...state, currentMapPosition: { x: 19, y: 7 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    const stage = screen.getByRole('region', { name: 'Interactive local map' });
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    const zoomedScale = stage.dataset.scale;
+
+    view.rerender(<MapPage
+      catalog={connectedCatalog}
+      state={{ ...state, currentAreaBaseId: 0x11, currentAreaName: 'Oldale Town', currentMapPosition: { x: 1, y: 7 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    expect(view.container.querySelector('.map-plane img')?.getAttribute('src')).toBe('/api/maps/local%2F0011%2Fmap.png');
+    expect(stage.dataset.scale).toBe(zoomedScale);
+    expect(view.container.querySelector('.map-player-marker')?.getAttribute('aria-label')).toBe('Player position 1, 7');
   });
 
   it('changes only a dynamic Local image when game lighting changes and preserves zoom', () => {

@@ -30,10 +30,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
   const currentLocation = region?.locations.find(location => location.baseAreaIds.includes(state.currentAreaBaseId ?? -1));
   const focusedLocation = region?.locations.find(location => location.baseAreaIds.includes(focusedAreaBaseId ?? -1));
   const [selectedKey, setSelectedKey] = useState(() => focusedLocation?.key ?? '');
-  const [mode, setMode] = useState<MapMode>(() => localMap ? 'LOCAL' : 'ATLAS');
-  const modeSelectedRef = useRef(false);
-  const activeMode: MapMode = mode === 'LOCAL' && localMap ? 'LOCAL' : 'ATLAS';
-  const activeMap = activeMode === 'LOCAL' ? localMap : region;
+  const activeMode: MapMode = localMap ? 'LOCAL' : 'ATLAS';
+  const activeMap = localMap ?? region;
   const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
   const [fit, setFit] = useState({ width: activeMap?.pixelWidth ?? 1, height: activeMap?.pixelHeight ?? 1, scale: 1 });
   const fogVisible = activeMode === 'ATLAS' && state.settings.knowledgeMode !== 'DISCOVERED';
@@ -62,11 +60,6 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
     : undefined;
 
   useEffect(() => {
-    if (localMap && !modeSelectedRef.current) setMode('LOCAL');
-    else if (!localMap && mode === 'LOCAL') setMode('ATLAS');
-  }, [localMap?.key]);
-
-  useEffect(() => {
     if (focusedRegion && focusedRegion.key !== regionKey) setRegionKey(focusedRegion.key);
   }, [focusedRegion?.key]);
 
@@ -76,10 +69,6 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
     setSelectedKey(nextFocused?.key ?? '');
     if (activeMode === 'ATLAS') setViewport(HOME_VIEWPORT);
   }, [region?.key, focusedAreaBaseId]);
-
-  useEffect(() => {
-    setViewport(HOME_VIEWPORT);
-  }, [activeMode, activeMap?.key]);
 
   useEffect(() => {
     if (!activeMap || !stageRef.current) return;
@@ -164,11 +153,6 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
     event.preventDefault();
   }
 
-  function switchMode() {
-    modeSelectedRef.current = true;
-    setMode(activeMode === 'LOCAL' ? 'ATLAS' : 'LOCAL');
-  }
-
   const transform = `translate(calc(-50% + ${viewport.panX}px), calc(-50% + ${viewport.panY}px)) scale(${viewport.scale})`;
   const selectedIsCurrent = selectedLocation != null && currentLocation != null && selectedLocation.key === currentLocation.key;
   const displayName = activeMode === 'LOCAL'
@@ -248,12 +232,6 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings }: MapPa
           <div class="map-region-options">{maps.map(item => <button key={item.key} aria-pressed={item.key === region?.key} onClick={() => setRegionKey(item.key)}>{item.displayName ?? item.key}</button>)}</div>
         </div>}
       </nav>
-
-      {localMap && region && <button
-        class="map-control map-mode-control"
-        aria-label={activeMode === 'LOCAL' ? 'Show Atlas' : 'Show Local map'}
-        onClick={switchMode}
-      >{activeMode === 'LOCAL' ? 'A' : 'L'}</button>}
 
       <nav class="map-zoom-rail" aria-label="Map view controls">
         <button class="map-control" aria-label="Zoom in" onClick={() => zoom(1.25)}>+</button>
