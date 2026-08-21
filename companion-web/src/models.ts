@@ -52,6 +52,18 @@ export interface TypeInfo {
   border: string | null;
 }
 
+export interface NatureInfo {
+  id: number;
+  name: string;
+  statMultipliers: Record<'ATTACK' | 'DEFENSE' | 'SPEED' | 'SPECIAL_ATTACK' | 'SPECIAL_DEFENSE', number>;
+  raisedStat: 'ATTACK' | 'DEFENSE' | 'SPEED' | 'SPECIAL_ATTACK' | 'SPECIAL_DEFENSE' | null;
+  loweredStat: 'ATTACK' | 'DEFENSE' | 'SPEED' | 'SPECIAL_ATTACK' | 'SPECIAL_DEFENSE' | null;
+  positivePercent: number;
+  negativePercent: number;
+  likedFlavor: 'SPICY' | 'DRY' | 'SWEET' | 'BITTER' | 'SOUR' | null;
+  dislikedFlavor: 'SPICY' | 'DRY' | 'SWEET' | 'BITTER' | 'SOUR' | null;
+}
+
 export type EncounterWindow = 'ANY' | 'MORNING' | 'DAY' | 'NIGHT';
 
 export interface Catalog {
@@ -65,6 +77,7 @@ export interface Catalog {
   types: TypeInfo[];
   areas: { id: number; baseAreaId?: number; name: string; methodId: number; speciesIds: number[]; windows: EncounterWindow[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
+  natures?: NatureInfo[];
   worldMaps?: WorldMapRegion[];
   localMaps?: LocalMapView[];
   mapScenes?: LocalMapSceneView[];
@@ -290,6 +303,7 @@ export interface PartyMemberView {
   level: number | null;
   isEgg: boolean;
   gender: 'MALE' | 'FEMALE' | 'GENDERLESS' | null;
+  natureId?: number | null;
   nature: string | null;
   abilityId: number | null;
   abilityName: string | null;

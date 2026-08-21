@@ -94,6 +94,7 @@
   "v11Rc25Gen1ExpandedMachineDomain": true,
   "v11Rc25Gen1CompiledDescriptions": true,
   "v11Rc25Gen1RecordSpriteBanks": true,
+  "v11Rc28RomDerivedNatureCatalog": true,
   "gen1CompiledEvolutionCoveragePercent": 96.62,
   "gen1CompiledLearnsetCoveragePercent": 93.56,
   "gen1CompiledTypeChartCoveragePercent": 95.79,

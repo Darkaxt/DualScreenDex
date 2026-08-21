@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureStat
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -26,6 +27,7 @@ data class CatalogView(
     val types: List<TypeView>,
     val areas: List<AreaView>,
     val balls: List<BallView>,
+    val natures: List<NatureView>,
     val worldMaps: List<WorldMapRegionView>,
     val localMaps: List<LocalMapView>,
     val mapScenes: List<LocalMapSceneView>,
@@ -190,6 +192,17 @@ data class AreaView(
     val windows: List<String>,
 )
 data class BallView(val id: Int, val name: String, val generic: Boolean, val hasSprite: Boolean)
+data class NatureView(
+    val id: Int,
+    val name: String,
+    val statMultipliers: Map<String, Int>,
+    val raisedStat: String?,
+    val loweredStat: String?,
+    val positivePercent: Int,
+    val negativePercent: Int,
+    val likedFlavor: String?,
+    val dislikedFlavor: String?,
+)
 
 data class DiagnosticCapabilityView(
     val capability: String,
@@ -285,6 +298,7 @@ data class PartyMemberView(
     val level: Int? = null,
     val isEgg: Boolean = false,
     val gender: String? = null,
+    val natureId: Int? = null,
     val nature: String? = null,
     val abilityId: Int? = null,
     val abilityName: String? = null,
@@ -514,6 +528,19 @@ object ApiViewBuilder {
         },
         balls = catalog.captureBallsById.values.sortedBy { it.id }.map {
             BallView(it.id, it.name.value ?: "Ball ${it.id}", it.generic, it.sprite.value != null)
+        },
+        natures = catalog.naturesById.values.sortedBy { it.id }.map { nature ->
+            NatureView(
+                id = nature.id,
+                name = nature.name,
+                statMultipliers = NatureStat.entries.associate { stat -> stat.name to nature.multiplierPercent(stat) },
+                raisedStat = nature.raisedStat?.name,
+                loweredStat = nature.loweredStat?.name,
+                positivePercent = nature.positivePercent,
+                negativePercent = nature.negativePercent,
+                likedFlavor = nature.likedFlavor?.name,
+                dislikedFlavor = nature.dislikedFlavor?.name,
+            )
         },
         worldMaps = catalog.worldMaps.regions.map { region ->
             WorldMapRegionView(
@@ -850,6 +877,7 @@ object ApiViewBuilder {
                     ?.takeIf(String::isNotBlank)
                     ?.let { abilityId to it }
             }
+            val resolvedNature = details?.natureId?.let { catalog?.naturesById?.get(it) }
             PartyMemberView(
                 slot = slot,
                 occupied = true,
@@ -862,7 +890,8 @@ object ApiViewBuilder {
                 level = individual.level,
                 isEgg = individual.isEgg,
                 gender = details?.gender?.let(::partyGender),
-                nature = details?.natureId?.let(NATURE_NAMES::getOrNull),
+                natureId = resolvedNature?.id,
+                nature = resolvedNature?.name,
                 abilityId = resolvedAbility?.first,
                 abilityName = resolvedAbility?.second,
                 heldItemId = null,
@@ -923,13 +952,6 @@ object ApiViewBuilder {
         }
     }
 
-    private val NATURE_NAMES = listOf(
-        "Hardy", "Lonely", "Brave", "Adamant", "Naughty",
-        "Bold", "Docile", "Relaxed", "Impish", "Lax",
-        "Timid", "Hasty", "Serious", "Jolly", "Naive",
-        "Modest", "Mild", "Quiet", "Bashful", "Rash",
-        "Calm", "Gentle", "Sassy", "Careful", "Quirky",
-    )
     private val STAT_NAMES = listOf("HP", "ATTACK", "DEFENSE", "SPEED", "SP. ATK", "SP. DEF")
     private const val PARTY_SLOT_COUNT = 6
     private const val MOVE_SLOT_COUNT = 4
