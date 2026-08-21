@@ -29,12 +29,15 @@ describe('Party', () => {
     expect(occupied.querySelector('.party-slot-gender')?.textContent).toBe('♀');
     expect(occupied.querySelector('.party-slot-level')?.textContent).toBe('Lv 18');
     expect(occupied.querySelector('.party-slot-species')?.textContent).toBe('PIKACHU');
-    expect(occupied.querySelector('.party-slot-vitals')?.textContent).toContain('HP31 / 45');
+    const bars = occupied.querySelector('.party-slot-bars')!;
+    expect(bars).toBeTruthy();
+    expect(bars.querySelector('.party-hp-line')?.textContent).toContain('HP');
+    expect(bars.querySelector('.party-hp-value > i')?.textContent).toBe('31 / 45');
     expect(container.querySelector('.party-exp-track')?.getAttribute('aria-label')).toBe('Experience 50%');
     expect(container.querySelector('.party-exp-fill')?.getAttribute('style')).toContain('width: 50%');
     expect(container.querySelector('.party-hp-fill')?.getAttribute('style')).toContain('width: 69%');
-    const exp = occupied.querySelector('.party-exp-track')!;
-    const hp = occupied.querySelector('.party-hp-track')!;
+    const exp = bars.querySelector('.party-exp-track')!;
+    const hp = bars.querySelector('.party-hp-track')!;
     expect(Boolean(exp.compareDocumentPosition(hp) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     expect(container.querySelectorAll('.party-slot.empty .party-empty-mark')).toHaveLength(5);
     expect(screen.queryByText('OPEN SLOT')).toBeNull();

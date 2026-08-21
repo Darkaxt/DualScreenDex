@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { baseStatSummary, formatHeight, formatWeight, projectedStatRange, wildLevelRange } from './PokedexDetail';
+import { baseStatSummary, formatHeight, formatWeight, heightChartMaximum, heightInMeters, projectedStatRange, wildLevelRange } from './PokedexDetail';
 
 describe('ROM Pokédex measurements', () => {
   it('renders Gen III decimetres and hectograms as metric values', () => {
@@ -10,6 +10,13 @@ describe('ROM Pokédex measurements', () => {
   it('renders packed Gen II feet and inches with tenths of pounds', () => {
     expect(formatHeight((7 << 8) | 5, 'GBC')).toBe(`5' 7\"`);
     expect(formatWeight(1990, 'GBC')).toBe('199.0 lb');
+  });
+
+  it('normalizes source height units onto a shared metric comparison scale', () => {
+    expect(heightInMeters(7, 'GBA')).toBe(.7);
+    expect(heightInMeters((7 << 8) | 5, 'GBC')).toBeCloseTo(1.7018, 4);
+    expect(heightChartMaximum(.7)).toBe(2.125);
+    expect(heightChartMaximum(2.6)).toBe(3.25);
   });
 });
 

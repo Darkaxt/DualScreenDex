@@ -80,12 +80,12 @@ export function MapIcon() {
 }
 
 export function DexIcon() {
-  return <svg viewBox="0 0 28 28" shape-rendering="crispEdges" aria-hidden="true" data-semantic-icon="pokedex">
-    <path class="dex-shell" d="M3 3h17v3h4v19H3z" />
-    <path class="dex-screen" d="M7 11h13v8H7z" />
-    <path class="dex-hinge" d="M20 6h4M20 9h4M20 22h4" />
-    <circle class="dex-lens" cx="9" cy="7" r="2" />
-    <path class="dex-detail" d="M9 14h6v2H9zM7 22h4M14 22h6" />
+  return <svg class="dex-icon" viewBox="0 0 28 28" shape-rendering="geometricPrecision" aria-hidden="true" data-semantic-icon="pokedex">
+    <path class="dex-shell" d="M4 3.5h15.5v3H24v18H4z" />
+    <path class="dex-screen" d="M7 11h10.5v7H7z" />
+    <path class="dex-hinge" d="M19.5 6.5H24M19.5 9.5H24M19.5 21.5H24" />
+    <circle class="dex-lens" cx="8.5" cy="7.3" r="1.7" />
+    <path class="dex-detail" d="M9 13.5h6.5M9 16h4M7 21.5h4M14 21.5h4" />
   </svg>;
 }
 

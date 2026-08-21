@@ -38,7 +38,9 @@ describe('battle layout', () => {
     const openSpecies = vi.fn();
     render(<BattlePage catalog={catalog} state={state} send={send} openMove={vi.fn()} openSpecies={openSpecies} />);
 
-    screen.getByRole('button', { name: 'Open Hitmonlee in Pokédex' }).click();
+    const shortcut = screen.getByRole('button', { name: 'Open Hitmonlee in Pokédex' });
+    expect(shortcut.querySelector('svg')?.dataset.semanticIcon).toBe('pokedex');
+    shortcut.click();
 
     expect(openSpecies).toHaveBeenCalledWith(1);
   });
@@ -137,10 +139,14 @@ describe('battle layout', () => {
       relativeTier: 'WEAK', innateTier: 'STANDARD', baseStars: 1, areaAdjustment: -0.5, stars: 0.5,
     };
 
-    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
     expect(screen.getByText('WEAK STANDARD')).toBeTruthy();
     expect(screen.queryByText(/CURRENT PARTY/)).toBeNull();
+    const card = container.querySelector('.rarity-card');
+    expect(card?.getAttribute('data-rarity-band')).toBe('low');
+    expect(card?.querySelector('.rarity-stars')).toBeTruthy();
+    expect(card?.querySelectorAll('.rarity-star')).toHaveLength(5);
   });
 
   it('uses final stars for recruitment advice without inventing an unknown tier', () => {
@@ -155,7 +161,7 @@ describe('battle layout', () => {
 
     expect(screen.getByText('TRAINED')).toBeTruthy();
     expect(screen.queryByText(/UNKNOWN TRAINED/)).toBeNull();
-    expect(screen.getByLabelText('2 of 5 stars; TRAINED')).toBeTruthy();
+    expect(screen.getAllByLabelText('2 of 5 stars; TRAINED')).toHaveLength(2);
     expect(screen.getByText('A modest find. It could help for a while, but you may soon outgrow it.')).toBeTruthy();
     expect(screen.queryByText(/UNKNOWN|area|SaveRAM|encounter|formula/i)).toBeNull();
   });

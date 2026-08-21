@@ -6,7 +6,7 @@
 
 **Architecture:** Keep the existing `CatalogTheme` and routing models. Strengthen the browser contract so it inspects computed surfaces on every route/tab, then replace hard-coded legacy chrome with semantic theme aliases scoped to `GAME`. Restructure only Party slot markup where required for the reference hierarchy; remove diagnostic shell/header copy without changing state or navigation.
 
-**Tech Stack:** Preact, TypeScript, CSS custom properties, Vitest, Testing Library, Playwright/Helium, Vite, ADB screenshot evidence.
+**Tech Stack:** Preact, TypeScript, CSS custom properties, Vitest, Testing Library, Playwright/Helium, and Vite.
 
 ---
 
@@ -78,23 +78,26 @@
 ### Task 4: Perform the visual conformance review
 
 **Files:**
-- Create evidence only under: `D:\Temp\dualdex-rc25-ui-audit\theme-all-routes-final2`
+- Create evidence only under: `D:\Temp\dualdex-rc25-ui-audit\theme-objective-final13`
+- Create: `docs/reports/2026-08-21-ui-font-size-matrix.md`
 
 - [x] Build the production web bundle.
 - [x] Capture the full 4:3 page/tab matrix with the extreme yellow/blue theme fixture so any legacy green is visually obvious.
-- [ ] Compare Party against the lossless crop, measured 2.27:1 reference cards, and `D:\Temp\dualdex-rc25-ui-audit\party-installed-rc24.png`. Require a 2.25–2.45:1 card ratio, 86–90% content-height board, two-line identity, integrated 52%-row portrait, and bottom-aligned EXP/HP block.
-- [ ] Inspect and correct the shared Pokédex action icon in Atlas, Battle, and Pokémon AREA. Require one `currentColor` glyph and no legacy olive Battle button under a non-green ROM theme.
-- [ ] Enrich Rarity with the same accessible five-star meter at the top of the card and a theme-derived shader whose visual intensity follows the rating.
-- [ ] Expand Pokédex browse rows to portrait-led roster cards with known type metadata, including the sparse Dark-theme matrix, without leaking locked Organic data.
-- [ ] Fix every observed mismatch and rerun the affected browser cases until the measured matrix is clean.
+- [x] Compare Party against the lossless crop, measured 2.27:1 reference cards, and `D:\Temp\dualdex-rc25-ui-audit\party-installed-rc24.png`. Final browser geometry is 94% content width, 88% content height, 2.38:1 occupied-card ratio, 52% portrait share, and symmetric 6% top/bottom insets; identity uses two lines and EXP/HP is bottom-aligned.
+- [x] Inspect and correct the shared Pokédex action icon in Atlas, Battle, and Pokémon AREA. One monochrome `currentColor` glyph is used everywhere; Battle now renders it directly on the identity rail with no white or olive tile.
+- [x] Enrich Rarity with the same accessible five-star meter at the top of the card and a theme-derived shader whose visual intensity follows the rating.
+- [x] Expand Pokédex browse rows to portrait-led roster cards with known type metadata, including the sparse Dark-theme matrix, without leaking locked Organic data.
+- [x] Correct Capability Report and Memory Mapper contrast using the derived accent foreground/background pair.
+- [x] Generate a browser-computed per-layout font matrix, normalize inherited micro-copy to an 11.25px auxiliary tier, and enforce minimum 11.2px plus average 12px across every captured route without flattening title/value hierarchy.
+- [x] Fix every observed mismatch and rerun the affected browser cases until the measured matrix is clean.
 
 ### Task 5: Verify and prepare the prerelease
 
 **Files:**
 - Modify release metadata and notes only after Tasks 1–4 are GREEN.
 
-- [x] Run focused component tests, then `npm.cmd test -- --run`.
-- [x] Run `npm.cmd run build`.
-- [x] Run the full expanded `rom-derived-theme.spec.ts` using Helium and the sanitized fixture.
+- [x] Run focused component tests, then `npm.cmd test -- --run` (22 files, 145 tests).
+- [x] Run `npm.cmd run build` (also executed by the final Playwright web server).
+- [x] Run the full expanded `rom-derived-theme.spec.ts` using Helium and the sanitized fixture (1/1, evidence and font matrix in `theme-objective-final13`).
 - [x] Run `git diff --check` and inspect the complete diff for unrelated changes.
 - [ ] Commit release metadata and publish the next protected prerelease without installing it on a device.

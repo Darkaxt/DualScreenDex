@@ -77,9 +77,11 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openS
                 {member.level != null && <small class="party-slot-level">Lv {member.level}</small>}
               </span>
               {nicknameDiffers && <span class="party-slot-species">{member.speciesName}</span>}
-              <span class="party-slot-vitals"><b>HP</b><i>{hpLabel(member)}</i>{member.status && <em class={`party-status-dot status-${statusKey(member.status)}`}>{member.status}</em>}</span>
-              {partyExperiencePercent(member) != null && <span class="party-exp-track" aria-label={`Experience ${partyExperiencePercent(member)}%`}><b class="party-exp-fill" style={{ width: `${partyExperiencePercent(member)}%` }} /></span>}
-              {partyHpPercent(member) != null && <span class="party-hp-track" aria-label={`HP ${hpLabel(member)}`}><b class="party-hp-fill" style={{ width: `${partyHpPercent(member)}%` }} /></span>}
+              <span class="party-slot-bars">
+                {partyExperiencePercent(member) != null && <span class="party-exp-track" aria-label={`Experience ${partyExperiencePercent(member)}%`}><b class="party-exp-fill" style={{ width: `${partyExperiencePercent(member)}%` }} /></span>}
+                <span class="party-hp-line"><b>HP</b>{partyHpPercent(member) != null && <span class="party-hp-track" aria-label={`HP ${partyHpValue(member)}`}><b class="party-hp-fill" style={{ width: `${partyHpPercent(member)}%` }} /></span>}</span>
+                <span class="party-hp-value"><i>{partyHpValue(member)}</i>{member.status && <em class={`party-status-dot status-${statusKey(member.status)}`}>{member.status}</em>}</span>
+              </span>
             </span>}
           </button>;
         })}
@@ -161,7 +163,11 @@ function HeldItemArtwork({ member }: { member: PartyMemberView }) {
 }
 
 function hpLabel(member: PartyMemberView): string {
-  if (member.currentHp == null || member.maximumHp == null) return 'HP —';
+  return `HP ${partyHpValue(member)}`;
+}
+
+function partyHpValue(member: PartyMemberView): string {
+  if (member.currentHp == null || member.maximumHp == null) return '—';
   return `${member.currentHp} / ${member.maximumHp}`;
 }
 

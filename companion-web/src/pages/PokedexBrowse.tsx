@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { Catalog, EncounterWindow, State } from '../models';
-import { Header, maskIdentityName, PokedexAvatar, speciesIdentityKnowledge, StatusMarks } from '../components';
+import { Header, maskIdentityName, PokedexAvatar, speciesIdentityKnowledge, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
 
 export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Catalog; state: State; send: (type: string, values?: Record<string, string | number | boolean | null>) => void; onOpenMap?: () => void }) {
   const [search, setSearch] = useState('');
@@ -57,10 +57,10 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
       </div>
     </div>
     <div class="species-list" data-scroll-region>
-      {visible.map(species => { const knowledge = speciesIdentityKnowledge(policy, state.speciesState[species.id]); const hidden = knowledge === 'unknown'; return <button key={species.id} class={`species-row ${hidden ? 'identity-hidden' : ''}`} disabled={hidden} aria-label={hidden ? 'Unidentified encounter' : undefined} onClick={() => send('OPEN_SPECIES', { speciesId: species.id })}>
+      {visible.map(species => { const speciesState = state.speciesState[species.id]; const knowledge = speciesIdentityKnowledge(policy, speciesState); const hidden = knowledge === 'unknown'; const metadataUnlocked = policy === 'DISCOVERED' || Boolean(speciesState?.caught); const types = metadataUnlocked ? uniqueTypeIds(species.typeIds).map(id => catalog.types.find(type => type.id === id)).filter((type): type is Catalog['types'][number] => type != null) : []; return <button key={species.id} class={`species-row ${hidden ? 'identity-hidden' : ''}`} disabled={hidden} aria-label={hidden ? 'Unidentified encounter' : undefined} onClick={() => send('OPEN_SPECIES', { speciesId: species.id })}>
         <PokedexAvatar speciesId={species.id} name={species.name} available={species.hasSprite} knowledge={knowledge} state={state.speciesState[species.id]} catalog={catalog} />
-        <span class="species-number">{hidden ? '#???' : `#${String(species.dex).padStart(3, '0')}`}</span>
-        <strong>{hidden ? maskIdentityName(species.name) : species.name}</strong>
+        <span class="species-row-identity"><span class="species-number">{hidden ? '#???' : `#${String(species.dex).padStart(3, '0')}`}</span><strong>{hidden ? maskIdentityName(species.name) : species.name}</strong></span>
+        {types.length > 0 && <span class="species-row-types" aria-label="Types">{types.map(type => <TypeChip key={type.id} type={type} />)}</span>}
         <span class="species-row-meta">
           {activeFilter === 'AREA' && <EncounterWindowMark windows={encounterWindows(catalog, state.currentAreaIds ?? [], species.id)} />}
           <StatusMarks state={state.speciesState[species.id]} catalog={catalog} mode={policy} />

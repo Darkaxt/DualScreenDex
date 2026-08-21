@@ -1,5 +1,5 @@
 import type { Catalog, Move, Rarity as RarityModel, State } from '../models';
-import { Header, Segmented, Sprite, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
+import { DexIcon, Header, Segmented, Sprite, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
 
 export function BattlePage({ catalog, state, send, openMove, openSpecies }: { catalog: Catalog; state: State; send: (type: string, values?: Record<string, string | number | boolean | null>) => void; openMove: (moveId: number) => void; openSpecies: (speciesId: number) => void }) {
@@ -20,15 +20,7 @@ export function BattlePage({ catalog, state, send, openMove, openSpecies }: { ca
     })}</div>}
     <div class="battle-identity">
       <Sprite speciesId={species.id} name={species.name} available={species.hasSprite} large />
-      <div class="battle-identity-copy"><small>TARGET · LV {opponent.level}{battle.opponents.length > 1 && battle.targetMode === 'AUTOMATIC' && <span class="automatic-target">AUTOMATIC TARGET</span>}</small><div class="battle-name-row"><h1>{species.name}</h1><RarityStars rarity={opponent.rarity} /><button class="battle-dex-link" aria-label={`Open ${species.name} in Pokédex`} onClick={() => openSpecies(species.id)}>
-        <svg viewBox="0 0 28 28" shape-rendering="crispEdges" aria-hidden="true">
-          <path class="dex-shell" d="M3 3h17v3h4v19H3z" />
-          <path class="dex-screen" d="M7 11h13v8H7z" />
-          <path class="dex-hinge" d="M20 6h4M20 9h4M20 22h4" />
-          <circle class="dex-lens" cx="9" cy="7" r="2" />
-          <path class="dex-detail" d="M9 14h6v2H9zM7 22h4M14 22h6" />
-        </svg>
-      </button></div><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(opponent.typeIds?.length ? opponent.typeIds : species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
+      <div class="battle-identity-copy"><small>TARGET · LV {opponent.level}{battle.opponents.length > 1 && battle.targetMode === 'AUTOMATIC' && <span class="automatic-target">AUTOMATIC TARGET</span>}</small><div class="battle-name-row"><h1>{species.name}</h1><RarityStars rarity={opponent.rarity} /><button class="battle-dex-link" aria-label={`Open ${species.name} in Pokédex`} onClick={() => openSpecies(species.id)}><DexIcon /></button></div><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(opponent.typeIds?.length ? opponent.typeIds : species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
     </div>
     {!hidden && <Segmented values={tabs} active={state.battleTab} onSelect={tab => send('TAB', { tab })} label="Battle information" />}
     <div class="battle-content" data-scroll-region>
@@ -74,7 +66,21 @@ function Rarity({ rarity }: { rarity: RarityModel }) {
   const title = rarity.innateTier == null
     ? 'NO RECRUITMENT READING'
     : [rarity.relativeTier, rarity.innateTier].filter(Boolean).join(' ');
-  return <div class="rarity-card"><small>RECRUITMENT IMPRESSION</small><strong>{title}</strong>{rarity.stars != null && <p>{rarityAssessment(rarity.stars)}</p>}</div>;
+  const band = rarityBand(rarity.stars);
+  return <div class="rarity-card" data-rarity-band={band}>
+    {rarity.stars != null && <RarityStars rarity={rarity} />}
+    <small>RECRUITMENT IMPRESSION</small>
+    <strong>{title}</strong>
+    {rarity.stars != null && <p>{rarityAssessment(rarity.stars)}</p>}
+  </div>;
+}
+
+function rarityBand(stars: number | null): 'unavailable' | 'low' | 'medium' | 'high' | 'exceptional' {
+  if (stars == null) return 'unavailable';
+  if (stars <= 2) return 'low';
+  if (stars <= 3) return 'medium';
+  if (stars <= 4) return 'high';
+  return 'exceptional';
 }
 
 export function rarityAssessment(stars: number): string {

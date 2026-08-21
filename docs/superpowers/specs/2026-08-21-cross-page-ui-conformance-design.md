@@ -26,7 +26,7 @@ Normal application pages must not display diagnostic or provenance information. 
 
 The global ROM identity strip is removed from the normal shell. The Pokédex, Battle, Party, Trainer Card, Settings, Setup, Move, and Ability headers use their destination title without redundant diagnostic kickers. A Pokédex number remains valid game content. Loading copy may describe user-facing work such as “Preparing maps”; it may not expose enum names or parser terminology.
 
-Capability Report, Memory Mapper, and the Settings Debug group remain diagnostic surfaces and may show technical data.
+Capability Report, Memory Mapper, and the Settings Debug group remain diagnostic surfaces and may show technical data. Their technical status does not exempt them from the theme contrast contract: identity rails and primary actions must use the derived foreground paired with their actual background.
 
 ## ROM-theme surface contract
 
@@ -111,7 +111,7 @@ At 1024×768, the corrected board must occupy roughly 90–94% of content width 
 
 Atlas, Battle, and Pokémon AREA use one `DexIcon` component. It is a crisp, recognizable monochrome Pokédex outline whose shell, hinge, screen, lens, and details use `currentColor`; it does not carry fixed red, cream, cyan, or green fills into unrelated ROM themes.
 
-The action button surface follows the active route theme. In particular, Battle must not retain the legacy olive `#0d3026` square when the ROM-derived theme is yellow/blue. Atlas keeps the established action position and accessible “Open Pokédex” label.
+The action follows the active route theme. In Battle it is a transparent header glyph using the header foreground, not a separate white or legacy olive `#0d3026` square. Atlas keeps the established action position and accessible “Open Pokédex” label.
 
 ## Battle rarity composition
 
@@ -146,6 +146,8 @@ The caught badge stays at the portrait's lower-right edge and remains affirmativ
 - Empty Party slots remain disabled and non-interactive.
 - Focus, selected state, and dialog close controls meet the current keyboard contract.
 - Text remains readable against derived surfaces; theme contrast corrections remain authoritative.
+- On the 1024×768 six-inch target, every visible text-bearing element computes to at least 11.2px and every captured layout averages at least 12px. Auxiliary labels use the shared 11.25px tier, ordinary labels and body copy use larger semantic tiers, and titles/value highlights retain their deliberate hierarchy instead of being flattened to one size.
+- Dense Settings, Setup, and Debug content scrolls when necessary rather than shrinking below the physical-size floor.
 - The 2×3 board does not collapse to one column at supported secondary-display sizes.
 - No normal page gains horizontal or document-level vertical overflow.
 
@@ -156,6 +158,9 @@ Completion requires:
 - RED then GREEN component assertions for the caught-badge size, Party composition, title-only headers, and removal of the ROM status strip;
 - computed-style browser assertions across the full page/tab matrix;
 - production 4:3 screenshots for every matrix entry;
+- a generated minimum/maximum/average font-size matrix for every captured layout, with browser assertions enforcing the physical-size floor and average;
+- symmetric Party-board inset assertions so a correctly sized board cannot drift below the viewport;
+- explicit contrast assertions for Capability Report and Memory Mapper identity/action surfaces;
 - direct visual comparison of Party and Trainer Card against the supplied reference, with the installed RC24 capture retained as the negative baseline;
 - full companion-web tests and production build;
 - no device installation or gameplay mutation during automated verification.

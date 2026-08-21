@@ -6,10 +6,13 @@ import { PokedexBrowse } from './PokedexBrowse';
 afterEach(cleanup);
 
 const catalog: Catalog = {
-  hash: 'fixture', crc32: '12345678', family: 'EMERALD', platform: 'GBA', rulesets: [], moves: [], types: [], areas: [], balls: [], capabilities: {},
+  hash: 'fixture', crc32: '12345678', family: 'EMERALD', platform: 'GBA', rulesets: [], moves: [], types: [
+    { id: 12, name: 'GRASS', foreground: '#ffffff', background: '#78c850', border: '#4e8234' },
+    { id: 10, name: 'FIRE', foreground: '#ffffff', background: '#f08030', border: '#9c531f' },
+  ], areas: [], balls: [], capabilities: {},
   species: [
-    { id: 1, dex: 1, name: 'Bulbasaur', typeIds: [], stats: null, description: null, height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
-    { id: 4, dex: 4, name: 'Charmander', typeIds: [], stats: null, description: null, height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
+    { id: 1, dex: 1, name: 'Bulbasaur', typeIds: [12], stats: null, description: null, height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
+    { id: 4, dex: 4, name: 'Charmander', typeIds: [10], stats: null, description: null, height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false },
   ],
 };
 
@@ -121,10 +124,23 @@ describe('Pokédex knowledge modes', () => {
   });
 
   it('allows full ROM navigation in Discovered mode', () => {
-    render(<PokedexBrowse catalog={catalog} state={{ ...state, settings: { ...state.settings, knowledgeMode: 'DISCOVERED' } }} send={vi.fn()} />);
+    const { container } = render(<PokedexBrowse catalog={catalog} state={{ ...state, settings: { ...state.settings, knowledgeMode: 'DISCOVERED' } }} send={vi.fn()} />);
 
     expect(screen.getByText('Bulbasaur')).toBeTruthy();
     expect(screen.getByText('Charmander')).toBeTruthy();
+    expect(container.querySelectorAll('.species-row-identity')).toHaveLength(2);
+    expect(container.querySelectorAll('.species-row-types .type-chip')).toHaveLength(2);
+  });
+
+  it('shows type metadata only after the active knowledge policy unlocks it', () => {
+    const rendered = render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
+    expect(rendered.container.querySelector('.species-row-types')).toBeNull();
+
+    rendered.rerender(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      speciesState: { ...state.speciesState, 1: { ...state.speciesState[1], caught: true } },
+    }} send={vi.fn()} />);
+    expect(rendered.container.querySelector('.species-row-types .type-chip')?.textContent).toBe('GRASS');
   });
 
   it('lists only recruited species in Hidden mode', () => {
