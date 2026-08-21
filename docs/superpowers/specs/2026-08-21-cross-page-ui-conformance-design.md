@@ -92,6 +92,46 @@ Empty positions preserve party order but become quiet placeholders: no repeated 
 
 Selecting an occupied card continues to open the existing detail dialog. The dialog retains nature, ability, held item, stats, moves, type/status artwork, EXP, and Pokédex navigation, but all non-semantic chrome follows the same theme contract.
 
+### Measured reference correction
+
+The lossless reference crop and the current 1024×768 production capture are retained under `D:\Temp\dualdex-rc25-ui-audit\reference-features`. Their measured comparison supersedes the earlier qualitative “compact” assessment:
+
+- the reference grid occupies about 92% of the page width and 91% of its content height; the current grid occupies about 84% and 64%;
+- the reference cards are approximately 209×92 pixels (2.27:1); the current cards are approximately 423×140 pixels (3.02:1);
+- the reference portrait is unboxed and occupies 52% of row height; the current portrait ratio is similar, but its separate square frame and undersized row make it visually detached;
+- the reference stacks level below the name and reserves the far edge for sex; the current heading compresses name, sex, and level onto one line;
+- the reference HP label, bar, and numeric value form one bottom-anchored information block; the current bars float below a separate metadata row;
+- the reference board dominates the usable page; the current board leaves a large unused band below it;
+- the reference uses a bottom tab bar while DualScreenDex uses its established global top header. That architectural difference is retained, but it does not justify the card and board proportion mismatch;
+- DualScreenDex intentionally retains the requested blue EXP line at half the HP-bar height and the selectable detail dialog.
+
+At 1024×768, the corrected board must occupy roughly 90–94% of content width and 86–90% of content height. Occupied cards must target a 2.25–2.45:1 aspect ratio, portraits must remain approximately 52% of row height, identity must use two vertical lines, and the EXP/HP block must be bottom-aligned. Empty slots keep identical geometry but remain quiet.
+
+## Shared Pokédex action icon
+
+Atlas, Battle, and Pokémon AREA use one `DexIcon` component. It is a crisp, recognizable monochrome Pokédex outline whose shell, hinge, screen, lens, and details use `currentColor`; it does not carry fixed red, cream, cyan, or green fills into unrelated ROM themes.
+
+The action button surface follows the active route theme. In particular, Battle must not retain the legacy olive `#0d3026` square when the ROM-derived theme is yellow/blue. Atlas keeps the established action position and accessible “Open Pokédex” label.
+
+## Battle rarity composition
+
+The Rarity tab repeats the same five-star meter at the top of its content card so the score remains the dominant visual cue after the identity rail scrolls out of attention. The meter preserves fractional fills and its accessible rating label.
+
+The card uses a rarity-responsive, theme-derived shader: low readings remain restrained, medium readings add a controlled accent wash, and high readings gain stronger radial light and border depth. The treatment uses `color-mix()` with ROM theme tokens rather than hard-coded Emerald colors. Title and assessment remain readable above the shader, and an unavailable reading renders without invented stars.
+
+## Pokédex browse density
+
+Sparse result sets must still use the 4:3 canvas intentionally. Browse rows become portrait-led roster cards rather than 66px text strips:
+
+- normal density uses an approximately 88–96px row with a 72–80px portrait;
+- Pokédex number becomes supporting text above or beside the larger species name;
+- known type chips occupy the trailing metadata region, using catalog type colors;
+- static metadata remains hidden when the active knowledge policy has not unlocked it;
+- day/night encounter marks and affirmative caught state retain their existing semantics;
+- compact density remains smaller but preserves the same hierarchy.
+
+This correction applies to GAME, Dark, Light, and High Contrast themes. It must not introduce route-specific debug labels or fill space with invented data.
+
 ## Trainer Card composition
 
 Trainer Card remains one cohesive card, but its shell, strip, rows, portrait frame, and badge tray use ROM-derived tokens rather than fixed green. The layout keeps the reference hierarchy: title/ID strip, identity and avatar, compact aligned facts, then badges. No existing Trainer field is removed or invented.
@@ -121,4 +161,3 @@ Completion requires:
 - no device installation or gameplay mutation during automated verification.
 
 The task is not complete if root variables are correct but any normal page still renders legacy chrome, if Party remains a sparse generic grid, or if diagnostic content survives outside Settings → Debug.
-

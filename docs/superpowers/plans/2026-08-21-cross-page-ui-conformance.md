@@ -24,11 +24,11 @@
 - Modify: `companion-web/src/pages/PartyPage.tsx`
 - Modify: `companion-web/src/pages/TrainerCardPage.tsx`
 
-- [ ] Write failing tests proving `.rom-status` is absent and normal pages do not render the ROM filename, CRC, family, `ORGANIC`, `DISCOVERED`, `LIVE · OWNED POKÉMON`, or `LIVE · READ ONLY` as page-header diagnostics.
-- [ ] Run the focused tests and require failure against RC24.
-- [ ] Remove the global ROM status strip and `with-rom-status` offset. Remove redundant normal-page kickers; retain diagnostic copy only inside Settings → Debug pages.
-- [ ] Run the focused tests and require GREEN.
-- [ ] Commit the information-boundary correction.
+- [x] Write failing tests proving `.rom-status` is absent and normal pages do not render the ROM filename, CRC, family, `ORGANIC`, `DISCOVERED`, `LIVE · OWNED POKÉMON`, or `LIVE · READ ONLY` as page-header diagnostics.
+- [x] Run the focused tests and require failure against RC24.
+- [x] Remove the global ROM status strip and `with-rom-status` offset. Remove redundant normal-page kickers; retain diagnostic copy only inside Settings → Debug pages.
+- [x] Run the focused tests and require GREEN.
+- [x] Commit the information-boundary correction.
 
 ### Task 2: Lock Party and caught-badge composition
 
@@ -38,9 +38,9 @@
 - Modify: `companion-web/src/pages/PartyPage.tsx`
 - Modify: `companion-web/src/styles.css`
 
-- [ ] Add RED assertions that `.caught-avatar-badge` computes to 22px and contained ball art/fallback to 18px/15px in the production browser.
-- [ ] Add RED Party assertions for a dedicated identity row, level/sex placement, optional secondary species name, HP label, EXP-before-HP order, quiet empty slots, and unchanged two-column/six-slot/dialog behavior.
-- [ ] Refactor each occupied card to:
+- [x] Add RED assertions that `.caught-avatar-badge` computes to 22px and contained ball art/fallback to 18px/15px in the production browser.
+- [x] Add RED Party assertions for a dedicated identity row, level/sex placement, optional secondary species name, HP label, EXP-before-HP order, quiet empty slots, and unchanged two-column/six-slot/dialog behavior.
+- [x] Refactor each occupied card to:
 
 ```tsx
 <span class="party-slot-copy">
@@ -56,10 +56,10 @@
 </span>
 ```
 
-- [ ] Replace repeated empty-slot text with a subdued visual placeholder while preserving `aria-label="Party slot N: Empty"`.
-- [ ] Apply compact ROM-derived card framing, a strong selected state, EXP at half HP height, and reference-like visual density at 4:3.
-- [ ] Run focused Party/Pokédex tests and require GREEN.
-- [ ] Commit Party and caught-badge composition.
+- [x] Replace repeated empty-slot text with a subdued visual placeholder while preserving `aria-label="Party slot N: Empty"`.
+- [x] Apply compact ROM-derived card framing, a strong selected state, EXP at half HP height, and reference-like visual density at 4:3.
+- [x] Run focused Party/Pokédex tests and require GREEN.
+- [x] Commit Party and caught-badge composition.
 
 ### Task 3: Enforce the theme on every computed surface
 
@@ -67,33 +67,34 @@
 - Modify: `companion-web/e2e/rom-derived-theme.spec.ts`
 - Modify: `companion-web/src/styles.css`
 
-- [ ] Add a browser helper that checks computed `backgroundColor`, `borderColor`, and foreground color against `theme.tokens` or an explicit `color-mix()` result.
-- [ ] Visit Pokédex browse; all five detail tabs; Move/Ability Detail; all four Battle tabs; Party and dialog; Trainer Card; local map; Atlas; Pokémon AREA; Settings; Setup; loading/welcome; Capability Report; and Memory Mapper.
-- [ ] Assert RED for the known legacy surfaces: `.map-page-header`, `.map-control`, `.map-legend-panel`, `.pokemon-area-panel`, `.battle-content`, `.battle-identity`, inactive `.segmented` controls, `.party-content`, `.party-slot`, `.trainer-card-content`, `.trainer-card-shell`, and debug-page cards.
-- [ ] Add `GAME`-scoped semantic aliases and explicit selectors so all non-semantic surfaces use `--theme-field`, `--theme-field-pattern`, `--theme-header`, `--theme-header-shadow`, `--theme-menu`, `--theme-menu-shadow`, `--theme-panel`, `--theme-border`, `--theme-text`, `--theme-accent`, and `--theme-accent-text`.
-- [ ] Preserve HP/EXP/status/type colors, Atlas cyan square/player marker, black fog/stage, source rasters, brown raster frame, error red, and fixed Dark/Light/High Contrast behavior.
-- [ ] Rerun the expanded browser gate and require GREEN with no viewport overflow.
-- [ ] Commit cross-page theme conformance.
+- [x] Add a browser helper that checks computed `backgroundColor`, `borderColor`, and foreground color against `theme.tokens` or an explicit `color-mix()` result.
+- [x] Visit Pokédex browse; all five detail tabs; Move/Ability Detail; all four Battle tabs; Party and dialog; Trainer Card; local map; Atlas; Pokémon AREA; Settings; Setup; loading/welcome; Capability Report; and Memory Mapper.
+- [x] Assert RED for the known legacy surfaces: `.map-page-header`, `.map-control`, `.map-legend-panel`, `.pokemon-area-panel`, `.battle-content`, `.battle-identity`, inactive `.segmented` controls, `.party-content`, `.party-slot`, `.trainer-card-content`, `.trainer-card-shell`, and debug-page cards.
+- [x] Add `GAME`-scoped semantic aliases and explicit selectors so all non-semantic surfaces use `--theme-field`, `--theme-field-pattern`, `--theme-header`, `--theme-header-shadow`, `--theme-menu`, `--theme-menu-shadow`, `--theme-panel`, `--theme-border`, `--theme-text`, `--theme-accent`, and `--theme-accent-text`.
+- [x] Preserve HP/EXP/status/type colors, Atlas cyan square/player marker, black fog/stage, source rasters, brown raster frame, error red, and fixed Dark/Light/High Contrast behavior.
+- [x] Rerun the expanded browser gate and require GREEN with no viewport overflow.
+- [x] Commit cross-page theme conformance.
 
 ### Task 4: Perform the visual conformance review
 
 **Files:**
-- Create evidence only under: `D:\Temp\dualdex-rc25-ui-audit\after`
+- Create evidence only under: `D:\Temp\dualdex-rc25-ui-audit\theme-all-routes-final2`
 
-- [ ] Build the production web bundle.
-- [ ] Capture the full 4:3 page/tab matrix with the extreme yellow/blue theme fixture so any legacy green is visually obvious.
-- [ ] Compare Party against the supplied `pokeemerald-dualscreen` reference and `D:\Temp\dualdex-rc25-ui-audit\party-installed-rc24.png`. Require compact hierarchy, low empty-slot dominance, balanced sprite/text proportions, strong selection, and visible EXP/HP ordering.
-- [ ] Inspect Trainer Card, Atlas, Battle, Settings, both details, and every Pokédex tab for legacy colors, clipping, overlap, and debug copy.
-- [ ] Fix any observed mismatch and rerun only the affected browser cases until the matrix is clean.
+- [x] Build the production web bundle.
+- [x] Capture the full 4:3 page/tab matrix with the extreme yellow/blue theme fixture so any legacy green is visually obvious.
+- [ ] Compare Party against the lossless crop, measured 2.27:1 reference cards, and `D:\Temp\dualdex-rc25-ui-audit\party-installed-rc24.png`. Require a 2.25–2.45:1 card ratio, 86–90% content-height board, two-line identity, integrated 52%-row portrait, and bottom-aligned EXP/HP block.
+- [ ] Inspect and correct the shared Pokédex action icon in Atlas, Battle, and Pokémon AREA. Require one `currentColor` glyph and no legacy olive Battle button under a non-green ROM theme.
+- [ ] Enrich Rarity with the same accessible five-star meter at the top of the card and a theme-derived shader whose visual intensity follows the rating.
+- [ ] Expand Pokédex browse rows to portrait-led roster cards with known type metadata, including the sparse Dark-theme matrix, without leaking locked Organic data.
+- [ ] Fix every observed mismatch and rerun the affected browser cases until the measured matrix is clean.
 
 ### Task 5: Verify and prepare the prerelease
 
 **Files:**
 - Modify release metadata and notes only after Tasks 1–4 are GREEN.
 
-- [ ] Run focused component tests, then `npm.cmd test -- --run`.
-- [ ] Run `npm.cmd run build`.
-- [ ] Run the full expanded `rom-derived-theme.spec.ts` using Helium and the sanitized fixture.
-- [ ] Run `git diff --check` and inspect the complete diff for unrelated changes.
+- [x] Run focused component tests, then `npm.cmd test -- --run`.
+- [x] Run `npm.cmd run build`.
+- [x] Run the full expanded `rom-derived-theme.spec.ts` using Helium and the sanitized fixture.
+- [x] Run `git diff --check` and inspect the complete diff for unrelated changes.
 - [ ] Commit release metadata and publish the next protected prerelease without installing it on a device.
-
