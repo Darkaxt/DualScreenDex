@@ -37,6 +37,10 @@ import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScene
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
@@ -274,6 +278,18 @@ class CatalogStoreTest {
                     ),
                 ),
             ),
+            pois = listOf(
+                LocalMapPoi(
+                    key = "local/0102/bg/0",
+                    localMapKey = "local/0102",
+                    baseAreaId = 0x0102,
+                    tileX = 1,
+                    tileY = 1,
+                    kind = LocalMapPoiKind.HIDDEN_ITEM,
+                    organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
+                    item = LocalMapPoiItem(13, "Potion", 0x52),
+                ),
+            ),
         )
         val catalog = completeCatalog("7".repeat(64)).copy(
             runtimeMetadata = CatalogRuntimeMetadata(gen2TimeOfDayWramOffset = 0x1841),
@@ -288,10 +304,11 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(28, CatalogSchema.parserSchemaVersion)
+        assertEquals(29, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
+        assertEquals(localMaps.pois, reopened?.catalog?.localMaps?.pois)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
         val reopenedIndexed = reopened?.catalog?.localMaps?.indexedAssets?.get("local/0103/map")
         assertEquals(indexedAsset.pixelWidth, reopenedIndexed?.pixelWidth)
@@ -557,7 +574,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(28, CatalogSchema.parserSchemaVersion)
+        assertEquals(29, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(

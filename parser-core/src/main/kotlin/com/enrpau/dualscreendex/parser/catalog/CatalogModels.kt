@@ -606,6 +606,8 @@ data class LocalMapCatalog(
     val indexedAssets: Map<String, IndexedMapAsset> = emptyMap(),
     val timedAssets: Map<String, TimedIndexedMapAsset> = emptyMap(),
     val scenes: List<LocalMapScene> = emptyList(),
+    val pois: List<LocalMapPoi> = emptyList(),
+    val poiAssets: Map<String, PngMapAsset> = emptyMap(),
 ) {
     init {
         validate()
@@ -654,6 +656,50 @@ data class LocalMapCatalog(
             }
         }
         val mapsByKey = maps.associateBy(LocalMap::key)
+        require(pois.map(LocalMapPoi::key).toSet().size == pois.size) {
+            "local-map POI keys must be unique"
+        }
+        val referencedPoiAssets = pois.mapNotNull { it.item?.iconAssetKey }.toSet()
+        require(poiAssets.keys == referencedPoiAssets) {
+            "local-map POI assets must exactly match referenced icon keys"
+        }
+        pois.forEach { poi ->
+            require(poi.key.isNotBlank()) { "local-map POI keys must not be blank" }
+            val map = requireNotNull(mapsByKey[poi.localMapKey]) {
+                "local-map POI ${poi.key} references an unknown map"
+            }
+            require(poi.baseAreaId == map.baseAreaId) {
+                "local-map POI ${poi.key} base-area identity does not match its map"
+            }
+            require(poi.tileX in 0 until map.gridWidth && poi.tileY in 0 until map.gridHeight) {
+                "local-map POI ${poi.key} lies outside its map"
+            }
+            require(poi.displayName == null || poi.displayName.isNotBlank()) {
+                "local-map POI display names must not be blank"
+            }
+            require(poi.destinationBaseAreaId == null || poi.destinationBaseAreaId in 0..0xFFFF) {
+                "local-map POI destination base-area IDs must fit group/map identity"
+            }
+            when (poi.kind) {
+                LocalMapPoiKind.SERVICE -> require(poi.service != null && poi.item == null) {
+                    "service POIs require a service role and cannot carry item metadata"
+                }
+                LocalMapPoiKind.VISIBLE_ITEM -> require(poi.item != null && poi.service == null) {
+                    "visible-item POIs require item metadata and cannot carry a service role"
+                }
+                LocalMapPoiKind.HIDDEN_ITEM -> require(
+                    poi.item != null && poi.service == null &&
+                        poi.organicVisibility == LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
+                ) {
+                    "hidden-item POIs require item metadata and proximity discovery"
+                }
+                LocalMapPoiKind.PLACE,
+                LocalMapPoiKind.UNKNOWN,
+                -> require(poi.service == null && poi.item == null) {
+                    "place and unknown POIs cannot carry service or item metadata"
+                }
+            }
+        }
         require(scenes.map(LocalMapScene::key).toSet().size == scenes.size) {
             "local-map scene keys must be unique"
         }
@@ -710,6 +756,59 @@ data class LocalMap(
     val gridWidth: Int,
     val gridHeight: Int,
     val imageAssetKey: String,
+)
+
+enum class LocalMapPoiKind {
+    PLACE,
+    SERVICE,
+    VISIBLE_ITEM,
+    HIDDEN_ITEM,
+    UNKNOWN,
+}
+
+enum class LocalMapPoiService {
+    MART,
+    POKEMON_CENTER,
+    GYM,
+    BUILDING,
+}
+
+enum class LocalMapPoiOrganicVisibility {
+    VISIBLE,
+    ENTRANCE_PROXIMITY,
+    PROXIMITY_SILHOUETTE,
+}
+
+data class LocalMapPoiItem(
+    val itemId: Int? = null,
+    val displayName: String? = null,
+    val collectionFlagId: Int? = null,
+    val iconAssetKey: String? = null,
+) {
+    init {
+        require(itemId == null || itemId in 0..0xFFFF) { "local-map POI item IDs must fit u16" }
+        require(displayName == null || displayName.isNotBlank()) { "local-map POI item names must not be blank" }
+        require(collectionFlagId == null || collectionFlagId in 0..0xFFFF) {
+            "local-map POI item collection flags must fit u16"
+        }
+        require(iconAssetKey == null || iconAssetKey.isNotBlank()) {
+            "local-map POI item icon keys must not be blank"
+        }
+    }
+}
+
+data class LocalMapPoi(
+    val key: String,
+    val localMapKey: String,
+    val baseAreaId: Int,
+    val tileX: Int,
+    val tileY: Int,
+    val kind: LocalMapPoiKind,
+    val organicVisibility: LocalMapPoiOrganicVisibility = LocalMapPoiOrganicVisibility.VISIBLE,
+    val displayName: String? = null,
+    val service: LocalMapPoiService? = null,
+    val item: LocalMapPoiItem? = null,
+    val destinationBaseAreaId: Int? = null,
 )
 
 data class LocalMapScene(
