@@ -153,10 +153,10 @@ object MoveAcquisitionMaterializer {
         val stats = layout.tables.baseStats ?: return null
         val moveCount = layout.moveCount ?: return null
         val flagOffset = 20
-        val flagBytes = 7
+        val machines = Gen1CompiledMachineResolver.resolve(rom, moveCount) ?: return null
+        val flagBytes = (machines.count + 7) / 8
         if (stats.recordSize < flagOffset + flagBytes) return null
 
-        val machines = Gen1CompiledMachineResolver.resolve(rom, moveCount) ?: return null
         val moves = List(machines.count) { index -> rom.u8(machines.offset + index) }
         return embeddedFlagCandidate(
             rom,

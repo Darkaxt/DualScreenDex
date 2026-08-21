@@ -181,12 +181,17 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc24PartyExperienceProgress == true/);
   assert.match(workflow, /\.v11Rc25Gen1CompiledMoveDomain == true/);
   assert.match(workflow, /\.v11Rc25Gen1CompiledMachineMoves == true/);
+  assert.match(workflow, /\.v11Rc25Gen1ExpandedMachineDomain == true/);
+  assert.match(workflow, /\.v11Rc25Gen1CompiledDescriptions == true/);
+  assert.match(workflow, /\.v11Rc25Gen1RecordSpriteBanks == true/);
   assert.match(workflow, /\.gen1CompiledEvolutionCoveragePercent == 96\.62/);
   assert.match(workflow, /\.gen1CompiledLearnsetCoveragePercent == 93\.56/);
   assert.match(workflow, /\.gen1CompiledTypeChartCoveragePercent == 95\.79/);
   assert.match(workflow, /\.gen1MoveCatalogCoveragePercent == 90\.24/);
   assert.match(workflow, /\.gen1MoveDetailsCoveragePercent == 90\.42/);
   assert.match(workflow, /\.gen1MachineMoveCoveragePercent == 86\.32/);
+  assert.match(workflow, /\.gen1SpriteCoveragePercent == 88\.31/);
+  assert.match(workflow, /\.gen1PokedexDescriptionCoveragePercent == 89\.47/);
   assert.match(workflow, /\.gen1Gen3CoverageUniqueRoms == 331/);
   assert.match(workflow, /\.gen1Gen3CoverageTables == 23/);
   assert.match(workflow, /\.gen1Gen3CoverageParserErrors == 0/);

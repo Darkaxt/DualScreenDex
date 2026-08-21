@@ -4,6 +4,8 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
+import com.enrpau.dualscreendex.parser.parse.Gen1CompiledDescriptionResolver
+import com.enrpau.dualscreendex.parser.parse.Gen1CompiledMachineResolver
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -32,15 +34,27 @@ class Gen1CompiledTablesLiveRomTest {
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
         val rom = RomImage(Files.readAllBytes(path))
         assertEquals("f244f8c31ff3dfa907b6730fce410ba96f74bc1f920bb318c7065288fa13fc3b", rom.sha256)
+        assertEquals(55, Gen1CompiledMachineResolver.resolve(rom, moveCount = 253)?.count)
+        val descriptions = Gen1CompiledDescriptionResolver.resolve(
+            rom = rom,
+            preferredCount = 208,
+            fallbackCounts = listOf(151),
+        )
+        assertEquals(0x40488, descriptions?.offset)
+        assertEquals(208, descriptions?.count)
 
         val parsed = CatalogParser.parse(rom)
         assertEquals(SelectionStatus.SELECTED, parsed.analysis.status)
         val catalog = requireNotNull(parsed.catalog)
+        val descriptionsCapability = catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS)
         val moves = catalog.capabilities.getValue(RomCapability.MOVE_CATALOG)
         val machines = catalog.capabilities.getValue(RomCapability.MACHINE_MOVES)
         val evolutions = catalog.capabilities.getValue(RomCapability.EVOLUTIONS)
         val learnsets = catalog.capabilities.getValue(RomCapability.LEARNSETS)
 
+        assertEquals(CapabilityStatus.AVAILABLE, descriptionsCapability.status)
+        assertEquals(0x40488, descriptionsCapability.offset)
+        assertEquals(151, descriptionsCapability.coveredRecords)
         assertEquals(CapabilityStatus.AVAILABLE, moves.status)
         assertEquals(253, moves.coveredRecords)
         assertEquals(253, moves.expectedRecords)
@@ -63,15 +77,31 @@ class Gen1CompiledTablesLiveRomTest {
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
         val rom = RomImage(Files.readAllBytes(path))
         assertEquals(control.sha256, rom.sha256)
+        assertEquals(
+            control.machineCount,
+            Gen1CompiledMachineResolver.resolve(rom, moveCount = control.moveCount)?.count,
+        )
+        val descriptions = Gen1CompiledDescriptionResolver.resolve(
+            rom = rom,
+            preferredCount = control.relationshipSpecies,
+            fallbackCounts = listOf(151),
+        )
+        assertEquals(control.descriptionOffset, descriptions?.offset)
+        assertEquals(control.descriptionCount, descriptions?.count)
 
         val parsed = CatalogParser.parse(rom)
         assertEquals(SelectionStatus.SELECTED, parsed.analysis.status)
         val catalog = requireNotNull(parsed.catalog)
         val evolutions = catalog.capabilities.getValue(RomCapability.EVOLUTIONS)
+        val descriptionsCapability = catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS)
         val machines = catalog.capabilities.getValue(RomCapability.MACHINE_MOVES)
         val moveCatalog = catalog.capabilities.getValue(RomCapability.MOVE_CATALOG)
+        val sprites = catalog.capabilities.getValue(RomCapability.SPRITES)
         val typeChart = catalog.capabilities.getValue(RomCapability.TYPE_CHART)
 
+        assertEquals(CapabilityStatus.AVAILABLE, descriptionsCapability.status)
+        assertEquals(control.descriptionOffset, descriptionsCapability.offset)
+        assertEquals(151, descriptionsCapability.coveredRecords)
         assertEquals(CapabilityStatus.AVAILABLE, evolutions.status)
         assertEquals(control.relationshipOffset, evolutions.offset)
         assertEquals(control.relationshipSpecies, evolutions.coveredRecords)
@@ -83,13 +113,23 @@ class Gen1CompiledTablesLiveRomTest {
         assertEquals(CapabilityStatus.AVAILABLE, machines.status)
         assertEquals(control.machineOffset, machines.offset)
         assertTrue(machines.compatible)
-
-        control.moveCount?.let { expectedMoves ->
-            assertEquals(CapabilityStatus.AVAILABLE, moveCatalog.status)
-            assertEquals(expectedMoves, moveCatalog.coveredRecords)
-            assertEquals(expectedMoves, moveCatalog.expectedRecords)
-            assertEquals(expectedMoves, catalog.movesById.size)
+        if (control.machineCount > 55) {
+            assertTrue(
+                catalog.speciesById.values.flatMap { it.moveAcquisitions.value.orEmpty() }.any {
+                    it.method == MoveAcquisitionMethod.MACHINE && it.sourceId == control.machineCount
+                },
+            )
         }
+        control.spriteCount?.let { expectedSprites ->
+            assertEquals(CapabilityStatus.AVAILABLE, sprites.status)
+            assertEquals(expectedSprites, sprites.coveredRecords)
+        }
+
+        val expectedMoves = control.moveCount
+        assertEquals(CapabilityStatus.AVAILABLE, moveCatalog.status)
+        assertEquals(expectedMoves, moveCatalog.coveredRecords)
+        assertEquals(expectedMoves, moveCatalog.expectedRecords)
+        assertEquals(expectedMoves, catalog.movesById.size)
 
         control.learnsetEntries?.let { expectedEntries ->
             val learnsets = catalog.capabilities.getValue(RomCapability.LEARNSETS)
@@ -110,11 +150,15 @@ class Gen1CompiledTablesLiveRomTest {
         val relationshipOffset: Int,
         val relationshipSpecies: Int,
         val evolutionEdges: Int,
-        val moveCount: Int? = null,
+        val moveCount: Int,
         val learnsetEntries: Int?,
         val typeChartOffset: Int,
         val typeMatchups: Int,
         val machineOffset: Int,
+        val machineCount: Int,
+        val descriptionOffset: Int,
+        val descriptionCount: Int,
+        val spriteCount: Int? = null,
         val expectsLevelAbove100: Boolean = false,
     )
 
@@ -131,6 +175,10 @@ class Gen1CompiledTablesLiveRomTest {
                 typeChartOffset = 0x3E474,
                 typeMatchups = 82,
                 machineOffset = 0x13773,
+                machineCount = 55,
+                descriptionOffset = 0x4047E,
+                descriptionCount = 190,
+                spriteCount = 151,
                 expectsLevelAbove100 = true,
             ),
             Control(
@@ -144,6 +192,10 @@ class Gen1CompiledTablesLiveRomTest {
                 typeChartOffset = 0x3E6AC,
                 typeMatchups = 112,
                 machineOffset = 0x13A85,
+                machineCount = 60,
+                descriptionOffset = 0x4049B,
+                descriptionCount = 254,
+                spriteCount = 151,
             ),
             Control(
                 environmentVariable = "DUALDEX_SHIN_RED_ROM",
@@ -156,6 +208,10 @@ class Gen1CompiledTablesLiveRomTest {
                 typeChartOffset = 0x3E666,
                 typeMatchups = 82,
                 machineOffset = 0x1395B,
+                machineCount = 55,
+                descriptionOffset = 0x4052F,
+                descriptionCount = 190,
+                spriteCount = 151,
             ),
             Control(
                 environmentVariable = "DUALDEX_UNOVA_RED_QOL_ROM",
@@ -168,6 +224,10 @@ class Gen1CompiledTablesLiveRomTest {
                 typeChartOffset = 0x3E4CE,
                 typeMatchups = 110,
                 machineOffset = 0x13783,
+                machineCount = 55,
+                descriptionOffset = 0x4047E,
+                descriptionCount = 151,
+                spriteCount = 151,
             ),
         )
     }

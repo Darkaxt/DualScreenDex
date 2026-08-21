@@ -29,7 +29,7 @@ object SpriteValidators {
             val base = baseStatsOffset + index * recordSize
             val dimensions = rom.u8(base + GEN1_DIMENSIONS_OFFSET)
             val front = rom.u16le(base + GEN1_FRONT_POINTER_OFFSET)
-            candidatePicBanks.any { bank ->
+            gen1PicBanks(rom, base, recordSize, candidatePicBanks).any { bank ->
                 rom.gbBankAddress(bank, front)?.let { validGen1Stream(rom, it, dimensions) } == true
             }
         }
@@ -101,6 +101,16 @@ object SpriteValidators {
             recordSize = recordSize,
         )
     }
+
+    private fun gen1PicBanks(
+        rom: RomImage,
+        base: Int,
+        recordSize: Int,
+        inherited: IntArray,
+    ): List<Int> = buildList {
+        if (recordSize >= RETAIL_GEN1_BASE_STATS_BYTES) add(rom.u8(base + recordSize - 1))
+        inherited.forEach(::add)
+    }.distinct()
 
     private fun gen2Pointers(
         rom: RomImage,
@@ -340,6 +350,7 @@ object SpriteValidators {
     private const val GEN1_DIMENSIONS_OFFSET = 10
     private const val GEN1_FRONT_POINTER_OFFSET = 11
     private const val GEN1_BACK_POINTER_OFFSET = 13
+    private const val RETAIL_GEN1_BASE_STATS_BYTES = 28
     private const val GEN2_POINTER_RECORD_SIZE = 6
     private const val GEN2_UNOWN_INDEX = 200
     private const val GEN2_UNOWN_FORMS = 26

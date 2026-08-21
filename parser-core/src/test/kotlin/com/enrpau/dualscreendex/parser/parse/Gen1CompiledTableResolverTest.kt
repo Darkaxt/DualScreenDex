@@ -109,6 +109,18 @@ class Gen1CompiledTableResolverTest {
     }
 
     @Test
+    fun infersAnExpandedMachineMoveDomainFromItsAnchoredBoundary() {
+        val bytes = ByteArray(0x10000)
+        writeMachineConsumers(bytes, 0x8200, 0x8600)
+        writeMachineMoves(bytes, 0x8600, count = 60)
+
+        val layout = Gen1CompiledMachineResolver.resolve(RomImage(bytes), moveCount = 200)
+
+        assertNotNull(layout)
+        assertEquals(60, layout?.count)
+    }
+
+    @Test
     fun resolvesMachineMovesFromASimplifiedSearchConsumer() {
         val bytes = ByteArray(0x10000)
         writeMachineConsumers(bytes, 0x8200, 0x8600, simplifiedSearch = true)
@@ -144,6 +156,41 @@ class Gen1CompiledTableResolverTest {
     }
 
     @Test
+    fun resolvesPokedexDescriptionsFromTheirCompiledConsumer() {
+        val bytes = ByteArray(0xC000)
+        writeDescriptionConsumer(bytes, 0x4100, 0x5000)
+        writeDescriptionTable(bytes, 0x5000, count = 3, firstEntryAddress = 0x5200, textBank = 2)
+
+        val layout = Gen1CompiledDescriptionResolver.resolve(
+            RomImage(bytes),
+            preferredCount = 3,
+            fallbackCounts = emptyList(),
+        )
+
+        assertNotNull(layout)
+        assertEquals(0x5000, layout?.offset)
+        assertEquals(3, layout?.count)
+        assertEquals(1, layout?.bank)
+    }
+
+    @Test
+    fun rejectsAmbiguousPokedexDescriptionConsumers() {
+        val bytes = ByteArray(0x14000)
+        writeDescriptionConsumer(bytes, 0x4100, 0x5000)
+        writeDescriptionTable(bytes, 0x5000, count = 3, firstEntryAddress = 0x5200, textBank = 2)
+        writeDescriptionConsumer(bytes, 0xC100, 0x5000)
+        writeDescriptionTable(bytes, 0xD000, count = 3, firstEntryAddress = 0x5200, textBank = 4)
+
+        assertNull(
+            Gen1CompiledDescriptionResolver.resolve(
+                RomImage(bytes),
+                preferredCount = 3,
+                fallbackCounts = emptyList(),
+            ),
+        )
+    }
+
+    @Test
     fun resolvesLegacyTypeTripletsFromTheirBattleConsumer() {
         val bytes = ByteArray(0xC000)
         writeTypeChartConsumer(bytes, 0x8200, 0x5600)
@@ -161,6 +208,37 @@ class Gen1CompiledTableResolverTest {
         assertEquals(0x9600, layout?.offset)
         assertEquals(3, layout?.recordSize)
         assertEquals(true, layout?.variableLength)
+    }
+
+    private fun writeDescriptionConsumer(bytes: ByteArray, offset: Int, rootAddress: Int) {
+        byteArrayOf(
+            0x21, rootAddress.toByte(), (rootAddress ushr 8).toByte(),
+            0xFA.toByte(), 0x00, 0xD0.toByte(), 0x3D, 0x5F, 0x16, 0x00,
+            0x19, 0x19, 0x2A, 0x5F, 0x56,
+        ).copyInto(bytes, offset)
+    }
+
+    private fun writeDescriptionTable(
+        bytes: ByteArray,
+        offset: Int,
+        count: Int,
+        firstEntryAddress: Int,
+        textBank: Int,
+    ) {
+        val tableBank = offset / 0x4000
+        repeat(count) { index ->
+            val entryAddress = firstEntryAddress + index * 0x20
+            putU16(bytes, offset + index * 2, entryAddress)
+            val entry = tableBank * 0x4000 + entryAddress - 0x4000
+            byteArrayOf(0x82.toByte(), 0x80.toByte(), 0x93.toByte(), 0x50).copyInto(bytes, entry)
+            val textAddress = 0x4200 + index * 0x10
+            byteArrayOf(
+                0, 0, 0, 0, 0x17,
+                textAddress.toByte(), (textAddress ushr 8).toByte(), textBank.toByte(), 0,
+            ).copyInto(bytes, entry + 4)
+            val text = textBank * 0x4000 + textAddress - 0x4000
+            byteArrayOf(0x83.toByte(), 0x84.toByte(), 0x97.toByte(), 0x50).copyInto(bytes, text)
+        }
     }
 
     private fun writeMachineConsumers(

@@ -9,12 +9,8 @@ internal object Gen1CompiledMachineResolver {
         if (moveCount <= 0) return null
         val roots = canLearnRoots(rom).intersect(tmToMoveRoots(rom))
         val candidates = roots.mapNotNull { root ->
-            if (root + MACHINE_COUNT > rom.size) return@mapNotNull null
-            val moves = List(MACHINE_COUNT) { index -> rom.u8(root + index) }
-            if (moves.any { it !in 1..moveCount } || moves.distinct().size != MACHINE_COUNT) {
-                return@mapNotNull null
-            }
-            TableLayout(root, MACHINE_COUNT, 1)
+            val count = machineCount(rom, root, moveCount) ?: return@mapNotNull null
+            TableLayout(root, count, 1)
         }.distinct()
         return candidates.singleOrNull()
     }
@@ -83,6 +79,18 @@ internal object Gen1CompiledMachineResolver {
         }
     }
 
+    private fun machineCount(rom: RomImage, root: Int, moveCount: Int): Int? {
+        val moves = linkedSetOf<Int>()
+        var cursor = root
+        while (cursor < rom.size && moves.size <= MAX_MACHINE_COUNT) {
+            val move = rom.u8(cursor++)
+            if (move !in 1..moveCount || !moves.add(move)) {
+                return moves.size.takeIf { it >= MIN_MACHINE_COUNT }
+            }
+        }
+        return null
+    }
+
     private fun sameBankRoot(rom: RomImage, consumerOffset: Int, address: Int): Int? {
         val bank = consumerOffset / BANK_BYTES
         if (bank == 0) return address.takeIf { it in 0 until BANK_BYTES && it < rom.size }
@@ -92,7 +100,8 @@ internal object Gen1CompiledMachineResolver {
 
     private val SWITCHABLE_ADDRESS_RANGE = 0x4000..0x7FFF
     private const val BANK_BYTES = 0x4000
-    private const val MACHINE_COUNT = 55
+    private const val MIN_MACHINE_COUNT = 55
+    private const val MAX_MACHINE_COUNT = 128
     private const val CAN_LEARN_SEARCH_BYTES = 15
     private const val TM_TO_MOVE_CONSUMER_BYTES = 16
     private const val LOAD_B_IMMEDIATE = 0x06

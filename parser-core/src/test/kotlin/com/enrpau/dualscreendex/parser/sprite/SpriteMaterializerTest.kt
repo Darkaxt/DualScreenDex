@@ -234,6 +234,32 @@ class SpriteMaterializerTest {
         assertEquals(true, sprite.argb.all { it == 0 })
     }
 
+    @Test
+    fun decodesGenOneFrontSpriteUsingTheBaseRecordBank() {
+        val bytes = ByteArray(0xC000)
+        bytes[10] = 0x11
+        putU16(bytes, 11, 0x4020)
+        bytes[27] = 2
+        val bitString = "001111000001001111000001"
+        bytes[0x8020] = 0x11
+        bitString.chunked(8).forEachIndexed { index, bits ->
+            bytes[0x8021 + index] = bits.toInt(2).toByte()
+        }
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.RED_BLUE,
+            generation = 1,
+            platform = Platform.GB,
+            speciesCount = 1,
+            moveCount = 0,
+            tables = ProfileTables(sprites = TableLayout(0, 1, 28, banks = listOf(1))),
+        )
+
+        val sprite = SpriteMaterializer.pokemon(RomImage(bytes), layout).getValue(1)
+
+        assertEquals(8, sprite.width)
+        assertEquals(true, sprite.argb.all { it == 0 })
+    }
+
     private fun gbaLiteral(raw: ByteArray): ByteArray {
         val output = ArrayList<Byte>()
         output += 0x10

@@ -18,18 +18,20 @@ class MoveAcquisitionMaterializerTest {
         val stats = 0x100
         val moves = 0x300
         writeGenOneMachineConsumers(bytes, 0x10, 0x40, moves)
-        repeat(55) { bytes[moves + it] = (it + 1).toByte() }
-        repeat(56) { bytes[0x200 + it] = (it + 1).toByte() } // unrelated longer unique byte run
+        repeat(60) { bytes[moves + it] = (it + 1).toByte() }
+        repeat(61) { bytes[0x200 + it] = (it + 1).toByte() } // unrelated longer unique byte run
         repeat(4) { species ->
-            repeat(7) { byte -> bytes[stats + species * 28 + 20 + byte] = (0x55 xor species).toByte() }
+            repeat(8) { byte -> bytes[stats + species * 29 + 20 + byte] = 0xFF.toByte() }
         }
         val result = MoveAcquisitionMaterializer.materialize(
             RomImage(bytes),
-            layout(1, Platform.GB, 4, 80, TableLayout(stats, 4, 28)),
+            layout(1, Platform.GB, 4, 80, TableLayout(stats, 4, 29)),
         )
 
         assertTrue(result.evidence.getValue(MoveAcquisitionMethod.MACHINE).compatible)
-        assertTrue(result.acquisitionsBySpecies.getValue(1).any { it.method == MoveAcquisitionMethod.MACHINE })
+        assertTrue(result.acquisitionsBySpecies.getValue(1).any {
+            it.method == MoveAcquisitionMethod.MACHINE && it.moveId == 60
+        })
     }
 
     @Test

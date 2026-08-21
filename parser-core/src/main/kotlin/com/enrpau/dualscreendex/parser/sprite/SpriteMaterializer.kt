@@ -159,7 +159,13 @@ object SpriteMaterializer {
                 val entry = table.offset + index * table.recordSize
                 val expectedDimensions = rom.u8(entry + 10)
                 val address = rom.u16le(entry + 11)
-                val indexed = table.banks.firstNotNullOfOrNull { bank ->
+                val candidateBanks = buildList {
+                    if (table.recordSize >= RETAIL_GEN1_BASE_STATS_BYTES) {
+                        add(rom.u8(entry + table.recordSize - 1))
+                    }
+                    addAll(table.banks)
+                }.distinct()
+                val indexed = candidateBanks.firstNotNullOfOrNull { bank ->
                     runCatching {
                         val pointer = rom.gbBankAddress(bank, address) ?: error("invalid Gen 1 sprite pointer")
                         val bankEnd = minOf(rom.size, (pointer / 0x4000 + 1) * 0x4000)
@@ -223,6 +229,7 @@ object SpriteMaterializer {
         return width
     }
 
+    private const val RETAIL_GEN1_BASE_STATS_BYTES = 28
     private const val RETAIL_GEN2_BASE_STATS_BYTES = 32
     private val GB_GRAYSCALE = intArrayOf(0, 0xFFC8D0C0.toInt(), 0xFF687060.toInt(), 0xFF182018.toInt())
     private val GBA_GRAYSCALE = IntArray(16) { index ->

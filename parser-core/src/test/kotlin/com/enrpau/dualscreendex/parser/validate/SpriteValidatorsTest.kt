@@ -24,6 +24,40 @@ class SpriteValidatorsTest {
     }
 
     @Test
+    fun acceptsGen1SpriteBankStoredAtTheEndOfAnExpandedBaseRecord() {
+        val bytes = ByteArray(0xC000)
+        bytes[10] = 0x11
+        putU16(bytes, 11, 0x4100)
+        putU16(bytes, 13, 0x4100)
+        bytes[28] = 2
+        gen1ZeroSprite(width = 1).copyInto(bytes, 0x8100)
+
+        val result = SpriteValidators.gen1(
+            RomImage(bytes), baseStatsOffset = 0, speciesCount = 1,
+            recordSize = 29, candidatePicBanks = intArrayOf(1),
+        )
+
+        assertTrue(result.compatible)
+    }
+
+    @Test
+    fun acceptsGen1SpriteBankStoredInTheRetailPaddingByte() {
+        val bytes = ByteArray(0xC000)
+        bytes[10] = 0x11
+        putU16(bytes, 11, 0x4100)
+        putU16(bytes, 13, 0x4100)
+        bytes[27] = 2
+        gen1ZeroSprite(width = 1).copyInto(bytes, 0x8100)
+
+        val result = SpriteValidators.gen1(
+            RomImage(bytes), baseStatsOffset = 0, speciesCount = 1,
+            recordSize = 28, candidatePicBanks = intArrayOf(1),
+        )
+
+        assertTrue(result.compatible)
+    }
+
+    @Test
     fun rejectsTruncatedGen1CompressedStream() {
         val bytes = ByteArray(0x4101)
         bytes[10] = 0x11
