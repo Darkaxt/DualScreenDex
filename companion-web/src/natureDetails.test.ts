@@ -1,26 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { NATURE_DETAILS, natureDetailFor } from './natureDetails';
+import { natureDetailFor, natureFlavorLabel, natureStatLabel } from './natureDetails';
+import type { NatureInfo } from './models';
 
-describe('canonical Nature details', () => {
-  it('covers the complete 25-entry Gen III nature order without duplicate names', () => {
-    expect(NATURE_DETAILS).toHaveLength(25);
-    expect(new Set(NATURE_DETAILS.map(nature => nature.name)).size).toBe(25);
+describe('ROM-derived Nature details', () => {
+  it('selects a noncanonical Nature by its ROM-native ID', () => {
+    expect(natureDetailFor([nature], 7)).toEqual(nature);
   });
 
-  it('maps Adamant to Attack up, Special Attack down and the matching flavors', () => {
-    expect(natureDetailFor('Adamant')).toMatchObject({
-      id: 3,
-      raisedStat: 'ATTACK',
-      loweredStat: 'SP. ATK',
-      likedFlavor: 'Spicy',
-      dislikedFlavor: 'Dry',
-      neutral: false,
-    });
-  });
-
-  it('represents neutral natures and fails closed for unknown names', () => {
-    expect(natureDetailFor('Hardy')).toMatchObject({ id: 0, neutral: true, raisedStat: null, loweredStat: null });
-    expect(natureDetailFor('Quirky')).toMatchObject({ id: 24, neutral: true });
-    expect(natureDetailFor('custom nature')).toBeNull();
+  it('fails closed for unknown IDs and presents typed ROM fields', () => {
+    expect(natureDetailFor([nature], 3)).toBeNull();
+    expect(natureDetailFor(undefined, 7)).toBeNull();
+    expect(natureStatLabel('SPECIAL_ATTACK')).toBe('SP. ATK');
+    expect(natureFlavorLabel('SPICY')).toBe('Spicy');
   });
 });
+
+const nature: NatureInfo = {
+  id: 7,
+  name: 'Resolute',
+  statMultipliers: { ATTACK: 112, DEFENSE: 100, SPEED: 100, SPECIAL_ATTACK: 88, SPECIAL_DEFENSE: 100 },
+  raisedStat: 'ATTACK', loweredStat: 'SPECIAL_ATTACK', positivePercent: 112, negativePercent: 88,
+  likedFlavor: 'SPICY', dislikedFlavor: 'DRY',
+};

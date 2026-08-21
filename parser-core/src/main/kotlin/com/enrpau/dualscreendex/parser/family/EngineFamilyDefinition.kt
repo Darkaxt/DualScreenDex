@@ -58,11 +58,13 @@ object EngineFamilyDefinitions {
         RomCapability.ABILITY_MECHANICS,
         RomCapability.EGG_MOVES,
         RomCapability.TUTOR_MOVES,
+        RomCapability.NATURES,
     )
     private val gen2Capabilities = RomCapability.entries.toSet() - setOf(
         RomCapability.ABILITIES,
         RomCapability.ABILITY_DESCRIPTIONS,
         RomCapability.ABILITY_MECHANICS,
+        RomCapability.NATURES,
     )
     private val gen3Capabilities = RomCapability.entries.toSet()
     private val gbaLineages = setOf(

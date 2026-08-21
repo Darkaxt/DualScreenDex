@@ -44,6 +44,8 @@ import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureFlavor
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -129,6 +131,16 @@ class ApiViewBuilderTest {
             abilitiesById = mapOf(
                 9 to AbilityRecord(id = 9, name = CatalogField.available("Static")),
             ),
+            naturesById = mapOf(
+                3 to NatureRecord(
+                    id = 3,
+                    name = "Resolute",
+                    statModifiers = listOf(1, 0, 0, -1, 0),
+                    positivePercent = 112,
+                    negativePercent = 88,
+                    flavorModifiers = listOf(1, -1, 0, 0, 0),
+                ),
+            ),
             trainerAssets = TrainerAssetCatalog(
                 avatarAssetKeys = mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"),
                 badgeAssetKeys = (1..8).map { "trainer/badge/$it" },
@@ -165,6 +177,7 @@ class ApiViewBuilderTest {
         )
 
         val state = ApiViewBuilder.state(snapshot, catalog)
+        val catalogView = ApiViewBuilder.catalog(catalog)
 
         assertEquals("MAY", state.trainer?.name)
         assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainer?.avatarUrl)
@@ -176,6 +189,12 @@ class ApiViewBuilderTest {
         assertEquals("PIKACHU", lead.speciesName)
         assertEquals("/api/sprites/species/25.png", lead.spriteUrl)
         assertEquals("Static", lead.abilityName)
+        assertEquals(3, lead.natureId)
+        assertEquals("Resolute", lead.nature)
+        assertEquals("Resolute", catalogView.natures.single().name)
+        assertEquals(112, catalogView.natures.single().statMultipliers.getValue("ATTACK"))
+        assertEquals(88, catalogView.natures.single().statMultipliers.getValue("SPECIAL_ATTACK"))
+        assertEquals(NatureFlavor.SPICY.name, catalogView.natures.single().likedFlavor)
         assertEquals("Thunderbolt", lead.moves[0].name)
         assertNull(lead.moves[1].moveId)
         assertNull(lead.moves[1].name)

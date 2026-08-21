@@ -14,6 +14,7 @@ import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3RuntimeMemoryLayoutResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3TrainerAssetResolver
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureResolution
 import com.enrpau.dualscreendex.parser.sprite.BallSpriteMaterializer
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 import java.io.ByteArrayInputStream
@@ -120,6 +121,7 @@ object CatalogParser {
                     resolveLocalMaps = context.resolveLocalMaps,
                     resolveMoveDescriptions = context.resolveMoveDescriptions,
                     resolveAbilityMechanics = context.resolveAbilityMechanics,
+                    resolveNatures = context.resolveNatures,
                 )
             },
         )
@@ -138,6 +140,7 @@ object CatalogMaterializer {
         resolveLocalMaps: ((Int, Set<Int>) -> LocalMapResolution)? = null,
         resolveMoveDescriptions: ((ResolvedRomLayout) -> MoveDescriptionResult?)? = null,
         resolveAbilityMechanics: ((ResolvedRomLayout, Map<Int, AbilityRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?)? = null,
+        resolveNatures: ((ResolvedRomLayout) -> NatureResolution)? = null,
         materializeTheme: ((Map<CatalogThemeAssetClass, List<RgbaSprite>>, List<DirectCatalogThemePalette>) -> CatalogTheme) =
             RomThemeMaterializer::materialize,
     ): ParsedCatalog {
@@ -161,6 +164,10 @@ object CatalogMaterializer {
         }
         val baseTypes = TypePresentationMaterializer.apply(RecordMaterializers.types(layout, baseSpecies, chart, rawMoves))
         val abilities = RecordMaterializers.abilities(rom, layout)
+        val natureResolution = if (layout.generation == 3) resolveNatures?.invoke(layout) else null
+        val natures = (natureResolution as? NatureResolution.Resolved)?.catalog?.records
+            ?.associateBy { it.id }
+            .orEmpty()
         val initialCapabilities = analysis.capabilities.associateBy { it.capability }.toMutableMap().also { capabilities ->
             capabilities[RomCapability.TYPE_PRESENTATION] = collectionCapability(
                 RomCapability.TYPE_PRESENTATION,
@@ -168,6 +175,58 @@ object CatalogMaterializer {
                 "family type colors with explicit accessible fallback for custom IDs",
                 "no materialized types were available for presentation",
             )
+            capabilities[RomCapability.NATURES] = when (natureResolution) {
+                is NatureResolution.Resolved -> CapabilityEvidence(
+                    capability = RomCapability.NATURES,
+                    compatible = true,
+                    confidence = 1.0,
+                    offset = natureResolution.catalog.statTableOffset,
+                    count = natureResolution.catalog.records.size,
+                    reasons = listOf(
+                        if (natureResolution.catalog.flavorTableOffset != null) {
+                            "decoded ROM-native Nature names, stat effects, and flavor affinities"
+                        } else {
+                            "decoded ROM-native Nature names and stat effects; flavor affinities were unavailable"
+                        },
+                    ),
+                    status = if (natureResolution.catalog.flavorTableOffset != null) {
+                        CapabilityStatus.AVAILABLE
+                    } else {
+                        CapabilityStatus.PARTIAL
+                    },
+                    validRecords = natureResolution.catalog.records.size,
+                    totalRecords = natureResolution.catalog.records.size,
+                )
+                is NatureResolution.Ambiguous -> CapabilityEvidence(
+                    capability = RomCapability.NATURES,
+                    compatible = false,
+                    confidence = 0.0,
+                    reasons = listOf("multiple compiled Nature table contracts remained (${natureResolution.candidates})"),
+                    status = CapabilityStatus.AMBIGUOUS,
+                    reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
+                )
+                is NatureResolution.BudgetExceeded -> CapabilityEvidence(
+                    capability = RomCapability.NATURES,
+                    compatible = false,
+                    confidence = 0.0,
+                    reasons = listOf(natureResolution.reason),
+                    status = CapabilityStatus.NOT_FOUND,
+                )
+                is NatureResolution.Unavailable -> CapabilityEvidence(
+                    capability = RomCapability.NATURES,
+                    compatible = false,
+                    confidence = 0.0,
+                    reasons = listOf(natureResolution.reason),
+                    status = if (layout.generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
+                )
+                null -> CapabilityEvidence(
+                    capability = RomCapability.NATURES,
+                    compatible = false,
+                    confidence = 0.0,
+                    reasons = listOf("Natures are not part of this engine"),
+                    status = if (layout.generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
+                )
+            }
         }
         val essentialCatalog = ParsedCatalog(
             romSha256 = analysis.sha256,
@@ -178,6 +237,7 @@ object CatalogMaterializer {
             movesById = rawMoves,
             typesById = baseTypes,
             abilitiesById = abilities,
+            naturesById = natures,
             typeChart = chart,
             capabilities = initialCapabilities,
         )
@@ -622,6 +682,7 @@ object CatalogMaterializer {
             movesById = moves,
             typesById = types,
             abilitiesById = enrichedAbilities,
+            naturesById = natures,
             typeChart = chart,
             encounterAreas = encounters,
             captureBallsById = balls,

@@ -9,7 +9,7 @@ interface PartyPageProps {
   onBack: () => void;
   openMove: (moveId: number) => void;
   openAbility: (abilityId: number) => void;
-  openNature?: (natureName: string) => void;
+  openNature?: (natureId: number) => void;
   openSpecies?: (speciesId: number) => void;
   selectedSlot?: number | null;
   onSelectSlot?: (slot: number) => void;
@@ -100,10 +100,10 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
   </section>;
 }
 
-function PartyDetail({ member, catalog, openMove, openAbility, openNature, openSpecies }: { member: PartyMemberView; catalog: Catalog; openMove: (moveId: number) => void; openAbility: (abilityId: number) => void; openNature?: (natureName: string) => void; openSpecies?: (speciesId: number) => void }) {
+function PartyDetail({ member, catalog, openMove, openAbility, openNature, openSpecies }: { member: PartyMemberView; catalog: Catalog; openMove: (moveId: number) => void; openAbility: (abilityId: number) => void; openNature?: (natureId: number) => void; openSpecies?: (speciesId: number) => void }) {
   const moves = Array.from({ length: 4 }, (_, slot) => member.moves.find(move => move.slot === slot) ?? { slot, moveId: null, name: null, currentPp: null, maximumPp: null });
   const types = uniqueTypeIds(member.typeIds).map(typeId => catalog.types.find(type => type.id === typeId)).filter((type): type is TypeInfo => type != null);
-  const knownNature = natureDetailFor(member.nature);
+  const knownNature = natureDetailFor(catalog.natures, member.natureId);
   return <article class="party-detail paper-panel" data-condition={memberCondition(member)}>
     <header>
       <PartySprite member={member} large />
@@ -119,7 +119,7 @@ function PartyDetail({ member, catalog, openMove, openAbility, openNature, openS
       {member.speciesId != null && openSpecies && <button type="button" class="party-dex-link" aria-label={`Open ${member.speciesName ?? 'partner'} in Pokédex`} onClick={() => openSpecies(member.speciesId!)}>DEX</button>}
     </header>
     <div class="party-summary-grid">
-      <span><small>NATURE</small>{member.nature && knownNature && openNature ? <button type="button" onClick={() => openNature(member.nature!)}>{member.nature}</button> : <strong>{member.nature ?? '—'}</strong>}</span>
+      <span><small>NATURE</small>{knownNature && openNature ? <button type="button" onClick={() => openNature(knownNature.id)}>{knownNature.name}</button> : <strong>{member.nature ?? '—'}</strong>}</span>
       <span><small>ABILITY</small>{member.abilityId != null && member.abilityName ? <button type="button" onClick={() => openAbility(member.abilityId!)}>{member.abilityName}</button> : <strong>—</strong>}</span>
       <span><small>HELD ITEM</small><HeldItemArtwork member={member} /></span>
       <span><small>EXP TO NEXT</small><strong>{member.experienceProgress == null ? '—' : `${Math.round(member.experienceProgress * 100)}%`}</strong></span>

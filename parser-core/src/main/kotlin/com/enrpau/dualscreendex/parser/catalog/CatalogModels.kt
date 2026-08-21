@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
+
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -760,6 +762,7 @@ data class ParsedCatalog(
     val movesById: Map<Int, MoveRecord> = emptyMap(),
     val typesById: Map<Int, TypeRecord> = emptyMap(),
     val abilitiesById: Map<Int, AbilityRecord> = emptyMap(),
+    val naturesById: Map<Int, NatureRecord> = emptyMap(),
     val typeChart: List<TypeMatchup> = emptyList(),
     val encounterAreas: List<EncounterArea> = emptyList(),
     val captureBallsById: Map<Int, CaptureBallRecord> = emptyMap(),

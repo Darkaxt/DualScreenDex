@@ -47,7 +47,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [busy, setBusy] = useState(true);
   const [moveDetailId, setMoveDetailId] = useState<number | null>(null);
   const [abilityDetailId, setAbilityDetailId] = useState<number | null>(null);
-  const [natureDetailName, setNatureDetailName] = useState<string | null>(null);
+  const [natureDetailId, setNatureDetailId] = useState<number | null>(null);
   const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'AREA' | 'MORE'>('ENTRY');
   const [mapperOpen, setMapperOpen] = useState(false);
   const [capabilityReportOpen, setCapabilityReportOpen] = useState(false);
@@ -107,13 +107,13 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         else if (mapOpen) setMapOpen(false);
         else if (moveDetailId != null) setMoveDetailId(null);
         else if (abilityDetailId != null) setAbilityDetailId(null);
-        else if (natureDetailName != null) setNatureDetailName(null);
+        else if (natureDetailId != null) setNatureDetailId(null);
         else if (state.screen !== 'POKEDEX') void send('BACK');
       });
     };
     window.addEventListener('dualdexback', handleCompanionBack);
     return () => window.removeEventListener('dualdexback', handleCompanionBack);
-  }, [abilityDetailId, capabilityReportOpen, mapOpen, mapperOpen, moveDetailId, natureDetailName, state.screen]);
+  }, [abilityDetailId, capabilityReportOpen, mapOpen, mapperOpen, moveDetailId, natureDetailId, state.screen]);
 
   const screen = useMemo(() => {
     if (mapperOpen) return <MemoryMapperPage onBack={() => setMapperOpen(false)} />;
@@ -141,7 +141,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     />;
     if (moveDetailId != null) return <MoveDetail catalog={catalog} state={state} moveId={moveDetailId} onBack={() => setMoveDetailId(null)} />;
     if (abilityDetailId != null) return <AbilityDetail catalog={catalog} state={state} abilityId={abilityDetailId} onBack={() => setAbilityDetailId(null)} />;
-    if (natureDetailName != null) return <NatureDetail natureName={natureDetailName} onBack={() => setNatureDetailName(null)} />;
+    if (natureDetailId != null) {
+      const nature = catalog.natures?.find(candidate => candidate.id === natureDetailId);
+      if (nature) return <NatureDetail nature={nature} onBack={() => setNatureDetailId(null)} />;
+    }
     switch (state.screen) {
       case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={setMoveDetailId} openAbility={setAbilityDetailId} />;
       case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={setMoveDetailId} openSpecies={speciesId => {
@@ -164,7 +167,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
           onBack={() => void send('BACK')}
           openMove={setMoveDetailId}
           openAbility={setAbilityDetailId}
-          openNature={setNatureDetailName}
+          openNature={setNatureDetailId}
           openSpecies={speciesId => {
             setDetailTab('ENTRY');
             void send('OPEN_SPECIES', { speciesId });
@@ -174,7 +177,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => setCapabilityReportOpen(true)} onOpenMapper={() => setMapperOpen(true)} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={() => setMapOpen(true)} />;
     }
-  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, natureDetailName, detailTab, mapperOpen, capabilityReportOpen, mapOpen, partySelection]);
+  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, natureDetailId, detailTab, mapperOpen, capabilityReportOpen, mapOpen, partySelection]);
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
     <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={applicationThemeStyle(catalog, state.settings)} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>

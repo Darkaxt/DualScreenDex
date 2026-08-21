@@ -65,7 +65,7 @@ describe('Party', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Static' }));
     expect(openAbility).toHaveBeenCalledWith(9);
     fireEvent.click(screen.getByRole('button', { name: 'Adamant' }));
-    expect(openNature).toHaveBeenCalledWith('Adamant');
+    expect(openNature).toHaveBeenCalledWith(3);
 
     fireEvent.click(screen.getByRole('button', { name: 'Close SPARK details' }));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -151,7 +151,12 @@ const catalog: Catalog = {
   hash: 'fixture', crc32: '12345678', family: 'EMERALD', platform: 'GBA', rulesets: [], species: [], moves: [], types: [
     { id: 13, name: 'ELECTRIC', foreground: '#2b2300', background: '#f5d642', border: '#9c851c' },
     { id: 2, name: 'FLYING', foreground: '#17253d', background: '#a9c7f0', border: '#5b79a4' },
-  ], areas: [], balls: [], capabilities: {},
+  ], areas: [], balls: [], natures: [{
+    id: 3, name: 'Adamant',
+    statMultipliers: { ATTACK: 110, DEFENSE: 100, SPEED: 100, SPECIAL_ATTACK: 90, SPECIAL_DEFENSE: 100 },
+    raisedStat: 'ATTACK', loweredStat: 'SPECIAL_ATTACK', positivePercent: 110, negativePercent: 90,
+    likedFlavor: 'SPICY', dislikedFlavor: 'DRY',
+  }], capabilities: {},
 };
 
 function partyState(knowledgeMode: State['settings']['knowledgeMode']): State {
@@ -165,7 +170,7 @@ function partyState(knowledgeMode: State['settings']['knowledgeMode']): State {
     party: [
       {
         slot: 0, occupied: true, speciesId: 25, speciesName: 'PIKACHU', spriteUrl: '/api/sprites/species/25.png', typeIds: [13, 2],
-        nickname: 'SPARK', level: 18, isEgg: false, gender: 'FEMALE', nature: 'Adamant', abilityId: 9, abilityName: 'Static',
+        nickname: 'SPARK', level: 18, isEgg: false, gender: 'FEMALE', natureId: 3, nature: 'Adamant', abilityId: 9, abilityName: 'Static',
         heldItemId: null, heldItemName: null, hasHeldItem: true, currentHp: 31, maximumHp: 45, status: 'PAR', experienceProgress: .5,
         stats: { HP: 45, ATTACK: 28, DEFENSE: 22, SPEED: 38, 'SP. ATK': 30, 'SP. DEF': 26 },
         moves: [

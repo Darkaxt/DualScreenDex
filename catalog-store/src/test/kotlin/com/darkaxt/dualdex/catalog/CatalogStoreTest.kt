@@ -67,6 +67,7 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import java.nio.file.Files
 import java.nio.file.Path
@@ -124,7 +125,7 @@ class CatalogStoreTest {
         assertCatalogReferencesClose(reopened)
         assertEquals(second.romSha256, reopened.romSha256)
         assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-        assertEquals(15, stored.committedSections.size)
+        assertEquals(16, stored.committedSections.size)
         assertDatabaseIntegrity(cache.fileFor(second.romSha256))
     }
 
@@ -166,7 +167,7 @@ class CatalogStoreTest {
         }
         assertCatalogReferencesClose(reopened)
         assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-        assertEquals(15, stored.committedSections.size)
+        assertEquals(16, stored.committedSections.size)
         assertDatabaseIntegrity(cache.fileFor(second.romSha256))
     }
 
@@ -274,7 +275,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(23, CatalogSchema.parserSchemaVersion)
+        assertEquals(24, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
@@ -533,7 +534,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(23, CatalogSchema.parserSchemaVersion)
+        assertEquals(24, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -774,6 +775,16 @@ class CatalogStoreTest {
             movesById = mapOf(53 to move),
             typesById = mapOf(10 to TypeRecord(10, CatalogField.available("Fire"), CatalogField.available(typePresentation))),
             abilitiesById = mapOf(66 to ability),
+            naturesById = mapOf(
+                0 to NatureRecord(
+                    id = 0,
+                    name = "Resolute",
+                    statModifiers = listOf(1, 0, 0, -1, 0),
+                    positivePercent = 112,
+                    negativePercent = 88,
+                    flavorModifiers = listOf(1, -1, 0, 0, 0),
+                ),
+            ),
             typeChart = listOf(TypeMatchup(10, 12, 200)),
             encounterAreas = listOf(
                 EncounterArea(
