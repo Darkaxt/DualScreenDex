@@ -33,8 +33,8 @@ object SaveKnowledgeMapper {
         }
         val caught = caughtFromFlags + owned.filterNot(OwnedPokemon::isEgg).map(OwnedPokemon::speciesId)
         return previous.copy(
-            seenSpecies = seen + caught,
-            caughtSpecies = caught,
+            seenSpecies = previous.seenSpecies + previous.caughtSpecies + seen + caught,
+            caughtSpecies = previous.caughtSpecies + caught,
             owned = owned,
             teamSpecies = owned.filter { it.party && !it.isEgg }.mapTo(linkedSetOf(), OwnedPokemon::speciesId),
             currentAreaBaseId = snapshot.currentArea?.baseId,

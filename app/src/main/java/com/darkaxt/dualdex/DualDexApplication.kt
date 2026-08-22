@@ -4,7 +4,6 @@ import android.app.Application
 import android.provider.Settings
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogCache
-import com.darkaxt.dualdex.knowledge.FileKnowledgeRepository
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
@@ -120,7 +119,6 @@ class DualDexApplication : Application() {
                     .remove(LAST_CATALOG_NAME)
                     .apply()
             },
-            knowledgeRepository = FileKnowledgeRepository(File(filesDir, "knowledge")),
             onCatalogCommitted = { sha256, displayName ->
                 settingsRepository.migrateLegacyRuleset(sha256)
                 activeCatalogSha256 = sha256

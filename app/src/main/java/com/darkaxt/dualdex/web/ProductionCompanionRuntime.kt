@@ -4,7 +4,6 @@ import com.darkaxt.dualdex.catalog.CatalogRepository
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.catalog.catalogWriteProgress
-import com.darkaxt.dualdex.knowledge.KnowledgeRepository
 import com.darkaxt.dualdex.knowledge.KnowledgeLedgerSanitizer
 import com.darkaxt.dualdex.knowledge.discoverableAreaBaseIds
 import com.darkaxt.dualdex.battle.BattleCatalogContext
@@ -58,6 +57,8 @@ import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveByteSelector
 import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
+import com.darkaxt.dualdex.save.SaveObservation
+import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.TrainerIdentity
@@ -91,6 +92,11 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 
+data class SaveKnowledgeApplication(
+    val accepted: Boolean,
+    val checkpointLedger: KnowledgeLedger? = null,
+)
+
 /** Production ROM catalog runtime. It deliberately has no simulator dependency or battle generator. */
 class ProductionCompanionRuntime(
     private val parserWorker: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
@@ -105,7 +111,6 @@ class ProductionCompanionRuntime(
     private val onRomSettingsChanged: (String?, CompanionSettings) -> Unit = { _, settings -> onSettingsChanged(settings) },
     private val onRomDisplayModeChanged: (DisplayMode) -> Unit = {},
     private val onCatalogCleared: () -> Unit = {},
-    private val knowledgeRepository: KnowledgeRepository? = null,
     private val parseCatalog: (
         RomImage,
         (CatalogMaterializationProgress) -> Unit,
@@ -124,7 +129,7 @@ class ProductionCompanionRuntime(
     private var liveParty: List<OwnedIndividual>? = null
     private var liveGameState: Gen3LiveGameSnapshot? = null
     private var savedPlayerState: SaveSnapshot? = null
-    private var activeSaveIdentity: String? = null
+    private var activePlaythrough: ActivePlaythrough? = null
     private var catalogPublicationInProgress = false
     private var cachedState: CachedState? = null
     private val loadGeneration = AtomicLong()
@@ -477,7 +482,6 @@ class ProductionCompanionRuntime(
         )
         if (mergedLedger != before.ledger) {
             gateway.dispatch(CompanionAction.ReplaceLedger(mergedLedger))
-            persistKnowledge(mergedLedger)
         }
 
         if (update.ended) {
@@ -571,7 +575,6 @@ class ProductionCompanionRuntime(
         if (validAreaBaseId !in before.visitedAreaBaseIds) {
             val updated = before.copy(visitedAreaBaseIds = before.visitedAreaBaseIds + validAreaBaseId)
             gateway.dispatch(CompanionAction.ReplaceLedger(updated))
-            persistKnowledge(updated)
         }
         mergeLivePoiProximity(validAreaBaseId, gateway.bootstrap().liveMapPosition)
     }
@@ -590,7 +593,6 @@ class ProductionCompanionRuntime(
         )
         if (updated != before) {
             gateway.dispatch(CompanionAction.ReplaceLedger(updated))
-            persistKnowledge(updated)
         }
     }
 
@@ -626,14 +628,45 @@ class ProductionCompanionRuntime(
 
     @Synchronized
     fun applySaveSnapshot(snapshot: SaveSnapshot, state: SaveRamView): Boolean {
-        val current = catalog ?: return false
-        if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return false
-        activeSaveIdentity = snapshot.saveIdentity
-        gateway.dispatch(
-            CompanionAction.ReplaceLedger(
-                readKnowledge(current.romSha256, snapshot.saveIdentity, current),
-            ),
-        )
+        return applySaveState(snapshot, state, KnowledgeLedger(), null).accepted
+    }
+
+    @Synchronized
+    fun applySaveObservation(
+        observation: SaveObservation,
+        snapshot: SaveSnapshot,
+        state: SaveRamView,
+        checkpoint: KnowledgeLedger? = null,
+    ): SaveKnowledgeApplication {
+        val current = catalog ?: return SaveKnowledgeApplication(false)
+        if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return SaveKnowledgeApplication(false)
+        val incoming = ActivePlaythrough(current.romSha256, snapshot.saveIdentity, observation.source.id)
+        val samePlaythrough = activePlaythrough?.matches(incoming) == true
+        val seed = when {
+            observation.kind == SaveObservationKind.INITIAL || observation.kind == SaveObservationKind.SWITCHED ->
+                KnowledgeLedgerSanitizer.sanitize(checkpoint ?: KnowledgeLedger(), current)
+            samePlaythrough -> gateway.bootstrap().ledger
+            else -> KnowledgeLedger()
+        }
+        val applied = applySaveState(snapshot, state, seed, incoming)
+        val frozen = if (observation.kind == SaveObservationKind.CHANGED && samePlaythrough && applied.accepted) {
+            gateway.bootstrap().ledger
+        } else {
+            null
+        }
+        return applied.copy(checkpointLedger = frozen)
+    }
+
+    private fun applySaveState(
+        snapshot: SaveSnapshot,
+        state: SaveRamView,
+        seed: KnowledgeLedger,
+        playthrough: ActivePlaythrough?,
+    ): SaveKnowledgeApplication {
+        val current = catalog ?: return SaveKnowledgeApplication(false)
+        if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return SaveKnowledgeApplication(false)
+        activePlaythrough = playthrough
+        gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedgerSanitizer.sanitize(seed, current)))
         savedPlayerState = snapshot
         val merged = mergedPlayerKnowledge(current)
         val selectors = completeLevelUpRulesetSelectors(current)
@@ -650,8 +683,7 @@ class ProductionCompanionRuntime(
         cachedState = null
         gateway.dispatch(CompanionAction.ReplaceLedger(merged))
         publishSelectedPlayerSnapshot()
-        persistKnowledge(merged)
-        return true
+        return SaveKnowledgeApplication(true)
     }
 
     private fun selectedParty(): List<OwnedIndividual> = liveGameState
@@ -734,7 +766,6 @@ class ProductionCompanionRuntime(
             val merged = mergedPlayerKnowledge(current)
             if (merged != gateway.bootstrap().ledger) {
                 gateway.dispatch(CompanionAction.ReplaceLedger(merged))
-                persistKnowledge(merged)
             }
         }
         publishSelectedPlayerSnapshot()
@@ -879,7 +910,6 @@ class ProductionCompanionRuntime(
         if (updated == current) return
         val ledger = before.copy(localMapPoiPreferences = updated)
         gateway.dispatch(CompanionAction.ReplaceLedger(ledger))
-        persistKnowledge(ledger)
     }
 
     private fun resolveRuleset(selection: String) = catalog?.learnsetRulesets?.let { rulesets ->
@@ -950,21 +980,6 @@ class ProductionCompanionRuntime(
     private fun requireInt(values: Map<String, String?>, key: String): Int =
         requireNotNull(values[key]?.toIntOrNull()) { "$key is required" }
 
-    private fun readKnowledge(
-        romIdentity: String,
-        saveIdentity: String,
-        currentCatalog: ParsedCatalog,
-    ): KnowledgeLedger = KnowledgeLedgerSanitizer.sanitize(
-        runCatching { knowledgeRepository?.read(romIdentity, saveIdentity) }.getOrNull() ?: KnowledgeLedger(),
-        currentCatalog,
-    )
-
-    private fun persistKnowledge(ledger: KnowledgeLedger) {
-        val romIdentity = catalog?.romSha256 ?: return
-        val saveIdentity = activeSaveIdentity ?: return
-        runCatching { knowledgeRepository?.write(romIdentity, saveIdentity, ledger) }
-    }
-
     private fun notifyCompletion(callback: ((Result<Unit>) -> Unit)?, result: Result<Unit>) {
         if (callback != null) runCatching { callback(result) }
     }
@@ -976,7 +991,7 @@ class ProductionCompanionRuntime(
         liveParty = null
         liveGameState = null
         savedPlayerState = null
-        activeSaveIdentity = null
+        activePlaythrough = null
         settingsRomSha256 = null
         settingsWritesEnabled = false
         clearLevelUpRulesetDetection()
@@ -1047,6 +1062,17 @@ class ProductionCompanionRuntime(
 
     private fun applySettingsForRom(romSha256: String) {
         settingsForRom?.invoke(romSha256)?.let(::applySettings)
+    }
+
+    private data class ActivePlaythrough(
+        val romSha256: String,
+        val saveIdentity: String,
+        val sourceId: String,
+    ) {
+        fun matches(other: ActivePlaythrough): Boolean =
+            romSha256.equals(other.romSha256, ignoreCase = true) &&
+                saveIdentity.equals(other.saveIdentity, ignoreCase = true) &&
+                sourceId == other.sourceId
     }
 
     private fun applyWinningCatalogSettings(romSha256: String) {
