@@ -197,6 +197,8 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc33PoiEventFlagTracking == true/);
   assert.match(workflow, /\.v11Rc36ConditionalPoiNames == true/);
   assert.match(workflow, /\.v11Rc36PoiZoomDecluttering == true/);
+  assert.match(workflow, /\.v11Rc40LiveViewPriority == true/);
+  assert.match(workflow, /\.v11Rc40PlayerFollow == true/);
   assert.match(workflow, /\.gen1CompiledEvolutionCoveragePercent == 96\.62/);
   assert.match(workflow, /\.gen1CompiledLearnsetCoveragePercent == 93\.56/);
   assert.match(workflow, /\.gen1CompiledTypeChartCoveragePercent == 95\.79/);

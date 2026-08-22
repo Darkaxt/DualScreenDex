@@ -127,6 +127,7 @@ jobs:
           jq -e '.v11Rc37LiveTrainerIdentity == true and .v11Rc37PoiLabelClarity == true and .v11Rc37LoadingTitleSpacing == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc38PossessivePoiFallback == true and .v11Rc38AdaptivePoiLabelPlacement == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc39AndroidBootstrapState == true' release/v1-ready.json >/dev/null
+          jq -e '.v11Rc40LiveViewPriority == true and .v11Rc40PlayerFollow == true' release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
             reports/dualdex-parser-compatibility.md \
