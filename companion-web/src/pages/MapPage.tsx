@@ -2,7 +2,7 @@ import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DexIcon, FilterIcon, MapIcon, SettingsIcon } from '../components';
 import { GameClockIndicator } from '../GameClockIndicator';
-import { anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, shouldGlideCamera, type MapViewport } from '../mapEngine';
+import { AcceleratedMapFollower, anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, shouldGlideCamera, type MapViewport } from '../mapEngine';
 import type { Catalog, LocalMapPoiPreferences, LocalMapPoiView, State, WorldMapLocation, WorldMapRegion } from '../models';
 
 interface MapPageProps {
@@ -62,7 +62,6 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const [poiFiltersOpen, setPoiFiltersOpen] = useState(false);
   const [selectedPoiKey, setSelectedPoiKey] = useState<string | null>(null);
   const [followingPlayer, setFollowingPlayer] = useState(false);
-  const [cameraGliding, setCameraGliding] = useState(false);
   const stageRef = useRef<HTMLElement>(null);
   const fogRef = useRef<HTMLCanvasElement>(null);
   const gestureRef = useRef(new GestureTracker(HOME_VIEWPORT));
@@ -72,6 +71,12 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const allowMarkerSelectionRef = useRef(true);
   const pressedMarkerRef = useRef(new Map<number, string>());
   const lastFollowedPositionRef = useRef<{ mapKey: string; x: number; y: number } | null>(null);
+  const cameraFollowerRef = useRef(new AcceleratedMapFollower(
+    { x: HOME_VIEWPORT.panX, y: HOME_VIEWPORT.panY },
+    state.settings.mapFollowSmoothingPercent ?? 25,
+  ));
+  const animationFrameRef = useRef<number | null>(null);
+  const animationTimestampRef = useRef<number | null>(null);
   const revealedBaseIds = useMemo(() => new Set([
     ...(state.revealedAreaBaseIds ?? []),
     ...(currentLocation?.baseAreaIds ?? []),
@@ -190,27 +195,39 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   }, [region?.key, revealedLocations, fogVisible]);
 
   useEffect(() => {
+    cameraFollowerRef.current.setSmoothingPercent(state.settings.mapFollowSmoothingPercent ?? 25);
+  }, [state.settings.mapFollowSmoothingPercent]);
+
+  useEffect(() => () => cancelCameraAnimation(), []);
+
+  useEffect(() => {
     if (!followingPlayer || activeMode !== 'LOCAL' || !activeMap || !playerPosition) return;
     const previous = lastFollowedPositionRef.current;
-    setCameraGliding(
-      previous?.mapKey === activeMap.key && shouldGlideCamera(
+    const canGlide = previous?.mapKey === activeMap.key && shouldGlideCamera(
         { x: previous.x, y: previous.y },
         { x: playerPosition.sceneX, y: playerPosition.sceneY },
         activeMap.gridWidth,
         activeMap.gridHeight,
-      ),
-    );
+      );
     lastFollowedPositionRef.current = {
       mapKey: activeMap.key,
       x: playerPosition.sceneX,
       y: playerPosition.sceneY,
     };
-    setViewport(centerMapPoint(
+    const target = centerMapPoint(
       gestureRef.current.viewport,
       { x: 0, y: 0, width: activeMap.gridWidth, height: activeMap.gridHeight },
       fit,
       { x: playerPosition.sceneX + 0.5, y: playerPosition.sceneY + 0.5 },
-    ));
+    );
+    if (!canGlide || prefersReducedMotion() || (state.settings.mapFollowSmoothingPercent ?? 25) === 0) {
+      cancelCameraAnimation();
+      cameraFollowerRef.current.reset({ x: target.panX, y: target.panY });
+      setViewport(target);
+      return;
+    }
+    cameraFollowerRef.current.setTarget({ x: target.panX, y: target.panY });
+    startCameraAnimation();
   }, [
     followingPlayer,
     activeMode,
@@ -219,6 +236,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     playerPosition?.sceneY,
     fit.width,
     fit.height,
+    state.settings.mapFollowSmoothingPercent,
   ]);
 
   const markerLocations = useMemo(() => {
@@ -233,6 +251,37 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     setViewportState(next);
   }
 
+  function cancelCameraAnimation() {
+    if (animationFrameRef.current != null) window.cancelAnimationFrame(animationFrameRef.current);
+    animationFrameRef.current = null;
+    animationTimestampRef.current = null;
+  }
+
+  function startCameraAnimation() {
+    if (animationFrameRef.current != null) return;
+    animationFrameRef.current = window.requestAnimationFrame(animateCamera);
+  }
+
+  function animateCamera(timestamp: number) {
+    animationFrameRef.current = null;
+    const previousTimestamp = animationTimestampRef.current ?? timestamp;
+    animationTimestampRef.current = timestamp;
+    const position = cameraFollowerRef.current.step(timestamp - previousTimestamp);
+    const current = gestureRef.current.viewport;
+    setViewport({ ...current, panX: position.x, panY: position.y });
+    if (cameraFollowerRef.current.settled) {
+      animationTimestampRef.current = null;
+    } else {
+      animationFrameRef.current = window.requestAnimationFrame(animateCamera);
+    }
+  }
+
+  function stopFollowingPlayer() {
+    cancelCameraAnimation();
+    setFollowingPlayer(false);
+    lastFollowedPositionRef.current = null;
+  }
+
   function zoom(multiplier: number, anchor?: { x: number; y: number }) {
     const bounds = stageRef.current?.getBoundingClientRect();
     const center = { x: (bounds?.width ?? activeMap!.pixelWidth) / 2, y: (bounds?.height ?? activeMap!.pixelHeight) / 2 };
@@ -242,23 +291,23 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   function recenter() {
     if (activeMode === 'LOCAL' && playerPosition) {
       setFollowingPlayer(true);
-      setCameraGliding(false);
+      cancelCameraAnimation();
       lastFollowedPositionRef.current = {
         mapKey: activeMap!.key,
         x: playerPosition.sceneX,
         y: playerPosition.sceneY,
       };
-      setViewport(centerMapPoint(
+      const centered = centerMapPoint(
         viewport,
         { x: 0, y: 0, width: activeMap!.gridWidth, height: activeMap!.gridHeight },
         fit,
         { x: playerPosition.sceneX + 0.5, y: playerPosition.sceneY + 0.5 },
-      ));
+      );
+      cameraFollowerRef.current.reset({ x: centered.panX, y: centered.panY });
+      setViewport(centered);
       return;
     }
-    setFollowingPlayer(false);
-    setCameraGliding(false);
-    lastFollowedPositionRef.current = null;
+    stopFollowingPlayer();
     if (localScene && activePlacement) {
       setViewport(centerMapPoint(
         viewport,
@@ -299,9 +348,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     const before = gestureRef.current.viewport;
     const next = gestureRef.current.move(event.pointerId, point.x, point.y);
     if (next.scale !== before.scale || next.panX !== before.panX || next.panY !== before.panY) {
-      setFollowingPlayer(false);
-      setCameraGliding(false);
-      lastFollowedPositionRef.current = null;
+      stopFollowingPlayer();
     }
     setViewportState(next);
     event.preventDefault();
@@ -321,9 +368,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
 
   function onWheel(event: JSX.TargetedWheelEvent<HTMLElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
-    setFollowingPlayer(false);
-    setCameraGliding(false);
-    lastFollowedPositionRef.current = null;
+    stopFollowingPlayer();
     zoom(event.deltaY < 0 ? 1.18 : 1 / 1.18, { x: event.clientX - bounds.left, y: event.clientY - bounds.top });
     event.preventDefault();
   }
@@ -417,7 +462,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       onPointerCancel={event => finishPointer(event, true)}
       onWheel={onWheel}
     >
-      <div class={`map-plane map-framed-plane ${cameraGliding ? 'is-camera-gliding' : ''}`} style={{ width: renderedWidth, height: renderedHeight, transform }}>
+      <div class="map-plane map-framed-plane" style={{ width: renderedWidth, height: renderedHeight, transform }}>
         {localScene
           ? visibleScenePlacements.map(placement => <img
             key={placement.localMapKey}
@@ -543,6 +588,10 @@ function PoiToggle({ label, checked, onChange }: { label: string; checked: boole
 function normalizedPoiZoom(scale: number, minimum: number, maximum: number) {
   if (!Number.isFinite(scale) || !Number.isFinite(minimum) || !Number.isFinite(maximum) || maximum <= minimum) return 0;
   return Math.round(Math.min(100, Math.max(0, (scale - minimum) / (maximum - minimum) * 100)));
+}
+
+function prefersReducedMotion() {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 function poiWithinViewport(

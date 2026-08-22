@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anchoredZoom, centerMapPoint, containFit, edgesAreBlack, focusMapRect, GestureTracker, maximumScaleForMarker } from './mapEngine';
+import { AcceleratedMapFollower, anchoredZoom, centerMapPoint, containFit, edgesAreBlack, focusMapRect, GestureTracker, maximumScaleForMarker } from './mapEngine';
 
 describe('world map viewport engine', () => {
   it('contain-fits the intrinsic raster without stretching it', () => {
@@ -105,6 +105,56 @@ describe('world map viewport engine', () => {
     expect(edgesAreBlack(pixels, 5, 4)).toBe(true);
     pixels[(2 * 5 + 4) * 4 + 2] = 1;
     expect(edgesAreBlack(pixels, 5, 4)).toBe(false);
+  });
+
+  it('starts a followed camera softly and accelerates toward a nearby target', () => {
+    const follower = new AcceleratedMapFollower({ x: 0, y: 0 }, 50);
+    follower.setTarget({ x: 400, y: 0 });
+
+    const first = follower.step(16).x;
+    const second = follower.step(16).x;
+    const third = follower.step(16).x;
+
+    expect(first).toBeGreaterThan(0);
+    expect(second - first).toBeGreaterThan(first);
+    expect(third - second).toBeGreaterThan(second - first);
+  });
+
+  it('keeps its velocity when a new polled coordinate advances the target', () => {
+    const follower = new AcceleratedMapFollower({ x: 0, y: 0 }, 25);
+    follower.setTarget({ x: 200, y: 0 });
+    for (let frame = 0; frame < 30; frame += 1) follower.step(16);
+    const before = follower.position.x;
+
+    follower.setTarget({ x: 400, y: 0 });
+    const after = follower.step(16).x;
+
+    expect(after).toBeGreaterThan(before);
+    expect(follower.velocity.x).toBeGreaterThan(0);
+  });
+
+  it('makes a higher smoothing value trade more latency for gentler motion', () => {
+    const responsive = new AcceleratedMapFollower({ x: 0, y: 0 }, 10);
+    const smooth = new AcceleratedMapFollower({ x: 0, y: 0 }, 90);
+    responsive.setTarget({ x: 300, y: 0 });
+    smooth.setTarget({ x: 300, y: 0 });
+
+    for (let frame = 0; frame < 20; frame += 1) {
+      responsive.step(16);
+      smooth.step(16);
+    }
+
+    expect(responsive.position.x).toBeGreaterThan(smooth.position.x);
+  });
+
+  it('settles exactly and stops rendering after the target is reached', () => {
+    const follower = new AcceleratedMapFollower({ x: 0, y: 0 }, 25);
+    follower.setTarget({ x: 120, y: -40 });
+    for (let frame = 0; frame < 1000 && !follower.settled; frame += 1) follower.step(16);
+
+    expect(follower.settled).toBe(true);
+    expect(follower.position).toEqual({ x: 120, y: -40 });
+    expect(follower.velocity).toEqual({ x: 0, y: 0 });
   });
 });
 

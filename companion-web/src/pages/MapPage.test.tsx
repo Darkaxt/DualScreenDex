@@ -506,6 +506,7 @@ describe('optional local map presentation', () => {
     />);
     const stage = screen.getByRole('region', { name: 'Interactive local map' });
     fireEvent.click(screen.getByRole('button', { name: 'Recenter map' }));
+    const centeredPanX = Number(stage.dataset.panX);
 
     view.rerender(<MapPage
       catalog={connectedCatalog}
@@ -513,8 +514,12 @@ describe('optional local map presentation', () => {
       onOpenPokedex={vi.fn()}
       onOpenSettings={vi.fn()}
     />);
-    await waitFor(() => expect(Number(stage.dataset.panX)).toBeCloseTo(-(((19.5 / 44) - 0.5) * 1240 * Number(stage.dataset.scale)), 5));
-    expect(view.container.querySelector('.map-plane')?.classList.contains('is-camera-gliding')).toBe(true);
+    const targetPanX = -(((19.5 / 44) - 0.5) * 1240 * Number(stage.dataset.scale));
+    expect(view.container.querySelector('.map-player-marker')?.getAttribute('aria-label')).toBe('Player position 19, 7');
+    await waitFor(() => expect(Number(stage.dataset.panX)).not.toBeCloseTo(centeredPanX, 3));
+    expect(Math.abs(Number(stage.dataset.panX) - targetPanX)).toBeLessThan(Math.abs(centeredPanX - targetPanX));
+    expect(Number(stage.dataset.panX)).not.toBeCloseTo(targetPanX, 3);
+    expect(view.container.querySelector('.map-plane')?.classList.contains('is-camera-gliding')).toBe(false);
 
     view.rerender(<MapPage
       catalog={connectedCatalog}
@@ -522,7 +527,7 @@ describe('optional local map presentation', () => {
       onOpenPokedex={vi.fn()}
       onOpenSettings={vi.fn()}
     />);
-    await waitFor(() => expect(view.container.querySelector('.map-plane')?.classList.contains('is-camera-gliding')).toBe(false));
+    await waitFor(() => expect(Number(stage.dataset.panX)).toBeCloseTo(-(((1.5 / 44) - 0.5) * 1240 * Number(stage.dataset.scale)), 5));
 
     fireEvent.wheel(stage, { deltaY: -1, clientX: 400, clientY: 300 });
     const manuallyPannedX = Number(stage.dataset.panX);

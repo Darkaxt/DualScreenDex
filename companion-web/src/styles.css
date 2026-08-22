@@ -714,8 +714,6 @@ button { cursor: pointer; }
 .map-stage::before { content: ""; position: absolute; inset: 0; z-index: 0; opacity: .15; pointer-events: none; background-image: linear-gradient(#96b26f22 1px, transparent 1px), linear-gradient(90deg, #96b26f22 1px, transparent 1px), radial-gradient(circle at center, #274d35 0, transparent 66%); background-size: 24px 24px, 24px 24px, auto; }
 .map-stage.is-manipulating { cursor: grabbing; }
 .map-plane { position: absolute; z-index: 1; left: 50%; top: 50%; overflow: hidden; background: #000; transform-origin: center; }.map-framed-plane { box-shadow: 0 0 0 4px #6b4728, 0 12px 38px #000; }
-.map-plane.is-camera-gliding { transition: transform 140ms linear; }
-@media (prefers-reduced-motion: reduce) { .map-plane.is-camera-gliding { transition: none; } }
 .map-plane > img, .map-fog { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; pointer-events: none; }
 .map-plane > img.map-scene-tile { inset: auto; z-index: 1; }
 .map-scene-placement-fog { position: absolute; z-index: 2; background: #000; pointer-events: none; }

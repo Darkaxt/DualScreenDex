@@ -17,6 +17,79 @@ export function shouldGlideCamera(previous: MapPoint | null, next: MapPoint, gri
   return Math.hypot(next.x - previous.x, next.y - previous.y) <= maximumContinuousDistance;
 }
 
+/**
+ * A critically damped camera follower. New coordinate samples only move the
+ * target, so the camera keeps its velocity instead of restarting an animation
+ * for every poll.
+ */
+export class AcceleratedMapFollower {
+  position: MapPoint;
+  velocity: MapPoint = { x: 0, y: 0 };
+  private target: MapPoint;
+  private smoothingPercent: number;
+
+  constructor(initial: MapPoint, smoothingPercent = 25) {
+    this.position = { ...initial };
+    this.target = { ...initial };
+    this.smoothingPercent = clampPercent(smoothingPercent);
+  }
+
+  get settled() {
+    return Math.hypot(this.target.x - this.position.x, this.target.y - this.position.y) < 0.15
+      && Math.hypot(this.velocity.x, this.velocity.y) < 0.15;
+  }
+
+  setSmoothingPercent(value: number) {
+    this.smoothingPercent = clampPercent(value);
+  }
+
+  setTarget(target: MapPoint) {
+    this.target = { ...target };
+    if (this.smoothingPercent === 0) this.reset(target);
+  }
+
+  reset(position: MapPoint) {
+    this.position = { ...position };
+    this.target = { ...position };
+    this.velocity = { x: 0, y: 0 };
+  }
+
+  step(deltaMs: number): MapPoint {
+    if (this.settled) {
+      this.reset(this.target);
+      return { ...this.position };
+    }
+    if (!Number.isFinite(deltaMs) || deltaMs <= 0) return { ...this.position };
+
+    // 25% takes roughly one polling interval to settle. Higher settings keep
+    // more latency in exchange for a softer, uninterrupted follow.
+    const responseSeconds = 0.18 + (this.smoothingPercent / 100) * 2.8;
+    const omega = 4.6 / responseSeconds;
+    const seconds = deltaMs / 1000;
+    const x = criticallyDampedAxis(this.position.x, this.velocity.x, this.target.x, omega, seconds);
+    const y = criticallyDampedAxis(this.position.y, this.velocity.y, this.target.y, omega, seconds);
+    this.position = { x: x.position, y: y.position };
+    this.velocity = { x: x.velocity, y: y.velocity };
+    if (this.settled) this.reset(this.target);
+    return { ...this.position };
+  }
+}
+
+function criticallyDampedAxis(position: number, velocity: number, target: number, omega: number, seconds: number) {
+  const offset = position - target;
+  const coefficient = velocity + omega * offset;
+  const decay = Math.exp(-omega * seconds);
+  return {
+    position: target + (offset + coefficient * seconds) * decay,
+    velocity: (velocity - omega * coefficient * seconds) * decay,
+  };
+}
+
+function clampPercent(value: number) {
+  if (!Number.isFinite(value)) return 25;
+  return Math.min(100, Math.max(0, value));
+}
+
 export function clampScale(value: number, maximumScale = MAX_MAP_SCALE): number {
   if (!Number.isFinite(value)) return MIN_MAP_SCALE;
   return Math.min(maximumScale, Math.max(MIN_MAP_SCALE, value));
