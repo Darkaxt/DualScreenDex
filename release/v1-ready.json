@@ -112,6 +112,7 @@
   "v11Rc37LoadingTitleSpacing": true,
   "v11Rc38PossessivePoiFallback": true,
   "v11Rc38AdaptivePoiLabelPlacement": true,
+  "v11Rc39AndroidBootstrapState": true,
   "gen1CompiledEvolutionCoveragePercent": 96.62,
   "gen1CompiledLearnsetCoveragePercent": 93.56,
   "gen1CompiledTypeChartCoveragePercent": 95.79,
