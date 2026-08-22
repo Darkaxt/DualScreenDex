@@ -5,8 +5,12 @@ import { join } from 'node:path';
 
 const fixturePath = process.env.DUALDEX_MAP_FIXTURE_PNG;
 if (!fixturePath) throw new Error('Set DUALDEX_MAP_FIXTURE_PNG to a sanitized normalized 224x120 Emerald PNG');
+const localFixturePath = process.env.DUALDEX_LOCAL_MAP_FIXTURE_PNG;
+if (!localFixturePath) throw new Error('Set DUALDEX_LOCAL_MAP_FIXTURE_PNG to the parsed 320x320 Modern Emerald Littleroot PNG');
 const raster = readFileSync(fixturePath);
 const rasterSha256 = createHash('sha256').update(raster).digest('hex');
+const localRaster = readFileSync(localFixturePath);
+const localRasterSha256 = createHash('sha256').update(localRaster).digest('hex');
 const artifactDir = join(process.cwd(), '..', 'output', 'map-presentation');
 
 const state = {
@@ -239,16 +243,17 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
 });
 
 test('local POI controls, labels, and zoom visibility remain coherent at Thor geometry', async ({ page }) => {
+  expect(localRasterSha256).toBe('e83e6007735aef644647fe6fea027132ca79423fe4b8eec9e339cfe61808222c');
   await page.setViewportSize({ width: 1024, height: 768 });
   const localState = {
     ...state,
-    currentAreaBaseId: 16,
+    currentAreaBaseId: 9,
     currentAreaName: 'Littleroot Town',
-    revealedAreaBaseIds: [16, 17],
-    currentMapPosition: { x: 9, y: 9 },
+    revealedAreaBaseIds: [9],
+    currentMapPosition: { x: 12, y: 10 },
     localMapPois: [
-      { key: 'house-player', localMapKey: 'local/16', baseAreaId: 16, tileX: 7, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: 'Your House', service: null, itemId: null, itemName: null, destinationBaseAreaId: 256 },
-      { key: 'house-birch', localMapKey: 'local/16', baseAreaId: 16, tileX: 12, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "PROF. BIRCH'S HOUSE", service: null, itemId: null, itemName: null, destinationBaseAreaId: 258 },
+      { key: 'house-player', localMapKey: 'local/0009', baseAreaId: 9, tileX: 7, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: 'Your House', service: null, itemId: null, itemName: null, destinationBaseAreaId: 256 },
+      { key: 'house-birch', localMapKey: 'local/0009', baseAreaId: 9, tileX: 12, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "Prof. Birch's House", service: null, itemId: null, itemName: null, destinationBaseAreaId: 258 },
     ],
     localMapPoiPreferences: {
       showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
@@ -258,25 +263,23 @@ test('local POI controls, labels, and zoom visibility remain coherent at Thor ge
   const localCatalog = {
     ...catalog,
     localMaps: [
-      { key: 'local/16', displayName: 'Littleroot Town', baseAreaId: 16, pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15, imageUrl: '/api/maps/local%2F16.png', dynamicLighting: false },
-      { key: 'local/17', displayName: 'Route 101', baseAreaId: 17, pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15, imageUrl: '/api/maps/local%2F17.png', dynamicLighting: false },
+      { key: 'local/0009', displayName: 'Littleroot Town', baseAreaId: 9, pixelWidth: 320, pixelHeight: 320, gridWidth: 20, gridHeight: 20, imageUrl: '/api/maps/local%2F0009%2Fmap.png', dynamicLighting: true },
     ],
-    mapScenes: [{
-      key: 'scene/16', pixelWidth: 448, pixelHeight: 120, gridWidth: 56, gridHeight: 15,
-      placements: [
-        { localMapKey: 'local/16', baseAreaId: 16, gridX: 0, gridY: 0, pixelX: 0, pixelY: 0, pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15, imageUrl: '/api/maps/local%2F16.png', dynamicLighting: false },
-        { localMapKey: 'local/17', baseAreaId: 17, gridX: 28, gridY: 0, pixelX: 224, pixelY: 0, pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15, imageUrl: '/api/maps/local%2F17.png', dynamicLighting: false },
-      ],
-    }],
+    mapScenes: [],
   };
   await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog: localCatalog, state: localState }) }));
   await page.route('**/api/state', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(localState) }));
   await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(localState) }));
-  await page.route('**/api/maps/**', route => route.fulfill({ contentType: 'image/png', body: raster }));
+  await page.route('**/api/maps/**', route => route.fulfill({ contentType: 'image/png', body: localRaster }));
 
   await page.goto('/');
   await page.getByRole('button', { name: 'Open Map' }).click();
   const stage = page.getByRole('region', { name: 'Interactive local map' });
+  const localImage = page.locator('.map-plane > img');
+  await expect.poll(() => localImage.evaluate(element => ({
+    width: (element as HTMLImageElement).naturalWidth,
+    height: (element as HTMLImageElement).naturalHeight,
+  }))).toEqual({ width: 320, height: 320 });
   const filter = page.getByRole('button', { name: 'Map POI filters' });
   const zoomIn = page.getByRole('button', { name: 'Zoom in' });
   await expect(filter.locator('svg')).toHaveAttribute('data-semantic-icon', 'filter');
@@ -311,8 +314,10 @@ test('local POI controls, labels, and zoom visibility remain coherent at Thor ge
   await page.screenshot({ path: join(artifactDir, 'local-pois-starting-zoom.png') });
 
   const startingScale = Number(await stage.getAttribute('data-scale'));
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  expect(Number(await stage.getAttribute('data-scale'))).toBeGreaterThan(startingScale);
   await page.getByRole('button', { name: 'Zoom out' }).click();
-  expect(Number(await stage.getAttribute('data-scale'))).toBeLessThan(startingScale);
-  await expect(page.locator('.map-poi-marker')).toHaveCount(0);
-  await expect(page.locator('.map-poi-label')).toHaveCount(0);
+  expect(Number(await stage.getAttribute('data-scale'))).toBe(startingScale);
+  await expect(page.locator('.map-poi-marker')).toHaveCount(2);
+  await expect(page.locator('.map-poi-label')).toHaveCount(2);
 });

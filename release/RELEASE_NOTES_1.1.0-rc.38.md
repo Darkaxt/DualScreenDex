@@ -19,7 +19,7 @@ RC38 corrects the remaining Local-map house-label problems found in RC37.
 
 - The API regression proves `Your House` when no live identity exists.
 - The focused Local-map suite proves duplicate decluttering and alternate placement for neighboring labels.
-- A 1024x768 real-browser control proves both house labels are visible, non-overlapping, and unclipped at the target display geometry.
+- A 1024x768 real-browser control over the exact ROM-parsed 320x320 Modern Emerald Littleroot raster proves both house labels are attached to their actual sign tiles, visible, non-overlapping, and unclipped.
 - The production web build and focused companion-core tests pass.
 
 ## Delivery
