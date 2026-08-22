@@ -6,6 +6,7 @@ import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.io.File
 import java.nio.file.Files
@@ -56,6 +57,21 @@ class DirectSaveDocumentResolverTest {
         assertEquals(4, refreshed.size)
         assertTrue(refreshed.lastModifiedEpochMs > original.lastModifiedEpochMs)
         assertArrayEquals(byteArrayOf(8, 9, 10, 11), refreshed.read())
+    }
+
+    @Test
+    fun `atomic sibling target rejects traversal and replaces a complete sibling`() {
+        val root = temporaryRoot()
+        File(root, "Modern Emerald.srm").writeBytes(byteArrayOf(1))
+        val source = DirectSaveDocumentResolver.discover(rom, listOf(root)).single()
+        val target = requireNotNull(source.atomicSiblingTarget)
+
+        target.replace("Modern Emerald.srm.dualdex.json", "first".toByteArray())
+        target.replace("Modern Emerald.srm.dualdex.json", "second".toByteArray())
+
+        assertEquals("second", target.read("Modern Emerald.srm.dualdex.json")?.toString(Charsets.UTF_8))
+        assertThrows(IllegalArgumentException::class.java) { target.replace("../escape.json", byteArrayOf()) }
+        assertTrue(root.listFiles().orEmpty().none { it.name.contains("dualdex.tmp") })
     }
 
     private fun temporaryRoot(): File = Files.createTempDirectory("dualdex-direct-save-").toFile().also(roots::add)
