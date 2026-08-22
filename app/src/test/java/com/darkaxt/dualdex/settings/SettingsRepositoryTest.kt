@@ -35,6 +35,7 @@ class SettingsRepositoryTest {
             displayTarget = DisplayTarget.EXTERNAL,
             overlayScale = 0.65,
             battlePollingIntervalMs = 1,
+            mapFollowSmoothingPercent = 70,
         )
 
         repository.write(settings)
@@ -89,6 +90,23 @@ class SettingsRepositoryTest {
         assertEquals(17, repository.readForRom(romA).battlePollingIntervalMs)
         assertEquals(17, repository.readForRom(romB).battlePollingIntervalMs)
         assertFalse(requireNotNull(document).substringAfter("\"romOverrides\"").contains("battlePollingIntervalMs"))
+    }
+
+    @Test
+    fun clampsMapFollowSmoothingAndKeepsItDeviceGlobalAcrossRomProfiles() {
+        val low = SettingsRepository({ """{"mapFollowSmoothingPercent":-10}""" }, {}).read()
+        val high = SettingsRepository({ """{"mapFollowSmoothingPercent":150}""" }, {}).read()
+        assertEquals(0, low.mapFollowSmoothingPercent)
+        assertEquals(100, high.mapFollowSmoothingPercent)
+
+        var document: String? = null
+        val repository = SettingsRepository({ document }, { document = it })
+        repository.writeForRom(romA, CompanionSettings(theme = Theme.DARK, mapFollowSmoothingPercent = 10))
+        repository.writeForRom(romB, CompanionSettings(theme = Theme.LIGHT, mapFollowSmoothingPercent = 80))
+
+        assertEquals(80, repository.readForRom(romA).mapFollowSmoothingPercent)
+        assertEquals(80, repository.readForRom(romB).mapFollowSmoothingPercent)
+        assertFalse(requireNotNull(document).substringAfter("\"romOverrides\"").contains("mapFollowSmoothingPercent"))
     }
 
     @Test

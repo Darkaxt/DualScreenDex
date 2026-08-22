@@ -74,6 +74,7 @@ class SettingsRepository(
             displayTarget = sanitized.displayTarget,
             overlayScale = sanitized.overlayScale,
             battlePollingIntervalMs = sanitized.battlePollingIntervalMs,
+            mapFollowSmoothingPercent = sanitized.mapFollowSmoothingPercent,
         )
         val override = StoredSettings.difference(sanitized, globals)
         val overrides = LinkedHashMap(state.romOverrides)
@@ -192,6 +193,7 @@ class SettingsRepository(
             null
         },
         battlePollingIntervalMs = if (includeDeviceFields) objectValue.intValue("battlePollingIntervalMs")?.coerceIn(1, 20) else null,
+        mapFollowSmoothingPercent = if (includeDeviceFields) objectValue.intValue("mapFollowSmoothingPercent")?.coerceIn(0, 100) else null,
     )
 
     private fun sanitize(settings: CompanionSettings): CompanionSettings {
@@ -201,6 +203,7 @@ class SettingsRepository(
             ruleset = normalizedRuleset(settings.ruleset) ?: defaults.ruleset,
             overlayScale = settings.overlayScale.takeIf(Double::isFinite)?.coerceIn(0.45, 1.0) ?: defaults.overlayScale,
             battlePollingIntervalMs = settings.battlePollingIntervalMs.coerceIn(1, 20),
+            mapFollowSmoothingPercent = settings.mapFollowSmoothingPercent.coerceIn(0, 100),
         )
     }
 
@@ -264,6 +267,7 @@ class SettingsRepository(
         val displayTarget: String? = null,
         val overlayScale: Double? = null,
         val battlePollingIntervalMs: Int? = null,
+        val mapFollowSmoothingPercent: Int? = null,
     ) {
         fun applyTo(fallback: CompanionSettings): CompanionSettings = CompanionSettings(
             knowledgeMode = knowledgeMode?.let(KnowledgeMode::valueOf) ?: fallback.knowledgeMode,
@@ -280,6 +284,7 @@ class SettingsRepository(
             displayTarget = displayTarget?.let(DisplayTarget::valueOf) ?: fallback.displayTarget,
             overlayScale = overlayScale ?: fallback.overlayScale,
             battlePollingIntervalMs = battlePollingIntervalMs ?: fallback.battlePollingIntervalMs,
+            mapFollowSmoothingPercent = mapFollowSmoothingPercent ?: fallback.mapFollowSmoothingPercent,
         )
 
         fun isEmpty(): Boolean = this == StoredSettings()
@@ -300,6 +305,7 @@ class SettingsRepository(
                 displayTarget = settings.displayTarget.name,
                 overlayScale = settings.overlayScale,
                 battlePollingIntervalMs = settings.battlePollingIntervalMs,
+                mapFollowSmoothingPercent = settings.mapFollowSmoothingPercent,
             )
 
             fun difference(settings: CompanionSettings, globals: CompanionSettings) = StoredSettings(

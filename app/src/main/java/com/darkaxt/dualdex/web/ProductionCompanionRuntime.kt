@@ -884,6 +884,8 @@ class ProductionCompanionRuntime(
                     overlayScale = current.overlayScale,
                     battlePollingIntervalMs = values["battlePollingIntervalMs"]?.toIntOrNull()?.coerceIn(1, 20)
                         ?: current.battlePollingIntervalMs,
+                    mapFollowSmoothingPercent = values["mapFollowSmoothingPercent"]?.toIntOrNull()?.coerceIn(0, 100)
+                        ?: current.mapFollowSmoothingPercent,
                 )
         gateway.dispatch(
             CompanionAction.UpdateSettings(updated),

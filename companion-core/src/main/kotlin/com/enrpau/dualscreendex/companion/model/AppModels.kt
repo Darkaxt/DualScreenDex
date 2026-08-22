@@ -29,6 +29,7 @@ data class CompanionSettings(
     val displayTarget: DisplayTarget = DisplayTarget.AUTO,
     val overlayScale: Double = 1.0,
     val battlePollingIntervalMs: Int = 5,
+    val mapFollowSmoothingPercent: Int = 25,
 )
 
 data class OwnedPokemon(

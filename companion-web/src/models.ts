@@ -202,6 +202,7 @@ export interface Settings {
   displayTarget?: 'AUTO' | 'HANDHELD' | 'EXTERNAL';
   overlayScale?: number;
   battlePollingIntervalMs?: number;
+  mapFollowSmoothingPercent?: number;
 }
 
 export interface SpeciesState {

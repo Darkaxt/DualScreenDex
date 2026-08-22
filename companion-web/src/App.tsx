@@ -32,7 +32,7 @@ const emptyState: State = {
   filter: 'ALL',
   selectedAreaId: null,
   battleTab: 'ENTRY',
-  settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', theme: 'GAME', displayTarget: 'AUTO' },
+  settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', theme: 'GAME', displayTarget: 'AUTO', mapFollowSmoothingPercent: 25 },
   speciesState: {}, observedMoves: {}, battle: null, catalogReady: false, catalogName: null, error: null,
   trainer: null, party: [],
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'IDLE', completedUnits: 0, totalUnits: 0 },

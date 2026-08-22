@@ -103,6 +103,21 @@ describe('production settings copy', () => {
     expect(send).toHaveBeenCalledWith('MAP_POI_SETTINGS', { labelZoomThresholdPercent: 65 });
   });
 
+  it('controls global Local map follow smoothing from the normal settings surface', () => {
+    const send = vi.fn();
+    render(<SettingsPage catalog={catalog} state={{
+      ...state,
+      settings: { ...state.settings, mapFollowSmoothingPercent: 25 },
+    }} send={send} onUpload={vi.fn()} />);
+
+    const slider = screen.getByRole('slider', { name: 'Map follow smoothing' });
+    expect(slider).toHaveProperty('value', '25');
+    expect(screen.getByText(/applies to every game/i)).toBeTruthy();
+
+    fireEvent.input(slider, { target: { value: '70' } });
+    expect(send).toHaveBeenCalledWith('SETTINGS', { mapFollowSmoothingPercent: 70 });
+  });
+
   it('does not expose the retired Thor focus setting or status', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
 
