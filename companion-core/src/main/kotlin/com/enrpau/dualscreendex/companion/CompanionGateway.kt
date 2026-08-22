@@ -129,6 +129,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         is CompanionAction.LiveMapPositionChanged -> state.copy(liveMapPosition = action.position)
         is CompanionAction.LiveGameStateChanged -> state.copy(
             trainer = action.trainer,
+            trainerIdentity = action.trainerIdentity,
             party = action.party,
             gameTime = action.gameTime,
         )

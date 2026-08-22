@@ -125,6 +125,33 @@ class Gen3LiveGameStateTest {
         assertEquals(setOf(1007), snapshot.eventFlags.value)
     }
 
+    @Test
+    fun liveSaveBlock2PublishesTrainerIdentityWithoutASeparateSaveSnapshot() {
+        val saveBlock2 = ByteArray(0x80).apply {
+            intArrayOf(0xBC, 0xCC, 0xBF, 0xC8, 0xBE, 0xBB, 0xC8, 0xFF)
+                .forEachIndexed { index, value -> this[index] = value.toByte() }
+            this[8] = 0
+        }
+        val snapshot = Gen3LiveGameState.decode(
+            romIdentity = "rom",
+            regions = mapOf(Gen3LiveGameState.SAVE_BLOCK2_ID to saveBlock2),
+            layout = layout(),
+            saveContext = SaveParseContext(
+                "rom",
+                mapOf(1 to SaveSpeciesContext(1, 1, 0)),
+                gen3SaveRuntimeAbi = saveAbi(),
+            ),
+            savedTrainer = null,
+            battleActive = null,
+            targetBattler = null,
+            encounterKind = BattleEncounterKind.UNKNOWN,
+        )
+
+        assertEquals(Gen3LiveSectionState.UNAVAILABLE, snapshot.trainer.state)
+        assertEquals("BRENDAN", snapshot.trainerIdentity.value?.name)
+        assertEquals(0, snapshot.trainerIdentity.value?.gender)
+    }
+
     private fun layout() = Gen3RuntimeMemoryLayout(
         mainAddress = 0x03002000,
         inBattleAddress = 0x03002040,

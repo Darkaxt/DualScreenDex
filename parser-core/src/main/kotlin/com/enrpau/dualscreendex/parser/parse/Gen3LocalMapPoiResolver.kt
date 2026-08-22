@@ -201,7 +201,10 @@ internal object Gen3LocalMapPoiResolver {
             cursor += CALL_IF_BYTES
         }
         if (rom.u8(cursor) != SCR_OP_RELEASE_ALL || rom.u8(cursor + 1) != SCR_OP_END) return null
-        return SignHeadline(byTrainerGender = names)
+        return SignHeadline(
+            displayName = names.values.firstOrNull(),
+            byTrainerGender = names,
+        )
     }
 
     private fun readSimpleSignHeadline(rom: RomImage, script: Int): String? {

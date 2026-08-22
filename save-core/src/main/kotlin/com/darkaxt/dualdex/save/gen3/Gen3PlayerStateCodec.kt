@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.save.gen3
 import com.darkaxt.dualdex.save.BagEntry
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.BagPocketSnapshot
+import com.darkaxt.dualdex.save.TrainerIdentity
 import com.darkaxt.dualdex.save.TrainerSnapshot
 
 data class SaveSectionResult<T>(
@@ -27,6 +28,25 @@ data class Gen3PlayerStateResult(
 )
 
 object Gen3PlayerStateCodec {
+    fun decodeIdentity(
+        saveBlock2: ByteArray,
+        abi: Gen3SaveRuntimeAbi,
+    ): SaveSectionResult<TrainerIdentity> = runCatching {
+        require(saveBlock2.size >= abi.saveBlock2Size) { "declared Gen III SaveBlock2 was incomplete" }
+        val layout = abi.trainer
+        val name = requireNotNull(
+            Gen3SaveTextCodec.decode(
+                saveBlock2.copyOfRange(layout.playerNameOffset, layout.playerNameOffset + layout.playerNameLength),
+                abi.textEncoding,
+            ),
+        ) { "player name did not terminate in the declared encoding" }
+        val gender = saveBlock2[layout.genderOffset].toInt() and 0xFF
+        require(gender in 0..1) { "player gender was outside the declared domain" }
+        SaveSectionResult.available(TrainerIdentity(name, gender))
+    }.getOrElse { error ->
+        SaveSectionResult.unavailable(error.message ?: "live trainer identity was invalid")
+    }
+
     fun decode(
         saveBlock1: ByteArray,
         saveBlock2: ByteArray,
@@ -60,14 +80,8 @@ object Gen3PlayerStateCodec {
         dexCaught: Int,
     ): SaveSectionResult<TrainerSnapshot> = runCatching {
         val layout = abi.trainer
-        val name = requireNotNull(
-            Gen3SaveTextCodec.decode(
-                saveBlock2.copyOfRange(layout.playerNameOffset, layout.playerNameOffset + layout.playerNameLength),
-                abi.textEncoding,
-            ),
-        ) { "player name did not terminate in the declared encoding" }
-        val gender = saveBlock2[layout.genderOffset].toInt() and 0xFF
-        require(gender in 0..1) { "player gender was outside the declared domain" }
+        val identityResult = decodeIdentity(saveBlock2, abi)
+        val identity = requireNotNull(identityResult.value) { identityResult.reasons.joinToString() }
         val publicTrainerId = saveBlock2.u16le(layout.trainerIdOffset)
         val playTimeHours = saveBlock2.u16le(layout.playTimeHoursOffset)
         val playTimeMinutes = saveBlock2[layout.playTimeMinutesOffset].toInt() and 0xFF
@@ -80,8 +94,8 @@ object Gen3PlayerStateCodec {
         }
         SaveSectionResult.available(
             TrainerSnapshot(
-                name = name,
-                gender = gender,
+                name = identity.name,
+                gender = identity.gender,
                 publicTrainerId = publicTrainerId,
                 money = money,
                 playTimeHours = playTimeHours,

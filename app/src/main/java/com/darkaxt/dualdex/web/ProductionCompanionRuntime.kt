@@ -60,6 +60,7 @@ import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.TrainerIdentity
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.gen3.Gen3BagAbi
 import com.darkaxt.dualdex.save.gen3.Gen3BagDataSource
@@ -667,6 +668,12 @@ class ProductionCompanionRuntime(
         ?.value
         ?: savedPlayerState?.trainer
 
+    private fun selectedTrainerIdentity() = liveGameState
+        ?.trainerIdentity
+        ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+        ?.value
+        ?: selectedTrainer()?.let { TrainerIdentity(it.name, it.gender) }
+
     private fun mergedPlayerKnowledge(current: ParsedCatalog): KnowledgeLedger {
         val before = gateway.bootstrap().ledger
         val fromSave = savedPlayerState
@@ -711,7 +718,14 @@ class ProductionCompanionRuntime(
                     schedule?.nightStartHour,
                 )
             }
-        gateway.dispatch(CompanionAction.LiveGameStateChanged(selectedTrainer(), selectedParty(), gameTime))
+        gateway.dispatch(
+            CompanionAction.LiveGameStateChanged(
+                trainer = selectedTrainer(),
+                party = selectedParty(),
+                gameTime = gameTime,
+                trainerIdentity = selectedTrainerIdentity(),
+            ),
+        )
     }
 
     private fun publishSelectedPlayerState() {

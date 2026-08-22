@@ -727,7 +727,11 @@ object ApiViewBuilder {
                 tileY = poi.tileY,
                 category = category,
                 state = state,
-                displayName = poiDisplayName(poi, snapshot.trainer?.gender, snapshot.trainer?.name)
+                displayName = poiDisplayName(
+                    poi,
+                    snapshot.trainerIdentity?.gender ?: snapshot.trainer?.gender,
+                    snapshot.trainerIdentity?.name ?: snapshot.trainer?.name,
+                )
                     .takeIf { identified },
                 service = poi.service?.name,
                 itemId = poi.item?.itemId.takeIf { identified },
@@ -990,12 +994,7 @@ object ApiViewBuilder {
         trainerName: String?,
     ): String? {
         val conditioned = trainerGender?.let(poi.displayNamesByTrainerGender::get)
-        val unresolved = poi.displayNamesByTrainerGender
-            .toSortedMap()
-            .values
-            .distinct()
-            .joinToString(" / ")
-            .takeIf(String::isNotBlank)
+        val unresolved = poi.displayNamesByTrainerGender.toSortedMap().values.firstOrNull()
         return (conditioned ?: poi.displayName ?: unresolved)
             ?.replace("{PLAYER}", trainerName?.takeIf(String::isNotBlank) ?: "PLAYER")
             ?.let { value -> if (trainerName.isNullOrBlank()) value.replace("PLAYER's", "PLAYER'S") else value }

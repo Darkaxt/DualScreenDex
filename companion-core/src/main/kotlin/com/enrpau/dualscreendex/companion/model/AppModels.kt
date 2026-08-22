@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.companion.model
 
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.TrainerSnapshot
+import com.darkaxt.dualdex.save.TrainerIdentity
 
 enum class KnowledgeMode { DISCOVERED, ORGANIC, HIDDEN }
 enum class AppScreen { POKEDEX, DETAIL, BATTLE, TRAINER, PARTY, SETTINGS, SETUP }
@@ -155,6 +156,7 @@ data class AppSnapshot(
     val ledger: KnowledgeLedger = KnowledgeLedger(),
     val liveAreaBaseId: Int? = null,
     val trainer: TrainerSnapshot? = null,
+    val trainerIdentity: TrainerIdentity? = null,
     val party: List<OwnedIndividual> = emptyList(),
     val liveMapPosition: LiveMapPosition? = null,
     val gameTime: GameClock? = null,
@@ -189,6 +191,7 @@ sealed interface CompanionAction {
         val trainer: TrainerSnapshot?,
         val party: List<OwnedIndividual>,
         val gameTime: GameClock? = null,
+        val trainerIdentity: TrainerIdentity? = trainer?.let { TrainerIdentity(it.name, it.gender) },
     ) : CompanionAction
     data class LiveGameClockChanged(val gameTime: GameClock?) : CompanionAction
     data class LiveMapPositionChanged(val position: LiveMapPosition?) : CompanionAction

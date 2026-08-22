@@ -5,6 +5,7 @@ import com.darkaxt.dualdex.save.BagPocketSnapshot
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.TrainerSnapshot
+import com.darkaxt.dualdex.save.TrainerIdentity
 import com.darkaxt.dualdex.save.gen3.Gen3PlayerStateCodec
 import com.darkaxt.dualdex.save.gen3.Gen3EventFlagSnapshot
 import com.darkaxt.dualdex.save.gen3.Gen3PokemonCodec
@@ -60,6 +61,8 @@ data class Gen3LiveGameSnapshot(
     val battleUi: Gen3LiveSection<Gen3LiveBattleUiState>,
     val clock: Gen3LiveSection<Gen3GameClock> = Gen3LiveSection.unavailable("live game clock was unavailable"),
     val eventFlags: Gen3LiveSection<Set<Int>> = Gen3LiveSection.unavailable("live event flags were unavailable"),
+    val trainerIdentity: Gen3LiveSection<TrainerIdentity> =
+        Gen3LiveSection.unavailable("live trainer identity was unavailable"),
 )
 
 object Gen3LiveGameState {
@@ -136,6 +139,13 @@ object Gen3LiveGameState {
         val saveBlock1 = regions[SAVE_BLOCK1_ID]
         val saveBlock2 = regions[SAVE_BLOCK2_ID]
         val saveAbi = saveContext?.gen3SaveRuntimeAbi
+        val trainerIdentity = if (saveBlock2 != null && saveAbi != null) {
+            val decoded = Gen3PlayerStateCodec.decodeIdentity(saveBlock2, saveAbi)
+            decoded.value?.let(Gen3LiveSection.Companion::available)
+                ?: Gen3LiveSection.unavailable(decoded.reasons.joinToString())
+        } else {
+            Gen3LiveSection.unavailable("SaveBlock2 or its typed trainer ABI was unavailable")
+        }
         val playerState = if (
             saveBlock1 != null && saveBlock2 != null && saveAbi != null && savedTrainer != null
         ) {
@@ -184,6 +194,7 @@ object Gen3LiveGameState {
             } ?: Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
             clock = decodeClock(regions[CLOCK_ID]),
             eventFlags = decodeEventFlags(saveBlock1, saveAbi),
+            trainerIdentity = trainerIdentity,
         )
     }
 

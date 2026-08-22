@@ -1,5 +1,15 @@
 package com.darkaxt.dualdex.save
 
+data class TrainerIdentity(
+    val name: String,
+    val gender: Int,
+) {
+    init {
+        require(name.isNotBlank()) { "trainer name must not be blank" }
+        require(gender in 0..1) { "trainer gender must be 0 or 1" }
+    }
+}
+
 data class TrainerSnapshot(
     val name: String,
     val gender: Int,

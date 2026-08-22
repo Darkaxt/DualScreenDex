@@ -287,6 +287,17 @@ test('local POI controls, labels, and zoom visibility remain coherent at Thor ge
   expect(await controlStyle(filter)).toEqual(await controlStyle(zoomIn));
   await expect(page.locator('.map-poi-marker')).toHaveCount(2);
   await expect(page.locator('.map-poi-label')).toHaveCount(2);
+  const labelSurface = await page.locator('.map-poi-label').first().evaluate(element => {
+    const style = getComputedStyle(element);
+    return {
+      background: style.backgroundColor,
+      backdropFilter: style.backdropFilter,
+      textShadow: style.textShadow,
+    };
+  });
+  expect(labelSurface.background).not.toBe('rgba(0, 0, 0, 0)');
+  expect(labelSurface.backdropFilter).not.toBe('none');
+  expect(labelSurface.textShadow).not.toBe('none');
   const labelBoxes = await page.locator('.map-poi-label').evaluateAll(labels => labels.map(label => {
     const box = label.getBoundingClientRect();
     return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };

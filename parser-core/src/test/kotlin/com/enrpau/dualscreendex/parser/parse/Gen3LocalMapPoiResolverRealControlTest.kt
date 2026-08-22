@@ -61,8 +61,16 @@ class Gen3LocalMapPoiResolverRealControlTest {
             pois.single { it.tileX == 7 && it.tileY == 8 }.displayNamesByTrainerGender,
         )
         assertEquals(
+            "{PLAYER}'s House",
+            pois.single { it.tileX == 7 && it.tileY == 8 }.displayName,
+        )
+        assertEquals(
             mapOf(0 to "Prof. Birch's House", 1 to "{PLAYER}'s House"),
             pois.single { it.tileX == 12 && it.tileY == 8 }.displayNamesByTrainerGender,
+        )
+        assertEquals(
+            "Prof. Birch's House",
+            pois.single { it.tileX == 12 && it.tileY == 8 }.displayName,
         )
     }
 

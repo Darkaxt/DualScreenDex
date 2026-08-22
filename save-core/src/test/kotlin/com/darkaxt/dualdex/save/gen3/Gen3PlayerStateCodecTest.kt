@@ -9,6 +9,20 @@ import org.junit.Test
 
 class Gen3PlayerStateCodecTest {
     @Test
+    fun decodesLiveTrainerIdentityWithoutRequiringPokedexCounts() {
+        val saveBlock2 = ByteArray(EMERALD_SAVE_BLOCK2_SIZE)
+        intArrayOf(0xC7, 0xBB, 0xD3, 0xFF).forEachIndexed { index, value -> saveBlock2[index] = value.toByte() }
+        saveBlock2[EMERALD_SAVE_ABI.trainer.genderOffset] = 1
+
+        val identity = requireNotNull(
+            Gen3PlayerStateCodec.decodeIdentity(saveBlock2, EMERALD_SAVE_ABI).value,
+        )
+
+        assertEquals("MAY", identity.name)
+        assertEquals(1, identity.gender)
+    }
+
+    @Test
     fun decodesOfficialEmeraldTrainerAndEveryEncryptedBagPocket() {
         val saveBlock1 = ByteArray(EMERALD_SAVE_BLOCK1_SIZE)
         val saveBlock2 = ByteArray(EMERALD_SAVE_BLOCK2_SIZE)

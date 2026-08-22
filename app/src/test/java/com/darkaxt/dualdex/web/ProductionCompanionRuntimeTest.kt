@@ -20,6 +20,7 @@ import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SavedArea
 import com.darkaxt.dualdex.save.TrainerSnapshot
+import com.darkaxt.dualdex.save.TrainerIdentity
 import com.darkaxt.dualdex.battle.Gen3LiveBattleState
 import com.darkaxt.dualdex.battle.Gen3LiveBattleUiState
 import com.darkaxt.dualdex.battle.Gen3LiveGameSnapshot
@@ -1818,6 +1819,26 @@ class ProductionCompanionRuntimeTest {
         runtime.close()
     }
 
+    @Test
+    fun publishesMinimalLiveTrainerIdentityWithoutInventingATrainerCard() {
+        val hash = "e".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog("identity.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
+
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                hash,
+                Gen3LiveSection.unavailable("Trainer Card unavailable"),
+                Gen3LiveSection.available(emptyList()),
+                trainerIdentity = Gen3LiveSection.available(TrainerIdentity("MAY", 1)),
+            ),
+        )
+
+        assertNull(runtime.gateway.bootstrap().trainer)
+        assertEquals(TrainerIdentity("MAY", 1), runtime.gateway.bootstrap().trainerIdentity)
+        runtime.close()
+    }
+
     private fun trainer(name: String, money: Long) = TrainerSnapshot(
         name = name,
         gender = 0,
@@ -1836,6 +1857,7 @@ class ProductionCompanionRuntimeTest {
         party: Gen3LiveSection<List<OwnedIndividual>>,
         clock: Gen3LiveSection<Gen3GameClock> = Gen3LiveSection.unavailable("clock omitted"),
         eventFlags: Gen3LiveSection<Set<Int>> = Gen3LiveSection.unavailable("event flags omitted"),
+        trainerIdentity: Gen3LiveSection<TrainerIdentity> = Gen3LiveSection.unavailable("identity omitted"),
     ) = Gen3LiveGameSnapshot(
         romIdentity = romIdentity,
         trainer = trainer,
@@ -1850,6 +1872,7 @@ class ProductionCompanionRuntimeTest {
         ),
         clock = clock,
         eventFlags = eventFlags,
+        trainerIdentity = trainerIdentity,
     )
 
     private fun saveSpecies(id: Int) = SpeciesRecord(
