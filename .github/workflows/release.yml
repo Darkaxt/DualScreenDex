@@ -102,6 +102,7 @@ jobs:
             docs/reports/2026-08-20-gen2-gen3-dynamic-local-map-lighting.md \
             docs/reports/2026-08-20-gen1-gen3-table-coverage.json \
             docs/reports/2026-08-20-gen1-gen3-table-coverage.md \
+            docs/reports/save-synchronized-knowledge-checkpoints.md \
             release/POST_RELEASE_CHECKLIST.md; do
             test -s "$document"
           done
@@ -128,6 +129,7 @@ jobs:
           jq -e '.v11Rc38PossessivePoiFallback == true and .v11Rc38AdaptivePoiLabelPlacement == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc39AndroidBootstrapState == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc40LiveViewPriority == true and .v11Rc40PlayerFollow == true' release/v1-ready.json >/dev/null
+          jq -e '.v11SaveSynchronizedKnowledgeCheckpoints == true' release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
             reports/dualdex-parser-compatibility.md \
@@ -150,7 +152,8 @@ jobs:
             docs/reports/2026-08-20-rom-derived-companion-theme.md \
             docs/reports/2026-08-20-gen2-gen3-dynamic-local-map-lighting.md \
             docs/reports/2026-08-20-gen1-gen3-table-coverage.json \
-            docs/reports/2026-08-20-gen1-gen3-table-coverage.md; then
+            docs/reports/2026-08-20-gen1-gen3-table-coverage.md \
+            docs/reports/save-synchronized-knowledge-checkpoints.md; then
             echo 'Compatibility documentation contains a private path.'
             exit 1
           fi
@@ -391,6 +394,7 @@ jobs:
           cp docs/reports/2026-08-20-gen2-gen3-dynamic-local-map-lighting.md "$ASSETS/dualdex-gen2-gen3-dynamic-local-map-lighting.md"
           cp docs/reports/2026-08-20-gen1-gen3-table-coverage.json "$ASSETS/dualdex-gen1-gen3-table-coverage.json"
           cp docs/reports/2026-08-20-gen1-gen3-table-coverage.md "$ASSETS/dualdex-gen1-gen3-table-coverage.md"
+          cp docs/reports/save-synchronized-knowledge-checkpoints.md "$ASSETS/dualdex-save-synchronized-knowledge-checkpoints.md"
           release_notes="release/RELEASE_NOTES_${RELEASE_TAG#v}.md"
           test -s "$release_notes"
           cp "$release_notes" "$ASSETS/RELEASE_NOTES.md"
@@ -450,6 +454,7 @@ jobs:
               dualdex-gen2-gen3-dynamic-local-map-lighting.md \
               dualdex-gen1-gen3-table-coverage.json \
               dualdex-gen1-gen3-table-coverage.md \
+              dualdex-save-synchronized-knowledge-checkpoints.md \
               RELEASE_NOTES.md \
               provenance.json > SHA256SUMS.txt
           )
@@ -507,6 +512,7 @@ jobs:
             "$ASSETS/dualdex-gen2-gen3-dynamic-local-map-lighting.md" \
             "$ASSETS/dualdex-gen1-gen3-table-coverage.json" \
             "$ASSETS/dualdex-gen1-gen3-table-coverage.md" \
+            "$ASSETS/dualdex-save-synchronized-knowledge-checkpoints.md" \
             "$ASSETS/RELEASE_NOTES.md"
 
           echo "GitHub created the non-replacing $RELEASE_KIND release for $RELEASE_TAG." >> "$GITHUB_STEP_SUMMARY"

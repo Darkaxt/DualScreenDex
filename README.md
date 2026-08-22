@@ -284,7 +284,7 @@ Open `http://127.0.0.1:47831`. Opening `companion-web/index.html` directly is no
 
 ## Android setup and release identity
 
-The in-app **RetroArch Setup** page requests Android All files access once so sibling GB/GBC/GBA folders and RetroArch SaveRAM can be discovered without selecting every console directory. It locates the public `RetroArch/retroarch.cfg`, explains the exact Network Commands and 10-second SaveRAM autosave settings, edits only those approved keys, verifies the saved file, and requests one RetroArch restart only when the file changed. Existing Storage Access Framework folder actions remain available as fallbacks. ROMs and saves are read-only; the public config and its short-lived verified recovery sibling are the only storage writes. If automatic activation is unavailable, manual ROM selection and the last valid cached catalog remain usable.
+The in-app **RetroArch Setup** page requests Android All files access once so sibling GB/GBC/GBA folders and RetroArch SaveRAM can be discovered without selecting every console directory. It locates the public `RetroArch/retroarch.cfg`, explains the exact Network Commands and 10-second SaveRAM autosave settings, edits only those approved keys, verifies the saved file, and requests one RetroArch restart only when the file changed. Existing Storage Access Framework folder actions remain available as fallbacks. ROMs and saves remain read-only. When a validated save file changes, DualDex atomically records the current discovery ledger in a portable `<save>.dualdex.json` sibling; sources that cannot support atomic sibling writes use an isolated app-private fallback. A checkpoint is restored only when its ROM hash, save identity, save-file hash, size, and modification time all match, so another playthrough or an older internal ledger cannot leak discoveries into the active game. See the [save-synchronized checkpoint verification](docs/reports/save-synchronized-knowledge-checkpoints.md). If automatic activation is unavailable, manual ROM selection and the last valid cached catalog remain usable.
 
 Production uses package `com.darkaxt.dualdex`; debug builds use `com.darkaxt.dualdex.debug` so they can coexist. Production APKs are signed only by the protected GitHub release workflow. The pinned certificate SHA-256 is [`C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`](signing/dualdex-release-cert.sha256); the repository contains the public certificate but no keystore or credentials.
 
@@ -312,6 +312,7 @@ The labeled [Modern Emerald analysis](docs/reports/modern-emerald-memory-mapper-
 - [ROM Hacks Compatibility](reports/dualdex-rom-hacks-compatibility.md)
 - [Parser Compatibility](reports/dualdex-parser-compatibility.md)
 - [RC21-corrected Gen I–III table coverage](docs/reports/2026-08-20-gen1-gen3-table-coverage.md)
+- [Save-synchronized knowledge checkpoint verification](docs/reports/save-synchronized-knowledge-checkpoints.md)
 
 ## Relationship to Kanto Gear
 

@@ -115,6 +115,7 @@
   "v11Rc39AndroidBootstrapState": true,
   "v11Rc40LiveViewPriority": true,
   "v11Rc40PlayerFollow": true,
+  "v11SaveSynchronizedKnowledgeCheckpoints": true,
   "gen1CompiledEvolutionCoveragePercent": 96.62,
   "gen1CompiledLearnsetCoveragePercent": 93.56,
   "gen1CompiledTypeChartCoveragePercent": 95.79,
