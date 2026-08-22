@@ -2,12 +2,31 @@ package com.darkaxt.dualdex.save
 
 import com.darkaxt.dualdex.catalog.SaveSnapshotRepository
 import com.darkaxt.dualdex.catalog.StoredSaveSnapshot
+import com.darkaxt.dualdex.knowledge.SaveCheckpointKey
+import com.darkaxt.dualdex.knowledge.SaveFileFingerprint
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveParseResult
 import com.darkaxt.dualdex.save.SaveParser
 import com.darkaxt.dualdex.save.SaveSnapshot
+import java.security.MessageDigest
 
 enum class SaveMonitorStatus { UNAVAILABLE, MATCHED, AMBIGUOUS, STALE }
+
+enum class SaveObservationKind { INITIAL, UNCHANGED, CHANGED, SWITCHED }
+
+data class SaveObservation(
+    val kind: SaveObservationKind,
+    val source: SaveDocumentSource,
+    val fingerprint: SaveFileFingerprint,
+) {
+    fun key(snapshot: SaveSnapshot) = SaveCheckpointKey(
+        romSha256 = snapshot.romIdentity.lowercase(),
+        saveIdentity = snapshot.saveIdentity.lowercase(),
+        saveFileSha256 = fingerprint.sha256.lowercase(),
+        saveSize = fingerprint.size,
+        saveLastModifiedEpochMs = fingerprint.lastModifiedEpochMs,
+    )
+}
 
 data class SaveMonitorResult(
     val status: SaveMonitorStatus,
@@ -18,6 +37,7 @@ data class SaveMonitorResult(
     val retained: StoredSaveSnapshot? = null,
     val refreshedAtEpochMs: Long? = null,
     val message: String? = null,
+    val observation: SaveObservation? = null,
 )
 
 class SavePollingMonitor(
@@ -26,7 +46,7 @@ class SavePollingMonitor(
     private val parser: (ByteArray, SaveParseContext) -> SaveParseResult = SaveParser::parse,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
-    private val lastMatchedFingerprint = mutableMapOf<String, DocumentFingerprint>()
+    private val lastAccepted = mutableMapOf<String, AcceptedSave>()
 
     @Synchronized
     fun restore(context: SaveParseContext, autosaveStatus: String): SaveMonitorResult? {
@@ -62,27 +82,24 @@ class SavePollingMonitor(
 
         val remembered = associations.selectedFor(rom)
         val preferred = candidates.singleOrNull { it.id == remembered }
-        if (preferred != null && lastMatchedFingerprint[rom] == preferred.fingerprint() && retained != null) {
-            return matched(preferred, retained, autosaveStatus)
+        val previous = lastAccepted[rom]
+        if (preferred != null && previous?.documentFingerprint == preferred.documentFingerprint() && retained != null) {
+            return matched(preferred, retained, autosaveStatus, previous.fileFingerprint)
         }
 
         val preferredAttempt = preferred?.let { source ->
-            val result = runCatching { parser(source.read().copyOf(), context) }.getOrNull()
-            (result as? SaveParseResult.Parsed)?.let { source to it.snapshot }
+            attempt(source, context)
         }
         val attempts = if (preferredAttempt != null) {
             listOf(preferredAttempt)
         } else {
-            candidates.filterNot { it.id == preferred?.id }.mapNotNull { source ->
-                val result = runCatching { parser(source.read().copyOf(), context) }.getOrNull()
-                (result as? SaveParseResult.Parsed)?.let { source to it.snapshot }
-            }
+            candidates.filterNot { it.id == preferred?.id }.mapNotNull { source -> attempt(source, context) }
         }
         if (attempts.size > 1) {
             return SaveMonitorResult(
                 status = SaveMonitorStatus.AMBIGUOUS,
                 autosaveStatus = autosaveStatus,
-                candidates = attempts.map { it.first },
+                candidates = attempts.map { it.source },
                 retained = retained,
                 message = "Multiple checksum-valid SaveRAM files match this ROM. Select one in Settings.",
             )
@@ -99,11 +116,24 @@ class SavePollingMonitor(
             )
         }
 
-        val (source, snapshot) = accepted
+        val source = accepted.source
+        val snapshot = accepted.snapshot
+        val observationKind = when {
+            previous == null -> SaveObservationKind.INITIAL
+            previous.sourceId != source.id || !previous.saveIdentity.equals(snapshot.saveIdentity, ignoreCase = true) ->
+                SaveObservationKind.SWITCHED
+            previous.fileFingerprint != accepted.fileFingerprint -> SaveObservationKind.CHANGED
+            else -> SaveObservationKind.UNCHANGED
+        }
         val refreshed = clock()
         snapshots.write(snapshot, source.lastModifiedEpochMs, refreshed)
         associations.remember(rom, source.id)
-        lastMatchedFingerprint[rom] = source.fingerprint()
+        lastAccepted[rom] = AcceptedSave(
+            sourceId = source.id,
+            saveIdentity = snapshot.saveIdentity,
+            documentFingerprint = source.documentFingerprint(),
+            fileFingerprint = accepted.fileFingerprint,
+        )
         return SaveMonitorResult(
             status = SaveMonitorStatus.MATCHED,
             autosaveStatus = autosaveStatus,
@@ -112,19 +142,21 @@ class SavePollingMonitor(
             retained = StoredSaveSnapshot(snapshot, source.lastModifiedEpochMs, refreshed),
             refreshedAtEpochMs = refreshed,
             message = "SaveRAM matched and refreshed.",
+            observation = SaveObservation(observationKind, source, accepted.fileFingerprint),
         )
     }
 
     @Synchronized
     fun select(romSha256: String, documentId: String) {
         associations.remember(romSha256, documentId)
-        lastMatchedFingerprint.remove(romSha256.lowercase())
+        lastAccepted.remove(romSha256.lowercase())
     }
 
     private fun matched(
         source: SaveDocumentSource,
         retained: StoredSaveSnapshot,
         autosaveStatus: String,
+        fileFingerprint: SaveFileFingerprint,
     ) = SaveMonitorResult(
         status = SaveMonitorStatus.MATCHED,
         autosaveStatus = autosaveStatus,
@@ -132,9 +164,39 @@ class SavePollingMonitor(
         retained = retained,
         refreshedAtEpochMs = retained.refreshedAtEpochMs,
         message = "SaveRAM matched; no save-file change was detected.",
+        observation = SaveObservation(SaveObservationKind.UNCHANGED, source, fileFingerprint),
     )
 
-    private fun SaveDocumentSource.fingerprint() = DocumentFingerprint(id, size, lastModifiedEpochMs)
+    private fun attempt(source: SaveDocumentSource, context: SaveParseContext): AcceptedAttempt? {
+        val bytes = runCatching(source.read).getOrNull() ?: return null
+        val parsed = runCatching { parser(bytes, context) }.getOrNull() as? SaveParseResult.Parsed ?: return null
+        return AcceptedAttempt(
+            source = source,
+            snapshot = parsed.snapshot,
+            fileFingerprint = SaveFileFingerprint(
+                sha256 = MessageDigest.getInstance("SHA-256").digest(bytes).toHex(),
+                size = bytes.size.toLong(),
+                lastModifiedEpochMs = source.lastModifiedEpochMs,
+            ),
+        )
+    }
+
+    private fun ByteArray.toHex() = joinToString("") { "%02x".format(it) }
+
+    private fun SaveDocumentSource.documentFingerprint() = DocumentFingerprint(id, size, lastModifiedEpochMs)
 
     private data class DocumentFingerprint(val id: String, val size: Long, val modified: Long)
+
+    private data class AcceptedAttempt(
+        val source: SaveDocumentSource,
+        val snapshot: SaveSnapshot,
+        val fileFingerprint: SaveFileFingerprint,
+    )
+
+    private data class AcceptedSave(
+        val sourceId: String,
+        val saveIdentity: String,
+        val documentFingerprint: DocumentFingerprint,
+        val fileFingerprint: SaveFileFingerprint,
+    )
 }

@@ -9,6 +9,7 @@ import com.darkaxt.dualdex.save.SaveSpeciesContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.security.MessageDigest
 
 class SavePollingMonitorTest {
     private val context = SaveParseContext(
@@ -33,12 +34,43 @@ class SavePollingMonitorTest {
         val second = monitor.poll(context, listOf(source), "VERIFIED")
 
         assertEquals(SaveMonitorStatus.MATCHED, first.status)
+        assertEquals(SaveObservationKind.INITIAL, first.observation?.kind)
+        assertEquals(sha256(byteArrayOf(1, 2, 3)), first.observation?.fingerprint?.sha256)
         assertEquals(7L, first.snapshot?.saveCounter)
         assertEquals(SaveMonitorStatus.MATCHED, second.status)
+        assertEquals(SaveObservationKind.UNCHANGED, second.observation?.kind)
         assertNull(second.snapshot)
         assertEquals(1, parses)
         assertEquals(1, repository.writes)
         assertEquals("save", associations.selectedFor(context.romIdentity))
+    }
+
+    @Test
+    fun classifiesChangedBytesOnceAndSwitchesOnSourceOrSaveIdentity() {
+        val repository = FakeSnapshots()
+        var saveIdentity = "b".repeat(64)
+        var parses = 0
+        val monitor = SavePollingMonitor(
+            FakeAssociations(),
+            repository,
+            parser = { bytes, parseContext ->
+                parses++
+                SaveParseResult.Parsed(snapshot(parseContext.romIdentity, bytes.first().toLong(), saveIdentity))
+            },
+            clock = { 904L },
+        )
+
+        monitor.poll(context, listOf(source("first", 10, byteArrayOf(1))), "VERIFIED")
+        val changed = monitor.poll(context, listOf(source("first", 20, byteArrayOf(2))), "VERIFIED")
+        val switchedSource = monitor.poll(context, listOf(source("second", 30, byteArrayOf(3))), "VERIFIED")
+        saveIdentity = "c".repeat(64)
+        val switchedIdentity = monitor.poll(context, listOf(source("second", 40, byteArrayOf(4))), "VERIFIED")
+
+        assertEquals(SaveObservationKind.CHANGED, changed.observation?.kind)
+        assertEquals(sha256(byteArrayOf(2)), changed.observation?.fingerprint?.sha256)
+        assertEquals(SaveObservationKind.SWITCHED, switchedSource.observation?.kind)
+        assertEquals(SaveObservationKind.SWITCHED, switchedIdentity.observation?.kind)
+        assertEquals(4, parses)
     }
 
     @Test
@@ -133,9 +165,9 @@ class SavePollingMonitorTest {
         read = { bytes.copyOf() },
     )
 
-    private fun snapshot(rom: String, counter: Long) = SaveSnapshot(
+    private fun snapshot(rom: String, counter: Long, identity: String = "b".repeat(64)) = SaveSnapshot(
         romIdentity = rom,
-        saveIdentity = "save",
+        saveIdentity = identity,
         saveGeneration = 3,
         saveCounter = counter,
         currentArea = null,
@@ -145,6 +177,10 @@ class SavePollingMonitorTest {
         storedIndividuals = emptyList(),
         capabilities = emptyMap(),
     )
+
+    private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
+        .digest(bytes)
+        .joinToString("") { "%02x".format(it) }
 
     private class FakeAssociations : SaveAssociationRepository {
         private val values = mutableMapOf<String, String>()
