@@ -125,6 +125,7 @@ jobs:
           jq -e '.v11Rc33Gen3LocalMapPois == true and .v11Rc33PoiEventFlagTracking == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc36ConditionalPoiNames == true and .v11Rc36PoiZoomDecluttering == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc37LiveTrainerIdentity == true and .v11Rc37PoiLabelClarity == true and .v11Rc37LoadingTitleSpacing == true' release/v1-ready.json >/dev/null
+          jq -e '.v11Rc38PossessivePoiFallback == true and .v11Rc38AdaptivePoiLabelPlacement == true' release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
             reports/dualdex-parser-compatibility.md \
