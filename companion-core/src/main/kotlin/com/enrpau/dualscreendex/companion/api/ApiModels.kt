@@ -996,14 +996,7 @@ object ApiViewBuilder {
         val conditioned = trainerGender?.let(poi.displayNamesByTrainerGender::get)
         val unresolved = poi.displayNamesByTrainerGender.toSortedMap().values.firstOrNull()
         val template = conditioned ?: poi.displayName ?: unresolved ?: return null
-        val resolvedName = trainerName?.takeIf(String::isNotBlank)
-        return if (resolvedName != null) {
-            template.replace("{PLAYER}", resolvedName)
-        } else {
-            template
-                .replace(Regex("\\{PLAYER}'s", RegexOption.IGNORE_CASE), "Your")
-                .replace("{PLAYER}", "You")
-        }
+        return resolvePlayerPlaceholder(template, trainerName)
     }
 
     private fun LocalMapCatalog.isDynamic(key: String): Boolean =
@@ -1056,5 +1049,17 @@ object ApiViewBuilder {
             generation == 3 && edge.methodId in 1..3 -> "High friendship"
             else -> "Method ${edge.methodId} · parameter ${edge.parameter}"
         }
+    }
+}
+
+internal fun resolvePlayerPlaceholder(template: String, trainerName: String?): String {
+    val resolvedName = trainerName?.takeIf(String::isNotBlank)
+    return if (resolvedName != null) {
+        template.replace("{PLAYER}", resolvedName, ignoreCase = true)
+    } else {
+        template
+            .replace("{PLAYER}'s", "Your", ignoreCase = true)
+            .replace("{PLAYER}’s", "Your", ignoreCase = true)
+            .replace("{PLAYER}", "You", ignoreCase = true)
     }
 }
