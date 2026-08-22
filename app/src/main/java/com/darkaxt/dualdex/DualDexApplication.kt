@@ -4,6 +4,8 @@ import android.app.Application
 import android.provider.Settings
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogCache
+import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
+import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointStore
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
@@ -134,7 +136,14 @@ class DualDexApplication : Application() {
         return try {
             candidate.start()
             lastCatalogSha256?.let(runtime::restoreCatalogAsync)
-            setupCandidate = RetroArchSetupCoordinator(this, runtime)
+            setupCandidate = RetroArchSetupCoordinator(
+                this,
+                runtime,
+                SaveKnowledgeCheckpointCoordinator(
+                    SaveKnowledgeCheckpointStore(File(filesDir, "knowledge-checkpoints")),
+                    runtime::applySaveObservation,
+                ),
+            )
             mapperCandidate = MemoryMapperCoordinator(
                 MapperSessionStore(File(filesDir, "memory-mapper")), runtime::retroArchState,
             )

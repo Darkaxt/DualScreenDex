@@ -9,11 +9,16 @@ import java.nio.file.StandardCopyOption
 
 enum class CheckpointStorage { PORTABLE_SIDECAR, APP_PRIVATE_FALLBACK }
 
+interface KnowledgeCheckpointStore {
+    fun readExact(source: SaveDocumentSource, key: SaveCheckpointKey): KnowledgeLedger?
+    fun write(source: SaveDocumentSource, checkpoint: SaveKnowledgeCheckpoint): CheckpointStorage
+}
+
 class SaveKnowledgeCheckpointStore(
     private val fallbackRoot: File,
     private val codec: SaveKnowledgeCheckpointCodec = SaveKnowledgeCheckpointCodec(),
-) {
-    fun readExact(source: SaveDocumentSource, key: SaveCheckpointKey): KnowledgeLedger? {
+) : KnowledgeCheckpointStore {
+    override fun readExact(source: SaveDocumentSource, key: SaveCheckpointKey): KnowledgeLedger? {
         val siblingBytes = runCatching {
             source.atomicSiblingTarget?.read(sidecarName(source))
         }.getOrNull()
@@ -23,7 +28,7 @@ class SaveKnowledgeCheckpointStore(
         return runCatching { codec.decodeExact(fallback.readBytes(), key)?.ledger }.getOrNull()
     }
 
-    fun write(source: SaveDocumentSource, checkpoint: SaveKnowledgeCheckpoint): CheckpointStorage {
+    override fun write(source: SaveDocumentSource, checkpoint: SaveKnowledgeCheckpoint): CheckpointStorage {
         val target = source.atomicSiblingTarget
         if (target != null) {
             val written = runCatching {

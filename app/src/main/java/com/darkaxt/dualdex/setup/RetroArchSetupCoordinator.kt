@@ -18,6 +18,7 @@ import com.darkaxt.dualdex.retroarch.SessionResolution
 import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.SaveSnapshotStore
+import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.battle.BattleMemoryCoordinator
 import com.darkaxt.dualdex.save.AndroidSaveDocumentResolver
 import com.darkaxt.dualdex.save.DirectSaveDocumentResolver
@@ -49,6 +50,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class RetroArchSetupCoordinator(
     private val context: Context,
     private val runtime: ProductionCompanionRuntime,
+    private val checkpointCoordinator: SaveKnowledgeCheckpointCoordinator,
     private val commandPort: Int = UdpNetworkCommandTransport.DEFAULT_PORT,
 ) : AutoCloseable {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -487,7 +489,8 @@ class RetroArchSetupCoordinator(
                 lastSaveCandidates.set(candidates)
                 val result = saveMonitor.poll(parseContext, candidates, readAutosaveStatus())
                 val saveView = result.toView()
-                if (result.snapshot != null) runtime.applySaveSnapshot(result.snapshot, saveView)
+                if (result.snapshot != null && result.observation != null) checkpointCoordinator.apply(result, saveView)
+                else if (result.snapshot != null) runtime.applySaveSnapshot(result.snapshot, saveView)
                 else runtime.updateSaveRam(saveView)
             } catch (failure: Exception) {
                 runtime.updateSaveRam(
