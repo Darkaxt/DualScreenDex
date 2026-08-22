@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.companion.model.MatchupKey
 import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.OwnedPokemon
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
@@ -123,5 +124,20 @@ class FileKnowledgeRepositoryTest {
 
         assertEquals(setOf("local/1/bg/0"), migrated?.proximityRevealedPoiKeys)
         assertEquals(LocalMapPoiPreferences(), migrated?.localMapPoiPreferences)
+    }
+
+    @Test
+    fun keepsReadingSchemaFourFiveAndSixDocuments() {
+        val identity = "a".repeat(64)
+        val saveIdentity = "b".repeat(64)
+
+        listOf(4, 5, 6).forEach { schema ->
+            val root = temporary.newFolder("knowledge-schema-$schema")
+            root.resolve("$identity.$saveIdentity.json").writeText(
+                """{"schema":$schema,"romIdentity":"$identity","saveIdentity":"$saveIdentity","seenSpecies":[25]}""",
+            )
+
+            assertNotNull(FileKnowledgeRepository(root).read(identity, saveIdentity))
+        }
     }
 }
