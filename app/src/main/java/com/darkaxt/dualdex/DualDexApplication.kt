@@ -135,7 +135,6 @@ class DualDexApplication : Application() {
         var mapperCandidate: MemoryMapperCoordinator? = null
         return try {
             candidate.start()
-            lastCatalogSha256?.let(runtime::restoreCatalogAsync)
             setupCandidate = RetroArchSetupCoordinator(
                 this,
                 runtime,

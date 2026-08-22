@@ -163,7 +163,7 @@ class ProductionCompanionRuntime(
         }
         val header = RomHeaderReader.read(rom)
         val source = CatalogSourceMetadata.fromDisplayName(name, rom.size, header.title)
-        val generation = beginCatalogTransition(rom.sha256, name, CatalogWorkModule.ROM_IDENTITY.name)
+        val generation = beginCatalogTransition(rom.sha256, name, "CACHE_REOPEN")
         parserWorker.execute {
             try {
                 val cached = catalogRepository?.readComplete(rom.sha256)
@@ -176,6 +176,7 @@ class ProductionCompanionRuntime(
                     notifyCompletion(onComplete, Result.success(Unit))
                     return@execute
                 }
+                publishWork(generation, CatalogWorkProgress(CatalogWorkModule.ROM_IDENTITY), source.displayName)
                 val parsed = parseCatalog(
                     rom,
                     { progress -> publishCheckpoint(generation, progress, source) },

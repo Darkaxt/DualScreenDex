@@ -1261,6 +1261,70 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun verifiedRomCacheHitNeverPublishesAFromScratchPhase() {
+        val rom = RomImage(ByteArray(0xC0))
+        val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+        var parseCalls = 0
+        val phases = mutableListOf<String>()
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = FakeCatalogRepository(
+                StoredCatalog(
+                    parsed,
+                    CatalogSourceMetadata.direct("cached.gba", rom.size, "CACHED"),
+                    CatalogWriteProgress.complete(),
+                    committedSections = emptySet(),
+                    writtenAtEpochMs = 1,
+                ),
+            ),
+            parseCatalog = { _, _, _ ->
+                parseCalls++
+                parsed
+            },
+        )
+        val subscription = runtime.gateway.subscribe { snapshot ->
+            if (snapshot.catalogLoading.active) phases += snapshot.catalogLoading.phase
+        }
+
+        runtime.load("cached.gba", rom)
+
+        assertEquals(listOf("CACHE_REOPEN"), phases.distinct())
+        assertEquals(0, parseCalls)
+        assertEquals("CACHE_REOPEN", runtime.gateway.bootstrap().catalogLoading.phase)
+        subscription.close()
+        runtime.close()
+    }
+
+    @Test
+    fun verifiedRomCacheMissChecksCacheBeforePublishingParserWork() {
+        val rom = RomImage(ByteArray(0xC0))
+        val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+        var parseCalls = 0
+        val phases = mutableListOf<String>()
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = RecordingCatalogRepository(),
+            parseCatalog = { _, _, work ->
+                parseCalls++
+                work(CatalogWorkProgress(CatalogWorkModule.ROM_IDENTITY))
+                parsed
+            },
+        )
+        val subscription = runtime.gateway.subscribe { snapshot ->
+            if (snapshot.catalogLoading.active) phases += snapshot.catalogLoading.phase
+        }
+
+        runtime.load("uncached.gba", rom)
+
+        assertEquals("CACHE_REOPEN", phases.first())
+        assertTrue(phases.indexOf("ROM_IDENTITY") > phases.indexOf("CACHE_REOPEN"))
+        assertEquals(1, parseCalls)
+        assertEquals("COMPLETE", runtime.gateway.bootstrap().catalogLoading.phase)
+        subscription.close()
+        runtime.close()
+    }
+
+    @Test
     fun supersededAsyncRestoreNeverCommitsTheStaleCatalog() {
         val hashA = "a".repeat(64)
         val hashB = "b".repeat(64)
