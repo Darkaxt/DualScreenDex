@@ -69,6 +69,7 @@ button { cursor: pointer; }
 .game-time-celestial.is-night svg { fill: #e7efff; stroke: #fff; stroke-width: .8; stroke-linejoin: round; }
 .header-title, .header-actions, .header-action { position: relative; z-index: 2; }
 .map-action svg, .trainer-action svg, .party-action svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.party-action .party-ball-upper { fill: currentColor; stroke: none; opacity: .72; }.party-action .party-ball-body, .party-action .party-ball-divider, .party-action .party-ball-button-ring { fill: none; stroke: currentColor; }.party-action .party-ball-button-ring { fill: var(--theme-header, #173c2d); stroke-width: 1.6; }.party-action .party-ball-button-center { fill: currentColor; stroke: none; }
 
 .trainer-screen, .party-screen { grid-template-rows: auto 1fr; }
 .trainer-card-content, .party-content { min-height: 0; overflow: auto; }

@@ -112,8 +112,13 @@ function TrainerIcon() {
 
 function PartyIcon() {
   return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="party">
-    <circle cx="9" cy="10" r="5" /><circle cx="19" cy="17" r="5" />
-    <path d="M4 10h10M9 5v10M14 17h10M19 12v10" />
+    <circle class="party-ball-body" cx="14" cy="14" r="10.5" />
+    <path class="party-ball-upper" d="M3.5 14a10.5 10.5 0 0 1 21 0Z" />
+    <path class="party-ball-divider" d="M3.5 14h21" />
+    <g class="party-ball-button">
+      <circle class="party-ball-button-ring" cx="14" cy="14" r="3.6" />
+      <circle class="party-ball-button-center" cx="14" cy="14" r="1.55" />
+    </g>
   </svg>;
 }
 
