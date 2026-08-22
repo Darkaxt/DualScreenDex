@@ -113,6 +113,32 @@ class CompanionGatewayTest {
     }
 
     @Test
+    fun backWalksEveryVisitedScreenWithoutCreatingSelfLoops() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.OpenSpecies(25))
+        gateway.dispatch(CompanionAction.OpenTrainer)
+        gateway.dispatch(CompanionAction.OpenTrainer)
+        gateway.dispatch(CompanionAction.OpenParty)
+
+        assertEquals(AppScreen.TRAINER, gateway.dispatch(CompanionAction.BackToPokedex).screen)
+        assertEquals(AppScreen.DETAIL, gateway.dispatch(CompanionAction.BackToPokedex).screen)
+        assertEquals(AppScreen.POKEDEX, gateway.dispatch(CompanionAction.BackToPokedex).screen)
+        assertEquals(AppScreen.POKEDEX, gateway.dispatch(CompanionAction.BackToPokedex).screen)
+    }
+
+    @Test
+    fun battleInterruptionUsesItsReturnScreenWithoutPollutingOrdinaryHistory() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(CompanionAction.OpenSpecies(25))
+        gateway.dispatch(CompanionAction.OpenTrainer)
+        gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
+
+        assertEquals(AppScreen.TRAINER, gateway.dispatch(CompanionAction.BattleEnded).screen)
+        assertEquals(AppScreen.DETAIL, gateway.dispatch(CompanionAction.BackToPokedex).screen)
+        assertEquals(AppScreen.POKEDEX, gateway.dispatch(CompanionAction.BackToPokedex).screen)
+    }
+
+    @Test
     fun trainerAndPartyShortcutsPreserveTheirReturnScreenAndSelectedSlot() {
         val gateway = CompanionGateway()
         gateway.dispatch(CompanionAction.OpenSpecies(25))

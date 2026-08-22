@@ -1,7 +1,8 @@
 import type { ComponentType, JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { action, bootstrap, events, uploadRom } from './gateway';
-import type { Bootstrap, Catalog, Screen, State } from './models';
+import type { Bootstrap, Catalog, State } from './models';
+import { popRoute, pushRoute, type UiRoute } from './navigation';
 import { PokedexBrowse } from './pages/PokedexBrowse';
 import { PokedexDetail } from './pages/PokedexDetail';
 import { BattlePage } from './pages/BattlePage';
@@ -45,16 +46,16 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [state, setState] = useState<State>(emptyState);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
-  const [moveDetailId, setMoveDetailId] = useState<number | null>(null);
-  const [abilityDetailId, setAbilityDetailId] = useState<number | null>(null);
-  const [natureDetailId, setNatureDetailId] = useState<number | null>(null);
+  const [routes, setRoutes] = useState<UiRoute[]>([]);
   const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'AREA' | 'MORE'>('ENTRY');
-  const [mapperOpen, setMapperOpen] = useState(false);
-  const [capabilityReportOpen, setCapabilityReportOpen] = useState(false);
-  const [mapOpen, setMapOpen] = useState(false);
-  const mapOriginScreenRef = useRef<Screen | null>(null);
   const [partySelection, setPartySelection] = useState<{ catalogHash: string; slot: number | null }>({ catalogHash: '', slot: null });
   const lastCatalogRefresh = useRef('');
+  const battleWasForegroundRef = useRef(false);
+  const activeRoute = routes.at(-1);
+  const routesRef = useRef(routes);
+  const screenRef = useRef(state.screen);
+  routesRef.current = routes;
+  screenRef.current = state.screen;
 
   const reportFailure = (failure: unknown, message: string) => {
     console.error(failure);
@@ -103,33 +104,47 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       event.preventDefault();
       queueMicrotask(() => {
         if (backEvent.dualdexHandled) return;
-        if (mapperOpen) setMapperOpen(false);
-        else if (capabilityReportOpen) setCapabilityReportOpen(false);
-        else if (mapOpen) setMapOpen(false);
-        else if (moveDetailId != null) setMoveDetailId(null);
-        else if (abilityDetailId != null) setAbilityDetailId(null);
-        else if (natureDetailId != null) setNatureDetailId(null);
-        else if (state.screen !== 'POKEDEX') void send('BACK');
+        const currentRoutes = routesRef.current;
+        const currentRoute = currentRoutes.at(-1);
+        const currentScreen = screenRef.current;
+        if (currentRoutes.length > 0) {
+          if (currentRoute?.kind === 'PARTY_MEMBER' && currentScreen !== 'PARTY') void send('BACK');
+          else setRoutes(current => popRoute(current));
+        }
+        else if (currentScreen !== 'POKEDEX') void send('BACK');
       });
     };
     window.addEventListener('dualdexback', handleCompanionBack);
     return () => window.removeEventListener('dualdexback', handleCompanionBack);
-  }, [abilityDetailId, capabilityReportOpen, mapOpen, mapperOpen, moveDetailId, natureDetailId, state.screen]);
+  }, []);
 
   useEffect(() => {
-    if (!mapOpen) return;
-    const screenChangedBehindMap = mapOriginScreenRef.current !== null && state.screen !== mapOriginScreenRef.current;
-    if (screenChangedBehindMap || (state.screen === 'BATTLE' && state.battle)) setMapOpen(false);
-  }, [mapOpen, state.battle, state.screen]);
+    const battleForeground = state.screen === 'BATTLE' && state.battle != null;
+    if (battleForeground && !battleWasForegroundRef.current) setRoutes([]);
+    battleWasForegroundRef.current = battleForeground;
+  }, [state.screen, state.battle != null]);
+
+  useEffect(() => {
+    if (activeRoute?.kind === 'MAP' && state.screen !== activeRoute.originScreen) {
+      setRoutes(current => popRoute(current));
+    }
+  }, [activeRoute, state.screen]);
 
   function openMap() {
-    mapOriginScreenRef.current = state.screen;
-    setMapOpen(true);
+    setRoutes(current => pushRoute(current, { kind: 'MAP', originScreen: state.screen }));
+  }
+
+  function openRoute(route: UiRoute) {
+    setRoutes(current => pushRoute(current, route));
+  }
+
+  function closeRoute() {
+    setRoutes(current => popRoute(current));
   }
 
   const screen = useMemo(() => {
-    if (mapperOpen) return <MemoryMapperPage onBack={() => setMapperOpen(false)} />;
-    if (capabilityReportOpen && catalog) return <CapabilityReportPage romHash={catalog.hash} refreshMarker={catalogRefreshMarker(state)} onBack={() => setCapabilityReportOpen(false)} />;
+    if (activeRoute?.kind === 'MAPPER') return <MemoryMapperPage onBack={closeRoute} />;
+    if (activeRoute?.kind === 'CAPABILITIES' && catalog) return <CapabilityReportPage romHash={catalog.hash} refreshMarker={catalogRefreshMarker(state)} onBack={closeRoute} />;
     if (state.screen === 'SETUP') return <SetupPage state={state} send={send} />;
     if (!catalog) return <Welcome
       busy={busy}
@@ -139,28 +154,28 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       onUpload={onUpload}
       openSetup={() => void send('SCREEN', { screen: 'SETUP' })}
     />;
-    if (mapOpen && (catalog.worldMaps?.length ?? 0) > 0) return <MapPage
+    if (activeRoute?.kind === 'MAP' && (catalog.worldMaps?.length ?? 0) > 0) return <MapPage
       catalog={catalog}
       state={state}
       onOpenPokedex={() => {
-        setMapOpen(false);
+        setRoutes([]);
         void send('SCREEN', { screen: 'POKEDEX' });
       }}
       onOpenSettings={() => {
-        setMapOpen(false);
+        setRoutes([]);
         void send('SCREEN', { screen: 'SETTINGS' });
       }}
       onUpdatePoiPreferences={values => void send('MAP_POI_SETTINGS', values)}
     />;
-    if (moveDetailId != null) return <MoveDetail catalog={catalog} state={state} moveId={moveDetailId} onBack={() => setMoveDetailId(null)} />;
-    if (abilityDetailId != null) return <AbilityDetail catalog={catalog} state={state} abilityId={abilityDetailId} onBack={() => setAbilityDetailId(null)} />;
-    if (natureDetailId != null) {
-      const nature = catalog.natures?.find(candidate => candidate.id === natureDetailId);
-      if (nature) return <NatureDetail nature={nature} onBack={() => setNatureDetailId(null)} />;
+    if (activeRoute?.kind === 'MOVE') return <MoveDetail catalog={catalog} state={state} moveId={activeRoute.id} onBack={closeRoute} />;
+    if (activeRoute?.kind === 'ABILITY') return <AbilityDetail catalog={catalog} state={state} abilityId={activeRoute.id} onBack={closeRoute} />;
+    if (activeRoute?.kind === 'NATURE') {
+      const nature = catalog.natures?.find(candidate => candidate.id === activeRoute.id);
+      if (nature) return <NatureDetail nature={nature} onBack={closeRoute} />;
     }
     switch (state.screen) {
-      case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={setMoveDetailId} openAbility={setAbilityDetailId} />;
-      case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={setMoveDetailId} openSpecies={speciesId => {
+      case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={id => openRoute({ kind: 'MOVE', id })} openAbility={id => openRoute({ kind: 'ABILITY', id })} />;
+      case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={id => openRoute({ kind: 'MOVE', id })} openSpecies={speciesId => {
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
       }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={openMap} />;
@@ -177,20 +192,23 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
           state={state}
           selectedSlot={selectedSlot}
           onSelectSlot={slot => setPartySelection({ catalogHash: catalog.hash, slot })}
-          onBack={() => void send('BACK')}
-          openMove={setMoveDetailId}
-          openAbility={setAbilityDetailId}
-          openNature={setNatureDetailId}
+          detailSlot={activeRoute?.kind === 'PARTY_MEMBER' && activeRoute.catalogHash === catalog.hash ? activeRoute.slot : null}
+          onOpenDetails={slot => openRoute({ kind: 'PARTY_MEMBER', slot, catalogHash: catalog.hash })}
+          onCloseDetails={closeRoute}
+          onBack={() => activeRoute?.kind === 'PARTY_MEMBER' ? closeRoute() : void send('BACK')}
+          openMove={id => openRoute({ kind: 'MOVE', id })}
+          openAbility={id => openRoute({ kind: 'ABILITY', id })}
+          openNature={id => openRoute({ kind: 'NATURE', id })}
           openSpecies={speciesId => {
             setDetailTab('ENTRY');
             void send('OPEN_SPECIES', { speciesId });
           }}
         />;
       }
-      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => setCapabilityReportOpen(true)} onOpenMapper={() => setMapperOpen(true)} />;
+      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })} onOpenMapper={() => openRoute({ kind: 'MAPPER' })} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={openMap} />;
     }
-  }, [catalog, state, busy, error, moveDetailId, abilityDetailId, natureDetailId, detailTab, mapperOpen, capabilityReportOpen, mapOpen, partySelection]);
+  }, [catalog, state, busy, error, detailTab, routes, partySelection]);
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
     <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={applicationThemeStyle(catalog, state.settings)} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>

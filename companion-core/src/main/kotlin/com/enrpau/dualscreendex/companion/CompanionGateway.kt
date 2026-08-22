@@ -52,30 +52,16 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             },
             error = if (action.loading.phase == "FAILED") state.error else null,
         )
-        is CompanionAction.OpenSpecies -> state.copy(
-            screen = AppScreen.DETAIL,
-            priorScreen = state.screen.takeUnless { it == AppScreen.DETAIL } ?: state.priorScreen,
+        is CompanionAction.OpenSpecies -> navigate(state, AppScreen.DETAIL).copy(
             selectedSpeciesId = action.speciesId,
         )
-        CompanionAction.OpenTrainer -> state.copy(
-            screen = AppScreen.TRAINER,
-            priorScreen = state.screen.takeUnless { it == AppScreen.TRAINER } ?: state.priorScreen,
-        )
-        CompanionAction.OpenParty -> state.copy(
-            screen = AppScreen.PARTY,
-            priorScreen = state.screen.takeUnless { it == AppScreen.PARTY } ?: state.priorScreen,
-        )
-        is CompanionAction.OpenPartyMember -> state.copy(
-            screen = AppScreen.PARTY,
-            priorScreen = state.screen.takeUnless { it == AppScreen.PARTY } ?: state.priorScreen,
+        CompanionAction.OpenTrainer -> navigate(state, AppScreen.TRAINER)
+        CompanionAction.OpenParty -> navigate(state, AppScreen.PARTY)
+        is CompanionAction.OpenPartyMember -> navigate(state, AppScreen.PARTY).copy(
             selectedPartySlot = action.slot.takeIf { it in 0 until PARTY_SLOT_COUNT },
         )
-        CompanionAction.BackToPokedex -> state.copy(screen = state.priorScreen)
-        is CompanionAction.SetScreen -> if (action.screen == AppScreen.SETTINGS && state.screen != AppScreen.SETTINGS) {
-            state.copy(screen = action.screen, settingsReturnScreen = state.screen)
-        } else {
-            state.copy(screen = action.screen)
-        }
+        CompanionAction.BackToPokedex -> goBack(state)
+        is CompanionAction.SetScreen -> setScreen(state, action.screen)
         is CompanionAction.SetFilter -> state.copy(
             filter = action.filter,
             selectedAreaId = action.areaId,
@@ -107,9 +93,11 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         )
         CompanionAction.BattleEnded -> {
             val destination = state.battleReturnScreen.takeUnless { it == AppScreen.BATTLE } ?: AppScreen.POKEDEX
+            val history = state.navigationHistory.filterNot { it == AppScreen.BATTLE }
             state.copy(
                 screen = if (state.screen == AppScreen.BATTLE) destination else state.screen,
-                priorScreen = if (state.priorScreen == AppScreen.BATTLE) destination else state.priorScreen,
+                priorScreen = if (state.priorScreen == AppScreen.BATTLE) history.lastOrNull() ?: destination else state.priorScreen,
+                navigationHistory = history,
                 battle = null,
             )
         }
@@ -137,9 +125,46 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
         is CompanionAction.Failure -> state.copy(error = action.message)
     }
+
+    private fun navigate(state: AppSnapshot, destination: AppScreen): AppSnapshot {
+        if (destination == state.screen) return state
+        val history = (state.navigationHistory + state.screen)
+            .fold(emptyList<AppScreen>()) { result, screen ->
+                if (result.lastOrNull() == screen) result else result + screen
+            }
+            .takeLast(MAX_NAVIGATION_HISTORY)
+        return state.copy(
+            screen = destination,
+            priorScreen = state.screen,
+            navigationHistory = history,
+        )
+    }
+
+    private fun goBack(state: AppSnapshot): AppSnapshot {
+        val destination = state.navigationHistory.lastOrNull()
+            ?: state.priorScreen.takeUnless { it == state.screen }
+            ?: AppScreen.POKEDEX
+        val history = if (state.navigationHistory.isEmpty()) emptyList() else state.navigationHistory.dropLast(1)
+        return state.copy(
+            screen = destination,
+            priorScreen = history.lastOrNull() ?: AppScreen.POKEDEX,
+            navigationHistory = history,
+        )
+    }
+
+    private fun setScreen(state: AppSnapshot, destination: AppScreen): AppSnapshot {
+        if (destination == state.screen) return state
+        val next = if (state.navigationHistory.lastOrNull() == destination) goBack(state) else navigate(state, destination)
+        return if (destination == AppScreen.SETTINGS) {
+            next.copy(settingsReturnScreen = state.screen, priorScreen = state.priorScreen)
+        } else {
+            next
+        }
+    }
 }
 
 private const val PARTY_SLOT_COUNT = 6
+private const val MAX_NAVIGATION_HISTORY = 16
 
 fun initialBattleTab(
     encounterKind: BattleEncounterKind,

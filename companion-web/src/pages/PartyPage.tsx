@@ -14,46 +14,59 @@ interface PartyPageProps {
   openSpecies?: (speciesId: number) => void;
   selectedSlot?: number | null;
   onSelectSlot?: (slot: number) => void;
+  detailSlot?: number | null;
+  onOpenDetails?: (slot: number) => void;
+  onCloseDetails?: () => void;
 }
 
-export function PartyPage({ catalog, state, onBack, openMove, openAbility, openNature, openSpecies, selectedSlot, onSelectSlot }: PartyPageProps) {
+export function PartyPage({ catalog, state, onBack, openMove, openAbility, openNature, openSpecies, selectedSlot, onSelectSlot, detailSlot: controlledDetailSlot, onOpenDetails, onCloseDetails }: PartyPageProps) {
   const members = useMemo(() => normalizeParty(state.party), [state.party]);
-  const [detailSlot, setDetailSlot] = useState<number | null>(null);
+  const [fallbackDetailSlot, setFallbackDetailSlot] = useState<number | null>(null);
+  const controlled = controlledDetailSlot !== undefined;
+  const detailSlot = controlled ? controlledDetailSlot : fallbackDetailSlot;
   const highlightedSlot = detailSlot ?? (selectedSlot != null && members[selectedSlot]?.occupied ? selectedSlot : null);
   const active = detailSlot == null || !members[detailSlot]?.occupied ? null : members[detailSlot];
   const occupancy = members.map(member => member.occupied ? '1' : '0').join('');
 
   useEffect(() => {
-    if (detailSlot != null && occupancy[detailSlot] !== '1') setDetailSlot(null);
+    if (detailSlot != null && occupancy[detailSlot] !== '1') {
+      if (controlled) onCloseDetails?.();
+      else setFallbackDetailSlot(null);
+    }
   }, [catalog.hash, detailSlot, occupancy]);
 
   useEffect(() => {
     if (detailSlot == null) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setDetailSlot(null);
+      if (event.key === 'Escape') closeDetails();
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [detailSlot]);
+  }, [detailSlot, controlled, onCloseDetails]);
 
   useEffect(() => {
     if (detailSlot == null) return;
     const closeOnCompanionBack = (event: Event) => {
+      if (controlled) return;
       (event as Event & { dualdexHandled?: boolean }).dualdexHandled = true;
       event.preventDefault();
-      setDetailSlot(null);
+      setFallbackDetailSlot(null);
     };
     window.addEventListener('dualdexback', closeOnCompanionBack);
     return () => window.removeEventListener('dualdexback', closeOnCompanionBack);
-  }, [detailSlot]);
+  }, [detailSlot, controlled]);
 
   const select = (slot: number) => {
     if (!members[slot]?.occupied) return;
-    setDetailSlot(slot);
+    if (controlled) onOpenDetails?.(slot);
+    else setFallbackDetailSlot(slot);
     onSelectSlot?.(slot);
   };
 
-  const closeDetails = () => setDetailSlot(null);
+  const closeDetails = () => {
+    if (controlled) onCloseDetails?.();
+    else setFallbackDetailSlot(null);
+  };
 
   return <section class="screen party-screen">
     <Header title="PARTY" onBack={onBack} />

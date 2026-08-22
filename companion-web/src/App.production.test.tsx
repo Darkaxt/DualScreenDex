@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bootstrap } from './models';
 
 const fixture: Bootstrap = {
@@ -57,8 +57,11 @@ vi.mock('./gateway', () => ({
 import { action, bootstrap, events } from './gateway';
 import { App, catalogRefreshMarker, loadingModuleLabel, loadingOriginClass } from './App';
 
+afterEach(cleanup);
+
 describe('production application shell', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     document.body.replaceChildren();
     class TestResizeObserver {
       constructor(private readonly callback: ResizeObserverCallback) {}
@@ -129,6 +132,43 @@ describe('production application shell', () => {
 
     fireEvent.click(trainer);
     expect(action).toHaveBeenCalledWith('OPEN_TRAINER', {});
+  });
+
+  it('returns from a Party ability to the same Pokemon detail before the Party grid', async () => {
+    const ability = { id: 65, name: 'Overgrow', description: 'Powers up Grass-type moves when HP is low.', mechanics: [] };
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      catalog: {
+        ...fixture.catalog!,
+        species: [{
+          id: 25, dex: 25, name: 'PIKACHU', typeIds: [], stats: null, description: null, height: null, weight: null,
+          learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [ability], evolutions: [], hasSprite: false,
+        }],
+      },
+      state: {
+        ...fixture.state,
+        party: [{ ...fixture.state.party![0], abilityId: 65, abilityName: 'Overgrow' }],
+      },
+    });
+    vi.mocked(action).mockResolvedValueOnce({ ...fixture.state, screen: 'PARTY', party: [{ ...fixture.state.party![0], abilityId: 65, abilityName: 'Overgrow' }] });
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Party' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Party slot 1: SPARK/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Overgrow' }));
+    expect(screen.getByText('Powers up Grass-type moves when HP is low.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close SPARK details' }));
+    expect(screen.queryByRole('dialog', { name: 'SPARK details' })).toBeNull();
+    expect(screen.getByRole('button', { name: /Party slot 1: SPARK/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Party slot 1: SPARK/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Overgrow' }));
+    window.dispatchEvent(new Event('dualdexback', { cancelable: true }));
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy());
   });
 
   it('replaces setup actions with real catalog loading progress', async () => {
@@ -231,6 +271,7 @@ describe('production application shell', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
     expect(screen.getByRole('region', { name: 'Interactive world map' })).toBeTruthy();
+    vi.mocked(action).mockClear();
 
     const closeMap = new Event('dualdexback', { cancelable: true });
     window.dispatchEvent(closeMap);

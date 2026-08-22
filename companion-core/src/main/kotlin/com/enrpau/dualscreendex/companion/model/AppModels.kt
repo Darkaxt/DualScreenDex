@@ -146,6 +146,7 @@ data class AppSnapshot(
     val version: Long = 0,
     val screen: AppScreen = AppScreen.POKEDEX,
     val priorScreen: AppScreen = AppScreen.POKEDEX,
+    val navigationHistory: List<AppScreen> = emptyList(),
     val settingsReturnScreen: AppScreen = AppScreen.POKEDEX,
     val selectedSpeciesId: Int? = null,
     val selectedPartySlot: Int? = null,
