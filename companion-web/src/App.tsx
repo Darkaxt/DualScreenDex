@@ -1,7 +1,7 @@
 import type { ComponentType, JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { action, bootstrap, events, uploadRom } from './gateway';
-import type { Bootstrap, Catalog, State } from './models';
+import type { Bootstrap, Catalog, Screen, State } from './models';
 import { PokedexBrowse } from './pages/PokedexBrowse';
 import { PokedexDetail } from './pages/PokedexDetail';
 import { BattlePage } from './pages/BattlePage';
@@ -52,6 +52,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [mapperOpen, setMapperOpen] = useState(false);
   const [capabilityReportOpen, setCapabilityReportOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const mapOriginScreenRef = useRef<Screen | null>(null);
   const [partySelection, setPartySelection] = useState<{ catalogHash: string; slot: number | null }>({ catalogHash: '', slot: null });
   const lastCatalogRefresh = useRef('');
 
@@ -115,6 +116,17 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     return () => window.removeEventListener('dualdexback', handleCompanionBack);
   }, [abilityDetailId, capabilityReportOpen, mapOpen, mapperOpen, moveDetailId, natureDetailId, state.screen]);
 
+  useEffect(() => {
+    if (!mapOpen) return;
+    const screenChangedBehindMap = mapOriginScreenRef.current !== null && state.screen !== mapOriginScreenRef.current;
+    if (screenChangedBehindMap || (state.screen === 'BATTLE' && state.battle)) setMapOpen(false);
+  }, [mapOpen, state.battle, state.screen]);
+
+  function openMap() {
+    mapOriginScreenRef.current = state.screen;
+    setMapOpen(true);
+  }
+
   const screen = useMemo(() => {
     if (mapperOpen) return <MemoryMapperPage onBack={() => setMapperOpen(false)} />;
     if (capabilityReportOpen && catalog) return <CapabilityReportPage romHash={catalog.hash} refreshMarker={catalogRefreshMarker(state)} onBack={() => setCapabilityReportOpen(false)} />;
@@ -151,7 +163,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={setMoveDetailId} openSpecies={speciesId => {
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
-      }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={() => setMapOpen(true)} />;
+      }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={openMap} />;
       case 'TRAINER': return <TrainerCardPage state={state} onBack={() => void send('BACK')} />;
       case 'PARTY': {
         const occupied = new Set((state.party ?? []).filter(member => member.occupied).map(member => member.slot));
@@ -176,7 +188,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         />;
       }
       case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => setCapabilityReportOpen(true)} onOpenMapper={() => setMapperOpen(true)} />;
-      default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={() => setMapOpen(true)} />;
+      default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={openMap} />;
     }
   }, [catalog, state, busy, error, moveDetailId, abilityDetailId, natureDetailId, detailTab, mapperOpen, capabilityReportOpen, mapOpen, partySelection]);
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>

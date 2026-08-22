@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
 import { MapPage } from './MapPage';
@@ -488,6 +488,44 @@ describe('optional local map presentation', () => {
     expect(Number(stage.dataset.panY)).toBeCloseTo(-(((7.5 / 20) - 0.5) * (1240 / 704 * 320) * zoomedScale), 5);
     expect(container.querySelectorAll('.map-scene-tile')).toHaveLength(2);
     expect(container.querySelector<HTMLElement>('.map-player-marker')?.style.width).toBe('');
+    rect.mockRestore();
+  });
+
+  it('follows live player movement after recenter until manual viewport movement breaks tracking', async () => {
+    const bounds = {
+      x: 0, y: 0, top: 0, right: 1240, bottom: 825, left: 0,
+      width: 1240, height: 825,
+      toJSON: () => ({}),
+    } as DOMRect;
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(bounds);
+    const view = render(<MapPage
+      catalog={connectedCatalog}
+      state={{ ...state, currentMapPosition: { x: 18, y: 7 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    const stage = screen.getByRole('region', { name: 'Interactive local map' });
+    fireEvent.click(screen.getByRole('button', { name: 'Recenter map' }));
+
+    view.rerender(<MapPage
+      catalog={connectedCatalog}
+      state={{ ...state, currentMapPosition: { x: 19, y: 7 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    await waitFor(() => expect(Number(stage.dataset.panX)).toBeCloseTo(-(((19.5 / 44) - 0.5) * 1240 * Number(stage.dataset.scale)), 5));
+
+    fireEvent.wheel(stage, { deltaY: -1, clientX: 400, clientY: 300 });
+    const manuallyPannedX = Number(stage.dataset.panX);
+    expect(Number.isFinite(manuallyPannedX)).toBe(true);
+
+    view.rerender(<MapPage
+      catalog={connectedCatalog}
+      state={{ ...state, currentMapPosition: { x: 17, y: 7 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    expect(Number(stage.dataset.panX)).toBeCloseTo(manuallyPannedX, 5);
     rect.mockRestore();
   });
 

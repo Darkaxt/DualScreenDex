@@ -61,6 +61,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const [legendOpen, setLegendOpen] = useState(false);
   const [poiFiltersOpen, setPoiFiltersOpen] = useState(false);
   const [selectedPoiKey, setSelectedPoiKey] = useState<string | null>(null);
+  const [followingPlayer, setFollowingPlayer] = useState(false);
   const stageRef = useRef<HTMLElement>(null);
   const fogRef = useRef<HTMLCanvasElement>(null);
   const gestureRef = useRef(new GestureTracker(HOME_VIEWPORT));
@@ -186,6 +187,24 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     paintFog(fogRef.current, region, revealedLocations);
   }, [region?.key, revealedLocations, fogVisible]);
 
+  useEffect(() => {
+    if (!followingPlayer || activeMode !== 'LOCAL' || !activeMap || !playerPosition) return;
+    setViewport(centerMapPoint(
+      gestureRef.current.viewport,
+      { x: 0, y: 0, width: activeMap.gridWidth, height: activeMap.gridHeight },
+      fit,
+      { x: playerPosition.sceneX + 0.5, y: playerPosition.sceneY + 0.5 },
+    ));
+  }, [
+    followingPlayer,
+    activeMode,
+    activeMap?.key,
+    playerPosition?.sceneX,
+    playerPosition?.sceneY,
+    fit.width,
+    fit.height,
+  ]);
+
   const markerLocations = useMemo(() => {
     if (activeMode !== 'ATLAS' || !region) return [];
     return fogVisible ? revealedLocations : region.locations;
@@ -206,6 +225,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
 
   function recenter() {
     if (activeMode === 'LOCAL' && playerPosition) {
+      setFollowingPlayer(true);
       setViewport(centerMapPoint(
         viewport,
         { x: 0, y: 0, width: activeMap!.gridWidth, height: activeMap!.gridHeight },
@@ -214,6 +234,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       ));
       return;
     }
+    setFollowingPlayer(false);
     if (localScene && activePlacement) {
       setViewport(centerMapPoint(
         viewport,
@@ -251,7 +272,12 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   function onPointerMove(event: JSX.TargetedPointerEvent<HTMLElement>) {
     if (!gestureRef.current.pointers.has(event.pointerId)) return;
     const point = pointerPoint(event);
-    setViewportState(gestureRef.current.move(event.pointerId, point.x, point.y));
+    const before = gestureRef.current.viewport;
+    const next = gestureRef.current.move(event.pointerId, point.x, point.y);
+    if (next.scale !== before.scale || next.panX !== before.panX || next.panY !== before.panY) {
+      setFollowingPlayer(false);
+    }
+    setViewportState(next);
     event.preventDefault();
   }
 
@@ -269,6 +295,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
 
   function onWheel(event: JSX.TargetedWheelEvent<HTMLElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
+    setFollowingPlayer(false);
     zoom(event.deltaY < 0 ? 1.18 : 1 / 1.18, { x: event.clientX - bounds.left, y: event.clientY - bounds.top });
     event.preventDefault();
   }

@@ -54,7 +54,7 @@ vi.mock('./gateway', () => ({
   }))
 }));
 
-import { action, bootstrap } from './gateway';
+import { action, bootstrap, events } from './gateway';
 import { App, catalogRefreshMarker, loadingModuleLabel } from './App';
 
 describe('production application shell', () => {
@@ -218,6 +218,53 @@ describe('production application shell', () => {
     expect(rootBack.defaultPrevented).toBe(true);
     expect(action).not.toHaveBeenCalledWith('BACK', {});
     expect(screen.getByText('POKÉDEX')).toBeTruthy();
+  });
+
+  it('lets an auto-opened battle replace an already open map', async () => {
+    let publishState: ((state: Bootstrap['state']) => void) | undefined;
+    vi.mocked(events).mockImplementationOnce(listener => {
+      publishState = listener;
+      return () => undefined;
+    });
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      catalog: {
+        ...fixture.catalog!,
+        species: [{
+          id: 1, dex: 1, name: 'BULBASAUR', typeIds: [], stats: null, description: null,
+          height: null, weight: null, learnset: [], learnsets: {}, normalizedLearnsets: {},
+          moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false,
+        }],
+      },
+    });
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
+    expect(screen.getByRole('region', { name: 'Interactive world map' })).toBeTruthy();
+
+    publishState?.({
+      ...fixture.state,
+      version: 2,
+      screen: 'BATTLE',
+      loading: { active: false, phase: 'COMPLETE', completedUnits: 0, totalUnits: 0 },
+      battle: {
+        opponents: [{
+          speciesId: 1,
+          level: 5,
+          typeIds: [],
+          rarity: { relativeTier: null, innateTier: null, baseStars: null, areaAdjustment: null, stars: null },
+          moves: [],
+        }],
+        targetIndex: 0,
+        targetMode: 'AUTOMATIC',
+        capabilities: {},
+        selectedMoveId: null,
+        effectiveness: null,
+        effectivenessKnown: false,
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText('BATTLE')).toBeTruthy());
+    expect(screen.queryByRole('region', { name: 'Interactive world map' })).toBeNull();
   });
 
   it('opens the capability report from Settings without opening memory capture', async () => {
