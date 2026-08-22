@@ -239,7 +239,7 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
 });
 
 test('local POI controls, labels, and zoom visibility remain coherent at Thor geometry', async ({ page }) => {
-  await page.setViewportSize({ width: 1240, height: 1080 });
+  await page.setViewportSize({ width: 1024, height: 768 });
   const localState = {
     ...state,
     currentAreaBaseId: 16,
@@ -247,7 +247,7 @@ test('local POI controls, labels, and zoom visibility remain coherent at Thor ge
     revealedAreaBaseIds: [16, 17],
     currentMapPosition: { x: 9, y: 9 },
     localMapPois: [
-      { key: 'house-player', localMapKey: 'local/16', baseAreaId: 16, tileX: 7, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "BRENDAN's HOUSE", service: null, itemId: null, itemName: null, destinationBaseAreaId: 256 },
+      { key: 'house-player', localMapKey: 'local/16', baseAreaId: 16, tileX: 7, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: 'Your House', service: null, itemId: null, itemName: null, destinationBaseAreaId: 256 },
       { key: 'house-birch', localMapKey: 'local/16', baseAreaId: 16, tileX: 12, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "PROF. BIRCH'S HOUSE", service: null, itemId: null, itemName: null, destinationBaseAreaId: 258 },
     ],
     localMapPoiPreferences: {
@@ -293,15 +293,18 @@ test('local POI controls, labels, and zoom visibility remain coherent at Thor ge
       background: style.backgroundColor,
       backdropFilter: style.backdropFilter,
       textShadow: style.textShadow,
+      padding: style.padding,
     };
   });
   expect(labelSurface.background).not.toBe('rgba(0, 0, 0, 0)');
   expect(labelSurface.backdropFilter).not.toBe('none');
   expect(labelSurface.textShadow).not.toBe('none');
+  expect(labelSurface.padding).toBe('3px 5px');
   const labelBoxes = await page.locator('.map-poi-label').evaluateAll(labels => labels.map(label => {
     const box = label.getBoundingClientRect();
-    return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+    return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, clipped: label.scrollWidth > label.clientWidth };
   }));
+  expect(labelBoxes.every(label => !label.clipped)).toBe(true);
   expect(labelBoxes[0].right <= labelBoxes[1].left || labelBoxes[1].right <= labelBoxes[0].left ||
     labelBoxes[0].bottom <= labelBoxes[1].top || labelBoxes[1].bottom <= labelBoxes[0].top).toBe(true);
   mkdirSync(artifactDir, { recursive: true });

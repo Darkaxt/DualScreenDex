@@ -21,6 +21,8 @@ interface LocalPoiMarker {
   y: number;
 }
 
+type PoiLabelPlacement = 'below' | 'above';
+
 const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
 const TRAINER_MARKER_PIXELS = 64;
 const DEFAULT_POI_PREFERENCES: LocalMapPoiPreferences = {
@@ -317,7 +319,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       stageRef.current?.clientHeight ?? 0,
     )) as LocalPoiMarker[];
   const stageBounds = stageRef.current?.getBoundingClientRect();
-  const visiblePoiLabelKeys = poiLabelsVisible
+  const visiblePoiLabelPlacements = poiLabelsVisible
     ? declutterPoiLabels(
       localPoiMarkers,
       renderedWidth,
@@ -327,7 +329,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       stageBounds?.height ?? 0,
       selectedPoiKey,
     )
-    : new Set<string>();
+    : new Map<string, PoiLabelPlacement>();
   const selectedPoi = localPoiMarkers.find(marker => marker.poi.key === selectedPoiKey)?.poi;
 
   return <section class="screen map-screen">
@@ -441,7 +443,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           onClick={() => setSelectedPoiKey(current => current === poi.key ? null : poi.key)}
         >
           <span class="map-poi-symbol" aria-hidden="true">{poiSymbol(poi)}</span>
-          {visiblePoiLabelKeys.has(poi.key) && <span class="map-poi-label">{poiDisplayLabel(poi)}</span>}
+          {visiblePoiLabelPlacements.has(poi.key) && <span class={`map-poi-label is-${visiblePoiLabelPlacements.get(poi.key)}`}>{poiDisplayLabel(poi)}</span>}
         </button>)}
       </div>
 
@@ -514,23 +516,28 @@ function declutterPoiLabels(
   selectedKey: string | null,
 ) {
   const labeled = markers.filter(marker => poiDisplayLabel(marker.poi));
-  if (stageWidth <= 0 || stageHeight <= 0) return new Set(labeled.map(marker => marker.poi.key));
-  const occupied: Array<{ left: number; top: number; right: number; bottom: number }> = [];
-  const visible = new Set<string>();
+  if (stageWidth <= 0 || stageHeight <= 0) return new Map(labeled.map(marker => [marker.poi.key, 'below' as const]));
+  const occupied: Array<{ left: number; top: number; right: number; bottom: number; centerX: number; centerY: number }> = [];
+  const visible = new Map<string, PoiLabelPlacement>();
   const ordered = [...labeled].sort((left, right) =>
     Number(right.poi.key === selectedKey) - Number(left.poi.key === selectedKey) || left.poi.key.localeCompare(right.poi.key));
   for (const marker of ordered) {
     const label = poiDisplayLabel(marker.poi)!;
     const centerX = stageWidth / 2 + viewport.panX + (marker.x / 100 - 0.5) * renderedWidth;
-    const top = stageHeight / 2 + viewport.panY + (marker.y / 100 - 0.5) * renderedHeight + 16;
-    const width = Math.min(150, Math.max(48, label.length * 7 + 12));
-    const bounds = { left: centerX - width / 2, top, right: centerX + width / 2, bottom: top + 24 };
-    const collides = occupied.some(other =>
+    const centerY = stageHeight / 2 + viewport.panY + (marker.y / 100 - 0.5) * renderedHeight;
+    const width = Math.min(210, Math.max(48, label.length * 9 + 10));
+    if (occupied.some(other => Math.abs(centerX - other.centerX) < 1 && Math.abs(centerY - other.centerY) < 1) && marker.poi.key !== selectedKey) continue;
+    const candidates = [
+      { placement: 'below' as const, left: centerX - width / 2, top: centerY + 16, right: centerX + width / 2, bottom: centerY + 40, centerX, centerY },
+      { placement: 'above' as const, left: centerX - width / 2, top: centerY - 40, right: centerX + width / 2, bottom: centerY - 16, centerX, centerY },
+    ];
+    const candidate = candidates.find(bounds => !occupied.some(other =>
       bounds.left < other.right + 4 && bounds.right + 4 > other.left &&
-      bounds.top < other.bottom + 4 && bounds.bottom + 4 > other.top);
-    if (collides && marker.poi.key !== selectedKey) continue;
-    occupied.push(bounds);
-    visible.add(marker.poi.key);
+      bounds.top < other.bottom + 4 && bounds.bottom + 4 > other.top));
+    if (!candidate && marker.poi.key !== selectedKey) continue;
+    const accepted = candidate ?? candidates[0];
+    occupied.push(accepted);
+    visible.set(marker.poi.key, accepted.placement);
   }
   return visible;
 }

@@ -995,9 +995,15 @@ object ApiViewBuilder {
     ): String? {
         val conditioned = trainerGender?.let(poi.displayNamesByTrainerGender::get)
         val unresolved = poi.displayNamesByTrainerGender.toSortedMap().values.firstOrNull()
-        return (conditioned ?: poi.displayName ?: unresolved)
-            ?.replace("{PLAYER}", trainerName?.takeIf(String::isNotBlank) ?: "PLAYER")
-            ?.let { value -> if (trainerName.isNullOrBlank()) value.replace("PLAYER's", "PLAYER'S") else value }
+        val template = conditioned ?: poi.displayName ?: unresolved ?: return null
+        val resolvedName = trainerName?.takeIf(String::isNotBlank)
+        return if (resolvedName != null) {
+            template.replace("{PLAYER}", resolvedName)
+        } else {
+            template
+                .replace(Regex("\\{PLAYER}'s", RegexOption.IGNORE_CASE), "Your")
+                .replace("{PLAYER}", "You")
+        }
     }
 
     private fun LocalMapCatalog.isDynamic(key: String): Boolean =

@@ -318,6 +318,34 @@ describe('optional local map presentation', () => {
     rect.mockRestore();
   });
 
+  it('places nearby house labels on opposite sides instead of hiding one', () => {
+    const bounds = {
+      x: 0, y: 0, top: 0, right: 1024, bottom: 650, left: 0,
+      width: 1024, height: 650,
+      toJSON: () => ({}),
+    } as DOMRect;
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(bounds);
+    const poiState = {
+      ...state,
+      currentMapPosition: { x: 12, y: 10 },
+      localMapPois: [
+        { key: 'player-house', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 10, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: 'Your House', service: null, itemId: null, itemName: null, destinationBaseAreaId: 0x100 },
+        { key: 'birch-house', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 12, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "Prof. Birch's House", service: null, itemId: null, itemName: null, destinationBaseAreaId: 0x102 },
+      ],
+      localMapPoiPreferences: {
+        showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
+        iconZoomThresholdPercent: 0, labelZoomThresholdPercent: 0,
+      },
+    } as State;
+    const { container } = render(<MapPage catalog={connectedCatalog} state={poiState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+
+    const labels = [...container.querySelectorAll('.map-poi-label')];
+    expect(labels).toHaveLength(2);
+    expect(labels.map(label => label.textContent).sort()).toEqual(["Prof. Birch's House", 'Your House']);
+    expect(labels.some(label => label.classList.contains('is-above'))).toBe(true);
+    rect.mockRestore();
+  });
+
   it('uses Local as the only map surface when playable geography is available', () => {
     const { container } = render(<MapPage
       catalog={localCatalog}

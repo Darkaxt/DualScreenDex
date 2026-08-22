@@ -200,9 +200,9 @@ class ApiViewBuilderTest {
             "local/0009/bg/2", outside.key, outside.baseAreaId, 7, 8,
             LocalMapPoiKind.PLACE,
             LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
-            displayName = "{PLAYER}'s HOUSE",
+            displayName = "{PLAYER}'s House",
             displayNamesByTrainerGender = mapOf(
-                0 to "{PLAYER}'s HOUSE",
+                0 to "{PLAYER}'s House",
                 1 to "PROF. BIRCH'S HOUSE",
             ),
             destinationBaseAreaId = 0x0100,
@@ -227,7 +227,7 @@ class ApiViewBuilderTest {
             catalog,
         ).localMapPois.single()
 
-        assertEquals("PLAYER'S HOUSE", view.displayName)
+        assertEquals("Your House", view.displayName)
     }
 
     @Test
