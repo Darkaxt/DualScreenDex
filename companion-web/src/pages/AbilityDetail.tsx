@@ -8,19 +8,27 @@ export function AbilityDetail({ catalog, state, abilityId, onBack }: { catalog: 
   const recruited = catalog.species.filter(species =>
     state.speciesState[species.id]?.caught && species.abilities.some(item => item.id === abilityId)
   );
+  const mechanics = userFacingAbilityMechanics(ability.mechanics);
   return <section class="screen ability-detail-screen">
     <Header title={ability.name} onBack={onBack} />
     <div class="ability-detail-content" data-scroll-region>
       <div class="paper-panel"><p class="eyebrow">EFFECT</p><p class="entry-copy">{ability.description || gameplayCopy.abilityUnavailable}</p></div>
-      {ability.mechanics.length > 0 && <div class="paper-panel"><p class="eyebrow">BATTLE EFFECTS</p><AbilityMechanics mechanics={ability.mechanics} /></div>}
+      {mechanics.length > 0 && <div class="paper-panel"><p class="eyebrow">BATTLE EFFECTS</p><AbilityMechanics mechanics={mechanics} /></div>}
       {recruited.length > 0 && <div class="paper-panel"><p class="eyebrow">KNOWN ON YOUR CAPTURES</p><div class="known-species">{recruited.map(species => <span key={species.id}>{species.name}</span>)}</div></div>}
     </div>
   </section>;
 }
 
 export function AbilityMechanics({ mechanics }: { mechanics: Catalog['species'][number]['abilities'][number]['mechanics'] }) {
-  return <div class="ability-mechanics">{mechanics.map(mechanic => {
+  return <div class="ability-mechanics">{userFacingAbilityMechanics(mechanics).map(mechanic => {
     const conditions = mechanic.conditions ?? [];
     return <div class="ability-mechanic" key={`${mechanic.kind}-${mechanic.label}-${conditions.map(condition => condition.kind).join('-')}`}><span>{conditions.length > 0 ? `${mechanic.label} · ${conditions.map(condition => condition.label).join(', ')}` : mechanic.label}</span><strong>{mechanic.value}</strong></div>;
   })}</div>;
+}
+
+export function userFacingAbilityMechanics(mechanics: Catalog['species'][number]['abilities'][number]['mechanics']) {
+  return mechanics.filter(mechanic => !(
+    mechanic.kind === 'BEHAVIOR' &&
+    (mechanic.label.trim().toUpperCase() === 'IMPLEMENTATION' || /source|script|engine|inactive/i.test(mechanic.value))
+  ));
 }

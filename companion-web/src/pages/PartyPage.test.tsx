@@ -30,6 +30,7 @@ describe('Party', () => {
     expect(occupied.querySelector('.party-slot-gender')?.textContent).toBe('♀');
     expect(occupied.querySelector('.party-slot-level')?.textContent).toBe('Lv 18');
     expect(occupied.querySelector('.party-slot-species')?.textContent).toBe('PIKACHU');
+    expect(occupied.querySelector('[aria-label="4 of 5 stars; ELITE"]')).toBeTruthy();
     const bars = occupied.querySelector('.party-slot-bars')!;
     expect(bars).toBeTruthy();
     expect(bars.querySelector('.party-hp-line')?.textContent).toContain('HP');
@@ -48,6 +49,7 @@ describe('Party', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: SPARK' }));
 
     expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy();
+    expect(screen.getAllByLabelText('4 of 5 stars; ELITE')).toHaveLength(2);
     expect(screen.getAllByText('Lv 18').length).toBeGreaterThan(0);
     expect(screen.getAllByText('31 / 45').length).toBeGreaterThan(0);
     expect(screen.getAllByText('PAR').length).toBeGreaterThan(0);
@@ -172,6 +174,7 @@ function partyState(knowledgeMode: State['settings']['knowledgeMode']): State {
         slot: 0, occupied: true, speciesId: 25, speciesName: 'PIKACHU', spriteUrl: '/api/sprites/species/25.png', typeIds: [13, 2],
         nickname: 'SPARK', level: 18, isEgg: false, gender: 'FEMALE', natureId: 3, nature: 'Adamant', abilityId: 9, abilityName: 'Static',
         heldItemId: null, heldItemName: null, hasHeldItem: true, currentHp: 31, maximumHp: 45, status: 'PAR', experienceProgress: .5,
+        rarity: { relativeTier: null, innateTier: 'ELITE', baseStars: 4, areaAdjustment: null, stars: 4, areaOutcome: 'AREA_UNAVAILABLE' },
         stats: { HP: 45, ATTACK: 28, DEFENSE: 22, SPEED: 38, 'SP. ATK': 30, 'SP. DEF': 26 },
         moves: [
           { slot: 0, moveId: 85, name: 'Thunderbolt', currentPp: 12, maximumPp: 15 },

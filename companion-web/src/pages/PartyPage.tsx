@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { Catalog, PartyMemberView, State, TypeInfo } from '../models';
 import { Header, TypeChip, uniqueTypeIds } from '../components';
 import { natureDetailFor } from '../natureDetails';
+import { RarityStars } from './BattlePage';
 
 interface PartyPageProps {
   catalog: Catalog;
@@ -77,6 +78,7 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
                 <strong>{displayName}</strong>
                 {gender && <i class="party-slot-gender" aria-label={member.gender ?? undefined}>{gender}</i>}
                 {member.level != null && <small class="party-slot-level">Lv {member.level}</small>}
+                {member.rarity && <RarityStars rarity={member.rarity} />}
               </span>
               {nicknameDiffers && <span class="party-slot-species">{member.speciesName}</span>}
               <span class="party-slot-bars">
@@ -109,6 +111,7 @@ function PartyDetail({ member, catalog, openMove, openAbility, openNature, openS
       <PartySprite member={member} large />
       <div><p class="eyebrow">SLOT {member.slot + 1}</p><h1>{member.nickname || member.speciesName || 'UNKNOWN PARTNER'}</h1>
         <div class="party-detail-meta">
+          {member.rarity && <RarityStars rarity={member.rarity} />}
           {member.level != null && <strong>Lv {member.level}</strong>}
           {member.currentHp != null && member.maximumHp != null && <strong>{member.currentHp} / {member.maximumHp}</strong>}
           {member.status && <PartyStatusArtwork status={member.status} />}
@@ -213,5 +216,6 @@ function normalizeParty(party: PartyMemberView[] | undefined): PartyMemberView[]
     slot, occupied: false, speciesId: null, speciesName: null, spriteUrl: null, typeIds: [], nickname: null, level: null,
     isEgg: false, gender: null, nature: null, abilityId: null, abilityName: null, heldItemId: null, heldItemName: null, hasHeldItem: null,
     currentHp: null, maximumHp: null, status: null, experienceProgress: null, stats: {}, moves: [],
+    rarity: null,
   });
 }

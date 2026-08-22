@@ -197,6 +197,7 @@ object AbilityMechanicsMaterializer {
         AbilityMechanic(
             kind = when (kind) {
                 SourceBackedAbilityMechanicKind.BEHAVIOR -> AbilityMechanicKind.BEHAVIOR
+                SourceBackedAbilityMechanicKind.ACTIVATION_THRESHOLD -> AbilityMechanicKind.ACTIVATION_THRESHOLD
                 SourceBackedAbilityMechanicKind.MULTIPLIER -> AbilityMechanicKind.MULTIPLIER
                 SourceBackedAbilityMechanicKind.STAT_STAGE -> AbilityMechanicKind.STAT_STAGE
                 SourceBackedAbilityMechanicKind.STATUS_CURE -> AbilityMechanicKind.STATUS_CURE

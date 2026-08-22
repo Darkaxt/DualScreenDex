@@ -37,7 +37,7 @@ describe('ability detail', () => {
     expect(screen.queryByText(/ROM ABILITY|ROM-VALIDATED/i)).toBeNull();
     expect(screen.getByText('BATTLE EFFECTS')).toBeTruthy();
     expect(screen.queryByText(/IMPLEMENTATION|KNOWN VALUES/)).toBeNull();
-    expect(screen.getByText('Compiled source behavior')).toBeTruthy();
+    expect(screen.queryByText('Compiled source behavior')).toBeNull();
     expect(screen.getByText('HP ≤ 1/3')).toBeTruthy();
     expect(screen.getByText('Fire move power ×1.5')).toBeTruthy();
     expect(screen.getByText('Power · Special moves')).toBeTruthy();

@@ -279,6 +279,7 @@ export interface State {
   speciesState: Record<number, SpeciesState>;
   observedMoves: Record<number, { moveId: number; frequency: number }[]>;
   trainer?: TrainerView | null;
+  trainerAvatarUrl?: string | null;
   party?: PartyMemberView[];
   battle: null | {
     opponents: { speciesId: number; level: number; typeIds: number[]; rarity: Rarity; moves: { moveId: number; frequency: number }[] }[];
@@ -344,6 +345,7 @@ export interface PartyMemberView {
   maximumHp: number | null;
   status: string | null;
   experienceProgress: number | null;
+  rarity?: Rarity | null;
   stats: Record<string, number>;
   moves: { slot: number; moveId: number | null; name: string | null; currentPp: number | null; maximumPp: number | null }[];
 }

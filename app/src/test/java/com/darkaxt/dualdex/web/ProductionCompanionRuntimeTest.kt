@@ -814,10 +814,43 @@ class ProductionCompanionRuntimeTest {
 
         assertEquals("Modern Emerald.gba", restored.state.catalogName)
         assertEquals("CACHE_REOPEN", restored.state.loading.phase)
+        assertEquals(1, restored.state.loading.completedUnits)
+        assertEquals(1, restored.state.loading.totalUnits)
         assertEquals(catalog.romSha256, restored.catalog?.hash)
         assertFalse(runtime.restoreCatalog("b".repeat(64)))
         assertNull(runtime.bootstrap().catalog)
         assertFalse(runtime.bootstrap().state.catalogReady)
+        runtime.close()
+    }
+
+    @Test
+    fun reopeningAnAlreadyActiveCatalogDoesNotRestartSetupOrRewriteTheCache() {
+        val bytes = ByteArray(0xC0)
+        "POKEMON EMER".toByteArray().copyInto(bytes, 0xA0)
+        val rom = RomImage(bytes)
+        val catalog = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val repository = FakeCatalogRepository(
+            StoredCatalog(
+                catalog,
+                CatalogSourceMetadata.direct("Modern Emerald.gba", rom.size, "POKEMON EMER"),
+                CatalogWriteProgress.complete(),
+                committedSections = emptySet(),
+                writtenAtEpochMs = 1,
+            ),
+        )
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = repository,
+        )
+
+        assertTrue(runtime.restoreCatalog(rom.sha256))
+        val version = runtime.bootstrap().state.version
+        var completion: Result<Unit>? = null
+        runtime.load(LoadedRom("Modern Emerald.gba", rom)) { completion = it }
+
+        assertTrue(requireNotNull(completion).isSuccess)
+        assertEquals(0, repository.writeCalls)
+        assertEquals(version, runtime.bootstrap().state.version)
         runtime.close()
     }
 
@@ -1933,11 +1966,15 @@ class ProductionCompanionRuntimeTest {
     )
 
     private class FakeCatalogRepository(private val stored: StoredCatalog) : CatalogRepository {
+        var writeCalls = 0
+
         override fun write(
             catalog: ParsedCatalog,
             source: CatalogSourceMetadata,
             progress: CatalogWriteProgress,
-        ) = Unit
+        ) {
+            writeCalls++
+        }
 
         override fun readComplete(sha256: String): StoredCatalog? = stored.takeIf { it.catalog.romSha256 == sha256 }
 

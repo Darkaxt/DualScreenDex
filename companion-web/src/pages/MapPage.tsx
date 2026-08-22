@@ -2,7 +2,7 @@ import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DexIcon, FilterIcon, MapIcon, SettingsIcon } from '../components';
 import { GameClockIndicator } from '../GameClockIndicator';
-import { anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, type MapViewport } from '../mapEngine';
+import { anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, shouldGlideCamera, type MapViewport } from '../mapEngine';
 import type { Catalog, LocalMapPoiPreferences, LocalMapPoiView, State, WorldMapLocation, WorldMapRegion } from '../models';
 
 interface MapPageProps {
@@ -54,7 +54,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const [selectedKey, setSelectedKey] = useState(() => focusedLocation?.key ?? '');
   const activeMode: MapMode = localScene || localMap ? 'LOCAL' : 'ATLAS';
   const activeMap = localScene ?? localMap ?? region;
-  const playerAvatarUrl = state.trainer?.avatarUrl;
+  const playerAvatarUrl = state.trainerAvatarUrl ?? state.trainer?.avatarUrl;
   const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
   const [fit, setFit] = useState({ width: activeMap?.pixelWidth ?? 1, height: activeMap?.pixelHeight ?? 1, scale: 1 });
   const fogVisible = activeMode === 'ATLAS' && state.settings.knowledgeMode !== 'DISCOVERED';
@@ -62,6 +62,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const [poiFiltersOpen, setPoiFiltersOpen] = useState(false);
   const [selectedPoiKey, setSelectedPoiKey] = useState<string | null>(null);
   const [followingPlayer, setFollowingPlayer] = useState(false);
+  const [cameraGliding, setCameraGliding] = useState(false);
   const stageRef = useRef<HTMLElement>(null);
   const fogRef = useRef<HTMLCanvasElement>(null);
   const gestureRef = useRef(new GestureTracker(HOME_VIEWPORT));
@@ -70,6 +71,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const initializedSceneKeyRef = useRef<string | null>(null);
   const allowMarkerSelectionRef = useRef(true);
   const pressedMarkerRef = useRef(new Map<number, string>());
+  const lastFollowedPositionRef = useRef<{ mapKey: string; x: number; y: number } | null>(null);
   const revealedBaseIds = useMemo(() => new Set([
     ...(state.revealedAreaBaseIds ?? []),
     ...(currentLocation?.baseAreaIds ?? []),
@@ -189,6 +191,20 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
 
   useEffect(() => {
     if (!followingPlayer || activeMode !== 'LOCAL' || !activeMap || !playerPosition) return;
+    const previous = lastFollowedPositionRef.current;
+    setCameraGliding(
+      previous?.mapKey === activeMap.key && shouldGlideCamera(
+        { x: previous.x, y: previous.y },
+        { x: playerPosition.sceneX, y: playerPosition.sceneY },
+        activeMap.gridWidth,
+        activeMap.gridHeight,
+      ),
+    );
+    lastFollowedPositionRef.current = {
+      mapKey: activeMap.key,
+      x: playerPosition.sceneX,
+      y: playerPosition.sceneY,
+    };
     setViewport(centerMapPoint(
       gestureRef.current.viewport,
       { x: 0, y: 0, width: activeMap.gridWidth, height: activeMap.gridHeight },
@@ -226,6 +242,12 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   function recenter() {
     if (activeMode === 'LOCAL' && playerPosition) {
       setFollowingPlayer(true);
+      setCameraGliding(false);
+      lastFollowedPositionRef.current = {
+        mapKey: activeMap!.key,
+        x: playerPosition.sceneX,
+        y: playerPosition.sceneY,
+      };
       setViewport(centerMapPoint(
         viewport,
         { x: 0, y: 0, width: activeMap!.gridWidth, height: activeMap!.gridHeight },
@@ -235,6 +257,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       return;
     }
     setFollowingPlayer(false);
+    setCameraGliding(false);
+    lastFollowedPositionRef.current = null;
     if (localScene && activePlacement) {
       setViewport(centerMapPoint(
         viewport,
@@ -276,6 +300,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     const next = gestureRef.current.move(event.pointerId, point.x, point.y);
     if (next.scale !== before.scale || next.panX !== before.panX || next.panY !== before.panY) {
       setFollowingPlayer(false);
+      setCameraGliding(false);
+      lastFollowedPositionRef.current = null;
     }
     setViewportState(next);
     event.preventDefault();
@@ -296,6 +322,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   function onWheel(event: JSX.TargetedWheelEvent<HTMLElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
     setFollowingPlayer(false);
+    setCameraGliding(false);
+    lastFollowedPositionRef.current = null;
     zoom(event.deltaY < 0 ? 1.18 : 1 / 1.18, { x: event.clientX - bounds.left, y: event.clientY - bounds.top });
     event.preventDefault();
   }
@@ -389,7 +417,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       onPointerCancel={event => finishPointer(event, true)}
       onWheel={onWheel}
     >
-      <div class="map-plane map-framed-plane" style={{ width: renderedWidth, height: renderedHeight, transform }}>
+      <div class={`map-plane map-framed-plane ${cameraGliding ? 'is-camera-gliding' : ''}`} style={{ width: renderedWidth, height: renderedHeight, transform }}>
         {localScene
           ? visibleScenePlacements.map(placement => <img
             key={placement.localMapKey}

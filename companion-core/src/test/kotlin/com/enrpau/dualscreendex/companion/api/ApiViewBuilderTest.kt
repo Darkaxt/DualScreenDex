@@ -337,6 +337,7 @@ class ApiViewBuilderTest {
                     stableLocation = "party-0",
                     speciesId = 25,
                     level = 18,
+                    ivs = List(6) { 31 },
                     experience = 9000,
                     details = PartyMemberDetails(
                         nickname = "SPARK",
@@ -360,6 +361,7 @@ class ApiViewBuilderTest {
 
         assertEquals("MAY", state.trainer?.name)
         assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainer?.avatarUrl)
+        assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainerAvatarUrl)
         assertEquals(listOf(true, false, true), state.trainer?.badges?.take(3)?.map { it.earned })
         assertEquals("/api/trainer-assets/trainer%2Fbadge%2F1.png", state.trainer?.badges?.first()?.imageUrl)
         assertEquals(6, state.party.size)
@@ -381,8 +383,31 @@ class ApiViewBuilderTest {
         assertNull(lead.heldItemName)
         assertEquals(true, lead.hasHeldItem)
         assertEquals("PAR", lead.status)
+        assertEquals("ACE", lead.rarity?.innateTier)
+        assertEquals(5.0, lead.rarity?.stars)
         assertEquals(false, state.party[1].occupied)
         assertNull(state.party[1].hasHeldItem)
+    }
+
+    @Test
+    fun exposesTheLiveTrainerAvatarBeforeAFullSaveBackedTrainerCardIsAvailable() {
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            trainerAssets = TrainerAssetCatalog(
+                avatarAssetKeys = mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"),
+                assets = mapOf(
+                    "trainer/avatar/male" to RgbaSprite(64, 64, IntArray(64 * 64)),
+                    "trainer/avatar/female" to RgbaSprite(64, 64, IntArray(64 * 64)),
+                ),
+            ),
+        )
+
+        val state = ApiViewBuilder.state(AppSnapshot(trainerIdentity = TrainerIdentity("MAY", 1)), catalog)
+
+        assertNull(state.trainer)
+        assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainerAvatarUrl)
     }
 
     @Test

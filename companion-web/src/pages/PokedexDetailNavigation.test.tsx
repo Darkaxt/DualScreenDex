@@ -40,10 +40,7 @@ describe('Pokédex evolution navigation', () => {
     const avatarUrl = '/api/trainer-assets/trainer%2Favatar%2Ffemale.png';
     render(<PokedexDetail
       catalog={{ ...catalog, species: catalog.species.map(species => species.id === 5 ? { ...species, height: 17 } : species) }}
-      state={{ ...state, trainer: {
-        name: 'MAY', gender: 'FEMALE', publicTrainerId: 12345, money: 0, playTimeHours: 0, playTimeMinutes: 0,
-        dexSeen: 1, dexCaught: 1, stars: 0, avatarUrl, badges: [],
-      } }}
+      state={{ ...state, trainer: null, trainerAvatarUrl: avatarUrl }}
       send={vi.fn()}
       tab="ENTRY"
       setTab={vi.fn()}

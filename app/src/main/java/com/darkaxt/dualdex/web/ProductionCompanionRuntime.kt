@@ -157,6 +157,10 @@ class ProductionCompanionRuntime(
     }
 
     private fun loadInternal(name: String, rom: RomImage, onComplete: ((Result<Unit>) -> Unit)?) {
+        if (activeCatalogMatches(rom.sha256)) {
+            notifyCompletion(onComplete, Result.success(Unit))
+            return
+        }
         val header = RomHeaderReader.read(rom)
         val source = CatalogSourceMetadata.fromDisplayName(name, rom.size, header.title)
         val generation = beginCatalogTransition(rom.sha256, name, CatalogWorkModule.ROM_IDENTITY.name)
@@ -168,7 +172,6 @@ class ProductionCompanionRuntime(
                         notifyCompletion(onComplete, Result.failure(IllegalStateException("catalog load was superseded")))
                         return@execute
                     }
-                    catalogRepository.write(cached.catalog, source, CatalogWriteProgress.complete())
                     publishReopened(generation, name, cached.catalog)
                     notifyCompletion(onComplete, Result.success(Unit))
                     return@execute
@@ -202,7 +205,7 @@ class ProductionCompanionRuntime(
         gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
         gateway.dispatch(
             CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 5, totalUnits = 5),
+                CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 1, totalUnits = 1),
                 name,
             ),
         )
@@ -967,7 +970,7 @@ class ProductionCompanionRuntime(
             onCatalogCommitted(reopened.romSha256, name)
             gateway.dispatch(
                 CompanionAction.CatalogLoadingChanged(
-                    CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 5, totalUnits = 5),
+                    CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 1, totalUnits = 1),
                     name,
                 ),
             )
@@ -983,6 +986,13 @@ class ProductionCompanionRuntime(
     private fun notifyCompletion(callback: ((Result<Unit>) -> Unit)?, result: Result<Unit>) {
         if (callback != null) runCatching { callback(result) }
     }
+
+    @Synchronized
+    private fun activeCatalogMatches(sha256: String): Boolean =
+        catalog?.romSha256.equals(sha256, ignoreCase = true) && gateway.bootstrap().catalogReady
+
+    private fun catalogTransitionUnits(phase: String): Int =
+        if (phase == "CACHE_REOPEN") 1 else CatalogWorkModule.entries.size
 
     @Synchronized
     private fun beginCatalogTransition(romSha256: String?, name: String? = null, phase: String): Long {
@@ -1001,7 +1011,7 @@ class ProductionCompanionRuntime(
                     active = true,
                     phase = phase,
                     completedUnits = 0,
-                    totalUnits = CatalogWorkModule.entries.size,
+                    totalUnits = catalogTransitionUnits(phase),
                 ),
                 name,
             ),
@@ -1032,7 +1042,7 @@ class ProductionCompanionRuntime(
                     active = false,
                     phase = phase,
                     completedUnits = 0,
-                    totalUnits = if (phase == "IDLE") 0 else CatalogWorkModule.entries.size,
+                    totalUnits = if (phase == "IDLE") 0 else catalogTransitionUnits(phase),
                 ),
             ),
         )

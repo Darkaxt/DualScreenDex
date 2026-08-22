@@ -197,7 +197,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       {showDevelopmentTools && <div class="device-sensor" />}
       <div class="device-screen">
         <div class="screen-host">{screen}</div>
-        {catalog && state.loading.active && <div class="loading-indicator" role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
+        {catalog && state.loading.active && <div class={`loading-indicator ${loadingOriginClass(state.loading)}`} role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
       </div>
     </div>
   </main>;
@@ -247,6 +247,11 @@ export function loadingModuleLabel(phase: string): string {
   return labels[phase] ?? 'Preparing your companion';
 }
 
+export function loadingOriginClass(loading: State['loading']): string {
+  if (!loading.active) return '';
+  return loading.phase === 'CACHE_REOPEN' ? 'loading-origin-cache' : 'loading-origin-parse';
+}
+
 function Welcome({ busy, loading, loadingLabel, error, onUpload, openSetup }: { busy: boolean; loading: State['loading']; loadingLabel: string; error: string | null; onUpload: (file: File) => void; openSetup: () => void }) {
   const active = busy || loading.active;
   return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><h1>DUALDEX</h1>{active
@@ -257,7 +262,7 @@ function Welcome({ busy, loading, loadingLabel, error, onUpload, openSetup }: { 
 function WelcomeLoadingProgress({ label, loading }: { label: string; loading: State['loading'] }) {
   const determinate = loading.active && loading.totalUnits > 0;
   const ratio = determinate ? Math.max(0, Math.min(1, loading.completedUnits / loading.totalUnits)) : 0;
-  return <div class="welcome-loading" role="status" aria-label={label}>
+  return <div class={`welcome-loading ${loadingOriginClass(loading)}`} role="status" aria-label={label}>
     <strong>{label}</strong>
     <div
       class={`welcome-progress ${determinate ? '' : 'is-indeterminate'}`}

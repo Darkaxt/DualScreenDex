@@ -117,8 +117,9 @@ button { cursor: pointer; }
 .party-slot-heading strong, .party-slot-heading small, .party-slot-heading i, .party-slot-species { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .party-slot-heading strong { grid-column: 1; grid-row: 1; font-size: clamp(14px, 2.93vw, 30px); letter-spacing: .015em; }
 .party-slot-heading small { grid-column: 1; grid-row: 2; margin-top: 3px; color: var(--muted); font-size: clamp(10px, 2.06vw, 21px); font-weight: 900; }
-.party-slot-gender { grid-column: 2; grid-row: 1 / 3; align-self: center; color: #3976bd; font-size: clamp(12px, 2.2vw, 22.5px); font-style: normal; font-weight: 950; }
+.party-slot-gender { grid-column: 2; grid-row: 1; align-self: center; color: #3976bd; font-size: clamp(12px, 2.2vw, 22.5px); font-style: normal; font-weight: 950; }
 .party-slot-gender[aria-label="FEMALE"] { color: #c45c83; }
+.party-slot-heading > .rarity-stars { grid-column: 2; grid-row: 2; align-self: center; font-size: clamp(.66rem, 1.45vw, .95rem); }
 .party-slot-species { grid-row: 2; display: block; margin-top: 3px; color: var(--muted); font-size: clamp(8px, 1.56vw, 16px); font-weight: 850; letter-spacing: .07em; }
 .party-slot-bars { grid-row: 3; min-width: 0; display: grid; grid-template-columns: 1fr; margin-top: 9px; }
 .party-hp-line { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 7px; margin-top: 4px; }
@@ -151,6 +152,7 @@ button { cursor: pointer; }
 .party-detail > header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding-bottom: 10px; border-bottom: 1px solid #c5ccb5; }
 .party-detail h1 { min-width: 0; margin: 1px 0 7px; overflow-wrap: anywhere; font-family: Georgia, serif; font-size: 1.3em; }
 .party-detail-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.party-detail-meta > .rarity-stars { align-self: center; margin-right: 3px; font-size: clamp(.85rem, 1.8vw, 1.05rem); }
 .party-detail-meta strong, .party-detail-meta b { padding: 3px 6px; color: #edf1d4; background: var(--forest-700); font-size: .61em; }
 .party-detail-meta b { background: #8b4a26; }
 .party-fainted-mark { background: #574f55 !important; }
@@ -348,6 +350,8 @@ button { cursor: pointer; }
 
 .empty-state { margin: auto; max-width: 360px; padding: 30px 24px; text-align: center; color: #657064; }.empty-state strong { display: block; color: #415345; letter-spacing: .08em; }.empty-state p { font-family: Georgia, serif; line-height: 1.4; }
 .welcome-screen { place-items: center; align-content: center; padding: 36px; text-align: center; color: #e9edd0; background: radial-gradient(circle at 50% 42%, #1c5d47, var(--forest-950) 70%); }.welcome-screen h1 { margin: 0; color: var(--acid); font: 900 3em/1 Georgia, serif; letter-spacing: -.06em; }.welcome-screen > p:not(.eyebrow) { max-width: 390px; line-height: 1.5; color: #d4dbc0; }.welcome-screen small { color: #99aa99; }.welcome-mark { position: relative; width: 78px; height: 78px; margin-bottom: 18px; border: 5px solid var(--acid); border-radius: 50%; }.welcome-mark::before { content: ""; position: absolute; top: 32px; left: -5px; right: -5px; height: 5px; background: var(--acid); }.welcome-mark span { position: absolute; width: 24px; height: 24px; top: 22px; left: 22px; border: 5px solid var(--acid); border-radius: 50%; background: var(--forest-950); z-index: 1; }.welcome-actions { display: flex; gap: 8px; }.welcome-upload, .file-picker, .welcome-actions button { position: relative; display: grid; place-items: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--acid); color: var(--acid); background: transparent; font-size: .74em; font-weight: 900; letter-spacing: .08em; cursor: pointer; }.welcome-actions button { color: var(--forest-950); background: var(--acid); }.welcome-upload input, .file-picker input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }.welcome-loading { width: min(360px, 78vw); display: grid; gap: 8px; margin-top: 22px; color: #eff7cf; text-align: left; }.welcome-loading strong { font-size: .68em; letter-spacing: .08em; }.welcome-progress { height: 10px; overflow: hidden; border: 1px solid #d9f47a88; background: #071e18cc; box-shadow: inset 0 0 0 1px #0007; }.welcome-progress > span { height: 100%; display: block; background: linear-gradient(90deg, #88a94b, var(--acid)); transition: width .2s ease; }.welcome-progress.is-indeterminate > span { width: 38%; animation: welcome-progress-scan 1.1s ease-in-out infinite alternate; } @keyframes welcome-progress-scan { from { translate: -100% 0; } to { translate: 265% 0; } }.welcome-error { max-width: 390px; margin-top: 10px; color: #ffb6ac; font-size: .75em; }
+.loading-origin-parse > strong, .loading-indicator.loading-origin-parse > span { color: #ff8b85; }
+.loading-origin-cache > strong, .loading-indicator.loading-origin-cache > span { color: #ffe066; }
 
 /* The Thor is a high-resolution six-inch display: keep secondary copy physically readable. */
 .setting-note, .range-setting span { font-size: .85em; }
@@ -710,6 +714,8 @@ button { cursor: pointer; }
 .map-stage::before { content: ""; position: absolute; inset: 0; z-index: 0; opacity: .15; pointer-events: none; background-image: linear-gradient(#96b26f22 1px, transparent 1px), linear-gradient(90deg, #96b26f22 1px, transparent 1px), radial-gradient(circle at center, #274d35 0, transparent 66%); background-size: 24px 24px, 24px 24px, auto; }
 .map-stage.is-manipulating { cursor: grabbing; }
 .map-plane { position: absolute; z-index: 1; left: 50%; top: 50%; overflow: hidden; background: #000; transform-origin: center; }.map-framed-plane { box-shadow: 0 0 0 4px #6b4728, 0 12px 38px #000; }
+.map-plane.is-camera-gliding { transition: transform 140ms linear; }
+@media (prefers-reduced-motion: reduce) { .map-plane.is-camera-gliding { transition: none; } }
 .map-plane > img, .map-fog { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; pointer-events: none; }
 .map-plane > img.map-scene-tile { inset: auto; z-index: 1; }
 .map-scene-placement-fog { position: absolute; z-index: 2; background: #000; pointer-events: none; }

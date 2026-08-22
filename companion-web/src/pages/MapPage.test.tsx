@@ -514,6 +514,15 @@ describe('optional local map presentation', () => {
       onOpenSettings={vi.fn()}
     />);
     await waitFor(() => expect(Number(stage.dataset.panX)).toBeCloseTo(-(((19.5 / 44) - 0.5) * 1240 * Number(stage.dataset.scale)), 5));
+    expect(view.container.querySelector('.map-plane')?.classList.contains('is-camera-gliding')).toBe(true);
+
+    view.rerender(<MapPage
+      catalog={connectedCatalog}
+      state={{ ...state, currentMapPosition: { x: 1, y: 18 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    await waitFor(() => expect(view.container.querySelector('.map-plane')?.classList.contains('is-camera-gliding')).toBe(false));
 
     fireEvent.wheel(stage, { deltaY: -1, clientX: 400, clientY: 300 });
     const manuallyPannedX = Number(stage.dataset.panX);

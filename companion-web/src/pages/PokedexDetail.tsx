@@ -52,7 +52,7 @@ export function PokedexDetail({
       {!unlocked && !observedOnly && displayTab !== 'AREA' && <div class="paper-panel withheld"><strong>{gameplayCopy.dataUnavailable}</strong><p>{gameplayCopy.catchForFullData}</p></div>}
       {unlocked && displayTab === 'ENTRY' && <>
         <div class="paper-panel"><p class="eyebrow">POKÉDEX ENTRY</p><p class="entry-copy">{species.description || gameplayCopy.pokedexUnavailable}</p><div class="fact-grid"><span><small>HEIGHT</small><strong>{formatHeight(species.height, catalog.platform)}</strong></span><span><small>WEIGHT</small><strong>{formatWeight(species.weight, catalog.platform)}</strong></span></div></div>
-        <HeightComparison species={species} platform={catalog.platform} knowledge={identityKnowledge} trainerAvatarUrl={state.trainer?.avatarUrl ?? null} />
+        <HeightComparison species={species} platform={catalog.platform} knowledge={identityKnowledge} trainerAvatarUrl={state.trainerAvatarUrl ?? state.trainer?.avatarUrl ?? null} />
       </>}
       {unlocked && displayTab === 'STATS' && <div class="paper-panel">
         <div class="section-heading"><div><p class="eyebrow">BASE STATS + INNATE RANGE</p><p>Lv 50 projection · no EV/stat experience · neutral nature where applicable.</p></div><strong>BST {baseStatSummary(species.stats)}</strong></div>

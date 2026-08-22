@@ -11,6 +11,12 @@ export interface MapViewport {
 export interface MapPoint { x: number; y: number }
 export interface MapRect extends MapPoint { width: number; height: number }
 
+export function shouldGlideCamera(previous: MapPoint | null, next: MapPoint, gridWidth: number, gridHeight: number): boolean {
+  if (!previous || gridWidth <= 0 || gridHeight <= 0) return false;
+  const maximumContinuousDistance = Math.max(2, Math.min(gridWidth, gridHeight) / 4);
+  return Math.hypot(next.x - previous.x, next.y - previous.y) <= maximumContinuousDistance;
+}
+
 export function clampScale(value: number, maximumScale = MAX_MAP_SCALE): number {
   if (!Number.isFinite(value)) return MIN_MAP_SCALE;
   return Math.min(maximumScale, Math.max(MIN_MAP_SCALE, value));

@@ -47,7 +47,7 @@ function Attack({ catalog, move, state, openMove }: { catalog: Catalog; move?: M
   </div>;
 }
 
-function RarityStars({ rarity }: { rarity: RarityModel }) {
+export function RarityStars({ rarity }: { rarity: RarityModel }) {
   if (rarity.stars == null || rarity.innateTier == null) return null;
   const rating = formatStars(rarity.stars);
   const title = [rarity.relativeTier, rarity.innateTier].filter(Boolean).join(' ');

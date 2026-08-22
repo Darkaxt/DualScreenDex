@@ -101,7 +101,7 @@ class AbilityMechanicsMaterializerLiveRomTest {
     }
 
     @Test
-    fun `all five official retail catalogs publish every source-backed behavior and only decoded numeric mechanics`() {
+    fun `all five official retail catalogs publish behavior plus validated numeric mechanics`() {
         listOf(
             Control(
                 "Ruby",
@@ -164,8 +164,15 @@ class AbilityMechanicsMaterializerLiveRomTest {
                 result.mechanicsByAbility.getValue(74).filterNot { it.kind.name == "BEHAVIOR" },
             )
             assertEquals(
+                listOf(
+                    AbilityMechanic(AbilityMechanicKind.ACTIVATION_THRESHOLD, "Activation", "HP ≤ 1/3", 1, 3),
+                    AbilityMechanic(AbilityMechanicKind.MULTIPLIER, "Power", "Grass move power ×1.5", 3, 2),
+                ),
+                result.mechanicsByAbility.getValue(65).filterNot { it.kind.name == "BEHAVIOR" },
+            )
+            assertEquals(
                 control.name,
-                setOf(37, 74),
+                setOf(37, 65, 66, 67, 68, 74),
                 result.mechanicsByAbility.filterValues { mechanics ->
                     mechanics.any { it.kind.name != "BEHAVIOR" }
                 }.keys,

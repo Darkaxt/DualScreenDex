@@ -55,7 +55,7 @@ vi.mock('./gateway', () => ({
 }));
 
 import { action, bootstrap, events } from './gateway';
-import { App, catalogRefreshMarker, loadingModuleLabel } from './App';
+import { App, catalogRefreshMarker, loadingModuleLabel, loadingOriginClass } from './App';
 
 describe('production application shell', () => {
   beforeEach(() => {
@@ -146,6 +146,7 @@ describe('production application shell', () => {
     render(<App />);
 
     const loading = await screen.findByRole('status', { name: 'Checking the game' });
+    expect(loading.classList.contains('loading-origin-parse')).toBe(true);
     expect(loading.textContent).toBe('Checking the game');
     expect(loading.textContent).not.toContain('%');
     const progress = screen.getByRole('progressbar', { name: 'Checking the game' });
@@ -155,6 +156,28 @@ describe('production application shell', () => {
     expect(screen.queryByText('LOAD ROM OR ZIP')).toBeNull();
     expect(screen.queryByRole('button', { name: 'CONNECT RETROARCH' })).toBeNull();
     expect(screen.queryByText('Choose a Pokémon game to begin.')).toBeNull();
+  });
+
+  it('marks a persisted catalog reopen in yellow without changing progress semantics', async () => {
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      catalog: null,
+      state: {
+        ...fixture.state,
+        version: 2,
+        catalogReady: false,
+        loading: { active: true, phase: 'CACHE_REOPEN', completedUnits: 0, totalUnits: 1 },
+      },
+    });
+
+    render(<App />);
+
+    const loading = await screen.findByRole('status', { name: 'Opening your game guide' });
+    expect(loading.classList.contains('loading-origin-cache')).toBe(true);
+    expect(loading.classList.contains('loading-origin-parse')).toBe(false);
+    const progress = screen.getByRole('progressbar', { name: 'Opening your game guide' });
+    expect(progress.getAttribute('aria-valuemax')).toBe('1');
+    expect(progress.getAttribute('aria-valuenow')).toBe('0');
   });
 
   it('shows indeterminate companion progress while bootstrap is pending', async () => {
@@ -186,6 +209,9 @@ describe('production application shell', () => {
     expect(loadingModuleLabel('CATALOG_STORAGE')).toBe('Saving your game guide');
     expect(loadingModuleLabel('CACHE_REOPEN')).toBe('Opening your game guide');
     expect(loadingModuleLabel('FUTURE_PHASE')).toBe('Preparing your companion');
+    expect(loadingOriginClass({ active: true, phase: 'ROM_IDENTITY', completedUnits: 0, totalUnits: 11 })).toBe('loading-origin-parse');
+    expect(loadingOriginClass({ active: true, phase: 'CACHE_REOPEN', completedUnits: 0, totalUnits: 1 })).toBe('loading-origin-cache');
+    expect(loadingOriginClass({ active: false, phase: 'COMPLETE', completedUnits: 11, totalUnits: 11 })).toBe('');
   });
 
   it('keeps technical failures out of normal screens', async () => {

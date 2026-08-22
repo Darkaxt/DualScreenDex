@@ -47,14 +47,14 @@ object SourceBackedAbilityMechanicsResolver {
             else -> return emptyList()
         }
         if (OFFICIAL_NAMES.any { (id, expected) -> names[id] != expected }) return emptyList()
-        return behaviorMechanics(masks)
+        return behaviorMechanics(masks) + starterBoostMechanics()
     }
 
     private fun modernProfile(names: Map<Int, String>): List<SourceBackedAbilityMechanic> {
         if (MODERN_SENTINELS.any { (id, expected) -> names[id] != expected.uppercase(Locale.ROOT) }) {
             return emptyList()
         }
-        return behaviorMechanics(MODERN_BEHAVIOR_MASKS) + listOf(
+        return behaviorMechanics(MODERN_BEHAVIOR_MASKS) + starterBoostMechanics() + listOf(
             SourceBackedAbilityMechanic(
                 22,
                 SourceBackedAbilityMechanicKind.STAT_STAGE,
@@ -98,6 +98,32 @@ object SourceBackedAbilityMechanicsResolver {
                 1,
                 1,
                 "Damaging Normal-type moves",
+            ),
+        )
+    }
+
+    private fun starterBoostMechanics(): List<SourceBackedAbilityMechanic> = listOf(
+        65 to "Grass",
+        66 to "Fire",
+        67 to "Water",
+        68 to "Bug",
+    ).flatMap { (abilityId, type) ->
+        listOf(
+            SourceBackedAbilityMechanic(
+                abilityId,
+                SourceBackedAbilityMechanicKind.ACTIVATION_THRESHOLD,
+                "Activation",
+                "HP ≤ 1/3",
+                1,
+                3,
+            ),
+            SourceBackedAbilityMechanic(
+                abilityId,
+                SourceBackedAbilityMechanicKind.MULTIPLIER,
+                "Power",
+                "$type move power ×1.5",
+                3,
+                2,
             ),
         )
     }

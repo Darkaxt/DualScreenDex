@@ -273,6 +273,7 @@ data class StateView(
     val speciesState: Map<Int, SpeciesStateView>,
     val observedMoves: Map<Int, List<ObservedMoveView>>,
     val trainer: TrainerView?,
+    val trainerAvatarUrl: String?,
     val party: List<PartyMemberView>,
     val battle: BattleView?,
     val catalogReady: Boolean,
@@ -327,6 +328,7 @@ data class PartyMemberView(
     val maximumHp: Int? = null,
     val status: String? = null,
     val experienceProgress: Double? = null,
+    val rarity: RarityView? = null,
     val stats: Map<String, Int> = emptyMap(),
     val moves: List<PartyMoveView> = emptyList(),
 )
@@ -785,6 +787,7 @@ object ApiViewBuilder {
                 observations.toObservedMoveViews()
             },
             trainerView(snapshot, catalog),
+            trainerAvatarUrl(snapshot, catalog),
             partyView(snapshot, catalog),
             snapshot.battle?.let { battle ->
                 BattleView(
@@ -932,6 +935,11 @@ object ApiViewBuilder {
             )
         }
 
+    private fun trainerAvatarUrl(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
+        val gender = snapshot.trainer?.gender ?: snapshot.trainerIdentity?.gender ?: return null
+        return catalog?.trainerAssets?.avatarAssetKeys?.get(gender)?.let(::trainerAssetUrl)
+    }
+
     private fun partyView(snapshot: AppSnapshot, catalog: ParsedCatalog?): List<PartyMemberView> =
         (0 until PARTY_SLOT_COUNT).map { slot ->
             val individual = snapshot.party.getOrNull(slot) ?: return@map PartyMemberView(slot, occupied = false)
@@ -944,6 +952,25 @@ object ApiViewBuilder {
                     ?.let { abilityId to it }
             }
             val resolvedNature = details?.natureId?.let { catalog?.naturesById?.get(it) }
+            val quality = individual.level?.takeIf { it > 0 }?.let { level ->
+                val generation = when (catalog?.platform?.name) {
+                    "GBA" -> 3
+                    "GBC" -> 2
+                    else -> 1
+                }
+                val candidate = com.enrpau.dualscreendex.companion.model.OwnedPokemon(
+                    stableKey = individual.stableLocation,
+                    speciesId = individual.speciesId,
+                    generation = generation,
+                    level = level,
+                    ivs = individual.ivs.orEmpty(),
+                    dvs = individual.dvs.orEmpty(),
+                    isEgg = individual.isEgg,
+                    party = true,
+                )
+                RarityEvaluator.evaluate(candidate, currentAreaBaseId = null, encounterAreas = emptyList())
+                    .takeIf { it.innateTier != null }
+            }
             PartyMemberView(
                 slot = slot,
                 occupied = true,
@@ -967,6 +994,20 @@ object ApiViewBuilder {
                 maximumHp = details?.maximumHp,
                 status = details?.status?.let(::partyStatus),
                 experienceProgress = details?.experienceProgress,
+                rarity = quality?.let { rarity ->
+                    RarityView(
+                        relativeTier = null,
+                        innateTier = rarity.innateTier?.name,
+                        baseStars = rarity.baseStars,
+                        areaAdjustment = null,
+                        stars = rarity.stars,
+                        areaOutcome = rarity.areaOutcome.name,
+                        currentAreaBaseId = null,
+                        currentAreaName = null,
+                        matchingAreaCount = 0,
+                        candidateAreaCount = 0,
+                    )
+                },
                 stats = details?.stats.orEmpty().takeIf { it.size == STAT_NAMES.size }
                     ?.let { values -> STAT_NAMES.zip(values).toMap(linkedMapOf()) }
                     .orEmpty(),
