@@ -237,3 +237,68 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
     noMapFallback: true,
   }, null, 2)}\n`);
 });
+
+test('local POI controls, labels, and zoom visibility remain coherent at Thor geometry', async ({ page }) => {
+  await page.setViewportSize({ width: 1240, height: 1080 });
+  const localState = {
+    ...state,
+    currentAreaBaseId: 16,
+    currentAreaName: 'Littleroot Town',
+    revealedAreaBaseIds: [16, 17],
+    currentMapPosition: { x: 9, y: 9 },
+    localMapPois: [
+      { key: 'house-player', localMapKey: 'local/16', baseAreaId: 16, tileX: 7, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "BRENDAN's HOUSE", service: null, itemId: null, itemName: null, destinationBaseAreaId: 256 },
+      { key: 'house-birch', localMapKey: 'local/16', baseAreaId: 16, tileX: 12, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "PROF. BIRCH'S HOUSE", service: null, itemId: null, itemName: null, destinationBaseAreaId: 258 },
+    ],
+    localMapPoiPreferences: {
+      showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
+      iconZoomThresholdPercent: 0, labelZoomThresholdPercent: 0,
+    },
+  };
+  const localCatalog = {
+    ...catalog,
+    localMaps: [
+      { key: 'local/16', displayName: 'Littleroot Town', baseAreaId: 16, pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15, imageUrl: '/api/maps/local%2F16.png', dynamicLighting: false },
+      { key: 'local/17', displayName: 'Route 101', baseAreaId: 17, pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15, imageUrl: '/api/maps/local%2F17.png', dynamicLighting: false },
+    ],
+    mapScenes: [{
+      key: 'scene/16', pixelWidth: 448, pixelHeight: 120, gridWidth: 56, gridHeight: 15,
+      placements: [
+        { localMapKey: 'local/16', baseAreaId: 16, gridX: 0, gridY: 0, pixelX: 0, pixelY: 0, pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15, imageUrl: '/api/maps/local%2F16.png', dynamicLighting: false },
+        { localMapKey: 'local/17', baseAreaId: 17, gridX: 28, gridY: 0, pixelX: 224, pixelY: 0, pixelWidth: 224, pixelHeight: 120, gridWidth: 28, gridHeight: 15, imageUrl: '/api/maps/local%2F17.png', dynamicLighting: false },
+      ],
+    }],
+  };
+  await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog: localCatalog, state: localState }) }));
+  await page.route('**/api/state', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(localState) }));
+  await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(localState) }));
+  await page.route('**/api/maps/**', route => route.fulfill({ contentType: 'image/png', body: raster }));
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Open Map' }).click();
+  const stage = page.getByRole('region', { name: 'Interactive local map' });
+  const filter = page.getByRole('button', { name: 'Map POI filters' });
+  const zoomIn = page.getByRole('button', { name: 'Zoom in' });
+  await expect(filter.locator('svg')).toHaveAttribute('data-semantic-icon', 'filter');
+  const controlStyle = async (control: typeof filter) => control.evaluate(element => {
+    const style = getComputedStyle(element);
+    return { width: style.width, height: style.height, background: style.backgroundColor, border: style.borderTopColor, color: style.color };
+  });
+  expect(await controlStyle(filter)).toEqual(await controlStyle(zoomIn));
+  await expect(page.locator('.map-poi-marker')).toHaveCount(2);
+  await expect(page.locator('.map-poi-label')).toHaveCount(2);
+  const labelBoxes = await page.locator('.map-poi-label').evaluateAll(labels => labels.map(label => {
+    const box = label.getBoundingClientRect();
+    return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+  }));
+  expect(labelBoxes[0].right <= labelBoxes[1].left || labelBoxes[1].right <= labelBoxes[0].left ||
+    labelBoxes[0].bottom <= labelBoxes[1].top || labelBoxes[1].bottom <= labelBoxes[0].top).toBe(true);
+  mkdirSync(artifactDir, { recursive: true });
+  await page.screenshot({ path: join(artifactDir, 'local-pois-starting-zoom.png') });
+
+  const startingScale = Number(await stage.getAttribute('data-scale'));
+  await page.getByRole('button', { name: 'Zoom out' }).click();
+  expect(Number(await stage.getAttribute('data-scale'))).toBeLessThan(startingScale);
+  await expect(page.locator('.map-poi-marker')).toHaveCount(0);
+  await expect(page.locator('.map-poi-label')).toHaveCount(0);
+});

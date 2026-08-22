@@ -821,7 +821,17 @@ data class LocalMapPoi(
     val service: LocalMapPoiService? = null,
     val item: LocalMapPoiItem? = null,
     val destinationBaseAreaId: Int? = null,
-)
+    val displayNamesByTrainerGender: Map<Int, String> = emptyMap(),
+) {
+    init {
+        require(displayNamesByTrainerGender.keys.all { it in 0..1 }) {
+            "local-map POI trainer-gender names must use male/female keys"
+        }
+        require(displayNamesByTrainerGender.values.all { it.isNotBlank() }) {
+            "local-map POI trainer-gender names must not be blank"
+        }
+    }
+}
 
 data class LocalMapScene(
     val key: String,

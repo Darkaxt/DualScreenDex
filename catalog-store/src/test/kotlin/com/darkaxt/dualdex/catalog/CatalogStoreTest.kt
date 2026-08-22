@@ -305,7 +305,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(30, CatalogSchema.parserSchemaVersion)
+        assertEquals(31, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -364,6 +364,13 @@ class CatalogStoreTest {
             assertEquals(64, reopened.trainerAssets.assets.getValue(key).height)
         }
         assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
+        assertEquals(catalog.localMaps.pois, reopened.localMaps.pois)
+        assertEquals(
+            mapOf(0 to "{PLAYER}'s House", 1 to "Prof. Birch's House"),
+            reopened.localMaps.pois.single {
+                it.baseAreaId == 0x0009 && it.tileX == 7 && it.tileY == 8
+            }.displayNamesByTrainerGender,
+        )
         assertEquals(catalog.localMaps.assets.keys, reopened.localMaps.assets.keys)
         assertEquals(catalog.localMaps.timedAssets.keys, reopened.localMaps.timedAssets.keys)
         assertTrue(reopened.localMaps.timedAssets.isNotEmpty())
@@ -575,7 +582,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(30, CatalogSchema.parserSchemaVersion)
+        assertEquals(31, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(

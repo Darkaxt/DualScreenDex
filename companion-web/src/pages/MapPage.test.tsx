@@ -256,6 +256,68 @@ describe('optional local map presentation', () => {
     expect(container.querySelector('.map-poi-label')).toBeTruthy();
   });
 
+  it('removes POI icons and labels when zooming below the starting Local view', () => {
+    const bounds = {
+      x: 0, y: 0, top: 0, right: 1240, bottom: 825, left: 0,
+      width: 1240, height: 825,
+      toJSON: () => ({}),
+    } as DOMRect;
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(bounds);
+    const poiState = {
+      ...state,
+      currentMapPosition: { x: 7, y: 9 },
+      localMapPois: [
+        { key: 'house', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 7, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "BRENDAN's HOUSE", service: null, itemId: null, itemName: null, destinationBaseAreaId: 0x100 },
+      ],
+      localMapPoiPreferences: {
+        showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
+        iconZoomThresholdPercent: 0, labelZoomThresholdPercent: 0,
+      },
+    } as State;
+    const { container } = render(<MapPage catalog={connectedCatalog} state={poiState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+
+    expect(container.querySelector('.map-poi-marker')).toBeTruthy();
+    expect(container.querySelector('.map-poi-label')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+    expect(container.querySelector('.map-poi-marker')).toBeNull();
+    expect(container.querySelector('.map-poi-label')).toBeNull();
+    rect.mockRestore();
+  });
+
+  it('uses the standard filter icon and map-control styling', () => {
+    render(<MapPage catalog={localCatalog} state={{ ...state, currentMapPosition: { x: 7, y: 9 } }} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+
+    const filter = screen.getByRole('button', { name: 'Map POI filters' });
+    expect(filter.classList.contains('map-control')).toBe(true);
+    expect(filter.querySelector('svg')?.dataset.semanticIcon).toBe('filter');
+  });
+
+  it('declutters colliding labels while keeping both POI icons available', () => {
+    const bounds = {
+      x: 0, y: 0, top: 0, right: 1240, bottom: 825, left: 0,
+      width: 1240, height: 825,
+      toJSON: () => ({}),
+    } as DOMRect;
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(bounds);
+    const poiState = {
+      ...state,
+      currentMapPosition: { x: 7, y: 9 },
+      localMapPois: [
+        { key: 'house-a', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 7, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "BRENDAN's HOUSE", service: null, itemId: null, itemName: null, destinationBaseAreaId: 0x100 },
+        { key: 'house-b', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 7, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "PROF. BIRCH'S HOUSE", service: null, itemId: null, itemName: null, destinationBaseAreaId: 0x102 },
+      ],
+      localMapPoiPreferences: {
+        showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
+        iconZoomThresholdPercent: 0, labelZoomThresholdPercent: 0,
+      },
+    } as State;
+    const { container } = render(<MapPage catalog={localCatalog} state={poiState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+
+    expect(container.querySelectorAll('.map-poi-marker')).toHaveLength(2);
+    expect(container.querySelectorAll('.map-poi-label')).toHaveLength(1);
+    rect.mockRestore();
+  });
+
   it('uses Local as the only map surface when playable geography is available', () => {
     const { container } = render(<MapPage
       catalog={localCatalog}

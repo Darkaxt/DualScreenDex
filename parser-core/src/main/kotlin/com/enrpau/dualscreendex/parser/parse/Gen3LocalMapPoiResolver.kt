@@ -149,8 +149,8 @@ internal object Gen3LocalMapPoiResolver {
                 } else {
                     val destination = backgroundWarps[background.index]
                     val isSign = background.kind in BG_EVENT_SIGN_KINDS
-                    val displayName = if (isSign) {
-                        rom.gbaPointer(background.offset + 8)?.let { readSimpleSignHeadline(rom, it) }
+                    val signHeadline = if (isSign) {
+                        rom.gbaPointer(background.offset + 8)?.let { readSignHeadline(rom, it) }
                     } else {
                         null
                     }
@@ -161,7 +161,7 @@ internal object Gen3LocalMapPoiResolver {
                             baseAreaId = map.baseAreaId,
                             tileX = background.x,
                             tileY = background.y,
-                            kind = if (displayName != null || destination != null) {
+                            kind = if (signHeadline != null || destination != null) {
                                 LocalMapPoiKind.PLACE
                             } else {
                                 LocalMapPoiKind.UNKNOWN
@@ -171,13 +171,37 @@ internal object Gen3LocalMapPoiResolver {
                             } else {
                                 LocalMapPoiOrganicVisibility.VISIBLE
                             },
-                            displayName = displayName,
+                            displayName = signHeadline?.displayName,
+                            displayNamesByTrainerGender = signHeadline?.byTrainerGender.orEmpty(),
                             destinationBaseAreaId = destination?.destinationBaseAreaId,
                         ),
                     )
                 }
             }
         }
+    }
+
+    private fun readSignHeadline(rom: RomImage, script: Int): SignHeadline? =
+        readSimpleSignHeadline(rom, script)?.let { SignHeadline(displayName = it) }
+            ?: readGenderConditionedSignHeadline(rom, script)
+
+    private fun readGenderConditionedSignHeadline(rom: RomImage, script: Int): SignHeadline? {
+        if (script.toLong() + GENDER_SIGN_SCRIPT_BYTES > rom.size.toLong()) return null
+        if (rom.u8(script) != SCR_OP_LOCK_ALL || rom.u8(script + 1) != SCR_OP_CHECK_PLAYER_GENDER) return null
+        var cursor = script + 2
+        val names = linkedMapOf<Int, String>()
+        repeat(2) {
+            if (rom.u8(cursor) != SCR_OP_COMPARE_VAR_TO_VALUE || rom.u16le(cursor + 1) != VAR_RESULT) return null
+            val gender = rom.u16le(cursor + 3)
+            if (gender !in 0..1 || gender in names) return null
+            cursor += COMPARE_VAR_TO_VALUE_BYTES
+            if (rom.u8(cursor) != SCR_OP_CALL_IF || rom.u8(cursor + 1) != COMPARISON_EQUAL) return null
+            val target = rom.gbaPointer(cursor + 2) ?: return null
+            names[gender] = readSimpleSignHeadline(rom, target) ?: return null
+            cursor += CALL_IF_BYTES
+        }
+        if (rom.u8(cursor) != SCR_OP_RELEASE_ALL || rom.u8(cursor + 1) != SCR_OP_END) return null
+        return SignHeadline(byTrainerGender = names)
     }
 
     private fun readSimpleSignHeadline(rom: RomImage, script: Int): String? {
@@ -187,14 +211,30 @@ internal object Gen3LocalMapPoiResolver {
         if (rom.u8(script + 6) != SCR_OP_CALL_STD || rom.u8(script + 7) !in 0..MAX_MSGBOX_TYPE) return null
         val available = minOf(MAX_SIGN_TEXT_BYTES, rom.size - text)
         if (available <= 0) return null
-        val raw = rom.slice(text, available)
-        val lineEnd = raw.indexOfFirst { value ->
-            val byte = value.toInt() and 0xFF
-            byte == PokemonTextCodec.gbaEnglish.terminator || byte in SIGN_LINE_BREAKS
-        }.takeIf { it >= 0 } ?: return null
-        if (lineEnd == 0) return null
-        val headline = PokemonTextCodec.gbaEnglish.decode(raw.copyOfRange(0, lineEnd))
-        return headline.takeIf { it.length >= MIN_SIGN_HEADLINE_CHARS }
+        return decodeSignHeadline(rom.slice(text, available))
+    }
+
+    private fun decodeSignHeadline(raw: ByteArray): String? {
+        val output = StringBuilder()
+        var cursor = 0
+        var terminated = false
+        while (cursor < raw.size) {
+            val byte = raw[cursor].toInt() and 0xFF
+            if (byte == PokemonTextCodec.gbaEnglish.terminator || byte in SIGN_LINE_BREAKS) {
+                terminated = true
+                break
+            }
+            if (byte == EXT_CTRL_CODE_BEGIN) {
+                if (cursor + 1 >= raw.size || raw[cursor + 1].toInt() and 0xFF != EXT_CTRL_CODE_PLAYER) return null
+                output.append("{PLAYER}")
+                cursor += 2
+                continue
+            }
+            output.append(PokemonTextCodec.gbaEnglish.decodeByte(byte) ?: return null)
+            cursor++
+        }
+        if (!terminated) return null
+        return output.toString().replace(WHITESPACE, " ").trim().takeIf { it.length >= MIN_SIGN_HEADLINE_CHARS }
     }
 
     private fun readVisibleItemId(rom: RomImage, script: Int): Int? {
@@ -240,6 +280,11 @@ internal object Gen3LocalMapPoiResolver {
         val kind: Int,
     )
 
+    private data class SignHeadline(
+        val displayName: String? = null,
+        val byTrainerGender: Map<Int, String> = emptyMap(),
+    )
+
     private fun RomImage.s16le(offset: Int): Int = u16le(offset).let { if (it and 0x8000 != 0) it - 0x10000 else it }
 
     private fun Int.hex4(): String = toString(16).padStart(4, '0')
@@ -258,17 +303,31 @@ internal object Gen3LocalMapPoiResolver {
     private val BG_EVENT_SIGN_KINDS = 0..4
     private const val HIDDEN_ITEMS_FLAG_START = 1000
     private const val SCR_OP_CALL_STD = 0x09
+    private const val SCR_OP_END = 0x02
+    private const val SCR_OP_CALL_IF = 0x07
     private const val SCR_OP_LOAD_WORD = 0x0F
     private const val SCR_OP_SETORCOPYVAR = 0x1A
+    private const val SCR_OP_COMPARE_VAR_TO_VALUE = 0x21
+    private const val SCR_OP_LOCK_ALL = 0x69
+    private const val SCR_OP_RELEASE_ALL = 0x6B
+    private const val SCR_OP_CHECK_PLAYER_GENDER = 0xA0
+    private const val COMPARISON_EQUAL = 1
     private const val STD_FIND_ITEM = 1
     private const val VAR_0x8000 = 0x8000
     private const val VAR_0x8001 = 0x8001
+    private const val VAR_RESULT = 0x800D
     private val SCRIPT_VARIABLE_RANGE = 0x4000..0x40FF
     private const val FIND_ITEM_SCRIPT_BYTES = 12
     private const val SIMPLE_MSGBOX_BYTES = 8
+    private const val COMPARE_VAR_TO_VALUE_BYTES = 5
+    private const val CALL_IF_BYTES = 6
+    private const val GENDER_SIGN_SCRIPT_BYTES = 26
     private const val MAX_MSGBOX_TYPE = 10
     private const val MAX_SIGN_TEXT_BYTES = 160
     private const val MIN_SIGN_HEADLINE_CHARS = 2
     private const val SIGN_ENTRANCE_MAX_DISTANCE = 2
     private val SIGN_LINE_BREAKS = setOf(0xFA, 0xFB, 0xFE)
+    private const val EXT_CTRL_CODE_BEGIN = 0xFD
+    private const val EXT_CTRL_CODE_PLAYER = 0x01
+    private val WHITESPACE = Regex("\\s+")
 }

@@ -623,10 +623,14 @@ button { cursor: pointer; }
   box-shadow: 3px 3px 0 var(--theme-menu-shadow);
 }
 [data-theme="game"][data-contrast="normal"] .map-control:hover,
-[data-theme="game"][data-contrast="normal"] .map-control:focus-visible,
 [data-theme="game"][data-contrast="normal"] .map-region-options button[aria-pressed="true"] {
   color: var(--theme-accent-text);
   background: var(--theme-accent);
+  border-color: var(--theme-border);
+}
+[data-theme="game"][data-contrast="normal"] .map-control:focus-visible {
+  color: var(--theme-text);
+  background: var(--theme-menu);
   border-color: var(--theme-border);
 }
 [data-theme="game"][data-contrast="normal"] .pokemon-area-panel {
@@ -714,8 +718,8 @@ button { cursor: pointer; }
 .map-utility-rail, .map-zoom-rail { position: absolute; z-index: 6; top: 12px; display: grid; gap: 7px; }
 .map-utility-rail { left: 12px; }.map-zoom-rail { right: 12px; }
 .map-control { position: relative; width: 46px; height: 46px; display: grid; place-items: center; padding: 0; border: 1px solid #819a61; color: #ebf3c8; background: #102b21e8; box-shadow: 3px 3px 0 #0009; backdrop-filter: blur(7px); }
-.map-control:hover, .map-control:focus-visible { color: var(--acid); border-color: var(--acid); background: #174735; outline: 2px solid #d9f47a99; outline-offset: 2px; }.map-control[aria-pressed="false"] { color: #819084; border-color: #596b5d; background: #14231de0; }
-.map-control > svg { width: 28px; height: 28px; }.map-utility-rail > .map-control:first-child svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.map-control:hover { color: var(--acid); border-color: var(--acid); background: #174735; }.map-control:focus-visible { color: var(--acid); border-color: var(--acid); outline: 2px solid #d9f47a99; outline-offset: 2px; }.map-control[aria-pressed="false"] { color: #819084; border-color: #596b5d; background: #14231de0; }
+.map-control > svg { width: 28px; height: 28px; }.map-utility-rail > .map-control:first-child:not(.map-poi-filter-control) svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
 .map-mode-control { position: absolute; z-index: 6; left: 12px; bottom: 12px; width: 34px; height: 34px; font: 950 .72em/1 var(--font-sans); letter-spacing: .05em; }
 .map-zoom-rail .map-control { font: 900 1.45em/1 Georgia, serif; }.recenter-control span { width: 18px; height: 18px; border: 2px solid currentColor; border-radius: 50%; }.recenter-control span::before, .recenter-control span::after { content: ""; position: absolute; background: currentColor; }.recenter-control span::before { left: 21px; top: 10px; width: 2px; height: 26px; }.recenter-control span::after { left: 10px; top: 21px; width: 26px; height: 2px; }
 .map-legend-panel { position: absolute; left: 58px; top: 0; width: min(240px, calc(100vw - 140px)); display: grid; gap: 7px; padding: 12px; color: #e9eed5; background: #0c211aed; border: 1px solid #728d5b; box-shadow: 7px 8px 0 #0007; backdrop-filter: blur(10px); }.map-legend-panel small { color: #9daf90; font-size: .75em; font-weight: 900; letter-spacing: .15em; }.map-legend-panel > strong { color: var(--acid); font-family: Georgia, serif; }.map-legend-panel > button, .map-region-options button { min-height: 36px; padding: 0 9px; border: 1px solid #61785d; color: #e6ecd0; background: #17382a; font-size: .78em; font-weight: 900; text-align: left; }.map-region-options { display: grid; gap: 4px; }.map-region-options button[aria-pressed="true"] { color: #102419; background: var(--acid); }
@@ -725,7 +729,7 @@ button { cursor: pointer; }
 .map-poi-marker.is-silhouette { color: #050706; background: #d4dbc5; }
 .map-poi-symbol { display: grid; width: 100%; height: 100%; place-items: center; font: 900 .75rem/1 var(--font-sans); }
 .map-poi-label { position: absolute; left: 50%; top: 100%; width: max-content; max-width: 150px; translate: -50% 4px; overflow: hidden; padding: 3px 5px; border: 1px solid var(--theme-border); color: var(--theme-text); background: color-mix(in srgb, var(--theme-panel) 92%, transparent); box-shadow: 0 2px 0 #0007; font: 900 .58rem/1.1 var(--font-sans); text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
-.map-poi-filter-control > span { font-size: 1.1rem; }
+.map-poi-filter-control > svg { width: 25px; height: 25px; fill: currentColor; stroke: none; }
 .map-poi-filter-panel { align-content: start; }
 .map-poi-toggle { display: grid; grid-template-columns: 24px 1fr; align-items: center; min-height: 34px; color: var(--theme-text); font-size: .76rem; font-weight: 800; }
 .map-poi-toggle input { width: 18px; height: 18px; accent-color: var(--acid); }

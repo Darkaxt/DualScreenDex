@@ -111,13 +111,17 @@ class ApiViewBuilderTest {
     }
 
     @Test
-    fun identifiedEntranceUsesItsDestinationMapNameInsteadOfAGenericPlaceLabel() {
+    fun identifiedEntranceUsesGenderConditionedSignContentAndNeverItsGenericTownFallback() {
         val outside = LocalMap("local/0009", "Littleroot Town", 0x0009, 320, 320, 20, 20, "local/0009/map")
         val house = LocalMap("local/0100", "Brendan's House", 0x0100, 160, 160, 10, 10, "local/0100/map")
         val entrance = LocalMapPoi(
             "local/0009/bg/2", outside.key, outside.baseAreaId, 7, 8,
             LocalMapPoiKind.PLACE,
             LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
+            displayNamesByTrainerGender = mapOf(
+                0 to "{PLAYER}'s HOUSE",
+                1 to "PROF. BIRCH'S HOUSE",
+            ),
             destinationBaseAreaId = house.baseAreaId,
         )
         val catalog = ParsedCatalog(
@@ -139,13 +143,50 @@ class ApiViewBuilderTest {
                     proximityRevealedPoiKeys = setOf(entrance.key),
                     identifiedPoiKeys = setOf(entrance.key),
                 ),
+                trainer = TrainerSnapshot("BRENDAN", 0, 12345, 98765, 0, 0, 0, 0, 0, 0),
             ),
             catalog,
         ).localMapPois.single()
 
         assertEquals("IDENTIFIED", view.state)
-        assertEquals("Brendan's House", view.displayName)
+        assertEquals("BRENDAN's HOUSE", view.displayName)
         assertEquals(house.baseAreaId, view.destinationBaseAreaId)
+    }
+
+    @Test
+    fun identifiedEntranceWithoutTrainerUsesItsActualSignAlternativesNotItsTownName() {
+        val outside = LocalMap("local/0009", "Littleroot Town", 0x0009, 320, 320, 20, 20, "local/0009/map")
+        val entrance = LocalMapPoi(
+            "local/0009/bg/2", outside.key, outside.baseAreaId, 7, 8,
+            LocalMapPoiKind.PLACE,
+            LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
+            displayNamesByTrainerGender = mapOf(
+                0 to "{PLAYER}'s HOUSE",
+                1 to "PROF. BIRCH'S HOUSE",
+            ),
+            destinationBaseAreaId = 0x0100,
+        )
+        val catalog = ParsedCatalog(
+            "a".repeat(64), EngineFamily.EMERALD, Platform.GBA,
+            localMaps = LocalMapCatalog(
+                maps = listOf(outside),
+                assets = mapOf(outside.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))),
+                pois = listOf(entrance),
+            ),
+        )
+
+        val view = ApiViewBuilder.state(
+            AppSnapshot(
+                settings = CompanionSettings(knowledgeMode = KnowledgeMode.ORGANIC),
+                ledger = KnowledgeLedger(
+                    proximityRevealedPoiKeys = setOf(entrance.key),
+                    identifiedPoiKeys = setOf(entrance.key),
+                ),
+            ),
+            catalog,
+        ).localMapPois.single()
+
+        assertEquals("PLAYER'S HOUSE / PROF. BIRCH'S HOUSE", view.displayName)
     }
 
     @Test

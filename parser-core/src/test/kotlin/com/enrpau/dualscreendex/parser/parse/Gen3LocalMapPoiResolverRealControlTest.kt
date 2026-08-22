@@ -52,6 +52,21 @@ class Gen3LocalMapPoiResolverRealControlTest {
     }
 
     @Test
+    fun `Modern Emerald preserves both gender-conditioned Littleroot house sign contents`() {
+        val pois = parse("DUALDEX_MODERN_EMERALD_ROM", MODERN_EMERALD_SHA)
+            .localMaps.pois.filter { it.baseAreaId == 0x0009 }
+
+        assertEquals(
+            mapOf(0 to "{PLAYER}'s House", 1 to "Prof. Birch's House"),
+            pois.single { it.tileX == 7 && it.tileY == 8 }.displayNamesByTrainerGender,
+        )
+        assertEquals(
+            mapOf(0 to "Prof. Birch's House", 1 to "{PLAYER}'s House"),
+            pois.single { it.tileX == 12 && it.tileY == 8 }.displayNamesByTrainerGender,
+        )
+    }
+
+    @Test
     fun `official FireRed exposes Celadon hidden PP Up from MapEvents`() {
         val pois = parse("DUALDEX_FIRERED_ROM", FIRERED_SHA)
             .localMaps.pois.filter { it.baseAreaId == 0x0306 }
@@ -78,6 +93,7 @@ class Gen3LocalMapPoiResolverRealControlTest {
 
     private companion object {
         const val EMERALD_SHA = "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af"
+        const val MODERN_EMERALD_SHA = "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895"
         const val FIRERED_SHA = "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059"
     }
 }

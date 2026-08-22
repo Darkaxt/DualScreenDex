@@ -1,6 +1,6 @@
 import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { DexIcon, MapIcon, SettingsIcon } from '../components';
+import { DexIcon, FilterIcon, MapIcon, SettingsIcon } from '../components';
 import { GameClockIndicator } from '../GameClockIndicator';
 import { anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, type MapViewport } from '../mapEngine';
 import type { Catalog, LocalMapPoiPreferences, LocalMapPoiView, State, WorldMapLocation, WorldMapRegion } from '../models';
@@ -14,6 +14,12 @@ interface MapPageProps {
 }
 
 type MapMode = 'LOCAL' | 'ATLAS';
+
+interface LocalPoiMarker {
+  poi: LocalMapPoiView;
+  x: number;
+  y: number;
+}
 
 const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
 const TRAINER_MARKER_PIXELS = 64;
@@ -278,7 +284,9 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const localImageUrl = localMap ? mapImageUrl(localMap.imageUrl, localMap.dynamicLighting, localLightingQuery) : undefined;
   const activeImageUrl = activeMode === 'LOCAL' ? localImageUrl : region?.imageUrl;
   const poiZoomPercent = normalizedPoiZoom(viewport.scale, minimumScaleRef.current, maximumScaleRef.current);
-  const poiIconsVisible = activeMode === 'LOCAL' && poiZoomPercent >= poiPreferences.iconZoomThresholdPercent;
+  const atOrAboveStartingLocalZoom = viewport.scale + 0.0001 >= minimumScaleRef.current;
+  const poiIconsVisible = activeMode === 'LOCAL' && atOrAboveStartingLocalZoom &&
+    poiZoomPercent >= poiPreferences.iconZoomThresholdPercent;
   const poiLabelsVisible = poiIconsVisible && poiZoomPercent >= poiPreferences.labelZoomThresholdPercent;
   const localPoiMarkers = (activeMode === 'LOCAL'
     ? (state.localMapPois ?? []).flatMap(poi => {
@@ -307,7 +315,19 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       viewport,
       stageRef.current?.clientWidth ?? 0,
       stageRef.current?.clientHeight ?? 0,
-    ));
+    )) as LocalPoiMarker[];
+  const stageBounds = stageRef.current?.getBoundingClientRect();
+  const visiblePoiLabelKeys = poiLabelsVisible
+    ? declutterPoiLabels(
+      localPoiMarkers,
+      renderedWidth,
+      renderedHeight,
+      viewport,
+      stageBounds?.width ?? 0,
+      stageBounds?.height ?? 0,
+      selectedPoiKey,
+    )
+    : new Set<string>();
   const selectedPoi = localPoiMarkers.find(marker => marker.poi.key === selectedPoiKey)?.poi;
 
   return <section class="screen map-screen">
@@ -421,13 +441,13 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           onClick={() => setSelectedPoiKey(current => current === poi.key ? null : poi.key)}
         >
           <span class="map-poi-symbol" aria-hidden="true">{poiSymbol(poi)}</span>
-          {poiLabelsVisible && poiDisplayLabel(poi) && <span class="map-poi-label">{poiDisplayLabel(poi)}</span>}
+          {visiblePoiLabelKeys.has(poi.key) && <span class="map-poi-label">{poiDisplayLabel(poi)}</span>}
         </button>)}
       </div>
 
       <nav class="map-utility-rail" aria-label="Map utilities">
         {activeMode === 'ATLAS' && maps.length > 1 && <button class="map-control" aria-label="Choose map region" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>}
-        {activeMode === 'LOCAL' && <button class="map-control map-poi-filter-control" aria-label="Map POI filters" aria-expanded={poiFiltersOpen} onClick={() => setPoiFiltersOpen(value => !value)}><span aria-hidden="true">◆</span></button>}
+        {activeMode === 'LOCAL' && <button class="map-control map-poi-filter-control" aria-label="Map POI filters" aria-expanded={poiFiltersOpen} onClick={() => setPoiFiltersOpen(value => !value)}><FilterIcon /></button>}
         {legendOpen && activeMode === 'ATLAS' && maps.length > 1 && <div class="map-legend-panel">
           <small>{activeMode}</small>
           <strong>{displayName}</strong>
@@ -482,6 +502,37 @@ function poiWithinViewport(
   const y = stageHeight / 2 + viewport.panY + (yPercent / 100 - 0.5) * renderedHeight;
   const margin = 48;
   return x >= -margin && x <= stageWidth + margin && y >= -margin && y <= stageHeight + margin;
+}
+
+function declutterPoiLabels(
+  markers: LocalPoiMarker[],
+  renderedWidth: number,
+  renderedHeight: number,
+  viewport: MapViewport,
+  stageWidth: number,
+  stageHeight: number,
+  selectedKey: string | null,
+) {
+  const labeled = markers.filter(marker => poiDisplayLabel(marker.poi));
+  if (stageWidth <= 0 || stageHeight <= 0) return new Set(labeled.map(marker => marker.poi.key));
+  const occupied: Array<{ left: number; top: number; right: number; bottom: number }> = [];
+  const visible = new Set<string>();
+  const ordered = [...labeled].sort((left, right) =>
+    Number(right.poi.key === selectedKey) - Number(left.poi.key === selectedKey) || left.poi.key.localeCompare(right.poi.key));
+  for (const marker of ordered) {
+    const label = poiDisplayLabel(marker.poi)!;
+    const centerX = stageWidth / 2 + viewport.panX + (marker.x / 100 - 0.5) * renderedWidth;
+    const top = stageHeight / 2 + viewport.panY + (marker.y / 100 - 0.5) * renderedHeight + 16;
+    const width = Math.min(150, Math.max(48, label.length * 7 + 12));
+    const bounds = { left: centerX - width / 2, top, right: centerX + width / 2, bottom: top + 24 };
+    const collides = occupied.some(other =>
+      bounds.left < other.right + 4 && bounds.right + 4 > other.left &&
+      bounds.top < other.bottom + 4 && bounds.bottom + 4 > other.top);
+    if (collides && marker.poi.key !== selectedKey) continue;
+    occupied.push(bounds);
+    visible.add(marker.poi.key);
+  }
+  return visible;
 }
 
 function poiCategoryEnabled(poi: LocalMapPoiView, preferences: LocalMapPoiPreferences) {

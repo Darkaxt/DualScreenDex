@@ -79,6 +79,12 @@ export function MapIcon() {
   </svg>;
 }
 
+export function FilterIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" data-semantic-icon="filter">
+    <path d="M3 5h18l-7 8v5.5l-4 2V13Z" />
+  </svg>;
+}
+
 export function DexIcon() {
   return <svg class="dex-icon" viewBox="0 0 28 28" shape-rendering="geometricPrecision" aria-hidden="true" data-semantic-icon="pokedex">
     <path class="dex-shell" d="M4 3.5h15.5v3H24v18H4z" />
