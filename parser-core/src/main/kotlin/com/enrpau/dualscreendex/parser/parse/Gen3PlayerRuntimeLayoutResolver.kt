@@ -33,7 +33,7 @@ object Gen3PlayerRuntimeLayoutResolver {
         val gfHeader = if (family == EngineFamily.FIRERED_LEAFGREEN) resolveGfRomHeader(rom) else null
         val expandedSave = gfHeader?.let { resolveExpandedSave(rom, it, references) }
         val saveBlock1 = Gen3SaveBlock1PointerResolver.resolve(rom) ?: expandedSave?.saveBlock1PointerAddress
-        val saveBlock2 = resolveSaveBlock2Pointer(rom) ?: expandedSave?.saveBlock2PointerAddress
+        val saveBlock2 = resolveSaveBlock2Pointer(rom, saveBlock1) ?: expandedSave?.saveBlock2PointerAddress
         val saveGroup = if (saveBlock1 != null && saveBlock2 != null) {
             when (family) {
                 EngineFamily.EMERALD -> emeraldSaveRuntimeAbi()
@@ -55,15 +55,29 @@ object Gen3PlayerRuntimeLayoutResolver {
         )
     }
 
-    private fun resolveSaveBlock2Pointer(rom: RomImage): Long? {
+    private fun resolveSaveBlock2Pointer(rom: RomImage, saveBlock1PointerAddress: Long?): Long? {
         val evidence = pointerFieldEvidence(rom)
-        return evidence.filterValues { fields ->
+        val independentlyResolved = evidence.filterValues { fields ->
             fields.totalPointerLoads >= MIN_SAVE_BLOCK_POINTER_LOADS &&
                 fields.loadsAt(SAVE2_GENDER_OFFSET) >= MIN_SAVE_FIELD_LOADS &&
                 fields.loadsAt(SAVE2_TRAINER_ID_OFFSET) >= MIN_SAVE_FIELD_LOADS &&
                 fields.loadsAt(SAVE2_PLAY_HOURS_OFFSET) >= MIN_SAVE_FIELD_LOADS &&
                 fields.loadsAt(SAVE2_PLAY_MINUTES_OFFSET) >= MIN_SAVE_FIELD_LOADS
         }.keys.singleOrNull()
+        if (independentlyResolved != null) return independentlyResolved
+
+        // IWRAM common allocation emits the two save pointers as adjacent aligned globals.
+        // Admit that structural relationship only when SaveBlock1 was independently resolved and
+        // the adjacent pointer itself has compiled consumers for every trainer identity/time field.
+        val adjacent = saveBlock1PointerAddress?.plus(4) ?: return null
+        val fields = evidence[adjacent] ?: return null
+        return adjacent.takeIf {
+            fields.totalPointerLoads >= MIN_SAVE_BLOCK_POINTER_LOADS &&
+                fields.loadsAt(SAVE2_GENDER_OFFSET) >= MIN_ADJACENT_SAVE_FIELD_LOADS &&
+                fields.loadsAt(SAVE2_TRAINER_ID_OFFSET) >= MIN_ADJACENT_SAVE_FIELD_LOADS &&
+                fields.loadsAt(SAVE2_PLAY_HOURS_OFFSET) >= MIN_ADJACENT_SAVE_FIELD_LOADS &&
+                fields.loadsAt(SAVE2_PLAY_MINUTES_OFFSET) >= MIN_ADJACENT_SAVE_FIELD_LOADS
+        }
     }
 
     private fun pointerFieldEvidence(rom: RomImage): Map<Long, PointerFields> {
@@ -535,6 +549,7 @@ object Gen3PlayerRuntimeLayoutResolver {
     private const val DIRECT_FIELD_TRACE_BYTES = 40
     private const val MIN_SAVE_BLOCK_POINTER_LOADS = 20
     private const val MIN_SAVE_FIELD_LOADS = 4
+    private const val MIN_ADJACENT_SAVE_FIELD_LOADS = 1
     private const val SAVE2_GENDER_OFFSET = 0x08
     private const val SAVE2_TRAINER_ID_OFFSET = 0x0A
     private const val SAVE2_PLAY_HOURS_OFFSET = 0x0E

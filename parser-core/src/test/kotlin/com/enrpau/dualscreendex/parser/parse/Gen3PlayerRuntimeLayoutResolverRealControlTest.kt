@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -11,6 +12,28 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class Gen3PlayerRuntimeLayoutResolverRealControlTest {
+    @Test
+    fun modernEmeraldPublishesItsSourceDefinedTrainerRuntimeDescriptor() {
+        val path = Path.of(
+            System.getenv("DUALDEX_MODERN_EMERALD_ROM")
+                ?: "D:/Temp/PokemonHacks/corpus/expanded/roms/0116-a0b4e5e9c0c4/Modern Emerald (v3.5).gba",
+        )
+        assumeTrue("real Modern Emerald ROM does not exist: $path", Files.isRegularFile(path))
+
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals(MODERN_EMERALD_SHA256, rom.sha256)
+        val runtime = requireNotNull(Gen3RuntimeMemoryLayoutResolver.resolve(rom, EngineFamily.EMERALD))
+
+        assertEquals(0x030036F0L, runtime.saveBlock1PointerAddress)
+        assertEquals(0x030036F4L, runtime.saveBlock2PointerAddress)
+        val save = requireNotNull(runtime.saveRuntimeAbi)
+        assertEquals(0x00, save.trainer.playerNameOffset)
+        assertEquals(0x08, save.trainer.genderOffset)
+        assertEquals(0x0A, save.trainer.trainerIdOffset)
+        assertEquals(0x0E, save.trainer.playTimeHoursOffset)
+        assertEquals(0x10, save.trainer.playTimeMinutesOffset)
+    }
+
     @Test
     fun officialFireRedPublishesItsSourceDefinedSaveRuntimeDescriptor() {
         val configured = System.getenv("DUALDEX_OFFICIAL_FIRERED_ROM")
@@ -105,6 +128,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
     }
 
     private companion object {
+        const val MODERN_EMERALD_SHA256 =
+            "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895"
         const val OFFICIAL_EMERALD_SHA256 =
             "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af"
         const val OFFICIAL_FIRERED_SHA256 =
