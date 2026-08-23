@@ -19,6 +19,7 @@ class MemoryMapperLab(
 ) {
     private val sessionId = idFactory()
     private val history = mutableListOf<MemorySnapshot>()
+    private var retainedRawBytes = 0L
 
     var enabled: Boolean = false
         private set
@@ -60,7 +61,7 @@ class MemoryMapperLab(
                 coreIdentity = coreIdentity,
                 contentIdentity = contentIdentity,
                 regions = regions,
-            ).also(history::add)
+            ).also(::retain)
         }.fold(CaptureResult::Captured) { CaptureResult.Failed(it.message ?: it.javaClass.simpleName) }
     }
 
@@ -80,7 +81,7 @@ class MemoryMapperLab(
                 id = idFactory(), label = label, customLabel = customLabel?.trim()?.takeIf(String::isNotEmpty),
                 capturedAtEpochMs = clock(), coreIdentity = coreIdentity, contentIdentity = contentIdentity,
                 regions = snapshots,
-            ).also(history::add)
+            ).also(::retain)
         }.fold(CaptureResult::Captured) { CaptureResult.Failed(it.message ?: it.javaClass.simpleName) }
     }
 
@@ -94,11 +95,23 @@ class MemoryMapperLab(
         snapshots = snapshots(),
     )
 
+    private fun retain(snapshot: MemorySnapshot) {
+        history += snapshot
+        retainedRawBytes += snapshot.rawByteCount()
+        while (history.size > MAX_SNAPSHOT_COUNT || retainedRawBytes > MAX_HISTORY_BYTES) {
+            retainedRawBytes -= history.removeAt(0).rawByteCount()
+        }
+    }
+
+    private fun MemorySnapshot.rawByteCount(): Long = regions.sumOf { it.bytes.size.toLong() }
+
     private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
         .digest(bytes)
         .joinToString("") { "%02x".format(it) }
 
     companion object {
         const val MAX_CAPTURE_BYTES = 2L * 1024 * 1024
+        const val MAX_SNAPSHOT_COUNT = 32
+        const val MAX_HISTORY_BYTES = 16L * 1024 * 1024
     }
 }

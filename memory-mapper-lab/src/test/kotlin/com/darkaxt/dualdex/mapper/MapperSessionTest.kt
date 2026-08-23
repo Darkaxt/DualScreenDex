@@ -47,6 +47,46 @@ class MapperSessionTest {
         assertEquals(1, lab.snapshots().size)
     }
 
+    @Test
+    fun historyEvictsTheOldestSnapshotAtTheCountBoundary() {
+        var nextId = 0
+        val lab = MemoryMapperLab(
+            RecordingTransport(),
+            listOf(descriptor),
+            idFactory = { "snapshot-${nextId++}" },
+        )
+        lab.enable(privacyAcknowledged = true)
+
+        repeat(33) { lab.record(MapperLabel.OVERWORLD, mapOf("ewram" to byteArrayOf(1, 2, 3, 4))) }
+
+        assertEquals(MemoryMapperLab.MAX_SNAPSHOT_COUNT, lab.snapshots().size)
+        assertEquals("snapshot-2", lab.snapshots().first().id)
+        assertEquals("snapshot-33", lab.snapshots().last().id)
+    }
+
+    @Test
+    fun historyEvictsTheOldestSnapshotAtTheRawByteBoundary() {
+        val regionSize = 1024 * 1024
+        val largeDescriptors = listOf(
+            MemoryDescriptor("ewram-a", "bounded capture A", 0x02000000, regionSize),
+            MemoryDescriptor("ewram-b", "bounded capture B", 0x02100000, regionSize),
+        )
+        val lab = MemoryMapperLab(RecordingTransport(ByteArray(regionSize)), largeDescriptors)
+        lab.enable(privacyAcknowledged = true)
+
+        repeat(9) {
+            lab.record(
+                MapperLabel.OVERWORLD,
+                mapOf("ewram-a" to ByteArray(regionSize), "ewram-b" to ByteArray(regionSize)),
+            )
+        }
+
+        assertEquals(8, lab.snapshots().size)
+        assertEquals(MemoryMapperLab.MAX_HISTORY_BYTES, lab.snapshots().sumOf { snapshot ->
+            snapshot.regions.sumOf { it.bytes.size.toLong() }
+        })
+    }
+
     private class RecordingTransport(
         private val reply: ByteArray = byteArrayOf(1, 2, 3, 4),
     ) : ReadOnlyMemoryTransport {
