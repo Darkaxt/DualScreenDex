@@ -157,30 +157,29 @@ git commit -m "feat: unlock Trainer Card with first party Pokemon"
 ### Task 4: Validate and publish RC52
 
 **Files:**
-- Modify: `app/build.gradle.kts`
 - Modify: `README.md`
 - Create: `release/RELEASE_NOTES_1.1.0-rc.52.md`
 
-- [ ] **Step 1: Run affected tests and release policy**
+- [x] **Step 1: Run affected tests and release policy**
 
-Run `./gradlew.bat :companion-core:test :app:testDebugUnitTest` and `python scripts/test_release_policy.py`. Expected: Gradle tasks pass and the policy reports 18 passing tests.
+Run `npm test -- --run` and `npm run build` from `companion-web`, then run `node --test tools/release/*.test.mjs` and `./gradlew.bat verifySecureBuildDependencies test :app:lintDebug :app:assembleRelease -PdualdexVersionName=1.1.0-rc.52 -PdualdexVersionCode=1010052 --stacktrace`. Expected: every test/build command exits zero.
 
-- [ ] **Step 2: Set the release identity and notes**
+- [x] **Step 2: Write the release identity and notes**
 
-Set `versionName = "1.1.0-rc.52"` and `versionCode = 1010052`. Update the README candidate link and add release notes describing the first-party milestone, per-playthrough persistence, and partial card facts without diagnostics.
+Update the README candidate link and add release notes describing the first-party milestone, per-playthrough persistence, and partial card facts without diagnostics. The protected workflow derives `versionName = "1.1.0-rc.52"` and `versionCode = 1010052` from the tag; do not hardcode them in Gradle.
 
-- [ ] **Step 3: Build the release APK**
+- [x] **Step 3: Build the release APK**
 
-Run `./gradlew.bat :app:assembleRelease`. Expected: `app/build/outputs/apk/release/app-release.apk` exists.
+Run `./gradlew.bat :app:assembleRelease -PdualdexVersionName=1.1.0-rc.52 -PdualdexVersionCode=1010052`. Expected: `app/build/outputs/apk/release/app-release-unsigned.apk` exists.
 
 - [ ] **Step 4: Commit, tag, push, and publish**
 
 ```powershell
-git add app/build.gradle.kts README.md release/RELEASE_NOTES_1.1.0-rc.52.md
+git add README.md release/RELEASE_NOTES_1.1.0-rc.52.md docs/superpowers/plans/2026-08-24-trainer-license-unlock.md
 git commit -m "release: prepare v1.1.0-rc.52"
-git push origin fix/rc29-local-map-rendering
+git push fork fix/rc29-local-map-rendering
 git tag -a v1.1.0-rc.52 -m "v1.1.0-rc.52"
-git push origin v1.1.0-rc.52
+git push fork v1.1.0-rc.52
 gh workflow run release.yml --repo Darkaxt/DualScreenDex --ref v1.1.0-rc.52 -f tag=v1.1.0-rc.52
 ```
 
