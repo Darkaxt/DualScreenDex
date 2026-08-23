@@ -70,7 +70,11 @@ internal fun battleHeartbeatDelayMillis(
     eligible: Boolean,
     discovering: Boolean,
     pollingIntervalMs: Int,
-): Long = if (eligible) pollingIntervalMs.coerceIn(1, 20).toLong() else 20L
+): Long = when {
+    !eligible -> 25L
+    discovering -> pollingIntervalMs.coerceIn(1, 20).toLong()
+    else -> 25L
+}
 
 class BattleMemoryCoordinator(
     private val catalogProvider: () -> BattleCatalogContext?,

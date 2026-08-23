@@ -122,13 +122,13 @@ class BattleMemoryCoordinatorTest {
     }
 
     @Test
-    fun configuredHeartbeatRateAppliesToDiscoveryAndCachedReads() {
+    fun configuredHeartbeatRateAppliesOnlyToDiscoveryReads() {
         assertEquals(1L, battleHeartbeatDelayMillis(eligible = true, discovering = true, pollingIntervalMs = 0))
         assertEquals(7L, battleHeartbeatDelayMillis(eligible = true, discovering = true, pollingIntervalMs = 7))
         assertEquals(20L, battleHeartbeatDelayMillis(eligible = true, discovering = true, pollingIntervalMs = 99))
-        assertEquals(1L, battleHeartbeatDelayMillis(eligible = true, discovering = false, pollingIntervalMs = 1))
-        assertEquals(7L, battleHeartbeatDelayMillis(eligible = true, discovering = false, pollingIntervalMs = 7))
-        assertEquals(20L, battleHeartbeatDelayMillis(eligible = false, discovering = true, pollingIntervalMs = 1))
+        assertEquals(25L, battleHeartbeatDelayMillis(eligible = true, discovering = false, pollingIntervalMs = 1))
+        assertEquals(25L, battleHeartbeatDelayMillis(eligible = true, discovering = false, pollingIntervalMs = 7))
+        assertEquals(25L, battleHeartbeatDelayMillis(eligible = false, discovering = true, pollingIntervalMs = 1))
     }
 
     @Test

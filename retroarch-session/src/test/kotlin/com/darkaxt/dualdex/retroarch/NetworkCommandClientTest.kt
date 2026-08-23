@@ -2,7 +2,9 @@ package com.darkaxt.dualdex.retroarch
 
 import java.util.ArrayDeque
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
+import java.nio.ByteBuffer
 
 class NetworkCommandClientTest {
     @Test
@@ -36,6 +38,21 @@ class NetworkCommandClientTest {
             client.poll(),
         )
         assertEquals(emptyList<NetworkResponse>(), client.poll())
+    }
+
+    @Test
+    fun reusesOneReceiveBufferAcrossEmptyUdpPolls() {
+        var allocations = 0
+        UdpNetworkCommandTransport(
+            receiveBufferFactory = {
+                allocations++
+                ByteBuffer.allocate(4096)
+            },
+        ).use { transport ->
+            repeat(100) { assertNull(transport.poll()) }
+        }
+
+        assertEquals(1, allocations)
     }
 
     private class FakeTransport : NetworkCommandTransport {

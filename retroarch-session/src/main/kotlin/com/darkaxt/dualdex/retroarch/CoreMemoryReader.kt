@@ -68,13 +68,16 @@ class CoreMemoryReadSession(
         while (true) {
             val response = poller() ?: break
             val request = requests[requestIndex]
-            if (replyAddress(response) != request.address) continue
-            val bytes = runCatching { parse(request, response) }.getOrElse { failure ->
-                return CoreMemoryReadState.Failed(failure.message ?: failure.javaClass.simpleName).also { terminal = it }
-            }
             val offset = (request.address - request.region.baseAddress).toInt()
-            bytes.copyInto(requireNotNull(buffers[request.region.id]), offset)
-            completedBytes += bytes.size
+            val destination = requireNotNull(buffers[request.region.id])
+            when (val result = CoreMemoryReplyParser.parse(request.address, request.length, response, destination, offset)) {
+                CoreMemoryReply.Ignored -> continue
+                is CoreMemoryReply.Failed -> {
+                    return CoreMemoryReadState.Failed(result.reason).also { terminal = it }
+                }
+                CoreMemoryReply.Matched -> Unit
+            }
+            completedBytes += request.length
             requestIndex++
             advanced = true
             if (requestIndex >= requests.size) {
@@ -101,35 +104,6 @@ class CoreMemoryReadSession(
         sender(command.toByteArray(Charsets.US_ASCII))
     }
 
-    private fun parse(request: CoreMemoryRequest, response: ByteArray): ByteArray {
-        val parts = responseParts(response)
-        require(parts.size >= 3 && parts[0] == "READ_CORE_MEMORY") { "invalid READ_CORE_MEMORY reply" }
-        require(parts[1].toLongOrNull(16) == request.address) { "READ_CORE_MEMORY reply address did not match the request" }
-        require(!parts[2].equals("ERROR", ignoreCase = true)) {
-            "RetroArch rejected the memory read: ${parts.drop(2).joinToString(" ")}"
-        }
-        val payload = parts.drop(2)
-        require(payload.size == request.length) {
-            "short READ_CORE_MEMORY reply: expected ${request.length} bytes, received ${payload.size}"
-        }
-        return ByteArray(payload.size) { index ->
-            val value = payload[index]
-            require(value.matches(Regex("[0-9A-Fa-f]{2}"))) { "invalid memory byte in RetroArch reply" }
-            value.toInt(16).toByte()
-        }
-    }
-
-    private fun replyAddress(response: ByteArray): Long? {
-        val parts = responseParts(response)
-        return parts.takeIf { it.size >= 2 && it[0] == "READ_CORE_MEMORY" }?.get(1)?.toLongOrNull(16)
-    }
-
-    private fun responseParts(response: ByteArray): List<String> = response.toString(Charsets.US_ASCII)
-        .trim()
-        .trimEnd('\u0000')
-        .split(Regex("\\s+"))
-        .filter(String::isNotEmpty)
-
     private fun state(): CoreMemoryReadState = terminal
         ?: CoreMemoryReadState.Reading(completedBytes, regions.sumOf(CoreMemoryRegion::size))
 
@@ -137,5 +111,120 @@ class CoreMemoryReadSession(
         const val DEFAULT_CHUNK_BYTES = 512
         const val MAX_CHUNK_BYTES = 1024
         private const val MAX_TOTAL_BYTES = 4L * 1024 * 1024
+    }
+}
+
+private sealed interface CoreMemoryReply {
+    data object Ignored : CoreMemoryReply
+    data object Matched : CoreMemoryReply
+    data class Failed(val reason: String) : CoreMemoryReply
+}
+
+private object CoreMemoryReplyParser {
+    fun parse(
+        expectedAddress: Long,
+        expectedLength: Int,
+        response: ByteArray,
+        destination: ByteArray,
+        destinationOffset: Int,
+    ): CoreMemoryReply {
+        val cursor = AsciiReplyCursor(response)
+        if (!cursor.readCommand()) return CoreMemoryReply.Ignored
+        if (cursor.readHexAddress() != expectedAddress) return CoreMemoryReply.Ignored
+
+        var received = 0
+        while (true) {
+            val token = cursor.readPayloadToken()
+            if (token == AsciiReplyCursor.MISSING) break
+            if (received == 0 && token == AsciiReplyCursor.ERROR) {
+                return CoreMemoryReply.Failed("RetroArch rejected the memory read")
+            }
+            if (token !in 0..0xff) {
+                return CoreMemoryReply.Failed("invalid memory byte in RetroArch reply")
+            }
+            if (received < expectedLength) destination[destinationOffset + received] = token.toByte()
+            received++
+        }
+        if (received != expectedLength) {
+            return CoreMemoryReply.Failed(
+                "short READ_CORE_MEMORY reply: expected $expectedLength bytes, received $received",
+            )
+        }
+        return CoreMemoryReply.Matched
+    }
+}
+
+private class AsciiReplyCursor(private val bytes: ByteArray) {
+    private var index = 0
+
+    fun readCommand(): Boolean {
+        skipSeparators()
+        for (expected in COMMAND) {
+            if (index >= bytes.size || bytes[index].toInt() != expected.code) return false
+            index++
+        }
+        return index >= bytes.size || isSeparator(bytes[index])
+    }
+
+    fun readHexAddress(): Long? {
+        skipSeparators()
+        var value = 0L
+        var digits = 0
+        var valid = true
+        while (index < bytes.size && !isSeparator(bytes[index])) {
+            val nibble = hexNibble(bytes[index])
+            if (nibble < 0 || digits >= 8) valid = false else value = (value shl 4) or nibble.toLong()
+            digits++
+            index++
+        }
+        return value.takeIf { valid && digits > 0 }
+    }
+
+    fun readPayloadToken(): Int {
+        skipSeparators()
+        if (index >= bytes.size) return MISSING
+        var value = 0
+        var digits = 0
+        var validHex = true
+        var errorToken = true
+        while (index < bytes.size && !isSeparator(bytes[index])) {
+            val byte = bytes[index]
+            val nibble = hexNibble(byte)
+            if (nibble < 0 || digits >= 2) validHex = false else value = (value shl 4) or nibble
+            if (digits >= ERROR_TOKEN.length || !byte.equalsAsciiIgnoreCase(ERROR_TOKEN[digits])) errorToken = false
+            digits++
+            index++
+        }
+        return when {
+            errorToken && digits == ERROR_TOKEN.length -> ERROR
+            validHex && digits == 2 -> value
+            else -> INVALID
+        }
+    }
+
+    private fun skipSeparators() {
+        while (index < bytes.size && isSeparator(bytes[index])) index++
+    }
+
+    private fun isSeparator(value: Byte): Boolean = (value.toInt() and 0xff) <= 0x20
+
+    private fun hexNibble(value: Byte): Int = when (val unsigned = value.toInt() and 0xff) {
+        in '0'.code..'9'.code -> unsigned - '0'.code
+        in 'a'.code..'f'.code -> unsigned - 'a'.code + 10
+        in 'A'.code..'F'.code -> unsigned - 'A'.code + 10
+        else -> -1
+    }
+
+    private fun Byte.equalsAsciiIgnoreCase(expected: Char): Boolean {
+        val unsigned = toInt() and 0xff
+        return unsigned == expected.code || unsigned == expected.lowercaseChar().code
+    }
+
+    companion object {
+        const val MISSING = -1
+        const val INVALID = -2
+        const val ERROR = -3
+        private const val COMMAND = "READ_CORE_MEMORY"
+        private const val ERROR_TOKEN = "ERROR"
     }
 }

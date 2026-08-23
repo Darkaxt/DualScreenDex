@@ -68,10 +68,15 @@ class NetworkCommandClient(
 class UdpNetworkCommandTransport(
     port: Int = DEFAULT_PORT,
     host: InetAddress = InetAddress.getByName("127.0.0.1"),
+    receiveBufferFactory: () -> ByteBuffer = { ByteBuffer.allocate(MAX_PACKET_BYTES) },
 ) : NetworkCommandTransport {
     private val channel = DatagramChannel.open().apply {
         configureBlocking(false)
         connect(InetSocketAddress(host, port))
+    }
+    private val receiveBuffer = receiveBufferFactory().also { buffer ->
+        require(buffer.capacity() >= MAX_PACKET_BYTES) { "network command receive buffer is too small" }
+        require(buffer.hasArray()) { "network command receive buffer must expose its backing array" }
     }
 
     init {
@@ -84,10 +89,10 @@ class UdpNetworkCommandTransport(
     }
 
     override fun poll(): ByteArray? {
-        val buffer = ByteBuffer.allocate(MAX_PACKET_BYTES)
-        val count = channel.read(buffer)
+        receiveBuffer.clear()
+        val count = channel.read(receiveBuffer)
         if (count <= 0) return null
-        return buffer.array().copyOf(count)
+        return receiveBuffer.array().copyOf(count)
     }
 
     override fun close() = channel.close()
