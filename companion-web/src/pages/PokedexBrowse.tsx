@@ -40,6 +40,10 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
     const rightKnown = Boolean(state.speciesState[right.id]?.seen || state.speciesState[right.id]?.caught);
     return Number(rightKnown) - Number(leftKnown);
   }), [activeFilter, areaSpeciesIds, catalog.species, policy, search, state.speciesState]);
+  const ownedCount = visible.filter(species => Boolean(state.speciesState[species.id]?.caught)).length;
+  const foundCount = visible.filter(species => Boolean(
+    state.speciesState[species.id]?.seen || state.speciesState[species.id]?.caught,
+  )).length;
 
   return <section class="screen pokedex-screen">
     <Header
@@ -51,7 +55,15 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
       onMap={(catalog.worldMaps?.length ?? 0) > 0 ? onOpenMap : undefined}
     />
     <div class="browse-tools">
-      <label class="search-box"><span>SEARCH</span><input value={search} onInput={event => setSearch(event.currentTarget.value)} placeholder="NAME OR NUMBER" /></label>
+      {activeFilter !== 'TEAM' && <div class="pokedex-search-row">
+        <label class="search-box"><span>SEARCH</span><input value={search} onInput={event => setSearch(event.currentTarget.value)} placeholder="NAME OR NUMBER" /></label>
+        <output
+          class="pokedex-result-count"
+          aria-label={activeFilter === 'CAUGHT' ? `${ownedCount} caught` : `${ownedCount} owned, ${foundCount} found`}
+        >
+          {activeFilter === 'CAUGHT' ? ownedCount : `${ownedCount} / ${foundCount}`}
+        </output>
+      </div>}
       <div class="filter-strip" aria-label="Pokédex filters">
         {filters.map(filter => <button key={filter} disabled={!filterEnabled[filter]} title={!filterEnabled[filter] ? `${filter} filter unavailable` : undefined} class={activeFilter === filter ? 'active' : ''} onClick={() => send('FILTER', { filter, areaId: null })}>{filter}</button>)}
       </div>

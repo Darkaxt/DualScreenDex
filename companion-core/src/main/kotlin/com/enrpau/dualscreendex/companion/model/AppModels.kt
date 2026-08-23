@@ -154,6 +154,7 @@ data class AppSnapshot(
     val selectedAreaId: Int? = null,
     val selectedAreaIds: Set<Int> = emptySet(),
     val battleTab: BattleTab = BattleTab.ENTRY,
+    val battleTabExplicitlySelected: Boolean = false,
     val settings: CompanionSettings = CompanionSettings(),
     val ledger: KnowledgeLedger = KnowledgeLedger(),
     val liveAreaBaseId: Int? = null,

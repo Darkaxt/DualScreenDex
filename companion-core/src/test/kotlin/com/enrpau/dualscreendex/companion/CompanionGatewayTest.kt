@@ -66,6 +66,38 @@ class CompanionGatewayTest {
     }
 
     @Test
+    fun lateWildClassificationPromotesUntouchedEntryTabToRarity() {
+        val gateway = CompanionGateway(AppSnapshot(settings = CompanionSettings(rarityEnabled = true)))
+        val pending = BattleState(
+            opponents = listOf(opponent(1)),
+            encounterKind = BattleEncounterKind.UNKNOWN,
+            rarityUsable = true,
+        )
+
+        assertEquals(BattleTab.ENTRY, gateway.dispatch(CompanionAction.BattleStarted(pending)).battleTab)
+
+        val classified = pending.copy(encounterKind = BattleEncounterKind.WILD)
+
+        assertEquals(BattleTab.RARITY, gateway.dispatch(CompanionAction.BattleUpdated(classified)).battleTab)
+    }
+
+    @Test
+    fun lateWildClassificationDoesNotOverrideAnExplicitEntrySelection() {
+        val gateway = CompanionGateway(AppSnapshot(settings = CompanionSettings(rarityEnabled = true)))
+        val pending = BattleState(
+            opponents = listOf(opponent(1)),
+            encounterKind = BattleEncounterKind.UNKNOWN,
+            rarityUsable = true,
+        )
+        gateway.dispatch(CompanionAction.BattleStarted(pending))
+        gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.ENTRY))
+
+        val classified = pending.copy(encounterKind = BattleEncounterKind.WILD)
+
+        assertEquals(BattleTab.ENTRY, gateway.dispatch(CompanionAction.BattleUpdated(classified)).battleTab)
+    }
+
+    @Test
     fun eachNewBattleLifecycleReappliesTheFailClosedInitialPolicy() {
         val gateway = CompanionGateway(AppSnapshot(settings = CompanionSettings(rarityEnabled = true)))
         val wild = BattleState(emptyList(), encounterKind = BattleEncounterKind.WILD, rarityUsable = true)

@@ -363,7 +363,7 @@ describe('optional local map presentation', () => {
     expect(screen.queryByRole('button', { name: 'Show Local map' })).toBeNull();
   });
 
-  it('uses the ROM-derived trainer avatar for the live player marker', () => {
+  it('uses the gender-selected ROM overworld sprite at its ROM-derived native map scale', () => {
     const bounds = {
       x: 0, y: 0, top: 0, right: 1240, bottom: 825, left: 0,
       width: 1240, height: 825,
@@ -375,6 +375,9 @@ describe('optional local map presentation', () => {
       state={{
         ...state,
         currentMapPosition: { x: 12, y: 7 },
+        trainerMapSpriteUrl: '/api/trainer-assets/trainer%2Foverworld%2Ffemale.png',
+        trainerMapSpriteWidth: 32,
+        trainerMapSpriteHeight: 32,
         trainer: {
           name: 'May', gender: 'FEMALE', publicTrainerId: 7, money: 3000,
           playTimeHours: 1, playTimeMinutes: 23, dexSeen: 4, dexCaught: 2,
@@ -387,13 +390,13 @@ describe('optional local map presentation', () => {
 
     const marker = container.querySelector('.map-player-marker');
     expect(marker?.classList.contains('has-sprite')).toBe(true);
-    expect(marker?.querySelector('img')?.getAttribute('src')).toBe('/api/trainer-assets/trainer%2Favatar%2Ffemale.png');
+    expect(marker?.querySelector('img')?.getAttribute('src')).toBe('/api/trainer-assets/trainer%2Foverworld%2Ffemale.png');
     expect(marker?.querySelector('img')?.getAttribute('alt')).toBe('May');
     expect(marker?.querySelector('.map-player-dot')).toBeNull();
-    expect((marker as HTMLElement).style.width).toBe('64px');
-    expect((marker as HTMLElement).style.height).toBe('64px');
     for (let index = 0; index < 12; index += 1) fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
-    expect(Number(screen.getByRole('region', { name: 'Interactive local map' }).dataset.effectiveRasterScale)).toBeCloseTo(4, 8);
+    const rasterScale = Number(screen.getByRole('region', { name: 'Interactive local map' }).dataset.effectiveRasterScale);
+    expect(Number.parseFloat((marker as HTMLElement).style.width)).toBeCloseTo(32 * Math.max(1, rasterScale), 8);
+    expect(Number.parseFloat((marker as HTMLElement).style.height)).toBeCloseTo(32 * Math.max(1, rasterScale), 8);
     rect.mockRestore();
   });
 

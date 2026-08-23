@@ -274,6 +274,9 @@ data class StateView(
     val observedMoves: Map<Int, List<ObservedMoveView>>,
     val trainer: TrainerView?,
     val trainerAvatarUrl: String?,
+    val trainerMapSpriteUrl: String?,
+    val trainerMapSpriteWidth: Int?,
+    val trainerMapSpriteHeight: Int?,
     val party: List<PartyMemberView>,
     val battle: BattleView?,
     val catalogReady: Boolean,
@@ -761,6 +764,8 @@ object ApiViewBuilder {
                 KnowledgePolicy.matchup(snapshot.settings.knowledgeMode, opponent.speciesId, moveId, truth, snapshot.ledger)
             }
         }
+        val trainerMapSpriteKey = trainerMapSpriteAssetKey(snapshot, catalog)
+        val trainerMapSprite = trainerMapSpriteKey?.let { catalog?.trainerAssets?.assets?.get(it) }
         return StateView(
             snapshot.version,
             snapshot.screen.name,
@@ -788,6 +793,9 @@ object ApiViewBuilder {
             },
             trainerView(snapshot, catalog),
             trainerAvatarUrl(snapshot, catalog),
+            trainerMapSpriteKey?.let(::trainerAssetUrl),
+            trainerMapSprite?.width,
+            trainerMapSprite?.height,
             partyView(snapshot, catalog),
             snapshot.battle?.let { battle ->
                 BattleView(
@@ -938,6 +946,11 @@ object ApiViewBuilder {
     private fun trainerAvatarUrl(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
         val gender = snapshot.trainer?.gender ?: snapshot.trainerIdentity?.gender ?: return null
         return catalog?.trainerAssets?.avatarAssetKeys?.get(gender)?.let(::trainerAssetUrl)
+    }
+
+    private fun trainerMapSpriteAssetKey(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
+        val gender = snapshot.trainer?.gender ?: snapshot.trainerIdentity?.gender ?: return null
+        return catalog?.trainerAssets?.overworldAssetKeys?.get(gender)
     }
 
     private fun partyView(snapshot: AppSnapshot, catalog: ParsedCatalog?): List<PartyMemberView> =

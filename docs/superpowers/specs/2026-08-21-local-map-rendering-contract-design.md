@@ -10,9 +10,9 @@ The Local scene continues to use parser-produced local-map rasters and scene pla
 
 The initial scene camera still fits the current Local placement exactly as the pre-scene Local view did. Moving between connected placements preserves the viewport. Recenter changes only pan: it centers the live player cell and retains the current scale. If no valid player cell exists, it centers the current placement at the retained scale.
 
-Player and POI markers remain fixed-size screen-readable elements because the map plane is resized instead of transform-scaled. Their positions remain tied to scene coordinates. When live trainer data exposes the ROM-derived avatar, that sprite replaces the abstract player dot at its intrinsic 64×64 size; the compact dot remains only as a fail-safe when the avatar asset is unavailable. Local maximum zoom is bounded by the same size: a source map tile may grow only until its rendered width matches the 64-pixel avatar. For Gen III's 16-pixel tiles, the maximum effective raster scale is therefore 4×.
+Player and POI markers remain screen-readable because the map plane is resized instead of transform-scaled. Their positions remain tied to scene coordinates. Trainer Card portraits never serve as map markers. Gen III catalogs instead resolve the distinct normal walking frame for both player genders, and live trainer gender selects the correct overworld asset. Native dimensions are preserved per ROM: standard Gen III controls use 16×32 while Unbound uses 32×32. The sprite follows the Local raster scale while never rendering below its native size; the compact dot remains only when the map-specific asset is unavailable. The intrinsic ROM-derived sprite width also supplies the zoom bound for scenes whose starting Local placement is below native raster scale. A starting Local view that must scale above native size to fill the approved placement framing remains the minimum and the sprite scales with it.
 
-Trainer portraits and badge artwork are independent parser roles. A structurally decoded portrait pair remains available even when the ROM's badge sheet does not resolve; one missing role must not suppress the other.
+Trainer portraits, overworld sprites, and badge artwork are independent parser roles. A structurally decoded role remains available when another does not resolve; one missing role must not suppress the others.
 
 ## Discovery and fog
 
@@ -32,7 +32,7 @@ The DOM contains raster elements only for maps eligible under the current knowle
 
 ## Verification contract
 
-- Unit tests prove player-centered recentering preserves scale and that the Local zoom bound derives from the avatar and source-tile sizes.
+- Unit tests prove player-centered recentering preserves scale and that the Local zoom bound derives from the overworld sprite and source-tile sizes.
 - Page tests prove hidden Local images are absent, fog placeholders are opaque, Atlas is absent from Local scenes, POIs obey knowledge mode, and current-map transitions preserve zoom.
 - A production build must pass.
-- A real-browser check against parser-produced Modern Emerald maps must prove initial Local detail, sharp nearest-neighbour rendering at a 4× effective maximum, a 64×64 ROM-derived player sprite, player-centered recentering with unchanged scale, hidden-image non-loading, opaque fog, and visible eligible POI names.
+- Real-ROM checks against Modern Emerald, official FireRed/LeafGreen, Unbound, and Odyssey must prove gender-selected overworld extraction with each ROM's native dimensions. The page check must prove initial Local detail, sharp nearest-neighbour rendering, proportional map scaling with a native-size floor, player-centered recentering with unchanged scale, hidden-image non-loading, opaque fog, and visible eligible POI names.

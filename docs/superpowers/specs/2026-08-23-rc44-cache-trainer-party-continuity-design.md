@@ -44,7 +44,7 @@ Combat uses the shared `DexIcon` SVG in a transparent 40x40 action. Party curren
 - Improve compiled SaveBlock2 pointer recognition only with semantic Thumb evidence from the real binary and the source-confirmed field layout.
 - Publish SaveBlock1 and SaveBlock2 only as one coherent group with the Emerald save ABI; ambiguity continues to fail closed.
 - Do not add ROM-name, SHA, or fixed-offset selection.
-- Once the live trainer gender is decoded, the existing catalog avatar key supplies the trainer image to Height Comparison, Trainer Card, and map marker consumers.
+- Once the live trainer gender is decoded, the portrait key supplies Height Comparison and Trainer Card. Local Map uses the separately resolved gender-specific overworld key; the portrait must never substitute for it.
 - The generic silhouette remains only the pre-identity fallback; it must not appear after Modern Emerald's trainer state is available.
 
 ### Shared Party action

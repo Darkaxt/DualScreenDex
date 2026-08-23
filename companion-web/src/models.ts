@@ -281,6 +281,9 @@ export interface State {
   observedMoves: Record<number, { moveId: number; frequency: number }[]>;
   trainer?: TrainerView | null;
   trainerAvatarUrl?: string | null;
+  trainerMapSpriteUrl?: string | null;
+  trainerMapSpriteWidth?: number | null;
+  trainerMapSpriteHeight?: number | null;
   party?: PartyMemberView[];
   battle: null | {
     opponents: { speciesId: number; level: number; typeIds: number[]; rarity: Rarity; moves: { moveId: number; frequency: number }[] }[];

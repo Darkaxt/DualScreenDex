@@ -322,10 +322,13 @@ class ApiViewBuilderTest {
             ),
             trainerAssets = TrainerAssetCatalog(
                 avatarAssetKeys = mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"),
+                overworldAssetKeys = mapOf(0 to "trainer/overworld/male", 1 to "trainer/overworld/female"),
                 badgeAssetKeys = (1..8).map { "trainer/badge/$it" },
                 assets = buildMap {
                     put("trainer/avatar/male", RgbaSprite(64, 64, IntArray(64 * 64)))
                     put("trainer/avatar/female", RgbaSprite(64, 64, IntArray(64 * 64)))
+                    put("trainer/overworld/male", RgbaSprite(16, 32, IntArray(16 * 32)))
+                    put("trainer/overworld/female", RgbaSprite(16, 32, IntArray(16 * 32)))
                     (1..8).forEach { put("trainer/badge/$it", RgbaSprite(16, 16, IntArray(16 * 16))) }
                 },
             ),
@@ -362,6 +365,9 @@ class ApiViewBuilderTest {
         assertEquals("MAY", state.trainer?.name)
         assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainer?.avatarUrl)
         assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainerAvatarUrl)
+        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Ffemale.png", state.trainerMapSpriteUrl)
+        assertEquals(16, state.trainerMapSpriteWidth)
+        assertEquals(32, state.trainerMapSpriteHeight)
         assertEquals(listOf(true, false, true), state.trainer?.badges?.take(3)?.map { it.earned })
         assertEquals("/api/trainer-assets/trainer%2Fbadge%2F1.png", state.trainer?.badges?.first()?.imageUrl)
         assertEquals(6, state.party.size)
@@ -397,9 +403,12 @@ class ApiViewBuilderTest {
             platform = Platform.GBA,
             trainerAssets = TrainerAssetCatalog(
                 avatarAssetKeys = mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"),
+                overworldAssetKeys = mapOf(0 to "trainer/overworld/male", 1 to "trainer/overworld/female"),
                 assets = mapOf(
                     "trainer/avatar/male" to RgbaSprite(64, 64, IntArray(64 * 64)),
                     "trainer/avatar/female" to RgbaSprite(64, 64, IntArray(64 * 64)),
+                    "trainer/overworld/male" to RgbaSprite(16, 32, IntArray(16 * 32)),
+                    "trainer/overworld/female" to RgbaSprite(16, 32, IntArray(16 * 32)),
                 ),
             ),
         )
@@ -408,6 +417,9 @@ class ApiViewBuilderTest {
 
         assertNull(state.trainer)
         assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainerAvatarUrl)
+        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Ffemale.png", state.trainerMapSpriteUrl)
+        assertEquals(16, state.trainerMapSpriteWidth)
+        assertEquals(32, state.trainerMapSpriteHeight)
     }
 
     @Test

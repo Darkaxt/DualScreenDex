@@ -24,7 +24,8 @@ interface LocalPoiMarker {
 type PoiLabelPlacement = 'below' | 'above';
 
 const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
-const TRAINER_MARKER_PIXELS = 64;
+const DEFAULT_TRAINER_MARKER_WIDTH_PIXELS = 16;
+const DEFAULT_TRAINER_MARKER_HEIGHT_PIXELS = 32;
 const DEFAULT_POI_PREFERENCES: LocalMapPoiPreferences = {
   showPlaces: true,
   showServices: true,
@@ -54,7 +55,9 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const [selectedKey, setSelectedKey] = useState(() => focusedLocation?.key ?? '');
   const activeMode: MapMode = localScene || localMap ? 'LOCAL' : 'ATLAS';
   const activeMap = localScene ?? localMap ?? region;
-  const playerAvatarUrl = state.trainerAvatarUrl ?? state.trainer?.avatarUrl;
+  const playerMapSpriteUrl = state.trainerMapSpriteUrl;
+  const playerMapSpriteWidth = state.trainerMapSpriteWidth ?? DEFAULT_TRAINER_MARKER_WIDTH_PIXELS;
+  const playerMapSpriteHeight = state.trainerMapSpriteHeight ?? DEFAULT_TRAINER_MARKER_HEIGHT_PIXELS;
   const [viewport, setViewportState] = useState<MapViewport>(HOME_VIEWPORT);
   const [fit, setFit] = useState({ width: activeMap?.pixelWidth ?? 1, height: activeMap?.pixelHeight ?? 1, scale: 1 });
   const fogVisible = activeMode === 'ATLAS' && state.settings.knowledgeMode !== 'DISCOVERED';
@@ -151,11 +154,11 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       setFit(nextFit);
       gestureRef.current.setCenter(availableWidth / 2, availableHeight / 2);
       const genericMaximum = focused?.maximumScale ?? MAX_MAP_SCALE;
-      const avatarMaximum = playerAvatarUrl
+      const avatarMaximum = playerMapSpriteUrl
         ? maximumScaleForMarker(
           nextFit.scale,
           activeMap.pixelWidth / activeMap.gridWidth,
-          TRAINER_MARKER_PIXELS,
+          playerMapSpriteWidth,
         )
         : genericMaximum;
       maximumScaleRef.current = Math.max(
@@ -186,7 +189,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     activePlacement?.pixelWidth,
     activePlacement?.pixelHeight,
     activeMap?.gridWidth,
-    playerAvatarUrl,
+    playerMapSpriteUrl,
+    playerMapSpriteWidth,
   ]);
 
   useEffect(() => {
@@ -375,6 +379,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
 
   const renderedWidth = fit.width * viewport.scale;
   const renderedHeight = fit.height * viewport.scale;
+  const playerMapSpriteScale = Math.max(1, renderedWidth / activeMap.pixelWidth);
   const transform = `translate(calc(-50% + ${viewport.panX}px), calc(-50% + ${viewport.panY}px))`;
   const selectedIsCurrent = selectedLocation != null && currentLocation != null && selectedLocation.key === currentLocation.key;
   const displayName = activeMode === 'LOCAL'
@@ -524,15 +529,18 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           ><span /></button>;
         })}
         {playerPosition && <span
-          class={`map-marker map-player-marker is-current ${playerAvatarUrl ? 'has-sprite' : 'is-fallback'}`}
+          class={`map-marker map-player-marker is-current ${playerMapSpriteUrl ? 'has-sprite' : 'is-fallback'}`}
           style={{
             left: `${((playerPosition.sceneX + 0.5) / activeMap.gridWidth) * 100}%`,
             top: `${((playerPosition.sceneY + 0.5) / activeMap.gridHeight) * 100}%`,
-            ...(playerAvatarUrl ? { width: `${TRAINER_MARKER_PIXELS}px`, height: `${TRAINER_MARKER_PIXELS}px` } : {}),
+            ...(playerMapSpriteUrl ? {
+              width: `${playerMapSpriteWidth * playerMapSpriteScale}px`,
+              height: `${playerMapSpriteHeight * playerMapSpriteScale}px`,
+            } : {}),
           }}
           aria-label={`Player position ${playerPosition.mapX}, ${playerPosition.mapY}`}
-        >{playerAvatarUrl
-            ? <img src={playerAvatarUrl} alt={state.trainer?.name ?? 'Player'} draggable={false} />
+        >{playerMapSpriteUrl
+            ? <img src={playerMapSpriteUrl} alt={state.trainer?.name ?? 'Player'} draggable={false} />
             : <span class="map-player-dot" />}</span>}
         {poiIconsVisible && localPoiMarkers.map(({ poi, x, y }) => <button
           key={poi.key}

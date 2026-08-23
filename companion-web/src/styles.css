@@ -206,10 +206,12 @@ button { cursor: pointer; }
 
 .pokedex-screen { grid-template-rows: auto auto 1fr; }
 .browse-tools { display: grid; gap: 8px; padding: 10px 12px; background: var(--paper-deep); border-bottom: 1px solid var(--line); }
-.search-box { height: 44px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; padding: 0 12px; border: 2px solid #657060; background: #f7f4df; }
+.pokedex-search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.search-box { height: 36px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; padding: 0 12px; border: 2px solid #657060; background: #f7f4df; }
 .search-box span { font-size: .8em; letter-spacing: .12em; font-weight: 800; color: #536055; }
 .search-box input { min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-weight: 800; letter-spacing: .04em; }
 .search-box input::placeholder { color: #7b8378; }
+.pokedex-result-count { min-width: 76px; height: 36px; display: grid; place-items: center; padding: 0 10px; border: 2px solid #657060; color: var(--ink); background: var(--paper); font-weight: 900; font-variant-numeric: tabular-nums; }
 .filter-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px; }
 .filter-strip button, .segmented button { min-width: 0; height: 38px; padding: 0 4px; border: 1px solid #82906f; background: #b9c998; color: #17291f; font-size: .8em; font-weight: 900; letter-spacing: .03em; }
 .filter-strip button.active, .segmented button.active { color: var(--paper); background: var(--forest-800); border-color: var(--forest-800); }
@@ -745,7 +747,7 @@ button { cursor: pointer; }
 .map-poi-card { position: absolute; z-index: 7; left: 50%; bottom: 14px; min-width: 190px; max-width: min(360px, calc(100% - 130px)); translate: -50% 0; display: grid; gap: 4px; padding: 10px 36px 10px 12px; border: 1px solid var(--theme-border); color: var(--theme-text); background: var(--theme-panel); box-shadow: 7px 8px 0 #0007; }
 .map-poi-card > button { position: absolute; right: 7px; top: 6px; width: 26px; height: 26px; padding: 0; border: 1px solid var(--theme-border); color: inherit; background: transparent; }
 .map-poi-card small { color: var(--muted); text-transform: uppercase; }
-.map-player-marker { pointer-events: none; }.map-player-marker.is-fallback { width: 17px; height: 17px; border: 2px solid #102419; border-radius: 50%; background: var(--acid); }.map-player-marker.is-fallback .map-player-dot { position: absolute; inset: 4px; border-radius: 50%; background: #102419; }.map-player-marker.has-sprite { min-width: 64px; min-height: 64px; border: 0; background: transparent; box-shadow: none; animation: none; }.map-player-marker.has-sprite img { width: 100%; height: 100%; display: block; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 2px 0 #071e18) drop-shadow(0 0 3px #62dfe1); }
+.map-player-marker { pointer-events: none; }.map-player-marker.is-fallback { width: 17px; height: 17px; border: 2px solid #102419; border-radius: 50%; background: var(--acid); }.map-player-marker.is-fallback .map-player-dot { position: absolute; inset: 4px; border-radius: 50%; background: #102419; }.map-player-marker.has-sprite { min-width: 16px; min-height: 32px; translate: -50% -75%; border: 0; background: transparent; box-shadow: none; animation: none; }.map-player-marker.has-sprite img { width: 100%; height: 100%; display: block; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 1px 0 #071e18) drop-shadow(0 0 2px #62dfe1); }
 @keyframes current-map-point { 0%, 100% { box-shadow: 0 0 0 3px #0b1f18cc, 0 2px 5px #000; } 50% { box-shadow: 0 0 0 7px #d9f47a55, 0 2px 5px #000; } }
 
 @media (prefers-reduced-motion: reduce) {

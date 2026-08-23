@@ -13,6 +13,50 @@ import org.junit.Test
 
 class Gen3TrainerAssetResolverRealControlTest {
     @Test
+    fun fireRedFamilyControlsProduceGenderSelectedOverworldSprites() {
+        val controls = listOf(
+            RealControl(
+                environmentVariable = "DUALDEX_FIRERED_ROM",
+                sha256 = "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+            ),
+            RealControl(
+                environmentVariable = "DUALDEX_LEAFGREEN_ROM",
+                sha256 = "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825",
+            ),
+            RealControl(
+                environmentVariable = "DUALDEX_ODYSSEY_ROM",
+                sha256 = "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
+            ),
+            RealControl(
+                environmentVariable = "DUALDEX_UNBOUND_ROM",
+                sha256 = "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7",
+                spriteWidth = 32,
+            ),
+        )
+        controls.forEach { control ->
+            val configured = System.getenv(control.environmentVariable)
+            assumeTrue("set ${control.environmentVariable} to run this live-ROM regression", !configured.isNullOrBlank())
+            val path = Path.of(requireNotNull(configured))
+            assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+            val rom = RomImage(Files.readAllBytes(path))
+            assertEquals(control.sha256, rom.sha256.lowercase())
+
+            val catalog = requireNotNull(Gen3TrainerAssetResolver.resolve(rom, EngineFamily.FIRERED_LEAFGREEN))
+            assertEquals(
+                control.environmentVariable,
+                mapOf(0 to "trainer/overworld/male", 1 to "trainer/overworld/female"),
+                catalog.overworldAssetKeys,
+            )
+            catalog.overworldAssetKeys.values.forEach { key ->
+                val sprite = catalog.assets.getValue(key)
+                assertEquals(control.spriteWidth, sprite.width)
+                assertEquals(32, sprite.height)
+                assertEquals(true, sprite.argb.any { it ushr 24 != 0 })
+            }
+        }
+    }
+
+    @Test
     fun officialEmeraldProducesTwoPlayerPortraitsAndEightHoennBadges() {
         val configured = System.getenv("DUALDEX_OFFICIAL_EMERALD_ROM")
         assumeTrue("set DUALDEX_OFFICIAL_EMERALD_ROM to run this live-ROM regression", !configured.isNullOrBlank())
@@ -29,8 +73,15 @@ class Gen3TrainerAssetResolverRealControlTest {
             mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"),
             catalog.avatarAssetKeys,
         )
+        assertEquals(
+            mapOf(0 to "trainer/overworld/male", 1 to "trainer/overworld/female"),
+            catalog.overworldAssetKeys,
+        )
         assertEquals((1..8).map { "trainer/badge/$it" }, catalog.badgeAssetKeys)
-        assertEquals(catalog.avatarAssetKeys.values.toSet() + catalog.badgeAssetKeys, catalog.assets.keys)
+        assertEquals(
+            catalog.avatarAssetKeys.values.toSet() + catalog.overworldAssetKeys.values + catalog.badgeAssetKeys,
+            catalog.assets.keys,
+        )
         catalog.avatarAssetKeys.values.forEach { key ->
             assertEquals(64, catalog.assets.getValue(key).width)
             assertEquals(64, catalog.assets.getValue(key).height)
@@ -38,6 +89,10 @@ class Gen3TrainerAssetResolverRealControlTest {
         catalog.badgeAssetKeys.forEach { key ->
             assertEquals(16, catalog.assets.getValue(key).width)
             assertEquals(16, catalog.assets.getValue(key).height)
+        }
+        catalog.overworldAssetKeys.values.forEach { key ->
+            assertEquals(16, catalog.assets.getValue(key).width)
+            assertEquals(32, catalog.assets.getValue(key).height)
         }
         assertEquals(EXPECTED_ARGB_HASHES, catalog.assets.mapValues { argbHash(it.value.argb) })
     }
@@ -54,9 +109,22 @@ class Gen3TrainerAssetResolverRealControlTest {
         val catalog = requireNotNull(Gen3TrainerAssetResolver.resolve(rom, EngineFamily.EMERALD))
 
         assertEquals(mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"), catalog.avatarAssetKeys)
+        assertEquals(
+            mapOf(0 to "trainer/overworld/male", 1 to "trainer/overworld/female"),
+            catalog.overworldAssetKeys,
+        )
         assertEquals(emptyList<String>(), catalog.badgeAssetKeys)
-        assertEquals(catalog.avatarAssetKeys.values.toSet(), catalog.assets.keys)
-        assertEquals(MODERN_AVATAR_ARGB_HASHES, catalog.assets.mapValues { argbHash(it.value.argb) })
+        assertEquals(catalog.avatarAssetKeys.values.toSet() + catalog.overworldAssetKeys.values, catalog.assets.keys)
+        assertEquals(
+            MODERN_AVATAR_ARGB_HASHES,
+            catalog.assets.filterKeys(catalog.avatarAssetKeys.values::contains).mapValues { argbHash(it.value.argb) },
+        )
+        catalog.overworldAssetKeys.values.forEach { key ->
+            val sprite = catalog.assets.getValue(key)
+            assertEquals(16, sprite.width)
+            assertEquals(32, sprite.height)
+            assertEquals(true, sprite.argb.any { it ushr 24 != 0 })
+        }
     }
 
     private fun argbHash(argb: IntArray): String {
@@ -74,6 +142,8 @@ class Gen3TrainerAssetResolverRealControlTest {
         val EXPECTED_ARGB_HASHES = mapOf(
             "trainer/avatar/male" to "86a27bea1436640e331f6faedbcad9a6b1af097d54c07b5fe489565dd62e8235",
             "trainer/avatar/female" to "88ef40596e677e75ba4dc105d6ea8df727232fdb806f6ee5611611230b196593",
+            "trainer/overworld/male" to "e0d5136d38565e02c5eeb8f6fce3e52065e078e90f0ac950f1f83c107d5331ab",
+            "trainer/overworld/female" to "882dde8e939dda521f81e381cc3f257be48ccf2dd21af07bbfba360500eb4615",
             "trainer/badge/1" to "ee1b49619687b62d478a92054b3e75f9028cb7901f8bfd0bdd788f9dfe9d8429",
             "trainer/badge/2" to "107fa5d2a6f380e99d9c5141a6fed52ce540f32579fddcf0dffa62f3c07bf138",
             "trainer/badge/3" to "2e16817fc400e69c768e67dff1da551d0145729ecc3c1c80811873c433317330",
@@ -84,4 +154,10 @@ class Gen3TrainerAssetResolverRealControlTest {
             "trainer/badge/8" to "c5f84d82e64d66d1fd477f47a6f3fbedb358400ca10889c3d802c6351563e529",
         )
     }
+
+    private data class RealControl(
+        val environmentVariable: String,
+        val sha256: String,
+        val spriteWidth: Int = 16,
+    )
 }

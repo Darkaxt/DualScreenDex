@@ -130,6 +130,14 @@ class CatalogStoreTest {
             "Normal-Type Dynamax move. It lowers the target's Speed stat.",
             reopened.movesById.getValue(821).effectText.value,
         )
+        assertEquals(
+            mapOf(0 to "trainer/overworld/male", 1 to "trainer/overworld/female"),
+            reopened.trainerAssets.overworldAssetKeys,
+        )
+        reopened.trainerAssets.overworldAssetKeys.values.forEach { key ->
+            assertEquals(32, reopened.trainerAssets.assets.getValue(key).width)
+            assertEquals(32, reopened.trainerAssets.assets.getValue(key).height)
+        }
         assertCatalogReferencesClose(reopened)
         assertEquals(second.romSha256, reopened.romSha256)
         assertEquals(CatalogSchema.requiredSections, stored.committedSections)
@@ -173,10 +181,73 @@ class CatalogStoreTest {
             assertEquals(CapabilityStatus.AVAILABLE, species.baseStats.status)
             assertEquals(CapabilityStatus.AVAILABLE, species.sprite.status)
         }
+        assertEquals(
+            mapOf(0 to "trainer/overworld/male", 1 to "trainer/overworld/female"),
+            reopened.trainerAssets.overworldAssetKeys,
+        )
+        reopened.trainerAssets.overworldAssetKeys.values.forEach { key ->
+            assertEquals(16, reopened.trainerAssets.assets.getValue(key).width)
+            assertEquals(32, reopened.trainerAssets.assets.getValue(key).height)
+        }
         assertCatalogReferencesClose(reopened)
         assertEquals(CatalogSchema.requiredSections, stored.committedSections)
         assertEquals(16, stored.committedSections.size)
         assertDatabaseIntegrity(cache.fileFor(second.romSha256))
+    }
+
+    @Test
+    fun `official Gen3 trainer world sprites survive complete catalog cache round trips`() {
+        val controls = listOf(
+            Triple(
+                "DUALDEX_OFFICIAL_EMERALD_ROM",
+                "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
+                EngineFamily.EMERALD,
+            ),
+            Triple(
+                "DUALDEX_FIRERED_ROM",
+                "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+                EngineFamily.FIRERED_LEAFGREEN,
+            ),
+            Triple(
+                "DUALDEX_LEAFGREEN_ROM",
+                "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825",
+                EngineFamily.FIRERED_LEAFGREEN,
+            ),
+        )
+
+        controls.forEach { (environmentVariable, expectedSha256, expectedFamily) ->
+            val configured = System.getenv(environmentVariable)
+            assumeTrue("set $environmentVariable to run this real-ROM control", !configured.isNullOrBlank())
+            val path = Path.of(requireNotNull(configured))
+            assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+            val rom = RomSourceLoader.load(path).rom
+            assertEquals(expectedSha256, rom.sha256)
+            val root = newRoot()
+            val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+            val source = CatalogSourceMetadata.direct(path.fileName.toString(), rom.size, "POKEMON")
+
+            val parsed = requireNotNull(
+                CatalogParser.parse(rom) { progress ->
+                    cache.write(progress.catalog, source, catalogWriteProgress(progress))
+                }.catalog,
+            )
+            val stored = requireNotNull(cache.readComplete(parsed.romSha256))
+            val reopened = stored.catalog
+
+            assertEquals(expectedFamily, reopened.family)
+            assertEquals(
+                mapOf(0 to "trainer/overworld/male", 1 to "trainer/overworld/female"),
+                reopened.trainerAssets.overworldAssetKeys,
+            )
+            reopened.trainerAssets.overworldAssetKeys.values.forEach { key ->
+                assertEquals(16, reopened.trainerAssets.assets.getValue(key).width)
+                assertEquals(32, reopened.trainerAssets.assets.getValue(key).height)
+            }
+            assertEquals(CatalogSchema.requiredSections, stored.committedSections)
+            assertEquals(16, stored.committedSections.size)
+            assertCatalogReferencesClose(reopened)
+            assertDatabaseIntegrity(cache.fileFor(parsed.romSha256))
+        }
     }
 
     @Test
@@ -330,7 +401,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(33, CatalogSchema.parserSchemaVersion)
+        assertEquals(34, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -383,10 +454,21 @@ class CatalogStoreTest {
             mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female"),
             reopened.trainerAssets.avatarAssetKeys,
         )
-        assertEquals(reopened.trainerAssets.avatarAssetKeys.values.toSet(), reopened.trainerAssets.assets.keys)
+        assertEquals(
+            mapOf(0 to "trainer/overworld/male", 1 to "trainer/overworld/female"),
+            reopened.trainerAssets.overworldAssetKeys,
+        )
+        assertEquals(
+            reopened.trainerAssets.avatarAssetKeys.values.toSet() + reopened.trainerAssets.overworldAssetKeys.values,
+            reopened.trainerAssets.assets.keys,
+        )
         reopened.trainerAssets.avatarAssetKeys.values.forEach { key ->
             assertEquals(64, reopened.trainerAssets.assets.getValue(key).width)
             assertEquals(64, reopened.trainerAssets.assets.getValue(key).height)
+        }
+        reopened.trainerAssets.overworldAssetKeys.values.forEach { key ->
+            assertEquals(16, reopened.trainerAssets.assets.getValue(key).width)
+            assertEquals(32, reopened.trainerAssets.assets.getValue(key).height)
         }
         assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
         assertEquals(catalog.localMaps.pois, reopened.localMaps.pois)
@@ -619,7 +701,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(33, CatalogSchema.parserSchemaVersion)
+        assertEquals(34, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -837,7 +919,7 @@ class CatalogStoreTest {
             assertEquals(listOf("ok"), database.query("PRAGMA quick_check") { row -> row.string("quick_check") })
             assertTrue(database.query("PRAGMA foreign_key_check") { row -> row.string("table") }.isEmpty())
             assertEquals(
-                listOf(14L),
+                listOf(CatalogSchema.requiredSections.size.toLong()),
                 database.query("SELECT COUNT(*) AS count FROM catalog_sections") { row -> row.long("count") },
             )
         }
@@ -867,6 +949,7 @@ class CatalogStoreTest {
     private fun completeCatalog(hash: String): ParsedCatalog {
         val sprite = RgbaSprite(2, 2, intArrayOf(0x00000000, 0xffff0000.toInt(), 0xff00ff00.toInt(), 0xff0000ff.toInt()))
         val avatar = RgbaSprite(64, 64, IntArray(64 * 64) { 0xff406080.toInt() })
+        val overworld = RgbaSprite(16, 32, IntArray(16 * 32) { 0xff406080.toInt() })
         val badge = RgbaSprite(16, 16, IntArray(16 * 16) { 0xffc0a020.toInt() })
         val badgeKeys = (1..8).map { "trainer/badge/$it" }
         val typePresentation = TypePresentation(PresentationSource.ROM_EXTRACTED, 0xffffffff.toInt(), 0xffff4422.toInt(), 0xff772211.toInt())
@@ -972,10 +1055,16 @@ class CatalogStoreTest {
                     0 to "trainer/avatar/male",
                     1 to "trainer/avatar/female",
                 ),
+                overworldAssetKeys = mapOf(
+                    0 to "trainer/overworld/male",
+                    1 to "trainer/overworld/female",
+                ),
                 badgeAssetKeys = badgeKeys,
                 assets = buildMap {
                     put("trainer/avatar/male", avatar)
                     put("trainer/avatar/female", avatar)
+                    put("trainer/overworld/male", overworld)
+                    put("trainer/overworld/female", overworld)
                     badgeKeys.forEach { put(it, badge) }
                 },
             ),

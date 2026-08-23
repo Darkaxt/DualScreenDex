@@ -73,7 +73,10 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             selectedAreaId = action.areaIds.minOrNull(),
             selectedAreaIds = action.areaIds,
         )
-        is CompanionAction.SetBattleTab -> state.copy(battleTab = action.tab)
+        is CompanionAction.SetBattleTab -> state.copy(
+            battleTab = action.tab,
+            battleTabExplicitlySelected = true,
+        )
         is CompanionAction.UpdateSettings -> state.copy(settings = action.settings)
         is CompanionAction.BattleStarted -> state.copy(
             priorScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.priorScreen,
@@ -83,11 +86,22 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
                 action.battle.encounterKind,
                 state.settings.rarityEnabled,
             ),
+            battleTabExplicitlySelected = false,
             battleReturnScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.battleReturnScreen,
             selectedSpeciesId = action.battle.opponents.getOrNull(action.battle.targetIndex)?.speciesId,
         )
         is CompanionAction.BattleUpdated -> state.copy(
             battle = action.battle,
+            battleTab = if (
+                !state.battleTabExplicitlySelected &&
+                state.battle?.encounterKind != BattleEncounterKind.WILD &&
+                action.battle.encounterKind == BattleEncounterKind.WILD &&
+                state.settings.rarityEnabled
+            ) {
+                BattleTab.RARITY
+            } else {
+                state.battleTab
+            },
             selectedSpeciesId = action.battle.opponents.getOrNull(action.battle.targetIndex)?.speciesId,
         )
         CompanionAction.BattleEnded -> {
@@ -98,6 +112,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
                 priorScreen = if (state.priorScreen == AppScreen.BATTLE) history.lastOrNull() ?: destination else state.priorScreen,
                 navigationHistory = history,
                 battle = null,
+                battleTabExplicitlySelected = false,
             )
         }
         is CompanionAction.SelectTarget -> {

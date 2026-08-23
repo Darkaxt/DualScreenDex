@@ -42,6 +42,24 @@ class CatalogModelsTest {
     }
 
     @Test
+    fun trainerAssetsKeepCardPortraitsAndMapSpritesInSeparateRoles() {
+        val portraitKeys = mapOf(0 to "trainer/avatar/male", 1 to "trainer/avatar/female")
+        val overworldKeys = mapOf(0 to "trainer/overworld/male", 1 to "trainer/overworld/female")
+        val assets = buildMap {
+            portraitKeys.values.forEach { put(it, RgbaSprite(64, 64, IntArray(64 * 64))) }
+            overworldKeys.values.forEach { put(it, RgbaSprite(16, 32, IntArray(16 * 32))) }
+        }
+
+        val catalog = TrainerAssetCatalog(
+            avatarAssetKeys = portraitKeys,
+            overworldAssetKeys = overworldKeys,
+            assets = assets,
+        )
+
+        assertEquals(overworldKeys, catalog.overworldAssetKeys)
+    }
+
+    @Test
     fun catalogDeclaresIndependentAreaPaletteAndBallCapabilities() {
         assertEquals(true, RomCapability.entries.contains(RomCapability.AREA_ENCOUNTERS))
         assertEquals(true, RomCapability.entries.contains(RomCapability.TYPE_PRESENTATION))

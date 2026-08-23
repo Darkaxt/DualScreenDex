@@ -38,6 +38,41 @@ describe('Pokédex knowledge modes', () => {
     expect(screen.queryByText(/EMERALD|ORGANIC/)).toBeNull();
   });
 
+  it('shows a compact owned versus found count for the current results', () => {
+    const rendered = render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
+
+    expect(screen.getByLabelText('0 owned, 1 found').textContent).toBe('0 / 1');
+
+    rendered.rerender(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      speciesState: {
+        1: { ...state.speciesState[1], caught: true, team: true },
+        4: { ...state.speciesState[4], seen: true },
+      },
+    }} send={vi.fn()} />);
+    expect(screen.getByLabelText('1 owned, 2 found').textContent).toBe('1 / 2');
+
+    rendered.rerender(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      filter: 'CAUGHT',
+      speciesState: {
+        1: { ...state.speciesState[1], caught: true, team: true },
+        4: { ...state.speciesState[4], seen: true },
+      },
+    }} send={vi.fn()} />);
+    expect(screen.getByLabelText('1 caught').textContent).toBe('1');
+
+    fireEvent.input(screen.getByPlaceholderText('NAME OR NUMBER'), { target: { value: 'Charmander' } });
+    expect(screen.getByLabelText('0 caught').textContent).toBe('0');
+  });
+
+  it('omits search and the counter from the Team tab', () => {
+    render(<PokedexBrowse catalog={catalog} state={{ ...state, filter: 'TEAM' }} send={vi.fn()} />);
+
+    expect(screen.queryByPlaceholderText('NAME OR NUMBER')).toBeNull();
+    expect(screen.queryByText(/\d+ \/ \d+/)).toBeNull();
+  });
+
   it('places a semantic Map shortcut in the existing header only for normalized maps', () => {
     const onOpenMap = vi.fn();
     const mappedCatalog: Catalog = {
