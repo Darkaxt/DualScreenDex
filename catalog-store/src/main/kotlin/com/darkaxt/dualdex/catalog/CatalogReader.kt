@@ -25,7 +25,9 @@ import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.io.InputStreamReader
+import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.lang.reflect.Type
 import java.util.zip.GZIPInputStream
@@ -87,8 +89,8 @@ class CatalogReader(private val database: CatalogDatabase) {
         }
 
         return StoredCatalog(
-            catalog = codec.decode(metadata.sha256, metadata.crc32, metadata.family, metadata.platform) { name ->
-                val chunks = database.query(
+            catalog = codec.decode(metadata.sha256, metadata.crc32, metadata.family, metadata.platform) { name, type ->
+                database.streamQuery(
                     """
                     SELECT chunk_index, payload
                     FROM catalog_section_chunks
@@ -96,17 +98,16 @@ class CatalogReader(private val database: CatalogDatabase) {
                     ORDER BY chunk_index
                     """.trimIndent(),
                     listOf(name),
-                ) { row ->
-                    requireNotNull(row.long("chunk_index")).toInt() to
-                        requireNotNull(row.bytes("payload")) { "catalog section chunk payload is null" }
-                }
-                require(chunks.isNotEmpty()) { "catalog section has no chunks: $name" }
-                require(chunks.indices.all { chunks[it].first == it }) {
-                    "catalog section chunks are not contiguous: $name"
-                }
-                ByteArrayOutputStream(chunks.sumOf { it.second.size }).use { output ->
-                    chunks.forEach { (_, chunk) -> output.write(chunk) }
-                    output.toByteArray()
+                ) { rows ->
+                    val input = CatalogChunkInputStream(name) {
+                        rows.next()?.let { row ->
+                            CatalogChunk(
+                                requireNotNull(row.long("chunk_index")).toInt(),
+                                requireNotNull(row.bytes("payload")) { "catalog section chunk payload is null" },
+                            )
+                        }
+                    }
+                    codec.decodeSection(input, type)
                 }
             },
             source = CatalogSourceMetadata(
@@ -173,23 +174,29 @@ internal class CatalogSectionCodec {
     fun encode(catalog: ParsedCatalog, included: Set<String>): Map<String, ByteArray> =
         included.associateWithTo(linkedMapOf()) { name -> encodeSection(catalog, name) }
 
-    fun encodeSection(catalog: ParsedCatalog, name: String): ByteArray = when (name) {
-        "species" -> encode(catalog.speciesById, speciesType)
-        "moves" -> encode(catalog.movesById, movesType)
-        "types" -> encode(catalog.typesById, typesType)
-        "abilities" -> encode(catalog.abilitiesById, abilitiesType)
-        "natures" -> encode(catalog.naturesById, naturesType)
-        "type_chart" -> encode(catalog.typeChart, chartType)
-        "encounters" -> encode(catalog.encounterAreas, encountersType)
-        "capture_balls" -> encode(catalog.captureBallsById, ballsType)
-        "learnset_rulesets" -> encode(catalog.learnsetRulesets, rulesetsType)
-        "runtime_metadata" -> encode(catalog.runtimeMetadata, runtimeMetadataType)
-        "world_maps" -> encode(catalog.worldMaps, worldMapsType)
-        "trainer_assets" -> encode(catalog.trainerAssets, trainerAssetsType)
-        "local_maps" -> encode(catalog.localMaps, localMapsType)
-        "theme" -> encode(catalog.theme, themeType)
-        "capabilities" -> encode(catalog.capabilities, capabilitiesType)
-        "diagnostics" -> encode(catalog.diagnostics, diagnosticsType)
+    fun encodeSection(catalog: ParsedCatalog, name: String): ByteArray =
+        ByteArrayOutputStream().use { output ->
+            writeSection(catalog, name, output)
+            output.toByteArray()
+        }
+
+    fun writeSection(catalog: ParsedCatalog, name: String, output: OutputStream) = when (name) {
+        "species" -> encode(catalog.speciesById, speciesType, output)
+        "moves" -> encode(catalog.movesById, movesType, output)
+        "types" -> encode(catalog.typesById, typesType, output)
+        "abilities" -> encode(catalog.abilitiesById, abilitiesType, output)
+        "natures" -> encode(catalog.naturesById, naturesType, output)
+        "type_chart" -> encode(catalog.typeChart, chartType, output)
+        "encounters" -> encode(catalog.encounterAreas, encountersType, output)
+        "capture_balls" -> encode(catalog.captureBallsById, ballsType, output)
+        "learnset_rulesets" -> encode(catalog.learnsetRulesets, rulesetsType, output)
+        "runtime_metadata" -> encode(catalog.runtimeMetadata, runtimeMetadataType, output)
+        "world_maps" -> encode(catalog.worldMaps, worldMapsType, output)
+        "trainer_assets" -> encode(catalog.trainerAssets, trainerAssetsType, output)
+        "local_maps" -> encode(catalog.localMaps, localMapsType, output)
+        "theme" -> encode(catalog.theme, themeType, output)
+        "capabilities" -> encode(catalog.capabilities, capabilitiesType, output)
+        "diagnostics" -> encode(catalog.diagnostics, diagnosticsType, output)
         else -> error("unknown catalog section: $name")
     }
 
@@ -199,16 +206,21 @@ internal class CatalogSectionCodec {
         family: EngineFamily,
         platform: Platform,
         sections: Map<String, ByteArray>,
-    ): ParsedCatalog = decode(sha256, crc32, family, platform, sections::getValue)
+    ): ParsedCatalog = decode(sha256, crc32, family, platform) { name, type ->
+        decodeSection(ByteArrayInputStream(sections.getValue(name)), type)
+    }
 
     fun decode(
         sha256: String,
         crc32: String,
         family: EngineFamily,
         platform: Platform,
-        section: (String) -> ByteArray,
+        section: (String, Type) -> Any,
     ): ParsedCatalog {
-        val encounterAreas = decode<List<EncounterArea>>(section("encounters"), encountersType)
+        @Suppress("UNCHECKED_CAST")
+        fun <T> decoded(name: String, type: Type): T = section(name, type) as T
+
+        val encounterAreas = decoded<List<EncounterArea>>("encounters", encountersType)
             .map { area ->
                 val windows = runCatching { area.windows }.getOrNull()
                 if (windows.isNullOrEmpty()) area.copy(windows = setOf(EncounterWindow.ANY)) else area
@@ -218,43 +230,89 @@ internal class CatalogSectionCodec {
         romCrc32 = crc32,
         family = family,
         platform = platform,
-        speciesById = decode(section("species"), speciesType),
-        movesById = decode(section("moves"), movesType),
-        typesById = decode(section("types"), typesType),
-        abilitiesById = decode(section("abilities"), abilitiesType),
-        naturesById = decode(section("natures"), naturesType),
-        typeChart = decode(section("type_chart"), chartType),
+        speciesById = decoded("species", speciesType),
+        movesById = decoded("moves", movesType),
+        typesById = decoded("types", typesType),
+        abilitiesById = decoded("abilities", abilitiesType),
+        naturesById = decoded("natures", naturesType),
+        typeChart = decoded("type_chart", chartType),
         encounterAreas = encounterAreas,
-        captureBallsById = decode(section("capture_balls"), ballsType),
-        learnsetRulesets = decode(section("learnset_rulesets"), rulesetsType),
-        runtimeMetadata = decode<CatalogRuntimeMetadata>(
-            section("runtime_metadata"),
-            runtimeMetadataType,
-        ).validate(),
-        worldMaps = decode<WorldMapCatalog>(section("world_maps"), worldMapsType).validate(),
-        trainerAssets = decode<TrainerAssetCatalog>(section("trainer_assets"), trainerAssetsType).validate(),
-        localMaps = decode<LocalMapCatalog>(section("local_maps"), localMapsType).validate(),
-        theme = decode<CatalogTheme>(section("theme"), themeType).validate(),
-        capabilities = decode(section("capabilities"), capabilitiesType),
-        diagnostics = decode(section("diagnostics"), diagnosticsType),
+        captureBallsById = decoded("capture_balls", ballsType),
+        learnsetRulesets = decoded("learnset_rulesets", rulesetsType),
+        runtimeMetadata = decoded<CatalogRuntimeMetadata>("runtime_metadata", runtimeMetadataType).validate(),
+        worldMaps = decoded<WorldMapCatalog>("world_maps", worldMapsType).validate(),
+        trainerAssets = decoded<TrainerAssetCatalog>("trainer_assets", trainerAssetsType).validate(),
+        localMaps = decoded<LocalMapCatalog>("local_maps", localMapsType).validate(),
+        theme = decoded<CatalogTheme>("theme", themeType).validate(),
+        capabilities = decoded("capabilities", capabilitiesType),
+        diagnostics = decoded("diagnostics", diagnosticsType),
         )
     }
 
-    private fun encode(value: Any, type: Type): ByteArray {
-        val output = ByteArrayOutputStream()
+    private fun encode(value: Any, type: Type, output: OutputStream) {
         GZIPOutputStream(output).use { gzip ->
             OutputStreamWriter(gzip, Charsets.UTF_8).use { writer -> gson.toJson(value, type, writer) }
         }
-        return output.toByteArray()
     }
 
-    private fun <T> decode(payload: ByteArray, type: Type): T {
-        return GZIPInputStream(ByteArrayInputStream(payload)).use { gzip ->
+    fun decodeSection(payload: InputStream, type: Type): Any {
+        return GZIPInputStream(payload).use { gzip ->
             InputStreamReader(gzip, Charsets.UTF_8).use { reader -> gson.fromJson(reader, type) }
         }
     }
 
     private inline fun <reified T> type(): Type = object : TypeToken<T>() {}.type
+}
+
+internal data class CatalogChunk(
+    val index: Int,
+    val payload: ByteArray,
+)
+
+internal class CatalogChunkInputStream(
+    private val sectionName: String,
+    private val nextChunk: () -> CatalogChunk?,
+) : InputStream() {
+    private var current = ByteArray(0)
+    private var offset = 0
+    private var expectedIndex = 0
+    private var exhausted = false
+
+    override fun read(): Int {
+        if (!ensureAvailable()) return -1
+        return current[offset++].toInt() and 0xff
+    }
+
+    override fun read(destination: ByteArray, destinationOffset: Int, length: Int): Int {
+        require(destinationOffset >= 0 && length >= 0 && destinationOffset + length <= destination.size) {
+            "catalog chunk destination range is invalid"
+        }
+        if (length == 0) return 0
+        if (!ensureAvailable()) return -1
+        val count = minOf(length, current.size - offset)
+        current.copyInto(destination, destinationOffset, offset, offset + count)
+        offset += count
+        return count
+    }
+
+    private fun ensureAvailable(): Boolean {
+        while (offset >= current.size && !exhausted) {
+            val chunk = nextChunk()
+            if (chunk == null) {
+                exhausted = true
+                require(expectedIndex > 0) { "catalog section has no chunks: $sectionName" }
+                return false
+            }
+            require(chunk.index == expectedIndex) {
+                "catalog section chunks are not contiguous: $sectionName"
+            }
+            require(chunk.payload.isNotEmpty()) { "catalog section chunk is empty: $sectionName" }
+            expectedIndex++
+            current = chunk.payload
+            offset = 0
+        }
+        return offset < current.size
+    }
 }
 
 private fun CatalogRow.requiredString(column: String): String =

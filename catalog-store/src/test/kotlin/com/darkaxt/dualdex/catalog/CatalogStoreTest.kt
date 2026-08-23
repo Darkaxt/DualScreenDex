@@ -85,14 +85,66 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import kotlin.io.path.listDirectoryEntries
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class CatalogStoreTest {
+    @Test
+    fun `catalog chunk stream pulls ordered chunks lazily and rejects gaps or duplicates`() {
+        val chunks = ArrayDeque(
+            listOf(
+                CatalogChunk(0, byteArrayOf(1, 2)),
+                CatalogChunk(1, byteArrayOf(3, 4)),
+            ),
+        )
+        var pulls = 0
+        val input = CatalogChunkInputStream("control") {
+            pulls++
+            chunks.removeFirstOrNull()
+        }
+
+        assertEquals(0, pulls)
+        assertEquals(1, input.read())
+        assertEquals(1, pulls)
+        assertArrayEquals(byteArrayOf(2, 3, 4), input.readBytes())
+        assertEquals(3, pulls)
+
+        listOf(
+            listOf(CatalogChunk(0, byteArrayOf(1)), CatalogChunk(2, byteArrayOf(2))),
+            listOf(CatalogChunk(0, byteArrayOf(1)), CatalogChunk(0, byteArrayOf(2))),
+        ).forEach { invalid ->
+            val pending = ArrayDeque(invalid)
+            assertThrows(IllegalArgumentException::class.java) {
+                CatalogChunkInputStream("invalid") { pending.removeFirstOrNull() }.readBytes()
+            }
+        }
+    }
+
+    @Test
+    fun `unchanged checkpoint writes zero catalog chunk bytes`() {
+        val root = newRoot()
+        val file = root.resolve("unchanged.sqlite").toFile()
+        JdbcCatalogDatabaseFactory.open(file).use { delegate ->
+            val recording = RecordingCatalogDatabase(delegate)
+            val writer = CatalogWriter(recording, clock = { 100L })
+            val catalog = completeCatalog("9".repeat(64))
+            val source = CatalogSourceMetadata.direct("Emerald.gba", 16_777_216, "POKEMON EMER")
+
+            writer.write(catalog, source, CatalogWriteProgress.complete())
+            assertTrue(recording.writtenChunkBytes > 0)
+            recording.writtenChunkBytes = 0
+            writer.write(catalog, source, CatalogWriteProgress.complete())
+
+            assertEquals(0L, recording.writtenChunkBytes)
+        }
+    }
+
     @Test
     fun `Unbound completed move descriptions survive the production incremental cache round trip`() {
         val configured = System.getenv("DUALDEX_UNBOUND_ROM")
@@ -293,7 +345,7 @@ class CatalogStoreTest {
             assertEquals(chunks.indices.toList(), chunks.map(Pair<Int, Int>::first))
             assertTrue(chunks.all { (_, size) -> size in 1..CatalogSchema.sectionChunkBytes })
             assertEquals(
-                listOf(0L),
+                listOf(32L),
                 database.query(
                     "SELECT length(payload) AS payload_bytes FROM catalog_sections WHERE name = 'local_maps'",
                 ) { row -> row.long("payload_bytes") },
@@ -900,6 +952,19 @@ class CatalogStoreTest {
         assertEquals(corruptHash, events.last().sha256)
         assertTrue(events.last().failure is Exception)
         assertFalse(cache.fileFor(corruptHash).exists())
+    }
+
+    private class RecordingCatalogDatabase(
+        private val delegate: CatalogDatabase,
+    ) : CatalogDatabase by delegate {
+        var writtenChunkBytes = 0L
+
+        override fun execute(sql: String, arguments: List<Any?>) {
+            if (sql.contains("INSERT INTO catalog_section_chunks")) {
+                writtenChunkBytes += arguments.filterIsInstance<ByteArray>().sumOf(ByteArray::size)
+            }
+            delegate.execute(sql, arguments)
+        }
     }
 
     private fun newRoot(): Path {

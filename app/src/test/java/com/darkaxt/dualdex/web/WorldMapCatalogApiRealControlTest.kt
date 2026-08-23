@@ -617,5 +617,22 @@ private class JdbcTestCatalogDatabase(private val connection: Connection) : Cata
             }
         }
 
+    override fun <T> streamQuery(
+        sql: String,
+        arguments: List<Any?>,
+        consume: (com.darkaxt.dualdex.catalog.CatalogRows) -> T,
+    ): T = connection.prepareStatement(sql).use { statement ->
+        arguments.forEachIndexed { index, value -> statement.setObject(index + 1, value) }
+        statement.executeQuery().use { result ->
+            consume(com.darkaxt.dualdex.catalog.CatalogRows {
+                if (!result.next()) null else object : CatalogRow {
+                    override fun string(column: String): String? = result.getString(column)
+                    override fun long(column: String): Long? = result.getLong(column).takeUnless { result.wasNull() }
+                    override fun bytes(column: String): ByteArray? = result.getBytes(column)
+                }
+            })
+        }
+    }
+
     override fun close() = connection.close()
 }

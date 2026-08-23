@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import com.darkaxt.dualdex.catalog.CatalogDatabase
 import com.darkaxt.dualdex.catalog.CatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogRow
+import com.darkaxt.dualdex.catalog.CatalogRows
 import java.io.File
 
 object AndroidCatalogDatabaseFactory : CatalogDatabaseFactory {
@@ -37,6 +38,14 @@ private class AndroidCatalogDatabase(private val database: SQLiteDatabase) : Cat
             buildList {
                 while (cursor.moveToNext()) add(map(AndroidCatalogRow(cursor)))
             }
+        }
+    }
+
+    override fun <T> streamQuery(sql: String, arguments: List<Any?>, consume: (CatalogRows) -> T): T {
+        require(arguments.none { it is ByteArray }) { "blob query arguments are not supported" }
+        val selection = arguments.map { it?.toString() }.toTypedArray()
+        return database.rawQuery(sql, selection).use { cursor ->
+            consume(CatalogRows { if (cursor.moveToNext()) AndroidCatalogRow(cursor) else null })
         }
     }
 

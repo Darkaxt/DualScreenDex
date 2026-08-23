@@ -3,6 +3,9 @@ package com.darkaxt.dualdex.catalog
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import java.io.OutputStream
+import java.security.DigestOutputStream
+import java.security.MessageDigest
 
 enum class CatalogSourceKind { DIRECT, ARCHIVE }
 
@@ -109,12 +112,25 @@ class CatalogWriter(
                 ),
             )
             progress.changedSections.forEach { name ->
-                val payload = codec.encodeSection(catalog, name)
+                val previousDigest = database.query(
+                    "SELECT payload FROM catalog_sections WHERE name = ?",
+                    listOf(name),
+                ) { row -> row.bytes("payload") }.singleOrNull()
+                val candidateDigest = previousDigest
+                    ?.takeIf { it.size == SHA_256_BYTES }
+                    ?.let { codec.encodedDigest(catalog, name) }
+                if (candidateDigest != null && previousDigest.contentEquals(candidateDigest)) {
+                    database.execute(
+                        "UPDATE catalog_sections SET committed_phase = ?, written_at_epoch_ms = ? WHERE name = ?",
+                        listOf(progress.phase, now, name),
+                    )
+                    return@forEach
+                }
                 database.execute(
                     "DELETE FROM catalog_section_chunks WHERE section_name = ?",
                     listOf(name),
                 )
-                payload.asSequenceChunks(CatalogSchema.sectionChunkBytes).forEachIndexed { index, chunk ->
+                val output = CatalogChunkOutputStream(CatalogSchema.sectionChunkBytes) { index, chunk ->
                     database.execute(
                         """
                         INSERT INTO catalog_section_chunks (section_name, chunk_index, payload)
@@ -123,13 +139,14 @@ class CatalogWriter(
                         listOf(name, index, chunk),
                     )
                 }
+                val writtenDigest = codec.writeSectionAndDigest(catalog, name, output)
                 database.execute(
                     """
                     INSERT OR REPLACE INTO catalog_sections
                     (name, encoding, payload, committed_phase, written_at_epoch_ms)
                     VALUES (?, 'gzip+json+chunks-v1', ?, ?, ?)
                     """.trimIndent(),
-                    listOf(name, ByteArray(0), progress.phase, now),
+                    listOf(name, writtenDigest, progress.phase, now),
                 )
             }
             if (progress.complete) {
@@ -142,14 +159,74 @@ class CatalogWriter(
     }
 }
 
-private fun ByteArray.asSequenceChunks(maximumBytes: Int): Sequence<ByteArray> {
-    require(maximumBytes > 0) { "catalog section chunk size must be positive" }
-    return sequence {
-        var start = 0
-        while (start < size) {
-            val end = minOf(start + maximumBytes, size)
-            yield(copyOfRange(start, end))
-            start = end
+private fun CatalogSectionCodec.encodedDigest(catalog: ParsedCatalog, name: String): ByteArray {
+    val sink = object : OutputStream() {
+        override fun write(value: Int) = Unit
+        override fun write(bytes: ByteArray, offset: Int, length: Int) = Unit
+    }
+    return writeSectionAndDigest(catalog, name, sink)
+}
+
+private fun CatalogSectionCodec.writeSectionAndDigest(
+    catalog: ParsedCatalog,
+    name: String,
+    output: OutputStream,
+): ByteArray {
+    val digest = MessageDigest.getInstance("SHA-256")
+    DigestOutputStream(output, digest).use { encoded -> writeSection(catalog, name, encoded) }
+    return digest.digest()
+}
+
+internal class CatalogChunkOutputStream(
+    maximumBytes: Int,
+    private val writeChunk: (Int, ByteArray) -> Unit,
+) : OutputStream() {
+    private var buffer = ByteArray(maximumBytes)
+    private var position = 0
+    private var chunkIndex = 0
+    private var closed = false
+
+    init {
+        require(maximumBytes > 0) { "catalog section chunk size must be positive" }
+    }
+
+    override fun write(value: Int) {
+        check(!closed) { "catalog chunk output is closed" }
+        if (position == buffer.size) emitFullChunk()
+        buffer[position++] = value.toByte()
+    }
+
+    override fun write(bytes: ByteArray, offset: Int, length: Int) {
+        check(!closed) { "catalog chunk output is closed" }
+        require(offset >= 0 && length >= 0 && offset + length <= bytes.size) {
+            "catalog chunk source range is invalid"
+        }
+        var sourceOffset = offset
+        var remaining = length
+        while (remaining > 0) {
+            if (position == buffer.size) emitFullChunk()
+            val count = minOf(remaining, buffer.size - position)
+            bytes.copyInto(buffer, position, sourceOffset, sourceOffset + count)
+            position += count
+            sourceOffset += count
+            remaining -= count
         }
     }
+
+    override fun close() {
+        if (closed) return
+        if (position > 0) {
+            writeChunk(chunkIndex++, buffer.copyOf(position))
+            position = 0
+        }
+        closed = true
+    }
+
+    private fun emitFullChunk() {
+        writeChunk(chunkIndex++, buffer)
+        buffer = ByteArray(buffer.size)
+        position = 0
+    }
 }
+
+private const val SHA_256_BYTES = 32
