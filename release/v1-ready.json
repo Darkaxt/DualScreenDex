@@ -123,6 +123,7 @@
   "v11Rc44CacheDecisionLogging": true,
   "v11Rc44ModernEmeraldTrainerRuntime": true,
   "v11Rc44SharedPartyDexIcon": true,
+  "v11Rc45UnifiedLiveLocalMap": true,
   "v11SaveSynchronizedKnowledgeCheckpoints": true,
   "gen1CompiledEvolutionCoveragePercent": 96.62,
   "gen1CompiledLearnsetCoveragePercent": 93.56,
