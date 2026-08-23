@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DexIcon, FilterIcon, MapIcon, SettingsIcon } from '../components';
 import { GameClockIndicator } from '../GameClockIndicator';
 import { AcceleratedMapFollower, anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, shouldGlideCamera, type MapViewport } from '../mapEngine';
-import type { Catalog, LocalMapPoiPreferences, LocalMapPoiView, State, WorldMapLocation, WorldMapRegion } from '../models';
+import type { Catalog, LocalMapPoiPreferences, LocalMapPoiView, LocalMapScenePlacementView, LocalMapSceneView, State, WorldMapLocation, WorldMapRegion } from '../models';
 
 interface MapPageProps {
   catalog: Catalog;
@@ -26,6 +26,7 @@ type PoiLabelPlacement = 'below' | 'above';
 const HOME_VIEWPORT: MapViewport = { scale: 1, panX: 0, panY: 0 };
 const DEFAULT_TRAINER_MARKER_WIDTH_PIXELS = 16;
 const DEFAULT_TRAINER_MARKER_HEIGHT_PIXELS = 32;
+const MAX_MOUNTED_MAP_DECODED_BYTES = 32 * 1024 * 1024;
 const DEFAULT_POI_PREFERENCES: LocalMapPoiPreferences = {
   showPlaces: true,
   showServices: true,
@@ -97,6 +98,14 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const hiddenScenePlacements = useMemo(
     () => localScene?.placements.filter(placement => !visibleScenePlacements.includes(placement)) ?? [],
     [localScene?.key, localScene?.placements, visibleScenePlacements],
+  );
+  const mountedScenePlacements = useMemo(
+    () => selectMountedScenePlacements(localScene, visibleScenePlacements, activePlacement),
+    [localScene?.key, visibleScenePlacements, activePlacement?.localMapKey],
+  );
+  const mountedDecodedBytes = mountedScenePlacements.reduce(
+    (total, placement) => total + placement.pixelWidth * placement.pixelHeight * 4,
+    0,
   );
   const localMapNames = useMemo(
     () => new Map((catalog.localMaps ?? []).map(map => [map.key, map.displayName])),
@@ -399,7 +408,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     ? (state.localMapPois ?? []).flatMap(poi => {
       if (!poiCategoryEnabled(poi, poiPreferences)) return [];
       if (localScene) {
-        const placement = visibleScenePlacements.find(candidate => candidate.localMapKey === poi.localMapKey);
+        const placement = mountedScenePlacements.find(candidate => candidate.localMapKey === poi.localMapKey);
         if (!placement) return [];
         return [{
           poi,
@@ -460,6 +469,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       data-pan-y={viewport.panY}
       data-effective-raster-scale={renderedWidth / activeMap.pixelWidth}
       data-poi-zoom-percent={poiZoomPercent}
+      data-mounted-decoded-bytes={mountedDecodedBytes}
       data-selected-key={activeMode === 'ATLAS' ? selectedLocation?.key : localScene?.key ?? localMap?.key}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -469,7 +479,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     >
       <div class="map-plane map-framed-plane" style={{ width: renderedWidth, height: renderedHeight, transform }}>
         {localScene
-          ? visibleScenePlacements.map(placement => <img
+          ? mountedScenePlacements.map(placement => <img
             key={placement.localMapKey}
             class="map-scene-tile"
             data-local-map-key={placement.localMapKey}
@@ -497,7 +507,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
               height: `${placement.pixelHeight / localScene.pixelHeight * 100}%`,
             }}
           />)}
-        {localScene && visibleScenePlacements.map(placement => {
+        {localScene && mountedScenePlacements.map(placement => {
           const name = localMapNames.get(placement.localMapKey);
           if (!name || placement.localMapKey === activePlacement?.localMapKey) return null;
           return <span
@@ -698,6 +708,48 @@ function poiSymbol(poi: LocalMapPoiView) {
 
 function mapImageUrl(imageUrl: string, dynamicLighting: boolean, lightingQuery: string) {
   return dynamicLighting ? `${imageUrl}?${lightingQuery}` : imageUrl;
+}
+
+export function selectMountedScenePlacements(
+  scene: LocalMapSceneView | undefined,
+  visible: LocalMapScenePlacementView[],
+  active: LocalMapScenePlacementView | undefined,
+  maximumDecodedBytes = MAX_MOUNTED_MAP_DECODED_BYTES,
+) {
+  if (!scene || visible.length === 0 || maximumDecodedBytes <= 0) return [];
+  const anchor = active && visible.includes(active) ? active : visible[0];
+  const candidates = [
+    anchor,
+    ...visible
+      .filter(placement => placement !== anchor && placementsShareEdge(anchor, placement))
+      .sort((left, right) => {
+        const distance = placementDistanceSquared(anchor, left) - placementDistanceSquared(anchor, right);
+        return distance !== 0 ? distance : left.localMapKey.localeCompare(right.localMapKey);
+      }),
+  ];
+  const mounted: LocalMapScenePlacementView[] = [];
+  let decodedBytes = 0;
+  for (const placement of candidates) {
+    const placementBytes = placement.pixelWidth * placement.pixelHeight * 4;
+    if (mounted.length > 0 && decodedBytes + placementBytes > maximumDecodedBytes) continue;
+    mounted.push(placement);
+    decodedBytes += placementBytes;
+  }
+  return mounted;
+}
+
+function placementsShareEdge(left: LocalMapScenePlacementView, right: LocalMapScenePlacementView) {
+  const horizontalEdge = left.gridX + left.gridWidth === right.gridX || right.gridX + right.gridWidth === left.gridX;
+  const verticalOverlap = Math.min(left.gridY + left.gridHeight, right.gridY + right.gridHeight) - Math.max(left.gridY, right.gridY);
+  const verticalEdge = left.gridY + left.gridHeight === right.gridY || right.gridY + right.gridHeight === left.gridY;
+  const horizontalOverlap = Math.min(left.gridX + left.gridWidth, right.gridX + right.gridWidth) - Math.max(left.gridX, right.gridX);
+  return (horizontalEdge && verticalOverlap > 0) || (verticalEdge && horizontalOverlap > 0);
+}
+
+function placementDistanceSquared(left: LocalMapScenePlacementView, right: LocalMapScenePlacementView) {
+  const deltaX = left.gridX + left.gridWidth / 2 - (right.gridX + right.gridWidth / 2);
+  const deltaY = left.gridY + left.gridHeight / 2 - (right.gridY + right.gridHeight / 2);
+  return deltaX * deltaX + deltaY * deltaY;
 }
 
 function markerPosition(location: WorldMapLocation, region: WorldMapRegion) {

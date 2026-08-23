@@ -119,6 +119,16 @@ class ProductionCompanionRuntime(
     ) -> ParsedCatalog? = { rom, progress, work ->
         CatalogParser.parseWithWork(rom, progress, work).catalog
     },
+    private val mapAssetRenderer: (
+        ParsedCatalog,
+        String,
+        MapLighting,
+        MapTimeOfDay?,
+    ) -> RenderedMapAsset? = { current, key, requestedLighting, time ->
+        LocalMapAssetRenderer.render(current.localMaps, key, requestedLighting, time)
+            ?: current.worldMaps.assets[key]?.let { RenderedMapAsset(PngEncoder.encode(it), null) }
+    },
+    private val mapAssetRenderCache: MapAssetRenderCache = MapAssetRenderCache(),
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
     @Volatile private var settingsRomSha256: String? = null
@@ -835,15 +845,23 @@ class ProductionCompanionRuntime(
     @Synchronized
     fun ballSprite(id: Int) = catalog?.captureBallsById?.get(id)?.sprite?.value
 
-    @Synchronized
     fun mapAsset(
         key: String,
         requestedLighting: MapLighting,
         time: MapTimeOfDay? = null,
-    ): RenderedMapAsset? = catalog?.let { current ->
-        LocalMapAssetRenderer.render(current.localMaps, key, requestedLighting, time)
-            ?: current.worldMaps.assets[key]?.let { RenderedMapAsset(PngEncoder.encode(it), null) }
+    ): RenderedMapAsset? {
+        val current = synchronized(this) { catalog } ?: return null
+        val variant = when {
+            key in current.localMaps.timedAssets -> "TIME-${(time ?: MapTimeOfDay(12, 0)).minuteOfDay}"
+            key in current.localMaps.indexedAssets -> "LIGHTING-${requestedLighting.name}"
+            else -> "STATIC"
+        }
+        return mapAssetRenderCache.getOrRender(MapAssetRenderKey(current.romSha256, key, variant)) {
+            mapAssetRenderer(current, key, requestedLighting, time)
+        }
     }
+
+    fun mapAssetCacheStats(): MapAssetRenderCacheStats = mapAssetRenderCache.stats()
 
     @Synchronized
     fun trainerAsset(key: String) = catalog?.trainerAssets?.assets?.get(key)
@@ -871,6 +889,7 @@ class ProductionCompanionRuntime(
             loadGeneration.incrementAndGet()
             clearCatalogProjectionCaches()
         }
+        mapAssetRenderCache.clear()
         parserWorker.shutdown()
     }
 
@@ -1019,6 +1038,7 @@ class ProductionCompanionRuntime(
         val generation = loadGeneration.incrementAndGet()
         catalog = null
         clearCatalogProjectionCaches()
+        mapAssetRenderCache.clear()
         liveParty = null
         liveGameState = null
         savedPlayerState = null

@@ -431,6 +431,55 @@ describe('optional local map presentation', () => {
     expect(view.container.querySelector('.map-player-marker')?.getAttribute('aria-label')).toBe('Player position 1, 7');
   });
 
+  it('mounts only the current and adjacent revealed rasters within thirty-two MiB', () => {
+    const placements = Array.from({ length: 100 }, (_, index) => ({
+      localMapKey: `local/${index}`,
+      baseAreaId: 0x10 + index,
+      gridX: index * 64,
+      gridY: 0,
+      pixelX: index * 1024,
+      pixelY: 0,
+      pixelWidth: 1024,
+      pixelHeight: 1024,
+      gridWidth: 64,
+      gridHeight: 64,
+      imageUrl: `/api/maps/local%2F${index}%2Fmap.png`,
+      dynamicLighting: true,
+    }));
+    const largeCatalog: Catalog = {
+      ...connectedCatalog,
+      mapScenes: [{
+        key: 'scene/large',
+        pixelWidth: 1024 * placements.length,
+        pixelHeight: 1024,
+        gridWidth: 64 * placements.length,
+        gridHeight: 64,
+        placements,
+      }],
+    };
+    const view = render(<MapPage
+      catalog={largeCatalog}
+      state={{
+        ...state,
+        currentAreaBaseId: 0x10 + 50,
+        revealedAreaBaseIds: placements.map(placement => placement.baseAreaId),
+        gameTime: { hours: 18, minutes: 37, phase: 'DAY', phaseProgress: 0.8 },
+      }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    const stage = screen.getByRole('region', { name: 'Interactive local map' });
+    const mounted = [...view.container.querySelectorAll('.map-scene-tile')];
+    expect(mounted).toHaveLength(3);
+    expect(mounted.map(image => image.getAttribute('data-local-map-key'))).toEqual([
+      'local/50', 'local/49', 'local/51',
+    ]);
+    expect(Number(stage.dataset.mountedDecodedBytes)).toBe(3 * 1024 * 1024 * 4);
+    expect(Number(stage.dataset.mountedDecodedBytes)).toBeLessThanOrEqual(32 * 1024 * 1024);
+    expect(mounted.every(image => image.getAttribute('src')?.endsWith('?hour=18&minute=37'))).toBe(true);
+  });
+
   it('does not load undiscovered Local rasters or an Atlas underlay in Organic mode', () => {
     const view = render(<MapPage
       catalog={connectedCatalog}

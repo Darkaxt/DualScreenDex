@@ -88,6 +88,23 @@ import com.darkaxt.dualdex.battle.RuntimeMapPosition
 
 class ProductionCompanionRuntimeTest {
     @Test
+    fun rendersMapAssetsOutsideTheRuntimeStateLock() {
+        var heldRuntimeLock = true
+        lateinit var runtime: ProductionCompanionRuntime
+        runtime = ProductionCompanionRuntime(
+            mapAssetRenderer = { _, _, _, _ ->
+                heldRuntimeLock = Thread.holdsLock(runtime)
+                com.enrpau.dualscreendex.parser.catalog.RenderedMapAsset(byteArrayOf(1), null)
+            },
+        )
+        runtime.loadCatalog("map.gba", ParsedCatalog("sha", EngineFamily.EMERALD, Platform.GBA))
+
+        assertEquals(1, runtime.mapAsset("map", MapLighting.DAY)?.bytes?.size)
+        assertFalse(heldRuntimeLock)
+        runtime.close()
+    }
+
+    @Test
     fun projectsOnlyCatalogValidatedClockPhasesIntoCompanionState() {
         val hash = "e".repeat(64)
         val runtime = ProductionCompanionRuntime()
