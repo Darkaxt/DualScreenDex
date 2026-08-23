@@ -347,6 +347,8 @@ class OfficialEmeraldPlayerStateRealControlTest {
         val EXPECTED_PNG_HASHES = mapOf(
             "trainer/avatar/male" to "688c1ea6cf2b73e1a9a5115ceb6d10c2127a0e1643cfce9414baf4658dbad9af",
             "trainer/avatar/female" to "c40402e0ba706a5f5798cbc1d45325ec71a9a0ca45bf299c3da84fea3aef61e7",
+            "trainer/overworld/male" to "8dcda636ca5661447359ea9c73c4788d8c5e42c5b6abb7128121d5a8acc61d52",
+            "trainer/overworld/female" to "e14b1195027d48d225eadb2ccedabc2ef98b1446f9d68f4bc515e70ae888b7c1",
             "trainer/badge/1" to "53cd36249220ab4e55e108265a484f736dc3859bce80a39c826f934f86aba25d",
             "trainer/badge/2" to "dd72cc943dc7fa61f6d12e023dd5dc32d060b86fad517b7218735fd50b0e8734",
             "trainer/badge/3" to "5d8dac2e1a1e015d0e7dfcedaa8e0dce5861aa8aa74d003a57409cabb902a5a0",

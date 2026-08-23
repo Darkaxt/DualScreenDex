@@ -456,7 +456,7 @@ class WorldMapCatalogApiRealControlTest {
             ),
             Control(
                 "DUALDEX_POKECRYSTAL_ROM",
-                "d6702e353dcbe2d2c69183046c878ef13a0dae4006e8cdff521cca83dd1582fe",
+                "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2",
                 listOf("gen2-johto", "gen2-kanto"),
                 GEN2_PNGS,
             ),
