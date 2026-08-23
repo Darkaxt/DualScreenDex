@@ -42,7 +42,11 @@ class RomDerivedThemeLiveRomTest {
         )
         val expectedThemes = linkedMapOf(
             "Red" to theme(
-                setOf(CatalogThemeAssetClass.WORLD_MAP, CatalogThemeAssetClass.SPECIES),
+                setOf(
+                    CatalogThemeAssetClass.WORLD_MAP,
+                    CatalogThemeAssetClass.LOCAL_MAP,
+                    CatalogThemeAssetClass.SPECIES,
+                ),
                 CatalogThemeTokens(
                     0x4C4C4C, 0x616161, 0x6E6E6E, 0x444444, 0xFCFCFC, 0x929292,
                     0xFDFDFD, 0x010101, 0x030303, 0x000000, 0x030303, 0xFFFFFF,
@@ -68,14 +72,24 @@ class RomDerivedThemeLiveRomTest {
                 ),
             ),
             "Unbound" to theme(
-                setOf(CatalogThemeAssetClass.WORLD_MAP, CatalogThemeAssetClass.LOCAL_MAP, CatalogThemeAssetClass.SPECIES),
+                setOf(
+                    CatalogThemeAssetClass.TRAINER,
+                    CatalogThemeAssetClass.WORLD_MAP,
+                    CatalogThemeAssetClass.LOCAL_MAP,
+                    CatalogThemeAssetClass.SPECIES,
+                ),
                 CatalogThemeTokens(
                     0xE63D02, 0xE85320, 0x0E73DD, 0x084789, 0xFCFCFC, 0x929292,
                     0xFDFDFD, 0x010101, 0x030303, 0x000000, 0xFBD30B, 0x000000,
                 ),
             ),
             "Odyssey" to theme(
-                setOf(CatalogThemeAssetClass.WORLD_MAP, CatalogThemeAssetClass.LOCAL_MAP, CatalogThemeAssetClass.SPECIES),
+                setOf(
+                    CatalogThemeAssetClass.TRAINER,
+                    CatalogThemeAssetClass.WORLD_MAP,
+                    CatalogThemeAssetClass.LOCAL_MAP,
+                    CatalogThemeAssetClass.SPECIES,
+                ),
                 CatalogThemeTokens(
                     0x0253E6, 0x2067E8, 0xDCC002, 0x887701, 0xFCFCFC, 0x929292,
                     0xFDFDFD, 0x010101, 0x030303, 0x000000, 0xFB03FB, 0x000000,

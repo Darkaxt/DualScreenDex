@@ -94,6 +94,11 @@ class Gen1WorldMapRealControlTest {
         )
         val argbSha256 = sha256(catalog.assets.getValue(region.imageAssetKey))
         val locationSha256 = locationFingerprint(region)
+        control.locationCells.forEach { (mapId, expected) ->
+            val cell = region.locations.single { mapId in it.baseAreaIds }.geometry.single()
+            assertEquals("${control.env}: map $mapId x", expected.first, cell.x)
+            assertEquals("${control.env}: map $mapId y", expected.second, cell.y)
+        }
         assertEquals(control.argbSha256, argbSha256)
         assertEquals(control.locationSha256, locationSha256)
     }
@@ -141,6 +146,7 @@ class Gen1WorldMapRealControlTest {
         val baseRecordSize: Int? = null,
         val baseAreaCount: Int? = null,
         val locationNames: Set<String> = emptySet(),
+        val locationCells: Map<Int, Pair<Int, Int>> = emptyMap(),
     )
 
     private companion object {
@@ -171,7 +177,8 @@ class Gen1WorldMapRealControlTest {
                 "DUALDEX_POKEYELLOW_ROM",
                 "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
                 RASTER_SHA,
-                "3c2f8177ae8d2073822e04d85bc76fb7f45e056e48c6ba5bf7297e22ef54dfbf",
+                "165454e8cc5450e8a1edd0c6dcbfebb47e3254f1eb198d396efcdd5ef97d4433",
+                locationCells = mapOf(12 to (2 to 10), 30 to (6 to 15)),
             ),
             Control(
                 "DUALDEX_SHIN_RED_ROM",

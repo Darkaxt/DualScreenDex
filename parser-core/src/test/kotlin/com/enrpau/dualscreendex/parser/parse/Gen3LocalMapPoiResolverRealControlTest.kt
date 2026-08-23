@@ -44,7 +44,12 @@ class Gen3LocalMapPoiResolverRealControlTest {
             pois.mapNotNullTo(mutableSetOf()) { it.destinationBaseAreaId },
         )
         assertEquals(
-            setOf("LITTLEROOT TOWN", "PROF. BIRCH'S POKéMON LAB"),
+            setOf(
+                "LITTLEROOT TOWN",
+                "{PLAYER}'s HOUSE",
+                "PROF. BIRCH'S HOUSE",
+                "PROF. BIRCH'S POKéMON LAB",
+            ),
             pois.mapNotNullTo(mutableSetOf()) { it.displayName },
         )
         assertTrue(pois.all { it.organicVisibility == LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY })
