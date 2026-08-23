@@ -398,7 +398,7 @@ class ApiViewBuilderTest {
     }
 
     @Test
-    fun exposesTheLiveTrainerAvatarBeforeAFullSaveBackedTrainerCardIsAvailable() {
+    fun exposesAnUnlockedPartialTrainerCardFromLiveIdentity() {
         val catalog = ParsedCatalog(
             romSha256 = "a".repeat(64),
             family = EngineFamily.EMERALD,
@@ -415,10 +415,27 @@ class ApiViewBuilderTest {
             ),
         )
 
-        val state = ApiViewBuilder.state(AppSnapshot(trainerIdentity = TrainerIdentity("MAY", 1)), catalog)
+        val state = ApiViewBuilder.state(
+            AppSnapshot(
+                ledger = KnowledgeLedger(trainerCardUnlocked = true),
+                trainerIdentity = TrainerIdentity("MAY", 1),
+            ),
+            catalog,
+        )
 
-        assertNull(state.trainer)
+        assertTrue(state.trainerCardUnlocked)
+        assertEquals("MAY", state.trainer?.name)
+        assertEquals("FEMALE", state.trainer?.gender)
+        assertNull(state.trainer?.publicTrainerId)
+        assertNull(state.trainer?.money)
+        assertNull(state.trainer?.playTimeHours)
+        assertNull(state.trainer?.playTimeMinutes)
+        assertNull(state.trainer?.dexSeen)
+        assertNull(state.trainer?.dexCaught)
+        assertNull(state.trainer?.stars)
+        assertTrue(state.trainer!!.badges.all { it.earned == null })
         assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainerAvatarUrl)
+        assertEquals(state.trainerAvatarUrl, state.trainer.avatarUrl)
         assertEquals("/api/trainer-assets/trainer%2Foverworld%2Ffemale.png", state.trainerMapSpriteUrl)
         assertEquals(16, state.trainerMapSpriteWidth)
         assertEquals(32, state.trainerMapSpriteHeight)

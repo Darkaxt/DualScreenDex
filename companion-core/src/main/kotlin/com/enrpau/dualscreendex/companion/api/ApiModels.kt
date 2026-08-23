@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.companion.api
 
+import com.darkaxt.dualdex.save.TrainerIdentity
 import com.enrpau.dualscreendex.companion.battle.RarityEvaluator
 import com.enrpau.dualscreendex.companion.knowledge.KnowledgePolicy
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
@@ -272,6 +273,7 @@ data class StateView(
     val settings: Any,
     val speciesState: Map<Int, SpeciesStateView>,
     val observedMoves: Map<Int, List<ObservedMoveView>>,
+    val trainerCardUnlocked: Boolean,
     val trainer: TrainerView?,
     val trainerAvatarUrl: String?,
     val trainerMapSpriteUrl: String?,
@@ -299,17 +301,17 @@ data class GameClockView(
 data class TrainerView(
     val name: String,
     val gender: String,
-    val publicTrainerId: Int,
-    val money: Long,
-    val playTimeHours: Int,
-    val playTimeMinutes: Int,
-    val dexSeen: Int,
-    val dexCaught: Int,
+    val publicTrainerId: Int?,
+    val money: Long?,
+    val playTimeHours: Int?,
+    val playTimeMinutes: Int?,
+    val dexSeen: Int?,
+    val dexCaught: Int?,
     val stars: Int?,
     val avatarUrl: String?,
     val badges: List<TrainerBadgeView>,
 )
-data class TrainerBadgeView(val index: Int, val earned: Boolean, val imageUrl: String?)
+data class TrainerBadgeView(val index: Int, val earned: Boolean?, val imageUrl: String?)
 data class PartyMemberView(
     val slot: Int,
     val occupied: Boolean,
@@ -793,6 +795,7 @@ object ApiViewBuilder {
             snapshot.ledger.observedMoves.mapValues { (_, observations) ->
                 observations.toObservedMoveViews()
             },
+            snapshot.ledger.trainerCardUnlocked,
             trainerView(snapshot, catalog),
             trainerAvatarUrl(snapshot, catalog),
             trainerMapSpriteKey?.let(::trainerAssetUrl),
@@ -923,29 +926,32 @@ object ApiViewBuilder {
         sortedWith(compareByDescending<MoveObservation> { it.frequency }.thenBy { it.moveId })
             .map { ObservedMoveView(it.moveId, it.frequency) }
 
-    private fun trainerView(snapshot: AppSnapshot, catalog: ParsedCatalog?): TrainerView? =
-        snapshot.trainer?.let { trainer ->
-            val assets = catalog?.trainerAssets
-            TrainerView(
-                name = trainer.name,
-                gender = if (trainer.gender == 0) "MALE" else "FEMALE",
-                publicTrainerId = trainer.publicTrainerId,
-                money = trainer.money,
-                playTimeHours = trainer.playTimeHours,
-                playTimeMinutes = trainer.playTimeMinutes,
-                dexSeen = trainer.dexSeen,
-                dexCaught = trainer.dexCaught,
-                stars = trainer.stars,
-                avatarUrl = assets?.avatarAssetKeys?.get(trainer.gender)?.let(::trainerAssetUrl),
-                badges = (0 until 8).map { badgeIndex ->
-                    TrainerBadgeView(
-                        index = badgeIndex,
-                        earned = trainer.badgeFlags and (1 shl badgeIndex) != 0,
-                        imageUrl = assets?.badgeAssetKeys?.getOrNull(badgeIndex)?.let(::trainerAssetUrl),
-                    )
-                },
-            )
-        }
+    private fun trainerView(snapshot: AppSnapshot, catalog: ParsedCatalog?): TrainerView? {
+        val trainer = snapshot.trainer
+        val identity = snapshot.trainerIdentity
+            ?: trainer?.let { TrainerIdentity(it.name, it.gender) }
+            ?: return null
+        val assets = catalog?.trainerAssets
+        return TrainerView(
+            name = identity.name,
+            gender = if (identity.gender == 0) "MALE" else "FEMALE",
+            publicTrainerId = trainer?.publicTrainerId,
+            money = trainer?.money,
+            playTimeHours = trainer?.playTimeHours,
+            playTimeMinutes = trainer?.playTimeMinutes,
+            dexSeen = trainer?.dexSeen,
+            dexCaught = trainer?.dexCaught,
+            stars = trainer?.stars,
+            avatarUrl = assets?.avatarAssetKeys?.get(identity.gender)?.let(::trainerAssetUrl),
+            badges = (0 until 8).map { badgeIndex ->
+                TrainerBadgeView(
+                    index = badgeIndex,
+                    earned = trainer?.let { it.badgeFlags and (1 shl badgeIndex) != 0 },
+                    imageUrl = assets?.badgeAssetKeys?.getOrNull(badgeIndex)?.let(::trainerAssetUrl),
+                )
+            },
+        )
+    }
 
     private fun trainerAvatarUrl(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
         val gender = snapshot.trainer?.gender ?: snapshot.trainerIdentity?.gender ?: return null

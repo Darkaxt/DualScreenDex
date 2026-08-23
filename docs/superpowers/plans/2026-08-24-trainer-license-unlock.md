@@ -69,7 +69,7 @@ git commit -m "feat: persist Trainer Card license milestone"
 - Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/api/ApiModels.kt`
 - Test: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/api/ApiViewBuilderTest.kt`
 
-- [ ] **Step 1: Write failing API tests**
+- [x] **Step 1: Write failing API tests**
 
 Create a snapshot with `trainerCardUnlocked = true`, a `TrainerIdentity`, and no full `TrainerSnapshot`. Assert the state view publishes the unlock, identity, nullable unread numeric facts, and badges with unknown earned state.
 
@@ -87,11 +87,11 @@ assertNull(view.trainer.publicTrainerId)
 assertTrue(view.trainer.badges.all { it.earned == null })
 ```
 
-- [ ] **Step 2: Run the API test and confirm RED**
+- [x] **Step 2: Run the API test and confirm RED**
 
 Run `./gradlew.bat :companion-core:test --tests "*ApiViewBuilderTest"`. Expected: compilation fails because the view contracts do not yet expose the new fields.
 
-- [ ] **Step 3: Implement the partial API contract**
+- [x] **Step 3: Implement the partial API contract**
 
 Add `trainerCardUnlocked` to `StateView`. Make unresolved Trainer numeric facts and badge earned state nullable. Build the trainer view from the complete snapshot when present, otherwise from `trainerIdentity`; never invent zero values for unread facts.
 
@@ -100,11 +100,11 @@ val trainer = snapshot.trainer
 val identity = snapshot.trainerIdentity ?: trainer?.let { TrainerIdentity(it.name, it.gender) } ?: return null
 ```
 
-- [ ] **Step 4: Run the API test and confirm GREEN**
+- [x] **Step 4: Run the API test and confirm GREEN**
 
 Run the command from Step 2. Expected: all API view tests pass.
 
-- [ ] **Step 5: Commit the API contract**
+- [x] **Step 5: Commit the API contract**
 
 ```powershell
 git add companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/api/ApiModels.kt companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/api/ApiViewBuilderTest.kt
