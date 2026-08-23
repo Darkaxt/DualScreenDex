@@ -34,18 +34,16 @@ class CompanionGatewayTest {
     }
 
     @Test
-    fun initialBattleTabRequiresProvenWildEnabledAndUsableRarity() {
+    fun initialBattleTabRequiresOnlyProvenWildAndEnabledRarity() {
         BattleEncounterKind.entries.forEach { kind ->
             listOf(false, true).forEach { enabled ->
-                listOf(false, true).forEach { usable ->
-                    val expected = if (kind == BattleEncounterKind.WILD && enabled && usable) {
-                        BattleTab.RARITY
-                    } else {
-                        BattleTab.ENTRY
-                    }
-
-                    assertEquals(expected, initialBattleTab(kind, enabled, usable))
+                val expected = if (kind == BattleEncounterKind.WILD && enabled) {
+                    BattleTab.RARITY
+                } else {
+                    BattleTab.ENTRY
                 }
+
+                assertEquals(expected, initialBattleTab(kind, enabled))
             }
         }
     }

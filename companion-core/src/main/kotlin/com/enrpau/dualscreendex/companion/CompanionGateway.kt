@@ -82,7 +82,6 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             battleTab = initialBattleTab(
                 action.battle.encounterKind,
                 state.settings.rarityEnabled,
-                action.battle.rarityUsable,
             ),
             battleReturnScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.battleReturnScreen,
             selectedSpeciesId = action.battle.opponents.getOrNull(action.battle.targetIndex)?.speciesId,
@@ -169,8 +168,7 @@ private const val MAX_NAVIGATION_HISTORY = 16
 fun initialBattleTab(
     encounterKind: BattleEncounterKind,
     rarityEnabled: Boolean,
-    rarityUsable: Boolean,
-): BattleTab = if (encounterKind == BattleEncounterKind.WILD && rarityEnabled && rarityUsable) {
+): BattleTab = if (encounterKind == BattleEncounterKind.WILD && rarityEnabled) {
     BattleTab.RARITY
 } else {
     BattleTab.ENTRY
