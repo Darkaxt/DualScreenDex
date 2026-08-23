@@ -164,7 +164,9 @@ button { cursor: pointer; }
 .party-type-art { min-width: 0; display: inline-flex; align-items: center; overflow: hidden; border: 1px solid var(--type-border); border-radius: 999px; background: var(--type-bg); box-shadow: inset 0 0 0 1px #ffffff38; }
 .party-type-art abbr { width: 27px; height: 27px; display: grid; place-items: center; flex: none; border-right: 1px solid var(--type-border); border-radius: 50%; color: var(--type-fg); background: var(--type-bg); font-size: .54em; font-weight: 950; text-decoration: none; }
 .party-type-art .type-chip { min-width: 0; max-width: 120px; overflow: hidden; border: 0; text-overflow: ellipsis; white-space: nowrap; }
-.party-dex-link { width: 42px; height: 42px; border: 1px solid var(--forest-700); color: var(--forest-800); background: #dfe6c9; font-size: .57em; font-weight: 950; }
+.party-dex-link { flex: none; width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border: 0; color: var(--forest-800); background: transparent; box-shadow: none; }
+.party-dex-link:hover, .party-dex-link:focus-visible { color: currentColor; background: #ffffff18; outline: 2px solid currentColor; outline-offset: -2px; }
+.party-dex-link svg { width: 30px; height: 30px; }
 .party-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
 .party-summary-grid > span { min-width: 0; padding: 8px; background: #e1e6cf; }
 .party-summary-grid button { width: 100%; margin-top: 4px; padding: 0; border: 0; color: var(--forest-700); background: transparent; font-weight: 900; text-align: left; text-decoration: underline; }
@@ -593,7 +595,8 @@ button { cursor: pointer; }
   border-color: var(--theme-border);
   background: radial-gradient(circle at 50% 16%, color-mix(in srgb, var(--theme-accent) var(--rarity-strength), var(--theme-panel)), var(--theme-panel) 48%, var(--theme-menu) 100%);
 }
-[data-theme="game"][data-contrast="normal"] .battle-dex-link {
+[data-theme="game"][data-contrast="normal"] .battle-dex-link,
+[data-theme="game"][data-contrast="normal"] .party-dex-link {
   color: var(--theme-text);
   background: transparent;
   border-color: transparent;

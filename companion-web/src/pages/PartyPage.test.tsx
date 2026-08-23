@@ -111,6 +111,20 @@ describe('Party', () => {
     expect(screen.getAllByText('SPARK').length).toBeGreaterThan(0);
   });
 
+  it('uses the shared Pokédex artwork instead of a text badge in member details', () => {
+    const openSpecies = vi.fn();
+    const { container } = render(<PartyPage catalog={catalog} state={partyState('ORGANIC')} onBack={vi.fn()} openMove={vi.fn()} openAbility={vi.fn()} openSpecies={openSpecies} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: SPARK' }));
+    const action = screen.getByRole('button', { name: 'Open PIKACHU in Pokédex' });
+
+    expect(action.querySelector('.dex-icon')).toBeTruthy();
+    expect(action.textContent).toBe('');
+    fireEvent.click(action);
+    expect(openSpecies).toHaveBeenCalledWith(25);
+    expect(container.querySelector('.party-dex-link')).toBe(action);
+  });
+
   it('distinguishes fainted no-art and unidentified silhouettes without leaking unavailable fields', () => {
     const state = partyState('ORGANIC');
     state.party = [

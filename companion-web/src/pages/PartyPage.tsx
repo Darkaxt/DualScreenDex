@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { Catalog, PartyMemberView, State, TypeInfo } from '../models';
-import { Header, TypeChip, uniqueTypeIds } from '../components';
+import { DexIcon, Header, TypeChip, uniqueTypeIds } from '../components';
 import { natureDetailFor } from '../natureDetails';
 import { RarityStars } from './BattlePage';
 
@@ -132,7 +132,7 @@ function PartyDetail({ member, catalog, openMove, openAbility, openNature, openS
         </div>
         {types.length > 0 && <div class="party-types" aria-label="Types">{types.map(type => <PartyTypeArtwork key={type.id} type={type} />)}</div>}
       </div>
-      {member.speciesId != null && openSpecies && <button type="button" class="party-dex-link" aria-label={`Open ${member.speciesName ?? 'partner'} in Pokédex`} onClick={() => openSpecies(member.speciesId!)}>DEX</button>}
+      {member.speciesId != null && openSpecies && <button type="button" class="party-dex-link" aria-label={`Open ${member.speciesName ?? 'partner'} in Pokédex`} onClick={() => openSpecies(member.speciesId!)}><DexIcon /></button>}
     </header>
     <div class="party-summary-grid">
       <span><small>NATURE</small>{knownNature && openNature ? <button type="button" onClick={() => openNature(knownNature.id)}>{knownNature.name}</button> : <strong>{member.nature ?? '—'}</strong>}</span>
