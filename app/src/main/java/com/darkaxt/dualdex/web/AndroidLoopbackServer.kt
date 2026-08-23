@@ -24,14 +24,24 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.Collections
 import java.util.Locale
-import java.util.concurrent.ExecutorService
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 interface MapperHttpHandler {
     fun state(): Any
     fun action(type: String, values: Map<String, String?>): Any
     fun exportRaw(): ByteArray
 }
+
+data class LoopbackCapacitySnapshot(
+    val workerThreads: Int,
+    val activeWorkers: Int,
+    val queuedConnections: Int,
+    val activeConnections: Int,
+)
 
 /** Small HTTP/1.1 host for the bundled WebView. It never binds outside 127.0.0.1. */
 class AndroidLoopbackServer(
@@ -48,9 +58,15 @@ class AndroidLoopbackServer(
     private val acceptor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "dualdex-loopback-acceptor").apply { isDaemon = true }
     }
-    private val clients: ExecutorService = Executors.newCachedThreadPool { runnable ->
-        Thread(runnable, "dualdex-loopback-client").apply { isDaemon = true }
-    }
+    private val clients = ThreadPoolExecutor(
+        CLIENT_WORKERS,
+        CLIENT_WORKERS,
+        0L,
+        TimeUnit.MILLISECONDS,
+        ArrayBlockingQueue(CLIENT_QUEUE_CAPACITY),
+        { runnable -> Thread(runnable, "dualdex-loopback-client").apply { isDaemon = true } },
+        ThreadPoolExecutor.AbortPolicy(),
+    )
     private val activeSockets = Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<Socket, Boolean>())
     @Volatile private var socket: ServerSocket? = null
     @Volatile private var nativeActionHandler: ((String, Map<String, String?>) -> Boolean)? = null
@@ -90,6 +106,13 @@ class AndroidLoopbackServer(
         mapperHandler = handler
     }
 
+    fun capacitySnapshot() = LoopbackCapacitySnapshot(
+        workerThreads = clients.poolSize,
+        activeWorkers = clients.activeCount,
+        queuedConnections = clients.queue.size,
+        activeConnections = activeSockets.size,
+    )
+
     override fun close() {
         val bound = synchronized(this) {
             val current = socket
@@ -98,8 +121,9 @@ class AndroidLoopbackServer(
         }
         bound?.close()
         activeSockets.toList().forEach(Socket::close)
+        activeSockets.clear()
         acceptor.shutdown()
-        clients.shutdown()
+        clients.shutdownNow()
         runtime.close()
     }
 
@@ -108,9 +132,26 @@ class AndroidLoopbackServer(
             try {
                 val client = server.accept()
                 activeSockets += client
-                clients.execute { handle(client) }
+                try {
+                    clients.execute { handle(client) }
+                } catch (_: RejectedExecutionException) {
+                    rejectBusy(client)
+                }
             } catch (failure: Exception) {
                 if (!server.isClosed) throw failure
+            }
+        }
+    }
+
+    private fun rejectBusy(client: Socket) {
+        client.use { connection ->
+            try {
+                writeResponse(
+                    BufferedOutputStream(connection.getOutputStream()),
+                    textResponse("loopback server is busy", 503),
+                )
+            } finally {
+                activeSockets -= connection
             }
         }
     }
@@ -421,6 +462,7 @@ class AndroidLoopbackServer(
             400 -> "Bad Request"
             404 -> "Not Found"
             405 -> "Method Not Allowed"
+            503 -> "Service Unavailable"
             else -> "Error"
         }
         output.write("HTTP/1.1 ${response.status} $reason\r\n".toByteArray(Charsets.US_ASCII))
@@ -514,5 +556,7 @@ class AndroidLoopbackServer(
         private const val MAX_CONTROL_BODY_BYTES = 1024L * 1024
         private const val MAX_COMPRESSED_ROM_SOURCE_BYTES = 64L * 1024 * 1024
         private const val MAX_EXTRACTED_ROM_BYTES = 32L * 1024 * 1024
+        private const val CLIENT_WORKERS = 4
+        private const val CLIENT_QUEUE_CAPACITY = 4
     }
 }

@@ -12,6 +12,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.view.ViewGroup
 import com.darkaxt.dualdex.rom.RomDocumentPicker
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -21,8 +22,10 @@ class DualDexWebView(
     picker: RomDocumentPicker?,
     private val onNativeSetupRoute: (NativeSetupRoute) -> Unit,
     onMainFrameFailure: (String) -> Unit,
-) : WebView(context) {
+) : WebView(context), CompanionSurface {
     private val trustedOrigin = Uri.parse(origin)
+    override var released: Boolean = false
+        private set
 
     init {
         settings.javaScriptEnabled = true
@@ -76,6 +79,29 @@ class DualDexWebView(
         "window.dispatchEvent(new Event('dualdexback',{cancelable:true}))",
         null,
     )
+
+    override fun resumeSurface() {
+        if (released) return
+        onResume()
+        resumeTimers()
+    }
+
+    override fun pauseSurface() {
+        if (released) return
+        onPause()
+        pauseTimers()
+    }
+
+    override fun releaseSurface() {
+        if (released) return
+        released = true
+        stopLoading()
+        onPause()
+        pauseTimers()
+        (parent as? ViewGroup)?.removeView(this)
+        removeAllViews()
+        destroy()
+    }
 
     private fun isTrusted(candidate: Uri): Boolean =
         candidate.scheme == trustedOrigin.scheme &&

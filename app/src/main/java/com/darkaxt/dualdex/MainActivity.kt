@@ -224,7 +224,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         picker.cancel()
-        companionWebView?.destroy()
+        companionWebView?.let { (application as DualDexApplication).releaseCompanionSurface(it) }
         companionWebView = null
         super.onDestroy()
     }
@@ -234,12 +234,20 @@ class MainActivity : AppCompatActivity() {
         activeDisplayId = display?.displayId ?: activeDisplayId
         val application = application as DualDexApplication
         application.activityResumed(this)
+        val currentSurface = companionWebView
+        if (currentSurface == null || currentSurface.released) {
+            showCompanionOrRecovery()
+        } else {
+            application.activateCompanionSurface(currentSurface)
+        }
         application.retroArchSetup?.refreshStorageAccess()
         displayContinuity.onResume()
     }
 
     override fun onPause() {
-        (application as DualDexApplication).activityPaused(this)
+        val application = application as DualDexApplication
+        companionWebView?.let(application::pauseCompanionSurface)
+        application.activityPaused(this)
         super.onPause()
     }
 
@@ -251,6 +259,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun showCompanionOrRecovery() {
         val application = application as DualDexApplication
+        companionWebView?.let(application::releaseCompanionSurface)
+        companionWebView = null
         val origin = application.localOrigin
         if (origin == null) {
             showRecovery(application.startupFailure)
@@ -291,6 +301,7 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(host)
         keepContentInsideSystemBars(host)
+        application.activateCompanionSurface(webView)
         val routeMarker = normalizedWebRoute(intent.getStringExtra(EXTRA_WEB_ROUTE))
         if (routeMarker == null) webView.open() else webView.loadUrl("$origin$routeMarker")
     }
@@ -382,7 +393,7 @@ class MainActivity : AppCompatActivity() {
         ?.takeIf { '\r' !in it && '\n' !in it }
 
     private fun showRecovery(failure: Throwable?) {
-        companionWebView?.destroy()
+        companionWebView?.let { (application as DualDexApplication).releaseCompanionSurface(it) }
         companionWebView = null
         val application = application as DualDexApplication
         val scale = resources.displayMetrics.density

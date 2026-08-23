@@ -67,11 +67,7 @@ class FloatingCompanionService : Service() {
     }
 
     override fun onDestroy() {
-        panelWebView?.destroy()
-        panelWebView = null
-        panel?.let { runCatching { windowManager.removeView(it) } }
-        panel = null
-        panelLayout = null
+        hidePanel()
         bubble?.let { runCatching { windowManager.removeView(it) } }
         bubble = null
         running = false
@@ -167,12 +163,20 @@ class FloatingCompanionService : Service() {
             windowManager.addView(host, layout)
         }
         panelVisible = true
-        panelWebView?.open()
+        panelWebView?.let { webView ->
+            (application as DualDexApplication).activateCompanionSurface(webView)
+            webView.open()
+        }
         bubble?.setRomSprite((application as DualDexApplication).ballSpritePng(POKE_BALL_ID))
     }
 
     private fun hidePanel() {
-        panel?.takeIf { it.parent != null }?.let { windowManager.removeView(it) }
+        val host = panel
+        host?.takeIf { it.parent != null }?.let { windowManager.removeView(it) }
+        panelWebView?.let { (application as DualDexApplication).releaseCompanionSurface(it) }
+        panelWebView = null
+        host?.removeAllViews()
+        panel = null
         panelLayout = null
         panelVisible = false
     }

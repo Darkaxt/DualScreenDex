@@ -29,11 +29,40 @@ import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.net.HttpURLConnection
 import java.net.URI
+import java.net.Socket
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.imageio.ImageIO
 
 class AndroidLoopbackServerTest {
+    @Test
+    fun rejectsTheNinthSimultaneousConnectionWithoutCreatingAnotherWorker() {
+        val server = AndroidLoopbackServer(ProductionCompanionRuntime()) { null }
+        val occupied = mutableListOf<Socket>()
+        try {
+            server.start()
+            repeat(8) {
+                occupied += Socket(AndroidLoopbackServer.LOOPBACK_HOST, server.address.port).apply {
+                    getOutputStream().write("GET /api/health HTTP/1.1\r\n".toByteArray(Charsets.US_ASCII))
+                    getOutputStream().flush()
+                }
+            }
+            val excess = Socket(AndroidLoopbackServer.LOOPBACK_HOST, server.address.port)
+            excess.use {
+                it.getOutputStream().write("GET /api/health HTTP/1.1\r\n\r\n".toByteArray(Charsets.US_ASCII))
+                it.getOutputStream().flush()
+
+                assertTrue(it.getInputStream().bufferedReader().readLine().contains(" 503 "))
+            }
+            val capacity = server.capacitySnapshot()
+            assertTrue(capacity.workerThreads <= 4)
+            assertTrue(capacity.activeConnections <= 8)
+        } finally {
+            occupied.forEach { runCatching { it.close() } }
+            server.close()
+        }
+    }
+
     @Test
     fun spoolsFixedAndChunkedRomUploadsAndDeletesEveryOwnedBody() {
         Files.createDirectories(Path.of("build"))

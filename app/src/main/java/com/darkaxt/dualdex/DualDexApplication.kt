@@ -19,6 +19,8 @@ import com.darkaxt.dualdex.overlay.FloatingCompanionService
 import com.darkaxt.dualdex.overlay.RomDisplayModeApplicationAction
 import com.darkaxt.dualdex.overlay.RomDisplayModeApplicationPolicy
 import com.darkaxt.dualdex.web.MapperHttpHandler
+import com.darkaxt.dualdex.web.CompanionSurface
+import com.darkaxt.dualdex.web.CompanionSurfaceOwnership
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
 import java.io.FileNotFoundException
@@ -39,6 +41,7 @@ class DualDexApplication : Application() {
     @Volatile private var activeCatalogSha256: String? = null
     @Volatile private var resumedActivity: WeakReference<MainActivity>? = null
     @Volatile private var pendingRomDisplayMode: DisplayMode? = null
+    private val companionSurfaceOwnership = CompanionSurfaceOwnership()
 
     val localOrigin: String?
         get() = loopbackServer?.address?.let { "http://${AndroidLoopbackServer.LOOPBACK_HOST}:${it.port}" }
@@ -59,6 +62,12 @@ class DualDexApplication : Application() {
         overlaySizeStore?.writeScale(scale)
         loopbackServer?.updateOverlayScale(scale)
     }
+
+    fun activateCompanionSurface(surface: CompanionSurface) = companionSurfaceOwnership.activate(surface)
+
+    fun pauseCompanionSurface(surface: CompanionSurface) = companionSurfaceOwnership.pause(surface)
+
+    fun releaseCompanionSurface(surface: CompanionSurface) = companionSurfaceOwnership.release(surface)
 
     fun activityResumed(activity: MainActivity) {
         resumedActivity = WeakReference(activity)
