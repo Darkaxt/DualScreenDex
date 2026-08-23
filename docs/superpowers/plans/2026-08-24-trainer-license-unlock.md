@@ -21,7 +21,7 @@
 - Test: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/knowledge/SaveKnowledgeMapperTest.kt`
 - Test: `app/src/test/java/com/darkaxt/dualdex/knowledge/KnowledgeLedgerJsonCodecTest.kt`
 
-- [ ] **Step 1: Write failing milestone tests**
+- [x] **Step 1: Write failing milestone tests**
 
 Add assertions that a valid catalog species sets `trainerCardUnlocked`, an invalid species does not, a later empty live party preserves true, a valid save-party record unlocks, and the codec round-trips true.
 
@@ -33,7 +33,7 @@ assertTrue(SaveKnowledgeMapper.merge(KnowledgeLedger(), catalog, snapshot).train
 assertTrue(codec.decode(codec.encode(KnowledgeLedger(trainerCardUnlocked = true)))!!.trainerCardUnlocked)
 ```
 
-- [ ] **Step 2: Run focused tests and confirm RED**
+- [x] **Step 2: Run focused tests and confirm RED**
 
 Run:
 
@@ -43,7 +43,7 @@ Run:
 
 Expected: compilation fails because `trainerCardUnlocked` does not exist yet.
 
-- [ ] **Step 3: Implement the ledger latch and schema revision**
+- [x] **Step 3: Implement the ledger latch and schema revision**
 
 Add `val trainerCardUnlocked: Boolean = false` to `KnowledgeLedger`. In both mappers, preserve the previous flag and OR it with the presence of a validated party record. Add the Boolean to `StoredLedger`, map it in both directions, bump `CURRENT_SCHEMA` to 7, and accept schemas 4 through 7 so older documents decode as false.
 
@@ -52,11 +52,11 @@ trainerCardUnlocked = previous.trainerCardUnlocked || liveOwned.isNotEmpty()
 trainerCardUnlocked = previous.trainerCardUnlocked || owned.any(OwnedPokemon::party)
 ```
 
-- [ ] **Step 4: Run focused tests and confirm GREEN**
+- [x] **Step 4: Run focused tests and confirm GREEN**
 
 Run the command from Step 2. Expected: all mapper and codec tests pass.
 
-- [ ] **Step 5: Commit the milestone layer**
+- [x] **Step 5: Commit the milestone layer**
 
 ```powershell
 git add companion-core app/src/main/java/com/darkaxt/dualdex/knowledge/KnowledgeLedgerJsonCodec.kt app/src/test/java/com/darkaxt/dualdex/knowledge/KnowledgeLedgerJsonCodecTest.kt

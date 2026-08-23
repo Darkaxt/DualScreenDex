@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.OwnedPokemon
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class KnowledgeLedgerJsonCodecTest {
@@ -26,6 +27,13 @@ class KnowledgeLedgerJsonCodecTest {
             codec.encode(completeLedgerFixture()),
             codec.encode(completeLedgerFixture(reverseInsertionOrder = true)),
         )
+    }
+
+    @Test
+    fun schemaSixWithoutTrainerLicenseDecodesAsLocked() {
+        val legacy = """{"schema":6,"romIdentity":"legacy-rom","saveIdentity":"legacy-save"}"""
+
+        assertFalse(codec.decode(legacy.toByteArray())!!.trainerCardUnlocked)
     }
 
     private fun completeLedgerFixture(reverseInsertionOrder: Boolean = false): KnowledgeLedger {
@@ -80,6 +88,7 @@ class KnowledgeLedgerJsonCodecTest {
                 iconZoomThresholdPercent = 35,
                 labelZoomThresholdPercent = 65,
             ),
+            trainerCardUnlocked = true,
             matchupEvidenceVersion = KnowledgeLedger.CURRENT_MATCHUP_EVIDENCE_VERSION,
         )
     }

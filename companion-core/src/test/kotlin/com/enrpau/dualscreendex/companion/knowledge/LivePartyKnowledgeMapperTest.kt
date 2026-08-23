@@ -45,6 +45,7 @@ class LivePartyKnowledgeMapperTest {
         assertEquals(listOf("box-0", "party-0"), merged.owned.map { it.stableKey })
         assertFalse(merged.owned.first().party)
         assertTrue(merged.owned.last().party)
+        assertTrue(merged.trainerCardUnlocked)
     }
 
     @Test
@@ -60,6 +61,7 @@ class LivePartyKnowledgeMapperTest {
             caughtSpecies = setOf(25),
             owned = listOf(OwnedPokemon("party-0", 25, 3, 10, party = true)),
             teamSpecies = setOf(25),
+            trainerCardUnlocked = true,
         )
 
         val merged = LivePartyKnowledgeMapper.merge(previous, catalog, emptyList(), generation = 3)
@@ -67,6 +69,26 @@ class LivePartyKnowledgeMapperTest {
         assertEquals(emptySet<Int>(), merged.teamSpecies)
         assertTrue(merged.owned.isEmpty())
         assertEquals(setOf(25), merged.caughtSpecies)
+        assertTrue(merged.trainerCardUnlocked)
+    }
+
+    @Test
+    fun invalidSpeciesCannotUnlockTheTrainerCard() {
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = mapOf(25 to species(25)),
+        )
+
+        val merged = LivePartyKnowledgeMapper.merge(
+            KnowledgeLedger(),
+            catalog,
+            listOf(OwnedIndividual("party-0", 999, level = 5)),
+            generation = 3,
+        )
+
+        assertFalse(merged.trainerCardUnlocked)
     }
 
     private fun species(id: Int) = SpeciesRecord(

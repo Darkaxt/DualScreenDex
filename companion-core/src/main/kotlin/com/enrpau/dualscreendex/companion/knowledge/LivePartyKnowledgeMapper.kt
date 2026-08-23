@@ -33,6 +33,7 @@ object LivePartyKnowledgeMapper {
             caughtSpecies = caught,
             owned = previous.owned.filterNot(OwnedPokemon::party) + liveOwned,
             teamSpecies = liveSpecies,
+            trainerCardUnlocked = previous.trainerCardUnlocked || liveOwned.isNotEmpty(),
         )
     }
 }

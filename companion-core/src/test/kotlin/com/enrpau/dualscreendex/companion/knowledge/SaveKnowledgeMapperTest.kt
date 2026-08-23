@@ -60,6 +60,7 @@ class SaveKnowledgeMapperTest {
         assertTrue(ledger.owned.single { it.stableKey == "party-1" }.isEgg)
         assertFalse(ledger.owned.single { it.stableKey == "box-0" }.party)
         assertEquals(prior.observedMoves, ledger.observedMoves)
+        assertTrue(ledger.trainerCardUnlocked)
     }
 
     private fun species(id: Int, dex: Int) = SpeciesRecord(

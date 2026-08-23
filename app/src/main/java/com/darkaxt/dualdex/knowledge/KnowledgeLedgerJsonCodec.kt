@@ -42,6 +42,7 @@ class KnowledgeLedgerJsonCodec(
         val caughtSpecies: List<Int> = emptyList(),
         val owned: List<OwnedPokemon> = emptyList(),
         val teamSpecies: List<Int> = emptyList(),
+        val trainerCardUnlocked: Boolean = false,
         val currentAreaBaseId: Int? = null,
         val visitedAreaBaseIds: List<Int> = emptyList(),
         val seenSpeciesByArea: List<StoredAreaSpecies> = emptyList(),
@@ -60,6 +61,7 @@ class KnowledgeLedgerJsonCodec(
             caughtSpecies = caughtSpecies.toSet(),
             owned = owned,
             teamSpecies = teamSpecies.toSet(),
+            trainerCardUnlocked = trainerCardUnlocked,
             currentAreaBaseId = currentAreaBaseId,
             visitedAreaBaseIds = visitedAreaBaseIds.filter { it >= 0 }.toSet() +
                 seenSpeciesByArea.mapNotNull { it.areaBaseId.takeIf { id -> id >= 0 } } +
@@ -99,6 +101,7 @@ class KnowledgeLedgerJsonCodec(
                 caughtSpecies = ledger.caughtSpecies.sorted(),
                 owned = ledger.owned,
                 teamSpecies = ledger.teamSpecies.sorted(),
+                trainerCardUnlocked = ledger.trainerCardUnlocked,
                 currentAreaBaseId = ledger.currentAreaBaseId,
                 visitedAreaBaseIds = ledger.visitedAreaBaseIds.sorted(),
                 seenSpeciesByArea = ledger.seenSpeciesByArea.entries
@@ -138,8 +141,8 @@ class KnowledgeLedgerJsonCodec(
     )
 
     private companion object {
-        val SUPPORTED_SCHEMAS = setOf(4, 5, 6)
-        const val CURRENT_SCHEMA = 6
+        val SUPPORTED_SCHEMAS = setOf(4, 5, 6, 7)
+        const val CURRENT_SCHEMA = 7
 
         fun sanitizePreferences(preferences: LocalMapPoiPreferences): LocalMapPoiPreferences {
             val icon = preferences.iconZoomThresholdPercent.coerceIn(0, 100)

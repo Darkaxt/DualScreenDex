@@ -37,6 +37,7 @@ object SaveKnowledgeMapper {
             caughtSpecies = previous.caughtSpecies + caught,
             owned = owned,
             teamSpecies = owned.filter { it.party && !it.isEgg }.mapTo(linkedSetOf(), OwnedPokemon::speciesId),
+            trainerCardUnlocked = previous.trainerCardUnlocked || owned.any(OwnedPokemon::party),
             currentAreaBaseId = snapshot.currentArea?.baseId,
             visitedAreaBaseIds = previous.visitedAreaBaseIds + listOfNotNull(snapshot.currentArea?.baseId),
         )
