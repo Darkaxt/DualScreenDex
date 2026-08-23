@@ -138,10 +138,14 @@ class CatalogStoreTest {
 
             writer.write(catalog, source, CatalogWriteProgress.complete())
             assertTrue(recording.writtenChunkBytes > 0)
+            val firstCheckpointBytes = recording.writtenChunkBytes
             recording.writtenChunkBytes = 0
             writer.write(catalog, source, CatalogWriteProgress.complete())
 
             assertEquals(0L, recording.writtenChunkBytes)
+            println(
+                "CATALOG_CHECKPOINT_EVIDENCE firstBytes=$firstCheckpointBytes unchangedBytes=${recording.writtenChunkBytes}",
+            )
         }
     }
 
@@ -344,6 +348,9 @@ class CatalogStoreTest {
             assertTrue(chunks.size > 1)
             assertEquals(chunks.indices.toList(), chunks.map(Pair<Int, Int>::first))
             assertTrue(chunks.all { (_, size) -> size in 1..CatalogSchema.sectionChunkBytes })
+            println(
+                "CATALOG_SECTION_EVIDENCE rawAssetBytes=${bytes.size} compressedBytes=${chunks.sumOf { it.second }} chunks=${chunks.size}",
+            )
             assertEquals(
                 listOf(32L),
                 database.query(
