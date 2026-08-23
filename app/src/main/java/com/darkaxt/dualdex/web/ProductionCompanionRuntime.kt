@@ -600,7 +600,16 @@ class ProductionCompanionRuntime(
     @Synchronized
     fun updateLiveArea(areaBaseId: Int?) {
         if (gateway.bootstrap().liveAreaBaseId != areaBaseId) {
-            gateway.dispatch(CompanionAction.LiveAreaChanged(areaBaseId))
+            gateway.dispatch(
+                CompanionAction.LiveAreaChanged(
+                    areaBaseId,
+                    gameAccessReady = when {
+                        areaBaseId == null -> false
+                        catalog?.platform == Platform.GB || catalog?.platform == Platform.GBC -> true
+                        else -> null
+                    },
+                ),
+            )
         }
         val validAreaBaseId = areaBaseId?.takeIf { candidate ->
             candidate in (catalog?.discoverableAreaBaseIds() ?: emptySet())
@@ -791,6 +800,14 @@ class ProductionCompanionRuntime(
                 party = selectedParty(),
                 gameTime = gameTime,
                 trainerIdentity = selectedTrainerIdentity(),
+                gameAccessReady = when (catalog?.platform) {
+                    Platform.GBA -> liveGameState?.let { snapshot ->
+                        snapshot.location.state == Gen3LiveSectionState.AVAILABLE &&
+                            snapshot.trainerIdentity.state == Gen3LiveSectionState.AVAILABLE
+                    } == true
+                    Platform.GB, Platform.GBC -> gateway.bootstrap().gameAccessReady
+                    else -> false
+                },
             ),
         )
     }

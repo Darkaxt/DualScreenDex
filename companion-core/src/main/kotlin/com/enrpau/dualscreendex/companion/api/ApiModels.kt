@@ -862,7 +862,7 @@ object ApiViewBuilder {
             retroArch,
             saveRam,
             snapshot.gameTime?.let { GameClockView(it.hours, it.minutes, it.phase?.name, it.phaseProgress) },
-            snapshot.liveAreaBaseId != null,
+            snapshot.gameAccessReady,
         )
     }
 

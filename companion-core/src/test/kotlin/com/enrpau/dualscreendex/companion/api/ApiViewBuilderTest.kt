@@ -864,9 +864,9 @@ class ApiViewBuilderTest {
     }
 
     @Test
-    fun liveAreaMarksTheCurrentGameAsInitialized() {
+    fun validatedLiveGameStateMarksTheCurrentGameAsInitialized() {
         val state = ApiViewBuilder.state(
-            AppSnapshot(liveAreaBaseId = 0x0101),
+            AppSnapshot(liveAreaBaseId = 0x0101, gameAccessReady = true),
             ParsedCatalog("a".repeat(64), EngineFamily.EMERALD, Platform.GBA),
             retroArch = RetroArchView(connection = "PLAYING", resolution = "ACTIVE"),
         )

@@ -40,6 +40,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         )
         is CompanionAction.CatalogLoadingChanged -> state.copy(
             catalogLoading = action.loading,
+            gameAccessReady = if (action.loading.active) false else state.gameAccessReady,
             catalogReady = when {
                 action.loading.active -> false
                 action.loading.phase == "FAILED" -> state.catalogReady
@@ -127,6 +128,8 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         is CompanionAction.LiveAreaChanged -> state.copy(
             liveAreaBaseId = action.areaBaseId,
             liveMapPosition = state.liveMapPosition.takeIf { action.areaBaseId == state.liveAreaBaseId },
+            gameAccessReady = action.gameAccessReady
+                ?: if (action.areaBaseId == null) false else state.gameAccessReady,
         )
         is CompanionAction.LiveMapPositionChanged -> state.copy(liveMapPosition = action.position)
         is CompanionAction.LiveGameStateChanged -> state.copy(
@@ -134,6 +137,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             trainerIdentity = action.trainerIdentity,
             party = action.party,
             gameTime = action.gameTime,
+            gameAccessReady = state.gameAccessReady || action.gameAccessReady,
         )
         is CompanionAction.LiveGameClockChanged -> state.copy(gameTime = action.gameTime)
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)

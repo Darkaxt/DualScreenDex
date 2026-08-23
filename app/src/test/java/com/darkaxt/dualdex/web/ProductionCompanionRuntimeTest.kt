@@ -90,6 +90,69 @@ import com.darkaxt.dualdex.battle.RuntimeMapPosition
 
 class ProductionCompanionRuntimeTest {
     @Test
+    fun plausibleGen3MapAndZeroClockDoNotUnlockBeforeLiveTrainerIdentityExists() {
+        val hash = "a".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog("Modern Emerald.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
+        runtime.updateLiveGameState(
+            Gen3LiveGameSnapshot(
+                romIdentity = hash,
+                trainer = Gen3LiveSection.unavailable("live Trainer Card fields were unavailable"),
+                location = Gen3LiveSection.available(0x0009),
+                party = Gen3LiveSection.available(emptyList()),
+                bag = emptyMap(),
+                battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
+                battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
+                clock = Gen3LiveSection.available(Gen3GameClock(0, 0)),
+                trainerIdentity = Gen3LiveSection.unavailable("player name was not initialized"),
+            ),
+        )
+        runtime.updateLiveArea(0x0009)
+        runtime.updateLiveMapPosition(RuntimeMapPosition(8, 5))
+
+        assertFalse(runtime.stateView().gameAccessReady)
+        runtime.close()
+    }
+
+    @Test
+    fun laterUninitializedLookingSampleDoesNotHideAnInitializedGen3Session() {
+        val hash = "b".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog("Modern Emerald.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
+        runtime.updateLiveGameState(
+            Gen3LiveGameSnapshot(
+                romIdentity = hash,
+                trainer = Gen3LiveSection.unavailable("saved Pokédex counts were unavailable"),
+                location = Gen3LiveSection.available(0x0009),
+                party = Gen3LiveSection.available(emptyList()),
+                bag = emptyMap(),
+                battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
+                battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
+                clock = Gen3LiveSection.available(Gen3GameClock(0, 0)),
+                trainerIdentity = Gen3LiveSection.available(TrainerIdentity("MAY", 1)),
+            ),
+        )
+        assertTrue(runtime.stateView().gameAccessReady)
+
+        runtime.updateLiveGameState(
+            Gen3LiveGameSnapshot(
+                romIdentity = hash,
+                trainer = Gen3LiveSection.unavailable("live Trainer Card fields were unavailable"),
+                location = Gen3LiveSection.available(0x0009),
+                party = Gen3LiveSection.available(emptyList()),
+                bag = emptyMap(),
+                battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
+                battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
+                clock = Gen3LiveSection.available(Gen3GameClock(0, 0)),
+                trainerIdentity = Gen3LiveSection.unavailable("player name was not initialized"),
+            ),
+        )
+
+        assertTrue(runtime.stateView().gameAccessReady)
+        runtime.close()
+    }
+
+    @Test
     fun rendersMapAssetsOutsideTheRuntimeStateLock() {
         var heldRuntimeLock = true
         lateinit var runtime: ProductionCompanionRuntime
