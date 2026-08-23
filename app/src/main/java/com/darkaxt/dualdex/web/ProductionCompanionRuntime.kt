@@ -803,7 +803,10 @@ class ProductionCompanionRuntime(
                 gameAccessReady = when (catalog?.platform) {
                     Platform.GBA -> liveGameState?.let { snapshot ->
                         snapshot.location.state == Gen3LiveSectionState.AVAILABLE &&
-                            snapshot.trainerIdentity.state == Gen3LiveSectionState.AVAILABLE
+                            snapshot.trainerIdentity.state == Gen3LiveSectionState.AVAILABLE &&
+                            snapshot.clock.value?.let { clock ->
+                                clock.hours != 0 || clock.minutes != 0 || clock.seconds != 0
+                            } != false
                     } == true
                     Platform.GB, Platform.GBC -> gateway.bootstrap().gameAccessReady
                     else -> false

@@ -68,7 +68,7 @@ class Gen3LiveGameStateTest {
             encounterKind = BattleEncounterKind.UNKNOWN,
         )
 
-        assertEquals(Gen3GameClock(16, 48), valid.clock.value)
+        assertEquals(Gen3GameClock(16, 48, 12), valid.clock.value)
         assertEquals(Gen3LiveSectionState.UNAVAILABLE, invalid.clock.state)
     }
 

@@ -720,7 +720,10 @@ class BattleMemoryCoordinatorTest {
 
         assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 30039e8 5" })
         assertEquals(Gen3LiveSectionState.AVAILABLE, requireNotNull(snapshots.last()).clock.state)
-        assertEquals(Gen3GameClock(hours = 19, minutes = 18), requireNotNull(snapshots.last()).clock.value)
+        assertEquals(
+            Gen3GameClock(hours = 19, minutes = 18, seconds = 48),
+            requireNotNull(snapshots.last()).clock.value,
+        )
         coordinator.close()
     }
 

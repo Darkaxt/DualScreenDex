@@ -39,10 +39,11 @@ data class Gen3LivePointers(
 
 data class Gen3LiveBattleState(val active: Boolean)
 
-data class Gen3GameClock(val hours: Int, val minutes: Int) {
+data class Gen3GameClock(val hours: Int, val minutes: Int, val seconds: Int = 0) {
     init {
         require(hours in 0..23)
         require(minutes in 0..59)
+        require(seconds in 0..59)
     }
 }
 
@@ -215,7 +216,7 @@ object Gen3LiveGameState {
         val minutes = bytes[CLOCK_MINUTE_OFFSET].toInt() and 0xFF
         val seconds = bytes[CLOCK_SECOND_OFFSET].toInt() and 0xFF
         return if (hours in 0..23 && minutes in 0..59 && seconds in 0..59) {
-            Gen3LiveSection.available(Gen3GameClock(hours, minutes))
+            Gen3LiveSection.available(Gen3GameClock(hours, minutes, seconds))
         } else {
             Gen3LiveSection.unavailable("live game clock fields were invalid")
         }

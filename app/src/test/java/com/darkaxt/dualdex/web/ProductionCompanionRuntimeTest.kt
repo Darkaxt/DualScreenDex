@@ -115,6 +115,52 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun zeroClockDoesNotUnlockGen3EvenWhenTitleMemoryDecodesAnIdentity() {
+        val hash = "c".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog("Modern Emerald.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
+        runtime.updateLiveGameState(
+            Gen3LiveGameSnapshot(
+                romIdentity = hash,
+                trainer = Gen3LiveSection.unavailable("live Trainer Card fields were unavailable"),
+                location = Gen3LiveSection.available(0x0009),
+                party = Gen3LiveSection.available(emptyList()),
+                bag = emptyMap(),
+                battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
+                battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
+                clock = Gen3LiveSection.available(Gen3GameClock(0, 0)),
+                trainerIdentity = Gen3LiveSection.available(TrainerIdentity("EMERALD", 0)),
+            ),
+        )
+
+        assertFalse(runtime.stateView().gameAccessReady)
+        runtime.close()
+    }
+
+    @Test
+    fun firstAdvancingClockSecondUnlocksGen3AfterIdentityAndLocationResolve() {
+        val hash = "d".repeat(64)
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog("Modern Emerald.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
+        runtime.updateLiveGameState(
+            Gen3LiveGameSnapshot(
+                romIdentity = hash,
+                trainer = Gen3LiveSection.unavailable("live Trainer Card fields were unavailable"),
+                location = Gen3LiveSection.available(0x0009),
+                party = Gen3LiveSection.available(emptyList()),
+                bag = emptyMap(),
+                battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
+                battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
+                clock = Gen3LiveSection.available(Gen3GameClock(0, 0, 1)),
+                trainerIdentity = Gen3LiveSection.available(TrainerIdentity("MAY", 1)),
+            ),
+        )
+
+        assertTrue(runtime.stateView().gameAccessReady)
+        runtime.close()
+    }
+
+    @Test
     fun laterUninitializedLookingSampleDoesNotHideAnInitializedGen3Session() {
         val hash = "b".repeat(64)
         val runtime = ProductionCompanionRuntime()
@@ -128,7 +174,7 @@ class ProductionCompanionRuntimeTest {
                 bag = emptyMap(),
                 battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
                 battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
-                clock = Gen3LiveSection.available(Gen3GameClock(0, 0)),
+                clock = Gen3LiveSection.available(Gen3GameClock(0, 1)),
                 trainerIdentity = Gen3LiveSection.available(TrainerIdentity("MAY", 1)),
             ),
         )
