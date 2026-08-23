@@ -91,12 +91,46 @@ class RomImage private constructor(source: ByteArray, copySource: Boolean) {
 
     companion object {
         /** Consumes but does not close [input], leaving stream ownership with the caller. */
-        fun from(input: InputStream): RomImage = RomImage(input.readBytes(), copySource = false)
+        fun from(input: InputStream): RomImage {
+            val accumulator = BoundedByteAccumulator(MAX_SIZE_BYTES)
+            val block = ByteArray(STREAM_BUFFER_BYTES)
+            while (true) {
+                val count = input.read(block)
+                if (count < 0) break
+                accumulator.write(block, count)
+            }
+            return RomImage(accumulator.take(), copySource = false)
+        }
 
         /**
          * Takes exclusive ownership of [source] without copying it. The caller must never mutate
          * the array after this call.
          */
         fun consume(source: ByteArray): RomImage = RomImage(source, copySource = false)
+
+        const val MAX_SIZE_BYTES = 32 * 1024 * 1024
+        private const val STREAM_BUFFER_BYTES = 64 * 1024
+    }
+}
+
+private class BoundedByteAccumulator(private val maximumBytes: Int) {
+    private var bytes = ByteArray(minOf(64 * 1024, maximumBytes))
+    private var size = 0
+
+    fun write(source: ByteArray, count: Int) {
+        require(count in 0..source.size)
+        require(size.toLong() + count <= maximumBytes.toLong()) { "ROM exceeds 32 MiB extracted limit" }
+        ensureCapacity(size + count)
+        source.copyInto(bytes, size, 0, count)
+        size += count
+    }
+
+    fun take(): ByteArray = if (size == bytes.size) bytes else bytes.copyOf(size)
+
+    private fun ensureCapacity(required: Int) {
+        if (required <= bytes.size) return
+        var capacity = bytes.size.coerceAtLeast(1)
+        while (capacity < required) capacity = minOf(maximumBytes, capacity * 2)
+        bytes = bytes.copyOf(capacity)
     }
 }

@@ -148,7 +148,14 @@ class DualDexApplication : Application() {
                     .apply()
             },
         )
-        val candidate = AndroidLoopbackServer(runtime, assetLoader = ::loadWebAsset)
+        val candidate = AndroidLoopbackServer(
+            runtime,
+            requestBodySpoolFactory = {
+                val directory = File(cacheDir, "request-bodies").apply { mkdirs() }
+                File.createTempFile("request-", ".body", directory).toPath()
+            },
+            assetLoader = ::loadWebAsset,
+        )
         var setupCandidate: RetroArchSetupCoordinator? = null
         var mapperCandidate: MemoryMapperCoordinator? = null
         return try {

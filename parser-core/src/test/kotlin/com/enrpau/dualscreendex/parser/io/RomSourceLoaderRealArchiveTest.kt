@@ -7,18 +7,19 @@ import java.nio.file.Path
 
 class RomSourceLoaderRealArchiveTest {
     @Test
-    fun `Unbound ZIP and 7z load the same exact ROM payload`() {
+    fun `Unbound raw ZIP and 7z load the same exact ROM payload`() {
+        val raw = configuredPath("DUALDEX_UNBOUND_RAW")
         val zip = configuredPath("DUALDEX_UNBOUND_ZIP")
         val sevenZip = configuredPath("DUALDEX_UNBOUND_7Z")
 
-        val loaded = listOf(RomSourceLoader.load(zip), RomSourceLoader.load(sevenZip))
+        val loaded = listOf(RomSourceLoader.load(raw), RomSourceLoader.load(zip), RomSourceLoader.load(sevenZip))
 
         assertEquals(setOf(EXPECTED_SHA256), loaded.map { it.rom.sha256 }.toSet())
         assertEquals(setOf(EXPECTED_CRC32), loaded.map { it.rom.crc32 }.toSet())
         assertEquals(setOf(32 * 1024 * 1024), loaded.map { it.rom.size }.toSet())
         assertEquals(
             setOf("Pokemon Unbound.gba", "Unbound (v2.1.1.1).gba"),
-            loaded.map { it.displayName.substringAfter('!') }.toSet(),
+            loaded.filter { '!' in it.displayName }.map { it.displayName.substringAfter('!') }.toSet(),
         )
     }
 

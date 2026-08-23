@@ -22,15 +22,60 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.net.HttpURLConnection
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Path
 import javax.imageio.ImageIO
 
 class AndroidLoopbackServerTest {
+    @Test
+    fun spoolsFixedAndChunkedRomUploadsAndDeletesEveryOwnedBody() {
+        Files.createDirectories(Path.of("build"))
+        val spoolDirectory = Files.createTempDirectory(Path.of("build"), "loopback-upload-")
+        val createdBodies = mutableListOf<Path>()
+        val runtime = ProductionCompanionRuntime(
+            parseCatalog = { rom, _, _ ->
+                ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+            },
+        )
+        val server = AndroidLoopbackServer(
+            runtime,
+            requestBodySpoolFactory = {
+                Files.createTempFile(spoolDirectory, "request-", ".body").also(createdBodies::add)
+            },
+            assetLoader = { null },
+        )
+        try {
+            server.start()
+            val url = "http://127.0.0.1:${server.address.port}/api/load?name=fixture.gba"
+
+            assertEquals(200, postRom(url, ByteArray(0x200), chunked = false))
+            assertEquals(200, postRom(url, ByteArray(0x201) { 1 }, chunked = true))
+            assertEquals(
+                400,
+                postRom(
+                    "http://127.0.0.1:${server.address.port}/api/load?name=fixture.txt",
+                    byteArrayOf(1, 2, 3),
+                    chunked = false,
+                ),
+            )
+
+            assertEquals(3, createdBodies.size)
+            assertTrue(createdBodies.all(Files::notExists))
+            assertFalse(Files.list(spoolDirectory).use { it.findAny().isPresent })
+        } finally {
+            server.close()
+            createdBodies.forEach(Files::deleteIfExists)
+            Files.deleteIfExists(spoolDirectory)
+        }
+    }
+
     @Test
     fun routesMapLocationSelectionThroughTheLoopbackActionApi() {
         val areaId = 0x0011 * 10 + 1
@@ -309,5 +354,16 @@ class AndroidLoopbackServerTest {
         connection.outputStream.use { it.write(body.toByteArray()) }
         assertEquals(200, connection.responseCode)
         return connection.inputStream.reader().readText()
+    }
+
+    private fun postRom(url: String, body: ByteArray, chunked: Boolean): Int {
+        val connection = URI(url).toURL().openConnection() as HttpURLConnection
+        connection.requestMethod = "POST"
+        connection.doOutput = true
+        if (chunked) connection.setChunkedStreamingMode(128) else connection.setFixedLengthStreamingMode(body.size)
+        connection.outputStream.use { it.write(body) }
+        val status = connection.responseCode
+        (if (status >= 400) connection.errorStream else connection.inputStream)?.use { it.readBytes() }
+        return status
     }
 }

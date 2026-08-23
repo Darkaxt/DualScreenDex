@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import org.apache.commons.compress.archivers.sevenz.SevenZFile
 import org.apache.commons.compress.utils.SeekableInMemoryByteChannel
 import java.io.BufferedInputStream
+import java.io.FilterInputStream
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -26,15 +27,24 @@ object RomSourceLoader {
     private val extensions = setOf("gb", "gbc", "gba")
 
     fun load(path: Path): LoadedRom {
+        return load(path.fileName.toString(), path)
+    }
+
+    fun load(name: String, path: Path): LoadedRom {
         require(Files.isRegularFile(path)) { "ROM source is not a readable file: $path" }
-        if (path.fileName.toString().substringAfterLast('.', "").equals("7z", ignoreCase = true)) {
+        val extension = sourceExtension(name)
+        val maximumSourceBytes = if (extension in extensions) MAX_ROM_BYTES.toLong() else MAX_COMPRESSED_SOURCE_BYTES
+        require(Files.size(path) <= maximumSourceBytes) {
+            if (extension in extensions) "ROM exceeds 32 MiB extracted limit" else "compressed ROM source exceeds 64 MiB limit"
+        }
+        if (extension == "7z") {
             return SevenZFile.builder()
                 .setFile(path.toFile())
                 .setMaxMemoryLimitKiB(SEVEN_Z_MEMORY_LIMIT_KIB)
                 .get()
-                .use { sevenZip -> loadSevenZip(path.fileName.toString(), sevenZip) }
+                .use { sevenZip -> loadSevenZip(name, sevenZip) }
         }
-        return Files.newInputStream(path).buffered().use { input -> load(path.fileName.toString(), input) }
+        return Files.newInputStream(path).buffered().use { input -> load(name, input) }
     }
 
     fun inspect(path: Path): InspectedRomSource {
@@ -51,12 +61,12 @@ object RomSourceLoader {
     }
 
     fun load(name: String, input: InputStream): LoadedRom {
-        val extension = name.substringAfterLast('.', "").lowercase()
+        val extension = sourceExtension(name)
         if (extension in extensions) return LoadedRom(name, RomImage.from(input))
         return when (extension) {
-            "zip" -> loadZip(name, input)
+            "zip" -> loadZip(name, SourceSizeLimitInputStream(input, MAX_COMPRESSED_SOURCE_BYTES))
             "7z" -> SevenZFile.builder()
-                .setSeekableByteChannel(SeekableInMemoryByteChannel(input.readBytes()))
+                .setSeekableByteChannel(SeekableInMemoryByteChannel(readCompressedSource(input)))
                 .setDefaultName(name)
                 .setMaxMemoryLimitKiB(SEVEN_Z_MEMORY_LIMIT_KIB)
                 .get()
@@ -67,8 +77,12 @@ object RomSourceLoader {
 
     /** Consumes [source] so raw uploads do not allocate a second full-ROM byte array. */
     fun load(name: String, source: ByteArray): LoadedRom {
-        val extension = name.substringAfterLast('.', "").lowercase()
-        if (extension in extensions) return LoadedRom(name, RomImage.consume(source))
+        val extension = sourceExtension(name)
+        if (extension in extensions) {
+            require(source.size <= MAX_ROM_BYTES) { "ROM exceeds 32 MiB extracted limit" }
+            return LoadedRom(name, RomImage.consume(source))
+        }
+        require(source.size.toLong() <= MAX_COMPRESSED_SOURCE_BYTES) { "compressed ROM source exceeds 64 MiB limit" }
         return when (extension) {
             "zip" -> loadZip(name, source.inputStream())
             "7z" -> SevenZFile.builder()
@@ -85,6 +99,7 @@ object RomSourceLoader {
         require(name.substringAfterLast('.', "").equals("7z", ignoreCase = true)) {
             "seekable archive loading is supported only for .7z sources"
         }
+        require(channel.size() <= MAX_COMPRESSED_SOURCE_BYTES) { "compressed ROM source exceeds 64 MiB limit" }
         return SevenZFile.builder()
             .setSeekableByteChannel(channel)
             .setDefaultName(name)
@@ -101,6 +116,9 @@ object RomSourceLoader {
                 val extension = entry.name.substringAfterLast('.', "").lowercase()
                 if (!entry.isDirectory && extension in extensions) {
                     require(selected == null) { "archive contains multiple ROM entries" }
+                    require(entry.size < 0 || entry.size <= MAX_ROM_BYTES.toLong()) {
+                        "ROM exceeds 32 MiB extracted limit"
+                    }
                     selected = LoadedRom("$name!${entry.name}", RomImage.from(zip))
                 }
                 zip.closeEntry()
@@ -117,6 +135,7 @@ object RomSourceLoader {
             val extension = entryName.substringAfterLast('.', "").lowercase()
             if (!entry.isDirectory && extension in extensions) {
                 require(selected == null) { "archive contains multiple ROM entries" }
+                require(entry.size <= MAX_ROM_BYTES.toLong()) { "ROM exceeds 32 MiB extracted limit" }
                 selected = sevenZip.getInputStream(entry).use { member ->
                     LoadedRom("$name!$entryName", RomImage.from(member))
                 }
@@ -168,7 +187,47 @@ object RomSourceLoader {
         )
     }
 
+    private fun readCompressedSource(input: InputStream): ByteArray {
+        val bounded = SourceSizeLimitInputStream(input, MAX_COMPRESSED_SOURCE_BYTES)
+        val output = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(STREAM_BUFFER_BYTES)
+        while (true) {
+            val count = bounded.read(buffer)
+            if (count < 0) break
+            output.write(buffer, 0, count)
+        }
+        return output.toByteArray()
+    }
+
+    private fun sourceExtension(name: String): String = name.substringAfterLast('.', "").lowercase()
+
     private const val SEVEN_Z_MEMORY_LIMIT_KIB = 64 * 1024
+    private const val MAX_COMPRESSED_SOURCE_BYTES = 64L * 1024 * 1024
+    private const val MAX_ROM_BYTES = RomImage.MAX_SIZE_BYTES
     private const val HEADER_BYTES = 0x150
     private const val STREAM_BUFFER_BYTES = 64 * 1024
+}
+
+private class SourceSizeLimitInputStream(
+    source: InputStream,
+    private val maximumBytes: Long,
+) : FilterInputStream(source) {
+    private var consumed = 0L
+
+    override fun read(): Int {
+        val value = super.read()
+        if (value >= 0) record(1)
+        return value
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+        val count = super.read(buffer, offset, length)
+        if (count > 0) record(count.toLong())
+        return count
+    }
+
+    private fun record(count: Long) {
+        consumed += count
+        require(consumed <= maximumBytes) { "compressed ROM source exceeds 64 MiB limit" }
+    }
 }

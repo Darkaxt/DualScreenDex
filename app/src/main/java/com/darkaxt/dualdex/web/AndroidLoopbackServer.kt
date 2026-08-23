@@ -18,6 +18,9 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.util.Collections
 import java.util.Locale
 import java.util.concurrent.ExecutorService
@@ -33,6 +36,11 @@ interface MapperHttpHandler {
 class AndroidLoopbackServer(
     private val runtime: ProductionCompanionRuntime,
     private val requestedPort: Int = 0,
+    private val requestBodySpoolFactory: () -> Path = {
+        val directory = Path.of(System.getProperty("java.io.tmpdir"), "dualdex-request-bodies")
+        Files.createDirectories(directory)
+        Files.createTempFile(directory, "request-", ".body")
+    },
     private val assetLoader: (String) -> ByteArray?,
 ) : AutoCloseable {
     private val gson: Gson = GsonBuilder().serializeNulls().create()
@@ -109,8 +117,9 @@ class AndroidLoopbackServer(
     private fun handle(client: Socket) {
         client.use { connection ->
             try {
-                val request = readRequest(BufferedInputStream(connection.getInputStream()))
-                writeResponse(BufferedOutputStream(connection.getOutputStream()), route(request))
+                readRequest(BufferedInputStream(connection.getInputStream())).use { request ->
+                    writeResponse(BufferedOutputStream(connection.getOutputStream()), route(request))
+                }
             } catch (failure: Exception) {
                 runCatching {
                     writeResponse(
@@ -180,7 +189,9 @@ class AndroidLoopbackServer(
     }
 
     private fun parseAction(request: Request): Pair<String, Map<String, String?>> {
-        val payload = gson.fromJson(request.body.toString(Charsets.UTF_8), JsonObject::class.java)
+        val payload = request.body.open().bufferedReader(Charsets.UTF_8).use { reader ->
+            gson.fromJson(reader, JsonObject::class.java)
+        }
         val type = payload.get("type")?.asString ?: error("action type is required")
         val values = payload.entrySet().filter { it.key != "type" }.associate { entry ->
             entry.key to if (entry.value.isJsonNull) null else entry.value.asString
@@ -190,7 +201,8 @@ class AndroidLoopbackServer(
 
     private fun handleLoad(request: Request): Response {
         val name = request.query["name"] ?: error("upload name is required")
-        return jsonResponse(runtime.load(name, request.body))
+        val path = requireNotNull(request.body.path) { "upload body is required" }
+        return jsonResponse(runtime.load(com.enrpau.dualscreendex.parser.io.RomSourceLoader.load(name, path)))
     }
 
     private fun spriteResponse(path: String, species: Boolean): Response {
@@ -309,40 +321,79 @@ class AndroidLoopbackServer(
         val target = parts[1]
         val rawPath = target.substringBefore('?')
         val query = parseQuery(target.substringAfter('?', ""))
+        val bodyLimit = requestBodyLimit(rawPath, query)
         val body = when {
-            headers["transfer-encoding"]?.contains("chunked", ignoreCase = true) == true -> readChunked(input)
-            headers["content-length"] != null -> readFixed(input, headers.getValue("content-length").toLong())
-            else -> byteArrayOf()
+            headers["transfer-encoding"]?.contains("chunked", ignoreCase = true) == true ->
+                readChunked(input, bodyLimit)
+            headers["content-length"] != null ->
+                readFixed(input, headers.getValue("content-length").toLong(), bodyLimit)
+            else -> EmptyRequestBody
         }
         return Request(parts[0].uppercase(Locale.ROOT), rawPath, query, body)
     }
 
-    private fun readFixed(input: InputStream, length: Long): ByteArray {
-        require(length in 0..MAX_BODY_BYTES) { "request body is too large" }
-        val output = ByteArray(length.toInt())
-        var offset = 0
-        while (offset < output.size) {
-            val read = input.read(output, offset, output.size - offset)
-            if (read < 0) throw EOFException("request body ended early")
-            offset += read
+    private fun readFixed(input: InputStream, length: Long, maximumBytes: Long): RequestBody {
+        require(length in 0..maximumBytes) { "request body is too large" }
+        return spoolBody { output ->
+            copyExactly(input, output, length, ByteArray(STREAM_COPY_BUFFER_BYTES))
+            length
         }
-        return output
     }
 
-    private fun readChunked(input: BufferedInputStream): ByteArray {
-        val output = ByteArrayOutputStream()
-        while (true) {
+    private fun readChunked(input: BufferedInputStream, maximumBytes: Long): RequestBody = spoolBody { output ->
+        var total = 0L
+        val buffer = ByteArray(STREAM_COPY_BUFFER_BYTES)
+        var complete = false
+        while (!complete) {
             val sizeLine = readLine(input) ?: throw EOFException("missing chunk size")
             val size = sizeLine.substringBefore(';').trim().toLong(16)
+            require(size >= 0) { "invalid chunk size" }
             if (size == 0L) {
                 while (true) {
                     if (readLine(input).isNullOrEmpty()) break
                 }
-                return output.toByteArray()
+                complete = true
+            } else {
+                require(total + size <= maximumBytes) { "request body is too large" }
+                copyExactly(input, output, size, buffer)
+                total += size
+                require(readLine(input).orEmpty().isEmpty()) { "invalid chunk terminator" }
             }
-            require(output.size().toLong() + size <= MAX_BODY_BYTES) { "request body is too large" }
-            output.write(readFixed(input, size))
-            require(readLine(input).orEmpty().isEmpty()) { "invalid chunk terminator" }
+        }
+        total
+    }
+
+    private fun spoolBody(writer: (OutputStream) -> Long): RequestBody {
+        val path = requestBodySpoolFactory()
+        return try {
+            val length = Files.newOutputStream(
+                path,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+            ).buffered().use(writer)
+            SpoolRequestBody(path, length)
+        } catch (failure: Exception) {
+            Files.deleteIfExists(path)
+            throw failure
+        }
+    }
+
+    private fun copyExactly(input: InputStream, output: OutputStream, length: Long, buffer: ByteArray) {
+        var remaining = length
+        while (remaining > 0) {
+            val count = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+            if (count < 0) throw EOFException("request body ended early")
+            if (count == 0) continue
+            output.write(buffer, 0, count)
+            remaining -= count
+        }
+    }
+
+    private fun requestBodyLimit(path: String, query: Map<String, String>): Long {
+        if (path != "/api/load") return MAX_CONTROL_BODY_BYTES
+        return when (query["name"]?.substringAfterLast('.', "")?.lowercase(Locale.ROOT)) {
+            "gb", "gbc", "gba" -> MAX_EXTRACTED_ROM_BYTES
+            else -> MAX_COMPRESSED_ROM_SOURCE_BYTES
         }
     }
 
@@ -407,8 +458,31 @@ class AndroidLoopbackServer(
         val method: String,
         val path: String,
         val query: Map<String, String>,
-        val body: ByteArray,
-    )
+        val body: RequestBody,
+    ) : AutoCloseable {
+        override fun close() = body.close()
+    }
+
+    private interface RequestBody : AutoCloseable {
+        val path: Path?
+        fun open(): InputStream
+    }
+
+    private data object EmptyRequestBody : RequestBody {
+        override val path: Path? = null
+        override fun open(): InputStream = byteArrayOf().inputStream()
+        override fun close() = Unit
+    }
+
+    private class SpoolRequestBody(
+        override val path: Path,
+        val length: Long,
+    ) : RequestBody {
+        override fun open(): InputStream = Files.newInputStream(path)
+        override fun close() {
+            Files.deleteIfExists(path)
+        }
+    }
 
     private class Response(
         val status: Int,
@@ -435,6 +509,9 @@ class AndroidLoopbackServer(
     companion object {
         const val LOOPBACK_HOST = "127.0.0.1"
         private const val MAX_LINE_BYTES = 64 * 1024
-        private const val MAX_BODY_BYTES = 256L * 1024 * 1024
+        private const val STREAM_COPY_BUFFER_BYTES = 64 * 1024
+        private const val MAX_CONTROL_BODY_BYTES = 1024L * 1024
+        private const val MAX_COMPRESSED_ROM_SOURCE_BYTES = 64L * 1024 * 1024
+        private const val MAX_EXTRACTED_ROM_BYTES = 32L * 1024 * 1024
     }
 }
