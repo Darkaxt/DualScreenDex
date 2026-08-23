@@ -133,6 +133,8 @@
   "v11Rc48BoundedMapAndMapperResidency": true,
   "v11Rc48VirtualizedPokedex": true,
   "v11Rc48BoundedRuntimeOwnership": true,
+  "v11Rc49GameInitializationGate": true,
+  "v11Rc49CacheRefreshExplanation": true,
   "v11SaveSynchronizedKnowledgeCheckpoints": true,
   "gen1CompiledEvolutionCoveragePercent": 96.62,
   "gen1CompiledLearnsetCoveragePercent": 93.56,
