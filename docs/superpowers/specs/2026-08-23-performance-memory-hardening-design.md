@@ -52,7 +52,7 @@ This work improves the existing architecture incrementally. It does not split th
 
 ### Stage 1 — Stop continuous churn
 
-Implement R1–R4: cache immutable contexts, suppress unchanged state bodies/renders, make polling state-aware with a 25 ms floor, and replace per-packet regex/buffer churn. This stage must reduce steady allocation without changing parsed data or visible navigation.
+Implement R1–R4: cache immutable contexts, suppress unchanged state bodies/renders, restore the intended distinction between configurable discovery polling and a 25 ms steady-state floor, and replace per-packet regex/buffer churn. This stage must reduce steady allocation without changing parsed data or visible navigation.
 
 ### Stage 2 — Bound peak heap
 
