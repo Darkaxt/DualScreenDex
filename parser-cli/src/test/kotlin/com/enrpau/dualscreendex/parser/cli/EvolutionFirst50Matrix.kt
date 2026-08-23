@@ -16,6 +16,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -151,10 +152,35 @@ object EvolutionFirst50Matrix {
     private fun readBaselineEvolution(file: java.io.File): BaselineEvolution =
         JdbcCatalogDatabaseFactory.open(file).use { database ->
             val sections = database.query(
-                "SELECT name, encoding, payload FROM catalog_sections WHERE name IN ('species', 'capabilities')",
+                "SELECT name, encoding FROM catalog_sections WHERE name IN ('species', 'capabilities')",
             ) { row ->
-                require(row.string("encoding") == "gzip+json") { "unsupported baseline section encoding" }
-                requireNotNull(row.string("name")) to requireNotNull(row.bytes("payload"))
+                val name = requireNotNull(row.string("name"))
+                val encoding = requireNotNull(row.string("encoding"))
+                name to when (encoding) {
+                    "gzip+json" -> database.query(
+                        "SELECT payload FROM catalog_sections WHERE name = ?",
+                        listOf(name),
+                    ) { payloadRow -> requireNotNull(payloadRow.bytes("payload")) }.single()
+                    "gzip+json+chunks-v1" -> database.query(
+                        """
+                        SELECT chunk_index, payload FROM catalog_section_chunks
+                        WHERE section_name = ? ORDER BY chunk_index
+                        """.trimIndent(),
+                        listOf(name),
+                    ) { chunkRow ->
+                        requireNotNull(chunkRow.long("chunk_index")).toInt() to
+                            requireNotNull(chunkRow.bytes("payload"))
+                    }.also { chunks ->
+                        require(chunks.indices.all { chunks[it].first == it }) {
+                            "baseline section chunks are not contiguous: $name"
+                        }
+                    }.let { chunks ->
+                        ByteArrayOutputStream().also { output ->
+                            chunks.forEach { (_, payload) -> output.write(payload) }
+                        }.toByteArray()
+                    }
+                    else -> error("unsupported baseline section encoding: $encoding")
+                }
             }.toMap()
             require(sections.keys == setOf("species", "capabilities")) {
                 "baseline cache omitted evolution comparison sections"

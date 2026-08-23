@@ -2,8 +2,10 @@ package com.darkaxt.dualdex
 
 import android.app.Application
 import android.provider.Settings
+import android.util.Log
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogCache
+import com.darkaxt.dualdex.catalog.CatalogCacheDecision
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointStore
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
@@ -106,7 +108,23 @@ class DualDexApplication : Application() {
         activeCatalogSha256 = lastCatalogSha256
         settingsStore = settingsRepository
         overlaySizeStore = OverlaySizeStore(settingsRepository::readGlobal, settingsRepository::writeGlobal)
-        val cache = CatalogCache(File(filesDir, "catalogs"), AndroidCatalogDatabaseFactory)
+        val cache = CatalogCache(File(filesDir, "catalogs"), AndroidCatalogDatabaseFactory) { event ->
+            val message = buildString {
+                append(event.decision.name)
+                append(" sha256=")
+                append(event.sha256)
+                event.failure?.let { failure ->
+                    append(" failure=")
+                    append(failure.javaClass.simpleName)
+                    failure.message?.takeIf(String::isNotBlank)?.let { append(": ").append(it) }
+                }
+            }
+            if (event.decision == CatalogCacheDecision.REJECTED_EXCEPTION) {
+                Log.w(CACHE_LOG_TAG, message, event.failure)
+            } else {
+                Log.i(CACHE_LOG_TAG, message)
+            }
+        }
         val runtime = ProductionCompanionRuntime(
             catalogRepository = cache,
             initialSettings = settingsRepository.readForRom(lastCatalogSha256),
@@ -189,6 +207,7 @@ class DualDexApplication : Application() {
     }
 
     private companion object {
+        const val CACHE_LOG_TAG = "DualDexCache"
         const val PREFERENCES_NAME = "dualdex-runtime"
         const val LAST_CATALOG_HASH = "last-catalog-sha256"
         const val LAST_CATALOG_NAME = "last-catalog-name"

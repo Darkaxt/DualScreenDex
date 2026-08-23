@@ -2,7 +2,8 @@ package com.darkaxt.dualdex.catalog
 
 object CatalogSchema {
     const val version = 1
-    const val parserSchemaVersion = 32
+    const val parserSchemaVersion = 33
+    const val sectionChunkBytes = 256 * 1024
 
     val requiredSections = linkedSetOf(
         "species",
@@ -54,6 +55,15 @@ object CatalogSchema {
             written_at_epoch_ms INTEGER NOT NULL
         )
         """.trimIndent(),
+        """
+        CREATE TABLE IF NOT EXISTS catalog_section_chunks (
+            section_name TEXT NOT NULL,
+            chunk_index INTEGER NOT NULL,
+            payload BLOB NOT NULL,
+            PRIMARY KEY (section_name, chunk_index)
+        )
+        """.trimIndent(),
+        "CREATE INDEX IF NOT EXISTS catalog_section_chunks_name ON catalog_section_chunks(section_name, chunk_index)",
         "CREATE INDEX IF NOT EXISTS catalog_metadata_crc_size ON catalog_metadata(crc32, rom_size)",
         """
         CREATE TABLE IF NOT EXISTS save_snapshot (
@@ -70,6 +80,7 @@ object CatalogSchema {
 
     val dropStatements = listOf(
         "DROP TABLE IF EXISTS save_snapshot",
+        "DROP TABLE IF EXISTS catalog_section_chunks",
         "DROP TABLE IF EXISTS catalog_sections",
         "DROP TABLE IF EXISTS catalog_metadata",
     )

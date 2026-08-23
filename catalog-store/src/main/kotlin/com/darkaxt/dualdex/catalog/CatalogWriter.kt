@@ -111,12 +111,25 @@ class CatalogWriter(
             progress.changedSections.forEach { name ->
                 val payload = codec.encodeSection(catalog, name)
                 database.execute(
+                    "DELETE FROM catalog_section_chunks WHERE section_name = ?",
+                    listOf(name),
+                )
+                payload.asSequenceChunks(CatalogSchema.sectionChunkBytes).forEachIndexed { index, chunk ->
+                    database.execute(
+                        """
+                        INSERT INTO catalog_section_chunks (section_name, chunk_index, payload)
+                        VALUES (?, ?, ?)
+                        """.trimIndent(),
+                        listOf(name, index, chunk),
+                    )
+                }
+                database.execute(
                     """
                     INSERT OR REPLACE INTO catalog_sections
                     (name, encoding, payload, committed_phase, written_at_epoch_ms)
-                    VALUES (?, 'gzip+json', ?, ?, ?)
+                    VALUES (?, 'gzip+json+chunks-v1', ?, ?, ?)
                     """.trimIndent(),
-                    listOf(name, payload, progress.phase, now),
+                    listOf(name, ByteArray(0), progress.phase, now),
                 )
             }
             if (progress.complete) {
@@ -125,6 +138,18 @@ class CatalogWriter(
                 }.toSet()
                 require(committed == CatalogSchema.requiredSections) { "complete catalog transaction has missing sections" }
             }
+        }
+    }
+}
+
+private fun ByteArray.asSequenceChunks(maximumBytes: Int): Sequence<ByteArray> {
+    require(maximumBytes > 0) { "catalog section chunk size must be positive" }
+    return sequence {
+        var start = 0
+        while (start < size) {
+            val end = minOf(start + maximumBytes, size)
+            yield(copyOfRange(start, end))
+            start = end
         }
     }
 }

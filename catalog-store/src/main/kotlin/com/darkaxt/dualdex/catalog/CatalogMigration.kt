@@ -15,6 +15,7 @@ object CatalogMigration {
                 "SELECT parser_schema_version FROM catalog_metadata WHERE id = 1",
             ) { row -> row.long("parser_schema_version")?.toInt() }.singleOrNull()
             if (storedParserVersion != null && storedParserVersion != CatalogSchema.parserSchemaVersion) {
+                database.execute("DELETE FROM catalog_section_chunks")
                 database.execute("DELETE FROM catalog_sections")
                 database.execute("DELETE FROM catalog_metadata")
             }

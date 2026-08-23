@@ -80,6 +80,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.util.Random
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import kotlin.io.path.listDirectoryEntries
@@ -179,10 +180,11 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun `large binary catalog section survives streamed gzip json persistence`() {
+    fun `large binary catalog section is chunked below the Android cursor window budget`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
-        val bytes = ByteArray(12 * 1024 * 1024) { index -> (index * 31 + index / 257).toByte() }.also { png ->
+        val bytes = ByteArray(4 * 1024 * 1024).also { png ->
+            Random(0xD0A1DE5L).nextBytes(png)
             byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10).copyInto(png)
         }
         val map = LocalMap("local/0001", "Large", 1, 16, 16, 1, 1, "local/0001/map")
@@ -198,11 +200,34 @@ class CatalogStoreTest {
         val reopened = requireNotNull(cache.readComplete(catalog.romSha256))
 
         assertTrue(reopened.catalog.localMaps.assets.getValue(map.imageAssetKey).bytes.contentEquals(bytes))
-        assertEquals("gzip+json", JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
-            database.query(
-                "SELECT encoding FROM catalog_sections WHERE name = 'local_maps'",
-            ) { row -> row.string("encoding") }.single()
-        })
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            assertEquals(
+                "gzip+json+chunks-v1",
+                database.query(
+                    "SELECT encoding FROM catalog_sections WHERE name = 'local_maps'",
+                ) { row -> row.string("encoding") }.single(),
+            )
+            val chunks = database.query(
+                """
+                SELECT chunk_index, length(payload) AS payload_bytes
+                FROM catalog_section_chunks
+                WHERE section_name = 'local_maps'
+                ORDER BY chunk_index
+                """.trimIndent(),
+            ) { row ->
+                requireNotNull(row.long("chunk_index")).toInt() to
+                    requireNotNull(row.long("payload_bytes")).toInt()
+            }
+            assertTrue(chunks.size > 1)
+            assertEquals(chunks.indices.toList(), chunks.map(Pair<Int, Int>::first))
+            assertTrue(chunks.all { (_, size) -> size in 1..CatalogSchema.sectionChunkBytes })
+            assertEquals(
+                listOf(0L),
+                database.query(
+                    "SELECT length(payload) AS payload_bytes FROM catalog_sections WHERE name = 'local_maps'",
+                ) { row -> row.long("payload_bytes") },
+            )
+        }
     }
 
     @Test
@@ -305,7 +330,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(32, CatalogSchema.parserSchemaVersion)
+        assertEquals(33, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -527,18 +552,30 @@ class CatalogStoreTest {
         )
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
             val payload = database.query(
-                "SELECT payload FROM catalog_sections WHERE name = 'capabilities'",
-            ) { row -> requireNotNull(row.bytes("payload")) }.single()
+                """
+                SELECT chunk_index, payload FROM catalog_section_chunks
+                WHERE section_name = 'capabilities' ORDER BY chunk_index
+                """.trimIndent(),
+            ) { row ->
+                requireNotNull(row.long("chunk_index")).toInt() to requireNotNull(row.bytes("payload"))
+            }.also { chunks ->
+                assertEquals(chunks.indices.toList(), chunks.map(Pair<Int, ByteArray>::first))
+            }.let { chunks ->
+                ByteArrayOutputStream().also { output -> chunks.forEach { output.write(it.second) } }.toByteArray()
+            }
             val legacyJson = GZIPInputStream(ByteArrayInputStream(payload)).use {
             it.readBytes().toString(Charsets.UTF_8)
             }.replace(Regex(",\"validatorReviewRecommended\":true"), "")
             val legacyPayload = ByteArrayOutputStream().also { output ->
                 GZIPOutputStream(output).use { it.write(legacyJson.toByteArray(Charsets.UTF_8)) }
             }.toByteArray()
-            database.execute(
-                "UPDATE catalog_sections SET payload = ? WHERE name = 'capabilities'",
-                listOf(legacyPayload),
-            )
+            database.execute("DELETE FROM catalog_section_chunks WHERE section_name = 'capabilities'")
+            legacyPayload.asList().chunked(CatalogSchema.sectionChunkBytes).forEachIndexed { index, bytes ->
+                database.execute(
+                    "INSERT INTO catalog_section_chunks(section_name, chunk_index, payload) VALUES ('capabilities', ?, ?)",
+                    listOf(index, bytes.toByteArray()),
+                )
+            }
             database.execute("UPDATE catalog_metadata SET parser_schema_version = 2 WHERE id = 1")
         }
 
@@ -582,7 +619,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(32, CatalogSchema.parserSchemaVersion)
+        assertEquals(33, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -704,12 +741,27 @@ class CatalogStoreTest {
 
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
             database.execute(
+                """
+                INSERT INTO save_snapshot (
+                    id, rom_sha256, save_identity, save_schema_id, payload_json,
+                    source_last_modified_epoch_ms, refreshed_at_epoch_ms
+                ) VALUES (1, ?, 'save-control', 'schema-control', '{}', 100, 200)
+                """.trimIndent(),
+                listOf(catalog.romSha256),
+            )
+            database.execute(
                 "UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1",
                 listOf(CatalogSchema.parserSchemaVersion - 1),
             )
         }
 
         assertNull(cache.readComplete(catalog.romSha256))
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            assertEquals(listOf(0L), database.query("SELECT COUNT(*) AS count FROM catalog_metadata") { it.long("count") })
+            assertEquals(listOf(0L), database.query("SELECT COUNT(*) AS count FROM catalog_sections") { it.long("count") })
+            assertEquals(listOf(0L), database.query("SELECT COUNT(*) AS count FROM catalog_section_chunks") { it.long("count") })
+            assertEquals(listOf(1L), database.query("SELECT COUNT(*) AS count FROM save_snapshot") { it.long("count") })
+        }
 
         val reparsed = catalog.copy(diagnostics = listOf("reparsed with the current schema"))
         cache.write(reparsed, source, CatalogWriteProgress.complete())
@@ -726,6 +778,46 @@ class CatalogStoreTest {
 
         assertNull(cache.readComplete(hash))
         assertFalse(cache.fileFor(hash).exists())
+    }
+
+    @Test
+    fun `cache decisions distinguish absence hit incompatibility and read rejection`() {
+        val root = newRoot()
+        val events = mutableListOf<CatalogCacheEvent>()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory, events::add)
+        val catalog = completeCatalog("f".repeat(64))
+
+        assertNull(cache.readComplete(catalog.romSha256))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Control.gba", 16_777_216, "CONTROL"),
+            CatalogWriteProgress.complete(),
+        )
+        requireNotNull(cache.readComplete(catalog.romSha256))
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute(
+                "UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1",
+                listOf(CatalogSchema.parserSchemaVersion - 1),
+            )
+        }
+        assertNull(cache.readComplete(catalog.romSha256))
+
+        val corruptHash = "0".repeat(64)
+        Files.write(cache.fileFor(corruptHash).toPath(), byteArrayOf(1, 2, 3, 4))
+        assertNull(cache.readComplete(corruptHash))
+
+        assertEquals(
+            listOf(
+                CatalogCacheDecision.MISS_FILE_ABSENT,
+                CatalogCacheDecision.HIT,
+                CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE,
+                CatalogCacheDecision.REJECTED_EXCEPTION,
+            ),
+            events.map(CatalogCacheEvent::decision),
+        )
+        assertEquals(corruptHash, events.last().sha256)
+        assertTrue(events.last().failure is Exception)
+        assertFalse(cache.fileFor(corruptHash).exists())
     }
 
     private fun newRoot(): Path {

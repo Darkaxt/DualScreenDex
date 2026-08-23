@@ -9,9 +9,23 @@ interface CatalogRepository {
     fun findCompleted(crc32: String, romSize: Int, romTitle: String? = null): List<StoredCatalog>
 }
 
+enum class CatalogCacheDecision {
+    MISS_FILE_ABSENT,
+    MISS_INCOMPLETE_OR_INCOMPATIBLE,
+    HIT,
+    REJECTED_EXCEPTION,
+}
+
+data class CatalogCacheEvent(
+    val decision: CatalogCacheDecision,
+    val sha256: String,
+    val failure: Exception? = null,
+)
+
 class CatalogCache(
     private val directory: File,
     private val databaseFactory: CatalogDatabaseFactory,
+    private val onDecision: (CatalogCacheEvent) -> Unit = {},
 ) : CatalogRepository {
     init {
         require(directory.exists() || directory.mkdirs()) { "catalog cache directory could not be created: $directory" }
@@ -28,10 +42,24 @@ class CatalogCache(
     @Synchronized
     override fun readComplete(sha256: String): StoredCatalog? {
         val file = fileFor(sha256)
-        if (!file.isFile) return null
+        val normalizedSha = file.nameWithoutExtension
+        if (!file.isFile) {
+            report(CatalogCacheEvent(CatalogCacheDecision.MISS_FILE_ABSENT, normalizedSha))
+            return null
+        }
         return try {
             databaseFactory.open(file).use { database -> CatalogReader(database).readComplete() }
-        } catch (_: Exception) {
+                .also { stored ->
+                    report(
+                        CatalogCacheEvent(
+                            if (stored == null) CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE
+                            else CatalogCacheDecision.HIT,
+                            normalizedSha,
+                        ),
+                    )
+                }
+        } catch (failure: Exception) {
+            report(CatalogCacheEvent(CatalogCacheDecision.REJECTED_EXCEPTION, normalizedSha, failure))
             check(file.parentFile.canonicalFile == directory.canonicalFile) { "refusing to invalidate a cache outside its directory" }
             check(file.delete() || !file.exists()) { "corrupt catalog cache could not be removed: $file" }
             null
@@ -69,6 +97,10 @@ class CatalogCache(
             check(file.delete() || !file.exists()) { "inactive catalog cache could not be removed: $file" }
         }
         return candidates.count { !it.exists() }
+    }
+
+    private fun report(event: CatalogCacheEvent) {
+        runCatching { onDecision(event) }
     }
 
     private companion object {

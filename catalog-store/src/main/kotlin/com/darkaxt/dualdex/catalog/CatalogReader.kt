@@ -75,22 +75,39 @@ class CatalogReader(private val database: CatalogDatabase) {
             metadata.parserSchemaVersion != CatalogSchema.parserSchemaVersion
         ) return null
 
-        val sections = database.query(
+        val sectionEncodings = database.query(
             "SELECT name, encoding FROM catalog_sections",
         ) { row ->
-            require(row.requiredString("encoding") == "gzip+json") { "unsupported catalog section encoding" }
-            row.requiredString("name")
-        }.toSet()
+            row.requiredString("name") to row.requiredString("encoding")
+        }.toMap()
+        val sections = sectionEncodings.keys
         require(sections == CatalogSchema.requiredSections) { "completed catalog has missing or unknown sections" }
+        require(sectionEncodings.values.all { it == CHUNKED_ENCODING }) {
+            "unsupported catalog section encoding"
+        }
 
         return StoredCatalog(
             catalog = codec.decode(metadata.sha256, metadata.crc32, metadata.family, metadata.platform) { name ->
-                database.query(
-                    "SELECT payload FROM catalog_sections WHERE name = ?",
+                val chunks = database.query(
+                    """
+                    SELECT chunk_index, payload
+                    FROM catalog_section_chunks
+                    WHERE section_name = ?
+                    ORDER BY chunk_index
+                    """.trimIndent(),
                     listOf(name),
                 ) { row ->
-                    requireNotNull(row.bytes("payload")) { "catalog section payload is null" }
-                }.single()
+                    requireNotNull(row.long("chunk_index")).toInt() to
+                        requireNotNull(row.bytes("payload")) { "catalog section chunk payload is null" }
+                }
+                require(chunks.isNotEmpty()) { "catalog section has no chunks: $name" }
+                require(chunks.indices.all { chunks[it].first == it }) {
+                    "catalog section chunks are not contiguous: $name"
+                }
+                ByteArrayOutputStream(chunks.sumOf { it.second.size }).use { output ->
+                    chunks.forEach { (_, chunk) -> output.write(chunk) }
+                    output.toByteArray()
+                }
             },
             source = CatalogSourceMetadata(
                 metadata.sourceName,
@@ -128,6 +145,10 @@ class CatalogReader(private val database: CatalogDatabase) {
         val complete: Boolean,
         val writtenAt: Long,
     )
+
+    private companion object {
+        const val CHUNKED_ENCODING = "gzip+json+chunks-v1"
+    }
 }
 
 internal class CatalogSectionCodec {
