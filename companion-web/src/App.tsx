@@ -54,8 +54,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const activeRoute = routes.at(-1);
   const routesRef = useRef(routes);
   const screenRef = useRef(state.screen);
+  const stateVersionRef = useRef(state.version);
   routesRef.current = routes;
   screenRef.current = state.screen;
+  stateVersionRef.current = state.version;
 
   const reportFailure = (failure: unknown, message: string) => {
     console.error(failure);
@@ -64,8 +66,8 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 
   useEffect(() => {
     bootstrap().then(applyBootstrap).catch(failure => reportFailure(failure, 'The companion could not start. Please try again.')).finally(() => setBusy(false));
-    return events(incoming => {
-      setState(current => incoming.version >= current.version ? incoming : current);
+    return events(() => stateVersionRef.current, incoming => {
+      setState(current => incoming.version > current.version ? incoming : current);
       const marker = catalogRefreshMarker(incoming);
       if (marker && marker !== lastCatalogRefresh.current) {
         lastCatalogRefresh.current = marker;

@@ -22,6 +22,7 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -230,6 +231,33 @@ class AndroidLoopbackServerTest {
             val bootstrap = bootstrapConnection.inputStream.reader().readText()
             assertTrue(bootstrap.contains("\"crc32\":\"89ABCDEF\""))
             assertTrue(bootstrap.contains("\"battle\":null"))
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun suppressesTheStateBodyWhenTheClientAlreadyHasTheCurrentVersion() {
+        val runtime = ProductionCompanionRuntime().apply {
+            loadCatalog("fixture.gba", ParsedCatalog("sha", EngineFamily.EMERALD, Platform.GBA))
+        }
+        val server = AndroidLoopbackServer(runtime) { null }
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+            val currentVersion = runtime.stateView().version
+
+            val unchanged = URI("$base/api/state?sinceVersion=$currentVersion")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(204, unchanged.responseCode)
+            assertEquals(0L, unchanged.contentLengthLong)
+            assertNull(unchanged.contentType)
+            assertTrue(unchanged.inputStream.readBytes().isEmpty())
+
+            val changed = URI("$base/api/state?sinceVersion=${(currentVersion - 1).coerceAtLeast(0)}")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(200, changed.responseCode)
+            assertTrue(changed.inputStream.reader().readText().contains("\"version\":$currentVersion"))
         } finally {
             server.close()
         }

@@ -34,14 +34,14 @@ export async function diagnostics(speciesId?: number | null, moveId?: number | n
   return payload;
 }
 
-export function events(onState: (state: State) => void): () => void {
+export function events(currentVersion: () => number, onState: (state: State) => void): () => void {
   let inFlight = false;
   const timer = window.setInterval(async () => {
     if (inFlight) return;
     inFlight = true;
     try {
-      const response = await fetch('/api/state');
-      if (response.ok) onState(await response.json());
+      const response = await fetch(`/api/state?sinceVersion=${currentVersion()}`);
+      if (response.status !== 204 && response.ok) onState(await response.json());
     } finally {
       inFlight = false;
     }

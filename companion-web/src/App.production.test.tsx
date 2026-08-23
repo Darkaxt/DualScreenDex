@@ -73,6 +73,25 @@ describe('production application shell', () => {
     HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as typeof HTMLCanvasElement.prototype.getContext;
   });
 
+  it('does not replace application state with an equal-version heartbeat', async () => {
+    let publishState!: (state: typeof fixture.state) => void;
+    vi.mocked(events).mockImplementationOnce((_currentVersion, onState) => {
+      publishState = onState as (state: typeof fixture.state) => void;
+      return () => undefined;
+    });
+    render(<App />);
+    await waitFor(() => expect(document.querySelector('.production-device')?.getAttribute('data-theme')).toBe('game'));
+    await waitFor(() => expect(publishState).toBeTypeOf('function'));
+
+    publishState({
+      ...fixture.state,
+      settings: { ...fixture.state.settings, theme: 'DARK' },
+    });
+
+    await Promise.resolve();
+    expect(document.querySelector('.production-device')?.getAttribute('data-theme')).toBe('game');
+  });
+
   it('keeps ROM diagnostics out of the production shell', async () => {
     render(<App />);
 
@@ -289,7 +308,7 @@ describe('production application shell', () => {
 
   it('lets an auto-opened battle replace an already open map', async () => {
     let publishState: ((state: Bootstrap['state']) => void) | undefined;
-    vi.mocked(events).mockImplementationOnce(listener => {
+    vi.mocked(events).mockImplementationOnce((_currentVersion, listener) => {
       publishState = listener;
       return () => undefined;
     });

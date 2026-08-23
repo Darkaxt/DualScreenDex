@@ -127,7 +127,7 @@ class AndroidLoopbackServer(
     private fun route(request: Request): Response = when {
         request.method == "GET" && request.path == "/api/health" -> jsonResponse(mapOf("ok" to true))
         request.method == "GET" && request.path == "/api/bootstrap" -> jsonResponse(runtime.bootstrap())
-        request.method == "GET" && request.path == "/api/state" -> jsonResponse(runtime.stateView())
+        request.method == "GET" && request.path == "/api/state" -> stateResponse(request)
         request.method == "POST" && request.path == "/api/actions" -> handleAction(request)
         request.method == "GET" && request.path == "/api/mapper/state" -> jsonResponse(requireNotNull(mapperHandler) { "mapper is unavailable" }.state())
         request.method == "POST" && request.path == "/api/mapper/actions" -> handleMapperAction(request)
@@ -153,6 +153,17 @@ class AndroidLoopbackServer(
         val (type, values) = parseAction(request)
         if (nativeActionHandler?.invoke(type, values) == true) return jsonResponse(runtime.stateView())
         return jsonResponse(runtime.action(type, values))
+    }
+
+    private fun stateResponse(request: Request): Response {
+        val view = runtime.stateView()
+        val sinceVersion = request.query["sinceVersion"]?.toLongOrNull()
+        require(sinceVersion == null || sinceVersion >= 0) { "state version is invalid" }
+        return if (sinceVersion != null && view.version <= sinceVersion) {
+            emptyResponse(204)
+        } else {
+            jsonResponse(view)
+        }
     }
 
     private fun handleMapperAction(request: Request): Response {
@@ -354,13 +365,16 @@ class AndroidLoopbackServer(
     private fun writeResponse(output: BufferedOutputStream, response: Response) {
         val reason = when (response.status) {
             200 -> "OK"
+            204 -> "No Content"
             400 -> "Bad Request"
             404 -> "Not Found"
             405 -> "Method Not Allowed"
             else -> "Error"
         }
         output.write("HTTP/1.1 ${response.status} $reason\r\n".toByteArray(Charsets.US_ASCII))
-        output.write("Content-Type: ${response.contentType}\r\n".toByteArray(Charsets.US_ASCII))
+        response.contentType?.let { contentType ->
+            output.write("Content-Type: $contentType\r\n".toByteArray(Charsets.US_ASCII))
+        }
         response.contentLength?.let { length ->
             output.write("Content-Length: $length\r\n".toByteArray(Charsets.US_ASCII))
         }
@@ -398,7 +412,7 @@ class AndroidLoopbackServer(
 
     private class Response(
         val status: Int,
-        val contentType: String,
+        val contentType: String?,
         val contentLength: Long?,
         val headers: Map<String, String> = emptyMap(),
         val writeBody: (OutputStream) -> Unit,
@@ -410,6 +424,13 @@ class AndroidLoopbackServer(
             headers: Map<String, String> = emptyMap(),
         ) : this(status, contentType, body.size.toLong(), headers, { output -> output.write(body) })
     }
+
+    private fun emptyResponse(status: Int): Response = Response(
+        status = status,
+        contentType = null,
+        contentLength = 0,
+        writeBody = {},
+    )
 
     companion object {
         const val LOOPBACK_HOST = "127.0.0.1"
