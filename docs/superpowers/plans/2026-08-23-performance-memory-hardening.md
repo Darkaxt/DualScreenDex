@@ -12,6 +12,13 @@
 
 **Specification:** `docs/superpowers/specs/2026-08-23-performance-memory-hardening-design.md`
 
+## Execution status
+
+- Stage 1 is implemented and validated in `2026-08-23-performance-memory-stage-1-validation.md`.
+- Stage 2 is implemented and validated in `2026-08-23-performance-memory-stage-2-validation.md`.
+- Stage 3 Tasks 9–11 are implemented; R10–R14 pass their automated bounds.
+- Task 12 automated web, Gradle, lint, exact-ROM, build, and release-policy gates pass. `2026-08-23-performance-memory-stage-3-validation.md` records R15 as a blocker because the required Android runtime profiling has not been separately authorized. Release remains pending that gate.
+
 ## File map
 
 | Responsibility | Primary files |
