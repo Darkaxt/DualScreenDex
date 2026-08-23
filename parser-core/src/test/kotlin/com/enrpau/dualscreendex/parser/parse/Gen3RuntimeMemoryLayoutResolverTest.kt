@@ -1,9 +1,17 @@
 package com.enrpau.dualscreendex.parser.parse
 
-import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
 import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
-import com.enrpau.dualscreendex.parser.catalog.CatalogGen3PartyAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocketAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BattleUiAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BitFlag
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3EventFlagAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3PartyAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3SaveRuntimeAbi
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding
+import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TrainerCardAbi
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import org.junit.Assert.assertEquals
@@ -138,6 +146,44 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                 battleTypeFlagsAddress = 0x020003A0,
                 trainerBattleMask = 1 shl 3,
                 nonWildBattleMask = 0x8FFF8B72.toInt(),
+                saveBlock1PointerAddress = 0x030036F0,
+                saveBlock2PointerAddress = 0x030036F4,
+                saveRuntimeAbi = CatalogGen3SaveRuntimeAbi(
+                    saveBlock1Size = 0x3D88,
+                    saveBlock2Size = 0x0F2C,
+                    textEncoding = CatalogGen3TextEncoding.ENGLISH,
+                    trainer = CatalogGen3TrainerCardAbi(
+                        playerNameOffset = 0,
+                        playerNameLength = 8,
+                        genderOffset = 8,
+                        trainerIdOffset = 0x0A,
+                        playTimeHoursOffset = 0x0E,
+                        playTimeMinutesOffset = 0x10,
+                        encryptionKeyOffset = 0xAC,
+                        moneyOffset = 0x490,
+                        maximumMoney = 999_999,
+                        badgeFlags = listOf(
+                            CatalogGen3BitFlag(0x137C, 0x80),
+                            CatalogGen3BitFlag(0x137D, 0x01),
+                            CatalogGen3BitFlag(0x137D, 0x02),
+                            CatalogGen3BitFlag(0x137D, 0x04),
+                            CatalogGen3BitFlag(0x137D, 0x08),
+                            CatalogGen3BitFlag(0x137D, 0x10),
+                            CatalogGen3BitFlag(0x137D, 0x20),
+                            CatalogGen3BitFlag(0x137D, 0x40),
+                        ),
+                    ),
+                    bag = CatalogGen3BagAbi(
+                        listOf(
+                            CatalogGen3BagPocketAbi(CatalogGen3BagPocket.ITEMS, 0x560, 30),
+                            CatalogGen3BagPocketAbi(CatalogGen3BagPocket.KEY_ITEMS, 0x5D8, 30),
+                            CatalogGen3BagPocketAbi(CatalogGen3BagPocket.BALLS, 0x650, 16),
+                            CatalogGen3BagPocketAbi(CatalogGen3BagPocket.TM_HM, 0x690, 64),
+                            CatalogGen3BagPocketAbi(CatalogGen3BagPocket.BERRIES, 0x790, 46),
+                        ),
+                    ),
+                    eventFlags = CatalogGen3EventFlagAbi(0x1270, 0x12C),
+                ),
                 partyAbi = CatalogGen3PartyAbi(0x0201D9C5, 0x0201D9C8, 6, 100),
                 battleUiAbi = CatalogGen3BattleUiAbi(0x0200141C, 0x02001864, 0x02001868, 0x020015C4),
             ),
