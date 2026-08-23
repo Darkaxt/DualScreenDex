@@ -774,6 +774,42 @@ class BattleMemoryCoordinatorTest {
         coordinator.close()
     }
 
+    @Test
+    fun unifiedLiveSavePathPublishesLocalAreaAndPositionWithoutNullOverwrite() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        putU32(iwram, 0x36F0, 0x02001000)
+        putU32(iwram, 0x36F4, 0x01002000)
+        putU16(ewram, 0x1000, 12)
+        putU16(ewram, 0x1002, 7)
+        ewram[0x1004] = 0
+        ewram[0x1005] = 16
+        mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
+        val liveAreas = mutableListOf<Int?>()
+        val positions = mutableListOf<RuntimeMapPosition?>()
+        val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = {
+                context(
+                    saveBlock1Pointer = 0x030036F0L,
+                    runtimeLayout = gen3RuntimeLayout(saveBlockPointers = true),
+                )
+            },
+            publisher = {},
+            locationPublisher = liveAreas::add,
+            positionPublisher = positions::add,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+
+        repeat(8) { coordinator.heartbeat() }
+
+        assertEquals(0x0010, liveAreas.last())
+        assertEquals(RuntimeMapPosition(12, 7), positions.last())
+        coordinator.close()
+    }
+
     private fun context(
         saveBlock1Pointer: Long? = null,
         runtimeLayout: Gen3RuntimeMemoryLayout? = null,

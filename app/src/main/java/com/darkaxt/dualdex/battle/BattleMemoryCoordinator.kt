@@ -784,31 +784,36 @@ class BattleMemoryCoordinator(
         context: BattleCatalogContext,
     ): Gen3LiveLocation? {
         if (context.gen3SaveBlock1PointerAddress == null) return null
-        val pointerBytes = regions["save-block-pointer"] ?: return null
-        if (pointerBytes.size != 4) return null
-        val pointer = pointerBytes.foldIndexed(0L) { index, value, byte ->
-            value or ((byte.toInt() and 0xFF).toLong() shl (index * 8))
-        }
         val runtimeDecoder = context.gen3RuntimeMemoryLayout?.let(::Gen3RuntimeMemoryDecoder)
         val windowOffset = runtimeDecoder?.locationWindowOffset ?: SAVE_LOCATION_GROUP_OFFSET
         val windowBytes = runtimeDecoder?.locationWindowBytes ?: Gen3RuntimeMemoryDecoder.MAP_ID_BYTES
-        if (pointer < EWRAM_BASE || pointer + windowOffset + windowBytes > EWRAM_BASE + EWRAM_BYTES) {
-            cachedSaveBlock1Address = null
-            return null
-        }
-        val location = if (readMode == ReadMode.DISCOVERY) {
-            val ewram = regions["ewram"] ?: return null
-            val offset = (pointer - EWRAM_BASE).toInt() + windowOffset
-            if (offset < 0 || offset + windowBytes > ewram.size) return null
-            ewram.copyOfRange(offset, offset + windowBytes)
+        val liveSaveBlock = regions[Gen3LiveGameState.SAVE_BLOCK1_ID]
+        val location = if (liveSaveBlock != null) {
+            if (windowOffset < 0 || windowOffset + windowBytes > liveSaveBlock.size) return null
+            liveSaveBlock.copyOfRange(windowOffset, windowOffset + windowBytes)
         } else {
-            if (pointer != requestedSaveBlock1Address) {
-                cachedSaveBlock1Address = pointer
+            val pointerBytes = regions["save-block-pointer"] ?: return null
+            if (pointerBytes.size != 4) return null
+            val pointer = pointerBytes.foldIndexed(0L) { index, value, byte ->
+                value or ((byte.toInt() and 0xFF).toLong() shl (index * 8))
+            }
+            if (pointer < EWRAM_BASE || pointer + windowOffset + windowBytes > EWRAM_BASE + EWRAM_BYTES) {
+                cachedSaveBlock1Address = null
                 return null
             }
-            regions["save-block-location"] ?: return null
+            if (readMode == ReadMode.DISCOVERY) {
+                val ewram = regions["ewram"] ?: return null
+                val offset = (pointer - EWRAM_BASE).toInt() + windowOffset
+                if (offset < 0 || offset + windowBytes > ewram.size) return null
+                ewram.copyOfRange(offset, offset + windowBytes)
+            } else {
+                if (pointer != requestedSaveBlock1Address) {
+                    cachedSaveBlock1Address = pointer
+                    return null
+                }
+                regions["save-block-location"] ?: return null
+            }.also { cachedSaveBlock1Address = pointer }
         }
-        cachedSaveBlock1Address = pointer
         val areaBaseId = runtimeDecoder?.decodeArea(location)
             ?: if (location.size == Gen3RuntimeMemoryDecoder.MAP_ID_BYTES) {
                 ((location[0].toInt() and 0xFF) shl 8) or (location[1].toInt() and 0xFF)
