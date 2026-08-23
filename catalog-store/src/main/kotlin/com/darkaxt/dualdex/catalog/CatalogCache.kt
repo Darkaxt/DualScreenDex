@@ -6,6 +6,12 @@ import java.io.File
 interface CatalogRepository {
     fun write(catalog: ParsedCatalog, source: CatalogSourceMetadata, progress: CatalogWriteProgress)
     fun readComplete(sha256: String): StoredCatalog?
+    fun lookupComplete(sha256: String): CatalogCacheLookup = readComplete(sha256).let { stored ->
+        CatalogCacheLookup(
+            stored = stored,
+            decision = if (stored == null) CatalogCacheDecision.MISS_FILE_ABSENT else CatalogCacheDecision.HIT,
+        )
+    }
     fun findCompleted(crc32: String, romSize: Int, romTitle: String? = null): List<StoredCatalog>
 }
 
@@ -20,6 +26,11 @@ data class CatalogCacheEvent(
     val decision: CatalogCacheDecision,
     val sha256: String,
     val failure: Exception? = null,
+)
+
+data class CatalogCacheLookup(
+    val stored: StoredCatalog?,
+    val decision: CatalogCacheDecision,
 )
 
 class CatalogCache(
@@ -40,29 +51,27 @@ class CatalogCache(
     }
 
     @Synchronized
-    override fun readComplete(sha256: String): StoredCatalog? {
+    override fun readComplete(sha256: String): StoredCatalog? = lookupComplete(sha256).stored
+
+    @Synchronized
+    override fun lookupComplete(sha256: String): CatalogCacheLookup {
         val file = fileFor(sha256)
         val normalizedSha = file.nameWithoutExtension
         if (!file.isFile) {
-            report(CatalogCacheEvent(CatalogCacheDecision.MISS_FILE_ABSENT, normalizedSha))
-            return null
+            return lookup(normalizedSha, CatalogCacheDecision.MISS_FILE_ABSENT)
         }
         return try {
-            databaseFactory.open(file).use { database -> CatalogReader(database).readComplete() }
-                .also { stored ->
-                    report(
-                        CatalogCacheEvent(
-                            if (stored == null) CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE
-                            else CatalogCacheDecision.HIT,
-                            normalizedSha,
-                        ),
-                    )
-                }
+            val stored = databaseFactory.open(file).use { database -> CatalogReader(database).readComplete() }
+            lookup(
+                normalizedSha,
+                if (stored == null) CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE else CatalogCacheDecision.HIT,
+                stored,
+            )
         } catch (failure: Exception) {
             report(CatalogCacheEvent(CatalogCacheDecision.REJECTED_EXCEPTION, normalizedSha, failure))
             check(file.parentFile.canonicalFile == directory.canonicalFile) { "refusing to invalidate a cache outside its directory" }
             check(file.delete() || !file.exists()) { "corrupt catalog cache could not be removed: $file" }
-            null
+            CatalogCacheLookup(null, CatalogCacheDecision.REJECTED_EXCEPTION)
         }
     }
 
@@ -101,6 +110,15 @@ class CatalogCache(
 
     private fun report(event: CatalogCacheEvent) {
         runCatching { onDecision(event) }
+    }
+
+    private fun lookup(
+        sha256: String,
+        decision: CatalogCacheDecision,
+        stored: StoredCatalog? = null,
+    ): CatalogCacheLookup {
+        report(CatalogCacheEvent(decision, sha256))
+        return CatalogCacheLookup(stored, decision)
     }
 
     private companion object {

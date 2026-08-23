@@ -1,5 +1,7 @@
 package com.darkaxt.dualdex.web
 
+import com.darkaxt.dualdex.catalog.CatalogCacheDecision
+import com.darkaxt.dualdex.catalog.CatalogCacheLookup
 import com.darkaxt.dualdex.catalog.CatalogRepository
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
@@ -1383,6 +1385,31 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun incompatibleStoredCatalogExplainsWhyTheGameGuideIsRefreshed() {
+        val rom = RomImage(ByteArray(0xC0))
+        val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val repository = RecordingCatalogRepository(CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE)
+        val messages = mutableListOf<String?>()
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = repository,
+            parseCatalog = { _, _, work ->
+                work(CatalogWorkProgress(CatalogWorkModule.ROM_IDENTITY))
+                parsed
+            },
+        )
+        val subscription = runtime.gateway.subscribe { snapshot ->
+            if (snapshot.catalogLoading.phase == "ROM_IDENTITY") messages += snapshot.catalogLoading.message
+        }
+
+        runtime.load("outdated.gba", rom)
+
+        assertTrue(messages.contains("Saved guide data needs to be refreshed for this version."))
+        subscription.close()
+        runtime.close()
+    }
+
+    @Test
     fun supersededAsyncRestoreNeverCommitsTheStaleCatalog() {
         val hashA = "a".repeat(64)
         val hashB = "b".repeat(64)
@@ -2103,7 +2130,9 @@ class ProductionCompanionRuntimeTest {
         override fun findCompleted(crc32: String, romSize: Int, romTitle: String?): List<StoredCatalog> = emptyList()
     }
 
-    private class RecordingCatalogRepository : CatalogRepository {
+    private class RecordingCatalogRepository(
+        private val decision: CatalogCacheDecision = CatalogCacheDecision.MISS_FILE_ABSENT,
+    ) : CatalogRepository {
         var writeCalls = 0
 
         override fun write(
@@ -2115,6 +2144,8 @@ class ProductionCompanionRuntimeTest {
         }
 
         override fun readComplete(sha256: String): StoredCatalog? = null
+
+        override fun lookupComplete(sha256: String): CatalogCacheLookup = CatalogCacheLookup(null, decision)
 
         override fun findCompleted(crc32: String, romSize: Int, romTitle: String?): List<StoredCatalog> = emptyList()
     }

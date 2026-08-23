@@ -299,9 +299,10 @@ export interface State {
   error: string | null;
   activeRulesetId: string | null;
   rulesetAssumed: boolean;
-  loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number };
+  loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number; message?: string | null };
   retroArch?: RetroArchState;
   saveRam?: SaveRamState;
+  gameAccessReady?: boolean;
 }
 
 export type MapLighting = 'MORNING' | 'DAY' | 'NIGHT' | 'DARK';

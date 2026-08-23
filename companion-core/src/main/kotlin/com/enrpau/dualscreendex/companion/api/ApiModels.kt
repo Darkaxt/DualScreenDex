@@ -288,6 +288,7 @@ data class StateView(
     val retroArch: RetroArchView = RetroArchView(),
     val saveRam: SaveRamView = SaveRamView(),
     val gameTime: GameClockView? = null,
+    val gameAccessReady: Boolean = false,
 )
 data class GameClockView(
     val hours: Int?,
@@ -379,6 +380,7 @@ data class CatalogLoadingView(
     val phase: String,
     val completedUnits: Int,
     val totalUnits: Int,
+    val message: String? = null,
 )
 
 data class SpeciesStateView(
@@ -855,10 +857,12 @@ object ApiViewBuilder {
                 snapshot.catalogLoading.phase,
                 snapshot.catalogLoading.completedUnits,
                 snapshot.catalogLoading.totalUnits,
+                snapshot.catalogLoading.message,
             ),
             retroArch,
             saveRam,
             snapshot.gameTime?.let { GameClockView(it.hours, it.minutes, it.phase?.name, it.phaseProgress) },
+            snapshot.liveAreaBaseId != null,
         )
     }
 

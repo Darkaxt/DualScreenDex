@@ -121,6 +121,7 @@ data class CatalogLoadingState(
     val phase: String = "IDLE",
     val completedUnits: Int = 0,
     val totalUnits: Int = 0,
+    val message: String? = null,
 )
 
 data class LiveMapPosition(val x: Int, val y: Int)

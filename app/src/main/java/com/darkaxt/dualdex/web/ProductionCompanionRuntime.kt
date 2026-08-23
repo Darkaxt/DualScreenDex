@@ -1,5 +1,6 @@
 package com.darkaxt.dualdex.web
 
+import com.darkaxt.dualdex.catalog.CatalogCacheDecision
 import com.darkaxt.dualdex.catalog.CatalogRepository
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
@@ -135,6 +136,7 @@ class ProductionCompanionRuntime(
     @Volatile private var settingsWritesEnabled = true
     @Volatile private var retroArch = RetroArchView()
     @Volatile private var saveRam = SaveRamView()
+    @Volatile private var catalogLoadingMessage: String? = null
     private var detectedLevelUpRulesetId: String? = null
     private var levelUpRulesetDetectionResolved = false
     private var liveParty: List<OwnedIndividual>? = null
@@ -179,7 +181,8 @@ class ProductionCompanionRuntime(
         val generation = beginCatalogTransition(rom.sha256, name, "CACHE_REOPEN")
         parserWorker.execute {
             try {
-                val cached = catalogRepository?.readComplete(rom.sha256)
+                val lookup = catalogRepository?.lookupComplete(rom.sha256)
+                val cached = lookup?.stored
                 if (cached != null) {
                     if (generation != loadGeneration.get()) {
                         notifyCompletion(onComplete, Result.failure(IllegalStateException("catalog load was superseded")))
@@ -189,6 +192,10 @@ class ProductionCompanionRuntime(
                     notifyCompletion(onComplete, Result.success(Unit))
                     return@execute
                 }
+                setCatalogLoadingMessage(
+                    generation,
+                    cacheRefreshMessage(lookup?.decision ?: CatalogCacheDecision.MISS_FILE_ABSENT),
+                )
                 publishWork(generation, CatalogWorkProgress(CatalogWorkModule.ROM_IDENTITY), source.displayName)
                 val parsed = parseCatalog(
                     rom,
@@ -987,6 +994,7 @@ class ProductionCompanionRuntime(
                     phase = work.module.name,
                     completedUnits = work.completedUnits,
                     totalUnits = work.totalUnits,
+                    message = catalogLoadingMessage,
                 ),
                 name,
             ),
@@ -1033,9 +1041,24 @@ class ProductionCompanionRuntime(
     private fun catalogTransitionUnits(phase: String): Int =
         if (phase == "CACHE_REOPEN") 1 else CatalogWorkModule.entries.size
 
+    private fun cacheRefreshMessage(decision: CatalogCacheDecision): String? = when (decision) {
+        CatalogCacheDecision.MISS_FILE_ABSENT -> "Preparing your game guide for the first time."
+        CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE ->
+            "Saved guide data needs to be refreshed for this version."
+        CatalogCacheDecision.REJECTED_EXCEPTION ->
+            "Saved guide data could not be reopened, so it is being prepared again."
+        CatalogCacheDecision.HIT -> null
+    }
+
+    @Synchronized
+    private fun setCatalogLoadingMessage(generation: Long, message: String?) {
+        if (generation == loadGeneration.get()) catalogLoadingMessage = message
+    }
+
     @Synchronized
     private fun beginCatalogTransition(romSha256: String?, name: String? = null, phase: String): Long {
         val generation = loadGeneration.incrementAndGet()
+        catalogLoadingMessage = null
         catalog = null
         clearCatalogProjectionCaches()
         mapAssetRenderCache.clear()

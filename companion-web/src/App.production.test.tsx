@@ -239,6 +239,92 @@ describe('production application shell', () => {
     expect(progress.getAttribute('aria-valuenow')).toBe('0');
   });
 
+  it('replaces completed catalog progress with a waiting spinner until live game access is ready', async () => {
+    let publishState!: (state: typeof fixture.state & { gameAccessReady: boolean }) => void;
+    vi.mocked(events).mockImplementationOnce((_currentVersion, onState) => {
+      publishState = onState as typeof publishState;
+      return () => undefined;
+    });
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      state: {
+        ...fixture.state,
+        version: 2,
+        gameAccessReady: false,
+        retroArch: {
+          storageGrant: 'GRANTED', configGrant: 'GRANTED', romGrant: 'GRANTED', configState: 'VERIFIED',
+          restartRequired: false, connection: 'PLAYING', systemId: 'Nintendo - Game Boy Advance',
+          gameBasename: 'Modern Emerald', contentCrc32: fixture.catalog!.crc32, resolution: 'ACTIVE',
+          activeSource: 'Modern Emerald.gba', savefileDirectory: null, indexedRoms: 1, message: null,
+        },
+        saveRam: {
+          status: 'MATCHED', sourceName: 'Modern Emerald.srm', sourceLastModifiedEpochMs: 1,
+          refreshedAtEpochMs: 1, autosaveStatus: 'UNVERIFIED', capabilities: {}, candidates: [], message: null,
+        },
+      },
+    });
+
+    render(<App />);
+
+    const waiting = await screen.findByRole('status', { name: 'Waiting for in-game access' });
+    expect(waiting.querySelector('.welcome-waiting-spinner')).toBeTruthy();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(screen.queryByText('POKÉDEX')).toBeNull();
+    expect(await screen.findByText('Waiting for the game to finish initializing.')).toBeTruthy();
+
+    publishState({
+      ...fixture.state,
+      version: 3,
+      gameAccessReady: true,
+      retroArch: {
+        storageGrant: 'GRANTED', configGrant: 'GRANTED', romGrant: 'GRANTED', configState: 'VERIFIED',
+        restartRequired: false, connection: 'PLAYING', systemId: 'Nintendo - Game Boy Advance',
+        gameBasename: 'Modern Emerald', contentCrc32: fixture.catalog!.crc32, resolution: 'ACTIVE',
+        activeSource: 'Modern Emerald.gba', savefileDirectory: null, indexedRoms: 1, message: null,
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
+    expect(screen.queryByRole('status', { name: 'Waiting for in-game access' })).toBeNull();
+  });
+
+  it('does not gate a manually opened catalog on RetroArch game initialization', async () => {
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      state: { ...fixture.state, gameAccessReady: false },
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText('POKÉDEX')).toBeTruthy();
+    expect(screen.queryByRole('status', { name: 'Waiting for in-game access' })).toBeNull();
+  });
+
+  it('explains an automatic saved-guide refresh without exposing parser diagnostics', async () => {
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      catalog: null,
+      state: {
+        ...fixture.state,
+        version: 2,
+        catalogReady: false,
+        loading: {
+          active: true,
+          phase: 'ROM_IDENTITY',
+          completedUnits: 0,
+          totalUnits: 11,
+          message: 'Saved guide data needs to be refreshed for this version.',
+        },
+      },
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText('Saved guide data needs to be refreshed for this version.')).toBeTruthy();
+    expect(document.querySelector('.welcome-loading-note')).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/schema|sha-?256|parser/i);
+  });
+
   it('shows indeterminate companion progress while bootstrap is pending', async () => {
     let resolveBootstrap!: (value: Bootstrap) => void;
     vi.mocked(bootstrap).mockImplementationOnce(() => new Promise(resolve => { resolveBootstrap = resolve; }));

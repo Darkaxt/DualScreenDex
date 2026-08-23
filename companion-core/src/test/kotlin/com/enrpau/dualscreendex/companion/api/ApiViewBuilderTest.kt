@@ -56,7 +56,9 @@ import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureFlavor
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ApiViewBuilderTest {
@@ -858,6 +860,18 @@ class ApiViewBuilderTest {
         assertNull(state.currentAreaBaseId)
         assertNull(state.currentAreaName)
         assertEquals(emptyList<Int>(), state.currentAreaIds)
+        assertFalse(state.gameAccessReady)
+    }
+
+    @Test
+    fun liveAreaMarksTheCurrentGameAsInitialized() {
+        val state = ApiViewBuilder.state(
+            AppSnapshot(liveAreaBaseId = 0x0101),
+            ParsedCatalog("a".repeat(64), EngineFamily.EMERALD, Platform.GBA),
+            retroArch = RetroArchView(connection = "PLAYING", resolution = "ACTIVE"),
+        )
+
+        assertTrue(state.gameAccessReady)
     }
 
     @Test

@@ -99,6 +99,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   };
 
   const loadingLabel = loadingModuleLabel(state.loading.phase);
+  const waitingForGame = shouldWaitForGameAccess(state);
 
   useEffect(() => {
     const handleCompanionBack = (event: Event) => {
@@ -145,6 +146,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   }
 
   const screen = useMemo(() => {
+    if (catalog && waitingForGame && state.screen !== 'SETUP') return <GameAccessWaiting />;
     if (activeRoute?.kind === 'MAPPER') return <MemoryMapperPage onBack={closeRoute} />;
     if (activeRoute?.kind === 'CAPABILITIES' && catalog) return <CapabilityReportPage romHash={catalog.hash} refreshMarker={catalogRefreshMarker(state)} onBack={closeRoute} />;
     if (state.screen === 'SETUP') return <SetupPage state={state} send={send} />;
@@ -210,7 +212,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })} onOpenMapper={() => openRoute({ kind: 'MAPPER' })} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={openMap} />;
     }
-  }, [catalog, state, busy, error, detailTab, routes, partySelection]);
+  }, [catalog, state, busy, error, detailTab, routes, partySelection, waitingForGame]);
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
     <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={applicationThemeStyle(catalog, state.settings)} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>
@@ -272,6 +274,14 @@ export function loadingOriginClass(loading: State['loading']): string {
   return loading.phase === 'CACHE_REOPEN' ? 'loading-origin-cache' : 'loading-origin-parse';
 }
 
+export function shouldWaitForGameAccess(state: State): boolean {
+  const connection = state.retroArch?.connection;
+  const resolution = state.retroArch?.resolution;
+  const liveSession = connection === 'PLAYING' || connection === 'PAUSED';
+  const catalogSession = resolution === 'LOADING' || resolution === 'ACTIVE';
+  return state.catalogReady && liveSession && catalogSession && state.gameAccessReady === false;
+}
+
 function Welcome({ busy, loading, loadingLabel, error, onUpload, openSetup }: { busy: boolean; loading: State['loading']; loadingLabel: string; error: string | null; onUpload: (file: File) => void; openSetup: () => void }) {
   const active = busy || loading.active;
   return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><h1>DUALDEX</h1>{active
@@ -292,5 +302,18 @@ function WelcomeLoadingProgress({ label, loading }: { label: string; loading: St
       aria-valuemax={determinate ? loading.totalUnits : undefined}
       aria-valuenow={determinate ? loading.completedUnits : undefined}
     ><span style={determinate ? { width: `${ratio * 100}%` } : undefined} /></div>
+    {loading.message && <p class="welcome-loading-note">{loading.message}</p>}
   </div>;
+}
+
+function GameAccessWaiting() {
+  return <section class="screen welcome-screen game-access-waiting">
+    <div class="welcome-mark"><span /><i /></div>
+    <h1>DUALDEX</h1>
+    <div class="welcome-game-waiting" role="status" aria-label="Waiting for in-game access">
+      <span class="welcome-waiting-spinner" aria-hidden="true" />
+      <strong>Waiting for in-game access</strong>
+      <p>Waiting for the game to finish initializing.</p>
+    </div>
+  </section>;
 }
