@@ -69,7 +69,17 @@ class SavePollingMonitor(
         autosaveStatus: String,
     ): SaveMonitorResult {
         val rom = context.romIdentity.lowercase()
-        val retained = snapshots.read(rom)
+        val previous = lastAccepted[rom]
+        val unchangedSource = previous?.let { accepted ->
+            candidates.singleOrNull {
+                it.id == accepted.sourceId && it.documentFingerprint() == accepted.documentFingerprint
+            }
+        }
+        if (unchangedSource != null) {
+            return matched(unchangedSource, previous.retained, autosaveStatus, previous.fileFingerprint)
+        }
+
+        val retained = previous?.retained ?: snapshots.read(rom)
         if (candidates.isEmpty()) {
             return SaveMonitorResult(
                 status = if (retained == null) SaveMonitorStatus.UNAVAILABLE else SaveMonitorStatus.STALE,
@@ -82,10 +92,6 @@ class SavePollingMonitor(
 
         val remembered = associations.selectedFor(rom)
         val preferred = candidates.singleOrNull { it.id == remembered }
-        val previous = lastAccepted[rom]
-        if (preferred != null && previous?.documentFingerprint == preferred.documentFingerprint() && retained != null) {
-            return matched(preferred, retained, autosaveStatus, previous.fileFingerprint)
-        }
 
         val preferredAttempt = preferred?.let { source ->
             attempt(source, context)
@@ -126,6 +132,7 @@ class SavePollingMonitor(
             else -> SaveObservationKind.UNCHANGED
         }
         val refreshed = clock()
+        val stored = StoredSaveSnapshot(snapshot, source.lastModifiedEpochMs, refreshed)
         snapshots.write(snapshot, source.lastModifiedEpochMs, refreshed)
         associations.remember(rom, source.id)
         lastAccepted[rom] = AcceptedSave(
@@ -133,13 +140,14 @@ class SavePollingMonitor(
             saveIdentity = snapshot.saveIdentity,
             documentFingerprint = source.documentFingerprint(),
             fileFingerprint = accepted.fileFingerprint,
+            retained = stored,
         )
         return SaveMonitorResult(
             status = SaveMonitorStatus.MATCHED,
             autosaveStatus = autosaveStatus,
             source = source,
             snapshot = snapshot,
-            retained = StoredSaveSnapshot(snapshot, source.lastModifiedEpochMs, refreshed),
+            retained = stored,
             refreshedAtEpochMs = refreshed,
             message = "SaveRAM matched and refreshed.",
             observation = SaveObservation(observationKind, source, accepted.fileFingerprint),
@@ -198,5 +206,6 @@ class SavePollingMonitor(
         val saveIdentity: String,
         val documentFingerprint: DocumentFingerprint,
         val fileFingerprint: SaveFileFingerprint,
+        val retained: StoredSaveSnapshot,
     )
 }

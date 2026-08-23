@@ -96,6 +96,23 @@ class DirectRomLibraryIndexerTest {
         assertEquals(setOf("4B3D4957"), result.entries.map { it.crc32 }.toSet())
     }
 
+    @Test
+    fun `reuses an unchanged source identity without reading ROM bytes again`() {
+        val root = temporaryRoot()
+        File(root, "Pokemon Emerald.gba").writeBytes(gameBoyAdvanceRom())
+        var identityReads = 0
+        val indexer = DirectRomLibraryIndexer { source ->
+            identityReads++
+            StreamingRomSourceReader.read(source)
+        }
+
+        val first = indexer.index(listOf(root))
+        val second = indexer.index(listOf(root), first.entries)
+
+        assertEquals(1, identityReads)
+        assertEquals(first.entries, second.entries)
+    }
+
     private fun configuredFile(name: String): File {
         val configured = System.getenv(name)
         assumeTrue("set $name to run this real-ROM control", !configured.isNullOrBlank())

@@ -10,6 +10,8 @@ data class RomIndexEntry(
     val gameBasename: String,
     val crc32: String,
     val sha256: String,
+    val sourceSize: Long = 0,
+    val sourceLastModifiedEpochMs: Long = 0,
 )
 
 sealed interface SessionResolution {

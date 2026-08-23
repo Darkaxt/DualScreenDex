@@ -156,7 +156,8 @@ class RetroArchSetupCoordinator(
         preferences.edit().putString(ROM_TREE_URI, uri.toString()).apply()
         update { it.copy(romGrant = "INDEXING", message = "Indexing granted GB, GBC, GBA, and ZIP sources…") }
         worker.execute {
-            val result = runCatching { AndroidRomLibraryIndexer(context.contentResolver).index(uri) }
+            val previousEntries = indexStore.read(uri.toString())
+            val result = runCatching { AndroidRomLibraryIndexer(context.contentResolver).index(uri, previousEntries) }
             result.onSuccess { indexed ->
                 indexStore.write(uri.toString(), indexed.entries)
                 if (!sharedStorage.isGranted()) entries.set(indexed.entries)
@@ -268,7 +269,10 @@ class RetroArchSetupCoordinator(
             try {
                 val roots = sharedStorage.roots()
                 require(roots.isNotEmpty()) { "All files access is granted, but no mounted shared-storage root is readable" }
-                val indexed = DirectRomLibraryIndexer().index(roots)
+                val indexed = DirectRomLibraryIndexer().index(
+                    roots,
+                    directIndexStore.read(ALL_FILES_INDEX_KEY),
+                )
                 if (!sharedStorage.isGranted()) return@execute
                 entries.set(indexed.entries)
                 directIndexStore.write(ALL_FILES_INDEX_KEY, indexed.entries)

@@ -4,22 +4,39 @@ import com.darkaxt.dualdex.retroarch.RomIndexEntry
 import java.io.File
 import java.util.ArrayDeque
 
-class DirectRomLibraryIndexer {
-    fun index(roots: List<File>): RomLibraryIndexResult {
+class DirectRomLibraryIndexer internal constructor(
+    private val identityReader: (File) -> StreamingRomSourceIdentity = StreamingRomSourceReader::read,
+) {
+    fun index(roots: List<File>, previousEntries: List<RomIndexEntry> = emptyList()): RomLibraryIndexResult {
         val entries = mutableListOf<RomIndexEntry>()
         val warnings = mutableListOf<String>()
+        val previousBySource = previousEntries.associateBy(RomIndexEntry::sourceId)
         discoverSources(roots).forEach { source ->
             runCatching {
-                val identity = StreamingRomSourceReader.read(source)
+                val sourceId = source.toURI().normalize().toString()
+                val sourceSize = source.length()
+                val sourceModified = source.lastModified()
+                val previous = previousBySource[sourceId]
+                    ?.takeIf {
+                        it.sourceSize == sourceSize &&
+                            it.sourceLastModifiedEpochMs == sourceModified
+                    }
+                if (previous != null) {
+                    entries += previous
+                    return@runCatching
+                }
+                val identity = identityReader(source)
                 val entryName = identity.archiveEntry ?: identity.displayName
                 entries += RomIndexEntry(
-                    sourceId = source.toURI().normalize().toString(),
+                    sourceId = sourceId,
                     sourceName = identity.displayName,
                     archiveEntry = identity.archiveEntry,
                     platform = identity.platform,
                     gameBasename = entryName.substringBeforeLast('.', entryName),
                     crc32 = identity.crc32,
                     sha256 = identity.sha256,
+                    sourceSize = sourceSize,
+                    sourceLastModifiedEpochMs = sourceModified,
                 )
             }.onFailure { failure ->
                 warnings += "${source.name}: ${failure.message ?: failure.javaClass.simpleName}"

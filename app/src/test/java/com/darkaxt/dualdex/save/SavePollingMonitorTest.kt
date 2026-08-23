@@ -22,13 +22,14 @@ class SavePollingMonitorTest {
         val repository = FakeSnapshots()
         val associations = FakeAssociations()
         var parses = 0
+        var sourceReads = 0
         val monitor = SavePollingMonitor(
             associations,
             repository,
             parser = { _, parseContext -> parses++; SaveParseResult.Parsed(snapshot(parseContext.romIdentity, 7)) },
             clock = { 900L },
         )
-        val source = source("save", modified = 100L, bytes = byteArrayOf(1, 2, 3))
+        val source = source("save", modified = 100L, bytes = byteArrayOf(1, 2, 3)) { sourceReads++ }
 
         val first = monitor.poll(context, listOf(source), "VERIFIED")
         val second = monitor.poll(context, listOf(source), "VERIFIED")
@@ -41,6 +42,9 @@ class SavePollingMonitorTest {
         assertEquals(SaveObservationKind.UNCHANGED, second.observation?.kind)
         assertNull(second.snapshot)
         assertEquals(1, parses)
+        assertEquals(1, sourceReads)
+        assertEquals(1, repository.reads)
+        assertEquals(1, associations.selections)
         assertEquals(1, repository.writes)
         assertEquals("save", associations.selectedFor(context.romIdentity))
     }
@@ -156,13 +160,13 @@ class SavePollingMonitorTest {
         assertEquals(1, repository.writes)
     }
 
-    private fun source(id: String, modified: Long, bytes: ByteArray) = SaveDocumentSource(
+    private fun source(id: String, modified: Long, bytes: ByteArray, onRead: () -> Unit = {}) = SaveDocumentSource(
         id = id,
         displayPath = "RetroArch/saves/$id.srm",
         name = "$id.srm",
         size = bytes.size.toLong(),
         lastModifiedEpochMs = modified,
-        read = { bytes.copyOf() },
+        read = { onRead(); bytes.copyOf() },
     )
 
     private fun snapshot(rom: String, counter: Long, identity: String = "b".repeat(64)) = SaveSnapshot(
@@ -184,14 +188,22 @@ class SavePollingMonitorTest {
 
     private class FakeAssociations : SaveAssociationRepository {
         private val values = mutableMapOf<String, String>()
-        override fun selectedFor(romSha256: String): String? = values[romSha256.lowercase()]
+        var selections = 0
+        override fun selectedFor(romSha256: String): String? {
+            selections++
+            return values[romSha256.lowercase()]
+        }
         override fun remember(romSha256: String, documentId: String) { values[romSha256.lowercase()] = documentId }
     }
 
     private class FakeSnapshots : SaveSnapshotRepository {
         private val values = mutableMapOf<String, StoredSaveSnapshot>()
+        var reads = 0
         var writes = 0
-        override fun read(romSha256: String): StoredSaveSnapshot? = values[romSha256.lowercase()]
+        override fun read(romSha256: String): StoredSaveSnapshot? {
+            reads++
+            return values[romSha256.lowercase()]
+        }
         override fun write(snapshot: SaveSnapshot, sourceLastModifiedEpochMs: Long, refreshedAtEpochMs: Long) {
             writes++
             values[snapshot.romIdentity.lowercase()] = StoredSaveSnapshot(snapshot, sourceLastModifiedEpochMs, refreshedAtEpochMs)

@@ -15,13 +15,24 @@ data class RomLibraryIndexResult(
 class AndroidRomLibraryIndexer(
     private val resolver: ContentResolver,
 ) {
-    fun index(treeUri: Uri): RomLibraryIndexResult {
+    fun index(treeUri: Uri, previousEntries: List<RomIndexEntry> = emptyList()): RomLibraryIndexResult {
         val entries = mutableListOf<RomIndexEntry>()
         val warnings = mutableListOf<String>()
+        val previousBySource = previousEntries.associateBy(RomIndexEntry::sourceId)
         DocumentTreeAccess(resolver, treeUri).filesRecursively()
             .filter { it.name.substringAfterLast('.', "").lowercase() in SUPPORTED_EXTENSIONS }
             .forEach { document ->
                 runCatching {
+                    val sourceId = document.uri.toString()
+                    val previous = previousBySource[sourceId]
+                        ?.takeIf {
+                            it.sourceSize == document.size &&
+                                it.sourceLastModifiedEpochMs == document.lastModifiedEpochMs
+                        }
+                    if (previous != null) {
+                        entries += previous
+                        return@runCatching
+                    }
                     val loaded = AndroidRomSourceLoader.load(resolver, document.uri, document.name)
                     val header = RomHeaderReader.read(loaded.rom)
                     val platform = when (header.platform) {
@@ -32,13 +43,15 @@ class AndroidRomLibraryIndexer(
                     }
                     val entryName = loaded.displayName.substringAfter('!', loaded.displayName)
                     entries += RomIndexEntry(
-                        sourceId = document.uri.toString(),
+                        sourceId = sourceId,
                         sourceName = loaded.displayName,
                         archiveEntry = loaded.displayName.substringAfter('!', "").ifBlank { null },
                         platform = platform,
                         gameBasename = entryName.substringBeforeLast('.', entryName),
                         crc32 = loaded.rom.crc32,
                         sha256 = loaded.rom.sha256,
+                        sourceSize = document.size,
+                        sourceLastModifiedEpochMs = document.lastModifiedEpochMs,
                     )
                 }.onFailure { warnings += "${document.name}: ${it.message ?: it.javaClass.simpleName}" }
             }
