@@ -62,6 +62,30 @@ describe('Trainer Card', () => {
     expect(container.querySelector('.trainer-avatar-fallback')).toBeTruthy();
     expect(container.querySelectorAll('.trainer-badge')).toHaveLength(8);
   });
+
+  it('renders unread card facts as neutral unknowns without diagnostics', () => {
+    const state = trainerState();
+    state.trainer = {
+      ...state.trainer!,
+      publicTrainerId: null,
+      money: null,
+      playTimeHours: null,
+      playTimeMinutes: null,
+      dexSeen: null,
+      dexCaught: null,
+      stars: null,
+      badges: state.trainer!.badges.map(badge => ({ ...badge, earned: null })),
+    };
+
+    const { container } = render(<TrainerCardPage state={state} onBack={vi.fn()} />);
+
+    expect(container.querySelector('.trainer-card-shell')).toBeTruthy();
+    expect(screen.getByText('ID —')).toBeTruthy();
+    expect(screen.getAllByText('—')).toHaveLength(5);
+    expect(container.querySelectorAll('.trainer-badge.earned')).toHaveLength(0);
+    expect(container.querySelectorAll('[aria-label$="status unknown"]')).toHaveLength(8);
+    expect(container.textContent).not.toMatch(/parser|capability|unavailable/i);
+  });
 });
 
 function trainerState(): State {
@@ -70,6 +94,7 @@ function trainerState(): State {
     filter: 'ALL', selectedAreaId: null, battleTab: 'ENTRY',
     settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
     speciesState: {}, observedMoves: {}, battle: null, catalogReady: true, catalogName: 'fixture.gba', error: null,
+    trainerCardUnlocked: true,
     activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
     trainer: {
       name: 'MAY', gender: 'FEMALE', publicTrainerId: 12345, money: 98765, playTimeHours: 12, playTimeMinutes: 34,

@@ -120,7 +120,7 @@ git commit -m "feat: expose partial unlocked Trainer Card"
 - Test: `companion-web/src/App.production.test.tsx`
 - Test: `companion-web/src/pages/TrainerCardPage.test.tsx`
 
-- [ ] **Step 1: Write failing production UI tests**
+- [x] **Step 1: Write failing production UI tests**
 
 Assert the header hides the action before unlock, reveals it after unlock even with a partial card, and the partial page displays `—` for unread facts without parser/debug language.
 
@@ -131,11 +131,11 @@ expect(screen.getAllByText('—').length).toBeGreaterThan(0);
 expect(document.body.textContent).not.toMatch(/parser|capability/i);
 ```
 
-- [ ] **Step 2: Run focused web tests and confirm RED**
+- [x] **Step 2: Run focused web tests and confirm RED**
 
 Run `npm test -- --run src/App.production.test.tsx src/pages/TrainerCardPage.test.tsx` from `companion-web`. Expected: the header remains coupled to `state.trainer`, and nullable fields are unsupported.
 
-- [ ] **Step 3: Implement the UI contract**
+- [x] **Step 3: Implement the UI contract**
 
 Add backward-compatible `trainerCardUnlocked?: boolean` to `State`, use `state.trainerCardUnlocked === true` for the header action, and render nullable facts as `—`. Treat a badge as earned only when `earned === true`; when null, label its status as unknown without exposing why.
 
@@ -143,11 +143,11 @@ Add backward-compatible `trainerCardUnlocked?: boolean` to `State`, use `state.t
 onTrainer={state.trainerCardUnlocked === true ? () => send('OPEN_TRAINER') : undefined}
 ```
 
-- [ ] **Step 4: Run focused tests and build the web bundle**
+- [x] **Step 4: Run focused tests and build the web bundle**
 
 Run `npm test -- --run src/App.production.test.tsx src/pages/TrainerCardPage.test.tsx` and `npm run build` from `companion-web`. Expected: tests and build pass.
 
-- [ ] **Step 5: Commit the UI behavior**
+- [x] **Step 5: Commit the UI behavior**
 
 ```powershell
 git add companion-web/src/models.ts companion-web/src/pages/PokedexBrowse.tsx companion-web/src/pages/TrainerCardPage.tsx companion-web/src/App.production.test.tsx companion-web/src/pages/TrainerCardPage.test.tsx

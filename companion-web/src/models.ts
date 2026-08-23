@@ -279,6 +279,7 @@ export interface State {
   settings: Settings;
   speciesState: Record<number, SpeciesState>;
   observedMoves: Record<number, { moveId: number; frequency: number }[]>;
+  trainerCardUnlocked?: boolean;
   trainer?: TrainerView | null;
   trainerAvatarUrl?: string | null;
   trainerMapSpriteUrl?: string | null;
@@ -317,15 +318,15 @@ export interface GameTime {
 export interface TrainerView {
   name: string;
   gender: 'MALE' | 'FEMALE';
-  publicTrainerId: number;
-  money: number;
-  playTimeHours: number;
-  playTimeMinutes: number;
-  dexSeen: number;
-  dexCaught: number;
+  publicTrainerId: number | null;
+  money: number | null;
+  playTimeHours: number | null;
+  playTimeMinutes: number | null;
+  dexSeen: number | null;
+  dexCaught: number | null;
   stars: number | null;
   avatarUrl: string | null;
-  badges: { index: number; earned: boolean; imageUrl: string | null }[];
+  badges: { index: number; earned: boolean | null; imageUrl: string | null }[];
 }
 
 export interface PartyMemberView {

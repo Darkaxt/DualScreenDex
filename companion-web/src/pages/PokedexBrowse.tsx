@@ -90,7 +90,7 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
     <Header
       title="POKÉDEX"
       gameTime={state.gameTime}
-      onTrainer={state.trainer ? () => send('OPEN_TRAINER') : undefined}
+      onTrainer={state.trainerCardUnlocked === true ? () => send('OPEN_TRAINER') : undefined}
       onParty={state.party?.some(member => member.occupied) ? () => send('OPEN_PARTY') : undefined}
       onSettings={() => send('SCREEN', { screen: 'SETTINGS' })}
       onMap={(catalog.worldMaps?.length ?? 0) > 0 ? onOpenMap : undefined}

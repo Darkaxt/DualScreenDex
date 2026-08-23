@@ -31,6 +31,7 @@ const fixture: Bootstrap = {
     gameTime: { hours: 16, minutes: 48 },
     settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
     speciesState: {}, observedMoves: {}, battle: null, catalogReady: true,
+    trainerCardUnlocked: true,
     trainer: {
       name: 'MAY', gender: 'FEMALE', publicTrainerId: 12345, money: 98765, playTimeHours: 12, playTimeMinutes: 34,
       dexSeen: 42, dexCaught: 7, stars: 2, avatarUrl: null,
@@ -151,6 +152,26 @@ describe('production application shell', () => {
 
     fireEvent.click(trainer);
     expect(action).toHaveBeenCalledWith('OPEN_TRAINER', {});
+  });
+
+  it('drives the Trainer Card shortcut only from the first Pokemon license', async () => {
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      state: { ...fixture.state, trainerCardUnlocked: false },
+    });
+    const locked = render(<App />);
+
+    await screen.findByText('POKÉDEX');
+    expect(screen.queryByRole('button', { name: 'Trainer Card' })).toBeNull();
+    locked.unmount();
+
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      state: { ...fixture.state, trainerCardUnlocked: true, trainer: null },
+    });
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: 'Trainer Card' })).toBeTruthy();
   });
 
   it('returns from a Party ability to the same Pokemon detail before the Party grid', async () => {
