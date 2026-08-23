@@ -10,6 +10,7 @@ import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.EOFException
+import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.OutputStreamWriter
@@ -37,9 +38,9 @@ class AndroidLoopbackServer(
     private val runtime: ProductionCompanionRuntime,
     private val requestedPort: Int = 0,
     private val requestBodySpoolFactory: () -> Path = {
-        val directory = Path.of(System.getProperty("java.io.tmpdir"), "dualdex-request-bodies")
-        Files.createDirectories(directory)
-        Files.createTempFile(directory, "request-", ".body")
+        val directory = File(System.getProperty("java.io.tmpdir"), "dualdex-request-bodies")
+        require(directory.isDirectory || directory.mkdirs()) { "request body directory could not be created" }
+        File.createTempFile("request-", ".body", directory).toPath()
     },
     private val assetLoader: (String) -> ByteArray?,
 ) : AutoCloseable {
