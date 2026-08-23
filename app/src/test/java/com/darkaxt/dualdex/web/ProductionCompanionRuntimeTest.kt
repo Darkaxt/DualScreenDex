@@ -68,6 +68,7 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertSame
@@ -338,6 +339,46 @@ class ProductionCompanionRuntimeTest {
         assertNull(runtime.stateView().gameTime?.minutes)
         runtime.updateGen2GameClock(null)
         assertNull(runtime.stateView().gameTime)
+        runtime.close()
+    }
+
+    @Test
+    fun reusesCatalogDerivedContextsUntilTheirInputsChange() {
+        val runtime = ProductionCompanionRuntime()
+        val firstCatalog = battleReadyCatalog("first")
+        runtime.loadCatalog("first.gba", firstCatalog)
+
+        val firstSaveContext = requireNotNull(runtime.saveParseContext())
+        val firstBattleContext = requireNotNull(runtime.battleCatalogContext())
+        assertSame(firstSaveContext, runtime.saveParseContext())
+        assertSame(firstBattleContext, runtime.battleCatalogContext())
+
+        val trainer = TrainerSnapshot(
+            name = "RED",
+            gender = 0,
+            publicTrainerId = 7,
+            money = 3_000,
+            playTimeHours = 1,
+            playTimeMinutes = 2,
+            badgeFlags = 0,
+            dexSeen = 1,
+            dexCaught = 1,
+        )
+        assertTrue(
+            runtime.applySaveSnapshot(
+                emptySave("first", "save-first").copy(trainer = trainer),
+                SaveRamView(status = "MATCHED"),
+            ),
+        )
+
+        val trainerBattleContext = requireNotNull(runtime.battleCatalogContext())
+        assertSame(firstSaveContext, runtime.saveParseContext())
+        assertNotSame(firstBattleContext, trainerBattleContext)
+        assertSame(trainerBattleContext, runtime.battleCatalogContext())
+
+        runtime.loadCatalog("second.gba", battleReadyCatalog("second"))
+        assertNotSame(firstSaveContext, runtime.saveParseContext())
+        assertNotSame(trainerBattleContext, runtime.battleCatalogContext())
         runtime.close()
     }
 
@@ -2159,6 +2200,35 @@ class ProductionCompanionRuntimeTest {
         party = emptyList(),
         storedIndividuals = emptyList(),
         capabilities = emptyMap(),
+    )
+
+    private fun battleReadyCatalog(identity: String) = ParsedCatalog(
+        identity,
+        EngineFamily.EMERALD,
+        Platform.GBA,
+        speciesById = mapOf(
+            1 to SpeciesRecord(
+                id = 1,
+                dexNumber = CatalogField.available(1),
+                name = CatalogField.available("BULBASAUR"),
+                typeIds = CatalogField.available(listOf(12)),
+                baseStats = CatalogField.notFound("fixture"),
+                sprite = CatalogField.notFound("fixture"),
+                abilityIds = CatalogField.available(listOf(65)),
+            ),
+        ),
+        movesById = mapOf(
+            1 to MoveRecord(
+                1,
+                CatalogField.available("POUND"),
+                CatalogField.available(0),
+                CatalogField.notFound("fixture"),
+                CatalogField.available(40),
+                CatalogField.available(100),
+                CatalogField.available(35),
+            ),
+        ),
+        typesById = mapOf(0 to TypeRecord(0, CatalogField.available("NORMAL"))),
     )
 
     private fun saveObservation(kind: SaveObservationKind, sourceId: String, version: Int) = SaveObservation(

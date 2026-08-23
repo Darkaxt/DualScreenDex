@@ -62,6 +62,7 @@ import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.save.SaveSpeciesContext
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.TrainerIdentity
+import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.gen3.Gen3BagAbi
 import com.darkaxt.dualdex.save.gen3.Gen3BagDataSource
@@ -132,6 +133,8 @@ class ProductionCompanionRuntime(
     private var activePlaythrough: ActivePlaythrough? = null
     private var catalogPublicationInProgress = false
     private var cachedState: CachedState? = null
+    private var cachedSaveParseContext: CachedSaveParseContext? = null
+    private var cachedBattleCatalogContext: CachedBattleCatalogContext? = null
     private val loadGeneration = AtomicLong()
     val gateway = CompanionGateway(
         AppSnapshot(
@@ -292,7 +295,11 @@ class ProductionCompanionRuntime(
         return catalog?.let(::saveParseContext)
     }
 
-    private fun saveParseContext(current: ParsedCatalog): SaveParseContext = SaveParseContext(
+    private fun saveParseContext(current: ParsedCatalog): SaveParseContext {
+        cachedSaveParseContext?.let { cached ->
+            if (cached.catalog === current) return cached.value
+        }
+        return SaveParseContext(
         romIdentity = current.romSha256,
         speciesById = current.speciesById.mapValues { (id, species) ->
             SaveSpeciesContext(
@@ -355,12 +362,17 @@ class ProductionCompanionRuntime(
                 eventFlags = abi.eventFlags?.let { Gen3EventFlagAbi(it.byteOffset, it.byteCount) },
             )
         },
-    )
+        ).also { value -> cachedSaveParseContext = CachedSaveParseContext(current, value) }
+    }
 
     @Synchronized
     fun battleCatalogContext(): BattleCatalogContext? {
         if (catalogPublicationInProgress) return null
         val current = catalog ?: return null
+        val savedTrainer = savedPlayerState?.trainer
+        cachedBattleCatalogContext?.let { cached ->
+            if (cached.catalog === current && cached.trainer == savedTrainer) return cached.value
+        }
         val generation = when (current.family) {
             EngineFamily.RED_BLUE, EngineFamily.YELLOW -> 1
             EngineFamily.GOLD_SILVER, EngineFamily.CRYSTAL -> 2
@@ -378,8 +390,7 @@ class ProductionCompanionRuntime(
             val pp = record.pp.value?.takeIf { it > 0 } ?: return@mapNotNull null
             id to BattleMove(id, pp)
         }.toMap()
-        if (species.isEmpty() || moves.isEmpty() || current.typesById.isEmpty()) return null
-        return BattleCatalogContext(
+        val value = if (species.isEmpty() || moves.isEmpty() || current.typesById.isEmpty()) null else BattleCatalogContext(
             romIdentity = current.romSha256,
             generation = generation,
             catalog = BattleCatalogView(species, moves, current.typesById.keys),
@@ -421,8 +432,10 @@ class ProductionCompanionRuntime(
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),
             saveParseContext = saveParseContext(current),
-            savedTrainer = savedPlayerState?.trainer,
+            savedTrainer = savedTrainer,
         )
+        cachedBattleCatalogContext = CachedBattleCatalogContext(current, savedTrainer, value)
+        return value
     }
 
     @Synchronized
@@ -672,6 +685,7 @@ class ProductionCompanionRuntime(
         activePlaythrough = playthrough
         gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedgerSanitizer.sanitize(seed, current)))
         savedPlayerState = snapshot
+        cachedBattleCatalogContext = null
         val merged = mergedPlayerKnowledge(current)
         val selectors = completeLevelUpRulesetSelectors(current)
         val detected = snapshot.detectedLevelUpRulesetId?.takeIf { id ->
@@ -853,7 +867,10 @@ class ProductionCompanionRuntime(
     }
 
     override fun close() {
-        synchronized(this) { loadGeneration.incrementAndGet() }
+        synchronized(this) {
+            loadGeneration.incrementAndGet()
+            clearCatalogProjectionCaches()
+        }
         parserWorker.shutdown()
     }
 
@@ -1001,6 +1018,7 @@ class ProductionCompanionRuntime(
     private fun beginCatalogTransition(romSha256: String?, name: String? = null, phase: String): Long {
         val generation = loadGeneration.incrementAndGet()
         catalog = null
+        clearCatalogProjectionCaches()
         liveParty = null
         liveGameState = null
         savedPlayerState = null
@@ -1126,5 +1144,21 @@ class ProductionCompanionRuntime(
         val saveRam: SaveRamView,
         val view: StateView,
     )
+
+    private data class CachedSaveParseContext(
+        val catalog: ParsedCatalog,
+        val value: SaveParseContext,
+    )
+
+    private data class CachedBattleCatalogContext(
+        val catalog: ParsedCatalog,
+        val trainer: TrainerSnapshot?,
+        val value: BattleCatalogContext?,
+    )
+
+    private fun clearCatalogProjectionCaches() {
+        cachedSaveParseContext = null
+        cachedBattleCatalogContext = null
+    }
 
 }
