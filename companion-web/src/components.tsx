@@ -17,7 +17,7 @@ export function identitySpriteClass(knowledge: SpeciesIdentityKnowledge): string
 export function Sprite({ speciesId, name, available, large = false, knowledge = 'captured' }: { speciesId: number; name: string; available: boolean; large?: boolean; knowledge?: SpeciesIdentityKnowledge }) {
   return (
     <div class={`sprite-frame ${large ? 'sprite-large' : ''}`}>
-      {available ? <img class={identitySpriteClass(knowledge)} src={`/api/sprites/species/${speciesId}.png`} alt={knowledge === 'unknown' ? 'Unidentified Pokémon' : `${name} sprite`} /> : <span class="sprite-missing" aria-label="Sprite unavailable" />}
+      {available ? <img loading="lazy" decoding="async" class={identitySpriteClass(knowledge)} src={`/api/sprites/species/${speciesId}.png`} alt={knowledge === 'unknown' ? 'Unidentified Pokémon' : `${name} sprite`} /> : <span class="sprite-missing" aria-label="Sprite unavailable" />}
     </div>
   );
 }
@@ -59,7 +59,7 @@ export function CaughtBadge({ state, catalog }: { state?: SpeciesState; catalog:
   if (!caught) return null;
   const ball = state?.ballId != null && catalog.balls.some(item => item.id === state.ballId && item.hasSprite);
   return <span class="caught-avatar-badge">{ball
-    ? <img class="ball-art" src={`/api/sprites/balls/${state!.ballId}.png`} alt="Caught" />
+    ? <img loading="lazy" decoding="async" class="ball-art" src={`/api/sprites/balls/${state!.ballId}.png`} alt="Caught" />
     : <span class="ball-mark ball-caught" aria-label="Caught"><i /></span>}
   </span>;
 }

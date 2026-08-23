@@ -1,9 +1,19 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Catalog, EncounterWindow, State } from '../models';
 import { Header, maskIdentityName, PokedexAvatar, speciesIdentityKnowledge, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
 
+const SPECIES_ROW_HEIGHT = 94;
+const MAX_MOUNTED_SPECIES = 60;
+const OVERSCAN_ROWS = 3;
+
 export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Catalog; state: State; send: (type: string, values?: Record<string, string | number | boolean | null>) => void; onOpenMap?: () => void }) {
   const [search, setSearch] = useState('');
+  const listRef = useRef<HTMLDivElement>(null);
+  const [viewport, setViewport] = useState(() => ({
+    scrollTop: 0,
+    height: typeof window === 'undefined' ? SPECIES_ROW_HEIGHT * 8 : window.innerHeight,
+    width: typeof window === 'undefined' ? 1024 : window.innerWidth,
+  }));
   const policy = state.settings.knowledgeMode;
   const activeFilter = policy === 'ORGANIC' && state.filter === 'SEEN' ? 'ALL' : state.filter;
   const filters = policy === 'ORGANIC'
@@ -44,6 +54,37 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
   const foundCount = visible.filter(species => Boolean(
     state.speciesState[species.id]?.seen || state.speciesState[species.id]?.caught,
   )).length;
+  const columnCount = pokedexColumnCount(viewport.width);
+  const virtualWindow = useMemo(
+    () => pokedexVirtualWindow(visible.length, columnCount, viewport.scrollTop, viewport.height),
+    [columnCount, viewport.height, viewport.scrollTop, visible.length],
+  );
+  const mounted = visible.slice(virtualWindow.startIndex, virtualWindow.endIndex);
+
+  useEffect(() => {
+    const updateViewport = () => {
+      const list = listRef.current;
+      setViewport(current => ({
+        scrollTop: list?.scrollTop ?? current.scrollTop,
+        height: list?.clientHeight || window.innerHeight,
+        width: window.innerWidth,
+      }));
+    };
+    updateViewport();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateViewport);
+    if (listRef.current) observer?.observe(listRef.current);
+    window.addEventListener('resize', updateViewport);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateViewport);
+    };
+  }, []);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (list) list.scrollTop = 0;
+    setViewport(current => ({ ...current, scrollTop: 0 }));
+  }, [activeFilter, catalog.hash, search]);
 
   return <section class="screen pokedex-screen">
     <Header
@@ -68,8 +109,14 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
         {filters.map(filter => <button key={filter} disabled={!filterEnabled[filter]} title={!filterEnabled[filter] ? `${filter} filter unavailable` : undefined} class={activeFilter === filter ? 'active' : ''} onClick={() => send('FILTER', { filter, areaId: null })}>{filter}</button>)}
       </div>
     </div>
-    <div class="species-list" data-scroll-region>
-      {visible.map(species => { const speciesState = state.speciesState[species.id]; const knowledge = speciesIdentityKnowledge(policy, speciesState); const hidden = knowledge === 'unknown'; const metadataUnlocked = policy === 'DISCOVERED' || Boolean(speciesState?.caught); const types = metadataUnlocked ? uniqueTypeIds(species.typeIds).map(id => catalog.types.find(type => type.id === id)).filter((type): type is Catalog['types'][number] => type != null) : []; return <button key={species.id} class={`species-row ${hidden ? 'identity-hidden' : ''}`} disabled={hidden} aria-label={hidden ? 'Unidentified encounter' : undefined} onClick={() => send('OPEN_SPECIES', { speciesId: species.id })}>
+    <div
+      ref={listRef}
+      class="species-list"
+      data-scroll-region
+      onScroll={event => setViewport(current => ({ ...current, scrollTop: event.currentTarget.scrollTop }))}
+    >
+      <div class="species-window" style={{ paddingTop: virtualWindow.paddingTop, paddingBottom: virtualWindow.paddingBottom }}>
+      {mounted.map(species => { const speciesState = state.speciesState[species.id]; const knowledge = speciesIdentityKnowledge(policy, speciesState); const hidden = knowledge === 'unknown'; const metadataUnlocked = policy === 'DISCOVERED' || Boolean(speciesState?.caught); const types = metadataUnlocked ? uniqueTypeIds(species.typeIds).map(id => catalog.types.find(type => type.id === id)).filter((type): type is Catalog['types'][number] => type != null) : []; return <button key={species.id} class={`species-row ${hidden ? 'identity-hidden' : ''}`} disabled={hidden} aria-label={hidden ? 'Unidentified encounter' : undefined} onClick={() => send('OPEN_SPECIES', { speciesId: species.id })}>
         <PokedexAvatar speciesId={species.id} name={species.name} available={species.hasSprite} knowledge={knowledge} state={state.speciesState[species.id]} catalog={catalog} />
         <span class="species-row-identity"><span class="species-number">{hidden ? '#???' : `#${String(species.dex).padStart(3, '0')}`}</span><strong>{hidden ? maskIdentityName(species.name) : species.name}</strong></span>
         {types.length > 0 && <span class="species-row-types" aria-label="Types">{types.map(type => <TypeChip key={type.id} type={type} />)}</span>}
@@ -79,8 +126,38 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
         </span>
       </button>; })}
       {visible.length === 0 && <div class="empty-state"><strong>NO POKÉMON FOUND</strong><p>Pokémon you discover will appear here.</p></div>}
+      </div>
     </div>
   </section>;
+}
+
+export function pokedexColumnCount(viewportWidth: number) {
+  return viewportWidth <= 560 ? 1 : viewportWidth <= 820 ? 2 : 3;
+}
+
+export function pokedexVirtualWindow(
+  itemCount: number,
+  columnCount: number,
+  scrollTop: number,
+  viewportHeight: number,
+) {
+  const columns = Math.max(1, columnCount);
+  const totalRows = Math.ceil(itemCount / columns);
+  const maximumRows = Math.max(1, Math.floor(MAX_MOUNTED_SPECIES / columns));
+  const visibleRows = Math.max(1, Math.ceil(Math.max(0, viewportHeight) / SPECIES_ROW_HEIGHT));
+  const windowRows = Math.min(maximumRows, visibleRows + OVERSCAN_ROWS * 2, totalRows);
+  const firstVisibleRow = Math.floor(Math.max(0, scrollTop) / SPECIES_ROW_HEIGHT);
+  const startRow = Math.min(
+    Math.max(0, firstVisibleRow - OVERSCAN_ROWS),
+    Math.max(0, totalRows - windowRows),
+  );
+  const endRow = Math.min(totalRows, startRow + windowRows);
+  return {
+    startIndex: startRow * columns,
+    endIndex: Math.min(itemCount, endRow * columns),
+    paddingTop: startRow * SPECIES_ROW_HEIGHT,
+    paddingBottom: (totalRows - endRow) * SPECIES_ROW_HEIGHT,
+  };
 }
 
 export function encounterWindows(catalog: Catalog, areaIds: number[], speciesId: number): Set<EncounterWindow> {

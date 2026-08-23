@@ -387,4 +387,43 @@ describe('Pokédex knowledge modes', () => {
     expect(send).toHaveBeenNthCalledWith(2, 'OPEN_SPECIES', { speciesId: 7 });
     expect((container.querySelector('.identity-hidden') as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('keeps a nine-hundred-entry catalog within sixty mounted rows while preserving counts and search', () => {
+    const species = Array.from({ length: 900 }, (_, index) => ({
+      ...catalog.species[0],
+      id: index + 1,
+      dex: index + 1,
+      name: `MON ${String(index + 1).padStart(4, '0')}`,
+      hasSprite: true,
+    }));
+    const speciesState = Object.fromEntries(species.slice(0, 100).map((entry, index) => [
+      entry.id,
+      { seen: true, caught: index < 10, team: false, ballId: null },
+    ]));
+    const rendered = render(<PokedexBrowse
+      catalog={{ ...catalog, species }}
+      state={{
+        ...state,
+        settings: { ...state.settings, knowledgeMode: 'DISCOVERED' },
+        speciesState,
+      }}
+      send={vi.fn()}
+    />);
+
+    expect(rendered.container.querySelectorAll('.species-row').length).toBeLessThanOrEqual(60);
+    expect(screen.getByLabelText('10 owned, 100 found').textContent).toBe('10 / 100');
+    expect([...rendered.container.querySelectorAll<HTMLImageElement>('.species-row img')]
+      .every(image => image.getAttribute('loading') === 'lazy' && image.getAttribute('decoding') === 'async')).toBe(true);
+
+    const list = rendered.container.querySelector<HTMLElement>('.species-list')!;
+    Object.defineProperty(list, 'clientHeight', { configurable: true, value: 564 });
+    Object.defineProperty(list, 'scrollTop', { configurable: true, value: 94 * 100, writable: true });
+    fireEvent.scroll(list);
+    expect(rendered.container.querySelectorAll('.species-row').length).toBeLessThanOrEqual(60);
+    expect(screen.queryByText('MON 0001')).toBeNull();
+
+    fireEvent.input(screen.getByPlaceholderText('NAME OR NUMBER'), { target: { value: 'MON 0899' } });
+    expect(rendered.container.querySelectorAll('.species-row')).toHaveLength(1);
+    expect(screen.getByText('MON 0899')).toBeTruthy();
+  });
 });
