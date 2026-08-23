@@ -28,7 +28,7 @@ This work improves the existing architecture incrementally. It does not split th
 
 - **R1 — Context reuse:** one immutable battle/save context is built per active catalog/runtime-layout generation. Repeated heartbeats for unchanged inputs return the same context objects. A catalog or runtime-layout replacement invalidates them atomically.
 - **R2 — Unchanged state:** an unchanged state version produces no JSON state body and no client state replacement or Preact commit. The 750 ms connection heartbeat may remain, but unchanged responses must be constant-size and allocation-light.
-- **R3 — Live polling:** steady polling must not exceed 40 polls per second. Discovery and connected operation use explicit state rather than an ignored interval argument. Packet parsing performs one byte-level pass without regex tokenization, and the UDP receive buffer is reused by the client lifetime.
+- **R3 — Live polling:** steady scheduled memory-read cycles must not exceed 40 polls per second. Discovery and connected operation use explicit state rather than an ignored interval argument. Already-arrived replies may be drained within one scheduled cycle so multi-chunk reads are not artificially delayed. Packet parsing performs one byte-level pass without regex tokenization, and the UDP receive buffer is reused by the client lifetime.
 - **R4 — Hot-path evidence:** deterministic tests record context construction count, unchanged-state body bytes, client render/update count, polls/second, packets/second, and bytes read. Diagnostics are not rendered on normal pages.
 
 ### Peak heap and large data
