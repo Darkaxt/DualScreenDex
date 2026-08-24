@@ -13,7 +13,7 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 | Discovery / Atlas | RC53 hidden-image and fallback contract remains intact | Organic scenes omit undiscovered raster URLs and Atlas underlays; Atlas remains the unavailable-Local fallback | PASS | Web tests pass |
 | Persistence | Existing catalogs rebuild once and round-trip | Parser schema 35, stale-revision rejection, synthetic section coverage, and official Red/Crystal round trips pass | PASS | Parser schema 35 cache tests pass |
 | GB/GBC corpus | No accepted Local raster regresses | 334/334 hashes; 102/102 deterministic selected rows; exact pre-stage raster preservation; 69 current scenes; three source-backed strict controls | PASS | Zero parser errors, raster regressions, and strict-control failures |
-| Signed artifact | Publish and independently verify a production-signed APK | `v1.1.0-rc.54`; package/version/code/hash and one v3 signer match protected provenance | PASS | Live ADB validation still requires explicit device ownership |
+| Signed artifact | Publish and independently verify a production-signed APK | `v1.1.0-rc.54`; package/version/code/hash and one v3 signer match protected provenance | PASS | Ad hoc ADB/emulator validation explicitly waived; downstream live testing remains observational |
 
 ## Baseline characterization
 
@@ -187,7 +187,7 @@ Release policy: 18 tests passed
 Official compiled controls: 13 tests, 0 skipped, 0 failures; BUILD SUCCESSFUL in 5m 13s
 ```
 
-Checkpoint B POIs and collection evidence are outside Checkpoint A and are tracked as Task #154 rather than silently treated as complete. Task #153 is the one valid Checkpoint A compatibility deferral recorded below. All local implementation and lab-validation blockers are closed; interactive signed-APK validation remains pending explicit device ownership.
+Checkpoint B POIs and collection evidence are outside Checkpoint A and are tracked as Task #154 rather than silently treated as complete. Task #153 is the one valid Checkpoint A compatibility deferral recorded below. All implementation, lab-validation, signing, and publication blockers are closed. On 2026-08-24 the user explicitly waived an ad hoc ADB/emulator gate as unrealistic without a reusable test bench; feature behavior will instead receive downstream live testing and complaint-driven follow-up.
 
 ## Signed validation artifact
 
@@ -203,7 +203,7 @@ signatureScheme=v3
 certificateSha256=C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA
 ```
 
-The APK hash matches both the release asset digest and `SHA256SUMS.txt`; package/version/hash/certificate match protected provenance. The artifact is ready for live Checkpoint A validation. It was not installed or driven because this thread has not been granted explicit device/emulator ownership; no live-device result is claimed.
+The APK hash matches both the release asset digest and `SHA256SUMS.txt`; package/version/hash/certificate match protected provenance. No ad hoc install or gesture run is required for Checkpoint A closure. The signed artifact remains available for normal downstream live testing; emulator automation should wait for a reusable test bench rather than adding a slow one-off validation path.
 
 ## Deferral ledger
 
