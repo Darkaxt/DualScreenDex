@@ -7,12 +7,10 @@ import com.darkaxt.dualdex.battle.LiveLocationState
 import com.darkaxt.dualdex.battle.LiveUnavailableCode
 import com.darkaxt.dualdex.battle.LiveUnavailableReason
 import com.darkaxt.dualdex.battle.LiveValue
-import com.darkaxt.dualdex.battle.Gen3LiveGameState
+import com.darkaxt.dualdex.battle.Gen3LiveMemoryReader
 import com.darkaxt.dualdex.battle.Gen3LiveMemoryCodecs
 import com.darkaxt.dualdex.battle.Gen3LivePointers
 import com.darkaxt.dualdex.battle.Gen3LiveReadWindow
-import com.darkaxt.dualdex.battle.Gen3LiveSection
-import com.darkaxt.dualdex.battle.Gen3LiveSectionState
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
 import com.darkaxt.dualdex.battle.RuntimeMapPosition
 import com.darkaxt.dualdex.save.BagPocket
@@ -79,17 +77,32 @@ class UnifiedGameStateDecoder(
     }
 
     fun gen3PointerReadPlan(layout: Gen3RuntimeMemoryLayout): List<Gen3LiveReadWindow> =
-        Gen3LiveGameState.pointerWindows(layout)
+        Gen3LiveMemoryReader.pointerWindows(layout)
 
     fun decodeGen3Pointers(
         regions: Map<String, ByteArray>,
         layout: Gen3RuntimeMemoryLayout,
-    ): Gen3LivePointers = Gen3LiveGameState.decodePointers(regions, layout)
+    ): Gen3LivePointers = Gen3LiveMemoryReader.decodePointers(regions, layout)
 
     fun gen3ValueReadPlan(
         layout: Gen3RuntimeMemoryLayout,
         pointers: Gen3LivePointers,
-    ): List<Gen3LiveReadWindow> = Gen3LiveGameState.dependentWindows(layout, pointers)
+    ): List<Gen3LiveReadWindow> = Gen3LiveMemoryReader.dependentWindows(layout, pointers)
+
+    fun gen3IndependentValueReadPlan(
+        layout: Gen3RuntimeMemoryLayout,
+        includeParty: Boolean,
+    ): List<Gen3LiveReadWindow> = Gen3LiveMemoryReader.independentWindows(layout).filter { window ->
+        includeParty || (window.id != Gen3LiveMemoryReader.PARTY_COUNT_ID && window.id != Gen3LiveMemoryReader.PARTY_ID)
+    }
+
+    fun isGen3IndependentValueRegion(id: String): Boolean =
+        id == Gen3LiveMemoryReader.PARTY_COUNT_ID ||
+            id == Gen3LiveMemoryReader.PARTY_ID ||
+            id == Gen3LiveMemoryReader.CLOCK_ID
+
+    fun gen3SaveBlock1(regions: Map<String, ByteArray>): ByteArray? =
+        regions[Gen3LiveMemoryReader.SAVE_BLOCK1_ID]
 
     @Synchronized
     fun acceptExistingGenerationSample(
@@ -134,7 +147,6 @@ class UnifiedGameStateDecoder(
         sampleId: Long,
         regions: Map<String, ByteArray>,
         battle: LiveBattleState,
-        targetBattler: Int?,
         areaBaseId: Int?,
         mapPosition: RuntimeMapPosition?,
     ): ResolvedGameSnapshot? {
@@ -142,25 +154,20 @@ class UnifiedGameStateDecoder(
         if (active.generation != 3) return published
         val layout = active.gen3RuntimeMemoryLayout
         val parseContext = active.saveParseContext
-        val legacy = layout?.let { memoryLayout ->
-            Gen3LiveGameState.decode(
-                romIdentity = active.romIdentity,
+        val memory = layout?.let { memoryLayout ->
+            Gen3LiveMemoryReader.decode(
                 regions = regions,
                 layout = memoryLayout,
                 saveContext = parseContext,
-                savedTrainer = null,
-                battleActive = battle.active,
-                targetBattler = targetBattler,
-                encounterKind = battle.encounterKind,
             )
         }
-        val party = legacy?.party?.toLiveValue(emptyList())
+        val party = memory?.party
             ?: unavailable("live Party layout was unavailable")
         val player = parseContext?.let { saveContext ->
             Gen3LiveMemoryCodecs.decodePlayer(
-                saveBlock1 = regions[Gen3LiveGameState.SAVE_BLOCK1_ID],
-                saveBlock2 = regions[Gen3LiveGameState.SAVE_BLOCK2_ID],
-                extendedSave = regions[Gen3LiveGameState.EXTENDED_SAVE_ID],
+                saveBlock1 = regions[Gen3LiveMemoryReader.SAVE_BLOCK1_ID],
+                saveBlock2 = regions[Gen3LiveMemoryReader.SAVE_BLOCK2_ID],
+                extendedSave = regions[Gen3LiveMemoryReader.EXTENDED_SAVE_ID],
                 context = saveContext,
                 liveParty = party,
             )
@@ -176,18 +183,14 @@ class UnifiedGameStateDecoder(
                 battle = LiveValue.Available(battle),
                 location = LiveLocationState(
                     areaBaseId = areaBaseId?.let { LiveValue.Available(it) }
-                        ?: legacy?.location?.toLiveValue()
+                        ?: memory?.location
                         ?: unavailable("live area layout was unavailable"),
                     position = mapPosition?.let { LiveValue.Available(it) }
                         ?: unavailable("live map position was unavailable"),
                 ),
-                clock = legacy?.clock?.value?.let { clock ->
-                    LiveValue.Available(LiveClockState(clock.hours, clock.minutes, clock.seconds))
-                } ?: unavailable(legacy?.clock?.reasonText("live game clock was unavailable")
-                    ?: "live game clock layout was unavailable"),
-                bag = legacy?.bag?.mapValues { (_, section) -> section.toLiveValue() }
-                    ?: BagPocket.entries.associateWith { unavailable("live Bag layout was unavailable") },
-                eventFlags = legacy?.eventFlags?.toLiveValue()
+                clock = memory?.clock ?: unavailable("live game clock layout was unavailable"),
+                bag = player.bag,
+                eventFlags = memory?.eventFlags
                     ?: unavailable("live event-flag layout was unavailable"),
             ),
         )
@@ -280,8 +283,15 @@ class UnifiedGameStateDecoder(
     }
 
     private fun publishResolved() {
-        val next = resolveSnapshot() ?: return
         val previous = published
+        val next = resolveSnapshot()
+        if (next == null) {
+            if (previous != null) {
+                published = null
+                notifyListeners(null)
+            }
+            return
+        }
         published = next
         if (!previous.semanticallyEquals(next)) notifyListeners(next)
     }
@@ -290,22 +300,23 @@ class UnifiedGameStateDecoder(
         val active = context ?: return null
         val live = live
         val saved = recovery?.snapshot
-        val savedTrainer = saved?.trainer
+        if (live == null && saved == null) return null
+        val recoveryTrainer = saved?.trainer
         val savedBag = saved?.bag.orEmpty().associateBy(BagPocketSnapshot::pocket)
         return ResolvedGameSnapshot(
             romIdentity = active.romIdentity,
             generation = active.generation,
             sampleId = live?.sampleId,
             trainer = ResolvedTrainerState(
-                identity = resolve(live?.trainer?.identity, savedTrainer?.let { com.darkaxt.dualdex.save.TrainerIdentity(it.name, it.gender) }),
-                publicTrainerId = resolve(live?.trainer?.publicTrainerId, savedTrainer?.publicTrainerId),
-                money = resolve(live?.trainer?.money, savedTrainer?.money),
+                identity = resolve(live?.trainer?.identity, recoveryTrainer?.let { com.darkaxt.dualdex.save.TrainerIdentity(it.name, it.gender) }),
+                publicTrainerId = resolve(live?.trainer?.publicTrainerId, recoveryTrainer?.publicTrainerId),
+                money = resolve(live?.trainer?.money, recoveryTrainer?.money),
                 playTime = resolve(
                     live?.trainer?.playTime,
-                    savedTrainer?.let { TrainerPlayTime(it.playTimeHours, it.playTimeMinutes) },
+                    recoveryTrainer?.let { TrainerPlayTime(it.playTimeHours, it.playTimeMinutes) },
                 ),
-                badgeFlags = resolve(live?.trainer?.badgeFlags, savedTrainer?.badgeFlags),
-                stars = resolve(live?.trainer?.stars, savedTrainer?.stars),
+                badgeFlags = resolve(live?.trainer?.badgeFlags, recoveryTrainer?.badgeFlags),
+                stars = resolve(live?.trainer?.stars, recoveryTrainer?.stars),
             ),
             pokedex = ResolvedPokedexState(
                 seenDexNumbers = resolve(live?.pokedex?.seenDexNumbers, saved?.seenDexNumbers),
@@ -343,16 +354,6 @@ class UnifiedGameStateDecoder(
         }
     }
 
-    private fun <T> Gen3LiveSection<T>.toLiveValue(emptyValue: T? = null): LiveValue<T> = when (state) {
-        Gen3LiveSectionState.AVAILABLE -> LiveValue.Available(requireNotNull(value))
-        Gen3LiveSectionState.EMPTY -> emptyValue?.let { LiveValue.Available(it) }
-            ?: unavailable("live section was empty")
-        Gen3LiveSectionState.UNAVAILABLE -> unavailable(reasonText("live section was unavailable"))
-    }
-
-    private fun Gen3LiveSection<*>.reasonText(fallback: String): String =
-        reasons.joinToString().ifBlank { fallback }
-
     private fun <T> unavailable(detail: String): LiveValue<T> = LiveValue.Unavailable(
         LiveUnavailableReason(LiveUnavailableCode.MISSING_REGION, detail),
     )
@@ -370,6 +371,7 @@ class UnifiedGameStateDecoder(
             unavailable("live Pokédex layout was unavailable"),
             unavailable("live Pokédex layout was unavailable"),
         ),
+        bag = BagPocket.entries.associateWith { unavailable("live Bag layout was unavailable") },
     )
 
     private fun ResolvedGameSnapshot?.semanticallyEquals(other: ResolvedGameSnapshot): Boolean {

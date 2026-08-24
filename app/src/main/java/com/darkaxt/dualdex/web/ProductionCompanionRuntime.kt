@@ -17,8 +17,6 @@ import com.darkaxt.dualdex.battle.BattleTrackingUpdate
 import com.darkaxt.dualdex.battle.RuntimeMapPosition
 import com.darkaxt.dualdex.battle.Gen3BattleUiMemoryLayout
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
-import com.darkaxt.dualdex.battle.Gen3LiveGameSnapshot
-import com.darkaxt.dualdex.battle.Gen3LiveSectionState
 import com.darkaxt.dualdex.battle.TargetMode
 import com.enrpau.dualscreendex.companion.CompanionGateway
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
@@ -99,11 +97,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 
-data class SaveKnowledgeApplication(
-    val accepted: Boolean,
-    val checkpointLedger: KnowledgeLedger? = null,
-)
-
 /** Production ROM catalog runtime. It deliberately has no simulator dependency or battle generator. */
 class ProductionCompanionRuntime(
     private val parserWorker: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
@@ -135,7 +128,7 @@ class ProductionCompanionRuntime(
             ?: current.worldMaps.assets[key]?.let { RenderedMapAsset(PngEncoder.encode(it), null) }
     },
     private val mapAssetRenderCache: MapAssetRenderCache = MapAssetRenderCache(),
-    private val transientGameState: TransientGameStateSource? = null,
+    internal val transientGameState: TransientGameStateSource,
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
     @Volatile private var settingsRomSha256: String? = null
@@ -145,9 +138,7 @@ class ProductionCompanionRuntime(
     @Volatile private var catalogLoadingMessage: String? = null
     private var detectedLevelUpRulesetId: String? = null
     private var levelUpRulesetDetectionResolved = false
-    private var liveGameState: Gen3LiveGameSnapshot? = null
     private var savedPlayerState: SaveSnapshot? = null
-    private var activePlaythrough: ActivePlaythrough? = null
     private var catalogPublicationInProgress = false
     private var cachedState: CachedState? = null
     private var cachedSaveParseContext: CachedSaveParseContext? = null
@@ -160,7 +151,7 @@ class ProductionCompanionRuntime(
     )
     @Volatile private var resolvedGameState: ResolvedGameSnapshot? = null
     private var lastRecoveryApplicationId: Long? = null
-    private val transientGameStateSubscription = transientGameState?.subscribe { snapshot ->
+    private val transientGameStateSubscription = transientGameState.subscribe { snapshot ->
         applyResolvedGameState(snapshot)
     }
 
@@ -196,7 +187,7 @@ class ProductionCompanionRuntime(
         } else {
             gateway.bootstrap().ledger
         }
-        if (applySaveState(saved, matching.recovery.saveRam ?: saveRam, seed, null, publishCompatibility = false).accepted) {
+        if (applyRecoveryState(saved, matching.recovery.saveRam ?: saveRam, seed)) {
             lastRecoveryApplicationId = applicationId
         }
     }
@@ -571,9 +562,8 @@ class ProductionCompanionRuntime(
     fun battleCatalogContext(): BattleCatalogContext? {
         if (catalogPublicationInProgress) return null
         val current = catalog ?: return null
-        val savedTrainer = savedPlayerState?.trainer
         cachedBattleCatalogContext?.let { cached ->
-            if (cached.catalog === current && cached.trainer == savedTrainer) return cached.value
+            if (cached.catalog === current) return cached.value
         }
         val generation = when (current.family) {
             EngineFamily.RED_BLUE, EngineFamily.YELLOW -> 1
@@ -592,7 +582,7 @@ class ProductionCompanionRuntime(
             val pp = record.pp.value?.takeIf { it > 0 } ?: return@mapNotNull null
             id to BattleMove(id, pp)
         }.toMap()
-        val value = if (species.isEmpty() || moves.isEmpty() || current.typesById.isEmpty()) null else BattleCatalogContext(
+        val value = BattleCatalogContext(
             romIdentity = current.romSha256,
             generation = generation,
             catalog = BattleCatalogView(species, moves, current.typesById.keys),
@@ -634,30 +624,9 @@ class ProductionCompanionRuntime(
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),
             saveParseContext = saveParseContext(current),
-            savedTrainer = savedTrainer,
         )
-        cachedBattleCatalogContext = CachedBattleCatalogContext(current, savedTrainer, value)
+        cachedBattleCatalogContext = CachedBattleCatalogContext(current, value)
         return value
-    }
-
-    @Synchronized
-    fun updateLiveGameState(snapshot: Gen3LiveGameSnapshot?) {
-        val current = catalog
-        if (snapshot != null && (current == null || !snapshot.romIdentity.equals(current.romSha256, true))) return
-        liveGameState = snapshot
-        publishSelectedPlayerState()
-    }
-
-    @Synchronized
-    fun updateGen2GameClock(lighting: MapLighting?) {
-        val family = catalog?.family
-        if (family != EngineFamily.GOLD_SILVER && family != EngineFamily.CRYSTAL) return
-        val gameTime = lighting?.let {
-            GameClock(phase = GameClockPhase.valueOf(it.name))
-        }
-        if (gateway.bootstrap().gameTime != gameTime) {
-            gateway.dispatch(CompanionAction.LiveGameClockChanged(gameTime))
-        }
     }
 
     @Synchronized
@@ -696,16 +665,6 @@ class ProductionCompanionRuntime(
             gateway.dispatch(CompanionAction.ReplaceLedger(mergedLedger))
         }
 
-        if (transientGameState != null) return
-
-        if (update.ended) {
-            clearLiveBattle()
-            return
-        }
-        val sample = update.sample ?: return
-        if (!update.active) return
-
-        publishBattleSample(sample)
     }
 
     private fun publishBattleSample(sample: BattleMemorySample) {
@@ -770,58 +729,7 @@ class ProductionCompanionRuntime(
         if (gateway.bootstrap().battle != null) gateway.dispatch(CompanionAction.BattleEnded)
     }
 
-    @Synchronized
-    fun updateLiveMapPosition(position: RuntimeMapPosition?) {
-        val mapped = position?.let { LiveMapPosition(it.x, it.y) }
-        if (gateway.bootstrap().liveMapPosition != mapped) {
-            gateway.dispatch(CompanionAction.LiveMapPositionChanged(mapped))
-        }
-        mergeLivePoiProximity(gateway.bootstrap().liveAreaBaseId, mapped)
-    }
-
     fun battlePollingIntervalMs(): Int = gateway.bootstrap().settings.battlePollingIntervalMs.coerceIn(1, 20)
-
-    @Synchronized
-    fun updateLiveArea(areaBaseId: Int?) {
-        if (gateway.bootstrap().liveAreaBaseId != areaBaseId) {
-            gateway.dispatch(
-                CompanionAction.LiveAreaChanged(
-                    areaBaseId,
-                    gameAccessReady = when {
-                        areaBaseId == null -> false
-                        catalog?.platform == Platform.GB || catalog?.platform == Platform.GBC -> true
-                        else -> null
-                    },
-                ),
-            )
-        }
-        val validAreaBaseId = areaBaseId?.takeIf { candidate ->
-            candidate in (catalog?.discoverableAreaBaseIds() ?: emptySet())
-        } ?: return
-        val before = gateway.bootstrap().ledger
-        if (validAreaBaseId !in before.visitedAreaBaseIds) {
-            val updated = before.copy(visitedAreaBaseIds = before.visitedAreaBaseIds + validAreaBaseId)
-            gateway.dispatch(CompanionAction.ReplaceLedger(updated))
-        }
-        mergeLivePoiProximity(validAreaBaseId, gateway.bootstrap().liveMapPosition)
-    }
-
-    private fun mergeLivePoiProximity(areaBaseId: Int?, position: LiveMapPosition?) {
-        val currentCatalog = catalog ?: return
-        val validAreaBaseId = areaBaseId ?: return
-        val validPosition = position ?: return
-        val before = gateway.bootstrap().ledger
-        val updated = LocalMapPoiKnowledgeMapper.mergeProximity(
-            previous = before,
-            catalog = currentCatalog,
-            baseAreaId = validAreaBaseId,
-            tileX = validPosition.x,
-            tileY = validPosition.y,
-        )
-        if (updated != before) {
-            gateway.dispatch(CompanionAction.ReplaceLedger(updated))
-        }
-    }
 
     private fun battleTruth(snapshot: AppSnapshot, currentCatalog: ParsedCatalog?): Effectiveness? {
         val battle = snapshot.battle ?: return null
@@ -853,51 +761,22 @@ class ProductionCompanionRuntime(
         }
     }
 
-    @Synchronized
-    fun applySaveSnapshot(snapshot: SaveSnapshot, state: SaveRamView): Boolean {
-        return applySaveState(snapshot, state, KnowledgeLedger(), null).accepted
-    }
-
-    @Synchronized
-    fun applySaveObservation(
-        observation: SaveObservation,
-        snapshot: SaveSnapshot,
-        state: SaveRamView,
-        checkpoint: KnowledgeLedger? = null,
-    ): SaveKnowledgeApplication {
-        val current = catalog ?: return SaveKnowledgeApplication(false)
-        if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return SaveKnowledgeApplication(false)
-        val incoming = ActivePlaythrough(current.romSha256, snapshot.saveIdentity, observation.source.id)
-        val samePlaythrough = activePlaythrough?.matches(incoming) == true
-        val seed = when {
-            observation.kind == SaveObservationKind.INITIAL || observation.kind == SaveObservationKind.SWITCHED ->
-                KnowledgeLedgerSanitizer.sanitize(checkpoint ?: KnowledgeLedger(), current)
-            samePlaythrough -> gateway.bootstrap().ledger
-            else -> KnowledgeLedger()
-        }
-        val applied = applySaveState(snapshot, state, seed, incoming)
-        val frozen = if (observation.kind == SaveObservationKind.CHANGED && samePlaythrough && applied.accepted) {
-            gateway.bootstrap().ledger
-        } else {
-            null
-        }
-        return applied.copy(checkpointLedger = frozen)
-    }
-
-    private fun applySaveState(
+    private fun applyRecoveryState(
         snapshot: SaveSnapshot,
         state: SaveRamView,
         seed: KnowledgeLedger,
-        playthrough: ActivePlaythrough?,
-        publishCompatibility: Boolean = true,
-    ): SaveKnowledgeApplication {
-        val current = catalog ?: return SaveKnowledgeApplication(false)
-        if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return SaveKnowledgeApplication(false)
-        activePlaythrough = playthrough
+    ): Boolean {
+        val current = catalog ?: return false
+        if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return false
         gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedgerSanitizer.sanitize(seed, current)))
         savedPlayerState = snapshot
         cachedBattleCatalogContext = null
-        val merged = mergedPlayerKnowledge(current)
+        var merged = SaveKnowledgeMapper.merge(gateway.bootstrap().ledger, current, snapshot)
+        merged = LocalMapPoiKnowledgeMapper.mergeEventFlags(
+            previous = merged,
+            catalog = current,
+            setFlagIds = snapshot.eventFlagIds,
+        )
         val selectors = completeLevelUpRulesetSelectors(current)
         val detected = snapshot.detectedLevelUpRulesetId?.takeIf { id ->
             val expectedFingerprint = LevelUpRulesetDetectionFingerprint.create(selectors, id)
@@ -911,125 +790,7 @@ class ProductionCompanionRuntime(
         saveRam = state
         cachedState = null
         gateway.dispatch(CompanionAction.ReplaceLedger(merged))
-        if (publishCompatibility) {
-            publishSelectedPlayerSnapshot()
-            resolvedGameState?.let(::applyResolvedPartyAndProgression)
-        }
-        return SaveKnowledgeApplication(true)
-    }
-
-    private fun compatibilityParty(): List<OwnedIndividual> = if (transientGameState == null) {
-        liveGameState
-            ?.party
-            ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
-            ?.value
-            ?: savedPlayerState?.party
-            ?: emptyList()
-    } else {
-        gateway.bootstrap().party
-    }
-
-    private fun compatibilityTrainer(): TrainerSnapshot? = if (transientGameState == null) {
-        liveGameState
-            ?.trainer
-            ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
-            ?.value
-            ?: savedPlayerState?.trainer
-    } else {
-        savedPlayerState?.trainer
-    }
-
-    private fun compatibilityTrainerIdentity(): TrainerIdentity? = if (transientGameState == null) {
-        liveGameState
-            ?.trainerIdentity
-            ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
-            ?.value
-            ?: compatibilityTrainer()?.let { TrainerIdentity(it.name, it.gender) }
-    } else {
-        savedPlayerState?.trainer?.let { TrainerIdentity(it.name, it.gender) }
-    }
-
-    private fun mergedPlayerKnowledge(current: ParsedCatalog): KnowledgeLedger {
-        val before = gateway.bootstrap().ledger
-        val fromSave = savedPlayerState
-            ?.takeIf { it.romIdentity.equals(current.romSha256, true) }
-            ?.let { SaveKnowledgeMapper.merge(before, current, it) }
-            ?: before
-        val withSavedFlags = LocalMapPoiKnowledgeMapper.mergeEventFlags(
-            previous = fromSave,
-            catalog = current,
-            setFlagIds = savedPlayerState
-                ?.takeIf { it.romIdentity.equals(current.romSha256, true) }
-                ?.eventFlagIds,
-        )
-        val withLiveFlags = if (transientGameState == null) {
-            LocalMapPoiKnowledgeMapper.mergeEventFlags(
-                previous = withSavedFlags,
-                catalog = current,
-                setFlagIds = liveGameState?.eventFlags
-                    ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
-                    ?.value,
-            )
-        } else {
-            withSavedFlags
-        }
-        val livePartySelection = if (transientGameState == null) {
-            when {
-                liveGameState?.party?.state == Gen3LiveSectionState.AVAILABLE -> liveGameState?.party?.value
-                savedPlayerState != null -> null
-                else -> emptyList()
-            }
-        } else {
-            null
-        }
-        return livePartySelection?.let { party ->
-            LivePartyKnowledgeMapper.merge(withLiveFlags, current, party, generation = 3)
-        } ?: withLiveFlags
-    }
-
-    private fun publishSelectedPlayerSnapshot() {
-        val schedule = catalog?.runtimeMetadata?.gen3RuntimeMemoryLayout?.liveClockSchedule
-        val gameTime = liveGameState?.clock
-            ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
-            ?.value
-            ?.let {
-                projectGameClock(
-                    it.hours,
-                    it.minutes,
-                    schedule?.dayStartHour,
-                    schedule?.nightStartHour,
-                )
-            }
-        gateway.dispatch(
-            CompanionAction.LiveGameStateChanged(
-                trainer = compatibilityTrainer(),
-                party = compatibilityParty(),
-                gameTime = gameTime,
-                trainerIdentity = compatibilityTrainerIdentity(),
-                gameAccessReady = when (catalog?.platform) {
-                    Platform.GBA -> liveGameState?.let { snapshot ->
-                        snapshot.location.state == Gen3LiveSectionState.AVAILABLE &&
-                            snapshot.trainerIdentity.state == Gen3LiveSectionState.AVAILABLE &&
-                            snapshot.clock.value?.let { clock ->
-                                clock.hours != 0 || clock.minutes != 0 || clock.seconds != 0
-                            } != false
-                    } == true
-                    Platform.GB, Platform.GBC -> gateway.bootstrap().gameAccessReady
-                    else -> false
-                },
-            ),
-        )
-    }
-
-    private fun publishSelectedPlayerState() {
-        val current = catalog
-        if (current != null) {
-            val merged = mergedPlayerKnowledge(current)
-            if (merged != gateway.bootstrap().ledger) {
-                gateway.dispatch(CompanionAction.ReplaceLedger(merged))
-            }
-        }
-        publishSelectedPlayerSnapshot()
+        return true
     }
 
     fun action(type: String, values: Map<String, String?>): StateView {
@@ -1118,7 +879,7 @@ class ProductionCompanionRuntime(
     }
 
     override fun close() {
-        transientGameStateSubscription?.close()
+        transientGameStateSubscription.close()
         synchronized(this) {
             loadGeneration.incrementAndGet()
             clearCatalogProjectionCaches()
@@ -1289,9 +1050,7 @@ class ProductionCompanionRuntime(
         catalog = null
         clearCatalogProjectionCaches()
         mapAssetRenderCache.clear()
-        liveGameState = null
         savedPlayerState = null
-        activePlaythrough = null
         lastRecoveryApplicationId = null
         settingsRomSha256 = null
         settingsWritesEnabled = false
@@ -1365,17 +1124,6 @@ class ProductionCompanionRuntime(
         settingsForRom?.invoke(romSha256)?.let(::applySettings)
     }
 
-    private data class ActivePlaythrough(
-        val romSha256: String,
-        val saveIdentity: String,
-        val sourceId: String,
-    ) {
-        fun matches(other: ActivePlaythrough): Boolean =
-            romSha256.equals(other.romSha256, ignoreCase = true) &&
-                saveIdentity.equals(other.saveIdentity, ignoreCase = true) &&
-                sourceId == other.sourceId
-    }
-
     private fun applyWinningCatalogSettings(romSha256: String) {
         settingsRomSha256 = romSha256
         applySettingsForRom(romSha256)
@@ -1422,7 +1170,6 @@ class ProductionCompanionRuntime(
 
     private data class CachedBattleCatalogContext(
         val catalog: ParsedCatalog,
-        val trainer: TrainerSnapshot?,
         val value: BattleCatalogContext?,
     )
 

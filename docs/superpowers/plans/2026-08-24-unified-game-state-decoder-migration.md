@@ -696,15 +696,15 @@ The old runtime save-application methods remain as isolated compatibility test s
 - Modify: `app/src/test/java/com/darkaxt/dualdex/web/ProductionCompanionRuntimeTest.kt`
 - Delete after migration: `battle-memory/src/main/kotlin/com/darkaxt/dualdex/battle/Gen3LiveGameState.kt`
 
-- [ ] **Step 1: Freeze Gen I/II behavior**
+- [x] **Step 1: Freeze Gen I/II behavior**
 
 Record exact supported battle, area, coordinates, Gen II time-of-day, observed moves, and unavailable unsupported sections. Unproven live Trainer/Party/bag/Pokédex fields recover from validated saves when available.
 
-- [ ] **Step 2: Move existing resolvers behind the singleton**
+- [x] **Step 2: Move existing resolvers behind the singleton**
 
 The singleton chooses generation and invokes stateless layout helpers. The coordinator supplies bounded regions and publishes no generation-specific state.
 
-- [ ] **Step 3: Remove all competing paths**
+- [x] **Step 3: Remove all competing paths**
 
 Remove production uses of:
 
@@ -717,7 +717,7 @@ Remove production uses of:
 
 Stateless helper functions may remain but are callable only through `UnifiedGameStateDecoder`.
 
-- [ ] **Step 4: Prove one interface and owner**
+- [x] **Step 4: Prove one interface and owner**
 
 ```powershell
 rg -n "updateLiveParty|updateLiveArea|updateLiveMapPosition|updateGen2GameClock|selectedTrainer|selectedParty|savedTrainer|Gen3LiveSection" app battle-memory companion-core
@@ -726,13 +726,28 @@ rg -n "TransientGameStateSource" app/src/main/java
 
 Expected: the first command finds no production authority; the second finds the interface, singleton implementation, one construction, and one runtime subscription.
 
-- [ ] **Step 5: Verify Stage 7 and commit**
+- [x] **Step 5: Verify Stage 7 and commit**
 
 ```powershell
 .\gradlew.bat :battle-memory:test :companion-core:test :app:testDebugUnitTest --no-daemon --console=plain
 git add battle-memory/src/main/kotlin/com/darkaxt/dualdex/battle/Gen3LiveGameState.kt battle-memory/src/main/kotlin/com/darkaxt/dualdex/battle/Gen3RuntimeMemoryDecoder.kt battle-memory/src/test/kotlin/com/darkaxt/dualdex/battle/Gen1BattleLayoutResolverTest.kt battle-memory/src/test/kotlin/com/darkaxt/dualdex/battle/Gen2BattleLayoutResolverTest.kt app/src/main/java/com/darkaxt/dualdex/live/UnifiedGameStateDecoder.kt app/src/main/java/com/darkaxt/dualdex/battle/BattleMemoryCoordinator.kt app/src/main/java/com/darkaxt/dualdex/web/ProductionCompanionRuntime.kt app/src/test/java/com/darkaxt/dualdex/battle/BattleMemoryCoordinatorTest.kt app/src/test/java/com/darkaxt/dualdex/web/ProductionCompanionRuntimeTest.kt
 git commit -m "refactor: complete unified transient state migration"
 ```
+
+### Stage 7 specification audit
+
+| Required outcome | Evidence | Result |
+| --- | --- | --- |
+| Gen I/II retain supported battle, area, coordinates, observed moves, and Gen II phase | coordinator fixtures publish the exact supported values through `acceptExistingGenerationSample`; unsupported sections remain independently unavailable | PASS |
+| The coordinator publishes no generation-specific companion state | Gen I/II and Gen III paths now submit bounded samples only to `UnifiedGameStateDecoder` | PASS |
+| No legacy aggregate, section, publisher, selector, or saved-Trainer live dependency remains | `Gen3LiveGameState.kt` is deleted; structural `rg` returns no production match for the banned authorities | PASS |
+| Stateless Gen III readers are callable only behind the singleton in production | `Gen3LiveMemoryReader` and `Gen3LiveMemoryCodecs` are invoked by `UnifiedGameStateDecoder`; the coordinator requests plans and submits regions through that owner | PASS |
+| Exactly one state owner is constructed and one runtime subscription consumes it | `DualDexApplication` is the sole production construction; it injects the same instance into runtime, setup/recovery, and polling; runtime has no default source | PASS |
+| Disconnection clears stale live state | `suspendLive` resolves to recovery only, or publishes `null` when no validated recovery exists | PASS |
+| Gen I/II map work remains isolated | Stage 7 changed no map parser, map renderer, Atlas, Gen I, or Gen II map file | PASS |
+| Affected-module verification is green | `:battle-memory:test :companion-core:test :app:testDebugUnitTest` completed successfully (44 tasks) | PASS |
+
+No Stage 7 requirement is deferred or blocked. Real-ROM identity controls, heap/read measurements, UI/privacy regressions, documentation, and the signed RC remain the Stage 8 gate.
 
 ## Stage 8 — Real controls, performance, UI regression, and RC
 

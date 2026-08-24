@@ -1,14 +1,18 @@
 package com.darkaxt.dualdex.battle
 
+import com.darkaxt.dualdex.save.BagPocket
+import com.darkaxt.dualdex.save.BagPocketSnapshot
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.gen3.Gen3PokedexCodec
+import com.darkaxt.dualdex.save.gen3.Gen3PlayerStateCodec
 import com.darkaxt.dualdex.save.gen3.Gen3TrainerFieldCodec
 import com.darkaxt.dualdex.save.gen3.SaveSectionResult
 
 data class Gen3LivePlayerState(
     val trainer: LiveTrainerState,
     val pokedex: LivePokedexState,
+    val bag: Map<BagPocket, LiveValue<BagPocketSnapshot>>,
 )
 
 object Gen3LiveMemoryCodecs {
@@ -39,6 +43,18 @@ object Gen3LiveMemoryCodecs {
         val pokedex = Gen3PokedexCodec.decode(saveBlock2, context, liveParty.valueOrNull().orEmpty())
         val pokedexValue = pokedex.value
         val pokedexUnavailable = pokedex.reasons.joinToString().ifBlank { "Gen III Pokédex flags were unavailable" }
+        val bag = if (abi != null && saveBlock1 != null && saveBlock2 != null) {
+            Gen3PlayerStateCodec.decode(
+                saveBlock1,
+                saveBlock2,
+                abi,
+                dexSeen = 0,
+                dexCaught = 0,
+                extendedSaveData = extendedSave,
+            ).bag.mapValues { (_, section) -> section.toLiveValue() }
+        } else {
+            BagPocket.entries.associateWith { LiveValue.Unavailable(noAbi) }
+        }
         return Gen3LivePlayerState(
             trainer = LiveTrainerState(
                 identity = identity,
@@ -59,6 +75,7 @@ object Gen3LiveMemoryCodecs {
                 caughtDexNumbers = pokedexValue?.let { LiveValue.Available(it.caughtDexNumbers) }
                     ?: unavailable(pokedexUnavailable),
             ),
+            bag = bag,
         )
     }
 

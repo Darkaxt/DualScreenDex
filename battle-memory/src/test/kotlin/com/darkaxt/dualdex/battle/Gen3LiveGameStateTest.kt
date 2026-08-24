@@ -15,19 +15,19 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class Gen3LiveGameStateTest {
+class Gen3LiveMemoryReaderTest {
     @Test
     fun readsPointerGlobalsBeforeValidatedDependentWindows() {
         val layout = layout().copy(extendedSaveAddress = 0x02030000, extendedSaveSize = 0x2000)
         assertEquals(
             listOf(0x03001000L, 0x03001004L),
-            Gen3LiveGameState.pointerWindows(layout).map { it.address },
+            Gen3LiveMemoryReader.pointerWindows(layout).map { it.address },
         )
 
-        val pointers = Gen3LiveGameState.decodePointers(
+        val pointers = Gen3LiveMemoryReader.decodePointers(
             mapOf(
-                Gen3LiveGameState.SAVE_BLOCK1_POINTER_ID to pointer(0x02001000L),
-                Gen3LiveGameState.SAVE_BLOCK2_POINTER_ID to pointer(0x01002000L),
+                Gen3LiveMemoryReader.SAVE_BLOCK1_POINTER_ID to pointer(0x02001000L),
+                Gen3LiveMemoryReader.SAVE_BLOCK2_POINTER_ID to pointer(0x01002000L),
             ),
             layout,
         )
@@ -35,41 +35,31 @@ class Gen3LiveGameStateTest {
         assertNull(pointers.saveBlock2Address)
         assertEquals(
             listOf(
-                Gen3LiveGameState.SAVE_BLOCK1_ID,
-                Gen3LiveGameState.EXTENDED_SAVE_ID,
-                Gen3LiveGameState.PARTY_COUNT_ID,
-                Gen3LiveGameState.PARTY_ID,
-                Gen3LiveGameState.CLOCK_ID,
+                Gen3LiveMemoryReader.SAVE_BLOCK1_ID,
+                Gen3LiveMemoryReader.EXTENDED_SAVE_ID,
+                Gen3LiveMemoryReader.PARTY_COUNT_ID,
+                Gen3LiveMemoryReader.PARTY_ID,
+                Gen3LiveMemoryReader.CLOCK_ID,
             ),
-            Gen3LiveGameState.dependentWindows(layout, pointers).map { it.id },
+            Gen3LiveMemoryReader.dependentWindows(layout, pointers).map { it.id },
         )
     }
 
     @Test
     fun decodesTheSourceDefinedFiveByteLiveClockAndRejectsInvalidFields() {
-        val valid = Gen3LiveGameState.decode(
-            romIdentity = "rom",
-            regions = mapOf(Gen3LiveGameState.CLOCK_ID to byteArrayOf(0, 0, 16, 48, 12)),
+        val valid = Gen3LiveMemoryReader.decode(
+            regions = mapOf(Gen3LiveMemoryReader.CLOCK_ID to byteArrayOf(0, 0, 16, 48, 12)),
             layout = layout(),
             saveContext = null,
-            savedTrainer = null,
-            battleActive = null,
-            targetBattler = null,
-            encounterKind = BattleEncounterKind.UNKNOWN,
         )
-        val invalid = Gen3LiveGameState.decode(
-            romIdentity = "rom",
-            regions = mapOf(Gen3LiveGameState.CLOCK_ID to byteArrayOf(0, 0, 24, 0, 0)),
+        val invalid = Gen3LiveMemoryReader.decode(
+            regions = mapOf(Gen3LiveMemoryReader.CLOCK_ID to byteArrayOf(0, 0, 24, 0, 0)),
             layout = layout(),
             saveContext = null,
-            savedTrainer = null,
-            battleActive = null,
-            targetBattler = null,
-            encounterKind = BattleEncounterKind.UNKNOWN,
         )
 
-        assertEquals(Gen3GameClock(16, 48, 12), valid.clock.value)
-        assertEquals(Gen3LiveSectionState.UNAVAILABLE, invalid.clock.state)
+        assertEquals(LiveClockState(16, 48, 12), valid.clock.valueOrNull())
+        assertTrue(invalid.clock is LiveValue.Unavailable)
     }
 
     @Test
@@ -79,26 +69,18 @@ class Gen3LiveGameStateTest {
             this[4] = 3
             this[5] = 12
         }
-        val snapshot = Gen3LiveGameState.decode(
-            romIdentity = "rom",
+        val snapshot = Gen3LiveMemoryReader.decode(
             regions = mapOf(
-                Gen3LiveGameState.SAVE_BLOCK1_ID to saveBlock1,
-                Gen3LiveGameState.PARTY_COUNT_ID to byteArrayOf(0),
-                Gen3LiveGameState.PARTY_ID to ByteArray(600),
+                Gen3LiveMemoryReader.SAVE_BLOCK1_ID to saveBlock1,
+                Gen3LiveMemoryReader.PARTY_COUNT_ID to byteArrayOf(0),
+                Gen3LiveMemoryReader.PARTY_ID to ByteArray(600),
             ),
             layout = layout,
             saveContext = SaveParseContext("rom", mapOf(1 to SaveSpeciesContext(1, 1, 0))),
-            savedTrainer = null,
-            battleActive = false,
-            targetBattler = null,
-            encounterKind = BattleEncounterKind.UNKNOWN,
         )
 
-        assertEquals(0x030C, snapshot.location.value)
-        assertEquals(emptyList<Any>(), snapshot.party.value)
-        assertEquals(Gen3LiveSectionState.UNAVAILABLE, snapshot.trainer.state)
-        assertTrue(snapshot.bag.values.all { it.state == Gen3LiveSectionState.UNAVAILABLE })
-        assertEquals(false, snapshot.battle.value?.active)
+        assertEquals(0x030C, snapshot.location.valueOrNull())
+        assertEquals(emptyList<Any>(), snapshot.party.valueOrNull())
     }
 
     @Test
@@ -107,11 +89,10 @@ class Gen3LiveGameStateTest {
             plainPartyRecord(this, 0, species = 277, level = 5)
             plainPartyRecord(this, 100, species = 280, level = 7)
         }
-        val snapshot = Gen3LiveGameState.decode(
-            romIdentity = "rom",
+        val snapshot = Gen3LiveMemoryReader.decode(
             regions = mapOf(
-                Gen3LiveGameState.PARTY_COUNT_ID to byteArrayOf(2),
-                Gen3LiveGameState.PARTY_ID to party,
+                Gen3LiveMemoryReader.PARTY_COUNT_ID to byteArrayOf(2),
+                Gen3LiveMemoryReader.PARTY_ID to party,
             ),
             layout = layout(),
             saveContext = SaveParseContext(
@@ -121,15 +102,11 @@ class Gen3LiveGameStateTest {
                     280 to SaveSpeciesContext(280, 255, 0),
                 ),
             ),
-            savedTrainer = null,
-            battleActive = null,
-            targetBattler = null,
-            encounterKind = BattleEncounterKind.UNKNOWN,
         )
 
-        assertEquals(listOf(277, 280), snapshot.party.value?.map { it.speciesId })
-        assertEquals(listOf(5, 7), snapshot.party.value?.map { it.level })
-        assertEquals(listOf("party-0", "party-1"), snapshot.party.value?.map { it.stableLocation })
+        assertEquals(listOf(277, 280), snapshot.party.valueOrNull()?.map { it.speciesId })
+        assertEquals(listOf(5, 7), snapshot.party.valueOrNull()?.map { it.level })
+        assertEquals(listOf("party-0", "party-1"), snapshot.party.valueOrNull()?.map { it.stableLocation })
     }
 
     @Test
@@ -137,23 +114,18 @@ class Gen3LiveGameStateTest {
         val context = SaveParseContext("rom", mapOf(277 to SaveSpeciesContext(277, 252, 0)))
         val party = ByteArray(600).apply { plainPartyRecord(this, 0, species = 277, level = 5) }
 
-        fun decoded(count: ByteArray, bytes: ByteArray) = Gen3LiveGameState.decode(
-            romIdentity = "rom",
+        fun decoded(count: ByteArray, bytes: ByteArray) = Gen3LiveMemoryReader.decode(
             regions = mapOf(
-                Gen3LiveGameState.PARTY_COUNT_ID to count,
-                Gen3LiveGameState.PARTY_ID to bytes,
+                Gen3LiveMemoryReader.PARTY_COUNT_ID to count,
+                Gen3LiveMemoryReader.PARTY_ID to bytes,
             ),
             layout = layout(),
             saveContext = context,
-            savedTrainer = null,
-            battleActive = null,
-            targetBattler = null,
-            encounterKind = BattleEncounterKind.UNKNOWN,
         ).party
 
-        assertEquals(Gen3LiveSectionState.UNAVAILABLE, decoded(byteArrayOf(2), party).state)
-        assertEquals(Gen3LiveSectionState.UNAVAILABLE, decoded(byteArrayOf(7), party).state)
-        assertEquals(Gen3LiveSectionState.UNAVAILABLE, decoded(byteArrayOf(1), party.copyOf(100)).state)
+        assertTrue(decoded(byteArrayOf(2), party) is LiveValue.Unavailable)
+        assertTrue(decoded(byteArrayOf(7), party) is LiveValue.Unavailable)
+        assertTrue(decoded(byteArrayOf(1), party.copyOf(100)) is LiveValue.Unavailable)
     }
 
     @Test
@@ -161,50 +133,17 @@ class Gen3LiveGameStateTest {
         val saveBlock1 = ByteArray(0x100).apply {
             this[0x20 + 1007 / 8] = (1 shl (1007 % 8)).toByte()
         }
-        val snapshot = Gen3LiveGameState.decode(
-            romIdentity = "rom",
-            regions = mapOf(Gen3LiveGameState.SAVE_BLOCK1_ID to saveBlock1),
+        val snapshot = Gen3LiveMemoryReader.decode(
+            regions = mapOf(Gen3LiveMemoryReader.SAVE_BLOCK1_ID to saveBlock1),
             layout = layout(),
             saveContext = SaveParseContext(
                 "rom",
                 mapOf(1 to SaveSpeciesContext(1, 1, 0)),
                 gen3SaveRuntimeAbi = saveAbi(),
             ),
-            savedTrainer = null,
-            battleActive = null,
-            targetBattler = null,
-            encounterKind = BattleEncounterKind.UNKNOWN,
         )
 
-        assertEquals(Gen3LiveSectionState.AVAILABLE, snapshot.eventFlags.state)
-        assertEquals(setOf(1007), snapshot.eventFlags.value)
-    }
-
-    @Test
-    fun liveSaveBlock2PublishesTrainerIdentityWithoutASeparateSaveSnapshot() {
-        val saveBlock2 = ByteArray(0x80).apply {
-            intArrayOf(0xBC, 0xCC, 0xBF, 0xC8, 0xBE, 0xBB, 0xC8, 0xFF)
-                .forEachIndexed { index, value -> this[index] = value.toByte() }
-            this[8] = 0
-        }
-        val snapshot = Gen3LiveGameState.decode(
-            romIdentity = "rom",
-            regions = mapOf(Gen3LiveGameState.SAVE_BLOCK2_ID to saveBlock2),
-            layout = layout(),
-            saveContext = SaveParseContext(
-                "rom",
-                mapOf(1 to SaveSpeciesContext(1, 1, 0)),
-                gen3SaveRuntimeAbi = saveAbi(),
-            ),
-            savedTrainer = null,
-            battleActive = null,
-            targetBattler = null,
-            encounterKind = BattleEncounterKind.UNKNOWN,
-        )
-
-        assertEquals(Gen3LiveSectionState.UNAVAILABLE, snapshot.trainer.state)
-        assertEquals("BRENDAN", snapshot.trainerIdentity.value?.name)
-        assertEquals(0, snapshot.trainerIdentity.value?.gender)
+        assertEquals(setOf(1007), snapshot.eventFlags.valueOrNull())
     }
 
     private fun layout() = Gen3RuntimeMemoryLayout(

@@ -27,11 +27,9 @@ import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.darkaxt.dualdex.save.SavedArea
 import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.save.TrainerIdentity
-import com.darkaxt.dualdex.battle.Gen3LiveBattleState
-import com.darkaxt.dualdex.battle.Gen3LiveBattleUiState
-import com.darkaxt.dualdex.battle.Gen3LiveGameSnapshot
-import com.darkaxt.dualdex.battle.Gen3GameClock
-import com.darkaxt.dualdex.battle.Gen3LiveSection
+import com.darkaxt.dualdex.battle.LiveClockState
+import com.darkaxt.dualdex.battle.LiveGameSnapshot
+import com.darkaxt.dualdex.battle.LiveValue
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
@@ -95,16 +93,12 @@ class ProductionCompanionRuntimeTest {
         val runtime = ProductionCompanionRuntime()
         runtime.loadCatalog("Modern Emerald.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
         runtime.updateLiveGameState(
-            Gen3LiveGameSnapshot(
-                romIdentity = hash,
-                trainer = Gen3LiveSection.unavailable("live Trainer Card fields were unavailable"),
-                location = Gen3LiveSection.available(0x0009),
-                party = Gen3LiveSection.available(emptyList()),
-                bag = emptyMap(),
-                battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
-                battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
-                clock = Gen3LiveSection.available(Gen3GameClock(0, 0)),
-                trainerIdentity = Gen3LiveSection.unavailable("player name was not initialized"),
+            liveSnapshot(
+                hash,
+                unavailableValue("live Trainer Card fields were unavailable"),
+                LiveValue.Available(emptyList()),
+                clock = LiveValue.Available(LiveClockState(0, 0, 0)),
+                location = LiveValue.Available(0x0009),
             ),
         )
         runtime.updateLiveArea(0x0009)
@@ -120,16 +114,13 @@ class ProductionCompanionRuntimeTest {
         val runtime = ProductionCompanionRuntime()
         runtime.loadCatalog("Modern Emerald.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
         runtime.updateLiveGameState(
-            Gen3LiveGameSnapshot(
-                romIdentity = hash,
-                trainer = Gen3LiveSection.unavailable("live Trainer Card fields were unavailable"),
-                location = Gen3LiveSection.available(0x0009),
-                party = Gen3LiveSection.available(emptyList()),
-                bag = emptyMap(),
-                battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
-                battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
-                clock = Gen3LiveSection.available(Gen3GameClock(0, 0)),
-                trainerIdentity = Gen3LiveSection.available(TrainerIdentity("EMERALD", 0)),
+            liveSnapshot(
+                hash,
+                unavailableValue("live Trainer Card fields were unavailable"),
+                LiveValue.Available(emptyList()),
+                clock = LiveValue.Available(LiveClockState(0, 0, 0)),
+                trainerIdentity = LiveValue.Available(TrainerIdentity("EMERALD", 0)),
+                location = LiveValue.Available(0x0009),
             ),
         )
 
@@ -143,16 +134,13 @@ class ProductionCompanionRuntimeTest {
         val runtime = ProductionCompanionRuntime()
         runtime.loadCatalog("Modern Emerald.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
         runtime.updateLiveGameState(
-            Gen3LiveGameSnapshot(
-                romIdentity = hash,
-                trainer = Gen3LiveSection.unavailable("live Trainer Card fields were unavailable"),
-                location = Gen3LiveSection.available(0x0009),
-                party = Gen3LiveSection.available(emptyList()),
-                bag = emptyMap(),
-                battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
-                battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
-                clock = Gen3LiveSection.available(Gen3GameClock(0, 0, 1)),
-                trainerIdentity = Gen3LiveSection.available(TrainerIdentity("MAY", 1)),
+            liveSnapshot(
+                hash,
+                unavailableValue("live Trainer Card fields were unavailable"),
+                LiveValue.Available(emptyList()),
+                clock = LiveValue.Available(LiveClockState(0, 0, 1)),
+                trainerIdentity = LiveValue.Available(TrainerIdentity("MAY", 1)),
+                location = LiveValue.Available(0x0009),
             ),
         )
 
@@ -166,31 +154,24 @@ class ProductionCompanionRuntimeTest {
         val runtime = ProductionCompanionRuntime()
         runtime.loadCatalog("Modern Emerald.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
         runtime.updateLiveGameState(
-            Gen3LiveGameSnapshot(
-                romIdentity = hash,
-                trainer = Gen3LiveSection.unavailable("saved Pokédex counts were unavailable"),
-                location = Gen3LiveSection.available(0x0009),
-                party = Gen3LiveSection.available(emptyList()),
-                bag = emptyMap(),
-                battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
-                battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
-                clock = Gen3LiveSection.available(Gen3GameClock(0, 1)),
-                trainerIdentity = Gen3LiveSection.available(TrainerIdentity("MAY", 1)),
+            liveSnapshot(
+                hash,
+                unavailableValue("saved Pokédex counts were unavailable"),
+                LiveValue.Available(emptyList()),
+                clock = LiveValue.Available(LiveClockState(0, 1, 0)),
+                trainerIdentity = LiveValue.Available(TrainerIdentity("MAY", 1)),
+                location = LiveValue.Available(0x0009),
             ),
         )
         assertTrue(runtime.stateView().gameAccessReady)
 
         runtime.updateLiveGameState(
-            Gen3LiveGameSnapshot(
-                romIdentity = hash,
-                trainer = Gen3LiveSection.unavailable("live Trainer Card fields were unavailable"),
-                location = Gen3LiveSection.available(0x0009),
-                party = Gen3LiveSection.available(emptyList()),
-                bag = emptyMap(),
-                battle = Gen3LiveSection.unavailable("battle lifecycle byte was unavailable"),
-                battleUi = Gen3LiveSection.unavailable("battle UI lifecycle was unavailable"),
-                clock = Gen3LiveSection.available(Gen3GameClock(0, 0)),
-                trainerIdentity = Gen3LiveSection.unavailable("player name was not initialized"),
+            liveSnapshot(
+                hash,
+                unavailableValue("live Trainer Card fields were unavailable"),
+                LiveValue.Available(emptyList()),
+                clock = LiveValue.Available(LiveClockState(0, 0, 0)),
+                location = LiveValue.Available(0x0009),
             ),
         )
 
@@ -242,9 +223,9 @@ class ProductionCompanionRuntimeTest {
         runtime.updateLiveGameState(
             liveSnapshot(
                 hash,
-                Gen3LiveSection.unavailable("trainer omitted"),
-                Gen3LiveSection.available(emptyList()),
-                Gen3LiveSection.available(Gen3GameClock(21, 0)),
+                unavailableValue("trainer omitted"),
+                LiveValue.Available(emptyList()),
+                LiveValue.Available(LiveClockState(21, 0, 0)),
             ),
         )
 
@@ -283,15 +264,15 @@ class ProductionCompanionRuntimeTest {
             encounterKind = BattleEncounterKind.WILD,
         )
 
-        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample))
+        runtime.applyBattleThroughState(BattleTrackingUpdate(true, sample))
         assertEquals("RARITY", runtime.gateway.bootstrap().battleTab.name)
 
         runtime.action("BATTLE_TAB", mapOf("tab" to "MOVES"))
-        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample.copy(encounterKind = BattleEncounterKind.TRAINER)))
+        runtime.applyBattleThroughState(BattleTrackingUpdate(true, sample.copy(encounterKind = BattleEncounterKind.TRAINER)))
         assertEquals("MOVES", runtime.gateway.bootstrap().battleTab.name)
 
-        runtime.applyBattleTracking(BattleTrackingUpdate(false, null, ended = true))
-        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample.copy(encounterKind = BattleEncounterKind.TRAINER)))
+        runtime.applyBattleThroughState(BattleTrackingUpdate(false, null, ended = true))
+        runtime.applyBattleThroughState(BattleTrackingUpdate(true, sample.copy(encounterKind = BattleEncounterKind.TRAINER)))
         assertEquals("ENTRY", runtime.gateway.bootstrap().battleTab.name)
         runtime.close()
     }
@@ -506,10 +487,10 @@ class ProductionCompanionRuntimeTest {
             target = BattleTarget(0, TargetMode.AUTOMATIC), capabilities = emptyMap(),
         )
 
-        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample))
+        runtime.applyBattleThroughState(BattleTrackingUpdate(true, sample))
         assertFalse(runtime.stateView().battle!!.effectivenessKnown)
 
-        runtime.applyBattleTracking(BattleTrackingUpdate(
+        runtime.applyBattleThroughState(BattleTrackingUpdate(
             true,
             sample,
             discoveredMatchups = setOf(BattleMatchupObservation(13, 10, listOf(6, 6))),
@@ -547,7 +528,7 @@ class ProductionCompanionRuntimeTest {
             target = BattleTarget(0, TargetMode.MANUAL_TARGET_FALLBACK), capabilities = emptyMap(),
         )
 
-        runtime.applyBattleTracking(
+        runtime.applyBattleThroughState(
             BattleTrackingUpdate(true, sample, observations = mapOf(13 to mapOf(40 to 2))),
         )
 
@@ -561,10 +542,10 @@ class ProductionCompanionRuntimeTest {
         assertEquals("MOVES", snapshot.battleTab.name)
 
         runtime.action("OPEN_SPECIES", mapOf("speciesId" to "13"))
-        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample))
+        runtime.applyBattleThroughState(BattleTrackingUpdate(true, sample))
         assertEquals(AppScreen.DETAIL, runtime.gateway.bootstrap().screen)
 
-        runtime.applyBattleTracking(BattleTrackingUpdate(false, null, ended = true))
+        runtime.applyBattleThroughState(BattleTrackingUpdate(false, null, ended = true))
         assertNull(runtime.gateway.bootstrap().battle)
         assertEquals(AppScreen.DETAIL, runtime.gateway.bootstrap().screen)
         assertEquals(AppScreen.POKEDEX.name, runtime.action("BACK", emptyMap()).screen)
@@ -714,11 +695,11 @@ class ProductionCompanionRuntimeTest {
         runtime.loadCatalog("yellow.gb", catalog)
         val initial = runtime.applySaveObservation(
             saveObservation(SaveObservationKind.INITIAL, "save", 1),
-            emptySave(identity, saveIdentity),
+            emptySave(identity, saveIdentity).copy(saveGeneration = 1),
             SaveRamView(status = "MATCHED"),
         )
         assertTrue(initial.accepted)
-        runtime.applyBattleTracking(
+        runtime.applyBattleThroughState(
             BattleTrackingUpdate(
                 active = false,
                 sample = null,
@@ -726,9 +707,10 @@ class ProductionCompanionRuntimeTest {
                 ended = true,
             ),
         )
+        assertEquals(2, runtime.gateway.bootstrap().ledger.observedMoves.getValue(0x66).single().frequency)
         val changed = runtime.applySaveObservation(
             saveObservation(SaveObservationKind.CHANGED, "save", 2),
-            emptySave(identity, saveIdentity).copy(saveCounter = 2),
+            emptySave(identity, saveIdentity).copy(saveGeneration = 1, saveCounter = 2),
             SaveRamView(status = "MATCHED"),
         )
 
@@ -756,7 +738,7 @@ class ProductionCompanionRuntimeTest {
             emptySave(identity, firstSave),
             SaveRamView(status = "MATCHED"),
         )
-        runtime.applyBattleTracking(
+        runtime.applyBattleThroughState(
             BattleTrackingUpdate(
                 active = false,
                 sample = null,
@@ -832,9 +814,9 @@ class ProductionCompanionRuntimeTest {
             target = BattleTarget(0, TargetMode.MANUAL_TARGET_FALLBACK), capabilities = emptyMap(),
         )
 
-        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample))
+        runtime.applyBattleThroughState(BattleTrackingUpdate(true, sample))
         runtime.updateLiveArea(0x0011)
-        runtime.applyBattleTracking(BattleTrackingUpdate(true, sample.copy(opponents = listOf(second))))
+        runtime.applyBattleThroughState(BattleTrackingUpdate(true, sample.copy(opponents = listOf(second))))
 
         val ledger = runtime.gateway.bootstrap().ledger
         assertEquals(setOf(13, 16), ledger.seenSpeciesByArea.getValue(0x0010))
@@ -1064,9 +1046,9 @@ class ProductionCompanionRuntimeTest {
         runtime.updateLiveGameState(
             liveSnapshot(
                 identity,
-                Gen3LiveSection.unavailable("trainer omitted"),
-                Gen3LiveSection.unavailable("party omitted"),
-                eventFlags = Gen3LiveSection.available(setOf(1007)),
+                unavailableValue("trainer omitted"),
+                unavailableValue("party omitted"),
+                eventFlags = LiveValue.Available(setOf(1007)),
             ),
         )
 
@@ -2241,23 +2223,23 @@ class ProductionCompanionRuntimeTest {
         runtime.updateLiveGameState(
             liveSnapshot(
                 hash,
-                Gen3LiveSection.available(liveTrainer),
-                Gen3LiveSection.available(listOf(OwnedIndividual("party-0", 277, level = 5))),
+                LiveValue.Available(liveTrainer),
+                LiveValue.Available(listOf(OwnedIndividual("party-0", 277, level = 5))),
             ),
         )
-        assertEquals("LIVE", runtime.gateway.bootstrap().trainer?.name)
+        assertEquals("LIVE", runtime.stateView().trainer?.name)
         assertEquals(listOf(277), runtime.gateway.bootstrap().party.map { it.speciesId })
         assertTrue(runtime.stateView().speciesState.getValue(277).team)
 
         runtime.updateLiveGameState(
-            liveSnapshot(hash, Gen3LiveSection.unavailable("trainer bytes invalid"), Gen3LiveSection.available(emptyList())),
+            liveSnapshot(hash, unavailableValue("trainer bytes invalid"), LiveValue.Available(emptyList())),
         )
-        assertEquals("SAVE", runtime.gateway.bootstrap().trainer?.name)
+        assertEquals("SAVE", runtime.stateView().trainer?.name)
         assertTrue(runtime.gateway.bootstrap().party.isEmpty())
         assertTrue(runtime.gateway.bootstrap().ledger.teamSpecies.isEmpty())
 
         runtime.updateLiveGameState(null)
-        assertEquals("SAVE", runtime.gateway.bootstrap().trainer?.name)
+        assertEquals("SAVE", runtime.stateView().trainer?.name)
         assertEquals(listOf(25), runtime.gateway.bootstrap().party.map { it.speciesId })
         assertTrue(runtime.stateView().speciesState.getValue(25).team)
         runtime.close()
@@ -2315,14 +2297,6 @@ class ProductionCompanionRuntimeTest {
                 eventFlags = unavailable,
             ),
         )
-        runtime.updateLiveGameState(
-            liveSnapshot(
-                hash,
-                Gen3LiveSection.available(trainer("WRONG", 999)),
-                Gen3LiveSection.available(emptyList()),
-            ),
-        )
-
         val state = runtime.stateView()
         assertEquals("MAY", state.trainer?.name)
         assertEquals(54_321, state.trainer?.publicTrainerId)
@@ -2475,24 +2449,24 @@ class ProductionCompanionRuntimeTest {
         runtime.updateLiveGameState(
             liveSnapshot(
                 first,
-                Gen3LiveSection.available(trainer("FIRST", 1)),
-                Gen3LiveSection.available(listOf(OwnedIndividual("party-0", 25, level = 5))),
+                LiveValue.Available(trainer("FIRST", 1)),
+                LiveValue.Available(listOf(OwnedIndividual("party-0", 25, level = 5))),
             ),
         )
         runtime.updateLiveGameState(
             liveSnapshot(
                 second,
-                Gen3LiveSection.available(trainer("WRONG", 2)),
-                Gen3LiveSection.available(emptyList()),
+                LiveValue.Available(trainer("WRONG", 2)),
+                LiveValue.Available(emptyList()),
             ),
         )
-        assertEquals("FIRST", runtime.gateway.bootstrap().trainer?.name)
+        assertEquals("FIRST", runtime.stateView().trainer?.name)
 
         runtime.loadCatalog(
             "second.gba",
             ParsedCatalog(second, EngineFamily.EMERALD, Platform.GBA, speciesById = mapOf(25 to saveSpecies(25))),
         )
-        assertNull(runtime.gateway.bootstrap().trainer)
+        assertNull(runtime.stateView().trainer)
         assertTrue(runtime.gateway.bootstrap().party.isEmpty())
         runtime.close()
     }
@@ -2506,14 +2480,14 @@ class ProductionCompanionRuntimeTest {
         runtime.updateLiveGameState(
             liveSnapshot(
                 hash,
-                Gen3LiveSection.unavailable("Trainer Card unavailable"),
-                Gen3LiveSection.available(emptyList()),
-                trainerIdentity = Gen3LiveSection.available(TrainerIdentity("MAY", 1)),
+                unavailableValue("Trainer Card unavailable"),
+                LiveValue.Available(emptyList()),
+                trainerIdentity = LiveValue.Available(TrainerIdentity("MAY", 1)),
             ),
         )
 
         assertNull(runtime.gateway.bootstrap().trainer)
-        assertEquals(TrainerIdentity("MAY", 1), runtime.gateway.bootstrap().trainerIdentity)
+        assertEquals(TrainerIdentity("MAY", 1), runtime.gateway.bootstrap().trainerCardState?.identity)
         runtime.close()
     }
 
@@ -2571,26 +2545,55 @@ class ProductionCompanionRuntimeTest {
 
     private fun liveSnapshot(
         romIdentity: String,
-        trainer: Gen3LiveSection<TrainerSnapshot>,
-        party: Gen3LiveSection<List<OwnedIndividual>>,
-        clock: Gen3LiveSection<Gen3GameClock> = Gen3LiveSection.unavailable("clock omitted"),
-        eventFlags: Gen3LiveSection<Set<Int>> = Gen3LiveSection.unavailable("event flags omitted"),
-        trainerIdentity: Gen3LiveSection<TrainerIdentity> = Gen3LiveSection.unavailable("identity omitted"),
-    ) = Gen3LiveGameSnapshot(
+        trainer: LiveValue<TrainerSnapshot>,
+        party: LiveValue<List<OwnedIndividual>>,
+        clock: LiveValue<LiveClockState> = unavailableValue("clock omitted"),
+        eventFlags: LiveValue<Set<Int>> = unavailableValue("event flags omitted"),
+        trainerIdentity: LiveValue<TrainerIdentity> = unavailableValue("identity omitted"),
+        location: LiveValue<Int> = unavailableValue("location omitted"),
+    ): LiveGameSnapshot {
+        val trainerSnapshot = (trainer as? LiveValue.Available)?.value
+        val identity = (trainerIdentity as? LiveValue.Available)?.value
+            ?: trainerSnapshot?.let { TrainerIdentity(it.name, it.gender) }
+        val unavailable = unavailableValue<Nothing>("fixture field omitted")
+        return LiveGameSnapshot(
         romIdentity = romIdentity,
-        trainer = trainer,
-        location = Gen3LiveSection.unavailable("not part of runtime merge test"),
-        party = party,
-        bag = com.darkaxt.dualdex.save.BagPocket.entries.associateWith {
-            Gen3LiveSection.unavailable("not part of runtime merge test")
-        },
-        battle = Gen3LiveSection.available(Gen3LiveBattleState(false)),
-        battleUi = Gen3LiveSection.available(
-            Gen3LiveBattleUiState(null, com.darkaxt.dualdex.battle.BattleEncounterKind.UNKNOWN),
+        generation = 3,
+        sampleId = System.nanoTime() and Long.MAX_VALUE,
+        trainer = com.darkaxt.dualdex.battle.LiveTrainerState(
+            identity = identity?.let { LiveValue.Available(it) } ?: unavailable,
+            publicTrainerId = trainerSnapshot?.publicTrainerId?.let { LiveValue.Available(it) } ?: unavailable,
+            money = trainerSnapshot?.money?.let { LiveValue.Available(it) } ?: unavailable,
+            playTime = trainerSnapshot?.let {
+                LiveValue.Available(com.darkaxt.dualdex.save.TrainerPlayTime(it.playTimeHours, it.playTimeMinutes))
+            } ?: unavailable,
+            badgeFlags = trainerSnapshot?.badgeFlags?.let { LiveValue.Available(it) } ?: unavailable,
+            stars = trainerSnapshot?.stars?.let { LiveValue.Available(it) } ?: unavailable,
         ),
+        pokedex = com.darkaxt.dualdex.battle.LivePokedexState(
+            seenDexNumbers = trainerSnapshot?.let { LiveValue.Available((1..it.dexSeen).toSet()) } ?: unavailable,
+            caughtDexNumbers = trainerSnapshot?.let { LiveValue.Available((1..it.dexCaught).toSet()) } ?: unavailable,
+        ),
+        party = party,
+        bag = com.darkaxt.dualdex.save.BagPocket.entries.associateWith { unavailable },
+        battle = LiveValue.Available(
+            com.darkaxt.dualdex.battle.LiveBattleState(
+                false,
+                null,
+                com.darkaxt.dualdex.battle.BattleEncounterKind.UNKNOWN,
+            ),
+        ),
+        location = com.darkaxt.dualdex.battle.LiveLocationState(location, unavailable),
         clock = clock,
         eventFlags = eventFlags,
-        trainerIdentity = trainerIdentity,
+    )
+    }
+
+    private fun <T> unavailableValue(detail: String): LiveValue<T> = LiveValue.Unavailable(
+        com.darkaxt.dualdex.battle.LiveUnavailableReason(
+            com.darkaxt.dualdex.battle.LiveUnavailableCode.MISSING_REGION,
+            detail,
+        ),
     )
 
     private fun saveSpecies(id: Int) = SpeciesRecord(

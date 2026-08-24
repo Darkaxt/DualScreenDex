@@ -5,7 +5,10 @@ import com.darkaxt.dualdex.battle.BattleMemorySample
 import com.darkaxt.dualdex.battle.BattleMonSnapshot
 import com.darkaxt.dualdex.battle.BattleTarget
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
-import com.darkaxt.dualdex.battle.Gen3LiveGameState
+import com.darkaxt.dualdex.battle.Gen3LiveMemoryReader
+import com.darkaxt.dualdex.battle.LiveBattleState
+import com.darkaxt.dualdex.live.TransientGameStateContext
+import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import com.darkaxt.dualdex.battle.ResolvedBattleLayout
 import com.darkaxt.dualdex.battle.TargetMode
 import com.darkaxt.dualdex.catalog.CatalogCache
@@ -16,7 +19,6 @@ import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveSnapshot
-import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.gen3.Gen3Checksums
 import com.enrpau.dualscreendex.companion.api.SaveRamView
@@ -64,7 +66,8 @@ class OfficialEmeraldPlayerStateRealControlTest {
             cache.write(parsed, source, CatalogWriteProgress.complete())
             val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
 
-            ProductionCompanionRuntime(catalogRepository = cache).use { runtime ->
+            val liveState = UnifiedGameStateDecoder()
+            ProductionCompanionRuntime(catalogRepository = cache, transientGameState = liveState).use { runtime ->
                 assertTrue(runtime.restoreCatalog(rom.sha256))
                 assertEquals(reopened.romSha256, runtime.catalogHash())
 
@@ -79,23 +82,34 @@ class OfficialEmeraldPlayerStateRealControlTest {
                 val party = ByteArray(requireNotNull(layout.playerPartyCapacity) * requireNotNull(layout.playerPartyRecordSize))
                 writeSanitizedPartyRecord(context).copyInto(party)
 
-                val live = Gen3LiveGameState.decode(
-                    romIdentity = rom.sha256,
-                    regions = mapOf(
-                        Gen3LiveGameState.SAVE_BLOCK1_ID to saveBlock1,
-                        Gen3LiveGameState.SAVE_BLOCK2_ID to saveBlock2,
-                        Gen3LiveGameState.PARTY_COUNT_ID to byteArrayOf(1),
-                        Gen3LiveGameState.PARTY_ID to party,
+                val battleUpdate = unobservedEnemyMove(context)
+                runtime.applyBattleTracking(battleUpdate)
+                val battleContext = requireNotNull(runtime.battleCatalogContext())
+                liveState.beginSession(
+                    TransientGameStateContext(
+                        romIdentity = rom.sha256,
+                        generation = 3,
+                        catalog = battleContext.catalog,
+                        gen3RuntimeMemoryLayout = layout,
+                        saveParseContext = context,
                     ),
-                    layout = layout,
-                    saveContext = context,
-                    savedTrainer = savedTrainerCounts(),
-                    battleActive = false,
-                    targetBattler = null,
-                    encounterKind = BattleEncounterKind.UNKNOWN,
                 )
-                runtime.updateLiveGameState(live)
-                runtime.applyBattleTracking(unobservedEnemyMove(context))
+                liveState.acceptGen3LiveSample(
+                    sampleId = 1,
+                    regions = mapOf(
+                        Gen3LiveMemoryReader.SAVE_BLOCK1_ID to saveBlock1,
+                        Gen3LiveMemoryReader.SAVE_BLOCK2_ID to saveBlock2,
+                        Gen3LiveMemoryReader.PARTY_COUNT_ID to byteArrayOf(1),
+                        Gen3LiveMemoryReader.PARTY_ID to party,
+                    ),
+                    battle = LiveBattleState(
+                        active = true,
+                        sample = battleUpdate.sample,
+                        encounterKind = battleUpdate.sample?.encounterKind ?: BattleEncounterKind.UNKNOWN,
+                    ),
+                    areaBaseId = null,
+                    mapPosition = null,
+                )
 
                 val stateJson = JsonParser.parseString(Gson().toJson(runtime.stateView())).asJsonObject
                 val trainer = stateJson.getAsJsonObject("trainer")
@@ -234,18 +248,6 @@ class OfficialEmeraldPlayerStateRealControlTest {
         }
         return record
     }
-
-    private fun savedTrainerCounts() = TrainerSnapshot(
-        name = "SAVED",
-        gender = 0,
-        publicTrainerId = 1,
-        money = 0,
-        playTimeHours = 0,
-        playTimeMinutes = 0,
-        badgeFlags = 0,
-        dexSeen = 15,
-        dexCaught = 8,
-    )
 
     private fun unobservedEnemyMove(context: SaveParseContext): BattleTrackingUpdate {
         val types = context.speciesById.getValue(ENEMY_SPECIES_ID).let { species ->

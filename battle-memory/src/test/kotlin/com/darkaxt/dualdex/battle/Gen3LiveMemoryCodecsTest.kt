@@ -43,6 +43,8 @@ class Gen3LiveMemoryCodecsTest {
         assertEquals(TrainerPlayTime(2, 17), live.trainer.playTime.valueOrNull())
         assertEquals(setOf(6, 25), live.pokedex.seenDexNumbers.valueOrNull())
         assertEquals(setOf(6), live.pokedex.caughtDexNumbers.valueOrNull())
+        assertEquals(13, live.bag.getValue(BagPocket.ITEMS).valueOrNull()?.entries?.single()?.itemId)
+        assertEquals(2, live.bag.getValue(BagPocket.ITEMS).valueOrNull()?.entries?.single()?.quantity)
     }
 
     private fun writePlayer(block1: ByteArray, block2: ByteArray) {
@@ -53,6 +55,8 @@ class Gen3LiveMemoryCodecsTest {
         block2[0x10] = 17
         block2.putU32le(0xAC, ENCRYPTION_KEY)
         block1.putU32le(0x490, 3_000L xor ENCRYPTION_KEY)
+        block1.putU16le(0x500, 13)
+        block1.putU16le(0x502, 2 xor (ENCRYPTION_KEY.toInt() and 0xFFFF))
     }
 
     private fun setFlag(bytes: ByteArray, offset: Int, dexNumber: Int) {
@@ -92,7 +96,7 @@ class Gen3LiveMemoryCodecsTest {
                     Gen3BitFlag(0x1270 + flag / 8, 1 shl (flag % 8))
                 },
             ),
-            bag = Gen3BagAbi(BagPocket.entries.map { Gen3BagPocketAbi(it, 0, 1) }),
+            bag = Gen3BagAbi(listOf(Gen3BagPocketAbi(BagPocket.ITEMS, 0x500, 1, 4))),
         )
     }
 }

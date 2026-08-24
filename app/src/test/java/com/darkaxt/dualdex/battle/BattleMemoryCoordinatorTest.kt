@@ -45,6 +45,7 @@ class BattleMemoryCoordinatorTest {
                 )
             },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -171,6 +172,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -207,6 +209,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -286,6 +289,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = gen3RuntimeLayout()) },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -309,6 +313,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = gen3RuntimeLayout()) },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram)) },
             autoStart = false,
         )
@@ -331,6 +336,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = gen3RuntimeLayout()) },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -363,6 +369,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = gen3RuntimeLayout(battleMonsOffset = 0x143C)) },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -388,6 +395,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram)) },
             autoStart = false,
         )
@@ -416,6 +424,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -497,6 +506,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -522,6 +532,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -668,6 +679,7 @@ class BattleMemoryCoordinatorTest {
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { gen2Context() },
             publisher = updates::add,
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
             transportFactory = { MemoryTransport(wram, 0xc000) },
             autoStart = false,
         )
@@ -730,14 +742,14 @@ class BattleMemoryCoordinatorTest {
         iwram[0x39EA] = 19
         iwram[0x39EB] = 18
         iwram[0x39EC] = 48
-        val snapshots = mutableListOf<Gen3LiveGameSnapshot?>()
+        val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = {
                 context(runtimeLayout = gen3RuntimeLayout(liveClockAddress = 0x030039E8))
             },
             publisher = {},
-            liveGamePublisher = snapshots::add,
+            transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
         )
@@ -746,10 +758,9 @@ class BattleMemoryCoordinatorTest {
         repeat(20) { coordinator.heartbeat() }
 
         assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 30039e8 5" })
-        assertEquals(Gen3LiveSectionState.AVAILABLE, requireNotNull(snapshots.last()).clock.state)
         assertEquals(
-            Gen3GameClock(hours = 19, minutes = 18, seconds = 48),
-            requireNotNull(snapshots.last()).clock.value,
+            LiveClockState(hours = 19, minutes = 18, seconds = 48),
+            transient.current?.clock?.value,
         )
         coordinator.close()
     }
@@ -764,7 +775,9 @@ class BattleMemoryCoordinatorTest {
         ewram[0x1005] = 12
         ewram[0x0200] = 0
         mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
-        val snapshots = mutableListOf<Gen3LiveGameSnapshot?>()
+        val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val snapshots = mutableListOf<com.darkaxt.dualdex.live.ResolvedGameSnapshot?>()
+        transient.subscribe(snapshots::add)
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = {
@@ -777,16 +790,19 @@ class BattleMemoryCoordinatorTest {
                 )
             },
             publisher = {},
-            liveGamePublisher = snapshots::add,
+            transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
         )
         coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
 
         repeat(30) { coordinator.heartbeat() }
-        assertEquals(0x030C, requireNotNull(snapshots.last()).location.value)
-        assertEquals(emptyList<Any>(), requireNotNull(snapshots.last()).party.value)
-        assertEquals(Gen3LiveSectionState.UNAVAILABLE, requireNotNull(snapshots.last()).trainer.state)
+        assertEquals(0x030C, transient.current?.location?.areaBaseId?.value)
+        assertEquals(emptyList<Any>(), transient.current?.party?.value)
+        assertEquals(
+            com.darkaxt.dualdex.live.ResolvedValueSource.UNAVAILABLE,
+            transient.current?.trainer?.identity?.source,
+        )
         val firstDataRead = transport.commands.indexOfFirst { it.startsWith("READ_CORE_MEMORY 2001000 ") }
         assertTrue(firstDataRead > 1)
         assertTrue(transport.commands[0].startsWith("READ_CORE_MEMORY 30036f0 4"))
@@ -799,7 +815,7 @@ class BattleMemoryCoordinatorTest {
         repeat(30) { coordinator.heartbeat() }
 
         assertTrue(snapshots.size > oldCount)
-        assertEquals(0x0709, requireNotNull(snapshots.last()).location.value)
+        assertEquals(0x0709, transient.current?.location?.areaBaseId?.value)
         assertTrue(transport.commands.count { it.startsWith("READ_CORE_MEMORY 30036f0 4") } >= 2)
         coordinator.close()
     }
