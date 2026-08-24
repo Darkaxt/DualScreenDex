@@ -77,7 +77,7 @@ The fresh eight-ROM matrix improves Dreamstone from 15/24 at 62.48% to 17/24 at 
 
 The validated 260-byte species ABI exposes three u16 ability IDs at byte 24. Dreamstone and an independent Crippling control each contain one compiled-referenced 311-row ability table with 28-byte records, 17-byte inline names, description pointer at 20, signed AI rating at 24, seven-bit flags at 25, and a complete Thumb rating consumer. Production resolution requires one unique typed candidate and uses neither ROM identity nor fixed table roots. Corrupting Dreamstone description pointers disables only descriptions while names, species relationships, mechanics, routing, and startup remain available.
 
-The fresh eight-ROM matrix improves Dreamstone from 17/24 at 70.81% to 20/24 at 83.31%, materializing 310 abilities, 310 descriptions, and 310 mechanics records. The other seven controls retain their routing, feature counts, compatibility scores, and materialized counts. All six selected catalogs persisted and reopened through schema 39 with zero parser, persistence, or decoded cross-reference errors.
+The fresh eight-ROM matrix improves Dreamstone from 17/24 at 70.81% to 20/24 at 83.31%, materializing 310 abilities, 310 descriptions, and 310 mechanics records. The other seven controls retain their routing, feature counts, compatibility scores, and materialized counts. All six selected catalogs persisted and reopened through schema 39 with zero parser, persistence, or decoded cross-reference errors. The checkpoint is published as signed prerelease `v1.1.0-rc.59`.
 
 ## Deferral ledger
 

@@ -1,6 +1,6 @@
 # Source-backed Gen III Checkpoint 3 Audit
 
-**Result:** VALIDATED — the optional headerless unified ability ABI passes focused real-ROM, failure-isolation, cache, persistence, and eight-ROM matrix gates.
+**Result:** PUBLISHED — the optional headerless unified ability ABI passes focused real-ROM, failure-isolation, cache, persistence, eight-ROM matrix, protected release, and independent public-artifact gates.
 
 ## Requirement audit
 
@@ -36,3 +36,14 @@
 ## Remaining deferrals
 
 `G3-DREAM-001` now covers only egg/machine moves, balls, and the bounded Local-raster overage. Other Stage 2 family deferrals remain unchanged; every unsupported optional module continues to fail closed independently.
+
+## Published candidate
+
+- Annotated tag [`v1.1.0-rc.59`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.59) peels to exact source commit `18f8e1c3c94b5ff5771bad7dd3cd7006f25f2a7d`.
+- Protected workflow [`32779111288`](https://github.com/Darkaxt/DualScreenDex/actions/runs/32779111288) completed both `verify-and-build` and `sign-and-publish` successfully against that commit.
+- Public APK `DualDex-v1.1.0-rc.59.apk` is 17,756,646 bytes with SHA-256 `441f2676aad867c9c915df35371997ff5ee649029ba5c4e1c8b73d179c236019`.
+- All 27 checksum entries verify. Authenticated and anonymous APK downloads are byte-identical.
+- The APK declares `com.darkaxt.dualdex`, version `1.1.0-rc.59`, and version code `1010059`.
+- Independent `apksigner` verification accepts APK Signature Scheme v3 with one signer. Its certificate SHA-256 is `c5a02cecb47cda41b618817ea684cbb6ccfdcc17a3e7d8243448175c8e3b2fba`, matching the published PEM and pinned release identity.
+- `provenance.json` binds the repository, exact commit, tag, workflow run, release kind, package/version identity, APK hash, certificate hash, and protected `release-signing` authority.
+- No APK installation, launch, ADB, emulator, or gameplay action was used as a publication gate.
