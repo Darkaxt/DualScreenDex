@@ -30,7 +30,7 @@ Expected: FAIL because the current scorer selects the decoy and returns false di
 
 - [ ] **Step 3: Implement the narrow guard**
 
-Make `Gen3PokedexSnapshot.ownedOffset` nullable and the party argument nullable. Return unavailable when party evidence is unavailable; return a snapshot with `ownedOffset = null`, `seenDexNumbers = emptySet()`, and `caughtDexNumbers = emptySet()` before candidate scoring when the decoded party is positively empty. Pass the nullable live party through without `orEmpty()`.
+Make `Gen3PokedexSnapshot.ownedOffset` nullable and the party argument nullable. Return unavailable when party evidence is unavailable; return a snapshot with `ownedOffset = null`, `seenDexNumbers = emptySet()`, and `caughtDexNumbers = emptySet()` before candidate scoring when the decoded live party is positively empty. Pass the nullable live party through without `orEmpty()`. Preserve checksum-validated SaveRAM recovery through an explicit persisted-evidence mode.
 
 - [ ] **Step 4: Verify GREEN and anchored-layout preservation**
 

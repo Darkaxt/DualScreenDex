@@ -33,7 +33,12 @@ object Gen3SaveReader {
         val partyResult = readParty(saveBlock1, effectiveContext)
         val storageResult = readStorage(storage, newest.storageBoxCount, effectiveContext)
         val individuals = partyResult.records + storageResult.records
-        val pokedexResult = Gen3PokedexCodec.decode(saveBlock2, context, partyResult.records)
+        val pokedexResult = Gen3PokedexCodec.decode(
+            saveBlock2,
+            context,
+            partyResult.records,
+            evidenceMode = Gen3PokedexEvidenceMode.PERSISTED_SAVE,
+        )
         val pokedex = pokedexResult.value
             ?: return SaveParseResult.Unsupported(pokedexResult.reasons)
         val levelUpRuleset = detectLevelUpRuleset(saveBlock1, context)

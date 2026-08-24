@@ -10,11 +10,17 @@ data class Gen3PokedexSnapshot(
     val caughtDexNumbers: Set<Int>,
 )
 
+enum class Gen3PokedexEvidenceMode {
+    LIVE,
+    PERSISTED_SAVE,
+}
+
 object Gen3PokedexCodec {
     fun decode(
         saveBlock2: ByteArray?,
         context: SaveParseContext,
         party: List<OwnedIndividual>?,
+        evidenceMode: Gen3PokedexEvidenceMode = Gen3PokedexEvidenceMode.LIVE,
     ): SaveSectionResult<Gen3PokedexSnapshot> = runCatching {
         val bytes = requireNotNull(saveBlock2) { "SaveBlock2 was unavailable" }
         require(context.speciesById.isNotEmpty()) { "a parsed ROM species index is required" }
@@ -23,7 +29,7 @@ object Gen3PokedexCodec {
             "ROM species count does not fit the Gen III Pokédex save block"
         }
         val decodedParty = requireNotNull(party) { "validated party evidence is required for Pokédex layout resolution" }
-        if (decodedParty.isEmpty()) {
+        if (decodedParty.isEmpty() && evidenceMode == Gen3PokedexEvidenceMode.LIVE) {
             return@runCatching SaveSectionResult.available(
                 Gen3PokedexSnapshot(
                     ownedOffset = null,

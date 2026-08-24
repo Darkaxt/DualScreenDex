@@ -14,7 +14,7 @@ The live player bridge has a second independent defect: `ResolvedPlayerStateChan
 
 ### Empty-party resolution
 
-`Gen3PokedexCodec` will treat an empty, successfully decoded party as a fail-closed pre-party state. It will return empty seen and caught sets without running the heuristic offset scan. The snapshot's `ownedOffset` will be nullable and remain `null` because no layout was proven. Existing non-empty-party resolution remains unchanged, including expanded aligned layouts supported by party-owned Dex anchors.
+Live `Gen3PokedexCodec` decoding will treat an empty, successfully decoded party as a fail-closed pre-party state. It will return empty seen and caught sets without running the heuristic offset scan. The snapshot's `ownedOffset` will be nullable and remain `null` because no layout was proven. Existing non-empty-party resolution remains unchanged, including expanded aligned layouts supported by party-owned Dex anchors. Checksum-validated persisted SaveRAM uses an explicit persisted-evidence mode so a damaged party record does not discard otherwise valid recovery data.
 
 This behavior applies only when the party decoder positively supplies an empty list. An unavailable live party remains unavailable rather than being collapsed to an empty list.
 
