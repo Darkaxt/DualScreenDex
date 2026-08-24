@@ -2,7 +2,7 @@
 
 Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-design.md`
 
-**Result:** PRE-RELEASE PASS — implementation and automated integration gates pass; RC56 is eligible for protected publication.
+**Result:** PUBLISHED PRERELEASE — Checkpoint B passes its implementation, integration, protected publication, and independent artifact gates.
 
 ## Requirement audit
 
@@ -19,7 +19,7 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 | Official controls | Red, Blue, Yellow, Gold, Silver, and Crystal retain exact map/raster/scene/lighting controls and pass selected compiled POI facts | PASS |
 | Source-backed subset | Three SHA-verified Shin controls parsed twice: 3/3 deterministic, zero parser errors, zero strict failures, 678 maps/assets retained | PASS |
 | Concurrent work | Checkpoint B rebased from `1ac0aa4f` onto fetched master `2e8909bd`; incoming RC55 performance/runtime paths were preserved and overlapping runtime tests passed | PASS |
-| Signed artifact | Protected RC56 publication and anonymous artifact verification | PENDING |
+| Signed artifact | Protected run `32758369259` published RC56 from tagged commit `86493e5c`; anonymous APK redownload passed release checksum, API digest, package/version, pinned signer, v3 signature, and provenance checks | PASS |
 
 ## Collection authority
 
@@ -36,7 +36,19 @@ No collection state is inferred from Bag contents, raster disappearance, proximi
 - Save, companion, catalog, and Android unit gate completed; post-sync `ProductionCompanionRuntimeTest` plus `UnifiedGameStateDecoderTest` passed in 47 seconds.
 - Shared web gate: 2 files, 36 tests passed; production Vite build succeeded.
 - Focused source-backed matrix: 3 hashes verified, 3 selected, 3 deterministic, 0 parser errors, 0 strict failures.
+- Local release policy: 18/18 tests passed. Protected RC56 CI repeated release policy, compatibility-document checks, deployment safety, 190 web tests, production web build, all Gradle module tests, Android lint, and unsigned package-identity verification before entering the signing environment.
 - No ad hoc ADB/emulator interaction was performed, per the approved validation waiver until a reusable test bench exists.
+
+## Protected release evidence
+
+| Evidence | Observed result |
+|---|---|
+| Source and workflow | Annotated tag `v1.1.0-rc.56` resolves to commit `86493e5cd10388a3efe1c179b13526a3e39ab0c3`; protected workflow run `32758369259` completed successfully. |
+| Publication | GitHub Actions published `DualDex 1.1.0-rc.56` as a public, non-draft prerelease without replacing an existing release. |
+| Public APK | `DualDex-v1.1.0-rc.56.apk`; 17,723,878 bytes; SHA-256 `892AC9DC0AF96FD7D6CD0493007A263AF5F2D017C5D510E8361B49476A40D25D`. Authenticated and anonymous downloads match the release API digest and `SHA256SUMS.txt`; every checksummed release asset passed. |
+| Signed identity | Repository validation reported package `com.darkaxt.dualdex`, version `1.1.0-rc.56`, code `1010056`, and signer SHA-256 `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`; APK Signature Scheme v3 verification passed. |
+| Provenance | Public `provenance.json` binds the APK hash, signer, tag, commit, package/version identity, protected environment, and workflow run. |
+| Device action | No installation, launch, ADB, emulator, or gameplay interaction was performed. |
 
 ## Deferral ledger
 
@@ -46,3 +58,9 @@ No collection state is inferred from Bag contents, raster disappearance, proximi
 | Task #153 | Local-map authority for 45 pre-existing unavailable GB/GBC rows | `LOCAL_MAP NOT_FOUND`; Atlas and unrelated capabilities remain available | Source-backed GB/GBC Local-map compatibility expansion | Each matching structural family resolves bounded Local maps without baseline capability/raster regressions and passes focused plus affected-corpus controls |
 
 `GB-POI-001` is not a Checkpoint B blocker because the specification requires collection state only where the compiled mapping and integrity-checked state ABI are authoritative. No in-scope POI or known collection state is fabricated or suppressed.
+
+## Stage decision
+
+Checkpoint B and Gen I/II map-parity Stage 1 are complete. There are no prerelease blockers. `GB-POI-001` and Task #153 retain explicit safe fallbacks and acceptance conditions; neither weakens the accepted official/source-backed controls nor prevents Stage 2 source-backed Gen III compatibility work.
+
+Signed candidate: <https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.56>

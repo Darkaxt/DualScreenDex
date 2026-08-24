@@ -228,7 +228,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC13 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | `v1.1.0-rc.56` is the protected signing target; checksums and provenance will be independently verified after publication. |
+| Signed candidate target | `v1.1.0-rc.56` is published through the protected signing workflow with checksums and provenance. |
 
 ## Parser development
 
