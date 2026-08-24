@@ -1,5 +1,15 @@
 package com.darkaxt.dualdex.save
 
+data class TrainerPlayTime(
+    val hours: Int,
+    val minutes: Int,
+) {
+    init {
+        require(hours >= 0) { "play time hours must not be negative" }
+        require(minutes in 0..59) { "play time minutes must be in 0..59" }
+    }
+}
+
 data class TrainerIdentity(
     val name: String,
     val gender: Int,
