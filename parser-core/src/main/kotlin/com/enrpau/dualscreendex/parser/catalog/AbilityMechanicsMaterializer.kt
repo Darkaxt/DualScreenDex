@@ -65,7 +65,9 @@ object AbilityMechanicsMaterializer {
         abilities = abilities,
         abilityDescriptions = abilityDescriptions,
         compiledRatings = if (
-            layout.pokeemeraldExpansion == null && layout.resolvedDatasets.abilityMechanics == null
+            layout.pokeemeraldExpansion == null &&
+            layout.headerlessUnifiedSpecies?.abilities?.abilityRatingOffset == null &&
+            layout.resolvedDatasets.abilityMechanics == null
         ) {
             CompiledAbilityRatingResolver.resolve(session, abilities.keys)
         } else {
@@ -81,13 +83,24 @@ object AbilityMechanicsMaterializer {
         compiledRatings: ResolvedCompiledAbilityRatings?,
     ): AbilityMechanicsResult? {
         if (layout.generation != 3) return null
-        layout.pokeemeraldExpansion?.let { expansion ->
+        val embeddedMechanics = layout.pokeemeraldExpansion?.let { expansion ->
+            EmbeddedAbilityMechanics(
+                recordSize = expansion.abilityRecordSize,
+                ratingOffset = expansion.abilityDescriptionPointerOffset + 4,
+                flagsOffset = expansion.abilityDescriptionPointerOffset + 5,
+            )
+        } ?: layout.headerlessUnifiedSpecies?.abilities?.let { abilities ->
+            val ratingOffset = abilities.abilityRatingOffset ?: return@let null
+            val flagsOffset = abilities.abilityFlagsOffset ?: return@let null
+            EmbeddedAbilityMechanics(abilities.abilityRecordSize, ratingOffset, flagsOffset)
+        }
+        embeddedMechanics?.let { embedded ->
             val table = layout.tables.abilities ?: return null
-            val stride = table.stride ?: expansion.abilityRecordSize
+            val stride = table.stride ?: embedded.recordSize
             val mechanics = abilities.keys.associateWith { id ->
                 val record = table.offset + id * stride
-                val rating = rom.u8(record + expansion.abilityDescriptionPointerOffset + 4).toByte().toInt()
-                val flags = rom.u8(record + expansion.abilityDescriptionPointerOffset + 5)
+                val rating = rom.u8(record + embedded.ratingOffset).toByte().toInt()
+                val flags = rom.u8(record + embedded.flagsOffset)
                 buildList {
                     add(AbilityMechanic(AbilityMechanicKind.AI_RATING, "AI rating", rating.toString(), rating, 1))
                     EXPANSION_FLAG_LABELS.forEachIndexed { bit, label ->
@@ -98,7 +111,7 @@ object AbilityMechanicsMaterializer {
                 }
             }
             return AbilityMechanicsResult(
-                sourceOffset = table.offset + expansion.abilityDescriptionPointerOffset + 4,
+                sourceOffset = table.offset + embedded.ratingOffset,
                 confidence = 1.0,
                 mechanicsByAbility = mechanics,
             )
@@ -233,6 +246,12 @@ object AbilityMechanicsMaterializer {
             "%.2f".format(Locale.ROOT, value).trimEnd('0')
         }
     }
+
+    private data class EmbeddedAbilityMechanics(
+        val recordSize: Int,
+        val ratingOffset: Int,
+        val flagsOffset: Int,
+    )
 
     private val EXPANSION_FLAG_LABELS = listOf(
         "Cannot be copied",

@@ -297,6 +297,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                     baseStats = unified.tables.baseStats,
                     sprites = unified.tables.sprites,
                     descriptions = unified.tables.descriptions,
+                    abilities = unified.tables.abilities,
                 ),
             )
         } ?: compiledSpriteTableResolution

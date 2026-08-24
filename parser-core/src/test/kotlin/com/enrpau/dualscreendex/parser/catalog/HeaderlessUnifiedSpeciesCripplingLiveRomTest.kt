@@ -60,6 +60,18 @@ class HeaderlessUnifiedSpeciesCripplingLiveRomTest {
         assertEquals(260, layout.tables.descriptions?.stride)
         assertEquals(0xD95918 + 88, layout.tables.sprites?.offset)
         assertEquals(260, layout.tables.sprites?.stride)
+        val unifiedAbilities = requireNotNull(layout.headerlessUnifiedSpecies?.abilities)
+        assertEquals(24, unifiedAbilities.speciesAbilityOffset)
+        assertEquals(3, unifiedAbilities.speciesAbilitySlotCount)
+        assertEquals(2, unifiedAbilities.speciesAbilityElementSize)
+        assertEquals(28, unifiedAbilities.abilityRecordSize)
+        assertEquals(17, unifiedAbilities.abilityNameWidth)
+        assertEquals(20, unifiedAbilities.abilityDescriptionPointerOffset)
+        assertEquals(24, unifiedAbilities.abilityRatingOffset)
+        assertEquals(25, unifiedAbilities.abilityFlagsOffset)
+        assertEquals(0x7437A4, layout.tables.abilities?.offset)
+        assertEquals(311, layout.tables.abilities?.count)
+        assertEquals(28, layout.tables.abilities?.stride)
 
         val catalog = CatalogParser.parse(rom).catalog
         assertNotNull(catalog)
@@ -86,5 +98,12 @@ class HeaderlessUnifiedSpeciesCripplingLiveRomTest {
         assertEquals(64, bulbasaur.sprite.value?.width)
         assertEquals(64, bulbasaur.sprite.value?.height)
         assertTrue(bulbasaur.sprite.value?.argb?.any { it != 0 } == true)
+        assertEquals(listOf(65, 34), bulbasaur.abilityIds.value)
+        assertEquals(310, catalog.abilitiesById.size)
+        assertEquals("Overgrow", catalog.abilitiesById.getValue(65).name.value)
+        assertEquals("Ups Grass moves in a pinch.", catalog.abilitiesById.getValue(65).description.value)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITIES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status)
     }
 }

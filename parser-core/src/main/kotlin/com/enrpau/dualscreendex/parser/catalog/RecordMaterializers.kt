@@ -85,10 +85,32 @@ object RecordMaterializers {
                             validatedFieldOffset(offset, stats.recordSize, it.abilitiesOffset, 6)
                         }
                     }
+                    val unifiedAbilities = unified?.abilities
+                    val unifiedAbilityOffset = unifiedAbilities?.let { metadata ->
+                        statsOffset?.let { offset ->
+                            validatedFieldOffset(
+                                offset,
+                                stats.recordSize,
+                                metadata.speciesAbilityOffset,
+                                metadata.speciesAbilitySlotCount * metadata.speciesAbilityElementSize,
+                            )
+                        }
+                    }
                     if (expansion != null && expansionAbilityOffset != null) {
                         CatalogField.available(
                             (0 until 3).map { rom.u16le(expansionAbilityOffset + it * 2) }
                                 .filter { it != 0 }.distinct(),
+                        )
+                    } else if (unifiedAbilities != null && unifiedAbilityOffset != null) {
+                        CatalogField.available(
+                            (0 until unifiedAbilities.speciesAbilitySlotCount).map { slot ->
+                                val offset = unifiedAbilityOffset + slot * unifiedAbilities.speciesAbilityElementSize
+                                if (unifiedAbilities.speciesAbilityElementSize == 1) {
+                                    rom.u8(offset)
+                                } else {
+                                    rom.u16le(offset)
+                                }
+                            }.filter { it != 0 }.distinct(),
                         )
                     } else if (
                         expansion == null && statsOffset != null && baseStats != null &&

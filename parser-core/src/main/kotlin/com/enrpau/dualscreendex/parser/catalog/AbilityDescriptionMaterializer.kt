@@ -24,12 +24,19 @@ object AbilityDescriptionMaterializer {
         if (pointerTableBytes > rom.size.toLong() || nameStride <= 0 ||
             names.offset.toLong() + names.count.toLong() * nameStride > rom.size.toLong()
         ) return null
-        layout.pokeemeraldExpansion?.let { expansion ->
+        val embeddedDescription = layout.pokeemeraldExpansion?.let { expansion ->
+            expansion.abilityRecordSize to expansion.abilityDescriptionPointerOffset
+        } ?: layout.headerlessUnifiedSpecies?.abilities?.let { abilities ->
+            abilities.abilityDescriptionPointerOffset?.let { pointerOffset ->
+                abilities.abilityRecordSize to pointerOffset
+            }
+        }
+        embeddedDescription?.let { (recordSize, pointerOffset) ->
             val descriptions = buildMap {
                 repeat(names.count - 1) { index ->
                     val id = index + 1
-                    val record = names.offset + id * (names.stride ?: expansion.abilityRecordSize)
-                    val textOffset = rom.gbaPointer(record + expansion.abilityDescriptionPointerOffset) ?: return@repeat
+                    val record = names.offset + id * (names.stride ?: recordSize)
+                    val textOffset = rom.gbaPointer(record + pointerOffset) ?: return@repeat
                     val length = minOf(192, rom.size - textOffset)
                     val decoded = runCatching {
                         PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(textOffset, length))

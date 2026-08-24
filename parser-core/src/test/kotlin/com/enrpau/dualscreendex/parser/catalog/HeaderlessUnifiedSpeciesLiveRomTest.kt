@@ -49,6 +49,18 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(0x7B0160 + 88, layout.tables.sprites?.offset)
         assertEquals(260, layout.tables.sprites?.stride)
         assertEquals(listOf(8), layout.tables.sprites?.pointerOffsets)
+        val unifiedAbilities = requireNotNull(layout.headerlessUnifiedSpecies?.abilities)
+        assertEquals(24, unifiedAbilities.speciesAbilityOffset)
+        assertEquals(3, unifiedAbilities.speciesAbilitySlotCount)
+        assertEquals(2, unifiedAbilities.speciesAbilityElementSize)
+        assertEquals(28, unifiedAbilities.abilityRecordSize)
+        assertEquals(17, unifiedAbilities.abilityNameWidth)
+        assertEquals(20, unifiedAbilities.abilityDescriptionPointerOffset)
+        assertEquals(24, unifiedAbilities.abilityRatingOffset)
+        assertEquals(25, unifiedAbilities.abilityFlagsOffset)
+        assertEquals(0xE65E98, layout.tables.abilities?.offset)
+        assertEquals(311, layout.tables.abilities?.count)
+        assertEquals(28, layout.tables.abilities?.stride)
         assertEquals(21, layout.resolvedDatasets.typeChart?.table?.typeCount)
         assertEquals(848, layout.moveCount)
         assertEquals(0x759858, layout.tables.moveNames?.offset)
@@ -96,6 +108,23 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(64, bulbasaur.sprite.value?.width)
         assertEquals(64, bulbasaur.sprite.value?.height)
         assertTrue(bulbasaur.sprite.value?.argb?.any { it != 0 } == true)
+        assertEquals(listOf(65, 34), bulbasaur.abilityIds.value)
+        assertEquals(310, catalog.abilitiesById.size)
+        assertEquals("Overgrow", catalog.abilitiesById.getValue(65).name.value)
+        assertEquals("Ups Grass moves in a pinch.", catalog.abilitiesById.getValue(65).description.value)
+        assertTrue(
+            catalog.abilitiesById.getValue(65).mechanics.value.orEmpty().any {
+                it.kind == AbilityMechanicKind.AI_RATING && it.value == "5"
+            },
+        )
+        assertTrue(
+            catalog.abilitiesById.getValue(5).mechanics.value.orEmpty().any {
+                it.kind == AbilityMechanicKind.FLAG && it.label == "Breakable"
+            },
+        )
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITIES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LEARNSETS).status)
         assertTrue(catalog.navigableSpecies().all { it.learnset.status == CapabilityStatus.AVAILABLE })
         assertEquals(
@@ -181,6 +210,32 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
             CapabilityStatus.AVAILABLE,
             probe.capabilities.single { it.capability == RomCapability.SPRITES }.status,
         )
+    }
+
+    @Test
+    fun malformedEmbeddedAbilityDescriptionsDisableOnlyThatOptionalModule() {
+        val configured = System.getenv("DUALDEX_DREAMSTONE_ROM")
+        assumeTrue("set DUALDEX_DREAMSTONE_ROM to run this live-ROM regression", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+        val bytes = Files.readAllBytes(path)
+        repeat(80) { index ->
+            val field = 0xE65E98 + (index + 1) * 28 + 20
+            bytes.fill(0, field, field + 4)
+        }
+
+        val result = CatalogParser.parse(RomImage(bytes))
+        assertEquals(SelectionStatus.SELECTED, result.analysis.status)
+        val layout = requireNotNull(result.layout)
+        assertNotNull(layout.tables.abilities)
+        assertEquals(null, layout.headerlessUnifiedSpecies?.abilities?.abilityDescriptionPointerOffset)
+        assertEquals(24, layout.headerlessUnifiedSpecies?.abilities?.abilityRatingOffset)
+        val catalog = requireNotNull(result.catalog)
+        assertEquals(listOf(65, 34), catalog.speciesById.getValue(1).abilityIds.value)
+        assertEquals("Overgrow", catalog.abilitiesById.getValue(65).name.value)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITIES).status)
+        assertEquals(CapabilityStatus.NOT_FOUND, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status)
     }
 
     private fun learnsetSha256(rows: List<LearnsetRowOutcome.Decoded>): String {

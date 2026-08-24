@@ -171,6 +171,19 @@ data class HeaderlessUnifiedSpeciesMetadata(
     val descriptionPointerOffset: Int? = null,
     val frontSpritePointerOffset: Int? = null,
     val normalPalettePointerOffset: Int? = null,
+    val abilities: HeaderlessUnifiedAbilityMetadata? = null,
+)
+
+/** Independently validated ability fields joined to a headerless unified species ABI. */
+data class HeaderlessUnifiedAbilityMetadata(
+    val speciesAbilityOffset: Int,
+    val speciesAbilitySlotCount: Int,
+    val speciesAbilityElementSize: Int,
+    val abilityRecordSize: Int,
+    val abilityNameWidth: Int,
+    val abilityDescriptionPointerOffset: Int? = null,
+    val abilityRatingOffset: Int? = null,
+    val abilityFlagsOffset: Int? = null,
 )
 
 data class GbaCompiledReferenceIndex(

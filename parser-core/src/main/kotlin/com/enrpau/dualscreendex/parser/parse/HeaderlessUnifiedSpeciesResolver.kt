@@ -124,6 +124,13 @@ internal object HeaderlessUnifiedSpeciesResolver {
             is ExtentCheck.Invalid, is ExtentCheck.BudgetExceeded -> return null
         }
         val activeCount = validateRows(session.rom, root, speciesCount) ?: return null
+        val abilities = HeaderlessUnifiedAbilityResolver.resolve(
+            session = session,
+            speciesRoot = root,
+            speciesCount = speciesCount,
+            speciesRecordSize = RECORD_SIZE,
+            activePredicateOffset = 0,
+        )
         val presentation = presentationOffsets(nationalDexOffset)
         val descriptionsEvidence = presentation?.let {
             validateDescriptions(session.rom, root, speciesCount, activeCount, it)
@@ -166,6 +173,7 @@ internal object HeaderlessUnifiedSpeciesResolver {
                         pointerOffsets = listOf(fields.palette - fields.frontSprite),
                     )
                 },
+                abilities = abilities?.table,
             ),
             metadata = HeaderlessUnifiedSpeciesMetadata(
                 speciesTableOffset = root,
@@ -180,6 +188,7 @@ internal object HeaderlessUnifiedSpeciesResolver {
                 descriptionPointerOffset = descriptionFields?.description,
                 frontSpritePointerOffset = spriteFields?.frontSprite,
                 normalPalettePointerOffset = spriteFields?.palette,
+                abilities = abilities?.metadata,
             ),
             speciesNamesEvidence = ValidationEvidence(
                 compatible = true,

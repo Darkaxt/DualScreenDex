@@ -2,6 +2,8 @@ package com.enrpau.dualscreendex.parser.family
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.HeaderlessUnifiedAbilityMetadata
+import com.enrpau.dualscreendex.parser.model.HeaderlessUnifiedSpeciesMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
@@ -392,8 +394,16 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         core: CoreDatasetsPhaseResult.Resolved,
     ): ResolvedAbilityEvidence {
         val rom = session.rom
+        val unified = identity.headerlessUnifiedSpecies?.metadata
         val domain = AbilitySemanticDomain(
-            validatedDirectAbilityIds(
+            unified?.abilities?.let { abilities ->
+                validatedHeaderlessUnifiedAbilityIds(
+                    rom = rom,
+                    species = unified,
+                    abilities = abilities,
+                    speciesCount = core.speciesCount ?: core.candidateTables.baseStats?.count ?: 0,
+                )
+            } ?: validatedDirectAbilityIds(
                 rom,
                 validatedAbilityCoverageLayout(
                     rom,
@@ -403,23 +413,35 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
             ),
         )
         val abilityEvidence = if (definition.formatGeneration == 3) {
-        core.candidateTables.abilities?.let { layout ->
-            identity.expansion?.let { expansion ->
-                TableValidators.names(rom, layout, expansion.abilityCount, identity.codec)
-            } ?: resolveAbilityNames(
-                session = session,
-                layout = layout,
-                codec = identity.codec,
-                profile = identity.baseProfile,
-                exact = identity.exactProfile != null,
-                baseStats = core.baseStatsLayout,
-                speciesCount = core.speciesCount,
-                semanticDomain = domain,
-            )
-        } ?: missingEvidence("ability-name table not resolved")
-    } else {
-        missingEvidence("abilities are not part of this engine")
-    }
+            core.candidateTables.abilities?.let { layout ->
+                when {
+                    unified?.abilities != null -> TableValidators.names(
+                        rom,
+                        layout,
+                        layout.count,
+                        identity.codec,
+                    )
+                    identity.expansion != null -> TableValidators.names(
+                        rom,
+                        layout,
+                        identity.expansion.abilityCount,
+                        identity.codec,
+                    )
+                    else -> resolveAbilityNames(
+                        session = session,
+                        layout = layout,
+                        codec = identity.codec,
+                        profile = identity.baseProfile,
+                        exact = identity.exactProfile != null,
+                        baseStats = core.baseStatsLayout,
+                        speciesCount = core.speciesCount,
+                        semanticDomain = domain,
+                    )
+                }
+            } ?: missingEvidence("ability-name table not resolved")
+        } else {
+            missingEvidence("abilities are not part of this engine")
+        }
         val evidence = reconcileAbilityEvidence(
             abilityEvidence,
             identity.tableResolution.publishedDataEvidence,
@@ -628,6 +650,34 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         TableValidators.inferFixedNameCount(rom, layout.offset, layout.recordSize, codec, 10, 512)
             ?: profile?.tables?.abilities?.count
             ?: layout.count
+    }
+}
+
+/** Ability target coverage read from an independently validated headerless unified species ABI. */
+internal fun validatedHeaderlessUnifiedAbilityIds(
+    rom: RomImage,
+    species: HeaderlessUnifiedSpeciesMetadata,
+    abilities: HeaderlessUnifiedAbilityMetadata,
+    speciesCount: Int,
+): Set<Int> {
+    val fieldBytes = abilities.speciesAbilitySlotCount * abilities.speciesAbilityElementSize
+    if (speciesCount <= 0 || abilities.speciesAbilitySlotCount <= 0 ||
+        abilities.speciesAbilityElementSize !in setOf(1, 2) ||
+        abilities.speciesAbilityOffset < 0 ||
+        abilities.speciesAbilityOffset + fieldBytes > species.speciesRecordSize
+    ) return emptySet()
+    return buildSet {
+        repeat(speciesCount) { speciesId ->
+            val record = species.speciesTableOffset + speciesId * species.speciesRecordSize
+            if (record < 0 || record.toLong() + species.speciesRecordSize > rom.size.toLong() ||
+                rom.u8(record + species.activePredicateOffset) == 0
+            ) return@repeat
+            repeat(abilities.speciesAbilitySlotCount) { slot ->
+                val offset = record + abilities.speciesAbilityOffset + slot * abilities.speciesAbilityElementSize
+                val abilityId = if (abilities.speciesAbilityElementSize == 1) rom.u8(offset) else rom.u16le(offset)
+                add(abilityId)
+            }
+        }
     }
 }
 

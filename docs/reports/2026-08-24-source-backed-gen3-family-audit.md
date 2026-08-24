@@ -1,6 +1,6 @@
 # Source-backed Gen III Family Audit
 
-**Result:** Eight representative locally available ROMs were characterized against their public-source lineage and the current parser. Stage 2 has now published both the integrated 20-byte `NatureInfo` ABI and the optional headerless unified `SpeciesInfo` presentation ABI for embedded sprites and Pokédex descriptions.
+**Result:** Eight representative locally available ROMs were characterized against their public-source lineage and the current parser. Stage 2 has now validated the integrated 20-byte `NatureInfo` ABI, the optional headerless unified `SpeciesInfo` presentation ABI, and its independently gated embedded ability ABI.
 
 HackDex CFRU, hg-engine, and pokeemerald-expansion tags were used only as discovery and clustering hints. Production eligibility remains based on generic compiled evidence; source names, project identities, filenames, hashes, and absolute ROM offsets are not parser inputs.
 
@@ -29,7 +29,7 @@ The focused scan used one parser job and completed with zero read/parse and cros
 |---|---|---:|---|---|
 | Battle Theater 2.3.0 | Emerald selected | 23/23, 99.97% | Exact full-source `v2.3.0` tag at [pokemon-battle-theater](https://github.com/logdog2325/pokemon-battle-theater) | Integrated Natures resolved; flavor affinity remains tracked under `G3-NATURE-001` |
 | Celia's Stupid Romhack 1.1.4 | FireRed/LeafGreen selected | 22/24, 91.51% | Public source available locally | Retain as a FireRed-family regression; defer remaining gaps under `G3-CELIA-001` |
-| Dreamstone Mysteries | Emerald selected | 17/24, 70.81% | Current public source at [dreamstone-mysteries](https://github.com/dsmyst/dreamstone-mysteries); no exact selected-ROM release tag established | Independent compiled controls now prove integrated Natures plus headerless embedded sprites and descriptions; defer remaining gaps under `G3-DREAM-001` |
+| Dreamstone Mysteries | Emerald selected | 20/24, 83.31% | Current public source at [dreamstone-mysteries](https://github.com/dsmyst/dreamstone-mysteries); no exact selected-ROM release tag established | Independent compiled controls now prove integrated Natures, headerless presentation, and embedded ability relationships/names/descriptions/mechanics; defer remaining gaps under `G3-DREAM-001` |
 | Elite Redux 2.65.3b | No family match | 2/24, 8.33% | Public source is older than the selected ROM and has no exact release tag | Defer under `G3-ELITE-001` |
 | GS Chronicles 2.7.6 | FireRed/LeafGreen selected | 20/24, 83.25% | Local repository is an engine source, not an exact complete hack release | Retain as a regression; defer under `G3-GSC-001` |
 | Pokescape 1.0.4 | Emerald selected | 18/24, 74.97% | Public source at [pokescape_rom](https://github.com/Demonheadge/pokescape_rom), without a matching 1.0.4 tag | Defer distinct semantic region-entry join under `G3-POKESCAPE-001` |
@@ -73,13 +73,19 @@ The existing compiled name accessor and six-stat consumer uniquely establish a 2
 
 The fresh eight-ROM matrix improves Dreamstone from 15/24 at 62.48% to 17/24 at 70.81%, materializing 1,522 ROM-native 64×64 sprites and 1,522 descriptions. The other seven characterized controls retain their routing, feature counts, and compatibility scores. All six selected catalogs persisted and reopened through schema 38 with zero parser, persistence, or decoded cross-reference errors. The checkpoint is published as signed prerelease `v1.1.0-rc.58`.
 
+## Checkpoint 3 result
+
+The validated 260-byte species ABI exposes three u16 ability IDs at byte 24. Dreamstone and an independent Crippling control each contain one compiled-referenced 311-row ability table with 28-byte records, 17-byte inline names, description pointer at 20, signed AI rating at 24, seven-bit flags at 25, and a complete Thumb rating consumer. Production resolution requires one unique typed candidate and uses neither ROM identity nor fixed table roots. Corrupting Dreamstone description pointers disables only descriptions while names, species relationships, mechanics, routing, and startup remain available.
+
+The fresh eight-ROM matrix improves Dreamstone from 17/24 at 70.81% to 20/24 at 83.31%, materializing 310 abilities, 310 descriptions, and 310 mechanics records. The other seven controls retain their routing, feature counts, compatibility scores, and materialized counts. All six selected catalogs persisted and reopened through schema 39 with zero parser, persistence, or decoded cross-reference errors.
+
 ## Deferral ledger
 
 | ID | Missing behavior | Safe fallback | Acceptance condition |
 |---|---|---|---|
 | `G3-NATURE-001` | Flavor affinity for the integrated 20-byte `NatureInfo` ABI is not proven | Publish 25 names and stat effects with flavor modifiers unknown | A generic compiled consumer or structurally referenced table proves the ROM-native five-flavor mapping across the exact control and an independent sibling |
 | `G3-CELIA-001` | Remaining partial Local rendering/description coverage and unavailable ability mechanics | Preserve all accepted records and skip only malformed maps/unsupported mechanics | A source-backed generic ABI resolves each missing domain and affected plus FireRed controls remain stable |
-| `G3-DREAM-001` | Egg/machine moves, abilities, balls, and Local maps; Local raster total is 100,409,600 pixels against the 100,000,000 bound | Keep those modules unavailable; preserve accepted catalog, embedded presentation, World map, and unrelated modules | Generic compiled consumers resolve the remaining data, and Local maps fit a bounded structural representation without merely raising the global cap |
+| `G3-DREAM-001` | Egg/machine moves, balls, and Local maps; Local raster total is 100,409,600 pixels against the 100,000,000 bound | Keep those modules unavailable; preserve accepted catalog, embedded presentation/abilities, World map, and unrelated modules | Generic compiled consumers resolve the remaining data, and Local maps fit a bounded structural representation without merely raising the global cap |
 | `G3-ELITE-001` | Family routing and most datasets for 2.65.3b | No family match; no speculative catalog | Establish exact or independently proven compiled lineage and pass generic family anchors plus real-ROM controls |
 | `G3-GSC-001` | Missing learnset/ruleset, egg-move, and type-chart domains in the selected binary | Preserve the 20 accepted capabilities | Resolve each domain from compiled authority; engine-source observations alone are insufficient |
 | `G3-POKESCAPE-001` | World-map semantic region-entry join plus remaining descriptions/move-details/ability domains | Local maps and accepted modules remain available; World map stays unavailable | Resolve a unique generic compiled region-entry consumer and pass sibling Emerald controls without fixed roots |
