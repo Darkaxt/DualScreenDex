@@ -4,7 +4,7 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 
 | Stage | Requirement | Evidence | Classification | Target / acceptance |
 |---|---|---|---|---|
-| Baseline | Reconcile with `fork/master` before every commit | Plan commit `d6b3722` reconciled at master `5c316d8`; implementation gate repeats before every commit | PASS | Re-run and record refs at every commit |
+| Baseline | Reconcile with `fork/master` before every commit | Corpus gate fetched HEAD `8cf81da`, master `2ed446c`, merge base `8cf81da`; rebased without conflict, inspected incoming Gen III/runtime/API changes, and reran strict scene, API, and Android controls | PASS | Re-run and record refs at every commit |
 | Shared solver | Gen III output remains unchanged | Shared normalized builder plus complete `LocalMapSceneBuilderTest` and `Gen3MapSceneResolverTest` pass | PASS | Re-run with every generation adapter change |
 | Gen I scenes | Compiled connections produce bounded scenes | 11-byte decoder, fail-closed integration, synthetic ABI suite, and Red/Blue/Yellow exact controls pass | PASS | Red/Blue/Yellow strict controls pass |
 | Gen II scenes | Compiled connections preserve four palettes | 12-byte decoder, fail-closed integration, synthetic ABI suite, and Gold/Silver/Crystal exact controls pass | PASS | Gold/Silver/Crystal strict controls pass |
@@ -12,7 +12,7 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 | Overworld marker | Structurally resolved frame or compact-dot fallback | Native contracts, sole-appearance API, structural GB/GBC resolver, and six official exact controls pass | PASS | Official controls and fail-closed tests pass |
 | Discovery / Atlas | RC53 hidden-image and fallback contract remains intact | Organic scenes omit undiscovered raster URLs and Atlas underlays; Atlas remains the unavailable-Local fallback | PASS | Web tests pass |
 | Persistence | Existing catalogs rebuild once and round-trip | Parser schema 35, stale-revision rejection, synthetic section coverage, and official Red/Crystal round trips pass | PASS | Parser schema 35 cache tests pass |
-| GB/GBC corpus | No accepted Local raster regresses | Pending | BLOCKER | Deterministic matrix reports zero parser errors/regressions |
+| GB/GBC corpus | No accepted Local raster regresses | 334/334 hashes; 102/102 deterministic selected rows; exact pre-stage raster preservation; 69 current scenes; three source-backed strict controls | PASS | Zero parser errors, raster regressions, and strict-control failures |
 
 ## Baseline characterization
 
@@ -148,6 +148,22 @@ built successfully
 ```
 
 Post-stage comparison against the specification closes blocker Task #149. There are no shared-presentation blockers or deferrals.
+
+## GB/GBC corpus
+
+The complete private-input matrix verified all 334 manifest hashes and parsed all 102 selected Gen I/II rows twice from fresh bytes. All 102 were deterministic with zero parser errors. Comparison by manifest index and ROM hash against pre-stage commit `d6b3722` found zero differences in selected identity, generation/family, Local capability, map count, static/indexed/timed asset counts, raster signature, or error state. The current parser retains 13,685 maps and 13,685 raster assets exactly; all 57 available Local rows now contain scenes, with 69 scenes total.
+
+Three source-backed Shin release controls each retained 226 maps and the same deterministic scene signature. A focused compiled-ROM check verified the Pallet Town (`0x00`) to Route 1 (`0x0c`) displacement `(0, -36)` documented by public source revision `a7a9b1361e55aaa5afed6b5d14b5e7bd44002179`. The strict run reported three verified hashes, three deterministic controls, zero parser errors, three preserved baselines, and zero strict-control failures.
+
+The 45 `LOCAL_MAP NOT_FOUND` rows are unchanged from baseline, produce bounded diagnostics, and retain Atlas plus unrelated capabilities. Task #153 records the exact compatibility gap, prioritizes the 40 rows with potential local public-source oracles, and tracks the five rows awaiting equivalent source evidence. This is a valid deferral because no previously accepted Local raster is missing and Checkpoint A normalizes accepted Local catalogs; corpus-wide Gen I/II Local support is explicitly not claimed. Safe fallback is Atlas. The target is the source-backed GB/GBC Local-map compatibility expansion, accepted only when generic compiled-structure resolution preserves baseline capabilities and passes focused plus corpus controls.
+
+Full public-safe evidence is retained in `docs/reports/2026-08-24-gen1-gen2-map-parity-checkpoint-a.md`. Post-stage comparison closes blocker Task #150 with no Checkpoint A corpus blocker.
+
+## Deferral ledger
+
+| ID | Missing behavior / affected family | Safe fallback | Target | Acceptance |
+|---|---|---|---|---|
+| Task #153 | Local-map authority for 45 pre-existing unavailable rows; source-first Gen I Celebrations/Beyond/Red++/Static Yellow/matching Kaizo and Gen II Anniversary Crystal/Crystal Legacy/Timeless/Gold-Silver 97/Mystic/Orange/Peridot, then five rows awaiting matching source | `LOCAL_MAP NOT_FOUND`; Atlas remains available; parser selection and unrelated capabilities continue | Source-backed GB/GBC Local-map compatibility expansion before corpus-wide Local support is claimed | Each source-matched family resolves generically from bounded compiled structure, preserves baseline capabilities/rasters, emits valid scenes or standalone maps, and passes focused and affected-corpus controls; remaining rows close only with equivalent structural evidence |
 
 ## Classification rules
 
