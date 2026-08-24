@@ -38,6 +38,12 @@ class Gen1LocalMapResolverRealControlTest {
         assertTrue(localMaps.maps.all { !it.displayName.isNullOrBlank() })
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LOCAL_MAP).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
+        assertEquals(setOf(0), catalog.trainerAssets.overworldAssetKeys.keys)
+        val trainerFrame = catalog.trainerAssets.assets.getValue(
+            catalog.trainerAssets.overworldAssetKeys.getValue(0),
+        )
+        assertEquals(16, trainerFrame.width)
+        assertEquals(16, trainerFrame.height)
         val connectionFailures = catalog.capabilities.getValue(RomCapability.LOCAL_MAP).reasons.filter {
             it.startsWith("map 0x") && it.contains("connection")
         }

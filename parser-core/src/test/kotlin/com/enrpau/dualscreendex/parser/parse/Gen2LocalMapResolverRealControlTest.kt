@@ -45,6 +45,11 @@ class Gen2LocalMapResolverRealControlTest {
         assertEquals(control.namedMapCount, localMaps.maps.count { !it.displayName.isNullOrBlank() })
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LOCAL_MAP).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
+        assertEquals(control.trainerGenders, catalog.trainerAssets.overworldAssetKeys.keys)
+        catalog.trainerAssets.overworldAssetKeys.values.forEach { key ->
+            assertEquals(16, catalog.trainerAssets.assets.getValue(key).width)
+            assertEquals(16, catalog.trainerAssets.assets.getValue(key).height)
+        }
         val connectionFailures = catalog.capabilities.getValue(RomCapability.LOCAL_MAP).reasons.filter {
             it.startsWith("map 0x") && it.contains("connection")
         }
@@ -137,6 +142,7 @@ class Gen2LocalMapResolverRealControlTest {
         val mapCount: Int,
         val namedMapCount: Int,
         val timeOfDayWramOffset: Int,
+        val trainerGenders: Set<Int>,
         val maps: List<ExpectedMap>,
     )
 
@@ -194,6 +200,7 @@ class Gen2LocalMapResolverRealControlTest {
                 mapCount = 368,
                 namedMapCount = 364,
                 timeOfDayWramOffset = 0x1568,
+                trainerGenders = setOf(0),
                 maps = goldSilverMaps,
             ),
             Control(
@@ -202,6 +209,7 @@ class Gen2LocalMapResolverRealControlTest {
                 mapCount = 368,
                 namedMapCount = 364,
                 timeOfDayWramOffset = 0x1568,
+                trainerGenders = setOf(0),
                 maps = goldSilverMaps,
             ),
             Control(
@@ -210,6 +218,7 @@ class Gen2LocalMapResolverRealControlTest {
                 mapCount = 388,
                 namedMapCount = 382,
                 timeOfDayWramOffset = 0x1841,
+                trainerGenders = setOf(0, 1),
                 maps = listOf(
                     ExpectedMap(
                         baseAreaId = 0x1804,

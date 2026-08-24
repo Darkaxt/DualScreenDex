@@ -9,7 +9,7 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 | Gen I scenes | Compiled connections produce bounded scenes | 11-byte decoder, fail-closed integration, synthetic ABI suite, and Red/Blue/Yellow exact controls pass | PASS | Red/Blue/Yellow strict controls pass |
 | Gen II scenes | Compiled connections preserve four palettes | 12-byte decoder, fail-closed integration, synthetic ABI suite, and Gold/Silver/Crystal exact controls pass | PASS | Gold/Silver/Crystal strict controls pass |
 | Live player | Existing area and X/Y drive shared scene marker | Pending | BLOCKER | Android and API tests pass |
-| Overworld marker | Structurally resolved frame or compact-dot fallback | Native 16x16 contracts and sole-appearance API pass; GB/GBC structural resolver remains Task #147 | BLOCKER | Official controls and fail-closed tests pass |
+| Overworld marker | Structurally resolved frame or compact-dot fallback | Native contracts, sole-appearance API, structural GB/GBC resolver, and six official exact controls pass | PASS | Official controls and fail-closed tests pass |
 | Discovery / Atlas | RC53 hidden-image and fallback contract remains intact | Pending | BLOCKER | Web tests pass |
 | Persistence | Existing catalogs rebuild once and round-trip | Pending | BLOCKER | Parser schema 35 cache tests pass |
 | GB/GBC corpus | No accepted Local raster regresses | Pending | BLOCKER | Deterministic matrix reports zero parser errors/regressions |
@@ -83,7 +83,30 @@ D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-li
 BUILD SUCCESSFUL
 ```
 
-The existing dual-gender Gen III API behavior remains exact. Post-stage audit classifies the missing GB/GBC structural frame resolver as **BLOCKER Task #147**, with official Red/Blue/Yellow/Gold/Silver/Crystal frame controls as its acceptance condition. This is not a deferral and the Overworld marker row remains open.
+The existing dual-gender Gen III API behavior remains exact.
+
+## GB/GBC overworld-frame adapters
+
+`GbTrainerAssetResolver` resolves Gen I walking graphics from compiled loader/copy contracts, including the shared Red/Blue form and Yellow's banked state-loader form. It requires distinct walking/bike/alternate-state graphics authority, bank-bounded 12-tile sheets, a validated VRAM copy target, and a bounded occupied-pixel frame before publishing the first 16×16 walking frame. Gen II resolution supports both compiled `GetSprite` consumer forms and both object-palette copy forms, validates six-byte rows and 12-tile walking semantics, uses the day block of the structurally resolved four-time-block `MapObjectPals`, and reads only relative rows 0 and Crystal `0x5f`.
+
+Red, Blue, Yellow, Gold, and Silver source-tree builds are byte-identical to their SHA-locked controls. Crystal's row and palette contracts were independently cross-checked against the public source before the compiled control was treated as authority. Exact rendered hashes pass for all six titles: one neutral-DMG frame for Red/Blue/Yellow, one day-palette frame for Gold/Silver, and male plus female day-palette frames for Crystal. Empty or malformed supported ROMs return no trainer assets without throwing.
+
+```text
+D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :parser-core:test --tests '*GbTrainerAssetResolverRealControlTest' --rerun-tasks --no-daemon --console=plain
+BUILD SUCCESSFUL
+```
+
+`CatalogParser` dispatches the GB/GBC resolver under one `runCatching` boundary. The official Local-map controls prove that trainer materialization coexists with all accepted rasters, scenes, Gen II indexed assets, four lighting hashes, and runtime clock metadata:
+
+```text
+D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :parser-core:test --tests '*Gen1LocalMapResolverRealControlTest' --rerun-tasks --no-daemon --console=plain
+BUILD SUCCESSFUL in 3m 48s
+
+D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :parser-core:test --tests '*Gen2LocalMapResolverRealControlTest' --rerun-tasks --no-daemon --console=plain
+BUILD SUCCESSFUL in 7m 43s
+```
+
+Post-stage comparison against the specification closes blocker Task #147. There are no remaining overworld-marker blockers or deferrals.
 
 ## Classification rules
 
