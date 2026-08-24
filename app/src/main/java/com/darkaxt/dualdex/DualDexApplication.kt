@@ -8,6 +8,7 @@ import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.catalog.CatalogCacheDecision
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointStore
+import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
@@ -134,6 +135,7 @@ class DualDexApplication : Application() {
                 Log.i(CACHE_LOG_TAG, message)
             }
         }
+        val transientGameState = UnifiedGameStateDecoder()
         val runtime = ProductionCompanionRuntime(
             catalogRepository = cache,
             initialSettings = settingsRepository.readForRom(lastCatalogSha256),
@@ -156,6 +158,7 @@ class DualDexApplication : Application() {
                     .putString(LAST_CATALOG_NAME, displayName)
                     .apply()
             },
+            transientGameState = transientGameState,
         )
         val candidate = AndroidLoopbackServer(
             runtime,
@@ -172,6 +175,7 @@ class DualDexApplication : Application() {
             setupCandidate = RetroArchSetupCoordinator(
                 this,
                 runtime,
+                transientGameState,
                 SaveKnowledgeCheckpointCoordinator(
                     SaveKnowledgeCheckpointStore(File(filesDir, "knowledge-checkpoints")),
                     runtime::applySaveObservation,

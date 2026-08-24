@@ -58,6 +58,8 @@ import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveByteSelector
 import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
+import com.darkaxt.dualdex.live.ResolvedGameSnapshot
+import com.darkaxt.dualdex.live.TransientGameStateSource
 import com.darkaxt.dualdex.save.SaveObservation
 import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.save.SaveSpeciesContext
@@ -130,6 +132,7 @@ class ProductionCompanionRuntime(
             ?: current.worldMaps.assets[key]?.let { RenderedMapAsset(PngEncoder.encode(it), null) }
     },
     private val mapAssetRenderCache: MapAssetRenderCache = MapAssetRenderCache(),
+    private val transientGameState: TransientGameStateSource? = null,
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
     @Volatile private var settingsRomSha256: String? = null
@@ -153,6 +156,10 @@ class ProductionCompanionRuntime(
             settings = initialSettings,
         ),
     )
+    @Volatile private var resolvedGameState: ResolvedGameSnapshot? = null
+    private val transientGameStateSubscription = transientGameState?.subscribe { snapshot ->
+        resolvedGameState = snapshot
+    }
 
     fun load(name: String, input: InputStream): BootstrapView = load(RomSourceLoader.load(name, input))
 
@@ -912,6 +919,7 @@ class ProductionCompanionRuntime(
     }
 
     override fun close() {
+        transientGameStateSubscription?.close()
         synchronized(this) {
             loadGeneration.incrementAndGet()
             clearCatalogProjectionCaches()

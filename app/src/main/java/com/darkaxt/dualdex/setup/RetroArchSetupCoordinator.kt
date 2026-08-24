@@ -19,6 +19,7 @@ import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.SaveSnapshotStore
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
+import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import com.darkaxt.dualdex.battle.BattleMemoryCoordinator
 import com.darkaxt.dualdex.save.AndroidSaveDocumentResolver
 import com.darkaxt.dualdex.save.DirectSaveDocumentResolver
@@ -50,6 +51,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class RetroArchSetupCoordinator(
     private val context: Context,
     private val runtime: ProductionCompanionRuntime,
+    private val transientGameState: UnifiedGameStateDecoder,
     private val checkpointCoordinator: SaveKnowledgeCheckpointCoordinator,
     private val commandPort: Int = UdpNetworkCommandTransport.DEFAULT_PORT,
 ) : AutoCloseable {
