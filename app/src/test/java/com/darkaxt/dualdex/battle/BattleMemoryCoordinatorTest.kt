@@ -214,10 +214,12 @@ class BattleMemoryCoordinatorTest {
         mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 100)
         iwram[0x1574 + 0x439] = 0x02
         val updates = mutableListOf<BattleTrackingUpdate>()
+        val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = gen3RuntimeLayout(liveTargetOffset = 0xE04)) },
             publisher = updates::add,
+            transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
         )
@@ -226,11 +228,14 @@ class BattleMemoryCoordinatorTest {
         repeat(4) { coordinator.heartbeat() }
         assertTrue(updates.last().active)
         assertEquals(BattleEncounterKind.WILD, updates.last().sample?.encounterKind)
+        assertEquals(13, transient.current?.battle?.value?.sample?.opponents?.single()?.speciesId)
+        assertEquals(BattleEncounterKind.WILD, transient.current?.battle?.value?.encounterKind)
 
         iwram[0x1574 + 0x439] = 0
         repeat(2) { coordinator.heartbeat() }
         assertTrue(updates.last().ended)
         assertTrue(!updates.last().active)
+        assertTrue(transient.current?.battle?.value?.active == false)
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 30019ad 1") })
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 3002378 1") })
         assertTrue(transport.commands.any { it == "READ_CORE_MEMORY 20003a0 4" })
@@ -782,6 +787,9 @@ class BattleMemoryCoordinatorTest {
     fun unifiedSourceReceivesLiveTrainerAndPokedexWithoutSavedTrainer() {
         val ewram = ByteArray(0x40000)
         val iwram = ByteArray(0x8000)
+        fixture(ewram, 0x143C, opponentPp = 35)
+        mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 100)
+        iwram[0x19AD] = 0x02
         val block1Offset = 0x1000
         val block2Offset = 0x6000
         putU32(iwram, 0x36F0, 0x02000000 + block1Offset)
@@ -799,14 +807,15 @@ class BattleMemoryCoordinatorTest {
         val flagBytes = (saveContext.internalSpeciesCount + 7) / 8
         setFlag(ewram, block2Offset + 0x28, 6)
         setFlag(ewram, block2Offset + 0x28 + flagBytes, 6)
-        val layout = gen3RuntimeLayout(saveBlockPointers = true).copy(
+        val layout = gen3RuntimeLayout(saveBlockPointers = true, battleMonsOffset = 0x143C).copy(
             saveBlock1Size = 0x3D88,
             saveBlock2Size = 0xF2C,
         )
         val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val updates = mutableListOf<BattleTrackingUpdate>()
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = layout, saveContext = saveContext) },
-            publisher = {},
+            publisher = updates::add,
             transientGameState = transient,
             transportFactory = { MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram)) },
             autoStart = false,
@@ -819,6 +828,10 @@ class BattleMemoryCoordinatorTest {
         assertEquals(3_000L, transient.current?.trainer?.money?.value)
         assertEquals(setOf(6), transient.current?.pokedex?.seenDexNumbers?.value)
         assertEquals(setOf(6), transient.current?.pokedex?.caughtDexNumbers?.value)
+        assertTrue(updates.last().active)
+        assertTrue(transient.current?.battle?.value?.active == true)
+        assertEquals(13, transient.current?.battle?.value?.sample?.opponents?.single()?.speciesId)
+        assertEquals(BattleEncounterKind.WILD, transient.current?.battle?.value?.encounterKind)
         coordinator.close()
     }
 

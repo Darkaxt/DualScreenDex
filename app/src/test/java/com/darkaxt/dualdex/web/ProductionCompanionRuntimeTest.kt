@@ -297,6 +297,77 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun unifiedBattleIsSoleUiAuthorityAndKeepsRawOpponentMovesPrivate() {
+        val hash = "8".repeat(64)
+        val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val runtime = ProductionCompanionRuntime(transientGameState = source)
+        runtime.loadCatalog(
+            "battle.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(13 to saveSpecies(13)),
+            ),
+        )
+        source.beginSession(
+            com.darkaxt.dualdex.live.TransientGameStateContext(
+                romIdentity = hash,
+                generation = 3,
+                catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+            ),
+        )
+        val opponent = BattleMonSnapshot(
+            battlerIndex = 1,
+            position = 1,
+            speciesId = 13,
+            level = 7,
+            hp = 20,
+            maxHp = 20,
+            ivs = List(6) { 24 },
+            moves = listOf(40, 81, 0, 0),
+            pp = listOf(35, 40, 0, 0),
+            typeIds = listOf(6, 3),
+            abilityId = 19,
+            personality = 200,
+        )
+        val wild = BattleMemorySample(
+            layout = ResolvedBattleLayout(0, 0, 0, 0, 0, 0, 2),
+            battlers = listOf(opponent),
+            opponents = listOf(opponent),
+            selectedMoveId = null,
+            target = BattleTarget(0, TargetMode.AUTOMATIC),
+            capabilities = emptyMap(),
+            encounterKind = BattleEncounterKind.WILD,
+        )
+
+        source.acceptDecodedLive(unifiedBattleSnapshot(hash, 1, true, wild))
+
+        assertEquals(AppScreen.BATTLE, runtime.gateway.bootstrap().screen)
+        assertEquals("RARITY", runtime.gateway.bootstrap().battleTab.name)
+        assertTrue(requireNotNull(runtime.gateway.bootstrap().battle).rarityUsable)
+        assertTrue(runtime.stateView().battle!!.opponents.single().moves.isEmpty())
+
+        runtime.applyBattleTracking(
+            BattleTrackingUpdate(true, wild.copy(encounterKind = BattleEncounterKind.TRAINER)),
+        )
+        assertEquals(
+            com.enrpau.dualscreendex.companion.model.BattleEncounterKind.WILD,
+            runtime.gateway.bootstrap().battle?.encounterKind,
+        )
+
+        runtime.action("BATTLE_TAB", mapOf("tab" to "ENTRY"))
+        source.acceptDecodedLive(
+            unifiedBattleSnapshot(hash, 2, true, wild.copy(opponents = listOf(opponent.copy(hp = 19)))),
+        )
+        assertEquals("ENTRY", runtime.gateway.bootstrap().battleTab.name)
+
+        source.acceptDecodedLive(unifiedBattleSnapshot(hash, 3, false, null))
+        assertNull(runtime.gateway.bootstrap().battle)
+        runtime.close()
+    }
+
+    @Test
     fun organicEffectivenessUnlocksAfterThePlayerConsumesMovePpAgainstTheTarget() {
         val runtime = ProductionCompanionRuntime()
         runtime.loadCatalog("fixture.gba", ParsedCatalog(
@@ -2247,6 +2318,46 @@ class ProductionCompanionRuntimeTest {
         assertNull(runtime.gateway.bootstrap().trainer)
         assertEquals(TrainerIdentity("MAY", 1), runtime.gateway.bootstrap().trainerIdentity)
         runtime.close()
+    }
+
+    private fun unifiedBattleSnapshot(
+        romIdentity: String,
+        sampleId: Long,
+        active: Boolean,
+        sample: BattleMemorySample?,
+    ): com.darkaxt.dualdex.battle.LiveGameSnapshot {
+        val unavailable = com.darkaxt.dualdex.battle.LiveValue.Unavailable(
+            com.darkaxt.dualdex.battle.LiveUnavailableReason(
+                com.darkaxt.dualdex.battle.LiveUnavailableCode.MISSING_REGION,
+                "fixture region omitted",
+            ),
+        )
+        return com.darkaxt.dualdex.battle.LiveGameSnapshot(
+            romIdentity = romIdentity,
+            generation = 3,
+            sampleId = sampleId,
+            trainer = com.darkaxt.dualdex.battle.LiveTrainerState(
+                unavailable,
+                unavailable,
+                unavailable,
+                unavailable,
+                unavailable,
+                unavailable,
+            ),
+            pokedex = com.darkaxt.dualdex.battle.LivePokedexState(unavailable, unavailable),
+            party = unavailable,
+            battle = com.darkaxt.dualdex.battle.LiveValue.Available(
+                com.darkaxt.dualdex.battle.LiveBattleState(
+                    active = active,
+                    sample = sample,
+                    encounterKind = sample?.encounterKind ?: BattleEncounterKind.UNKNOWN,
+                ),
+            ),
+            location = com.darkaxt.dualdex.battle.LiveLocationState(unavailable, unavailable),
+            clock = unavailable,
+            bag = emptyMap(),
+            eventFlags = unavailable,
+        )
     }
 
     private fun trainer(name: String, money: Long) = TrainerSnapshot(

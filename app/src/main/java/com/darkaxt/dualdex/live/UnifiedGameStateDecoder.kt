@@ -7,7 +7,6 @@ import com.darkaxt.dualdex.battle.LiveLocationState
 import com.darkaxt.dualdex.battle.LiveUnavailableCode
 import com.darkaxt.dualdex.battle.LiveUnavailableReason
 import com.darkaxt.dualdex.battle.LiveValue
-import com.darkaxt.dualdex.battle.BattleEncounterKind
 import com.darkaxt.dualdex.battle.Gen3LiveGameState
 import com.darkaxt.dualdex.battle.Gen3LiveMemoryCodecs
 import com.darkaxt.dualdex.battle.Gen3LivePointers
@@ -83,34 +82,38 @@ class UnifiedGameStateDecoder : TransientGameStateSource {
     fun acceptGen3LiveSample(
         sampleId: Long,
         regions: Map<String, ByteArray>,
-        battleActive: Boolean?,
+        battle: LiveBattleState,
         targetBattler: Int?,
-        encounterKind: BattleEncounterKind,
         areaBaseId: Int?,
         mapPosition: RuntimeMapPosition?,
     ): ResolvedGameSnapshot? {
         val active = context ?: return published
         if (active.generation != 3) return published
-        val layout = active.gen3RuntimeMemoryLayout ?: return published
-        val parseContext = active.saveParseContext ?: return published
-        val legacy = Gen3LiveGameState.decode(
-            romIdentity = active.romIdentity,
-            regions = regions,
-            layout = layout,
-            saveContext = parseContext,
-            savedTrainer = null,
-            battleActive = battleActive,
-            targetBattler = targetBattler,
-            encounterKind = encounterKind,
-        )
-        val party = legacy.party.toLiveValue(emptyList())
-        val player = Gen3LiveMemoryCodecs.decodePlayer(
-            saveBlock1 = regions[Gen3LiveGameState.SAVE_BLOCK1_ID],
-            saveBlock2 = regions[Gen3LiveGameState.SAVE_BLOCK2_ID],
-            extendedSave = regions[Gen3LiveGameState.EXTENDED_SAVE_ID],
-            context = parseContext,
-            liveParty = party,
-        )
+        val layout = active.gen3RuntimeMemoryLayout
+        val parseContext = active.saveParseContext
+        val legacy = layout?.let { memoryLayout ->
+            Gen3LiveGameState.decode(
+                romIdentity = active.romIdentity,
+                regions = regions,
+                layout = memoryLayout,
+                saveContext = parseContext,
+                savedTrainer = null,
+                battleActive = battle.active,
+                targetBattler = targetBattler,
+                encounterKind = battle.encounterKind,
+            )
+        }
+        val party = legacy?.party?.toLiveValue(emptyList())
+            ?: unavailable("live Party layout was unavailable")
+        val player = parseContext?.let { saveContext ->
+            Gen3LiveMemoryCodecs.decodePlayer(
+                saveBlock1 = regions[Gen3LiveGameState.SAVE_BLOCK1_ID],
+                saveBlock2 = regions[Gen3LiveGameState.SAVE_BLOCK2_ID],
+                extendedSave = regions[Gen3LiveGameState.EXTENDED_SAVE_ID],
+                context = saveContext,
+                liveParty = party,
+            )
+        } ?: unavailablePlayer()
         return acceptDecodedLive(
             LiveGameSnapshot(
                 romIdentity = active.romIdentity,
@@ -119,20 +122,22 @@ class UnifiedGameStateDecoder : TransientGameStateSource {
                 trainer = player.trainer,
                 pokedex = player.pokedex,
                 party = party,
-                battle = battleActive?.let { activeBattle ->
-                    LiveValue.Available(LiveBattleState(activeBattle, null, encounterKind))
-                } ?: unavailable("battle lifecycle bytes were unavailable"),
+                battle = LiveValue.Available(battle),
                 location = LiveLocationState(
                     areaBaseId = areaBaseId?.let { LiveValue.Available(it) }
-                        ?: legacy.location.toLiveValue(),
+                        ?: legacy?.location?.toLiveValue()
+                        ?: unavailable("live area layout was unavailable"),
                     position = mapPosition?.let { LiveValue.Available(it) }
                         ?: unavailable("live map position was unavailable"),
                 ),
-                clock = legacy.clock.value?.let { clock ->
+                clock = legacy?.clock?.value?.let { clock ->
                     LiveValue.Available(LiveClockState(clock.hours, clock.minutes, clock.seconds))
-                } ?: unavailable(legacy.clock.reasonText("live game clock was unavailable")),
-                bag = legacy.bag.mapValues { (_, section) -> section.toLiveValue() },
-                eventFlags = legacy.eventFlags.toLiveValue(),
+                } ?: unavailable(legacy?.clock?.reasonText("live game clock was unavailable")
+                    ?: "live game clock layout was unavailable"),
+                bag = legacy?.bag?.mapValues { (_, section) -> section.toLiveValue() }
+                    ?: BagPocket.entries.associateWith { unavailable("live Bag layout was unavailable") },
+                eventFlags = legacy?.eventFlags?.toLiveValue()
+                    ?: unavailable("live event-flag layout was unavailable"),
             ),
         )
     }
@@ -241,6 +246,21 @@ class UnifiedGameStateDecoder : TransientGameStateSource {
 
     private fun <T> unavailable(detail: String): LiveValue<T> = LiveValue.Unavailable(
         LiveUnavailableReason(LiveUnavailableCode.MISSING_REGION, detail),
+    )
+
+    private fun unavailablePlayer() = com.darkaxt.dualdex.battle.Gen3LivePlayerState(
+        trainer = com.darkaxt.dualdex.battle.LiveTrainerState(
+            unavailable("live Trainer layout was unavailable"),
+            unavailable("live Trainer ID layout was unavailable"),
+            unavailable("live money layout was unavailable"),
+            unavailable("live play-time layout was unavailable"),
+            unavailable("live badge layout was unavailable"),
+            unavailable("live Trainer stars layout was unavailable"),
+        ),
+        pokedex = com.darkaxt.dualdex.battle.LivePokedexState(
+            unavailable("live Pokédex layout was unavailable"),
+            unavailable("live Pokédex layout was unavailable"),
+        ),
     )
 
     private fun ResolvedGameSnapshot?.semanticallyEquals(other: ResolvedGameSnapshot): Boolean {

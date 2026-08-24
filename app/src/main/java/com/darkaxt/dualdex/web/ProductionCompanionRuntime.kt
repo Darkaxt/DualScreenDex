@@ -8,6 +8,7 @@ import com.darkaxt.dualdex.catalog.catalogWriteProgress
 import com.darkaxt.dualdex.knowledge.KnowledgeLedgerSanitizer
 import com.darkaxt.dualdex.knowledge.discoverableAreaBaseIds
 import com.darkaxt.dualdex.battle.BattleCatalogContext
+import com.darkaxt.dualdex.battle.BattleMemorySample
 import com.darkaxt.dualdex.battle.liveAreaMemoryLayout
 import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.darkaxt.dualdex.battle.BattleMove
@@ -159,12 +160,17 @@ class ProductionCompanionRuntime(
     )
     @Volatile private var resolvedGameState: ResolvedGameSnapshot? = null
     private val transientGameStateSubscription = transientGameState?.subscribe { snapshot ->
-        applyResolvedPlayerState(snapshot)
+        applyResolvedGameState(snapshot)
     }
 
     @Synchronized
-    private fun applyResolvedPlayerState(snapshot: ResolvedGameSnapshot?) {
+    private fun applyResolvedGameState(snapshot: ResolvedGameSnapshot?) {
         resolvedGameState = snapshot
+        applyResolvedPlayerState(snapshot)
+        applyResolvedBattleState(snapshot)
+    }
+
+    private fun applyResolvedPlayerState(snapshot: ResolvedGameSnapshot?) {
         val matching = snapshot?.takeIf { state ->
             catalog?.romSha256.equals(state.romIdentity, ignoreCase = true)
         }
@@ -195,6 +201,19 @@ class ProductionCompanionRuntime(
                     caughtDexNumbers = matching?.pokedex?.caughtDexNumbers?.value,
                 ),
             )
+        }
+    }
+
+    private fun applyResolvedBattleState(snapshot: ResolvedGameSnapshot?) {
+        val battle = snapshot
+            ?.takeIf { state -> catalog?.romSha256.equals(state.romIdentity, ignoreCase = true) }
+            ?.battle
+            ?.value
+        val sample = battle?.sample
+        if (battle?.active == true && sample != null) {
+            publishBattleSample(sample)
+        } else if (gateway.bootstrap().battle != null) {
+            clearLiveBattle()
         }
     }
 
@@ -562,6 +581,8 @@ class ProductionCompanionRuntime(
             gateway.dispatch(CompanionAction.ReplaceLedger(mergedLedger))
         }
 
+        if (transientGameState != null) return
+
         if (update.ended) {
             clearLiveBattle()
             return
@@ -569,6 +590,10 @@ class ProductionCompanionRuntime(
         val sample = update.sample ?: return
         if (!update.active) return
 
+        publishBattleSample(sample)
+    }
+
+    private fun publishBattleSample(sample: BattleMemorySample) {
         val latestLedger = gateway.bootstrap().ledger
         val opponents = sample.opponents.map { opponent ->
             OpponentState(
@@ -616,7 +641,7 @@ class ProductionCompanionRuntime(
                     currentAreaBaseId = gateway.bootstrap().liveAreaBaseId,
                     encounterAreas = current.encounterAreas,
                 )
-                assessment.innateTier != null && assessment.relativeTier != null && assessment.stars != null
+                assessment.innateTier != null && assessment.stars != null
             } ?: false,
         )
         gateway.dispatch(

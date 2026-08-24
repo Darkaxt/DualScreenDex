@@ -511,6 +511,21 @@ git add battle-memory/src/main/kotlin/com/darkaxt/dualdex/battle/Gen3RuntimeMemo
 git commit -m "refactor: publish battle through unified state"
 ```
 
+### Implementation audit through Stage 3 — 2026-08-24
+
+| Contract | Evidence | Result |
+|---|---|---|
+| Battle lifecycle and full qualified sample share the unified logical sample | coordinator fixtures cover first wild battle, battle-only layouts, live player regions, and end publication | PASS |
+| Compatibility callback carries observations but cannot create a second Battle UI authority | conflicting trainer callback leaves the unified wild battle unchanged | PASS |
+| Double-battle command owner and automatic target are retained | existing `BattleObservationTrackerTest` ownership/PP regressions and coordinator target tests | PASS |
+| Organic opponent moves remain private until execution or PP evidence | raw move slots in the unified sample produce an empty public move list; tracker evidence tests remain green | PASS |
+| Wild IV rarity remains usable without area-relative resolution | unified battle API fixture has valid IVs, no encounter areas, and opens a usable Rarity tab | PASS |
+| Explicit Battle tab selection survives later unified samples | unified source fixture preserves the manually selected Entry tab | PASS |
+| Battle-only Gen III layouts remain supported without SaveRAM/player ABI | battle lifecycle fixture publishes through the singleton with Trainer/Pokédex unavailable | PASS |
+| Gen I/II map work remains isolated | Stage 3 changed no map parser, map renderer, Atlas, Gen I, or Gen II file | PASS |
+
+Deferred by the staged specification: Party/progression (Stage 4), Atlas/clock/readiness (Stage 5), passive recovery completion (Stage 6), and Gen I/II callback removal (Stage 7). Stage 3 has no blocker for Stage 4.
+
 ## Stage 4 — Party, ownership, and progression
 
 ### Task 7: Make Party and Team knowledge consume one value

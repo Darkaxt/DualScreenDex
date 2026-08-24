@@ -602,6 +602,9 @@ class BattleMemoryCoordinator(
             tracker.validatedNoBattle(context.romIdentity)
         }
         if (update.active || update.ended) publisher(update)
+        if (context.generation == 3) {
+            publishUnifiedLiveGame(regions, gen3Runtime, update)
+        }
     }
 
     private fun qualifyGen3BattleSample(
@@ -933,7 +936,6 @@ class BattleMemoryCoordinator(
             lastPublishedLiveGame = snapshot
             liveGamePublisher(snapshot)
         }
-        publishUnifiedLiveGame(regions, context, runtime)
         snapshot.location.value.let(locationPublisher)
         if (snapshot.party.state == Gen3LiveSectionState.AVAILABLE) {
             val party = requireNotNull(snapshot.party.value)
@@ -946,16 +948,22 @@ class BattleMemoryCoordinator(
 
     private fun publishUnifiedLiveGame(
         regions: Map<String, ByteArray>,
-        context: BattleCatalogContext,
         runtime: Gen3RuntimeSnapshot?,
+        update: BattleTrackingUpdate,
     ) {
         val target = transientGameState ?: return
+        val sample = update.sample
         target.acceptGen3LiveSample(
             sampleId = ++unifiedSampleId,
             regions = regions,
-            battleActive = runtime?.battleActive,
+            battle = LiveBattleState(
+                active = update.active,
+                sample = sample,
+                encounterKind = sample?.encounterKind
+                    ?: runtime?.encounterKind
+                    ?: BattleEncounterKind.UNKNOWN,
+            ),
             targetBattler = runtime?.targetBattler,
-            encounterKind = runtime?.encounterKind ?: BattleEncounterKind.UNKNOWN,
             areaBaseId = runtime?.areaBaseId,
             mapPosition = runtime?.mapPosition,
         )
