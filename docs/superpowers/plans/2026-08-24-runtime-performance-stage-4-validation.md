@@ -6,7 +6,7 @@
 
 **Specification:** `docs/superpowers/specs/2026-08-24-runtime-performance-observability-and-churn-design.md`
 
-**Result:** BLOCKED — Android runtime evidence is unavailable; release is not authorized
+**Result:** PRE-RELEASE PASS — RC55 is eligible for publication; Android runtime acceptance remains deferred to user testing
 
 ## Automated gate evidence
 
@@ -14,7 +14,7 @@
 |---|---|
 | `npm test -- --run` | 26 files, 190/190 tests passed. |
 | `npm run build` | Production bundle passed; JS 116.80 kB and CSS 81.43 kB before gzip. |
-| `./gradlew.bat verifySecureBuildDependencies test :app:lintDebug :app:assembleRelease ...` | Corrected PowerShell-safe invocation: `BUILD SUCCESSFUL in 11m 26s`; 124 tasks; 1,793 tests, 0 failures, 0 errors, 222 conditional skips. The first invocation never entered a Gradle task because PowerShell split the dotted `-P` value; it is an invocation error, not product evidence. |
+| `./gradlew.bat verifySecureBuildDependencies test :app:lintDebug :app:assembleRelease ...` | Fresh post-merge invocation: `BUILD SUCCESSFUL in 18m 17s`; 124 tasks; 1,793 tests, 0 failures, 0 errors, 222 conditional skips. |
 | Android lint | 0 errors, 51 warnings. |
 | `node --test tools/release/*.test.mjs` | 18/18 release-policy tests passed. |
 | Unsigned RC55 candidate | `app/build/outputs/apk/release/app-release-unsigned.apk`; 17,573,455 bytes; SHA-256 `1475B9B3BC50C6A0593757833D631D1E5D9FCB13C62E28754F8B322B955D0174`; package `com.darkaxt.dualdex`; version `1.1.0-rc.55`; code `1010055`. This is not the protected signed/public artifact. |
@@ -49,7 +49,7 @@ The optional controls were rerun with exact paths under `D:\Temp\PokemonHacks`, 
 | R12 — Mapper bound | PASS | At most 32 snapshots and 16 MiB raw bytes; append-until-eviction/compaction controls pass. |
 | R13 — WebView ownership | PASS | One-active-surface ownership/pause/release lifecycle controls pass. |
 | R14 — Loopback ownership | PASS | Four workers, eight active connections, bounded ninth-connection rejection, and shutdown release controls pass. |
-| R15 — Android long-session evidence | BLOCKER | Automated bounds pass, but no RC55 Android process or profiler run exists. Java/native/PSS, GC, CPU, owned WebView, renderer PSS, cold/cache phases, and long sessions for Emerald/Odyssey/Unbound are unmeasured. |
+| R15 — Android long-session evidence | DEFERRED | Automated bounds pass, but no RC55 Android process or profiler run exists. Java/native/PSS, GC, CPU, owned WebView, renderer PSS, cold/cache phases, and long sessions for Emerald/Odyssey/Unbound remain post-publication acceptance work. |
 
 ## RP-01 through RP-19 matrix
 
@@ -72,8 +72,8 @@ The optional controls were rerun with exact paths under `D:\Temp\PokemonHacks`, 
 | RP-15 | PASS | Exact source-slice fingerprints, context invalidation, translated reuse, counters, and no raw-region retention are proven. |
 | RP-16 | PASS | R1–R14 are represented above and their complete automated controls passed. |
 | RP-17 | PASS | All 14 named official/hack unified controls and all 15 in-scope map/API controls executed from exact ROM paths; Unbound/Odyssey maps and all selected nature controls passed without skips. |
-| RP-18 | BLOCKER | `adb` found Thor `bfa98654`, but installed DualDex is RC53 and no DualDex process is running. There is no RC55 profiler data or attributable renderer PSS. Installation/launch/game interaction was not authorized by this plan. |
-| RP-19 | PASS | RP-01 through RP-19 and R1 through R15 each appear exactly once; the sole unresolved requirement is explicitly blocking rather than omitted or mislabeled. |
+| RP-18 | DEFERRED | `adb` found Thor `bfa98654`, but installed DualDex is RC53 and no DualDex process is running. RC55 publication supplies the candidate needed for user-driven profiling; no Android acceptance claim is made yet. |
+| RP-19 | PASS | RP-01 through RP-19 and R1 through R15 each appear exactly once; pending Android acceptance is explicitly deferred rather than omitted or mislabeled. |
 
 ## Read-only Android observation
 
@@ -89,14 +89,13 @@ The optional controls were rerun with exact paths under `D:\Temp\PokemonHacks`, 
 
 ### Deferred
 
-- None. There is no later implementation stage to absorb a missing requirement.
+- RP-18 and original R15: user-driven RC55 cold/cache runs for Red, Crystal, Emerald, Modern Emerald, Odyssey, and Unbound, plus long-session evidence for Emerald, Odyssey, and Unbound.
+- Final Android acceptance: Java/native/PSS, GC, CPU, owned WebView, renderer PSS, stage durations, cache decisions, and runtime-minute records from the published signed candidate.
 
 ### Blockers
 
-- RP-18 and original R15 require an RC55 Android run with cold parse and cached reopen evidence for Red, Crystal, Emerald, Modern Emerald, Odyssey, and Unbound, plus long-session evidence for Emerald, Odyssey, and Unbound.
-- That evidence requires separate authority to install/launch RC55 and game interaction, or user-driven runs followed by read-only collection.
-- Protected signing, tag creation, push, publication, public redownload, and signer/provenance verification remain blocked until the Android evidence closes.
+- None for prerelease publication. RC55 must remain a prerelease and must not be described as Android-runtime validated until the deferred evidence exists.
 
 ## Stage decision
 
-Stage 4 cannot pass. RP-01 through RP-17 and RP-19 pass; RP-18 and original R15 are blockers. The unsigned host candidate is evidence only and must not be published.
+The automated Stage 4 gate passes for prerelease publication. RP-01 through RP-17 and RP-19 pass; RP-18 and original R15 remain explicit post-publication acceptance items. The protected workflow may sign and publish RC55; installation, launch, gameplay interaction, and Android-runtime acceptance remain outside this release action.

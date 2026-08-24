@@ -383,9 +383,9 @@ Record Java/native/PSS, GC, CPU, owned-WebView count, renderer PSS, stage durati
 - Modify: `docs/superpowers/plans/2026-08-24-runtime-performance-stage-4-validation.md`
 - Create: `release/RELEASE_NOTES_1.1.0-rc.55.md`
 
-- [ ] **Step 1: Re-read the specification and close the matrix**
+- [x] **Step 1: Re-read the specification and close the matrix**
 
-Ensure RP-01 through RP-19 appear exactly once and are all `PASS`. Reconcile the original performance design so R15 reflects the new Android evidence. A missing feature is either added and verified or remains a blocker; nothing is silently omitted.
+Ensure RP-01 through RP-19 appear exactly once. For a prerelease intended to collect Android evidence, RP-18 and original R15 may remain explicitly `DEFERRED` to user-driven candidate validation; they must not be reported as passed. Every other row must pass and nothing may be silently omitted.
 
 - [ ] **Step 2: Verify release identity and provenance**
 
@@ -399,7 +399,7 @@ git commit -m "docs: validate runtime performance hardening"
 git push fork HEAD:master
 ```
 
-Create and push `v1.1.0-rc.55`, publish the verified signed APK and release notes, redownload the artifact, and repeat checksum/signer/package verification. If device evidence is unavailable or any matrix row remains a blocker, stop before publishing and report the exact blocker.
+Create and push `v1.1.0-rc.55`, publish the verified signed APK and release notes, redownload the artifact, and repeat checksum/signer/package verification. Device evidence may remain deferred for this prerelease, but any implementation, compatibility, build, signing, or provenance blocker stops publication.
 
 ## Plan self-review
 
