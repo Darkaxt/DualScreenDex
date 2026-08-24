@@ -11,7 +11,7 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 | Live player | Existing area and X/Y drive shared scene marker | Pending | BLOCKER | Android and API tests pass |
 | Overworld marker | Structurally resolved frame or compact-dot fallback | Native contracts, sole-appearance API, structural GB/GBC resolver, and six official exact controls pass | PASS | Official controls and fail-closed tests pass |
 | Discovery / Atlas | RC53 hidden-image and fallback contract remains intact | Pending | BLOCKER | Web tests pass |
-| Persistence | Existing catalogs rebuild once and round-trip | Pending | BLOCKER | Parser schema 35 cache tests pass |
+| Persistence | Existing catalogs rebuild once and round-trip | Parser schema 35, stale-revision rejection, synthetic section coverage, and official Red/Crystal round trips pass | PASS | Parser schema 35 cache tests pass |
 | GB/GBC corpus | No accepted Local raster regresses | Pending | BLOCKER | Deterministic matrix reports zero parser errors/regressions |
 
 ## Baseline characterization
@@ -107,6 +107,25 @@ BUILD SUCCESSFUL in 7m 43s
 ```
 
 Post-stage comparison against the specification closes blocker Task #147. There are no remaining overworld-marker blockers or deferrals.
+
+## Catalog persistence
+
+Parser schema 35 invalidates revision 34 catalogs exactly once without changing the SQLite schema or section formats. Synthetic section coverage retains static PNG maps, indexed four-palette maps, timed maps, scenes, POIs, runtime lighting metadata, and trainer assets; the stale-revision control preserves the independent save snapshot while clearing incompatible catalog metadata and sections.
+
+Official Red and Crystal cache controls additionally prove that generated Gen I/II scenes and native walking frames survive a complete SQLite round trip. Crystal retains indexed raster bytes, all morning/day/night/dark palettes, the `0x1841` time-of-day WRAM offset, and both trainer appearances.
+
+```text
+D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :catalog-store:test --tests '*CatalogStoreTest' --no-daemon --console=plain
+BUILD SUCCESSFUL in 55s
+
+DUALDEX_POKERED_ROM=<official-control> D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :catalog-store:test --tests '*official Gen I local map assets survive a complete cache round trip*' --rerun-tasks --no-daemon --console=plain
+BUILD SUCCESSFUL in 1m 58s
+
+DUALDEX_POKECRYSTAL_ROM=<official-control> D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :catalog-store:test --tests '*official Gen II local map assets survive a complete cache round trip*' --rerun-tasks --no-daemon --console=plain
+BUILD SUCCESSFUL in 3m
+```
+
+Post-stage comparison against the specification closes blocker Task #148. There are no persistence blockers or deferrals.
 
 ## Classification rules
 
