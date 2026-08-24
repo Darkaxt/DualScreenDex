@@ -3,6 +3,9 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiService
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterRenderer
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -55,7 +58,49 @@ class Gen2LocalMapResolverRealControlTest {
         }
         assertTrue(connectionFailures.joinToString("\n"), connectionFailures.isEmpty())
         assertScenes(localMaps)
+        assertPois(localMaps)
         control.maps.forEach { expected -> assertMap(localMaps, expected) }
+    }
+
+    private fun assertPois(catalog: LocalMapCatalog) {
+        val newBarkTown = catalog.pois.filter { it.baseAreaId == 0x1804 }
+        assertEquals(5, newBarkTown.size)
+        assertEquals(
+            setOf(0x1805, 0x1806, 0x1808, 0x1809),
+            newBarkTown.mapNotNullTo(mutableSetOf()) { it.destinationBaseAreaId },
+        )
+        assertTrue(newBarkTown.all { it.kind == LocalMapPoiKind.PLACE })
+        assertTrue(newBarkTown.all { it.organicVisibility == LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY })
+        assertEquals("NEW BARK TOWN", newBarkTown.single { it.tileX == 8 && it.tileY == 8 }.displayName)
+
+        val route29Potion = catalog.pois.single {
+            it.baseAreaId == 0x1803 && it.tileX == 48 && it.tileY == 2
+        }
+        assertEquals(LocalMapPoiKind.VISIBLE_ITEM, route29Potion.kind)
+        assertEquals(0x12, route29Potion.item?.itemId)
+        assertEquals(1709, route29Potion.item?.collectionFlagId)
+
+        val azaleaHiddenFullHeal = catalog.pois.single {
+            it.baseAreaId == 0x0807 && it.tileX == 31 && it.tileY == 6
+        }
+        assertEquals(LocalMapPoiKind.HIDDEN_ITEM, azaleaHiddenFullHeal.kind)
+        assertEquals(LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE, azaleaHiddenFullHeal.organicVisibility)
+        assertEquals(0x26, azaleaHiddenFullHeal.item?.itemId)
+        assertEquals(177, azaleaHiddenFullHeal.item?.collectionFlagId)
+
+        val azaleaCenter = catalog.pois.single {
+            it.baseAreaId == 0x0807 && it.tileX == 16 && it.tileY == 9
+        }
+        assertEquals(LocalMapPoiKind.SERVICE, azaleaCenter.kind)
+        assertEquals(LocalMapPoiService.POKEMON_CENTER, azaleaCenter.service)
+        assertEquals(0x0801, azaleaCenter.destinationBaseAreaId)
+
+        val azaleaMart = catalog.pois.single {
+            it.baseAreaId == 0x0807 && it.tileX == 22 && it.tileY == 5
+        }
+        assertEquals(LocalMapPoiKind.SERVICE, azaleaMart.kind)
+        assertEquals(LocalMapPoiService.MART, azaleaMart.service)
+        assertEquals(0x0803, azaleaMart.destinationBaseAreaId)
     }
 
     private fun assertScenes(catalog: LocalMapCatalog) {

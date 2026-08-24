@@ -99,19 +99,41 @@ internal object Gen1LocalMapResolver {
             )
         }
 
+        val poiResolution = runCatching {
+            Gen1LocalMapPoiResolver.resolve(
+                rom = session.rom,
+                sources = authority.descriptors.map(MapDescriptor::toPoiSource),
+                maps = maps,
+            ).also { resolution ->
+                LocalMapCatalog(
+                    maps = maps,
+                    assets = assets,
+                    scenes = sceneResolution.scenes,
+                    pois = resolution.pois,
+                ).validate()
+            }
+        }.getOrElse { failure ->
+            Gen1LocalMapPoiResolver.Resolution(
+                pois = emptyList(),
+                skippedReasons = listOf("Gen I POIs: ${failure.message}"),
+            )
+        }
+
         return LocalMapResolution.Resolved(
             catalog = LocalMapCatalog(
                 maps = maps,
                 assets = assets,
                 scenes = sceneResolution.scenes,
+                pois = poiResolution.pois,
             ).validate(),
             reasons = listOf(
                 "resolved paired compiled Gen I map-bank, map-pointer, and tileset consumers",
                 "rendered ${maps.size} bounded ${format.label} maps from 32x32 ROM blocks and 2bpp tiles",
                 "built ${sceneResolution.scenes.size} bounded Local-map scenes from compiled cardinal connections",
+                "resolved ${poiResolution.pois.size} bounded Local-map POIs from compiled object and hidden-event structures",
                 "resolved ${mapNames.size} map names through the compiled Town Map lookup",
                 "bound all ${requiredMaps.size} encounter-authoritative map IDs",
-            ) + skippedReasons + sceneResolution.skippedReasons,
+            ) + skippedReasons + sceneResolution.skippedReasons + poiResolution.skippedReasons,
             skippedMaps = skippedReasons.size,
         )
     }
@@ -487,6 +509,12 @@ internal object Gen1LocalMapResolver {
             header = header,
             blockBank = blockBank,
             blocks = blocks,
+        )
+
+        fun toPoiSource(): Gen1LocalMapPoiResolver.Source = Gen1LocalMapPoiResolver.Source(
+            baseAreaId = mapId,
+            headerBank = headerBank,
+            header = header,
         )
 
         fun toLocalMap(displayName: String?): LocalMap = LocalMap(

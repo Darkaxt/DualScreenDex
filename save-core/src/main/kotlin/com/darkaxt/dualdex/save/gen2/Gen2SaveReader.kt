@@ -62,6 +62,11 @@ object Gen2SaveReader {
                 storedIndividuals = selected.boxes.records,
                 capabilities = capabilities,
                 schemaId = selected.layout.schemaId,
+                eventFlagIds = decodeZeroBasedFlags(
+                    selected.copy.gameData,
+                    selected.layout.eventFlagsRelative,
+                    EVENT_FLAGS_BYTES,
+                ),
             ),
         )
     }
@@ -241,6 +246,15 @@ object Gen2SaveReader {
         }
     }
 
+    private fun decodeZeroBasedFlags(bytes: ByteArray, offset: Int, byteCount: Int): Set<Int> = buildSet {
+        repeat(byteCount) { byteIndex ->
+            val value = bytes[offset + byteIndex].u8()
+            repeat(Byte.SIZE_BITS) { bitIndex ->
+                if (value and (1 shl bitIndex) != 0) add(byteIndex * Byte.SIZE_BITS + bitIndex)
+            }
+        }
+    }
+
     private fun boxOffset(index: Int): Int =
         (if (index < BOXES_PER_BANK) FIRST_BOX_BANK else SECOND_BOX_BANK) + (index % BOXES_PER_BANK) * BOX_SIZE
 
@@ -326,6 +340,7 @@ object Gen2SaveReader {
         val mapGroupRelative: Int,
         val mapNumberRelative: Int,
         val partyRelative: Int,
+        val eventFlagsRelative: Int,
         val caughtRelative: Int,
         val seenRelative: Int,
         val priority: Int,
@@ -338,6 +353,7 @@ object Gen2SaveReader {
     private const val CHECK_VALUE_2 = 127
     private const val PRIMARY_CHECK_1 = 0x2008
     private const val DEX_BYTES = 32
+    private const val EVENT_FLAGS_BYTES = 0x100
     private const val PLAYER_ID_SIZE = 2
     private const val PARTY_CAPACITY = 6
     private const val BOX_CAPACITY = 20
@@ -386,6 +402,7 @@ object Gen2SaveReader {
             mapGroupRelative = 0x85F,
             mapNumberRelative = 0x860,
             partyRelative = 0x881,
+            eventFlagsRelative = 0x616,
             caughtRelative = 0xA43,
             seenRelative = 0xA63,
             priority = 0,
@@ -400,6 +417,7 @@ object Gen2SaveReader {
             mapGroupRelative = 0x83A,
             mapNumberRelative = 0x83B,
             partyRelative = 0x85C,
+            eventFlagsRelative = 0x5F7,
             caughtRelative = 0xA1E,
             seenRelative = 0xA3E,
             priority = 1,

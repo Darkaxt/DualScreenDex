@@ -26,6 +26,7 @@ class Gen2SaveReaderTest {
         assertEquals(setOf(25), snapshot.caughtDexNumbers)
         assertEquals(24, snapshot.currentArea?.mapGroup)
         assertEquals(5, snapshot.currentArea?.mapNumber)
+        assertEquals(setOf(177), snapshot.eventFlagIds)
         assertEquals(listOf(11, 15, 10, 5, 1), snapshot.party.first().dvs)
         assertTrue(snapshot.party[1].isEgg)
         assertEquals(172, snapshot.party[1].speciesId)
@@ -82,6 +83,7 @@ class Gen2SaveReaderTest {
         assertEquals("gen2-gold-silver-v1", snapshot.schemaId)
         assertEquals(16, snapshot.currentArea?.mapGroup)
         assertEquals(3, snapshot.currentArea?.mapNumber)
+        assertEquals(setOf(1709), snapshot.eventFlagIds)
         assertEquals(155, snapshot.party.single().speciesId)
     }
 
@@ -178,6 +180,7 @@ class Gen2SaveReaderTest {
         setFlag(save, CRYSTAL_CAUGHT, 25)
         setFlag(save, CRYSTAL_SEEN, 25)
         setFlag(save, CRYSTAL_SEEN, 172)
+        setZeroBasedFlag(save, CRYSTAL_EVENT_FLAGS, 177)
         writeBox(save, BOX_1_OFFSET, 6, 36)
         save.putU16le(CRYSTAL_CHECKSUM, Gen2Checksums.byteSum16(save, CRYSTAL_GAME_START, CRYSTAL_GAME_END))
     }
@@ -192,6 +195,7 @@ class Gen2SaveReaderTest {
         writeParty(save, GOLD_PARTY, listOf(155 to false))
         setFlag(save, GOLD_CAUGHT, 155)
         setFlag(save, GOLD_SEEN, 155)
+        setZeroBasedFlag(save, GOLD_EVENT_FLAGS, 1709)
         save.putU16le(GOLD_CHECKSUM, Gen2Checksums.byteSum16(save, GOLD_GAME_START, GOLD_GAME_END))
     }
 
@@ -223,6 +227,10 @@ class Gen2SaveReaderTest {
         bytes[offset + index / 8] = (bytes[offset + index / 8].toInt() or (1 shl (index % 8))).toByte()
     }
 
+    private fun setZeroBasedFlag(bytes: ByteArray, offset: Int, flagId: Int) {
+        bytes[offset + flagId / 8] = (bytes[offset + flagId / 8].toInt() or (1 shl (flagId % 8))).toByte()
+    }
+
     private fun ByteArray.putU16le(offset: Int, value: Int) {
         this[offset] = value.toByte()
         this[offset + 1] = (value ushr 8).toByte()
@@ -242,6 +250,7 @@ class Gen2SaveReaderTest {
         const val CRYSTAL_CHECK_2 = 0x2D0F
         const val CRYSTAL_MAP_GROUP = 0x2843
         const val CRYSTAL_MAP_NUMBER = 0x2844
+        const val CRYSTAL_EVENT_FLAGS = 0x2600
         const val CRYSTAL_PARTY = 0x2865
         const val CRYSTAL_CAUGHT = 0x2A27
         const val CRYSTAL_SEEN = 0x2A47
@@ -258,6 +267,7 @@ class Gen2SaveReaderTest {
         const val GOLD_CHECK_2 = 0x2D6B
         const val GOLD_MAP_GROUP = 0x2868
         const val GOLD_MAP_NUMBER = 0x2869
+        const val GOLD_EVENT_FLAGS = 0x261F
         const val GOLD_PARTY = 0x288A
         const val GOLD_CAUGHT = 0x2A4C
         const val GOLD_SEEN = 0x2A6C

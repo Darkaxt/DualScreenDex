@@ -172,20 +172,43 @@ internal object Gen2LocalMapResolver {
             )
         }
 
+        val poiResolution = runCatching {
+            Gen2LocalMapPoiResolver.resolve(
+                rom = session.rom,
+                sources = authority.descriptors.map(MapDescriptor::toPoiSource),
+                maps = maps,
+                family = family,
+            ).also { resolution ->
+                LocalMapCatalog(
+                    maps = maps,
+                    indexedAssets = assets,
+                    scenes = sceneResolution.scenes,
+                    pois = resolution.pois,
+                ).validate()
+            }
+        }.getOrElse { failure ->
+            Gen2LocalMapPoiResolver.Resolution(
+                pois = emptyList(),
+                skippedReasons = listOf("Gen II POIs: ${failure.message}"),
+            )
+        }
+
         return LocalMapResolution.Resolved(
             catalog = LocalMapCatalog(
                 maps = maps,
                 indexedAssets = assets,
                 scenes = sceneResolution.scenes,
+                pois = poiResolution.pois,
             ).validate(),
             reasons = listOf(
                 "resolved compiled Gen II map-group, tileset, roof, environment-color, and palette consumers",
                 "rendered ${maps.size} bounded $label maps from 32x32 ROM blocks and LZ3 2bpp tiles",
                 "built ${sceneResolution.scenes.size} bounded Local-map scenes from compiled cardinal connections",
+                "resolved ${poiResolution.pois.size} bounded Local-map POIs from compiled event structures",
                 "resolved $namedMapCount map display names through the compiled landmark lookup",
                 "stored time-independent indexed rasters with native morning, day, night, and dark GBC palettes",
                 "bound all ${requiredMaps.size} encounter-authoritative group/map IDs",
-            ) + skippedReasons + sceneResolution.skippedReasons,
+            ) + skippedReasons + sceneResolution.skippedReasons + poiResolution.skippedReasons,
             skippedMaps = skippedReasons.size,
             gen2TimeOfDayWramOffset = authority.palettes.timeOfDayWramOffset,
         )
@@ -750,6 +773,12 @@ internal object Gen2LocalMapResolver {
             attributes = attributes,
             blockBank = blockBank,
             blocks = blocks,
+        )
+
+        fun toPoiSource(): Gen2LocalMapPoiResolver.Source = Gen2LocalMapPoiResolver.Source(
+            baseAreaId = baseAreaId,
+            attributesBank = attributesBank,
+            attributes = attributes,
         )
 
         fun toLocalMap(displayName: String?): LocalMap = LocalMap(

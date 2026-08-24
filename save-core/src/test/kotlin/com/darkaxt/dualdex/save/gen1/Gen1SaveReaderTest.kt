@@ -28,6 +28,7 @@ class Gen1SaveReaderTest {
         assertEquals(setOf(6, 25), snapshot.seenDexNumbers)
         assertEquals(setOf(6), snapshot.caughtDexNumbers)
         assertEquals(12, snapshot.currentArea?.mapNumber)
+        assertEquals(setOf(0, 111), snapshot.eventFlagIds)
         assertEquals(6, snapshot.party.single().speciesId)
         assertEquals(36, snapshot.party.single().level)
         assertEquals(listOf(11, 15, 10, 5, 1), snapshot.party.single().dvs)
@@ -80,6 +81,8 @@ class Gen1SaveReaderTest {
         setFlag(save, SEEN_OFFSET, 25)
         save[MAP_OFFSET] = 12
         save[CURRENT_BOX_OFFSET] = 0
+        setZeroBasedFlag(save, HIDDEN_ITEM_FLAGS_OFFSET, 0)
+        setZeroBasedFlag(save, HIDDEN_ITEM_FLAGS_OFFSET, 111)
 
         save[PARTY_OFFSET] = 1
         save[PARTY_OFFSET + 1] = 6
@@ -128,6 +131,10 @@ class Gen1SaveReaderTest {
         bytes[offset + index / 8] = (bytes[offset + index / 8].toInt() or (1 shl (index % 8))).toByte()
     }
 
+    private fun setZeroBasedFlag(bytes: ByteArray, offset: Int, flagId: Int) {
+        bytes[offset + flagId / 8] = (bytes[offset + flagId / 8].toInt() or (1 shl (flagId % 8))).toByte()
+    }
+
     private companion object {
         const val SAVE_SIZE = 0x8000
         const val MAIN_START = 0x2598
@@ -137,6 +144,7 @@ class Gen1SaveReaderTest {
         const val SEEN_OFFSET = 0x25B6
         const val MAP_OFFSET = 0x260A
         const val CURRENT_BOX_OFFSET = 0x284C
+        const val HIDDEN_ITEM_FLAGS_OFFSET = 0x2B30
         const val PARTY_OFFSET = 0x2F2C
         const val PARTY_MONS_OFFSET = 0x2F34
         const val CURRENT_BOX_DATA_OFFSET = 0x30C0

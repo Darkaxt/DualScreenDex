@@ -2,6 +2,8 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -49,7 +51,38 @@ class Gen1LocalMapResolverRealControlTest {
         }
         assertTrue(connectionFailures.joinToString("\n"), connectionFailures.isEmpty())
         assertScenes(localMaps)
+        assertPois(localMaps, control.forestHiddenCollectionFlags)
         control.maps.forEach { expected -> assertMap(localMaps, expected) }
+    }
+
+    private fun assertPois(catalog: LocalMapCatalog, forestHiddenCollectionFlags: Pair<Int, Int>) {
+        val palletTown = catalog.pois.filter { it.baseAreaId == 0x00 }
+        assertEquals(4, palletTown.size)
+        assertEquals(setOf(0x25, 0x27, 0x28), palletTown.mapNotNullTo(mutableSetOf()) { it.destinationBaseAreaId })
+        assertTrue(palletTown.all { it.kind == LocalMapPoiKind.PLACE })
+        assertTrue(palletTown.all { it.organicVisibility == LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY })
+        assertEquals("PALLET TOWN", palletTown.single { it.tileX == 7 && it.tileY == 9 }.displayName)
+
+        val forest = catalog.pois.filter { it.baseAreaId == 0x33 }
+        val potion = forest.single { it.tileX == 12 && it.tileY == 29 }
+        assertEquals(LocalMapPoiKind.VISIBLE_ITEM, potion.kind)
+        assertEquals(0x14, potion.item?.itemId)
+        assertEquals(null, potion.item?.collectionFlagId)
+
+        val pokeBall = forest.single { it.tileX == 1 && it.tileY == 31 }
+        assertEquals(LocalMapPoiKind.VISIBLE_ITEM, pokeBall.kind)
+        assertEquals(0x04, pokeBall.item?.itemId)
+
+        val hiddenPotion = forest.single { it.tileX == 1 && it.tileY == 18 }
+        assertEquals(LocalMapPoiKind.HIDDEN_ITEM, hiddenPotion.kind)
+        assertEquals(LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE, hiddenPotion.organicVisibility)
+        assertEquals(0x14, hiddenPotion.item?.itemId)
+        assertEquals(forestHiddenCollectionFlags.first, hiddenPotion.item?.collectionFlagId)
+
+        val hiddenAntidote = forest.single { it.tileX == 16 && it.tileY == 42 }
+        assertEquals(LocalMapPoiKind.HIDDEN_ITEM, hiddenAntidote.kind)
+        assertEquals(0x0B, hiddenAntidote.item?.itemId)
+        assertEquals(forestHiddenCollectionFlags.second, hiddenAntidote.item?.collectionFlagId)
     }
 
     private fun assertScenes(catalog: LocalMapCatalog) {
@@ -118,6 +151,7 @@ class Gen1LocalMapResolverRealControlTest {
         val environmentVariable: String,
         val romSha256: String,
         val mapCount: Int,
+        val forestHiddenCollectionFlags: Pair<Int, Int>,
         val maps: List<ExpectedMap>,
     )
 
@@ -165,18 +199,21 @@ class Gen1LocalMapResolverRealControlTest {
                 environmentVariable = "DUALDEX_POKERED_ROM",
                 romSha256 = "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
                 mapCount = 226,
+                forestHiddenCollectionFlags = 0 to 1,
                 maps = redBlueMaps,
             ),
             Control(
                 environmentVariable = "DUALDEX_POKEBLUE_ROM",
                 romSha256 = "2a951313c2640e8c2cb21f25d1db019ae6245d9c7121f754fa61afd7bee6452d",
                 mapCount = 226,
+                forestHiddenCollectionFlags = 0 to 1,
                 maps = redBlueMaps,
             ),
             Control(
                 environmentVariable = "DUALDEX_POKEYELLOW_ROM",
                 romSha256 = "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
                 mapCount = 227,
+                forestHiddenCollectionFlags = 11 to 12,
                 maps = listOf(
                     ExpectedMap(
                         baseAreaId = 0x00,

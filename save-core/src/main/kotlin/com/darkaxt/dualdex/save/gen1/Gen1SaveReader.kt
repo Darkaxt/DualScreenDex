@@ -62,6 +62,7 @@ object Gen1SaveReader {
                 storedIndividuals = boxes.records,
                 capabilities = capabilities,
                 schemaId = "gen1-v1",
+                eventFlagIds = decodeZeroBasedFlags(bytes, HIDDEN_ITEM_FLAGS_OFFSET, HIDDEN_ITEM_FLAGS_BYTES),
             ),
         )
     }
@@ -195,6 +196,15 @@ object Gen1SaveReader {
         }
     }
 
+    private fun decodeZeroBasedFlags(bytes: ByteArray, offset: Int, byteCount: Int): Set<Int> = buildSet {
+        repeat(byteCount) { byteIndex ->
+            val value = bytes[offset + byteIndex].u8()
+            repeat(Byte.SIZE_BITS) { bitIndex ->
+                if (value and (1 shl bitIndex) != 0) add(byteIndex * Byte.SIZE_BITS + bitIndex)
+            }
+        }
+    }
+
     private fun boxOffset(index: Int): Int =
         (if (index < BOXES_PER_BANK) FIRST_BOX_BANK else SECOND_BOX_BANK) + (index % BOXES_PER_BANK) * BOX_SIZE
 
@@ -264,6 +274,8 @@ object Gen1SaveReader {
     private const val DEX_BYTES = 19
     private const val MAP_OFFSET = 0x260A
     private const val CURRENT_BOX_OFFSET = 0x284C
+    private const val HIDDEN_ITEM_FLAGS_OFFSET = 0x2B30
+    private const val HIDDEN_ITEM_FLAGS_BYTES = 14
     private const val PARTY_OFFSET = 0x2F2C
     private const val PARTY_MONS_OFFSET = 0x2F34
     private const val CURRENT_BOX_DATA_OFFSET = 0x30C0
