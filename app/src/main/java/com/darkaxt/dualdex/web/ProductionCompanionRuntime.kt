@@ -249,9 +249,11 @@ class ProductionCompanionRuntime(
         }
         val current = gateway.bootstrap()
         val seenAdditions = matching?.pokedex?.seenDexNumbers?.value
+            ?.let { dexNumbers -> catalog?.let { SaveKnowledgeMapper.speciesIdsForDexNumbers(it, dexNumbers) } }
             ?.minus(current.ledger.seenSpecies)
             .orEmpty()
         val caughtAdditions = matching?.pokedex?.caughtDexNumbers?.value
+            ?.let { dexNumbers -> catalog?.let { SaveKnowledgeMapper.speciesIdsForDexNumbers(it, dexNumbers) } }
             ?.minus(current.ledger.caughtSpecies)
             .orEmpty()
         if (
@@ -262,8 +264,8 @@ class ProductionCompanionRuntime(
             gateway.dispatch(
                 CompanionAction.ResolvedPlayerStateChanged(
                     trainerCard = trainerCard,
-                    seenDexNumbers = seenAdditions.takeIf(Set<Int>::isNotEmpty),
-                    caughtDexNumbers = caughtAdditions.takeIf(Set<Int>::isNotEmpty),
+                    seenSpeciesIds = seenAdditions.takeIf(Set<Int>::isNotEmpty),
+                    caughtSpeciesIds = caughtAdditions.takeIf(Set<Int>::isNotEmpty),
                 ),
             )
         }

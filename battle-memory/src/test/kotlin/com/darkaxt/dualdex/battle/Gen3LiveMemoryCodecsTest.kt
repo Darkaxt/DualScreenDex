@@ -12,9 +12,37 @@ import com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi
 import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
 import com.darkaxt.dualdex.save.gen3.Gen3TrainerCardAbi
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class Gen3LiveMemoryCodecsTest {
+    @Test
+    fun unavailablePartyDoesNotResolvePokedexFromUnanchoredBytes() {
+        val block2 = ByteArray(SAVE_BLOCK2_SIZE)
+        val context = SaveParseContext(
+            romIdentity = "b".repeat(64),
+            speciesById = (1..386).associateWith { SaveSpeciesContext(it, it, null) },
+            gen3SaveRuntimeAbi = ABI,
+        )
+        val flagBytes = (context.internalSpeciesCount + 7) / 8
+        block2[0x28 - 0x10 + 2] = 0xDA.toByte()
+        setFlag(block2, 0x28, 25)
+        setFlag(block2, 0x28 + flagBytes, 25)
+        val unavailableParty = LiveValue.Unavailable(
+            LiveUnavailableReason(LiveUnavailableCode.MISSING_REGION, "party region missing"),
+        )
+
+        val live = Gen3LiveMemoryCodecs.decodePlayerOverview(
+            saveBlock1 = null,
+            saveBlock2 = block2,
+            context = context,
+            liveParty = unavailableParty,
+        )
+
+        assertNull(live.pokedex.seenDexNumbers.valueOrNull())
+        assertNull(live.pokedex.caughtDexNumbers.valueOrNull())
+    }
+
     @Test
     fun decodesTrainerAndPokedexWithoutSavedTrainerOrSaveFile() {
         val block1 = ByteArray(SAVE_BLOCK1_SIZE)

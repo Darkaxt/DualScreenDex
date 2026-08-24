@@ -5,7 +5,7 @@ import com.darkaxt.dualdex.save.SaveParseContext
 import kotlin.math.abs
 
 data class Gen3PokedexSnapshot(
-    val ownedOffset: Int,
+    val ownedOffset: Int?,
     val seenDexNumbers: Set<Int>,
     val caughtDexNumbers: Set<Int>,
 )
@@ -14,7 +14,7 @@ object Gen3PokedexCodec {
     fun decode(
         saveBlock2: ByteArray?,
         context: SaveParseContext,
-        party: List<OwnedIndividual>,
+        party: List<OwnedIndividual>?,
     ): SaveSectionResult<Gen3PokedexSnapshot> = runCatching {
         val bytes = requireNotNull(saveBlock2) { "SaveBlock2 was unavailable" }
         require(context.speciesById.isNotEmpty()) { "a parsed ROM species index is required" }
@@ -22,7 +22,17 @@ object Gen3PokedexCodec {
         require(DEFAULT_OWNED_OFFSET + flagBytes * 2 <= bytes.size) {
             "ROM species count does not fit the Gen III Pokédex save block"
         }
-        val ownedDexNumbers = party.mapNotNullTo(mutableSetOf()) { individual ->
+        val decodedParty = requireNotNull(party) { "validated party evidence is required for Pokédex layout resolution" }
+        if (decodedParty.isEmpty()) {
+            return@runCatching SaveSectionResult.available(
+                Gen3PokedexSnapshot(
+                    ownedOffset = null,
+                    seenDexNumbers = emptySet(),
+                    caughtDexNumbers = emptySet(),
+                ),
+            )
+        }
+        val ownedDexNumbers = decodedParty.mapNotNullTo(mutableSetOf()) { individual ->
             context.speciesById[individual.speciesId]?.dexNumber
         }
         val maximumOffset = minOf(MAX_OWNED_OFFSET, bytes.size - flagBytes * 2)

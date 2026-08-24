@@ -7,15 +7,19 @@ import com.enrpau.dualscreendex.companion.model.OwnedPokemon
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 
 object SaveKnowledgeMapper {
+    fun speciesIdsForDexNumbers(catalog: ParsedCatalog, dexNumbers: Set<Int>): Set<Int> {
+        val speciesByDex = catalog.speciesById.values
+            .mapNotNull { species -> species.dexNumber.value?.let { dex -> dex to species.id } }
+            .groupBy({ it.first }, { it.second })
+        return dexNumbers.flatMapTo(linkedSetOf()) { speciesByDex[it].orEmpty() }
+    }
+
     fun merge(previous: KnowledgeLedger, catalog: ParsedCatalog, snapshot: SaveSnapshot): KnowledgeLedger {
         require(snapshot.romIdentity.equals(catalog.romSha256, ignoreCase = true)) {
             "SaveRAM snapshot belongs to another ROM catalog"
         }
-        val speciesByDex = catalog.speciesById.values
-            .mapNotNull { species -> species.dexNumber.value?.let { dex -> dex to species.id } }
-            .groupBy({ it.first }, { it.second })
-        val seen = snapshot.seenDexNumbers.flatMap { speciesByDex[it].orEmpty() }.toSet()
-        val caughtFromFlags = snapshot.caughtDexNumbers.flatMap { speciesByDex[it].orEmpty() }.toSet()
+        val seen = speciesIdsForDexNumbers(catalog, snapshot.seenDexNumbers)
+        val caughtFromFlags = speciesIdsForDexNumbers(catalog, snapshot.caughtDexNumbers)
         val partyKeys = snapshot.party.mapTo(mutableSetOf(), OwnedIndividual::stableLocation)
         val owned = snapshot.allIndividuals.mapNotNull { individual ->
             if (individual.speciesId !in catalog.speciesById) return@mapNotNull null

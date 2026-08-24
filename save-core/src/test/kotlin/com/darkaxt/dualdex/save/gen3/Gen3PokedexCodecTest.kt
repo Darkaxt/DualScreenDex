@@ -9,6 +9,24 @@ import org.junit.Test
 
 class Gen3PokedexCodecTest {
     @Test
+    fun emptyPartyDoesNotPromoteNearbySaveBlockBytesToPokedexFlags() {
+        val context = SaveParseContext(
+            romIdentity = "a".repeat(64),
+            speciesById = (1..462).associateWith { SaveSpeciesContext(it, it, null) },
+        )
+        val bytes = ByteArray(0xF2C)
+        val flagBytes = (context.internalSpeciesCount + 7) / 8
+        setFlag(bytes, 0x38 + flagBytes, 433)
+        setFlag(bytes, 0x38 + flagBytes, 434)
+
+        val result = Gen3PokedexCodec.decode(bytes, context, emptyList())
+
+        assertNull(result.value?.ownedOffset)
+        assertEquals(emptySet<Int>(), result.value?.seenDexNumbers)
+        assertEquals(emptySet<Int>(), result.value?.caughtDexNumbers)
+    }
+
+    @Test
     fun resolvesExpandedAlignedLayoutUsingOwnedPartyAndHeaderEvidence() {
         val context = SaveParseContext(
             romIdentity = "b".repeat(64),

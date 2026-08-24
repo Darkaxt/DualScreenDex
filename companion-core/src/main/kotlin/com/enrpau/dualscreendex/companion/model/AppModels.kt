@@ -219,8 +219,8 @@ sealed interface CompanionAction {
     data class LiveGameClockChanged(val gameTime: GameClock?) : CompanionAction
     data class ResolvedPlayerStateChanged(
         val trainerCard: TrainerCardState?,
-        val seenDexNumbers: Set<Int>? = null,
-        val caughtDexNumbers: Set<Int>? = null,
+        val seenSpeciesIds: Set<Int>? = null,
+        val caughtSpeciesIds: Set<Int>? = null,
     ) : CompanionAction
     data class ResolvedPartyStateChanged(val party: List<OwnedIndividual>) : CompanionAction
     data class ResolvedOverworldStateChanged(

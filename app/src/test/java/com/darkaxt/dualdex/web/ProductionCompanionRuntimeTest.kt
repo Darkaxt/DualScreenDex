@@ -2436,7 +2436,10 @@ class ProductionCompanionRuntimeTest {
             hash,
             EngineFamily.EMERALD,
             Platform.GBA,
-            speciesById = mapOf(25 to saveSpecies(25), 277 to saveSpecies(277)),
+            speciesById = mapOf(
+                84 to saveSpecies(84).copy(dexNumber = CatalogField.available(25)),
+                300 to saveSpecies(300).copy(dexNumber = CatalogField.available(277)),
+            ),
         )
         runtime.loadCatalog("live-only.gba", catalog)
         source.beginSession(
@@ -2486,8 +2489,11 @@ class ProductionCompanionRuntimeTest {
         assertEquals(3, state.trainer?.playTimeHours)
         assertEquals(2, state.trainer?.dexSeen)
         assertEquals(1, state.trainer?.dexCaught)
-        assertTrue(state.speciesState.getValue(277).seen)
-        assertFalse(state.speciesState.getValue(277).caught)
+        assertTrue(state.speciesState.getValue(84).seen)
+        assertTrue(state.speciesState.getValue(84).caught)
+        assertTrue(state.speciesState.getValue(300).seen)
+        assertFalse(state.speciesState.getValue(300).caught)
+        assertFalse(state.speciesState.containsKey(25))
         runtime.close()
     }
 

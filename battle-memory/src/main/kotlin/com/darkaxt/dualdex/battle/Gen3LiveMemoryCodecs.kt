@@ -59,7 +59,7 @@ object Gen3LiveMemoryCodecs {
             ?: LiveValue.Unavailable(noAbi)
         val badges = abi?.let { Gen3TrainerFieldCodec.decodeBadgeFlags(saveBlock1, it).toLiveValue() }
             ?: LiveValue.Unavailable(noAbi)
-        val pokedex = Gen3PokedexCodec.decode(saveBlock2, context, liveParty.valueOrNull().orEmpty())
+        val pokedex = Gen3PokedexCodec.decode(saveBlock2, context, liveParty.valueOrNull())
         val pokedexValue = pokedex.value
         val pokedexUnavailable = pokedex.reasons.joinToString().ifBlank { "Gen III Pokédex flags were unavailable" }
         return Gen3LivePlayerOverview(
