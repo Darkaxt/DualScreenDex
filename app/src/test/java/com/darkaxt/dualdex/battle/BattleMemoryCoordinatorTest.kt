@@ -670,7 +670,7 @@ class BattleMemoryCoordinatorTest {
         plainPartyRecord(ewram, 0x1004, species = 252, level = 5)
         mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
         iwram[0x1574 + 0x439] = 0
-        val parties = mutableListOf<List<com.darkaxt.dualdex.save.OwnedIndividual>?>()
+        val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = {
@@ -683,7 +683,7 @@ class BattleMemoryCoordinatorTest {
                 )
             },
             publisher = {},
-            partyPublisher = parties::add,
+            transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
         )
@@ -691,8 +691,8 @@ class BattleMemoryCoordinatorTest {
 
         repeat(6) { coordinator.heartbeat() }
 
-        assertEquals(listOf(252), requireNotNull(parties.last()).map { it.speciesId })
-        assertEquals(5, requireNotNull(parties.last()).single().level)
+        assertEquals(listOf(252), transient.current?.party?.value?.map { it.speciesId })
+        assertEquals(5, transient.current?.party?.value?.single()?.level)
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 2001001 1") })
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY 2001004 600") })
         coordinator.close()

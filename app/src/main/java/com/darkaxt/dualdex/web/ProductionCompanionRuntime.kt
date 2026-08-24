@@ -144,7 +144,6 @@ class ProductionCompanionRuntime(
     @Volatile private var catalogLoadingMessage: String? = null
     private var detectedLevelUpRulesetId: String? = null
     private var levelUpRulesetDetectionResolved = false
-    private var liveParty: List<OwnedIndividual>? = null
     private var liveGameState: Gen3LiveGameSnapshot? = null
     private var savedPlayerState: SaveSnapshot? = null
     private var activePlaythrough: ActivePlaythrough? = null
@@ -167,6 +166,7 @@ class ProductionCompanionRuntime(
     private fun applyResolvedGameState(snapshot: ResolvedGameSnapshot?) {
         resolvedGameState = snapshot
         applyResolvedPlayerState(snapshot)
+        applyResolvedPartyAndProgression(snapshot)
         applyResolvedBattleState(snapshot)
     }
 
@@ -214,6 +214,36 @@ class ProductionCompanionRuntime(
             publishBattleSample(sample)
         } else if (gateway.bootstrap().battle != null) {
             clearLiveBattle()
+        }
+    }
+
+    private fun applyResolvedPartyAndProgression(snapshot: ResolvedGameSnapshot?) {
+        val currentCatalog = catalog ?: return
+        val matching = snapshot?.takeIf { state ->
+            currentCatalog.romSha256.equals(state.romIdentity, ignoreCase = true)
+        } ?: return
+        val before = gateway.bootstrap()
+        val party = matching.party.value
+        if (party != null && before.party != party) {
+            gateway.dispatch(CompanionAction.ResolvedPartyStateChanged(party))
+        }
+        var ledger = party?.let { availableParty ->
+            LivePartyKnowledgeMapper.merge(
+                previous = gateway.bootstrap().ledger,
+                catalog = currentCatalog,
+                party = availableParty,
+                generation = matching.generation,
+            )
+        } ?: gateway.bootstrap().ledger
+        matching.eventFlags.value?.let { flags ->
+            ledger = LocalMapPoiKnowledgeMapper.mergeEventFlags(
+                previous = ledger,
+                catalog = currentCatalog,
+                setFlagIds = flags,
+            )
+        }
+        if (ledger != gateway.bootstrap().ledger) {
+            gateway.dispatch(CompanionAction.ReplaceLedger(ledger))
         }
     }
 
@@ -519,17 +549,10 @@ class ProductionCompanionRuntime(
     }
 
     @Synchronized
-    fun updateLiveParty(party: List<OwnedIndividual>?) {
-        liveParty = party
-        publishSelectedPlayerState()
-    }
-
-    @Synchronized
     fun updateLiveGameState(snapshot: Gen3LiveGameSnapshot?) {
         val current = catalog
         if (snapshot != null && (current == null || !snapshot.romIdentity.equals(current.romSha256, true))) return
         liveGameState = snapshot
-        if (snapshot == null) liveParty = null
         publishSelectedPlayerState()
     }
 
@@ -796,16 +819,20 @@ class ProductionCompanionRuntime(
         cachedState = null
         gateway.dispatch(CompanionAction.ReplaceLedger(merged))
         publishSelectedPlayerSnapshot()
+        resolvedGameState?.let(::applyResolvedPartyAndProgression)
         return SaveKnowledgeApplication(true)
     }
 
-    private fun selectedParty(): List<OwnedIndividual> = liveGameState
-        ?.party
-        ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
-        ?.value
-        ?: liveParty
-        ?: savedPlayerState?.party
-        ?: emptyList()
+    private fun compatibilityParty(): List<OwnedIndividual> = if (transientGameState == null) {
+        liveGameState
+            ?.party
+            ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+            ?.value
+            ?: savedPlayerState?.party
+            ?: emptyList()
+    } else {
+        gateway.bootstrap().party
+    }
 
     private fun compatibilityTrainer(): TrainerSnapshot? = if (transientGameState == null) {
         liveGameState
@@ -840,18 +867,25 @@ class ProductionCompanionRuntime(
                 ?.takeIf { it.romIdentity.equals(current.romSha256, true) }
                 ?.eventFlagIds,
         )
-        val withLiveFlags = LocalMapPoiKnowledgeMapper.mergeEventFlags(
-            previous = withSavedFlags,
-            catalog = current,
-            setFlagIds = liveGameState?.eventFlags
-                ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
-                ?.value,
-        )
-        val livePartySelection = when {
-            liveGameState?.party?.state == Gen3LiveSectionState.AVAILABLE -> liveGameState?.party?.value
-            liveParty != null -> liveParty
-            savedPlayerState != null -> null
-            else -> emptyList()
+        val withLiveFlags = if (transientGameState == null) {
+            LocalMapPoiKnowledgeMapper.mergeEventFlags(
+                previous = withSavedFlags,
+                catalog = current,
+                setFlagIds = liveGameState?.eventFlags
+                    ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+                    ?.value,
+            )
+        } else {
+            withSavedFlags
+        }
+        val livePartySelection = if (transientGameState == null) {
+            when {
+                liveGameState?.party?.state == Gen3LiveSectionState.AVAILABLE -> liveGameState?.party?.value
+                savedPlayerState != null -> null
+                else -> emptyList()
+            }
+        } else {
+            null
         }
         return livePartySelection?.let { party ->
             LivePartyKnowledgeMapper.merge(withLiveFlags, current, party, generation = 3)
@@ -874,7 +908,7 @@ class ProductionCompanionRuntime(
         gateway.dispatch(
             CompanionAction.LiveGameStateChanged(
                 trainer = compatibilityTrainer(),
-                party = selectedParty(),
+                party = compatibilityParty(),
                 gameTime = gameTime,
                 trainerIdentity = compatibilityTrainerIdentity(),
                 gameAccessReady = when (catalog?.platform) {
@@ -1160,7 +1194,6 @@ class ProductionCompanionRuntime(
         catalog = null
         clearCatalogProjectionCaches()
         mapAssetRenderCache.clear()
-        liveParty = null
         liveGameState = null
         savedPlayerState = null
         activePlaythrough = null

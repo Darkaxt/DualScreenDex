@@ -102,6 +102,61 @@ class Gen3LiveGameStateTest {
     }
 
     @Test
+    fun decodesTheCompleteValidatedPartyWithStableSlots() {
+        val party = ByteArray(600).apply {
+            plainPartyRecord(this, 0, species = 277, level = 5)
+            plainPartyRecord(this, 100, species = 280, level = 7)
+        }
+        val snapshot = Gen3LiveGameState.decode(
+            romIdentity = "rom",
+            regions = mapOf(
+                Gen3LiveGameState.PARTY_COUNT_ID to byteArrayOf(2),
+                Gen3LiveGameState.PARTY_ID to party,
+            ),
+            layout = layout(),
+            saveContext = SaveParseContext(
+                "rom",
+                mapOf(
+                    277 to SaveSpeciesContext(277, 252, 0),
+                    280 to SaveSpeciesContext(280, 255, 0),
+                ),
+            ),
+            savedTrainer = null,
+            battleActive = null,
+            targetBattler = null,
+            encounterKind = BattleEncounterKind.UNKNOWN,
+        )
+
+        assertEquals(listOf(277, 280), snapshot.party.value?.map { it.speciesId })
+        assertEquals(listOf(5, 7), snapshot.party.value?.map { it.level })
+        assertEquals(listOf("party-0", "party-1"), snapshot.party.value?.map { it.stableLocation })
+    }
+
+    @Test
+    fun rejectsPartialOrCorruptPartyWindowsWithoutClearingKnownState() {
+        val context = SaveParseContext("rom", mapOf(277 to SaveSpeciesContext(277, 252, 0)))
+        val party = ByteArray(600).apply { plainPartyRecord(this, 0, species = 277, level = 5) }
+
+        fun decoded(count: ByteArray, bytes: ByteArray) = Gen3LiveGameState.decode(
+            romIdentity = "rom",
+            regions = mapOf(
+                Gen3LiveGameState.PARTY_COUNT_ID to count,
+                Gen3LiveGameState.PARTY_ID to bytes,
+            ),
+            layout = layout(),
+            saveContext = context,
+            savedTrainer = null,
+            battleActive = null,
+            targetBattler = null,
+            encounterKind = BattleEncounterKind.UNKNOWN,
+        ).party
+
+        assertEquals(Gen3LiveSectionState.UNAVAILABLE, decoded(byteArrayOf(2), party).state)
+        assertEquals(Gen3LiveSectionState.UNAVAILABLE, decoded(byteArrayOf(7), party).state)
+        assertEquals(Gen3LiveSectionState.UNAVAILABLE, decoded(byteArrayOf(1), party.copyOf(100)).state)
+    }
+
+    @Test
     fun liveSaveBlockPublishesSetEventFlagsFromTheTypedWindow() {
         val saveBlock1 = ByteArray(0x100).apply {
             this[0x20 + 1007 / 8] = (1 shl (1007 % 8)).toByte()
@@ -188,4 +243,20 @@ class Gen3LiveGameStateTest {
     )
 
     private fun pointer(address: Long) = ByteArray(4) { index -> (address ushr (index * 8)).toByte() }
+
+    private fun plainPartyRecord(bytes: ByteArray, offset: Int, species: Int, level: Int) {
+        bytes[offset + 19] = 0x02
+        putU16(bytes, offset + 32, species)
+        putU32(bytes, offset + 36, 125)
+        bytes[offset + 84] = level.toByte()
+    }
+
+    private fun putU16(bytes: ByteArray, offset: Int, value: Int) {
+        bytes[offset] = value.toByte()
+        bytes[offset + 1] = (value ushr 8).toByte()
+    }
+
+    private fun putU32(bytes: ByteArray, offset: Int, value: Int) {
+        repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
+    }
 }

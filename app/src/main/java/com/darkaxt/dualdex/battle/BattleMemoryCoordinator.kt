@@ -7,7 +7,6 @@ import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.model.EngineFamily
-import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.live.TransientGameStateContext
@@ -83,7 +82,6 @@ class BattleMemoryCoordinator(
     private val publisher: (BattleTrackingUpdate) -> Unit,
     private val locationPublisher: (Int?) -> Unit = {},
     private val positionPublisher: (RuntimeMapPosition?) -> Unit = {},
-    private val partyPublisher: (List<OwnedIndividual>?) -> Unit = {},
     private val liveGamePublisher: (Gen3LiveGameSnapshot?) -> Unit = {},
     private val gen2LightingPublisher: (MapLighting?) -> Unit = {},
     private val transientGameState: UnifiedGameStateDecoder? = null,
@@ -117,7 +115,6 @@ class BattleMemoryCoordinator(
     private var pendingOverworldSample: BattleMemorySample? = null
     private var pendingOverworldObservations = 0
     private var awaitingOverworldAfterOutcome = false
-    private var lastPublishedLiveParty: List<OwnedIndividual>? = null
     private var pendingLivePointers: Gen3LivePointers? = null
     private var lastPublishedLiveGame: Gen3LiveGameSnapshot? = null
     private var unifiedSampleId = 0L
@@ -144,8 +141,6 @@ class BattleMemoryCoordinator(
         if (!nextEligible || sessionIdentity != nextIdentity) {
             locationPublisher(null)
             positionPublisher(null)
-            lastPublishedLiveParty = null
-            partyPublisher(null)
             lastPublishedLiveGame = null
             liveGamePublisher(null)
             publishGen2Lighting(null)
@@ -529,8 +524,6 @@ class BattleMemoryCoordinator(
         if (readMode == ReadMode.LIVE_DEPENDENT || regions.keys.any(::isLiveIndependentRegion)) {
             publishLiveGame(regions, context, gen3Runtime)
             if (readMode == ReadMode.LIVE_DEPENDENT) pendingLivePointers = null
-        } else {
-            publishLiveParty(regions, context)
         }
         val lifecycleActive = gen3Runtime?.battleActive
         if (context.generation == 3 && cachedLayout == null) {
@@ -902,20 +895,6 @@ class BattleMemoryCoordinator(
             id == Gen3LiveGameState.PARTY_ID ||
             id == Gen3LiveGameState.CLOCK_ID
 
-    private fun publishLiveParty(regions: Map<String, ByteArray>, context: BattleCatalogContext) {
-        if (context.generation != 3) return
-        val parseContext = context.saveParseContext ?: return
-        val decoded = Gen3LivePartyDecoder.decode(
-            regions["live-party-count"],
-            regions["live-party"],
-            parseContext,
-        ) ?: return
-        if (decoded != lastPublishedLiveParty) {
-            lastPublishedLiveParty = decoded
-            partyPublisher(decoded)
-        }
-    }
-
     private fun publishLiveGame(
         regions: Map<String, ByteArray>,
         context: BattleCatalogContext,
@@ -937,13 +916,6 @@ class BattleMemoryCoordinator(
             liveGamePublisher(snapshot)
         }
         snapshot.location.value.let(locationPublisher)
-        if (snapshot.party.state == Gen3LiveSectionState.AVAILABLE) {
-            val party = requireNotNull(snapshot.party.value)
-            if (party != lastPublishedLiveParty) {
-                lastPublishedLiveParty = party
-                partyPublisher(party)
-            }
-        }
     }
 
     private fun publishUnifiedLiveGame(

@@ -562,6 +562,20 @@ git add app/src/main/java/com/darkaxt/dualdex/live/UnifiedGameStateDecoder.kt ap
 git commit -m "refactor: unify Party and progression state"
 ```
 
+### Implementation audit through Stage 4 — 2026-08-24
+
+| Contract | Evidence | Result |
+|---|---|---|
+| Party, Team, selected details, rarity, Trainer license, and progression use one ordered resolved Party | the runtime vertical test drives recovery, live ordered members, and valid empty Party through every consumer | PASS |
+| Live Party wins and recovery fills only an unavailable Party | the same fixture retains live Trainer identity while switching Party authority independently | PASS |
+| A valid zero-member Party clears stale Party and Team state | the vertical test publishes an available empty Party and verifies both consumers clear | PASS |
+| Corrupt or partial Party windows cannot erase the last valid state | transferred `Gen3LiveGameStateTest` cases reject oversized, incomplete, and corrupt windows | PASS |
+| Progression consumes the same Party and independently validated event flags | `applyResolvedPartyAndProgression` merges Party and event-flag knowledge from the unified snapshot only | PASS |
+| Legacy Party callbacks cannot compete with the unified source | `partyPublisher`, `updateLiveParty`, `selectedParty`, and the stateful legacy decoder were removed | PASS |
+| Gen I/II map work remains isolated | Stage 4 changed no map parser, map renderer, Atlas, Gen I, or Gen II file | PASS |
+
+Deferred by the staged specification: Atlas/clock/readiness (Stage 5), passive recovery completion (Stage 6), and supported Gen I/II non-map callback removal (Stage 7). Stage 4 has no blocker for Stage 5.
+
 ## Stage 5 — Atlas, coordinates, clock, and readiness
 
 ### Task 8: Move overworld consumers to one location/clock sample

@@ -2101,45 +2101,6 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
-    fun keepsTheLivePartyAuthoritativeAcrossAStaleSaveRamRefresh() {
-        val hash = "a".repeat(64)
-        val runtime = ProductionCompanionRuntime()
-        runtime.loadCatalog(
-            "fixture.gba",
-            ParsedCatalog(
-                hash,
-                EngineFamily.EMERALD,
-                Platform.GBA,
-                speciesById = mapOf(25 to saveSpecies(25), 277 to saveSpecies(277)),
-            ),
-        )
-        runtime.updateLiveParty(
-            listOf(OwnedIndividual("party-0", 277, level = 5, ivs = List(6) { 20 }, captureBallId = 4)),
-        )
-        val staleSave = SaveSnapshot(
-            romIdentity = hash,
-            saveIdentity = "save",
-            saveGeneration = 3,
-            saveCounter = 1,
-            currentArea = SavedArea(0, 0),
-            seenDexNumbers = setOf(25),
-            caughtDexNumbers = setOf(25),
-            party = emptyList(),
-            storedIndividuals = listOf(OwnedIndividual("box-0", 25, level = 8)),
-            capabilities = emptyMap(),
-        )
-
-        assertTrue(runtime.applySaveSnapshot(staleSave, SaveRamView(status = "MATCHED")))
-
-        val state = runtime.stateView()
-        assertTrue(state.speciesState.getValue(277).team)
-        assertTrue(state.speciesState.getValue(277).caught)
-        assertFalse(state.speciesState.getValue(25).team)
-        assertTrue(state.speciesState.getValue(25).caught)
-        runtime.close()
-    }
-
-    @Test
     fun liveTrainerAndValidatedPartyOverrideSaveAndDisconnectRestoresIt() {
         val hash = "b".repeat(64)
         val runtime = ProductionCompanionRuntime()
@@ -2263,6 +2224,90 @@ class ProductionCompanionRuntimeTest {
         assertEquals(1, state.trainer?.dexCaught)
         assertTrue(state.speciesState.getValue(277).seen)
         assertFalse(state.speciesState.getValue(277).caught)
+        runtime.close()
+    }
+
+    @Test
+    fun unifiedPartyUsesLiveThenRecoveryAndValidZeroClearsEveryConsumer() {
+        val hash = "7".repeat(64)
+        val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val runtime = ProductionCompanionRuntime(transientGameState = source)
+        runtime.loadCatalog(
+            "party.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(25 to saveSpecies(25), 277 to saveSpecies(277)),
+            ),
+        )
+        source.beginSession(
+            com.darkaxt.dualdex.live.TransientGameStateContext(
+                romIdentity = hash,
+                generation = 3,
+                catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+            ),
+        )
+        source.acceptRecovery(
+            com.darkaxt.dualdex.live.RecoveryProjection(
+                snapshot = emptySave(hash, "save-party").copy(
+                    party = listOf(OwnedIndividual("party-0", 25, level = 9, ivs = List(6) { 18 })),
+                ),
+                saveRam = SaveRamView(status = "MATCHED"),
+            ),
+        )
+        val unavailable = com.darkaxt.dualdex.battle.LiveValue.Unavailable(
+            com.darkaxt.dualdex.battle.LiveUnavailableReason(
+                com.darkaxt.dualdex.battle.LiveUnavailableCode.INVALID_VALUE,
+                "live Party validation failed",
+            ),
+        )
+        val liveTrainer = com.darkaxt.dualdex.battle.LiveTrainerState(
+            identity = com.darkaxt.dualdex.battle.LiveValue.Available(TrainerIdentity("MAY", 1)),
+            publicTrainerId = com.darkaxt.dualdex.battle.LiveValue.Available(12_345),
+            money = unavailable,
+            playTime = unavailable,
+            badgeFlags = com.darkaxt.dualdex.battle.LiveValue.Available(1),
+            stars = unavailable,
+        )
+        val battle = unifiedBattleSnapshot(hash, 1, true, null).battle
+        source.acceptDecodedLive(
+            unifiedBattleSnapshot(hash, 1, true, null).copy(
+                trainer = liveTrainer,
+                party = unavailable,
+                battle = battle,
+            ),
+        )
+
+        assertEquals(listOf(25), runtime.gateway.bootstrap().party.map { it.speciesId })
+        assertEquals(12_345, runtime.stateView().trainer?.publicTrainerId)
+
+        source.acceptDecodedLive(
+            unifiedBattleSnapshot(hash, 2, true, null).copy(
+                trainer = liveTrainer,
+                party = com.darkaxt.dualdex.battle.LiveValue.Available(
+                    listOf(
+                        OwnedIndividual("party-0", 277, level = 5, ivs = List(6) { 24 }),
+                        OwnedIndividual("party-1", 25, level = 9, ivs = List(6) { 18 }),
+                    ),
+                ),
+            ),
+        )
+        assertEquals(listOf(277, 25), runtime.gateway.bootstrap().party.map { it.speciesId })
+        assertEquals(setOf(277, 25), runtime.gateway.bootstrap().ledger.teamSpecies)
+        assertTrue(runtime.gateway.bootstrap().ledger.trainerCardUnlocked)
+        assertEquals(277, runtime.stateView().party.first().speciesId)
+        assertTrue(runtime.stateView().party.first().rarity != null)
+
+        source.acceptDecodedLive(
+            unifiedBattleSnapshot(hash, 3, false, null).copy(
+                trainer = liveTrainer,
+                party = com.darkaxt.dualdex.battle.LiveValue.Available(emptyList()),
+            ),
+        )
+        assertTrue(runtime.gateway.bootstrap().party.isEmpty())
+        assertTrue(runtime.gateway.bootstrap().ledger.teamSpecies.isEmpty())
+        assertTrue(runtime.gateway.bootstrap().ledger.trainerCardUnlocked)
         runtime.close()
     }
 

@@ -152,6 +152,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
                 ),
             )
         }
+        is CompanionAction.ResolvedPartyStateChanged -> state.copy(party = action.party)
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
         is CompanionAction.Failure -> state.copy(error = action.message)
     }

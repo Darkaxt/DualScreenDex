@@ -79,7 +79,6 @@ class RetroArchSetupCoordinator(
         publisher = runtime::applyBattleTracking,
         locationPublisher = runtime::updateLiveArea,
         positionPublisher = runtime::updateLiveMapPosition,
-        partyPublisher = runtime::updateLiveParty,
         liveGamePublisher = runtime::updateLiveGameState,
         gen2LightingPublisher = runtime::updateGen2GameClock,
         transientGameState = transientGameState,
