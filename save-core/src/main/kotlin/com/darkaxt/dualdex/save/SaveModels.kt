@@ -7,6 +7,7 @@ data class SaveSpeciesContext(
     val speciesId: Int,
     val dexNumber: Int?,
     val growthRate: Int?,
+    val pokedexFlagNumber: Int? = dexNumber,
     val formId: Int = 0,
     val genderRatio: Int? = null,
     val abilityIds: List<Int> = emptyList(),
@@ -22,7 +23,7 @@ data class SaveParseContext(
     val gen3SaveRuntimeAbi: Gen3SaveRuntimeAbi? = null,
 ) {
     val internalSpeciesCount: Int = (speciesById.keys.maxOrNull() ?: 0) + 1
-    val maximumDexNumber: Int = speciesById.values.mapNotNull { it.dexNumber }.maxOrNull() ?: 0
+    val maximumDexNumber: Int = speciesById.values.mapNotNull { it.pokedexFlagNumber }.maxOrNull() ?: 0
 }
 
 data class SaveByteSelector(

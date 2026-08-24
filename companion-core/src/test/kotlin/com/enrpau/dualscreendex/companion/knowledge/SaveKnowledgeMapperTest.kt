@@ -17,6 +17,22 @@ import org.junit.Test
 
 class SaveKnowledgeMapperTest {
     @Test
+    fun mapsRetailEmeraldSaveFlagsByNationalNumberInsteadOfRegionalDisplayNumber() {
+        val catalog = ParsedCatalog(
+            romSha256 = "b".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = mapOf(
+                1 to species(1, 203),
+                277 to species(277, 1),
+            ),
+        )
+
+        assertEquals(mapOf(1 to 1, 277 to 252), SaveKnowledgeMapper.pokedexFlagNumbersBySpeciesId(catalog))
+        assertEquals(setOf(1, 277), SaveKnowledgeMapper.speciesIdsForPokedexFlags(catalog, setOf(1, 252)))
+    }
+
+    @Test
     fun replacesOnlySaveDerivedKnowledgeAndMapsDexFlagsToCatalogSpecies() {
         val catalog = ParsedCatalog(
             romSha256 = "a".repeat(64),

@@ -33,7 +33,7 @@ object Gen3PokedexCodec {
             )
         }
         val ownedDexNumbers = decodedParty.mapNotNullTo(mutableSetOf()) { individual ->
-            context.speciesById[individual.speciesId]?.dexNumber
+            context.speciesById[individual.speciesId]?.pokedexFlagNumber
         }
         val maximumOffset = minOf(MAX_OWNED_OFFSET, bytes.size - flagBytes * 2)
         val best = (DEFAULT_OWNED_OFFSET..maximumOffset step POKEDEX_ALIGNMENT).map { ownedOffset ->

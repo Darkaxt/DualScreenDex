@@ -5,11 +5,32 @@ import com.darkaxt.dualdex.save.SaveSnapshot
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.OwnedPokemon
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.Platform
 
 object SaveKnowledgeMapper {
-    fun speciesIdsForDexNumbers(catalog: ParsedCatalog, dexNumbers: Set<Int>): Set<Int> {
-        val speciesByDex = catalog.speciesById.values
-            .mapNotNull { species -> species.dexNumber.value?.let { dex -> dex to species.id } }
+    fun pokedexFlagNumbersBySpeciesId(catalog: ParsedCatalog): Map<Int, Int> {
+        val retailRegionalDex = catalog.platform == Platform.GBA &&
+            catalog.family in GEN3_FAMILIES &&
+            catalog.speciesById[1]?.dexNumber?.value?.let { it != 1 } == true
+        return catalog.speciesById.values.mapNotNull { species ->
+            val flagNumber = if (retailRegionalDex) {
+                when (species.id) {
+                    in 1..251 -> species.id
+                    in 277..411 -> species.id - 25
+                    else -> null
+                }
+            } else {
+                species.dexNumber.value
+            }
+            flagNumber?.takeIf { it > 0 }?.let { species.id to it }
+        }.toMap()
+    }
+
+    fun speciesIdsForPokedexFlags(catalog: ParsedCatalog, dexNumbers: Set<Int>): Set<Int> {
+        val flagNumbers = pokedexFlagNumbersBySpeciesId(catalog)
+        val speciesByDex = flagNumbers.entries
+            .map { (speciesId, flagNumber) -> flagNumber to speciesId }
             .groupBy({ it.first }, { it.second })
         return dexNumbers.flatMapTo(linkedSetOf()) { speciesByDex[it].orEmpty() }
     }
@@ -18,8 +39,8 @@ object SaveKnowledgeMapper {
         require(snapshot.romIdentity.equals(catalog.romSha256, ignoreCase = true)) {
             "SaveRAM snapshot belongs to another ROM catalog"
         }
-        val seen = speciesIdsForDexNumbers(catalog, snapshot.seenDexNumbers)
-        val caughtFromFlags = speciesIdsForDexNumbers(catalog, snapshot.caughtDexNumbers)
+        val seen = speciesIdsForPokedexFlags(catalog, snapshot.seenDexNumbers)
+        val caughtFromFlags = speciesIdsForPokedexFlags(catalog, snapshot.caughtDexNumbers)
         val partyKeys = snapshot.party.mapTo(mutableSetOf(), OwnedIndividual::stableLocation)
         val owned = snapshot.allIndividuals.mapNotNull { individual ->
             if (individual.speciesId !in catalog.speciesById) return@mapNotNull null
@@ -46,4 +67,10 @@ object SaveKnowledgeMapper {
             visitedAreaBaseIds = previous.visitedAreaBaseIds + listOfNotNull(snapshot.currentArea?.baseId),
         )
     }
+
+    private val GEN3_FAMILIES = setOf(
+        EngineFamily.RUBY_SAPPHIRE,
+        EngineFamily.EMERALD,
+        EngineFamily.FIRERED_LEAFGREEN,
+    )
 }

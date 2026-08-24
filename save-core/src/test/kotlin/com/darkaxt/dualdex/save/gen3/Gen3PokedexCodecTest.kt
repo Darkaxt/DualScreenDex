@@ -68,6 +68,43 @@ class Gen3PokedexCodecTest {
     }
 
     @Test
+    fun resolvesOfficialEmeraldDefaultLayoutFromExplicitFlags() {
+        val context = SaveParseContext(
+            romIdentity = "d".repeat(64),
+            speciesById = (1..411).associateWith { speciesId ->
+                SaveSpeciesContext(
+                    speciesId = speciesId,
+                    dexNumber = when (speciesId) {
+                        in 1..251 -> speciesId + 202
+                        in 277..411 -> speciesId - 276
+                        else -> null
+                    },
+                    growthRate = null,
+                    pokedexFlagNumber = when (speciesId) {
+                        in 1..251 -> speciesId
+                        in 277..411 -> speciesId - 25
+                        else -> null
+                    },
+                )
+            },
+        )
+        val bytes = ByteArray(0xF2C)
+        val flagBytes = (context.internalSpeciesCount + 7) / 8
+        (1..8).forEach { setFlag(bytes, 0x28, it) }
+        (1..15).forEach { setFlag(bytes, 0x28 + flagBytes, it) }
+
+        val result = Gen3PokedexCodec.decode(
+            saveBlock2 = bytes,
+            context = context,
+            party = listOf(OwnedIndividual("party-0", speciesId = 1)),
+        )
+
+        assertEquals(0x28, result.value?.ownedOffset)
+        assertEquals((1..8).toSet(), result.value?.caughtDexNumbers)
+        assertEquals((1..15).toSet(), result.value?.seenDexNumbers)
+    }
+
+    @Test
     fun incompleteBlockIsUnavailableInsteadOfInventingEmptyFlags() {
         val context = SaveParseContext(
             romIdentity = "c".repeat(64),

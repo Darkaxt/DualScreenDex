@@ -21,6 +21,7 @@ import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.gen3.Gen3Checksums
+import com.darkaxt.dualdex.save.gen3.Gen3PokedexCodec
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
@@ -77,6 +78,19 @@ class OfficialEmeraldPlayerStateRealControlTest {
                 val saveBlock1 = ByteArray(saveAbi.saveBlock1Size)
                 val saveBlock2 = ByteArray(saveAbi.saveBlock2Size)
                 writeSanitizedTrainer(saveBlock1, saveBlock2, context)
+                writeSanitizedPokedex(saveBlock2, context)
+                assertEquals(203, context.speciesById[1]?.dexNumber)
+                assertEquals(1, context.speciesById[1]?.pokedexFlagNumber)
+                val pokedexControl = requireNotNull(
+                    Gen3PokedexCodec.decode(
+                        saveBlock2,
+                        context,
+                        listOf(OwnedIndividual("party-0", speciesId = 1)),
+                    ).value,
+                )
+                assertEquals(0x28, pokedexControl.ownedOffset)
+                assertEquals((1..8).toSet(), pokedexControl.caughtDexNumbers)
+                assertEquals((1..15).toSet(), pokedexControl.seenDexNumbers)
                 saveBlock1[layout.saveBlock1MapGroupOffset] = 0
                 saveBlock1[layout.saveBlock1MapNumberOffset] = 9
                 val party = ByteArray(requireNotNull(layout.playerPartyCapacity) * requireNotNull(layout.playerPartyRecordSize))
@@ -216,6 +230,22 @@ class OfficialEmeraldPlayerStateRealControlTest {
         trainer.badgeFlags.last().let { flag ->
             saveBlock1[flag.byteOffset] = (saveBlock1[flag.byteOffset].toInt() or flag.mask).toByte()
         }
+    }
+
+    private fun writeSanitizedPokedex(
+        saveBlock2: ByteArray,
+        context: SaveParseContext,
+    ) {
+        val flagBytes = (context.internalSpeciesCount + 7) / 8
+        val ownedOffset = 0x28
+        val seenOffset = ownedOffset + flagBytes
+        fun setFlag(offset: Int, dexNumber: Int) {
+            val index = dexNumber - 1
+            saveBlock2[offset + index / 8] =
+                (saveBlock2[offset + index / 8].toInt() or (1 shl (index % 8))).toByte()
+        }
+        (1..8).forEach { dexNumber -> setFlag(ownedOffset, dexNumber) }
+        (1..15).forEach { dexNumber -> setFlag(seenOffset, dexNumber) }
     }
 
     private fun writeSanitizedPartyRecord(context: SaveParseContext): ByteArray {

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stop Gen III pre-party saves from fabricating Pokédex discoveries and translate live Dex numbers into catalog species IDs before Organic state changes.
+**Goal:** Stop Gen III pre-party saves from fabricating Pokédex discoveries and translate live Pokédex flags into catalog species IDs before Organic state changes.
 
 **Architecture:** Keep the heuristic layout resolver for anchored saves, but bypass it when a decoded party is positively empty. Centralize Dex-to-species translation in `SaveKnowledgeMapper` and make the live action contract explicitly species-ID based.
 
@@ -59,7 +59,7 @@ Expected: FAIL because the current gateway treats Dex 25 as internal species ID 
 
 - [ ] **Step 3: Centralize translation and correct the action contract**
 
-Add `SaveKnowledgeMapper.speciesIdsForDexNumbers(catalog, dexNumbers)`. Use it from `merge` and `ProductionCompanionRuntime.applyResolvedPlayerState`. Rename the action fields to `seenSpeciesIds` and `caughtSpeciesIds`, and keep the gateway ledger species-ID based.
+Add `SaveKnowledgeMapper.pokedexFlagNumbersBySpeciesId(catalog)` and `speciesIdsForPokedexFlags(catalog, dexNumbers)`. Preserve ROM-extracted National-Dex numbers for expansion/unified layouts and separate official Emerald's National save flags from its regional display numbering. Use the shared translation from `merge` and `ProductionCompanionRuntime.applyResolvedPlayerState`. Rename the action fields to `seenSpeciesIds` and `caughtSpeciesIds`, and keep the gateway ledger species-ID based.
 
 - [ ] **Step 4: Verify GREEN**
 

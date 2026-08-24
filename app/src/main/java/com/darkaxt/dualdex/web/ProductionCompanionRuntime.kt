@@ -249,11 +249,11 @@ class ProductionCompanionRuntime(
         }
         val current = gateway.bootstrap()
         val seenAdditions = matching?.pokedex?.seenDexNumbers?.value
-            ?.let { dexNumbers -> catalog?.let { SaveKnowledgeMapper.speciesIdsForDexNumbers(it, dexNumbers) } }
+            ?.let { dexNumbers -> catalog?.let { SaveKnowledgeMapper.speciesIdsForPokedexFlags(it, dexNumbers) } }
             ?.minus(current.ledger.seenSpecies)
             .orEmpty()
         val caughtAdditions = matching?.pokedex?.caughtDexNumbers?.value
-            ?.let { dexNumbers -> catalog?.let { SaveKnowledgeMapper.speciesIdsForDexNumbers(it, dexNumbers) } }
+            ?.let { dexNumbers -> catalog?.let { SaveKnowledgeMapper.speciesIdsForPokedexFlags(it, dexNumbers) } }
             ?.minus(current.ledger.caughtSpecies)
             .orEmpty()
         if (
@@ -566,6 +566,7 @@ class ProductionCompanionRuntime(
         cachedSaveParseContext?.let { cached ->
             if (cached.catalog === current) return cached.value
         }
+        val pokedexFlagNumbers = SaveKnowledgeMapper.pokedexFlagNumbersBySpeciesId(current)
         return SaveParseContext(
         romIdentity = current.romSha256,
         speciesById = current.speciesById.mapValues { (id, species) ->
@@ -573,6 +574,7 @@ class ProductionCompanionRuntime(
                 speciesId = id,
                 dexNumber = species.dexNumber.value,
                 growthRate = species.growthRate.value,
+                pokedexFlagNumber = pokedexFlagNumbers[id],
                 formId = species.formId,
                 abilityIds = species.abilityIds.value.orEmpty().filter { it > 0 },
             )
