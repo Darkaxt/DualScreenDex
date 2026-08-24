@@ -116,6 +116,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                     tables = resolvedTables,
                     pokeemeraldExpansion = expansion?.metadata,
                     headerlessUnifiedSpecies = identity.headerlessUnifiedSpecies?.metadata,
+                    expandedSplitCaptureBalls = identity.expandedSplitCaptureBalls,
                     compiledGbaReferences = identity.compiledGbaReferences,
                     learnsetTables = dependent.learnsetTables,
                     learnsetSelector = dependent.learnsetSelector,

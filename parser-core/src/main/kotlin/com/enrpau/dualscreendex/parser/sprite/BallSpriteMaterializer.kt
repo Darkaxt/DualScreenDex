@@ -3,9 +3,14 @@ package com.enrpau.dualscreendex.parser.sprite
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.ExpandedSplitCaptureBallMetadata
 
 object BallSpriteMaterializer {
-    fun captureBalls(rom: RomImage): Map<Int, CaptureBallRecord> {
+    fun captureBalls(
+        rom: RomImage,
+        expandedSplit: ExpandedSplitCaptureBallMetadata? = null,
+    ): Map<Int, CaptureBallRecord> {
+        expandedSplit?.let { return expandedSplitCaptureBalls(rom, it) }
         val sheets = locateSheetTable(rom) ?: return expansionCaptureBalls(rom)
         val tagBase = rom.u16le(sheets + 6)
         val palettes = locatePaletteTable(rom, tagBase) ?: return emptyMap()
@@ -39,6 +44,48 @@ object BallSpriteMaterializer {
                 name = CatalogField.notFound("ball name was not materialized"),
                 sprite = CatalogField.available(sprite),
                 generic = itemId == POKE_BALL_ITEM_ID,
+            )
+        }
+    }
+
+    private fun expandedSplitCaptureBalls(
+        rom: RomImage,
+        metadata: ExpandedSplitCaptureBallMetadata,
+    ): Map<Int, CaptureBallRecord> {
+        if (metadata.ballCount !in 1..64 || metadata.itemIdsByBallIndex.size != metadata.ballCount) {
+            return emptyMap()
+        }
+        return (0 until metadata.ballCount).associate { ballIndex ->
+            val itemId = metadata.itemIdsByBallIndex[ballIndex]
+            val sprite = runCatching {
+                val sheetEntry = metadata.sheetTableOffset + ballIndex * 8
+                val paletteEntry = metadata.paletteTableOffset + ballIndex * 8
+                val gfxPointer = rom.gbaPointer(sheetEntry) ?: error("invalid expanded ball gfx pointer")
+                val palettePointer = rom.gbaPointer(paletteEntry) ?: error("invalid expanded ball palette pointer")
+                val gfx = GbaRomCompression.decodeAt(rom, gfxPointer)
+                require(gfx.size >= FIRST_FRAME_SIZE) { "expanded ball graphics are shorter than one frame" }
+                val paletteBytes = strictPaletteBytesAt(rom, palettePointer)
+                val palette = ShortArray(16) { index ->
+                    ((paletteBytes[index * 2].toInt() and 0xFF) or
+                        ((paletteBytes[index * 2 + 1].toInt() and 0xFF) shl 8)).toShort()
+                }
+                TileRenderer.applyBgr555Palette(
+                    TileRenderer.gba4Bpp(gfx.copyOf(FIRST_FRAME_SIZE), 2, 2),
+                    palette,
+                )
+            }.getOrElse { error ->
+                return@associate itemId to CaptureBallRecord(
+                    id = itemId,
+                    name = CatalogField.notFound("ball name was not materialized"),
+                    sprite = CatalogField.notFound(error.message ?: "expanded ball sprite could not be decoded"),
+                    generic = ballIndex == 1,
+                )
+            }
+            itemId to CaptureBallRecord(
+                id = itemId,
+                name = CatalogField.notFound("ball name was not materialized"),
+                sprite = CatalogField.available(sprite),
+                generic = ballIndex == 1,
             )
         }
     }
@@ -145,6 +192,12 @@ object BallSpriteMaterializer {
         val pointer = runCatching { rom.gbaPointer(pointerField) }.getOrNull() ?: return false
         if (pointer < 0 || pointer + 32 > rom.size) return false
         return rom.u8(pointer) != 0x10 || runCatching { rom.u24le(pointer + 1) == 32 }.getOrDefault(false)
+    }
+
+    private fun strictPaletteBytesAt(rom: RomImage, pointer: Int): ByteArray {
+        if (rom.u8(pointer) != 0x10) return rom.slice(pointer, 32)
+        require(rom.u24le(pointer + 1) == 32) { "compressed expanded ball palette does not declare 32 bytes" }
+        return GbaRomCompression.decodeAt(rom, pointer)
     }
 
     private fun paletteBytesAt(rom: RomImage, pointer: Int): ByteArray =

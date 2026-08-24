@@ -151,10 +151,19 @@ data class ResolvedRomLayout(
     val tables: ProfileTables,
     val pokeemeraldExpansion: PokeemeraldExpansionMetadata? = null,
     val headerlessUnifiedSpecies: HeaderlessUnifiedSpeciesMetadata? = null,
+    val expandedSplitCaptureBalls: ExpandedSplitCaptureBallMetadata? = null,
     val compiledGbaReferences: GbaCompiledReferenceIndex? = null,
     val learnsetTables: List<Gen3LearnsetTableLayout> = emptyList(),
     val learnsetSelector: Gen3LearnsetSelectorEvidence? = null,
     val resolvedDatasets: ResolvedDatasetLayouts = ResolvedDatasetLayouts(),
+)
+
+/** Compiled-authorized expanded capture-ball tables and their ROM-native item relationship. */
+data class ExpandedSplitCaptureBallMetadata(
+    val sheetTableOffset: Int,
+    val paletteTableOffset: Int,
+    val ballCount: Int,
+    val itemIdsByBallIndex: List<Int>,
 )
 
 /** Binary-proven unified species record ABI without a published expansion header. */

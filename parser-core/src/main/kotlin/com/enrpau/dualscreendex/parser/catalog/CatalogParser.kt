@@ -390,7 +390,11 @@ object CatalogMaterializer {
                     },
             )
         }
-        val balls = if (layout.generation == 3) BallSpriteMaterializer.captureBalls(rom) else emptyMap()
+        val balls = if (layout.generation == 3) {
+            BallSpriteMaterializer.captureBalls(rom, layout.expandedSplitCaptureBalls)
+        } else {
+            emptyMap()
+        }
         val capabilities = initialCapabilities.toMutableMap()
         capabilities[RomCapability.MOVE_DESCRIPTIONS] = if (moveDescriptions != null) {
             val expected = moves.keys.count { it > 0 }

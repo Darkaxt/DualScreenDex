@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.analysis.ExactProfileTablesSnapshot
 import com.enrpau.dualscreendex.parser.analysis.ExactTableLayoutSnapshot
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.ExpandedSplitCaptureBallMetadata
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
 import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.ProfileTables
@@ -27,6 +28,7 @@ import com.enrpau.dualscreendex.parser.parse.Gen1CompiledTypeChartResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledCoreResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledMoveResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledSpriteResolver
+import com.enrpau.dualscreendex.parser.parse.ExpandedSplitCaptureBallResolver
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolution
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
@@ -46,6 +48,7 @@ internal sealed interface IdentityRootsPhaseResult {
         scoreEvidence: List<ScoreEvidence>,
         expansion: PokeemeraldExpansionResolution?,
         headerlessUnifiedSpecies: HeaderlessUnifiedSpeciesResolution? = null,
+        expandedSplitCaptureBalls: ExpandedSplitCaptureBallMetadata? = null,
         compiledGbaReferences: GbaCompiledReferenceIndex?,
         tableResolution: ProfileTableResolution,
         val codec: PokemonTextCodec,
@@ -55,6 +58,9 @@ internal sealed interface IdentityRootsPhaseResult {
         val scoreEvidence: List<ScoreEvidence> = Collections.unmodifiableList(scoreEvidence.toList())
         val expansion = expansion?.immutableCopy()
         val headerlessUnifiedSpecies = headerlessUnifiedSpecies
+        val expandedSplitCaptureBalls = expandedSplitCaptureBalls?.copy(
+            itemIdsByBallIndex = Collections.unmodifiableList(expandedSplitCaptureBalls.itemIdsByBallIndex.toList()),
+        )
         val compiledGbaReferences = compiledGbaReferences?.copy(
             counts = Collections.unmodifiableMap(LinkedHashMap(compiledGbaReferences.counts)),
         )
@@ -123,6 +129,11 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             definition.family == com.enrpau.dualscreendex.parser.model.EngineFamily.EMERALD
         ) {
             HeaderlessUnifiedSpeciesResolver.resolve(session)
+        } else {
+            null
+        }
+        val expandedSplitCaptureBalls = if (generation == 3 && identityMatched && expansion == null) {
+            ExpandedSplitCaptureBallResolver.resolve(session)
         } else {
             null
         }
@@ -320,6 +331,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             },
             expansion = expansion,
             headerlessUnifiedSpecies = headerlessUnifiedSpecies,
+            expandedSplitCaptureBalls = expandedSplitCaptureBalls,
             compiledGbaReferences = compiledGbaReferences,
             tableResolution = tableResolution,
             codec = codec,
