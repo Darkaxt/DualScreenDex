@@ -340,7 +340,7 @@ git commit -m "perf: reuse live memory decoding buffers"
 **Files:**
 - Create: `docs/superpowers/plans/2026-08-24-runtime-performance-stage-4-validation.md`
 
-- [ ] **Step 1: Run web and complete Gradle gates**
+- [x] **Step 1: Run web and complete Gradle gates**
 
 ```powershell
 Push-Location companion-web; npm test -- --run; npm run build; Pop-Location
@@ -348,7 +348,7 @@ Push-Location companion-web; npm test -- --run; npm run build; Pop-Location
 node --test tools/release/*.test.mjs
 ```
 
-- [ ] **Step 2: Record exact automated evidence**
+- [x] **Step 2: Record exact automated evidence**
 
 Record test counts, failures, lint errors, artifact path/size/hash, original R1-R14 bounds, and official Gen I-III/Modern Emerald/Odyssey/Unbound control results. Do not infer device behavior from host Gradle residency.
 
