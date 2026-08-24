@@ -2,10 +2,10 @@
 
 DualDex is a passive Pokédex companion for mainline-family Pokémon games running in RetroArch on Android handhelds. It supports a normal docked activity for dual-screen devices and an optional floating overlay for single-screen play.
 
-The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and refreshes seen/caught/team/area knowledge from checksum-valid SaveRAM. Validated live layouts can supersede stale disk state for current location, party, and battle context through RetroArch's read-only Network Commands. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
+The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and reads supported transient game state through RetroArch's read-only Network Commands. One unified snapshot supplies every feature; live fields are authoritative and validated save/checkpoint recovery fills only fields that are unavailable live. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.53` correctly treats the source-defined Gen III first-battle modifier as compatible with a wild encounter, so a wild Pokémon with resolved IV rarity opens directly on Rarity even when the ROM uses special first-battle scripting. Existing valid catalog caches remain reusable. Unsupported features remain explicit instead of aborting otherwise valid catalogs.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.54` routes game-originating transient state through one live-first, recovery-aware snapshot; adds source-proven official Ruby/Sapphire live player state and Hoenn/Unbound clocks; coalesces overlapping memory reads; and includes the converged Gen I/II local-map and avatar work. Parser schema 35 performs one intentional catalog revalidation after RC53; complete schema-35 catalogs remain reusable. Unsupported features remain explicit instead of aborting otherwise valid catalogs.
 
 ## Thor-first UI direction
 
@@ -181,6 +181,7 @@ The release candidate contains:
 - checksum-valid per-ROM SaveRAM snapshots persisted in the catalog database, including seen/caught, Team, Area, preferred individual, IV/DV quality, and capture-ball provenance where applicable;
 - Area-filter sun/moon markers derived from the parsed encounter windows;
 - passive live battle context for validated Generation I and III structures, with frequency-only opponent move history and local discovery persistence;
+- one unified transient-state boundary for Trainer Card, Pokédex, Party, progression, battle, Atlas, clock, readiness, bag, and event flags, with field-level live authority and identity-gated recovery;
 - Discovered, Organic, and Hidden presentation policies; and
 - human-readable and machine-readable compatibility reports.
 
@@ -227,7 +228,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC13 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | `v1.1.0-rc.46` is prepared for the protected signing workflow with checksums and provenance. |
+| Signed candidate target | `v1.1.0-rc.54` is prepared for the protected signing workflow with checksums and provenance. |
 
 ## Parser development
 
