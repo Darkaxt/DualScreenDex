@@ -142,12 +142,12 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         )
         is CompanionAction.LiveGameClockChanged -> state.copy(gameTime = action.gameTime)
         is CompanionAction.ResolvedPlayerStateChanged -> {
-            val seen = action.seenDexNumbers ?: state.ledger.seenSpecies
-            val caught = action.caughtDexNumbers ?: state.ledger.caughtSpecies
+            val caught = state.ledger.caughtSpecies + action.caughtDexNumbers.orEmpty()
+            val seen = state.ledger.seenSpecies + action.seenDexNumbers.orEmpty() + caught
             state.copy(
                 trainerCardState = action.trainerCard,
                 ledger = state.ledger.copy(
-                    seenSpecies = seen + caught,
+                    seenSpecies = seen,
                     caughtSpecies = caught,
                 ),
             )

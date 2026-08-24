@@ -6,7 +6,8 @@ import com.darkaxt.dualdex.save.SaveMonitorStatus
 import com.darkaxt.dualdex.save.SaveObservation
 import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.save.SaveSnapshot
-import com.darkaxt.dualdex.web.SaveKnowledgeApplication
+import com.darkaxt.dualdex.live.RecoveryApplication
+import com.darkaxt.dualdex.catalog.StoredSaveSnapshot
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import org.junit.Assert.assertEquals
@@ -31,9 +32,9 @@ class SaveKnowledgeCheckpointCoordinatorTest {
         var supplied: KnowledgeLedger? = null
         val coordinator = SaveKnowledgeCheckpointCoordinator(
             checkpoints,
-            applyRuntime = { _, _, _, checkpoint ->
-                supplied = checkpoint
-                SaveKnowledgeApplication(true)
+            applyRecovery = { projection ->
+                supplied = projection.checkpointLedger
+                RecoveryApplication(true)
             },
             clock = { 500 },
         )
@@ -51,7 +52,7 @@ class SaveKnowledgeCheckpointCoordinatorTest {
         val frozen = KnowledgeLedger(seenSpecies = setOf(25, 133))
         val coordinator = SaveKnowledgeCheckpointCoordinator(
             checkpoints,
-            applyRuntime = { _, _, _, _ -> SaveKnowledgeApplication(true, frozen) },
+            applyRecovery = { RecoveryApplication(true, frozen) },
             clock = { 500 },
         )
 
@@ -64,15 +65,25 @@ class SaveKnowledgeCheckpointCoordinatorTest {
     }
 
     @Test
-    fun unchangedAndResultsWithoutLiveObservationsNeverReadOrWrite() {
+    fun unchangedIncludingRetainedSnapshotsApplyButNeverReadOrWrite() {
         val checkpoints = RecordingCheckpoints(KnowledgeLedger(seenSpecies = setOf(25)))
         var applications = 0
         val coordinator = SaveKnowledgeCheckpointCoordinator(
             checkpoints,
-            applyRuntime = { _, _, _, _ -> applications++; SaveKnowledgeApplication(true) },
+            applyRecovery = { applications++; RecoveryApplication(true) },
         )
 
         coordinator.apply(result(SaveObservationKind.UNCHANGED, 1), SaveRamView(status = "MATCHED"))
+        val retainedObservation = result(SaveObservationKind.UNCHANGED, 1).observation
+        coordinator.apply(
+            SaveMonitorResult(
+                SaveMonitorStatus.MATCHED,
+                "ON",
+                retained = StoredSaveSnapshot(snapshot(1), 1, 1),
+                observation = retainedObservation,
+            ),
+            SaveRamView(status = "MATCHED"),
+        )
         coordinator.apply(
             SaveMonitorResult(SaveMonitorStatus.MATCHED, "ON", snapshot = snapshot(1)),
             SaveRamView(status = "MATCHED"),
@@ -82,7 +93,7 @@ class SaveKnowledgeCheckpointCoordinatorTest {
             SaveRamView(status = "AMBIGUOUS"),
         )
 
-        assertEquals(1, applications)
+        assertEquals(2, applications)
         assertEquals(0, checkpoints.reads)
         assertEquals(0, checkpoints.writes.size)
     }

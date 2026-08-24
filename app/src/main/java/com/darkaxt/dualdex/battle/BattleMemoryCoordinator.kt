@@ -137,7 +137,7 @@ class BattleMemoryCoordinator(
         if (!nextEligible || sessionIdentity != nextIdentity) {
             lastPublishedLiveGame = null
             liveGamePublisher(null)
-            transientGameState?.endSession()
+            if (!nextEligible) transientGameState?.suspendLive() else transientGameState?.endSession()
         }
         resetReader()
         tracker.reset(nextIdentity)

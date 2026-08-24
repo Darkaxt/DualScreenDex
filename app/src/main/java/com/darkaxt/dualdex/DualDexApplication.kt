@@ -135,8 +135,9 @@ class DualDexApplication : Application() {
                 Log.i(CACHE_LOG_TAG, message)
             }
         }
-        val transientGameState = UnifiedGameStateDecoder()
-        val runtime = ProductionCompanionRuntime(
+        lateinit var runtime: ProductionCompanionRuntime
+        val transientGameState = UnifiedGameStateDecoder { runtime.gateway.bootstrap().ledger }
+        runtime = ProductionCompanionRuntime(
             catalogRepository = cache,
             initialSettings = settingsRepository.readForRom(lastCatalogSha256),
             settingsForRom = settingsRepository::readForRom,
@@ -178,7 +179,7 @@ class DualDexApplication : Application() {
                 transientGameState,
                 SaveKnowledgeCheckpointCoordinator(
                     SaveKnowledgeCheckpointStore(File(filesDir, "knowledge-checkpoints")),
-                    runtime::applySaveObservation,
+                    transientGameState::acceptRecovery,
                 ),
             )
             mapperCandidate = MemoryMapperCoordinator(

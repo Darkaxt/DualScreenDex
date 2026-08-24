@@ -13,10 +13,18 @@ import com.darkaxt.dualdex.battle.LiveUnavailableReason
 import com.darkaxt.dualdex.battle.LiveValue
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SavedArea
+import com.darkaxt.dualdex.save.SaveDocumentSource
+import com.darkaxt.dualdex.save.SaveObservation
+import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.save.TrainerIdentity
 import com.darkaxt.dualdex.save.TrainerPlayTime
 import com.darkaxt.dualdex.save.TrainerSnapshot
+import com.darkaxt.dualdex.save.BagEntry
+import com.darkaxt.dualdex.save.BagPocket
+import com.darkaxt.dualdex.save.BagPocketSnapshot
 import com.enrpau.dualscreendex.companion.api.SaveRamView
+import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.darkaxt.dualdex.knowledge.SaveFileFingerprint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -74,6 +82,19 @@ class UnifiedGameStateDecoderTest {
 
         assertEquals(900L, decoder.current!!.trainer.money.value)
         assertEquals(ResolvedValueSource.LIVE, decoder.current!!.trainer.money.source)
+    }
+
+    @Test
+    fun disconnectDropsOnlyLiveAuthorityAndImmediatelyRevealsRecovery() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(recovery(ROM, money = 500L))
+        decoder.acceptDecodedLive(liveSnapshot(ROM, sampleId = 1, money = LiveValue.Available(900L)))
+
+        decoder.suspendLive()
+
+        assertEquals(500L, decoder.current!!.trainer.money.value)
+        assertEquals(ResolvedValueSource.RECOVERY, decoder.current!!.trainer.money.source)
     }
 
     @Test
@@ -152,6 +173,59 @@ class UnifiedGameStateDecoderTest {
         assertTrue(requireNotNull(decoder.current).gameAccessReady())
     }
 
+    @Test
+    fun changedRecoveryFreezesPreApplicationKnowledgeInsideTheStateOwner() {
+        var currentLedger = KnowledgeLedger(seenSpecies = setOf(25))
+        val decoder = UnifiedGameStateDecoder { currentLedger }
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(
+            recovery(ROM).copy(observation = observation(SaveObservationKind.INITIAL, 1)),
+        )
+        currentLedger = KnowledgeLedger(seenSpecies = setOf(25, 133))
+
+        val application = decoder.acceptRecovery(
+            recovery(ROM, money = 700L).copy(observation = observation(SaveObservationKind.CHANGED, 2)),
+        )
+
+        assertTrue(application.accepted)
+        assertEquals(currentLedger, application.checkpointLedger)
+        assertEquals(700L, decoder.current?.trainer?.money?.value)
+        assertEquals(2L, decoder.current?.recovery?.applicationId)
+        assertEquals(SaveObservationKind.CHANGED, decoder.current?.recovery?.observationKind)
+        assertFalse(requireNotNull(decoder.current?.recovery).resetKnowledge)
+    }
+
+    @Test
+    fun bagPocketsAndEventFlagsResolveIndependently() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(
+            recovery(ROM).copy(
+                snapshot = recovery(ROM).snapshot.copy(
+                    bag = listOf(
+                        BagPocketSnapshot(BagPocket.ITEMS, listOf(BagEntry(1, 2))),
+                        BagPocketSnapshot(BagPocket.BALLS, listOf(BagEntry(4, 3))),
+                    ),
+                    eventFlagIds = setOf(1007),
+                ),
+            ),
+        )
+        decoder.acceptDecodedLive(
+            liveSnapshot(ROM, 1, LiveValue.Available(900L)).copy(
+                bag = mapOf(BagPocket.ITEMS to LiveValue.Available(BagPocketSnapshot(BagPocket.ITEMS, emptyList()))),
+                eventFlags = LiveValue.Available(setOf(2000)),
+            ),
+        )
+
+        val current = requireNotNull(decoder.current)
+        assertEquals(ResolvedValueSource.LIVE, current.bag.getValue(BagPocket.ITEMS).source)
+        assertTrue(current.bag.getValue(BagPocket.ITEMS).value?.entries?.isEmpty() == true)
+        assertEquals(ResolvedValueSource.RECOVERY, current.bag.getValue(BagPocket.BALLS).source)
+        assertEquals(4, current.bag.getValue(BagPocket.BALLS).value?.entries?.single()?.itemId)
+        assertEquals(setOf(2000), current.eventFlags.value)
+        assertEquals(ResolvedValueSource.LIVE, current.eventFlags.source)
+    }
+
     private fun context(rom: String, generation: Int = 3) = TransientGameStateContext(
         romIdentity = rom,
         generation = generation,
@@ -188,6 +262,19 @@ class UnifiedGameStateDecoderTest {
             ),
         ),
         saveRam = SaveRamView(status = "MATCHED"),
+    )
+
+    private fun observation(kind: SaveObservationKind, version: Int) = SaveObservation(
+        kind = kind,
+        source = SaveDocumentSource(
+            id = "file:///Game.srm",
+            displayPath = "Game.srm",
+            name = "Game.srm",
+            size = 4,
+            lastModifiedEpochMs = version.toLong(),
+            read = { byteArrayOf(1, 2, 3, 4) },
+        ),
+        fingerprint = SaveFileFingerprint(version.toString(16).padStart(64, '0'), 4, version.toLong()),
     )
 
     private fun liveSnapshot(

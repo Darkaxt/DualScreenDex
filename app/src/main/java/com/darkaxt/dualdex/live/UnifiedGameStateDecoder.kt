@@ -18,15 +18,24 @@ import com.darkaxt.dualdex.battle.RuntimeMapPosition
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.BagPocketSnapshot
 import com.darkaxt.dualdex.save.TrainerPlayTime
+import com.darkaxt.dualdex.save.SaveObservationKind
+import com.enrpau.dualscreendex.companion.api.SaveRamView
+import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import java.util.Collections
 import java.util.IdentityHashMap
 
-class UnifiedGameStateDecoder : TransientGameStateSource {
+class UnifiedGameStateDecoder(
+    private val knowledgeLedgerSnapshot: () -> KnowledgeLedger = { KnowledgeLedger() },
+) : TransientGameStateSource {
     private val listeners: MutableSet<TransientGameStateListener> =
         Collections.newSetFromMap(IdentityHashMap())
     private var context: TransientGameStateContext? = null
     private var live: LiveGameSnapshot? = null
     private var recovery: RecoveryProjection? = null
+    private var recoveryStatus: SaveRamView? = null
+    private var recoverySourceId: String? = null
+    private var recoveryApplicationId = 0L
+    private var recoveryResetKnowledge = false
     private var published: ResolvedGameSnapshot? = null
 
     override val current: ResolvedGameSnapshot?
@@ -50,6 +59,10 @@ class UnifiedGameStateDecoder : TransientGameStateSource {
         this.context = context
         live = null
         recovery = null
+        recoveryStatus = null
+        recoverySourceId = null
+        recoveryApplicationId = 0L
+        recoveryResetKnowledge = false
         published = null
         if (hadPublishedState) notifyListeners(null)
     }
@@ -187,9 +200,48 @@ class UnifiedGameStateDecoder : TransientGameStateSource {
             return RecoveryApplication(false)
         }
         if (projection.snapshot.saveGeneration != active.generation) return RecoveryApplication(false)
+        val observation = projection.observation
+        val previous = recovery
+        val samePlaythrough = previous != null &&
+            previous.snapshot.romIdentity.equals(projection.snapshot.romIdentity, ignoreCase = true) &&
+            previous.snapshot.saveIdentity.equals(projection.snapshot.saveIdentity, ignoreCase = true) &&
+            observation?.source?.id?.let { sourceId -> recoverySourceId == sourceId } != false
+        if (
+            observation?.kind == SaveObservationKind.UNCHANGED &&
+            samePlaythrough &&
+            previous.snapshot == projection.snapshot &&
+            previous.observation?.fingerprint == observation.fingerprint
+        ) {
+            recovery = projection
+            recoveryStatus = projection.saveRam
+            recoveryResetKnowledge = false
+            publishResolved()
+            return RecoveryApplication(accepted = true)
+        }
+        val frozenLedger = if (observation?.kind == SaveObservationKind.CHANGED && samePlaythrough) {
+            knowledgeLedgerSnapshot()
+        } else {
+            null
+        }
+        recoveryResetKnowledge = when (observation?.kind) {
+            SaveObservationKind.INITIAL, SaveObservationKind.SWITCHED -> true
+            SaveObservationKind.CHANGED, SaveObservationKind.UNCHANGED -> !samePlaythrough
+            null -> previous == null
+        }
         recovery = projection
+        recoveryStatus = projection.saveRam
+        observation?.source?.id?.let { recoverySourceId = it }
+        recoveryApplicationId++
         publishResolved()
-        return RecoveryApplication(accepted = true)
+        return RecoveryApplication(accepted = true, checkpointLedger = frozenLedger)
+    }
+
+    @Synchronized
+    fun acceptRecoveryStatus(saveRam: SaveRamView): ResolvedGameSnapshot? {
+        if (context == null) return published
+        recoveryStatus = saveRam
+        publishResolved()
+        return published
     }
 
     @Synchronized
@@ -199,6 +251,16 @@ class UnifiedGameStateDecoder : TransientGameStateSource {
             return published
         }
         recovery = null
+        recoverySourceId = null
+        recoveryResetKnowledge = false
+        publishResolved()
+        return published
+    }
+
+    @Synchronized
+    fun suspendLive(): ResolvedGameSnapshot? {
+        if (context == null) return published
+        live = null
         publishResolved()
         return published
     }
@@ -209,6 +271,10 @@ class UnifiedGameStateDecoder : TransientGameStateSource {
         context = null
         live = null
         recovery = null
+        recoveryStatus = null
+        recoverySourceId = null
+        recoveryApplicationId = 0L
+        recoveryResetKnowledge = false
         published = null
         if (hadPublishedState) notifyListeners(null)
     }
@@ -257,8 +323,13 @@ class UnifiedGameStateDecoder : TransientGameStateSource {
             },
             eventFlags = resolve(live?.eventFlags, saved?.eventFlagIds),
             recovery = RecoveryState(
+                applicationId = recoveryApplicationId.takeIf { recovery != null },
                 saveIdentity = saved?.saveIdentity,
+                snapshot = saved,
+                saveRam = recoveryStatus,
+                observationKind = recovery?.observation?.kind,
                 checkpointLedger = recovery?.checkpointLedger,
+                resetKnowledge = recoveryResetKnowledge,
             ),
         )
     }

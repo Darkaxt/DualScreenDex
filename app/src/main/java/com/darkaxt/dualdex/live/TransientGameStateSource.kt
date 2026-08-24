@@ -10,8 +10,11 @@ import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.BagPocketSnapshot
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.SaveParseContext
+import com.darkaxt.dualdex.save.SaveSnapshot
+import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.save.TrainerIdentity
 import com.darkaxt.dualdex.save.TrainerPlayTime
+import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 
 fun interface TransientGameStateListener {
@@ -63,8 +66,13 @@ data class ResolvedLocationState(
 )
 
 data class RecoveryState(
+    val applicationId: Long? = null,
     val saveIdentity: String? = null,
+    val snapshot: SaveSnapshot? = null,
+    val saveRam: SaveRamView? = null,
+    val observationKind: SaveObservationKind? = null,
     val checkpointLedger: KnowledgeLedger? = null,
+    val resetKnowledge: Boolean = false,
 )
 
 data class ResolvedGameSnapshot(

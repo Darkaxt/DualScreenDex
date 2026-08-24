@@ -228,7 +228,7 @@ class RetroArchSetupCoordinator(
         val entry = activeEntry.get() ?: return false
         if (lastSaveCandidates.get().none { it.id == documentId }) return false
         saveMonitor.select(entry.sha256, documentId)
-        runtime.updateSaveRam(
+        transientGameState.acceptRecoveryStatus(
             SaveRamView(
                 status = "LOCATING",
                 autosaveStatus = readAutosaveStatus(),
@@ -500,20 +500,20 @@ class RetroArchSetupCoordinator(
                 lastSaveCandidates.set(candidates)
                 val result = saveMonitor.poll(parseContext, candidates, readAutosaveStatus())
                 val saveView = result.toView()
-                result.snapshot?.let { snapshot ->
+                if ((result.snapshot != null || result.retained?.snapshot != null) && result.observation != null) {
+                    checkpointCoordinator.apply(result, saveView)
+                } else if (result.snapshot != null) {
                     transientGameState.acceptRecovery(
                         RecoveryProjection(
-                            snapshot = snapshot,
+                            snapshot = result.snapshot,
                             saveRam = saveView,
-                            observation = result.observation,
                         ),
                     )
+                } else {
+                    transientGameState.acceptRecoveryStatus(saveView)
                 }
-                if (result.snapshot != null && result.observation != null) checkpointCoordinator.apply(result, saveView)
-                else if (result.snapshot != null) runtime.applySaveSnapshot(result.snapshot, saveView)
-                else runtime.updateSaveRam(saveView)
             } catch (failure: Exception) {
-                runtime.updateSaveRam(
+                transientGameState.acceptRecoveryStatus(
                     SaveRamView(
                         status = "UNAVAILABLE",
                         autosaveStatus = readAutosaveStatus(),
@@ -591,7 +591,7 @@ class RetroArchSetupCoordinator(
             saveMonitor.restore(parseContext, autosaveStatus)
         } catch (failure: Exception) {
             Log.e(LOG_TAG, "Could not restore the cached SaveRAM snapshot", failure)
-            runtime.updateSaveRam(
+            transientGameState.acceptRecoveryStatus(
                 SaveRamView(
                     status = "STALE",
                     autosaveStatus = autosaveStatus,
@@ -601,13 +601,13 @@ class RetroArchSetupCoordinator(
             return
         }
         val snapshot = restored?.snapshot ?: return
-        transientGameState.acceptRecovery(
+        val application = transientGameState.acceptRecovery(
             RecoveryProjection(
                 snapshot = snapshot,
                 saveRam = restored.toView(),
             ),
         )
-        if (runtime.applySaveSnapshot(snapshot, restored.toView())) {
+        if (application.accepted) {
             restoredSaveRom.set(parseContext.romIdentity)
         }
     }

@@ -667,6 +667,22 @@ git add app/src/main/java/com/darkaxt/dualdex/live/UnifiedGameStateDecoder.kt ap
 git commit -m "refactor: unify transient recovery pipelines"
 ```
 
+### Implementation audit through Stage 6 — 2026-08-24
+
+| Contract | Evidence | Result |
+|---|---|---|
+| Initial, switched, changed, and retained unchanged observations enter one recovery owner | setup routes typed monitor results to `SaveKnowledgeCheckpointCoordinator`, which invokes only `acceptRecovery` | PASS |
+| Matching checkpoints seed only their exact playthrough | coordinator reads only the observation-derived ROM/save/hash/size/time key for initial or switched observations | PASS |
+| A changed save freezes Organic knowledge before applying recovery | the decoder-owned ledger callback is sampled before publication; focused and restart tests verify the exact ledger is persisted/restored | PASS |
+| Live fields remain authoritative while recovery fills unavailable fields | unified owner tests retain live money and event flags while recovering independent Pokédex, Party, and bag-pocket values | PASS |
+| Disconnect exposes recovery instead of erasing it | `suspendLive` drops only live authority; the recovery-money regression changes source from LIVE to RECOVERY immediately | PASS |
+| Save status and restored snapshots use the same transient interface | setup no longer calls runtime save-application/status methods; initial restoration and selection status both enter the singleton | PASS |
+| Bag pockets fail independently and remain internal | per-pocket live/recovery tests plus the existing malformed-pocket codec regression keep one corrupt pocket from invalidating the others | PASS |
+| Event flags drive progression/POI knowledge from the unified source | live flags win independently over recovery flags and the Stage 4 projection remains the sole game-originating consumer | PASS |
+| Gen I/II map work remains isolated | Stage 6 changed no map parser, map renderer, Atlas, Gen I, or Gen II file | PASS |
+
+The old runtime save-application methods remain as isolated compatibility test seams with no production caller. Their physical deletion is registered with the complete legacy-surface removal in Stage 7. Stage 6 has no blocker for Stage 7.
+
 ## Stage 7 — Gen I/II parity and legacy removal
 
 ### Task 10: Wrap supported Gen I/II state and delete competing authorities

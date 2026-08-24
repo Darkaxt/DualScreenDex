@@ -159,6 +159,7 @@ class ProductionCompanionRuntime(
         ),
     )
     @Volatile private var resolvedGameState: ResolvedGameSnapshot? = null
+    private var lastRecoveryApplicationId: Long? = null
     private val transientGameStateSubscription = transientGameState?.subscribe { snapshot ->
         applyResolvedGameState(snapshot)
     }
@@ -166,10 +167,38 @@ class ProductionCompanionRuntime(
     @Synchronized
     private fun applyResolvedGameState(snapshot: ResolvedGameSnapshot?) {
         resolvedGameState = snapshot
+        applyResolvedRecoveryState(snapshot)
         applyResolvedPlayerState(snapshot)
         applyResolvedPartyAndProgression(snapshot)
         applyResolvedOverworldState(snapshot)
         applyResolvedBattleState(snapshot)
+    }
+
+    private fun applyResolvedRecoveryState(snapshot: ResolvedGameSnapshot?) {
+        val currentCatalog = catalog ?: return
+        val matching = snapshot?.takeIf { state ->
+            currentCatalog.romSha256.equals(state.romIdentity, ignoreCase = true)
+        } ?: return
+        matching.recovery.saveRam?.let { state ->
+            if (saveRam != state) {
+                saveRam = state
+                cachedState = null
+            }
+        }
+        val applicationId = matching.recovery.applicationId ?: return
+        if (applicationId == lastRecoveryApplicationId) return
+        val saved = matching.recovery.snapshot ?: return
+        val seed = if (matching.recovery.resetKnowledge) {
+            KnowledgeLedgerSanitizer.sanitize(
+                matching.recovery.checkpointLedger ?: KnowledgeLedger(),
+                currentCatalog,
+            )
+        } else {
+            gateway.bootstrap().ledger
+        }
+        if (applySaveState(saved, matching.recovery.saveRam ?: saveRam, seed, null, publishCompatibility = false).accepted) {
+            lastRecoveryApplicationId = applicationId
+        }
     }
 
     private fun applyResolvedPlayerState(snapshot: ResolvedGameSnapshot?) {
@@ -860,6 +889,7 @@ class ProductionCompanionRuntime(
         state: SaveRamView,
         seed: KnowledgeLedger,
         playthrough: ActivePlaythrough?,
+        publishCompatibility: Boolean = true,
     ): SaveKnowledgeApplication {
         val current = catalog ?: return SaveKnowledgeApplication(false)
         if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return SaveKnowledgeApplication(false)
@@ -881,8 +911,10 @@ class ProductionCompanionRuntime(
         saveRam = state
         cachedState = null
         gateway.dispatch(CompanionAction.ReplaceLedger(merged))
-        publishSelectedPlayerSnapshot()
-        resolvedGameState?.let(::applyResolvedPartyAndProgression)
+        if (publishCompatibility) {
+            publishSelectedPlayerSnapshot()
+            resolvedGameState?.let(::applyResolvedPartyAndProgression)
+        }
         return SaveKnowledgeApplication(true)
     }
 
@@ -1260,6 +1292,7 @@ class ProductionCompanionRuntime(
         liveGameState = null
         savedPlayerState = null
         activePlaythrough = null
+        lastRecoveryApplicationId = null
         settingsRomSha256 = null
         settingsWritesEnabled = false
         clearLevelUpRulesetDetection()

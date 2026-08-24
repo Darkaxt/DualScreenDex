@@ -2420,6 +2420,50 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun unifiedRecoveryEventSeedsCheckpointAndAppliesSaveStatusWithoutADirectCallback() {
+        val hash = "6".repeat(64)
+        lateinit var runtime: ProductionCompanionRuntime
+        val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder { runtime.gateway.bootstrap().ledger }
+        runtime = ProductionCompanionRuntime(transientGameState = source)
+        runtime.loadCatalog(
+            "recovery.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(25 to saveSpecies(25)),
+            ),
+        )
+        source.beginSession(
+            com.darkaxt.dualdex.live.TransientGameStateContext(
+                romIdentity = hash,
+                generation = 3,
+                catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+            ),
+        )
+        val checkpoint = KnowledgeLedger(
+            seenSpecies = setOf(25),
+            localMapPoiPreferences = com.enrpau.dualscreendex.companion.model.LocalMapPoiPreferences(showPlaces = false),
+        )
+
+        source.acceptRecovery(
+            com.darkaxt.dualdex.live.RecoveryProjection(
+                snapshot = emptySave(hash, "save-recovery"),
+                saveRam = SaveRamView(status = "MATCHED", autosaveStatus = "ON"),
+                observation = saveObservation(SaveObservationKind.INITIAL, "save", 1),
+                checkpointLedger = checkpoint,
+            ),
+        )
+
+        val state = runtime.stateView()
+        assertTrue(state.speciesState.getValue(25).seen)
+        assertFalse(state.localMapPoiPreferences.showPlaces)
+        assertEquals("MATCHED", state.saveRam.status)
+        assertEquals("ON", state.saveRam.autosaveStatus)
+        runtime.close()
+    }
+
+    @Test
     fun ignoresAnotherRomsLiveSnapshotAndDropsPriorLiveStateWhenCatalogSwitches() {
         val first = "c".repeat(64)
         val second = "d".repeat(64)

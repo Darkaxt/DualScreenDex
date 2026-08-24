@@ -9,6 +9,9 @@ import com.darkaxt.dualdex.save.SaveObservation
 import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
+import com.darkaxt.dualdex.live.TransientGameStateContext
+import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
+import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -41,8 +44,11 @@ class SaveKnowledgeCheckpointRestartIntegrationTest {
         )
         val catalog = ParsedCatalog(romSha, EngineFamily.EMERALD, Platform.GBA)
         val store = SaveKnowledgeCheckpointStore(fallback)
-        val firstRuntime = ProductionCompanionRuntime().apply { loadCatalog("Game.gba", catalog) }
-        val firstCoordinator = SaveKnowledgeCheckpointCoordinator(store, firstRuntime::applySaveObservation)
+        lateinit var firstRuntime: ProductionCompanionRuntime
+        val firstState = UnifiedGameStateDecoder { firstRuntime.gateway.bootstrap().ledger }
+        firstRuntime = ProductionCompanionRuntime(transientGameState = firstState).apply { loadCatalog("Game.gba", catalog) }
+        firstState.beginSession(TransientGameStateContext(romSha, 3, BattleCatalogView(emptyMap(), emptyMap(), emptySet())))
+        val firstCoordinator = SaveKnowledgeCheckpointCoordinator(store, firstState::acceptRecovery)
         val firstSource = DirectSaveDocumentResolver.discover(rom, listOf(root)).single()
         val firstSnapshot = snapshot(romSha, saveIdentity, 1)
 
@@ -62,8 +68,11 @@ class SaveKnowledgeCheckpointRestartIntegrationTest {
         firstRuntime.close()
 
         assertTrue(root.resolve("Game.srm.dualdex.json").isFile)
-        val reopenedRuntime = ProductionCompanionRuntime().apply { loadCatalog("Game.gba", catalog) }
-        val reopenedCoordinator = SaveKnowledgeCheckpointCoordinator(store, reopenedRuntime::applySaveObservation)
+        lateinit var reopenedRuntime: ProductionCompanionRuntime
+        val reopenedState = UnifiedGameStateDecoder { reopenedRuntime.gateway.bootstrap().ledger }
+        reopenedRuntime = ProductionCompanionRuntime(transientGameState = reopenedState).apply { loadCatalog("Game.gba", catalog) }
+        reopenedState.beginSession(TransientGameStateContext(romSha, 3, BattleCatalogView(emptyMap(), emptyMap(), emptySet())))
+        val reopenedCoordinator = SaveKnowledgeCheckpointCoordinator(store, reopenedState::acceptRecovery)
         reopenedCoordinator.apply(
             result(changedSource, changedSnapshot, SaveObservationKind.INITIAL),
             SaveRamView(status = "MATCHED"),
