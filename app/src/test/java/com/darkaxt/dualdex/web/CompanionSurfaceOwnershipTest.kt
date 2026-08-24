@@ -7,6 +7,21 @@ import org.junit.Test
 
 class CompanionSurfaceOwnershipTest {
     @Test
+    fun reportsOnlyOneOwnedLiveSurface() {
+        val ownership = CompanionSurfaceOwnership()
+        val docked = FakeSurface()
+        val overlay = FakeSurface()
+
+        assertEquals(0, ownership.activeSurfaceCount())
+        ownership.activate(docked)
+        assertEquals(1, ownership.activeSurfaceCount())
+        ownership.activate(overlay)
+        assertEquals(1, ownership.activeSurfaceCount())
+        ownership.release(overlay)
+        assertEquals(0, ownership.activeSurfaceCount())
+    }
+
+    @Test
     fun `one surface owns polling while hidden and superseded surfaces release work`() {
         val ownership = CompanionSurfaceOwnership()
         val docked = FakeSurface()

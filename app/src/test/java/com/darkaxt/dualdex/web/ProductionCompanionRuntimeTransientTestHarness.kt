@@ -18,6 +18,7 @@ import com.darkaxt.dualdex.live.RecoveryApplication
 import com.darkaxt.dualdex.live.RecoveryProjection
 import com.darkaxt.dualdex.live.TransientGameStateContext
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
+import com.darkaxt.dualdex.performance.PerformanceRecorder
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.SaveObservation
 import com.darkaxt.dualdex.save.SaveSnapshot
@@ -70,6 +71,7 @@ internal fun ProductionCompanionRuntime(
             ?: current.worldMaps.assets[key]?.let { RenderedMapAsset(PngEncoder.encode(it), null) }
     },
     mapAssetRenderCache: MapAssetRenderCache = MapAssetRenderCache(),
+    performanceRecorder: PerformanceRecorder = PerformanceRecorder(),
 ): ProductionCompanionRuntime = ProductionCompanionRuntime(
     parserWorker = parserWorker,
     catalogRepository = catalogRepository,
@@ -84,6 +86,7 @@ internal fun ProductionCompanionRuntime(
     parseCatalog = parseCatalog,
     mapAssetRenderer = mapAssetRenderer,
     mapAssetRenderCache = mapAssetRenderCache,
+    performanceRecorder = performanceRecorder,
     transientGameState = UnifiedGameStateDecoder(),
 )
 

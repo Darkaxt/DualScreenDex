@@ -8,6 +8,7 @@ enum class NativeSetupRoute {
     GRANT_ROMS,
     OPEN_RETROARCH,
     EXPORT_MAPPER,
+    EXPORT_PERFORMANCE,
     SHOW_OVERLAY,
     DOCK_OVERLAY;
 
@@ -23,6 +24,7 @@ enum class NativeSetupRoute {
                 "grant" to "/roms" -> GRANT_ROMS
                 "open" to "/retroarch" -> OPEN_RETROARCH
                 "mapper" to "/export" -> EXPORT_MAPPER
+                "performance" to "/export" -> EXPORT_PERFORMANCE
                 "overlay" to "/show" -> SHOW_OVERLAY
                 "overlay" to "/dock" -> DOCK_OVERLAY
                 else -> null

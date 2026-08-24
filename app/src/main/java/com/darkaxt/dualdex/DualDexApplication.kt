@@ -9,6 +9,12 @@ import com.darkaxt.dualdex.catalog.CatalogCacheDecision
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointStore
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
+import com.darkaxt.dualdex.performance.AndroidPerformanceLog
+import com.darkaxt.dualdex.performance.AndroidPerformanceSampler
+import com.darkaxt.dualdex.performance.BoundedPerformanceWorkDispatcher
+import com.darkaxt.dualdex.performance.PerformanceComponentMetrics
+import com.darkaxt.dualdex.performance.PerformanceEventSink
+import com.darkaxt.dualdex.performance.PerformanceRecorder
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
@@ -24,6 +30,7 @@ import com.darkaxt.dualdex.web.CompanionSurface
 import com.darkaxt.dualdex.web.CompanionSurfaceOwnership
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
+import com.google.gson.Gson
 import java.io.FileNotFoundException
 import java.io.File
 import java.lang.ref.WeakReference
@@ -37,6 +44,8 @@ class DualDexApplication : Application() {
         private set
     @Volatile var memoryMapper: MemoryMapperCoordinator? = null
         private set
+    @Volatile private var performanceLog: AndroidPerformanceLog? = null
+    @Volatile private var performanceDispatcher: BoundedPerformanceWorkDispatcher? = null
     @Volatile private var settingsStore: SettingsRepository? = null
     @Volatile private var overlaySizeStore: OverlaySizeStore? = null
     @Volatile private var activeCatalogSha256: String? = null
@@ -48,6 +57,11 @@ class DualDexApplication : Application() {
         get() = loopbackServer?.address?.let { "http://${AndroidLoopbackServer.LOOPBACK_HOST}:${it.port}" }
 
     fun ballSpritePng(id: Int): ByteArray? = loopbackServer?.ballSpritePng(id)
+
+    fun exportPerformanceLog(): ByteArray {
+        performanceDispatcher?.flush()
+        return performanceLog?.export() ?: ByteArray(0)
+    }
 
     fun updateDisplayMode(mode: String) {
         loopbackServer?.updateDisplayMode(mode)
@@ -118,6 +132,43 @@ class DualDexApplication : Application() {
         activeCatalogSha256 = lastCatalogSha256
         settingsStore = settingsRepository
         overlaySizeStore = OverlaySizeStore(settingsRepository::readGlobal, settingsRepository::writeGlobal)
+        val profilerLog = performanceLog ?: AndroidPerformanceLog(File(filesDir, "diagnostics")).also {
+            performanceLog = it
+        }
+        val profilerDispatcher = performanceDispatcher ?: BoundedPerformanceWorkDispatcher().also {
+            performanceDispatcher = it
+        }
+        var metricsRuntime: ProductionCompanionRuntime? = null
+        var metricsServer: AndroidLoopbackServer? = null
+        var metricsMapper: MemoryMapperCoordinator? = null
+        val performanceGson = Gson()
+        val performanceRecorder = PerformanceRecorder(
+            sampler = AndroidPerformanceSampler(),
+            workDispatcher = profilerDispatcher,
+            componentCounters = {
+                val map = metricsRuntime?.mapAssetCacheStats()
+                val loopback = metricsServer?.capacitySnapshot()
+                val mapper = metricsMapper?.snapshot()
+                PerformanceComponentMetrics(
+                    mapCacheEntries = map?.entries,
+                    mapCacheEncodedBytes = map?.encodedBytes,
+                    mapCacheHits = map?.hits,
+                    mapCacheRenders = map?.renders,
+                    mapCacheEvictions = map?.evictions,
+                    activeWebViewSurfaces = companionSurfaceOwnership.activeSurfaceCount(),
+                    loopbackWorkerThreads = loopback?.workerThreads,
+                    loopbackActiveWorkers = loopback?.activeWorkers,
+                    loopbackQueuedConnections = loopback?.queuedConnections,
+                    loopbackActiveConnections = loopback?.activeConnections,
+                    mapperSnapshots = mapper?.snapshots?.size,
+                    mapperRetainedBytes = mapper?.snapshots?.sumOf { snapshot -> snapshot.bytes.toLong() },
+                ).counters()
+            },
+            sinks = listOf(
+                profilerLog,
+                PerformanceEventSink { event -> Log.i(PERFORMANCE_LOG_TAG, performanceGson.toJson(event)) },
+            ),
+        )
         val cache = CatalogCache(File(filesDir, "catalogs"), AndroidCatalogDatabaseFactory) { event ->
             val message = buildString {
                 append(event.decision.name)
@@ -159,8 +210,10 @@ class DualDexApplication : Application() {
                     .putString(LAST_CATALOG_NAME, displayName)
                     .apply()
             },
+            performanceRecorder = performanceRecorder,
             transientGameState = transientGameState,
         )
+        metricsRuntime = runtime
         val candidate = AndroidLoopbackServer(
             runtime,
             requestBodySpoolFactory = {
@@ -173,6 +226,7 @@ class DualDexApplication : Application() {
         var mapperCandidate: MemoryMapperCoordinator? = null
         return try {
             candidate.start()
+            metricsServer = candidate
             setupCandidate = RetroArchSetupCoordinator(
                 this,
                 runtime,
@@ -185,6 +239,7 @@ class DualDexApplication : Application() {
             mapperCandidate = MemoryMapperCoordinator(
                 MapperSessionStore(File(filesDir, "memory-mapper")), runtime::retroArchState,
             )
+            metricsMapper = mapperCandidate
             candidate.setMapperHandler(object : MapperHttpHandler {
                 override fun state(): Any = mapperCandidate.snapshot()
                 override fun action(type: String, values: Map<String, String?>): Any = mapperCandidate.action(type, values)
@@ -229,6 +284,7 @@ class DualDexApplication : Application() {
 
     private companion object {
         const val CACHE_LOG_TAG = "DualDexCache"
+        const val PERFORMANCE_LOG_TAG = "DualDexPerf"
         const val PREFERENCES_NAME = "dualdex-runtime"
         const val LAST_CATALOG_HASH = "last-catalog-sha256"
         const val LAST_CATALOG_NAME = "last-catalog-name"

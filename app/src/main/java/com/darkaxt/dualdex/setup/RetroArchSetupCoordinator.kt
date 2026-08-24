@@ -377,6 +377,7 @@ class RetroArchSetupCoordinator(
     }
 
     private fun monitorHeartbeat() {
+        runtime.runtimePerformanceHeartbeat()
         val storageGranted = sharedStorage.isGranted()
         if (lastStorageAccess.getAndSet(storageGranted) != storageGranted) refreshStorageAccess()
         restorePersistedSave()

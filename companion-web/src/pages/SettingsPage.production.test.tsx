@@ -168,6 +168,16 @@ describe('production settings copy', () => {
     expect(screen.getByRole('button', { name: 'CAPTURE MEMORY REPORT' })).toBeTruthy();
   });
 
+  it('confines performance-log export to the Debug section', () => {
+    const { container } = render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
+
+    const exportLink = screen.getByRole('link', { name: 'EXPORT PERFORMANCE LOG' });
+    expect(exportLink.getAttribute('href')).toBe('dualdex://performance/export');
+    expect(container.querySelector('.mapper-setting')?.contains(exportLink)).toBe(true);
+    expect(Array.from(container.querySelectorAll('.setting-group:not(.mapper-setting)'))
+      .some(section => section.textContent?.includes('PERFORMANCE'))).toBe(false);
+  });
+
   it('disables the capability report when no ROM is loaded', () => {
     render(<SettingsPage catalog={null} state={{ ...state, catalogReady: false, catalogName: null }} send={vi.fn()} onUpload={vi.fn()} />);
 

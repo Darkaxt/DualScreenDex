@@ -27,6 +27,12 @@ import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.darkaxt.dualdex.save.SavedArea
 import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.save.TrainerIdentity
+import com.darkaxt.dualdex.performance.PerformanceEvent
+import com.darkaxt.dualdex.performance.PerformanceEventKind
+import com.darkaxt.dualdex.performance.PerformanceEventSink
+import com.darkaxt.dualdex.performance.PerformanceMetricSampler
+import com.darkaxt.dualdex.performance.PerformanceMetrics
+import com.darkaxt.dualdex.performance.PerformanceRecorder
 import com.darkaxt.dualdex.battle.LiveClockState
 import com.darkaxt.dualdex.battle.LiveGameSnapshot
 import com.darkaxt.dualdex.battle.LiveValue
@@ -87,6 +93,85 @@ import com.darkaxt.dualdex.battle.TargetMode
 import com.darkaxt.dualdex.battle.RuntimeMapPosition
 
 class ProductionCompanionRuntimeTest {
+    @Test
+    fun profilerDistinguishesColdParsingFromCacheReopen() {
+        val bytes = ByteArray(0xC0)
+        "POKEMON EMER".toByteArray().copyInto(bytes, 0xA0)
+        val rom = RomImage(bytes)
+        val coldEvents = mutableListOf<PerformanceEvent>()
+        val coldRecorder = recordingPerformance(coldEvents)
+        val coldRuntime = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = RecordingCatalogRepository(),
+            parseCatalog = { source, _, work ->
+                work(CatalogWorkProgress(CatalogWorkModule.ROM_IDENTITY))
+                work(CatalogWorkProgress(CatalogWorkModule.MAPS))
+                ParsedCatalog(source.sha256, EngineFamily.EMERALD, Platform.GBA)
+            },
+            performanceRecorder = coldRecorder,
+        )
+
+        coldRuntime.load(LoadedRom("Modern Emerald.gba", rom))
+
+        assertEquals(PerformanceEventKind.LOAD_STARTED, coldEvents.first().kind)
+        assertEquals("MISS_FILE_ABSENT", coldEvents.single { it.kind == PerformanceEventKind.CACHE_DECISION }.cacheDecision)
+        assertEquals(
+            listOf("ROM_IDENTITY", "MAPS"),
+            coldEvents.filter { it.kind == PerformanceEventKind.STAGE_FINISHED }.map(PerformanceEvent::stage),
+        )
+        assertEquals(1, coldEvents.count { it.kind == PerformanceEventKind.CATALOG_READY })
+        assertEquals(1, coldEvents.count { it.kind == PerformanceEventKind.WAITING_FOR_GAME_ACCESS })
+        coldRuntime.close()
+
+        val catalog = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val cachedEvents = mutableListOf<PerformanceEvent>()
+        val cachedRuntime = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = FakeCatalogRepository(
+                StoredCatalog(
+                    catalog,
+                    CatalogSourceMetadata.direct("Modern Emerald.gba", rom.size, "POKEMON EMER"),
+                    CatalogWriteProgress.complete(),
+                    committedSections = emptySet(),
+                    writtenAtEpochMs = 1,
+                ),
+            ),
+            performanceRecorder = recordingPerformance(cachedEvents),
+        )
+
+        cachedRuntime.load(LoadedRom("Modern Emerald.gba", rom))
+
+        assertEquals("HIT", cachedEvents.single { it.kind == PerformanceEventKind.CACHE_DECISION }.cacheDecision)
+        assertTrue(cachedEvents.none { it.kind == PerformanceEventKind.STAGE_FINISHED })
+        assertEquals(1, cachedEvents.count { it.kind == PerformanceEventKind.CATALOG_READY })
+        cachedRuntime.close()
+    }
+
+    @Test
+    fun profilerRecordsGameAccessOnlyAfterTheOneWayReadinessGateOpens() {
+        val events = mutableListOf<PerformanceEvent>()
+        val hash = "d".repeat(64)
+        val runtime = ProductionCompanionRuntime(performanceRecorder = recordingPerformance(events))
+        runtime.loadCatalog("Modern Emerald.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
+
+        assertEquals(1, events.count { it.kind == PerformanceEventKind.WAITING_FOR_GAME_ACCESS })
+        assertTrue(events.none { it.kind == PerformanceEventKind.GAME_ACCESS_READY })
+
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                hash,
+                unavailableValue("saved Pokédex counts were unavailable"),
+                LiveValue.Available(emptyList()),
+                clock = LiveValue.Available(LiveClockState(0, 0, 1)),
+                trainerIdentity = LiveValue.Available(TrainerIdentity("MAY", 1)),
+                location = LiveValue.Available(0x0009),
+            ),
+        )
+
+        assertEquals(1, events.count { it.kind == PerformanceEventKind.GAME_ACCESS_READY })
+        runtime.close()
+    }
+
     @Test
     fun plausibleGen3MapAndZeroClockDoNotUnlockBeforeLiveTrainerIdentityExists() {
         val hash = "a".repeat(64)
@@ -2662,6 +2747,14 @@ class ProductionCompanionRuntimeTest {
 
         override fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean = closed
     }
+
+    private fun recordingPerformance(events: MutableList<PerformanceEvent>) = PerformanceRecorder(
+        monotonicNanos = { 0L },
+        wallClockMillis = { 0L },
+        sessionIdFactory = { "runtime-session" },
+        sampler = PerformanceMetricSampler { PerformanceMetrics() },
+        sinks = listOf(PerformanceEventSink(events::add)),
+    )
 
     private class HoldingExecutorService : AbstractExecutorService() {
         private var closed = false

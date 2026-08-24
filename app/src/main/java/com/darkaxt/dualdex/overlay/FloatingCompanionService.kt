@@ -285,6 +285,11 @@ class FloatingCompanionService : Service() {
                     .putExtra(MainActivity.EXTRA_EXPORT_MAPPER, true)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             )
+            NativeSetupRoute.EXPORT_PERFORMANCE -> startActivity(
+                Intent(this, MainActivity::class.java)
+                    .putExtra(MainActivity.EXTRA_EXPORT_PERFORMANCE, true)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            )
             NativeSetupRoute.GRANT_RETROARCH,
             NativeSetupRoute.GRANT_ROMS -> startActivity(
                 Intent(this, MainActivity::class.java)

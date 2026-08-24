@@ -34,4 +34,7 @@ class CompanionSurfaceOwnership {
 
     @Synchronized
     fun isOwnedBy(surface: CompanionSurface): Boolean = owner === surface && !surface.released
+
+    @Synchronized
+    fun activeSurfaceCount(): Int = if (owner != null && owner?.released == false) 1 else 0
 }

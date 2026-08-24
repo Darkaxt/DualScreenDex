@@ -92,6 +92,7 @@ import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
+import com.darkaxt.dualdex.performance.PerformanceRecorder
 import java.io.InputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -128,6 +129,7 @@ class ProductionCompanionRuntime(
             ?: current.worldMaps.assets[key]?.let { RenderedMapAsset(PngEncoder.encode(it), null) }
     },
     private val mapAssetRenderCache: MapAssetRenderCache = MapAssetRenderCache(),
+    private val performanceRecorder: PerformanceRecorder = PerformanceRecorder(),
     internal val transientGameState: TransientGameStateSource,
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
@@ -292,6 +294,7 @@ class ProductionCompanionRuntime(
             else -> null
         }
         val ready = matching?.gameAccessReady() == true
+        if (ready) performanceRecorder.gameAccessReady()
         val before = gateway.bootstrap()
         if (
             before.liveAreaBaseId != areaBaseId ||
@@ -354,10 +357,14 @@ class ProductionCompanionRuntime(
         }
         val header = RomHeaderReader.read(rom)
         val source = CatalogSourceMetadata.fromDisplayName(name, rom.size, header.title)
+        performanceRecorder.beginLoad(rom.sha256, generationFor(header.platform))
         val generation = beginCatalogTransition(rom.sha256, name, "CACHE_REOPEN")
         parserWorker.execute {
             try {
                 val lookup = catalogRepository?.lookupComplete(rom.sha256)
+                performanceRecorder.cacheDecision(
+                    (lookup?.decision ?: CatalogCacheDecision.MISS_FILE_ABSENT).name,
+                )
                 val cached = lookup?.stored
                 if (cached != null) {
                     if (generation != loadGeneration.get()) {
@@ -386,6 +393,7 @@ class ProductionCompanionRuntime(
                 publishParsed(generation, name, parsed)
                 notifyCompletion(onComplete, Result.success(Unit))
             } catch (failure: Exception) {
+                performanceRecorder.loadFailed(failure)
                 publishTransitionFailure(generation, "FAILED", failure.message ?: failure.javaClass.simpleName)
                 notifyCompletion(onComplete, Result.failure(failure))
             }
@@ -395,6 +403,8 @@ class ProductionCompanionRuntime(
     /** Test and cache-reopen seam; Stage 2 will use this for persisted catalogs. */
     @Synchronized
     fun loadCatalog(name: String, parsed: ParsedCatalog) {
+        performanceRecorder.beginLoad(parsed.romSha256, generationFor(parsed.family))
+        performanceRecorder.cacheDecision(CatalogCacheDecision.HIT.name)
         beginCatalogTransition(parsed.romSha256, name, "CACHE_REOPEN")
         applyWinningCatalogSettings(parsed.romSha256)
         catalog = parsed
@@ -407,28 +417,38 @@ class ProductionCompanionRuntime(
             ),
         )
         gateway.dispatch(CompanionAction.CatalogLoaded(name))
+        performanceRecorder.catalogReady()
+        performanceRecorder.waitingForGameAccess()
     }
 
     @Synchronized
     fun restoreCatalog(sha256: String): Boolean {
+        performanceRecorder.beginLoad(sha256, null)
         val stored = catalogRepository?.readComplete(sha256)
         if (stored == null) {
+            performanceRecorder.cacheDecision(CatalogCacheDecision.MISS_FILE_ABSENT.name)
+            performanceRecorder.loadFailed(IllegalStateException("stored catalog was unavailable"))
             val generation = beginCatalogTransition(null, phase = "CACHE_REOPEN")
             publishTransitionFailure(generation, "IDLE")
             return false
         }
+        performanceRecorder.cacheDecision(CatalogCacheDecision.HIT.name)
         val generation = beginCatalogTransition(stored.catalog.romSha256, stored.source.displayName, "CACHE_REOPEN")
         publishReopened(generation, stored.source.displayName, stored.catalog)
         return true
     }
 
     fun restoreCatalogAsync(sha256: String) {
+        performanceRecorder.beginLoad(sha256, null)
         val generation = beginCatalogTransition(sha256, null, "CACHE_REOPEN")
         parserWorker.execute {
             val stored = catalogRepository?.readComplete(sha256)
             if (stored == null) {
+                performanceRecorder.cacheDecision(CatalogCacheDecision.MISS_FILE_ABSENT.name)
+                performanceRecorder.loadFailed(IllegalStateException("stored catalog was unavailable"))
                 publishTransitionFailure(generation, "IDLE")
             } else {
+                performanceRecorder.cacheDecision(CatalogCacheDecision.HIT.name)
                 publishReopened(generation, stored.source.displayName, stored.catalog)
             }
         }
@@ -859,6 +879,18 @@ class ProductionCompanionRuntime(
 
     fun mapAssetCacheStats(): MapAssetRenderCacheStats = mapAssetRenderCache.stats()
 
+    fun performanceCounters(): Map<String, Long> = mapAssetRenderCache.stats().let { stats ->
+        mapOf(
+            "mapCache.entries" to stats.entries.toLong(),
+            "mapCache.encodedBytes" to stats.encodedBytes.toLong(),
+            "mapCache.hits" to stats.hits,
+            "mapCache.renders" to stats.renders,
+            "mapCache.evictions" to stats.evictions,
+        )
+    }
+
+    fun runtimePerformanceHeartbeat() = performanceRecorder.runtimeHeartbeat()
+
     @Synchronized
     fun trainerAsset(key: String) = catalog?.trainerAssets?.assets?.get(key)
 
@@ -977,6 +1009,7 @@ class ProductionCompanionRuntime(
     @Synchronized
     private fun publishWork(generation: Long, work: CatalogWorkProgress, name: String) {
         if (generation != loadGeneration.get()) return
+        performanceRecorder.transitionStage(work.module.name)
         gateway.dispatch(
             CompanionAction.CatalogLoadingChanged(
                 CatalogLoadingState(
@@ -1012,6 +1045,8 @@ class ProductionCompanionRuntime(
                 ),
             )
             gateway.dispatch(CompanionAction.CatalogLoaded(name))
+            performanceRecorder.catalogReady()
+            performanceRecorder.waitingForGameAccess()
         } finally {
             catalogPublicationInProgress = false
         }
@@ -1120,6 +1155,21 @@ class ProductionCompanionRuntime(
             ),
         )
         gateway.dispatch(CompanionAction.CatalogLoaded(name))
+        performanceRecorder.catalogReady()
+        performanceRecorder.waitingForGameAccess()
+    }
+
+    private fun generationFor(platform: Platform): Int? = when (platform) {
+        Platform.GB -> 1
+        Platform.GBC -> null
+        Platform.GBA -> 3
+        Platform.UNKNOWN -> null
+    }
+
+    private fun generationFor(family: EngineFamily): Int = when (family) {
+        EngineFamily.RED_BLUE, EngineFamily.YELLOW -> 1
+        EngineFamily.GOLD_SILVER, EngineFamily.CRYSTAL -> 2
+        else -> 3
     }
 
     private fun applySettingsForRom(romSha256: String) {
