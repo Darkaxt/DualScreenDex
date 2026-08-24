@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.knowledge
 
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.companion.model.LocalMapPoiPreferences
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
@@ -63,6 +64,12 @@ class KnowledgeLedgerSanitizerTest {
                 assets = mapOf("world/hoenn" to RgbaSprite(8, 8, IntArray(64))),
             ),
         )
+        val preferences = LocalMapPoiPreferences(
+            showPlaces = false,
+            showCollectedItems = false,
+            iconZoomThresholdPercent = 40,
+            labelZoomThresholdPercent = 65,
+        )
         val ledger = KnowledgeLedger(
             currentAreaBaseId = 0x0009,
             visitedAreaBaseIds = setOf(0x0009, 0x0010, 0x0011, 0x7FFF),
@@ -70,6 +77,7 @@ class KnowledgeLedgerSanitizerTest {
             identifiedPoiKeys = setOf("littleroot/bg/0", "stale/bg/7"),
             enteredPoiKeys = setOf("stale/warp/0"),
             collectedPoiKeys = setOf("littleroot/bg/0", "stale/object/0"),
+            localMapPoiPreferences = preferences,
         )
 
         val sanitized = KnowledgeLedgerSanitizer.sanitize(ledger, catalog)
@@ -80,6 +88,7 @@ class KnowledgeLedgerSanitizerTest {
         assertEquals(setOf("littleroot/bg/0"), sanitized.identifiedPoiKeys)
         assertEquals(emptySet<String>(), sanitized.enteredPoiKeys)
         assertEquals(setOf("littleroot/bg/0"), sanitized.collectedPoiKeys)
+        assertEquals(preferences, sanitized.localMapPoiPreferences)
     }
 
     private companion object {

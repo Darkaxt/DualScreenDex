@@ -283,23 +283,51 @@ class ApiViewBuilderTest {
     }
 
     @Test
-    fun presentsSoleNativeGbMapSpriteWithoutTrainerGender() {
+    fun presentsGen1StaticSceneAndSoleNativeMapSpriteWithoutTrainerGender() {
+        val route1 = LocalMap("local/000c", "Route 1", 0x000c, 320, 576, 20, 36, "local/000c/map")
+        val palletTown = LocalMap("local/0000", "Pallet Town", 0x0000, 320, 288, 20, 18, "local/0000/map")
+        val png = PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))
         val assetKey = "trainer/overworld/player"
         val catalog = ParsedCatalog(
             romSha256 = "a".repeat(64),
             family = EngineFamily.RED_BLUE,
             platform = Platform.GB,
+            localMaps = LocalMapCatalog(
+                maps = listOf(route1, palletTown),
+                assets = mapOf(route1.imageAssetKey to png, palletTown.imageAssetKey to png),
+                scenes = listOf(
+                    LocalMapScene(
+                        key = "scene/0000",
+                        gridWidth = 20,
+                        gridHeight = 54,
+                        placements = listOf(
+                            LocalMapScenePlacement(route1.key, route1.baseAreaId, 0, 0),
+                            LocalMapScenePlacement(palletTown.key, palletTown.baseAreaId, 0, 36),
+                        ),
+                    ),
+                ),
+            ),
             trainerAssets = TrainerAssetCatalog(
                 overworldAssetKeys = mapOf(0 to assetKey),
                 assets = mapOf(assetKey to RgbaSprite(16, 16, IntArray(16 * 16))),
             ),
         )
 
-        val state = ApiViewBuilder.state(AppSnapshot(), catalog)
+        val scene = ApiViewBuilder.catalog(catalog).mapScenes.single()
+        val state = ApiViewBuilder.state(
+            AppSnapshot(liveAreaBaseId = palletTown.baseAreaId, liveMapPosition = LiveMapPosition(4, 5)),
+            catalog,
+        )
 
+        assertEquals(320, scene.pixelWidth)
+        assertEquals(864, scene.pixelHeight)
+        assertEquals(listOf(0, 576), scene.placements.map { it.pixelY })
+        assertTrue(scene.placements.none { it.dynamicLighting })
         assertEquals("/api/trainer-assets/trainer%2Foverworld%2Fplayer.png", state.trainerMapSpriteUrl)
         assertEquals(16, state.trainerMapSpriteWidth)
         assertEquals(16, state.trainerMapSpriteHeight)
+        assertEquals(palletTown.baseAreaId, state.currentAreaBaseId)
+        assertEquals(MapPositionView(4, 5), state.currentMapPosition)
         assertNull(state.trainerAvatarUrl)
     }
 
