@@ -53,7 +53,7 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                 battleMonsAddress = 0x0200203C,
                 battleTypeFlagsAddress = 0x02001234,
                 trainerBattleMask = 1 shl 3,
-                nonWildBattleMask = 0x8FFF8B72.toInt(),
+                nonWildBattleMask = 0x8FFF8B62.toInt(),
             ),
             Gen3RuntimeMemoryLayoutResolver.resolve(RomImage(bytes)),
         )
@@ -145,7 +145,7 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                 battleMonsAddress = 0x0200143C,
                 battleTypeFlagsAddress = 0x020003A0,
                 trainerBattleMask = 1 shl 3,
-                nonWildBattleMask = 0x8FFF8B72.toInt(),
+                nonWildBattleMask = 0x8FFF8B62.toInt(),
                 saveBlock1PointerAddress = 0x030036F0,
                 saveBlock2PointerAddress = 0x030036F4,
                 saveRuntimeAbi = CatalogGen3SaveRuntimeAbi(

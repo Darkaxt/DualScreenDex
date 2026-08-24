@@ -191,8 +191,11 @@ class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
         val flags = bytes.foldIndexed(0) { index, value, byte ->
             value or ((byte.toInt() and 0xFF) shl (index * 8))
         }
+        // FIRST_BATTLE changes battle scripting, not opponent ownership. Older persisted
+        // catalogs included it in nonWildBattleMask, so normalize it here as well as at parse time.
+        val effectiveNonWildMask = nonWildMask and FIRST_BATTLE_MASK.inv()
         return when {
-            flags and nonWildMask != 0 -> BattleEncounterKind.UNKNOWN
+            flags and effectiveNonWildMask != 0 -> BattleEncounterKind.UNKNOWN
             flags and trainerMask != 0 -> BattleEncounterKind.TRAINER
             else -> BattleEncounterKind.WILD
         }
@@ -201,6 +204,7 @@ class Gen3RuntimeMemoryDecoder(private val layout: Gen3RuntimeMemoryLayout) {
     companion object {
         const val MAP_ID_BYTES = 2
         const val BATTLE_TYPE_FLAGS_BYTES = 4
+        private const val FIRST_BATTLE_MASK = 1 shl 4
         private const val MAX_BATTLERS = 4
         private const val MOVE_SLOTS = 4
         private const val ACTION_USE_MOVE = 0

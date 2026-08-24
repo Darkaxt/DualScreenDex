@@ -32,6 +32,10 @@ class Gen3RuntimeMemoryDecoderTest {
         assertEquals(3, decoder.decodeTargetBattler(byteArrayOf(3)))
         assertEquals(BattleEncounterKind.WILD, decoder.decodeBattleEncounterKind(u32(1 shl 2)))
         assertEquals(BattleEncounterKind.WILD, decoder.decodeBattleEncounterKind(u32((1 shl 2) or 1)))
+        assertEquals(
+            BattleEncounterKind.WILD,
+            decoder.decodeBattleEncounterKind(u32((1 shl 2) or (1 shl 4))),
+        )
         assertEquals(BattleEncounterKind.TRAINER, decoder.decodeBattleEncounterKind(u32(1 shl 3)))
         assertEquals(BattleEncounterKind.UNKNOWN, decoder.decodeBattleEncounterKind(u32(1 shl 1)))
         assertEquals(BattleEncounterKind.UNKNOWN, decoder.decodeBattleEncounterKind(u32(1 shl 9)))

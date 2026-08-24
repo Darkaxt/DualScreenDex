@@ -206,10 +206,11 @@ class BattleMemoryCoordinatorTest {
     }
 
     @Test
-    fun usesTheValidatedGen3LifecycleByteAsPrimaryTruthAtStartupAndExit() {
+    fun usesTheValidatedGen3LifecycleByteAndKeepsAFirstBattleWild() {
         val ewram = ByteArray(0x40000)
         val iwram = ByteArray(0x8000)
         fixture(ewram, 0x143C, opponentPp = 35)
+        ewram[0x03A0] = 0x14
         mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 100)
         iwram[0x1574 + 0x439] = 0x02
         val updates = mutableListOf<BattleTrackingUpdate>()

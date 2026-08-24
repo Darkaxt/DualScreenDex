@@ -405,7 +405,7 @@ object Gen3RuntimeMemoryLayoutResolver {
     private const val MIN_LINK_TESTS = 2
     private const val MIN_TUTORIAL_TESTS = 1
     private const val TRAINER_BATTLE_MASK = 1 shl 3
-    private const val NON_WILD_BATTLE_MASK = 0x8FFF8B72.toInt()
+    private const val NON_WILD_BATTLE_MASK = 0x8FFF8B62.toInt()
     private const val CLOCK_BYTES = 5L
     private const val CLOCK_HOUR_OFFSET = 2
     private const val CLOCK_MINUTE_OFFSET = 3
