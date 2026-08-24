@@ -1,0 +1,61 @@
+# Source-backed Gen III Family Audit
+
+**Result:** Eight representative locally available ROMs were characterized against their public-source lineage and the current parser. The first Stage 2 checkpoint is the integrated 20-byte `NatureInfo` ABI, anchored by an exact full-source release and independently reproduced in a sibling compiled ROM.
+
+HackDex CFRU, hg-engine, and pokeemerald-expansion tags were used only as discovery and clustering hints. Production eligibility remains based on generic compiled evidence; source names, project identities, filenames, hashes, and absolute ROM offsets are not parser inputs.
+
+## Current matrix
+
+The focused scan used one parser job and completed with zero read/parse and cross-reference errors.
+
+| Representative ROM | Routing | Current result | Public-source alignment | Decision |
+|---|---|---:|---|---|
+| Battle Theater 2.3.0 | Emerald selected | 22/23, 95.63% | Exact full-source `v2.3.0` tag at [pokemon-battle-theater](https://github.com/logdog2325/pokemon-battle-theater) | Primary Checkpoint 1 control; only Nature data is unavailable |
+| Celia's Stupid Romhack 1.1.4 | FireRed/LeafGreen selected | 22/24, 91.51% | Public source available locally | Retain as a FireRed-family regression; defer remaining gaps under `G3-CELIA-001` |
+| Dreamstone Mysteries | Emerald selected | 14/24, 58.31% | Current public source at [dreamstone-mysteries](https://github.com/dsmyst/dreamstone-mysteries); no exact selected-ROM release tag established | Independent compiled `NatureInfo` sibling control; defer other gaps under `G3-DREAM-001` |
+| Elite Redux 2.65.3b | No family match | 2/24, 8.33% | Public source is older than the selected ROM and has no exact release tag | Defer under `G3-ELITE-001` |
+| GS Chronicles 2.7.6 | FireRed/LeafGreen selected | 20/24, 83.25% | Local repository is an engine source, not an exact complete hack release | Retain as a regression; defer under `G3-GSC-001` |
+| Pokescape 1.0.4 | Emerald selected | 18/24, 74.97% | Public source at [pokescape_rom](https://github.com/Demonheadge/pokescape_rom), without a matching 1.0.4 tag | Defer distinct semantic region-entry join under `G3-POKESCAPE-001` |
+| Tourmaline 1.1.1 | Emerald selected | 14/24, 58.31% | Public source at [tourmaline](https://github.com/surskitty/tourmaline); available tags predate 1.1.1 | Defer missing encounter/map-group authority under `G3-TOURMALINE-001` |
+| Voyager 0.3.6 | No family match | 5/24, 20.63% | Exact version label exists at [pokevoyager](https://github.com/ghoulslash/pokevoyager), but that tagged tree lacks the complete build source; current master is later | Defer under `G3-VOYAGER-001` |
+
+## Selected compiled ABI
+
+The exact Battle Theater source defines 25 `NatureInfo` records with this relevant layout:
+
+- pointer to the ROM-native name at byte 0;
+- `statUp` at byte 4;
+- `statDown` at byte 5;
+- total record size 20 bytes.
+
+Its source consumer applies neutral behavior when the two fields are equal, otherwise scales the selected raised or lowered stat by `110 / 100` or `90 / 100`. The compiled ROM independently contains one structurally valid 25-row table and a Thumb consumer that indexes records by 20 bytes, reads bytes 4 and 5, compares the fields, and retains the 110/90/100 arithmetic.
+
+Dreamstone independently contains one table with the same structural matrix and a compact compiled consumer proving the same record stride, field offsets, comparisons, and arithmetic. It is a sibling compiled control, not a source-identity exception.
+
+The current `Gen3NatureResolver` supports only a separate signed five-byte stat-modifier table plus a separate name-pointer table. It therefore fails closed on both integrated controls.
+
+## Checkpoint decision
+
+Checkpoint 1 will add a second generic Nature ABI without changing the existing one:
+
+1. Discover candidate roots only through the existing compiled GBA reference index.
+2. Require exactly 25 20-byte records, valid ROM text pointers, 25 distinct names, and the canonical five-by-five `statUp`/`statDown` matrix.
+3. Require a compiled Thumb consumer proving 20-byte indexing, byte fields 4 and 5, neutral/up/down comparisons, and 110/90/100 scaling.
+4. Convert the two stat IDs to the existing five-column `-1/0/+1` model; flavor modifiers remain unknown.
+5. Fail closed on zero candidates and ambiguous on multiple eligible ABIs or roots.
+
+Expected focused gain: Battle Theater reaches 23/23; Dreamstone gains authoritative Nature data. Any additional gain is incidental and must satisfy the same compiled ABI.
+
+## Deferral ledger
+
+| ID | Missing behavior | Safe fallback | Acceptance condition |
+|---|---|---|---|
+| `G3-CELIA-001` | Remaining partial Local rendering/description coverage and unavailable ability mechanics | Preserve all accepted records and skip only malformed maps/unsupported mechanics | A source-backed generic ABI resolves each missing domain and affected plus FireRed controls remain stable |
+| `G3-DREAM-001` | Sprites, Pokédex descriptions, egg/machine moves, abilities, balls, and Local maps; Local raster total is 100,409,600 pixels against the 100,000,000 bound | Keep those modules unavailable; preserve accepted catalog, World map, and unrelated modules | Generic compiled consumers resolve the missing data, and Local maps fit a bounded structural representation without merely raising the global cap |
+| `G3-ELITE-001` | Family routing and most datasets for 2.65.3b | No family match; no speculative catalog | Establish exact or independently proven compiled lineage and pass generic family anchors plus real-ROM controls |
+| `G3-GSC-001` | Missing learnset/ruleset, egg-move, and type-chart domains in the selected binary | Preserve the 20 accepted capabilities | Resolve each domain from compiled authority; engine-source observations alone are insufficient |
+| `G3-POKESCAPE-001` | World-map semantic region-entry join plus remaining descriptions/move-details/ability domains | Local maps and accepted modules remain available; World map stays unavailable | Resolve a unique generic compiled region-entry consumer and pass sibling Emerald controls without fixed roots |
+| `G3-TOURMALINE-001` | Encounters, unique `gMapGroups` authority, World/Local maps, and remaining catalog domains | Map modules and unsupported datasets remain unavailable | Resolve compiled encounter/map consumers generically and establish bounded semantic joins on the selected binary |
+| `G3-VOYAGER-001` | Family routing and most datasets | No family match; no speculative catalog | Obtain complete matching source or independently prove the compiled engine ABI, then pass generic anchors and held-out controls |
+
+None of these deferrals blocks the integrated Nature checkpoint. Each failed optional resolver must continue to disable only its own module.
