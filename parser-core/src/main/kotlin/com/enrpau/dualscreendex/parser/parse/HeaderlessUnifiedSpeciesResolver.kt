@@ -131,6 +131,13 @@ internal object HeaderlessUnifiedSpeciesResolver {
             speciesRecordSize = RECORD_SIZE,
             activePredicateOffset = 0,
         )
+        val moveAcquisitions = HeaderlessUnifiedMoveAcquisitionResolver.resolve(
+            session = session,
+            speciesRoot = root,
+            speciesCount = speciesCount,
+            speciesRecordSize = RECORD_SIZE,
+            activePredicateOffset = 0,
+        )
         val presentation = presentationOffsets(nationalDexOffset)
         val descriptionsEvidence = presentation?.let {
             validateDescriptions(session.rom, root, speciesCount, activeCount, it)
@@ -189,6 +196,7 @@ internal object HeaderlessUnifiedSpeciesResolver {
                 frontSpritePointerOffset = spriteFields?.frontSprite,
                 normalPalettePointerOffset = spriteFields?.palette,
                 abilities = abilities?.metadata,
+                moveAcquisitions = moveAcquisitions,
             ),
             speciesNamesEvidence = ValidationEvidence(
                 compatible = true,

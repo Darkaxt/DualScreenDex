@@ -72,6 +72,9 @@ class HeaderlessUnifiedSpeciesCripplingLiveRomTest {
         assertEquals(0x7437A4, layout.tables.abilities?.offset)
         assertEquals(311, layout.tables.abilities?.count)
         assertEquals(28, layout.tables.abilities?.stride)
+        val unifiedMoves = requireNotNull(layout.headerlessUnifiedSpecies.moveAcquisitions)
+        assertEquals(152, unifiedMoves.teachablePointerOffset)
+        assertEquals(156, unifiedMoves.eggMovePointerOffset)
 
         val catalog = CatalogParser.parse(rom).catalog
         assertNotNull(catalog)
@@ -105,5 +108,32 @@ class HeaderlessUnifiedSpeciesCripplingLiveRomTest {
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITIES).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MACHINE_MOVES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.EGG_MOVES).status)
+        assertEquals(CapabilityStatus.NOT_FOUND, catalog.capabilities.getValue(RomCapability.TUTOR_MOVES).status)
+        val machineMoves = catalog.speciesById.values.flatMap { species ->
+            species.moveAcquisitions.value.orEmpty().filter { it.method == MoveAcquisitionMethod.MACHINE }
+        }
+        assertEquals(88_104, machineMoves.size)
+        assertEquals(
+            1_489,
+            catalog.speciesById.values.count { species ->
+                species.moveAcquisitions.value.orEmpty().any { it.method == MoveAcquisitionMethod.MACHINE }
+            },
+        )
+        assertEquals(362, machineMoves.mapTo(linkedSetOf()) { it.moveId }.size)
+        assertEquals(846, machineMoves.maxOf { it.moveId })
+        val eggMoves = catalog.speciesById.values.flatMap { species ->
+            species.moveAcquisitions.value.orEmpty().filter { it.method == MoveAcquisitionMethod.EGG }
+        }
+        assertEquals(4_671, eggMoves.size)
+        assertEquals(
+            503,
+            catalog.speciesById.values.count { species ->
+                species.moveAcquisitions.value.orEmpty().any { it.method == MoveAcquisitionMethod.EGG }
+            },
+        )
+        assertEquals(458, eggMoves.mapTo(linkedSetOf()) { it.moveId }.size)
+        assertEquals(821, eggMoves.maxOf { it.moveId })
     }
 }

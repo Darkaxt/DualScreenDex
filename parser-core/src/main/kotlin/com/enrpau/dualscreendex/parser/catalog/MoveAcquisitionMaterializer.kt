@@ -26,9 +26,15 @@ object MoveAcquisitionMaterializer {
             2 -> embeddedGenTwoAcquisitions(rom, layout)
             else -> LegacyAcquisitions()
         }
+        val headerlessMoves = layout.headerlessUnifiedSpecies?.moveAcquisitions
+        val embeddedMachines = headerlessMoves?.teachablePointerOffset?.let { fieldOffset ->
+            headerlessUnifiedAcquisitions(rom, layout, fieldOffset, MoveAcquisitionMethod.MACHINE)
+        }
 
         val machines = if (layout.generation <= 2) {
             legacy.machine
+        } else if (headerlessMoves?.teachablePointerOffset != null) {
+            embeddedMachines
         } else {
             indirectEngineBitfieldPair(
                 rom, layout, gbaReferences, CFRU_MACHINE_MOVES_SLOT, CFRU_MACHINE_FLAGS_SLOT,
@@ -40,21 +46,41 @@ object MoveAcquisitionMaterializer {
         evidence[MoveAcquisitionMethod.MACHINE] = evidence(
             RomCapability.MACHINE_MOVES,
             machines,
-            "validated ROM machine-move list and species compatibility flags",
-            "machine-move list and compatibility flags were not jointly resolved",
+            if (embeddedMachines != null) {
+                "decoded compiled-authorized unified teachable-move lists; machine and tutor provenance is combined"
+            } else {
+                "validated ROM machine-move list and species compatibility flags"
+            },
+            if (headerlessMoves?.teachablePointerOffset != null) {
+                "compiled-authorized unified teachable-move lists failed structural materialization"
+            } else {
+                "machine-move list and compatibility flags were not jointly resolved"
+            },
         )
 
+        val embeddedEggs = headerlessMoves?.eggMovePointerOffset?.let { fieldOffset ->
+            headerlessUnifiedAcquisitions(rom, layout, fieldOffset, MoveAcquisitionMethod.EGG)
+        }
         val eggs = when (layout.generation) {
             2 -> genTwoEggMoves(rom, layout)
-            3 -> eggMoves(rom, layout)
+            3 -> if (headerlessMoves?.eggMovePointerOffset != null) embeddedEggs else eggMoves(rom, layout)
             else -> null
         }
         merge(bySpecies, eggs?.acquisitions.orEmpty())
         evidence[MoveAcquisitionMethod.EGG] = evidence(
             RomCapability.EGG_MOVES,
             eggs,
-            "validated sentinel-delimited ROM egg-move list",
-            if (layout.generation == 1) "breeding is not part of this engine" else "egg-move table was not resolved",
+            if (embeddedEggs != null) {
+                "decoded compiled-authorized unified egg-move lists"
+            } else {
+                "validated sentinel-delimited ROM egg-move list"
+            },
+            when {
+                layout.generation == 1 -> "breeding is not part of this engine"
+                headerlessMoves?.eggMovePointerOffset != null ->
+                    "compiled-authorized unified egg-move lists failed structural materialization"
+                else -> "egg-move table was not resolved"
+            },
             if (layout.generation == 1) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
         )
 
@@ -147,6 +173,50 @@ object MoveAcquisitionMaterializer {
             acquisitionsBySpecies = bySpecies.mapValues { (_, values) -> values.distinct() },
             evidence = evidence,
         )
+    }
+
+    private fun headerlessUnifiedAcquisitions(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        fieldOffset: Int,
+        method: MoveAcquisitionMethod,
+    ): Candidate? {
+        val species = layout.headerlessUnifiedSpecies ?: return null
+        val fallback = rom.gbaPointer(species.speciesTableOffset + fieldOffset) ?: return null
+        val acquisitions = linkedMapOf<Int, List<MoveAcquisition>>()
+        var links = 0
+        repeat(layout.speciesCount ?: return null) { speciesId ->
+            val record = species.speciesTableOffset + speciesId * species.speciesRecordSize
+            if (rom.u8(record + species.activePredicateOffset) == 0) return@repeat
+            val raw = rom.u32le(record + fieldOffset)
+            val pointer = if (raw == 0L) fallback else rom.gbaPointer(record + fieldOffset) ?: return null
+            val moves = decodeHeaderlessMoveList(rom, pointer, method) ?: return null
+            acquisitions[speciesId] = moves
+            links += moves.size
+        }
+        return Candidate(
+            sourceOffset = species.speciesTableOffset + fieldOffset,
+            confidence = 1.0,
+            acquisitions = acquisitions,
+        ).takeIf { links > 0 }
+    }
+
+    private fun decodeHeaderlessMoveList(
+        rom: RomImage,
+        offset: Int,
+        method: MoveAcquisitionMethod,
+    ): List<MoveAcquisition>? {
+        val moves = mutableListOf<MoveAcquisition>()
+        val seen = mutableSetOf<Int>()
+        repeat(MAX_HEADERLESS_MOVE_LIST_ENTRIES) { index ->
+            val cursor = offset.toLong() + index * 2L
+            if (cursor + 2 > rom.size.toLong()) return null
+            val move = rom.u16le(cursor.toInt())
+            if (move == 0xFFFF) return moves
+            if (move !in 1..MAX_HEADERLESS_MOVE_ID) return null
+            if (seen.add(move)) moves += MoveAcquisition(move, method)
+        }
+        return null
     }
 
     private fun embeddedGenOneMachines(rom: RomImage, layout: ResolvedRomLayout): Candidate? {
@@ -1048,6 +1118,8 @@ object MoveAcquisitionMaterializer {
     private const val MAX_TUTOR_COUNT = 128
     private const val MAX_STANDARD_TUTOR_COUNT = 40
     private const val MAX_RUNTIME_TUTOR_COUNT = 32
+    private const val MAX_HEADERLESS_MOVE_ID = 4095
+    private const val MAX_HEADERLESS_MOVE_LIST_ENTRIES = 1024
     private const val MAX_TUTOR_MOVES_PER_SPECIES = 128
     private const val MIN_TUTOR_SPECIES_COVERAGE = 0.8
     private const val CFRU_MACHINE_FLAGS_SLOT = 0x043C68

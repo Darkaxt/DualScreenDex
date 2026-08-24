@@ -61,6 +61,9 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(0xE65E98, layout.tables.abilities?.offset)
         assertEquals(311, layout.tables.abilities?.count)
         assertEquals(28, layout.tables.abilities?.stride)
+        val unifiedMoves = requireNotNull(layout.headerlessUnifiedSpecies.moveAcquisitions)
+        assertEquals(152, unifiedMoves.teachablePointerOffset)
+        assertEquals(156, unifiedMoves.eggMovePointerOffset)
         assertEquals(21, layout.resolvedDatasets.typeChart?.table?.typeCount)
         assertEquals(848, layout.moveCount)
         assertEquals(0x759858, layout.tables.moveNames?.offset)
@@ -126,6 +129,33 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LEARNSETS).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MACHINE_MOVES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.EGG_MOVES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.TUTOR_MOVES).status)
+        val machineMoves = catalog.speciesById.values.flatMap { species ->
+            species.moveAcquisitions.value.orEmpty().filter { it.method == MoveAcquisitionMethod.MACHINE }
+        }
+        assertEquals(47_108, machineMoves.size)
+        assertEquals(
+            1_489,
+            catalog.speciesById.values.count { species ->
+                species.moveAcquisitions.value.orEmpty().any { it.method == MoveAcquisitionMethod.MACHINE }
+            },
+        )
+        assertEquals(134, machineMoves.mapTo(linkedSetOf()) { it.moveId }.size)
+        assertEquals(811, machineMoves.maxOf { it.moveId })
+        val eggMoves = catalog.speciesById.values.flatMap { species ->
+            species.moveAcquisitions.value.orEmpty().filter { it.method == MoveAcquisitionMethod.EGG }
+        }
+        assertEquals(4_321, eggMoves.size)
+        assertEquals(
+            487,
+            catalog.speciesById.values.count { species ->
+                species.moveAcquisitions.value.orEmpty().any { it.method == MoveAcquisitionMethod.EGG }
+            },
+        )
+        assertEquals(433, eggMoves.mapTo(linkedSetOf()) { it.moveId }.size)
+        assertEquals(734, eggMoves.maxOf { it.moveId })
         assertTrue(catalog.navigableSpecies().all { it.learnset.status == CapabilityStatus.AVAILABLE })
         assertEquals(
             listOf(LearnsetEntry(1, 33), LearnsetEntry(1, 45)),
@@ -236,6 +266,43 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITIES).status)
         assertEquals(CapabilityStatus.NOT_FOUND, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status)
+    }
+
+    @Test
+    fun malformedEmbeddedMovePointersDisableOnlyTheirOwnModules() {
+        val configured = System.getenv("DUALDEX_DREAMSTONE_ROM")
+        assumeTrue("set DUALDEX_DREAMSTONE_ROM to run this live-ROM regression", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+        val original = Files.readAllBytes(path)
+
+        val malformedTeachable = original.copyOf().apply {
+            fill(0xFF.toByte(), 0x7B0160 + 260 + 152, 0x7B0160 + 260 + 156)
+        }
+        val teachableResult = CatalogParser.parse(RomImage(malformedTeachable))
+        assertEquals(SelectionStatus.SELECTED, teachableResult.analysis.status)
+        val teachableLayout = requireNotNull(teachableResult.layout)
+        assertEquals(null, teachableLayout.headerlessUnifiedSpecies?.moveAcquisitions?.teachablePointerOffset)
+        assertEquals(156, teachableLayout.headerlessUnifiedSpecies?.moveAcquisitions?.eggMovePointerOffset)
+        val teachableCatalog = requireNotNull(teachableResult.catalog)
+        assertEquals(CapabilityStatus.NOT_FOUND, teachableCatalog.capabilities.getValue(RomCapability.MACHINE_MOVES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, teachableCatalog.capabilities.getValue(RomCapability.EGG_MOVES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, teachableCatalog.capabilities.getValue(RomCapability.TUTOR_MOVES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, teachableCatalog.capabilities.getValue(RomCapability.ABILITIES).status)
+
+        val malformedEgg = original.copyOf().apply {
+            fill(0xFF.toByte(), 0x7B0160 + 260 + 156, 0x7B0160 + 260 + 160)
+        }
+        val eggResult = CatalogParser.parse(RomImage(malformedEgg))
+        assertEquals(SelectionStatus.SELECTED, eggResult.analysis.status)
+        val eggLayout = requireNotNull(eggResult.layout)
+        assertEquals(152, eggLayout.headerlessUnifiedSpecies?.moveAcquisitions?.teachablePointerOffset)
+        assertEquals(null, eggLayout.headerlessUnifiedSpecies?.moveAcquisitions?.eggMovePointerOffset)
+        val eggCatalog = requireNotNull(eggResult.catalog)
+        assertEquals(CapabilityStatus.AVAILABLE, eggCatalog.capabilities.getValue(RomCapability.MACHINE_MOVES).status)
+        assertEquals(CapabilityStatus.NOT_FOUND, eggCatalog.capabilities.getValue(RomCapability.EGG_MOVES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, eggCatalog.capabilities.getValue(RomCapability.TUTOR_MOVES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, eggCatalog.capabilities.getValue(RomCapability.ABILITIES).status)
     }
 
     private fun learnsetSha256(rows: List<LearnsetRowOutcome.Decoded>): String {

@@ -172,6 +172,13 @@ data class HeaderlessUnifiedSpeciesMetadata(
     val frontSpritePointerOffset: Int? = null,
     val normalPalettePointerOffset: Int? = null,
     val abilities: HeaderlessUnifiedAbilityMetadata? = null,
+    val moveAcquisitions: HeaderlessUnifiedMoveAcquisitionMetadata? = null,
+)
+
+/** Independently validated move-list pointers joined to a headerless unified species ABI. */
+data class HeaderlessUnifiedMoveAcquisitionMetadata(
+    val teachablePointerOffset: Int? = null,
+    val eggMovePointerOffset: Int? = null,
 )
 
 /** Independently validated ability fields joined to a headerless unified species ABI. */
