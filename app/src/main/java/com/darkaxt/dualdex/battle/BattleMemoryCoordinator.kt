@@ -80,10 +80,7 @@ internal fun battleHeartbeatDelayMillis(
 class BattleMemoryCoordinator(
     private val catalogProvider: () -> BattleCatalogContext?,
     private val publisher: (BattleTrackingUpdate) -> Unit,
-    private val locationPublisher: (Int?) -> Unit = {},
-    private val positionPublisher: (RuntimeMapPosition?) -> Unit = {},
     private val liveGamePublisher: (Gen3LiveGameSnapshot?) -> Unit = {},
-    private val gen2LightingPublisher: (MapLighting?) -> Unit = {},
     private val transientGameState: UnifiedGameStateDecoder? = null,
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     private val pollingIntervalProvider: () -> Int = { 5 },
@@ -118,7 +115,6 @@ class BattleMemoryCoordinator(
     private var pendingLivePointers: Gen3LivePointers? = null
     private var lastPublishedLiveGame: Gen3LiveGameSnapshot? = null
     private var unifiedSampleId = 0L
-    private var lastPublishedGen2Lighting: MapLighting? = null
     @Volatile private var closed = false
 
     init {
@@ -139,11 +135,8 @@ class BattleMemoryCoordinator(
 
         val hadBattle = tracker.missed().active
         if (!nextEligible || sessionIdentity != nextIdentity) {
-            locationPublisher(null)
-            positionPublisher(null)
             lastPublishedLiveGame = null
             liveGamePublisher(null)
-            publishGen2Lighting(null)
             transientGameState?.endSession()
         }
         resetReader()
@@ -197,7 +190,6 @@ class BattleMemoryCoordinator(
             }
             is CoreMemoryReadState.Failed -> {
                 reader = null
-                publishGen2Lighting(null)
                 closeTransport()
                 tracker.missed().takeIf(BattleTrackingUpdate::active)?.let(publisher)
             }
@@ -433,9 +425,7 @@ class BattleMemoryCoordinator(
     }
 
     private fun process(regions: Map<String, ByteArray>, context: BattleCatalogContext) {
-        if (context.generation == 2) {
-            publishGen2Lighting(resolveCurrentGen2Lighting(regions, context))
-        }
+        val gen2Lighting = if (context.generation == 2) resolveCurrentGen2Lighting(regions, context) else null
         val validatedGen2NoBattle = context.generation == 2 && knownGen2NonBattle(regions)
         val resolvedSample = if (context.generation == 1) {
             val source = requireNotNull(regions["wram"] ?: regions["battle-window"])
@@ -502,6 +492,11 @@ class BattleMemoryCoordinator(
         } else {
             null
         }
+        val gbAreaBaseId = if (context.generation in 1..2 && supportsLiveArea(context)) {
+            resolveCurrentArea(regions, context)
+        } else {
+            null
+        }
         val gen3Runtime = if (context.generation == 3) {
             val battleActive = resolveGen3BattleActive(regions, context)
             val selectedTargetBattler = resolveGen3LiveTarget(regions, context)
@@ -537,15 +532,6 @@ class BattleMemoryCoordinator(
                 false -> true
                 true -> false
                 null -> mainState != null && mainState.callbacks == observedOverworldCallbacks
-        }
-        if (supportsLiveArea(context)) {
-            locationPublisher(
-                if (context.generation == 3) gen3Runtime?.areaBaseId else resolveCurrentArea(regions, context),
-            )
-            when (context.generation) {
-                1, 2 -> positionPublisher(gbMapPosition)
-                3 -> positionPublisher(gen3Runtime?.mapPosition)
-            }
         }
         val sample = when {
             context.generation != 3 -> resolvedSample
@@ -597,6 +583,20 @@ class BattleMemoryCoordinator(
         if (update.active || update.ended) publisher(update)
         if (context.generation == 3) {
             publishUnifiedLiveGame(regions, gen3Runtime, update)
+        } else {
+            transientGameState?.acceptExistingGenerationSample(
+                sampleId = ++unifiedSampleId,
+                battle = LiveBattleState(
+                    active = update.active,
+                    sample = update.sample,
+                    encounterKind = update.sample?.encounterKind ?: BattleEncounterKind.UNKNOWN,
+                ),
+                areaBaseId = gbAreaBaseId,
+                mapPosition = gbMapPosition,
+                clock = gen2Lighting?.let { lighting ->
+                    LiveClockState(phase = LiveClockPhase.valueOf(lighting.name))
+                },
+            )
         }
     }
 
@@ -915,7 +915,6 @@ class BattleMemoryCoordinator(
             lastPublishedLiveGame = snapshot
             liveGamePublisher(snapshot)
         }
-        snapshot.location.value.let(locationPublisher)
     }
 
     private fun publishUnifiedLiveGame(
@@ -952,13 +951,6 @@ class BattleMemoryCoordinator(
         return MapLighting.entries.getOrNull(value)
     }
 
-    private fun publishGen2Lighting(lighting: MapLighting?) {
-        if (lighting != lastPublishedGen2Lighting) {
-            lastPublishedGen2Lighting = lighting
-            gen2LightingPublisher(lighting)
-        }
-    }
-
     private fun reconstructGen2Wram(regions: Map<String, ByteArray>): ByteArray {
         val layout = requireNotNull(cachedLayout)
         return ByteArray(GEN1_WRAM_BYTES).also { wram ->
@@ -992,9 +984,7 @@ class BattleMemoryCoordinator(
     )
 
     private fun safeHeartbeat() {
-        runCatching(::heartbeat).onFailure {
-            synchronized(this) { publishGen2Lighting(null) }
-        }
+        runCatching(::heartbeat)
     }
 
     private fun scheduleHeartbeat(delayMillis: Long) {
@@ -1041,7 +1031,6 @@ class BattleMemoryCoordinator(
         closed = true
         heartbeatExecutor.shutdown()
         synchronized(this) {
-            publishGen2Lighting(null)
             resetReader()
             eligible = false
             sessionIdentity = null

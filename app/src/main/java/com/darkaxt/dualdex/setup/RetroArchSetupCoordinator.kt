@@ -77,10 +77,6 @@ class RetroArchSetupCoordinator(
     private val battleMemory = BattleMemoryCoordinator(
         catalogProvider = runtime::battleCatalogContext,
         publisher = runtime::applyBattleTracking,
-        locationPublisher = runtime::updateLiveArea,
-        positionPublisher = runtime::updateLiveMapPosition,
-        liveGamePublisher = runtime::updateLiveGameState,
-        gen2LightingPublisher = runtime::updateGen2GameClock,
         transientGameState = transientGameState,
         transportFactory = { UdpNetworkCommandTransport(commandPort) },
         pollingIntervalProvider = runtime::battlePollingIntervalMs,

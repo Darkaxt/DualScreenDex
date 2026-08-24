@@ -223,6 +223,12 @@ sealed interface CompanionAction {
         val caughtDexNumbers: Set<Int>? = null,
     ) : CompanionAction
     data class ResolvedPartyStateChanged(val party: List<OwnedIndividual>) : CompanionAction
+    data class ResolvedOverworldStateChanged(
+        val areaBaseId: Int?,
+        val position: LiveMapPosition?,
+        val gameTime: GameClock?,
+        val gameAccessReady: Boolean,
+    ) : CompanionAction
     data class LiveMapPositionChanged(val position: LiveMapPosition?) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction
     data class Failure(val message: String) : CompanionAction

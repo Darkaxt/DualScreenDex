@@ -5,6 +5,7 @@ import com.darkaxt.dualdex.save.TrainerIdentity
 import com.darkaxt.dualdex.save.TrainerPlayTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class LiveMemoryModelsTest {
@@ -32,6 +33,17 @@ class LiveMemoryModelsTest {
 
         assertEquals(12_345, trainer.publicTrainerId.valueOrNull())
         assertNull(pokedex.seenDexNumbers.valueOrNull())
+    }
+
+    @Test
+    fun clockCanRepresentValidatedGen2PhaseWithoutInventingNumericTime() {
+        val clock = LiveClockState(phase = LiveClockPhase.NIGHT)
+
+        assertNull(clock.hours)
+        assertNull(clock.minutes)
+        assertNull(clock.seconds)
+        assertEquals(LiveClockPhase.NIGHT, clock.phase)
+        assertThrows(IllegalArgumentException::class.java) { LiveClockState() }
     }
 
     private fun unavailable(): LiveValue.Unavailable = LiveValue.Unavailable(

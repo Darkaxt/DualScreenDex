@@ -619,6 +619,21 @@ git add app/src/main/java/com/darkaxt/dualdex/live/UnifiedGameStateDecoder.kt ap
 git commit -m "refactor: unify Atlas clock and readiness state"
 ```
 
+### Implementation audit through Stage 5 — 2026-08-24
+
+| Contract | Evidence | Result |
+|---|---|---|
+| Area and coordinates originate in one logical sample and reach companion state atomically | the unified overworld vertical test observes no publication containing a new area with stale coordinates | PASS |
+| Atlas tracking, POI proximity, and visited-area history consume the same resolved location | the vertical fixture reveals an adjacent hidden POI and retains both visited areas after movement | PASS |
+| Missing coordinates never invent `(0, 0)` | nullable independent location fields remain unavailable when validation fails | PASS |
+| Header time and day/night projection consume the unified clock | numeric Gen III time uses the catalog schedule; phase-only Gen II time does not invent hours or minutes | PASS |
+| Loading readiness is a pure live-state policy and unlocks only once | Gen III requires live area, live identity, and advancing time; Gen I/II require live area; later zero time cannot relock | PASS |
+| Existing Gen I/II battle, area, position, and time-of-day remain available | coordinator fixtures publish all supported Gen I/II values through one snapshot, closing the earlier battle-forwarding gap | PASS |
+| Direct overworld publishers are absent from production wiring | area, position, and Gen II lighting publisher fields and setup callbacks were removed; `rg` finds no production wiring | PASS |
+| Presentation behavior remains stable | all 23 `MapPage` tests pass; no parser, renderer, Atlas UI, Gen I, or Gen II map file changed | PASS |
+
+The old runtime `updateLiveArea`, `updateLiveMapPosition`, and `updateGen2GameClock` methods remain only as isolated compatibility test seams and have no production caller. Their physical deletion is registered with the complete legacy-surface removal in Stage 7, avoiding unrelated map-test churn while the concurrent Gen I/II map task is active. Stage 5 has no blocker for Stage 6.
+
 ## Stage 6 — Save/checkpoint pipes and remaining passive state
 
 ### Task 9: Complete recovery routing, bag, and event flags

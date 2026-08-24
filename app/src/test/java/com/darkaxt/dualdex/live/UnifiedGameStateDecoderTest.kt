@@ -4,12 +4,15 @@ import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.darkaxt.dualdex.battle.LiveClockState
 import com.darkaxt.dualdex.battle.LiveGameSnapshot
 import com.darkaxt.dualdex.battle.LiveLocationState
+import com.darkaxt.dualdex.battle.LiveBattleState
+import com.darkaxt.dualdex.battle.LiveClockPhase
 import com.darkaxt.dualdex.battle.LivePokedexState
 import com.darkaxt.dualdex.battle.LiveTrainerState
 import com.darkaxt.dualdex.battle.LiveUnavailableCode
 import com.darkaxt.dualdex.battle.LiveUnavailableReason
 import com.darkaxt.dualdex.battle.LiveValue
 import com.darkaxt.dualdex.save.SaveSnapshot
+import com.darkaxt.dualdex.save.SavedArea
 import com.darkaxt.dualdex.save.TrainerIdentity
 import com.darkaxt.dualdex.save.TrainerPlayTime
 import com.darkaxt.dualdex.save.TrainerSnapshot
@@ -107,9 +110,51 @@ class UnifiedGameStateDecoderTest {
         assertTrue(publications.any { it?.romIdentity == ROM })
     }
 
-    private fun context(rom: String) = TransientGameStateContext(
+    @Test
+    fun wrapsExistingGen2BattleLocationPositionAndLightingAsOneLogicalSample() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM, generation = 2))
+
+        decoder.acceptExistingGenerationSample(
+            sampleId = 7,
+            battle = LiveBattleState(false, null, com.darkaxt.dualdex.battle.BattleEncounterKind.UNKNOWN),
+            areaBaseId = 0x1803,
+            mapPosition = com.darkaxt.dualdex.battle.RuntimeMapPosition(14, 9),
+            clock = LiveClockState(phase = LiveClockPhase.NIGHT),
+        )
+
+        val current = requireNotNull(decoder.current)
+        assertEquals(7L, current.sampleId)
+        assertEquals(0x1803, current.location.areaBaseId.value)
+        assertEquals(com.darkaxt.dualdex.battle.RuntimeMapPosition(14, 9), current.location.position.value)
+        assertEquals(LiveClockPhase.NIGHT, current.clock.value?.phase)
+        assertEquals(ResolvedValueSource.LIVE, current.location.areaBaseId.source)
+        assertTrue(current.gameAccessReady())
+    }
+
+    @Test
+    fun gen3ReadinessRequiresLiveAreaIdentityAndAnAdvancingClock() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(
+            recovery(ROM).copy(snapshot = recovery(ROM).snapshot.copy(currentArea = SavedArea(0, 9))),
+        )
+        assertFalse(requireNotNull(decoder.current).gameAccessReady())
+
+        val base = liveSnapshot(ROM, sampleId = 1, money = LiveValue.Available(900L)).copy(
+            location = LiveLocationState(LiveValue.Available(9), unavailable()),
+            clock = LiveValue.Available(LiveClockState(0, 0, 0)),
+        )
+        decoder.acceptDecodedLive(base)
+        assertFalse(requireNotNull(decoder.current).gameAccessReady())
+
+        decoder.acceptDecodedLive(base.copy(sampleId = 2, clock = LiveValue.Available(LiveClockState(0, 0, 1))))
+        assertTrue(requireNotNull(decoder.current).gameAccessReady())
+    }
+
+    private fun context(rom: String, generation: Int = 3) = TransientGameStateContext(
         romIdentity = rom,
-        generation = 3,
+        generation = generation,
         catalog = BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
     )
 

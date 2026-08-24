@@ -368,6 +368,114 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun unifiedOverworldPublishesCoherentAreaPositionClockAndOneWayReadiness() {
+        val hash = "9".repeat(64)
+        val firstMap = LocalMap("local/0010", "Route", 0x0010, 160, 160, 10, 10, "local/0010/map")
+        val secondMap = LocalMap("local/0011", "Town", 0x0011, 160, 160, 10, 10, "local/0011/map")
+        val hiddenPoi = LocalMapPoi(
+            key = "local/0010/bg/0",
+            localMapKey = firstMap.key,
+            baseAreaId = firstMap.baseAreaId,
+            tileX = 8,
+            tileY = 6,
+            kind = LocalMapPoiKind.HIDDEN_ITEM,
+            organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
+            item = LocalMapPoiItem(13),
+        )
+        val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val runtime = ProductionCompanionRuntime(transientGameState = source)
+        runtime.loadCatalog(
+            "overworld.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                localMaps = LocalMapCatalog(
+                    maps = listOf(firstMap, secondMap),
+                    assets = mapOf(
+                        firstMap.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                        secondMap.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                    ),
+                    pois = listOf(hiddenPoi),
+                ),
+                runtimeMetadata = CatalogRuntimeMetadata(
+                    gen3RuntimeMemoryLayout = CatalogGen3RuntimeMemoryLayout(
+                        mainAddress = 0x03001574,
+                        inBattleAddress = 0x030019AD,
+                        inBattleMask = 2,
+                        saveBlock1MapGroupOffset = 4,
+                        saveBlock1MapNumberOffset = 5,
+                        liveClockAddress = 0x030039E8,
+                        liveClockSchedule = CatalogGameClockSchedule(6, 21),
+                    ),
+                ),
+            ),
+        )
+        source.beginSession(
+            com.darkaxt.dualdex.live.TransientGameStateContext(
+                romIdentity = hash,
+                generation = 3,
+                catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+            ),
+        )
+        val unavailable = com.darkaxt.dualdex.battle.LiveValue.Unavailable(
+            com.darkaxt.dualdex.battle.LiveUnavailableReason(
+                com.darkaxt.dualdex.battle.LiveUnavailableCode.MISSING_REGION,
+                "fixture region omitted",
+            ),
+        )
+        val trainer = com.darkaxt.dualdex.battle.LiveTrainerState(
+            identity = com.darkaxt.dualdex.battle.LiveValue.Available(TrainerIdentity("MAY", 1)),
+            publicTrainerId = unavailable,
+            money = unavailable,
+            playTime = unavailable,
+            badgeFlags = unavailable,
+            stars = unavailable,
+        )
+        val publications = mutableListOf<Pair<Int?, com.enrpau.dualscreendex.companion.model.LiveMapPosition?>>()
+        runtime.gateway.subscribe { snapshot -> publications += snapshot.liveAreaBaseId to snapshot.liveMapPosition }
+
+        fun sample(id: Long, area: Int, x: Int, y: Int, seconds: Int) = unifiedBattleSnapshot(
+            hash,
+            id,
+            false,
+            null,
+        ).copy(
+            trainer = trainer,
+            location = com.darkaxt.dualdex.battle.LiveLocationState(
+                com.darkaxt.dualdex.battle.LiveValue.Available(area),
+                com.darkaxt.dualdex.battle.LiveValue.Available(RuntimeMapPosition(x, y)),
+            ),
+            clock = com.darkaxt.dualdex.battle.LiveValue.Available(
+                com.darkaxt.dualdex.battle.LiveClockState(6, 0, seconds),
+            ),
+        )
+
+        source.acceptDecodedLive(sample(1, 0x0010, 8, 5, 1))
+        source.acceptDecodedLive(sample(2, 0x0011, 9, 6, 2))
+
+        val state = runtime.gateway.bootstrap()
+        assertEquals(0x0011, state.liveAreaBaseId)
+        assertEquals(com.enrpau.dualscreendex.companion.model.LiveMapPosition(9, 6), state.liveMapPosition)
+        assertEquals(6, state.gameTime?.hours)
+        assertEquals("DAY", state.gameTime?.phase?.name)
+        assertTrue(state.gameAccessReady)
+        assertEquals(setOf(0x0010, 0x0011), state.ledger.visitedAreaBaseIds)
+        assertEquals(setOf(hiddenPoi.key), state.ledger.proximityRevealedPoiKeys)
+        assertTrue(publications.none { (area, position) ->
+            area == 0x0011 && position != com.enrpau.dualscreendex.companion.model.LiveMapPosition(9, 6)
+        })
+
+        source.acceptDecodedLive(sample(3, 0x0011, 9, 6, 0).copy(
+            clock = com.darkaxt.dualdex.battle.LiveValue.Available(
+                com.darkaxt.dualdex.battle.LiveClockState(0, 0, 0),
+            ),
+        ))
+        assertTrue(runtime.gateway.bootstrap().gameAccessReady)
+        runtime.close()
+    }
+
+    @Test
     fun organicEffectivenessUnlocksAfterThePlayerConsumesMovePpAgainstTheTarget() {
         val runtime = ProductionCompanionRuntime()
         runtime.loadCatalog("fixture.gba", ParsedCatalog(

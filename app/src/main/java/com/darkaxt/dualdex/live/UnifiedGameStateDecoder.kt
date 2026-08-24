@@ -79,6 +79,44 @@ class UnifiedGameStateDecoder : TransientGameStateSource {
     ): List<Gen3LiveReadWindow> = Gen3LiveGameState.dependentWindows(layout, pointers)
 
     @Synchronized
+    fun acceptExistingGenerationSample(
+        sampleId: Long,
+        battle: LiveBattleState,
+        areaBaseId: Int?,
+        mapPosition: RuntimeMapPosition?,
+        clock: LiveClockState?,
+    ): ResolvedGameSnapshot? {
+        val active = context ?: return published
+        if (active.generation !in 1..2) return published
+        val unavailable = unavailable<Nothing>("field is not supported by the current live adapter")
+        return acceptDecodedLive(
+            LiveGameSnapshot(
+                romIdentity = active.romIdentity,
+                generation = active.generation,
+                sampleId = sampleId,
+                trainer = com.darkaxt.dualdex.battle.LiveTrainerState(
+                    unavailable,
+                    unavailable,
+                    unavailable,
+                    unavailable,
+                    unavailable,
+                    unavailable,
+                ),
+                pokedex = com.darkaxt.dualdex.battle.LivePokedexState(unavailable, unavailable),
+                party = unavailable,
+                battle = LiveValue.Available(battle),
+                location = LiveLocationState(
+                    areaBaseId = areaBaseId?.let { LiveValue.Available(it) } ?: unavailable,
+                    position = mapPosition?.let { LiveValue.Available(it) } ?: unavailable,
+                ),
+                clock = clock?.let { LiveValue.Available(it) } ?: unavailable,
+                bag = BagPocket.entries.associateWith { unavailable },
+                eventFlags = unavailable,
+            ),
+        )
+    }
+
+    @Synchronized
     fun acceptGen3LiveSample(
         sampleId: Long,
         regions: Map<String, ByteArray>,

@@ -62,6 +62,7 @@ import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.live.ResolvedGameSnapshot
 import com.darkaxt.dualdex.live.TransientGameStateSource
+import com.darkaxt.dualdex.live.gameAccessReady
 import com.darkaxt.dualdex.save.SaveObservation
 import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.save.SaveSpeciesContext
@@ -167,6 +168,7 @@ class ProductionCompanionRuntime(
         resolvedGameState = snapshot
         applyResolvedPlayerState(snapshot)
         applyResolvedPartyAndProgression(snapshot)
+        applyResolvedOverworldState(snapshot)
         applyResolvedBattleState(snapshot)
     }
 
@@ -240,6 +242,67 @@ class ProductionCompanionRuntime(
                 previous = ledger,
                 catalog = currentCatalog,
                 setFlagIds = flags,
+            )
+        }
+        if (ledger != gateway.bootstrap().ledger) {
+            gateway.dispatch(CompanionAction.ReplaceLedger(ledger))
+        }
+    }
+
+    private fun applyResolvedOverworldState(snapshot: ResolvedGameSnapshot?) {
+        val currentCatalog = catalog
+        val matching = snapshot?.takeIf { state ->
+            currentCatalog?.romSha256.equals(state.romIdentity, ignoreCase = true)
+        }
+        val areaBaseId = matching?.location?.areaBaseId?.value
+        val position = matching?.location?.position?.value?.let { value -> LiveMapPosition(value.x, value.y) }
+        val clock = matching?.clock?.value
+        val hours = clock?.hours
+        val minutes = clock?.minutes
+        val phase = clock?.phase
+        val schedule = currentCatalog?.runtimeMetadata?.gen3RuntimeMemoryLayout?.liveClockSchedule
+        val gameTime = when {
+            hours != null && minutes != null -> projectGameClock(
+                hours,
+                minutes,
+                schedule?.dayStartHour,
+                schedule?.nightStartHour,
+            )
+            phase != null -> GameClock(phase = GameClockPhase.valueOf(phase.name))
+            else -> null
+        }
+        val ready = matching?.gameAccessReady() == true
+        val before = gateway.bootstrap()
+        if (
+            before.liveAreaBaseId != areaBaseId ||
+            before.liveMapPosition != position ||
+            before.gameTime != gameTime ||
+            (ready && !before.gameAccessReady)
+        ) {
+            gateway.dispatch(
+                CompanionAction.ResolvedOverworldStateChanged(
+                    areaBaseId = areaBaseId,
+                    position = position,
+                    gameTime = gameTime,
+                    gameAccessReady = ready,
+                ),
+            )
+        }
+        val validAreaBaseId = areaBaseId?.takeIf { candidate ->
+            candidate in (currentCatalog?.discoverableAreaBaseIds() ?: emptySet())
+        } ?: return
+        val after = gateway.bootstrap()
+        var ledger = after.ledger
+        if (validAreaBaseId !in ledger.visitedAreaBaseIds) {
+            ledger = ledger.copy(visitedAreaBaseIds = ledger.visitedAreaBaseIds + validAreaBaseId)
+        }
+        if (position != null && currentCatalog != null) {
+            ledger = LocalMapPoiKnowledgeMapper.mergeProximity(
+                previous = ledger,
+                catalog = currentCatalog,
+                baseAreaId = validAreaBaseId,
+                tileX = position.x,
+                tileY = position.y,
             )
         }
         if (ledger != gateway.bootstrap().ledger) {

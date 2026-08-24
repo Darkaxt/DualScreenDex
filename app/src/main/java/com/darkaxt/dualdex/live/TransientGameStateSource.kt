@@ -97,3 +97,17 @@ data class TransientGameStateContext(
         require(gen2TimeOfDayWramOffset == null || gen2TimeOfDayWramOffset in 0 until 0x2000)
     }
 }
+
+fun ResolvedGameSnapshot.gameAccessReady(): Boolean = when (generation) {
+    3 -> location.areaBaseId.source == ResolvedValueSource.LIVE &&
+        trainer.identity.source == ResolvedValueSource.LIVE &&
+        clock.source == ResolvedValueSource.LIVE &&
+        clock.value?.let { value ->
+            val hours = value.hours ?: return@let false
+            val minutes = value.minutes ?: return@let false
+            val seconds = value.seconds ?: return@let false
+            hours != 0 || minutes != 0 || seconds != 0
+        } == true
+    1, 2 -> location.areaBaseId.source == ResolvedValueSource.LIVE
+    else -> false
+}

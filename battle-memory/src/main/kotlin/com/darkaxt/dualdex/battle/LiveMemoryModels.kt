@@ -84,15 +84,22 @@ data class LiveLocationState(
     }
 }
 
+enum class LiveClockPhase { MORNING, DAY, NIGHT, DARK }
+
 data class LiveClockState(
-    val hours: Int,
-    val minutes: Int,
-    val seconds: Int,
+    val hours: Int? = null,
+    val minutes: Int? = null,
+    val seconds: Int? = null,
+    val phase: LiveClockPhase? = null,
 ) {
     init {
-        require(hours in 0..23) { "clock hours must be in 0..23" }
-        require(minutes in 0..59) { "clock minutes must be in 0..59" }
-        require(seconds in 0..59) { "clock seconds must be in 0..59" }
+        require((hours == null) == (minutes == null) && (hours == null) == (seconds == null)) {
+            "numeric clock fields must be all available or all unavailable"
+        }
+        require(hours != null || phase != null) { "clock must contain numeric time or a validated phase" }
+        hours?.let { require(it in 0..23) { "clock hours must be in 0..23" } }
+        minutes?.let { require(it in 0..59) { "clock minutes must be in 0..59" } }
+        seconds?.let { require(it in 0..59) { "clock seconds must be in 0..59" } }
     }
 }
 
