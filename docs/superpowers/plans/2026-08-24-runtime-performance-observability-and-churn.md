@@ -387,11 +387,11 @@ Record Java/native/PSS, GC, CPU, owned-WebView count, renderer PSS, stage durati
 
 Ensure RP-01 through RP-19 appear exactly once. For a prerelease intended to collect Android evidence, RP-18 and original R15 may remain explicitly `DEFERRED` to user-driven candidate validation; they must not be reported as passed. Every other row must pass and nothing may be silently omitted.
 
-- [ ] **Step 2: Verify release identity and provenance**
+- [x] **Step 2: Verify release identity and provenance**
 
 Use the repository release tooling to sign/package RC55, then independently verify numeric `versionName`, `versionCode`, package name, signer certificate, SHA-256, filename, and tag alignment.
 
-- [ ] **Step 3: Commit, push, tag, and publish only after the clean gate**
+- [x] **Step 3: Commit, push, tag, and publish only after the clean gate**
 
 ```powershell
 git add docs release

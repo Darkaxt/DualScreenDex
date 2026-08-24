@@ -6,7 +6,7 @@
 
 **Specification:** `docs/superpowers/specs/2026-08-24-runtime-performance-observability-and-churn-design.md`
 
-**Result:** PRE-RELEASE PASS — RC55 is eligible for publication; Android runtime acceptance remains deferred to user testing
+**Result:** PUBLISHED PRERELEASE — RC55 release identity and provenance pass; Android runtime acceptance remains deferred to user testing
 
 ## Automated gate evidence
 
@@ -18,6 +18,17 @@
 | Android lint | 0 errors, 51 warnings. |
 | `node --test tools/release/*.test.mjs` | 18/18 release-policy tests passed. |
 | Unsigned RC55 candidate | `app/build/outputs/apk/release/app-release-unsigned.apk`; 17,573,455 bytes; SHA-256 `1475B9B3BC50C6A0593757833D631D1E5D9FCB13C62E28754F8B322B955D0174`; package `com.darkaxt.dualdex`; version `1.1.0-rc.55`; code `1010055`. This is not the protected signed/public artifact. |
+
+## Protected release evidence
+
+| Evidence | Observed result |
+|---|---|
+| Source and workflow | Tag `v1.1.0-rc.55` resolves to commit `66a4a8618e53e75122463d20464f00097fe1bed5`; protected workflow run `32751484479` completed successfully. |
+| Publication | GitHub release `DualDex 1.1.0-rc.55` is public, non-draft, and marked as a prerelease. |
+| Public APK | `DualDex-v1.1.0-rc.55.apk`; 17,666,534 bytes; SHA-256 `6C7765B6B0E201573E72CC000815AA153C6B42A3CE42385A71FAEF46E3332D81`. Anonymous redownload matched both GitHub's asset digest and `SHA256SUMS.txt`. |
+| Signed identity | Repository validation reported package `com.darkaxt.dualdex`, version `1.1.0-rc.55`, code `1010055`, and signer SHA-256 `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`; APK Signature Scheme v3 verification passed. |
+| Provenance | Public `provenance.json` binds the APK hash, signer, tag, commit, version identity, and protected signing authority to workflow run `32751484479`. |
+| Device action | No installation, launch, or game interaction was performed. |
 
 ## Explicit real-ROM gate
 
@@ -98,4 +109,4 @@ The optional controls were rerun with exact paths under `D:\Temp\PokemonHacks`, 
 
 ## Stage decision
 
-The automated Stage 4 gate passes for prerelease publication. RP-01 through RP-17 and RP-19 pass; RP-18 and original R15 remain explicit post-publication acceptance items. The protected workflow may sign and publish RC55; installation, launch, gameplay interaction, and Android-runtime acceptance remain outside this release action.
+The automated Stage 4 gate and protected release checks pass. RC55 is published as a prerelease from the verified source tag, and the anonymously redownloaded signed APK passes checksum, signer, package, and version verification. RP-01 through RP-17 and RP-19 pass; RP-18 and original R15 remain explicit post-publication acceptance items. Installation, launch, gameplay interaction, and Android-runtime acceptance remain outside this release action.
