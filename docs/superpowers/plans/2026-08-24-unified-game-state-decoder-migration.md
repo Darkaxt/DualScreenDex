@@ -808,25 +808,25 @@ git commit -m "test: verify unified transient game state"
 - Modify: `README.md`
 - Create: `release/RELEASE_NOTES_1.1.0-rc.54.md`
 
-- [ ] **Step 1: Determine the immediate RC successor**
+- [x] **Step 1: Determine the immediate RC successor**
 
 Confirm that RC53 remains the latest protected prerelease, then prepare RC54. Align `1.1.0-rc.54`, version code `1010054`, tag `v1.1.0-rc.54`, APK filename, and release title. Stop and recalculate only if another release has legitimately appeared before execution; never skip a number.
 
-- [ ] **Step 2: Run release gates**
+- [x] **Step 2: Run release gates**
 
 ```powershell
-npm.cmd --prefix tools/release test
+node --test tools/release/*.test.mjs
 .\gradlew.bat :app:lintRelease :app:assembleRelease --no-daemon --console=plain
 ```
 
-- [ ] **Step 3: Commit the release metadata**
+- [x] **Step 3: Commit the release metadata**
 
 ```powershell
 git add README.md release/RELEASE_NOTES_1.1.0-rc.54.md
 git commit -m "release: prepare v1.1.0-rc.54"
 ```
 
-- [ ] **Step 4: Publish through the protected workflow**
+- [x] **Step 4: Publish through the protected workflow**
 
 ```powershell
 git push fork HEAD:master
@@ -838,20 +838,20 @@ gh run list --repo Darkaxt/DualScreenDex --workflow release.yml --limit 1 --json
 
 The protected workflow must complete successfully. Do not install, launch, control RetroArch, or perform device UI verification from this task.
 
-- [ ] **Step 5: Independently verify the public artifact**
+- [x] **Step 5: Independently verify the public artifact**
 
 Verify tag/title, APK filename, package ID, numeric version, version code, certificate, SHA-256, and workflow provenance. Record the public artifact hash.
 
 ## Final plan-to-spec audit
 
-- [ ] Every game-originating transient value reaches DualDex only through `TransientGameStateSource`.
-- [ ] Exactly one `UnifiedGameStateDecoder` instance exists per application runtime.
-- [ ] The class owns live decoding, recovery authority, identity gating, and field-level merging.
-- [ ] Live Trainer ID, money, play time, badges, seen, and caught work without an accessible `.srm`.
-- [ ] Archive recovery prefers the active RetroArch basename.
-- [ ] Battle, Party, Pokédex, progression, Atlas, clock, readiness, bag, and event flags consume one resolved snapshot.
-- [ ] Gen I/II existing support remains available through the same interface.
-- [ ] Opponent privacy, Organic discovery, fog of war, map tracking, and rarity focus have focused regressions.
-- [ ] No ordinary UI exposes diagnostic information or provenance.
-- [ ] Performance/memory and real-control reports contain exact evidence rather than generic labels.
-- [ ] The next signed RC is published only after every blocker is closed.
+- [x] Every game-originating transient value reaches DualDex only through `TransientGameStateSource`.
+- [x] Exactly one `UnifiedGameStateDecoder` instance exists per application runtime.
+- [x] The class owns live decoding, recovery authority, identity gating, and field-level merging.
+- [x] Live Trainer ID, money, play time, badges, seen, and caught work without an accessible `.srm`.
+- [x] Archive recovery prefers the active RetroArch basename.
+- [x] Battle, Party, Pokédex, progression, Atlas, clock, readiness, bag, and event flags consume one resolved snapshot.
+- [x] Gen I/II existing support remains available through the same interface.
+- [x] Opponent privacy, Organic discovery, fog of war, map tracking, and rarity focus have focused regressions.
+- [x] No ordinary UI exposes diagnostic information or provenance.
+- [x] Performance/memory and real-control reports contain exact evidence rather than generic labels.
+- [x] The next signed RC is published only after every blocker is closed.
