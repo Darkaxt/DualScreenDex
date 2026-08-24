@@ -1,6 +1,6 @@
 # Source-backed Gen III Checkpoint 4 Audit
 
-**Result:** VALIDATED — compiled-authorized headerless teachable and egg lists pass focused real-ROM, independent-control, failure-isolation, cache, persistence, and eight-ROM matrix gates.
+**Result:** PUBLISHED — compiled-authorized headerless teachable and egg lists pass focused real-ROM, independent-control, failure-isolation, cache, persistence, eight-ROM matrix, protected release, and independent public-artifact gates.
 
 ## Requirement audit
 
@@ -37,6 +37,13 @@
 
 `G3-DREAM-001` now covers only balls and the bounded Local-raster overage. Other Stage 2 family deferrals remain unchanged; every unsupported optional module continues to fail closed independently.
 
-## Candidate
+## Published candidate
 
-The validated source is prepared for protected prerelease `v1.1.0-rc.60`. Production signing and publication remain isolated to GitHub's protected release workflow.
+- Annotated tag [`v1.1.0-rc.60`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.60) peels to exact source commit `b1bae3fcfacd5e875ada7b7e93fd3e9c5c221ace`.
+- Protected workflow [`32784097897`](https://github.com/Darkaxt/DualScreenDex/actions/runs/32784097897) completed both `verify-and-build` and `sign-and-publish` successfully against that commit.
+- Public APK `DualDex-v1.1.0-rc.60.apk` is 17,768,934 bytes with SHA-256 `18d9eddd367f5457c48e0c7e247b4d8eaa1f20b5c792f13c0841d262e98940db`.
+- All 27 checksum entries verify. Authenticated and anonymous APK downloads are byte-identical.
+- The APK declares `com.darkaxt.dualdex`, version `1.1.0-rc.60`, and version code `1010060`.
+- Independent `apksigner` verification accepts APK Signature Scheme v3 with one signer. Its certificate SHA-256 is `c5a02cecb47cda41b618817ea684cbb6ccfdcc17a3e7d8243448175c8e3b2fba`, matching the published PEM and pinned release identity.
+- `provenance.json` exactly binds the repository, tagged commit, workflow run, release kind, package/version identity, APK hash, certificate hash, and protected `release-signing` authority.
+- No APK installation, launch, ADB, emulator, or gameplay action was used as a publication gate.

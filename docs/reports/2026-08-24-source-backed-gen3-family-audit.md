@@ -83,7 +83,7 @@ The fresh eight-ROM matrix improves Dreamstone from 17/24 at 70.81% to 20/24 at 
 
 The validated 260-byte species ABI has bounded Thumb getters for pointers at relative bytes 152 and 156. Each complete getter proves the species bound, `speciesId * 260` indexing, active-row check, row-zero null fallback, field load, and normal return before the associated u16/`0xFFFF` lists are accepted. Dreamstone and Crippling use different roots and compiler-bound forms. Each pointer field is independently gated, and malformed pointers disable only that acquisition module.
 
-The fresh eight-ROM matrix improves Dreamstone from 20/24 at 83.31% to 22/24 at 91.64%, materializing 47,108 teachable links, 4,321 egg links, and the unchanged 4,247 independently resolved tutor links. The independent Crippling control materializes 88,104 teachable and 4,671 egg links. The other seven controls retain their routing, feature counts, compatibility scores, and prior materialized counts. All six selected catalogs persisted and reopened through schema 40 with zero parser, persistence, or decoded cross-reference errors.
+The fresh eight-ROM matrix improves Dreamstone from 20/24 at 83.31% to 22/24 at 91.64%, materializing 47,108 teachable links, 4,321 egg links, and the unchanged 4,247 independently resolved tutor links. The independent Crippling control materializes 88,104 teachable and 4,671 egg links. The other seven controls retain their routing, feature counts, compatibility scores, and prior materialized counts. All six selected catalogs persisted and reopened through schema 40 with zero parser, persistence, or decoded cross-reference errors. The checkpoint is published as signed prerelease `v1.1.0-rc.60`.
 
 ## Deferral ledger
 
