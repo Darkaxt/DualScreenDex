@@ -269,10 +269,115 @@ class UnifiedGameStateDecoderTest {
         assertEquals(ResolvedValueSource.LIVE, current.eventFlags.source)
     }
 
+    @Test
+    fun `gen3 translated sections reuse by fingerprint and clear on live suspension`() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(gen3LiveContext())
+        val regions = gen3Regions()
+        val battle = LiveBattleState(false, null, com.darkaxt.dualdex.battle.BattleEncounterKind.UNKNOWN)
+
+        decoder.acceptGen3LiveSample(1, regions, battle, null, null)
+        decoder.acceptGen3LiveSample(2, regions, battle, null, null)
+
+        assertEquals(1L, decoder.performanceCounters().getValue("live.decode.player"))
+        assertEquals(1L, decoder.performanceCounters().getValue("live.decode.party"))
+        assertEquals(1L, decoder.performanceCounters().getValue("live.decode.overworld"))
+        assertEquals(1L, decoder.performanceCounters().getValue("live.decode.progression"))
+        assertEquals(1L, decoder.performanceCounters().getValue("live.reuse.overworld"))
+
+        val clockChanged = regions.mapValues { (_, bytes) -> bytes.copyOf() }.toMutableMap()
+        clockChanged.getValue(com.darkaxt.dualdex.battle.Gen3LiveMemoryReader.CLOCK_ID)[4] = 11
+        decoder.acceptGen3LiveSample(3, clockChanged, battle, null, null)
+
+        assertEquals(2L, decoder.performanceCounters().getValue("live.decode.overworld"))
+        assertEquals(1L, decoder.performanceCounters().getValue("live.decode.player"))
+        assertEquals(2L, decoder.performanceCounters().getValue("live.reuse.player"))
+
+        decoder.suspendLive()
+        decoder.acceptGen3LiveSample(4, clockChanged, battle, null, null)
+        assertEquals(2L, decoder.performanceCounters().getValue("live.decode.player"))
+        assertEquals(3L, decoder.performanceCounters().getValue("live.decode.overworld"))
+
+        val replacement = gen3LiveContext().let { original ->
+            original.copy(
+                romIdentity = "rom-b",
+                saveParseContext = requireNotNull(original.saveParseContext).copy(romIdentity = "rom-b"),
+            )
+        }
+        decoder.beginSession(replacement)
+        decoder.acceptGen3LiveSample(5, clockChanged, battle, null, null)
+        assertEquals(3L, decoder.performanceCounters().getValue("live.decode.player"))
+        assertEquals(3L, decoder.performanceCounters().getValue("live.decode.party"))
+        assertEquals(4L, decoder.performanceCounters().getValue("live.decode.overworld"))
+        assertEquals(3L, decoder.performanceCounters().getValue("live.decode.progression"))
+    }
+
     private fun context(rom: String, generation: Int = 3) = TransientGameStateContext(
         romIdentity = rom,
         generation = generation,
         catalog = BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+    )
+
+    private fun gen3LiveContext(): TransientGameStateContext {
+        val layout = com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout(
+            mainAddress = 0x03002000,
+            inBattleAddress = 0x03002040,
+            inBattleMask = 1,
+            saveBlock1MapGroupOffset = 4,
+            saveBlock1MapNumberOffset = 5,
+            liveClockAddress = 0x030039E8,
+            playerPartyCountAddress = 0x02000200,
+            playerPartyAddress = 0x02000300,
+            playerPartyCapacity = 6,
+            playerPartyRecordSize = 100,
+            saveBlock1PointerAddress = 0x03001000,
+            saveBlock2PointerAddress = 0x03001004,
+            saveBlock1Size = 0x100,
+            saveBlock2Size = 0x280,
+        )
+        val abi = com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi(
+            saveBlock1Size = 0x100,
+            saveBlock2Size = 0x280,
+            textEncoding = com.darkaxt.dualdex.save.gen3.Gen3TextEncoding.ENGLISH,
+            trainer = com.darkaxt.dualdex.save.gen3.Gen3TrainerCardAbi(
+                playerNameOffset = 0,
+                playerNameLength = 8,
+                genderOffset = 8,
+                trainerIdOffset = 10,
+                playTimeHoursOffset = 14,
+                playTimeMinutesOffset = 16,
+                encryptionKeyOffset = 0x240,
+                moneyOffset = 0x10,
+                maximumMoney = 999_999,
+                badgeFlags = listOf(com.darkaxt.dualdex.save.gen3.Gen3BitFlag(0x11, 1)),
+            ),
+            bag = com.darkaxt.dualdex.save.gen3.Gen3BagAbi(
+                listOf(com.darkaxt.dualdex.save.gen3.Gen3BagPocketAbi(BagPocket.ITEMS, 0x30, 2)),
+            ),
+            eventFlags = com.darkaxt.dualdex.save.gen3.Gen3EventFlagAbi(0x20, 4),
+        )
+        return TransientGameStateContext(
+            romIdentity = ROM,
+            generation = 3,
+            catalog = BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+            gen3RuntimeMemoryLayout = layout,
+            saveParseContext = com.darkaxt.dualdex.save.SaveParseContext(
+                romIdentity = ROM,
+                speciesById = mapOf(1 to com.darkaxt.dualdex.save.SaveSpeciesContext(1, 1, 0)),
+                gen3SaveRuntimeAbi = abi,
+            ),
+        )
+    }
+
+    private fun gen3Regions(): Map<String, ByteArray> = mapOf(
+        com.darkaxt.dualdex.battle.Gen3LiveMemoryReader.SAVE_BLOCK1_ID to ByteArray(0x100).also {
+            it[4] = 0
+            it[5] = 9
+        },
+        com.darkaxt.dualdex.battle.Gen3LiveMemoryReader.SAVE_BLOCK2_ID to ByteArray(0x280),
+        com.darkaxt.dualdex.battle.Gen3LiveMemoryReader.PARTY_COUNT_ID to byteArrayOf(0),
+        com.darkaxt.dualdex.battle.Gen3LiveMemoryReader.PARTY_ID to ByteArray(600),
+        com.darkaxt.dualdex.battle.Gen3LiveMemoryReader.CLOCK_ID to byteArrayOf(0, 0, 12, 30, 10),
     )
 
     private fun recovery(

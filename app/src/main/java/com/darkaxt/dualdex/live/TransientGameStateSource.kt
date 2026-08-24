@@ -25,6 +25,8 @@ interface TransientGameStateSource {
     val current: ResolvedGameSnapshot?
 
     fun subscribe(listener: TransientGameStateListener): AutoCloseable
+
+    fun performanceCounters(): Map<String, Long> = emptyMap()
 }
 
 enum class ResolvedGameSection {

@@ -90,7 +90,18 @@ object Gen3LiveMemoryReader {
     ): Gen3LiveMemoryValues {
         val saveBlock1 = regions[SAVE_BLOCK1_ID]
         val saveAbi = saveContext?.gen3SaveRuntimeAbi
-        val location = if (saveBlock1 != null) {
+        return Gen3LiveMemoryValues(
+            location = decodeLocation(saveBlock1, layout),
+            party = decodeParty(regions[PARTY_COUNT_ID], regions[PARTY_ID], layout, saveContext),
+            clock = decodeClock(regions[CLOCK_ID]),
+            eventFlags = decodeEventFlags(saveBlock1, saveAbi),
+        )
+    }
+
+    fun decodeLocation(
+        saveBlock1: ByteArray?,
+        layout: Gen3RuntimeMemoryLayout,
+    ): LiveValue<Int> = if (saveBlock1 != null) {
             val group = saveBlock1.getOrNull(layout.saveBlock1MapGroupOffset)?.toInt()?.and(0xFF)
             val map = saveBlock1.getOrNull(layout.saveBlock1MapNumberOffset)?.toInt()?.and(0xFF)
             if (group != null && map != null) LiveValue.Available((group shl 8) or map)
@@ -98,15 +109,8 @@ object Gen3LiveMemoryReader {
         } else {
             unavailable(LiveUnavailableCode.MISSING_REGION, "SaveBlock1 pointer was unavailable")
         }
-        return Gen3LiveMemoryValues(
-            location = location,
-            party = decodeParty(regions[PARTY_COUNT_ID], regions[PARTY_ID], layout, saveContext),
-            clock = decodeClock(regions[CLOCK_ID]),
-            eventFlags = decodeEventFlags(saveBlock1, saveAbi),
-        )
-    }
 
-    private fun decodeEventFlags(
+    fun decodeEventFlags(
         saveBlock1: ByteArray?,
         saveAbi: com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi?,
     ): LiveValue<Set<Int>> {
@@ -117,7 +121,7 @@ object Gen3LiveMemoryReader {
         return LiveValue.Available(decoded)
     }
 
-    private fun decodeClock(bytes: ByteArray?): LiveValue<LiveClockState> {
+    fun decodeClock(bytes: ByteArray?): LiveValue<LiveClockState> {
         if (bytes?.size != CLOCK_BYTES) {
             return unavailable(LiveUnavailableCode.MISSING_REGION, "live game clock bytes were unavailable")
         }
@@ -131,7 +135,7 @@ object Gen3LiveMemoryReader {
         }
     }
 
-    private fun decodeParty(
+    fun decodeParty(
         countBytes: ByteArray?,
         partyBytes: ByteArray?,
         layout: Gen3RuntimeMemoryLayout,

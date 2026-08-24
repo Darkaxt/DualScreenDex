@@ -20,6 +20,14 @@ sealed interface CoreMemoryReadState {
     data class Failed(val reason: String) : CoreMemoryReadState
 }
 
+data class CoreMemoryReadMetrics(
+    val matchedPackets: Long,
+    val payloadBytes: Long,
+    val scratchBuffers: Long,
+    val regionBuffers: Long,
+    val completionRegionClones: Long,
+)
+
 private data class CoreMemorySpan(
     val baseAddress: Long,
     val size: Int,
@@ -39,6 +47,8 @@ class CoreMemoryReadSession(
     private val sender: (ByteArray) -> Unit,
     private val poller: () -> ByteArray?,
     private val maximumChunkBytes: Int = DEFAULT_CHUNK_BYTES,
+    private val scratchBufferFactory: (Int) -> ByteArray = ::ByteArray,
+    private val regionBufferFactory: (Int) -> ByteArray = ::ByteArray,
 ) {
     private var regions = emptyList<CoreMemoryRegion>()
     private var spans = emptyList<CoreMemorySpan>()
@@ -47,6 +57,9 @@ class CoreMemoryReadSession(
     private var requestIndex = -1
     private var completedBytes = 0
     private var terminal: CoreMemoryReadState? = null
+    private lateinit var scratch: ByteArray
+    private var matchedPackets = 0L
+    private var payloadBytes = 0L
 
     init {
         require(maximumChunkBytes in 1..MAX_CHUNK_BYTES) { "core-memory chunk is outside the safe UDP packet limit" }
@@ -61,7 +74,9 @@ class CoreMemoryReadSession(
         this.regions = regions.toList()
         spans = coalesce(regions)
         requests = spans.flatMap(::requestsFor)
-        buffers = regions.associate { it.id to ByteArray(it.size) }
+        buffers = regions.associate { it.id to regionBufferFactory(it.size) }
+        scratch = scratchBufferFactory(maximumChunkBytes)
+        require(scratch.size >= maximumChunkBytes) { "core-memory scratch buffer is smaller than the configured chunk" }
         requestIndex = 0
         sendCurrent()
         return state()
@@ -74,25 +89,36 @@ class CoreMemoryReadSession(
         while (true) {
             val response = poller() ?: break
             val request = requests[requestIndex]
-            val payload = ByteArray(request.length)
-            when (val result = CoreMemoryReplyParser.parse(request.address, request.length, response, payload, 0)) {
+            when (val result = CoreMemoryReplyParser.parse(request.address, request.length, response, scratch, 0)) {
                 CoreMemoryReply.Ignored -> continue
                 is CoreMemoryReply.Failed -> {
                     return CoreMemoryReadState.Failed(result.reason).also { terminal = it }
                 }
-                CoreMemoryReply.Matched -> scatter(request, payload)
+                CoreMemoryReply.Matched -> {
+                    scatter(request, scratch)
+                    matchedPackets++
+                    payloadBytes += request.length
+                }
             }
             completedBytes += request.length
             requestIndex++
             advanced = true
             if (requestIndex >= requests.size) {
-                return CoreMemoryReadState.Complete(buffers.mapValues { it.value.copyOf() }).also { terminal = it }
+                return CoreMemoryReadState.Complete(buffers.toMap()).also { terminal = it }
             }
             sendCurrent()
         }
         if (!advanced) sendCurrent()
         return state()
     }
+
+    fun metrics(): CoreMemoryReadMetrics = CoreMemoryReadMetrics(
+        matchedPackets = matchedPackets,
+        payloadBytes = payloadBytes,
+        scratchBuffers = if (::scratch.isInitialized) 1 else 0,
+        regionBuffers = buffers.size.toLong(),
+        completionRegionClones = 0,
+    )
 
     private fun requestsFor(span: CoreMemorySpan): List<CoreMemoryRequest> = buildList {
         var offset = 0

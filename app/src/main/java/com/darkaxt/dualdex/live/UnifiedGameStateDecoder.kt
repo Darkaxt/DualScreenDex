@@ -9,6 +9,10 @@ import com.darkaxt.dualdex.battle.LiveUnavailableReason
 import com.darkaxt.dualdex.battle.LiveValue
 import com.darkaxt.dualdex.battle.Gen3LiveMemoryReader
 import com.darkaxt.dualdex.battle.Gen3LiveMemoryCodecs
+import com.darkaxt.dualdex.battle.Gen3LiveDecodedSection
+import com.darkaxt.dualdex.battle.Gen3LivePlayerOverview
+import com.darkaxt.dualdex.battle.Gen3LiveSectionFingerprints
+import com.darkaxt.dualdex.battle.Gen3LiveTranslatedSectionCache
 import com.darkaxt.dualdex.battle.Gen3LivePointers
 import com.darkaxt.dualdex.battle.Gen3LiveReadWindow
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
@@ -21,6 +25,7 @@ import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import java.util.Collections
 import java.util.IdentityHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 class UnifiedGameStateDecoder(
     private val knowledgeLedgerSnapshot: () -> KnowledgeLedger = { KnowledgeLedger() },
@@ -35,9 +40,42 @@ class UnifiedGameStateDecoder(
     private var recoveryApplicationId = 0L
     private var recoveryResetKnowledge = false
     private var published: ResolvedGameSnapshot? = null
+    private val translatedSectionCache = Gen3LiveTranslatedSectionCache()
+    private var contextEpoch = 0
+    private val liveMemoryPackets = AtomicLong()
+    private val liveMemoryBytes = AtomicLong()
+    private val liveMemorySamples = AtomicLong()
+    private val liveMemoryScratchBuffers = AtomicLong()
+    private val liveMemoryRegionBuffers = AtomicLong()
+    private val liveMemoryCompletionClones = AtomicLong()
 
     override val current: ResolvedGameSnapshot?
         @Synchronized get() = published
+
+    override fun performanceCounters(): Map<String, Long> = translatedSectionCache.counters() + mapOf(
+        "liveMemory.packets" to liveMemoryPackets.get(),
+        "liveMemory.bytes" to liveMemoryBytes.get(),
+        "liveMemory.samples" to liveMemorySamples.get(),
+        "liveMemory.scratchBuffers" to liveMemoryScratchBuffers.get(),
+        "liveMemory.regionBuffers" to liveMemoryRegionBuffers.get(),
+        "liveMemory.completionRegionClones" to liveMemoryCompletionClones.get(),
+    )
+
+    fun recordLiveMemoryRead(
+        packets: Long,
+        bytes: Long,
+        completedSamples: Long,
+        scratchBuffers: Long,
+        regionBuffers: Long,
+        completionRegionClones: Long,
+    ) {
+        liveMemoryPackets.addAndGet(packets)
+        liveMemoryBytes.addAndGet(bytes)
+        liveMemorySamples.addAndGet(completedSamples)
+        liveMemoryScratchBuffers.addAndGet(scratchBuffers)
+        liveMemoryRegionBuffers.addAndGet(regionBuffers)
+        liveMemoryCompletionClones.addAndGet(completionRegionClones)
+    }
 
     @Synchronized
     override fun subscribe(listener: TransientGameStateListener): AutoCloseable {
@@ -59,6 +97,8 @@ class UnifiedGameStateDecoder(
     fun beginSession(context: TransientGameStateContext) {
         if (this.context == context) return
         val hadPublishedState = published != null
+        contextEpoch++
+        translatedSectionCache.clearEntries()
         this.context = context
         live = null
         recovery = null
@@ -159,22 +199,28 @@ class UnifiedGameStateDecoder(
         if (active.generation != 3) return published
         val layout = active.gen3RuntimeMemoryLayout
         val parseContext = active.saveParseContext
-        val memory = layout?.let { memoryLayout ->
-            Gen3LiveMemoryReader.decode(
-                regions = regions,
-                layout = memoryLayout,
-                saveContext = parseContext,
-            )
+        val cached = if (layout != null && parseContext != null) {
+            decodeCachedGen3Sections(regions, layout, parseContext)
+        } else {
+            null
         }
-        val party = memory?.party
-            ?: unavailable("live Party layout was unavailable")
-        val player = parseContext?.let { saveContext ->
+        val memory = if (cached == null) layout?.let { memoryLayout ->
+            Gen3LiveMemoryReader.decode(regions, memoryLayout, parseContext)
+        } else null
+        val party = cached?.party ?: memory?.party ?: unavailable("live Party layout was unavailable")
+        val player = cached?.let { sections ->
+            com.darkaxt.dualdex.battle.Gen3LivePlayerState(
+                trainer = sections.player.trainer,
+                pokedex = sections.player.pokedex,
+                bag = sections.progression.bag,
+            )
+        } ?: parseContext?.let { saveContext ->
             Gen3LiveMemoryCodecs.decodePlayer(
-                saveBlock1 = regions[Gen3LiveMemoryReader.SAVE_BLOCK1_ID],
-                saveBlock2 = regions[Gen3LiveMemoryReader.SAVE_BLOCK2_ID],
-                extendedSave = regions[Gen3LiveMemoryReader.EXTENDED_SAVE_ID],
-                context = saveContext,
-                liveParty = party,
+                regions[Gen3LiveMemoryReader.SAVE_BLOCK1_ID],
+                regions[Gen3LiveMemoryReader.SAVE_BLOCK2_ID],
+                regions[Gen3LiveMemoryReader.EXTENDED_SAVE_ID],
+                saveContext,
+                party,
             )
         } ?: unavailablePlayer()
         return acceptDecodedLive(
@@ -188,14 +234,18 @@ class UnifiedGameStateDecoder(
                 battle = LiveValue.Available(battle),
                 location = LiveLocationState(
                     areaBaseId = areaBaseId?.let { LiveValue.Available(it) }
+                        ?: cached?.overworld?.location
                         ?: memory?.location
                         ?: unavailable("live area layout was unavailable"),
                     position = mapPosition?.let { LiveValue.Available(it) }
                         ?: unavailable("live map position was unavailable"),
                 ),
-                clock = memory?.clock ?: unavailable("live game clock layout was unavailable"),
+                clock = cached?.overworld?.clock
+                    ?: memory?.clock
+                    ?: unavailable("live game clock layout was unavailable"),
                 bag = player.bag,
-                eventFlags = memory?.eventFlags
+                eventFlags = cached?.progression?.eventFlags
+                    ?: memory?.eventFlags
                     ?: unavailable("live event-flag layout was unavailable"),
             ),
         )
@@ -268,6 +318,7 @@ class UnifiedGameStateDecoder(
     @Synchronized
     fun suspendLive(): ResolvedGameSnapshot? {
         if (context == null) return published
+        translatedSectionCache.clearEntries()
         live = null
         publishResolved()
         return published
@@ -276,6 +327,7 @@ class UnifiedGameStateDecoder(
     @Synchronized
     fun endSession() {
         val hadPublishedState = published != null
+        translatedSectionCache.clearEntries()
         context = null
         live = null
         recovery = null
@@ -300,6 +352,70 @@ class UnifiedGameStateDecoder(
         published = next
         val changedSections = previous.changedSections(next)
         if (changedSections.isNotEmpty()) notifyListeners(next, changedSections)
+    }
+
+    private fun decodeCachedGen3Sections(
+        regions: Map<String, ByteArray>,
+        layout: Gen3RuntimeMemoryLayout,
+        parseContext: com.darkaxt.dualdex.save.SaveParseContext,
+    ): CachedGen3Sections {
+        val fingerprints = Gen3LiveSectionFingerprints.compute(regions, layout, parseContext)
+        val party = translatedSectionCache.resolve(
+            Gen3LiveDecodedSection.PARTY,
+            contextEpoch,
+            fingerprints.party,
+        ) {
+            Gen3LiveMemoryReader.decodeParty(
+                regions[Gen3LiveMemoryReader.PARTY_COUNT_ID],
+                regions[Gen3LiveMemoryReader.PARTY_ID],
+                layout,
+                parseContext,
+            )
+        }
+        val player = translatedSectionCache.resolve(
+            Gen3LiveDecodedSection.PLAYER,
+            contextEpoch,
+            Gen3LiveSectionFingerprints.combine(fingerprints.player, fingerprints.party),
+        ) {
+            Gen3LiveMemoryCodecs.decodePlayerOverview(
+                regions[Gen3LiveMemoryReader.SAVE_BLOCK1_ID],
+                regions[Gen3LiveMemoryReader.SAVE_BLOCK2_ID],
+                parseContext,
+                party,
+            )
+        }
+        val overworld = translatedSectionCache.resolve(
+            Gen3LiveDecodedSection.OVERWORLD,
+            contextEpoch,
+            fingerprints.overworld,
+        ) {
+            CachedGen3Overworld(
+                location = Gen3LiveMemoryReader.decodeLocation(
+                    regions[Gen3LiveMemoryReader.SAVE_BLOCK1_ID],
+                    layout,
+                ),
+                clock = Gen3LiveMemoryReader.decodeClock(regions[Gen3LiveMemoryReader.CLOCK_ID]),
+            )
+        }
+        val progression = translatedSectionCache.resolve(
+            Gen3LiveDecodedSection.PROGRESSION,
+            contextEpoch,
+            fingerprints.progression,
+        ) {
+            CachedGen3Progression(
+                bag = Gen3LiveMemoryCodecs.decodeBag(
+                    regions[Gen3LiveMemoryReader.SAVE_BLOCK1_ID],
+                    regions[Gen3LiveMemoryReader.SAVE_BLOCK2_ID],
+                    regions[Gen3LiveMemoryReader.EXTENDED_SAVE_ID],
+                    parseContext,
+                ),
+                eventFlags = Gen3LiveMemoryReader.decodeEventFlags(
+                    regions[Gen3LiveMemoryReader.SAVE_BLOCK1_ID],
+                    parseContext.gen3SaveRuntimeAbi,
+                ),
+            )
+        }
+        return CachedGen3Sections(player, party, overworld, progression)
     }
 
     private fun resolveSnapshot(): ResolvedGameSnapshot? {
@@ -399,4 +515,21 @@ class UnifiedGameStateDecoder(
         val update = ResolvedGameStateUpdate(snapshot, changedSections)
         listeners.toList().forEach { it.onStateChanged(update) }
     }
+
+    private data class CachedGen3Sections(
+        val player: Gen3LivePlayerOverview,
+        val party: LiveValue<List<com.darkaxt.dualdex.save.OwnedIndividual>>,
+        val overworld: CachedGen3Overworld,
+        val progression: CachedGen3Progression,
+    )
+
+    private data class CachedGen3Overworld(
+        val location: LiveValue<Int>,
+        val clock: LiveValue<LiveClockState>,
+    )
+
+    private data class CachedGen3Progression(
+        val bag: Map<BagPocket, LiveValue<BagPocketSnapshot>>,
+        val eventFlags: LiveValue<Set<Int>>,
+    )
 }

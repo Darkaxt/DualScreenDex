@@ -960,7 +960,7 @@ class ProductionCompanionRuntime(
             "state.dispatch.attempts" to dispatch.dispatchAttempts,
             "state.dispatch.applied" to dispatch.appliedDispatches,
             "state.dispatch.noOps" to dispatch.noOpDispatches,
-        )
+        ) + transientGameState.performanceCounters()
     }
 
     fun runtimePerformanceHeartbeat() = performanceRecorder.runtimeHeartbeat()

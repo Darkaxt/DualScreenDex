@@ -172,6 +172,15 @@ class BattleMemoryCoordinator(
             CoreMemoryReadState.Idle,
             is CoreMemoryReadState.Reading -> Unit
             is CoreMemoryReadState.Complete -> {
+                val metrics = current.metrics()
+                transientGameState.recordLiveMemoryRead(
+                    packets = metrics.matchedPackets,
+                    bytes = metrics.payloadBytes,
+                    completedSamples = if (readMode == ReadMode.LIVE_POINTERS) 0 else 1,
+                    scratchBuffers = metrics.scratchBuffers,
+                    regionBuffers = metrics.regionBuffers,
+                    completionRegionClones = metrics.completionRegionClones,
+                )
                 reader = null
                 if (readMode == ReadMode.LIVE_POINTERS) {
                     val layout = context.gen3RuntimeMemoryLayout ?: return
@@ -182,6 +191,15 @@ class BattleMemoryCoordinator(
                 process(state.regions, context)
             }
             is CoreMemoryReadState.Failed -> {
+                val metrics = current.metrics()
+                transientGameState.recordLiveMemoryRead(
+                    packets = metrics.matchedPackets,
+                    bytes = metrics.payloadBytes,
+                    completedSamples = 0,
+                    scratchBuffers = metrics.scratchBuffers,
+                    regionBuffers = metrics.regionBuffers,
+                    completionRegionClones = metrics.completionRegionClones,
+                )
                 reader = null
                 closeTransport()
                 tracker.missed().takeIf(BattleTrackingUpdate::active)?.let(publisher)

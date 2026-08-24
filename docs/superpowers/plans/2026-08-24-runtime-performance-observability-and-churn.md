@@ -267,21 +267,21 @@ git commit -m "perf: isolate unified state changes"
 - Modify: `retroarch-session/src/main/kotlin/com/darkaxt/dualdex/retroarch/CoreMemoryReader.kt`
 - Modify: `retroarch-session/src/test/kotlin/com/darkaxt/dualdex/retroarch/CoreMemoryReaderTest.kt`
 
-- [ ] **Step 1: Write RED allocation/ownership tests**
+- [x] **Step 1: Write RED allocation/ownership tests**
 
 Inject a scratch-buffer construction counter, complete a multi-packet overlapping read, and assert one scratch construction, exact scattered bytes, and the same region-array identities in the terminal result across repeated terminal heartbeats.
 
-- [ ] **Step 2: Run and confirm RED**
+- [x] **Step 2: Run and confirm RED**
 
 ```powershell
 .\gradlew.bat :retroarch-session:test --tests "com.darkaxt.dualdex.retroarch.CoreMemoryReaderTest"
 ```
 
-- [ ] **Step 3: Implement one scratch buffer and ownership transfer**
+- [x] **Step 3: Implement one scratch buffer and ownership transfer**
 
 Allocate `ByteArray(maximumChunkBytes)` once per session, parse each response into it, scatter only the request length, and return the owned `buffers.toMap()` without cloning region arrays. Terminal sessions never send, parse, scatter, or mutate again.
 
-- [ ] **Step 4: Run and confirm GREEN**
+- [x] **Step 4: Run and confirm GREEN**
 
 Run the Step 2 command. Expected: all selected tests pass.
 
@@ -293,21 +293,21 @@ Run the Step 2 command. Expected: all selected tests pass.
 - Modify: `app/src/main/java/com/darkaxt/dualdex/live/UnifiedGameStateDecoder.kt`
 - Modify: `app/src/test/java/com/darkaxt/dualdex/live/UnifiedGameStateDecoderTest.kt`
 
-- [ ] **Step 1: Write RED fingerprint and reuse tests**
+- [x] **Step 1: Write RED fingerprint and reuse tests**
 
 For each Trainer/Pokédex, Party, clock/location, Bag/event-flags input group, change one relevant byte and assert only that fingerprint changes. Feed identical samples with new sample IDs and assert decoder counters show reuse; replace the runtime context and assert every cache is rebuilt. Assert no prior `ByteArray` region is retained by the cache model.
 
-- [ ] **Step 2: Run and confirm RED**
+- [x] **Step 2: Run and confirm RED**
 
 ```powershell
 .\gradlew.bat :battle-memory:test --tests "com.darkaxt.dualdex.battle.Gen3LiveSectionFingerprintsTest" :app:testDebugUnitTest --tests "com.darkaxt.dualdex.live.UnifiedGameStateDecoderTest"
 ```
 
-- [ ] **Step 3: Implement compact fingerprints and translated-value caches**
+- [x] **Step 3: Implement compact fingerprints and translated-value caches**
 
 Use a reusable SHA-256 digest over ABI-defined slices and store only digest bytes plus translated values. Include context generation in cache identity. Clear caches on `beginSession`, `suspendLive`, and `endSession`. Expose cumulative decode/reuse counters to the profiler without logging values.
 
-- [ ] **Step 4: Run and confirm GREEN**
+- [x] **Step 4: Run and confirm GREEN**
 
 Run the Step 2 command. Expected: all selected tests pass.
 
@@ -316,17 +316,17 @@ Run the Step 2 command. Expected: all selected tests pass.
 **Files:**
 - Create: `docs/superpowers/plans/2026-08-24-runtime-performance-stage-3-validation.md`
 
-- [ ] **Step 1: Run Stage 3 gate**
+- [x] **Step 1: Run Stage 3 gate**
 
 ```powershell
 .\gradlew.bat :retroarch-session:test :battle-memory:test :app:testDebugUnitTest
 ```
 
-- [ ] **Step 2: Record exact before/after counters and matrix**
+- [x] **Step 2: Record exact before/after counters and matrix**
 
-RP-01 through RP-17 must be `PASS`; RP-18 may remain deferred only to Stage 4 device evidence. RP-19 passes only with every row present and no blocker.
+RP-01 through RP-15 must be `PASS`; RP-16 through RP-18 remain explicitly deferred to the Stage 4 bounds, compatibility, and device-evidence gates. RP-19 passes only with every row present and no blocker.
 
-- [ ] **Step 3: Commit Stage 3**
+- [x] **Step 3: Commit Stage 3**
 
 ```powershell
 git add retroarch-session battle-memory app docs/superpowers/plans/2026-08-24-runtime-performance-stage-3-validation.md

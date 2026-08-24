@@ -15,6 +15,11 @@ data class Gen3LivePlayerState(
     val bag: Map<BagPocket, LiveValue<BagPocketSnapshot>>,
 )
 
+data class Gen3LivePlayerOverview(
+    val trainer: LiveTrainerState,
+    val pokedex: LivePokedexState,
+)
+
 object Gen3LiveMemoryCodecs {
     @Suppress("UNUSED_PARAMETER")
     fun decodePlayer(
@@ -24,6 +29,20 @@ object Gen3LiveMemoryCodecs {
         context: SaveParseContext,
         liveParty: LiveValue<List<OwnedIndividual>>,
     ): Gen3LivePlayerState {
+        val overview = decodePlayerOverview(saveBlock1, saveBlock2, context, liveParty)
+        return Gen3LivePlayerState(
+            trainer = overview.trainer,
+            pokedex = overview.pokedex,
+            bag = decodeBag(saveBlock1, saveBlock2, extendedSave, context),
+        )
+    }
+
+    fun decodePlayerOverview(
+        saveBlock1: ByteArray?,
+        saveBlock2: ByteArray?,
+        context: SaveParseContext,
+        liveParty: LiveValue<List<OwnedIndividual>>,
+    ): Gen3LivePlayerOverview {
         val abi = context.gen3SaveRuntimeAbi
         val noAbi = LiveUnavailableReason(
             LiveUnavailableCode.UNSUPPORTED_LAYOUT,
@@ -43,19 +62,7 @@ object Gen3LiveMemoryCodecs {
         val pokedex = Gen3PokedexCodec.decode(saveBlock2, context, liveParty.valueOrNull().orEmpty())
         val pokedexValue = pokedex.value
         val pokedexUnavailable = pokedex.reasons.joinToString().ifBlank { "Gen III Pokédex flags were unavailable" }
-        val bag = if (abi != null && saveBlock1 != null && saveBlock2 != null) {
-            Gen3PlayerStateCodec.decode(
-                saveBlock1,
-                saveBlock2,
-                abi,
-                dexSeen = 0,
-                dexCaught = 0,
-                extendedSaveData = extendedSave,
-            ).bag.mapValues { (_, section) -> section.toLiveValue() }
-        } else {
-            BagPocket.entries.associateWith { LiveValue.Unavailable(noAbi) }
-        }
-        return Gen3LivePlayerState(
+        return Gen3LivePlayerOverview(
             trainer = LiveTrainerState(
                 identity = identity,
                 publicTrainerId = publicTrainerId,
@@ -75,8 +82,32 @@ object Gen3LiveMemoryCodecs {
                 caughtDexNumbers = pokedexValue?.let { LiveValue.Available(it.caughtDexNumbers) }
                     ?: unavailable(pokedexUnavailable),
             ),
-            bag = bag,
         )
+    }
+
+    fun decodeBag(
+        saveBlock1: ByteArray?,
+        saveBlock2: ByteArray?,
+        extendedSave: ByteArray?,
+        context: SaveParseContext,
+    ): Map<BagPocket, LiveValue<BagPocketSnapshot>> {
+        val abi = context.gen3SaveRuntimeAbi
+        val noAbi = LiveUnavailableReason(
+            LiveUnavailableCode.UNSUPPORTED_LAYOUT,
+            "typed Gen III save runtime ABI was unavailable",
+        )
+        return if (abi != null && saveBlock1 != null && saveBlock2 != null) {
+            Gen3PlayerStateCodec.decode(
+                saveBlock1,
+                saveBlock2,
+                abi,
+                dexSeen = 0,
+                dexCaught = 0,
+                extendedSaveData = extendedSave,
+            ).bag.mapValues { (_, section) -> section.toLiveValue() }
+        } else {
+            BagPocket.entries.associateWith { LiveValue.Unavailable(noAbi) }
+        }
     }
 
     private fun <T> SaveSectionResult<T>.toLiveValue(): LiveValue<T> = value?.let { LiveValue.Available(it) }

@@ -2,11 +2,49 @@ package com.darkaxt.dualdex.retroarch
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.ArrayDeque
 
 class CoreMemoryReaderTest {
+    @Test
+    fun reusesOneScratchAndTransfersOwnedRegionBuffersWithoutTerminalCopies() {
+        val replies = ArrayDeque<ByteArray>()
+        var scratchConstructions = 0
+        val regionBuffers = mutableListOf<ByteArray>()
+        val reader = CoreMemoryReadSession(
+            sender = {},
+            poller = { replies.pollFirst() },
+            maximumChunkBytes = 4,
+            scratchBufferFactory = { size ->
+                scratchConstructions += 1
+                ByteArray(size)
+            },
+            regionBufferFactory = { size -> ByteArray(size).also(regionBuffers::add) },
+        )
+        reader.start(
+            listOf(
+                CoreMemoryRegion("first", 0x02001000, 6),
+                CoreMemoryRegion("second", 0x02001002, 6),
+            ),
+        )
+        replies += "READ_CORE_MEMORY 2001000 00 01 02 03".toByteArray()
+        replies += "READ_CORE_MEMORY 2001004 04 05 06 07".toByteArray()
+
+        val complete = reader.heartbeat() as CoreMemoryReadState.Complete
+        val repeated = reader.heartbeat() as CoreMemoryReadState.Complete
+
+        assertEquals(1, scratchConstructions)
+        assertArrayEquals(byteArrayOf(0, 1, 2, 3, 4, 5), complete.regions.getValue("first"))
+        assertArrayEquals(byteArrayOf(2, 3, 4, 5, 6, 7), complete.regions.getValue("second"))
+        assertSame(regionBuffers[0], complete.regions.getValue("first"))
+        assertSame(regionBuffers[1], complete.regions.getValue("second"))
+        assertSame(complete, repeated)
+        assertSame(complete.regions.getValue("first"), repeated.regions.getValue("first"))
+        assertEquals(CoreMemoryReadMetrics(2, 8, 1, 2, 0), reader.metrics())
+    }
+
     @Test
     fun retriesThePendingReadAndCompletesFragmentedRegionsDespiteALateDuplicate() {
         val sent = mutableListOf<String>()
