@@ -827,8 +827,11 @@ class BattleMemoryCoordinatorTest {
         iwram[0x19AD] = 0x02
         val block1Offset = 0x1000
         val block2Offset = 0x6000
+        val partyOffset = 0x30000
         putU32(iwram, 0x36F0, 0x02000000 + block1Offset)
         putU32(iwram, 0x36F4, 0x02000000 + block2Offset)
+        ewram[partyOffset - 3] = 1
+        plainPartyRecord(ewram, partyOffset, species = 6, level = 5)
         intArrayOf(0xC7, 0xBB, 0xD3, 0xFF).forEachIndexed { index, value ->
             ewram[block2Offset + index] = value.toByte()
         }
@@ -842,7 +845,11 @@ class BattleMemoryCoordinatorTest {
         val flagBytes = (saveContext.internalSpeciesCount + 7) / 8
         setFlag(ewram, block2Offset + 0x28, 6)
         setFlag(ewram, block2Offset + 0x28 + flagBytes, 6)
-        val layout = gen3RuntimeLayout(saveBlockPointers = true, battleMonsOffset = 0x143C).copy(
+        val layout = gen3RuntimeLayout(
+            playerPartyOffset = partyOffset,
+            saveBlockPointers = true,
+            battleMonsOffset = 0x143C,
+        ).copy(
             saveBlock1Size = 0x3D88,
             saveBlock2Size = 0xF2C,
         )
