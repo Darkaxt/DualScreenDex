@@ -14,6 +14,7 @@ import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import com.enrpau.dualscreendex.parser.parse.Gen3SaveBlock1PointerResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3RuntimeMemoryLayoutResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3TrainerAssetResolver
+import com.enrpau.dualscreendex.parser.parse.GbTrainerAssetResolver
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureResolution
 import com.enrpau.dualscreendex.parser.sprite.BallSpriteMaterializer
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
@@ -659,13 +660,13 @@ object CatalogMaterializer {
             )
         }
         reportCatalogWork(onWork, CatalogWorkModule.TRAINER_AND_THEME)
-        val trainerAssets = if (layout.generation == 3) {
-            runCatching { Gen3TrainerAssetResolver.resolve(rom, layout.family) }
-                .getOrNull()
-                ?: TrainerAssetCatalog()
-        } else {
-            TrainerAssetCatalog()
-        }
+        val trainerAssets = runCatching {
+            when (layout.generation) {
+                1, 2 -> GbTrainerAssetResolver.resolve(rom, layout.family)
+                3 -> Gen3TrainerAssetResolver.resolve(rom, layout.family)
+                else -> null
+            }
+        }.getOrNull() ?: TrainerAssetCatalog()
         val theme = runCatching {
             materializeTheme(
                 catalogThemeAssets(species, trainerAssets, worldMaps, localMaps),

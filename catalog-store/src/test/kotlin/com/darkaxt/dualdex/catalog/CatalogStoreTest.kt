@@ -586,6 +586,7 @@ class CatalogStoreTest {
 
         assertEquals(226, reopened.localMaps.maps.size)
         assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
+        assertEquals(catalog.localMaps.scenes, reopened.localMaps.scenes)
         assertEquals(catalog.localMaps.assets.keys, reopened.localMaps.assets.keys)
         val palletTownAsset = catalog.localMaps.maps.single { it.baseAreaId == 0x00 }.imageAssetKey
         assertTrue(
@@ -593,6 +594,8 @@ class CatalogStoreTest {
                 reopened.localMaps.assets.getValue(palletTownAsset).bytes,
             ),
         )
+        assertEquals(catalog.trainerAssets.overworldAssetKeys, reopened.trainerAssets.overworldAssetKeys)
+        assertEquals(catalog.trainerAssets.assets, reopened.trainerAssets.assets)
     }
 
     @Test
@@ -616,6 +619,7 @@ class CatalogStoreTest {
 
         assertEquals(388, reopened.localMaps.maps.size)
         assertEquals(catalog.localMaps.maps, reopened.localMaps.maps)
+        assertEquals(catalog.localMaps.scenes, reopened.localMaps.scenes)
         assertTrue(reopened.localMaps.assets.isEmpty())
         assertEquals(catalog.localMaps.indexedAssets.keys, reopened.localMaps.indexedAssets.keys)
         val battleTowerAsset = catalog.localMaps.maps.single { it.baseAreaId == 0x1610 }.imageAssetKey
@@ -628,6 +632,8 @@ class CatalogStoreTest {
         assertEquals(expectedAsset.palettes.night.toList(), reopenedAsset.palettes.night.toList())
         assertEquals(expectedAsset.palettes.dark.toList(), reopenedAsset.palettes.dark.toList())
         assertEquals(0x1841, reopened.runtimeMetadata.gen2TimeOfDayWramOffset)
+        assertEquals(catalog.trainerAssets.overworldAssetKeys, reopened.trainerAssets.overworldAssetKeys)
+        assertEquals(catalog.trainerAssets.assets, reopened.trainerAssets.assets)
     }
 
     @Test
@@ -873,7 +879,7 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun `previous parser revision is invalidated so corrected local map POIs are rebuilt`() {
+    fun `revision 34 caches are invalidated so GB map scenes and trainer assets are rebuilt`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("d".repeat(64))
@@ -892,7 +898,7 @@ class CatalogStoreTest {
             )
             database.execute(
                 "UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1",
-                listOf(CatalogSchema.parserSchemaVersion - 1),
+                listOf(34),
             )
         }
 

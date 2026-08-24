@@ -45,7 +45,47 @@ class Gen2LocalMapResolverRealControlTest {
         assertEquals(control.namedMapCount, localMaps.maps.count { !it.displayName.isNullOrBlank() })
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LOCAL_MAP).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
+        assertEquals(control.trainerGenders, catalog.trainerAssets.overworldAssetKeys.keys)
+        catalog.trainerAssets.overworldAssetKeys.values.forEach { key ->
+            assertEquals(16, catalog.trainerAssets.assets.getValue(key).width)
+            assertEquals(16, catalog.trainerAssets.assets.getValue(key).height)
+        }
+        val connectionFailures = catalog.capabilities.getValue(RomCapability.LOCAL_MAP).reasons.filter {
+            it.startsWith("map 0x") && it.contains("connection")
+        }
+        assertTrue(connectionFailures.joinToString("\n"), connectionFailures.isEmpty())
+        assertScenes(localMaps)
         control.maps.forEach { expected -> assertMap(localMaps, expected) }
+    }
+
+    private fun assertScenes(catalog: LocalMapCatalog) {
+        assertTrue(catalog.scenes.isNotEmpty())
+        val scene = catalog.scenes.single { generated ->
+            generated.placements.any { it.baseAreaId == 0x1804 } &&
+                generated.placements.any { it.baseAreaId == 0x1803 }
+        }
+        val newBarkTown = scene.placements.single { it.baseAreaId == 0x1804 }
+        val route29 = scene.placements.single { it.baseAreaId == 0x1803 }
+        assertEquals(newBarkTown.gridX, route29.gridX + 60)
+        assertEquals(newBarkTown.gridY, route29.gridY)
+
+        val mapsByKey = catalog.maps.associateBy { it.key }
+        val placedKeys = catalog.scenes.flatMap { it.placements }.map { it.localMapKey }
+        assertEquals(placedKeys.size, placedKeys.toSet().size)
+        catalog.scenes.forEach { generated ->
+            generated.placements.indices.forEach { index ->
+                val first = generated.placements[index]
+                val firstMap = mapsByKey.getValue(first.localMapKey)
+                generated.placements.drop(index + 1).forEach { second ->
+                    val secondMap = mapsByKey.getValue(second.localMapKey)
+                    val overlaps = first.gridX < second.gridX + secondMap.gridWidth &&
+                        second.gridX < first.gridX + firstMap.gridWidth &&
+                        first.gridY < second.gridY + secondMap.gridHeight &&
+                        second.gridY < first.gridY + firstMap.gridHeight
+                    assertTrue("${generated.key}: ${first.localMapKey} overlaps ${second.localMapKey}", !overlaps)
+                }
+            }
+        }
     }
 
     private fun assertMap(catalog: LocalMapCatalog, expected: ExpectedMap) {
@@ -102,6 +142,7 @@ class Gen2LocalMapResolverRealControlTest {
         val mapCount: Int,
         val namedMapCount: Int,
         val timeOfDayWramOffset: Int,
+        val trainerGenders: Set<Int>,
         val maps: List<ExpectedMap>,
     )
 
@@ -159,6 +200,7 @@ class Gen2LocalMapResolverRealControlTest {
                 mapCount = 368,
                 namedMapCount = 364,
                 timeOfDayWramOffset = 0x1568,
+                trainerGenders = setOf(0),
                 maps = goldSilverMaps,
             ),
             Control(
@@ -167,6 +209,7 @@ class Gen2LocalMapResolverRealControlTest {
                 mapCount = 368,
                 namedMapCount = 364,
                 timeOfDayWramOffset = 0x1568,
+                trainerGenders = setOf(0),
                 maps = goldSilverMaps,
             ),
             Control(
@@ -175,6 +218,7 @@ class Gen2LocalMapResolverRealControlTest {
                 mapCount = 388,
                 namedMapCount = 382,
                 timeOfDayWramOffset = 0x1841,
+                trainerGenders = setOf(0, 1),
                 maps = listOf(
                     ExpectedMap(
                         baseAreaId = 0x1804,

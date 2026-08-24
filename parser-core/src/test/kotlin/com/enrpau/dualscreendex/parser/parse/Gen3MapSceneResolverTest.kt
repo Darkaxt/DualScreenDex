@@ -80,6 +80,35 @@ class Gen3MapSceneResolverTest {
     }
 
     @Test
+    fun partitionsContradictoryBranchesDeterministically() {
+        val bytes = ByteArray(0x1000)
+        writeConnections(
+            bytes,
+            header = 0x100,
+            connections = 0x300,
+            entries = 0x380,
+            connectionsToWrite = listOf(
+                TestConnection(EAST, 0, 0x0002),
+                TestConnection(SOUTH, 0, 0x0003),
+            ),
+        )
+        val maps = listOf(
+            localMap(0x0001, width = 10, height = 10),
+            localMap(0x0002, width = 10, height = 20),
+            localMap(0x0003, width = 20, height = 10),
+        )
+
+        val scenes = Gen3MapSceneResolver.resolve(
+            rom = RomImage(bytes),
+            headers = mapOf(0x0001 to 0x100, 0x0002 to 0x200, 0x0003 to 0x280),
+            maps = maps,
+        )
+
+        assertEquals("scene/0001", scenes.single().key)
+        assertEquals(listOf(0x0001, 0x0002), scenes.single().placements.map { it.baseAreaId })
+    }
+
+    @Test
     fun leavesWarpOnlyAndIsolatedMapsOutsideGeneratedScenes() {
         val maps = listOf(localMap(0x0001, width = 10, height = 8), localMap(0x0002, width = 12, height = 6))
 

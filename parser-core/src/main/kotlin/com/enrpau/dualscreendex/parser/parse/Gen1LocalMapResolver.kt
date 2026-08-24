@@ -80,15 +80,38 @@ internal object Gen1LocalMapResolver {
         if (maps.isEmpty()) {
             return LocalMapResolution.Unavailable("render", "no Gen I local map could be rendered")
         }
+        val sceneResolution = runCatching {
+            Gen1MapSceneResolver.resolve(
+                rom = session.rom,
+                sources = authority.descriptors.map(MapDescriptor::toSceneSource),
+                maps = maps,
+            ).also { resolution ->
+                LocalMapCatalog(
+                    maps = maps,
+                    assets = assets,
+                    scenes = resolution.scenes,
+                ).validate()
+            }
+        }.getOrElse { failure ->
+            Gen1MapSceneResolver.Resolution(
+                scenes = emptyList(),
+                skippedReasons = listOf("Gen I scenes: ${failure.message}"),
+            )
+        }
 
         return LocalMapResolution.Resolved(
-            catalog = LocalMapCatalog(maps, assets).validate(),
+            catalog = LocalMapCatalog(
+                maps = maps,
+                assets = assets,
+                scenes = sceneResolution.scenes,
+            ).validate(),
             reasons = listOf(
                 "resolved paired compiled Gen I map-bank, map-pointer, and tileset consumers",
                 "rendered ${maps.size} bounded ${format.label} maps from 32x32 ROM blocks and 2bpp tiles",
+                "built ${sceneResolution.scenes.size} bounded Local-map scenes from compiled cardinal connections",
                 "resolved ${mapNames.size} map names through the compiled Town Map lookup",
                 "bound all ${requiredMaps.size} encounter-authoritative map IDs",
-            ) + skippedReasons,
+            ) + skippedReasons + sceneResolution.skippedReasons,
             skippedMaps = skippedReasons.size,
         )
     }
@@ -308,6 +331,10 @@ internal object Gen1LocalMapResolver {
         require(pixelCount <= MAX_MAP_PIXELS)
         MapDescriptor(
             mapId = mapId,
+            headerBank = bank,
+            header = header,
+            blockBank = bank,
+            blocks = mapBlocks,
             blockWidth = blockWidth,
             blockHeight = blockHeight,
             tilesetId = tilesetId,
@@ -438,6 +465,10 @@ internal object Gen1LocalMapResolver {
 
     private data class MapDescriptor(
         val mapId: Int,
+        val headerBank: Int,
+        val header: Int,
+        val blockBank: Int,
+        val blocks: Int,
         val blockWidth: Int,
         val blockHeight: Int,
         val tilesetId: Int,
@@ -449,6 +480,14 @@ internal object Gen1LocalMapResolver {
         val usedBlockIds: Set<Int> = blockIds.mapTo(sortedSetOf()) { it.toInt() and 0xff }
         val key: String = "local/${mapId.toString(16).padStart(4, '0')}"
         val assetKey: String = "$key/map"
+
+        fun toSceneSource(): Gen1MapSceneResolver.Source = Gen1MapSceneResolver.Source(
+            baseAreaId = mapId,
+            headerBank = headerBank,
+            header = header,
+            blockBank = blockBank,
+            blocks = blocks,
+        )
 
         fun toLocalMap(displayName: String?): LocalMap = LocalMap(
             key = key,

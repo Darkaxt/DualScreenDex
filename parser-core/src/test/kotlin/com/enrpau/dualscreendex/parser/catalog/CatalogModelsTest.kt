@@ -60,6 +60,51 @@ class CatalogModelsTest {
     }
 
     @Test
+    fun trainerAssetsAcceptOneNativeGbOverworldAppearance() {
+        val assetKey = "trainer/overworld/player"
+
+        val catalog = TrainerAssetCatalog(
+            overworldAssetKeys = mapOf(0 to assetKey),
+            assets = mapOf(assetKey to RgbaSprite(16, 16, IntArray(16 * 16))),
+        )
+
+        assertEquals(setOf(0), catalog.overworldAssetKeys.keys)
+    }
+
+    @Test
+    fun trainerAssetsRejectUnknownOverworldGenderKeys() {
+        assertThrows(IllegalArgumentException::class.java) {
+            TrainerAssetCatalog(
+                overworldAssetKeys = mapOf(2 to "trainer/overworld/player"),
+                assets = mapOf("trainer/overworld/player" to RgbaSprite(16, 16, IntArray(16 * 16))),
+            )
+        }
+    }
+
+    @Test
+    fun trainerAssetsRejectSharedOverworldAssetKeys() {
+        assertThrows(IllegalArgumentException::class.java) {
+            TrainerAssetCatalog(
+                overworldAssetKeys = mapOf(
+                    0 to "trainer/overworld/player",
+                    1 to "trainer/overworld/player",
+                ),
+                assets = mapOf("trainer/overworld/player" to RgbaSprite(16, 16, IntArray(16 * 16))),
+            )
+        }
+    }
+
+    @Test
+    fun trainerAssetsRejectUnsupportedOverworldDimensions() {
+        assertThrows(IllegalArgumentException::class.java) {
+            TrainerAssetCatalog(
+                overworldAssetKeys = mapOf(0 to "trainer/overworld/player"),
+                assets = mapOf("trainer/overworld/player" to RgbaSprite(24, 16, IntArray(24 * 16))),
+            )
+        }
+    }
+
+    @Test
     fun catalogDeclaresIndependentAreaPaletteAndBallCapabilities() {
         assertEquals(true, RomCapability.entries.contains(RomCapability.AREA_ENCOUNTERS))
         assertEquals(true, RomCapability.entries.contains(RomCapability.TYPE_PRESENTATION))
