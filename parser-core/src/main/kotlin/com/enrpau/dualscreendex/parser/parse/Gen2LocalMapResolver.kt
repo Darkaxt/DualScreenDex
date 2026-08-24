@@ -153,16 +153,39 @@ internal object Gen2LocalMapResolver {
         if (maps.isEmpty()) {
             return LocalMapResolution.Unavailable("render", "no Gen II local map could be rendered")
         }
+        val sceneResolution = runCatching {
+            Gen2MapSceneResolver.resolve(
+                rom = session.rom,
+                sources = authority.descriptors.map(MapDescriptor::toSceneSource),
+                maps = maps,
+            ).also { resolution ->
+                LocalMapCatalog(
+                    maps = maps,
+                    indexedAssets = assets,
+                    scenes = resolution.scenes,
+                ).validate()
+            }
+        }.getOrElse { failure ->
+            Gen2MapSceneResolver.Resolution(
+                scenes = emptyList(),
+                skippedReasons = listOf("Gen II scenes: ${failure.message}"),
+            )
+        }
 
         return LocalMapResolution.Resolved(
-            catalog = LocalMapCatalog(maps = maps, indexedAssets = assets).validate(),
+            catalog = LocalMapCatalog(
+                maps = maps,
+                indexedAssets = assets,
+                scenes = sceneResolution.scenes,
+            ).validate(),
             reasons = listOf(
                 "resolved compiled Gen II map-group, tileset, roof, environment-color, and palette consumers",
                 "rendered ${maps.size} bounded $label maps from 32x32 ROM blocks and LZ3 2bpp tiles",
+                "built ${sceneResolution.scenes.size} bounded Local-map scenes from compiled cardinal connections",
                 "resolved $namedMapCount map display names through the compiled landmark lookup",
                 "stored time-independent indexed rasters with native morning, day, night, and dark GBC palettes",
                 "bound all ${requiredMaps.size} encounter-authoritative group/map IDs",
-            ) + skippedReasons,
+            ) + skippedReasons + sceneResolution.skippedReasons,
             skippedMaps = skippedReasons.size,
             gen2TimeOfDayWramOffset = authority.palettes.timeOfDayWramOffset,
         )
@@ -441,6 +464,10 @@ internal object Gen2LocalMapResolver {
         MapDescriptor(
             group = group,
             map = map,
+            attributesBank = attributesBank,
+            attributes = attributes,
+            blockBank = blockBank,
+            blocks = blocks,
             tilesetId = tilesetId,
             environment = environment,
             paletteMode = paletteMode,
@@ -689,6 +716,10 @@ internal object Gen2LocalMapResolver {
     private data class MapDescriptor(
         val group: Int,
         val map: Int,
+        val attributesBank: Int,
+        val attributes: Int,
+        val blockBank: Int,
+        val blocks: Int,
         val tilesetId: Int,
         val environment: Int,
         val paletteMode: Int,
@@ -712,6 +743,14 @@ internal object Gen2LocalMapResolver {
         }
         val key: String = "local/${baseAreaId.toString(16).padStart(4, '0')}"
         val assetKey: String = "$key/map"
+
+        fun toSceneSource(): Gen2MapSceneResolver.Source = Gen2MapSceneResolver.Source(
+            baseAreaId = baseAreaId,
+            attributesBank = attributesBank,
+            attributes = attributes,
+            blockBank = blockBank,
+            blocks = blocks,
+        )
 
         fun toLocalMap(displayName: String?): LocalMap = LocalMap(
             key = key,
