@@ -776,7 +776,7 @@ class BattleMemoryCoordinatorTest {
         mainState(iwram, callback1 = 0x0816086D, callback2 = 0x08160D3D, counter = 100)
         val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val snapshots = mutableListOf<com.darkaxt.dualdex.live.ResolvedGameSnapshot?>()
-        transient.subscribe(snapshots::add)
+        transient.subscribe { update -> snapshots += update.snapshot }
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = {

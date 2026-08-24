@@ -7,24 +7,50 @@ import com.enrpau.dualscreendex.companion.model.BattleTab
 import com.enrpau.dualscreendex.companion.model.CompanionAction
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+
+data class CompanionGatewayMetrics(
+    val dispatchAttempts: Long,
+    val appliedDispatches: Long,
+    val noOpDispatches: Long,
+)
 
 class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
     private val current = AtomicReference(initial)
     private val listeners = CopyOnWriteArrayList<(AppSnapshot) -> Unit>()
+    private val dispatchAttempts = AtomicLong()
+    private val appliedDispatches = AtomicLong()
+    private val noOpDispatches = AtomicLong()
 
     fun bootstrap(): AppSnapshot = current.get()
 
     fun dispatch(action: CompanionAction): AppSnapshot {
+        dispatchAttempts.incrementAndGet()
         while (true) {
             val before = current.get()
-            val after = reduce(before, action).copy(version = before.version + 1)
+            val reduced = reduce(before, action)
+            if (reduced == before) {
+                if (current.compareAndSet(before, before)) {
+                    noOpDispatches.incrementAndGet()
+                    return before
+                }
+                continue
+            }
+            val after = reduced.copy(version = before.version + 1)
             if (current.compareAndSet(before, after)) {
+                appliedDispatches.incrementAndGet()
                 listeners.forEach { it(after) }
                 return after
             }
         }
     }
+
+    fun metrics() = CompanionGatewayMetrics(
+        dispatchAttempts = dispatchAttempts.get(),
+        appliedDispatches = appliedDispatches.get(),
+        noOpDispatches = noOpDispatches.get(),
+    )
 
     fun subscribe(listener: (AppSnapshot) -> Unit): AutoCloseable {
         listeners += listener

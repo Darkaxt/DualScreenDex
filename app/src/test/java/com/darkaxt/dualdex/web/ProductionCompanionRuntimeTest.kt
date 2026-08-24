@@ -542,6 +542,103 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun secondsOnlySampleRoutesOnlyOverworldAndDoesNotRepublishAnUnchangedBattle() {
+        val hash = "4".repeat(64)
+        val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val runtime = ProductionCompanionRuntime(transientGameState = source)
+        runtime.loadCatalog("seconds.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
+        source.beginSession(
+            com.darkaxt.dualdex.live.TransientGameStateContext(
+                romIdentity = hash,
+                generation = 3,
+                catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+            ),
+        )
+        val opponent = BattleMonSnapshot(
+            battlerIndex = 1,
+            position = 1,
+            speciesId = 13,
+            level = 3,
+            hp = 15,
+            maxHp = 15,
+            ivs = List(6) { 24 },
+            moves = listOf(40, 0, 0, 0),
+            pp = listOf(35, 0, 0, 0),
+            typeIds = listOf(6, 6),
+            abilityId = 0,
+            personality = 200,
+        )
+        val battle = BattleMemorySample(
+            layout = ResolvedBattleLayout(0, 0, 0, 0, 0, 0, 2),
+            battlers = listOf(opponent),
+            opponents = listOf(opponent),
+            selectedMoveId = null,
+            target = BattleTarget(0, TargetMode.AUTOMATIC),
+            capabilities = emptyMap(),
+            encounterKind = BattleEncounterKind.WILD,
+        )
+        val unavailable = com.darkaxt.dualdex.battle.LiveValue.Unavailable(
+            com.darkaxt.dualdex.battle.LiveUnavailableReason(
+                com.darkaxt.dualdex.battle.LiveUnavailableCode.MISSING_REGION,
+                "fixture region omitted",
+            ),
+        )
+        val trainer = com.darkaxt.dualdex.battle.LiveTrainerState(
+            com.darkaxt.dualdex.battle.LiveValue.Available(TrainerIdentity("MAY", 1)),
+            unavailable,
+            unavailable,
+            unavailable,
+            unavailable,
+            unavailable,
+        )
+        fun sample(id: Long, seconds: Int, battleSample: BattleMemorySample = battle) =
+            unifiedBattleSnapshot(hash, id, true, battleSample).copy(
+            trainer = trainer,
+            location = com.darkaxt.dualdex.battle.LiveLocationState(
+                com.darkaxt.dualdex.battle.LiveValue.Available(0x0010),
+                com.darkaxt.dualdex.battle.LiveValue.Available(RuntimeMapPosition(8, 5)),
+            ),
+            clock = com.darkaxt.dualdex.battle.LiveValue.Available(
+                com.darkaxt.dualdex.battle.LiveClockState(6, 0, seconds),
+            ),
+        )
+
+        source.acceptDecodedLive(sample(1, 1))
+        val version = runtime.gateway.bootstrap().version
+        val before = runtime.resolvedStateDispatchMetrics()
+
+        source.acceptDecodedLive(sample(2, 2))
+
+        val after = runtime.resolvedStateDispatchMetrics()
+        assertEquals(version, runtime.gateway.bootstrap().version)
+        assertEquals(before.publications + 1, after.publications)
+        assertEquals(before.overworldSections + 1, after.overworldSections)
+        assertEquals(before.playerSections, after.playerSections)
+        assertEquals(before.partySections, after.partySections)
+        assertEquals(before.battleSections, after.battleSections)
+
+        val beforeRawBattleChange = runtime.resolvedStateDispatchMetrics()
+        val dispatchBeforeRawBattleChange = runtime.gateway.metrics()
+        val versionBeforeRawBattleChange = runtime.gateway.bootstrap().version
+        val hpOnlyChange = battle.copy(
+            battlers = listOf(opponent.copy(hp = 14)),
+            opponents = listOf(opponent.copy(hp = 14)),
+        )
+        source.acceptDecodedLive(sample(3, 2, hpOnlyChange))
+
+        assertEquals(versionBeforeRawBattleChange, runtime.gateway.bootstrap().version)
+        assertEquals(
+            dispatchBeforeRawBattleChange.dispatchAttempts,
+            runtime.gateway.metrics().dispatchAttempts,
+        )
+        assertEquals(
+            beforeRawBattleChange.battleSections + 1,
+            runtime.resolvedStateDispatchMetrics().battleSections,
+        )
+        runtime.close()
+    }
+
+    @Test
     fun organicEffectivenessUnlocksAfterThePlayerConsumesMovePpAgainstTheTarget() {
         val runtime = ProductionCompanionRuntime()
         runtime.loadCatalog("fixture.gba", ParsedCatalog(
@@ -2475,6 +2572,44 @@ class ProductionCompanionRuntimeTest {
         assertTrue(runtime.gateway.bootstrap().party.isEmpty())
         assertTrue(runtime.gateway.bootstrap().ledger.teamSpecies.isEmpty())
         assertTrue(runtime.gateway.bootstrap().ledger.trainerCardUnlocked)
+        runtime.close()
+    }
+
+    @Test
+    fun endingUnifiedSessionClearsPartyAndCurrentTeamProjection() {
+        val hash = "3".repeat(64)
+        val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val runtime = ProductionCompanionRuntime(transientGameState = source)
+        runtime.loadCatalog(
+            "session-clear.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(25 to saveSpecies(25)),
+            ),
+        )
+        source.beginSession(
+            com.darkaxt.dualdex.live.TransientGameStateContext(
+                romIdentity = hash,
+                generation = 3,
+                catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+            ),
+        )
+        source.acceptDecodedLive(
+            unifiedBattleSnapshot(hash, 1, false, null).copy(
+                party = com.darkaxt.dualdex.battle.LiveValue.Available(
+                    listOf(OwnedIndividual("party-0", 25, level = 5)),
+                ),
+            ),
+        )
+        assertEquals(listOf(25), runtime.gateway.bootstrap().party.map { it.speciesId })
+        assertEquals(setOf(25), runtime.gateway.bootstrap().ledger.teamSpecies)
+
+        source.endSession()
+
+        assertTrue(runtime.gateway.bootstrap().party.isEmpty())
+        assertTrue(runtime.gateway.bootstrap().ledger.teamSpecies.isEmpty())
         runtime.close()
     }
 

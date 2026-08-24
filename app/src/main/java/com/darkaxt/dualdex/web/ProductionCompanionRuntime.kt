@@ -60,6 +60,8 @@ import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.live.ResolvedGameSnapshot
 import com.darkaxt.dualdex.live.TransientGameStateSource
+import com.darkaxt.dualdex.live.ResolvedGameSection
+import com.darkaxt.dualdex.live.ResolvedGameStateUpdate
 import com.darkaxt.dualdex.live.gameAccessReady
 import com.darkaxt.dualdex.save.SaveObservation
 import com.darkaxt.dualdex.save.SaveObservationKind
@@ -97,6 +99,15 @@ import java.io.InputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
+
+data class ResolvedStateDispatchMetrics(
+    val publications: Long,
+    val recoverySections: Long,
+    val playerSections: Long,
+    val partySections: Long,
+    val overworldSections: Long,
+    val battleSections: Long,
+)
 
 /** Production ROM catalog runtime. It deliberately has no simulator dependency or battle generator. */
 class ProductionCompanionRuntime(
@@ -153,18 +164,42 @@ class ProductionCompanionRuntime(
     )
     @Volatile private var resolvedGameState: ResolvedGameSnapshot? = null
     private var lastRecoveryApplicationId: Long? = null
-    private val transientGameStateSubscription = transientGameState.subscribe { snapshot ->
-        applyResolvedGameState(snapshot)
+    private val resolvedPublications = AtomicLong()
+    private val resolvedRecoverySections = AtomicLong()
+    private val resolvedPlayerSections = AtomicLong()
+    private val resolvedPartySections = AtomicLong()
+    private val resolvedOverworldSections = AtomicLong()
+    private val resolvedBattleSections = AtomicLong()
+    private val transientGameStateSubscription = transientGameState.subscribe { update ->
+        applyResolvedGameState(update)
     }
 
     @Synchronized
-    private fun applyResolvedGameState(snapshot: ResolvedGameSnapshot?) {
+    private fun applyResolvedGameState(update: ResolvedGameStateUpdate) {
+        val snapshot = update.snapshot
+        val changed = update.changedSections
+        resolvedPublications.incrementAndGet()
         resolvedGameState = snapshot
-        applyResolvedRecoveryState(snapshot)
-        applyResolvedPlayerState(snapshot)
-        applyResolvedPartyAndProgression(snapshot)
-        applyResolvedOverworldState(snapshot)
-        applyResolvedBattleState(snapshot)
+        if (ResolvedGameSection.RECOVERY in changed) {
+            resolvedRecoverySections.incrementAndGet()
+            applyResolvedRecoveryState(snapshot)
+        }
+        if (ResolvedGameSection.PLAYER in changed) {
+            resolvedPlayerSections.incrementAndGet()
+            applyResolvedPlayerState(snapshot)
+        }
+        if (ResolvedGameSection.PARTY in changed) {
+            resolvedPartySections.incrementAndGet()
+            applyResolvedPartyAndProgression(snapshot)
+        }
+        if (ResolvedGameSection.OVERWORLD in changed) resolvedOverworldSections.incrementAndGet()
+        if (ResolvedGameSection.OVERWORLD in changed || ResolvedGameSection.PLAYER in changed) {
+            applyResolvedOverworldState(snapshot)
+        }
+        if (ResolvedGameSection.BATTLE in changed) {
+            resolvedBattleSections.incrementAndGet()
+            applyResolvedBattleState(snapshot)
+        }
     }
 
     private fun applyResolvedRecoveryState(snapshot: ResolvedGameSnapshot?) {
@@ -213,16 +248,22 @@ class ProductionCompanionRuntime(
             )
         }
         val current = gateway.bootstrap()
+        val seenAdditions = matching?.pokedex?.seenDexNumbers?.value
+            ?.minus(current.ledger.seenSpecies)
+            .orEmpty()
+        val caughtAdditions = matching?.pokedex?.caughtDexNumbers?.value
+            ?.minus(current.ledger.caughtSpecies)
+            .orEmpty()
         if (
             current.trainerCardState != trainerCard ||
-            matching?.pokedex?.seenDexNumbers?.value != null ||
-            matching?.pokedex?.caughtDexNumbers?.value != null
+            seenAdditions.isNotEmpty() ||
+            caughtAdditions.isNotEmpty()
         ) {
             gateway.dispatch(
                 CompanionAction.ResolvedPlayerStateChanged(
                     trainerCard = trainerCard,
-                    seenDexNumbers = matching?.pokedex?.seenDexNumbers?.value,
-                    caughtDexNumbers = matching?.pokedex?.caughtDexNumbers?.value,
+                    seenDexNumbers = seenAdditions.takeIf(Set<Int>::isNotEmpty),
+                    caughtDexNumbers = caughtAdditions.takeIf(Set<Int>::isNotEmpty),
                 ),
             )
         }
@@ -245,7 +286,18 @@ class ProductionCompanionRuntime(
         val currentCatalog = catalog ?: return
         val matching = snapshot?.takeIf { state ->
             currentCatalog.romSha256.equals(state.romIdentity, ignoreCase = true)
-        } ?: return
+        }
+        if (matching == null) {
+            val before = gateway.bootstrap()
+            if (before.party.isNotEmpty()) {
+                gateway.dispatch(CompanionAction.ResolvedPartyStateChanged(emptyList()))
+            }
+            val ledger = gateway.bootstrap().ledger
+            if (ledger.teamSpecies.isNotEmpty()) {
+                gateway.dispatch(CompanionAction.ReplaceLedger(ledger.copy(teamSpecies = emptySet())))
+            }
+            return
+        }
         val before = gateway.bootstrap()
         val party = matching.party.value
         if (party != null && before.party != party) {
@@ -740,8 +792,10 @@ class ProductionCompanionRuntime(
                 assessment.innateTier != null && assessment.stars != null
             } ?: false,
         )
+        val before = gateway.bootstrap()
+        if (before.battle == battle) return
         gateway.dispatch(
-            if (gateway.bootstrap().battle == null) CompanionAction.BattleStarted(battle)
+            if (before.battle == null) CompanionAction.BattleStarted(battle)
             else CompanionAction.BattleUpdated(battle),
         )
     }
@@ -879,13 +933,33 @@ class ProductionCompanionRuntime(
 
     fun mapAssetCacheStats(): MapAssetRenderCacheStats = mapAssetRenderCache.stats()
 
+    fun resolvedStateDispatchMetrics() = ResolvedStateDispatchMetrics(
+        publications = resolvedPublications.get(),
+        recoverySections = resolvedRecoverySections.get(),
+        playerSections = resolvedPlayerSections.get(),
+        partySections = resolvedPartySections.get(),
+        overworldSections = resolvedOverworldSections.get(),
+        battleSections = resolvedBattleSections.get(),
+    )
+
     fun performanceCounters(): Map<String, Long> = mapAssetRenderCache.stats().let { stats ->
+        val state = resolvedStateDispatchMetrics()
+        val dispatch = gateway.metrics()
         mapOf(
             "mapCache.entries" to stats.entries.toLong(),
             "mapCache.encodedBytes" to stats.encodedBytes.toLong(),
             "mapCache.hits" to stats.hits,
             "mapCache.renders" to stats.renders,
             "mapCache.evictions" to stats.evictions,
+            "state.publications" to state.publications,
+            "state.sections.recovery" to state.recoverySections,
+            "state.sections.player" to state.playerSections,
+            "state.sections.party" to state.partySections,
+            "state.sections.overworld" to state.overworldSections,
+            "state.sections.battle" to state.battleSections,
+            "state.dispatch.attempts" to dispatch.dispatchAttempts,
+            "state.dispatch.applied" to dispatch.appliedDispatches,
+            "state.dispatch.noOps" to dispatch.noOpDispatches,
         )
     }
 

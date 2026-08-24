@@ -162,7 +162,9 @@ class DualDexApplication : Application() {
                     loopbackActiveConnections = loopback?.activeConnections,
                     mapperSnapshots = mapper?.snapshots?.size,
                     mapperRetainedBytes = mapper?.snapshots?.sumOf { snapshot -> snapshot.bytes.toLong() },
-                ).counters()
+                ).counters() +
+                    metricsRuntime?.performanceCounters().orEmpty() +
+                    metricsServer?.performanceCounters().orEmpty()
             },
             sinks = listOf(
                 profilerLog,

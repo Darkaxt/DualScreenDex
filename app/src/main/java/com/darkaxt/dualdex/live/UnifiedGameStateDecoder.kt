@@ -42,7 +42,12 @@ class UnifiedGameStateDecoder(
     @Synchronized
     override fun subscribe(listener: TransientGameStateListener): AutoCloseable {
         listeners += listener
-        listener.onStateChanged(published)
+        listener.onStateChanged(
+            ResolvedGameStateUpdate(
+                snapshot = published,
+                changedSections = if (published == null) emptySet() else ResolvedGameSection.entries.toSet(),
+            ),
+        )
         return AutoCloseable {
             synchronized(this@UnifiedGameStateDecoder) {
                 listeners.remove(listener)
@@ -62,7 +67,7 @@ class UnifiedGameStateDecoder(
         recoveryApplicationId = 0L
         recoveryResetKnowledge = false
         published = null
-        if (hadPublishedState) notifyListeners(null)
+        if (hadPublishedState) notifyListeners(null, ResolvedGameSection.entries.toSet())
     }
 
     @Synchronized
@@ -279,7 +284,7 @@ class UnifiedGameStateDecoder(
         recoveryApplicationId = 0L
         recoveryResetKnowledge = false
         published = null
-        if (hadPublishedState) notifyListeners(null)
+        if (hadPublishedState) notifyListeners(null, ResolvedGameSection.entries.toSet())
     }
 
     private fun publishResolved() {
@@ -288,12 +293,13 @@ class UnifiedGameStateDecoder(
         if (next == null) {
             if (previous != null) {
                 published = null
-                notifyListeners(null)
+                notifyListeners(null, ResolvedGameSection.entries.toSet())
             }
             return
         }
         published = next
-        if (!previous.semanticallyEquals(next)) notifyListeners(next)
+        val changedSections = previous.changedSections(next)
+        if (changedSections.isNotEmpty()) notifyListeners(next, changedSections)
     }
 
     private fun resolveSnapshot(): ResolvedGameSnapshot? {
@@ -374,12 +380,23 @@ class UnifiedGameStateDecoder(
         bag = BagPocket.entries.associateWith { unavailable("live Bag layout was unavailable") },
     )
 
-    private fun ResolvedGameSnapshot?.semanticallyEquals(other: ResolvedGameSnapshot): Boolean {
-        if (this == null) return false
-        return copy(sampleId = null) == other.copy(sampleId = null)
+    private fun ResolvedGameSnapshot?.changedSections(other: ResolvedGameSnapshot): Set<ResolvedGameSection> {
+        if (this == null || romIdentity != other.romIdentity || generation != other.generation) {
+            return ResolvedGameSection.entries.toSet()
+        }
+        return buildSet {
+            if (recovery != other.recovery) add(ResolvedGameSection.RECOVERY)
+            if (trainer != other.trainer || pokedex != other.pokedex) add(ResolvedGameSection.PLAYER)
+            if (party != other.party || bag != other.bag || eventFlags != other.eventFlags) {
+                add(ResolvedGameSection.PARTY)
+            }
+            if (location != other.location || clock != other.clock) add(ResolvedGameSection.OVERWORLD)
+            if (battle != other.battle) add(ResolvedGameSection.BATTLE)
+        }
     }
 
-    private fun notifyListeners(snapshot: ResolvedGameSnapshot?) {
-        listeners.toList().forEach { it.onStateChanged(snapshot) }
+    private fun notifyListeners(snapshot: ResolvedGameSnapshot?, changedSections: Set<ResolvedGameSection>) {
+        val update = ResolvedGameStateUpdate(snapshot, changedSections)
+        listeners.toList().forEach { it.onStateChanged(update) }
     }
 }

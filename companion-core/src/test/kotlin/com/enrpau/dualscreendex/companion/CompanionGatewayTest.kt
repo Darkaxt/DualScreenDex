@@ -14,9 +14,27 @@ import com.enrpau.dualscreendex.companion.model.LiveMapPosition
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Test
 
 class CompanionGatewayTest {
+    @Test
+    fun semanticNoOpPreservesSnapshotVersionAndListenerSilence() {
+        val gateway = CompanionGateway()
+        val before = gateway.bootstrap()
+        var publications = 0
+        gateway.subscribe { publications += 1 }
+
+        val after = gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
+
+        assertSame(before, after)
+        assertEquals(before.version, after.version)
+        assertEquals(0, publications)
+        assertEquals(1L, gateway.metrics().dispatchAttempts)
+        assertEquals(0L, gateway.metrics().appliedDispatches)
+        assertEquals(1L, gateway.metrics().noOpDispatches)
+    }
+
     @Test
     fun partialCatalogProgressNeverPublishesCatalogReady() {
         val gateway = CompanionGateway(AppSnapshot(catalogReady = true))

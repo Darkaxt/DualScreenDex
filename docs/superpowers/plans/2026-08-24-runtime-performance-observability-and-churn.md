@@ -173,21 +173,21 @@ git commit -m "perf: add bounded runtime profiling"
 - Modify: `app/src/main/java/com/darkaxt/dualdex/live/UnifiedGameStateDecoder.kt`
 - Test: `app/src/test/java/com/darkaxt/dualdex/live/UnifiedGameStateDecoderTest.kt`
 
-- [ ] **Step 1: Write RED section-delta tests**
+- [x] **Step 1: Write RED section-delta tests**
 
 Define `ResolvedGameSection` values `RECOVERY`, `PLAYER`, `PARTY`, `OVERWORLD`, and `BATTLE`. Test initial publication includes every available section, sample-ID-only changes publish nothing, seconds-only clock changes include only `OVERWORLD`, and a Pokédex mutation includes only `PLAYER`.
 
-- [ ] **Step 2: Run and confirm RED**
+- [x] **Step 2: Run and confirm RED**
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest --tests "com.darkaxt.dualdex.live.UnifiedGameStateDecoderTest"
 ```
 
-- [ ] **Step 3: Implement `ResolvedGameStateUpdate`**
+- [x] **Step 3: Implement `ResolvedGameStateUpdate`**
 
 Listeners receive the complete snapshot plus the exact changed-section set computed against the previous resolved snapshot with sample IDs excluded. Null/session transitions publish every section necessary to clear state.
 
-- [ ] **Step 4: Run and confirm GREEN**
+- [x] **Step 4: Run and confirm GREEN**
 
 Run the Step 2 command. Expected: all selected tests pass.
 
@@ -199,21 +199,21 @@ Run the Step 2 command. Expected: all selected tests pass.
 - Test: `app/src/test/java/com/darkaxt/dualdex/web/ProductionCompanionRuntimeTest.kt`
 - Test: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/CompanionGatewayTest.kt`
 
-- [ ] **Step 1: Write RED no-op and routing tests**
+- [x] **Step 1: Write RED no-op and routing tests**
 
 Assert a reducer no-op preserves the exact snapshot object/version and emits no listener callback. Assert a seconds-only update does not run player/party/battle consumers, does not advance the gateway version after readiness is already true, and an unchanged active battle does not emit `BattleUpdated`.
 
-- [ ] **Step 2: Run and confirm RED**
+- [x] **Step 2: Run and confirm RED**
 
 ```powershell
 .\gradlew.bat :companion-core:test --tests "com.enrpau.dualscreendex.companion.CompanionGatewayTest" :app:testDebugUnitTest --tests "com.darkaxt.dualdex.web.ProductionCompanionRuntimeTest"
 ```
 
-- [ ] **Step 3: Implement minimal routing and equality guards**
+- [x] **Step 3: Implement minimal routing and equality guards**
 
 Route each update only to its changed consumers. Compare incoming Trainer Card and seen/caught additions exactly. Compare projected battle state before dispatch. In `CompanionGateway.dispatch`, return the current snapshot without increment/listeners when `reduce(before, action) == before`.
 
-- [ ] **Step 4: Run and confirm GREEN**
+- [x] **Step 4: Run and confirm GREEN**
 
 Run the Step 2 command. Expected: all selected tests pass.
 
@@ -223,11 +223,11 @@ Run the Step 2 command. Expected: all selected tests pass.
 - Modify: `app/src/test/java/com/darkaxt/dualdex/web/AndroidLoopbackServerTest.kt`
 - Modify: `companion-web/src/App.production.test.tsx`
 
-- [ ] **Step 1: Add the regression controls**
+- [x] **Step 1: Add the regression controls**
 
 After readiness, feed a seconds-only live update and assert the gateway version is unchanged, `/api/state?sinceVersion=` returns 204/zero bytes, and the client performs zero JSON parse/update calls.
 
-- [ ] **Step 2: Run the focused server/web tests**
+- [x] **Step 2: Run the focused server/web tests**
 
 ```powershell
 .\gradlew.bat :app:testDebugUnitTest --tests "com.darkaxt.dualdex.web.AndroidLoopbackServerTest"
@@ -241,18 +241,18 @@ Expected: all selected tests pass.
 **Files:**
 - Create: `docs/superpowers/plans/2026-08-24-runtime-performance-stage-2-validation.md`
 
-- [ ] **Step 1: Run Stage 2 gate**
+- [x] **Step 1: Run Stage 2 gate**
 
 ```powershell
 .\gradlew.bat :companion-core:test :app:testDebugUnitTest
 Push-Location companion-web; npm test -- --run; Pop-Location
 ```
 
-- [ ] **Step 2: Write the complete matrix**
+- [x] **Step 2: Write the complete matrix**
 
 RP-01 through RP-12 must be `PASS`. RP-13 through RP-18 remain explicitly deferred. Any failure in the Stage 1 controls is a blocker.
 
-- [ ] **Step 3: Commit Stage 2**
+- [x] **Step 3: Commit Stage 2**
 
 ```powershell
 git add app companion-core companion-web docs/superpowers/plans/2026-08-24-runtime-performance-stage-2-validation.md

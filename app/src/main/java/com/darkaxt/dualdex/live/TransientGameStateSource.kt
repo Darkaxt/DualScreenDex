@@ -18,7 +18,7 @@ import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 
 fun interface TransientGameStateListener {
-    fun onStateChanged(snapshot: ResolvedGameSnapshot?)
+    fun onStateChanged(update: ResolvedGameStateUpdate)
 }
 
 interface TransientGameStateSource {
@@ -26,6 +26,19 @@ interface TransientGameStateSource {
 
     fun subscribe(listener: TransientGameStateListener): AutoCloseable
 }
+
+enum class ResolvedGameSection {
+    RECOVERY,
+    PLAYER,
+    PARTY,
+    OVERWORLD,
+    BATTLE,
+}
+
+data class ResolvedGameStateUpdate(
+    val snapshot: ResolvedGameSnapshot?,
+    val changedSections: Set<ResolvedGameSection>,
+)
 
 enum class ResolvedValueSource { LIVE, RECOVERY, UNAVAILABLE }
 

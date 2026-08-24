@@ -26,7 +26,7 @@ class UnifiedGameStateWiringTest {
 
         override fun subscribe(listener: TransientGameStateListener): AutoCloseable {
             subscribeCount += 1
-            listener.onStateChanged(current)
+            listener.onStateChanged(ResolvedGameStateUpdate(current, emptySet()))
             return AutoCloseable { closeCount += 1 }
         }
     }

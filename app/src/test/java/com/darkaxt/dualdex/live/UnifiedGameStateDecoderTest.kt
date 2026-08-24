@@ -33,6 +33,48 @@ import org.junit.Test
 
 class UnifiedGameStateDecoderTest {
     @Test
+    fun `publishes exact changed sections while ignoring sample identity`() {
+        val decoder = UnifiedGameStateDecoder()
+        val updates = mutableListOf<ResolvedGameStateUpdate>()
+        decoder.subscribe(updates::add)
+        decoder.beginSession(context(ROM))
+        val base = liveSnapshot(
+            rom = ROM,
+            sampleId = 1,
+            money = LiveValue.Available(900L),
+            seen = LiveValue.Available(setOf(1)),
+            caught = LiveValue.Available(emptySet()),
+        ).copy(
+            location = LiveLocationState(LiveValue.Available(9), unavailable()),
+            clock = LiveValue.Available(LiveClockState(10, 30, 0)),
+        )
+
+        decoder.acceptDecodedLive(base)
+        assertEquals(ResolvedGameSection.entries.toSet(), updates.last().changedSections)
+
+        val countAfterInitial = updates.size
+        decoder.acceptDecodedLive(base.copy(sampleId = 2))
+        assertEquals(countAfterInitial, updates.size)
+
+        decoder.acceptDecodedLive(
+            base.copy(
+                sampleId = 3,
+                clock = LiveValue.Available(LiveClockState(10, 30, 1)),
+            ),
+        )
+        assertEquals(setOf(ResolvedGameSection.OVERWORLD), updates.last().changedSections)
+
+        decoder.acceptDecodedLive(
+            base.copy(
+                sampleId = 4,
+                clock = LiveValue.Available(LiveClockState(10, 30, 1)),
+                pokedex = base.pokedex.copy(seenDexNumbers = LiveValue.Available(setOf(1, 2))),
+            ),
+        )
+        assertEquals(setOf(ResolvedGameSection.PLAYER), updates.last().changedSections)
+    }
+
+    @Test
     fun liveMoneyAndRecoveryDexResolveIndependently() {
         val decoder = UnifiedGameStateDecoder()
         decoder.beginSession(context(ROM))
@@ -100,7 +142,7 @@ class UnifiedGameStateDecoderTest {
     @Test
     fun subscriptionPublishesSemanticChangesAndCanBeClosed() {
         val decoder = UnifiedGameStateDecoder()
-        val publications = mutableListOf<ResolvedGameSnapshot?>()
+        val publications = mutableListOf<ResolvedGameStateUpdate>()
         val subscription = decoder.subscribe(publications::add)
         decoder.beginSession(context(ROM))
 
@@ -108,7 +150,7 @@ class UnifiedGameStateDecoderTest {
         decoder.acceptDecodedLive(liveSnapshot(ROM, sampleId = 2, money = LiveValue.Available(900L)))
 
         assertEquals(2, publications.size)
-        assertNull(publications.first())
+        assertNull(publications.first().snapshot)
         assertEquals(2L, decoder.current!!.sampleId)
 
         subscription.close()
@@ -119,7 +161,7 @@ class UnifiedGameStateDecoderTest {
     @Test
     fun switchingRomClearsBothAuthoritiesBeforeNewState() {
         val decoder = UnifiedGameStateDecoder()
-        val publications = mutableListOf<ResolvedGameSnapshot?>()
+        val publications = mutableListOf<ResolvedGameStateUpdate>()
         decoder.subscribe(publications::add)
         decoder.beginSession(context(ROM))
         decoder.acceptDecodedLive(liveSnapshot(ROM, sampleId = 1, money = LiveValue.Available(900L)))
@@ -127,8 +169,9 @@ class UnifiedGameStateDecoderTest {
         decoder.beginSession(context("second-rom"))
 
         assertNull(decoder.current)
-        assertNull(publications.last())
-        assertTrue(publications.any { it?.romIdentity == ROM })
+        assertNull(publications.last().snapshot)
+        assertEquals(ResolvedGameSection.entries.toSet(), publications.last().changedSections)
+        assertTrue(publications.any { it.snapshot?.romIdentity == ROM })
     }
 
     @Test

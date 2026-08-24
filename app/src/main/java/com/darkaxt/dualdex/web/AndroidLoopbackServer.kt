@@ -29,6 +29,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 interface MapperHttpHandler {
     fun state(): Any
@@ -41,6 +42,13 @@ data class LoopbackCapacitySnapshot(
     val activeWorkers: Int,
     val queuedConnections: Int,
     val activeConnections: Int,
+)
+
+data class StateResponseMetrics(
+    val requests: Long,
+    val noContentResponses: Long,
+    val bodyResponses: Long,
+    val bodyBytes: Long,
 )
 
 /** Small HTTP/1.1 host for the bundled WebView. It never binds outside 127.0.0.1. */
@@ -71,6 +79,10 @@ class AndroidLoopbackServer(
     @Volatile private var socket: ServerSocket? = null
     @Volatile private var nativeActionHandler: ((String, Map<String, String?>) -> Boolean)? = null
     @Volatile private var mapperHandler: MapperHttpHandler? = null
+    private val stateRequests = AtomicLong()
+    private val stateNoContentResponses = AtomicLong()
+    private val stateBodyResponses = AtomicLong()
+    private val stateBodyBytes = AtomicLong()
 
     val address: InetSocketAddress
         get() = socket?.localSocketAddress as? InetSocketAddress
@@ -112,6 +124,22 @@ class AndroidLoopbackServer(
         queuedConnections = clients.queue.size,
         activeConnections = activeSockets.size,
     )
+
+    fun stateResponseMetrics() = StateResponseMetrics(
+        requests = stateRequests.get(),
+        noContentResponses = stateNoContentResponses.get(),
+        bodyResponses = stateBodyResponses.get(),
+        bodyBytes = stateBodyBytes.get(),
+    )
+
+    fun performanceCounters(): Map<String, Long> = stateResponseMetrics().let { metrics ->
+        mapOf(
+            "state.responses.requests" to metrics.requests,
+            "state.responses.noContent" to metrics.noContentResponses,
+            "state.responses.withBody" to metrics.bodyResponses,
+            "state.responses.bodyBytes" to metrics.bodyBytes,
+        )
+    }
 
     override fun close() {
         val bound = synchronized(this) {
@@ -207,13 +235,18 @@ class AndroidLoopbackServer(
     }
 
     private fun stateResponse(request: Request): Response {
+        stateRequests.incrementAndGet()
         val view = runtime.stateView()
         val sinceVersion = request.query["sinceVersion"]?.toLongOrNull()
         require(sinceVersion == null || sinceVersion >= 0) { "state version is invalid" }
         return if (sinceVersion != null && view.version <= sinceVersion) {
+            stateNoContentResponses.incrementAndGet()
             emptyResponse(204)
         } else {
-            jsonResponse(view)
+            jsonResponse(view) { bytes ->
+                stateBodyResponses.incrementAndGet()
+                stateBodyBytes.addAndGet(bytes)
+            }
         }
     }
 
@@ -333,16 +366,22 @@ class AndroidLoopbackServer(
         return Response(200, contentType(requested), resolved)
     }
 
-    private fun jsonResponse(value: Any, status: Int = 200): Response = Response(
+    private fun jsonResponse(
+        value: Any,
+        status: Int = 200,
+        onBodyWritten: (Long) -> Unit = {},
+    ): Response = Response(
         status = status,
         contentType = "application/json; charset=utf-8",
         contentLength = null,
         headers = mapOf("Cache-Control" to "no-store"),
     ) { output ->
-        OutputStreamWriter(output, Charsets.UTF_8).also { writer ->
+        val counting = CountingOutputStream(output)
+        OutputStreamWriter(counting, Charsets.UTF_8).also { writer ->
             gson.toJson(value, writer)
             writer.flush()
         }
+        onBodyWritten(counting.bytesWritten)
     }
 
     private fun textResponse(value: String, status: Int): Response =
@@ -540,6 +579,25 @@ class AndroidLoopbackServer(
             body: ByteArray,
             headers: Map<String, String> = emptyMap(),
         ) : this(status, contentType, body.size.toLong(), headers, { output -> output.write(body) })
+    }
+
+    private class CountingOutputStream(
+        private val delegate: OutputStream,
+    ) : OutputStream() {
+        var bytesWritten: Long = 0L
+            private set
+
+        override fun write(value: Int) {
+            delegate.write(value)
+            bytesWritten += 1
+        }
+
+        override fun write(bytes: ByteArray, offset: Int, length: Int) {
+            delegate.write(bytes, offset, length)
+            bytesWritten += length
+        }
+
+        override fun flush() = delegate.flush()
     }
 
     private fun emptyResponse(status: Int): Response = Response(

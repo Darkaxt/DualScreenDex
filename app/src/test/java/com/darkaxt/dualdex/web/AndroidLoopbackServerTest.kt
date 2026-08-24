@@ -332,8 +332,65 @@ class AndroidLoopbackServerTest {
                 .toURL().openConnection() as HttpURLConnection
             assertEquals(200, changed.responseCode)
             assertTrue(changed.inputStream.reader().readText().contains("\"version\":$currentVersion"))
+            val metrics = server.stateResponseMetrics()
+            assertEquals(2L, metrics.requests)
+            assertEquals(1L, metrics.noContentResponses)
+            assertEquals(1L, metrics.bodyResponses)
+            assertTrue(metrics.bodyBytes > 0L)
         } finally {
             server.close()
+        }
+    }
+
+    @Test
+    fun secondsOnlyUnifiedClockSampleLeavesStateVersionAndHttpBodyUnchanged() {
+        val hash = "5".repeat(64)
+        val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val runtime = ProductionCompanionRuntime(transientGameState = source)
+        runtime.loadCatalog(
+            "seconds.gbc",
+            ParsedCatalog(hash, EngineFamily.GOLD_SILVER, Platform.GBC),
+        )
+        source.beginSession(
+            com.darkaxt.dualdex.live.TransientGameStateContext(
+                romIdentity = hash,
+                generation = 2,
+                catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+            ),
+        )
+        val battle = com.darkaxt.dualdex.battle.LiveBattleState(
+            active = false,
+            sample = null,
+            encounterKind = com.darkaxt.dualdex.battle.BattleEncounterKind.UNKNOWN,
+        )
+        source.acceptExistingGenerationSample(
+            sampleId = 1,
+            battle = battle,
+            areaBaseId = 0x1803,
+            mapPosition = com.darkaxt.dualdex.battle.RuntimeMapPosition(8, 5),
+            clock = com.darkaxt.dualdex.battle.LiveClockState(6, 0, 1),
+        )
+        val version = runtime.stateView().version
+        val server = AndroidLoopbackServer(runtime) { null }
+        try {
+            server.start()
+            source.acceptExistingGenerationSample(
+                sampleId = 2,
+                battle = battle,
+                areaBaseId = 0x1803,
+                mapPosition = com.darkaxt.dualdex.battle.RuntimeMapPosition(8, 5),
+                clock = com.darkaxt.dualdex.battle.LiveClockState(6, 0, 2),
+            )
+
+            assertEquals(version, runtime.stateView().version)
+            val unchanged = URI(
+                "http://127.0.0.1:${server.address.port}/api/state?sinceVersion=$version",
+            ).toURL().openConnection() as HttpURLConnection
+            assertEquals(204, unchanged.responseCode)
+            assertTrue(unchanged.inputStream.readBytes().isEmpty())
+        } finally {
+            server.close()
+            runtime.close()
         }
     }
 
