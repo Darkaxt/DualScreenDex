@@ -63,10 +63,15 @@ Checkpoint 1 will add a second generic Nature ABI without changing the existing 
 
 Expected focused gain: Battle Theater reaches 23/23; Dreamstone gains authoritative Nature data. Any additional gain is incidental and must satisfy the same compiled ABI.
 
+## Checkpoint 1 result
+
+The implemented generic ABI produced the expected gains in a fresh one-job scan: Battle Theater reached 23/23 at 99.97%, and Dreamstone reached 15/24 at 62.48%. The other six characterized controls retained their routing, feature counts, and compatibility scores. All six selected catalogs persisted and reopened; parser, persistence, and decoded cross-reference errors remained zero. The residual Battle Theater fraction is tracked as `G3-NATURE-001` because the compiled stat consumer does not prove flavor affinity.
+
 ## Deferral ledger
 
 | ID | Missing behavior | Safe fallback | Acceptance condition |
 |---|---|---|---|
+| `G3-NATURE-001` | Flavor affinity for the integrated 20-byte `NatureInfo` ABI is not proven | Publish 25 names and stat effects with flavor modifiers unknown | A generic compiled consumer or structurally referenced table proves the ROM-native five-flavor mapping across the exact control and an independent sibling |
 | `G3-CELIA-001` | Remaining partial Local rendering/description coverage and unavailable ability mechanics | Preserve all accepted records and skip only malformed maps/unsupported mechanics | A source-backed generic ABI resolves each missing domain and affected plus FireRed controls remain stable |
 | `G3-DREAM-001` | Sprites, Pokédex descriptions, egg/machine moves, abilities, balls, and Local maps; Local raster total is 100,409,600 pixels against the 100,000,000 bound | Keep those modules unavailable; preserve accepted catalog, World map, and unrelated modules | Generic compiled consumers resolve the missing data, and Local maps fit a bounded structural representation without merely raising the global cap |
 | `G3-ELITE-001` | Family routing and most datasets for 2.65.3b | No family match; no speculative catalog | Establish exact or independently proven compiled lineage and pass generic family anchors plus real-ROM controls |

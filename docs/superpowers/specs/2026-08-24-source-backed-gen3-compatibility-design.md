@@ -99,4 +99,4 @@ Validation is chunked rather than repeated after every edit:
 
 Checkpoint 1 is blocked only if either primary compiled control cannot be proven generically, an existing Nature control regresses, candidate ambiguity is accepted rather than rejected, or an unrelated module fails because Nature resolution failed.
 
-`G3-CELIA-001`, `G3-DREAM-001`, `G3-ELITE-001`, `G3-GSC-001`, `G3-POKESCAPE-001`, `G3-TOURMALINE-001`, and `G3-VOYAGER-001` remain tracked deferrals in the family audit. Their safe fallbacks and acceptance conditions are unchanged. Dreamstone's Nature gain is in scope; its other gaps remain under `G3-DREAM-001`.
+`G3-NATURE-001`, `G3-CELIA-001`, `G3-DREAM-001`, `G3-ELITE-001`, `G3-GSC-001`, `G3-POKESCAPE-001`, `G3-TOURMALINE-001`, and `G3-VOYAGER-001` remain tracked deferrals in the family/checkpoint audits. Their safe fallbacks and acceptance conditions are unchanged. Dreamstone's Nature gain is in scope; its other gaps remain under `G3-DREAM-001`.
