@@ -4,6 +4,23 @@
 
 HackDex CFRU, hg-engine, and pokeemerald-expansion tags were used only as discovery and clustering hints. Production eligibility remains based on generic compiled evidence; source names, project identities, filenames, hashes, and absolute ROM offsets are not parser inputs.
 
+## HackDex discovery snapshot
+
+The public `/discover` Next.js server action returned 293 records on 2026-08-24. This resolved the earlier rate-limited page request and provided the following current metadata for the characterized controls:
+
+| Control | HackDex version | Base | Relevant engine tag |
+|---|---|---|---|
+| Battle Theater | 2.8.0 | Emerald | None published; the exact local control remains the separately verified 2.3.0 source tag |
+| Celia's Stupid Romhack | 1.1.4 | FireRed | None published |
+| Dreamstone Mysteries | Not listed | — | — |
+| Elite Redux | 2.65.3b | Emerald | `pokeemerald-expansion` |
+| GS Chronicles | 2.7.6 | FireRed | `CFRU` |
+| Pokescape | 1.0.4 | Emerald | `pokeemerald-expansion` |
+| Tourmaline | 1.1.1 | Emerald | `pokeemerald-expansion` |
+| Voyager Frontier Demo | 1.2 | Emerald | `pokeemerald-expansion`; the local characterized binary is older 0.3.6 |
+
+No characterized control was tagged `hg-engine`. These labels improve clustering and priority order but do not establish source/binary alignment or select a production parser.
+
 ## Current matrix
 
 The focused scan used one parser job and completed with zero read/parse and cross-reference errors.

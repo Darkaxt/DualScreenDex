@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.dataset.natures
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Address
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Branch
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7BranchRegister
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Compare
@@ -34,6 +35,26 @@ object Gen3NatureResolver {
         references.overflowReason?.let(NatureResolution::BudgetExceeded)?.let { return it }
 
         val callTargets = decodedThumbCallTargets(session.rom)
+        val integratedCandidates = resolveIntegratedCandidates(session, callTargets)
+        val separate = resolveSeparateTables(session, callTargets)
+        if (integratedCandidates.isEmpty()) return separate
+
+        val separateCandidateCount = when (separate) {
+            is NatureResolution.Resolved -> 1
+            is NatureResolution.Ambiguous -> separate.candidates
+            else -> 0
+        }
+        if (integratedCandidates.size != 1 || separateCandidateCount > 0) {
+            return NatureResolution.Ambiguous(integratedCandidates.size + separateCandidateCount)
+        }
+        return NatureResolution.Resolved(integratedCandidates.single().catalog)
+    }
+
+    private fun resolveSeparateTables(
+        session: RomAnalysisSession,
+        callTargets: Set<Int>,
+    ): NatureResolution {
+        val references = requireNotNull(session.gbaReferenceIndex)
         val modifierCandidates = references.targets.keys.asSequence()
             .filter { it in 0 until session.rom.size }
             .mapNotNull { root ->
@@ -107,6 +128,63 @@ object Gen3NatureResolver {
         )
     }
 
+    private fun resolveIntegratedCandidates(
+        session: RomAnalysisSession,
+        callTargets: Set<Int>,
+    ): List<IntegratedCandidate> = requireNotNull(session.gbaReferenceIndex).targets.keys.mapNotNull { root ->
+        val candidate = decodeIntegratedTable(session.rom, root) ?: return@mapNotNull null
+        val evidence = session.nominatedGbaReferenceSites(root)
+            ?.takeIf { it.siteEvidenceAvailable }
+            ?: return@mapNotNull null
+        if (evidence.instructionSites.none { site ->
+                compiledFunctionContaining(session.rom, site, callTargets)
+                    ?.let(::isIntegratedStatConsumer) == true
+            }
+        ) {
+            return@mapNotNull null
+        }
+        candidate
+    }
+
+    private fun decodeIntegratedTable(rom: RomImage, root: Int): IntegratedCandidate? {
+        if (root < 0 || root and 3 != 0 || root.toLong() + INTEGRATED_TABLE_BYTES > rom.size) return null
+        val names = mutableListOf<String>()
+        val rows = mutableListOf<List<Int>>()
+        repeat(INTEGRATED_NATURES) { id ->
+            val row = root + id * INTEGRATED_RECORD_BYTES
+            val raised = rom.u8(row + INTEGRATED_RAISED_STAT_OFFSET)
+            val lowered = rom.u8(row + INTEGRATED_LOWERED_STAT_OFFSET)
+            if (raised != id / MODIFIERS_PER_NATURE + 1 || lowered != id % MODIFIERS_PER_NATURE + 1) {
+                return null
+            }
+            names += decodeName(rom, row) ?: return null
+            rows += List(MODIFIERS_PER_NATURE) { column ->
+                when (column + 1) {
+                    raised -> if (raised == lowered) 0 else 1
+                    lowered -> -1
+                    else -> 0
+                }
+            }
+        }
+        if (names.distinct().size != INTEGRATED_NATURES) return null
+        val records = names.indices.map { id ->
+            NatureRecord(
+                id = id,
+                name = names[id],
+                statModifiers = rows[id],
+                positivePercent = 110,
+                negativePercent = 90,
+            )
+        }
+        return IntegratedCandidate(
+            NatureCatalog(
+                records = records,
+                nameTableOffset = root,
+                statTableOffset = root,
+            ),
+        )
+    }
+
     private fun decodeCompleteModifierTable(rom: RomImage, root: Int): List<List<Int>>? {
         if (root < 0 || root.toLong() + MIN_NATURES * MODIFIERS_PER_NATURE > rom.size) return null
         val rows = mutableListOf<List<Int>>()
@@ -135,16 +213,20 @@ object Gen3NatureResolver {
     private fun decodeNames(rom: RomImage, root: Int, count: Int): List<String>? {
         if (root and 3 != 0 || root < 0 || root.toLong() + count.toLong() * 4L > rom.size) return null
         val names = (0 until count).map { id ->
-            val textRoot = rom.gbaPointer(root + id * 4) ?: return null
-            val available = minOf(MAX_NAME_BYTES, rom.size - textRoot)
-            val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(textRoot, available))
-            decoded.text.takeIf { name ->
-                decoded.terminated && decoded.validRatio == 1.0 &&
-                    name.length in 1..MAX_NAME_LENGTH && name.any(Char::isLetter) &&
-                    name.all { character -> character.isLetterOrDigit() || character in " -.'" }
-            } ?: return null
+            decodeName(rom, root + id * 4) ?: return null
         }
         return names.takeIf { it.distinct().size >= maxOf(MIN_NATURES, count * 4 / 5) }
+    }
+
+    private fun decodeName(rom: RomImage, pointerOffset: Int): String? {
+        val textRoot = rom.gbaPointer(pointerOffset) ?: return null
+        val available = minOf(MAX_NAME_BYTES, rom.size - textRoot)
+        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(textRoot, available))
+        return decoded.text.takeIf { name ->
+            decoded.terminated && decoded.validRatio == 1.0 &&
+                name.length in 1..MAX_NAME_LENGTH && name.any(Char::isLetter) &&
+                name.all { character -> character.isLetterOrDigit() || character in " -.'" }
+        }
     }
 
     private fun decodedThumbCallTargets(rom: RomImage): Set<Int> = buildSet {
@@ -216,6 +298,87 @@ object Gen3NatureResolver {
             }
         }
         return if (pending.isEmpty()) FunctionBody(start, decoded.values.toList()) else null
+    }
+
+    private fun isIntegratedStatConsumer(body: FunctionBody): Boolean {
+        if (!hasTwentyByteIndex(body)) return false
+        val fieldLoads = body.instructions.mapNotNull { instruction ->
+            val transfer = instruction as? Arm7MemoryTransfer ?: return@mapNotNull null
+            val address = transfer.address as? Arm7Address.RegisterOffset ?: return@mapNotNull null
+            if (!transfer.load || transfer.signed || transfer.width != Arm7MemoryWidth.BYTE ||
+                !address.add || !address.preIndexed || address.immediate !in INTEGRATED_STAT_OFFSETS
+            ) {
+                return@mapNotNull null
+            }
+            IntegratedFieldLoad(address.base, address.immediate, transfer.valueRegister)
+        }
+        val compares = body.instructions.filterIsInstance<Arm7Compare>()
+        val hasFieldComparisons = fieldLoads.groupBy(IntegratedFieldLoad::base).values.any { loads ->
+            val raised = loads.filter { it.offset == INTEGRATED_RAISED_STAT_OFFSET }
+                .mapTo(mutableSetOf(), IntegratedFieldLoad::value)
+            val lowered = loads.filter { it.offset == INTEGRATED_LOWERED_STAT_OFFSET }
+                .mapTo(mutableSetOf(), IntegratedFieldLoad::value)
+            if (raised.isEmpty() || lowered.isEmpty()) return@any false
+            val equality = compares.any { compare ->
+                compare.registersRead.any(raised::contains) && compare.registersRead.any(lowered::contains)
+            }
+            val fieldSelections = compares.count { compare ->
+                compare.registersRead.any { register -> register in raised || register in lowered }
+            }
+            equality && fieldSelections >= 3
+        }
+        if (!hasFieldComparisons) return false
+
+        val immediates = body.instructions.flatMap(::immediateValues).toSet()
+        if (!immediates.containsAll(setOf(90L, 100L, 110L))) return false
+        val hasMultiply = body.instructions.any { instruction ->
+            instruction is Arm7Multiply ||
+                (instruction is Arm7DataProcessing && instruction.operation == Arm7DataOperation.MULTIPLY)
+        }
+        val hasDivisionCall = body.instructions.any { it is Arm7Branch && it.link }
+        return hasMultiply && hasDivisionCall
+    }
+
+    private fun hasTwentyByteIndex(body: FunctionBody): Boolean {
+        val instructions = body.instructions.sortedBy(Arm7Instruction::offset)
+        val directFactor = instructions.filterIsInstance<Arm7DataProcessing>()
+            .filter { it.operation == Arm7DataOperation.MOVE && immediateValue(it.second) == 20L }
+            .any { factor ->
+                instructions.any { instruction ->
+                    instruction.offset > factor.offset && instruction.offset - factor.offset <= MAX_INDEX_PROOF_BYTES &&
+                        factor.destination in instruction.registersRead &&
+                        (instruction is Arm7Multiply ||
+                            (instruction is Arm7DataProcessing && instruction.operation == Arm7DataOperation.MULTIPLY))
+                }
+            }
+        if (directFactor) return true
+
+        instructions.forEachIndexed { firstIndex, instruction ->
+            val first = instruction as? Arm7DataProcessing ?: return@forEachIndexed
+            if (first.operation != Arm7DataOperation.LOGICAL_SHIFT_LEFT || immediateValue(first.second) != 2L) {
+                return@forEachIndexed
+            }
+            val source = (first.first as? Arm7RegisterOperand)?.register ?: return@forEachIndexed
+            instructions.drop(firstIndex + 1).forEach { middleInstruction ->
+                if (middleInstruction.offset - first.offset > MAX_INDEX_PROOF_BYTES) return@forEach
+                val middle = middleInstruction as? Arm7DataProcessing ?: return@forEach
+                if (middle.operation != Arm7DataOperation.ADD ||
+                    first.destination !in middle.registersRead || source !in middle.registersRead
+                ) {
+                    return@forEach
+                }
+                val finalShift = instructions.firstOrNull { finalInstruction ->
+                    finalInstruction.offset > middle.offset &&
+                        finalInstruction.offset - first.offset <= MAX_INDEX_PROOF_BYTES &&
+                        finalInstruction is Arm7DataProcessing &&
+                        finalInstruction.operation == Arm7DataOperation.LOGICAL_SHIFT_LEFT &&
+                        immediateValue(finalInstruction.second) == 2L &&
+                        middle.destination in finalInstruction.registersRead
+                }
+                if (finalShift != null) return true
+            }
+        }
+        return false
     }
 
     private fun statConsumerProof(body: FunctionBody): StatProof? {
@@ -342,6 +505,12 @@ object Gen3NatureResolver {
         val offsets: Set<Int> = instructions.mapTo(linkedSetOf(), Arm7Instruction::offset)
     }
 
+    private data class IntegratedCandidate(val catalog: NatureCatalog)
+    private data class IntegratedFieldLoad(
+        val base: Arm7Register,
+        val offset: Int,
+        val value: Arm7Register,
+    )
     private data class StatProof(val positivePercent: Int, val negativePercent: Int)
     private data class StatCandidate(
         val root: Int,
@@ -352,6 +521,13 @@ object Gen3NatureResolver {
     private data class NameCandidate(val root: Int, val names: List<String>, val references: Int)
 
     private const val MODIFIERS_PER_NATURE = 5
+    private const val INTEGRATED_NATURES = 25
+    private const val INTEGRATED_RECORD_BYTES = 20
+    private const val INTEGRATED_TABLE_BYTES = INTEGRATED_NATURES * INTEGRATED_RECORD_BYTES
+    private const val INTEGRATED_RAISED_STAT_OFFSET = 4
+    private const val INTEGRATED_LOWERED_STAT_OFFSET = 5
+    private val INTEGRATED_STAT_OFFSETS = setOf(INTEGRATED_RAISED_STAT_OFFSET, INTEGRATED_LOWERED_STAT_OFFSET)
+    private const val MAX_INDEX_PROOF_BYTES = 12
     private const val MIN_NATURES = 5
     private const val MAX_NATURES = 64
     private const val MAX_NAME_BYTES = 32

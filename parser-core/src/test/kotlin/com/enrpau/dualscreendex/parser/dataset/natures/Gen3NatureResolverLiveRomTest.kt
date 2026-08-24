@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -33,6 +34,32 @@ class Gen3NatureResolverLiveRomTest {
             assertEquals(listOf(1, -1, 0, 0, 0), catalog.records[3].flavorModifiers)
             assertEquals(listOf(-1, 0, 0, 1, 0), catalog.records[15].statModifiers)
             assertEquals(listOf(-1, 1, 0, 0, 0), catalog.records[15].flavorModifiers)
+            assertEquals(110, catalog.records[3].positivePercent)
+            assertEquals(90, catalog.records[3].negativePercent)
+        }
+    }
+
+    @Test
+    fun `integrated NatureInfo controls resolve compiled names and stat effects`() {
+        integratedControls.forEach { control ->
+            val path = Path.of(control.path)
+            assumeTrue("missing ${control.path}", Files.isRegularFile(path))
+            val rom = Files.newInputStream(path).use(RomImage::from)
+            assertEquals(control.sha256, rom.sha256)
+
+            val result = Gen3NatureResolver.resolve(RomAnalysisSession(rom, RomHeaderReader.read(rom)))
+            assertTrue("${control.label}: $result", result is NatureResolution.Resolved)
+            val catalog = (result as NatureResolution.Resolved).catalog
+
+            assertEquals(control.expectedRoot, catalog.nameTableOffset)
+            assertEquals(control.expectedRoot, catalog.statTableOffset)
+            assertNull(catalog.flavorTableOffset)
+            assertEquals(25, catalog.records.size)
+            assertEquals(25, catalog.records.map(NatureRecord::name).distinct().size)
+            assertTrue(catalog.records.all { it.flavorModifiers == null })
+            assertEquals(listOf(0, 0, 0, 0, 0), catalog.records[0].statModifiers)
+            assertEquals(listOf(1, 0, 0, -1, 0), catalog.records[3].statModifiers)
+            assertEquals(listOf(-1, 0, 0, 1, 0), catalog.records[15].statModifiers)
             assertEquals(110, catalog.records[3].positivePercent)
             assertEquals(90, catalog.records[3].negativePercent)
         }
@@ -98,6 +125,21 @@ class Gen3NatureResolverLiveRomTest {
         ),
     )
 
+    private val integratedControls = listOf(
+        IntegratedControl(
+            "Battle Theater",
+            "D:/Temp/PokemonHacks/corpus/expanded/roms/0017-f4b971d56e3f/Battle Theater (V2.3.0).gba",
+            "99c84950e2be2f887a84bdc32c741c92385bb4a54843d871a8876e9b47e1d59d",
+            0xC9CE88,
+        ),
+        IntegratedControl(
+            "Dreamstone",
+            "D:/Temp/PokemonHacks/corpus/expanded/roms/0049-ab6ee58c2896/Dreamstone Mysteries.gba",
+            "ac31df9cc158823861294b17bd4e66857deab2a53dd81620ddcf6fc03a6a4220",
+            0xE658D8,
+        ),
+    )
+
     private val heldOutControls = listOf(
         HeldOutControl(
             "Unbound",
@@ -109,6 +151,13 @@ class Gen3NatureResolverLiveRomTest {
             "D:/Temp/PokemonHacks/corpus/expanded/roms/0123-5e7ce46db2ce/Odyssey (v4.1.1).gba",
             "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
         ),
+    )
+
+    private data class IntegratedControl(
+        val label: String,
+        val path: String,
+        val sha256: String,
+        val expectedRoot: Int,
     )
 
     private data class HeldOutControl(val label: String, val path: String, val sha256: String)
