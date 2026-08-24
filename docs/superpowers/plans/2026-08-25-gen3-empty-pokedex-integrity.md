@@ -15,24 +15,26 @@
 **Files:**
 - Modify: `save-core/src/test/kotlin/com/darkaxt/dualdex/save/gen3/Gen3PokedexCodecTest.kt`
 - Modify: `save-core/src/main/kotlin/com/darkaxt/dualdex/save/gen3/Gen3PokedexCodec.kt`
+- Modify: `battle-memory/src/test/kotlin/com/darkaxt/dualdex/battle/Gen3LiveMemoryCodecsTest.kt`
+- Modify: `battle-memory/src/main/kotlin/com/darkaxt/dualdex/battle/Gen3LiveMemoryCodecs.kt`
 
 - [ ] **Step 1: Write the failing real-symptom regression**
 
-Add `emptyPartyDoesNotPromoteNearbySaveBlockBytesToPokedexFlags`, with an expanded catalog, an empty party, and a decoy flag block at `0x38`. Assert empty seen/caught sets and a null `ownedOffset`.
+Add `emptyPartyDoesNotPromoteNearbySaveBlockBytesToPokedexFlags`, with an expanded catalog, an empty party, and a decoy flag block at `0x38`. Assert empty seen/caught sets and a null `ownedOffset`. Add a live-codec regression proving an unavailable party does not become an available empty Pokédex anchor.
 
 - [ ] **Step 2: Run the focused test and verify RED**
 
-Run: `./gradlew :save-core:test --tests '*Gen3PokedexCodecTest.emptyPartyDoesNotPromoteNearbySaveBlockBytesToPokedexFlags'`
+Run: `./gradlew :save-core:test --tests '*Gen3PokedexCodecTest.emptyPartyDoesNotPromoteNearbySaveBlockBytesToPokedexFlags' :battle-memory:test --tests '*Gen3LiveMemoryCodecsTest.unavailablePartyDoesNotResolvePokedexFromUnanchoredBytes'`
 
 Expected: FAIL because the current scorer selects the decoy and returns false discoveries.
 
 - [ ] **Step 3: Implement the narrow guard**
 
-Make `Gen3PokedexSnapshot.ownedOffset` nullable and return a snapshot with `ownedOffset = null`, `seenDexNumbers = emptySet()`, and `caughtDexNumbers = emptySet()` before candidate scoring when the decoded party is empty.
+Make `Gen3PokedexSnapshot.ownedOffset` nullable and the party argument nullable. Return unavailable when party evidence is unavailable; return a snapshot with `ownedOffset = null`, `seenDexNumbers = emptySet()`, and `caughtDexNumbers = emptySet()` before candidate scoring when the decoded party is positively empty. Pass the nullable live party through without `orEmpty()`.
 
 - [ ] **Step 4: Verify GREEN and anchored-layout preservation**
 
-Run: `./gradlew :save-core:test --tests '*Gen3PokedexCodecTest'`
+Run: `./gradlew :save-core:test --tests '*Gen3PokedexCodecTest' :battle-memory:test --tests '*Gen3LiveMemoryCodecsTest'`
 
 Expected: all codec tests pass, including the existing expanded `0x2C` layout control.
 
@@ -86,4 +88,3 @@ Fast-forward `fork/master`, create signed tag `v1.1.0-rc.61`, push the branch an
 - [ ] **Step 4: Verify the public artifact**
 
 Require a successful workflow, prerelease metadata, APK filename/version/code/application ID, pinned certificate SHA-256, provenance commit/tag, and checksum match. Do not install or launch the APK.
-
