@@ -5,7 +5,7 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 | Stage | Requirement | Evidence | Classification | Target / acceptance |
 |---|---|---|---|---|
 | Baseline | Reconcile with `fork/master` before every commit | Plan commit `d6b3722` reconciled at master `5c316d8`; implementation gate repeats before every commit | PASS | Re-run and record refs at every commit |
-| Shared solver | Gen III output remains unchanged | Pending | BLOCKER | Existing and added Gen III tests pass exactly |
+| Shared solver | Gen III output remains unchanged | Shared normalized builder plus complete `LocalMapSceneBuilderTest` and `Gen3MapSceneResolverTest` pass | PASS | Re-run with every generation adapter change |
 | Gen I scenes | Compiled connections produce bounded scenes | Pending | BLOCKER | Red/Blue/Yellow strict controls pass |
 | Gen II scenes | Compiled connections preserve four palettes | Pending | BLOCKER | Gold/Silver/Crystal strict controls pass |
 | Live player | Existing area and X/Y drive shared scene marker | Pending | BLOCKER | Android and API tests pass |
@@ -22,6 +22,17 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :parser-core:test --tests '*Gen3MapSceneResolverTest' --no-daemon --console=plain
 BUILD SUCCESSFUL
 ```
+
+## Shared scene solver
+
+Gen III connection decoding remains generation-owned while normalized constraint canonicalization, deterministic placement, overlap exclusion, partitioning, and scene bounds now live in `LocalMapSceneBuilder`. Missing-map constraints are discarded before topology construction. Validation passed with:
+
+```text
+D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :parser-core:test --tests '*LocalMapSceneBuilderTest' --tests '*Gen3MapSceneResolverTest' --no-daemon --console=plain
+BUILD SUCCESSFUL
+```
+
+The pre-extraction exact scene membership and key characterization remained unchanged.
 
 ## Classification rules
 
