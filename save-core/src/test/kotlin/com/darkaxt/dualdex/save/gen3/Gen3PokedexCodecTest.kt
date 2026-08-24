@@ -1,0 +1,69 @@
+package com.darkaxt.dualdex.save.gen3
+
+import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.SaveParseContext
+import com.darkaxt.dualdex.save.SaveSpeciesContext
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class Gen3PokedexCodecTest {
+    @Test
+    fun resolvesExpandedAlignedLayoutUsingOwnedPartyAndHeaderEvidence() {
+        val context = SaveParseContext(
+            romIdentity = "b".repeat(64),
+            speciesById = (1..462).associateWith { speciesId ->
+                SaveSpeciesContext(
+                    speciesId = speciesId,
+                    dexNumber = when (speciesId) {
+                        in 1..251 -> speciesId
+                        277 -> 252
+                        280 -> 255
+                        286 -> 261
+                        else -> null
+                    },
+                    growthRate = null,
+                )
+            },
+        )
+        val bytes = ByteArray(0xF2C)
+        val flagBytes = (context.internalSpeciesCount + 7) / 8
+        bytes[0x2C - 0x10] = 0
+        bytes[0x2C - 0x10 + 1] = 0
+        bytes[0x2C - 0x10 + 2] = 0xDA.toByte()
+        setFlag(bytes, 0x2C, 252)
+        setFlag(bytes, 0x2C, 261)
+        listOf(252, 255, 261).forEach { setFlag(bytes, 0x2C + flagBytes, it) }
+
+        val result = Gen3PokedexCodec.decode(
+            saveBlock2 = bytes,
+            context = context,
+            party = listOf(
+                OwnedIndividual("party-0", speciesId = 277),
+                OwnedIndividual("party-1", speciesId = 286),
+            ),
+        )
+
+        assertEquals(0x2C, result.value?.ownedOffset)
+        assertEquals(setOf(252, 261), result.value?.caughtDexNumbers)
+        assertEquals(setOf(252, 255, 261), result.value?.seenDexNumbers)
+    }
+
+    @Test
+    fun incompleteBlockIsUnavailableInsteadOfInventingEmptyFlags() {
+        val context = SaveParseContext(
+            romIdentity = "c".repeat(64),
+            speciesById = (1..386).associateWith { SaveSpeciesContext(it, it, null) },
+        )
+
+        val result = Gen3PokedexCodec.decode(ByteArray(32), context, emptyList())
+
+        assertNull(result.value)
+        assertEquals(1, result.reasons.size)
+    }
+
+    private fun setFlag(bytes: ByteArray, offset: Int, dexNumber: Int) {
+        val index = dexNumber - 1
+        bytes[offset + index / 8] = (bytes[offset + index / 8].toInt() or (1 shl (index % 8))).toByte()
+    }
+}
