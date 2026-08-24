@@ -9,7 +9,11 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 object DirectSaveDocumentResolver {
-    fun discover(entry: RomIndexEntry, directories: List<File>): List<SaveDocumentSource> {
+    fun discover(
+        entry: RomIndexEntry,
+        directories: List<File>,
+        activeGameBasename: String? = null,
+    ): List<SaveDocumentSource> {
         val documents = mutableListOf<SaveDocumentSource>()
         val queue = ArrayDeque<File>().apply { directories.forEach(::addLast) }
         val visitedDirectories = mutableSetOf<String>()
@@ -23,7 +27,7 @@ object DirectSaveDocumentResolver {
                     documents += candidate.toSource()
             }
         }
-        return SaveDocumentResolver.matching(entry, documents)
+        return SaveDocumentResolver.matching(entry, documents, activeGameBasename)
     }
 
     fun refresh(sources: List<SaveDocumentSource>): List<SaveDocumentSource> = sources.mapNotNull { source ->

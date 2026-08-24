@@ -779,6 +779,50 @@ class BattleMemoryCoordinatorTest {
     }
 
     @Test
+    fun unifiedSourceReceivesLiveTrainerAndPokedexWithoutSavedTrainer() {
+        val ewram = ByteArray(0x40000)
+        val iwram = ByteArray(0x8000)
+        val block1Offset = 0x1000
+        val block2Offset = 0x6000
+        putU32(iwram, 0x36F0, 0x02000000 + block1Offset)
+        putU32(iwram, 0x36F4, 0x02000000 + block2Offset)
+        intArrayOf(0xC7, 0xBB, 0xD3, 0xFF).forEachIndexed { index, value ->
+            ewram[block2Offset + index] = value.toByte()
+        }
+        ewram[block2Offset + 0x08] = 1
+        putU32(ewram, block2Offset + 0x0A, 0x1234_5678)
+        putU16(ewram, block2Offset + 0x0E, 2)
+        ewram[block2Offset + 0x10] = 17
+        putU32(ewram, block2Offset + 0xAC, 0x1357_2468)
+        putU32(ewram, block1Offset + 0x490, 3_000 xor 0x1357_2468)
+        val saveContext = emeraldSaveContext()
+        val flagBytes = (saveContext.internalSpeciesCount + 7) / 8
+        setFlag(ewram, block2Offset + 0x28, 6)
+        setFlag(ewram, block2Offset + 0x28 + flagBytes, 6)
+        val layout = gen3RuntimeLayout(saveBlockPointers = true).copy(
+            saveBlock1Size = 0x3D88,
+            saveBlock2Size = 0xF2C,
+        )
+        val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { context(runtimeLayout = layout, saveContext = saveContext) },
+            publisher = {},
+            transientGameState = transient,
+            transportFactory = { MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram)) },
+            autoStart = false,
+        )
+
+        coordinator.updateSession(connected = true, systemId = "game_boy_advance", romIdentity = "rom")
+        repeat(12) { coordinator.heartbeat() }
+
+        assertEquals(0x5678, transient.current?.trainer?.publicTrainerId?.value)
+        assertEquals(3_000L, transient.current?.trainer?.money?.value)
+        assertEquals(setOf(6), transient.current?.pokedex?.seenDexNumbers?.value)
+        assertEquals(setOf(6), transient.current?.pokedex?.caughtDexNumbers?.value)
+        coordinator.close()
+    }
+
+    @Test
     fun unifiedLiveSavePathPublishesLocalAreaAndPositionWithoutNullOverwrite() {
         val ewram = ByteArray(0x40000)
         val iwram = ByteArray(0x8000)
@@ -864,6 +908,35 @@ class BattleMemoryCoordinatorTest {
         saveBlock2Size = 0x80.takeIf { saveBlockPointers },
     )
 
+    private fun emeraldSaveContext() = SaveParseContext(
+        romIdentity = "rom",
+        speciesById = (1..386).associateWith { SaveSpeciesContext(it, it, 0) },
+        gen3SaveRuntimeAbi = com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi(
+            saveBlock1Size = 0x3D88,
+            saveBlock2Size = 0xF2C,
+            textEncoding = com.darkaxt.dualdex.save.gen3.Gen3TextEncoding.ENGLISH,
+            trainer = com.darkaxt.dualdex.save.gen3.Gen3TrainerCardAbi(
+                playerNameOffset = 0,
+                playerNameLength = 8,
+                genderOffset = 0x08,
+                trainerIdOffset = 0x0A,
+                playTimeHoursOffset = 0x0E,
+                playTimeMinutesOffset = 0x10,
+                encryptionKeyOffset = 0xAC,
+                moneyOffset = 0x490,
+                maximumMoney = 999_999,
+                badgeFlags = (0x867..0x86E).map { flag ->
+                    com.darkaxt.dualdex.save.gen3.Gen3BitFlag(0x1270 + flag / 8, 1 shl (flag % 8))
+                },
+            ),
+            bag = com.darkaxt.dualdex.save.gen3.Gen3BagAbi(
+                com.darkaxt.dualdex.save.BagPocket.entries.map { pocket ->
+                    com.darkaxt.dualdex.save.gen3.Gen3BagPocketAbi(pocket, 0, 1)
+                },
+            ),
+        ),
+    )
+
     private fun gen1Context() = BattleCatalogContext(
         romIdentity = "rom",
         generation = 1,
@@ -928,6 +1001,11 @@ class BattleMemoryCoordinatorTest {
 
     private fun putU32(bytes: ByteArray, offset: Int, value: Int) {
         repeat(4) { index -> bytes[offset + index] = (value ushr (index * 8)).toByte() }
+    }
+
+    private fun setFlag(bytes: ByteArray, offset: Int, dexNumber: Int) {
+        val index = dexNumber - 1
+        bytes[offset + index / 8] = (bytes[offset + index / 8].toInt() or (1 shl (index % 8))).toByte()
     }
 
     private fun plainPartyRecord(bytes: ByteArray, offset: Int, species: Int, level: Int) {

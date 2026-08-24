@@ -20,6 +20,7 @@ import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.SaveSnapshotStore
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
+import com.darkaxt.dualdex.live.RecoveryProjection
 import com.darkaxt.dualdex.battle.BattleMemoryCoordinator
 import com.darkaxt.dualdex.save.AndroidSaveDocumentResolver
 import com.darkaxt.dualdex.save.DirectSaveDocumentResolver
@@ -81,6 +82,7 @@ class RetroArchSetupCoordinator(
         partyPublisher = runtime::updateLiveParty,
         liveGamePublisher = runtime::updateLiveGameState,
         gen2LightingPublisher = runtime::updateGen2GameClock,
+        transientGameState = transientGameState,
         transportFactory = { UdpNetworkCommandTransport(commandPort) },
         pollingIntervalProvider = runtime::battlePollingIntervalMs,
     )
@@ -98,6 +100,7 @@ class RetroArchSetupCoordinator(
     private val activeEntry = AtomicReference<RomIndexEntry?>(null)
     private val lastSaveCandidates = AtomicReference<List<SaveDocumentSource>>(emptyList())
     private val discoveredSaveRom = AtomicReference<String?>(null)
+    private val discoveredSaveBasename = AtomicReference<String?>(null)
     private val restoredSaveRom = AtomicReference<String?>(null)
     @Volatile private var lastActivatedSha: String? = null
 
@@ -192,6 +195,7 @@ class RetroArchSetupCoordinator(
                 entries.set(loadSafStoredIndex())
                 lastSaveCandidates.set(emptyList())
                 discoveredSaveRom.set(null)
+                discoveredSaveBasename.set(null)
                 val romGranted = storedRomTree()?.let(::hasReadGrant) == true
                 val configGranted = storedConfigTree()?.let(::hasConfigGrant) == true
                 update {
@@ -487,14 +491,29 @@ class RetroArchSetupCoordinator(
                 val parseContext = runtime.saveParseContext()
                 if (parseContext == null || !parseContext.romIdentity.equals(entry.sha256, ignoreCase = true)) return@execute
                 val resolver = AndroidSaveDocumentResolver(context.contentResolver)
+                val activeGameBasename = view.get().gameBasename
                 val cachedCandidates = lastSaveCandidates.get().takeIf {
-                    discoveredSaveRom.get().equals(entry.sha256, ignoreCase = true) && it.isNotEmpty()
+                    discoveredSaveRom.get().equals(entry.sha256, ignoreCase = true) &&
+                        discoveredSaveBasename.get().equals(activeGameBasename, ignoreCase = true) &&
+                        it.isNotEmpty()
                 }
                 val candidates = cachedCandidates?.let { refreshSaveCandidates(it, resolver) }
-                    ?: discoverSaveCandidates(entry, resolver).also { discoveredSaveRom.set(entry.sha256) }
+                    ?: discoverSaveCandidates(entry, resolver, activeGameBasename).also {
+                        discoveredSaveRom.set(entry.sha256)
+                        discoveredSaveBasename.set(activeGameBasename)
+                    }
                 lastSaveCandidates.set(candidates)
                 val result = saveMonitor.poll(parseContext, candidates, readAutosaveStatus())
                 val saveView = result.toView()
+                result.snapshot?.let { snapshot ->
+                    transientGameState.acceptRecovery(
+                        RecoveryProjection(
+                            snapshot = snapshot,
+                            saveRam = saveView,
+                            observation = result.observation,
+                        ),
+                    )
+                }
                 if (result.snapshot != null && result.observation != null) checkpointCoordinator.apply(result, saveView)
                 else if (result.snapshot != null) runtime.applySaveSnapshot(result.snapshot, saveView)
                 else runtime.updateSaveRam(saveView)
@@ -515,12 +534,22 @@ class RetroArchSetupCoordinator(
     private fun discoverSaveCandidates(
         entry: RomIndexEntry,
         safResolver: AndroidSaveDocumentResolver,
+        activeGameBasename: String?,
     ): List<SaveDocumentSource> {
         if (sharedStorage.isGranted()) {
-            val direct = DirectSaveDocumentResolver.discover(entry, directSaveDirectories(entry))
+            val direct = DirectSaveDocumentResolver.discover(
+                entry,
+                directSaveDirectories(entry),
+                activeGameBasename,
+            )
             if (direct.isNotEmpty()) return direct
         }
-        return safResolver.discover(entry, storedConfigTree()?.takeIf(::hasReadGrant), storedRomTree()?.takeIf(::hasReadGrant))
+        return safResolver.discover(
+            entry,
+            storedConfigTree()?.takeIf(::hasReadGrant),
+            storedRomTree()?.takeIf(::hasReadGrant),
+            activeGameBasename,
+        )
     }
 
     private fun refreshSaveCandidates(
@@ -577,6 +606,12 @@ class RetroArchSetupCoordinator(
             return
         }
         val snapshot = restored?.snapshot ?: return
+        transientGameState.acceptRecovery(
+            RecoveryProjection(
+                snapshot = snapshot,
+                saveRam = restored.toView(),
+            ),
+        )
         if (runtime.applySaveSnapshot(snapshot, restored.toView())) {
             restoredSaveRom.set(parseContext.romIdentity)
         }

@@ -9,12 +9,17 @@ import com.darkaxt.dualdex.storage.DocumentTreeAccess
 class AndroidSaveDocumentResolver(
     private val resolver: ContentResolver,
 ) {
-    fun discover(entry: RomIndexEntry, configTreeUri: Uri?, romTreeUri: Uri?): List<SaveDocumentSource> {
+    fun discover(
+        entry: RomIndexEntry,
+        configTreeUri: Uri?,
+        romTreeUri: Uri?,
+        activeGameBasename: String? = null,
+    ): List<SaveDocumentSource> {
         val documents = buildList {
             if (configTreeUri != null) addAll(discoverConfigTree(configTreeUri))
             if (romTreeUri != null && romTreeUri != configTreeUri) addAll(discoverRomTree(romTreeUri))
         }
-        return SaveDocumentResolver.matching(entry, documents)
+        return SaveDocumentResolver.matching(entry, documents, activeGameBasename)
     }
 
     fun refresh(sources: List<SaveDocumentSource>): List<SaveDocumentSource> = sources.mapNotNull { source ->

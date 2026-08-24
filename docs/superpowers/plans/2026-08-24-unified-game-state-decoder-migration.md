@@ -467,6 +467,21 @@ git commit -m "fix: source Trainer and Pokedex from transient state"
 
 Audit: no-save live fields work, recovery still works, active archive basename wins, and no diagnostics appear in Trainer/Pokédex UI.
 
+### Implementation audit through Stage 2 — 2026-08-24
+
+| Contract | Evidence | Result |
+|---|---|---|
+| One application-owned state owner and one read-only consumer interface | `UnifiedGameStateWiringTest`, sole production construction in `DualDexApplication` | PASS |
+| Independent live Trainer and Pokédex fields without SaveRAM | shared field codecs, coordinator vertical fixture, API vertical fixture with unavailable money | PASS |
+| Live value wins per field; validated recovery fills only unavailable fields | `UnifiedGameStateDecoderTest` and setup recovery projection | PASS |
+| Gen III pointer and dependent read planning live behind the unified owner | coordinator delegates both plans and pointer decode to `UnifiedGameStateDecoder` | PASS |
+| Archive matching ranks active RetroArch name, outer archive, then inner entry | resolver and direct-resolver regression tests | PASS |
+| Compatibility callbacks cannot override migrated Trainer/Pokédex fields | API fixture injects a conflicting legacy live Trainer after the unified snapshot | PASS |
+| No diagnostic reason or provenance on normal Trainer/Pokédex surfaces | resolved presentation contains values only; unavailable reasons remain internal | PASS |
+| Gen I/II map work remains isolated | Stage 2 changed no map parser, map renderer, Atlas, Gen I, or Gen II file | PASS |
+
+Deferred by the staged specification, not missing from Stage 2: complete battle samples (Stage 3), Party/progression (Stage 4), location/clock/readiness consumption (Stage 5), checkpoint-ledger and bag/event recovery completion (Stage 6), and deletion of the remaining compatibility callbacks (Stage 7). Stage 2 has no blocker for Stage 3.
+
 ## Stage 3 — Battle migration
 
 ### Task 6: Move battle state and rarity inputs into the same snapshot

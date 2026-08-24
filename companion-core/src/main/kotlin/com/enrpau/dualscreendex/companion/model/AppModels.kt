@@ -144,6 +144,18 @@ data class GameClock(
     }
 }
 
+data class TrainerCardState(
+    val identity: TrainerIdentity?,
+    val publicTrainerId: Int?,
+    val money: Long?,
+    val playTimeHours: Int?,
+    val playTimeMinutes: Int?,
+    val badgeFlags: Int?,
+    val dexSeen: Int?,
+    val dexCaught: Int?,
+    val stars: Int?,
+)
+
 data class AppSnapshot(
     val version: Long = 0,
     val screen: AppScreen = AppScreen.POKEDEX,
@@ -162,6 +174,7 @@ data class AppSnapshot(
     val liveAreaBaseId: Int? = null,
     val trainer: TrainerSnapshot? = null,
     val trainerIdentity: TrainerIdentity? = null,
+    val trainerCardState: TrainerCardState? = null,
     val party: List<OwnedIndividual> = emptyList(),
     val liveMapPosition: LiveMapPosition? = null,
     val gameTime: GameClock? = null,
@@ -204,6 +217,11 @@ sealed interface CompanionAction {
         val gameAccessReady: Boolean = false,
     ) : CompanionAction
     data class LiveGameClockChanged(val gameTime: GameClock?) : CompanionAction
+    data class ResolvedPlayerStateChanged(
+        val trainerCard: TrainerCardState?,
+        val seenDexNumbers: Set<Int>? = null,
+        val caughtDexNumbers: Set<Int>? = null,
+    ) : CompanionAction
     data class LiveMapPositionChanged(val position: LiveMapPosition?) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction
     data class Failure(val message: String) : CompanionAction

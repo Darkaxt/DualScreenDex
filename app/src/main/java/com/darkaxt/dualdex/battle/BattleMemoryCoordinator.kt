@@ -10,6 +10,8 @@ import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.TrainerSnapshot
+import com.darkaxt.dualdex.live.TransientGameStateContext
+import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -84,6 +86,7 @@ class BattleMemoryCoordinator(
     private val partyPublisher: (List<OwnedIndividual>?) -> Unit = {},
     private val liveGamePublisher: (Gen3LiveGameSnapshot?) -> Unit = {},
     private val gen2LightingPublisher: (MapLighting?) -> Unit = {},
+    private val transientGameState: UnifiedGameStateDecoder? = null,
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     private val pollingIntervalProvider: () -> Int = { 5 },
     autoStart: Boolean = true,
@@ -117,6 +120,7 @@ class BattleMemoryCoordinator(
     private var lastPublishedLiveParty: List<OwnedIndividual>? = null
     private var pendingLivePointers: Gen3LivePointers? = null
     private var lastPublishedLiveGame: Gen3LiveGameSnapshot? = null
+    private var unifiedSampleId = 0L
     private var lastPublishedGen2Lighting: MapLighting? = null
     @Volatile private var closed = false
 
@@ -145,12 +149,27 @@ class BattleMemoryCoordinator(
             lastPublishedLiveGame = null
             liveGamePublisher(null)
             publishGen2Lighting(null)
+            transientGameState?.endSession()
         }
         resetReader()
         tracker.reset(nextIdentity)
         eligible = nextEligible
         sessionIdentity = nextIdentity
         sessionGeneration = nextGeneration
+        unifiedSampleId = 0L
+        if (nextEligible) {
+            transientGameState?.beginSession(
+                TransientGameStateContext(
+                    romIdentity = requireNotNull(nextIdentity),
+                    generation = nextGeneration,
+                    catalog = requireNotNull(context).catalog,
+                    gen2TimeOfDayWramOffset = context.gen2TimeOfDayWramOffset,
+                    gen3RuntimeMemoryLayout = context.gen3RuntimeMemoryLayout,
+                    liveAreaMemoryLayout = context.liveAreaMemoryLayout,
+                    saveParseContext = context.saveParseContext,
+                ),
+            )
+        }
         if (hadBattle && !nextEligible) publisher(BattleTrackingUpdate(active = false, sample = null, ended = true))
     }
 
@@ -174,7 +193,8 @@ class BattleMemoryCoordinator(
                 reader = null
                 if (readMode == ReadMode.LIVE_POINTERS) {
                     val layout = context.gen3RuntimeMemoryLayout ?: return
-                    pendingLivePointers = Gen3LiveGameState.decodePointers(state.regions, layout)
+                    pendingLivePointers = transientGameState?.decodeGen3Pointers(state.regions, layout)
+                        ?: Gen3LiveGameState.decodePointers(state.regions, layout)
                     startRead()
                     return
                 }
@@ -264,12 +284,15 @@ class BattleMemoryCoordinator(
         val pointerGlobal = catalogProvider()?.gen3SaveBlock1PointerAddress
         val context = catalogProvider()
         val runtimeLayout = context?.gen3RuntimeMemoryLayout
-        if (runtimeLayout != null && Gen3LiveGameState.pointerWindows(runtimeLayout).isNotEmpty()) {
+        val pointerWindows = runtimeLayout?.let { selected ->
+            transientGameState?.gen3PointerReadPlan(selected) ?: Gen3LiveGameState.pointerWindows(selected)
+        }.orEmpty()
+        if (runtimeLayout != null && pointerWindows.isNotEmpty()) {
             val pointers = pendingLivePointers
             if (pointers == null) {
                 readMode = ReadMode.LIVE_POINTERS
                 session.start(
-                    Gen3LiveGameState.pointerWindows(runtimeLayout).map { window ->
+                    pointerWindows.map { window ->
                         CoreMemoryRegion(window.id, window.address, window.byteCount)
                     },
                 )
@@ -278,7 +301,9 @@ class BattleMemoryCoordinator(
                 val battleLayout = layout ?: parserResolvedGen3BattleLayout(requireNotNull(context))
                 if (battleLayout != null) cachedLayout = battleLayout
                 session.start(buildList {
-                    addAll(Gen3LiveGameState.dependentWindows(runtimeLayout, pointers).map { window ->
+                    val valueWindows = transientGameState?.gen3ValueReadPlan(runtimeLayout, pointers)
+                        ?: Gen3LiveGameState.dependentWindows(runtimeLayout, pointers)
+                    addAll(valueWindows.map { window ->
                         CoreMemoryRegion(window.id, window.address, window.byteCount)
                     })
                     add(CoreMemoryRegion("main-state", runtimeLayout.mainAddress, Gen3MainStateResolver.HEADER_BYTES))
@@ -899,7 +924,7 @@ class BattleMemoryCoordinator(
             regions = regions,
             layout = layout,
             saveContext = context.saveParseContext,
-            savedTrainer = context.savedTrainer,
+            savedTrainer = null,
             battleActive = runtime?.battleActive,
             targetBattler = runtime?.targetBattler,
             encounterKind = runtime?.encounterKind ?: BattleEncounterKind.UNKNOWN,
@@ -908,6 +933,7 @@ class BattleMemoryCoordinator(
             lastPublishedLiveGame = snapshot
             liveGamePublisher(snapshot)
         }
+        publishUnifiedLiveGame(regions, context, runtime)
         snapshot.location.value.let(locationPublisher)
         if (snapshot.party.state == Gen3LiveSectionState.AVAILABLE) {
             val party = requireNotNull(snapshot.party.value)
@@ -916,6 +942,23 @@ class BattleMemoryCoordinator(
                 partyPublisher(party)
             }
         }
+    }
+
+    private fun publishUnifiedLiveGame(
+        regions: Map<String, ByteArray>,
+        context: BattleCatalogContext,
+        runtime: Gen3RuntimeSnapshot?,
+    ) {
+        val target = transientGameState ?: return
+        target.acceptGen3LiveSample(
+            sampleId = ++unifiedSampleId,
+            regions = regions,
+            battleActive = runtime?.battleActive,
+            targetBattler = runtime?.targetBattler,
+            encounterKind = runtime?.encounterKind ?: BattleEncounterKind.UNKNOWN,
+            areaBaseId = runtime?.areaBaseId,
+            mapPosition = runtime?.mapPosition,
+        )
     }
 
     private fun resolveCurrentGen2Lighting(
@@ -1024,6 +1067,7 @@ class BattleMemoryCoordinator(
             sessionIdentity = null
             sessionGeneration = 0
             tracker.reset()
+            transientGameState?.endSession()
         }
     }
 

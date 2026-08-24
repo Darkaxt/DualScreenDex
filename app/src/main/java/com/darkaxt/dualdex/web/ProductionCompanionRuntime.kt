@@ -52,6 +52,7 @@ import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import com.enrpau.dualscreendex.companion.model.Theme
+import com.enrpau.dualscreendex.companion.model.TrainerCardState
 import com.enrpau.dualscreendex.companion.knowledge.SaveKnowledgeMapper
 import com.enrpau.dualscreendex.companion.knowledge.LivePartyKnowledgeMapper
 import com.darkaxt.dualdex.save.SaveParseContext
@@ -158,7 +159,43 @@ class ProductionCompanionRuntime(
     )
     @Volatile private var resolvedGameState: ResolvedGameSnapshot? = null
     private val transientGameStateSubscription = transientGameState?.subscribe { snapshot ->
+        applyResolvedPlayerState(snapshot)
+    }
+
+    @Synchronized
+    private fun applyResolvedPlayerState(snapshot: ResolvedGameSnapshot?) {
         resolvedGameState = snapshot
+        val matching = snapshot?.takeIf { state ->
+            catalog?.romSha256.equals(state.romIdentity, ignoreCase = true)
+        }
+        val playTime = matching?.trainer?.playTime?.value
+        val trainerCard = matching?.let { state ->
+            TrainerCardState(
+                identity = state.trainer.identity.value,
+                publicTrainerId = state.trainer.publicTrainerId.value,
+                money = state.trainer.money.value,
+                playTimeHours = playTime?.hours,
+                playTimeMinutes = playTime?.minutes,
+                badgeFlags = state.trainer.badgeFlags.value,
+                dexSeen = state.pokedex.seenDexNumbers.value?.size,
+                dexCaught = state.pokedex.caughtDexNumbers.value?.size,
+                stars = state.trainer.stars.value,
+            )
+        }
+        val current = gateway.bootstrap()
+        if (
+            current.trainerCardState != trainerCard ||
+            matching?.pokedex?.seenDexNumbers?.value != null ||
+            matching?.pokedex?.caughtDexNumbers?.value != null
+        ) {
+            gateway.dispatch(
+                CompanionAction.ResolvedPlayerStateChanged(
+                    trainerCard = trainerCard,
+                    seenDexNumbers = matching?.pokedex?.seenDexNumbers?.value,
+                    caughtDexNumbers = matching?.pokedex?.caughtDexNumbers?.value,
+                ),
+            )
+        }
     }
 
     fun load(name: String, input: InputStream): BootstrapView = load(RomSourceLoader.load(name, input))
@@ -745,17 +782,25 @@ class ProductionCompanionRuntime(
         ?: savedPlayerState?.party
         ?: emptyList()
 
-    private fun selectedTrainer() = liveGameState
-        ?.trainer
-        ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
-        ?.value
-        ?: savedPlayerState?.trainer
+    private fun compatibilityTrainer(): TrainerSnapshot? = if (transientGameState == null) {
+        liveGameState
+            ?.trainer
+            ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+            ?.value
+            ?: savedPlayerState?.trainer
+    } else {
+        savedPlayerState?.trainer
+    }
 
-    private fun selectedTrainerIdentity() = liveGameState
-        ?.trainerIdentity
-        ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
-        ?.value
-        ?: selectedTrainer()?.let { TrainerIdentity(it.name, it.gender) }
+    private fun compatibilityTrainerIdentity(): TrainerIdentity? = if (transientGameState == null) {
+        liveGameState
+            ?.trainerIdentity
+            ?.takeIf { it.state == Gen3LiveSectionState.AVAILABLE }
+            ?.value
+            ?: compatibilityTrainer()?.let { TrainerIdentity(it.name, it.gender) }
+    } else {
+        savedPlayerState?.trainer?.let { TrainerIdentity(it.name, it.gender) }
+    }
 
     private fun mergedPlayerKnowledge(current: ParsedCatalog): KnowledgeLedger {
         val before = gateway.bootstrap().ledger
@@ -803,10 +848,10 @@ class ProductionCompanionRuntime(
             }
         gateway.dispatch(
             CompanionAction.LiveGameStateChanged(
-                trainer = selectedTrainer(),
+                trainer = compatibilityTrainer(),
                 party = selectedParty(),
                 gameTime = gameTime,
-                trainerIdentity = selectedTrainerIdentity(),
+                trainerIdentity = compatibilityTrainerIdentity(),
                 gameAccessReady = when (catalog?.platform) {
                     Platform.GBA -> liveGameState?.let { snapshot ->
                         snapshot.location.state == Gen3LiveSectionState.AVAILABLE &&

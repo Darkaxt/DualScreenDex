@@ -30,6 +30,40 @@ class SaveDocumentResolverTest {
         assertEquals(listOf("1", "2"), matches.map { it.id })
     }
 
+    @Test
+    fun prefersTheActiveRetroArchBasenameForAnArchivedRom() {
+        val archived = rom.copy(gameBasename = "Modern Emerald (v3.5)")
+        val candidates = listOf(
+            candidate("inner", "RetroArch/saves/mGBA/Modern Emerald (v3.5).srm"),
+            candidate("active", "RetroArch/saves/mGBA/Pokemon Modern Emerald (v3.5).srm"),
+        )
+
+        val matches = SaveDocumentResolver.matching(
+            entry = archived,
+            documents = candidates,
+            activeGameBasename = "Pokemon Modern Emerald (v3.5)",
+        )
+
+        assertEquals(listOf("active"), matches.map { it.id })
+    }
+
+    @Test
+    fun fallsBackFromMissingActiveNameToOuterArchiveBeforeInnerEntry() {
+        val archived = rom.copy(gameBasename = "Pokemon - Modern Emerald Version v3.5")
+        val candidates = listOf(
+            candidate("outer", "RetroArch/saves/Pokemon Modern Emerald.srm"),
+            candidate("inner", "RetroArch/saves/Pokemon - Modern Emerald Version v3.5.srm"),
+        )
+
+        val matches = SaveDocumentResolver.matching(
+            entry = archived,
+            documents = candidates,
+            activeGameBasename = "Missing Active Alias",
+        )
+
+        assertEquals(listOf("outer"), matches.map { it.id })
+    }
+
     private fun candidate(id: String, path: String) = SaveDocumentSource(
         id = id,
         displayPath = path,

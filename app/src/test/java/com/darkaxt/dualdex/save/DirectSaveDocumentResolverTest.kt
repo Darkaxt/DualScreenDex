@@ -45,6 +45,21 @@ class DirectSaveDocumentResolverTest {
     }
 
     @Test
+    fun `uses active RetroArch basename before archived inner basename`() {
+        val root = temporaryRoot()
+        File(root, "Modern Emerald.srm").writeBytes(byteArrayOf(1))
+        val active = File(root, "Pokemon Modern Emerald.srm").apply { writeBytes(byteArrayOf(2)) }
+
+        val sources = DirectSaveDocumentResolver.discover(
+            entry = rom,
+            directories = listOf(root),
+            activeGameBasename = "Pokemon Modern Emerald",
+        )
+
+        assertEquals(listOf(active.canonicalPath), sources.map { it.displayPath })
+    }
+
+    @Test
     fun `refreshes direct metadata and bytes after RetroArch rewrites a save`() {
         val root = temporaryRoot()
         val matching = File(root, "Modern Emerald.sav").apply { writeBytes(byteArrayOf(1)) }

@@ -2124,6 +2124,78 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun unifiedPlayerFieldsPopulateApiIndependentlyWithoutSaveRam() {
+        val hash = "9".repeat(64)
+        val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val runtime = ProductionCompanionRuntime(transientGameState = source)
+        val catalog = ParsedCatalog(
+            hash,
+            EngineFamily.EMERALD,
+            Platform.GBA,
+            speciesById = mapOf(25 to saveSpecies(25), 277 to saveSpecies(277)),
+        )
+        runtime.loadCatalog("live-only.gba", catalog)
+        source.beginSession(
+            com.darkaxt.dualdex.live.TransientGameStateContext(
+                romIdentity = hash,
+                generation = 3,
+                catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+            ),
+        )
+        val unavailable = com.darkaxt.dualdex.battle.LiveValue.Unavailable(
+            com.darkaxt.dualdex.battle.LiveUnavailableReason(
+                com.darkaxt.dualdex.battle.LiveUnavailableCode.MISSING_REGION,
+                "money bytes missing in fixture",
+            ),
+        )
+        source.acceptDecodedLive(
+            com.darkaxt.dualdex.battle.LiveGameSnapshot(
+                romIdentity = hash,
+                generation = 3,
+                sampleId = 1,
+                trainer = com.darkaxt.dualdex.battle.LiveTrainerState(
+                    identity = com.darkaxt.dualdex.battle.LiveValue.Available(TrainerIdentity("MAY", 1)),
+                    publicTrainerId = com.darkaxt.dualdex.battle.LiveValue.Available(54_321),
+                    money = unavailable,
+                    playTime = com.darkaxt.dualdex.battle.LiveValue.Available(
+                        com.darkaxt.dualdex.save.TrainerPlayTime(3, 21),
+                    ),
+                    badgeFlags = com.darkaxt.dualdex.battle.LiveValue.Available(3),
+                    stars = unavailable,
+                ),
+                pokedex = com.darkaxt.dualdex.battle.LivePokedexState(
+                    seenDexNumbers = com.darkaxt.dualdex.battle.LiveValue.Available(setOf(25, 277)),
+                    caughtDexNumbers = com.darkaxt.dualdex.battle.LiveValue.Available(setOf(25)),
+                ),
+                party = com.darkaxt.dualdex.battle.LiveValue.Available(emptyList()),
+                battle = unavailable,
+                location = com.darkaxt.dualdex.battle.LiveLocationState(unavailable, unavailable),
+                clock = unavailable,
+                bag = emptyMap(),
+                eventFlags = unavailable,
+            ),
+        )
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                hash,
+                Gen3LiveSection.available(trainer("WRONG", 999)),
+                Gen3LiveSection.available(emptyList()),
+            ),
+        )
+
+        val state = runtime.stateView()
+        assertEquals("MAY", state.trainer?.name)
+        assertEquals(54_321, state.trainer?.publicTrainerId)
+        assertNull(state.trainer?.money)
+        assertEquals(3, state.trainer?.playTimeHours)
+        assertEquals(2, state.trainer?.dexSeen)
+        assertEquals(1, state.trainer?.dexCaught)
+        assertTrue(state.speciesState.getValue(277).seen)
+        assertFalse(state.speciesState.getValue(277).caught)
+        runtime.close()
+    }
+
+    @Test
     fun ignoresAnotherRomsLiveSnapshotAndDropsPriorLiveStateWhenCatalogSwitches() {
         val first = "c".repeat(64)
         val second = "d".repeat(64)

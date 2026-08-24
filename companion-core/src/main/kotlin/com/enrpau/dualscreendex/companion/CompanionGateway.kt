@@ -40,6 +40,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         )
         is CompanionAction.CatalogLoadingChanged -> state.copy(
             catalogLoading = action.loading,
+            trainerCardState = if (action.loading.active) null else state.trainerCardState,
             gameAccessReady = if (action.loading.active) false else state.gameAccessReady,
             catalogReady = when {
                 action.loading.active -> false
@@ -140,6 +141,17 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             gameAccessReady = state.gameAccessReady || action.gameAccessReady,
         )
         is CompanionAction.LiveGameClockChanged -> state.copy(gameTime = action.gameTime)
+        is CompanionAction.ResolvedPlayerStateChanged -> {
+            val seen = action.seenDexNumbers ?: state.ledger.seenSpecies
+            val caught = action.caughtDexNumbers ?: state.ledger.caughtSpecies
+            state.copy(
+                trainerCardState = action.trainerCard,
+                ledger = state.ledger.copy(
+                    seenSpecies = seen + caught,
+                    caughtSpecies = caught,
+                ),
+            )
+        }
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
         is CompanionAction.Failure -> state.copy(error = action.message)
     }

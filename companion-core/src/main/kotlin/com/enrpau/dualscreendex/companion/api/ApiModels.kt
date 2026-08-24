@@ -928,25 +928,28 @@ object ApiViewBuilder {
 
     private fun trainerView(snapshot: AppSnapshot, catalog: ParsedCatalog?): TrainerView? {
         val trainer = snapshot.trainer
-        val identity = snapshot.trainerIdentity
+        val resolved = snapshot.trainerCardState
+        val identity = resolved?.identity ?: snapshot.trainerIdentity
             ?: trainer?.let { TrainerIdentity(it.name, it.gender) }
             ?: return null
         val assets = catalog?.trainerAssets
         return TrainerView(
             name = identity.name,
             gender = if (identity.gender == 0) "MALE" else "FEMALE",
-            publicTrainerId = trainer?.publicTrainerId,
-            money = trainer?.money,
-            playTimeHours = trainer?.playTimeHours,
-            playTimeMinutes = trainer?.playTimeMinutes,
-            dexSeen = trainer?.dexSeen,
-            dexCaught = trainer?.dexCaught,
-            stars = trainer?.stars,
+            publicTrainerId = if (resolved != null) resolved.publicTrainerId else trainer?.publicTrainerId,
+            money = if (resolved != null) resolved.money else trainer?.money,
+            playTimeHours = if (resolved != null) resolved.playTimeHours else trainer?.playTimeHours,
+            playTimeMinutes = if (resolved != null) resolved.playTimeMinutes else trainer?.playTimeMinutes,
+            dexSeen = if (resolved != null) resolved.dexSeen else trainer?.dexSeen,
+            dexCaught = if (resolved != null) resolved.dexCaught else trainer?.dexCaught,
+            stars = if (resolved != null) resolved.stars else trainer?.stars,
             avatarUrl = assets?.avatarAssetKeys?.get(identity.gender)?.let(::trainerAssetUrl),
             badges = (0 until 8).map { badgeIndex ->
                 TrainerBadgeView(
                     index = badgeIndex,
-                    earned = trainer?.let { it.badgeFlags and (1 shl badgeIndex) != 0 },
+                    earned = (resolved?.badgeFlags ?: trainer?.badgeFlags)?.let {
+                        it and (1 shl badgeIndex) != 0
+                    },
                     imageUrl = assets?.badgeAssetKeys?.getOrNull(badgeIndex)?.let(::trainerAssetUrl),
                 )
             },
@@ -954,12 +957,18 @@ object ApiViewBuilder {
     }
 
     private fun trainerAvatarUrl(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
-        val gender = snapshot.trainer?.gender ?: snapshot.trainerIdentity?.gender ?: return null
+        val gender = snapshot.trainerCardState?.identity?.gender
+            ?: snapshot.trainer?.gender
+            ?: snapshot.trainerIdentity?.gender
+            ?: return null
         return catalog?.trainerAssets?.avatarAssetKeys?.get(gender)?.let(::trainerAssetUrl)
     }
 
     private fun trainerMapSpriteAssetKey(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
-        val gender = snapshot.trainer?.gender ?: snapshot.trainerIdentity?.gender ?: return null
+        val gender = snapshot.trainerCardState?.identity?.gender
+            ?: snapshot.trainer?.gender
+            ?: snapshot.trainerIdentity?.gender
+            ?: return null
         return catalog?.trainerAssets?.overworldAssetKeys?.get(gender)
     }
 
