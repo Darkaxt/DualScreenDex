@@ -9,7 +9,7 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 | Gen I scenes | Compiled connections produce bounded scenes | 11-byte decoder, fail-closed integration, synthetic ABI suite, and Red/Blue/Yellow exact controls pass | PASS | Red/Blue/Yellow strict controls pass |
 | Gen II scenes | Compiled connections preserve four palettes | 12-byte decoder, fail-closed integration, synthetic ABI suite, and Gold/Silver/Crystal exact controls pass | PASS | Gold/Silver/Crystal strict controls pass |
 | Live player | Existing area and X/Y drive shared scene marker | Pending | BLOCKER | Android and API tests pass |
-| Overworld marker | Structurally resolved frame or compact-dot fallback | Pending | BLOCKER | Official controls and fail-closed tests pass |
+| Overworld marker | Structurally resolved frame or compact-dot fallback | Native 16x16 contracts and sole-appearance API pass; GB/GBC structural resolver remains Task #147 | BLOCKER | Official controls and fail-closed tests pass |
 | Discovery / Atlas | RC53 hidden-image and fallback contract remains intact | Pending | BLOCKER | Web tests pass |
 | Persistence | Existing catalogs rebuild once and round-trip | Pending | BLOCKER | Parser schema 35 cache tests pass |
 | GB/GBC corpus | No accepted Local raster regresses | Pending | BLOCKER | Deterministic matrix reports zero parser errors/regressions |
@@ -73,6 +73,17 @@ BUILD SUCCESSFUL in 10m 11s
 ```
 
 Post-stage comparison against the specification found no missing or partial Gen II scene or lighting-preservation requirement. There are no Gen II scene blockers or deferrals.
+
+## Native overworld-asset contract
+
+`TrainerAssetCatalog` now accepts distinct non-empty subsets of the supported gender-key domain for overworld sprites while retaining the exact dual-gender requirement for Trainer Card portraits. Supported overworld dimensions are exactly 16×16, 16×32, and 32×32; invalid gender keys, duplicate references, and unsupported dimensions remain rejected. `ApiViewBuilder` selects the sole overworld asset when runtime trainer gender is unavailable, without applying that fallback to portraits.
+
+```text
+D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :parser-core:test --tests '*CatalogModelsTest' --tests '*Gen3TrainerAssetResolverRealControlTest' :companion-core:test --tests '*ApiViewBuilderTest' --no-daemon --console=plain
+BUILD SUCCESSFUL
+```
+
+The existing dual-gender Gen III API behavior remains exact. Post-stage audit classifies the missing GB/GBC structural frame resolver as **BLOCKER Task #147**, with official Red/Blue/Yellow/Gold/Silver/Crystal frame controls as its acceptance condition. This is not a deferral and the Overworld marker row remains open.
 
 ## Classification rules
 

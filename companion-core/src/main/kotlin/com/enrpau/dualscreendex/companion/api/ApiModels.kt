@@ -959,8 +959,9 @@ object ApiViewBuilder {
     }
 
     private fun trainerMapSpriteAssetKey(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
-        val gender = snapshot.trainer?.gender ?: snapshot.trainerIdentity?.gender ?: return null
-        return catalog?.trainerAssets?.overworldAssetKeys?.get(gender)
+        val keys = catalog?.trainerAssets?.overworldAssetKeys.orEmpty()
+        val gender = snapshot.trainer?.gender ?: snapshot.trainerIdentity?.gender
+        return gender?.let(keys::get) ?: keys.values.distinct().singleOrNull()
     }
 
     private fun partyView(snapshot: AppSnapshot, catalog: ParsedCatalog?): List<PartyMemberView> =

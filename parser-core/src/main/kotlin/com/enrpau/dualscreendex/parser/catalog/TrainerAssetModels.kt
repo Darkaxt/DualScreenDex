@@ -19,8 +19,11 @@ data class TrainerAssetCatalog(
             require(avatarAssetKeys.keys == setOf(0, 1)) { "trainer avatars must cover both player genders" }
         }
         if (overworldAssetKeys.isNotEmpty()) {
-            require(overworldAssetKeys.keys == setOf(0, 1)) {
-                "trainer overworld sprites must cover both player genders"
+            require(overworldAssetKeys.keys.all { it in 0..1 }) {
+                "trainer overworld sprite genders must fit the supported domain"
+            }
+            require(overworldAssetKeys.values.distinct().size == overworldAssetKeys.size) {
+                "trainer overworld sprites must reference distinct assets"
             }
         }
         if (badgeAssetKeys.isNotEmpty()) {
@@ -36,12 +39,16 @@ data class TrainerAssetCatalog(
         }
         overworldAssetKeys.values.forEach { key ->
             val sprite = assets.getValue(key)
-            require(sprite.width in setOf(16, 32) && sprite.height == 32) {
-                "trainer overworld sprites must retain a supported native GBA size"
+            require(sprite.width to sprite.height in OVERWORLD_DIMENSIONS) {
+                "trainer overworld sprites must retain a supported native size"
             }
         }
         badgeAssetKeys.forEach { key ->
             require(assets.getValue(key).width == 16 && assets.getValue(key).height == 16)
         }
+    }
+
+    private companion object {
+        val OVERWORLD_DIMENSIONS = setOf(16 to 16, 16 to 32, 32 to 32)
     }
 }

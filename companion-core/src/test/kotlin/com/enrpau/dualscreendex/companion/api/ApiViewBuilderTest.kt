@@ -283,6 +283,27 @@ class ApiViewBuilderTest {
     }
 
     @Test
+    fun presentsSoleNativeGbMapSpriteWithoutTrainerGender() {
+        val assetKey = "trainer/overworld/player"
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.RED_BLUE,
+            platform = Platform.GB,
+            trainerAssets = TrainerAssetCatalog(
+                overworldAssetKeys = mapOf(0 to assetKey),
+                assets = mapOf(assetKey to RgbaSprite(16, 16, IntArray(16 * 16))),
+            ),
+        )
+
+        val state = ApiViewBuilder.state(AppSnapshot(), catalog)
+
+        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Fplayer.png", state.trainerMapSpriteUrl)
+        assertEquals(16, state.trainerMapSpriteWidth)
+        assertEquals(16, state.trainerMapSpriteHeight)
+        assertNull(state.trainerAvatarUrl)
+    }
+
+    @Test
     fun presentsTrainerAndPartyThroughCatalogLabelsAndNormalizedAssets() {
         val species = com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
             id = 25,
