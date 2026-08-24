@@ -65,7 +65,7 @@ Expected focused gain: Battle Theater reaches 23/23; Dreamstone gains authoritat
 
 ## Checkpoint 1 result
 
-The implemented generic ABI produced the expected gains in a fresh one-job scan: Battle Theater reached 23/23 at 99.97%, and Dreamstone reached 15/24 at 62.48%. The other six characterized controls retained their routing, feature counts, and compatibility scores. All six selected catalogs persisted and reopened; parser, persistence, and decoded cross-reference errors remained zero. The residual Battle Theater fraction is tracked as `G3-NATURE-001` because the compiled stat consumer does not prove flavor affinity.
+The implemented generic ABI produced the expected gains in a fresh one-job scan: Battle Theater reached 23/23 at 99.97%, and Dreamstone reached 15/24 at 62.48%. The other six characterized controls retained their routing, feature counts, and compatibility scores. All six selected catalogs persisted and reopened; parser, persistence, and decoded cross-reference errors remained zero. The residual Battle Theater fraction is tracked as `G3-NATURE-001` because the compiled stat consumer does not prove flavor affinity. The checkpoint is published as signed prerelease `v1.1.0-rc.57`.
 
 ## Deferral ledger
 

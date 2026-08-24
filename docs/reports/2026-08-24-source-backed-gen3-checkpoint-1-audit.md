@@ -2,7 +2,7 @@
 
 Specification: `docs/superpowers/specs/2026-08-24-source-backed-gen3-compatibility-design.md`
 
-**Result:** READY FOR PROTECTED PUBLICATION — the integrated `NatureInfo` checkpoint passes its focused implementation, regression, persistence, and eight-ROM matrix gates. Protected signing evidence is pending.
+**Result:** PUBLISHED PRERELEASE — the integrated `NatureInfo` checkpoint passes its focused implementation, regression, persistence, eight-ROM matrix, protected publication, and independent artifact gates.
 
 ## Requirement audit
 
@@ -48,6 +48,16 @@ Specification: `docs/superpowers/specs/2026-08-24-source-backed-gen3-compatibili
 | `G3-TOURMALINE-001` | Tourmaline encounter/map-group authority and remaining catalog gaps | Map modules and unsupported datasets remain unavailable | Generic compiled encounter/map consumers establish bounded semantic joins |
 | `G3-VOYAGER-001` | Voyager matching complete source lineage and family routing | No family match; no speculative catalog | Complete matching source or independent compiled-engine proof passes generic anchors and held-out controls |
 
-## Publication gate
+## Protected release evidence
 
-Before tagging, fetch and reconcile `fork/master`, inspect overlapping paths, and rerun only overlap-relevant tests. RC57 must then pass the repository's protected release workflow, persistent signer check, checksums, package/version validation, APK Signature Scheme v3 verification, and provenance verification. Publication evidence will replace this pending section after independent artifact download.
+| Evidence | Observed result |
+|---|---|
+| Source and workflow | Annotated tag `v1.1.0-rc.57` resolves to commit `1c21d18a2f878152a3b1d4aa2ae7a51a1733785c`; protected workflow run `32764567000` completed successfully. |
+| CI gate | Release policy, published-document checks, Android deployment safety, web tests/build, all Gradle module tests, Android lint, unsigned release build, and package-identity verification passed before protected signing. |
+| Publication | GitHub Actions published `DualDex 1.1.0-rc.57` as a public, non-draft prerelease without replacing an existing release. |
+| Public APK | `DualDex-v1.1.0-rc.57.apk`; 17,732,070 bytes; SHA-256 `651C208B6D1AF76C3F12756991F861145B8B5ED5BA702F57D97FAEE926196E33`. Authenticated and anonymous downloads match the release API digest and `SHA256SUMS.txt`; all 27 checksummed assets passed. |
+| Signed identity | Independent validation reported package `com.darkaxt.dualdex`, version `1.1.0-rc.57`, code `1010057`, and signer SHA-256 `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`; the published certificate matches and APK Signature Scheme v3 verification passed. |
+| Provenance | Public `provenance.json` binds the APK hash, signer, tag, commit, package/version identity, protected environment, and workflow run. |
+| Device action | No installation, launch, ADB, emulator, or gameplay interaction was performed. |
+
+Signed candidate: <https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.57>
