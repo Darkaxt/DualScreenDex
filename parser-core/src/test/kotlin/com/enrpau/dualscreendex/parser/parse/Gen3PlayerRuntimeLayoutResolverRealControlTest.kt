@@ -8,10 +8,69 @@ import com.enrpau.dualscreendex.parser.model.EngineFamily
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class Gen3PlayerRuntimeLayoutResolverRealControlTest {
+    @Test
+    fun officialRubyAndSapphirePublishTheirDirectSourceDefinedSaveRuntimeDescriptor() {
+        val controls = listOf(
+            Triple(
+                "Ruby",
+                System.getenv("DUALDEX_OFFICIAL_RUBY_ROM")
+                    ?: "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
+                OFFICIAL_RUBY_SHA256,
+            ),
+            Triple(
+                "Sapphire",
+                System.getenv("DUALDEX_OFFICIAL_SAPPHIRE_ROM")
+                    ?: "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
+                OFFICIAL_SAPPHIRE_SHA256,
+            ),
+        )
+
+        controls.forEach { (label, configuredPath, expectedSha) ->
+            val path = Path.of(configuredPath)
+            assumeTrue("real official $label ROM does not exist: $path", Files.isRegularFile(path))
+
+            val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+            assertEquals(expectedSha, parsed.analysis.sha256)
+            val runtime = requireNotNull(requireNotNull(parsed.catalog).runtimeMetadata.gen3RuntimeMemoryLayout)
+
+            assertEquals(0x02025734L, runtime.saveBlock1Address)
+            assertEquals(0x02024EA4L, runtime.saveBlock2Address)
+            assertNull(runtime.saveBlock1PointerAddress)
+            assertNull(runtime.saveBlock2PointerAddress)
+            requireNotNull(runtime.liveClockAddress)
+            assertNull(runtime.liveClockSchedule)
+            val save = requireNotNull(runtime.saveRuntimeAbi)
+            assertEquals(0x3AC0, save.saveBlock1Size)
+            assertEquals(0x0890, save.saveBlock2Size)
+            assertNull(save.trainer.encryptionKeyOffset)
+            assertEquals(0x490, save.trainer.moneyOffset)
+            assertEquals(0x1220, save.eventFlags?.byteOffset)
+            assertEquals(0x0120, save.eventFlags?.byteCount)
+            assertEquals(
+                listOf(20, 20, 16, 64, 46),
+                save.bag.pockets.map { it.capacity },
+            )
+            assertEquals(
+                listOf(
+                    0x1320 to 0x80,
+                    0x1321 to 0x01,
+                    0x1321 to 0x02,
+                    0x1321 to 0x04,
+                    0x1321 to 0x08,
+                    0x1321 to 0x10,
+                    0x1321 to 0x20,
+                    0x1321 to 0x40,
+                ),
+                save.trainer.badgeFlags.map { it.byteOffset to it.mask },
+            )
+        }
+    }
+
     @Test
     fun modernEmeraldPublishesItsSourceDefinedTrainerRuntimeDescriptor() {
         val path = Path.of(
@@ -35,6 +94,22 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
     }
 
     @Test
+    fun unboundPublishesItsSourceDefinedCfruClock() {
+        val path = Path.of(
+            System.getenv("DUALDEX_UNBOUND_ROM")
+                ?: "D:/Temp/PokemonHacks/corpus/expanded/roms/0199-a275be0f927e/Unbound (v2.1.1.1).gba",
+        )
+        assumeTrue("real Unbound ROM does not exist: $path", Files.isRegularFile(path))
+
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals(UNBOUND_SHA256, rom.sha256)
+        val runtime = requireNotNull(Gen3RuntimeMemoryLayoutResolver.resolve(rom, EngineFamily.FIRERED_LEAFGREEN))
+
+        assertEquals(0x03005EA4L, runtime.liveClockAddress)
+        assertNull(runtime.liveClockSchedule)
+    }
+
+    @Test
     fun officialFireRedPublishesItsSourceDefinedSaveRuntimeDescriptor() {
         val configured = System.getenv("DUALDEX_OFFICIAL_FIRERED_ROM")
         assumeTrue("set DUALDEX_OFFICIAL_FIRERED_ROM to run this live-ROM regression", !configured.isNullOrBlank())
@@ -48,6 +123,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         assertEquals(0x03005008L, runtime.saveBlock1PointerAddress)
         assertEquals(0x0300500CL, runtime.saveBlock2PointerAddress)
         assertEquals(null, runtime.extendedSaveAddress)
+        assertNull(runtime.liveClockAddress)
+        assertNull(runtime.liveClockSchedule)
         val save = requireNotNull(runtime.saveRuntimeAbi)
         assertEquals(0x3D68, save.saveBlock1Size)
         assertEquals(0x0F24, save.saveBlock2Size)
@@ -75,6 +152,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
 
         assertEquals(0x03005D8CL, runtime.saveBlock1PointerAddress)
         assertEquals(0x03005D90L, runtime.saveBlock2PointerAddress)
+        requireNotNull(runtime.liveClockAddress)
+        assertNull(runtime.liveClockSchedule)
         val save = requireNotNull(runtime.saveRuntimeAbi)
         assertEquals(0x3D88, save.saveBlock1Size)
         assertEquals(0x0F2C, save.saveBlock2Size)
@@ -134,5 +213,11 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
             "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af"
         const val OFFICIAL_FIRERED_SHA256 =
             "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059"
+        const val OFFICIAL_RUBY_SHA256 =
+            "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c"
+        const val OFFICIAL_SAPPHIRE_SHA256 =
+            "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb"
+        const val UNBOUND_SHA256 =
+            "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7"
     }
 }

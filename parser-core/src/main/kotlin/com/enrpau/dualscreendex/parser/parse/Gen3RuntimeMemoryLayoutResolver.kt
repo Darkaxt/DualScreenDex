@@ -11,17 +11,18 @@ import com.enrpau.dualscreendex.parser.model.EngineFamily
  */
 object Gen3RuntimeMemoryLayoutResolver {
     fun resolve(rom: RomImage, family: EngineFamily? = null): CatalogGen3RuntimeMemoryLayout? {
-        val analysis = analyze(rom)
+        val mainAbi = sourceMainAbi(family)
+        val analysis = analyze(rom, mainAbi)
         val best = analysis.scores.values.maxWithOrNull(compareBy<ReferenceScore> { it.base }.thenBy { it.tail })
             ?: return null
         val mainBase = analysis.scores.filterValues { it == best }.keys.singleOrNull() ?: return null
-        val battleField = resolveBattleField(rom, mainBase)
-            ?: sourceDefinedBattleField(analysis.references, mainBase, family)
+        val battleField = resolveBattleField(rom, mainBase, mainAbi)
+            ?: sourceDefinedBattleField(analysis.references, mainBase, family, mainAbi)
             ?: return null
         val liveParty = resolveLiveParty(analysis.references)
         val battleLayout = resolveBattleLayout(analysis.references)
         val battleTypeFlags = resolveBattleTypeFlags(rom)
-        val liveClock = resolveLiveClock(rom, analysis.references)
+        val liveClock = resolveLiveClock(rom, analysis.references, family)
         val base = CatalogGen3RuntimeMemoryLayout(
             mainAddress = mainBase,
             inBattleAddress = battleField.address,
@@ -47,11 +48,16 @@ object Gen3RuntimeMemoryLayoutResolver {
     }
 
     /**
-     * Resolves the source-defined Gen III `struct Time` from compiled day/night consumers.
-     * The address comes from ROM literal pools. A candidate must expose the hour/minute/second
-     * byte fields and at least two complete night-range predicates (`hour <= 5 || hour >= 21`).
+     * Resolves the source-defined Gen III `struct Time` from compiled field consumers.
+     * The address comes from ROM literal pools and must have independently compiled reads of
+     * hours, minutes, and seconds. A day/night schedule is published only when the ROM also
+     * proves that separate behavior through complete night-range predicates.
      */
-    private fun resolveLiveClock(rom: RomImage, references: Map<Long, Int>): ResolvedLiveClock? {
+    private fun resolveLiveClock(
+        rom: RomImage,
+        references: Map<Long, Int>,
+        family: EngineFamily?,
+    ): ResolvedLiveClock? {
         val eligible = references.keys.filterTo(linkedSetOf()) {
             it in IWRAM_START..IWRAM_END - CLOCK_BYTES + 1 && it and 3L == 0L
         }
@@ -73,7 +79,7 @@ object Gen3RuntimeMemoryLayoutResolver {
                     ) {
                         val fieldOffset = (instruction ushr 6) and 0x1F
                         if (fieldOffset in CLOCK_HOUR_OFFSET..CLOCK_SECOND_OFFSET) {
-                            candidate.byteFields += fieldOffset
+                            candidate.fieldSites.getOrPut(fieldOffset) { linkedSetOf() } += cursor
                         }
                         if (fieldOffset == CLOCK_HOUR_OFFSET && hasNightRangePredicate(rom, cursor, instruction and 7)) {
                             candidate.nightPredicateSites += cursor
@@ -85,18 +91,99 @@ object Gen3RuntimeMemoryLayoutResolver {
             }
             offset += 2
         }
-        val address = evidence.filterValues {
-            it.byteFields.containsAll(setOf(CLOCK_HOUR_OFFSET, CLOCK_MINUTE_OFFSET, CLOCK_SECOND_OFFSET)) &&
-                it.nightPredicateSites.size >= MIN_NIGHT_RANGE_PREDICATES
-        }.keys.singleOrNull()
-            ?: return null
-        return ResolvedLiveClock(
-            address = address,
-            schedule = CatalogGameClockSchedule(
-                dayStartHour = EARLY_NIGHT_LAST_HOUR + 1,
-                nightStartHour = LATE_NIGHT_FIRST_HOUR,
-            ),
-        )
+        val complete = evidence.filterValues { it.hasAllClockFields }
+        val scheduledAddresses = complete.filterValues {
+            it.nightPredicateSites.size >= MIN_NIGHT_RANGE_PREDICATES
+        }.keys
+        if (scheduledAddresses.size == 1) {
+            return ResolvedLiveClock(
+                address = scheduledAddresses.single(),
+                schedule = CatalogGameClockSchedule(
+                    dayStartHour = EARLY_NIGHT_LAST_HOUR + 1,
+                    nightStartHour = LATE_NIGHT_FIRST_HOUR,
+                ),
+            )
+        }
+        if (scheduledAddresses.size > 1) return null
+        if (family == EngineFamily.FIRERED_LEAFGREEN) {
+            return resolveExpandedClock(rom, references)
+        }
+        if (family !in SOURCE_CLOCK_FAMILIES) return null
+        val candidates = complete.map { (address, candidate) ->
+            SourceClockCandidate(
+                address = address,
+                baseReferences = references[address] ?: 0,
+                minimumFieldSites = candidate.minimumFieldSites,
+                totalFieldSites = candidate.totalFieldSites,
+            )
+        }.filter { it.baseReferences >= MIN_SOURCE_CLOCK_REFERENCES }
+        val best = candidates.maxWithOrNull(
+            compareBy<SourceClockCandidate> { it.minimumFieldSites }
+                .thenBy { it.totalFieldSites }
+                .thenBy { it.baseReferences },
+        ) ?: return null
+        val address = candidates.filter { it.score == best.score }.singleOrNull()?.address ?: return null
+        return ResolvedLiveClock(address = address, schedule = null)
+    }
+
+    /**
+     * CFRU-derived games replace `struct Time` with a larger source-defined `struct Clock`.
+     * Its date fields precede hour/minute/second at offsets 6/7/8. Selection requires one unique,
+     * repeatedly referenced IWRAM root with compiled consumers for every clock field; the reader
+     * starts four bytes into that object so the normalized five-byte clock window stays unchanged.
+     */
+    private fun resolveExpandedClock(
+        rom: RomImage,
+        references: Map<Long, Int>,
+    ): ResolvedLiveClock? {
+        val eligible = references.filterValues { it >= MIN_EXPANDED_CLOCK_REFERENCES }.keys.filterTo(linkedSetOf()) {
+            it in IWRAM_START..IWRAM_END - EXPANDED_CLOCK_BYTES + 1 && it and 3L == 0L
+        }
+        val evidence = linkedMapOf<Long, ClockEvidence>()
+        var offset = 0
+        while (offset <= rom.size - 2) {
+            val raw = rom.u16le(offset)
+            val address = if (raw and 0xF800 == 0x4800) literalValue(rom, offset) else null
+            if (address != null && address in eligible) {
+                val candidate = evidence.getOrPut(address) { ClockEvidence() }
+                val pointerRegister = (raw ushr 8) and 7
+                var cursor = offset + 2
+                val end = minOf(rom.size - 2, offset + CLOCK_FIELD_TRACE_BYTES)
+                while (cursor <= end) {
+                    val instruction = rom.u16le(cursor)
+                    if (
+                        instruction and 0xF800 == 0x7800 &&
+                        (instruction ushr 3) and 7 == pointerRegister
+                    ) {
+                        val fieldOffset = (instruction ushr 6) and 0x1F
+                        if (fieldOffset in EXPANDED_CLOCK_HOUR_OFFSET..EXPANDED_CLOCK_SECOND_OFFSET) {
+                            candidate.fieldSites.getOrPut(fieldOffset) { linkedSetOf() } += cursor
+                        }
+                    }
+                    if (instruction and 0xFF87 == 0x4700 || instruction and 0xFF00 == 0xBD00) break
+                    cursor += if (instruction and 0xF800 == 0xF000) 4 else 2
+                }
+            }
+            offset += 2
+        }
+        val candidates = evidence.mapNotNull { (address, candidate) ->
+            val fieldCounts = (EXPANDED_CLOCK_HOUR_OFFSET..EXPANDED_CLOCK_SECOND_OFFSET)
+                .map { candidate.fieldSites[it].orEmpty().size }
+            if (fieldCounts.any { it < MIN_EXPANDED_CLOCK_FIELD_SITES }) return@mapNotNull null
+            SourceClockCandidate(
+                address = address + EXPANDED_CLOCK_READ_SHIFT,
+                baseReferences = references[address] ?: 0,
+                minimumFieldSites = fieldCounts.min(),
+                totalFieldSites = fieldCounts.sum(),
+            )
+        }
+        val best = candidates.maxWithOrNull(
+            compareBy<SourceClockCandidate> { it.totalFieldSites }
+                .thenBy { it.minimumFieldSites }
+                .thenBy { it.baseReferences },
+        ) ?: return null
+        val address = candidates.filter { it.score == best.score }.singleOrNull()?.address ?: return null
+        return ResolvedLiveClock(address = address, schedule = null)
     }
 
     private fun hasNightRangePredicate(rom: RomImage, hourLoadOffset: Int, hourRegister: Int): Boolean {
@@ -129,18 +216,19 @@ object Gen3RuntimeMemoryLayoutResolver {
 
     private data class ResolvedLiveClock(
         val address: Long,
-        val schedule: CatalogGameClockSchedule,
+        val schedule: CatalogGameClockSchedule?,
     )
 
     private fun sourceDefinedBattleField(
         references: Map<Long, Int>,
         mainBase: Long,
         family: EngineFamily?,
+        mainAbi: SourceMainAbi,
     ): BitField? {
         if (family !in SOURCE_DEFINED_MAIN_FAMILIES) return null
-        val tail = mainBase + MAIN_TAIL_WORD_OFFSET
+        val tail = mainBase + mainAbi.tailWordOffset
         if ((references[tail] ?: 0) < MIN_MAIN_TAIL_REFERENCES) return null
-        return BitField(mainBase + MAIN_BATTLE_FLAGS_OFFSET, IN_BATTLE_MASK)
+        return BitField(mainBase + mainAbi.battleFlagsOffset, IN_BATTLE_MASK)
     }
 
     /**
@@ -263,7 +351,7 @@ object Gen3RuntimeMemoryLayoutResolver {
      * authoritative only when the ROM contains both a one-bit set and a matching clear for the
      * same WRAM address. Literal addresses, index arithmetic and the mask all come from ROM code.
      */
-    private fun resolveBattleField(rom: RomImage, mainBase: Long): BitField? {
+    private fun resolveBattleField(rom: RomImage, mainBase: Long, mainAbi: SourceMainAbi): BitField? {
         val mutations = linkedSetOf<BitMutation>()
         var offset = 0
         while (offset <= rom.size - 2) {
@@ -281,7 +369,7 @@ object Gen3RuntimeMemoryLayoutResolver {
             offset += 2
         }
         val fields = mutations
-            .filter { it.address in mainBase until mainBase + MAIN_STRUCT_SIZE }
+            .filter { it.address in mainBase until mainBase + mainAbi.structSize }
             .groupBy { BitField(it.address, it.mask) }
             .filterValues { evidence -> evidence.any { it.set } && evidence.any { !it.set } }
         val highestEvidence = fields.maxOfOrNull { (_, evidence) -> evidence.map { it.site }.distinct().size }
@@ -355,7 +443,7 @@ object Gen3RuntimeMemoryLayoutResolver {
         }
     }
 
-    private fun analyze(rom: RomImage): ReferenceAnalysis {
+    private fun analyze(rom: RomImage, mainAbi: SourceMainAbi): ReferenceAnalysis {
         val references = linkedMapOf<Long, Int>()
         var offset = 0
         while (offset <= rom.size - 4) {
@@ -368,20 +456,20 @@ object Gen3RuntimeMemoryLayoutResolver {
         val scores = references.filter { (base, count) ->
             base in IWRAM_START..IWRAM_END &&
                 count >= MIN_MAIN_BASE_REFERENCES &&
-                references.getOrDefault(base + MAIN_TAIL_WORD_OFFSET, 0) >= MIN_MAIN_TAIL_REFERENCES &&
-                base + MAIN_STRUCT_SIZE <= IWRAM_END + 1
-        }.mapValues { (base, count) -> ReferenceScore(count, references.getValue(base + MAIN_TAIL_WORD_OFFSET)) }
+                references.getOrDefault(base + mainAbi.tailWordOffset, 0) >= MIN_MAIN_TAIL_REFERENCES &&
+                base + mainAbi.structSize <= IWRAM_END + 1
+        }.mapValues { (base, count) -> ReferenceScore(count, references.getValue(base + mainAbi.tailWordOffset)) }
         return ReferenceAnalysis(references, scores)
     }
+
+    private fun sourceMainAbi(family: EngineFamily?): SourceMainAbi =
+        if (family == EngineFamily.RUBY_SAPPHIRE) RUBY_SAPPHIRE_MAIN_ABI else COMMON_MAIN_ABI
 
     private const val IWRAM_START = 0x03000000L
     private const val IWRAM_END = 0x03007FFFL
     private const val EWRAM_START = 0x02000000L
     private const val EWRAM_END = 0x0203FFFFL
     private const val EWRAM_WORD_END = EWRAM_END - 3
-    private const val MAIN_STRUCT_SIZE = 0x43C
-    private const val MAIN_TAIL_WORD_OFFSET = 0x438
-    private const val MAIN_BATTLE_FLAGS_OFFSET = 0x439
     private const val IN_BATTLE_MASK = 0x02
     private const val SAVE_MAP_GROUP_OFFSET = 4
     private const val SAVE_MAP_NUMBER_OFFSET = 5
@@ -415,17 +503,55 @@ object Gen3RuntimeMemoryLayoutResolver {
     private const val EARLY_NIGHT_LAST_HOUR = 5
     private const val LATE_NIGHT_FIRST_HOUR = 21
     private const val MIN_NIGHT_RANGE_PREDICATES = 2
+    private const val MIN_SOURCE_CLOCK_REFERENCES = 3
+    private const val EXPANDED_CLOCK_HOUR_OFFSET = 6
+    private const val EXPANDED_CLOCK_SECOND_OFFSET = 8
+    private const val EXPANDED_CLOCK_BYTES = 9L
+    private const val EXPANDED_CLOCK_READ_SHIFT = 4L
+    private const val MIN_EXPANDED_CLOCK_REFERENCES = 10
+    private const val MIN_EXPANDED_CLOCK_FIELD_SITES = 4
     private const val OR_OPERATION = 12
     private const val BIT_CLEAR_OPERATION = 14
     private val NON_MUTATING_ALU_OPERATIONS = setOf(8, 10)
-    private val SOURCE_DEFINED_MAIN_FAMILIES = setOf(EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN)
+    private val SOURCE_DEFINED_MAIN_FAMILIES = setOf(
+        EngineFamily.RUBY_SAPPHIRE,
+        EngineFamily.EMERALD,
+        EngineFamily.FIRERED_LEAFGREEN,
+    )
+    private val SOURCE_CLOCK_FAMILIES = setOf(EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD)
     private val PLAYER_RUNTIME_FAMILIES = SOURCE_DEFINED_MAIN_FAMILIES
+    private val COMMON_MAIN_ABI = SourceMainAbi(structSize = 0x43CL, tailWordOffset = 0x438L, battleFlagsOffset = 0x439L)
+    private val RUBY_SAPPHIRE_MAIN_ABI = SourceMainAbi(
+        structSize = 0x440L,
+        tailWordOffset = 0x43CL,
+        battleFlagsOffset = 0x43DL,
+    )
 
     private data class ReferenceScore(val base: Int, val tail: Int)
-    private data class ClockEvidence(
-        val byteFields: MutableSet<Int> = linkedSetOf(),
-        val nightPredicateSites: MutableSet<Int> = linkedSetOf(),
+    private data class SourceMainAbi(
+        val structSize: Long,
+        val tailWordOffset: Long,
+        val battleFlagsOffset: Long,
     )
+    private data class ClockEvidence(
+        val fieldSites: MutableMap<Int, MutableSet<Int>> = linkedMapOf(),
+        val nightPredicateSites: MutableSet<Int> = linkedSetOf(),
+    ) {
+        val hasAllClockFields: Boolean
+            get() = (CLOCK_HOUR_OFFSET..CLOCK_SECOND_OFFSET).all { fieldSites[it].orEmpty().isNotEmpty() }
+        val minimumFieldSites: Int
+            get() = (CLOCK_HOUR_OFFSET..CLOCK_SECOND_OFFSET).minOf { fieldSites[it].orEmpty().size }
+        val totalFieldSites: Int
+            get() = (CLOCK_HOUR_OFFSET..CLOCK_SECOND_OFFSET).sumOf { fieldSites[it].orEmpty().size }
+    }
+    private data class SourceClockCandidate(
+        val address: Long,
+        val baseReferences: Int,
+        val minimumFieldSites: Int,
+        val totalFieldSites: Int,
+    ) {
+        val score: Triple<Int, Int, Int> get() = Triple(minimumFieldSites, totalFieldSites, baseReferences)
+    }
     private data class ReferenceAnalysis(
         val references: Map<Long, Int>,
         val scores: Map<Long, ReferenceScore>,

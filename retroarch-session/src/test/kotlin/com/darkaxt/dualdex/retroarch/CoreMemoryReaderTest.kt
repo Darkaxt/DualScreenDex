@@ -100,4 +100,33 @@ class CoreMemoryReaderTest {
 
         assertArrayEquals(payload, complete.regions.getValue("ewram"))
     }
+
+    @Test
+    fun coalescesOverlappingLogicalRegionsAndScattersOnePhysicalRead() {
+        val sent = mutableListOf<String>()
+        val replies = ArrayDeque<ByteArray>()
+        val reader = CoreMemoryReadSession(
+            sender = { sent += it.toString(Charsets.US_ASCII) },
+            poller = { replies.pollFirst() },
+            maximumChunkBytes = 16,
+        )
+
+        assertEquals(
+            CoreMemoryReadState.Reading(0, 6),
+            reader.start(
+                listOf(
+                    CoreMemoryRegion("first", 0x02001000, 4),
+                    CoreMemoryRegion("second", 0x02001002, 4),
+                ),
+            ),
+        )
+        assertEquals(listOf("READ_CORE_MEMORY 2001000 6"), sent)
+
+        replies += "READ_CORE_MEMORY 2001000 00 01 02 03 04 05".toByteArray()
+        val complete = reader.heartbeat() as CoreMemoryReadState.Complete
+
+        assertArrayEquals(byteArrayOf(0, 1, 2, 3), complete.regions.getValue("first"))
+        assertArrayEquals(byteArrayOf(2, 3, 4, 5), complete.regions.getValue("second"))
+        assertEquals(1, sent.size)
+    }
 }

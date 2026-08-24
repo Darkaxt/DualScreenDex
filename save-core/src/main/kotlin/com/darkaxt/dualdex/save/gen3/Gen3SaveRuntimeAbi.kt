@@ -21,7 +21,8 @@ data class Gen3TrainerCardAbi(
     val trainerIdOffset: Int,
     val playTimeHoursOffset: Int,
     val playTimeMinutesOffset: Int,
-    val encryptionKeyOffset: Int,
+    /** Null when this source family stores money and bag quantities without XOR obfuscation. */
+    val encryptionKeyOffset: Int?,
     val moneyOffset: Int,
     val maximumMoney: Long,
     val badgeFlags: List<Gen3BitFlag>,
@@ -85,7 +86,7 @@ data class Gen3SaveRuntimeAbi(
         requireRange(trainer.trainerIdOffset, 4, saveBlock2Size, "trainer ID")
         requireRange(trainer.playTimeHoursOffset, 2, saveBlock2Size, "play time hours")
         requireRange(trainer.playTimeMinutesOffset, 1, saveBlock2Size, "play time minutes")
-        requireRange(trainer.encryptionKeyOffset, 4, saveBlock2Size, "encryption key")
+        trainer.encryptionKeyOffset?.let { requireRange(it, 4, saveBlock2Size, "encryption key") }
         requireRange(trainer.moneyOffset, 4, saveBlock1Size, "money")
         trainer.badgeFlags.forEach { requireRange(it.byteOffset, 1, saveBlock1Size, "badge flag") }
         bag.pockets.forEach { pocket ->

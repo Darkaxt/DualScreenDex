@@ -614,6 +614,8 @@ class ProductionCompanionRuntime(
                     },
                     trainerBattleMask = layout.trainerBattleMask,
                     nonWildBattleMask = layout.nonWildBattleMask,
+                    saveBlock1Address = layout.saveBlock1Address,
+                    saveBlock2Address = layout.saveBlock2Address,
                     saveBlock1PointerAddress = layout.saveBlock1PointerAddress,
                     saveBlock2PointerAddress = layout.saveBlock2PointerAddress,
                     saveBlock1Size = layout.saveRuntimeAbi?.saveBlock1Size,

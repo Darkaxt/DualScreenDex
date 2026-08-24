@@ -44,7 +44,8 @@ object Gen3TrainerFieldCodec {
         saveBlock2: ByteArray?,
         abi: Gen3SaveRuntimeAbi,
     ): SaveSectionResult<Long> = field("save encryption key") {
-        completeBlock2(saveBlock2, abi).u32le(abi.trainer.encryptionKeyOffset)
+        val bytes = completeBlock2(saveBlock2, abi)
+        abi.trainer.encryptionKeyOffset?.let(bytes::u32le) ?: 0L
     }
 
     fun decodeMoney(

@@ -220,7 +220,8 @@ data class CatalogGen3TrainerCardAbi(
     val trainerIdOffset: Int,
     val playTimeHoursOffset: Int,
     val playTimeMinutesOffset: Int,
-    val encryptionKeyOffset: Int,
+    /** Null for source families, such as Ruby/Sapphire, whose save values are not XOR-obfuscated. */
+    val encryptionKeyOffset: Int?,
     val moneyOffset: Int,
     val maximumMoney: Long,
     val badgeFlags: List<CatalogGen3BitFlag>,
@@ -279,7 +280,7 @@ data class CatalogGen3SaveRuntimeAbi(
         requireRange(trainer.trainerIdOffset, 4, saveBlock2Size)
         requireRange(trainer.playTimeHoursOffset, 2, saveBlock2Size)
         requireRange(trainer.playTimeMinutesOffset, 1, saveBlock2Size)
-        requireRange(trainer.encryptionKeyOffset, 4, saveBlock2Size)
+        trainer.encryptionKeyOffset?.let { requireRange(it, 4, saveBlock2Size) }
         requireRange(trainer.moneyOffset, 4, saveBlock1Size)
         trainer.badgeFlags.forEach { requireRange(it.byteOffset, 1, saveBlock1Size) }
         bag.pockets.forEach { pocket ->
@@ -353,6 +354,8 @@ data class CatalogGen3RuntimeMemoryLayout(
     val battleTypeFlagsAddress: Long? = null,
     val trainerBattleMask: Int? = null,
     val nonWildBattleMask: Int? = null,
+    val saveBlock1Address: Long? = null,
+    val saveBlock2Address: Long? = null,
     val saveBlock1PointerAddress: Long? = null,
     val saveBlock2PointerAddress: Long? = null,
     val extendedSaveAddress: Long? = null,
@@ -384,10 +387,28 @@ data class CatalogGen3RuntimeMemoryLayout(
         ) { "battle type descriptor must be complete" }
         require(battleTypeFlagsAddress == null || battleTypeFlagsAddress in 0x02000000L..0x0203FFFCL)
         require(trainerBattleMask == null || trainerBattleMask.countOneBits() == 1)
+        val directSaveFields = listOf(saveBlock1Address, saveBlock2Address)
+        val pointerSaveFields = listOf(saveBlock1PointerAddress, saveBlock2PointerAddress)
+        require(directSaveFields.all { it == null } || directSaveFields.all { it != null }) {
+            "direct save-block descriptor must be complete"
+        }
+        require(pointerSaveFields.all { it == null } || pointerSaveFields.all { it != null }) {
+            "save-block pointer descriptor must be complete"
+        }
+        require(directSaveFields.all { it == null } || pointerSaveFields.all { it == null }) {
+            "save blocks must use either direct addresses or pointer globals, never both"
+        }
+        require((saveRuntimeAbi == null) == (directSaveFields.all { it == null } && pointerSaveFields.all { it == null })) {
+            "save-block addressing and ABI descriptor must be present together"
+        }
+        require(saveBlock1Address == null || saveBlock1Address in 0x02000000L..0x0203FFFFL)
+        require(saveBlock2Address == null || saveBlock2Address in 0x02000000L..0x0203FFFFL)
         require(
-            listOf(saveBlock1PointerAddress, saveBlock2PointerAddress, saveRuntimeAbi).all { it == null } ||
-                listOf(saveBlock1PointerAddress, saveBlock2PointerAddress, saveRuntimeAbi).all { it != null },
-        ) { "save-block pointer and ABI descriptor must be complete" }
+            saveBlock1Address == null || saveBlock1Address + requireNotNull(saveRuntimeAbi).saveBlock1Size <= 0x02040000L,
+        ) { "direct SaveBlock1 window must fit in EWRAM" }
+        require(
+            saveBlock2Address == null || saveBlock2Address + requireNotNull(saveRuntimeAbi).saveBlock2Size <= 0x02040000L,
+        ) { "direct SaveBlock2 window must fit in EWRAM" }
         require(saveBlock1PointerAddress == null || saveBlock1PointerAddress in 0x02000000L..0x03007FFCL)
         require(saveBlock2PointerAddress == null || saveBlock2PointerAddress in 0x02000000L..0x03007FFCL)
         require(extendedSaveAddress == null || extendedSaveAddress in 0x02000000L..0x0203FFFFL)

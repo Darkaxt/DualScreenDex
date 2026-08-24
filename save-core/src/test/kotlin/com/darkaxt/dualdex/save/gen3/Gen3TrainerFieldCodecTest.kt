@@ -8,6 +8,18 @@ import org.junit.Test
 
 class Gen3TrainerFieldCodecTest {
     @Test
+    fun nullEncryptionKeyOffsetDecodesRubySapphireRawMoney() {
+        val rawAbi = ABI.copy(trainer = ABI.trainer.copy(encryptionKeyOffset = null))
+        val block1 = ByteArray(SAVE_BLOCK1_SIZE).apply { putU32le(0x490, 54_321) }
+        val block2 = ByteArray(SAVE_BLOCK2_SIZE)
+
+        val key = Gen3TrainerFieldCodec.decodeEncryptionKey(block2, rawAbi).value
+
+        assertEquals(0L, key)
+        assertEquals(54_321L, Gen3TrainerFieldCodec.decodeMoney(block1, key, rawAbi).value)
+    }
+
+    @Test
     fun decodesEachOfficialEmeraldTrainerFieldIndependently() {
         val block1 = ByteArray(SAVE_BLOCK1_SIZE)
         val block2 = ByteArray(SAVE_BLOCK2_SIZE)

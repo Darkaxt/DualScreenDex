@@ -39,6 +39,8 @@ data class Gen3RuntimeMemoryLayout(
     val battleUi: Gen3BattleUiMemoryLayout? = null,
     val trainerBattleMask: Int? = null,
     val nonWildBattleMask: Int? = null,
+    val saveBlock1Address: Long? = null,
+    val saveBlock2Address: Long? = null,
     val saveBlock1PointerAddress: Long? = null,
     val saveBlock2PointerAddress: Long? = null,
     val saveBlock1Size: Int? = null,
@@ -78,16 +80,35 @@ data class Gen3RuntimeMemoryLayout(
         ) { "battle type descriptor must be complete" }
         require(battleTypeFlagsAddress == null || battleTypeFlagsAddress in EWRAM_START..EWRAM_END - 3)
         require(trainerBattleMask == null || trainerBattleMask.countOneBits() == 1)
+        val directSaveFields = listOf(saveBlock1Address, saveBlock2Address)
+        val pointerSaveFields = listOf(saveBlock1PointerAddress, saveBlock2PointerAddress)
+        val saveSizeFields = listOf(saveBlock1Size, saveBlock2Size)
+        require(directSaveFields.all { it == null } || directSaveFields.all { it != null }) {
+            "direct save-block read-plan descriptor must be complete"
+        }
+        require(pointerSaveFields.all { it == null } || pointerSaveFields.all { it != null }) {
+            "save-block pointer read-plan descriptor must be complete"
+        }
+        require(directSaveFields.all { it == null } || pointerSaveFields.all { it == null }) {
+            "save blocks must use either direct addresses or pointer globals, never both"
+        }
         require(
-            listOf(saveBlock1PointerAddress, saveBlock2PointerAddress, saveBlock1Size, saveBlock2Size)
-                .all { it == null } ||
-                listOf(saveBlock1PointerAddress, saveBlock2PointerAddress, saveBlock1Size, saveBlock2Size)
-                    .all { it != null },
-        ) { "save-block pointer read-plan descriptor must be complete" }
+            saveSizeFields.all { it == null } ||
+                (saveSizeFields.all { it != null } &&
+                    (directSaveFields.all { it != null } || pointerSaveFields.all { it != null })),
+        ) { "save-block addressing and sizes must be present together" }
+        require(saveBlock1Address == null || saveBlock1Address in EWRAM_START..EWRAM_END)
+        require(saveBlock2Address == null || saveBlock2Address in EWRAM_START..EWRAM_END)
         require(saveBlock1PointerAddress == null || saveBlock1PointerAddress in IWRAM_START..IWRAM_END - 3)
         require(saveBlock2PointerAddress == null || saveBlock2PointerAddress in IWRAM_START..IWRAM_END - 3)
         require(saveBlock1Size == null || saveBlock1Size > 0)
         require(saveBlock2Size == null || saveBlock2Size > 0)
+        require(
+            saveBlock1Address == null || saveBlock1Address + requireNotNull(saveBlock1Size) <= EWRAM_END + 1,
+        ) { "direct SaveBlock1 read-plan window must fit in EWRAM" }
+        require(
+            saveBlock2Address == null || saveBlock2Address + requireNotNull(saveBlock2Size) <= EWRAM_END + 1,
+        ) { "direct SaveBlock2 read-plan window must fit in EWRAM" }
         require((extendedSaveAddress == null) == (extendedSaveSize == null)) {
             "extended-save read-plan address and size must be present together"
         }

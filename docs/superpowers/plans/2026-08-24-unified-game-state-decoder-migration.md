@@ -758,7 +758,7 @@ No Stage 7 requirement is deferred or blocked. Real-ROM identity controls, heap/
 - Create: `app/src/test/resources/unified-state/official-rom-identities.json`
 - Create: `docs/reports/2026-08-24-unified-game-state-verification.md`
 
-- [ ] **Step 1: Resolve established real controls without creating ROM copies**
+- [x] **Step 1: Resolve established real controls without creating ROM copies**
 
 ```powershell
 $modernCandidates = @(rg --files 'D:\Temp\PokemonHacks\corpus\expanded\roms' | rg 'Modern Emerald.*\.gba$')
@@ -772,15 +772,15 @@ $env:DUALDEX_OFFICIAL_GBA_ROOT = 'D:\Temp\PokemonHacks\Game Boy Advance'
 
 Enumerate official Gen I–III candidates from the two exact roots through the existing ROM-source loader, including standard archive containers without extracting persistent ROM copies. Select official base ROM revisions by internal title, game code, and revision, calculate SHA-256, and freeze those identities in `app/src/test/resources/unified-state/official-rom-identities.json`. Fail if an expected identity is absent, duplicated, or resolves to different bytes. Modern Emerald, Unbound, and Odyssey also assert their exact SHA-256 before decode.
 
-- [ ] **Step 2: Add the real-control matrix**
+- [x] **Step 2: Add the real-control matrix**
 
 For official Gen I–III, Modern Emerald, Unbound, and Odyssey, record per-field live availability. For source-backed Gen III memory fixtures, require Trainer/Pokédex/Party/location/clock without SaveRAM, then apply recovery and prove it fills only intentionally unavailable fields.
 
-- [ ] **Step 3: Measure read and heap behavior**
+- [x] **Step 3: Measure read and heap behavior**
 
 Assert overlapping windows coalesce, requested bytes increase only for a newly migrated field, one live/recovery pair is retained, and no full ROM/SaveRAM/WRAM/EWRAM array survives decode. Record exact before/after window counts, bytes, and retained heap in the report.
 
-- [ ] **Step 4: Run the full gate**
+- [x] **Step 4: Run the full gate**
 
 ```powershell
 .\gradlew.bat :save-core:test :battle-memory:test :parser-core:test :catalog-store:test :companion-core:test :app:testDebugUnitTest :app:lintRelease --no-daemon --console=plain
@@ -793,7 +793,7 @@ git diff --check
 
 Expected: zero failures and successful web production build.
 
-- [ ] **Step 5: Write the sanitized report and commit**
+- [x] **Step 5: Write the sanitized report and commit**
 
 Record exact per-field results, read windows/bytes, heap retention, privacy, UI regression, and unsupported source-backed fields. Exclude player names, IDs, money, save bytes, and personal save paths.
 

@@ -30,11 +30,20 @@ object Gen3PlayerRuntimeLayoutResolver {
         family: EngineFamily,
     ): CatalogGen3RuntimeMemoryLayout {
         val references = compiledRamReferences(rom)
+        val directSave = if (family == EngineFamily.RUBY_SAPPHIRE) {
+            resolveRubySapphireDirectSave(references)
+        } else null
         val gfHeader = if (family == EngineFamily.FIRERED_LEAFGREEN) resolveGfRomHeader(rom) else null
         val expandedSave = gfHeader?.let { resolveExpandedSave(rom, it, references) }
-        val saveBlock1 = Gen3SaveBlock1PointerResolver.resolve(rom) ?: expandedSave?.saveBlock1PointerAddress
-        val saveBlock2 = resolveSaveBlock2Pointer(rom, saveBlock1) ?: expandedSave?.saveBlock2PointerAddress
-        val saveGroup = if (saveBlock1 != null && saveBlock2 != null) {
+        val saveBlock1Pointer = if (directSave == null) {
+            Gen3SaveBlock1PointerResolver.resolve(rom) ?: expandedSave?.saveBlock1PointerAddress
+        } else null
+        val saveBlock2Pointer = if (directSave == null) {
+            resolveSaveBlock2Pointer(rom, saveBlock1Pointer) ?: expandedSave?.saveBlock2PointerAddress
+        } else null
+        val saveGroup = if (directSave != null) {
+            rubySapphireSaveRuntimeAbi()
+        } else if (saveBlock1Pointer != null && saveBlock2Pointer != null) {
             when (family) {
                 EngineFamily.EMERALD -> emeraldSaveRuntimeAbi()
                 EngineFamily.FIRERED_LEAFGREEN -> gfHeader?.let { fireRedSaveRuntimeAbi(it, expandedSave) }
@@ -45,14 +54,50 @@ object Gen3PlayerRuntimeLayoutResolver {
         val battle = resolveBattleLayout(references)
         return base.copy(
             battleMonsAddress = battle?.battleMonsAddress ?: base.battleMonsAddress,
-            saveBlock1PointerAddress = saveGroup?.let { saveBlock1 },
-            saveBlock2PointerAddress = saveGroup?.let { saveBlock2 },
+            saveBlock1Address = saveGroup?.let { directSave?.saveBlock1Address },
+            saveBlock2Address = saveGroup?.let { directSave?.saveBlock2Address },
+            saveBlock1PointerAddress = saveGroup?.let { saveBlock1Pointer },
+            saveBlock2PointerAddress = saveGroup?.let { saveBlock2Pointer },
             extendedSaveAddress = saveGroup?.extendedSaveDataSize?.takeIf { it > 0 }
                 ?.let { expandedSave?.extendedSaveAddress },
             saveRuntimeAbi = saveGroup,
             partyAbi = party,
             battleUiAbi = battle?.battleUi,
         )
+    }
+
+    /**
+     * Retail Ruby/Sapphire owns the save blocks as adjacent EWRAM objects rather than pointer-backed
+     * allocations. Resolve that mode from the complete source-defined field tuple: identity/time
+     * fields in SaveBlock2 and location/party/money/bag/flags fields in SaveBlock1. Absolute
+     * addresses are admitted only when the ROM has one unique tuple with the source-defined
+     * SaveBlock2-to-SaveBlock1 allocation relationship.
+     */
+    private fun resolveRubySapphireDirectSave(
+        references: Map<Long, Int>,
+    ): DirectSaveResolution? {
+        val saveBlock2Candidates = references.keys.filter { base ->
+            base in EWRAM_START..EWRAM_END - RUBY_SAPPHIRE_SAVE_BLOCK2_SIZE + 1 &&
+                (references[base] ?: 0) >= MIN_DIRECT_SAVE2_BASE_REFERENCES &&
+                (references[base + SAVE2_TRAINER_ID_OFFSET] ?: 0) >= MIN_DIRECT_SAVE2_TRAINER_ID_REFERENCES &&
+                (references[base + RUBY_SAPPHIRE_LOCAL_TIME_OFFSET] ?: 0) >= MIN_DIRECT_SAVE2_TIME_REFERENCES &&
+                (references[base + RUBY_SAPPHIRE_BERRY_TIME_OFFSET] ?: 0) >= MIN_DIRECT_SAVE2_BERRY_TIME_REFERENCES
+        }
+        val saveBlock1Candidates = references.keys.filterTo(linkedSetOf()) { base ->
+            base in EWRAM_START..EWRAM_END - RUBY_SAPPHIRE_SAVE_BLOCK1_SIZE + 1 &&
+                (references[base] ?: 0) >= MIN_DIRECT_SAVE1_BASE_REFERENCES &&
+                (references[base + SAVE1_LOCATION_OFFSET] ?: 0) >= MIN_DIRECT_SAVE1_LOCATION_REFERENCES &&
+                (references[base + RUBY_SAPPHIRE_PARTY_OFFSET] ?: 0) >= MIN_DIRECT_SAVE1_PARTY_REFERENCES &&
+                (references[base + RUBY_SAPPHIRE_MONEY_OFFSET] ?: 0) >= MIN_DIRECT_SAVE1_MONEY_REFERENCES &&
+                (references[base + RUBY_SAPPHIRE_ITEMS_OFFSET] ?: 0) >= MIN_DIRECT_SAVE1_BAG_REFERENCES &&
+                (references[base + RUBY_SAPPHIRE_FLAGS_OFFSET] ?: 0) >= MIN_DIRECT_SAVE1_FLAGS_REFERENCES
+        }
+        return saveBlock2Candidates.mapNotNull { saveBlock2 ->
+            val saveBlock1 = saveBlock2 + RUBY_SAPPHIRE_SAVE_BLOCK2_SIZE
+            saveBlock1.takeIf(saveBlock1Candidates::contains)?.let {
+                DirectSaveResolution(saveBlock1Address = it, saveBlock2Address = saveBlock2)
+            }
+        }.singleOrNull()
     }
 
     private fun resolveSaveBlock2Pointer(rom: RomImage, saveBlock1PointerAddress: Long?): Long? {
@@ -247,6 +292,43 @@ object Gen3PlayerRuntimeLayoutResolver {
             ),
         ),
         eventFlags = CatalogGen3EventFlagAbi(0x1270, 0x12C),
+    )
+
+    private fun rubySapphireSaveRuntimeAbi() = CatalogGen3SaveRuntimeAbi(
+        saveBlock1Size = RUBY_SAPPHIRE_SAVE_BLOCK1_SIZE,
+        saveBlock2Size = RUBY_SAPPHIRE_SAVE_BLOCK2_SIZE,
+        textEncoding = CatalogGen3TextEncoding.ENGLISH,
+        trainer = CatalogGen3TrainerCardAbi(
+            playerNameOffset = 0x00,
+            playerNameLength = 8,
+            genderOffset = SAVE2_GENDER_OFFSET,
+            trainerIdOffset = SAVE2_TRAINER_ID_OFFSET,
+            playTimeHoursOffset = SAVE2_PLAY_HOURS_OFFSET,
+            playTimeMinutesOffset = SAVE2_PLAY_MINUTES_OFFSET,
+            encryptionKeyOffset = null,
+            moneyOffset = RUBY_SAPPHIRE_MONEY_OFFSET,
+            maximumMoney = MAXIMUM_MONEY,
+            badgeFlags = listOf(
+                CatalogGen3BitFlag(0x1320, 0x80),
+                CatalogGen3BitFlag(0x1321, 0x01),
+                CatalogGen3BitFlag(0x1321, 0x02),
+                CatalogGen3BitFlag(0x1321, 0x04),
+                CatalogGen3BitFlag(0x1321, 0x08),
+                CatalogGen3BitFlag(0x1321, 0x10),
+                CatalogGen3BitFlag(0x1321, 0x20),
+                CatalogGen3BitFlag(0x1321, 0x40),
+            ),
+        ),
+        bag = CatalogGen3BagAbi(
+            listOf(
+                CatalogGen3BagPocketAbi(CatalogGen3BagPocket.ITEMS, RUBY_SAPPHIRE_ITEMS_OFFSET, 20),
+                CatalogGen3BagPocketAbi(CatalogGen3BagPocket.KEY_ITEMS, 0x5B0, 20),
+                CatalogGen3BagPocketAbi(CatalogGen3BagPocket.BALLS, 0x600, 16),
+                CatalogGen3BagPocketAbi(CatalogGen3BagPocket.TM_HM, 0x640, 64),
+                CatalogGen3BagPocketAbi(CatalogGen3BagPocket.BERRIES, 0x740, 46),
+            ),
+        ),
+        eventFlags = CatalogGen3EventFlagAbi(RUBY_SAPPHIRE_FLAGS_OFFSET, 0x120),
     )
 
     /**
@@ -554,6 +636,7 @@ object Gen3PlayerRuntimeLayoutResolver {
     private const val SAVE2_TRAINER_ID_OFFSET = 0x0A
     private const val SAVE2_PLAY_HOURS_OFFSET = 0x0E
     private const val SAVE2_PLAY_MINUTES_OFFSET = 0x10
+    private const val SAVE1_LOCATION_OFFSET = 0x04
     private const val PARTY_CAPACITY = 6
     private const val PARTY_RECORD_SIZE = 100
     private const val MIN_PARTY_COUNT_REFERENCES = 4
@@ -588,6 +671,24 @@ object Gen3PlayerRuntimeLayoutResolver {
     private const val BADGE_COUNT = 8
     private const val BADGE_TO_GAME_CLEAR_DELTA = 12
     private const val MAXIMUM_MONEY = 999_999L
+    private const val RUBY_SAPPHIRE_SAVE_BLOCK1_SIZE = 0x3AC0
+    private const val RUBY_SAPPHIRE_SAVE_BLOCK2_SIZE = 0x0890
+    private const val RUBY_SAPPHIRE_LOCAL_TIME_OFFSET = 0x98
+    private const val RUBY_SAPPHIRE_BERRY_TIME_OFFSET = 0xA0
+    private const val RUBY_SAPPHIRE_PARTY_OFFSET = 0x238
+    private const val RUBY_SAPPHIRE_MONEY_OFFSET = 0x490
+    private const val RUBY_SAPPHIRE_ITEMS_OFFSET = 0x560
+    private const val RUBY_SAPPHIRE_FLAGS_OFFSET = 0x1220
+    private const val MIN_DIRECT_SAVE2_BASE_REFERENCES = 100
+    private const val MIN_DIRECT_SAVE2_TRAINER_ID_REFERENCES = 4
+    private const val MIN_DIRECT_SAVE2_TIME_REFERENCES = 2
+    private const val MIN_DIRECT_SAVE2_BERRY_TIME_REFERENCES = 1
+    private const val MIN_DIRECT_SAVE1_BASE_REFERENCES = 200
+    private const val MIN_DIRECT_SAVE1_LOCATION_REFERENCES = 3
+    private const val MIN_DIRECT_SAVE1_PARTY_REFERENCES = 2
+    private const val MIN_DIRECT_SAVE1_MONEY_REFERENCES = 8
+    private const val MIN_DIRECT_SAVE1_BAG_REFERENCES = 3
+    private const val MIN_DIRECT_SAVE1_FLAGS_REFERENCES = 3
     private const val EXPANDED_BAG_DESCRIPTOR_BYTES = 40
     private const val MAX_EXPANDED_BAG_CAPACITY = 1024
     private const val SAVE_CHUNK_ENTRY_BYTES = 8
@@ -641,6 +742,10 @@ object Gen3PlayerRuntimeLayoutResolver {
         val saveBlock2PointerAddress: Long,
         val extendedSaveAddress: Long,
         val pockets: List<CatalogGen3BagPocketAbi>,
+    )
+    private data class DirectSaveResolution(
+        val saveBlock1Address: Long,
+        val saveBlock2Address: Long,
     )
     private class PointerFields {
         var totalPointerLoads: Int = 0

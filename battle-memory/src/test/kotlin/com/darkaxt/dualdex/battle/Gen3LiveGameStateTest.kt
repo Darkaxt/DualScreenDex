@@ -17,6 +17,31 @@ import org.junit.Test
 
 class Gen3LiveMemoryReaderTest {
     @Test
+    fun readsDirectSaveBlocksWithoutInventingPointerGlobals() {
+        val layout = layout().copy(
+            saveBlock1Address = 0x02001000,
+            saveBlock2Address = 0x02002000,
+            saveBlock1PointerAddress = null,
+            saveBlock2PointerAddress = null,
+        )
+
+        assertEquals(emptyList<Any>(), Gen3LiveMemoryReader.pointerWindows(layout))
+        val pointers = Gen3LiveMemoryReader.decodePointers(emptyMap(), layout)
+        assertEquals(0x02001000L, pointers.saveBlock1Address)
+        assertEquals(0x02002000L, pointers.saveBlock2Address)
+        assertEquals(
+            listOf(
+                Gen3LiveMemoryReader.SAVE_BLOCK1_ID,
+                Gen3LiveMemoryReader.SAVE_BLOCK2_ID,
+                Gen3LiveMemoryReader.PARTY_COUNT_ID,
+                Gen3LiveMemoryReader.PARTY_ID,
+                Gen3LiveMemoryReader.CLOCK_ID,
+            ),
+            Gen3LiveMemoryReader.dependentWindows(layout, pointers).map { it.id },
+        )
+    }
+
+    @Test
     fun readsPointerGlobalsBeforeValidatedDependentWindows() {
         val layout = layout().copy(extendedSaveAddress = 0x02030000, extendedSaveSize = 0x2000)
         assertEquals(

@@ -43,8 +43,10 @@ object Gen3LiveMemoryReader {
         regions: Map<String, ByteArray>,
         layout: Gen3RuntimeMemoryLayout,
     ): Gen3LivePointers = Gen3LivePointers(
-        saveBlock1Address = decodePointer(regions[SAVE_BLOCK1_POINTER_ID], layout.saveBlock1Size),
-        saveBlock2Address = decodePointer(regions[SAVE_BLOCK2_POINTER_ID], layout.saveBlock2Size),
+        saveBlock1Address = layout.saveBlock1Address
+            ?: decodePointer(regions[SAVE_BLOCK1_POINTER_ID], layout.saveBlock1Size),
+        saveBlock2Address = layout.saveBlock2Address
+            ?: decodePointer(regions[SAVE_BLOCK2_POINTER_ID], layout.saveBlock2Size),
     )
 
     fun dependentWindows(

@@ -210,7 +210,7 @@ class OfficialEmeraldPlayerStateRealControlTest {
         saveBlock2.putU32le(trainer.trainerIdOffset, 0x1234_5678)
         saveBlock2.putU16le(trainer.playTimeHoursOffset, 25)
         saveBlock2[trainer.playTimeMinutesOffset] = 17
-        saveBlock2.putU32le(trainer.encryptionKeyOffset, ENCRYPTION_KEY)
+        saveBlock2.putU32le(requireNotNull(trainer.encryptionKeyOffset), ENCRYPTION_KEY)
         saveBlock1.putU32le(trainer.moneyOffset, 12_345L xor ENCRYPTION_KEY)
         trainer.badgeFlags.first().let { saveBlock1[it.byteOffset] = it.mask.toByte() }
         trainer.badgeFlags.last().let { flag ->

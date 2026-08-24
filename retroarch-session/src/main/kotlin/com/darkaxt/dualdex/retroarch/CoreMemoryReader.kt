@@ -20,8 +20,12 @@ sealed interface CoreMemoryReadState {
     data class Failed(val reason: String) : CoreMemoryReadState
 }
 
+private data class CoreMemorySpan(
+    val baseAddress: Long,
+    val size: Int,
+)
+
 private data class CoreMemoryRequest(
-    val region: CoreMemoryRegion,
     val address: Long,
     val length: Int,
 )
@@ -37,6 +41,7 @@ class CoreMemoryReadSession(
     private val maximumChunkBytes: Int = DEFAULT_CHUNK_BYTES,
 ) {
     private var regions = emptyList<CoreMemoryRegion>()
+    private var spans = emptyList<CoreMemorySpan>()
     private var requests = emptyList<CoreMemoryRequest>()
     private var buffers = emptyMap<String, ByteArray>()
     private var requestIndex = -1
@@ -54,7 +59,8 @@ class CoreMemoryReadSession(
         require(regions.sumOf { it.size.toLong() } <= MAX_TOTAL_BYTES) { "core-memory read exceeds the total byte limit" }
 
         this.regions = regions.toList()
-        requests = regions.flatMap(::requestsFor)
+        spans = coalesce(regions)
+        requests = spans.flatMap(::requestsFor)
         buffers = regions.associate { it.id to ByteArray(it.size) }
         requestIndex = 0
         sendCurrent()
@@ -68,14 +74,13 @@ class CoreMemoryReadSession(
         while (true) {
             val response = poller() ?: break
             val request = requests[requestIndex]
-            val offset = (request.address - request.region.baseAddress).toInt()
-            val destination = requireNotNull(buffers[request.region.id])
-            when (val result = CoreMemoryReplyParser.parse(request.address, request.length, response, destination, offset)) {
+            val payload = ByteArray(request.length)
+            when (val result = CoreMemoryReplyParser.parse(request.address, request.length, response, payload, 0)) {
                 CoreMemoryReply.Ignored -> continue
                 is CoreMemoryReply.Failed -> {
                     return CoreMemoryReadState.Failed(result.reason).also { terminal = it }
                 }
-                CoreMemoryReply.Matched -> Unit
+                CoreMemoryReply.Matched -> scatter(request, payload)
             }
             completedBytes += request.length
             requestIndex++
@@ -89,12 +94,45 @@ class CoreMemoryReadSession(
         return state()
     }
 
-    private fun requestsFor(region: CoreMemoryRegion): List<CoreMemoryRequest> = buildList {
+    private fun requestsFor(span: CoreMemorySpan): List<CoreMemoryRequest> = buildList {
         var offset = 0
-        while (offset < region.size) {
-            val length = minOf(maximumChunkBytes, region.size - offset)
-            add(CoreMemoryRequest(region, region.baseAddress + offset, length))
+        while (offset < span.size) {
+            val length = minOf(maximumChunkBytes, span.size - offset)
+            add(CoreMemoryRequest(span.baseAddress + offset, length))
             offset += length
+        }
+    }
+
+    private fun coalesce(regions: List<CoreMemoryRegion>): List<CoreMemorySpan> {
+        val sorted = regions.sortedBy(CoreMemoryRegion::baseAddress)
+        return buildList {
+            sorted.forEach { region ->
+                val previous = lastOrNull()
+                val regionEnd = region.baseAddress + region.size
+                val previousEnd = previous?.let { it.baseAddress + it.size }
+                if (previous != null && previousEnd != null && region.baseAddress <= previousEnd) {
+                    removeAt(lastIndex)
+                    add(CoreMemorySpan(previous.baseAddress, (maxOf(previousEnd, regionEnd) - previous.baseAddress).toInt()))
+                } else {
+                    add(CoreMemorySpan(region.baseAddress, region.size))
+                }
+            }
+        }
+    }
+
+    private fun scatter(request: CoreMemoryRequest, payload: ByteArray) {
+        val requestEnd = request.address + request.length
+        regions.forEach { region ->
+            val regionEnd = region.baseAddress + region.size
+            val overlapStart = maxOf(request.address, region.baseAddress)
+            val overlapEnd = minOf(requestEnd, regionEnd)
+            if (overlapStart >= overlapEnd) return@forEach
+            payload.copyInto(
+                destination = requireNotNull(buffers[region.id]),
+                destinationOffset = (overlapStart - region.baseAddress).toInt(),
+                startIndex = (overlapStart - request.address).toInt(),
+                endIndex = (overlapEnd - request.address).toInt(),
+            )
         }
     }
 
@@ -105,7 +143,7 @@ class CoreMemoryReadSession(
     }
 
     private fun state(): CoreMemoryReadState = terminal
-        ?: CoreMemoryReadState.Reading(completedBytes, regions.sumOf(CoreMemoryRegion::size))
+        ?: CoreMemoryReadState.Reading(completedBytes, spans.sumOf(CoreMemorySpan::size))
 
     companion object {
         const val DEFAULT_CHUNK_BYTES = 512

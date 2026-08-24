@@ -647,8 +647,7 @@ class BattleMemoryCoordinatorTest {
         assertEquals(0x1804, transient.current?.location?.areaBaseId?.value)
         assertEquals(RuntimeMapPosition(15, 10), transient.current?.location?.position?.value)
         assertEquals(LiveClockPhase.DARK, transient.current?.clock?.value?.phase)
-        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY dcb5 2") })
-        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY dcb7 2") })
+        assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY dcb5 4") })
         assertTrue(transport.commands.any { it.startsWith("READ_CORE_MEMORY d841 1") })
 
         repeat(2) { coordinator.heartbeat() }
@@ -805,8 +804,7 @@ class BattleMemoryCoordinatorTest {
         )
         val firstDataRead = transport.commands.indexOfFirst { it.startsWith("READ_CORE_MEMORY 2001000 ") }
         assertTrue(firstDataRead > 1)
-        assertTrue(transport.commands[0].startsWith("READ_CORE_MEMORY 30036f0 4"))
-        assertTrue(transport.commands[1].startsWith("READ_CORE_MEMORY 30036f4 4"))
+        assertTrue(transport.commands[0].startsWith("READ_CORE_MEMORY 30036f0 8"))
 
         putU32(iwram, 0x36F0, 0x02001200)
         ewram[0x1204] = 7
@@ -816,7 +814,7 @@ class BattleMemoryCoordinatorTest {
 
         assertTrue(snapshots.size > oldCount)
         assertEquals(0x0709, transient.current?.location?.areaBaseId?.value)
-        assertTrue(transport.commands.count { it.startsWith("READ_CORE_MEMORY 30036f0 4") } >= 2)
+        assertTrue(transport.commands.count { it.startsWith("READ_CORE_MEMORY 30036f0 8") } >= 2)
         coordinator.close()
     }
 
