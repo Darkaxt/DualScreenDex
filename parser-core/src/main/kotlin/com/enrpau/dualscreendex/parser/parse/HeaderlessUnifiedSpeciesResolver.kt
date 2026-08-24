@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.model.HeaderlessUnifiedSpeciesMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
+import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 internal data class HeaderlessUnifiedSpeciesResolution(
@@ -15,6 +16,8 @@ internal data class HeaderlessUnifiedSpeciesResolution(
     val metadata: HeaderlessUnifiedSpeciesMetadata,
     val speciesNamesEvidence: ValidationEvidence,
     val baseStatsEvidence: ValidationEvidence,
+    val descriptionsEvidence: ValidationEvidence,
+    val spritesEvidence: ValidationEvidence,
 )
 
 /**
@@ -27,7 +30,20 @@ internal object HeaderlessUnifiedSpeciesResolver {
     private const val RECORD_SIZE = 260
     private const val NAME_OFFSET = 44
     private const val NAME_WIDTH = 13
+    private const val CATEGORY_WIDTH = 13
     private const val DEFAULT_NATIONAL_DEX_OFFSET = 60
+    private const val MINIMUM_PRESENTATION_RATIO = 0.80
+    private const val FRONT_SPRITE_FRAME_BYTES = 2048
+    private const val MAX_FRONT_SPRITE_BYTES = 64 * 1024
+
+    private data class PresentationOffsets(
+        val category: Int,
+        val height: Int,
+        val weight: Int,
+        val description: Int,
+        val frontSprite: Int,
+        val palette: Int,
+    )
 
     private data class RootAccessorPrefix(
         val exclusiveBound: Int,
@@ -108,6 +124,15 @@ internal object HeaderlessUnifiedSpeciesResolver {
             is ExtentCheck.Invalid, is ExtentCheck.BudgetExceeded -> return null
         }
         val activeCount = validateRows(session.rom, root, speciesCount) ?: return null
+        val presentation = presentationOffsets(nationalDexOffset)
+        val descriptionsEvidence = presentation?.let {
+            validateDescriptions(session.rom, root, speciesCount, activeCount, it)
+        } ?: unavailablePresentationEvidence(speciesCount, "unified description fields exceed the record")
+        val spritesEvidence = presentation?.let {
+            validateSprites(session.rom, root, speciesCount, activeCount, it)
+        } ?: unavailablePresentationEvidence(speciesCount, "unified sprite fields exceed the record")
+        val descriptionFields = presentation?.takeIf { descriptionsEvidence.compatible }
+        val spriteFields = presentation?.takeIf { spritesEvidence.compatible }
         return HeaderlessUnifiedSpeciesResolution(
             speciesCount = speciesCount,
             tables = ProfileTables(
@@ -123,6 +148,24 @@ internal object HeaderlessUnifiedSpeciesResolver {
                     recordSize = RECORD_SIZE,
                     stride = RECORD_SIZE,
                 ),
+                descriptions = descriptionFields?.let { fields ->
+                    TableLayout(
+                        offset = root,
+                        count = speciesCount,
+                        recordSize = RECORD_SIZE,
+                        stride = RECORD_SIZE,
+                        pointerOffsets = listOf(fields.description),
+                    )
+                },
+                sprites = spriteFields?.let { fields ->
+                    TableLayout(
+                        offset = root + fields.frontSprite,
+                        count = speciesCount,
+                        recordSize = 4,
+                        stride = RECORD_SIZE,
+                        pointerOffsets = listOf(fields.palette - fields.frontSprite),
+                    )
+                },
             ),
             metadata = HeaderlessUnifiedSpeciesMetadata(
                 speciesTableOffset = root,
@@ -131,6 +174,12 @@ internal object HeaderlessUnifiedSpeciesResolver {
                 speciesNameOffset = NAME_OFFSET,
                 speciesNameWidth = NAME_WIDTH,
                 nationalDexOffset = nationalDexOffset,
+                categoryOffset = descriptionFields?.category,
+                heightOffset = descriptionFields?.height,
+                weightOffset = descriptionFields?.weight,
+                descriptionPointerOffset = descriptionFields?.description,
+                frontSpritePointerOffset = spriteFields?.frontSprite,
+                normalPalettePointerOffset = spriteFields?.palette,
             ),
             speciesNamesEvidence = ValidationEvidence(
                 compatible = true,
@@ -150,8 +199,144 @@ internal object HeaderlessUnifiedSpeciesResolver {
                 offset = root,
                 recordSize = RECORD_SIZE,
             ),
+            descriptionsEvidence = descriptionsEvidence,
+            spritesEvidence = spritesEvidence,
         )
     }
+
+    private fun presentationOffsets(nationalDexOffset: Int): PresentationOffsets? {
+        // The pointer-aligned presentation tail is stable across the observed one- and two-byte cry fields.
+        val description = (nationalDexOffset + 16 + 3) and -4
+        val candidate = PresentationOffsets(
+            category = NAME_OFFSET - CATEGORY_WIDTH,
+            height = description - 14,
+            weight = description - 12,
+            description = description,
+            frontSprite = description + 12,
+            palette = description + 20,
+        )
+        return candidate.takeIf {
+            it.category >= 0 && it.category + CATEGORY_WIDTH == NAME_OFFSET &&
+                it.height + 2 <= RECORD_SIZE && it.weight + 2 <= RECORD_SIZE &&
+                it.description + 4 <= RECORD_SIZE && it.frontSprite + 4 <= RECORD_SIZE &&
+                it.palette + 4 <= RECORD_SIZE
+        }
+    }
+
+    private fun validateDescriptions(
+        rom: RomImage,
+        root: Int,
+        count: Int,
+        activeCount: Int,
+        fields: PresentationOffsets,
+    ): ValidationEvidence {
+        var valid = 0
+        repeat(count) { id ->
+            val record = root + id * RECORD_SIZE
+            if (rom.u8(record) == 0) return@repeat
+            val pointer = runCatching { rom.gbaPointer(record + fields.description) }.getOrNull()
+            if (
+                plausibleText(rom, record + fields.category, CATEGORY_WIDTH) &&
+                pointer?.let { plausibleText(rom, it, 512) } == true
+            ) {
+                valid++
+            }
+        }
+        val confidence = valid.toDouble() / activeCount
+        val compatible = confidence >= MINIMUM_PRESENTATION_RATIO
+        return ValidationEvidence(
+            compatible = compatible,
+            validRecords = valid,
+            totalRecords = count,
+            confidence = confidence,
+            reasons = if (compatible) {
+                listOf("validated embedded category and terminated description fields")
+            } else {
+                listOf("valid embedded unified descriptions $valid/$activeCount active rows below 80%")
+            },
+            offset = root,
+            recordSize = RECORD_SIZE,
+            coveredRecords = valid,
+            expectedRecords = activeCount,
+            incompleteRecords = activeCount - valid,
+            reviewRecommended = valid < activeCount,
+        )
+    }
+
+    private fun validateSprites(
+        rom: RomImage,
+        root: Int,
+        count: Int,
+        activeCount: Int,
+        fields: PresentationOffsets,
+    ): ValidationEvidence {
+        var valid = 0
+        repeat(count) { id ->
+            val record = root + id * RECORD_SIZE
+            if (rom.u8(record) == 0) return@repeat
+            val graphics = runCatching { rom.gbaPointer(record + fields.frontSprite) }.getOrNull()
+            val palette = runCatching { rom.gbaPointer(record + fields.palette) }.getOrNull()
+            val graphicsValid = graphics?.let { pointer ->
+                val decodedSize = GbaRomCompression.decodedSizeAtOrNull(rom, pointer)
+                    ?: return@let false
+                decodedSize in FRONT_SPRITE_FRAME_BYTES..MAX_FRONT_SPRITE_BYTES &&
+                    decodedSize % FRONT_SPRITE_FRAME_BYTES == 0 &&
+                    runCatching { GbaRomCompression.decodeAt(rom, pointer).size == decodedSize }
+                        .getOrDefault(false)
+            } == true
+            val paletteValid = palette?.let { pointer -> validPalette(rom, pointer) } == true
+            if (graphicsValid && paletteValid) valid++
+        }
+        val confidence = valid.toDouble() / activeCount
+        val compatible = confidence >= MINIMUM_PRESENTATION_RATIO
+        return ValidationEvidence(
+            compatible = compatible,
+            validRecords = valid,
+            totalRecords = count,
+            confidence = confidence,
+            reasons = if (compatible) {
+                listOf("validated bounded embedded front graphics and BGR555 palettes")
+            } else {
+                listOf("valid embedded unified sprites $valid/$activeCount active rows below 80%")
+            },
+            offset = root + fields.frontSprite,
+            recordSize = 4,
+            coveredRecords = valid,
+            expectedRecords = activeCount,
+            incompleteRecords = activeCount - valid,
+            reviewRecommended = valid < activeCount,
+        )
+    }
+
+    private fun validPalette(rom: RomImage, offset: Int): Boolean = runCatching {
+        val decodedSize = GbaRomCompression.decodedSizeAtOrNull(rom, offset)
+        val bytes = if (decodedSize != null && decodedSize in 2..32 && decodedSize % 2 == 0) {
+            GbaRomCompression.decodeAt(rom, offset)
+        } else {
+            rom.slice(offset, 32)
+        }
+        bytes.size in 2..32 && bytes.size % 2 == 0 && (bytes.indices step 2).all { index ->
+            val low = bytes[index].toInt() and 0xFF
+            val high = bytes[index + 1].toInt() and 0xFF
+            (low or (high shl 8)) <= 0x7FFF
+        }
+    }.getOrDefault(false)
+
+    private fun plausibleText(rom: RomImage, offset: Int, maximumLength: Int): Boolean = runCatching {
+        if (offset < 0 || offset >= rom.size) return@runCatching false
+        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(
+            rom.slice(offset, minOf(maximumLength, rom.size - offset)),
+        )
+        decoded.terminated && decoded.validRatio >= 0.8 && decoded.text.any(Char::isLetterOrDigit)
+    }.getOrDefault(false)
+
+    private fun unavailablePresentationEvidence(count: Int, reason: String) = ValidationEvidence(
+        compatible = false,
+        validRecords = 0,
+        totalRecords = count,
+        confidence = 0.0,
+        reasons = listOf(reason),
+    )
 
     private fun validateRows(rom: RomImage, root: Int, count: Int): Int? {
         val codec = PokemonTextCodec.gbaEnglish

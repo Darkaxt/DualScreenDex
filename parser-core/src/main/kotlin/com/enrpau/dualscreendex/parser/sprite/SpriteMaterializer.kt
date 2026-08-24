@@ -24,20 +24,27 @@ object SpriteMaterializer {
         requestedPaletteTable: Int?,
     ): Map<Int, RgbaSprite> {
         val table = layout.tables.sprites ?: return emptyMap()
-        layout.pokeemeraldExpansion?.let { expansion ->
-            val stride = table.stride ?: expansion.speciesRecordSize
-            val paletteDelta = expansion.normalPalettePointerOffset - expansion.frontSpritePointerOffset
+        val embeddedLayout = layout.pokeemeraldExpansion?.let { expansion ->
+            expansion.speciesRecordSize to
+                (expansion.normalPalettePointerOffset - expansion.frontSpritePointerOffset)
+        } ?: layout.headerlessUnifiedSpecies?.let { unified ->
+            val frontSprite = unified.frontSpritePointerOffset ?: return@let null
+            val palette = unified.normalPalettePointerOffset ?: return@let null
+            unified.speciesRecordSize to (palette - frontSprite)
+        }
+        embeddedLayout?.let { (fallbackStride, paletteDelta) ->
+            val stride = table.stride ?: fallbackStride
             return buildMap {
                 repeat(table.count) { id ->
                     val sprite = runCatching {
                         val entry = table.offset + id * stride
-                        val pointer = rom.gbaPointer(entry) ?: error("invalid expansion front-sprite pointer")
+                        val pointer = rom.gbaPointer(entry) ?: error("invalid embedded front-sprite pointer")
                         val graphics = GbaRomCompression.decodeAt(rom, pointer)
                         require(graphics.size >= 2048)
                         val indexed = TileRenderer.gba4Bpp(graphics.copyOf(2048), 8, 8)
                         val palettePointer = rom.gbaPointer(entry + paletteDelta)
-                            ?: error("invalid expansion normal-palette pointer")
-                        val paletteBytes = rom.slice(palettePointer, 32)
+                            ?: error("invalid embedded normal-palette pointer")
+                        val paletteBytes = embeddedPaletteBytes(rom, palettePointer)
                         val palette = ShortArray(16) { index ->
                             ((paletteBytes[index * 2].toInt() and 0xFF) or
                                 ((paletteBytes[index * 2 + 1].toInt() and 0xFF) shl 8)).toShort()
@@ -67,6 +74,15 @@ object SpriteMaterializer {
                 }.getOrNull()
                 if (sprite != null) put(id, sprite)
             }
+        }
+    }
+
+    private fun embeddedPaletteBytes(rom: RomImage, offset: Int): ByteArray {
+        val decodedSize = GbaRomCompression.decodedSizeAtOrNull(rom, offset)
+        return if (decodedSize != null && decodedSize in 2..32 && decodedSize % 2 == 0) {
+            GbaRomCompression.decodeAt(rom, offset).copyOf(32)
+        } else {
+            rom.slice(offset, 32)
         }
     }
 

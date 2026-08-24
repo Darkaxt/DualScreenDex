@@ -12,8 +12,40 @@ import com.enrpau.dualscreendex.parser.validate.Gen3DescriptionPointerRecovery
 
 object RelationshipMaterializers {
     fun descriptions(rom: RomImage, layout: ResolvedRomLayout): Map<Int, DescriptionRecord> {
-        if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
-            return layout.resolvedDatasets.descriptions?.catalogDescriptions().orEmpty()
+        if (layout.generation == 3) {
+            val unified = layout.headerlessUnifiedSpecies
+            val descriptionOffset = unified?.descriptionPointerOffset
+            if (unified != null && descriptionOffset != null) {
+                val table = layout.tables.descriptions ?: return emptyMap()
+                val categoryOffset = unified.categoryOffset ?: return emptyMap()
+                val heightOffset = unified.heightOffset ?: return emptyMap()
+                val weightOffset = unified.weightOffset ?: return emptyMap()
+                val categoryWidth = unified.speciesNameOffset - categoryOffset
+                return buildMap {
+                    repeat(table.count) { id ->
+                        val base = unified.speciesTableOffset + id * unified.speciesRecordSize
+                        val description = runCatching {
+                            val pointer = rom.gbaPointer(base + descriptionOffset)
+                                ?: error("invalid embedded description pointer")
+                            DescriptionRecord(
+                                text = decodeTerminated(rom, pointer, 512, PokemonTextCodec.gbaEnglish),
+                                height = rom.u16le(base + heightOffset),
+                                weight = rom.u16le(base + weightOffset),
+                                category = decodeTerminated(
+                                    rom,
+                                    base + categoryOffset,
+                                    categoryWidth,
+                                    PokemonTextCodec.gbaEnglish,
+                                ),
+                            )
+                        }.getOrNull()
+                        if (description != null && description.text.isNotBlank()) put(id, description)
+                    }
+                }
+            }
+            if (layout.pokeemeraldExpansion == null) {
+                return layout.resolvedDatasets.descriptions?.catalogDescriptions().orEmpty()
+            }
         }
         val table = layout.tables.descriptions ?: return emptyMap()
         if (layout.generation < 3) return gen12Descriptions(rom, layout)

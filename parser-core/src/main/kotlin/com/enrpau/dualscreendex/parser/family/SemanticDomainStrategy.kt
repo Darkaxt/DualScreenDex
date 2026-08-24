@@ -127,9 +127,10 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                     rom, it.offset, it.count, it.banks.toIntArray(), codec = identity.codec,
                 )
             } ?: missingEvidence("Gen 2 Pokédex description table not resolved")
-            else -> identity.expansion?.let {
-                PokeemeraldExpansionResolver.validateDescriptions(rom, it)
-            } ?: DatasetResolvers.gen3Descriptions(
+            else -> identity.headerlessUnifiedSpecies?.descriptionsEvidence
+                ?: identity.expansion?.let {
+                    PokeemeraldExpansionResolver.validateDescriptions(rom, it)
+                } ?: DatasetResolvers.gen3Descriptions(
                 session,
                 if (identity.exactProfile != null) {
                     tables.descriptions?.count ?: 387
@@ -150,6 +151,9 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
     ): ResolvedDescriptionEvidence {
         if (definition.formatGeneration != 3 || identity.expansion != null) {
             return ResolvedDescriptionEvidence(validateDescriptions(session, definition, identity, core), null)
+        }
+        identity.headerlessUnifiedSpecies?.let { unified ->
+            return ResolvedDescriptionEvidence(unified.descriptionsEvidence, null)
         }
         val legacyEvidence = validateDescriptions(session, definition, identity, core)
         if (legacyEvidence.compatible) {

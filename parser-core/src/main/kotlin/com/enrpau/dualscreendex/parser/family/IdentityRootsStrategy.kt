@@ -295,6 +295,8 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                 tables = compiledSpriteTableResolution.tables.copy(
                     speciesNames = unified.tables.speciesNames,
                     baseStats = unified.tables.baseStats,
+                    sprites = unified.tables.sprites,
+                    descriptions = unified.tables.descriptions,
                 ),
             )
         } ?: compiledSpriteTableResolution

@@ -1,7 +1,9 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import java.nio.file.Files
@@ -29,7 +31,7 @@ class HeaderlessUnifiedSpeciesCripplingLiveRomTest {
         assertEquals(SelectionStatus.SELECTED, analysis.status)
         assertEquals(EngineFamily.EMERALD, analysis.selectedFamily)
         val selectedProbe = analysis.probes.single { it.family == analysis.selectedFamily }
-        assertEquals(75, selectedProbe.score)
+        assertEquals(85, selectedProbe.score)
         assertEquals(100, selectedProbe.scoreEvidence.sumOf { it.maximum })
         assertEquals(
             15,
@@ -48,6 +50,16 @@ class HeaderlessUnifiedSpeciesCripplingLiveRomTest {
         requireNotNull(layout)
         assertEquals(0x5F8, layout.speciesCount)
         assertEquals(58, layout.headerlessUnifiedSpecies?.nationalDexOffset)
+        assertEquals(31, layout.headerlessUnifiedSpecies?.categoryOffset)
+        assertEquals(62, layout.headerlessUnifiedSpecies?.heightOffset)
+        assertEquals(64, layout.headerlessUnifiedSpecies?.weightOffset)
+        assertEquals(76, layout.headerlessUnifiedSpecies?.descriptionPointerOffset)
+        assertEquals(88, layout.headerlessUnifiedSpecies?.frontSpritePointerOffset)
+        assertEquals(96, layout.headerlessUnifiedSpecies?.normalPalettePointerOffset)
+        assertEquals(0xD95918, layout.tables.descriptions?.offset)
+        assertEquals(260, layout.tables.descriptions?.stride)
+        assertEquals(0xD95918 + 88, layout.tables.sprites?.offset)
+        assertEquals(260, layout.tables.sprites?.stride)
 
         val catalog = CatalogParser.parse(rom).catalog
         assertNotNull(catalog)
@@ -65,5 +77,14 @@ class HeaderlessUnifiedSpeciesCripplingLiveRomTest {
         assertEquals(0x45B, catalog.speciesById.getValue(0x5F5).dexNumber.value)
         assertEquals(0x45C, catalog.speciesById.getValue(0x5F6).dexNumber.value)
         assertEquals(45, catalog.speciesById.getValue(1).baseStats.value?.hp)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.SPRITES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS).status)
+        val bulbasaur = catalog.speciesById.getValue(1)
+        assertTrue(bulbasaur.description.value?.contains("Bulbasaur can be seen napping") == true)
+        assertEquals(7, bulbasaur.height.value)
+        assertEquals(69, bulbasaur.weight.value)
+        assertEquals(64, bulbasaur.sprite.value?.width)
+        assertEquals(64, bulbasaur.sprite.value?.height)
+        assertTrue(bulbasaur.sprite.value?.argb?.any { it != 0 } == true)
     }
 }

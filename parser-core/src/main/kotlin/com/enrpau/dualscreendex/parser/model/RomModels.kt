@@ -165,6 +165,12 @@ data class HeaderlessUnifiedSpeciesMetadata(
     val speciesNameOffset: Int,
     val speciesNameWidth: Int,
     val nationalDexOffset: Int,
+    val categoryOffset: Int? = null,
+    val heightOffset: Int? = null,
+    val weightOffset: Int? = null,
+    val descriptionPointerOffset: Int? = null,
+    val frontSpritePointerOffset: Int? = null,
+    val normalPalettePointerOffset: Int? = null,
 )
 
 data class GbaCompiledReferenceIndex(

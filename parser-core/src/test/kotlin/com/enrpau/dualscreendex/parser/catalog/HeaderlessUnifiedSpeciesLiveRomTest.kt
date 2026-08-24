@@ -38,6 +38,17 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(260, layout.tables.baseStats?.stride)
         assertEquals(0x7B0160 + 44, layout.tables.speciesNames?.offset)
         assertEquals(260, layout.tables.speciesNames?.stride)
+        assertEquals(31, layout.headerlessUnifiedSpecies?.categoryOffset)
+        assertEquals(62, layout.headerlessUnifiedSpecies?.heightOffset)
+        assertEquals(64, layout.headerlessUnifiedSpecies?.weightOffset)
+        assertEquals(76, layout.headerlessUnifiedSpecies?.descriptionPointerOffset)
+        assertEquals(88, layout.headerlessUnifiedSpecies?.frontSpritePointerOffset)
+        assertEquals(96, layout.headerlessUnifiedSpecies?.normalPalettePointerOffset)
+        assertEquals(0x7B0160, layout.tables.descriptions?.offset)
+        assertEquals(260, layout.tables.descriptions?.stride)
+        assertEquals(0x7B0160 + 88, layout.tables.sprites?.offset)
+        assertEquals(260, layout.tables.sprites?.stride)
+        assertEquals(listOf(8), layout.tables.sprites?.pointerOffsets)
         assertEquals(21, layout.resolvedDatasets.typeChart?.table?.typeCount)
         assertEquals(848, layout.moveCount)
         assertEquals(0x759858, layout.tables.moveNames?.offset)
@@ -76,6 +87,15 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertFalse(catalog.speciesById.containsKey(0x5F4))
         assertEquals("Bulbasaur", catalog.speciesById.getValue(1).name.value)
         assertEquals(45, catalog.speciesById.getValue(1).baseStats.value?.hp)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.SPRITES).status)
+        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS).status)
+        val bulbasaur = catalog.speciesById.getValue(1)
+        assertTrue(bulbasaur.description.value?.contains("Bulbasaur can be seen napping") == true)
+        assertEquals(7, bulbasaur.height.value)
+        assertEquals(69, bulbasaur.weight.value)
+        assertEquals(64, bulbasaur.sprite.value?.width)
+        assertEquals(64, bulbasaur.sprite.value?.height)
+        assertTrue(bulbasaur.sprite.value?.argb?.any { it != 0 } == true)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LEARNSETS).status)
         assertTrue(catalog.navigableSpecies().all { it.learnset.status == CapabilityStatus.AVAILABLE })
         assertEquals(
@@ -103,7 +123,10 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertFalse(catalog.typesById.containsKey(0))
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MOVE_CATALOG).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MOVE_DETAILS).status)
-        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MOVE_DESCRIPTIONS).status)
+        val moveDescriptionCapability = catalog.capabilities.getValue(RomCapability.MOVE_DESCRIPTIONS)
+        assertEquals(CapabilityStatus.PARTIAL, moveDescriptionCapability.status)
+        assertEquals(842, moveDescriptionCapability.coveredRecords)
+        assertEquals(847, moveDescriptionCapability.expectedRecords)
         assertEquals(847, catalog.movesById.size)
         assertEquals("Pound", catalog.movesById.getValue(1).name.value)
         assertEquals(1, catalog.movesById.getValue(1).typeId.value)
@@ -125,6 +148,39 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
             requireNotNull(second.catalog).speciesById.mapValues { it.value.learnset },
         )
         assertEquals(catalog.movesById, requireNotNull(second.catalog).movesById)
+    }
+
+    @Test
+    fun malformedEmbeddedDescriptionsDisableOnlyThatOptionalModule() {
+        val configured = System.getenv("DUALDEX_DREAMSTONE_ROM")
+        assumeTrue("set DUALDEX_DREAMSTONE_ROM to run this live-ROM regression", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+        val bytes = Files.readAllBytes(path)
+        repeat(400) { id ->
+            val field = 0x7B0160 + (id + 1) * 260 + 76
+            bytes.fill(0, field, field + 4)
+        }
+
+        val analysis = ParserOrchestrator.analyze(RomImage(bytes))
+        assertEquals(SelectionStatus.SELECTED, analysis.status)
+        assertEquals(EngineFamily.EMERALD, analysis.selectedFamily)
+        val probe = analysis.probes.single { it.family == analysis.selectedFamily }
+        val layout = requireNotNull(probe.resolvedLayout)
+        assertNotNull(layout.tables.speciesNames)
+        assertNotNull(layout.tables.baseStats)
+        assertEquals(null, layout.tables.descriptions)
+        assertEquals(null, layout.headerlessUnifiedSpecies?.descriptionPointerOffset)
+        assertNotNull(layout.tables.sprites)
+        assertEquals(88, layout.headerlessUnifiedSpecies?.frontSpritePointerOffset)
+        assertEquals(
+            CapabilityStatus.NOT_FOUND,
+            probe.capabilities.single { it.capability == RomCapability.POKEDEX_DESCRIPTIONS }.status,
+        )
+        assertEquals(
+            CapabilityStatus.AVAILABLE,
+            probe.capabilities.single { it.capability == RomCapability.SPRITES }.status,
+        )
     }
 
     private fun learnsetSha256(rows: List<LearnsetRowOutcome.Decoded>): String {

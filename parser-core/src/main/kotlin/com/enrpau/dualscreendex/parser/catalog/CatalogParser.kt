@@ -251,7 +251,8 @@ object CatalogMaterializer {
         val mediaSpecies = baseSpecies.mapValues { (id, record) ->
             val dex = record.dexNumber.value ?: id
             val descriptionKey = when {
-                layout.pokeemeraldExpansion != null -> id
+                layout.pokeemeraldExpansion != null ||
+                    layout.headerlessUnifiedSpecies?.descriptionPointerOffset != null -> id
                 layout.generation == 3 -> dex
                 else -> id
             }
