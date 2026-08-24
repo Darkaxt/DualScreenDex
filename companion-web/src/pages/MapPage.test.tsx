@@ -357,8 +357,11 @@ describe('optional local map presentation', () => {
     const localStage = screen.getByRole('region', { name: 'Interactive local map' });
     expect(localStage.dataset.mapMode).toBe('LOCAL');
     expect(container.querySelector('.map-plane img')?.getAttribute('src')).toBe('/api/maps/local%2F0010%2Fmap.png');
-    expect(container.querySelector('.map-player-marker')?.getAttribute('aria-label')).toBe('Player position 12, 7');
-    expect(container.querySelector('.map-player-marker')?.classList.contains('atlas-location-marker')).toBe(false);
+    const playerMarker = container.querySelector('.map-player-marker');
+    expect(playerMarker?.getAttribute('aria-label')).toBe('Player position 12, 7');
+    expect(playerMarker?.classList.contains('atlas-location-marker')).toBe(false);
+    expect(playerMarker?.classList.contains('has-sprite')).toBe(false);
+    expect(playerMarker?.querySelector('.map-player-dot')).not.toBeNull();
     expect(screen.queryByRole('button', { name: 'Show Atlas' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Show Local map' })).toBeNull();
   });

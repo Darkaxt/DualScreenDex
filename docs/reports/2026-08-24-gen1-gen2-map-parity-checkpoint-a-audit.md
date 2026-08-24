@@ -4,7 +4,7 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 
 | Stage | Requirement | Evidence | Classification | Target / acceptance |
 |---|---|---|---|---|
-| Baseline | Reconcile with `fork/master` before every commit | Plan commit `d6b3722` reconciled at master `5c316d8`; implementation gate repeats before every commit | PASS | Re-run and record refs at every commit |
+| Baseline | Reconcile with `fork/master` before every commit | Corpus gate rebased HEAD `8cf81da` onto master `2ed446c`; final audit gate has HEAD/master/remote branch and merge base all at `a8579cc` | PASS | Re-run and record refs at every commit |
 | Shared solver | Gen III output remains unchanged | Shared normalized builder plus complete `LocalMapSceneBuilderTest` and `Gen3MapSceneResolverTest` pass | PASS | Re-run with every generation adapter change |
 | Gen I scenes | Compiled connections produce bounded scenes | 11-byte decoder, fail-closed integration, synthetic ABI suite, and Red/Blue/Yellow exact controls pass | PASS | Red/Blue/Yellow strict controls pass |
 | Gen II scenes | Compiled connections preserve four palettes | 12-byte decoder, fail-closed integration, synthetic ABI suite, and Gold/Silver/Crystal exact controls pass | PASS | Gold/Silver/Crystal strict controls pass |
@@ -12,7 +12,8 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 | Overworld marker | Structurally resolved frame or compact-dot fallback | Native contracts, sole-appearance API, structural GB/GBC resolver, and six official exact controls pass | PASS | Official controls and fail-closed tests pass |
 | Discovery / Atlas | RC53 hidden-image and fallback contract remains intact | Organic scenes omit undiscovered raster URLs and Atlas underlays; Atlas remains the unavailable-Local fallback | PASS | Web tests pass |
 | Persistence | Existing catalogs rebuild once and round-trip | Parser schema 35, stale-revision rejection, synthetic section coverage, and official Red/Crystal round trips pass | PASS | Parser schema 35 cache tests pass |
-| GB/GBC corpus | No accepted Local raster regresses | Pending | BLOCKER | Deterministic matrix reports zero parser errors/regressions |
+| GB/GBC corpus | No accepted Local raster regresses | 334/334 hashes; 102/102 deterministic selected rows; exact pre-stage raster preservation; 69 current scenes; three source-backed strict controls | PASS | Zero parser errors, raster regressions, and strict-control failures |
+| Signed artifact | Publish and independently verify a production-signed APK | `v1.1.0-rc.54`; package/version/code/hash and one v3 signer match protected provenance | PASS | Ad hoc ADB/emulator validation explicitly waived; downstream live testing remains observational |
 
 ## Baseline characterization
 
@@ -112,7 +113,7 @@ Post-stage comparison against the specification closes blocker Task #147. There 
 
 Parser schema 35 invalidates revision 34 catalogs exactly once without changing the SQLite schema or section formats. Synthetic section coverage retains static PNG maps, indexed four-palette maps, timed maps, scenes, POIs, runtime lighting metadata, and trainer assets; the stale-revision control preserves the independent save snapshot while clearing incompatible catalog metadata and sections.
 
-Official Red and Crystal cache controls additionally prove that generated Gen I/II scenes and native walking frames survive a complete SQLite round trip. Crystal retains indexed raster bytes, all morning/day/night/dark palettes, the `0x1841` time-of-day WRAM offset, and both trainer appearances.
+Official Red and Crystal cache controls additionally prove that generated Gen I/II scenes and native walking frames survive a complete SQLite round trip. Crystal retains indexed raster bytes, all morning/day/night/dark palettes, the `0x1841` time-of-day WRAM offset, and both trainer appearances. `KnowledgeLedgerSanitizerTest` proves that a catalog rebuild removes stale area/POI keys while retaining every valid revealed area and the exact save-scoped Local-map POI preferences.
 
 ```text
 D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :catalog-store:test --tests '*CatalogStoreTest' --no-daemon --console=plain
@@ -129,9 +130,9 @@ Post-stage comparison against the specification closes blocker Task #148. There 
 
 ## Shared map presentation
 
-The shared catalog API now has a generation-two regression with two indexed placements, exact scene pixel geometry, dynamic-lighting flags, live area/X/Y publication, and a sole 16×16 native trainer marker without runtime gender. Existing Android memory-coordinator tests continue to prove that generation-owned area and coordinate bytes reach the shared state model.
+The shared catalog API now has exact Generation I static-scene and Generation II indexed-scene regressions. They prove scene pixel geometry, static versus dynamic-lighting flags, live area/X/Y publication, and a sole 16×16 native trainer marker without runtime gender. Existing Android memory-coordinator tests continue to prove that generation-owned area and coordinate bytes reach the shared state model.
 
-Web regressions prove that a native 16×16 marker remains at least its ROM dimensions, recentering retains zoom, and every placement in a connected timed scene changes from `?lighting=DAY` to `?lighting=NIGHT` without changing placement geometry, transform, pan, or scale. Organic mode never mounts or references an undiscovered raster URL and never places Atlas beneath Local; Atlas remains the fail-closed surface when no current Local map exists.
+Web regressions prove that a native 16×16 marker remains at least its ROM dimensions, recentering retains zoom, and the compact dot remains present when no native frame resolves. Every placement in a connected timed scene changes from `?lighting=DAY` to `?lighting=NIGHT` without changing placement geometry, transform, pan, or scale. Organic mode never mounts or references an undiscovered raster URL and never places Atlas beneath Local; Atlas remains the fail-closed surface when no current Local map exists.
 
 ```text
 D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :companion-core:test --tests '*ApiViewBuilderTest' --no-daemon --console=plain
@@ -148,6 +149,67 @@ built successfully
 ```
 
 Post-stage comparison against the specification closes blocker Task #149. There are no shared-presentation blockers or deferrals.
+
+## GB/GBC corpus
+
+The complete private-input matrix verified all 334 manifest hashes and parsed all 102 selected Gen I/II rows twice from fresh bytes. All 102 were deterministic with zero parser errors. Comparison by manifest index and ROM hash against pre-stage commit `d6b3722` found zero differences in selected identity, generation/family, Local capability, map count, static/indexed/timed asset counts, raster signature, or error state. The current parser retains 13,685 maps and 13,685 raster assets exactly; all 57 available Local rows now contain scenes, with 69 scenes total.
+
+Three source-backed Shin release controls each retained 226 maps and the same deterministic scene signature. A focused compiled-ROM check verified the Pallet Town (`0x00`) to Route 1 (`0x0c`) displacement `(0, -36)` documented by public source revision `a7a9b1361e55aaa5afed6b5d14b5e7bd44002179`. The strict run reported three verified hashes, three deterministic controls, zero parser errors, three preserved baselines, and zero strict-control failures.
+
+The 45 `LOCAL_MAP NOT_FOUND` rows are unchanged from baseline, produce bounded diagnostics, and retain Atlas plus unrelated capabilities. Task #153 records the exact compatibility gap, prioritizes the 40 rows with potential local public-source oracles, and tracks the five rows awaiting equivalent source evidence. This is a valid deferral because no previously accepted Local raster is missing and Checkpoint A normalizes accepted Local catalogs; corpus-wide Gen I/II Local support is explicitly not claimed. Safe fallback is Atlas. The target is the source-backed GB/GBC Local-map compatibility expansion, accepted only when generic compiled-structure resolution preserves baseline capabilities and passes focused plus corpus controls.
+
+Full public-safe evidence is retained in `docs/reports/2026-08-24-gen1-gen2-map-parity-checkpoint-a.md`. No Gen I/II production parser or Local-map code changed between complete matrix commit `8cf81da` and audit base `a8579cc`; post-sync focused strict, API, Android, and all-six official controls cover the integrated changes without another redundant full corpus parse. Post-stage comparison closes blocker Task #150 with no Checkpoint A corpus blocker.
+
+## Final Checkpoint A specification audit
+
+| Specification area | Evidence | Result |
+|---|---|---|
+| Checkpoint A delivery scope | Gen I/II scenes, live area/X/Y, native-or-dot marker, Gen II lighting, cache/API/Android/web coverage | PASS |
+| Shared renderer authority | `MapPage` remains the only Local presentation path and contains no generation/family/platform branch | PASS |
+| Structural decoders | Relative 11-byte Gen I and 12-byte Gen II compiled ABIs; bounded targets/strips/WRAM/width/alignment; no production identities | PASS |
+| Shared scene solver | Reciprocal canonicalization, ambiguity rejection, overlap isolation, deterministic partitioning, non-negative bounded scenes, unchanged Gen III controls | PASS |
+| Player and overworld assets | Existing bounded runtime publication, exact static/timed API scenes, native dimensions, sole-appearance selection, positive dot fallback | PASS |
+| Gen II lighting | Indexed assets retain four palettes and clock metadata; server and connected-scene tests retain lazy per-map lighting URLs | PASS |
+| Discovery, camera, and raster budget | Hidden URLs absent, black placeholders present, Atlas excluded beneath Local, individual-map fallback, continuous pan/zoom/recenter/follow, 32 MiB budget | PASS |
+| Persistence and ledger | Parser schema 35 one-time rebuild; static/indexed/timed/scenes/trainer round trips; stale keys removed while valid revealed areas and preferences survive | PASS |
+| Failure isolation | Malformed connection/trainer/clock evidence fails independently; accepted rasters remain; unavailable Local uses Atlas | PASS |
+| Official/source/corpus validation | Six official controls, three source-backed controls, complete deterministic matrix, zero parser errors or accepted-raster regressions | PASS |
+| Concurrent-work reconciliation | Every implementation commit was fetched against master; the corpus gate rebased onto incoming unified-state work and reran overlapping API/Android controls | PASS |
+
+Final local gates:
+
+```text
+Gradle test + app unit gate: BUILD SUCCESSFUL in 22m 52s; 71 tasks
+Final API + ledger regressions: BUILD SUCCESSFUL in 1m 2s
+Companion web: 26 files / 189 tests passed; production build succeeded
+Final MapPage regression: 24 tests passed
+Release policy: 18 tests passed
+Official compiled controls: 13 tests, 0 skipped, 0 failures; BUILD SUCCESSFUL in 5m 13s
+```
+
+Checkpoint B POIs and collection evidence are outside Checkpoint A and are tracked as Task #154 rather than silently treated as complete. Task #153 is the one valid Checkpoint A compatibility deferral recorded below. All implementation, lab-validation, signing, and publication blockers are closed. On 2026-08-24 the user explicitly waived an ad hoc ADB/emulator gate as unrealistic without a reusable test bench; feature behavior will instead receive downstream live testing and complaint-driven follow-up.
+
+## Signed validation artifact
+
+The already-published `v1.1.0-rc.54` tag contains implementation commit `8cf81da`. Changes from that tag through corpus commit `a8579cc` are limited to reports, plans, and the evidence-only parser-cli matrix runner; no production source differs. Protected workflow run `32731056044` completed successfully at tagged commit `37881694`; the released APK was independently downloaded and verified:
+
+```text
+package=com.darkaxt.dualdex
+versionName=1.1.0-rc.54
+versionCode=1010054
+apkSha256=6b1d78d3e062f7c514d2f3f4c4fa0983a68160c19055259c28e3cceabd627264
+signers=1
+signatureScheme=v3
+certificateSha256=C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA
+```
+
+The APK hash matches both the release asset digest and `SHA256SUMS.txt`; package/version/hash/certificate match protected provenance. No ad hoc install or gesture run is required for Checkpoint A closure. The signed artifact remains available for normal downstream live testing; emulator automation should wait for a reusable test bench rather than adding a slow one-off validation path.
+
+## Deferral ledger
+
+| ID | Missing behavior / affected family | Safe fallback | Target | Acceptance |
+|---|---|---|---|---|
+| Task #153 | Local-map authority for 45 pre-existing unavailable rows; source-first Gen I Celebrations/Beyond/Red++/Static Yellow/matching Kaizo and Gen II Anniversary Crystal/Crystal Legacy/Timeless/Gold-Silver 97/Mystic/Orange/Peridot, then five rows awaiting matching source | `LOCAL_MAP NOT_FOUND`; Atlas remains available; parser selection and unrelated capabilities continue | Source-backed GB/GBC Local-map compatibility expansion before corpus-wide Local support is claimed | Each source-matched family resolves generically from bounded compiled structure, preserves baseline capabilities/rasters, emits valid scenes or standalone maps, and passes focused and affected-corpus controls; remaining rows close only with equivalent structural evidence |
 
 ## Classification rules
 

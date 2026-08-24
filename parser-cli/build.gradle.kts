@@ -30,6 +30,13 @@ tasks.register<JavaExec>("mapFirst50Matrix") {
     mainClass.set("com.enrpau.dualscreendex.parser.cli.MapFirst50Matrix")
 }
 
+tasks.register<JavaExec>("gbGbcLocalMapMatrix") {
+    group = "verification"
+    description = "Runs deterministic GB/GBC Local-map scene regression evidence"
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("com.enrpau.dualscreendex.parser.cli.GbGbcLocalMapMatrix")
+}
+
 tasks.register<JavaExec>("evolutionFirst50Matrix") {
     group = "verification"
     description = "Runs the evidence-only exact first50 evolution completeness matrix"
