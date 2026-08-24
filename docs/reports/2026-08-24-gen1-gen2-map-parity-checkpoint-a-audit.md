@@ -8,9 +8,9 @@ Specification: `docs/superpowers/specs/2026-08-24-gen1-gen2-local-map-parity-des
 | Shared solver | Gen III output remains unchanged | Shared normalized builder plus complete `LocalMapSceneBuilderTest` and `Gen3MapSceneResolverTest` pass | PASS | Re-run with every generation adapter change |
 | Gen I scenes | Compiled connections produce bounded scenes | 11-byte decoder, fail-closed integration, synthetic ABI suite, and Red/Blue/Yellow exact controls pass | PASS | Red/Blue/Yellow strict controls pass |
 | Gen II scenes | Compiled connections preserve four palettes | 12-byte decoder, fail-closed integration, synthetic ABI suite, and Gold/Silver/Crystal exact controls pass | PASS | Gold/Silver/Crystal strict controls pass |
-| Live player | Existing area and X/Y drive shared scene marker | Pending | BLOCKER | Android and API tests pass |
+| Live player | Existing area and X/Y drive shared scene marker | Gen II scene API projection and existing Android live-map publication tests pass | PASS | Android and API tests pass |
 | Overworld marker | Structurally resolved frame or compact-dot fallback | Native contracts, sole-appearance API, structural GB/GBC resolver, and six official exact controls pass | PASS | Official controls and fail-closed tests pass |
-| Discovery / Atlas | RC53 hidden-image and fallback contract remains intact | Pending | BLOCKER | Web tests pass |
+| Discovery / Atlas | RC53 hidden-image and fallback contract remains intact | Organic scenes omit undiscovered raster URLs and Atlas underlays; Atlas remains the unavailable-Local fallback | PASS | Web tests pass |
 | Persistence | Existing catalogs rebuild once and round-trip | Parser schema 35, stale-revision rejection, synthetic section coverage, and official Red/Crystal round trips pass | PASS | Parser schema 35 cache tests pass |
 | GB/GBC corpus | No accepted Local raster regresses | Pending | BLOCKER | Deterministic matrix reports zero parser errors/regressions |
 
@@ -126,6 +126,28 @@ BUILD SUCCESSFUL in 3m
 ```
 
 Post-stage comparison against the specification closes blocker Task #148. There are no persistence blockers or deferrals.
+
+## Shared map presentation
+
+The shared catalog API now has a generation-two regression with two indexed placements, exact scene pixel geometry, dynamic-lighting flags, live area/X/Y publication, and a sole 16×16 native trainer marker without runtime gender. Existing Android memory-coordinator tests continue to prove that generation-owned area and coordinate bytes reach the shared state model.
+
+Web regressions prove that a native 16×16 marker remains at least its ROM dimensions, recentering retains zoom, and every placement in a connected timed scene changes from `?lighting=DAY` to `?lighting=NIGHT` without changing placement geometry, transform, pan, or scale. Organic mode never mounts or references an undiscovered raster URL and never places Atlas beneath Local; Atlas remains the fail-closed surface when no current Local map exists.
+
+```text
+D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :companion-core:test --tests '*ApiViewBuilderTest' --no-daemon --console=plain
+BUILD SUCCESSFUL in 45s
+
+D:/Temp/dualdex-gen2-dynamic-lighting/gradlew -p D:/Temp/dualdex-gen2-dynamic-lighting :app:testDebugUnitTest --tests '*BattleMemoryCoordinatorTest' --no-daemon --console=plain
+BUILD SUCCESSFUL in 1m 39s
+
+npm --prefix D:/Temp/dualdex-gen2-dynamic-lighting/companion-web test -- --run src/pages/MapPage.test.tsx src/mapEngine.test.ts
+36 tests passed
+
+npm --prefix D:/Temp/dualdex-gen2-dynamic-lighting/companion-web run build
+built successfully
+```
+
+Post-stage comparison against the specification closes blocker Task #149. There are no shared-presentation blockers or deferrals.
 
 ## Classification rules
 

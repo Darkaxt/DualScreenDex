@@ -304,6 +304,69 @@ class ApiViewBuilderTest {
     }
 
     @Test
+    fun presentsGen2TimedSceneWithNativeMapSprite() {
+        val route29 = LocalMap("local/1803", "Route 29", 0x1803, 960, 288, 60, 18, "local/1803/map")
+        val newBark = LocalMap("local/1804", "New Bark Town", 0x1804, 320, 288, 20, 18, "local/1804/map")
+        val palettes = MapLightingPalettes(
+            morning = IntArray(32),
+            day = IntArray(32),
+            night = IntArray(32),
+            dark = IntArray(32),
+        )
+        val indexedAssets = listOf(route29, newBark).associate { map ->
+            map.imageAssetKey to IndexedMapAsset(
+                pixelWidth = map.pixelWidth,
+                pixelHeight = map.pixelHeight,
+                compressedIndices = LocalMapRasterCodec.compress(ByteArray(map.pixelWidth * map.pixelHeight)),
+                lightingPolicy = LocalMapLightingPolicy.AUTO,
+                palettes = palettes,
+            )
+        }
+        val assetKey = "trainer/overworld/player"
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.GOLD_SILVER,
+            platform = Platform.GBC,
+            localMaps = LocalMapCatalog(
+                maps = listOf(route29, newBark),
+                indexedAssets = indexedAssets,
+                scenes = listOf(
+                    LocalMapScene(
+                        key = "scene/1803",
+                        gridWidth = 80,
+                        gridHeight = 18,
+                        placements = listOf(
+                            LocalMapScenePlacement(route29.key, route29.baseAreaId, 0, 0),
+                            LocalMapScenePlacement(newBark.key, newBark.baseAreaId, 60, 0),
+                        ),
+                    ),
+                ),
+            ),
+            trainerAssets = TrainerAssetCatalog(
+                overworldAssetKeys = mapOf(0 to assetKey),
+                assets = mapOf(assetKey to RgbaSprite(16, 16, IntArray(16 * 16))),
+            ),
+        )
+
+        val scene = ApiViewBuilder.catalog(catalog).mapScenes.single()
+        val state = ApiViewBuilder.state(
+            AppSnapshot(liveAreaBaseId = newBark.baseAreaId, liveMapPosition = LiveMapPosition(4, 5)),
+            catalog,
+        )
+
+        assertEquals(1280, scene.pixelWidth)
+        assertEquals(288, scene.pixelHeight)
+        assertEquals(listOf(0, 960), scene.placements.map { it.pixelX })
+        assertEquals(listOf(960, 320), scene.placements.map { it.pixelWidth })
+        assertTrue(scene.placements.all { it.dynamicLighting })
+        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Fplayer.png", state.trainerMapSpriteUrl)
+        assertEquals(16, state.trainerMapSpriteWidth)
+        assertEquals(16, state.trainerMapSpriteHeight)
+        assertEquals(newBark.baseAreaId, state.currentAreaBaseId)
+        assertEquals(MapPositionView(4, 5), state.currentMapPosition)
+    }
+
+    @Test
     fun presentsTrainerAndPartyThroughCatalogLabelsAndNormalizedAssets() {
         val species = com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
             id = 25,

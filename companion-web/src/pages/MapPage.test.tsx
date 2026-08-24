@@ -400,6 +400,40 @@ describe('optional local map presentation', () => {
     rect.mockRestore();
   });
 
+  it('uses a native sixteen-pixel GB overworld sprite and preserves scale when recentering', () => {
+    const bounds = {
+      x: 0, y: 0, top: 0, right: 1240, bottom: 825, left: 0,
+      width: 1240, height: 825,
+      toJSON: () => ({}),
+    } as DOMRect;
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(bounds);
+    const { container } = render(<MapPage
+      catalog={connectedCatalog}
+      state={{
+        ...state,
+        currentMapPosition: { x: 12, y: 7 },
+        trainerMapSpriteUrl: '/api/trainer-assets/trainer%2Foverworld%2Fplayer.png',
+        trainerMapSpriteWidth: 16,
+        trainerMapSpriteHeight: 16,
+      }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    const stage = screen.getByRole('region', { name: 'Interactive local map' });
+    const marker = container.querySelector<HTMLElement>('.map-player-marker')!;
+    const rasterScale = Number(stage.dataset.effectiveRasterScale);
+    expect(marker.classList.contains('has-sprite')).toBe(true);
+    expect(marker.querySelector('img')?.getAttribute('src')).toBe('/api/trainer-assets/trainer%2Foverworld%2Fplayer.png');
+    expect(Number.parseFloat(marker.style.width)).toBeCloseTo(16 * Math.max(1, rasterScale), 8);
+    expect(Number.parseFloat(marker.style.height)).toBeCloseTo(16 * Math.max(1, rasterScale), 8);
+    expect(Number.parseFloat(marker.style.width)).toBeGreaterThanOrEqual(16);
+    const scale = stage.dataset.scale;
+    fireEvent.click(screen.getByRole('button', { name: 'Recenter map' }));
+    expect(stage.dataset.scale).toBe(scale);
+    rect.mockRestore();
+  });
+
   it('renders a connected Local scene and preserves the viewport across its map boundary', () => {
     const view = render(<MapPage
       catalog={connectedCatalog}
@@ -489,6 +523,7 @@ describe('optional local map presentation', () => {
     />);
 
     expect(view.container.querySelector('.map-scene-atlas-fallback')).toBeNull();
+    expect(view.container.innerHTML).not.toContain('/api/maps/local%2F0011%2Fmap.png');
     const images = view.container.querySelectorAll('.map-scene-tile');
     expect(images).toHaveLength(1);
     expect(images[0].getAttribute('data-local-map-key')).toBe('local/0010');
@@ -595,7 +630,7 @@ describe('optional local map presentation', () => {
     rect.mockRestore();
   });
 
-  it('updates every dynamic raster in a connected scene from one game clock', () => {
+  it('updates every dynamic raster in a connected scene without moving the viewport', () => {
     const dynamicSceneCatalog: Catalog = {
       ...connectedCatalog,
       mapScenes: connectedCatalog.mapScenes!.map(scene => ({
@@ -605,26 +640,43 @@ describe('optional local map presentation', () => {
     };
     const view = render(<MapPage
       catalog={dynamicSceneCatalog}
-      state={{ ...state, gameTime: { hours: 18, minutes: 37, phase: 'DAY', phaseProgress: 0.8 } }}
+      state={{ ...state, gameTime: { hours: null, minutes: null, phase: 'DAY', phaseProgress: null } }}
       onOpenPokedex={vi.fn()}
       onOpenSettings={vi.fn()}
     />);
+    const stage = screen.getByRole('region', { name: 'Interactive local map' });
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    const viewport = {
+      scale: stage.dataset.scale,
+      panX: stage.dataset.panX,
+      panY: stage.dataset.panY,
+      transform: view.container.querySelector<HTMLElement>('.map-plane')!.style.transform,
+      placementStyles: [...view.container.querySelectorAll<HTMLElement>('.map-scene-tile')].map(image => image.style.cssText),
+    };
 
     expect([...view.container.querySelectorAll('.map-scene-tile')].map(image => image.getAttribute('src'))).toEqual([
-      '/api/maps/local%2F0010%2Fmap.png?hour=18&minute=37',
-      '/api/maps/local%2F0011%2Fmap.png?hour=18&minute=37',
+      '/api/maps/local%2F0010%2Fmap.png?lighting=DAY',
+      '/api/maps/local%2F0011%2Fmap.png?lighting=DAY',
     ]);
+    expect(view.container.querySelector('.map-scene-atlas-fallback')).toBeNull();
 
     view.rerender(<MapPage
       catalog={dynamicSceneCatalog}
-      state={{ ...state, gameTime: { hours: 20, minutes: 4, phase: 'NIGHT', phaseProgress: 0.1 } }}
+      state={{ ...state, gameTime: { hours: null, minutes: null, phase: 'NIGHT', phaseProgress: null } }}
       onOpenPokedex={vi.fn()}
       onOpenSettings={vi.fn()}
     />);
     expect([...view.container.querySelectorAll('.map-scene-tile')].map(image => image.getAttribute('src'))).toEqual([
-      '/api/maps/local%2F0010%2Fmap.png?hour=20&minute=4',
-      '/api/maps/local%2F0011%2Fmap.png?hour=20&minute=4',
+      '/api/maps/local%2F0010%2Fmap.png?lighting=NIGHT',
+      '/api/maps/local%2F0011%2Fmap.png?lighting=NIGHT',
     ]);
+    expect(stage.dataset.scale).toBe(viewport.scale);
+    expect(stage.dataset.panX).toBe(viewport.panX);
+    expect(stage.dataset.panY).toBe(viewport.panY);
+    expect(view.container.querySelector<HTMLElement>('.map-plane')!.style.transform).toBe(viewport.transform);
+    expect([...view.container.querySelectorAll<HTMLElement>('.map-scene-tile')].map(image => image.style.cssText))
+      .toEqual(viewport.placementStyles);
+    expect(view.container.querySelector('.map-scene-atlas-fallback')).toBeNull();
   });
 
   it('changes only a dynamic Local image when game lighting changes and preserves zoom', () => {
