@@ -1,6 +1,6 @@
 # Source-backed Gen III Family Audit
 
-**Result:** Eight representative locally available ROMs were characterized against their public-source lineage and the current parser. Stage 2 has now published the integrated 20-byte `NatureInfo` ABI and validated the optional headerless unified `SpeciesInfo` presentation ABI for embedded sprites and Pokédex descriptions.
+**Result:** Eight representative locally available ROMs were characterized against their public-source lineage and the current parser. Stage 2 has now published both the integrated 20-byte `NatureInfo` ABI and the optional headerless unified `SpeciesInfo` presentation ABI for embedded sprites and Pokédex descriptions.
 
 HackDex CFRU, hg-engine, and pokeemerald-expansion tags were used only as discovery and clustering hints. Production eligibility remains based on generic compiled evidence; source names, project identities, filenames, hashes, and absolute ROM offsets are not parser inputs.
 
@@ -71,7 +71,7 @@ The implemented generic ABI produced the expected gains in a fresh one-job scan:
 
 The existing compiled name accessor and six-stat consumer uniquely establish a 260-byte unified species root and extent before any presentation field is considered. The source-backed struct order and compiled rows then validate an optional pointer-aligned presentation tail: inline category, height/weight, terminated description pointer, compressed front graphics, and normal palette. Dreamstone and an independent Crippling control expose complete presentation data for every active row; corrupting more than 20% of Dreamstone's description pointers disables only descriptions while names, stats, sprites, routing, and startup remain accepted.
 
-The fresh eight-ROM matrix improves Dreamstone from 15/24 at 62.48% to 17/24 at 70.81%, materializing 1,522 ROM-native 64×64 sprites and 1,522 descriptions. The other seven characterized controls retain their routing, feature counts, and compatibility scores. All six selected catalogs persisted and reopened through schema 38 with zero parser, persistence, or decoded cross-reference errors.
+The fresh eight-ROM matrix improves Dreamstone from 15/24 at 62.48% to 17/24 at 70.81%, materializing 1,522 ROM-native 64×64 sprites and 1,522 descriptions. The other seven characterized controls retain their routing, feature counts, and compatibility scores. All six selected catalogs persisted and reopened through schema 38 with zero parser, persistence, or decoded cross-reference errors. The checkpoint is published as signed prerelease `v1.1.0-rc.58`.
 
 ## Deferral ledger
 

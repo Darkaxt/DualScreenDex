@@ -1,6 +1,6 @@
 # Source-backed Gen III Checkpoint 2 Audit
 
-**Result:** VERIFIED FOR PROTECTED PUBLICATION — the optional headerless unified `SpeciesInfo` presentation ABI passes focused real-ROM, failure-isolation, parser, materialization, persistence, and eight-ROM matrix gates.
+**Result:** PUBLISHED — the optional headerless unified `SpeciesInfo` presentation ABI passes focused real-ROM, failure-isolation, parser, materialization, persistence, eight-ROM matrix, protected release, and independent public-artifact gates.
 
 ## Requirement audit
 
@@ -41,4 +41,13 @@
 
 `G3-DREAM-001` now covers only egg/machine moves, abilities, balls, and the bounded Local-raster overage. The other Stage 2 family deferrals remain listed in `2026-08-24-source-backed-gen3-family-audit.md`; each unsupported module continues to fail closed independently.
 
-Protected publication is the next gate. Release artifact hashes, signer identity, tag provenance, and workflow evidence will be appended only after the protected workflow completes.
+## Published candidate
+
+- Annotated tag [`v1.1.0-rc.58`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.58) peels to exact source commit `7a6083cb29c7bdd8fbdd1d72e7ff0007d697a4c6`.
+- Protected workflow [`32773171422`](https://github.com/Darkaxt/DualScreenDex/actions/runs/32773171422) completed both `verify-and-build` and `sign-and-publish` successfully against that commit.
+- Public APK `DualDex-v1.1.0-rc.58.apk` is 17,744,358 bytes with SHA-256 `f0c82fcaf5c3f58bd7799293c23ff17c74a7d57a4bb2a19d3b4419b5201855b3`.
+- All 27 `SHA256SUMS.txt` payload entries verify; they cover every release asset other than the checksum manifest itself. Authenticated and anonymous APK downloads are byte-identical.
+- The APK declares `com.darkaxt.dualdex`, version `1.1.0-rc.58`, and version code `1010058`.
+- Independent `apksigner` verification accepts APK Signature Scheme v3 with one signer. Its certificate SHA-256 is `c5a02cecb47cda41b618817ea684cbb6ccfdcc17a3e7d8243448175c8e3b2fba`, matching both the published PEM and pinned release identity.
+- `provenance.json` binds the repository, exact commit, tag, workflow run, release kind, package/version identity, APK hash, certificate hash, and protected `release-signing` authority.
+- No APK installation, launch, ADB, emulator, or gameplay action was used as a publication gate.
