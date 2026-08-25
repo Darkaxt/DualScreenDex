@@ -1,5 +1,11 @@
 package com.darkaxt.dualdex.performance
 
+import com.darkaxt.dualdex.live.ResolvedGameSection
+import com.darkaxt.dualdex.live.ResolvedStateFieldChange
+import com.darkaxt.dualdex.live.ResolvedStateFieldTrace
+import com.darkaxt.dualdex.live.ResolvedStateTraceEvent
+import com.darkaxt.dualdex.live.ResolvedStateTraceTrigger
+import com.darkaxt.dualdex.live.ResolvedValueSource
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.deleteIfExists
@@ -47,11 +53,41 @@ class AndroidPerformanceLogTest {
         log.append(event(sessionId = "safe-session", elapsedMillis = 42L))
 
         val json = log.export().toString(Charsets.UTF_8)
-        assertTrue(json.contains("\"schemaVersion\":1"))
+        assertTrue(json.contains("\"schemaVersion\":2"))
         assertTrue(json.contains("\"romSha256Prefix\":\"aaaaaaaaaaaa\""))
         assertFalse(json.contains("romPath", ignoreCase = true))
         assertFalse(json.contains("player", ignoreCase = true))
         assertFalse(json.contains("rawMemory", ignoreCase = true))
+    }
+
+    @Test
+    fun `state changes share the bounded log without exposing private values`() {
+        val root = Files.createTempDirectory(Path.of("build"), "performance-state-").also(roots::add).toFile()
+        val log = AndroidPerformanceLog(root, maximumSegmentBytes = 640)
+
+        repeat(20) { index ->
+            log.append(
+                event(
+                    sessionId = "state-$index",
+                    elapsedMillis = index.toLong(),
+                ).copy(
+                    kind = PerformanceEventKind.STATE_CHANGED,
+                    metrics = PerformanceMetrics(),
+                    stateChange = stateTrace(index.toLong()),
+                ),
+            )
+        }
+
+        val current = root.resolve(AndroidPerformanceLog.ACTIVE_FILE_NAME)
+        val previous = root.resolve(AndroidPerformanceLog.PREVIOUS_FILE_NAME)
+        assertTrue(current.length() <= 640L)
+        assertTrue(previous.length() <= 640L)
+        assertTrue(current.length() + previous.length() <= 1_280L)
+        val json = log.export().toString(Charsets.UTF_8)
+        assertTrue(json.contains("\"kind\":\"STATE_CHANGED\""))
+        assertTrue(json.contains("\"field\":\"pokedex.caught\""))
+        assertFalse(json.contains("RED"))
+        assertFalse(json.contains("save-a"))
     }
 
     @Test
@@ -72,7 +108,7 @@ class AndroidPerformanceLogTest {
     }
 
     private fun event(sessionId: String, elapsedMillis: Long) = PerformanceEvent(
-        schemaVersion = 1,
+        schemaVersion = PERFORMANCE_SCHEMA_VERSION,
         sessionId = sessionId,
         wallClockEpochMillis = 1_725_000_000_000L + elapsedMillis,
         elapsedMillis = elapsedMillis,
@@ -81,5 +117,23 @@ class AndroidPerformanceLogTest {
         generation = 3,
         runtimeMinute = elapsedMillis,
         metrics = PerformanceMetrics(javaHeapUsedBytes = 10L),
+    )
+
+    private fun stateTrace(revision: Long) = ResolvedStateTraceEvent(
+        revision = revision,
+        trigger = ResolvedStateTraceTrigger.LIVE_SAMPLE,
+        romSha256Prefix = "aaaaaaaaaaaa",
+        generation = 3,
+        sampleId = revision,
+        recoveryApplicationId = 2,
+        recoveryObservationKind = null,
+        changedSections = setOf(ResolvedGameSection.PLAYER),
+        fields = listOf(
+            ResolvedStateFieldChange(
+                field = "pokedex.caught",
+                before = ResolvedStateFieldTrace(ResolvedValueSource.RECOVERY, true, count = 52, fingerprint = "old"),
+                after = ResolvedStateFieldTrace(ResolvedValueSource.LIVE, true, count = 1, fingerprint = "new"),
+            ),
+        ),
     )
 }

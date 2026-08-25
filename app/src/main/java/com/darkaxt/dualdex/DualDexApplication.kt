@@ -9,11 +9,13 @@ import com.darkaxt.dualdex.catalog.CatalogCacheDecision
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointStore
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
+import com.darkaxt.dualdex.live.ResolvedStateTraceSink
 import com.darkaxt.dualdex.performance.AndroidPerformanceLog
 import com.darkaxt.dualdex.performance.AndroidPerformanceSampler
 import com.darkaxt.dualdex.performance.BoundedPerformanceWorkDispatcher
 import com.darkaxt.dualdex.performance.PerformanceComponentMetrics
 import com.darkaxt.dualdex.performance.PerformanceEventSink
+import com.darkaxt.dualdex.performance.PerformanceEventKind
 import com.darkaxt.dualdex.performance.PerformanceRecorder
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
@@ -168,7 +170,11 @@ class DualDexApplication : Application() {
             },
             sinks = listOf(
                 profilerLog,
-                PerformanceEventSink { event -> Log.i(PERFORMANCE_LOG_TAG, performanceGson.toJson(event)) },
+                PerformanceEventSink { event ->
+                    if (event.kind != PerformanceEventKind.STATE_CHANGED) {
+                        Log.i(PERFORMANCE_LOG_TAG, performanceGson.toJson(event))
+                    }
+                },
             ),
         )
         val cache = CatalogCache(File(filesDir, "catalogs"), AndroidCatalogDatabaseFactory) { event ->
@@ -189,7 +195,13 @@ class DualDexApplication : Application() {
             }
         }
         lateinit var runtime: ProductionCompanionRuntime
-        val transientGameState = UnifiedGameStateDecoder { runtime.gateway.bootstrap().ledger }
+        val transientGameState = UnifiedGameStateDecoder(
+            stateTraceSink = ResolvedStateTraceSink { trace ->
+                runCatching { Log.i(STATE_LOG_TAG, performanceGson.toJson(trace)) }
+                performanceRecorder.stateChanged(trace)
+            },
+            knowledgeLedgerSnapshot = { runtime.gateway.bootstrap().ledger },
+        )
         runtime = ProductionCompanionRuntime(
             catalogRepository = cache,
             initialSettings = settingsRepository.readForRom(lastCatalogSha256),
@@ -287,6 +299,7 @@ class DualDexApplication : Application() {
     private companion object {
         const val CACHE_LOG_TAG = "DualDexCache"
         const val PERFORMANCE_LOG_TAG = "DualDexPerf"
+        const val STATE_LOG_TAG = "DualDexState"
         const val PREFERENCES_NAME = "dualdex-runtime"
         const val LAST_CATALOG_HASH = "last-catalog-sha256"
         const val LAST_CATALOG_NAME = "last-catalog-name"

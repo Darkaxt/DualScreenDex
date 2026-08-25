@@ -1,5 +1,7 @@
 package com.darkaxt.dualdex.performance
 
+import com.darkaxt.dualdex.live.ResolvedStateTraceEvent
+
 enum class PerformanceEventKind {
     LOAD_STARTED,
     CACHE_DECISION,
@@ -9,6 +11,7 @@ enum class PerformanceEventKind {
     GAME_ACCESS_READY,
     LOAD_FAILED,
     RUNTIME_MINUTE,
+    STATE_CHANGED,
 }
 
 data class PerformanceMetrics(
@@ -36,6 +39,7 @@ data class PerformanceEvent(
     val runtimeMinute: Long? = null,
     val cacheDecision: String? = null,
     val failureType: String? = null,
+    val stateChange: ResolvedStateTraceEvent? = null,
     val metrics: PerformanceMetrics = PerformanceMetrics(),
 )
 
@@ -51,4 +55,4 @@ fun interface PerformanceWorkDispatcher {
     fun dispatch(work: () -> Unit)
 }
 
-const val PERFORMANCE_SCHEMA_VERSION = 1
+const val PERFORMANCE_SCHEMA_VERSION = 2

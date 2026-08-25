@@ -1,5 +1,6 @@
 package com.darkaxt.dualdex.performance
 
+import com.darkaxt.dualdex.live.ResolvedStateTraceEvent
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -91,6 +92,26 @@ class PerformanceRecorder(
         if (minute <= 0L || minute <= active.lastRuntimeMinute) return
         active.lastRuntimeMinute = minute
         emit(PerformanceEventKind.RUNTIME_MINUTE, now = now, runtimeMinute = minute)
+    }
+
+    @Synchronized
+    fun stateChanged(stateChange: ResolvedStateTraceEvent) {
+        val active = session ?: return
+        val now = monotonicNanos()
+        val event = PerformanceEvent(
+            sessionId = active.id,
+            wallClockEpochMillis = wallClockMillis(),
+            elapsedMillis = TimeUnit.NANOSECONDS.toMillis((now - active.startedAtNanos).coerceAtLeast(0L)),
+            kind = PerformanceEventKind.STATE_CHANGED,
+            romSha256Prefix = active.romSha256Prefix,
+            generation = active.generation,
+            stateChange = stateChange,
+        )
+        runCatching {
+            workDispatcher.dispatch {
+                sinks.forEach { sink -> runCatching { sink.append(event) } }
+            }
+        }
     }
 
     private fun closeStage(active: ActiveSession, now: Long) {
