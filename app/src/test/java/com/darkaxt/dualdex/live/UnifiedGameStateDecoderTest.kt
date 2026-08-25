@@ -35,6 +35,204 @@ import org.junit.Test
 
 class UnifiedGameStateDecoderTest {
     @Test
+    fun `trace proves recovery is hidden until the first live player sample`() {
+        val events = mutableListOf<ResolvedStateTraceEvent>()
+        val decoder = UnifiedGameStateDecoder(
+            stateTraceSink = ResolvedStateTraceSink(events::add),
+        )
+        decoder.beginSession(context(ROM))
+
+        decoder.acceptRecovery(
+            recovery(
+                rom = ROM,
+                seen = (1..52).toSet(),
+                caught = (1..52).toSet(),
+            ),
+        )
+
+        val recoveryCaught = requireNotNull(events.last().fields.singleOrNull { it.field == "pokedex.caught" })
+        assertEquals(ResolvedStateTraceTrigger.RECOVERY_APPLIED, events.last().trigger)
+        assertEquals(ResolvedValueSource.UNAVAILABLE, recoveryCaught.after?.source)
+        assertNull(recoveryCaught.after?.count)
+
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 1,
+                money = LiveValue.Available(3_000L),
+                seen = LiveValue.Available(setOf(252)),
+                caught = LiveValue.Available(setOf(252)),
+            ),
+        )
+
+        val liveCaught = requireNotNull(events.last().fields.singleOrNull { it.field == "pokedex.caught" })
+        assertEquals(ResolvedStateTraceTrigger.LIVE_SAMPLE, events.last().trigger)
+        assertEquals(ResolvedValueSource.LIVE, liveCaught.after?.source)
+        assertEquals(1, liveCaught.after?.count)
+    }
+
+    @Test
+    fun `trace identifies a temporary fallback to held recovery caught data`() {
+        val events = mutableListOf<ResolvedStateTraceEvent>()
+        val decoder = UnifiedGameStateDecoder(
+            stateTraceSink = ResolvedStateTraceSink(events::add),
+        )
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(
+            recovery(
+                rom = ROM,
+                seen = (1..52).toSet(),
+                caught = (1..52).toSet(),
+            ),
+        )
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 1,
+                money = LiveValue.Available(3_000L),
+                seen = LiveValue.Available(setOf(252)),
+                caught = LiveValue.Available(setOf(252)),
+            ),
+        )
+
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 2,
+                money = LiveValue.Available(3_000L),
+                seen = unavailable(),
+                caught = unavailable(),
+            ),
+        )
+
+        val fallback = requireNotNull(events.last().fields.singleOrNull { it.field == "pokedex.caught" })
+        assertEquals(ResolvedStateTraceTrigger.LIVE_SAMPLE, events.last().trigger)
+        assertEquals(ResolvedValueSource.LIVE, fallback.before?.source)
+        assertEquals(1, fallback.before?.count)
+        assertEquals(ResolvedValueSource.RECOVERY, fallback.after?.source)
+        assertEquals(52, fallback.after?.count)
+
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 3,
+                money = LiveValue.Available(3_000L),
+                seen = LiveValue.Available(setOf(252)),
+                caught = LiveValue.Available(setOf(252)),
+            ),
+        )
+
+        val correction = requireNotNull(events.last().fields.singleOrNull { it.field == "pokedex.caught" })
+        assertEquals(ResolvedValueSource.RECOVERY, correction.before?.source)
+        assertEquals(52, correction.before?.count)
+        assertEquals(ResolvedValueSource.LIVE, correction.after?.source)
+        assertEquals(1, correction.after?.count)
+    }
+
+    @Test
+    fun `trace distinguishes an incorrect live caught count from its live correction`() {
+        val events = mutableListOf<ResolvedStateTraceEvent>()
+        val decoder = UnifiedGameStateDecoder(
+            stateTraceSink = ResolvedStateTraceSink(events::add),
+        )
+        decoder.beginSession(context(ROM))
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 1,
+                money = LiveValue.Available(3_000L),
+                seen = LiveValue.Available((1..52).toSet()),
+                caught = LiveValue.Available((1..52).toSet()),
+            ),
+        )
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 2,
+                money = LiveValue.Available(3_000L),
+                seen = LiveValue.Available(setOf(252)),
+                caught = LiveValue.Available(setOf(252)),
+            ),
+        )
+
+        val correction = requireNotNull(events.last().fields.singleOrNull { it.field == "pokedex.caught" })
+        assertEquals(ResolvedStateTraceTrigger.LIVE_SAMPLE, events.last().trigger)
+        assertEquals(ResolvedValueSource.LIVE, correction.before?.source)
+        assertEquals(52, correction.before?.count)
+        assertEquals(ResolvedValueSource.LIVE, correction.after?.source)
+        assertEquals(1, correction.after?.count)
+    }
+
+    @Test
+    fun `trace runs before listeners suppresses semantic no-ops and fails open`() {
+        val order = mutableListOf<String>()
+        val events = mutableListOf<ResolvedStateTraceEvent>()
+        val decoder = UnifiedGameStateDecoder(
+            stateTraceSink = ResolvedStateTraceSink { event ->
+                order += "trace"
+                events += event
+            },
+        )
+        decoder.subscribe { update ->
+            if (update.snapshot != null) order += "listener"
+        }
+        decoder.beginSession(context(ROM))
+        val first = liveSnapshot(
+            rom = ROM,
+            sampleId = 1,
+            money = LiveValue.Available(3_000L),
+            seen = LiveValue.Available(setOf(252)),
+            caught = LiveValue.Available(setOf(252)),
+        )
+
+        decoder.acceptDecodedLive(first)
+        assertEquals(listOf("trace", "listener"), order)
+        val eventCount = events.size
+
+        decoder.acceptDecodedLive(first.copy(sampleId = 2))
+        assertEquals(eventCount, events.size)
+
+        val failOpen = UnifiedGameStateDecoder(
+            stateTraceSink = ResolvedStateTraceSink { error("trace failure") },
+        )
+        val publications = mutableListOf<ResolvedGameStateUpdate>()
+        failOpen.subscribe(publications::add)
+        failOpen.beginSession(context(ROM))
+        failOpen.acceptDecodedLive(first)
+        assertEquals(setOf(252), failOpen.current?.pokedex?.caughtSpeciesIds?.value)
+        assertTrue(publications.any { it.snapshot?.pokedex?.caughtSpeciesIds?.value == setOf(252) })
+    }
+
+    @Test
+    fun `trace omits player save and raw species identities`() {
+        val events = mutableListOf<ResolvedStateTraceEvent>()
+        val decoder = UnifiedGameStateDecoder(
+            stateTraceSink = ResolvedStateTraceSink(events::add),
+        )
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(
+            recovery(ROM).copy(observation = observation(SaveObservationKind.INITIAL, 1)),
+        )
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 1,
+                money = LiveValue.Available(3_000L),
+                seen = LiveValue.Available(setOf(252)),
+                caught = LiveValue.Available(setOf(252)),
+            ),
+        )
+
+        val encoded = events.joinToString("\n")
+        assertFalse(encoded.contains("RED"))
+        assertFalse(encoded.contains("12345"))
+        assertFalse(encoded.contains("save-a"))
+        assertFalse(encoded.contains("Game.srm"))
+        assertFalse(encoded.contains("file:///"))
+        assertFalse(encoded.contains("252"))
+    }
+
+    @Test
     fun `publishes exact changed sections while ignoring sample identity`() {
         val decoder = UnifiedGameStateDecoder()
         val updates = mutableListOf<ResolvedGameStateUpdate>()

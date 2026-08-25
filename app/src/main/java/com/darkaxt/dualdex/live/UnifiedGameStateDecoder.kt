@@ -30,6 +30,7 @@ import java.util.IdentityHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 class UnifiedGameStateDecoder(
+    private val stateTraceSink: ResolvedStateTraceSink = ResolvedStateTraceSink { },
     private val knowledgeLedgerSnapshot: () -> KnowledgeLedger = { KnowledgeLedger() },
 ) : TransientGameStateSource {
     private val listeners: MutableSet<TransientGameStateListener> =
@@ -44,6 +45,7 @@ class UnifiedGameStateDecoder(
     private var recoveryResetKnowledge = false
     private var battleKnowledge = ResolvedBattleKnowledge()
     private var published: ResolvedGameSnapshot? = null
+    private var traceRevision = 0L
     private val translatedSectionCache = Gen3LiveTranslatedSectionCache()
     private var contextEpoch = 0
     private val liveMemoryPackets = AtomicLong()
@@ -100,7 +102,7 @@ class UnifiedGameStateDecoder(
     @Synchronized
     fun beginSession(context: TransientGameStateContext) {
         if (this.context == context) return
-        val hadPublishedState = published != null
+        val previous = published
         contextEpoch++
         translatedSectionCache.clearEntries()
         this.context = context
@@ -113,7 +115,9 @@ class UnifiedGameStateDecoder(
         recoveryResetKnowledge = false
         battleKnowledge = ResolvedBattleKnowledge()
         published = null
-        if (hadPublishedState) notifyListeners(null, ResolvedGameSection.entries.toSet())
+        if (previous != null) {
+            publishCleared(previous, ResolvedStateTraceTrigger.SESSION_BEGIN)
+        }
     }
 
     @Synchronized
@@ -124,7 +128,7 @@ class UnifiedGameStateDecoder(
         if (live != null && snapshot.sampleId < requireNotNull(live).sampleId) return published
         live = snapshot
         liveEstablished = true
-        publishResolved()
+        publishResolved(ResolvedStateTraceTrigger.LIVE_SAMPLE)
         return published
     }
 
@@ -287,7 +291,7 @@ class UnifiedGameStateDecoder(
             recovery = safeProjection
             recoveryStatus = safeProjection.saveRam
             recoveryResetKnowledge = false
-            publishResolved()
+            publishResolved(ResolvedStateTraceTrigger.RECOVERY_APPLIED)
             return RecoveryApplication(accepted = true)
         }
         val frozenLedger = if (observation?.kind == SaveObservationKind.CHANGED && samePlaythrough) {
@@ -308,7 +312,7 @@ class UnifiedGameStateDecoder(
         recoveryStatus = safeProjection.saveRam
         observation?.source?.id?.let { recoverySourceId = it }
         recoveryApplicationId++
-        publishResolved()
+        publishResolved(ResolvedStateTraceTrigger.RECOVERY_APPLIED)
         return RecoveryApplication(accepted = true, checkpointLedger = frozenLedger)
     }
 
@@ -316,7 +320,7 @@ class UnifiedGameStateDecoder(
     fun acceptRecoveryStatus(saveRam: SaveRamView): ResolvedGameSnapshot? {
         if (context == null) return published
         recoveryStatus = saveRam
-        publishResolved()
+        publishResolved(ResolvedStateTraceTrigger.RECOVERY_STATUS)
         return published
     }
 
@@ -329,7 +333,7 @@ class UnifiedGameStateDecoder(
         recovery = null
         recoverySourceId = null
         recoveryResetKnowledge = false
-        publishResolved()
+        publishResolved(ResolvedStateTraceTrigger.RECOVERY_CLEARED)
         return published
     }
 
@@ -338,7 +342,7 @@ class UnifiedGameStateDecoder(
         if (context == null) return published
         translatedSectionCache.clearEntries()
         live = null
-        publishResolved()
+        publishResolved(ResolvedStateTraceTrigger.LIVE_SUSPENDED)
         return published
     }
 
@@ -346,13 +350,13 @@ class UnifiedGameStateDecoder(
     fun acceptBattleTracking(update: BattleTrackingUpdate): ResolvedGameSnapshot? {
         val areaBaseId = (live?.location?.areaBaseId as? LiveValue.Available<Int>)?.value
         mergeBattleTracking(update, areaBaseId)
-        publishResolved()
+        publishResolved(ResolvedStateTraceTrigger.BATTLE_TRACKING)
         return published
     }
 
     @Synchronized
     fun endSession() {
-        val hadPublishedState = published != null
+        val previous = published
         translatedSectionCache.clearEntries()
         context = null
         live = null
@@ -364,22 +368,52 @@ class UnifiedGameStateDecoder(
         recoveryResetKnowledge = false
         battleKnowledge = ResolvedBattleKnowledge()
         published = null
-        if (hadPublishedState) notifyListeners(null, ResolvedGameSection.entries.toSet())
+        if (previous != null) {
+            publishCleared(previous, ResolvedStateTraceTrigger.SESSION_END)
+        }
     }
 
-    private fun publishResolved() {
+    private fun publishResolved(trigger: ResolvedStateTraceTrigger) {
         val previous = published
         val next = resolveSnapshot()
         if (next == null) {
             if (previous != null) {
                 published = null
-                notifyListeners(null, ResolvedGameSection.entries.toSet())
+                publishCleared(previous, trigger)
             }
             return
         }
         published = next
         val changedSections = previous.changedSections(next)
-        if (changedSections.isNotEmpty()) notifyListeners(next, changedSections)
+        if (changedSections.isNotEmpty()) {
+            trace(previous, next, changedSections, trigger)
+            notifyListeners(next, changedSections)
+        }
+    }
+
+    private fun publishCleared(
+        previous: ResolvedGameSnapshot,
+        trigger: ResolvedStateTraceTrigger,
+    ) {
+        val changedSections = ResolvedGameSection.entries.toSet()
+        trace(previous, null, changedSections, trigger)
+        notifyListeners(null, changedSections)
+    }
+
+    private fun trace(
+        previous: ResolvedGameSnapshot?,
+        next: ResolvedGameSnapshot?,
+        changedSections: Set<ResolvedGameSection>,
+        trigger: ResolvedStateTraceTrigger,
+    ) {
+        val event = resolvedStateTraceEvent(
+            revision = ++traceRevision,
+            trigger = trigger,
+            previous = previous,
+            next = next,
+            changedSections = changedSections,
+        )
+        runCatching { stateTraceSink.append(event) }
     }
 
     private fun decodeCachedGen3Sections(
