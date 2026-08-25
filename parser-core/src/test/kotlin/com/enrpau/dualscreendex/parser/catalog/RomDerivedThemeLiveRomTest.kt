@@ -43,6 +43,7 @@ class RomDerivedThemeLiveRomTest {
         val expectedThemes = linkedMapOf(
             "Red" to theme(
                 setOf(
+                    CatalogThemeAssetClass.TRAINER,
                     CatalogThemeAssetClass.WORLD_MAP,
                     CatalogThemeAssetClass.LOCAL_MAP,
                     CatalogThemeAssetClass.SPECIES,
@@ -53,10 +54,14 @@ class RomDerivedThemeLiveRomTest {
                 ),
             ),
             "Crystal" to theme(
-                setOf(CatalogThemeAssetClass.WORLD_MAP, CatalogThemeAssetClass.SPECIES),
+                setOf(
+                    CatalogThemeAssetClass.TRAINER,
+                    CatalogThemeAssetClass.WORLD_MAP,
+                    CatalogThemeAssetClass.SPECIES,
+                ),
                 CatalogThemeTokens(
-                    0xE60202, 0xE62019, 0x02DC02, 0x018801, 0xEDFCC5, 0x899272,
-                    0xF7FDE5, 0x010101, 0x030303, 0x000000, 0x6767FC, 0x000000,
+                    0xE6360A, 0xE64D20, 0x6767EA, 0x3F3F91, 0xEDFCC5, 0x899272,
+                    0xF7FDE5, 0x010101, 0x030303, 0x000000, 0x03FB03, 0x000000,
                 ),
             ),
             "Emerald" to theme(

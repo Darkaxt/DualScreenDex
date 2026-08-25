@@ -204,6 +204,8 @@ class OfficialEmeraldPlayerStateRealControlTest {
                         SaveRamView(status = "MATCHED"),
                     ),
                 )
+                assertFalse(runtime.stateView().speciesState.getValue(species.id).caught)
+                runtime.updateLiveArea(null)
                 assertTrue(runtime.stateView().speciesState.getValue(species.id).caught)
                 assertNull(runtime.stateView().trainer)
                 assertTrue(runtime.stateView().party.none { it.occupied })

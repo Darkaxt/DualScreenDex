@@ -2402,7 +2402,7 @@ class ProductionCompanionRuntimeTest {
         assertTrue(runtime.applySaveSnapshot(snapshot, SaveRamView(status = "MATCHED", sourceName = "fixture.srm")))
 
         val state = runtime.stateView()
-        assertTrue(state.speciesState.getValue(25).caught)
+        assertFalse(state.speciesState.getValue(25).caught)
         assertEquals("MATCHED", state.saveRam.status)
         assertEquals("fixture.srm", state.saveRam.sourceName)
         runtime.close()
@@ -2573,8 +2573,7 @@ class ProductionCompanionRuntimeTest {
                 saveRam = SaveRamView(status = "MATCHED"),
             ),
         )
-        assertEquals(52, runtime.stateView().trainer?.dexCaught)
-        assertEquals(52, runtime.stateView().speciesState.values.count { it.caught })
+        assertEquals(0, runtime.stateView().speciesState.values.count { it.caught })
 
         val unavailable = com.darkaxt.dualdex.battle.LiveValue.Unavailable(
             com.darkaxt.dualdex.battle.LiveUnavailableReason(

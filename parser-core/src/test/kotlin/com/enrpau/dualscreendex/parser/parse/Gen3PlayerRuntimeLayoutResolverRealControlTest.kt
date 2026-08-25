@@ -91,6 +91,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         assertEquals(0x0A, save.trainer.trainerIdOffset)
         assertEquals(0x0E, save.trainer.playTimeHoursOffset)
         assertEquals(0x10, save.trainer.playTimeMinutesOffset)
+        assertEquals(0xBC, save.trainer.encryptionKeyOffset)
+        assertEquals(0x490, save.trainer.moneyOffset)
     }
 
     @Test
@@ -107,6 +109,13 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
 
         assertEquals(0x03005EA4L, runtime.liveClockAddress)
         assertNull(runtime.liveClockSchedule)
+        assertEquals(0x03005008L, runtime.saveBlock1PointerAddress)
+        assertEquals(0x0300500CL, runtime.saveBlock2PointerAddress)
+        val save = requireNotNull(runtime.saveRuntimeAbi)
+        assertEquals(0x3D68, save.saveBlock1Size)
+        assertEquals(0x0F24, save.saveBlock2Size)
+        assertEquals(0x290, save.trainer.moneyOffset)
+        assertEquals(0xF20, save.trainer.encryptionKeyOffset)
     }
 
     @Test

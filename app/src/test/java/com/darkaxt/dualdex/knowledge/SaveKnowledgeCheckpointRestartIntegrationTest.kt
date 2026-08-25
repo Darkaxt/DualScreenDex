@@ -12,6 +12,9 @@ import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.live.TransientGameStateContext
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import com.darkaxt.dualdex.battle.BattleCatalogView
+import com.darkaxt.dualdex.battle.BattleEncounterKind
+import com.darkaxt.dualdex.battle.LiveBattleState
+import com.darkaxt.dualdex.battle.RuntimeMapPosition
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -78,6 +81,14 @@ class SaveKnowledgeCheckpointRestartIntegrationTest {
             SaveRamView(status = "MATCHED"),
         )
 
+        assertFalse(reopenedRuntime.stateView().localMapPoiPreferences.showPlaces)
+        reopenedState.acceptGen3LiveSample(
+            sampleId = 1,
+            regions = emptyMap(),
+            battle = LiveBattleState(false, null, BattleEncounterKind.UNKNOWN),
+            areaBaseId = 1,
+            mapPosition = RuntimeMapPosition(0, 0),
+        )
         assertFalse(reopenedRuntime.stateView().localMapPoiPreferences.showPlaces)
         reopenedRuntime.close()
     }

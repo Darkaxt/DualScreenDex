@@ -36,6 +36,7 @@ class UnifiedGameStateDecoder(
         Collections.newSetFromMap(IdentityHashMap())
     private var context: TransientGameStateContext? = null
     private var live: LiveGameSnapshot? = null
+    private var liveEstablished = false
     private var recovery: RecoveryProjection? = null
     private var recoveryStatus: SaveRamView? = null
     private var recoverySourceId: String? = null
@@ -104,6 +105,7 @@ class UnifiedGameStateDecoder(
         translatedSectionCache.clearEntries()
         this.context = context
         live = null
+        liveEstablished = false
         recovery = null
         recoveryStatus = null
         recoverySourceId = null
@@ -121,6 +123,7 @@ class UnifiedGameStateDecoder(
         if (snapshot.generation != active.generation) return published
         if (live != null && snapshot.sampleId < requireNotNull(live).sampleId) return published
         live = snapshot
+        liveEstablished = true
         publishResolved()
         return published
     }
@@ -353,6 +356,7 @@ class UnifiedGameStateDecoder(
         translatedSectionCache.clearEntries()
         context = null
         live = null
+        liveEstablished = false
         recovery = null
         recoveryStatus = null
         recoverySourceId = null
@@ -447,8 +451,9 @@ class UnifiedGameStateDecoder(
         val live = live
         val saved = recovery?.snapshot
         if (live == null && saved == null) return null
-        val recoveryTrainer = saved?.trainer
-        val savedBag = saved?.bag.orEmpty().associateBy(BagPocketSnapshot::pocket)
+        val playerRecovery = saved.takeIf { liveEstablished }
+        val recoveryTrainer = playerRecovery?.trainer
+        val savedBag = playerRecovery?.bag.orEmpty().associateBy(BagPocketSnapshot::pocket)
         return ResolvedGameSnapshot(
             romIdentity = active.romIdentity,
             generation = active.generation,
@@ -467,17 +472,17 @@ class UnifiedGameStateDecoder(
             pokedex = ResolvedPokedexState(
                 seenSpeciesIds = resolvePokedexSpecies(
                     live?.pokedex?.seenDexNumbers,
-                    saved?.seenDexNumbers,
+                    playerRecovery?.seenDexNumbers,
                     active.saveParseContext,
                 ),
                 caughtSpeciesIds = resolvePokedexSpecies(
                     live?.pokedex?.caughtDexNumbers,
-                    saved?.caughtDexNumbers,
+                    playerRecovery?.caughtDexNumbers,
                     active.saveParseContext,
                 ),
             ),
-            party = resolve(live?.party, saved?.party),
-            storedIndividuals = resolve(null, saved?.storedIndividuals),
+            party = resolve(live?.party, playerRecovery?.party),
+            storedIndividuals = resolve(null, playerRecovery?.storedIndividuals),
             battle = resolve(live?.battle, null),
             battleKnowledge = battleKnowledge,
             location = ResolvedLocationState(

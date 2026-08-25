@@ -28,6 +28,7 @@ import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.darkaxt.dualdex.knowledge.SaveFileFingerprint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -101,6 +102,43 @@ class UnifiedGameStateDecoderTest {
         assertEquals(ResolvedValueSource.LIVE, decoder.current!!.trainer.money.source)
         assertEquals(setOf(1, 2), decoder.current!!.pokedex.seenSpeciesIds.value)
         assertEquals(ResolvedValueSource.RECOVERY, decoder.current!!.pokedex.seenSpeciesIds.source)
+    }
+
+    @Test
+    fun recoveryDoesNotPublishPlayerStateBeforeTheFirstLiveSample() {
+        val decoder = UnifiedGameStateDecoder()
+        val updates = mutableListOf<ResolvedGameStateUpdate>()
+        decoder.subscribe(updates::add)
+        decoder.beginSession(context(ROM))
+
+        decoder.acceptRecovery(
+            recovery(
+                rom = ROM,
+                money = 500L,
+                seen = setOf(1, 2, 3),
+                caught = setOf(1, 2),
+            ),
+        )
+
+        assertNotNull(decoder.current)
+        assertEquals(ResolvedValueSource.UNAVAILABLE, decoder.current?.trainer?.money?.source)
+        assertEquals(ResolvedValueSource.UNAVAILABLE, decoder.current?.pokedex?.seenSpeciesIds?.source)
+        assertEquals(ResolvedValueSource.UNAVAILABLE, decoder.current?.pokedex?.caughtSpeciesIds?.source)
+        assertTrue(updates.none { it.snapshot?.pokedex?.seenSpeciesIds?.value?.isNotEmpty() == true })
+
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 1,
+                money = LiveValue.Available(3_000L),
+                seen = LiveValue.Available(setOf(1)),
+                caught = LiveValue.Available(setOf(1)),
+            ),
+        )
+
+        assertEquals(3_000L, decoder.current?.trainer?.money?.value)
+        assertEquals(setOf(1), decoder.current?.pokedex?.seenSpeciesIds?.value)
+        assertEquals(setOf(1), decoder.current?.pokedex?.caughtSpeciesIds?.value)
     }
 
     @Test
@@ -225,6 +263,9 @@ class UnifiedGameStateDecoderTest {
         decoder.acceptRecovery(
             recovery(ROM).copy(observation = observation(SaveObservationKind.INITIAL, 1)),
         )
+        decoder.acceptDecodedLive(
+            liveSnapshot(ROM, sampleId = 1, money = LiveValue.Available(900L)),
+        )
         currentLedger = KnowledgeLedger(
             seenSpecies = setOf(25, 133),
             localMapPoiPreferences = com.enrpau.dualscreendex.companion.model.LocalMapPoiPreferences(showPlaces = false),
@@ -237,7 +278,7 @@ class UnifiedGameStateDecoderTest {
         assertTrue(application.accepted)
         assertEquals(emptySet<Int>(), application.checkpointLedger?.seenSpecies)
         assertFalse(requireNotNull(application.checkpointLedger).localMapPoiPreferences.showPlaces)
-        assertEquals(700L, decoder.current?.trainer?.money?.value)
+        assertEquals(900L, decoder.current?.trainer?.money?.value)
         assertEquals(2L, decoder.current?.recovery?.applicationId)
         assertEquals(SaveObservationKind.CHANGED, decoder.current?.recovery?.observationKind)
         assertFalse(requireNotNull(decoder.current?.recovery).resetKnowledge)

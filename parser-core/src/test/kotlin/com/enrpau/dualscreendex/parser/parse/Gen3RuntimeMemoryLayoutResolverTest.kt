@@ -159,7 +159,7 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                         trainerIdOffset = 0x0A,
                         playTimeHoursOffset = 0x0E,
                         playTimeMinutesOffset = 0x10,
-                        encryptionKeyOffset = 0xAC,
+                        encryptionKeyOffset = 0xBC,
                         moneyOffset = 0x490,
                         maximumMoney = 999_999,
                         badgeFlags = listOf(

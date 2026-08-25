@@ -12,6 +12,18 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogGen3RuntimeMemoryLayout
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3SaveRuntimeAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TrainerCardAbi
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Address
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7BranchRegister
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DataOperation
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DataProcessing
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DecodeResult
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Immediate
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Instruction
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7MemoryTransfer
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7MemoryWidth
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Register
+import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7RegisterOperand
+import com.enrpau.dualscreendex.parser.analysis.thumb.ThumbDecoder
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 
@@ -45,7 +57,8 @@ object Gen3PlayerRuntimeLayoutResolver {
             rubySapphireSaveRuntimeAbi()
         } else if (saveBlock1Pointer != null && saveBlock2Pointer != null) {
             when (family) {
-                EngineFamily.EMERALD -> emeraldSaveRuntimeAbi()
+                EngineFamily.EMERALD -> resolveEmeraldEncryptionKeyOffset(rom, saveBlock2Pointer)
+                    ?.let(::emeraldSaveRuntimeAbi)
                 EngineFamily.FIRERED_LEAFGREEN -> gfHeader?.let { fireRedSaveRuntimeAbi(it, expandedSave) }
                 else -> null
             }
@@ -257,9 +270,92 @@ object Gen3PlayerRuntimeLayoutResolver {
         return candidates.singleOrNull()
     }
 
-    private fun emeraldSaveRuntimeAbi() = CatalogGen3SaveRuntimeAbi(
+    /**
+     * Resolves the SaveBlock2 encryption-key member from the compiled GetMoney leaf rather than
+     * inheriting the retail Emerald struct layout. Emerald-derived projects can insert members in
+     * SaveBlock2 while retaining the rest of the save ABI, as Modern Emerald does.
+     *
+     * The admitted flow is deliberately narrow: load the resolved SaveBlock2 pointer global,
+     * dereference it, materialize one member offset, load the caller-supplied encrypted word, load
+     * the key through that member offset, XOR the two values and return. Multiple distinct offsets
+     * fail closed.
+     */
+    private fun resolveEmeraldEncryptionKeyOffset(
+        rom: RomImage,
+        saveBlock2PointerAddress: Long,
+    ): Int? {
+        val candidates = linkedSetOf<Int>()
+        var offset = 0
+        while (offset <= rom.size - EMERALD_GET_MONEY_BYTES) {
+            if (rom.u16le(offset) and THUMB_PC_RELATIVE_LOAD_MASK != THUMB_PC_RELATIVE_LOAD) {
+                offset += 2
+                continue
+            }
+            val literalLoad = decodedThumb(rom, offset) as? Arm7MemoryTransfer
+            val literalAddress = literalLoad?.address as? Arm7Address.PcRelative
+            if (
+                literalLoad == null || !literalLoad.load ||
+                literalLoad.width != Arm7MemoryWidth.WORD || literalAddress == null ||
+                literalAddress.resolvedAddress !in 0L..rom.size.toLong() - 4L ||
+                rom.u32le(literalAddress.resolvedAddress.toInt()) != saveBlock2PointerAddress
+            ) {
+                offset += 2
+                continue
+            }
+
+            val pointerLoad = decodedThumb(rom, offset + 2) as? Arm7MemoryTransfer
+            val pointerAddress = pointerLoad?.address as? Arm7Address.RegisterOffset
+            val keyOffsetMove = decodedThumb(rom, offset + 4) as? Arm7DataProcessing
+            val encryptedLoad = decodedThumb(rom, offset + 6) as? Arm7MemoryTransfer
+            val encryptedAddress = encryptedLoad?.address as? Arm7Address.RegisterOffset
+            val keyLoad = decodedThumb(rom, offset + 8) as? Arm7MemoryTransfer
+            val keyAddress = keyLoad?.address as? Arm7Address.RegisterOffset
+            val xor = decodedThumb(rom, offset + 10) as? Arm7DataProcessing
+            val returnInstruction = decodedThumb(rom, offset + 12) as? Arm7BranchRegister
+            val keyOffset = (keyOffsetMove?.second as? Arm7Immediate)?.value?.toInt()
+            val xorFirst = xor?.first as? Arm7RegisterOperand
+            val xorSecond = xor?.second as? Arm7RegisterOperand
+            val keyOffsetFirst = keyOffsetMove?.first as? Arm7RegisterOperand
+            val indexedKeyLoad =
+                keyOffsetMove?.operation == Arm7DataOperation.MOVE &&
+                    keyAddress != null && keyAddress.base == pointerLoad?.valueRegister &&
+                    keyAddress.index == keyOffsetMove.destination && keyAddress.immediate == 0
+            val advancedPointerKeyLoad =
+                keyOffsetMove?.operation == Arm7DataOperation.ADD &&
+                    keyOffsetMove.destination == pointerLoad?.valueRegister &&
+                    keyOffsetFirst?.register == pointerLoad.valueRegister &&
+                    keyAddress != null && keyAddress.base == pointerLoad.valueRegister &&
+                    keyAddress.index == null && keyAddress.immediate == 0
+
+            if (
+                pointerLoad?.load == true && pointerLoad.width == Arm7MemoryWidth.WORD &&
+                pointerAddress?.base == literalLoad.valueRegister && pointerAddress.index == null &&
+                pointerAddress.immediate == 0 &&
+                keyOffset != null && keyOffset in 4 until EMERALD_SAVE_BLOCK2_SIZE && keyOffset and 3 == 0 &&
+                encryptedLoad?.load == true && encryptedLoad.width == Arm7MemoryWidth.WORD &&
+                encryptedLoad.valueRegister == Arm7Register.R0 &&
+                encryptedAddress?.base == Arm7Register.R0 && encryptedAddress.index == null &&
+                encryptedAddress.immediate == 0 &&
+                keyLoad?.load == true && keyLoad.width == Arm7MemoryWidth.WORD &&
+                (indexedKeyLoad || advancedPointerKeyLoad) &&
+                xor?.operation == Arm7DataOperation.EXCLUSIVE_OR &&
+                xor.destination == Arm7Register.R0 && xorFirst?.register == Arm7Register.R0 &&
+                xorSecond?.register == keyLoad.valueRegister &&
+                returnInstruction?.targetRegister == Arm7Register.LR && !returnInstruction.link
+            ) {
+                candidates += keyOffset
+            }
+            offset += 2
+        }
+        return candidates.singleOrNull()
+    }
+
+    private fun decodedThumb(rom: RomImage, offset: Int): Arm7Instruction? =
+        (ThumbDecoder.decode(rom, offset) as? Arm7DecodeResult.Decoded)?.instruction
+
+    private fun emeraldSaveRuntimeAbi(encryptionKeyOffset: Int) = CatalogGen3SaveRuntimeAbi(
         saveBlock1Size = 0x3D88,
-        saveBlock2Size = 0x0F2C,
+        saveBlock2Size = EMERALD_SAVE_BLOCK2_SIZE,
         textEncoding = CatalogGen3TextEncoding.ENGLISH,
         trainer = CatalogGen3TrainerCardAbi(
             playerNameOffset = 0x00,
@@ -268,7 +364,7 @@ object Gen3PlayerRuntimeLayoutResolver {
             trainerIdOffset = SAVE2_TRAINER_ID_OFFSET,
             playTimeHoursOffset = SAVE2_PLAY_HOURS_OFFSET,
             playTimeMinutesOffset = SAVE2_PLAY_MINUTES_OFFSET,
-            encryptionKeyOffset = 0xAC,
+            encryptionKeyOffset = encryptionKeyOffset,
             moneyOffset = 0x490,
             maximumMoney = 999_999,
             badgeFlags = listOf(
@@ -636,6 +732,10 @@ object Gen3PlayerRuntimeLayoutResolver {
     private const val SAVE2_TRAINER_ID_OFFSET = 0x0A
     private const val SAVE2_PLAY_HOURS_OFFSET = 0x0E
     private const val SAVE2_PLAY_MINUTES_OFFSET = 0x10
+    private const val EMERALD_SAVE_BLOCK2_SIZE = 0x0F2C
+    private const val EMERALD_GET_MONEY_BYTES = 14
+    private const val THUMB_PC_RELATIVE_LOAD_MASK = 0xF800
+    private const val THUMB_PC_RELATIVE_LOAD = 0x4800
     private const val SAVE1_LOCATION_OFFSET = 0x04
     private const val PARTY_CAPACITY = 6
     private const val PARTY_RECORD_SIZE = 100
