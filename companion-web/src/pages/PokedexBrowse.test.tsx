@@ -30,6 +30,18 @@ const state: State = {
 };
 
 describe('Pokédex knowledge modes', () => {
+  it('keeps filters above the results and docks search with the counter below them', () => {
+    const { container } = render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
+
+    const pokedex = container.querySelector('.pokedex-screen')!;
+    expect(Array.from(pokedex.children).map(node =>
+      node.classList.contains('app-header') ? 'header' : node.className,
+    )).toEqual(['header', 'browse-tools', 'species-list', 'pokedex-search-dock']);
+    expect(container.querySelector('.browse-tools .filter-strip')).toBeTruthy();
+    expect(container.querySelector('.browse-tools .pokedex-search-row')).toBeNull();
+    expect(container.querySelector('.pokedex-search-dock .pokedex-search-row')).toBeTruthy();
+  });
+
   it('uses a title-only header without parser family or policy diagnostics', () => {
     const { container } = render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
 
@@ -67,10 +79,11 @@ describe('Pokédex knowledge modes', () => {
   });
 
   it('omits search and the counter from the Team tab', () => {
-    render(<PokedexBrowse catalog={catalog} state={{ ...state, filter: 'TEAM' }} send={vi.fn()} />);
+    const { container } = render(<PokedexBrowse catalog={catalog} state={{ ...state, filter: 'TEAM' }} send={vi.fn()} />);
 
     expect(screen.queryByPlaceholderText('NAME OR NUMBER')).toBeNull();
     expect(screen.queryByText(/\d+ \/ \d+/)).toBeNull();
+    expect(container.querySelector('.pokedex-search-dock')).toBeNull();
   });
 
   it('places a semantic Map shortcut in the existing header only for normalized maps', () => {

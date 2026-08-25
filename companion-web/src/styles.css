@@ -204,8 +204,9 @@ button { cursor: pointer; }
   .party-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-.pokedex-screen { grid-template-rows: auto auto 1fr; }
-.browse-tools { display: grid; gap: 8px; padding: 10px 12px; background: var(--paper-deep); border-bottom: 1px solid var(--line); }
+.pokedex-screen { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.browse-tools { display: grid; padding: 10px 12px; background: var(--paper-deep); border-bottom: 1px solid var(--line); }
+.pokedex-search-dock { padding: 10px 12px; background: var(--paper-deep); border-top: 1px solid var(--line); }
 .pokedex-search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .search-box { height: 36px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; padding: 0 12px; border: 2px solid #657060; background: #f7f4df; }
 .search-box span { font-size: .8em; letter-spacing: .12em; font-weight: 800; color: #536055; }
@@ -469,7 +470,7 @@ button { cursor: pointer; }
     linear-gradient(90deg, color-mix(in srgb, var(--theme-field-pattern) 16%, transparent) 1px, transparent 1px);
   background-size: 24px 24px;
 }
-[data-theme="game"][data-contrast="normal"] .browse-tools, [data-theme="game"][data-contrast="normal"] .settings-content { background: var(--theme-menu); }
+[data-theme="game"][data-contrast="normal"] .browse-tools, [data-theme="game"][data-contrast="normal"] .pokedex-search-dock, [data-theme="game"][data-contrast="normal"] .settings-content { background: var(--theme-menu); }
 [data-theme="game"][data-contrast="normal"] .species-row, [data-theme="game"][data-contrast="normal"] .paper-panel, [data-theme="game"][data-contrast="normal"] .setup-step {
   color: var(--theme-text);
   background: var(--theme-panel);
@@ -701,7 +702,7 @@ button { cursor: pointer; }
 [data-theme="dark"] .screen:not(.battle-screen), [data-theme="dark"] .settings-content { color: var(--ink); }
 [data-theme="dark"] .setting-note, [data-theme="dark"] .ruleset-setting { color: #bdc7b6; }
 [data-theme="dark"] .setting-group { border-color: #536258; }
-[data-theme="dark"] .browse-tools, [data-theme="dark"] .identity-card, [data-theme="dark"] .segmented { background: var(--paper-deep); }
+[data-theme="dark"] .browse-tools, [data-theme="dark"] .pokedex-search-dock, [data-theme="dark"] .identity-card, [data-theme="dark"] .segmented { background: var(--paper-deep); }
 [data-theme="dark"] .paper-panel, [data-theme="dark"] .setup-step { color: var(--ink); background: #1e2c25; border-color: #657466; box-shadow: none; }
 [data-theme="dark"] .search-box, [data-theme="dark"] .area-select, [data-theme="dark"] .ruleset-setting select, [data-theme="dark"] .mapper-custom input { color: var(--ink); background: #27372e; border-color: #718071; }
 [data-theme="dark"] .segmented button:not(.active), [data-theme="dark"] .filter-strip button:not(.active) { color: #e3ead5; background: #455b4a; border-color: #6b7b6c; }
