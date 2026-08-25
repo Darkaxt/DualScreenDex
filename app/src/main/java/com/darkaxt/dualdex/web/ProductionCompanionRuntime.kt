@@ -336,7 +336,7 @@ class ProductionCompanionRuntime(
         val hours = clock?.hours
         val minutes = clock?.minutes
         val phase = clock?.phase
-        val schedule = currentCatalog?.runtimeMetadata?.gen3RuntimeMemoryLayout?.liveClockSchedule
+        val schedule = currentCatalog.runtimeMetadata.gen3RuntimeMemoryLayout?.liveClockSchedule
         val gameTime = when {
             hours != null && minutes != null -> projectGameClock(
                 hours,

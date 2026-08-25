@@ -2,11 +2,11 @@ package com.enrpau.dualscreendex.server
 
 import com.google.gson.Gson
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
-import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.OwnedPokemon
+import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
@@ -165,14 +165,14 @@ class ApiViewBuilderTest {
 
         val view = ApiViewBuilder.state(
             AppSnapshot(
-                ledger = KnowledgeLedger(
-                    caughtSpecies = setOf(25),
-                    currentAreaBaseId = baseId,
-                    owned = listOf(OwnedPokemon("box-0", 25, 3, 31, ivs = List(6) { 30 })),
+                resolvedPokedex = ResolvedPokedexProjection(
+                    seenSpeciesIds = setOf(25),
+                    caughtSpeciesIds = setOf(25),
                 ),
+                resolvedOwned = listOf(OwnedPokemon("box-0", 25, 3, 31, ivs = List(6) { 30 })),
+                liveAreaBaseId = baseId,
             ),
             catalog,
-            saveRam = SaveRamView(status = "MATCHED"),
         )
 
         assertTrue(view.speciesState.getValue(25).caught)

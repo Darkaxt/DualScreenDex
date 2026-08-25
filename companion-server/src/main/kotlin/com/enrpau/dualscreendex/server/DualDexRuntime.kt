@@ -15,6 +15,9 @@ import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.MatchupKey
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
+import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
+import com.enrpau.dualscreendex.companion.model.BattleState
+import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
@@ -141,10 +144,9 @@ class DualDexRuntime(
                     snapshot.ledger,
                     activeRulesetId = generationRulesetId(snapshot.settings.ruleset),
                 )
-                gateway.dispatch(CompanionAction.ReplaceLedger(result.ledger))
-                gateway.dispatch(CompanionAction.BattleStarted(result.battle))
+                publishSimulationState(result.battle, result.ledger)
             }
-            "END_BATTLE" -> gateway.dispatch(CompanionAction.BattleEnded)
+            "END_BATTLE" -> publishSimulationState(null, gateway.bootstrap().ledger)
             "OPEN_SPECIES" -> gateway.dispatch(CompanionAction.OpenSpecies(requireInt(values, "speciesId")))
             "OPEN_TRAINER" -> gateway.dispatch(CompanionAction.OpenTrainer)
             "OPEN_PARTY" -> gateway.dispatch(CompanionAction.OpenParty)
@@ -214,6 +216,26 @@ class DualDexRuntime(
                     discoveredMatchups = snapshot.ledger.discoveredMatchups + (MatchupKey(target.speciesId, moveId) to truth),
                     knownMoves = snapshot.ledger.knownMoves + moveId,
                 ),
+            ),
+        )
+    }
+
+    private fun publishSimulationState(battle: BattleState?, ledger: KnowledgeLedger) {
+        val current = gateway.bootstrap()
+        gateway.dispatch(
+            CompanionAction.ResolvedGameStateChanged(
+                trainerCard = current.trainerCardState,
+                pokedex = current.resolvedPokedex ?: ResolvedPokedexProjection(null, null),
+                party = current.party,
+                owned = current.resolvedOwned.orEmpty(),
+                bag = current.resolvedBag,
+                eventFlags = current.resolvedEventFlags,
+                areaBaseId = current.liveAreaBaseId,
+                position = current.liveMapPosition,
+                gameTime = current.gameTime,
+                gameAccessReady = current.gameAccessReady,
+                battle = battle,
+                ledger = ledger,
             ),
         )
     }

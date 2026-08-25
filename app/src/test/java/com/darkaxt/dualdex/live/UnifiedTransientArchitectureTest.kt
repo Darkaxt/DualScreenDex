@@ -9,9 +9,16 @@ import org.junit.Test
 class UnifiedTransientArchitectureTest {
     @Test
     fun productionHasOneTransientProjectionAndNoLegacyMergePath() {
+        val repositoryRoot = File("..").canonicalFile
         val productionSources = File("src/main/java").walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
             .toList()
+        val allProductionSources = repositoryRoot.listFiles().orEmpty()
+            .map { module -> File(module, "src/main") }
+            .filter(File::isDirectory)
+            .flatMap { sourceRoot ->
+                sourceRoot.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+            }
         val runtime = File("src/main/java/com/darkaxt/dualdex/web/ProductionCompanionRuntime.kt").readText()
         val coordinator = File("src/main/java/com/darkaxt/dualdex/battle/BattleMemoryCoordinator.kt").readText()
         val models = File("../companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/model/AppModels.kt").readText()
@@ -26,6 +33,19 @@ class UnifiedTransientArchitectureTest {
             "CompanionAction.BattleUpdated",
             "CompanionAction.BattleEnded",
         ).forEach { forbidden -> assertFalse("legacy runtime route: $forbidden", runtime.contains(forbidden)) }
+        listOf(
+            "CompanionAction.BattleStarted",
+            "CompanionAction.BattleUpdated",
+            "CompanionAction.BattleEnded",
+            "CompanionAction.ResolvedPlayerStateChanged",
+            "CompanionAction.ResolvedPartyStateChanged",
+            "CompanionAction.ResolvedOverworldStateChanged",
+        ).forEach { forbidden ->
+            assertFalse(
+                "legacy production route outside Android runtime: $forbidden",
+                allProductionSources.any { source -> source.readText().contains(forbidden) },
+            )
+        }
 
         assertFalse(coordinator.contains("publisher"))
         assertTrue(coordinator.contains("UnifiedGameStateDecoder"))
