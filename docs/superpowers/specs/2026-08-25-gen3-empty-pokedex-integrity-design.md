@@ -35,4 +35,4 @@ The affected console has no save-synchronized checkpoint for the current save. T
 - An official Emerald real-ROM control writes explicit flags, proves regional 203 maps to National flag 1, and verifies 15 seen/8 caught remain intact through the live runtime.
 - A runtime regression uses a catalog whose internal species ID differs from its Dex number and proves only the translated species is revealed/caught.
 - Focused module tests, the complete unit suite, release policy, secure dependency gate, lint, and release APK assembly must pass before publication.
-- The protected GitHub workflow creates `v1.1.0-rc.61`, version code `1010061`, and the signed prerelease APK. Publication does not install or launch the APK.
+- The protected GitHub workflow creates `v1.1.0-rc.62`, version code `1010062`, and the signed prerelease APK. Publication does not install or launch the APK.

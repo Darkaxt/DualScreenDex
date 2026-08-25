@@ -67,15 +67,15 @@ Run: `./gradlew :companion-core:test :app:testDebugUnitTest --tests '*Production
 
 Expected: the translated runtime test and mapper tests pass.
 
-### Task 3: Release RC61
+### Task 3: Release RC62
 
 **Files:**
-- Create: `release/RELEASE_NOTES_1.1.0-rc.61.md`
+- Create: `release/RELEASE_NOTES_1.1.0-rc.62.md`
 - Modify only if required by the established release ledger: `README.md`, `release/v1-ready.json`
 
 - [ ] **Step 1: Run local verification**
 
-Run focused tests, `git diff --check`, release-policy tests, the complete Gradle unit suite, secure dependency verification, debug lint, and unsigned release assembly with `dualdexVersionName=1.1.0-rc.61` and `dualdexVersionCode=1010061`.
+Run focused tests, `git diff --check`, release-policy tests, the complete Gradle unit suite, secure dependency verification, debug lint, and unsigned release assembly with `dualdexVersionName=1.1.0-rc.62` and `dualdexVersionCode=1010062`.
 
 - [ ] **Step 2: Commit implementation and release notes**
 
@@ -83,7 +83,7 @@ Commit the functional correction separately from the release metadata so the tag
 
 - [ ] **Step 3: Push and publish without replacement**
 
-Fast-forward `fork/master`, create signed tag `v1.1.0-rc.61`, push the branch and tag, and dispatch `.github/workflows/release.yml` from the tag with input `v1.1.0-rc.61`.
+Fast-forward `fork/master`, create signed tag `v1.1.0-rc.62`, push the branch and tag, and dispatch `.github/workflows/release.yml` from the tag with input `v1.1.0-rc.62`.
 
 - [ ] **Step 4: Verify the public artifact**
 
