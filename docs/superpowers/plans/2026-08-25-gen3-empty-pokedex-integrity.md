@@ -81,10 +81,10 @@ Run focused tests, `git diff --check`, release-policy tests, the complete Gradle
 
 Commit the functional correction separately from the release metadata so the tagged source remains auditable.
 
-- [ ] **Step 3: Push and publish without replacement**
+- [x] **Step 3: Push and publish without replacement**
 
 Fast-forward `fork/master`, create signed tag `v1.1.0-rc.62`, push the branch and tag, and dispatch `.github/workflows/release.yml` from the tag with input `v1.1.0-rc.62`.
 
-- [ ] **Step 4: Verify the public artifact**
+- [x] **Step 4: Verify the public artifact**
 
 Require a successful workflow, prerelease metadata, APK filename/version/code/application ID, pinned certificate SHA-256, provenance commit/tag, and checksum match. Do not install or launch the APK.

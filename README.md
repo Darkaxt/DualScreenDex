@@ -228,7 +228,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC13 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | `v1.1.0-rc.62` is prepared as the next protected prerelease target; [`v1.1.0-rc.61`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.61) is the latest published candidate until that workflow completes. |
+| Signed candidate target | [`v1.1.0-rc.62`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.62) is the latest published prerelease. Protected workflow `32794571643` built and signed commit `6b48c52f8e04667c0c58e4feec54b00ad6f078a4`; the public APK matches the published checksum and pinned release certificate. |
 
 ## Parser development
 
