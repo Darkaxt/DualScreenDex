@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-25",
+  "scope": "unified transient live-state field groups",
+  "fieldCount": 9,
+  "fields": [
+    "trainer",
+    "pokedex",
+    "party",
+    "battle",
+    "area",
+    "position",
+    "clock",
+    "bag",
+    "eventFlags"
+  ],
+  "controlCount": 14,
+  "controls": [
+    {"id":"red","generation":1,"trainer":0,"pokedex":0,"party":0,"battle":1,"area":1,"position":1,"clock":0,"bag":0,"eventFlags":0,"available":3,"total":9,"percent":33.33},
+    {"id":"blue","generation":1,"trainer":0,"pokedex":0,"party":0,"battle":1,"area":1,"position":1,"clock":0,"bag":0,"eventFlags":0,"available":3,"total":9,"percent":33.33},
+    {"id":"yellow","generation":1,"trainer":0,"pokedex":0,"party":0,"battle":1,"area":1,"position":1,"clock":0,"bag":0,"eventFlags":0,"available":3,"total":9,"percent":33.33},
+    {"id":"gold","generation":2,"trainer":0,"pokedex":0,"party":0,"battle":1,"area":1,"position":1,"clock":1,"bag":0,"eventFlags":0,"available":4,"total":9,"percent":44.44},
+    {"id":"silver","generation":2,"trainer":0,"pokedex":0,"party":0,"battle":1,"area":1,"position":1,"clock":1,"bag":0,"eventFlags":0,"available":4,"total":9,"percent":44.44},
+    {"id":"crystal","generation":2,"trainer":0,"pokedex":0,"party":0,"battle":1,"area":1,"position":1,"clock":1,"bag":0,"eventFlags":0,"available":4,"total":9,"percent":44.44},
+    {"id":"ruby","generation":3,"trainer":1,"pokedex":1,"party":1,"battle":1,"area":1,"position":1,"clock":1,"bag":1,"eventFlags":1,"available":9,"total":9,"percent":100.00,"readWindows":5,"readBytes":17838,"passiveAddedBytes":0,"retainedRawBytes":0},
+    {"id":"sapphire","generation":3,"trainer":1,"pokedex":1,"party":1,"battle":1,"area":1,"position":1,"clock":1,"bag":1,"eventFlags":1,"available":9,"total":9,"percent":100.00,"readWindows":5,"readBytes":17838,"passiveAddedBytes":0,"retainedRawBytes":0},
+    {"id":"emerald","generation":3,"trainer":1,"pokedex":1,"party":1,"battle":1,"area":1,"position":1,"clock":1,"bag":1,"eventFlags":1,"available":9,"total":9,"percent":100.00,"readWindows":7,"readBytes":20250,"passiveAddedBytes":0,"retainedRawBytes":0},
+    {"id":"firered","generation":3,"trainer":1,"pokedex":1,"party":1,"battle":1,"area":1,"position":1,"clock":0,"bag":1,"eventFlags":1,"available":8,"total":9,"percent":88.89,"readWindows":6,"readBytes":20205,"passiveAddedBytes":0,"retainedRawBytes":0},
+    {"id":"leafgreen","generation":3,"trainer":1,"pokedex":1,"party":1,"battle":1,"area":1,"position":1,"clock":0,"bag":1,"eventFlags":1,"available":8,"total":9,"percent":88.89,"readWindows":6,"readBytes":20205,"passiveAddedBytes":0,"retainedRawBytes":0},
+    {"id":"modern-emerald","generation":3,"trainer":1,"pokedex":1,"party":1,"battle":1,"area":1,"position":1,"clock":1,"bag":1,"eventFlags":1,"available":9,"total":9,"percent":100.00,"readWindows":7,"readBytes":20250,"passiveAddedBytes":0,"retainedRawBytes":0},
+    {"id":"unbound","generation":3,"trainer":1,"pokedex":1,"party":1,"battle":1,"area":1,"position":1,"clock":1,"bag":1,"eventFlags":1,"available":9,"total":9,"percent":100.00,"readWindows":8,"readBytes":32150,"passiveAddedBytes":11940,"retainedRawBytes":0},
+    {"id":"odyssey","generation":3,"trainer":1,"pokedex":1,"party":1,"battle":1,"area":1,"position":1,"clock":0,"bag":1,"eventFlags":1,"available":8,"total":9,"percent":88.89,"readWindows":6,"readBytes":20205,"passiveAddedBytes":0,"retainedRawBytes":0}
+  ],
+  "fieldSummary": {
+    "trainer": {"available":8,"controls":14,"percent":57.14},
+    "pokedex": {"available":8,"controls":14,"percent":57.14},
+    "party": {"available":8,"controls":14,"percent":57.14},
+    "battle": {"available":14,"controls":14,"percent":100.00},
+    "area": {"available":14,"controls":14,"percent":100.00},
+    "position": {"available":14,"controls":14,"percent":100.00},
+    "clock": {"available":8,"controls":14,"percent":57.14},
+    "bag": {"available":8,"controls":14,"percent":57.14},
+    "eventFlags": {"available":8,"controls":14,"percent":57.14}
+  },
+  "cohortSummary": {
+    "officialGen1": {"available":9,"total":27,"percent":33.33},
+    "officialGen2": {"available":12,"total":27,"percent":44.44},
+    "officialGen3": {"available":43,"total":45,"percent":95.56},
+    "hackGen3": {"available":26,"total":27,"percent":96.30},
+    "allOfficial": {"available":64,"total":99,"percent":64.65},
+    "allGen3": {"available":69,"total":72,"percent":95.83},
+    "allControls": {"available":90,"total":126,"percent":71.43}
+  },
+  "recoveryControls": {
+    "gen3LivePrecedence": {"passed":8,"total":8,"percent":100.00},
+    "gen3UnavailableFieldRecovery": {"passed":8,"total":8,"percent":100.00},
+    "identityMismatchRejection": {"passed":1,"total":1,"percent":100.00},
+    "disconnectRecoveryVisibility": {"passed":1,"total":1,"percent":100.00},
+    "liveEmptyReplacement": {"passed":2,"total":2,"percent":100.00},
+    "checkpointWriteOnlyOnChangedSave": {"passed":4,"total":4,"percent":100.00}
+  },
+  "retainedRawBytes": 0
+}
