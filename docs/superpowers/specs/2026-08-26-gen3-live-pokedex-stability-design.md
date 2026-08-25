@@ -13,6 +13,7 @@ Every value was sourced from `LIVE`; recovery application `4` remained `UNCHANGE
 ## Contract
 
 - **PS-01:** Normal plausible first acquisition (`0 -> 1`) and subsequent same-layout caught/seen changes publish on the first poll.
+- **PS-01a:** A double battle may reveal two opponents in one sample; `1 / 1 -> 1 / 3` therefore publishes immediately.
 - **PS-02:** A suspicious first layout candidate that adds more caught entries than the current Party can explain, or more than two seen entries beyond the established snapshot, is withheld from publication.
 - **PS-03:** Two consecutive identical suspicious candidates confirm the layout and publish the value, preserving compatibility with legitimate large existing Pokédexes revealed after an empty-Party interval.
 - **PS-04:** A later plausible candidate may replace a withheld suspicious candidate immediately; the observed `0 -> 48 -> 1` input therefore publishes `0 -> 1`, never `48`.

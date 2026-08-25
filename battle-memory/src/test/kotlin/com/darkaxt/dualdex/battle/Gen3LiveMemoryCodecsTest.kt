@@ -71,6 +71,7 @@ class Gen3LiveMemoryCodecsTest {
         assertEquals(TrainerPlayTime(2, 17), live.trainer.playTime.valueOrNull())
         assertEquals(setOf(6, 25), live.pokedex.seenDexNumbers.valueOrNull())
         assertEquals(setOf(6), live.pokedex.caughtDexNumbers.valueOrNull())
+        assertEquals(0x28, live.pokedex.ownedFlagOffset)
         assertEquals(13, live.bag.getValue(BagPocket.ITEMS).valueOrNull()?.entries?.single()?.itemId)
         assertEquals(2, live.bag.getValue(BagPocket.ITEMS).valueOrNull()?.entries?.single()?.quantity)
     }

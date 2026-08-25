@@ -81,6 +81,7 @@ object Gen3LiveMemoryCodecs {
                     ?: unavailable(pokedexUnavailable),
                 caughtDexNumbers = pokedexValue?.let { LiveValue.Available(it.caughtDexNumbers) }
                     ?: unavailable(pokedexUnavailable),
+                ownedFlagOffset = pokedexValue?.ownedOffset,
             ),
         )
     }

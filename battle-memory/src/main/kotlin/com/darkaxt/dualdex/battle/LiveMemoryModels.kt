@@ -57,6 +57,7 @@ data class LiveTrainerState(
 data class LivePokedexState(
     val seenDexNumbers: LiveValue<Set<Int>>,
     val caughtDexNumbers: LiveValue<Set<Int>>,
+    val ownedFlagOffset: Int? = null,
 ) {
     init {
         seenDexNumbers.valueOrNull()?.let { seen ->

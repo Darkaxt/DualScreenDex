@@ -47,6 +47,7 @@ class UnifiedGameStateDecoder(
     private var published: ResolvedGameSnapshot? = null
     private var traceRevision = 0L
     private val translatedSectionCache = Gen3LiveTranslatedSectionCache()
+    private val gen3PokedexStabilizer = Gen3LivePokedexStabilizer()
     private var contextEpoch = 0
     private val liveMemoryPackets = AtomicLong()
     private val liveMemoryBytes = AtomicLong()
@@ -105,6 +106,7 @@ class UnifiedGameStateDecoder(
         val previous = published
         contextEpoch++
         translatedSectionCache.clearEntries()
+        gen3PokedexStabilizer.reset()
         this.context = context
         live = null
         liveEstablished = false
@@ -222,7 +224,7 @@ class UnifiedGameStateDecoder(
             Gen3LiveMemoryReader.decode(regions, memoryLayout, parseContext)
         } else null
         val party = cached?.party ?: memory?.party ?: unavailable("live Party layout was unavailable")
-        val player = cached?.let { sections ->
+        val decodedPlayer = cached?.let { sections ->
             com.darkaxt.dualdex.battle.Gen3LivePlayerState(
                 trainer = sections.player.trainer,
                 pokedex = sections.player.pokedex,
@@ -237,6 +239,9 @@ class UnifiedGameStateDecoder(
                 party,
             )
         } ?: unavailablePlayer()
+        val player = decodedPlayer.copy(
+            pokedex = gen3PokedexStabilizer.accept(decodedPlayer.pokedex, party),
+        )
         trackingUpdate?.let { mergeBattleTracking(it, areaBaseId) }
         return acceptDecodedLive(
             LiveGameSnapshot(
@@ -358,6 +363,7 @@ class UnifiedGameStateDecoder(
     fun endSession() {
         val previous = published
         translatedSectionCache.clearEntries()
+        gen3PokedexStabilizer.reset()
         context = null
         live = null
         liveEstablished = false

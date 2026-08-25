@@ -25,7 +25,7 @@ assertEquals(0, stabilizer.accept(candidate(offset = 0x80, caught = 48, seen = 4
 assertEquals(1, stabilizer.accept(candidate(offset = 0x28, caught = 1, seen = 1), party(1)).caughtCount())
 ```
 
-Also assert two identical large candidates publish on the second poll, a confirmed `0x28` offset rejects `0x2C`, same-offset seen `1 -> 2` is immediate, and `reset()` permits a new session offset.
+Also assert two identical large candidates publish on the second poll, a confirmed `0x28` offset rejects `0x2C`, same-offset seen `1 -> 2` is immediate, a double-battle `1 -> 3` is immediate, and `reset()` permits a new session offset.
 
 - [ ] **Step 2: Run the focused test and verify RED**
 
