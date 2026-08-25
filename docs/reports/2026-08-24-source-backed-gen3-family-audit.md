@@ -89,7 +89,7 @@ The fresh eight-ROM matrix improves Dreamstone from 20/24 at 83.31% to 22/24 at 
 
 Complete Thumb consumers select separate eight-byte ball graphics and palette tables. Complete bounded item getters independently prove the per-ROM 80-byte item ABI and fields used to invert ball indices to item IDs. Dreamstone and Crippling use different table roots, item bounds, and pocket values but each resolve the same unique 28-row relationship without production identities or fixed roots.
 
-Each asset row now fails independently. Both controls retain 27 decoded sprites while their short Strange Ball palette remains explicitly unavailable. The fresh eight-ROM matrix improves Dreamstone from 22/24 at 91.64% to 23/24 at 95.81%; the other seven controls retain routing, feature counts, scores, and prior materialized counts. All six selected catalogs persist and reopen through schema 41 with zero parser, persistence, or decoded cross-reference errors. Protected RC61 publication is pending.
+Each asset row now fails independently. Both controls retain 27 decoded sprites while their short Strange Ball palette remains explicitly unavailable. The fresh eight-ROM matrix improves Dreamstone from 22/24 at 91.64% to 23/24 at 95.81%; the other seven controls retain routing, feature counts, scores, and prior materialized counts. All six selected catalogs persist and reopen through schema 41 with zero parser, persistence, or decoded cross-reference errors. The protected workflow published signed prerelease `v1.1.0-rc.61`; its checksums, provenance, package metadata, and pinned signing identity were independently verified.
 
 ## Deferral ledger
 

@@ -1,6 +1,6 @@
 # Source-backed Gen III Checkpoint 5 Audit
 
-**Result:** VALIDATED — compiled-authorized expanded split capture balls pass focused real-ROM, independent-control, failure-isolation, cache, persistence, and eight-ROM matrix gates. Protected publication is pending.
+**Result:** PUBLISHED — compiled-authorized expanded split capture balls pass focused real-ROM, independent-control, failure-isolation, cache, persistence, and eight-ROM matrix gates. The protected RC61 candidate and its public artifacts were independently verified.
 
 ## Requirement audit
 
@@ -30,6 +30,14 @@
 - Dreamstone improves from 22/24 at 91.64% to 23/24 at 95.81%.
 - The other seven controls retain routing, feature counts, compatibility scores, and prior materialized counts.
 - No APK installation, launch, ADB, emulator, or gameplay action occurred.
+
+## Published candidate
+
+- Release: [`v1.1.0-rc.61`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.61), published by protected workflow run `32789778391` from annotated source commit `77e76255b975765b2814d96299d1a7834c5bb665`.
+- APK: `DualDex-v1.1.0-rc.61.apk`, 17,781,222 bytes, SHA-256 `4ae7e328b3b4488a48923ba6370634e3c3964e3a5a092e36c9f366246af2c693`.
+- Package metadata: `com.darkaxt.dualdex`, version `1.1.0-rc.61`, version code `1010061`.
+- Signing: APK Signature Scheme v3, one signer, certificate SHA-256 `c5a02cecb47cda41b618817ea684cbb6ccfdcc17a3e7d8243448175c8e3b2fba`.
+- Independent public-artifact verification passed all 27 published checksum entries. Authenticated and anonymous APK downloads were byte-identical, and `provenance.json` matched the tag, commit, workflow, package, APK checksum, certificate, and protected signing authority.
 
 ## Remaining deferral
 
