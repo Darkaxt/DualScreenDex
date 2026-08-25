@@ -18,21 +18,21 @@
 - Modify: `battle-memory/src/test/kotlin/com/darkaxt/dualdex/battle/Gen3LiveMemoryCodecsTest.kt`
 - Modify: `battle-memory/src/main/kotlin/com/darkaxt/dualdex/battle/Gen3LiveMemoryCodecs.kt`
 
-- [ ] **Step 1: Write the failing real-symptom regression**
+- [x] **Step 1: Write the failing real-symptom regression**
 
 Add `emptyPartyDoesNotPromoteNearbySaveBlockBytesToPokedexFlags`, with an expanded catalog, an empty party, and a decoy flag block at `0x38`. Assert empty seen/caught sets and a null `ownedOffset`. Add a live-codec regression proving an unavailable party does not become an available empty Pokédex anchor.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `./gradlew :save-core:test --tests '*Gen3PokedexCodecTest.emptyPartyDoesNotPromoteNearbySaveBlockBytesToPokedexFlags' :battle-memory:test --tests '*Gen3LiveMemoryCodecsTest.unavailablePartyDoesNotResolvePokedexFromUnanchoredBytes'`
 
 Expected: FAIL because the current scorer selects the decoy and returns false discoveries.
 
-- [ ] **Step 3: Implement the narrow guard**
+- [x] **Step 3: Implement the narrow guard**
 
 Make `Gen3PokedexSnapshot.ownedOffset` nullable and the party argument nullable. Return unavailable when party evidence is unavailable; return a snapshot with `ownedOffset = null`, `seenDexNumbers = emptySet()`, and `caughtDexNumbers = emptySet()` before candidate scoring when the decoded live party is positively empty. Pass the nullable live party through without `orEmpty()`. Preserve checksum-validated SaveRAM recovery through an explicit persisted-evidence mode.
 
-- [ ] **Step 4: Verify GREEN and anchored-layout preservation**
+- [x] **Step 4: Verify GREEN and anchored-layout preservation**
 
 Run: `./gradlew :save-core:test --tests '*Gen3PokedexCodecTest' :battle-memory:test --tests '*Gen3LiveMemoryCodecsTest'`
 
@@ -47,21 +47,21 @@ Expected: all codec tests pass, including the existing expanded `0x2C` layout co
 - Modify: `app/src/main/java/com/darkaxt/dualdex/web/ProductionCompanionRuntime.kt`
 - Modify: `app/src/test/java/com/darkaxt/dualdex/web/ProductionCompanionRuntimeTest.kt`
 
-- [ ] **Step 1: Write the failing runtime regression**
+- [x] **Step 1: Write the failing runtime regression**
 
 Change the live-player test catalog so Dex 25 belongs to an internal species ID other than 25. Assert the translated internal species becomes seen/caught while no nonexistent ID 25 state is created.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `./gradlew :app:testDebugUnitTest --tests '*ProductionCompanionRuntimeTest.unifiedPlayerFieldsPopulateApiIndependentlyWithoutSaveRam'`
 
 Expected: FAIL because the current gateway treats Dex 25 as internal species ID 25.
 
-- [ ] **Step 3: Centralize translation and correct the action contract**
+- [x] **Step 3: Centralize translation and correct the action contract**
 
 Add `SaveKnowledgeMapper.pokedexFlagNumbersBySpeciesId(catalog)` and `speciesIdsForPokedexFlags(catalog, dexNumbers)`. Preserve ROM-extracted National-Dex numbers for expansion/unified layouts and separate official Emerald's National save flags from its regional display numbering. Use the shared translation from `merge` and `ProductionCompanionRuntime.applyResolvedPlayerState`. Rename the action fields to `seenSpeciesIds` and `caughtSpeciesIds`, and keep the gateway ledger species-ID based.
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run: `./gradlew :companion-core:test :app:testDebugUnitTest --tests '*ProductionCompanionRuntimeTest.unifiedPlayerFieldsPopulateApiIndependentlyWithoutSaveRam'`
 
@@ -73,11 +73,11 @@ Expected: the translated runtime test and mapper tests pass.
 - Create: `release/RELEASE_NOTES_1.1.0-rc.62.md`
 - Modify only if required by the established release ledger: `README.md`, `release/v1-ready.json`
 
-- [ ] **Step 1: Run local verification**
+- [x] **Step 1: Run local verification**
 
 Run focused tests, `git diff --check`, release-policy tests, the complete Gradle unit suite, secure dependency verification, debug lint, and unsigned release assembly with `dualdexVersionName=1.1.0-rc.62` and `dualdexVersionCode=1010062`.
 
-- [ ] **Step 2: Commit implementation and release notes**
+- [x] **Step 2: Commit implementation and release notes**
 
 Commit the functional correction separately from the release metadata so the tagged source remains auditable.
 
