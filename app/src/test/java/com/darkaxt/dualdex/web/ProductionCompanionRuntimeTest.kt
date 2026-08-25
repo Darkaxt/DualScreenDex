@@ -448,6 +448,16 @@ class ProductionCompanionRuntimeTest {
             organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
             item = LocalMapPoiItem(13),
         )
+        val unresolvedOriginPoi = LocalMapPoi(
+            key = "local/0011/bg/0",
+            localMapKey = secondMap.key,
+            baseAreaId = secondMap.baseAreaId,
+            tileX = 0,
+            tileY = 0,
+            kind = LocalMapPoiKind.HIDDEN_ITEM,
+            organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
+            item = LocalMapPoiItem(14),
+        )
         val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val runtime = ProductionCompanionRuntime(transientGameState = source)
         runtime.loadCatalog(
@@ -462,7 +472,7 @@ class ProductionCompanionRuntimeTest {
                         firstMap.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
                         secondMap.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
                     ),
-                    pois = listOf(hiddenPoi),
+                    pois = listOf(hiddenPoi, unresolvedOriginPoi),
                 ),
                 runtimeMetadata = CatalogRuntimeMetadata(
                     gen3RuntimeMemoryLayout = CatalogGen3RuntimeMemoryLayout(
@@ -498,8 +508,8 @@ class ProductionCompanionRuntimeTest {
             badgeFlags = unavailable,
             stars = unavailable,
         )
-        val publications = mutableListOf<Pair<Int?, com.enrpau.dualscreendex.companion.model.LiveMapPosition?>>()
-        runtime.gateway.subscribe { snapshot -> publications += snapshot.liveAreaBaseId to snapshot.liveMapPosition }
+        val publications = mutableListOf<com.enrpau.dualscreendex.companion.model.AppSnapshot>()
+        runtime.gateway.subscribe(publications::add)
 
         fun sample(id: Long, area: Int, x: Int, y: Int, seconds: Int) = unifiedBattleSnapshot(
             hash,
@@ -528,8 +538,11 @@ class ProductionCompanionRuntimeTest {
         assertTrue(state.gameAccessReady)
         assertEquals(setOf(0x0010, 0x0011), state.ledger.visitedAreaBaseIds)
         assertEquals(setOf(hiddenPoi.key), state.ledger.proximityRevealedPoiKeys)
-        assertTrue(publications.none { (area, position) ->
-            area == 0x0011 && position != com.enrpau.dualscreendex.companion.model.LiveMapPosition(9, 6)
+        assertTrue(publications.none { publication ->
+            publication.liveAreaBaseId == 0x0011 && (
+                publication.liveMapPosition != com.enrpau.dualscreendex.companion.model.LiveMapPosition(9, 6) ||
+                    0x0011 !in publication.ledger.visitedAreaBaseIds
+                )
         })
 
         source.acceptDecodedLive(sample(3, 0x0011, 9, 6, 0).copy(
@@ -538,6 +551,23 @@ class ProductionCompanionRuntimeTest {
             ),
         ))
         assertTrue(runtime.gateway.bootstrap().gameAccessReady)
+
+        publications.clear()
+        source.acceptDecodedLive(
+            sample(4, 0x0011, 0, 0, 3).copy(
+                location = com.darkaxt.dualdex.battle.LiveLocationState(
+                    com.darkaxt.dualdex.battle.LiveValue.Available(0x0011),
+                    unavailable,
+                ),
+            ),
+        )
+        val unavailablePositionState = runtime.gateway.bootstrap()
+        assertEquals(0x0011, unavailablePositionState.liveAreaBaseId)
+        assertNull(unavailablePositionState.liveMapPosition)
+        assertEquals(0x0011, publications.last().liveAreaBaseId)
+        assertNull(publications.last().liveMapPosition)
+        assertTrue(0x0011 in publications.last().ledger.visitedAreaBaseIds)
+        assertFalse(unresolvedOriginPoi.key in unavailablePositionState.ledger.proximityRevealedPoiKeys)
         runtime.close()
     }
 

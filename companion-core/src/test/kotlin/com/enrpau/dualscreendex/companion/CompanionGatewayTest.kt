@@ -245,28 +245,89 @@ class CompanionGatewayTest {
     }
 
     @Test
-    fun liveAreaChangeClearsAPlayerPositionFromThePriorMap() {
+    fun resolvedOverworldAtomicallyReplacesAreaAndPosition() {
         val gateway = CompanionGateway()
-        gateway.dispatch(CompanionAction.LiveAreaChanged(0x0010))
-        gateway.dispatch(CompanionAction.LiveMapPositionChanged(LiveMapPosition(12, 7)))
+        gateway.dispatch(
+            CompanionAction.ResolvedOverworldStateChanged(
+                areaBaseId = 0x0010,
+                position = LiveMapPosition(12, 7),
+                gameTime = null,
+                gameAccessReady = false,
+                ledger = gateway.bootstrap().ledger,
+            ),
+        )
 
-        val sameArea = gateway.dispatch(CompanionAction.LiveAreaChanged(0x0010))
-        val nextArea = gateway.dispatch(CompanionAction.LiveAreaChanged(0x0011))
+        val sameArea = gateway.bootstrap()
+        val nextArea = gateway.dispatch(
+            CompanionAction.ResolvedOverworldStateChanged(
+                areaBaseId = 0x0011,
+                position = null,
+                gameTime = null,
+                gameAccessReady = false,
+                ledger = gateway.bootstrap().ledger,
+            ),
+        )
 
         assertEquals(LiveMapPosition(12, 7), sameArea.liveMapPosition)
         assertEquals(null, nextArea.liveMapPosition)
     }
 
     @Test
+    fun startingACatalogTransitionClearsTheResolvedOverworldSession() {
+        val gateway = CompanionGateway()
+        gateway.dispatch(
+            CompanionAction.ResolvedOverworldStateChanged(
+                areaBaseId = 0x0010,
+                position = LiveMapPosition(12, 7),
+                gameTime = GameClock(9, 30, GameClockPhase.DAY),
+                gameAccessReady = true,
+                ledger = gateway.bootstrap().ledger,
+            ),
+        )
+
+        val loading = gateway.dispatch(
+            CompanionAction.CatalogLoadingChanged(
+                CatalogLoadingState(active = true, phase = "CACHE_REOPEN", completedUnits = 0, totalUnits = 1),
+            ),
+        )
+
+        assertEquals(null, loading.liveAreaBaseId)
+        assertEquals(null, loading.liveMapPosition)
+        assertEquals(null, loading.gameTime)
+        assertFalse(loading.gameAccessReady)
+    }
+
+    @Test
     fun phaseOnlyGameClockChangesWithoutClearingMapState() {
         val gateway = CompanionGateway()
-        gateway.dispatch(CompanionAction.LiveAreaChanged(0x0010))
-        gateway.dispatch(CompanionAction.LiveMapPositionChanged(LiveMapPosition(12, 7)))
+        gateway.dispatch(
+            CompanionAction.ResolvedOverworldStateChanged(
+                areaBaseId = 0x0010,
+                position = LiveMapPosition(12, 7),
+                gameTime = null,
+                gameAccessReady = false,
+                ledger = gateway.bootstrap().ledger,
+            ),
+        )
 
         val night = gateway.dispatch(
-            CompanionAction.LiveGameClockChanged(GameClock(phase = GameClockPhase.NIGHT)),
+            CompanionAction.ResolvedOverworldStateChanged(
+                areaBaseId = 0x0010,
+                position = LiveMapPosition(12, 7),
+                gameTime = GameClock(phase = GameClockPhase.NIGHT),
+                gameAccessReady = false,
+                ledger = gateway.bootstrap().ledger,
+            ),
         )
-        val disconnected = gateway.dispatch(CompanionAction.LiveGameClockChanged(null))
+        val disconnected = gateway.dispatch(
+            CompanionAction.ResolvedOverworldStateChanged(
+                areaBaseId = 0x0010,
+                position = LiveMapPosition(12, 7),
+                gameTime = null,
+                gameAccessReady = false,
+                ledger = gateway.bootstrap().ledger,
+            ),
+        )
 
         assertEquals(GameClockPhase.NIGHT, night.gameTime?.phase)
         assertEquals(null, night.gameTime?.hours)
@@ -279,7 +340,15 @@ class CompanionGatewayTest {
     @Test
     fun battleEndDoesNotDiscardTheContinuouslySampledLiveArea() {
         val gateway = CompanionGateway()
-        gateway.dispatch(CompanionAction.LiveAreaChanged(0x0010))
+        gateway.dispatch(
+            CompanionAction.ResolvedOverworldStateChanged(
+                areaBaseId = 0x0010,
+                position = null,
+                gameTime = null,
+                gameAccessReady = false,
+                ledger = gateway.bootstrap().ledger,
+            ),
+        )
         gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
 
         val ended = gateway.dispatch(CompanionAction.BattleEnded)

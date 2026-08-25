@@ -663,11 +663,7 @@ object ApiViewBuilder {
         retroArch: RetroArchView = RetroArchView(),
         saveRam: SaveRamView = SaveRamView(),
     ): StateView {
-        val liveAreaBaseId = snapshot.liveAreaBaseId
-        val effectiveAreaBaseId = liveAreaBaseId
-            ?: snapshot.ledger.currentAreaBaseId.takeIf {
-                !retroArch.connection.equals("CONNECTED", ignoreCase = true) && saveRam.status == "MATCHED"
-            }
+        val effectiveAreaBaseId = snapshot.liveAreaBaseId
         val encounterAreasById = catalog?.encounterAreas.orEmpty().associateBy { it.id }
         val selectedAreaIds = if (snapshot.filter == com.enrpau.dualscreendex.companion.model.PokedexFilter.AREA) {
             val requested = snapshot.selectedAreaIds.ifEmpty { setOfNotNull(snapshot.selectedAreaId) }

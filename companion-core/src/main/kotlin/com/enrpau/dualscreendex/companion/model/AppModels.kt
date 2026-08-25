@@ -216,18 +216,6 @@ sealed interface CompanionAction {
     data object BattleEnded : CompanionAction
     data class SelectTarget(val index: Int) : CompanionAction
     data class SelectMove(val moveId: Int) : CompanionAction
-    data class LiveAreaChanged(
-        val areaBaseId: Int?,
-        val gameAccessReady: Boolean? = null,
-    ) : CompanionAction
-    data class LiveGameStateChanged(
-        val trainer: TrainerSnapshot?,
-        val party: List<OwnedIndividual>,
-        val gameTime: GameClock? = null,
-        val trainerIdentity: TrainerIdentity? = trainer?.let { TrainerIdentity(it.name, it.gender) },
-        val gameAccessReady: Boolean = false,
-    ) : CompanionAction
-    data class LiveGameClockChanged(val gameTime: GameClock?) : CompanionAction
     data class ResolvedPlayerStateChanged(
         val trainerCard: TrainerCardState?,
         val pokedex: ResolvedPokedexProjection,
@@ -243,8 +231,8 @@ sealed interface CompanionAction {
         val position: LiveMapPosition?,
         val gameTime: GameClock?,
         val gameAccessReady: Boolean,
+        val ledger: KnowledgeLedger,
     ) : CompanionAction
-    data class LiveMapPositionChanged(val position: LiveMapPosition?) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction
     data class Failure(val message: String) : CompanionAction
 }

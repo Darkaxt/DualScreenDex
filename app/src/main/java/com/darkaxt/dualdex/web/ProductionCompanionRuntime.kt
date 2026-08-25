@@ -364,30 +364,14 @@ class ProductionCompanionRuntime(
         val ready = matching?.gameAccessReady() == true
         if (ready) performanceRecorder.gameAccessReady()
         val before = gateway.bootstrap()
-        if (
-            before.liveAreaBaseId != areaBaseId ||
-            before.liveMapPosition != position ||
-            before.gameTime != gameTime ||
-            (ready && !before.gameAccessReady)
-        ) {
-            gateway.dispatch(
-                CompanionAction.ResolvedOverworldStateChanged(
-                    areaBaseId = areaBaseId,
-                    position = position,
-                    gameTime = gameTime,
-                    gameAccessReady = ready,
-                ),
-            )
-        }
         val validAreaBaseId = areaBaseId?.takeIf { candidate ->
             candidate in (currentCatalog?.discoverableAreaBaseIds() ?: emptySet())
-        } ?: return
-        val after = gateway.bootstrap()
-        var ledger = after.ledger
-        if (validAreaBaseId !in ledger.visitedAreaBaseIds) {
+        }
+        var ledger = before.ledger
+        if (validAreaBaseId != null && validAreaBaseId !in ledger.visitedAreaBaseIds) {
             ledger = ledger.copy(visitedAreaBaseIds = ledger.visitedAreaBaseIds + validAreaBaseId)
         }
-        if (position != null && currentCatalog != null) {
+        if (validAreaBaseId != null && position != null && currentCatalog != null) {
             ledger = LocalMapPoiKnowledgeMapper.mergeProximity(
                 previous = ledger,
                 catalog = currentCatalog,
@@ -396,8 +380,22 @@ class ProductionCompanionRuntime(
                 tileY = position.y,
             )
         }
-        if (ledger != gateway.bootstrap().ledger) {
-            gateway.dispatch(CompanionAction.ReplaceLedger(ledger))
+        if (
+            before.liveAreaBaseId != areaBaseId ||
+            before.liveMapPosition != position ||
+            before.gameTime != gameTime ||
+            (ready && !before.gameAccessReady) ||
+            before.ledger != ledger
+        ) {
+            gateway.dispatch(
+                CompanionAction.ResolvedOverworldStateChanged(
+                    areaBaseId = areaBaseId,
+                    position = position,
+                    gameTime = gameTime,
+                    gameAccessReady = ready,
+                    ledger = ledger,
+                ),
+            )
         }
     }
 
@@ -1127,7 +1125,6 @@ class ProductionCompanionRuntime(
         clearLiveBattle()
         saveRam = SaveRamView()
         gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
-        gateway.dispatch(CompanionAction.LiveGameStateChanged(null, emptyList()))
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
         return generation
     }

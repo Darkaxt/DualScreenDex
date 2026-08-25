@@ -840,6 +840,7 @@ class ApiViewBuilderTest {
         )
         val snapshot = AppSnapshot(
             ledger = KnowledgeLedger(currentAreaBaseId = 0x0203),
+            liveAreaBaseId = 0x0203,
             battle = BattleState(
                 opponents = listOf(
                     OpponentState(1, 14, ivs = List(6) { 24 }, moveHistory = emptyList()),
@@ -892,7 +893,7 @@ class ApiViewBuilderTest {
     }
 
     @Test
-    fun preservesTheOfflineSaveAreaWithoutGuessingAnotherEncounterTable() {
+    fun doesNotUseTheLedgerAreaAsAnOfflineFeatureFallback() {
         val catalog = ParsedCatalog(
             romSha256 = "a".repeat(64),
             family = EngineFamily.EMERALD,
@@ -916,10 +917,10 @@ class ApiViewBuilderTest {
         val state = ApiViewBuilder.state(snapshot, catalog, saveRam = SaveRamView(status = "MATCHED"))
         val rarity = state.battle!!.opponents.single().rarity
 
-        assertEquals(0x0202, state.currentAreaBaseId)
+        assertNull(state.currentAreaBaseId)
         assertEquals(emptyList<Int>(), state.currentAreaIds)
-        assertEquals("AREA_NOT_IN_CATALOG", rarity.areaOutcome)
-        assertEquals(0x0202, rarity.currentAreaBaseId)
+        assertEquals("AREA_UNAVAILABLE", rarity.areaOutcome)
+        assertNull(rarity.currentAreaBaseId)
         assertEquals(0, rarity.matchingAreaCount)
         assertEquals(1, rarity.candidateAreaCount)
         assertNull(rarity.relativeTier)

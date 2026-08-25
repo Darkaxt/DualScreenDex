@@ -66,8 +66,19 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         )
         is CompanionAction.CatalogLoadingChanged -> state.copy(
             catalogLoading = action.loading,
+            trainer = if (action.loading.active) null else state.trainer,
+            trainerIdentity = if (action.loading.active) null else state.trainerIdentity,
             trainerCardState = if (action.loading.active) null else state.trainerCardState,
+            resolvedPokedex = if (action.loading.active) null else state.resolvedPokedex,
+            party = if (action.loading.active) emptyList() else state.party,
+            resolvedOwned = if (action.loading.active) null else state.resolvedOwned,
+            resolvedBag = if (action.loading.active) emptyMap() else state.resolvedBag,
+            resolvedEventFlags = if (action.loading.active) null else state.resolvedEventFlags,
+            liveAreaBaseId = if (action.loading.active) null else state.liveAreaBaseId,
+            liveMapPosition = if (action.loading.active) null else state.liveMapPosition,
+            gameTime = if (action.loading.active) null else state.gameTime,
             gameAccessReady = if (action.loading.active) false else state.gameAccessReady,
+            battle = if (action.loading.active) null else state.battle,
             catalogReady = when {
                 action.loading.active -> false
                 action.loading.phase == "FAILED" -> state.catalogReady
@@ -152,21 +163,6 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             )
         }
         is CompanionAction.SelectMove -> state.copy(battle = state.battle?.copy(selectedMoveId = action.moveId))
-        is CompanionAction.LiveAreaChanged -> state.copy(
-            liveAreaBaseId = action.areaBaseId,
-            liveMapPosition = state.liveMapPosition.takeIf { action.areaBaseId == state.liveAreaBaseId },
-            gameAccessReady = action.gameAccessReady
-                ?: if (action.areaBaseId == null) false else state.gameAccessReady,
-        )
-        is CompanionAction.LiveMapPositionChanged -> state.copy(liveMapPosition = action.position)
-        is CompanionAction.LiveGameStateChanged -> state.copy(
-            trainer = action.trainer,
-            trainerIdentity = action.trainerIdentity,
-            party = action.party,
-            gameTime = action.gameTime,
-            gameAccessReady = state.gameAccessReady || action.gameAccessReady,
-        )
-        is CompanionAction.LiveGameClockChanged -> state.copy(gameTime = action.gameTime)
         is CompanionAction.ResolvedPlayerStateChanged -> state.copy(
             trainerCardState = action.trainerCard,
             resolvedPokedex = action.pokedex,
@@ -185,6 +181,7 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             liveMapPosition = action.position,
             gameTime = action.gameTime,
             gameAccessReady = state.gameAccessReady || action.gameAccessReady,
+            ledger = action.ledger,
         )
         is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
         is CompanionAction.Failure -> state.copy(error = action.message)
