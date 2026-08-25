@@ -1,6 +1,5 @@
 package com.enrpau.dualscreendex.companion.api
 
-import com.darkaxt.dualdex.save.TrainerIdentity
 import com.enrpau.dualscreendex.companion.battle.RarityEvaluator
 import com.enrpau.dualscreendex.companion.knowledge.KnowledgePolicy
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
@@ -682,7 +681,7 @@ object ApiViewBuilder {
             }.distinct().sorted()
         }
         val currentAreaName = effectiveAreaBaseId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
-        val effectiveOwned = snapshot.resolvedOwned ?: snapshot.ledger.owned
+        val effectiveOwned = snapshot.resolvedOwned.orEmpty()
         val organicallySeenSpecies = snapshot.ledger.seenSpecies +
             snapshot.ledger.seenSpeciesByArea.values.flatten().toSet() +
             snapshot.ledger.observedMoves.keys +
@@ -690,17 +689,12 @@ object ApiViewBuilder {
         val currentlyOwnedSpecies = effectiveOwned
             .filterNot { it.isEgg }
             .mapTo(linkedSetOf()) { it.speciesId }
-        val effectiveCaughtSpecies = snapshot.resolvedPokedex?.caughtSpeciesIds.orEmpty() +
-            snapshot.ledger.caughtSpecies + currentlyOwnedSpecies
+        val effectiveCaughtSpecies = snapshot.resolvedPokedex?.caughtSpeciesIds.orEmpty() + currentlyOwnedSpecies
         val effectiveSeenSpecies = snapshot.resolvedPokedex?.seenSpeciesIds.orEmpty() +
             effectiveCaughtSpecies + organicallySeenSpecies
-        val useResolvedPokedex = snapshot.resolvedPokedex != null
         val currentAreaSpeciesIds = browsedAreaBaseIds.takeIf { it.isNotEmpty() }?.let { baseIds ->
             val navigableIds = catalog?.navigableSpecies()?.mapTo(mutableSetOf()) { it.id }.orEmpty()
-            val captured = navigableIds.filterTo(mutableSetOf()) { speciesId ->
-                if (useResolvedPokedex) speciesId in effectiveCaughtSpecies
-                else KnowledgePolicy.isCaught(speciesId, snapshot.ledger)
-            }
+            val captured = navigableIds.filterTo(mutableSetOf()) { speciesId -> speciesId in effectiveCaughtSpecies }
             (baseIds.flatMap { baseId -> snapshot.ledger.seenSpeciesByArea[baseId].orEmpty() } + captured)
                 .filter { it in navigableIds }
                 .distinct()
@@ -754,8 +748,8 @@ object ApiViewBuilder {
                 state = state,
                 displayName = poiDisplayName(
                     poi,
-                    snapshot.trainerIdentity?.gender ?: snapshot.trainer?.gender,
-                    snapshot.trainerIdentity?.name ?: snapshot.trainer?.name,
+                    snapshot.trainerCardState?.identity?.gender,
+                    snapshot.trainerCardState?.identity?.name,
                 )
                     .takeIf { identified },
                 service = poi.service?.name,
@@ -768,16 +762,8 @@ object ApiViewBuilder {
             val owned = effectiveOwned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
             species.id to SpeciesStateView(
-                seen = if (useResolvedPokedex) {
-                    species.id in effectiveSeenSpecies
-                } else {
-                    species.id in snapshot.ledger.seenSpecies
-                },
-                caught = if (useResolvedPokedex) {
-                    species.id in effectiveCaughtSpecies
-                } else {
-                    KnowledgePolicy.isCaught(species.id, snapshot.ledger)
-                },
+                seen = species.id in effectiveSeenSpecies,
+                caught = species.id in effectiveCaughtSpecies,
                 team = snapshot.party.any { !it.isEgg && it.speciesId == species.id },
                 ballId = preferred?.captureBallId
                     ?.takeIf { it in catalog.captureBallsById },
@@ -819,7 +805,7 @@ object ApiViewBuilder {
             snapshot.ledger.observedMoves.mapValues { (_, observations) ->
                 observations.toObservedMoveViews()
             },
-            snapshot.ledger.trainerCardUnlocked || snapshot.party.any { !it.isEgg },
+            snapshot.ledger.trainerCardUnlocked,
             trainerView(snapshot, catalog),
             trainerAvatarUrl(snapshot, catalog),
             trainerMapSpriteKey?.let(::trainerAssetUrl),
@@ -952,27 +938,24 @@ object ApiViewBuilder {
             .map { ObservedMoveView(it.moveId, it.frequency) }
 
     private fun trainerView(snapshot: AppSnapshot, catalog: ParsedCatalog?): TrainerView? {
-        val trainer = snapshot.trainer
-        val resolved = snapshot.trainerCardState
-        val identity = resolved?.identity ?: snapshot.trainerIdentity
-            ?: trainer?.let { TrainerIdentity(it.name, it.gender) }
-            ?: return null
+        val resolved = snapshot.trainerCardState ?: return null
+        val identity = resolved.identity ?: return null
         val assets = catalog?.trainerAssets
         return TrainerView(
             name = identity.name,
             gender = if (identity.gender == 0) "MALE" else "FEMALE",
-            publicTrainerId = if (resolved != null) resolved.publicTrainerId else trainer?.publicTrainerId,
-            money = if (resolved != null) resolved.money else trainer?.money,
-            playTimeHours = if (resolved != null) resolved.playTimeHours else trainer?.playTimeHours,
-            playTimeMinutes = if (resolved != null) resolved.playTimeMinutes else trainer?.playTimeMinutes,
-            dexSeen = if (resolved != null) resolved.dexSeen else trainer?.dexSeen,
-            dexCaught = if (resolved != null) resolved.dexCaught else trainer?.dexCaught,
-            stars = if (resolved != null) resolved.stars else trainer?.stars,
+            publicTrainerId = resolved.publicTrainerId,
+            money = resolved.money,
+            playTimeHours = resolved.playTimeHours,
+            playTimeMinutes = resolved.playTimeMinutes,
+            dexSeen = resolved.dexSeen,
+            dexCaught = resolved.dexCaught,
+            stars = resolved.stars,
             avatarUrl = assets?.avatarAssetKeys?.get(identity.gender)?.let(::trainerAssetUrl),
             badges = (0 until 8).map { badgeIndex ->
                 TrainerBadgeView(
                     index = badgeIndex,
-                    earned = (resolved?.badgeFlags ?: trainer?.badgeFlags)?.let {
+                    earned = resolved.badgeFlags?.let {
                         it and (1 shl badgeIndex) != 0
                     },
                     imageUrl = assets?.badgeAssetKeys?.getOrNull(badgeIndex)?.let(::trainerAssetUrl),
@@ -982,18 +965,13 @@ object ApiViewBuilder {
     }
 
     private fun trainerAvatarUrl(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
-        val gender = snapshot.trainerCardState?.identity?.gender
-            ?: snapshot.trainer?.gender
-            ?: snapshot.trainerIdentity?.gender
-            ?: return null
+        val gender = snapshot.trainerCardState?.identity?.gender ?: return null
         return catalog?.trainerAssets?.avatarAssetKeys?.get(gender)?.let(::trainerAssetUrl)
     }
 
     private fun trainerMapSpriteAssetKey(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
         val keys = catalog?.trainerAssets?.overworldAssetKeys.orEmpty()
         val gender = snapshot.trainerCardState?.identity?.gender
-            ?: snapshot.trainer?.gender
-            ?: snapshot.trainerIdentity?.gender
         return gender?.let(keys::get) ?: keys.values.distinct().singleOrNull()
     }
 

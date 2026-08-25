@@ -3,7 +3,6 @@ package com.enrpau.dualscreendex.companion.model
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.BagPocketSnapshot
-import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.save.TrainerIdentity
 
 enum class KnowledgeMode { DISCOVERED, ORGANIC, HIDDEN }
@@ -179,8 +178,6 @@ data class AppSnapshot(
     val settings: CompanionSettings = CompanionSettings(),
     val ledger: KnowledgeLedger = KnowledgeLedger(),
     val liveAreaBaseId: Int? = null,
-    val trainer: TrainerSnapshot? = null,
-    val trainerIdentity: TrainerIdentity? = null,
     val trainerCardState: TrainerCardState? = null,
     val resolvedPokedex: ResolvedPokedexProjection? = null,
     val party: List<OwnedIndividual> = emptyList(),
@@ -211,26 +208,20 @@ sealed interface CompanionAction {
     data class OpenAreaPokedex(val areaIds: Set<Int>) : CompanionAction
     data class SetBattleTab(val tab: BattleTab) : CompanionAction
     data class UpdateSettings(val settings: CompanionSettings) : CompanionAction
-    data class BattleStarted(val battle: BattleState) : CompanionAction
-    data class BattleUpdated(val battle: BattleState) : CompanionAction
-    data object BattleEnded : CompanionAction
     data class SelectTarget(val index: Int) : CompanionAction
     data class SelectMove(val moveId: Int) : CompanionAction
-    data class ResolvedPlayerStateChanged(
+    data class ResolvedGameStateChanged(
         val trainerCard: TrainerCardState?,
         val pokedex: ResolvedPokedexProjection,
-    ) : CompanionAction
-    data class ResolvedPartyStateChanged(
         val party: List<OwnedIndividual>,
         val owned: List<OwnedPokemon>,
         val bag: Map<BagPocket, BagPocketSnapshot>,
         val eventFlags: Set<Int>?,
-    ) : CompanionAction
-    data class ResolvedOverworldStateChanged(
         val areaBaseId: Int?,
         val position: LiveMapPosition?,
         val gameTime: GameClock?,
         val gameAccessReady: Boolean,
+        val battle: BattleState?,
         val ledger: KnowledgeLedger,
     ) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction

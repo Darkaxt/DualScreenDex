@@ -2,7 +2,6 @@ package com.enrpau.dualscreendex.companion.api
 
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.PartyMemberDetails
-import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.save.TrainerIdentity
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.GameClock
@@ -13,6 +12,8 @@ import com.enrpau.dualscreendex.companion.model.CompanionSettings
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.LiveMapPosition
 import com.enrpau.dualscreendex.companion.model.OpponentState
+import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
+import com.enrpau.dualscreendex.companion.model.TrainerCardState
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicCondition
@@ -146,7 +147,7 @@ class ApiViewBuilderTest {
                     proximityRevealedPoiKeys = setOf(entrance.key),
                     identifiedPoiKeys = setOf(entrance.key),
                 ),
-                trainer = TrainerSnapshot("BRENDAN", 0, 12345, 98765, 0, 0, 0, 0, 0, 0),
+                trainerCardState = identityOnlyTrainerCard("BRENDAN", 0),
             ),
             catalog,
         ).localMapPois.single()
@@ -157,7 +158,7 @@ class ApiViewBuilderTest {
     }
 
     @Test
-    fun identifiedEntranceUsesMinimalLiveIdentityAheadOfAnOlderTrainerCard() {
+    fun identifiedEntranceUsesTheUnifiedResolvedTrainerIdentity() {
         val outside = LocalMap("local/0009", "Littleroot Town", 0x0009, 320, 320, 20, 20, "local/0009/map")
         val entrance = LocalMapPoi(
             "local/0009/bg/3", outside.key, outside.baseAreaId, 12, 8,
@@ -186,8 +187,7 @@ class ApiViewBuilderTest {
                     proximityRevealedPoiKeys = setOf(entrance.key),
                     identifiedPoiKeys = setOf(entrance.key),
                 ),
-                trainer = TrainerSnapshot("BRENDAN", 0, 12345, 98765, 0, 0, 0, 0, 0, 0),
-                trainerIdentity = TrainerIdentity("MAY", 1),
+                trainerCardState = identityOnlyTrainerCard("MAY", 1),
             ),
             catalog,
         ).localMapPois.single()
@@ -448,7 +448,17 @@ class ApiViewBuilderTest {
             ),
         )
         val snapshot = AppSnapshot(
-            trainer = TrainerSnapshot("MAY", 1, 12345, 98765, 12, 34, 0b0000_0101, 42, 7, 2),
+            trainerCardState = TrainerCardState(
+                identity = TrainerIdentity("MAY", 1),
+                publicTrainerId = 12345,
+                money = 98765,
+                playTimeHours = 12,
+                playTimeMinutes = 34,
+                badgeFlags = 0b0000_0101,
+                dexSeen = 42,
+                dexCaught = 7,
+                stars = 2,
+            ),
             party = listOf(
                 OwnedIndividual(
                     stableLocation = "party-0",
@@ -530,7 +540,7 @@ class ApiViewBuilderTest {
         val state = ApiViewBuilder.state(
             AppSnapshot(
                 ledger = KnowledgeLedger(trainerCardUnlocked = true),
-                trainerIdentity = TrainerIdentity("MAY", 1),
+                trainerCardState = identityOnlyTrainerCard("MAY", 1),
             ),
             catalog,
         )
@@ -1005,7 +1015,7 @@ class ApiViewBuilderTest {
     }
 
     @Test
-    fun areaSpeciesAreObservedLocallyWithACapturedSpeciesOverride() {
+    fun areaSpeciesUseOrganicAreaObservationsWithAUnifiedCaughtOverride() {
         val catalog = ParsedCatalog(
             romSha256 = "a".repeat(64),
             family = EngineFamily.EMERALD,
@@ -1032,9 +1042,12 @@ class ApiViewBuilderTest {
         )
         val snapshot = AppSnapshot(
             liveAreaBaseId = 0x0010,
+            resolvedPokedex = ResolvedPokedexProjection(
+                seenSpeciesIds = emptySet(),
+                caughtSpeciesIds = setOf(4),
+            ),
             ledger = KnowledgeLedger(
                 seenSpecies = setOf(1, 2, 3),
-                caughtSpecies = setOf(4),
                 seenSpeciesByArea = mapOf(
                     0x0010 to setOf(1, 2),
                     0x0011 to setOf(3),
@@ -1046,4 +1059,16 @@ class ApiViewBuilderTest {
 
         assertEquals(listOf(1, 2, 4), state.currentAreaSpeciesIds)
     }
+
+    private fun identityOnlyTrainerCard(name: String, gender: Int) = TrainerCardState(
+        identity = TrainerIdentity(name, gender),
+        publicTrainerId = null,
+        money = null,
+        playTimeHours = null,
+        playTimeMinutes = null,
+        badgeFlags = null,
+        dexSeen = null,
+        dexCaught = null,
+        stars = null,
+    )
 }

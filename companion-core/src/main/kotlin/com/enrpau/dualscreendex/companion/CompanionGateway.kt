@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.companion
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.BattleEncounterKind
+import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.BattleTab
 import com.enrpau.dualscreendex.companion.model.CompanionAction
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
@@ -66,8 +67,6 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
         )
         is CompanionAction.CatalogLoadingChanged -> state.copy(
             catalogLoading = action.loading,
-            trainer = if (action.loading.active) null else state.trainer,
-            trainerIdentity = if (action.loading.active) null else state.trainerIdentity,
             trainerCardState = if (action.loading.active) null else state.trainerCardState,
             resolvedPokedex = if (action.loading.active) null else state.resolvedPokedex,
             party = if (action.loading.active) emptyList() else state.party,
@@ -117,43 +116,6 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             battleTabExplicitlySelected = true,
         )
         is CompanionAction.UpdateSettings -> state.copy(settings = action.settings)
-        is CompanionAction.BattleStarted -> state.copy(
-            priorScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.priorScreen,
-            screen = if (state.settings.autoOpenTarget) AppScreen.BATTLE else state.screen,
-            battle = action.battle,
-            battleTab = initialBattleTab(
-                action.battle.encounterKind,
-                state.settings.rarityEnabled,
-            ),
-            battleTabExplicitlySelected = false,
-            battleReturnScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.battleReturnScreen,
-            selectedSpeciesId = action.battle.opponents.getOrNull(action.battle.targetIndex)?.speciesId,
-        )
-        is CompanionAction.BattleUpdated -> state.copy(
-            battle = action.battle,
-            battleTab = if (
-                !state.battleTabExplicitlySelected &&
-                state.battle?.encounterKind != BattleEncounterKind.WILD &&
-                action.battle.encounterKind == BattleEncounterKind.WILD &&
-                state.settings.rarityEnabled
-            ) {
-                BattleTab.RARITY
-            } else {
-                state.battleTab
-            },
-            selectedSpeciesId = action.battle.opponents.getOrNull(action.battle.targetIndex)?.speciesId,
-        )
-        CompanionAction.BattleEnded -> {
-            val destination = state.battleReturnScreen.takeUnless { it == AppScreen.BATTLE } ?: AppScreen.POKEDEX
-            val history = state.navigationHistory.filterNot { it == AppScreen.BATTLE }
-            state.copy(
-                screen = if (state.screen == AppScreen.BATTLE) destination else state.screen,
-                priorScreen = if (state.priorScreen == AppScreen.BATTLE) history.lastOrNull() ?: destination else state.priorScreen,
-                navigationHistory = history,
-                battle = null,
-                battleTabExplicitlySelected = false,
-            )
-        }
         is CompanionAction.SelectTarget -> {
             val battle = state.battle
             if (battle == null || action.index !in battle.opponents.indices) state
@@ -163,28 +125,71 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             )
         }
         is CompanionAction.SelectMove -> state.copy(battle = state.battle?.copy(selectedMoveId = action.moveId))
-        is CompanionAction.ResolvedPlayerStateChanged -> state.copy(
+        is CompanionAction.ResolvedGameStateChanged -> applyResolvedGameState(state, action)
+        is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
+        is CompanionAction.Failure -> state.copy(error = action.message)
+    }
+
+    private fun applyResolvedGameState(
+        state: AppSnapshot,
+        action: CompanionAction.ResolvedGameStateChanged,
+    ): AppSnapshot {
+        val projected = state.copy(
             trainerCardState = action.trainerCard,
             resolvedPokedex = action.pokedex,
-        )
-        is CompanionAction.ResolvedPartyStateChanged -> state.copy(
             party = action.party,
             resolvedOwned = action.owned,
             resolvedBag = action.bag,
             resolvedEventFlags = action.eventFlags,
-            ledger = state.ledger.copy(
-                trainerCardUnlocked = state.ledger.trainerCardUnlocked || action.party.any { !it.isEgg },
-            ),
-        )
-        is CompanionAction.ResolvedOverworldStateChanged -> state.copy(
             liveAreaBaseId = action.areaBaseId,
             liveMapPosition = action.position,
             gameTime = action.gameTime,
             gameAccessReady = state.gameAccessReady || action.gameAccessReady,
             ledger = action.ledger,
         )
-        is CompanionAction.ReplaceLedger -> state.copy(ledger = action.ledger)
-        is CompanionAction.Failure -> state.copy(error = action.message)
+        return when {
+            state.battle == null && action.battle != null -> startBattle(projected, action.battle)
+            state.battle != null && action.battle != null -> updateBattle(projected, state.battle, action.battle)
+            state.battle != null -> endBattle(projected)
+            else -> projected
+        }
+    }
+
+    private fun startBattle(state: AppSnapshot, battle: BattleState): AppSnapshot = state.copy(
+        priorScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.priorScreen,
+        screen = if (state.settings.autoOpenTarget) AppScreen.BATTLE else state.screen,
+        battle = battle,
+        battleTab = initialBattleTab(battle.encounterKind, state.settings.rarityEnabled),
+        battleTabExplicitlySelected = false,
+        battleReturnScreen = state.screen.takeUnless { it == AppScreen.BATTLE } ?: state.battleReturnScreen,
+        selectedSpeciesId = battle.opponents.getOrNull(battle.targetIndex)?.speciesId,
+    )
+
+    private fun updateBattle(state: AppSnapshot, previous: BattleState, battle: BattleState): AppSnapshot = state.copy(
+        battle = battle,
+        battleTab = if (
+            !state.battleTabExplicitlySelected &&
+            previous.encounterKind != BattleEncounterKind.WILD &&
+            battle.encounterKind == BattleEncounterKind.WILD &&
+            state.settings.rarityEnabled
+        ) {
+            BattleTab.RARITY
+        } else {
+            state.battleTab
+        },
+        selectedSpeciesId = battle.opponents.getOrNull(battle.targetIndex)?.speciesId,
+    )
+
+    private fun endBattle(state: AppSnapshot): AppSnapshot {
+        val destination = state.battleReturnScreen.takeUnless { it == AppScreen.BATTLE } ?: AppScreen.POKEDEX
+        val history = state.navigationHistory.filterNot { it == AppScreen.BATTLE }
+        return state.copy(
+            screen = if (state.screen == AppScreen.BATTLE) destination else state.screen,
+            priorScreen = if (state.priorScreen == AppScreen.BATTLE) history.lastOrNull() ?: destination else state.priorScreen,
+            navigationHistory = history,
+            battle = null,
+            battleTabExplicitlySelected = false,
+        )
     }
 
     private fun navigate(state: AppSnapshot, destination: AppScreen): AppSnapshot {

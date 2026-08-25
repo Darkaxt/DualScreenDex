@@ -75,11 +75,11 @@ class CompanionGatewayTest {
             rarityUsable = true,
         )
 
-        assertEquals(BattleTab.RARITY, gateway.dispatch(CompanionAction.BattleStarted(first)).battleTab)
+        assertEquals(BattleTab.RARITY, gateway.dispatchBattle(first).battleTab)
         gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.MOVES))
 
         val secondTarget = first.copy(targetIndex = 1, encounterKind = BattleEncounterKind.TRAINER)
-        assertEquals(BattleTab.MOVES, gateway.dispatch(CompanionAction.BattleUpdated(secondTarget)).battleTab)
+        assertEquals(BattleTab.MOVES, gateway.dispatchBattle(secondTarget).battleTab)
         assertEquals(BattleTab.MOVES, gateway.dispatch(CompanionAction.SelectTarget(1)).battleTab)
     }
 
@@ -92,11 +92,11 @@ class CompanionGatewayTest {
             rarityUsable = true,
         )
 
-        assertEquals(BattleTab.ENTRY, gateway.dispatch(CompanionAction.BattleStarted(pending)).battleTab)
+        assertEquals(BattleTab.ENTRY, gateway.dispatchBattle(pending).battleTab)
 
         val classified = pending.copy(encounterKind = BattleEncounterKind.WILD)
 
-        assertEquals(BattleTab.RARITY, gateway.dispatch(CompanionAction.BattleUpdated(classified)).battleTab)
+        assertEquals(BattleTab.RARITY, gateway.dispatchBattle(classified).battleTab)
     }
 
     @Test
@@ -107,25 +107,25 @@ class CompanionGatewayTest {
             encounterKind = BattleEncounterKind.UNKNOWN,
             rarityUsable = true,
         )
-        gateway.dispatch(CompanionAction.BattleStarted(pending))
+        gateway.dispatchBattle(pending)
         gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.ENTRY))
 
         val classified = pending.copy(encounterKind = BattleEncounterKind.WILD)
 
-        assertEquals(BattleTab.ENTRY, gateway.dispatch(CompanionAction.BattleUpdated(classified)).battleTab)
+        assertEquals(BattleTab.ENTRY, gateway.dispatchBattle(classified).battleTab)
     }
 
     @Test
     fun eachNewBattleLifecycleReappliesTheFailClosedInitialPolicy() {
         val gateway = CompanionGateway(AppSnapshot(settings = CompanionSettings(rarityEnabled = true)))
         val wild = BattleState(emptyList(), encounterKind = BattleEncounterKind.WILD, rarityUsable = true)
-        gateway.dispatch(CompanionAction.BattleStarted(wild))
+        gateway.dispatchBattle(wild)
         gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.ATTACK))
-        gateway.dispatch(CompanionAction.BattleEnded)
+        gateway.dispatchBattle(null)
 
         val trainer = wild.copy(encounterKind = BattleEncounterKind.TRAINER)
 
-        assertEquals(BattleTab.ENTRY, gateway.dispatch(CompanionAction.BattleStarted(trainer)).battleTab)
+        assertEquals(BattleTab.ENTRY, gateway.dispatchBattle(trainer).battleTab)
     }
 
     private fun opponent(speciesId: Int) = OpponentState(
@@ -179,9 +179,9 @@ class CompanionGatewayTest {
         val gateway = CompanionGateway()
         gateway.dispatch(CompanionAction.OpenSpecies(25))
         gateway.dispatch(CompanionAction.OpenTrainer)
-        gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
+        gateway.dispatchBattle(BattleState(emptyList()))
 
-        assertEquals(AppScreen.TRAINER, gateway.dispatch(CompanionAction.BattleEnded).screen)
+        assertEquals(AppScreen.TRAINER, gateway.dispatchBattle(null).screen)
         assertEquals(AppScreen.DETAIL, gateway.dispatch(CompanionAction.BackToPokedex).screen)
         assertEquals(AppScreen.POKEDEX, gateway.dispatch(CompanionAction.BackToPokedex).screen)
     }
@@ -205,11 +205,11 @@ class CompanionGatewayTest {
     @Test
     fun settingsReturnToBattleWithoutLosingItsOutOfBattleDestination() {
         val gateway = CompanionGateway()
-        gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
+        gateway.dispatchBattle(BattleState(emptyList()))
 
         val settings = gateway.dispatch(CompanionAction.SetScreen(AppScreen.SETTINGS))
         val returned = gateway.dispatch(CompanionAction.SetScreen(AppScreen.BATTLE))
-        val ended = gateway.dispatch(CompanionAction.BattleEnded)
+        val ended = gateway.dispatchBattle(null)
 
         assertEquals(AppScreen.POKEDEX, settings.priorScreen)
         assertEquals(AppScreen.BATTLE, settings.settingsReturnScreen)
@@ -220,7 +220,7 @@ class CompanionGatewayTest {
     @Test
     fun detailShortcutReturnsToTheActiveBattle() {
         val gateway = CompanionGateway()
-        gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
+        gateway.dispatchBattle(BattleState(emptyList()))
         val detail = gateway.dispatch(CompanionAction.OpenSpecies(25))
 
         val returned = gateway.dispatch(CompanionAction.BackToPokedex)
@@ -232,11 +232,11 @@ class CompanionGatewayTest {
     @Test
     fun liveBattleUpdatesAndBattleEndPreserveAManuallyOpenedPokedexDetail() {
         val gateway = CompanionGateway()
-        gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
+        gateway.dispatchBattle(BattleState(emptyList()))
         gateway.dispatch(CompanionAction.OpenSpecies(25))
 
-        val updated = gateway.dispatch(CompanionAction.BattleUpdated(BattleState(emptyList())))
-        val ended = gateway.dispatch(CompanionAction.BattleEnded)
+        val updated = gateway.dispatchBattle(BattleState(emptyList()))
+        val ended = gateway.dispatchBattle(null)
         val returned = gateway.dispatch(CompanionAction.BackToPokedex)
 
         assertEquals(AppScreen.DETAIL, updated.screen)
@@ -247,25 +247,19 @@ class CompanionGatewayTest {
     @Test
     fun resolvedOverworldAtomicallyReplacesAreaAndPosition() {
         val gateway = CompanionGateway()
-        gateway.dispatch(
-            CompanionAction.ResolvedOverworldStateChanged(
-                areaBaseId = 0x0010,
-                position = LiveMapPosition(12, 7),
-                gameTime = null,
-                gameAccessReady = false,
-                ledger = gateway.bootstrap().ledger,
-            ),
+        gateway.dispatchResolved(
+            areaBaseId = 0x0010,
+            position = LiveMapPosition(12, 7),
+            gameTime = null,
+            gameAccessReady = false,
         )
 
         val sameArea = gateway.bootstrap()
-        val nextArea = gateway.dispatch(
-            CompanionAction.ResolvedOverworldStateChanged(
-                areaBaseId = 0x0011,
-                position = null,
-                gameTime = null,
-                gameAccessReady = false,
-                ledger = gateway.bootstrap().ledger,
-            ),
+        val nextArea = gateway.dispatchResolved(
+            areaBaseId = 0x0011,
+            position = null,
+            gameTime = null,
+            gameAccessReady = false,
         )
 
         assertEquals(LiveMapPosition(12, 7), sameArea.liveMapPosition)
@@ -275,14 +269,11 @@ class CompanionGatewayTest {
     @Test
     fun startingACatalogTransitionClearsTheResolvedOverworldSession() {
         val gateway = CompanionGateway()
-        gateway.dispatch(
-            CompanionAction.ResolvedOverworldStateChanged(
-                areaBaseId = 0x0010,
-                position = LiveMapPosition(12, 7),
-                gameTime = GameClock(9, 30, GameClockPhase.DAY),
-                gameAccessReady = true,
-                ledger = gateway.bootstrap().ledger,
-            ),
+        gateway.dispatchResolved(
+            areaBaseId = 0x0010,
+            position = LiveMapPosition(12, 7),
+            gameTime = GameClock(9, 30, GameClockPhase.DAY),
+            gameAccessReady = true,
         )
 
         val loading = gateway.dispatch(
@@ -300,33 +291,24 @@ class CompanionGatewayTest {
     @Test
     fun phaseOnlyGameClockChangesWithoutClearingMapState() {
         val gateway = CompanionGateway()
-        gateway.dispatch(
-            CompanionAction.ResolvedOverworldStateChanged(
-                areaBaseId = 0x0010,
-                position = LiveMapPosition(12, 7),
-                gameTime = null,
-                gameAccessReady = false,
-                ledger = gateway.bootstrap().ledger,
-            ),
+        gateway.dispatchResolved(
+            areaBaseId = 0x0010,
+            position = LiveMapPosition(12, 7),
+            gameTime = null,
+            gameAccessReady = false,
         )
 
-        val night = gateway.dispatch(
-            CompanionAction.ResolvedOverworldStateChanged(
-                areaBaseId = 0x0010,
-                position = LiveMapPosition(12, 7),
-                gameTime = GameClock(phase = GameClockPhase.NIGHT),
-                gameAccessReady = false,
-                ledger = gateway.bootstrap().ledger,
-            ),
+        val night = gateway.dispatchResolved(
+            areaBaseId = 0x0010,
+            position = LiveMapPosition(12, 7),
+            gameTime = GameClock(phase = GameClockPhase.NIGHT),
+            gameAccessReady = false,
         )
-        val disconnected = gateway.dispatch(
-            CompanionAction.ResolvedOverworldStateChanged(
-                areaBaseId = 0x0010,
-                position = LiveMapPosition(12, 7),
-                gameTime = null,
-                gameAccessReady = false,
-                ledger = gateway.bootstrap().ledger,
-            ),
+        val disconnected = gateway.dispatchResolved(
+            areaBaseId = 0x0010,
+            position = LiveMapPosition(12, 7),
+            gameTime = null,
+            gameAccessReady = false,
         )
 
         assertEquals(GameClockPhase.NIGHT, night.gameTime?.phase)
@@ -340,19 +322,46 @@ class CompanionGatewayTest {
     @Test
     fun battleEndDoesNotDiscardTheContinuouslySampledLiveArea() {
         val gateway = CompanionGateway()
-        gateway.dispatch(
-            CompanionAction.ResolvedOverworldStateChanged(
-                areaBaseId = 0x0010,
-                position = null,
-                gameTime = null,
-                gameAccessReady = false,
-                ledger = gateway.bootstrap().ledger,
-            ),
+        gateway.dispatchResolved(
+            areaBaseId = 0x0010,
+            position = null,
+            gameTime = null,
+            gameAccessReady = false,
         )
-        gateway.dispatch(CompanionAction.BattleStarted(BattleState(emptyList())))
+        gateway.dispatchBattle(BattleState(emptyList()))
 
-        val ended = gateway.dispatch(CompanionAction.BattleEnded)
+        val ended = gateway.dispatchBattle(null)
 
         assertEquals(0x0010, ended.liveAreaBaseId)
+    }
+
+    private fun CompanionGateway.dispatchBattle(battle: BattleState?): AppSnapshot =
+        dispatchResolved(battle = battle)
+
+    private fun CompanionGateway.dispatchResolved(
+        areaBaseId: Int? = bootstrap().liveAreaBaseId,
+        position: LiveMapPosition? = bootstrap().liveMapPosition,
+        gameTime: GameClock? = bootstrap().gameTime,
+        gameAccessReady: Boolean = bootstrap().gameAccessReady,
+        battle: BattleState? = bootstrap().battle,
+    ): AppSnapshot {
+        val current = bootstrap()
+        return dispatch(
+            CompanionAction.ResolvedGameStateChanged(
+                trainerCard = current.trainerCardState,
+                pokedex = current.resolvedPokedex
+                    ?: com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection(null, null),
+                party = current.party,
+                owned = current.resolvedOwned.orEmpty(),
+                bag = current.resolvedBag,
+                eventFlags = current.resolvedEventFlags,
+                areaBaseId = areaBaseId,
+                position = position,
+                gameTime = gameTime,
+                gameAccessReady = gameAccessReady,
+                battle = battle,
+                ledger = current.ledger,
+            ),
+        )
     }
 }

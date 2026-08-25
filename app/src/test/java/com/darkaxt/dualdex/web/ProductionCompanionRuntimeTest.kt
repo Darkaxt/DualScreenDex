@@ -658,8 +658,12 @@ class ProductionCompanionRuntimeTest {
 
         assertEquals(versionBeforeRawBattleChange, runtime.gateway.bootstrap().version)
         assertEquals(
-            dispatchBeforeRawBattleChange.dispatchAttempts,
+            dispatchBeforeRawBattleChange.dispatchAttempts + 1,
             runtime.gateway.metrics().dispatchAttempts,
+        )
+        assertEquals(
+            dispatchBeforeRawBattleChange.noOpDispatches + 1,
+            runtime.gateway.metrics().noOpDispatches,
         )
         assertEquals(
             beforeRawBattleChange.battleSections + 1,
@@ -2853,7 +2857,7 @@ class ProductionCompanionRuntimeTest {
             ),
         )
 
-        assertNull(runtime.gateway.bootstrap().trainer)
+        assertNull(runtime.gateway.bootstrap().trainerCardState?.publicTrainerId)
         assertEquals(TrainerIdentity("MAY", 1), runtime.gateway.bootstrap().trainerCardState?.identity)
         runtime.close()
     }

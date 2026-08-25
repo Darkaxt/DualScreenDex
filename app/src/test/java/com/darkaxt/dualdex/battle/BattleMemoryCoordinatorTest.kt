@@ -44,8 +44,7 @@ class BattleMemoryCoordinatorTest {
                     ),
                 )
             },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -78,7 +77,6 @@ class BattleMemoryCoordinatorTest {
         val yellowState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val yellow = BattleMemoryCoordinator(
             catalogProvider = { gen1Context() },
-            publisher = {},
             transientGameState = yellowState,
             transportFactory = { MemoryTransport(yellowWram, 0xc000) },
             autoStart = false,
@@ -105,7 +103,6 @@ class BattleMemoryCoordinatorTest {
         val crystalState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val crystal = BattleMemoryCoordinator(
             catalogProvider = { gen2Context() },
-            publisher = {},
             transientGameState = crystalState,
             transportFactory = { MemoryTransport(crystalWram, 0xc000) },
             autoStart = false,
@@ -134,7 +131,6 @@ class BattleMemoryCoordinatorTest {
         val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { gen2Context() },
-            publisher = {},
             transientGameState = transient,
             transportFactory = { MemoryTransport(wram, 0xc000) },
             autoStart = false,
@@ -171,8 +167,7 @@ class BattleMemoryCoordinatorTest {
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -208,8 +203,7 @@ class BattleMemoryCoordinatorTest {
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -247,11 +241,10 @@ class BattleMemoryCoordinatorTest {
         mainState(iwram, callback1 = 0x0807B025, callback2 = 0x08078E01, counter = 100)
         iwram[0x1574 + 0x439] = 0x02
         val updates = mutableListOf<BattleTrackingUpdate>()
-        val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val transient = recordingState(updates)
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = gen3RuntimeLayout(liveTargetOffset = 0xE04)) },
-            publisher = updates::add,
             transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
@@ -288,8 +281,7 @@ class BattleMemoryCoordinatorTest {
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = gen3RuntimeLayout()) },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -312,8 +304,7 @@ class BattleMemoryCoordinatorTest {
         val updates = mutableListOf<BattleTrackingUpdate>()
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = gen3RuntimeLayout()) },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram)) },
             autoStart = false,
         )
@@ -335,8 +326,7 @@ class BattleMemoryCoordinatorTest {
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = gen3RuntimeLayout()) },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -368,8 +358,7 @@ class BattleMemoryCoordinatorTest {
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = gen3RuntimeLayout(battleMonsOffset = 0x143C)) },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -394,8 +383,7 @@ class BattleMemoryCoordinatorTest {
         val updates = mutableListOf<BattleTrackingUpdate>()
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram)) },
             autoStart = false,
         )
@@ -423,8 +411,7 @@ class BattleMemoryCoordinatorTest {
         val transport = MemoryTransport(ewram)
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -455,11 +442,10 @@ class BattleMemoryCoordinatorTest {
         ewram[0x1005] = 16
         val pointer = byteArrayOf(0x00, 0x10, 0x00, 0x02)
         val updates = mutableListOf<BattleTrackingUpdate>()
-        val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val transient = recordingState(updates)
         val transport = MemoryTransport(ewram, extraMemory = mapOf(0x030036F0L to pointer))
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(saveBlock1Pointer = 0x030036F0L, runtimeLayout = gen3RuntimeLayout()) },
-            publisher = updates::add,
             transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
@@ -482,7 +468,6 @@ class BattleMemoryCoordinatorTest {
         val invalidPointer = byteArrayOf(0x00, 0x10, 0x00, 0x01)
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(saveBlock1Pointer = 0x030036F0L, runtimeLayout = gen3RuntimeLayout()) },
-            publisher = {},
             transientGameState = transient,
             transportFactory = {
                 MemoryTransport(ByteArray(0x40000), extraMemory = mapOf(0x030036F0L to invalidPointer))
@@ -505,8 +490,7 @@ class BattleMemoryCoordinatorTest {
         val transport = MemoryTransport(ewram)
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -531,8 +515,7 @@ class BattleMemoryCoordinatorTest {
         val updates = mutableListOf<BattleTrackingUpdate>()
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context() },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { transport },
             autoStart = false,
         )
@@ -556,11 +539,10 @@ class BattleMemoryCoordinatorTest {
         wram[0x0cdc] = 0x54
         wram[0x135d] = 0
         val updates = mutableListOf<BattleTrackingUpdate>()
-        val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val transient = recordingState(updates)
         val transport = MemoryTransport(wram, 0xc000)
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { gen1Context() },
-            publisher = updates::add,
             transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
@@ -615,11 +597,10 @@ class BattleMemoryCoordinatorTest {
         wram[0x1cb8] = 14
         wram[0x1841] = 2
         val updates = mutableListOf<BattleTrackingUpdate>()
-        val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val transient = recordingState(updates)
         val transport = MemoryTransport(wram, 0xc000)
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { gen2Context() },
-            publisher = updates::add,
             transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
@@ -677,8 +658,7 @@ class BattleMemoryCoordinatorTest {
         val updates = mutableListOf<BattleTrackingUpdate>()
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { gen2Context() },
-            publisher = updates::add,
-            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            transientGameState = recordingState(updates),
             transportFactory = { MemoryTransport(wram, 0xc000) },
             autoStart = false,
         )
@@ -714,7 +694,6 @@ class BattleMemoryCoordinatorTest {
                     ),
                 )
             },
-            publisher = {},
             transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
@@ -747,7 +726,6 @@ class BattleMemoryCoordinatorTest {
             catalogProvider = {
                 context(runtimeLayout = gen3RuntimeLayout(liveClockAddress = 0x030039E8))
             },
-            publisher = {},
             transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
@@ -788,7 +766,6 @@ class BattleMemoryCoordinatorTest {
                     saveContext = SaveParseContext("rom", mapOf(252 to SaveSpeciesContext(252, 252, 0))),
                 )
             },
-            publisher = {},
             transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
@@ -853,11 +830,10 @@ class BattleMemoryCoordinatorTest {
             saveBlock1Size = 0x3D88,
             saveBlock2Size = 0xF2C,
         )
-        val transient = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val updates = mutableListOf<BattleTrackingUpdate>()
+        val transient = recordingState(updates)
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { context(runtimeLayout = layout, saveContext = saveContext) },
-            publisher = updates::add,
             transientGameState = transient,
             transportFactory = { MemoryTransport(ewram, extraMemory = mapOf(0x03000000L to iwram)) },
             autoStart = false,
@@ -897,7 +873,6 @@ class BattleMemoryCoordinatorTest {
                     runtimeLayout = gen3RuntimeLayout(saveBlockPointers = true),
                 )
             },
-            publisher = {},
             transientGameState = transient,
             transportFactory = { transport },
             autoStart = false,
@@ -910,6 +885,17 @@ class BattleMemoryCoordinatorTest {
         assertEquals(RuntimeMapPosition(12, 7), transient.current?.location?.position?.value)
         coordinator.close()
     }
+
+    private fun recordingState(
+        updates: MutableList<BattleTrackingUpdate>,
+    ): com.darkaxt.dualdex.live.UnifiedGameStateDecoder =
+        com.darkaxt.dualdex.live.UnifiedGameStateDecoder().also { state ->
+            state.subscribe { update ->
+                update.snapshot?.battleKnowledge?.latestUpdate?.let { latest ->
+                    if (updates.lastOrNull() != latest) updates += latest
+                }
+            }
+        }
 
     private fun context(
         saveBlock1Pointer: Long? = null,

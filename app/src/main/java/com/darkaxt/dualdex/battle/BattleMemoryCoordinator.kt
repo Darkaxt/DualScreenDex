@@ -78,7 +78,6 @@ internal fun battleHeartbeatDelayMillis(
 class BattleMemoryCoordinator(
     private val catalogProvider: () -> BattleCatalogContext?,
     private val transientGameState: UnifiedGameStateDecoder,
-    private val publisher: ((BattleTrackingUpdate) -> Unit)? = null,
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     private val pollingIntervalProvider: () -> Int = { 5 },
     autoStart: Boolean = true,
@@ -155,7 +154,6 @@ class BattleMemoryCoordinator(
         if (hadBattle && !nextEligible) {
             val update = BattleTrackingUpdate(active = false, sample = null, ended = true)
             transientGameState.acceptBattleTracking(update)
-            publisher?.invoke(update)
         }
     }
 
@@ -208,7 +206,6 @@ class BattleMemoryCoordinator(
                 closeTransport()
                 tracker.missed().takeIf(BattleTrackingUpdate::active)?.let { update ->
                     transientGameState.acceptBattleTracking(update)
-                    publisher?.invoke(update)
                 }
             }
         }
@@ -612,7 +609,6 @@ class BattleMemoryCoordinator(
                 trackingUpdate = update.takeIf { it.active || it.ended },
             )
         }
-        if (update.active || update.ended) publisher?.invoke(update)
     }
 
     private fun qualifyGen3BattleSample(

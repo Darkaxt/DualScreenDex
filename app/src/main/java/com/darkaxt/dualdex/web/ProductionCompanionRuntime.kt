@@ -177,63 +177,79 @@ class ProductionCompanionRuntime(
         val changed = update.changedSections
         resolvedPublications.incrementAndGet()
         resolvedGameState = snapshot
-        if (ResolvedGameSection.RECOVERY in changed) {
-            resolvedRecoverySections.incrementAndGet()
-            applyResolvedRecoveryState(snapshot)
-        }
-        if (ResolvedGameSection.PLAYER in changed) {
-            resolvedPlayerSections.incrementAndGet()
-            applyResolvedPlayerState(snapshot)
-        }
-        if (ResolvedGameSection.PARTY in changed) {
-            resolvedPartySections.incrementAndGet()
-            applyResolvedPartyAndProgression(snapshot)
-        }
+        if (ResolvedGameSection.RECOVERY in changed) resolvedRecoverySections.incrementAndGet()
+        if (ResolvedGameSection.PLAYER in changed) resolvedPlayerSections.incrementAndGet()
+        if (ResolvedGameSection.PARTY in changed) resolvedPartySections.incrementAndGet()
         if (ResolvedGameSection.OVERWORLD in changed) resolvedOverworldSections.incrementAndGet()
-        if (ResolvedGameSection.OVERWORLD in changed || ResolvedGameSection.PLAYER in changed) {
-            applyResolvedOverworldState(snapshot)
-        }
-        if (ResolvedGameSection.BATTLE in changed) {
-            resolvedBattleSections.incrementAndGet()
-            applyResolvedBattleState(snapshot)
-        }
-    }
+        if (ResolvedGameSection.BATTLE in changed) resolvedBattleSections.incrementAndGet()
 
-    private fun applyResolvedRecoveryState(snapshot: ResolvedGameSnapshot?) {
         val currentCatalog = catalog ?: return
         val matching = snapshot?.takeIf { state ->
             currentCatalog.romSha256.equals(state.romIdentity, ignoreCase = true)
-        } ?: return
+        }
+        val before = gateway.bootstrap()
+        var ledger = resolvedRecoveryLedger(matching, currentCatalog, before.ledger)
+        val player = resolvedPlayerProjection(matching)
+        val party = resolvedPartyProjection(matching, currentCatalog)
+        if (!ledger.trainerCardUnlocked && party.party.any { !it.isEgg }) {
+            ledger = ledger.copy(trainerCardUnlocked = true)
+        }
+        ledger = resolvedBattleKnowledge(matching, currentCatalog, ledger)
+        val overworld = resolvedOverworldProjection(matching, currentCatalog, ledger)
+        val liveBattle = matching?.battle?.value
+        val battle = liveBattle?.sample
+            ?.takeIf { liveBattle.active }
+            ?.let { sample -> battleState(sample, overworld.ledger, overworld.areaBaseId, currentCatalog) }
+
+        gateway.dispatch(
+            CompanionAction.ResolvedGameStateChanged(
+                trainerCard = player.trainerCard,
+                pokedex = player.pokedex,
+                party = party.party,
+                owned = party.owned,
+                bag = party.bag,
+                eventFlags = party.eventFlags,
+                areaBaseId = overworld.areaBaseId,
+                position = overworld.position,
+                gameTime = overworld.gameTime,
+                gameAccessReady = overworld.gameAccessReady,
+                battle = battle,
+                ledger = overworld.ledger,
+            ),
+        )
+    }
+
+    private fun resolvedRecoveryLedger(
+        matching: ResolvedGameSnapshot?,
+        currentCatalog: ParsedCatalog,
+        currentLedger: KnowledgeLedger,
+    ): KnowledgeLedger {
+        matching ?: return currentLedger
         matching.recovery.saveRam?.let { state ->
             if (saveRam != state) {
                 saveRam = state
                 cachedState = null
             }
         }
-        val applicationId = matching.recovery.applicationId ?: return
-        if (applicationId == lastRecoveryApplicationId) return
+        val applicationId = matching.recovery.applicationId ?: return currentLedger
+        if (applicationId == lastRecoveryApplicationId) return currentLedger
         val seed = if (matching.recovery.resetKnowledge) {
             KnowledgeLedgerSanitizer.sanitize(
                 matching.recovery.checkpointLedger ?: KnowledgeLedger(),
                 currentCatalog,
             )
         } else {
-            gateway.bootstrap().ledger
+            currentLedger
         }
-        gateway.dispatch(
-            CompanionAction.ReplaceLedger(KnowledgeLedgerSanitizer.sanitize(seed, currentCatalog)),
-        )
         detectedLevelUpRulesetId = matching.levelUpRulesetId.value
         levelUpRulesetDetectionResolved = matching.levelUpRulesetId.value != null
         cachedBattleCatalogContext = null
         cachedState = null
         lastRecoveryApplicationId = applicationId
+        return KnowledgeLedgerSanitizer.sanitize(seed, currentCatalog)
     }
 
-    private fun applyResolvedPlayerState(snapshot: ResolvedGameSnapshot?) {
-        val matching = snapshot?.takeIf { state ->
-            catalog?.romSha256.equals(state.romIdentity, ignoreCase = true)
-        }
+    private fun resolvedPlayerProjection(matching: ResolvedGameSnapshot?): ResolvedPlayerProjection {
         val playTime = matching?.trainer?.playTime?.value
         val trainerCard = matching?.let { state ->
             TrainerCardState(
@@ -248,64 +264,42 @@ class ProductionCompanionRuntime(
                 stars = state.trainer.stars.value,
             )
         }
-        val current = gateway.bootstrap()
         val pokedex = ResolvedPokedexProjection(
             seenSpeciesIds = matching?.pokedex?.seenSpeciesIds?.value,
             caughtSpeciesIds = matching?.pokedex?.caughtSpeciesIds?.value,
         )
-        if (
-            current.trainerCardState != trainerCard ||
-            current.resolvedPokedex != pokedex
-        ) {
-            gateway.dispatch(
-                CompanionAction.ResolvedPlayerStateChanged(
-                    trainerCard = trainerCard,
-                    pokedex = pokedex,
-                ),
-            )
-        }
+        return ResolvedPlayerProjection(trainerCard, pokedex)
     }
 
-    private fun applyResolvedBattleState(snapshot: ResolvedGameSnapshot?) {
-        val matching = snapshot
-            ?.takeIf { state -> catalog?.romSha256.equals(state.romIdentity, ignoreCase = true) }
-        if (matching != null) {
-            val knowledge = matching.battleKnowledge
-            val observed = knowledge.observedMoves.mapValues { (_, frequencies) ->
-                frequencies.entries
-                    .sortedWith(compareByDescending<Map.Entry<Int, Int>> { it.value }.thenBy { it.key })
-                    .map { MoveObservation(it.key, it.value) }
-            }
-            val discoveredMatchups = knowledge.recoveredMatchups.toMutableMap()
-            val currentCatalog = catalog
-            knowledge.discoveredMatchups.forEach { observation ->
-                effectivenessFor(currentCatalog, observation.moveId, observation.defendingTypeIds)?.let { effectiveness ->
-                    discoveredMatchups[MatchupKey(observation.speciesId, observation.moveId)] = effectiveness
-                }
-            }
-            val before = gateway.bootstrap().ledger
-            val resolvedLedger = before.copy(
-                seenSpecies = knowledge.seenSpeciesIds,
-                seenSpeciesByArea = knowledge.seenSpeciesByArea,
-                observedMoves = observed,
-                discoveredMatchups = discoveredMatchups,
-            )
-            if (resolvedLedger != before) gateway.dispatch(CompanionAction.ReplaceLedger(resolvedLedger))
+    private fun resolvedBattleKnowledge(
+        matching: ResolvedGameSnapshot?,
+        currentCatalog: ParsedCatalog,
+        ledger: KnowledgeLedger,
+    ): KnowledgeLedger {
+        val knowledge = matching?.battleKnowledge ?: return ledger
+        val observed = knowledge.observedMoves.mapValues { (_, frequencies) ->
+            frequencies.entries
+                .sortedWith(compareByDescending<Map.Entry<Int, Int>> { it.value }.thenBy { it.key })
+                .map { MoveObservation(it.key, it.value) }
         }
-        val battle = matching?.battle?.value
-        val sample = battle?.sample
-        if (battle?.active == true && sample != null) {
-            publishBattleSample(sample)
-        } else if (gateway.bootstrap().battle != null) {
-            clearLiveBattle()
+        val discoveredMatchups = knowledge.recoveredMatchups.toMutableMap()
+        knowledge.discoveredMatchups.forEach { observation ->
+            effectivenessFor(currentCatalog, observation.moveId, observation.defendingTypeIds)?.let { effectiveness ->
+                discoveredMatchups[MatchupKey(observation.speciesId, observation.moveId)] = effectiveness
+            }
         }
+        return ledger.copy(
+            seenSpecies = knowledge.seenSpeciesIds,
+            seenSpeciesByArea = knowledge.seenSpeciesByArea,
+            observedMoves = observed,
+            discoveredMatchups = discoveredMatchups,
+        )
     }
 
-    private fun applyResolvedPartyAndProgression(snapshot: ResolvedGameSnapshot?) {
-        val currentCatalog = catalog ?: return
-        val matching = snapshot?.takeIf { state ->
-            currentCatalog.romSha256.equals(state.romIdentity, ignoreCase = true)
-        }
+    private fun resolvedPartyProjection(
+        matching: ResolvedGameSnapshot?,
+        currentCatalog: ParsedCatalog,
+    ): ResolvedPartyProjection {
         val party = matching?.party?.value.orEmpty()
         val partyKeys = party.mapTo(mutableSetOf(), OwnedIndividual::stableLocation)
         val owned = (matching?.storedIndividuals?.value.orEmpty() + party)
@@ -328,22 +322,14 @@ class ProductionCompanionRuntime(
             value.value?.let { pocket to it }
         }.toMap()
         val eventFlags = matching?.eventFlags?.value
-        val before = gateway.bootstrap()
-        if (
-            before.party != party ||
-            before.resolvedOwned != owned ||
-            before.resolvedBag != bag ||
-            before.resolvedEventFlags != eventFlags
-        ) {
-            gateway.dispatch(CompanionAction.ResolvedPartyStateChanged(party, owned, bag, eventFlags))
-        }
+        return ResolvedPartyProjection(party, owned, bag, eventFlags)
     }
 
-    private fun applyResolvedOverworldState(snapshot: ResolvedGameSnapshot?) {
-        val currentCatalog = catalog
-        val matching = snapshot?.takeIf { state ->
-            currentCatalog?.romSha256.equals(state.romIdentity, ignoreCase = true)
-        }
+    private fun resolvedOverworldProjection(
+        matching: ResolvedGameSnapshot?,
+        currentCatalog: ParsedCatalog,
+        initialLedger: KnowledgeLedger,
+    ): ResolvedOverworldProjection {
         val areaBaseId = matching?.location?.areaBaseId?.value
         val position = matching?.location?.position?.value?.let { value -> LiveMapPosition(value.x, value.y) }
         val clock = matching?.clock?.value
@@ -363,15 +349,14 @@ class ProductionCompanionRuntime(
         }
         val ready = matching?.gameAccessReady() == true
         if (ready) performanceRecorder.gameAccessReady()
-        val before = gateway.bootstrap()
         val validAreaBaseId = areaBaseId?.takeIf { candidate ->
-            candidate in (currentCatalog?.discoverableAreaBaseIds() ?: emptySet())
+            candidate in currentCatalog.discoverableAreaBaseIds()
         }
-        var ledger = before.ledger
+        var ledger = initialLedger
         if (validAreaBaseId != null && validAreaBaseId !in ledger.visitedAreaBaseIds) {
             ledger = ledger.copy(visitedAreaBaseIds = ledger.visitedAreaBaseIds + validAreaBaseId)
         }
-        if (validAreaBaseId != null && position != null && currentCatalog != null) {
+        if (validAreaBaseId != null && position != null) {
             ledger = LocalMapPoiKnowledgeMapper.mergeProximity(
                 previous = ledger,
                 catalog = currentCatalog,
@@ -380,24 +365,28 @@ class ProductionCompanionRuntime(
                 tileY = position.y,
             )
         }
-        if (
-            before.liveAreaBaseId != areaBaseId ||
-            before.liveMapPosition != position ||
-            before.gameTime != gameTime ||
-            (ready && !before.gameAccessReady) ||
-            before.ledger != ledger
-        ) {
-            gateway.dispatch(
-                CompanionAction.ResolvedOverworldStateChanged(
-                    areaBaseId = areaBaseId,
-                    position = position,
-                    gameTime = gameTime,
-                    gameAccessReady = ready,
-                    ledger = ledger,
-                ),
-            )
-        }
+        return ResolvedOverworldProjection(areaBaseId, position, gameTime, ready, ledger)
     }
+
+    private data class ResolvedPlayerProjection(
+        val trainerCard: TrainerCardState?,
+        val pokedex: ResolvedPokedexProjection,
+    )
+
+    private data class ResolvedPartyProjection(
+        val party: List<OwnedIndividual>,
+        val owned: List<com.enrpau.dualscreendex.companion.model.OwnedPokemon>,
+        val bag: Map<BagPocket, com.darkaxt.dualdex.save.BagPocketSnapshot>,
+        val eventFlags: Set<Int>?,
+    )
+
+    private data class ResolvedOverworldProjection(
+        val areaBaseId: Int?,
+        val position: LiveMapPosition?,
+        val gameTime: GameClock?,
+        val gameAccessReady: Boolean,
+        val ledger: KnowledgeLedger,
+    )
 
     fun load(name: String, input: InputStream): BootstrapView = load(RomSourceLoader.load(name, input))
 
@@ -719,8 +708,12 @@ class ProductionCompanionRuntime(
         return value
     }
 
-    private fun publishBattleSample(sample: BattleMemorySample) {
-        val latestLedger = gateway.bootstrap().ledger
+    private fun battleState(
+        sample: BattleMemorySample,
+        ledger: KnowledgeLedger,
+        areaBaseId: Int?,
+        currentCatalog: ParsedCatalog,
+    ): BattleState {
         val opponents = sample.opponents.map { opponent ->
             OpponentState(
                 speciesId = opponent.speciesId,
@@ -728,10 +721,10 @@ class ProductionCompanionRuntime(
                 typeIds = opponent.typeIds,
                 ivs = opponent.ivs,
                 dvs = opponent.dvs,
-                moveHistory = latestLedger.observedMoves[opponent.speciesId].orEmpty(),
+                moveHistory = ledger.observedMoves[opponent.speciesId].orEmpty(),
             )
         }
-        val battle = BattleState(
+        return BattleState(
             opponents = opponents,
             targetIndex = sample.target.opponentIndex.coerceIn(0, (opponents.size - 1).coerceAtLeast(0)),
             selectedMoveId = sample.selectedMoveId,
@@ -749,8 +742,7 @@ class ProductionCompanionRuntime(
             rarityUsable = opponents.getOrNull(
                 sample.target.opponentIndex.coerceIn(0, (opponents.size - 1).coerceAtLeast(0)),
             )?.let { opponent ->
-                val current = catalog ?: return@let false
-                val generation = when (current.family) {
+                val generation = when (currentCatalog.family) {
                     EngineFamily.RED_BLUE, EngineFamily.YELLOW -> 1
                     EngineFamily.GOLD_SILVER, EngineFamily.CRYSTAL -> 2
                     else -> 3
@@ -764,23 +756,12 @@ class ProductionCompanionRuntime(
                         ivs = opponent.ivs,
                         dvs = opponent.dvs,
                     ),
-                    currentAreaBaseId = gateway.bootstrap().liveAreaBaseId,
-                    encounterAreas = current.encounterAreas,
+                    currentAreaBaseId = areaBaseId,
+                    encounterAreas = currentCatalog.encounterAreas,
                 )
                 assessment.innateTier != null && assessment.stars != null
             } ?: false,
         )
-        val before = gateway.bootstrap()
-        if (before.battle == battle) return
-        gateway.dispatch(
-            if (before.battle == null) CompanionAction.BattleStarted(battle)
-            else CompanionAction.BattleUpdated(battle),
-        )
-    }
-
-    @Synchronized
-    fun clearLiveBattle() {
-        if (gateway.bootstrap().battle != null) gateway.dispatch(CompanionAction.BattleEnded)
     }
 
     fun battlePollingIntervalMs(): Int = gateway.bootstrap().settings.battlePollingIntervalMs.coerceIn(1, 20)
@@ -1051,7 +1032,6 @@ class ProductionCompanionRuntime(
         try {
             saveRam = SaveRamView()
             clearLevelUpRulesetDetection()
-            clearLiveBattle()
             applyWinningCatalogSettings(reopened.romSha256)
             gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
             gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
@@ -1122,7 +1102,6 @@ class ProductionCompanionRuntime(
                 name,
             ),
         )
-        clearLiveBattle()
         saveRam = SaveRamView()
         gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
