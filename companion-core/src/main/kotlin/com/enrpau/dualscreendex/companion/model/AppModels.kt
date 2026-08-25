@@ -156,6 +156,11 @@ data class TrainerCardState(
     val stars: Int?,
 )
 
+data class ResolvedPokedexProjection(
+    val seenSpeciesIds: Set<Int>?,
+    val caughtSpeciesIds: Set<Int>?,
+)
+
 data class AppSnapshot(
     val version: Long = 0,
     val screen: AppScreen = AppScreen.POKEDEX,
@@ -175,6 +180,7 @@ data class AppSnapshot(
     val trainer: TrainerSnapshot? = null,
     val trainerIdentity: TrainerIdentity? = null,
     val trainerCardState: TrainerCardState? = null,
+    val resolvedPokedex: ResolvedPokedexProjection? = null,
     val party: List<OwnedIndividual> = emptyList(),
     val liveMapPosition: LiveMapPosition? = null,
     val gameTime: GameClock? = null,
@@ -219,8 +225,7 @@ sealed interface CompanionAction {
     data class LiveGameClockChanged(val gameTime: GameClock?) : CompanionAction
     data class ResolvedPlayerStateChanged(
         val trainerCard: TrainerCardState?,
-        val seenSpeciesIds: Set<Int>? = null,
-        val caughtSpeciesIds: Set<Int>? = null,
+        val pokedex: ResolvedPokedexProjection,
     ) : CompanionAction
     data class ResolvedPartyStateChanged(val party: List<OwnedIndividual>) : CompanionAction
     data class ResolvedOverworldStateChanged(

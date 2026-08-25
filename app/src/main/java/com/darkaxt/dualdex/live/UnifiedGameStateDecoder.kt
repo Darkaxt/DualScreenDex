@@ -441,8 +441,16 @@ class UnifiedGameStateDecoder(
                 stars = resolve(live?.trainer?.stars, recoveryTrainer?.stars),
             ),
             pokedex = ResolvedPokedexState(
-                seenDexNumbers = resolve(live?.pokedex?.seenDexNumbers, saved?.seenDexNumbers),
-                caughtDexNumbers = resolve(live?.pokedex?.caughtDexNumbers, saved?.caughtDexNumbers),
+                seenSpeciesIds = resolvePokedexSpecies(
+                    live?.pokedex?.seenDexNumbers,
+                    saved?.seenDexNumbers,
+                    active.saveParseContext,
+                ),
+                caughtSpeciesIds = resolvePokedexSpecies(
+                    live?.pokedex?.caughtDexNumbers,
+                    saved?.caughtDexNumbers,
+                    active.saveParseContext,
+                ),
             ),
             party = resolve(live?.party, saved?.party),
             battle = resolve(live?.battle, null),
@@ -474,6 +482,24 @@ class UnifiedGameStateDecoder(
         } else {
             ResolvedValue.unavailable()
         }
+    }
+
+    private fun resolvePokedexSpecies(
+        live: LiveValue<Set<Int>>?,
+        recovery: Set<Int>?,
+        parseContext: com.darkaxt.dualdex.save.SaveParseContext?,
+    ): ResolvedValue<Set<Int>> {
+        val resolvedFlags = resolve(live, recovery)
+        val flagNumbers = resolvedFlags.value ?: return ResolvedValue.unavailable()
+        if (flagNumbers.isEmpty()) return ResolvedValue(emptySet(), resolvedFlags.source)
+        val speciesByFlag = parseContext?.speciesById.orEmpty().values
+            .mapNotNull { species ->
+                species.pokedexFlagNumber?.takeIf { it > 0 }?.let { flag -> flag to species.speciesId }
+            }
+            .groupBy({ it.first }, { it.second })
+        if (flagNumbers.any { it !in speciesByFlag }) return ResolvedValue.unavailable()
+        val speciesIds = flagNumbers.flatMapTo(linkedSetOf()) { speciesByFlag.getValue(it) }
+        return ResolvedValue(speciesIds, resolvedFlags.source)
     }
 
     private fun <T> unavailable(detail: String): LiveValue<T> = LiveValue.Unavailable(

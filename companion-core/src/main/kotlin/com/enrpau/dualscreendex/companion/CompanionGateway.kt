@@ -167,17 +167,10 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             gameAccessReady = state.gameAccessReady || action.gameAccessReady,
         )
         is CompanionAction.LiveGameClockChanged -> state.copy(gameTime = action.gameTime)
-        is CompanionAction.ResolvedPlayerStateChanged -> {
-            val caught = state.ledger.caughtSpecies + action.caughtSpeciesIds.orEmpty()
-            val seen = state.ledger.seenSpecies + action.seenSpeciesIds.orEmpty() + caught
-            state.copy(
-                trainerCardState = action.trainerCard,
-                ledger = state.ledger.copy(
-                    seenSpecies = seen,
-                    caughtSpecies = caught,
-                ),
-            )
-        }
+        is CompanionAction.ResolvedPlayerStateChanged -> state.copy(
+            trainerCardState = action.trainerCard,
+            resolvedPokedex = action.pokedex,
+        )
         is CompanionAction.ResolvedPartyStateChanged -> state.copy(party = action.party)
         is CompanionAction.ResolvedOverworldStateChanged -> state.copy(
             liveAreaBaseId = action.areaBaseId,

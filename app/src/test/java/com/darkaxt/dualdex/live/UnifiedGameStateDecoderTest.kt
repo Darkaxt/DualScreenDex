@@ -98,8 +98,8 @@ class UnifiedGameStateDecoderTest {
 
         assertEquals(900L, decoder.current!!.trainer.money.value)
         assertEquals(ResolvedValueSource.LIVE, decoder.current!!.trainer.money.source)
-        assertEquals(setOf(1, 2), decoder.current!!.pokedex.seenDexNumbers.value)
-        assertEquals(ResolvedValueSource.RECOVERY, decoder.current!!.pokedex.seenDexNumbers.source)
+        assertEquals(setOf(1, 2), decoder.current!!.pokedex.seenSpeciesIds.value)
+        assertEquals(ResolvedValueSource.RECOVERY, decoder.current!!.pokedex.seenSpeciesIds.source)
     }
 
     @Test
@@ -316,6 +316,12 @@ class UnifiedGameStateDecoderTest {
         romIdentity = rom,
         generation = generation,
         catalog = BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+        saveParseContext = com.darkaxt.dualdex.save.SaveParseContext(
+            romIdentity = rom,
+            speciesById = (1..500).associateWith { speciesId ->
+                com.darkaxt.dualdex.save.SaveSpeciesContext(speciesId, speciesId, 0)
+            },
+        ),
     )
 
     private fun gen3LiveContext(): TransientGameStateContext {

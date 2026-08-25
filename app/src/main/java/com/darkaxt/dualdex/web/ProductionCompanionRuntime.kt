@@ -52,6 +52,7 @@ import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import com.enrpau.dualscreendex.companion.model.Theme
 import com.enrpau.dualscreendex.companion.model.TrainerCardState
+import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
 import com.enrpau.dualscreendex.companion.knowledge.SaveKnowledgeMapper
 import com.enrpau.dualscreendex.companion.knowledge.LivePartyKnowledgeMapper
 import com.darkaxt.dualdex.save.SaveParseContext
@@ -242,30 +243,24 @@ class ProductionCompanionRuntime(
                 playTimeHours = playTime?.hours,
                 playTimeMinutes = playTime?.minutes,
                 badgeFlags = state.trainer.badgeFlags.value,
-                dexSeen = state.pokedex.seenDexNumbers.value?.size,
-                dexCaught = state.pokedex.caughtDexNumbers.value?.size,
+                dexSeen = state.pokedex.seenSpeciesIds.value?.size,
+                dexCaught = state.pokedex.caughtSpeciesIds.value?.size,
                 stars = state.trainer.stars.value,
             )
         }
         val current = gateway.bootstrap()
-        val seenAdditions = matching?.pokedex?.seenDexNumbers?.value
-            ?.let { dexNumbers -> catalog?.let { SaveKnowledgeMapper.speciesIdsForPokedexFlags(it, dexNumbers) } }
-            ?.minus(current.ledger.seenSpecies)
-            .orEmpty()
-        val caughtAdditions = matching?.pokedex?.caughtDexNumbers?.value
-            ?.let { dexNumbers -> catalog?.let { SaveKnowledgeMapper.speciesIdsForPokedexFlags(it, dexNumbers) } }
-            ?.minus(current.ledger.caughtSpecies)
-            .orEmpty()
+        val pokedex = ResolvedPokedexProjection(
+            seenSpeciesIds = matching?.pokedex?.seenSpeciesIds?.value,
+            caughtSpeciesIds = matching?.pokedex?.caughtSpeciesIds?.value,
+        )
         if (
             current.trainerCardState != trainerCard ||
-            seenAdditions.isNotEmpty() ||
-            caughtAdditions.isNotEmpty()
+            current.resolvedPokedex != pokedex
         ) {
             gateway.dispatch(
                 CompanionAction.ResolvedPlayerStateChanged(
                     trainerCard = trainerCard,
-                    seenSpeciesIds = seenAdditions.takeIf(Set<Int>::isNotEmpty),
-                    caughtSpeciesIds = caughtAdditions.takeIf(Set<Int>::isNotEmpty),
+                    pokedex = pokedex,
                 ),
             )
         }
@@ -852,6 +847,10 @@ class ProductionCompanionRuntime(
         savedPlayerState = snapshot
         cachedBattleCatalogContext = null
         var merged = SaveKnowledgeMapper.merge(gateway.bootstrap().ledger, current, snapshot)
+        merged = merged.copy(
+            seenSpecies = seed.seenSpecies,
+            caughtSpecies = seed.caughtSpecies,
+        )
         merged = LocalMapPoiKnowledgeMapper.mergeEventFlags(
             previous = merged,
             catalog = current,

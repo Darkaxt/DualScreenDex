@@ -96,7 +96,7 @@ class UnifiedGameStateRealControlTest {
                         snapshot.clock.source,
                     )
                     assertEquals(ResolvedValueSource.UNAVAILABLE, snapshot.trainer.identity.source)
-                    assertEquals(ResolvedValueSource.UNAVAILABLE, snapshot.pokedex.seenDexNumbers.source)
+                    assertEquals(ResolvedValueSource.UNAVAILABLE, snapshot.pokedex.seenSpeciesIds.source)
                     assertEquals(ResolvedValueSource.UNAVAILABLE, snapshot.party.source)
                     println(
                         "UNIFIED_CONTROL ${control.id} generation=${context.generation} " +
@@ -186,8 +186,8 @@ class UnifiedGameStateRealControlTest {
         assertEquals(ResolvedValueSource.LIVE, live.trainer.playTime.source)
         assertEquals(ResolvedValueSource.LIVE, live.trainer.badgeFlags.source)
         assertEquals(ResolvedValueSource.UNAVAILABLE, live.trainer.stars.source)
-        assertEquals(ResolvedValueSource.LIVE, live.pokedex.seenDexNumbers.source)
-        assertEquals(ResolvedValueSource.LIVE, live.pokedex.caughtDexNumbers.source)
+        assertEquals(ResolvedValueSource.LIVE, live.pokedex.seenSpeciesIds.source)
+        assertEquals(ResolvedValueSource.LIVE, live.pokedex.caughtSpeciesIds.source)
         assertEquals(ResolvedValueSource.LIVE, live.party.source)
         assertEquals(ResolvedValueSource.LIVE, live.battle.source)
         assertEquals(ResolvedValueSource.LIVE, live.location.areaBaseId.source)

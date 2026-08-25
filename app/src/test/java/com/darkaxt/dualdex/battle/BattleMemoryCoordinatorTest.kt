@@ -868,8 +868,8 @@ class BattleMemoryCoordinatorTest {
 
         assertEquals(0x5678, transient.current?.trainer?.publicTrainerId?.value)
         assertEquals(3_000L, transient.current?.trainer?.money?.value)
-        assertEquals(setOf(6), transient.current?.pokedex?.seenDexNumbers?.value)
-        assertEquals(setOf(6), transient.current?.pokedex?.caughtDexNumbers?.value)
+        assertEquals(setOf(6), transient.current?.pokedex?.seenSpeciesIds?.value)
+        assertEquals(setOf(6), transient.current?.pokedex?.caughtSpeciesIds?.value)
         assertTrue(updates.last().active)
         assertTrue(transient.current?.battle?.value?.active == true)
         assertEquals(13, transient.current?.battle?.value?.sample?.opponents?.single()?.speciesId)

@@ -71,8 +71,8 @@ data class ResolvedTrainerState(
 )
 
 data class ResolvedPokedexState(
-    val seenDexNumbers: ResolvedValue<Set<Int>>,
-    val caughtDexNumbers: ResolvedValue<Set<Int>>,
+    val seenSpeciesIds: ResolvedValue<Set<Int>>,
+    val caughtSpeciesIds: ResolvedValue<Set<Int>>,
 )
 
 data class ResolvedLocationState(

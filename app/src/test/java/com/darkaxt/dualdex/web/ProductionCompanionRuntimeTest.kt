@@ -2447,6 +2447,7 @@ class ProductionCompanionRuntimeTest {
                 romIdentity = hash,
                 generation = 3,
                 catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+                saveParseContext = requireNotNull(runtime.saveParseContext()),
             ),
         )
         val unavailable = com.darkaxt.dualdex.battle.LiveValue.Unavailable(
@@ -2494,6 +2495,99 @@ class ProductionCompanionRuntimeTest {
         assertTrue(state.speciesState.getValue(300).seen)
         assertFalse(state.speciesState.getValue(300).caught)
         assertFalse(state.speciesState.containsKey(25))
+        runtime.close()
+    }
+
+    @Test
+    fun livePokedexReplacesPreviouslyExposedRecoveryStateForEveryConsumer() {
+        val hash = "6".repeat(64)
+        val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val runtime = ProductionCompanionRuntime(transientGameState = source)
+        val species = (1..52).associateWith { speciesId -> saveSpecies(speciesId) }
+        runtime.loadCatalog(
+            "replacement.gba",
+            ParsedCatalog(
+                hash,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = species,
+            ),
+        )
+        source.beginSession(
+            com.darkaxt.dualdex.live.TransientGameStateContext(
+                romIdentity = hash,
+                generation = 3,
+                catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+                saveParseContext = requireNotNull(runtime.saveParseContext()),
+            ),
+        )
+        source.acceptRecovery(
+            com.darkaxt.dualdex.live.RecoveryProjection(
+                snapshot = emptySave(hash, "stale-recovery").copy(
+                    seenDexNumbers = (1..52).toSet(),
+                    caughtDexNumbers = (1..52).toSet(),
+                    trainer = trainer("RECOVERY", money = 0),
+                ),
+                saveRam = SaveRamView(status = "MATCHED"),
+            ),
+        )
+        assertEquals(52, runtime.stateView().trainer?.dexCaught)
+        assertEquals(52, runtime.stateView().speciesState.values.count { it.caught })
+
+        val unavailable = com.darkaxt.dualdex.battle.LiveValue.Unavailable(
+            com.darkaxt.dualdex.battle.LiveUnavailableReason(
+                com.darkaxt.dualdex.battle.LiveUnavailableCode.MISSING_REGION,
+                "not relevant to the Pokedex replacement fixture",
+            ),
+        )
+        val liveState = com.darkaxt.dualdex.battle.LiveGameSnapshot(
+                romIdentity = hash,
+                generation = 3,
+                sampleId = 1,
+                trainer = com.darkaxt.dualdex.battle.LiveTrainerState(
+                    identity = unavailable,
+                    publicTrainerId = unavailable,
+                    money = unavailable,
+                    playTime = unavailable,
+                    badgeFlags = unavailable,
+                    stars = unavailable,
+                ),
+                pokedex = com.darkaxt.dualdex.battle.LivePokedexState(
+                    seenDexNumbers = com.darkaxt.dualdex.battle.LiveValue.Available(setOf(1, 2)),
+                    caughtDexNumbers = com.darkaxt.dualdex.battle.LiveValue.Available(setOf(1)),
+                ),
+                party = unavailable,
+                battle = unavailable,
+                location = com.darkaxt.dualdex.battle.LiveLocationState(unavailable, unavailable),
+                clock = unavailable,
+                bag = emptyMap(),
+                eventFlags = unavailable,
+            )
+        source.acceptDecodedLive(liveState)
+
+        val state = runtime.stateView()
+        assertEquals(2, state.trainer?.dexSeen)
+        assertEquals(1, state.trainer?.dexCaught)
+        assertEquals(setOf(1, 2), state.speciesState.filterValues { it.seen }.keys)
+        assertEquals(setOf(1), state.speciesState.filterValues { it.caught }.keys)
+
+        source.acceptDecodedLive(
+            liveState.copy(
+                sampleId = 2,
+                pokedex = com.darkaxt.dualdex.battle.LivePokedexState(
+                    seenDexNumbers = com.darkaxt.dualdex.battle.LiveValue.Available(emptySet()),
+                    caughtDexNumbers = com.darkaxt.dualdex.battle.LiveValue.Available(emptySet()),
+                ),
+            ),
+        )
+        assertEquals(0, runtime.stateView().trainer?.dexSeen)
+        assertEquals(0, runtime.stateView().trainer?.dexCaught)
+        assertTrue(runtime.stateView().speciesState.values.none { it.seen || it.caught })
+
+        source.suspendLive()
+        assertEquals(52, runtime.stateView().trainer?.dexSeen)
+        assertEquals(52, runtime.stateView().trainer?.dexCaught)
+        assertEquals(52, runtime.stateView().speciesState.values.count { it.caught })
         runtime.close()
     }
 
@@ -2639,6 +2733,7 @@ class ProductionCompanionRuntimeTest {
                 romIdentity = hash,
                 generation = 3,
                 catalog = com.darkaxt.dualdex.battle.BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
+                saveParseContext = requireNotNull(runtime.saveParseContext()),
             ),
         )
         val checkpoint = KnowledgeLedger(

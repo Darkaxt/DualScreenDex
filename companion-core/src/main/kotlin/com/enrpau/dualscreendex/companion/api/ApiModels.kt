@@ -685,9 +685,24 @@ object ApiViewBuilder {
             }.distinct().sorted()
         }
         val currentAreaName = effectiveAreaBaseId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
+        val organicallySeenSpecies = snapshot.ledger.seenSpecies +
+            snapshot.ledger.seenSpeciesByArea.values.flatten().toSet() +
+            snapshot.ledger.observedMoves.keys +
+            snapshot.battle?.opponents.orEmpty().map { it.speciesId }
+        val currentlyOwnedSpecies = snapshot.ledger.owned
+            .filterNot { it.isEgg }
+            .mapTo(linkedSetOf()) { it.speciesId }
+        val effectiveCaughtSpecies = snapshot.resolvedPokedex?.caughtSpeciesIds.orEmpty() +
+            snapshot.ledger.caughtSpecies + currentlyOwnedSpecies
+        val effectiveSeenSpecies = snapshot.resolvedPokedex?.seenSpeciesIds.orEmpty() +
+            effectiveCaughtSpecies + organicallySeenSpecies
+        val useResolvedPokedex = snapshot.resolvedPokedex != null
         val currentAreaSpeciesIds = browsedAreaBaseIds.takeIf { it.isNotEmpty() }?.let { baseIds ->
             val navigableIds = catalog?.navigableSpecies()?.mapTo(mutableSetOf()) { it.id }.orEmpty()
-            val captured = navigableIds.filterTo(mutableSetOf()) { KnowledgePolicy.isCaught(it, snapshot.ledger) }
+            val captured = navigableIds.filterTo(mutableSetOf()) { speciesId ->
+                if (useResolvedPokedex) speciesId in effectiveCaughtSpecies
+                else KnowledgePolicy.isCaught(speciesId, snapshot.ledger)
+            }
             (baseIds.flatMap { baseId -> snapshot.ledger.seenSpeciesByArea[baseId].orEmpty() } + captured)
                 .filter { it in navigableIds }
                 .distinct()
@@ -752,8 +767,16 @@ object ApiViewBuilder {
             val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
             species.id to SpeciesStateView(
-                seen = species.id in snapshot.ledger.seenSpecies,
-                caught = KnowledgePolicy.isCaught(species.id, snapshot.ledger),
+                seen = if (useResolvedPokedex) {
+                    species.id in effectiveSeenSpecies
+                } else {
+                    species.id in snapshot.ledger.seenSpecies
+                },
+                caught = if (useResolvedPokedex) {
+                    species.id in effectiveCaughtSpecies
+                } else {
+                    KnowledgePolicy.isCaught(species.id, snapshot.ledger)
+                },
                 team = species.id in snapshot.ledger.teamSpecies,
                 ballId = preferred?.captureBallId
                     ?.takeIf { it in catalog.captureBallsById },
