@@ -1,6 +1,8 @@
 package com.enrpau.dualscreendex.companion.model
 
 import com.darkaxt.dualdex.save.OwnedIndividual
+import com.darkaxt.dualdex.save.BagPocket
+import com.darkaxt.dualdex.save.BagPocketSnapshot
 import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.save.TrainerIdentity
 
@@ -182,6 +184,9 @@ data class AppSnapshot(
     val trainerCardState: TrainerCardState? = null,
     val resolvedPokedex: ResolvedPokedexProjection? = null,
     val party: List<OwnedIndividual> = emptyList(),
+    val resolvedOwned: List<OwnedPokemon>? = null,
+    val resolvedBag: Map<BagPocket, BagPocketSnapshot> = emptyMap(),
+    val resolvedEventFlags: Set<Int>? = null,
     val liveMapPosition: LiveMapPosition? = null,
     val gameTime: GameClock? = null,
     val gameAccessReady: Boolean = false,
@@ -227,7 +232,12 @@ sealed interface CompanionAction {
         val trainerCard: TrainerCardState?,
         val pokedex: ResolvedPokedexProjection,
     ) : CompanionAction
-    data class ResolvedPartyStateChanged(val party: List<OwnedIndividual>) : CompanionAction
+    data class ResolvedPartyStateChanged(
+        val party: List<OwnedIndividual>,
+        val owned: List<OwnedPokemon>,
+        val bag: Map<BagPocket, BagPocketSnapshot>,
+        val eventFlags: Set<Int>?,
+    ) : CompanionAction
     data class ResolvedOverworldStateChanged(
         val areaBaseId: Int?,
         val position: LiveMapPosition?,

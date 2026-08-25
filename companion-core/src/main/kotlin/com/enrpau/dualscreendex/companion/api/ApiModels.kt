@@ -685,11 +685,12 @@ object ApiViewBuilder {
             }.distinct().sorted()
         }
         val currentAreaName = effectiveAreaBaseId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
+        val effectiveOwned = snapshot.resolvedOwned ?: snapshot.ledger.owned
         val organicallySeenSpecies = snapshot.ledger.seenSpecies +
             snapshot.ledger.seenSpeciesByArea.values.flatten().toSet() +
             snapshot.ledger.observedMoves.keys +
             snapshot.battle?.opponents.orEmpty().map { it.speciesId }
-        val currentlyOwnedSpecies = snapshot.ledger.owned
+        val currentlyOwnedSpecies = effectiveOwned
             .filterNot { it.isEgg }
             .mapTo(linkedSetOf()) { it.speciesId }
         val effectiveCaughtSpecies = snapshot.resolvedPokedex?.caughtSpeciesIds.orEmpty() +
@@ -718,8 +719,11 @@ object ApiViewBuilder {
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, areaBaseIds) -> areaBaseIds.distinct().sorted() }
         val localMapPois = catalog?.localMaps?.pois.orEmpty().mapNotNull { poi ->
-            val collected = poi.key in snapshot.ledger.collectedPoiKeys
-            val explicitlyIdentified = poi.key in snapshot.ledger.identifiedPoiKeys || poi.key in snapshot.ledger.enteredPoiKeys
+            val resolvedCollected = poi.item?.collectionFlagId in snapshot.resolvedEventFlags.orEmpty()
+            val collected = resolvedCollected || poi.key in snapshot.ledger.collectedPoiKeys
+            val explicitlyIdentified = resolvedCollected ||
+                poi.key in snapshot.ledger.identifiedPoiKeys ||
+                poi.key in snapshot.ledger.enteredPoiKeys
             val proximityRevealed = poi.key in snapshot.ledger.proximityRevealedPoiKeys
             val identified = snapshot.settings.knowledgeMode == KnowledgeMode.DISCOVERED || collected || explicitlyIdentified
             val visibleWithoutDiscovery = poi.organicVisibility ==
@@ -764,7 +768,7 @@ object ApiViewBuilder {
             )
         }
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
-            val owned = snapshot.ledger.owned.filter { it.speciesId == species.id }
+            val owned = effectiveOwned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
             species.id to SpeciesStateView(
                 seen = if (useResolvedPokedex) {
@@ -777,7 +781,7 @@ object ApiViewBuilder {
                 } else {
                     KnowledgePolicy.isCaught(species.id, snapshot.ledger)
                 },
-                team = species.id in snapshot.ledger.teamSpecies,
+                team = snapshot.party.any { !it.isEgg && it.speciesId == species.id },
                 ballId = preferred?.captureBallId
                     ?.takeIf { it in catalog.captureBallsById },
                 preferredLevel = preferred?.level,
@@ -818,7 +822,7 @@ object ApiViewBuilder {
             snapshot.ledger.observedMoves.mapValues { (_, observations) ->
                 observations.toObservedMoveViews()
             },
-            snapshot.ledger.trainerCardUnlocked,
+            snapshot.ledger.trainerCardUnlocked || snapshot.party.any { !it.isEgg },
             trainerView(snapshot, catalog),
             trainerAvatarUrl(snapshot, catalog),
             trainerMapSpriteKey?.let(::trainerAssetUrl),

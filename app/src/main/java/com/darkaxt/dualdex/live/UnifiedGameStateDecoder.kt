@@ -21,6 +21,7 @@ import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.BagPocketSnapshot
 import com.darkaxt.dualdex.save.TrainerPlayTime
 import com.darkaxt.dualdex.save.SaveObservationKind
+import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import java.util.Collections
@@ -258,26 +259,29 @@ class UnifiedGameStateDecoder(
             return RecoveryApplication(false)
         }
         if (projection.snapshot.saveGeneration != active.generation) return RecoveryApplication(false)
-        val observation = projection.observation
+        val safeProjection = projection.copy(
+            checkpointLedger = projection.checkpointLedger?.transientCheckpointOnly(),
+        )
+        val observation = safeProjection.observation
         val previous = recovery
         val samePlaythrough = previous != null &&
-            previous.snapshot.romIdentity.equals(projection.snapshot.romIdentity, ignoreCase = true) &&
-            previous.snapshot.saveIdentity.equals(projection.snapshot.saveIdentity, ignoreCase = true) &&
+            previous.snapshot.romIdentity.equals(safeProjection.snapshot.romIdentity, ignoreCase = true) &&
+            previous.snapshot.saveIdentity.equals(safeProjection.snapshot.saveIdentity, ignoreCase = true) &&
             observation?.source?.id?.let { sourceId -> recoverySourceId == sourceId } != false
         if (
             observation?.kind == SaveObservationKind.UNCHANGED &&
             samePlaythrough &&
-            previous.snapshot == projection.snapshot &&
+            previous.snapshot == safeProjection.snapshot &&
             previous.observation?.fingerprint == observation.fingerprint
         ) {
-            recovery = projection
-            recoveryStatus = projection.saveRam
+            recovery = safeProjection
+            recoveryStatus = safeProjection.saveRam
             recoveryResetKnowledge = false
             publishResolved()
             return RecoveryApplication(accepted = true)
         }
         val frozenLedger = if (observation?.kind == SaveObservationKind.CHANGED && samePlaythrough) {
-            knowledgeLedgerSnapshot()
+            knowledgeLedgerSnapshot().transientCheckpointOnly()
         } else {
             null
         }
@@ -286,8 +290,8 @@ class UnifiedGameStateDecoder(
             SaveObservationKind.CHANGED, SaveObservationKind.UNCHANGED -> !samePlaythrough
             null -> previous == null
         }
-        recovery = projection
-        recoveryStatus = projection.saveRam
+        recovery = safeProjection
+        recoveryStatus = safeProjection.saveRam
         observation?.source?.id?.let { recoverySourceId = it }
         recoveryApplicationId++
         publishResolved()
@@ -453,6 +457,7 @@ class UnifiedGameStateDecoder(
                 ),
             ),
             party = resolve(live?.party, saved?.party),
+            storedIndividuals = resolve(null, saved?.storedIndividuals),
             battle = resolve(live?.battle, null),
             location = ResolvedLocationState(
                 areaBaseId = resolve(live?.location?.areaBaseId, saved?.currentArea?.baseId),
@@ -463,10 +468,10 @@ class UnifiedGameStateDecoder(
                 resolve(live?.bag?.get(pocket), savedBag[pocket])
             },
             eventFlags = resolve(live?.eventFlags, saved?.eventFlagIds),
+            levelUpRulesetId = resolve(null, validatedLevelUpRulesetId(saved, active.saveParseContext)),
             recovery = RecoveryState(
                 applicationId = recoveryApplicationId.takeIf { recovery != null },
                 saveIdentity = saved?.saveIdentity,
-                snapshot = saved,
                 saveRam = recoveryStatus,
                 observationKind = recovery?.observation?.kind,
                 checkpointLedger = recovery?.checkpointLedger,
@@ -494,13 +499,42 @@ class UnifiedGameStateDecoder(
         if (flagNumbers.isEmpty()) return ResolvedValue(emptySet(), resolvedFlags.source)
         val speciesByFlag = parseContext?.speciesById.orEmpty().values
             .mapNotNull { species ->
-                species.pokedexFlagNumber?.takeIf { it > 0 }?.let { flag -> flag to species.speciesId }
+                species.pokedexFlagNumber?.takeIf { it > 0 }?.let { flag -> flag to species }
             }
             .groupBy({ it.first }, { it.second })
         if (flagNumbers.any { it !in speciesByFlag }) return ResolvedValue.unavailable()
-        val speciesIds = flagNumbers.flatMapTo(linkedSetOf()) { speciesByFlag.getValue(it) }
+        val speciesIds = flagNumbers.mapTo(linkedSetOf()) { flag ->
+            speciesByFlag.getValue(flag).minWith(
+                compareBy<com.darkaxt.dualdex.save.SaveSpeciesContext> { it.formId != 0 }
+                    .thenBy { it.speciesId },
+            ).speciesId
+        }
         return ResolvedValue(speciesIds, resolvedFlags.source)
     }
+
+    private fun validatedLevelUpRulesetId(
+        saved: com.darkaxt.dualdex.save.SaveSnapshot?,
+        parseContext: com.darkaxt.dualdex.save.SaveParseContext?,
+    ): String? {
+        val snapshot = saved ?: return null
+        val id = snapshot.detectedLevelUpRulesetId ?: return null
+        val selectors = parseContext?.levelUpRulesetSelectors.orEmpty()
+        if (selectors.isEmpty() || selectors.none { it.rulesetId == id }) return null
+        val expected = LevelUpRulesetDetectionFingerprint.create(selectors, id)
+        return id.takeIf {
+            snapshot.levelUpRulesetDetectionResolved &&
+                snapshot.levelUpRulesetDetectionFingerprint == expected
+        }
+    }
+
+    private fun KnowledgeLedger.transientCheckpointOnly(): KnowledgeLedger = copy(
+        seenSpecies = emptySet(),
+        caughtSpecies = emptySet(),
+        owned = emptyList(),
+        teamSpecies = emptySet(),
+        trainerCardUnlocked = false,
+        currentAreaBaseId = null,
+    )
 
     private fun <T> unavailable(detail: String): LiveValue<T> = LiveValue.Unavailable(
         LiveUnavailableReason(LiveUnavailableCode.MISSING_REGION, detail),
@@ -529,7 +563,13 @@ class UnifiedGameStateDecoder(
         return buildSet {
             if (recovery != other.recovery) add(ResolvedGameSection.RECOVERY)
             if (trainer != other.trainer || pokedex != other.pokedex) add(ResolvedGameSection.PLAYER)
-            if (party != other.party || bag != other.bag || eventFlags != other.eventFlags) {
+            if (
+                party != other.party ||
+                storedIndividuals != other.storedIndividuals ||
+                bag != other.bag ||
+                eventFlags != other.eventFlags ||
+                levelUpRulesetId != other.levelUpRulesetId
+            ) {
                 add(ResolvedGameSection.PARTY)
             }
             if (location != other.location || clock != other.clock) add(ResolvedGameSection.OVERWORLD)

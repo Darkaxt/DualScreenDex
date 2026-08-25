@@ -171,7 +171,15 @@ class CompanionGateway(initial: AppSnapshot = AppSnapshot()) {
             trainerCardState = action.trainerCard,
             resolvedPokedex = action.pokedex,
         )
-        is CompanionAction.ResolvedPartyStateChanged -> state.copy(party = action.party)
+        is CompanionAction.ResolvedPartyStateChanged -> state.copy(
+            party = action.party,
+            resolvedOwned = action.owned,
+            resolvedBag = action.bag,
+            resolvedEventFlags = action.eventFlags,
+            ledger = state.ledger.copy(
+                trainerCardUnlocked = state.ledger.trainerCardUnlocked || action.party.any { !it.isEgg },
+            ),
+        )
         is CompanionAction.ResolvedOverworldStateChanged -> state.copy(
             liveAreaBaseId = action.areaBaseId,
             liveMapPosition = action.position,

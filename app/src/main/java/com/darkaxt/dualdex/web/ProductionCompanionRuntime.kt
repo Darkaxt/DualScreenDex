@@ -54,10 +54,8 @@ import com.enrpau.dualscreendex.companion.model.Theme
 import com.enrpau.dualscreendex.companion.model.TrainerCardState
 import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
 import com.enrpau.dualscreendex.companion.knowledge.SaveKnowledgeMapper
-import com.enrpau.dualscreendex.companion.knowledge.LivePartyKnowledgeMapper
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveByteSelector
-import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.live.ResolvedGameSnapshot
 import com.darkaxt.dualdex.live.TransientGameStateSource
@@ -152,7 +150,6 @@ class ProductionCompanionRuntime(
     @Volatile private var catalogLoadingMessage: String? = null
     private var detectedLevelUpRulesetId: String? = null
     private var levelUpRulesetDetectionResolved = false
-    private var savedPlayerState: SaveSnapshot? = null
     private var catalogPublicationInProgress = false
     private var cachedState: CachedState? = null
     private var cachedSaveParseContext: CachedSaveParseContext? = null
@@ -216,7 +213,6 @@ class ProductionCompanionRuntime(
         }
         val applicationId = matching.recovery.applicationId ?: return
         if (applicationId == lastRecoveryApplicationId) return
-        val saved = matching.recovery.snapshot ?: return
         val seed = if (matching.recovery.resetKnowledge) {
             KnowledgeLedgerSanitizer.sanitize(
                 matching.recovery.checkpointLedger ?: KnowledgeLedger(),
@@ -225,9 +221,14 @@ class ProductionCompanionRuntime(
         } else {
             gateway.bootstrap().ledger
         }
-        if (applyRecoveryState(saved, matching.recovery.saveRam ?: saveRam, seed)) {
-            lastRecoveryApplicationId = applicationId
-        }
+        gateway.dispatch(
+            CompanionAction.ReplaceLedger(KnowledgeLedgerSanitizer.sanitize(seed, currentCatalog)),
+        )
+        detectedLevelUpRulesetId = matching.levelUpRulesetId.value
+        levelUpRulesetDetectionResolved = matching.levelUpRulesetId.value != null
+        cachedBattleCatalogContext = null
+        cachedState = null
+        lastRecoveryApplicationId = applicationId
     }
 
     private fun applyResolvedPlayerState(snapshot: ResolvedGameSnapshot?) {
@@ -284,39 +285,36 @@ class ProductionCompanionRuntime(
         val matching = snapshot?.takeIf { state ->
             currentCatalog.romSha256.equals(state.romIdentity, ignoreCase = true)
         }
-        if (matching == null) {
-            val before = gateway.bootstrap()
-            if (before.party.isNotEmpty()) {
-                gateway.dispatch(CompanionAction.ResolvedPartyStateChanged(emptyList()))
+        val party = matching?.party?.value.orEmpty()
+        val partyKeys = party.mapTo(mutableSetOf(), OwnedIndividual::stableLocation)
+        val owned = (matching?.storedIndividuals?.value.orEmpty() + party)
+            .distinctBy(OwnedIndividual::stableLocation)
+            .mapNotNull { individual ->
+                if (individual.speciesId !in currentCatalog.speciesById) return@mapNotNull null
+                com.enrpau.dualscreendex.companion.model.OwnedPokemon(
+                    stableKey = individual.stableLocation,
+                    speciesId = individual.speciesId,
+                    generation = matching?.generation ?: 0,
+                    level = individual.level ?: 0,
+                    ivs = individual.ivs.orEmpty(),
+                    dvs = individual.dvs.orEmpty(),
+                    captureBallId = individual.captureBallId,
+                    isEgg = individual.isEgg,
+                    party = individual.stableLocation in partyKeys,
+                )
             }
-            val ledger = gateway.bootstrap().ledger
-            if (ledger.teamSpecies.isNotEmpty()) {
-                gateway.dispatch(CompanionAction.ReplaceLedger(ledger.copy(teamSpecies = emptySet())))
-            }
-            return
-        }
+        val bag = matching?.bag.orEmpty().mapNotNull { (pocket, value) ->
+            value.value?.let { pocket to it }
+        }.toMap()
+        val eventFlags = matching?.eventFlags?.value
         val before = gateway.bootstrap()
-        val party = matching.party.value
-        if (party != null && before.party != party) {
-            gateway.dispatch(CompanionAction.ResolvedPartyStateChanged(party))
-        }
-        var ledger = party?.let { availableParty ->
-            LivePartyKnowledgeMapper.merge(
-                previous = gateway.bootstrap().ledger,
-                catalog = currentCatalog,
-                party = availableParty,
-                generation = matching.generation,
-            )
-        } ?: gateway.bootstrap().ledger
-        matching.eventFlags.value?.let { flags ->
-            ledger = LocalMapPoiKnowledgeMapper.mergeEventFlags(
-                previous = ledger,
-                catalog = currentCatalog,
-                setFlagIds = flags,
-            )
-        }
-        if (ledger != gateway.bootstrap().ledger) {
-            gateway.dispatch(CompanionAction.ReplaceLedger(ledger))
+        if (
+            before.party != party ||
+            before.resolvedOwned != owned ||
+            before.resolvedBag != bag ||
+            before.resolvedEventFlags != eventFlags
+        ) {
+            gateway.dispatch(CompanionAction.ResolvedPartyStateChanged(party, owned, bag, eventFlags))
         }
     }
 
@@ -836,42 +834,6 @@ class ProductionCompanionRuntime(
         }
     }
 
-    private fun applyRecoveryState(
-        snapshot: SaveSnapshot,
-        state: SaveRamView,
-        seed: KnowledgeLedger,
-    ): Boolean {
-        val current = catalog ?: return false
-        if (!snapshot.romIdentity.equals(current.romSha256, ignoreCase = true)) return false
-        gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedgerSanitizer.sanitize(seed, current)))
-        savedPlayerState = snapshot
-        cachedBattleCatalogContext = null
-        var merged = SaveKnowledgeMapper.merge(gateway.bootstrap().ledger, current, snapshot)
-        merged = merged.copy(
-            seenSpecies = seed.seenSpecies,
-            caughtSpecies = seed.caughtSpecies,
-        )
-        merged = LocalMapPoiKnowledgeMapper.mergeEventFlags(
-            previous = merged,
-            catalog = current,
-            setFlagIds = snapshot.eventFlagIds,
-        )
-        val selectors = completeLevelUpRulesetSelectors(current)
-        val detected = snapshot.detectedLevelUpRulesetId?.takeIf { id ->
-            val expectedFingerprint = LevelUpRulesetDetectionFingerprint.create(selectors, id)
-            snapshot.levelUpRulesetDetectionResolved &&
-                selectors.size == current.learnsetRulesets.size &&
-                snapshot.levelUpRulesetDetectionFingerprint != null &&
-                snapshot.levelUpRulesetDetectionFingerprint == expectedFingerprint
-        }
-        detectedLevelUpRulesetId = detected
-        levelUpRulesetDetectionResolved = detected != null
-        saveRam = state
-        cachedState = null
-        gateway.dispatch(CompanionAction.ReplaceLedger(merged))
-        return true
-    }
-
     fun action(type: String, values: Map<String, String?>): StateView {
         when (type.uppercase()) {
             "OPEN_SPECIES" -> gateway.dispatch(CompanionAction.OpenSpecies(requireInt(values, "speciesId")))
@@ -1164,7 +1126,6 @@ class ProductionCompanionRuntime(
         catalog = null
         clearCatalogProjectionCaches()
         mapAssetRenderCache.clear()
-        savedPlayerState = null
         lastRecoveryApplicationId = null
         settingsRomSha256 = null
         settingsWritesEnabled = false

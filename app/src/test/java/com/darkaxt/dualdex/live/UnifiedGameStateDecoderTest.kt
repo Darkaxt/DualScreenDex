@@ -224,14 +224,18 @@ class UnifiedGameStateDecoderTest {
         decoder.acceptRecovery(
             recovery(ROM).copy(observation = observation(SaveObservationKind.INITIAL, 1)),
         )
-        currentLedger = KnowledgeLedger(seenSpecies = setOf(25, 133))
+        currentLedger = KnowledgeLedger(
+            seenSpecies = setOf(25, 133),
+            localMapPoiPreferences = com.enrpau.dualscreendex.companion.model.LocalMapPoiPreferences(showPlaces = false),
+        )
 
         val application = decoder.acceptRecovery(
             recovery(ROM, money = 700L).copy(observation = observation(SaveObservationKind.CHANGED, 2)),
         )
 
         assertTrue(application.accepted)
-        assertEquals(currentLedger, application.checkpointLedger)
+        assertEquals(emptySet<Int>(), application.checkpointLedger?.seenSpecies)
+        assertFalse(requireNotNull(application.checkpointLedger).localMapPoiPreferences.showPlaces)
         assertEquals(700L, decoder.current?.trainer?.money?.value)
         assertEquals(2L, decoder.current?.recovery?.applicationId)
         assertEquals(SaveObservationKind.CHANGED, decoder.current?.recovery?.observationKind)

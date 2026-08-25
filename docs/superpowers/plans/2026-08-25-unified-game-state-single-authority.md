@@ -21,13 +21,16 @@ Stage exit: no Trainer Card/Pokédex disagreement and no raw Pokédex translatio
 
 ## Stage 2 — Party, ownership, Trainer, and passive recovery
 
-1. Make the companion transient projection contain Trainer, Party, bag, and event flags from the same snapshot.
-2. Replace Party/Team/owned/license state atomically; a valid empty Party clears all three current-session projections.
+1. Make the companion transient projection contain Trainer, Party, stored ownership, bag, and event flags from the same snapshot.
+2. Replace Party/Team/owned/license state atomically; a valid empty Party clears all current Team projections while preserving the earned license for the active playthrough.
 3. Separate save-synchronized recovery content from Organic knowledge and user preferences.
-4. Reduce checkpoint coordination to validation, persistence, and typed submission to the decoder.
-5. Remove runtime `applyRecoveryState`, `savedPlayerState` authority, Party mapper authority, and direct SaveRAM-to-ledger merging.
-6. Verify Trainer Card, Party page/details, Pokédex Team tab, rarity stars, Trainer license, badges, POIs, bag, and event progression against one snapshot.
-7. Write the Stage 2 audit and commit.
+4. Prove the exact pre-starter Modern Emerald save parses as `0` caught and block any checkpoint or session ledger from replacing that canonical value with `52`.
+5. Make one raw Pokédex flag select one canonical base-form species instead of every form/alias row that shares the flag; validate Treecko `277` / flag `252` against the real Modern Emerald catalog.
+6. Strip mirrored Pokédex, owned/Team, Trainer-license, and current-area fields from checkpoint input and output while preserving Organic observations and user map preferences.
+7. Reduce checkpoint coordination to validation, persistence on `CHANGED`, and typed submission to the decoder.
+8. Remove runtime `applyRecoveryState`, `savedPlayerState` authority, Party mapper authority, and direct SaveRAM-to-ledger merging.
+9. Verify Trainer Card, Party page/details, Pokédex Team tab, rarity stars, Trainer license, badges, POIs, bag, and event progression against one snapshot.
+10. Write the Stage 2 audit and commit.
 
 Stage exit: SaveRAM cannot mutate a normal page except through a recovery-selected snapshot field.
 
@@ -78,7 +81,7 @@ Stage exit: public signed RC and exact evidence for every specification requirem
 
 ## Current execution state
 
-- Stage 1 is in progress.
-- Stages 2–6 are pending.
+- Stage 1 is complete and committed.
+- Stage 2 is in progress; the exact Modern Emerald `0` versus erroneous UI `52` path is a release blocker.
+- Stages 3–6 are pending.
 - No requirement is currently deferred.
-- The reproduced 52-versus-1 Pokédex contradiction is a Stage 1 blocker and is the first implementation target.

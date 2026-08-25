@@ -10,7 +10,6 @@ import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.BagPocketSnapshot
 import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.SaveParseContext
-import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.save.TrainerIdentity
 import com.darkaxt.dualdex.save.TrainerPlayTime
@@ -83,7 +82,6 @@ data class ResolvedLocationState(
 data class RecoveryState(
     val applicationId: Long? = null,
     val saveIdentity: String? = null,
-    val snapshot: SaveSnapshot? = null,
     val saveRam: SaveRamView? = null,
     val observationKind: SaveObservationKind? = null,
     val checkpointLedger: KnowledgeLedger? = null,
@@ -97,11 +95,13 @@ data class ResolvedGameSnapshot(
     val trainer: ResolvedTrainerState,
     val pokedex: ResolvedPokedexState,
     val party: ResolvedValue<List<OwnedIndividual>>,
+    val storedIndividuals: ResolvedValue<List<OwnedIndividual>>,
     val battle: ResolvedValue<LiveBattleState>,
     val location: ResolvedLocationState,
     val clock: ResolvedValue<LiveClockState>,
     val bag: Map<BagPocket, ResolvedValue<BagPocketSnapshot>>,
     val eventFlags: ResolvedValue<Set<Int>>,
+    val levelUpRulesetId: ResolvedValue<String>,
     val recovery: RecoveryState,
 )
 

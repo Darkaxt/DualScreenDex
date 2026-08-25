@@ -14,6 +14,7 @@ import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
+import com.enrpau.dualscreendex.companion.knowledge.SaveKnowledgeMapper
 import com.google.gson.Gson
 import java.nio.file.Files
 import java.nio.file.Path
@@ -26,6 +27,16 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class UnifiedGameStateRealControlTest {
+    @Test
+    fun modernEmeraldTreeckoFlagResolvesToOneCanonicalSpecies() {
+        val path = Path.of(HACK_FALLBACKS.getValue("modern-emerald"))
+        assumeTrue("Modern Emerald ROM does not exist: $path", Files.isRegularFile(path))
+        val loaded = RomSourceLoader.load(path)
+        val catalog = requireNotNull(CatalogParser.parse(loaded.rom).catalog)
+
+        assertEquals(setOf(277), SaveKnowledgeMapper.speciesIdsForPokedexFlags(catalog, setOf(252)))
+    }
+
     @Test
     fun establishedOfficialAndHackIdentitiesMatchTheManifestInPlace() {
         val manifest = manifest()

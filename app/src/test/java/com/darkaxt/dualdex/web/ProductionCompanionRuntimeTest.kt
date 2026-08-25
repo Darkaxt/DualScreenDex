@@ -962,7 +962,7 @@ class ProductionCompanionRuntimeTest {
             checkpoint = KnowledgeLedger(seenSpecies = setOf(25, 999), caughtSpecies = setOf(999)),
         )
 
-        assertEquals(setOf(25), runtime.gateway.bootstrap().ledger.seenSpecies)
+        assertTrue(runtime.gateway.bootstrap().ledger.seenSpecies.isEmpty())
         assertTrue(runtime.gateway.bootstrap().ledger.caughtSpecies.isEmpty())
         runtime.close()
     }
@@ -1187,8 +1187,9 @@ class ProductionCompanionRuntimeTest {
         )
 
         val ledger = runtime.gateway.bootstrap().ledger
-        assertEquals(setOf(poi.key), ledger.collectedPoiKeys)
-        assertEquals(setOf(poi.key), ledger.identifiedPoiKeys)
+        assertTrue(ledger.collectedPoiKeys.isEmpty())
+        assertTrue(ledger.identifiedPoiKeys.isEmpty())
+        assertEquals("COLLECTED", runtime.stateView().localMapPois.single().state)
         runtime.close()
     }
 
@@ -1234,7 +1235,8 @@ class ProductionCompanionRuntimeTest {
             ),
         )
 
-        assertEquals(setOf(poi.key), runtime.gateway.bootstrap().ledger.collectedPoiKeys)
+        assertTrue(runtime.gateway.bootstrap().ledger.collectedPoiKeys.isEmpty())
+        assertEquals("COLLECTED", runtime.stateView().localMapPois.single().state)
         runtime.close()
     }
 
@@ -2503,7 +2505,13 @@ class ProductionCompanionRuntimeTest {
         val hash = "6".repeat(64)
         val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val runtime = ProductionCompanionRuntime(transientGameState = source)
-        val species = (1..52).associateWith { speciesId -> saveSpecies(speciesId) }
+        val species = (1..52).associateWith { speciesId -> saveSpecies(speciesId) } +
+            (101..151).associateWith { speciesId ->
+                saveSpecies(speciesId).copy(
+                    formId = 1,
+                    dexNumber = CatalogField.available(1),
+                )
+            }
         runtime.loadCatalog(
             "replacement.gba",
             ParsedCatalog(
@@ -2602,7 +2610,7 @@ class ProductionCompanionRuntimeTest {
                 hash,
                 EngineFamily.EMERALD,
                 Platform.GBA,
-                speciesById = mapOf(25 to saveSpecies(25), 277 to saveSpecies(277)),
+                speciesById = mapOf(25 to saveSpecies(25), 277 to saveSpecies(277), 300 to saveSpecies(300)),
             ),
         )
         source.beginSession(
@@ -2616,6 +2624,7 @@ class ProductionCompanionRuntimeTest {
             com.darkaxt.dualdex.live.RecoveryProjection(
                 snapshot = emptySave(hash, "save-party").copy(
                     party = listOf(OwnedIndividual("party-0", 25, level = 9, ivs = List(6) { 18 })),
+                    storedIndividuals = listOf(OwnedIndividual("box-0", 300, level = 7, ivs = List(6) { 12 })),
                 ),
                 saveRam = SaveRamView(status = "MATCHED"),
             ),
@@ -2645,6 +2654,9 @@ class ProductionCompanionRuntimeTest {
 
         assertEquals(listOf(25), runtime.gateway.bootstrap().party.map { it.speciesId })
         assertEquals(12_345, runtime.stateView().trainer?.publicTrainerId)
+        assertTrue(runtime.stateView().speciesState.getValue(300).caught)
+        assertFalse(runtime.stateView().speciesState.getValue(300).team)
+        assertTrue(runtime.gateway.bootstrap().ledger.owned.isEmpty())
 
         source.acceptDecodedLive(
             unifiedBattleSnapshot(hash, 2, true, null).copy(
@@ -2658,8 +2670,8 @@ class ProductionCompanionRuntimeTest {
             ),
         )
         assertEquals(listOf(277, 25), runtime.gateway.bootstrap().party.map { it.speciesId })
-        assertEquals(setOf(277, 25), runtime.gateway.bootstrap().ledger.teamSpecies)
-        assertTrue(runtime.gateway.bootstrap().ledger.trainerCardUnlocked)
+        assertEquals(setOf(277, 25), runtime.stateView().speciesState.filterValues { it.team }.keys)
+        assertTrue(runtime.gateway.bootstrap().ledger.teamSpecies.isEmpty())
         assertEquals(277, runtime.stateView().party.first().speciesId)
         assertTrue(runtime.stateView().party.first().rarity != null)
 
@@ -2671,7 +2683,8 @@ class ProductionCompanionRuntimeTest {
         )
         assertTrue(runtime.gateway.bootstrap().party.isEmpty())
         assertTrue(runtime.gateway.bootstrap().ledger.teamSpecies.isEmpty())
-        assertTrue(runtime.gateway.bootstrap().ledger.trainerCardUnlocked)
+        assertTrue(runtime.stateView().speciesState.values.none { it.team })
+        assertTrue(runtime.stateView().trainerCardUnlocked)
         runtime.close()
     }
 
@@ -2704,7 +2717,8 @@ class ProductionCompanionRuntimeTest {
             ),
         )
         assertEquals(listOf(25), runtime.gateway.bootstrap().party.map { it.speciesId })
-        assertEquals(setOf(25), runtime.gateway.bootstrap().ledger.teamSpecies)
+        assertTrue(runtime.gateway.bootstrap().ledger.teamSpecies.isEmpty())
+        assertEquals(setOf(25), runtime.stateView().speciesState.filterValues { it.team }.keys)
 
         source.endSession()
 
@@ -2714,7 +2728,7 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
-    fun unifiedRecoveryEventSeedsCheckpointAndAppliesSaveStatusWithoutADirectCallback() {
+    fun unifiedRecoveryRejectsMirroredPokedexFieldsFromCheckpointButKeepsTransientPreferences() {
         val hash = "6".repeat(64)
         lateinit var runtime: ProductionCompanionRuntime
         val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder { runtime.gateway.bootstrap().ledger }
@@ -2725,7 +2739,7 @@ class ProductionCompanionRuntimeTest {
                 hash,
                 EngineFamily.EMERALD,
                 Platform.GBA,
-                speciesById = mapOf(25 to saveSpecies(25)),
+                speciesById = (1..52).associateWith(::saveSpecies),
             ),
         )
         source.beginSession(
@@ -2737,7 +2751,8 @@ class ProductionCompanionRuntimeTest {
             ),
         )
         val checkpoint = KnowledgeLedger(
-            seenSpecies = setOf(25),
+            seenSpecies = (1..52).toSet(),
+            caughtSpecies = (1..52).toSet(),
             localMapPoiPreferences = com.enrpau.dualscreendex.companion.model.LocalMapPoiPreferences(showPlaces = false),
         )
 
@@ -2751,7 +2766,8 @@ class ProductionCompanionRuntimeTest {
         )
 
         val state = runtime.stateView()
-        assertTrue(state.speciesState.getValue(25).seen)
+        assertEquals(0, state.speciesState.values.count { it.seen })
+        assertEquals(0, state.speciesState.values.count { it.caught })
         assertFalse(state.localMapPoiPreferences.showPlaces)
         assertEquals("MATCHED", state.saveRam.status)
         assertEquals("ON", state.saveRam.autosaveStatus)

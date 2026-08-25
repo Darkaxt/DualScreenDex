@@ -24,13 +24,14 @@ The August 24 migration achieved one decoder instance and one runtime subscripti
 - Party, progression, battle observations, and Atlas still passed through feature-specific projection and mutation pipelines; and
 - structural checks proved one subscription without proving that each rendered value originated from the corresponding snapshot field.
 
-This produced the observed contradiction: one live party member and Trainer Card count `1`, while the Pokédex displayed `52` caught entries from an older recovery state.
+This produced the observed contradiction: one live party member and Trainer Card count `1`, while the Pokédex displayed `52` caught entries. The exact pre-starter Modern Emerald save parses as `0` caught. The post-starter expansion came from the old inverse mapping publishing every form/alias row that shared the starter's single Pokédex flag, then retaining those additions in the separate Pokédex ledger.
 
 ## Non-negotiable invariants
 
 1. `UnifiedGameStateDecoder` is the only stateful translator and authority router for game-originating transient data.
 2. `TransientGameStateSource.current` and its subscription publish the same immutable `ResolvedGameSnapshot`.
 3. The resolved boundary uses canonical catalog identifiers. Pokédex values are species IDs, not raw regional, National, or engine flag numbers.
+   One raw Pokédex flag resolves to exactly one base-form catalog representative; forms and aliases require their own live ownership or observation evidence.
 4. Live values replace recovery values for the same field. Replacement must retract stale recovery values, including values already exposed by an earlier snapshot.
 5. SaveRAM and checkpoint recovery fill only fields whose live value is unavailable. Recovery may never be eagerly unioned into an unrelated live field.
 6. A validated empty set or empty party is authoritative and clears stale state. It is not treated as unavailable.
@@ -67,7 +68,7 @@ data class ResolvedGameSnapshot(
 )
 ```
 
-Raw Pokédex flag numbers remain an internal input type. The decoder translates them using the active `SaveParseContext.speciesById[*].pokedexFlagNumber` mapping before publication. Ambiguous or absent mappings make only that Pokédex field unavailable.
+Raw Pokédex flag numbers remain an internal input type. The decoder translates them using the active `SaveParseContext.speciesById[*].pokedexFlagNumber` mapping before publication. A shared flag deterministically selects the base-form representative and never expands into every alias. An absent mapping makes only that Pokédex field unavailable.
 
 `ResolvedBattleKnowledge` is a translated immutable result of the existing observation tracker: observed move increments, matchup discoveries, and organically encountered species. The tracker may remain a stateless/temporal helper, but its output is accepted by the decoder and published with the battle section. It is not delivered directly to the runtime.
 
@@ -120,7 +121,7 @@ Encounter page titles are data-derived normal UI copy:
 
 Storage helpers discover and validate save files and sidecars, then submit typed `RecoveryProjection` values to `UnifiedGameStateDecoder`. They do not mutate companion state.
 
-The decoder owns ROM/save identity gating and per-field authority. A changed save may freeze the Organic/checkpoint ledger for persistence, but that persistence event is distinct from the current resolved gameplay values. Applying a recovery projection must not write its Pokédex, Party, Trainer, area, bag, or event data directly into a live UI ledger.
+The decoder owns ROM/save identity gating and per-field authority. A changed save may freeze the Organic/checkpoint ledger for persistence, but that persistence event is distinct from the current resolved gameplay values. Checkpoints never store or restore mirrored Pokédex seen/caught, owned/Team, Trainer-license, or current-area fields; those values come from the typed save snapshot. Existing checkpoints containing those fields are stripped on input. Applying a recovery projection must not write its Pokédex, Party, Trainer, area, bag, or event data directly into a live UI ledger. The coordinator writes a checkpoint only for a validated `CHANGED` save observation.
 
 On disconnect, live fields become unavailable and matching recovery can become visible through a newly published resolved snapshot. On reconnect, the next valid live field replaces and retracts the corresponding recovery field.
 
@@ -140,6 +141,8 @@ Required structural controls:
 Required behavioral controls:
 
 - recovery `52 caught` followed by live `1 caught` yields exactly `1` in both Trainer Card and Pokédex;
+- a pre-starter Modern Emerald save resolves to `0`, and a checkpoint containing `52` mirrored caught entries cannot change that result;
+- one caught flag shared by 51 aliases resolves to one canonical caught species, not 52;
 - live empty seen/caught clears stale recovery entries;
 - live unavailable exposes matching recovery without changing unrelated live Trainer/Party fields;
 - Pokédex, Party, Trainer license, and owned/team indicators agree for the same snapshot;

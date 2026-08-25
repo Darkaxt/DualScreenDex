@@ -32,7 +32,12 @@ object SaveKnowledgeMapper {
         val speciesByDex = flagNumbers.entries
             .map { (speciesId, flagNumber) -> flagNumber to speciesId }
             .groupBy({ it.first }, { it.second })
-        return dexNumbers.flatMapTo(linkedSetOf()) { speciesByDex[it].orEmpty() }
+        return dexNumbers.mapNotNullTo(linkedSetOf()) { flagNumber ->
+            speciesByDex[flagNumber]?.minWithOrNull(
+                compareBy<Int> { catalog.speciesById[it]?.formId != 0 }
+                    .thenBy { it },
+            )
+        }
     }
 
     fun merge(previous: KnowledgeLedger, catalog: ParsedCatalog, snapshot: SaveSnapshot): KnowledgeLedger {
