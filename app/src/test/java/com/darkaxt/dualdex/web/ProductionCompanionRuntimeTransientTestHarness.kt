@@ -149,8 +149,8 @@ internal fun ProductionCompanionRuntime.applySaveObservation(
 }
 
 internal fun ProductionCompanionRuntime.applyBattleThroughState(update: BattleTrackingUpdate) {
-    applyBattleTracking(update)
     val (owner, context) = beginTransientTestSession()
+    owner.acceptBattleTracking(update)
     val fixture = runtimeLiveFixtures.getOrPut(this) { RuntimeLiveFixture() }
     owner.acceptDecodedLive(
         LiveGameSnapshot(

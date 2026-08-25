@@ -1,6 +1,8 @@
 package com.darkaxt.dualdex.live
 
 import com.darkaxt.dualdex.battle.BattleCatalogView
+import com.darkaxt.dualdex.battle.BattleMatchupObservation
+import com.darkaxt.dualdex.battle.BattleTrackingUpdate
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
 import com.darkaxt.dualdex.battle.LiveAreaMemoryLayout
 import com.darkaxt.dualdex.battle.LiveBattleState
@@ -15,6 +17,8 @@ import com.darkaxt.dualdex.save.TrainerIdentity
 import com.darkaxt.dualdex.save.TrainerPlayTime
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.companion.model.Effectiveness
+import com.enrpau.dualscreendex.companion.model.MatchupKey
 
 fun interface TransientGameStateListener {
     fun onStateChanged(update: ResolvedGameStateUpdate)
@@ -79,6 +83,15 @@ data class ResolvedLocationState(
     val position: ResolvedValue<RuntimeMapPosition>,
 )
 
+data class ResolvedBattleKnowledge(
+    val observedMoves: Map<Int, Map<Int, Int>> = emptyMap(),
+    val seenSpeciesIds: Set<Int> = emptySet(),
+    val seenSpeciesByArea: Map<Int, Set<Int>> = emptyMap(),
+    val recoveredMatchups: Map<MatchupKey, Effectiveness> = emptyMap(),
+    val discoveredMatchups: Set<BattleMatchupObservation> = emptySet(),
+    val latestUpdate: BattleTrackingUpdate? = null,
+)
+
 data class RecoveryState(
     val applicationId: Long? = null,
     val saveIdentity: String? = null,
@@ -97,6 +110,7 @@ data class ResolvedGameSnapshot(
     val party: ResolvedValue<List<OwnedIndividual>>,
     val storedIndividuals: ResolvedValue<List<OwnedIndividual>>,
     val battle: ResolvedValue<LiveBattleState>,
+    val battleKnowledge: ResolvedBattleKnowledge,
     val location: ResolvedLocationState,
     val clock: ResolvedValue<LiveClockState>,
     val bag: Map<BagPocket, ResolvedValue<BagPocketSnapshot>>,

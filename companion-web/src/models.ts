@@ -292,6 +292,7 @@ export interface State {
     targetMode: 'AUTOMATIC' | 'MANUAL_TARGET_FALLBACK';
     capabilities: Record<string, string>;
     selectedMoveId: number | null;
+    encounterKind: 'WILD' | 'TRAINER' | 'UNKNOWN';
     effectiveness: string | null;
     effectivenessKnown: boolean;
   };

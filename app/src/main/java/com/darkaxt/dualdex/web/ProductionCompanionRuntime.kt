@@ -13,7 +13,6 @@ import com.darkaxt.dualdex.battle.liveAreaMemoryLayout
 import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.darkaxt.dualdex.battle.BattleMove
 import com.darkaxt.dualdex.battle.BattleSpecies
-import com.darkaxt.dualdex.battle.BattleTrackingUpdate
 import com.darkaxt.dualdex.battle.RuntimeMapPosition
 import com.darkaxt.dualdex.battle.Gen3BattleUiMemoryLayout
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
@@ -268,10 +267,32 @@ class ProductionCompanionRuntime(
     }
 
     private fun applyResolvedBattleState(snapshot: ResolvedGameSnapshot?) {
-        val battle = snapshot
+        val matching = snapshot
             ?.takeIf { state -> catalog?.romSha256.equals(state.romIdentity, ignoreCase = true) }
-            ?.battle
-            ?.value
+        if (matching != null) {
+            val knowledge = matching.battleKnowledge
+            val observed = knowledge.observedMoves.mapValues { (_, frequencies) ->
+                frequencies.entries
+                    .sortedWith(compareByDescending<Map.Entry<Int, Int>> { it.value }.thenBy { it.key })
+                    .map { MoveObservation(it.key, it.value) }
+            }
+            val discoveredMatchups = knowledge.recoveredMatchups.toMutableMap()
+            val currentCatalog = catalog
+            knowledge.discoveredMatchups.forEach { observation ->
+                effectivenessFor(currentCatalog, observation.moveId, observation.defendingTypeIds)?.let { effectiveness ->
+                    discoveredMatchups[MatchupKey(observation.speciesId, observation.moveId)] = effectiveness
+                }
+            }
+            val before = gateway.bootstrap().ledger
+            val resolvedLedger = before.copy(
+                seenSpecies = knowledge.seenSpeciesIds,
+                seenSpeciesByArea = knowledge.seenSpeciesByArea,
+                observedMoves = observed,
+                discoveredMatchups = discoveredMatchups,
+            )
+            if (resolvedLedger != before) gateway.dispatch(CompanionAction.ReplaceLedger(resolvedLedger))
+        }
+        val battle = matching?.battle?.value
         val sample = battle?.sample
         if (battle?.active == true && sample != null) {
             publishBattleSample(sample)
@@ -698,44 +719,6 @@ class ProductionCompanionRuntime(
         )
         cachedBattleCatalogContext = CachedBattleCatalogContext(current, value)
         return value
-    }
-
-    @Synchronized
-    fun applyBattleTracking(update: BattleTrackingUpdate) {
-        val before = gateway.bootstrap()
-        val observed = before.ledger.observedMoves.toMutableMap()
-        update.observations.forEach { (speciesId, increments) ->
-            val frequencies = observed[speciesId].orEmpty().associate { it.moveId to it.frequency }.toMutableMap()
-            increments.forEach { (moveId, count) -> frequencies.merge(moveId, count, Int::plus) }
-            observed[speciesId] = frequencies.entries
-                .sortedWith(compareByDescending<Map.Entry<Int, Int>> { it.value }.thenBy { it.key })
-                .map { MoveObservation(it.key, it.value) }
-        }
-        val seen = before.ledger.seenSpecies + update.sample?.opponents.orEmpty().map { it.speciesId }
-        val seenSpeciesByArea = before.ledger.seenSpeciesByArea.toMutableMap()
-        before.liveAreaBaseId?.let { areaBaseId ->
-            val observedHere = update.sample?.opponents.orEmpty().mapTo(mutableSetOf()) { it.speciesId }
-            if (observedHere.isNotEmpty()) {
-                seenSpeciesByArea[areaBaseId] = seenSpeciesByArea[areaBaseId].orEmpty() + observedHere
-            }
-        }
-        val discoveredMatchups = before.ledger.discoveredMatchups.toMutableMap()
-        val currentCatalog = catalog
-        update.discoveredMatchups.forEach { observation ->
-            effectivenessFor(currentCatalog, observation.moveId, observation.defendingTypeIds)?.let { effectiveness ->
-                discoveredMatchups[MatchupKey(observation.speciesId, observation.moveId)] = effectiveness
-            }
-        }
-        val mergedLedger = before.ledger.copy(
-            seenSpecies = seen,
-            seenSpeciesByArea = seenSpeciesByArea,
-            observedMoves = observed,
-            discoveredMatchups = discoveredMatchups,
-        )
-        if (mergedLedger != before.ledger) {
-            gateway.dispatch(CompanionAction.ReplaceLedger(mergedLedger))
-        }
-
     }
 
     private fun publishBattleSample(sample: BattleMemorySample) {

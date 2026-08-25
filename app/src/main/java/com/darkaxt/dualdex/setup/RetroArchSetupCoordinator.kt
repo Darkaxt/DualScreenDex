@@ -76,7 +76,6 @@ class RetroArchSetupCoordinator(
     private val monitor = AtomicReference<SessionMonitor?>(null)
     private val battleMemory = BattleMemoryCoordinator(
         catalogProvider = runtime::battleCatalogContext,
-        publisher = runtime::applyBattleTracking,
         transientGameState = transientGameState,
         transportFactory = { UdpNetworkCommandTransport(commandPort) },
         pollingIntervalProvider = runtime::battlePollingIntervalMs,

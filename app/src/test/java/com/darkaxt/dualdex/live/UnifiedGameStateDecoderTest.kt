@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.live
 
 import com.darkaxt.dualdex.battle.BattleCatalogView
+import com.darkaxt.dualdex.battle.BattleTrackingUpdate
 import com.darkaxt.dualdex.battle.LiveClockState
 import com.darkaxt.dualdex.battle.LiveGameSnapshot
 import com.darkaxt.dualdex.battle.LiveLocationState
@@ -240,6 +241,43 @@ class UnifiedGameStateDecoderTest {
         assertEquals(2L, decoder.current?.recovery?.applicationId)
         assertEquals(SaveObservationKind.CHANGED, decoder.current?.recovery?.observationKind)
         assertFalse(requireNotNull(decoder.current?.recovery).resetKnowledge)
+    }
+
+    @Test
+    fun `live battle knowledge stays in memory and does not checkpoint until the save changes`() {
+        var checkpointReads = 0
+        val decoder = UnifiedGameStateDecoder {
+            checkpointReads++
+            KnowledgeLedger()
+        }
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(
+            recovery(ROM).copy(observation = observation(SaveObservationKind.INITIAL, 1)),
+        )
+        decoder.acceptDecodedLive(
+            liveSnapshot(ROM, sampleId = 1, money = LiveValue.Available(900L)),
+        )
+
+        decoder.acceptBattleTracking(
+            BattleTrackingUpdate(
+                active = true,
+                sample = null,
+                observations = mapOf(1 to mapOf(33 to 2)),
+            ),
+        )
+
+        assertEquals(0, checkpointReads)
+        assertEquals(mapOf(1 to mapOf(33 to 2)), decoder.current?.battleKnowledge?.observedMoves)
+
+        decoder.acceptRecovery(
+            recovery(ROM).copy(observation = observation(SaveObservationKind.UNCHANGED, 1)),
+        )
+        assertEquals(0, checkpointReads)
+
+        decoder.acceptRecovery(
+            recovery(ROM).copy(observation = observation(SaveObservationKind.CHANGED, 2)),
+        )
+        assertEquals(1, checkpointReads)
     }
 
     @Test

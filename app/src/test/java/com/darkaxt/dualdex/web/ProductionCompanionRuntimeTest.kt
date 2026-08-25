@@ -414,7 +414,7 @@ class ProductionCompanionRuntimeTest {
         assertTrue(requireNotNull(runtime.gateway.bootstrap().battle).rarityUsable)
         assertTrue(runtime.stateView().battle!!.opponents.single().moves.isEmpty())
 
-        runtime.applyBattleTracking(
+        source.acceptBattleTracking(
             BattleTrackingUpdate(true, wild.copy(encounterKind = BattleEncounterKind.TRAINER)),
         )
         assertEquals(

@@ -97,7 +97,6 @@ class OfficialEmeraldPlayerStateRealControlTest {
                 writeSanitizedPartyRecord(context).copyInto(party)
 
                 val battleUpdate = unobservedEnemyMove(context)
-                runtime.applyBattleTracking(battleUpdate)
                 val battleContext = requireNotNull(runtime.battleCatalogContext())
                 liveState.beginSession(
                     TransientGameStateContext(
@@ -123,6 +122,7 @@ class OfficialEmeraldPlayerStateRealControlTest {
                     ),
                     areaBaseId = null,
                     mapPosition = null,
+                    trackingUpdate = battleUpdate,
                 )
 
                 val stateJson = JsonParser.parseString(Gson().toJson(runtime.stateView())).asJsonObject

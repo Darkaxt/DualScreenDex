@@ -399,6 +399,7 @@ data class BattleView(
     val targetMode: String,
     val capabilities: Map<String, String>,
     val selectedMoveId: Int?,
+    val encounterKind: String,
     val effectiveness: String?,
     val effectivenessKnown: Boolean,
 )
@@ -873,6 +874,7 @@ object ApiViewBuilder {
                     targetMode = battle.targetMode.name,
                     capabilities = battle.capabilities,
                     selectedMoveId = battle.selectedMoveId,
+                    encounterKind = battle.encounterKind.name,
                     effectiveness = knownEffectiveness?.name,
                     effectivenessKnown = knownEffectiveness != null,
                 )

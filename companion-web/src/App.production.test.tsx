@@ -449,6 +449,7 @@ describe('production application shell', () => {
         }],
         targetIndex: 0,
         targetMode: 'AUTOMATIC',
+        encounterKind: 'WILD',
         capabilities: {},
         selectedMoveId: null,
         effectiveness: null,
@@ -456,7 +457,7 @@ describe('production application shell', () => {
       },
     });
 
-    await waitFor(() => expect(screen.getByText('BATTLE')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('WILD ENCOUNTER')).toBeTruthy());
     expect(screen.queryByRole('region', { name: 'Interactive world map' })).toBeNull();
   });
 

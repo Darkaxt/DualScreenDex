@@ -82,6 +82,7 @@ Stage exit: public signed RC and exact evidence for every specification requirem
 ## Current execution state
 
 - Stage 1 is complete and committed.
-- Stage 2 is in progress; the exact Modern Emerald `0` versus erroneous UI `52` path is a release blocker.
-- Stages 3–6 are pending.
-- No requirement is currently deferred.
+- Stage 2 is complete and committed; the Modern Emerald `0` versus erroneous UI `52` path is fixed by canonical one-flag/one-base-species translation and replacement semantics.
+- Stage 3 is complete pending its stage commit.
+- Stage 4 is next; Stages 5–6 are pending.
+- The low-level Battle coordinator test observer is deferred to the test-seam deletion already assigned to Stage 5. No release blocker is open.

@@ -23,9 +23,18 @@ describe('battle layout', () => {
     const { catalog, state } = fixture(1);
     const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
-    expect(screen.getByText('BATTLE')).toBeTruthy();
+    expect(screen.getByText('WILD ENCOUNTER')).toBeTruthy();
     expect(container.querySelector('.header-title small')).toBeNull();
     expect(screen.queryByText(/EMERALD|DISCOVERED/)).toBeNull();
+  });
+
+  it('names the page from the resolved encounter kind', () => {
+    const { catalog, state } = fixture(1);
+    const { rerender } = render(<BattlePage catalog={catalog} state={{ ...state, battle: { ...state.battle!, encounterKind: 'TRAINER' } }} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+    expect(screen.getByText('TRAINER BATTLE')).toBeTruthy();
+
+    rerender(<BattlePage catalog={catalog} state={{ ...state, battle: { ...state.battle!, encounterKind: 'UNKNOWN' } }} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+    expect(screen.getByText('ENCOUNTER')).toBeTruthy();
   });
 
   it.each(rarityAssessments)('uses the approved recruitment assessment at %s stars', (stars, assessment) => {
@@ -81,7 +90,7 @@ describe('battle layout', () => {
       ...state.battle!,
       opponents: [{ ...state.battle!.opponents[0], moves: [{ moveId: 1, frequency: 3 }] }],
     };
-    const { rerender } = render(<BattlePage
+    const { container, rerender } = render(<BattlePage
       catalog={catalog}
       state={{ ...state, battleTab: 'MOVES', battle }}
       send={vi.fn()}
@@ -100,7 +109,7 @@ describe('battle layout', () => {
     />);
 
     expect(screen.getByText('Pound')).toBeTruthy();
-    expect(screen.queryByText(/FREQUENCY|encounter/i)).toBeNull();
+    expect(container.querySelector('.observed-list')?.textContent).not.toMatch(/FREQUENCY|encounter/i);
   });
 
   it('does not expose a simulator resolve button when Organic effectiveness is still unknown', () => {
@@ -157,13 +166,13 @@ describe('battle layout', () => {
       areaOutcome: 'AREA_NOT_IN_CATALOG', currentAreaBaseId: 0x0202, matchingAreaCount: 0, candidateAreaCount: 0,
     };
 
-    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
     expect(screen.getByText('TRAINED')).toBeTruthy();
     expect(screen.queryByText(/UNKNOWN TRAINED/)).toBeNull();
     expect(screen.getAllByLabelText('2 of 5 stars; TRAINED')).toHaveLength(2);
     expect(screen.getByText('A modest find. It could help for a while, but you may soon outgrow it.')).toBeTruthy();
-    expect(screen.queryByText(/UNKNOWN|area|SaveRAM|encounter|formula/i)).toBeNull();
+    expect(container.querySelector('.rarity-card')?.textContent).not.toMatch(/UNKNOWN|area|SaveRAM|encounter|formula/i);
   });
 
   it('uses the same generic fallback for a missing Battle Target Entry', () => {
@@ -227,7 +236,7 @@ function fixture(opponentCount: number): { catalog: Catalog; state: State } {
     version: 1, screen: 'BATTLE', priorScreen: 'POKEDEX', settingsReturnScreen: 'BATTLE', selectedSpeciesId: null, filter: 'ALL', selectedAreaId: null, battleTab: 'ATTACK',
     settings: { knowledgeMode: 'DISCOVERED', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', battlePollingIntervalMs: 5 },
     speciesState: { 1: { seen: true, caught: false, team: false, ballId: null }, 2: { seen: true, caught: false, team: false, ballId: null } }, observedMoves: {},
-    battle: { opponents, targetIndex: 0, targetMode: 'AUTOMATIC', capabilities: {}, selectedMoveId: 1, effectiveness: 'NEUTRAL', effectivenessKnown: true },
+    battle: { opponents, targetIndex: 0, targetMode: 'AUTOMATIC', capabilities: {}, selectedMoveId: 1, encounterKind: 'WILD', effectiveness: 'NEUTRAL', effectivenessKnown: true },
     catalogReady: true, catalogName: 'fixture.gba', error: null, activeRulesetId: null, rulesetAssumed: true,
     loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
   } satisfies State;

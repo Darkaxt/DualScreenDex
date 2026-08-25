@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.live
 
 import com.darkaxt.dualdex.battle.LiveGameSnapshot
+import com.darkaxt.dualdex.battle.BattleTrackingUpdate
 import com.darkaxt.dualdex.battle.LiveBattleState
 import com.darkaxt.dualdex.battle.LiveClockState
 import com.darkaxt.dualdex.battle.LiveLocationState
@@ -40,6 +41,7 @@ class UnifiedGameStateDecoder(
     private var recoverySourceId: String? = null
     private var recoveryApplicationId = 0L
     private var recoveryResetKnowledge = false
+    private var battleKnowledge = ResolvedBattleKnowledge()
     private var published: ResolvedGameSnapshot? = null
     private val translatedSectionCache = Gen3LiveTranslatedSectionCache()
     private var contextEpoch = 0
@@ -107,6 +109,7 @@ class UnifiedGameStateDecoder(
         recoverySourceId = null
         recoveryApplicationId = 0L
         recoveryResetKnowledge = false
+        battleKnowledge = ResolvedBattleKnowledge()
         published = null
         if (hadPublishedState) notifyListeners(null, ResolvedGameSection.entries.toSet())
     }
@@ -157,10 +160,12 @@ class UnifiedGameStateDecoder(
         areaBaseId: Int?,
         mapPosition: RuntimeMapPosition?,
         clock: LiveClockState?,
+        trackingUpdate: BattleTrackingUpdate? = null,
     ): ResolvedGameSnapshot? {
         val active = context ?: return published
         if (active.generation !in 1..2) return published
         val unavailable = unavailable<Nothing>("field is not supported by the current live adapter")
+        trackingUpdate?.let { mergeBattleTracking(it, areaBaseId) }
         return acceptDecodedLive(
             LiveGameSnapshot(
                 romIdentity = active.romIdentity,
@@ -195,6 +200,7 @@ class UnifiedGameStateDecoder(
         battle: LiveBattleState,
         areaBaseId: Int?,
         mapPosition: RuntimeMapPosition?,
+        trackingUpdate: BattleTrackingUpdate? = null,
     ): ResolvedGameSnapshot? {
         val active = context ?: return published
         if (active.generation != 3) return published
@@ -224,6 +230,7 @@ class UnifiedGameStateDecoder(
                 party,
             )
         } ?: unavailablePlayer()
+        trackingUpdate?.let { mergeBattleTracking(it, areaBaseId) }
         return acceptDecodedLive(
             LiveGameSnapshot(
                 romIdentity = active.romIdentity,
@@ -290,6 +297,10 @@ class UnifiedGameStateDecoder(
             SaveObservationKind.CHANGED, SaveObservationKind.UNCHANGED -> !samePlaythrough
             null -> previous == null
         }
+        if (recoveryResetKnowledge) {
+            battleKnowledge = safeProjection.checkpointLedger?.toResolvedBattleKnowledge()
+                ?: ResolvedBattleKnowledge()
+        }
         recovery = safeProjection
         recoveryStatus = safeProjection.saveRam
         observation?.source?.id?.let { recoverySourceId = it }
@@ -329,6 +340,14 @@ class UnifiedGameStateDecoder(
     }
 
     @Synchronized
+    fun acceptBattleTracking(update: BattleTrackingUpdate): ResolvedGameSnapshot? {
+        val areaBaseId = (live?.location?.areaBaseId as? LiveValue.Available<Int>)?.value
+        mergeBattleTracking(update, areaBaseId)
+        publishResolved()
+        return published
+    }
+
+    @Synchronized
     fun endSession() {
         val hadPublishedState = published != null
         translatedSectionCache.clearEntries()
@@ -339,6 +358,7 @@ class UnifiedGameStateDecoder(
         recoverySourceId = null
         recoveryApplicationId = 0L
         recoveryResetKnowledge = false
+        battleKnowledge = ResolvedBattleKnowledge()
         published = null
         if (hadPublishedState) notifyListeners(null, ResolvedGameSection.entries.toSet())
     }
@@ -459,6 +479,7 @@ class UnifiedGameStateDecoder(
             party = resolve(live?.party, saved?.party),
             storedIndividuals = resolve(null, saved?.storedIndividuals),
             battle = resolve(live?.battle, null),
+            battleKnowledge = battleKnowledge,
             location = ResolvedLocationState(
                 areaBaseId = resolve(live?.location?.areaBaseId, saved?.currentArea?.baseId),
                 position = resolve(live?.location?.position, null),
@@ -536,6 +557,43 @@ class UnifiedGameStateDecoder(
         currentAreaBaseId = null,
     )
 
+    private fun mergeBattleTracking(update: BattleTrackingUpdate, areaBaseId: Int?) {
+        val observed = battleKnowledge.observedMoves.mapValuesTo(linkedMapOf()) { (_, moves) ->
+            moves.toMutableMap()
+        }
+        update.observations.forEach { (speciesId, increments) ->
+            val frequencies = observed.getOrPut(speciesId, ::linkedMapOf)
+            increments.forEach { (moveId, count) ->
+                if (speciesId > 0 && moveId > 0 && count > 0) frequencies.merge(moveId, count, Int::plus)
+            }
+        }
+        val encountered = update.sample?.opponents.orEmpty().mapTo(linkedSetOf()) { it.speciesId }
+        val seenByArea = battleKnowledge.seenSpeciesByArea.mapValuesTo(linkedMapOf()) { (_, species) ->
+            species.toSet()
+        }
+        if (areaBaseId != null && encountered.isNotEmpty()) {
+            seenByArea[areaBaseId] = seenByArea[areaBaseId].orEmpty() + encountered
+        }
+        battleKnowledge = ResolvedBattleKnowledge(
+            observedMoves = observed.mapValues { (_, moves) -> moves.toMap() },
+            seenSpeciesIds = battleKnowledge.seenSpeciesIds + encountered,
+            seenSpeciesByArea = seenByArea,
+            recoveredMatchups = battleKnowledge.recoveredMatchups,
+            discoveredMatchups = battleKnowledge.discoveredMatchups + update.discoveredMatchups,
+            latestUpdate = update,
+        )
+    }
+
+    private fun KnowledgeLedger.toResolvedBattleKnowledge() = ResolvedBattleKnowledge(
+        observedMoves = observedMoves.mapValues { (_, observations) ->
+            observations.associate { it.moveId to it.frequency }
+        },
+        seenSpeciesIds = seenSpecies,
+        seenSpeciesByArea = seenSpeciesByArea,
+        recoveredMatchups = discoveredMatchups,
+        discoveredMatchups = emptySet(),
+    )
+
     private fun <T> unavailable(detail: String): LiveValue<T> = LiveValue.Unavailable(
         LiveUnavailableReason(LiveUnavailableCode.MISSING_REGION, detail),
     )
@@ -573,7 +631,7 @@ class UnifiedGameStateDecoder(
                 add(ResolvedGameSection.PARTY)
             }
             if (location != other.location || clock != other.clock) add(ResolvedGameSection.OVERWORLD)
-            if (battle != other.battle) add(ResolvedGameSection.BATTLE)
+            if (battle != other.battle || battleKnowledge != other.battleKnowledge) add(ResolvedGameSection.BATTLE)
         }
     }
 

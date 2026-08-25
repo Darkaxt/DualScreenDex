@@ -77,8 +77,8 @@ internal fun battleHeartbeatDelayMillis(
 
 class BattleMemoryCoordinator(
     private val catalogProvider: () -> BattleCatalogContext?,
-    private val publisher: (BattleTrackingUpdate) -> Unit,
     private val transientGameState: UnifiedGameStateDecoder,
+    private val publisher: ((BattleTrackingUpdate) -> Unit)? = null,
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     private val pollingIntervalProvider: () -> Int = { 5 },
     autoStart: Boolean = true,
@@ -152,7 +152,11 @@ class BattleMemoryCoordinator(
                 ),
             )
         }
-        if (hadBattle && !nextEligible) publisher(BattleTrackingUpdate(active = false, sample = null, ended = true))
+        if (hadBattle && !nextEligible) {
+            val update = BattleTrackingUpdate(active = false, sample = null, ended = true)
+            transientGameState.acceptBattleTracking(update)
+            publisher?.invoke(update)
+        }
     }
 
     @Synchronized
@@ -202,7 +206,10 @@ class BattleMemoryCoordinator(
                 )
                 reader = null
                 closeTransport()
-                tracker.missed().takeIf(BattleTrackingUpdate::active)?.let(publisher)
+                tracker.missed().takeIf(BattleTrackingUpdate::active)?.let { update ->
+                    transientGameState.acceptBattleTracking(update)
+                    publisher?.invoke(update)
+                }
             }
         }
     }
@@ -587,7 +594,6 @@ class BattleMemoryCoordinator(
         } else {
             tracker.validatedNoBattle(context.romIdentity)
         }
-        if (update.active || update.ended) publisher(update)
         if (context.generation == 3) {
             publishUnifiedLiveGame(regions, gen3Runtime, update)
         } else {
@@ -603,8 +609,10 @@ class BattleMemoryCoordinator(
                 clock = gen2Lighting?.let { lighting ->
                     LiveClockState(phase = LiveClockPhase.valueOf(lighting.name))
                 },
+                trackingUpdate = update.takeIf { it.active || it.ended },
             )
         }
+        if (update.active || update.ended) publisher?.invoke(update)
     }
 
     private fun qualifyGen3BattleSample(
@@ -917,6 +925,7 @@ class BattleMemoryCoordinator(
             ),
             areaBaseId = runtime?.areaBaseId,
             mapPosition = runtime?.mapPosition,
+            trackingUpdate = update.takeIf { it.active || it.ended },
         )
     }
 
