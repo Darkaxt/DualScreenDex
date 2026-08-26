@@ -134,6 +134,7 @@ jobs:
           jq -e '.v11Rc39AndroidBootstrapState == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc40LiveViewPriority == true and .v11Rc40PlayerFollow == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc63UnifiedTransientState == true and .v11Rc63CanonicalPokedexReplacement == true and .v11Rc63SaveChangedOnlyCheckpoint == true and .v11Rc63CrossGenerationLiveControls == true' release/v1-ready.json >/dev/null
+          jq -e '.v11Rc67VisibleHeightScaling == true and .v11Rc67AlphaTrimmedComparisonSprites == true and .v11Rc67HeightBrowserGate == true' release/v1-ready.json >/dev/null
           jq -e '.v11SaveSynchronizedKnowledgeCheckpoints == true' release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
