@@ -29,6 +29,29 @@ class EmbeddedEvolutionPointerResolverTest {
         assertTrue(resolved.resolved.rows[2] is EvolutionRowOutcome.StructuralEmpty)
     }
 
+    @Test fun ignoresNoneRecordsBeforeTheEvolutionTerminator() {
+        val bytes = ByteArray(0x1000)
+        val root = 0x100
+        val stride = 0x40
+        val field = 0x20
+        repeat(4) { species -> bytes[root + species * stride] = if (species == 0) 0 else 1 }
+        putU32(bytes, root + stride + field, 0x08000800)
+        putEvolution(bytes, 0x800, method = 4, parameter = 16, target = 2, condition = 0)
+        putEvolution(bytes, 0x808, method = 0xFFFE, parameter = 0, target = 3, condition = 0)
+        putEvolution(bytes, 0x810, method = 0xFFFF, parameter = 0, target = 0, condition = 0)
+
+        val result = EmbeddedEvolutionPointerResolver.resolve(
+            evolutionSession(bytes), metadata(root, stride), speciesCount = 4,
+        )
+
+        val resolved = requireNotNull(result)
+        assertEquals(field, resolved.pointerFieldOffset)
+        assertEquals(8, resolved.resolved.table.recordSize)
+        val row = resolved.resolved.rows[1] as EvolutionRowOutcome.Decoded
+        assertEquals(listOf(2), row.edges.map(EvolutionEdgeValue::targetSpeciesId))
+        assertTrue(resolved.resolved.rows[2] is EvolutionRowOutcome.StructuralEmpty)
+    }
+
     @Test fun rejectsTwoEquallyValidPointerFieldsAsAmbiguous() {
         val bytes = ByteArray(0x1000)
         val root = 0x100

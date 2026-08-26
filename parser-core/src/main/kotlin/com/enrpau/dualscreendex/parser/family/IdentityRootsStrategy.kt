@@ -31,6 +31,7 @@ import com.enrpau.dualscreendex.parser.parse.Gen2CompiledSpriteResolver
 import com.enrpau.dualscreendex.parser.parse.ExpandedSplitCaptureBallResolver
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolution
 import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolver
+import com.enrpau.dualscreendex.parser.parse.PublishedUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.validate.TableValidators
@@ -129,6 +130,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             definition.family == com.enrpau.dualscreendex.parser.model.EngineFamily.EMERALD
         ) {
             HeaderlessUnifiedSpeciesResolver.resolve(session)
+                ?: PublishedUnifiedSpeciesResolver.resolve(session)
         } else {
             null
         }
@@ -308,7 +310,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                     baseStats = unified.tables.baseStats,
                     sprites = unified.tables.sprites,
                     descriptions = unified.tables.descriptions,
-                    abilities = unified.tables.abilities,
+                    abilities = unified.tables.abilities ?: compiledSpriteTableResolution.tables.abilities,
                 ),
             )
         } ?: compiledSpriteTableResolution
