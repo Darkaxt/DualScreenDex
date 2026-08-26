@@ -114,6 +114,8 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
     "dualdex-gen2-gen3-dynamic-local-map-lighting.md",
     "dualdex-gen1-gen3-table-coverage.json",
     "dualdex-gen1-gen3-table-coverage.md",
+    "dualdex-party-analysis-compatibility.json",
+    "dualdex-party-analysis-audit.md",
     "dualdex-save-synchronized-knowledge-checkpoints.md",
   ];
 
@@ -200,6 +202,8 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc36PoiZoomDecluttering == true/);
   assert.match(workflow, /\.v11Rc40LiveViewPriority == true/);
   assert.match(workflow, /\.v11Rc40PlayerFollow == true/);
+  assert.match(workflow, /\.v11Rc68PartyAnalysis == true/);
+  assert.match(workflow, /\.aggregate\.provenAbilityModifiers\.covered == 30/);
   assert.match(workflow, /\.v11SaveSynchronizedKnowledgeCheckpoints == true/);
   assert.match(workflow, /\.gen1CompiledEvolutionCoveragePercent == 96\.62/);
   assert.match(workflow, /\.gen1CompiledLearnsetCoveragePercent == 93\.56/);

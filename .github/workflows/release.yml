@@ -104,6 +104,8 @@ jobs:
             docs/reports/2026-08-20-gen1-gen3-table-coverage.md \
             docs/reports/2026-08-25-unified-game-state-compatibility.json \
             docs/reports/2026-08-25-unified-game-state-final-audit.md \
+            docs/reports/passive-insights-progress/party-analysis-compatibility.json \
+            docs/reports/passive-insights-progress/party-analysis-audit.md \
             docs/reports/save-synchronized-knowledge-checkpoints.md \
             release/POST_RELEASE_CHECKLIST.md; do
             test -s "$document"
@@ -124,6 +126,8 @@ jobs:
             docs/reports/2026-08-20-gen1-gen3-table-coverage.json >/dev/null
           jq -e '.schemaVersion == 1 and .controlCount == 14 and .fieldCount == 9 and .cohortSummary.allControls.available == 90 and .cohortSummary.allControls.total == 126 and .cohortSummary.allControls.percent == 71.43 and .recoveryControls.checkpointWriteOnlyOnChangedSave.percent == 100 and .retainedRawBytes == 0' \
             docs/reports/2026-08-25-unified-game-state-compatibility.json >/dev/null
+          jq -e '.schemaVersion == 1 and .controlCount == 14 and .aggregate.partyFields.covered == 48 and .aggregate.partyFields.total == 84 and .aggregate.moves.percent == 100 and .aggregate.moveCategories.covered == 4737 and .aggregate.moveCategories.total == 4785 and .aggregate.typeChart.percent == 100 and .aggregate.evolutions.percent == 100 and .aggregate.provenAbilityModifiers.covered == 30 and .aggregate.provenAbilityModifiers.total == 849 and (.controls | all(.catalogPersistedAndReopened == true)) and (.errors | length) == 0' \
+            docs/reports/passive-insights-progress/party-analysis-compatibility.json >/dev/null
           jq -e '.baseFirst50Selected == 50 and .mapFirst50Available == 26 and .evolutionFirst50Complete == 50 and .secureBuildDependencyGate == true and .securityAdvisoriesCovered == 48 and .arm7Applicable == 46 and .arm7ProductionComplete == 38 and .v11Stage1NormalizedLiveStateModels == true and .v11Stage1DetailedGen3PartyCodec == true and .v11Stage1Gen3TrainerBagSaveCodec == true and .v11Stage2EmeraldRuntimeLayout == true and .v11Stage2TrainerAssets == true and .v11Stage2CatalogPersistence == true and .v11Stage2TrainerAssetApi == true and .v11Stage3PointerFirstSnapshot == true and .v11Stage3IndependentLiveSections == true and .v11Stage3LiveOverSaveAuthority == true and .v11Stage3LifecycleFallback == true and .v11Stage4TrainerCard == true and .v11Stage4PartyPresentation == true and .v11Stage4DynamicFeatureNavigation == true and .v11Stage4LocalMapConvergence == true and .v11Stage5DisplayContinuityPolicy == true and .v11Stage5DisplayLifecycleRecovery == true and .v11Stage6OfficialEmeraldVertical == true and .v11Stage6UnsupportedDescriptorFallback == true and .v11Stage6OpponentMovePrivacy == true and .v11Rc4HotfixBoundedRomIndex == true and .v11Rc4HotfixBoundedAbilityCfg == true and .v11Rc7LoadingProgressAndAtlasChrome == true and .v11Rc8CatalogCacheRebuild == true and .v11Rc9CompleteLocalMapCatalog == true and .v11Rc9TruthfulAtlasLocation == true and .v11Rc13PermanentAtlasMarkers == true and .v11Rc13SourceAwareClockOrbit == true and .v11Rc15PlayerStateIntegrationGate == true and .v11Rc15DisplayRecovery == true and .v11Rc16DoubleBattleCommandOwnership == true and .v11Rc16MatchupEvidenceMigration == true and .v11Stage8NormalizedPartyArtwork == true and .v11Stage8PrivacySafePartyFallbacks == true and .v11Stage8PartyBrowserGate == true and .v11Rc18UnboundOdysseyParserComplete == true and .v11Rc18UnboundOdysseyMapComplete == true and .v11Rc18OdysseySaveRuntimeComplete == true and .v11Rc18UnboundExpandedSaveAbi == true and .v11Rc18RomDerivedTheme == true and .v11Rc18ThemePersistenceAndApi == true and .v11Rc18ThemeBrowserGate == true and .v11Rc19Gen2DynamicLocalMaps == true and .v11Rc19Gen3TimedLocalMaps == true and .v11Rc19DynamicMapPersistenceAndApi == true and .v11Rc19DynamicMapWebGate == true and .v11Rc20ArchiveContainerIdentity == true and .v11Rc21WideAbilityDomainFailClosed == true and .v11Rc22GranularLoadingProgress == true and .v11Rc22SaveScopedKnowledgeIntegrity == true and .v11Rc22OrganicPositiveStatus == true and .v11Rc22AdaptiveClockContrast == true and .v11Rc23Gen1CompiledRelationships == true and .v11Rc23Gen1CompiledTypeChart == true and .v11Rc23Gen1OptionalFailureIsolation == true and .v11Rc24PokedexCaughtPortraitBadge == true and .v11Rc24InteractivePartyRoster == true and .v11Rc24CohesiveTrainerCard == true and .v11Rc24PartyExperienceProgress == true and .v11Rc25Gen1CompiledMoveDomain == true and .v11Rc25Gen1CompiledMachineMoves == true and .v11Rc25Gen1ExpandedMachineDomain == true and .v11Rc25Gen1CompiledDescriptions == true and .v11Rc25Gen1RecordSpriteBanks == true and .v11Rc28RomDerivedNatureCatalog == true and .v11Rc30SharpLocalRaster == true and .v11Rc30PlayerCenteredRecenter == true and .v11Rc30DiscoverySafeLocalLoading == true and .v11Rc30RomDerivedMapAvatar == true and .v11Rc31ThemeConsolidation == true and .v11Rc31NatureResolutionSupport == true and .v11Rc31GlobalLocalMapRendering == true and .gen1CompiledEvolutionCoveragePercent == 96.62 and .gen1CompiledLearnsetCoveragePercent == 93.56 and .gen1CompiledTypeChartCoveragePercent == 95.79 and .gen1MoveCatalogCoveragePercent == 90.24 and .gen1MoveDetailsCoveragePercent == 90.42 and .gen1MachineMoveCoveragePercent == 86.32 and .gen1SpriteCoveragePercent == 88.31 and .gen1PokedexDescriptionCoveragePercent == 89.47 and .gen1Gen3CoverageUniqueRoms == 331 and .gen1Gen3CoverageTables == 23 and .gen1Gen3CoverageParserErrors == 0 and (has("debugApkSha256") | not)' \
             release/v1-ready.json >/dev/null
           jq -e '.v11Rc32PersistentLocalMapDiscovery == true' release/v1-ready.json >/dev/null
@@ -135,6 +139,7 @@ jobs:
           jq -e '.v11Rc40LiveViewPriority == true and .v11Rc40PlayerFollow == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc63UnifiedTransientState == true and .v11Rc63CanonicalPokedexReplacement == true and .v11Rc63SaveChangedOnlyCheckpoint == true and .v11Rc63CrossGenerationLiveControls == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc67VisibleHeightScaling == true and .v11Rc67AlphaTrimmedComparisonSprites == true and .v11Rc67HeightBrowserGate == true' release/v1-ready.json >/dev/null
+          jq -e '.v11Rc68PartyAnalysis == true' release/v1-ready.json >/dev/null
           jq -e '.v11SaveSynchronizedKnowledgeCheckpoints == true' release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
@@ -161,6 +166,8 @@ jobs:
             docs/reports/2026-08-20-gen1-gen3-table-coverage.md \
             docs/reports/2026-08-25-unified-game-state-compatibility.json \
             docs/reports/2026-08-25-unified-game-state-final-audit.md \
+            docs/reports/passive-insights-progress/party-analysis-compatibility.json \
+            docs/reports/passive-insights-progress/party-analysis-audit.md \
             docs/reports/save-synchronized-knowledge-checkpoints.md; then
             echo 'Compatibility documentation contains a private path.'
             exit 1
@@ -404,6 +411,8 @@ jobs:
           cp docs/reports/2026-08-20-gen1-gen3-table-coverage.md "$ASSETS/dualdex-gen1-gen3-table-coverage.md"
           cp docs/reports/2026-08-25-unified-game-state-compatibility.json "$ASSETS/dualdex-unified-game-state-compatibility.json"
           cp docs/reports/2026-08-25-unified-game-state-final-audit.md "$ASSETS/dualdex-unified-game-state-final-audit.md"
+          cp docs/reports/passive-insights-progress/party-analysis-compatibility.json "$ASSETS/dualdex-party-analysis-compatibility.json"
+          cp docs/reports/passive-insights-progress/party-analysis-audit.md "$ASSETS/dualdex-party-analysis-audit.md"
           cp docs/reports/save-synchronized-knowledge-checkpoints.md "$ASSETS/dualdex-save-synchronized-knowledge-checkpoints.md"
           release_notes="release/RELEASE_NOTES_${RELEASE_TAG#v}.md"
           test -s "$release_notes"
@@ -466,6 +475,8 @@ jobs:
               dualdex-gen1-gen3-table-coverage.md \
               dualdex-unified-game-state-compatibility.json \
               dualdex-unified-game-state-final-audit.md \
+              dualdex-party-analysis-compatibility.json \
+              dualdex-party-analysis-audit.md \
               dualdex-save-synchronized-knowledge-checkpoints.md \
               RELEASE_NOTES.md \
               provenance.json > SHA256SUMS.txt
@@ -526,6 +537,8 @@ jobs:
             "$ASSETS/dualdex-gen1-gen3-table-coverage.md" \
             "$ASSETS/dualdex-unified-game-state-compatibility.json" \
             "$ASSETS/dualdex-unified-game-state-final-audit.md" \
+            "$ASSETS/dualdex-party-analysis-compatibility.json" \
+            "$ASSETS/dualdex-party-analysis-audit.md" \
             "$ASSETS/dualdex-save-synchronized-knowledge-checkpoints.md" \
             "$ASSETS/RELEASE_NOTES.md"
 
