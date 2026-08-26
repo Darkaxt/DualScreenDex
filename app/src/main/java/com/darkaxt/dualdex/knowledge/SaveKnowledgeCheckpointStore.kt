@@ -11,6 +11,7 @@ enum class CheckpointStorage { PORTABLE_SIDECAR, APP_PRIVATE_FALLBACK }
 
 interface KnowledgeCheckpointStore {
     fun readExact(source: SaveDocumentSource, key: SaveCheckpointKey): KnowledgeLedger?
+    fun readCheckpointExact(source: SaveDocumentSource, key: SaveCheckpointKey): SaveKnowledgeCheckpoint? = null
     fun write(source: SaveDocumentSource, checkpoint: SaveKnowledgeCheckpoint): CheckpointStorage
 }
 
@@ -19,13 +20,17 @@ class SaveKnowledgeCheckpointStore(
     private val codec: SaveKnowledgeCheckpointCodec = SaveKnowledgeCheckpointCodec(),
 ) : KnowledgeCheckpointStore {
     override fun readExact(source: SaveDocumentSource, key: SaveCheckpointKey): KnowledgeLedger? {
+        return readCheckpointExact(source, key)?.ledger
+    }
+
+    override fun readCheckpointExact(source: SaveDocumentSource, key: SaveCheckpointKey): SaveKnowledgeCheckpoint? {
         val siblingBytes = runCatching {
             source.atomicSiblingTarget?.read(sidecarName(source))
         }.getOrNull()
-        codec.decodeExact(siblingBytes ?: byteArrayOf(), key)?.let { return it.ledger }
+        codec.decodeExact(siblingBytes ?: byteArrayOf(), key)?.let { return it }
         val fallback = fallbackFile(key)
         if (!fallback.isFile) return null
-        return runCatching { codec.decodeExact(fallback.readBytes(), key)?.ledger }.getOrNull()
+        return runCatching { codec.decodeExact(fallback.readBytes(), key) }.getOrNull()
     }
 
     override fun write(source: SaveDocumentSource, checkpoint: SaveKnowledgeCheckpoint): CheckpointStorage {

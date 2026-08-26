@@ -5,6 +5,8 @@ import com.darkaxt.dualdex.retroarch.RomPlatform
 import com.darkaxt.dualdex.save.DirectSaveDocumentResolver
 import com.darkaxt.dualdex.save.SaveDocumentSource
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.darkaxt.dualdex.progress.PlaythroughJournal
+import com.enrpau.dualscreendex.companion.semantic.PlaythroughKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -28,6 +30,9 @@ class SaveKnowledgeCheckpointStoreTest {
         key = key,
         capturedAtEpochMs = 200,
         ledger = KnowledgeLedger(seenSpecies = setOf(25)),
+        journal = PlaythroughJournal.empty(PlaythroughKey(key.romSha256, key.saveIdentity)).copy(
+            trackedCounts = mapOf("captures" to 1),
+        ),
     )
 
     @Test
@@ -41,6 +46,7 @@ class SaveKnowledgeCheckpointStoreTest {
         assertTrue(root.resolve("Game.srm.dualdex.json").isFile)
         assertFalse(root.listFiles().orEmpty().any { it.name.contains("dualdex.tmp") })
         assertEquals(checkpoint.ledger, store.readExact(source, key))
+        assertEquals(checkpoint, store.readCheckpointExact(source, key))
         assertNull(store.readExact(source, key.copy(saveFileSha256 = "d".repeat(64))))
     }
 

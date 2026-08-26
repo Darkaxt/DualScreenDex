@@ -10,6 +10,9 @@ import com.darkaxt.dualdex.live.RecoveryApplication
 import com.darkaxt.dualdex.catalog.StoredSaveSnapshot
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.darkaxt.dualdex.progress.PlaythroughJournal
+import com.darkaxt.dualdex.progress.PlaythroughJournalCoordinator
+import com.enrpau.dualscreendex.companion.semantic.PlaythroughKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,9 +53,13 @@ class SaveKnowledgeCheckpointCoordinatorTest {
     fun changedObservationWritesExactlyTheRuntimeFrozenLedger() {
         val checkpoints = RecordingCheckpoints(null)
         val frozen = KnowledgeLedger(seenSpecies = setOf(25, 133))
+        val journal = PlaythroughJournalCoordinator(PlaythroughKey(romSha, saveIdentity)).also {
+            it.updatePreferences(mapOf("trainer-progress-section" to "TIMELINE"))
+        }
         val coordinator = SaveKnowledgeCheckpointCoordinator(
             checkpoints,
             applyRecovery = { RecoveryApplication(true, frozen) },
+            journal = journal,
             clock = { 500 },
         )
 
@@ -61,6 +68,7 @@ class SaveKnowledgeCheckpointCoordinatorTest {
         assertEquals(0, checkpoints.reads)
         assertEquals(1, checkpoints.writes.size)
         assertEquals(frozen, checkpoints.writes.single().ledger)
+        assertEquals("TIMELINE", checkpoints.writes.single().journal?.preferences?.get("trainer-progress-section"))
         assertEquals(500, checkpoints.writes.single().capturedAtEpochMs)
     }
 

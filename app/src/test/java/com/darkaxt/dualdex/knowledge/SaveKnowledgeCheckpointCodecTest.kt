@@ -1,6 +1,8 @@
 package com.darkaxt.dualdex.knowledge
 
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.darkaxt.dualdex.progress.PlaythroughJournal
+import com.enrpau.dualscreendex.companion.semantic.PlaythroughKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotNull
@@ -49,6 +51,19 @@ class SaveKnowledgeCheckpointCodecTest {
         assertNull(codec.decodeExact(legacy, checkpointFixture().key))
     }
 
+    @Test
+    fun schemaOneCheckpointMigratesWithoutInventingJournalHistory() {
+        val fixture = checkpointFixture().copy(journal = null)
+        val legacy = codec.encode(fixture).toString(Charsets.UTF_8)
+            .replaceFirst("\"schema\":2", "\"schema\":1")
+            .toByteArray()
+
+        val decoded = codec.decodeExact(legacy, fixture.key)
+
+        assertEquals(2, decoded?.schema)
+        assertNull(decoded?.journal)
+    }
+
     private fun checkpointFixture() = SaveKnowledgeCheckpoint(
         portable = true,
         key = SaveCheckpointKey(
@@ -63,6 +78,9 @@ class SaveKnowledgeCheckpointCodecTest {
             seenSpecies = setOf(25, 133),
             caughtSpecies = setOf(25),
             knownMoves = setOf(33, 84),
+        ),
+        journal = PlaythroughJournal.empty(PlaythroughKey(romSha, saveIdentity)).copy(
+            trackedCounts = mapOf("captures" to 1),
         ),
     )
 }

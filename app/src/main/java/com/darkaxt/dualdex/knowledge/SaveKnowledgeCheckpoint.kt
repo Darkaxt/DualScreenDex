@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.knowledge
 
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.darkaxt.dualdex.progress.PlaythroughJournal
 
 data class SaveFileFingerprint(
     val sha256: String,
@@ -17,9 +18,10 @@ data class SaveCheckpointKey(
 )
 
 data class SaveKnowledgeCheckpoint(
-    val schema: Int = 1,
+    val schema: Int = 2,
     val portable: Boolean,
     val key: SaveCheckpointKey,
     val capturedAtEpochMs: Long,
     val ledger: KnowledgeLedger,
+    val journal: PlaythroughJournal? = null,
 )
