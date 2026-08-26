@@ -653,17 +653,17 @@ Deliver the authenticated developer extractor, immutable extraction manifest, cl
 
 Deliver the Party shortcut, analytical route, calculations, navigation, UI audit, and compatibility report. Do not bundle Progress, PC storage, Atlas, or damage code into this stage.
 
-### Stage 2 — Progress foundation and Save Timeline
+### Stage 2 — Atlas Area Guide
 
-Deliver semantic facts/events, journal persistence, Trainer Progress sections, baseline portable challenges, metrics, and save-synchronized Timeline. This stage may use the Stage 0 corpus but must remain functional without network access.
+Deliver the drawer by composing existing encounter, POI, and map projections. Preserve all established local/world map rendering, fog, tracking, zoom, and filter contracts. The Objectives section remains absent until Stage 3 supplies knowledge-safe applicable challenges; its later population is a tracked Stage 3 deferral rather than a reason to delay the otherwise complete guide.
 
-### Stage 3 — Pokédex Specimens
+### Stage 3 — Progress foundation and Save Timeline
+
+Deliver semantic facts/events, journal persistence, Trainer Progress sections, baseline portable challenges, metrics, save-synchronized Timeline, and the knowledge-safe Objectives projection consumed by the Stage 2 Area Guide. This stage may use the Stage 0 corpus but must remain functional without network access.
+
+### Stage 4 — Pokédex Specimens
 
 Deliver unified storage resolution, Pokédex specimen enumeration, shared individual detail navigation, and live/recovery authority tests. Do not add a standalone PC or Bag page.
-
-### Stage 4 — Atlas Area Guide
-
-Deliver the drawer by composing existing encounter, POI, map, and challenge projections. Preserve all established local/world map rendering, fog, tracking, zoom, and filter contracts.
 
 ### Stage 5 — Selected-move Damage Forecast
 
