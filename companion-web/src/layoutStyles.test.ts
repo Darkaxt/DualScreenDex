@@ -29,6 +29,17 @@ describe('screen layout containment', () => {
     expect(contentRule).toMatch(/overflow\s*:\s*auto/)
   })
 
+  it('keeps Party Analysis bounded at 4:3 with one owned scrolling region', () => {
+    const screenRule = styles.match(/\.party-analysis-screen\s*\{([^}]*)\}/)?.[1]
+    const contentRule = styles.match(/\.party-analysis-content\s*\{([^}]*)\}/)?.[1]
+    const sectionRule = styles.match(/\.party-analysis-section\s*\{([^}]*)\}/)?.[1]
+
+    expect(screenRule).toMatch(/grid-template-rows\s*:\s*auto 1fr/)
+    expect(contentRule).toMatch(/min-height\s*:\s*0/)
+    expect(contentRule).toMatch(/overflow\s*:\s*auto/)
+    expect(sectionRule).toMatch(/width\s*:\s*min\(980px, 100%\)/)
+  })
+
   it('reserves the Map screen for a full black gesture stage and accessible fallback controls', () => {
     const screenRule = styles.match(/\.map-screen\s*\{([^}]*)\}/)?.[1]
     const stageRule = styles.match(/\.map-stage\s*\{([^}]*)\}/)?.[1]

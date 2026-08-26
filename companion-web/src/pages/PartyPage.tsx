@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Catalog, PartyMemberView, State, TypeInfo } from '../models';
 import { DexIcon, Header, TypeChip, uniqueTypeIds } from '../components';
 import { natureDetailFor } from '../natureDetails';
@@ -17,10 +17,14 @@ interface PartyPageProps {
   detailSlot?: number | null;
   onOpenDetails?: (slot: number) => void;
   onCloseDetails?: () => void;
+  onOpenAnalysis?: () => void;
+  initialScrollTop?: number;
+  onScrollTopChange?: (scrollTop: number) => void;
 }
 
-export function PartyPage({ catalog, state, onBack, openMove, openAbility, openNature, openSpecies, selectedSlot, onSelectSlot, detailSlot: controlledDetailSlot, onOpenDetails, onCloseDetails }: PartyPageProps) {
+export function PartyPage({ catalog, state, onBack, openMove, openAbility, openNature, openSpecies, selectedSlot, onSelectSlot, detailSlot: controlledDetailSlot, onOpenDetails, onCloseDetails, onOpenAnalysis, initialScrollTop = 0, onScrollTopChange }: PartyPageProps) {
   const members = useMemo(() => normalizeParty(state.party), [state.party]);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [fallbackDetailSlot, setFallbackDetailSlot] = useState<number | null>(null);
   const controlled = controlledDetailSlot !== undefined;
   const detailSlot = controlled ? controlledDetailSlot : fallbackDetailSlot;
@@ -56,6 +60,10 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
     return () => window.removeEventListener('dualdexback', closeOnCompanionBack);
   }, [detailSlot, controlled]);
 
+  useEffect(() => {
+    if (contentRef.current) contentRef.current.scrollTop = initialScrollTop;
+  }, [catalog.hash]);
+
   const select = (slot: number) => {
     if (!members[slot]?.occupied) return;
     if (controlled) onOpenDetails?.(slot);
@@ -69,8 +77,8 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
   };
 
   return <section class="screen party-screen">
-    <Header title="PARTY" onBack={onBack} />
-    <div class="party-content" data-scroll-region>
+    <Header title="PARTY" onBack={onBack} onAnalysis={onOpenAnalysis} />
+    <div ref={contentRef} class="party-content" data-scroll-region onScroll={event => onScrollTopChange?.(event.currentTarget.scrollTop)}>
       <div class="party-grid" data-layout="2x3" aria-label="Party slots">
         {members.map(member => {
           const accessibleName = member.nickname || member.speciesName || 'Unknown partner';

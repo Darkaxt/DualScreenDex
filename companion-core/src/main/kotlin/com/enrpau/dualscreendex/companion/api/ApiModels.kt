@@ -1,6 +1,8 @@
 package com.enrpau.dualscreendex.companion.api
 
 import com.enrpau.dualscreendex.companion.battle.RarityEvaluator
+import com.enrpau.dualscreendex.companion.analysis.PartyAnalysis
+import com.enrpau.dualscreendex.companion.analysis.PartyAnalyzer
 import com.enrpau.dualscreendex.companion.knowledge.KnowledgePolicy
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.Effectiveness
@@ -343,6 +345,7 @@ data class StateView(
     val trainerMapSpriteWidth: Int?,
     val trainerMapSpriteHeight: Int?,
     val party: List<PartyMemberView>,
+    val partyAnalysis: PartyAnalysis?,
     val battle: BattleView?,
     val catalogReady: Boolean,
     val catalogName: String?,
@@ -879,6 +882,7 @@ object ApiViewBuilder {
             trainerMapSprite?.width,
             trainerMapSprite?.height,
             partyView(snapshot, catalog),
+            catalog?.let { PartyAnalyzer.analyze(snapshot.party, it, activeRulesetId) },
             snapshot.battle?.let { battle ->
                 BattleView(
                     opponents = battle.opponents.map { opponent ->

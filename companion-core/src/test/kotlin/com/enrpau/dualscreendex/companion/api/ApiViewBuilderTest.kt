@@ -65,6 +65,64 @@ import org.junit.Test
 
 class ApiViewBuilderTest {
     @Test
+    fun stateProjectsPartyAnalysisFromTheCurrentPartyAndActiveCatalogOnly() {
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = mapOf(
+                1 to com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
+                    id = 1,
+                    dexNumber = CatalogField.available(1),
+                    name = CatalogField.available("PARTNER"),
+                    typeIds = CatalogField.available(listOf(1)),
+                    baseStats = CatalogField.notFound("fixture"),
+                    sprite = CatalogField.notFound("fixture"),
+                ),
+            ),
+            movesById = mapOf(
+                10 to com.enrpau.dualscreendex.parser.catalog.MoveRecord(
+                    id = 10,
+                    name = CatalogField.available("STRIKE"),
+                    typeId = CatalogField.available(1),
+                    category = CatalogField.available(com.enrpau.dualscreendex.parser.catalog.MoveCategory.PHYSICAL),
+                    power = CatalogField.available(40),
+                    accuracy = CatalogField.available(100),
+                    pp = CatalogField.available(20),
+                ),
+            ),
+            typesById = mapOf(
+                1 to com.enrpau.dualscreendex.parser.catalog.TypeRecord(1, CatalogField.available("NORMAL")),
+                2 to com.enrpau.dualscreendex.parser.catalog.TypeRecord(2, CatalogField.available("ROCK")),
+            ),
+            typeChart = listOf(TypeMatchup(1, 2, 50)),
+        )
+        val snapshot = AppSnapshot(
+            party = listOf(
+                OwnedIndividual(
+                    stableLocation = "party:0",
+                    speciesId = 1,
+                    level = 7,
+                    details = PartyMemberDetails(
+                        currentHp = 18,
+                        maximumHp = 20,
+                        moveIds = listOf(10, 0, 0, 0),
+                        movePp = listOf(20, 0, 0, 0),
+                    ),
+                ),
+            ),
+        )
+
+        val active = ApiViewBuilder.state(snapshot, catalog)
+        val unavailable = ApiViewBuilder.state(snapshot, catalog = null)
+
+        assertEquals(1, active.partyAnalysis!!.teamSummary.partySize)
+        assertEquals(1, active.partyAnalysis.teamSummary.moveDistribution!!.physical)
+        assertEquals(1, active.partyAnalysis.offensiveCoverage!!.contributingMoveCount)
+        assertNull(unavailable.partyAnalysis)
+    }
+
+    @Test
     fun projectsOnlyTheActiveParsedTypeChartAndLeavesAnEmptyChartUnavailable() {
         val mutated = ParsedCatalog(
             romSha256 = "a".repeat(64),

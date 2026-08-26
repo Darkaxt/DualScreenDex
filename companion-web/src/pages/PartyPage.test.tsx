@@ -6,6 +6,16 @@ import { PartyPage } from './PartyPage';
 afterEach(cleanup);
 
 describe('Party', () => {
+  it('offers one normal Analysis action without changing the roster layout', () => {
+    const onOpenAnalysis = vi.fn();
+    const { container } = render(<PartyPage catalog={catalog} state={partyState('ORGANIC')} onBack={vi.fn()} onOpenAnalysis={onOpenAnalysis} openMove={vi.fn()} openAbility={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Party Analysis' }));
+    expect(onOpenAnalysis).toHaveBeenCalledOnce();
+    expect(container.querySelector('.party-grid')?.getAttribute('data-layout')).toBe('2x3');
+    expect(container.querySelectorAll('.party-slot')).toHaveLength(6);
+  });
+
   it('uses a title-only header without redundant live ownership diagnostics', () => {
     const { container } = render(<PartyPage catalog={catalog} state={partyState('ORGANIC')} onBack={vi.fn()} openMove={vi.fn()} openAbility={vi.fn()} />);
 

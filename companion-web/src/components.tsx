@@ -122,14 +122,21 @@ function PartyIcon() {
   </svg>;
 }
 
-export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty }: { title: string; kicker?: string; gameTime?: GameTime | null; onBack?: () => void; onSettings?: () => void; onMap?: () => void; onTrainer?: () => void; onParty?: () => void }) {
-  const hasActions = Boolean(onTrainer || onParty || onMap || onSettings);
+function AnalysisIcon() {
+  return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="analysis">
+    <path d="M4 23V12h5v11M11.5 23V5h5v18M19 23v-8h5v8M3 23.5h22" />
+  </svg>;
+}
+
+export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty, onAnalysis }: { title: string; kicker?: string; gameTime?: GameTime | null; onBack?: () => void; onSettings?: () => void; onMap?: () => void; onTrainer?: () => void; onParty?: () => void; onAnalysis?: () => void }) {
+  const hasActions = Boolean(onTrainer || onParty || onMap || onSettings || onAnalysis);
   return (
     <header class={`app-header ${onBack ? '' : 'app-header-root'}`}>
       {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
       <div class="header-title"><strong>{title}</strong>{kicker && <small>{kicker}</small>}</div>
       {gameTime && <GameClockIndicator clock={gameTime} />}
       {hasActions ? <div class="header-actions">
+        {onAnalysis && <button class="header-action analysis-action" onClick={onAnalysis} aria-label="Party Analysis"><AnalysisIcon /></button>}
         {onTrainer && <button class="header-action trainer-action" onClick={onTrainer} aria-label="Trainer Card"><TrainerIcon /></button>}
         {onParty && <button class="header-action party-action" onClick={onParty} aria-label="Party"><PartyIcon /></button>}
         {onMap && <button class="header-action map-action" onClick={onMap} aria-label="Open Map"><MapIcon /></button>}

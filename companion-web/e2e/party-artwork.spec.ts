@@ -43,14 +43,31 @@ const initialState = {
   speciesState: {}, observedMoves: {}, battle: null, catalogReady: true, catalogName: 'Party artwork control', error: null,
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
   trainer: { name: 'MAY', gender: 'FEMALE', publicTrainerId: 12345, money: 98765, playTimeHours: 12, playTimeMinutes: 34, dexSeen: 42, dexCaught: 7, stars: 2, avatarUrl: null, badges: Array.from({ length: 8 }, (_, index) => ({ index, earned: index < 2, imageUrl: null })) },
+  trainerCardUnlocked: true,
   party,
+  partyAnalysis: {
+    teamSummary: { partySize: 5, minimumLevel: 18, maximumLevel: 18, faintedCount: 1, statusCount: 2, moveDistribution: { physical: 3, special: 2, status: 1, unresolved: 0 } },
+    offensiveCoverage: { contributingMoveCount: 5, types: [
+      { defendingTypeId: 13, outcome: 'SUPER_EFFECTIVE', bestMultiplierPercent: 200, attackingTypeIds: [2], memberSlots: [0, 4] },
+      { defendingTypeId: 2, outcome: 'NEUTRAL_ONLY', bestMultiplierPercent: 100, attackingTypeIds: [13], memberSlots: [0] },
+      { defendingTypeId: 99, outcome: 'NO_EFFECTIVE_KNOWN_OPTION', bestMultiplierPercent: 50, attackingTypeIds: [13], memberSlots: [0] },
+    ] },
+    defensiveProfile: {
+      members: [
+        { slot: 0, speciesId: 25, typeIds: [13, 2], availableForImmediateBattle: true, weaknessTypeIds: [99], resistanceTypeIds: [2], immunityTypeIds: [], abilityModifiers: [] },
+        { slot: 1, speciesId: 26, typeIds: [13], availableForImmediateBattle: false, weaknessTypeIds: [99], resistanceTypeIds: [], immunityTypeIds: [], abilityModifiers: [] },
+      ],
+      unavailableMemberSlots: [2, 3], repeatedWeaknesses: [{ attackingTypeId: 99, memberCount: 2 }],
+    },
+    development: { evolutionOpportunities: [], nearbyMoves: [], moveRoleGaps: ['PHYSICAL'] },
+  },
 };
 
 test('party artwork remains dynamic and privacy-safe at 4:3', async ({ page }) => {
   let state = { ...initialState };
   const actions: Record<string, unknown>[] = [];
   await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog, state }) }));
-  await page.route('**/api/state', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(state) }));
+  await page.route('**/api/state*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(state) }));
   await page.route('**/api/sprites/species/**', route => route.fulfill({ contentType: 'image/png', body: portrait }));
   await page.route('**/api/actions', async route => {
     const action = route.request().postDataJSON() as Record<string, unknown>;
@@ -108,6 +125,13 @@ test('party artwork remains dynamic and privacy-safe at 4:3', async ({ page }) =
   await page.screenshot({ path: join(artifactDir, 'party-partial-4x3.png') });
 
   await page.getByRole('button', { name: 'Close A VERY LONG PARTNER NAME details' }).click();
+  await page.getByRole('button', { name: 'Party Analysis' }).click();
+  await expect(page.locator('.party-analysis-section')).toHaveCount(4);
+  await expect(page.locator('.party-analysis-content')).toBeVisible();
+  const horizontalOverflow = await page.locator('.party-analysis-content').evaluate(element => element.scrollWidth - element.clientWidth);
+  expect(horizontalOverflow).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: join(artifactDir, 'party-analysis-4x3.png') });
+  await page.getByRole('button', { name: 'Back' }).click();
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(page.locator('.pokedex-screen')).toBeVisible();
   expect(actions.some(action => action.type === 'BACK')).toBe(true);

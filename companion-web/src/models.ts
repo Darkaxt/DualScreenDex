@@ -52,6 +52,12 @@ export interface TypeInfo {
   border: string | null;
 }
 
+export interface TypeMatchupView {
+  attackingTypeId: number;
+  defendingTypeId: number;
+  multiplierPercent: number;
+}
+
 export interface NatureInfo {
   id: number;
   name: string;
@@ -75,6 +81,7 @@ export interface Catalog {
   species: Species[];
   moves: Move[];
   types: TypeInfo[];
+  typeMatchups?: TypeMatchupView[];
   areas: { id: number; baseAreaId?: number; name: string; methodId: number; speciesIds: number[]; windows: EncounterWindow[]; slots: { speciesId: number; minimumLevel: number; maximumLevel: number; weight: number | null }[] }[];
   balls: { id: number; name: string; generic: boolean; hasSprite: boolean }[];
   natures?: NatureInfo[];
@@ -286,6 +293,7 @@ export interface State {
   trainerMapSpriteWidth?: number | null;
   trainerMapSpriteHeight?: number | null;
   party?: PartyMemberView[];
+  partyAnalysis?: PartyAnalysis | null;
   battle: null | {
     opponents: { speciesId: number; level: number; typeIds: number[]; rarity: Rarity; moves: { moveId: number; frequency: number }[] }[];
     targetIndex: number;
@@ -355,6 +363,46 @@ export interface PartyMemberView {
   rarity?: Rarity | null;
   stats: Record<string, number>;
   moves: { slot: number; moveId: number | null; name: string | null; currentPp: number | null; maximumPp: number | null }[];
+}
+
+export interface PartyAnalysis {
+  teamSummary: {
+    partySize: number;
+    minimumLevel: number | null;
+    maximumLevel: number | null;
+    faintedCount: number;
+    statusCount: number;
+    moveDistribution: { physical: number; special: number; status: number; unresolved: number } | null;
+  };
+  offensiveCoverage: null | {
+    contributingMoveCount: number;
+    types: {
+      defendingTypeId: number;
+      outcome: 'SUPER_EFFECTIVE' | 'NEUTRAL_ONLY' | 'NO_EFFECTIVE_KNOWN_OPTION';
+      bestMultiplierPercent: number | null;
+      attackingTypeIds: number[];
+      memberSlots: number[];
+    }[];
+  };
+  defensiveProfile: null | {
+    members: {
+      slot: number;
+      speciesId: number;
+      typeIds: number[];
+      availableForImmediateBattle: boolean;
+      weaknessTypeIds: number[];
+      resistanceTypeIds: number[];
+      immunityTypeIds: number[];
+      abilityModifiers: { abilityId: number; attackingTypeId: number; numerator: number; denominator: number }[];
+    }[];
+    unavailableMemberSlots: number[];
+    repeatedWeaknesses: { attackingTypeId: number; memberCount: number }[];
+  };
+  development: {
+    evolutionOpportunities: { slot: number; speciesId: number; targetSpeciesId: number; methodId: number; parameter: number; availableNow: boolean | null }[];
+    nearbyMoves: { slot: number; speciesId: number; moveId: number; level: number; levelsAway: number }[];
+    moveRoleGaps: ('PHYSICAL' | 'SPECIAL')[];
+  };
 }
 
 export interface Bootstrap {

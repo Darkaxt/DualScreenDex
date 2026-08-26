@@ -211,6 +211,50 @@ describe('production application shell', () => {
     await waitFor(() => expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy());
   });
 
+  it('opens Party Analysis and restores the exact Party route beneath member details', async () => {
+    const partyAnalysis = {
+      teamSummary: { partySize: 1, minimumLevel: 18, maximumLevel: 18, faintedCount: 0, statusCount: 0, moveDistribution: { physical: 0, special: 1, status: 0, unresolved: 0 } },
+      offensiveCoverage: null,
+      defensiveProfile: {
+        members: [{ slot: 0, speciesId: 25, typeIds: [], availableForImmediateBattle: true, weaknessTypeIds: [], resistanceTypeIds: [], immunityTypeIds: [], abilityModifiers: [] }],
+        unavailableMemberSlots: [], repeatedWeaknesses: [],
+      },
+      development: { evolutionOpportunities: [], nearbyMoves: [], moveRoleGaps: ['PHYSICAL'] as ('PHYSICAL' | 'SPECIAL')[] },
+    };
+    const analysisCatalog = {
+      ...fixture.catalog!,
+      species: [{
+        id: 25, dex: 25, name: 'PIKACHU', typeIds: [], stats: null, description: 'Mouse Pokémon', height: 4, weight: 60,
+        learnset: [], learnsets: {}, normalizedLearnsets: {}, moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false,
+      }],
+    };
+    vi.mocked(bootstrap).mockResolvedValueOnce({ ...fixture, catalog: analysisCatalog, state: { ...fixture.state, partyAnalysis } });
+    vi.mocked(action).mockResolvedValueOnce({ ...fixture.state, screen: 'PARTY', partyAnalysis });
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Party' }));
+    await screen.findByRole('button', { name: 'Party Analysis' });
+    const roster = document.querySelector('.party-content') as HTMLElement;
+    roster.scrollTop = 37;
+    fireEvent.scroll(roster);
+    fireEvent.click(screen.getByRole('button', { name: 'Party Analysis' }));
+    expect(screen.getByText('TEAM SUMMARY')).toBeTruthy();
+    expect(screen.getByText('DEFENSIVE PROFILE')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open SPARK details' }));
+    expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Open PIKACHU in Pokédex' }));
+    expect(screen.getByText('#025')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Close SPARK details' }));
+    expect(screen.getByText('TEAM SUMMARY')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('button', { name: /Party slot 1: SPARK/i })).toBeTruthy();
+    expect((document.querySelector('.party-content') as HTMLElement).scrollTop).toBe(37);
+  });
+
   it('replaces setup actions with real catalog loading progress', async () => {
     vi.mocked(bootstrap).mockResolvedValueOnce({
       ...fixture,

@@ -4,7 +4,9 @@ export type UiRoute =
   | { kind: 'MAP'; originScreen: Screen }
   | { kind: 'MAPPER' }
   | { kind: 'CAPABILITIES' }
+  | { kind: 'PARTY_ANALYSIS'; catalogHash: string }
   | { kind: 'PARTY_MEMBER'; slot: number; catalogHash: string }
+  | { kind: 'SPECIES'; id: number }
   | { kind: 'MOVE'; id: number }
   | { kind: 'ABILITY'; id: number }
   | { kind: 'NATURE'; id: number };
@@ -24,10 +26,12 @@ export function sameRoute(left: UiRoute | undefined, right: UiRoute | undefined)
   if (!left || !right || left.kind !== right.kind) return false;
   switch (left.kind) {
     case 'MAP': return right.kind === 'MAP' && left.originScreen === right.originScreen;
+    case 'PARTY_ANALYSIS': return right.kind === 'PARTY_ANALYSIS' && left.catalogHash === right.catalogHash;
     case 'PARTY_MEMBER': return right.kind === 'PARTY_MEMBER' && left.slot === right.slot && left.catalogHash === right.catalogHash;
     case 'MOVE':
     case 'ABILITY':
-    case 'NATURE': return right.kind === left.kind && left.id === right.id;
+    case 'NATURE':
+    case 'SPECIES': return right.kind === left.kind && left.id === right.id;
     case 'MAPPER':
     case 'CAPABILITIES': return true;
   }
