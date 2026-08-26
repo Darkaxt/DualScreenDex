@@ -26,3 +26,5 @@ local.properties
 /signing/*.p12
 /signing/*.properties
 /signing/*credentials*
+/tools/retroachievements/.env
+/docs/research/retroachievements/source-payloads/
