@@ -306,7 +306,7 @@ Pop-Location
 - [x] **Step 4: Compare Sections 3, 5, 6, 12, 14, 15, and 17 against the evidence table.**
 - [x] **Step 5: Close every blocker/error; assign only genuine later-feature dependencies to a named stage in `deferrals.md`.**
 - [x] **Step 6: Commit the complete feature and audit before touching release metadata.**
-- [ ] **Step 7: Discover the next unused numeric RC, add one Party Analysis readiness gate, run release tests/build, publish through protected signing, and verify the signed artifact version, checksum, and certificate. Do not install it.**
+- [x] **Step 7: Discover the next unused numeric RC, add one Party Analysis readiness gate, run release tests/build, publish through protected signing, and verify the signed artifact version, checksum, and certificate. Do not install it.**
 
 ---
 
