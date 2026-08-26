@@ -116,6 +116,8 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
     "dualdex-gen1-gen3-table-coverage.md",
     "dualdex-party-analysis-compatibility.json",
     "dualdex-party-analysis-audit.md",
+    "dualdex-area-guide-compatibility.json",
+    "dualdex-area-guide-audit.md",
     "dualdex-save-synchronized-knowledge-checkpoints.md",
   ];
 
@@ -204,6 +206,9 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc40PlayerFollow == true/);
   assert.match(workflow, /\.v11Rc68PartyAnalysis == true/);
   assert.match(workflow, /\.aggregate\.provenAbilityModifiers\.covered == 30/);
+  assert.match(workflow, /\.v11Rc69AreaGuide == true/);
+  assert.match(workflow, /\.aggregate\.areaNames\.covered == 3973/);
+  assert.match(workflow, /\.aggregate\.poiContent\.total == 25003/);
   assert.match(workflow, /\.v11SaveSynchronizedKnowledgeCheckpoints == true/);
   assert.match(workflow, /\.gen1CompiledEvolutionCoveragePercent == 96\.62/);
   assert.match(workflow, /\.gen1CompiledLearnsetCoveragePercent == 93\.56/);
