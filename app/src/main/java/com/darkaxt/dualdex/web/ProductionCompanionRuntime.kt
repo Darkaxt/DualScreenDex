@@ -25,6 +25,8 @@ import com.enrpau.dualscreendex.companion.api.DiagnosticView
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.api.StateView
+import com.enrpau.dualscreendex.companion.analysis.PartyAnalysis
+import com.enrpau.dualscreendex.companion.analysis.PartyAnalyzer
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.GameClock
@@ -98,6 +100,7 @@ import java.io.InputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.system.measureNanoTime
 
 data class ResolvedStateDispatchMetrics(
     val publications: Long,
@@ -169,6 +172,8 @@ class ProductionCompanionRuntime(
     private val resolvedPartySections = AtomicLong()
     private val resolvedOverworldSections = AtomicLong()
     private val resolvedBattleSections = AtomicLong()
+    private val partyAnalysisRecomputations = AtomicLong()
+    private val partyAnalysisCpuNanos = AtomicLong()
     private val transientGameStateSubscription = transientGameState.subscribe { update ->
         applyResolvedGameState(update)
     }
@@ -529,6 +534,15 @@ class ProductionCompanionRuntime(
             ) return cached.view
         }
         val active = resolveRuleset(snapshot.settings.ruleset)
+        var partyAnalysis: PartyAnalysis? = null
+        if (currentCatalog != null) {
+            partyAnalysisCpuNanos.addAndGet(
+                measureNanoTime {
+                    partyAnalysis = PartyAnalyzer.analyze(snapshot.party, currentCatalog, active?.id)
+                },
+            )
+            partyAnalysisRecomputations.incrementAndGet()
+        }
         return ApiViewBuilder.state(
             snapshot,
             currentCatalog,
@@ -537,6 +551,7 @@ class ProductionCompanionRuntime(
             rulesetAssumed = snapshot.settings.ruleset == "AUTO" && !levelUpRulesetDetectionResolved,
             retroArch = retroArch,
             saveRam = saveRam,
+            partyAnalysis = partyAnalysis,
         ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
     }
 
@@ -889,6 +904,8 @@ class ProductionCompanionRuntime(
             "state.dispatch.attempts" to dispatch.dispatchAttempts,
             "state.dispatch.applied" to dispatch.appliedDispatches,
             "state.dispatch.noOps" to dispatch.noOpDispatches,
+            "analysis.party.recomputations" to partyAnalysisRecomputations.get(),
+            "analysis.party.cpuNanos" to partyAnalysisCpuNanos.get(),
         ) + transientGameState.performanceCounters()
     }
 

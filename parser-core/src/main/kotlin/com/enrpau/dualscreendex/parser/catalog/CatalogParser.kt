@@ -140,7 +140,7 @@ object CatalogMaterializer {
         resolveWorldMap: ((Int, Set<Int>) -> WorldMapResolution)? = null,
         resolveLocalMaps: ((Int, Set<Int>) -> LocalMapResolution)? = null,
         resolveMoveDescriptions: ((ResolvedRomLayout) -> MoveDescriptionResult?)? = null,
-        resolveAbilityMechanics: ((ResolvedRomLayout, Map<Int, AbilityRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?)? = null,
+        resolveAbilityMechanics: ((ResolvedRomLayout, Map<Int, AbilityRecord>, Map<Int, TypeRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?)? = null,
         resolveNatures: ((ResolvedRomLayout) -> NatureResolution)? = null,
         materializeTheme: ((Map<CatalogThemeAssetClass, List<RgbaSprite>>, List<DirectCatalogThemePalette>) -> CatalogTheme) =
             RomThemeMaterializer::materialize,
@@ -340,8 +340,8 @@ object CatalogMaterializer {
         val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
         reportCatalogWork(onWork, CatalogWorkModule.ABILITY_DATA)
         val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
-        val abilityMechanics = resolveAbilityMechanics?.invoke(layout, abilities, abilityDescriptions)
-            ?: AbilityMechanicsMaterializer.materialize(rom, layout, abilities, abilityDescriptions)
+        val abilityMechanics = resolveAbilityMechanics?.invoke(layout, abilities, baseTypes, abilityDescriptions)
+            ?: AbilityMechanicsMaterializer.materialize(rom, layout, abilities, baseTypes, abilityDescriptions)
         val species = closedRelationshipSpecies.mapValues { (id, record) ->
             record.copy(
                 moveAcquisitions = if (moveAcquisitions.evidence.values.any { it.compatible }) {

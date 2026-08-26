@@ -1316,6 +1316,8 @@ class ProductionCompanionRuntimeTest {
         val second = runtime.stateView()
 
         assertSame(first, second)
+        assertEquals(1L, runtime.performanceCounters().getValue("analysis.party.recomputations"))
+        assertTrue(runtime.performanceCounters().getValue("analysis.party.cpuNanos") > 0L)
         runtime.close()
     }
     @Test

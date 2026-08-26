@@ -1,6 +1,10 @@
 package com.enrpau.dualscreendex.parser.cli
 
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
+import com.enrpau.dualscreendex.parser.catalog.MoveCategory
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
@@ -15,7 +19,7 @@ import java.io.Writer
 import kotlin.math.round
 
 data class CorpusReport(
-    val schemaVersion: Int = 11,
+    val schemaVersion: Int = 12,
     val minimumParserScore: Int = ParserOrchestrator.minimumScore,
     val minimumRunnerUpMargin: Int = ParserOrchestrator.minimumMargin,
     val roots: List<String>,
@@ -322,6 +326,9 @@ data class CatalogMetrics(
     val captureBalls: Int,
     val encounterAreas: Int = 0,
     val rulesetDetails: List<CatalogRulesetMetrics> = emptyList(),
+    val movesWithCategories: Int = 0,
+    val abilitiesWithProvenTypedModifiers: Int = 0,
+    val provenTypedAbilityModifiers: Int = 0,
 ) {
     companion object {
         fun from(catalog: ParsedCatalog): CatalogMetrics {
@@ -332,50 +339,65 @@ data class CatalogMetrics(
                 ability.id > 0 && ability.name.value?.isNotBlank() == true
             }
             return CatalogMetrics(
-            species = species.size,
-            namedSpecies = species.count { it.name.status == CapabilityStatus.AVAILABLE },
-            speciesWithStats = species.count { it.baseStats.status == CapabilityStatus.AVAILABLE },
-            speciesWithSprites = species.count { it.sprite.status == CapabilityStatus.AVAILABLE },
-            speciesWithDescriptions = species.count { it.description.status == CapabilityStatus.AVAILABLE },
-            evolutionEdges = species.sumOf { it.evolutionEdges.value?.size ?: 0 },
-            learnsetEntries = species.sumOf { it.learnset.value?.size ?: 0 },
-            learnsetRulesets = catalog.learnsetRulesets.size,
-            moves = moves.size,
-            movesWithDetails = moves.count { move ->
-                move.typeId.status == CapabilityStatus.AVAILABLE &&
-                    move.power.status == CapabilityStatus.AVAILABLE &&
-                    move.accuracy.status == CapabilityStatus.AVAILABLE &&
-                    move.pp.status == CapabilityStatus.AVAILABLE
-            },
-            movesWithDescriptions = moves.count { it.effectText.status == CapabilityStatus.AVAILABLE },
-            eggMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.EGG },
-            machineMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.MACHINE },
-            tutorMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.TUTOR },
-            types = catalog.typesById.size,
-            typeMatchups = catalog.typeChart.size,
-            abilities = abilities.size,
-            abilitiesWithDescriptions = abilities.count { it.description.status == CapabilityStatus.AVAILABLE },
-            abilitiesWithMechanics = abilities.count { it.mechanics.status == CapabilityStatus.AVAILABLE },
-            captureBalls = catalog.captureBallsById.values.count { it.sprite.status == CapabilityStatus.AVAILABLE },
-            encounterAreas = catalog.encounterAreas.size,
-            rulesetDetails = catalog.learnsetRulesets.map { ruleset ->
-                CatalogRulesetMetrics(
-                    id = ruleset.id,
-                    label = ruleset.label,
-                    sourceOffset = ruleset.sourceOffset,
-                    confidence = ruleset.confidence,
-                    primary = ruleset.primary,
-                    levelUpSelector = ruleset.levelUpSelector?.let { selector ->
-                        CatalogRulesetSelectorMetrics(
-                            saveBlock1ByteOffset = selector.saveBlock1ByteOffset,
-                            mask = selector.mask,
-                            expectedValue = selector.expectedValue,
-                        )
-                    },
-                )
-            },
-        )
+                species = species.size,
+                namedSpecies = species.count { it.name.status == CapabilityStatus.AVAILABLE },
+                speciesWithStats = species.count { it.baseStats.status == CapabilityStatus.AVAILABLE },
+                speciesWithSprites = species.count { it.sprite.status == CapabilityStatus.AVAILABLE },
+                speciesWithDescriptions = species.count { it.description.status == CapabilityStatus.AVAILABLE },
+                evolutionEdges = species.sumOf { it.evolutionEdges.value?.size ?: 0 },
+                learnsetEntries = species.sumOf { it.learnset.value?.size ?: 0 },
+                learnsetRulesets = catalog.learnsetRulesets.size,
+                moves = moves.size,
+                movesWithDetails = moves.count { move ->
+                    move.typeId.status == CapabilityStatus.AVAILABLE &&
+                        move.power.status == CapabilityStatus.AVAILABLE &&
+                        move.accuracy.status == CapabilityStatus.AVAILABLE &&
+                        move.pp.status == CapabilityStatus.AVAILABLE
+                },
+                movesWithDescriptions = moves.count { it.effectText.status == CapabilityStatus.AVAILABLE },
+                eggMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.EGG },
+                machineMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.MACHINE },
+                tutorMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.TUTOR },
+                types = catalog.typesById.size,
+                typeMatchups = catalog.typeChart.size,
+                abilities = abilities.size,
+                abilitiesWithDescriptions = abilities.count { it.description.status == CapabilityStatus.AVAILABLE },
+                abilitiesWithMechanics = abilities.count { it.mechanics.status == CapabilityStatus.AVAILABLE },
+                captureBalls = catalog.captureBallsById.values.count { it.sprite.status == CapabilityStatus.AVAILABLE },
+                encounterAreas = catalog.encounterAreas.size,
+                rulesetDetails = catalog.learnsetRulesets.map { ruleset ->
+                    CatalogRulesetMetrics(
+                        id = ruleset.id,
+                        label = ruleset.label,
+                        sourceOffset = ruleset.sourceOffset,
+                        confidence = ruleset.confidence,
+                        primary = ruleset.primary,
+                        levelUpSelector = ruleset.levelUpSelector?.let { selector ->
+                            CatalogRulesetSelectorMetrics(
+                                saveBlock1ByteOffset = selector.saveBlock1ByteOffset,
+                                mask = selector.mask,
+                                expectedValue = selector.expectedValue,
+                            )
+                        },
+                    )
+                },
+                movesWithCategories = moves.count { move ->
+                    move.category.status == CapabilityStatus.AVAILABLE && move.category.value != MoveCategory.UNKNOWN
+                },
+                abilitiesWithProvenTypedModifiers = abilities.count { ability ->
+                    ability.mechanics.value.orEmpty().any(::isProvenTypedModifier)
+                },
+                provenTypedAbilityModifiers = abilities.sumOf { ability ->
+                    ability.mechanics.value.orEmpty().count(::isProvenTypedModifier)
+                },
+            )
         }
+
+        private fun isProvenTypedModifier(mechanic: AbilityMechanic): Boolean =
+            mechanic.kind == AbilityMechanicKind.MULTIPLIER &&
+                mechanic.numerator >= 0 && mechanic.denominator > 0 &&
+                mechanic.conditions.isNotEmpty() &&
+                mechanic.conditions.all { it.kind == AbilityMechanicConditionKind.ATTACKING_MOVE_TYPE }
     }
 }
 

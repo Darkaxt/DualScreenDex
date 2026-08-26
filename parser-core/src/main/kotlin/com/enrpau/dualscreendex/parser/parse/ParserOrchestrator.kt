@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.catalog.AbilityDescriptionResult
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicsMaterializer
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicsResult
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
+import com.enrpau.dualscreendex.parser.catalog.TypeRecord
 import com.enrpau.dualscreendex.parser.catalog.MoveDescriptionMaterializer
 import com.enrpau.dualscreendex.parser.catalog.MoveDescriptionResult
 import com.enrpau.dualscreendex.parser.catalog.RelationshipMaterializers
@@ -37,7 +38,7 @@ internal data class CatalogAnalysisContext(
     val resolveGen3AreaNames: (Set<Int>) -> Map<Int, String>,
     val resolveWorldMap: (Int, Set<Int>) -> WorldMapResolution,
     val resolveLocalMaps: (Int, Set<Int>) -> LocalMapResolution,
-    val resolveAbilityMechanics: (ResolvedRomLayout, Map<Int, AbilityRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?,
+    val resolveAbilityMechanics: (ResolvedRomLayout, Map<Int, AbilityRecord>, Map<Int, TypeRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?,
     val resolveNatures: (ResolvedRomLayout) -> NatureResolution,
 )
 
@@ -61,8 +62,8 @@ object ParserOrchestrator {
             resolveMoveDescriptions = { layout ->
                 MoveDescriptionMaterializer.materialize(sharedSession.rom, layout, sharedSession.gbaReferenceIndex)
             },
-            resolveAbilityMechanics = { layout, abilities, descriptions ->
-                AbilityMechanicsMaterializer.materialize(sharedSession, layout, abilities, descriptions)
+            resolveAbilityMechanics = { layout, abilities, types, descriptions ->
+                AbilityMechanicsMaterializer.materialize(sharedSession, layout, abilities, types, descriptions)
             },
             resolveNatures = { layout ->
                 if (layout.generation == 3) {

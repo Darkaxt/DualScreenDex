@@ -47,14 +47,14 @@ object SourceBackedAbilityMechanicsResolver {
             else -> return emptyList()
         }
         if (OFFICIAL_NAMES.any { (id, expected) -> names[id] != expected }) return emptyList()
-        return behaviorMechanics(masks) + starterBoostMechanics()
+        return behaviorMechanics(masks) + starterBoostMechanics() + typedDefensiveMechanics()
     }
 
     private fun modernProfile(names: Map<Int, String>): List<SourceBackedAbilityMechanic> {
         if (MODERN_SENTINELS.any { (id, expected) -> names[id] != expected.uppercase(Locale.ROOT) }) {
             return emptyList()
         }
-        return behaviorMechanics(MODERN_BEHAVIOR_MASKS) + starterBoostMechanics() + listOf(
+        return behaviorMechanics(MODERN_BEHAVIOR_MASKS) + starterBoostMechanics() + typedDefensiveMechanics() + listOf(
             SourceBackedAbilityMechanic(
                 22,
                 SourceBackedAbilityMechanicKind.STAT_STAGE,
@@ -127,6 +127,37 @@ object SourceBackedAbilityMechanicsResolver {
             ),
         )
     }
+
+    private fun typedDefensiveMechanics(): List<SourceBackedAbilityMechanic> = listOf(
+        DefensiveTypeModifier(10, "Electric", 0, 1),
+        DefensiveTypeModifier(11, "Water", 0, 1),
+        DefensiveTypeModifier(18, "Fire", 0, 1),
+        DefensiveTypeModifier(26, "Ground", 0, 1),
+        DefensiveTypeModifier(47, "Fire", 1, 2),
+        DefensiveTypeModifier(47, "Ice", 1, 2),
+    ).map { modifier ->
+        SourceBackedAbilityMechanic(
+            abilityId = modifier.abilityId,
+            kind = SourceBackedAbilityMechanicKind.MULTIPLIER,
+            label = "Incoming damage",
+            value = "${modifier.typeName} damage ×${formatRatio(modifier.numerator, modifier.denominator)}",
+            numerator = modifier.numerator,
+            denominator = modifier.denominator,
+            incomingTypeName = modifier.typeName,
+        )
+    }
+
+    private fun formatRatio(numerator: Int, denominator: Int): String {
+        val value = numerator.toDouble() / denominator
+        return if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()
+    }
+
+    private data class DefensiveTypeModifier(
+        val abilityId: Int,
+        val typeName: String,
+        val numerator: Int,
+        val denominator: Int,
+    )
 
     private fun behaviorMechanics(masks: IntArray): List<SourceBackedAbilityMechanic> =
         masks.mapIndexed { index, mask ->

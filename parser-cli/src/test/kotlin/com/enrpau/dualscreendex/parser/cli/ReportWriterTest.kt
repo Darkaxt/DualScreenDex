@@ -10,6 +10,11 @@ import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicCondition
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
+import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisition
@@ -187,6 +192,64 @@ class ReportWriterTest {
     }
 
     @Test
+    fun catalogMetricsMeasureCategoriesAndTypedAbilityModifiersIndependently() {
+        fun move(id: Int, category: CatalogField<MoveCategory>) = MoveRecord(
+            id = id,
+            name = CatalogField.available("Move $id"),
+            typeId = CatalogField.available(10),
+            category = category,
+            power = CatalogField.available(40),
+            accuracy = CatalogField.available(100),
+            pp = CatalogField.available(20),
+        )
+        val typedModifier = AbilityMechanic(
+            kind = AbilityMechanicKind.MULTIPLIER,
+            label = "Fire power",
+            value = "1.5x",
+            numerator = 3,
+            denominator = 2,
+            conditions = listOf(
+                AbilityMechanicCondition(
+                    kind = AbilityMechanicConditionKind.ATTACKING_MOVE_TYPE,
+                    value = 10,
+                    label = "Fire",
+                ),
+            ),
+        )
+        val untypedModifier = typedModifier.copy(conditions = emptyList())
+        val catalog = ParsedCatalog(
+            romSha256 = "0".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            movesById = mapOf(
+                1 to move(1, CatalogField.available(MoveCategory.SPECIAL)),
+                2 to move(2, CatalogField.available(MoveCategory.UNKNOWN)),
+                3 to move(3, CatalogField.notFound("category missing")),
+            ),
+            abilitiesById = mapOf(
+                1 to AbilityRecord(
+                    id = 1,
+                    name = CatalogField.available("Blaze"),
+                    mechanics = CatalogField.available(listOf(typedModifier, untypedModifier)),
+                ),
+                2 to AbilityRecord(
+                    id = 2,
+                    name = CatalogField.available("Untyped"),
+                    mechanics = CatalogField.available(listOf(untypedModifier)),
+                ),
+            ),
+        )
+
+        val metrics = CatalogMetrics.from(catalog)
+
+        assertEquals(3, metrics.movesWithDetails)
+        assertEquals(1, metrics.movesWithCategories)
+        assertEquals(2, metrics.abilitiesWithMechanics)
+        assertEquals(1, metrics.abilitiesWithProvenTypedModifiers)
+        assertEquals(1, metrics.provenTypedAbilityModifiers)
+    }
+
+    @Test
     fun catalogSamplesValidateEveryMoveReferenceSource() {
         val species = SpeciesRecord(
             id = 1,
@@ -275,7 +338,7 @@ class ReportWriterTest {
     fun jsonIsDeterministicForSameReport() {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
-        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 11"))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 12"))
         assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
     }
 
@@ -320,7 +383,7 @@ class ReportWriterTest {
         val ruleset = catalogJson.getAsJsonArray("rulesetDetails")[0].asJsonObject
         val selector = ruleset.getAsJsonObject("levelUpSelector")
 
-        assertEquals(11, root.get("schemaVersion").asInt)
+        assertEquals(12, root.get("schemaVersion").asInt)
         assertEquals(1, catalogJson.get("learnsetRulesets").asInt)
         assertEquals(
             setOf("id", "label", "sourceOffset", "confidence", "primary", "levelUpSelector"),
@@ -355,7 +418,7 @@ class ReportWriterTest {
 
         val json = ReportWriter.json(report)
 
-        assertTrue(json.contains("\"schemaVersion\": 11"))
+        assertTrue(json.contains("\"schemaVersion\": 12"))
         assertTrue(json.contains("\"validatorReviewRecommended\": true"))
     }
 

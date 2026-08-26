@@ -54,6 +54,11 @@ class SourceBackedAbilityMechanicsResolverTest {
             assertTrue(actual.any { it.kind == SourceBackedAbilityMechanicKind.ACTIVATION_THRESHOLD && it.value == "HP ≤ 1/3" })
             assertTrue(actual.any { it.kind == SourceBackedAbilityMechanicKind.MULTIPLIER && it.value == "$type move power ×1.5" })
         }
-        assertEquals(81 + 5 + 8, mechanics.size)
+        assertEquals(
+            listOf("Fire", "Ice"),
+            mechanics.filter { it.abilityId == 47 }.mapNotNull { it.incomingTypeName }.sorted(),
+        )
+        assertEquals("Ground", mechanics.single { it.abilityId == 26 && it.incomingTypeName != null }.incomingTypeName)
+        assertEquals(81 + 5 + 8 + 6, mechanics.size)
     }
 }

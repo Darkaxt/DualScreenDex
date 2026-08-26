@@ -731,6 +731,7 @@ object ApiViewBuilder {
         rulesetAssumed: Boolean = true,
         retroArch: RetroArchView = RetroArchView(),
         saveRam: SaveRamView = SaveRamView(),
+        partyAnalysis: PartyAnalysis? = null,
     ): StateView {
         val effectiveAreaBaseId = snapshot.liveAreaBaseId
         val encounterAreasById = catalog?.encounterAreas.orEmpty().associateBy { it.id }
@@ -882,7 +883,7 @@ object ApiViewBuilder {
             trainerMapSprite?.width,
             trainerMapSprite?.height,
             partyView(snapshot, catalog),
-            catalog?.let { PartyAnalyzer.analyze(snapshot.party, it, activeRulesetId) },
+            partyAnalysis ?: catalog?.let { PartyAnalyzer.analyze(snapshot.party, it, activeRulesetId) },
             snapshot.battle?.let { battle ->
                 BattleView(
                     opponents = battle.opponents.map { opponent ->

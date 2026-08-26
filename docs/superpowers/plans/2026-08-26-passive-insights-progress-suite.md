@@ -191,21 +191,21 @@ git commit -m "research: classify portable Pokemon challenge semantics"
 - Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/api/ApiModels.kt`
 - Test: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/api/ApiViewBuilderTest.kt`
 
-- [ ] **Step 1: Add a RED API test for the active parsed type chart.**
+- [x] **Step 1: Add a RED API test for the active parsed type chart.**
 
 Assert that a mutated real catalog matchup projects as data and that an empty/failed chart projects as unavailable rather than neutral.
 
-- [ ] **Step 2: Run the focused RED test.**
+- [x] **Step 2: Run the focused RED test.**
 
 ```powershell
 .\gradlew.bat :companion-core:test --tests "*ApiViewBuilderTest" --no-daemon --console=plain
 ```
 
-- [ ] **Step 3: Add `TypeMatchupView(attackingTypeId, defendingTypeId, multiplierPercent)` to `CatalogView`.**
+- [x] **Step 3: Add `TypeMatchupView(attackingTypeId, defendingTypeId, multiplierPercent)` to `CatalogView`.**
 
 Project `ParsedCatalog.typeChart` directly. Do not create a retail fallback matrix.
 
-- [ ] **Step 4: Run the focused test GREEN and commit.**
+- [x] **Step 4: Run the focused test GREEN and commit.**
 
 ### Task 1.2: Implement deterministic Party Analysis
 
@@ -215,17 +215,17 @@ Project `ParsedCatalog.typeChart` directly. Do not create a retail fallback matr
 - Create: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/analysis/PartyAnalyzer.kt`
 - Create: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/analysis/PartyAnalyzerTest.kt`
 
-- [ ] **Step 1: Add RED tests for empty, partial, fainted, single-member, and six-member parties.**
-- [ ] **Step 2: Add a real-catalog mutation test proving changed type matchups change the result without ROM identity checks.**
-- [ ] **Step 3: Implement immutable models for team summary, offensive coverage, defensive profile, and development.**
-- [ ] **Step 4: Withhold only calculations whose inputs are absent; never coerce unknown power/category/ability semantics to neutral.**
-- [ ] **Step 5: Run GREEN.**
+- [x] **Step 1: Add RED tests for empty, partial, fainted, single-member, and six-member parties.**
+- [x] **Step 2: Add a real-catalog mutation test proving changed type matchups change the result without ROM identity checks.**
+- [x] **Step 3: Implement immutable models for team summary, offensive coverage, defensive profile, and development.**
+- [x] **Step 4: Withhold only calculations whose inputs are absent; never coerce unknown power/category/ability semantics to neutral.**
+- [x] **Step 5: Run GREEN.**
 
 ```powershell
 .\gradlew.bat :companion-core:test --tests "*PartyAnalyzerTest" --no-daemon --console=plain
 ```
 
-- [ ] **Step 6: Commit the pure analysis slice.**
+- [x] **Step 6: Commit the pure analysis slice.**
 
 ### Task 1.3: Add the Party Analysis API and route
 
@@ -238,10 +238,10 @@ Project `ParsedCatalog.typeChart` directly. Do not create a retail fallback matr
 - Modify: `companion-web/src/App.tsx`
 - Modify: `companion-web/src/App.production.test.tsx`
 
-- [ ] **Step 1: Add RED serialization and navigation tests for `PARTY_ANALYSIS`.**
-- [ ] **Step 2: Project analysis from the current `AppSnapshot.party` and active catalog only.**
-- [ ] **Step 3: Add `PARTY_ANALYSIS` to `UiRoute`; preserve Party roster/scroll state and unwind member/move/nature/ability/species routes one level at a time.**
-- [ ] **Step 4: Run Kotlin and browser tests GREEN.**
+- [x] **Step 1: Add RED serialization and navigation tests for `PARTY_ANALYSIS`.**
+- [x] **Step 2: Project analysis from the current `AppSnapshot.party` and active catalog only.**
+- [x] **Step 3: Add `PARTY_ANALYSIS` to `UiRoute`; preserve Party roster/scroll state and unwind member/move/nature/ability/species routes one level at a time.**
+- [x] **Step 4: Run Kotlin and browser tests GREEN.**
 
 ```powershell
 .\gradlew.bat :companion-core:test --tests "*ApiViewBuilderTest" --no-daemon --console=plain
@@ -250,7 +250,7 @@ npm test -- --run src/navigation.test.ts src/App.production.test.tsx
 Pop-Location
 ```
 
-- [ ] **Step 5: Commit the vertical contract.**
+- [x] **Step 5: Commit the vertical contract.**
 
 ### Task 1.4: Build the approved Party Analysis page
 
@@ -263,11 +263,11 @@ Pop-Location
 - Modify: `companion-web/src/styles.css`
 - Modify: `companion-web/src/layoutStyles.test.ts`
 
-- [ ] **Step 1: Add RED tests for the Analysis action and all four ordered sections.**
-- [ ] **Step 2: Render matrices, type chips, member portraits, unavailable-input omissions, accessible names, and non-color-only states.**
-- [ ] **Step 3: Preserve the approved six-slot 2×3 Party board unchanged.**
-- [ ] **Step 4: Assert there are no subjective team grades, replacement recommendations, debug labels, redundant subtitles, or 4:3 overflow.**
-- [ ] **Step 5: Run browser tests and production build GREEN.**
+- [x] **Step 1: Add RED tests for the Analysis action and all four ordered sections.**
+- [x] **Step 2: Render matrices, type chips, member portraits, unavailable-input omissions, accessible names, and non-color-only states.**
+- [x] **Step 3: Preserve the approved six-slot 2×3 Party board unchanged.**
+- [x] **Step 4: Assert there are no subjective team grades, replacement recommendations, debug labels, redundant subtitles, or 4:3 overflow.**
+- [x] **Step 5: Run browser tests and production build GREEN.**
 
 ```powershell
 Push-Location companion-web
@@ -276,7 +276,7 @@ npm run build
 Pop-Location
 ```
 
-- [ ] **Step 6: Commit the UI slice.**
+- [x] **Step 6: Commit the UI slice.**
 
 ### Task 1.5: Validate, audit, and release Party Analysis
 
@@ -291,9 +291,9 @@ Pop-Location
 - Modify at release gate only: `.github/workflows/release.yml`
 - Modify at release gate only: `tools/release/release-workflow.test.mjs`
 
-- [ ] **Step 1: Run the report against all required official controls plus Modern Emerald, Unbound, and Odyssey.**
-- [ ] **Step 2: Report numeric coverage independently for party fields, moves, categories, type chart, evolutions, and proven ability modifiers.**
-- [ ] **Step 3: Run the affected full suites and performance regression checks.**
+- [x] **Step 1: Run the report against all required official controls plus Modern Emerald, Unbound, and Odyssey.**
+- [x] **Step 2: Report numeric coverage independently for party fields, moves, categories, type chart, evolutions, and proven ability modifiers.**
+- [x] **Step 3: Run the affected full suites and performance regression checks.**
 
 ```powershell
 .\gradlew.bat :parser-core:test :catalog-store:test :companion-core:test :app:testDebugUnitTest --no-daemon --console=plain
@@ -303,8 +303,8 @@ npm run build
 Pop-Location
 ```
 
-- [ ] **Step 4: Compare Sections 3, 5, 6, 12, 14, 15, and 17 against the evidence table.**
-- [ ] **Step 5: Close every blocker/error; assign only genuine later-feature dependencies to a named stage in `deferrals.md`.**
+- [x] **Step 4: Compare Sections 3, 5, 6, 12, 14, 15, and 17 against the evidence table.**
+- [x] **Step 5: Close every blocker/error; assign only genuine later-feature dependencies to a named stage in `deferrals.md`.**
 - [ ] **Step 6: Commit the complete feature and audit before touching release metadata.**
 - [ ] **Step 7: Discover the next unused numeric RC, add one Party Analysis readiness gate, run release tests/build, publish through protected signing, and verify the signed artifact version, checksum, and certificate. Do not install it.**
 

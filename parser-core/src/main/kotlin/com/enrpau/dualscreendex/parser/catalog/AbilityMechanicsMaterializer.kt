@@ -45,11 +45,13 @@ object AbilityMechanicsMaterializer {
         rom: RomImage,
         layout: ResolvedRomLayout,
         abilities: Map<Int, AbilityRecord>,
+        types: Map<Int, TypeRecord> = emptyMap(),
         abilityDescriptions: AbilityDescriptionResult? = null,
     ): AbilityMechanicsResult? = materialize(
         rom = rom,
         layout = layout,
         abilities = abilities,
+        types = types,
         abilityDescriptions = abilityDescriptions,
         compiledRatings = null,
     )
@@ -58,11 +60,13 @@ object AbilityMechanicsMaterializer {
         session: RomAnalysisSession,
         layout: ResolvedRomLayout,
         abilities: Map<Int, AbilityRecord>,
+        types: Map<Int, TypeRecord> = emptyMap(),
         abilityDescriptions: AbilityDescriptionResult? = null,
     ): AbilityMechanicsResult? = materialize(
         rom = session.rom,
         layout = layout,
         abilities = abilities,
+        types = types,
         abilityDescriptions = abilityDescriptions,
         compiledRatings = if (
             layout.pokeemeraldExpansion == null &&
@@ -79,6 +83,7 @@ object AbilityMechanicsMaterializer {
         rom: RomImage,
         layout: ResolvedRomLayout,
         abilities: Map<Int, AbilityRecord>,
+        types: Map<Int, TypeRecord>,
         abilityDescriptions: AbilityDescriptionResult?,
         compiledRatings: ResolvedCompiledAbilityRatings?,
     ): AbilityMechanicsResult? {
@@ -127,12 +132,15 @@ object AbilityMechanicsMaterializer {
             )
         }
 
+        val typeIdsByName = types.values.mapNotNull { type ->
+            type.name.value?.uppercase(Locale.ROOT)?.let { name -> name to type.id }
+        }.toMap()
         val resolved = layout.resolvedDatasets.abilityMechanics
         val binaryMechanics = resolved?.let { evidence ->
             evidence.mechanics.mapNotNull { mechanic ->
                 mechanic.takeIf { it.abilityId in abilities }?.toCatalogMechanic()
             } + evidence.sourceBackedMechanics.mapNotNull { mechanic ->
-                mechanic.takeIf { it.abilityId in abilities }?.toCatalogMechanic()
+                mechanic.takeIf { it.abilityId in abilities }?.toCatalogMechanic(typeIdsByName)
             }
         }.orEmpty()
         val documentedMechanics = if (binaryMechanics.mapTo(mutableSetOf()) { it.first }.containsAll(abilities.keys)) {
@@ -206,7 +214,9 @@ object AbilityMechanicsMaterializer {
         )
     }
 
-    private fun SourceBackedAbilityMechanic.toCatalogMechanic(): Pair<Int, AbilityMechanic> = abilityId to
+    private fun SourceBackedAbilityMechanic.toCatalogMechanic(
+        typeIdsByName: Map<String, Int>,
+    ): Pair<Int, AbilityMechanic> = abilityId to
         AbilityMechanic(
             kind = when (kind) {
                 SourceBackedAbilityMechanicKind.BEHAVIOR -> AbilityMechanicKind.BEHAVIOR
@@ -220,7 +230,20 @@ object AbilityMechanicsMaterializer {
             value = value,
             numerator = numerator,
             denominator = denominator,
-            conditions = condition?.let(::sourceCondition)?.let(::listOf).orEmpty(),
+            conditions = buildList {
+                condition?.let(::sourceCondition)?.let(::add)
+                incomingTypeName?.let { typeName ->
+                    typeIdsByName[typeName.uppercase(Locale.ROOT)]?.let { typeId ->
+                        add(
+                            AbilityMechanicCondition(
+                                AbilityMechanicConditionKind.ATTACKING_MOVE_TYPE,
+                                typeId.toLong(),
+                                "$typeName moves",
+                            ),
+                        )
+                    }
+                }
+            },
         )
 
     private fun sourceCondition(label: String): AbilityMechanicCondition = when (label) {

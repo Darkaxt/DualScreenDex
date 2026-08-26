@@ -98,6 +98,12 @@ class AbilityMechanicsMaterializerLiveRomTest {
             "Attack ×2",
             catalog.abilitiesById.getValue(74).mechanics.value?.single { it.kind == AbilityMechanicKind.MULTIPLIER }?.value,
         )
+        assertEquals(
+            listOf(AbilityMechanicCondition(AbilityMechanicConditionKind.ATTACKING_MOVE_TYPE, 4, "Ground moves")),
+            catalog.abilitiesById.getValue(26).mechanics.value
+                ?.single { it.kind == AbilityMechanicKind.MULTIPLIER }
+                ?.conditions,
+        )
     }
 
     @Test
@@ -172,10 +178,17 @@ class AbilityMechanicsMaterializerLiveRomTest {
             )
             assertEquals(
                 control.name,
-                setOf(37, 65, 66, 67, 68, 74),
+                setOf(10, 11, 18, 26, 37, 47, 65, 66, 67, 68, 74),
                 result.mechanicsByAbility.filterValues { mechanics ->
                     mechanics.any { it.kind.name != "BEHAVIOR" }
                 }.keys,
+            )
+            assertEquals(
+                control.name,
+                listOf(AbilityMechanicCondition(AbilityMechanicConditionKind.ATTACKING_MOVE_TYPE, 4, "Ground moves")),
+                catalog.abilitiesById.getValue(26).mechanics.value
+                    ?.single { it.kind == AbilityMechanicKind.MULTIPLIER }
+                    ?.conditions,
             )
         }
     }

@@ -382,6 +382,8 @@ data class SourceBackedAbilityMechanic(
     val numerator: Int,
     val denominator: Int,
     val condition: String? = null,
+    /** Defending holder's incoming move type; resolved to the active ROM's type ID by the catalog. */
+    val incomingTypeName: String? = null,
 )
 
 /** Complete parser-selected ARM7TDMI mechanic proof propagated to catalog consumers. */

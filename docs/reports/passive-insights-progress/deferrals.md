@@ -13,3 +13,9 @@ This register distinguishes later-stage work from Stage 0 blockers. Stage 0 has 
 | The 120 / 1,003 ambiguous references | Stage 6 research review | New high-signal semantic evidence or a concrete missing operator exists | Explicit reclassification or retained Tier 4 exclusion; no guessed rules |
 | Tier 4 glitch, trade, unavailable frame-transition, or irreducibly ambiguous references | Stage 6 research exclusions | Only reconsider when DualDex can prove the required fact/event safely | Retained numeric exclusion reasons or validated independent adapter |
 | Runtime pages and UI | Feature stages 1–6 | Each feature's data contract passes before UI work | Feature specification audit and one RC only after the complete feature gate |
+
+## Stage 1 disposition
+
+Party Analysis is implemented and removed from the generic runtime-page deferral. Its current facts continue to come directly from the unified resolved snapshot. The shared `SemanticFactProjector`, transition evaluator, and event journal remain assigned to Stage 3 because they are temporal dependencies of Progress, Challenges, Objectives, and Save Timeline—not an alternate Party-state pipe.
+
+The Stage 1 compatibility report records Gen I/II live Party fields and Unbound/Odyssey typed defensive ability modifiers as `NOT_FOUND`, and Gen I/II abilities as `NOT_APPLICABLE`. Those evidence states are not reclassified as deferrals. Calculations that require them remain absent.
