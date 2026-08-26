@@ -12,8 +12,23 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 
 object AreaGuideBuilder {
-    fun build(catalog: ParsedCatalog, snapshot: AppSnapshot): AreaGuide {
+    fun project(catalog: ParsedCatalog, snapshot: AppSnapshot): AreaGuideProjection {
         val names = areaNames(catalog)
+        val projectedPoints = projectPoints(catalog, snapshot, names)
+        return AreaGuideProjection(
+            points = projectedPoints,
+            guide = build(catalog, snapshot, names, projectedPoints),
+        )
+    }
+
+    fun build(catalog: ParsedCatalog, snapshot: AppSnapshot): AreaGuide = project(catalog, snapshot).guide
+
+    private fun build(
+        catalog: ParsedCatalog,
+        snapshot: AppSnapshot,
+        names: Map<Int, String>,
+        projectedPoints: List<AreaGuidePoint>,
+    ): AreaGuide {
         val allAreaIds = buildSet {
             addAll(names.keys)
             addAll(catalog.encounterAreas.map { it.id / 10 })
@@ -29,7 +44,6 @@ object AreaGuideBuilder {
                 ).intersect(allAreaIds)
             KnowledgeMode.HIDDEN -> setOfNotNull(snapshot.liveAreaBaseId).intersect(allAreaIds)
         }
-        val projectedPoints = projectPoints(catalog, snapshot, names)
         val mapsByKey = catalog.localMaps.maps.associateBy(LocalMap::key)
         val areas = visibleAreaIds.sorted().mapNotNull { baseAreaId ->
             val name = names[baseAreaId] ?: return@mapNotNull null

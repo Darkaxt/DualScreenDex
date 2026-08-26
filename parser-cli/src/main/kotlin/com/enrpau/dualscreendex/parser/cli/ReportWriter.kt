@@ -6,6 +6,9 @@ import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
+import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
+import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
@@ -303,6 +306,25 @@ data class CatalogRulesetMetrics(
     val levelUpSelector: CatalogRulesetSelectorMetrics? = null,
 )
 
+data class AreaGuideCatalogMetrics(
+    val areaIdentities: Int = 0,
+    val namedAreaIdentities: Int = 0,
+    val exitRecords: Int = 0,
+    val resolvedExitRecords: Int = 0,
+    val encounterSpeciesRecords: Int = 0,
+    val namedEncounterSpeciesRecords: Int = 0,
+    val encounterWindowGroups: Int = 0,
+    val resolvedEncounterWindowGroups: Int = 0,
+    val encounterLevelRecords: Int = 0,
+    val resolvedEncounterLevelRecords: Int = 0,
+    val encounterRateRecords: Int = 0,
+    val resolvedEncounterRateRecords: Int = 0,
+    val localMapCount: Int = 0,
+    val poiBearingMapCount: Int = 0,
+    val poiRecords: Int = 0,
+    val poiRecordsWithContent: Int = 0,
+)
+
 data class CatalogMetrics(
     val species: Int,
     val namedSpecies: Int,
@@ -329,6 +351,7 @@ data class CatalogMetrics(
     val movesWithCategories: Int = 0,
     val abilitiesWithProvenTypedModifiers: Int = 0,
     val provenTypedAbilityModifiers: Int = 0,
+    val areaGuide: AreaGuideCatalogMetrics = AreaGuideCatalogMetrics(),
 ) {
     companion object {
         fun from(catalog: ParsedCatalog): CatalogMetrics {
@@ -390,8 +413,112 @@ data class CatalogMetrics(
                 provenTypedAbilityModifiers = abilities.sumOf { ability ->
                     ability.mechanics.value.orEmpty().count(::isProvenTypedModifier)
                 },
+                areaGuide = areaGuideMetrics(catalog),
             )
         }
+
+        private fun areaGuideMetrics(catalog: ParsedCatalog): AreaGuideCatalogMetrics {
+            val names = buildMap {
+                catalog.encounterAreas.forEach { area ->
+                    playerFacingText(area.name.value, null)?.let { putIfAbsent(area.id / 10, it) }
+                }
+                catalog.worldMaps.regions.forEach { region ->
+                    region.locations.forEach { location ->
+                        playerFacingText(location.displayName, null)?.let { name ->
+                            location.baseAreaIds.forEach { put(it, name) }
+                        }
+                    }
+                }
+                catalog.localMaps.maps.forEach { map ->
+                    playerFacingText(map.displayName, null)?.let { put(map.baseAreaId, it) }
+                }
+                catalog.runtimeMetadata.areaNamesByBaseId.forEach { (baseAreaId, name) ->
+                    playerFacingText(name, null)?.let { put(baseAreaId, it) }
+                }
+            }
+            val areaIds = buildSet {
+                addAll(catalog.encounterAreas.map { it.id / 10 })
+                catalog.worldMaps.regions.forEach { region ->
+                    region.locations.forEach { addAll(it.baseAreaIds) }
+                }
+                addAll(catalog.localMaps.maps.map(LocalMap::baseAreaId))
+                addAll(catalog.runtimeMetadata.areaNamesByBaseId.keys)
+            }
+            val mapsByKey = catalog.localMaps.maps.associateBy(LocalMap::key)
+            val exits = buildSet {
+                catalog.localMaps.pois.forEach { poi ->
+                    poi.destinationBaseAreaId?.let { add(poi.baseAreaId to it) }
+                }
+                catalog.localMaps.scenes.forEach { scene ->
+                    scene.placements.forEachIndexed { index, left ->
+                        scene.placements.drop(index + 1).forEach { right ->
+                            if (shareEdge(left, right, mapsByKey)) {
+                                add(left.baseAreaId to right.baseAreaId)
+                                add(right.baseAreaId to left.baseAreaId)
+                            }
+                        }
+                    }
+                }
+            }
+            val encounterSlots = catalog.encounterAreas.flatMap { it.slots }
+            val poiRecordsWithContent = catalog.localMaps.pois.count { poi ->
+                val areaName = names[poi.baseAreaId]
+                playerFacingText(poi.displayName, areaName) != null ||
+                    poi.displayNamesByTrainerGender.values.any { playerFacingText(it, areaName) != null } ||
+                    poi.service != null ||
+                    poi.item?.itemId != null ||
+                    playerFacingText(poi.item?.displayName, areaName) != null
+            }
+            return AreaGuideCatalogMetrics(
+                areaIdentities = areaIds.size,
+                namedAreaIdentities = areaIds.count(names::containsKey),
+                exitRecords = exits.size,
+                resolvedExitRecords = exits.count { (source, destination) -> source in names && destination in names },
+                encounterSpeciesRecords = encounterSlots.size,
+                namedEncounterSpeciesRecords = encounterSlots.count { slot ->
+                    catalog.speciesById[slot.speciesId]?.name?.value?.let { playerFacingText(it, null) } != null
+                },
+                encounterWindowGroups = catalog.encounterAreas.size,
+                resolvedEncounterWindowGroups = catalog.encounterAreas.count { it.windows.isNotEmpty() },
+                encounterLevelRecords = encounterSlots.size,
+                resolvedEncounterLevelRecords = encounterSlots.count { slot ->
+                    slot.minimumLevel > 0 && slot.maximumLevel >= slot.minimumLevel
+                },
+                encounterRateRecords = encounterSlots.size,
+                resolvedEncounterRateRecords = encounterSlots.count { it.weight != null },
+                localMapCount = catalog.localMaps.maps.size,
+                poiBearingMapCount = catalog.localMaps.pois.map(LocalMapPoi::localMapKey).distinct().size,
+                poiRecords = catalog.localMaps.pois.size,
+                poiRecordsWithContent = poiRecordsWithContent,
+            )
+        }
+
+        private fun shareEdge(
+            left: LocalMapScenePlacement,
+            right: LocalMapScenePlacement,
+            mapsByKey: Map<String, LocalMap>,
+        ): Boolean {
+            val leftMap = mapsByKey[left.localMapKey] ?: return false
+            val rightMap = mapsByKey[right.localMapKey] ?: return false
+            val horizontalEdge = left.gridX + leftMap.gridWidth == right.gridX ||
+                right.gridX + rightMap.gridWidth == left.gridX
+            val verticalOverlap = minOf(left.gridY + leftMap.gridHeight, right.gridY + rightMap.gridHeight) -
+                maxOf(left.gridY, right.gridY)
+            val verticalEdge = left.gridY + leftMap.gridHeight == right.gridY ||
+                right.gridY + rightMap.gridHeight == left.gridY
+            val horizontalOverlap = minOf(left.gridX + leftMap.gridWidth, right.gridX + rightMap.gridWidth) -
+                maxOf(left.gridX, right.gridX)
+            return horizontalEdge && verticalOverlap > 0 || verticalEdge && horizontalOverlap > 0
+        }
+
+        private fun playerFacingText(value: String?, areaName: String?): String? = value
+            ?.lineSequence()
+            ?.map { it.trim() }
+            ?.firstOrNull(String::isNotBlank)
+            ?.takeUnless { text ->
+                text.equals("Place", ignoreCase = true) ||
+                    areaName?.let { text.equals(it, ignoreCase = true) } == true
+            }
 
         private fun isProvenTypedModifier(mechanic: AbilityMechanic): Boolean =
             mechanic.kind == AbilityMechanicKind.MULTIPLIER &&

@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { AreaGuideAreaView, AreaGuideEncounterSpeciesView, AreaGuidePointView } from '../models';
 
 interface AreaGuideDrawerProps {
@@ -28,6 +28,8 @@ export function AreaGuideDrawer({
   onSelectArea,
   selectablePointKeys = new Set<string>(),
 }: AreaGuideDrawerProps) {
+  const drawerRef = useRef<HTMLElement>(null);
+  const renderStartedAt = useRef(typeof performance === 'undefined' ? 0 : performance.now());
   const encounterRows = area.encounters.flatMap((group, groupIndex) => group.species.map(species => ({
     key: `${groupIndex}/${species.speciesId}`,
     groupName: group.name,
@@ -35,7 +37,26 @@ export function AreaGuideDrawer({
     species,
   })));
 
+  useEffect(() => {
+    if (import.meta.env.MODE === 'test') return;
+    const renderMillis = typeof performance === 'undefined'
+      ? 0
+      : Math.max(0, performance.now() - renderStartedAt.current);
+    const retainedItems = drawerRef.current?.querySelectorAll(
+      '.area-guide-windowed-item, .area-guide-exits > button, .area-guide-text-row',
+    ).length ?? 0;
+    console.debug(JSON.stringify({ event: 'area-guide-render', renderMillis, retainedItems }));
+  }, [
+    area.baseAreaId,
+    encounterRows.length,
+    area.placesAndServices.length,
+    area.trainersAndPeople.length,
+    area.items.length,
+    area.objectives.length,
+  ]);
+
   return <aside
+    ref={drawerRef}
     class="area-guide-drawer"
     role="complementary"
     aria-label="Area guide"

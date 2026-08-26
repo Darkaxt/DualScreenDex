@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
 import { MapPage } from './MapPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 beforeEach(() => {
   class TestResizeObserver {
@@ -741,6 +744,54 @@ describe('optional local map presentation', () => {
       onOpenSettings={vi.fn()}
     />);
     expect(Number(stage.dataset.panX)).toBeCloseTo(manuallyPannedX, 5);
+    rect.mockRestore();
+  });
+
+  it('keeps local tracking, zoom, filters, fog, and mounted rasters intact while the Area Guide opens and closes', () => {
+    const bounds = {
+      x: 0, y: 0, top: 0, right: 1240, bottom: 825, left: 0,
+      width: 1240, height: 825,
+      toJSON: () => ({}),
+    } as DOMRect;
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(bounds);
+    const guide = {
+      trackedAreaBaseId: 0x10,
+      areas: [{
+        baseAreaId: 0x10, name: 'Route 101',
+        overview: { knownPointCount: 0, totalPointCount: null, collectedItemCount: 0, exits: [] },
+        encounters: [], placesAndServices: [], trainersAndPeople: [], items: [], objectives: [],
+      }],
+    };
+    const initialState: State = {
+      ...state,
+      currentMapPosition: { x: 18, y: 7 },
+      settings: { ...state.settings, mapFollowSmoothingPercent: 0 },
+      areaGuide: guide,
+    };
+    const view = render(<MapPage catalog={connectedCatalog} state={initialState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+    const stage = screen.getByRole('region', { name: 'Interactive local map' });
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Recenter map' }));
+    const scale = stage.dataset.scale;
+    const mountedBytes = stage.dataset.mountedDecodedBytes;
+    const rasterSources = [...view.container.querySelectorAll('.map-scene-tile')].map(image => image.getAttribute('src'));
+    const fogCount = view.container.querySelectorAll('.map-scene-placement-fog').length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Area Guide' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close area guide' }));
+    expect(stage.dataset.scale).toBe(scale);
+    expect(stage.dataset.mountedDecodedBytes).toBe(mountedBytes);
+    expect([...view.container.querySelectorAll('.map-scene-tile')].map(image => image.getAttribute('src'))).toEqual(rasterSources);
+    expect(view.container.querySelectorAll('.map-scene-placement-fog')).toHaveLength(fogCount);
+    expect(screen.getAllByRole('button', { name: 'Map POI filters' })).toHaveLength(1);
+
+    view.rerender(<MapPage
+      catalog={connectedCatalog}
+      state={{ ...initialState, currentMapPosition: { x: 19, y: 7 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    expect(Number(stage.dataset.panX)).toBeCloseTo(-(((19.5 / 44) - 0.5) * 1240 * Number(scale)), 5);
     rect.mockRestore();
   });
 

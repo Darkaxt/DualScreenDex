@@ -27,6 +27,8 @@ import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.api.StateView
 import com.enrpau.dualscreendex.companion.analysis.PartyAnalysis
 import com.enrpau.dualscreendex.companion.analysis.PartyAnalyzer
+import com.enrpau.dualscreendex.companion.map.AreaGuideBuilder
+import com.enrpau.dualscreendex.companion.map.AreaGuideProjection
 import com.enrpau.dualscreendex.companion.model.AppScreen
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.GameClock
@@ -111,6 +113,15 @@ data class ResolvedStateDispatchMetrics(
     val battleSections: Long,
 )
 
+private fun AreaGuideProjection.retainedItemCount(): Int = guide.areas.sumOf { area ->
+    area.overview.exits.size +
+        area.encounters.sumOf { it.species.size } +
+        area.placesAndServices.size +
+        area.trainersAndPeople.size +
+        area.items.size +
+        area.objectives.size
+}
+
 /** Production ROM catalog runtime. It deliberately has no simulator dependency or battle generator. */
 class ProductionCompanionRuntime(
     private val parserWorker: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
@@ -174,6 +185,9 @@ class ProductionCompanionRuntime(
     private val resolvedBattleSections = AtomicLong()
     private val partyAnalysisRecomputations = AtomicLong()
     private val partyAnalysisCpuNanos = AtomicLong()
+    private val areaGuideProjections = AtomicLong()
+    private val areaGuideProjectionCpuNanos = AtomicLong()
+    private val areaGuideRetainedItems = AtomicLong()
     private val transientGameStateSubscription = transientGameState.subscribe { update ->
         applyResolvedGameState(update)
     }
@@ -535,6 +549,7 @@ class ProductionCompanionRuntime(
         }
         val active = resolveRuleset(snapshot.settings.ruleset)
         var partyAnalysis: PartyAnalysis? = null
+        var areaGuideProjection: AreaGuideProjection? = null
         if (currentCatalog != null) {
             partyAnalysisCpuNanos.addAndGet(
                 measureNanoTime {
@@ -542,6 +557,13 @@ class ProductionCompanionRuntime(
                 },
             )
             partyAnalysisRecomputations.incrementAndGet()
+            areaGuideProjectionCpuNanos.addAndGet(
+                measureNanoTime {
+                    areaGuideProjection = AreaGuideBuilder.project(currentCatalog, snapshot)
+                },
+            )
+            areaGuideProjections.incrementAndGet()
+            areaGuideRetainedItems.set(areaGuideProjection?.retainedItemCount()?.toLong() ?: 0L)
         }
         return ApiViewBuilder.state(
             snapshot,
@@ -552,6 +574,7 @@ class ProductionCompanionRuntime(
             retroArch = retroArch,
             saveRam = saveRam,
             partyAnalysis = partyAnalysis,
+            areaGuideProjection = areaGuideProjection,
         ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
     }
 
@@ -906,6 +929,9 @@ class ProductionCompanionRuntime(
             "state.dispatch.noOps" to dispatch.noOpDispatches,
             "analysis.party.recomputations" to partyAnalysisRecomputations.get(),
             "analysis.party.cpuNanos" to partyAnalysisCpuNanos.get(),
+            "areaGuide.projections" to areaGuideProjections.get(),
+            "areaGuide.projectionCpuNanos" to areaGuideProjectionCpuNanos.get(),
+            "areaGuide.retainedItems" to areaGuideRetainedItems.get(),
         ) + transientGameState.performanceCounters()
     }
 

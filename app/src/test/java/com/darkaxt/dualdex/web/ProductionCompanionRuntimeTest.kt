@@ -1318,6 +1318,9 @@ class ProductionCompanionRuntimeTest {
         assertSame(first, second)
         assertEquals(1L, runtime.performanceCounters().getValue("analysis.party.recomputations"))
         assertTrue(runtime.performanceCounters().getValue("analysis.party.cpuNanos") > 0L)
+        assertEquals(1L, runtime.performanceCounters().getValue("areaGuide.projections"))
+        assertTrue(runtime.performanceCounters().getValue("areaGuide.projectionCpuNanos") > 0L)
+        assertEquals(0L, runtime.performanceCounters().getValue("areaGuide.retainedItems"))
         runtime.close()
     }
     @Test

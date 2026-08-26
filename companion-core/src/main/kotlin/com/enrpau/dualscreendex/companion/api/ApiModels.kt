@@ -13,6 +13,7 @@ import com.enrpau.dualscreendex.companion.map.AreaGuideObjective
 import com.enrpau.dualscreendex.companion.map.AreaGuideOverview
 import com.enrpau.dualscreendex.companion.map.AreaGuidePoint
 import com.enrpau.dualscreendex.companion.map.AreaGuidePointCategory
+import com.enrpau.dualscreendex.companion.map.AreaGuideProjection
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.MoveObservation
@@ -797,6 +798,7 @@ object ApiViewBuilder {
         retroArch: RetroArchView = RetroArchView(),
         saveRam: SaveRamView = SaveRamView(),
         partyAnalysis: PartyAnalysis? = null,
+        areaGuideProjection: AreaGuideProjection? = null,
     ): StateView {
         val effectiveAreaBaseId = snapshot.liveAreaBaseId
         val encounterAreasById = catalog?.encounterAreas.orEmpty().associateBy { it.id }
@@ -845,7 +847,8 @@ object ApiViewBuilder {
             .flatMap { (areaBaseId, speciesIds) -> speciesIds.map { speciesId -> speciesId to areaBaseId } }
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, areaBaseIds) -> areaBaseIds.distinct().sorted() }
-        val projectedMapPoints = catalog?.let { AreaGuideBuilder.projectPoints(it, snapshot) }.orEmpty()
+        val effectiveAreaGuideProjection = areaGuideProjection ?: catalog?.let { AreaGuideBuilder.project(it, snapshot) }
+        val projectedMapPoints = effectiveAreaGuideProjection?.points.orEmpty()
         val localMapPois = projectedMapPoints.map { point ->
             val item = point.category == AreaGuidePointCategory.AVAILABLE_ITEM ||
                 point.category == AreaGuidePointCategory.COLLECTED_ITEM
@@ -864,7 +867,7 @@ object ApiViewBuilder {
                 destinationBaseAreaId = point.destinationBaseAreaId,
             )
         }
-        val areaGuide = catalog?.let { AreaGuideBuilder.build(it, snapshot).toView() }
+        val areaGuide = effectiveAreaGuideProjection?.guide?.toView()
             ?.takeIf { it.areas.isNotEmpty() }
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = effectiveOwned.filter { it.speciesId == species.id }

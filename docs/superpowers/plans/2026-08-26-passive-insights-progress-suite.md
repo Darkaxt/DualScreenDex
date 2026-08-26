@@ -358,10 +358,10 @@ Pop-Location
 - Create: `docs/reports/passive-insights-progress/area-guide-compatibility.json`
 - Modify: the active performance collector and its test discovered under `app/src/main/java/com/darkaxt/dualdex/performance/`.
 
-- [ ] **Step 1: Validate official Emerald and FRLG plus Modern Emerald, Unbound, and Odyssey for names, exits, encounters, POIs, and filters.**
-- [ ] **Step 2: Validate Gen I/II official controls and report omitted facts as `NOT_APPLICABLE` only when the format genuinely cannot prove them.**
-- [ ] **Step 3: Assert hidden items remain absent until the player enters the tile or one of its eight neighbors.**
-- [ ] **Step 4: Record drawer projection/render time and retained item count in Debug logs only; prove no ROM parse, raster copy, duplicate poller, or persistent render loop.**
+- [x] **Step 1: Validate official Emerald and FRLG plus Modern Emerald, Unbound, and Odyssey for names, exits, encounters, POIs, and filters.**
+- [x] **Step 2: Validate Gen I/II official controls and report omitted facts as `NOT_APPLICABLE` only when the format genuinely cannot prove them.**
+- [x] **Step 3: Assert hidden items remain absent until the player enters the tile or one of its eight neighbors.**
+- [x] **Step 4: Record drawer projection/render time and retained item count in Debug logs only; prove no ROM parse, raster copy, duplicate poller, or persistent render loop.**
 
 ### Task 2.4: Audit and release Area Guide
 

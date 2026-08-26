@@ -1,0 +1,952 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-26",
+  "feature": "Atlas Area Guide",
+  "definitions": {
+    "areaNames": "Distinct encounter, world-map, Local-map or runtime area identities with a player-facing name.",
+    "exits": "Materialized destination or adjacent-scene exit records whose target has a named Area Guide identity.",
+    "encounterSpecies": "Encounter slot records whose referenced species has a player-facing ROM-derived name.",
+    "encounterWindows": "Encounter groups with at least one normalized availability window; ANY is a valid all-day window.",
+    "encounterLevels": "Encounter slot records with a valid positive minimum and maximum level range.",
+    "encounterRates": "Encounter slot records with an explicit ROM-derived weight.",
+    "localMaps": "Local-map records persisted out of the parser-declared expected record count.",
+    "poiBearingMaps": "Persisted Local maps with at least one parsed POI; this is observed content density, not a claim that every map must contain a POI.",
+    "poiContent": "Parsed POI records with a name, gender-specific name, service role, or item identity.",
+    "filters": "Five shared ROM-save-scoped POI category controls used by both Local map markers and Area Guide rows."
+  },
+  "controlCount": 14,
+  "controls": [
+    {
+      "id": "red",
+      "name": "Pokémon Red",
+      "generation": 1,
+      "sha256": "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 405,
+        "points": 1098
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 226,
+          "total": 226,
+          "percent": 100
+        },
+        "exits": {
+          "covered": 405,
+          "total": 405,
+          "percent": 100
+        },
+        "encounterSpecies": {
+          "covered": 580,
+          "total": 580,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 58,
+          "total": 58,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 580,
+          "total": 580,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 580,
+          "total": 580,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 226,
+          "total": 226,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 223,
+          "total": 226,
+          "percent": 98.67
+        },
+        "poiContent": {
+          "covered": 250,
+          "total": 1098,
+          "percent": 22.77
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "blue",
+      "name": "Pokémon Blue",
+      "generation": 1,
+      "sha256": "2a951313c2640e8c2cb21f25d1db019ae6245d9c7121f754fa61afd7bee6452d",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 405,
+        "points": 1098
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 226,
+          "total": 226,
+          "percent": 100
+        },
+        "exits": {
+          "covered": 405,
+          "total": 405,
+          "percent": 100
+        },
+        "encounterSpecies": {
+          "covered": 580,
+          "total": 580,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 58,
+          "total": 58,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 580,
+          "total": 580,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 580,
+          "total": 580,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 226,
+          "total": 226,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 223,
+          "total": 226,
+          "percent": 98.67
+        },
+        "poiContent": {
+          "covered": 250,
+          "total": 1098,
+          "percent": 22.77
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "yellow",
+      "name": "Pokémon Yellow",
+      "generation": 1,
+      "sha256": "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 406,
+        "points": 1109
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 227,
+          "total": 227,
+          "percent": 100
+        },
+        "exits": {
+          "covered": 406,
+          "total": 406,
+          "percent": 100
+        },
+        "encounterSpecies": {
+          "covered": 630,
+          "total": 630,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 63,
+          "total": 63,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 630,
+          "total": 630,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 630,
+          "total": 630,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 227,
+          "total": 227,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 224,
+          "total": 227,
+          "percent": 98.68
+        },
+        "poiContent": {
+          "covered": 242,
+          "total": 1109,
+          "percent": 21.82
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "gold",
+      "name": "Pokémon Gold",
+      "generation": 2,
+      "sha256": "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 859,
+        "points": 1951
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 364,
+          "total": 368,
+          "percent": 98.91
+        },
+        "exits": {
+          "covered": 830,
+          "total": 859,
+          "percent": 96.62
+        },
+        "encounterSpecies": {
+          "covered": 2097,
+          "total": 2097,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 335,
+          "total": 335,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 2097,
+          "total": 2097,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 2097,
+          "total": 2097,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 368,
+          "total": 368,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 365,
+          "total": 368,
+          "percent": 99.18
+        },
+        "poiContent": {
+          "covered": 419,
+          "total": 1951,
+          "percent": 21.48
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "silver",
+      "name": "Pokémon Silver",
+      "generation": 2,
+      "sha256": "72b190859a59623cbef6c49d601f8de52c1d2331b4f08a8d2acc17274fc19a8c",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 859,
+        "points": 1951
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 364,
+          "total": 368,
+          "percent": 98.91
+        },
+        "exits": {
+          "covered": 830,
+          "total": 859,
+          "percent": 96.62
+        },
+        "encounterSpecies": {
+          "covered": 2097,
+          "total": 2097,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 335,
+          "total": 335,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 2097,
+          "total": 2097,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 2097,
+          "total": 2097,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 368,
+          "total": 368,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 365,
+          "total": 368,
+          "percent": 99.18
+        },
+        "poiContent": {
+          "covered": 419,
+          "total": 1951,
+          "percent": 21.48
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "crystal",
+      "name": "Pokémon Crystal",
+      "generation": 2,
+      "sha256": "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 902,
+        "points": 2082
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 382,
+          "total": 388,
+          "percent": 98.45
+        },
+        "exits": {
+          "covered": 869,
+          "total": 902,
+          "percent": 96.34
+        },
+        "encounterSpecies": {
+          "covered": 2097,
+          "total": 2097,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 335,
+          "total": 335,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 2097,
+          "total": 2097,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 2097,
+          "total": 2097,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 388,
+          "total": 388,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 385,
+          "total": 388,
+          "percent": 99.23
+        },
+        "poiContent": {
+          "covered": 467,
+          "total": 2082,
+          "percent": 22.43
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "ruby",
+      "name": "Pokémon Ruby",
+      "generation": 3,
+      "sha256": "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 803,
+        "points": 1904
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 375,
+          "total": 394,
+          "percent": 95.18
+        },
+        "exits": {
+          "covered": 709,
+          "total": 803,
+          "percent": 88.29
+        },
+        "encounterSpecies": {
+          "covered": 1595,
+          "total": 1595,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 179,
+          "total": 179,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 1595,
+          "total": 1595,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 1595,
+          "total": 1595,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 394,
+          "total": 394,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 372,
+          "total": 394,
+          "percent": 94.42
+        },
+        "poiContent": {
+          "covered": 393,
+          "total": 1904,
+          "percent": 20.64
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "sapphire",
+      "name": "Pokémon Sapphire",
+      "generation": 3,
+      "sha256": "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 803,
+        "points": 1904
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 375,
+          "total": 394,
+          "percent": 95.18
+        },
+        "exits": {
+          "covered": 709,
+          "total": 803,
+          "percent": 88.29
+        },
+        "encounterSpecies": {
+          "covered": 1595,
+          "total": 1595,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 179,
+          "total": 179,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 1595,
+          "total": 1595,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 1595,
+          "total": 1595,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 394,
+          "total": 394,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 372,
+          "total": 394,
+          "percent": 94.42
+        },
+        "poiContent": {
+          "covered": 393,
+          "total": 1904,
+          "percent": 20.64
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "emerald",
+      "name": "Pokémon Emerald",
+      "generation": 3,
+      "sha256": "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 944,
+        "points": 2136
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 482,
+          "total": 518,
+          "percent": 93.05
+        },
+        "exits": {
+          "covered": 873,
+          "total": 944,
+          "percent": 92.48
+        },
+        "encounterSpecies": {
+          "covered": 1926,
+          "total": 1926,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 201,
+          "total": 201,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 1926,
+          "total": 1926,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 1926,
+          "total": 1926,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 518,
+          "total": 518,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 455,
+          "total": 518,
+          "percent": 87.84
+        },
+        "poiContent": {
+          "covered": 441,
+          "total": 2136,
+          "percent": 20.65
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "firered",
+      "name": "Pokémon FireRed",
+      "generation": 3,
+      "sha256": "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 938,
+        "points": 2129
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 124,
+          "total": 425,
+          "percent": 29.18
+        },
+        "exits": {
+          "covered": 229,
+          "total": 938,
+          "percent": 24.41
+        },
+        "encounterSpecies": {
+          "covered": 2101,
+          "total": 2101,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 219,
+          "total": 219,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 2101,
+          "total": 2101,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 2101,
+          "total": 2101,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 425,
+          "total": 425,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 414,
+          "total": 425,
+          "percent": 97.41
+        },
+        "poiContent": {
+          "covered": 590,
+          "total": 2129,
+          "percent": 27.71
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "leafgreen",
+      "name": "Pokémon LeafGreen",
+      "generation": 3,
+      "sha256": "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 938,
+        "points": 2129
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 124,
+          "total": 425,
+          "percent": 29.18
+        },
+        "exits": {
+          "covered": 229,
+          "total": 938,
+          "percent": 24.41
+        },
+        "encounterSpecies": {
+          "covered": 2101,
+          "total": 2101,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 219,
+          "total": 219,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 2101,
+          "total": 2101,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 2101,
+          "total": 2101,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 425,
+          "total": 425,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 414,
+          "total": 425,
+          "percent": 97.41
+        },
+        "poiContent": {
+          "covered": 590,
+          "total": 2129,
+          "percent": 27.71
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "modern-emerald",
+      "name": "Modern Emerald",
+      "sha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 1016,
+        "points": 2330
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 521,
+          "total": 557,
+          "percent": 93.54
+        },
+        "exits": {
+          "covered": 945,
+          "total": 1016,
+          "percent": 93.01
+        },
+        "encounterSpecies": {
+          "covered": 2697,
+          "total": 2697,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 231,
+          "total": 231,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 2697,
+          "total": 2697,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 2697,
+          "total": 2697,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 557,
+          "total": 557,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 486,
+          "total": 557,
+          "percent": 87.25
+        },
+        "poiContent": {
+          "covered": 445,
+          "total": 2330,
+          "percent": 19.1
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "unbound",
+      "name": "Pokémon Unbound",
+      "sha256": "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 843,
+        "points": 2111
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 165,
+          "total": 295,
+          "percent": 55.93
+        },
+        "exits": {
+          "covered": 375,
+          "total": 843,
+          "percent": 44.48
+        },
+        "encounterSpecies": {
+          "covered": 2718,
+          "total": 2718,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 339,
+          "total": 339,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 2703,
+          "total": 2718,
+          "percent": 99.45
+        },
+        "encounterRates": {
+          "covered": 2718,
+          "total": 2718,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 294,
+          "total": 294,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 286,
+          "total": 294,
+          "percent": 97.28
+        },
+        "poiContent": {
+          "covered": 854,
+          "total": 2111,
+          "percent": 40.45
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    },
+    {
+      "id": "odyssey",
+      "name": "Pokémon Odyssey",
+      "sha256": "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
+      "catalogPersistedAndReopened": true,
+      "materializedRecords": {
+        "exits": 392,
+        "points": 1071
+      },
+      "coverage": {
+        "areaNames": {
+          "covered": 18,
+          "total": 168,
+          "percent": 10.71
+        },
+        "exits": {
+          "covered": 34,
+          "total": 392,
+          "percent": 8.67
+        },
+        "encounterSpecies": {
+          "covered": 353,
+          "total": 353,
+          "percent": 100
+        },
+        "encounterWindows": {
+          "covered": 24,
+          "total": 24,
+          "percent": 100
+        },
+        "encounterLevels": {
+          "covered": 353,
+          "total": 353,
+          "percent": 100
+        },
+        "encounterRates": {
+          "covered": 353,
+          "total": 353,
+          "percent": 100
+        },
+        "localMaps": {
+          "covered": 168,
+          "total": 168,
+          "percent": 100
+        },
+        "poiBearingMaps": {
+          "covered": 153,
+          "total": 168,
+          "percent": 91.07
+        },
+        "poiContent": {
+          "covered": 128,
+          "total": 1071,
+          "percent": 11.95
+        },
+        "filters": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        }
+      }
+    }
+  ],
+  "aggregate": {
+    "areaNames": {
+      "covered": 3973,
+      "total": 4979,
+      "percent": 79.8
+    },
+    "exits": {
+      "covered": 7848,
+      "total": 10513,
+      "percent": 74.65
+    },
+    "encounterSpecies": {
+      "covered": 23167,
+      "total": 23167,
+      "percent": 100
+    },
+    "encounterWindows": {
+      "covered": 2775,
+      "total": 2775,
+      "percent": 100
+    },
+    "encounterLevels": {
+      "covered": 23152,
+      "total": 23167,
+      "percent": 99.94
+    },
+    "encounterRates": {
+      "covered": 23167,
+      "total": 23167,
+      "percent": 100
+    },
+    "localMaps": {
+      "covered": 4978,
+      "total": 4978,
+      "percent": 100
+    },
+    "poiBearingMaps": {
+      "covered": 4737,
+      "total": 4978,
+      "percent": 95.16
+    },
+    "poiContent": {
+      "covered": 5881,
+      "total": 25003,
+      "percent": 23.52
+    },
+    "filters": {
+      "covered": 70,
+      "total": 70,
+      "percent": 100
+    }
+  },
+  "errors": []
+}

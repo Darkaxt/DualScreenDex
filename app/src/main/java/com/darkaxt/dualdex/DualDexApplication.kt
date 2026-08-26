@@ -159,6 +159,7 @@ class DualDexApplication : Application() {
                 val map = metricsRuntime?.mapAssetCacheStats()
                 val loopback = metricsServer?.capacitySnapshot()
                 val mapper = metricsMapper?.snapshot()
+                val runtime = metricsRuntime?.performanceCounters().orEmpty()
                 PerformanceComponentMetrics(
                     mapCacheEntries = map?.entries,
                     mapCacheEncodedBytes = map?.encodedBytes,
@@ -172,8 +173,11 @@ class DualDexApplication : Application() {
                     loopbackActiveConnections = loopback?.activeConnections,
                     mapperSnapshots = mapper?.snapshots?.size,
                     mapperRetainedBytes = mapper?.snapshots?.sumOf { snapshot -> snapshot.bytes.toLong() },
+                    areaGuideProjections = runtime["areaGuide.projections"],
+                    areaGuideProjectionCpuNanos = runtime["areaGuide.projectionCpuNanos"],
+                    areaGuideRetainedItems = runtime["areaGuide.retainedItems"],
                 ).counters() +
-                    metricsRuntime?.performanceCounters().orEmpty() +
+                    runtime +
                     metricsServer?.performanceCounters().orEmpty()
             },
             sinks = listOf(

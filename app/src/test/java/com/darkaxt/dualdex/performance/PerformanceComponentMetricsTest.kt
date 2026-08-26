@@ -20,6 +20,9 @@ class PerformanceComponentMetricsTest {
             loopbackActiveConnections = 3,
             mapperSnapshots = 5,
             mapperRetainedBytes = 2048,
+            areaGuideProjections = 3,
+            areaGuideProjectionCpuNanos = 1200,
+            areaGuideRetainedItems = 14,
         ).counters()
 
         assertEquals(3L, counters["mapCache.entries"])
@@ -29,6 +32,9 @@ class PerformanceComponentMetricsTest {
         assertEquals(3L, counters["loopback.activeConnections"])
         assertEquals(5L, counters["mapper.snapshots"])
         assertEquals(2048L, counters["mapper.retainedBytes"])
+        assertEquals(3L, counters["areaGuide.projections"])
+        assertEquals(1200L, counters["areaGuide.projectionCpuNanos"])
+        assertEquals(14L, counters["areaGuide.retainedItems"])
         assertFalse(counters.keys.any { it.contains("path", ignoreCase = true) })
     }
 

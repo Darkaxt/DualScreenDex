@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const styles = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8')
+const areaGuideSource = readFileSync(join(process.cwd(), 'src', 'pages', 'AreaGuideDrawer.tsx'), 'utf8')
 
 describe('screen layout containment', () => {
   it('keeps root titles left aligned when the header also has actions', () => {
@@ -66,5 +67,10 @@ describe('screen layout containment', () => {
     expect(contentRule).toMatch(/min-height\s*:\s*0/)
     expect(contentRule).toMatch(/overflow-y\s*:\s*auto/)
     expect(listRule).toMatch(/overflow-y\s*:\s*auto/)
+  })
+
+  it('does not give the Area Guide its own polling or animation loop', () => {
+    expect(areaGuideSource).not.toMatch(/setInterval|setTimeout|requestAnimationFrame|fetch\s*\(/)
+    expect(areaGuideSource).toContain("console.debug(JSON.stringify({ event: 'area-guide-render', renderMillis, retainedItems }))")
   })
 })

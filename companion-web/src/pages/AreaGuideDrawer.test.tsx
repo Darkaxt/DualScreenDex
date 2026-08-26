@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AreaGuideAreaView } from '../models';
 import { AreaGuideDrawer } from './AreaGuideDrawer';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const area: AreaGuideAreaView = {
   baseAreaId: 0x10,

@@ -13,6 +13,9 @@ data class PerformanceComponentMetrics(
     val loopbackActiveConnections: Int? = null,
     val mapperSnapshots: Int? = null,
     val mapperRetainedBytes: Long? = null,
+    val areaGuideProjections: Long? = null,
+    val areaGuideProjectionCpuNanos: Long? = null,
+    val areaGuideRetainedItems: Long? = null,
 ) {
     fun counters(): Map<String, Long> = buildMap {
         mapCacheEntries?.let { put("mapCache.entries", it.toLong()) }
@@ -27,5 +30,8 @@ data class PerformanceComponentMetrics(
         loopbackActiveConnections?.let { put("loopback.activeConnections", it.toLong()) }
         mapperSnapshots?.let { put("mapper.snapshots", it.toLong()) }
         mapperRetainedBytes?.let { put("mapper.retainedBytes", it) }
+        areaGuideProjections?.let { put("areaGuide.projections", it) }
+        areaGuideProjectionCpuNanos?.let { put("areaGuide.projectionCpuNanos", it) }
+        areaGuideRetainedItems?.let { put("areaGuide.retainedItems", it) }
     }
 }

@@ -5,6 +5,11 @@ data class AreaGuide(
     val areas: List<AreaGuideArea>,
 )
 
+data class AreaGuideProjection(
+    val points: List<AreaGuidePoint>,
+    val guide: AreaGuide,
+)
+
 data class AreaGuideArea(
     val baseAreaId: Int,
     val name: String,
