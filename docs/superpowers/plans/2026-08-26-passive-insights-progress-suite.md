@@ -469,7 +469,7 @@ Pop-Location
 - [x] **Step 3: Prove exact identity isolation, APK-update retention, unchanged-save no-write behavior, bounded journal growth, and absence of false transition events.**
 - [x] **Step 4: Compare Sections 3, 5, 7, 11.1–11.2, 12–15, and 17 against the audit table.**
 - [x] **Step 5: Close the Stage 2 Objectives deferral and assign Tier 2/3 expansion to Stage 6. Fix every blocker/error.**
-- [ ] **Step 6: Run full affected suites, commit the complete feature/audit, then discover and publish exactly one next numeric RC. Do not install it.**
+- [x] **Step 6: Run full affected suites, commit the complete feature/audit, then discover and publish exactly one next numeric RC. Do not install it.**
 
 ---
 
