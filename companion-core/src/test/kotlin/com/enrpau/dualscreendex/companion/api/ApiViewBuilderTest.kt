@@ -44,6 +44,7 @@ import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.TrainerAssetCatalog
+import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
@@ -63,6 +64,34 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ApiViewBuilderTest {
+    @Test
+    fun projectsOnlyTheActiveParsedTypeChartAndLeavesAnEmptyChartUnavailable() {
+        val mutated = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            typeChart = listOf(
+                TypeMatchup(attackingTypeId = 7, defendingTypeId = 11, multiplierPercent = 250),
+                TypeMatchup(attackingTypeId = 4, defendingTypeId = 7, multiplierPercent = 0),
+            ),
+        )
+        val unavailable = ParsedCatalog(
+            romSha256 = "b".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            typeChart = emptyList(),
+        )
+
+        assertEquals(
+            listOf(
+                TypeMatchupView(4, 7, 0),
+                TypeMatchupView(7, 11, 250),
+            ),
+            ApiViewBuilder.catalog(mutated).typeMatchups,
+        )
+        assertEquals(emptyList<TypeMatchupView>(), ApiViewBuilder.catalog(unavailable).typeMatchups)
+    }
+
     @Test
     fun organicPoiProjectionNeverLeaksUndiscoveredHiddenCoordinatesOrItemIdentity() {
         val map = LocalMap("local/0102", "Route", 0x0102, 160, 160, 10, 10, "local/0102/map")

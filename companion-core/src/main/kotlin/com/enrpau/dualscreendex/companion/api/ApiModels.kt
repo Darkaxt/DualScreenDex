@@ -26,6 +26,7 @@ data class CatalogView(
     val species: List<SpeciesView>,
     val moves: List<MoveView>,
     val types: List<TypeView>,
+    val typeMatchups: List<TypeMatchupView>,
     val areas: List<AreaView>,
     val balls: List<BallView>,
     val natures: List<NatureView>,
@@ -192,6 +193,7 @@ data class MoveView(
     val description: String?,
 )
 data class TypeView(val id: Int, val name: String, val foreground: String?, val background: String?, val border: String?)
+data class TypeMatchupView(val attackingTypeId: Int, val defendingTypeId: Int, val multiplierPercent: Int)
 data class EncounterSlotView(
     val speciesId: Int,
     val minimumLevel: Int,
@@ -602,6 +604,9 @@ object ApiViewBuilder {
                 presentation?.borderArgb?.toCss(),
             )
         },
+        typeMatchups = catalog.typeChart
+            .sortedWith(compareBy({ it.attackingTypeId }, { it.defendingTypeId }, { it.multiplierPercent }))
+            .map { TypeMatchupView(it.attackingTypeId, it.defendingTypeId, it.multiplierPercent) },
         areas = catalog.encounterAreas.sortedBy { it.id }.map {
             AreaView(
                 it.id,
