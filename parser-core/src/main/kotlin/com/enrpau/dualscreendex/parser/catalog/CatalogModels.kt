@@ -358,6 +358,12 @@ data class CatalogGen3RuntimeMemoryLayout(
     val saveBlock2Address: Long? = null,
     val saveBlock1PointerAddress: Long? = null,
     val saveBlock2PointerAddress: Long? = null,
+    val pokemonStorageAddress: Long? = null,
+    val pokemonStoragePointerAddress: Long? = null,
+    val pokemonStorageBoxCount: Int? = null,
+    val pokemonStorageBoxCapacity: Int? = null,
+    val pokemonStorageRecordSize: Int? = null,
+    val pokemonStorageRecordsOffset: Int? = null,
     val extendedSaveAddress: Long? = null,
     val saveRuntimeAbi: CatalogGen3SaveRuntimeAbi? = null,
     val partyAbi: CatalogGen3PartyAbi? = null,
@@ -411,6 +417,32 @@ data class CatalogGen3RuntimeMemoryLayout(
         ) { "direct SaveBlock2 window must fit in EWRAM" }
         require(saveBlock1PointerAddress == null || saveBlock1PointerAddress in 0x02000000L..0x03007FFCL)
         require(saveBlock2PointerAddress == null || saveBlock2PointerAddress in 0x02000000L..0x03007FFCL)
+        val storageShape = listOf(
+            pokemonStorageBoxCount,
+            pokemonStorageBoxCapacity,
+            pokemonStorageRecordSize,
+            pokemonStorageRecordsOffset,
+        )
+        require(storageShape.all { it == null } || storageShape.all { it != null }) {
+            "Pokemon storage shape descriptor must be complete"
+        }
+        require((pokemonStorageAddress == null) || pokemonStoragePointerAddress == null) {
+            "Pokemon storage must use either a direct address or a pointer global"
+        }
+        require((pokemonStorageAddress != null || pokemonStoragePointerAddress != null) == storageShape.all { it != null }) {
+            "Pokemon storage addressing and shape must be present together"
+        }
+        require(pokemonStorageAddress == null || pokemonStorageAddress in 0x02000000L..0x0203FFFFL)
+        require(pokemonStoragePointerAddress == null || pokemonStoragePointerAddress in 0x02000000L..0x03007FFCL)
+        require(pokemonStorageBoxCount == null || pokemonStorageBoxCount > 0)
+        require(pokemonStorageBoxCapacity == null || pokemonStorageBoxCapacity > 0)
+        require(pokemonStorageRecordSize == null || pokemonStorageRecordSize >= 80)
+        require(pokemonStorageRecordsOffset == null || pokemonStorageRecordsOffset >= 0)
+        require(
+            pokemonStorageAddress == null || pokemonStorageAddress + requireNotNull(pokemonStorageRecordsOffset) +
+                requireNotNull(pokemonStorageBoxCount).toLong() * requireNotNull(pokemonStorageBoxCapacity) *
+                requireNotNull(pokemonStorageRecordSize) <= 0x02040000L,
+        ) { "direct Pokemon storage record window must fit in EWRAM" }
         require(extendedSaveAddress == null || extendedSaveAddress in 0x02000000L..0x0203FFFFL)
         require(
             saveRuntimeAbi?.extendedSaveDataSize?.let { size ->

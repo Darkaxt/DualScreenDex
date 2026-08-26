@@ -226,6 +226,9 @@ class UnifiedGameStateDecoder(
             Gen3LiveMemoryReader.decode(regions, memoryLayout, parseContext)
         } else null
         val party = cached?.party ?: memory?.party ?: unavailable("live Party layout was unavailable")
+        val storedIndividuals = cached?.storedIndividuals
+            ?: memory?.storedIndividuals
+            ?: unavailable("live owned storage layout was unavailable")
         val decodedPlayer = cached?.let { sections ->
             com.darkaxt.dualdex.battle.Gen3LivePlayerState(
                 trainer = sections.player.trainer,
@@ -253,7 +256,7 @@ class UnifiedGameStateDecoder(
                 trainer = player.trainer,
                 pokedex = player.pokedex,
                 party = party,
-                storedIndividuals = unavailable("live owned storage layout was unavailable"),
+                storedIndividuals = storedIndividuals,
                 battle = LiveValue.Available(battle),
                 location = LiveLocationState(
                     areaBaseId = areaBaseId?.let { LiveValue.Available(it) }
@@ -443,6 +446,17 @@ class UnifiedGameStateDecoder(
                 parseContext,
             )
         }
+        val storedIndividuals = translatedSectionCache.resolve(
+            Gen3LiveDecodedSection.STORAGE,
+            contextEpoch,
+            fingerprints.storage,
+        ) {
+            Gen3LiveMemoryReader.decodeStorage(
+                regions[Gen3LiveMemoryReader.STORAGE_ID],
+                layout,
+                parseContext,
+            )
+        }
         val player = translatedSectionCache.resolve(
             Gen3LiveDecodedSection.PLAYER,
             contextEpoch,
@@ -486,7 +500,7 @@ class UnifiedGameStateDecoder(
                 ),
             )
         }
-        return CachedGen3Sections(player, party, overworld, progression)
+        return CachedGen3Sections(player, party, storedIndividuals, overworld, progression)
     }
 
     private fun resolveSnapshot(): ResolvedGameSnapshot? {
@@ -757,6 +771,7 @@ class UnifiedGameStateDecoder(
     private data class CachedGen3Sections(
         val player: Gen3LivePlayerOverview,
         val party: LiveValue<List<com.darkaxt.dualdex.save.OwnedIndividual>>,
+        val storedIndividuals: LiveValue<List<com.darkaxt.dualdex.save.OwnedIndividual>>,
         val overworld: CachedGen3Overworld,
         val progression: CachedGen3Progression,
     )

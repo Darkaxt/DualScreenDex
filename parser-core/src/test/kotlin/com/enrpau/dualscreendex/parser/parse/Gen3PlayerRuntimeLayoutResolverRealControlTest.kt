@@ -42,6 +42,9 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
             assertEquals(0x02024EA4L, runtime.saveBlock2Address)
             assertNull(runtime.saveBlock1PointerAddress)
             assertNull(runtime.saveBlock2PointerAddress)
+            requireNotNull(runtime.pokemonStorageAddress)
+            assertNull(runtime.pokemonStoragePointerAddress)
+            assertEquals(14, runtime.pokemonStorageBoxCount)
             requireNotNull(runtime.liveClockAddress)
             assertNull(runtime.liveClockSchedule)
             val save = requireNotNull(runtime.saveRuntimeAbi)
@@ -85,6 +88,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
 
         assertEquals(0x030036F0L, runtime.saveBlock1PointerAddress)
         assertEquals(0x030036F4L, runtime.saveBlock2PointerAddress)
+        requireNotNull(runtime.pokemonStoragePointerAddress)
+        assertEquals(15, runtime.pokemonStorageBoxCount)
         val save = requireNotNull(runtime.saveRuntimeAbi)
         assertEquals(0x00, save.trainer.playerNameOffset)
         assertEquals(0x08, save.trainer.genderOffset)
@@ -111,6 +116,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         assertNull(runtime.liveClockSchedule)
         assertEquals(0x03005008L, runtime.saveBlock1PointerAddress)
         assertEquals(0x0300500CL, runtime.saveBlock2PointerAddress)
+        requireNotNull(runtime.pokemonStorageAddress)
+        assertEquals(14, runtime.pokemonStorageBoxCount)
         val save = requireNotNull(runtime.saveRuntimeAbi)
         assertEquals(0x3D68, save.saveBlock1Size)
         assertEquals(0x0F24, save.saveBlock2Size)
@@ -120,9 +127,10 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
 
     @Test
     fun officialFireRedPublishesItsSourceDefinedSaveRuntimeDescriptor() {
-        val configured = System.getenv("DUALDEX_OFFICIAL_FIRERED_ROM")
-        assumeTrue("set DUALDEX_OFFICIAL_FIRERED_ROM to run this live-ROM regression", !configured.isNullOrBlank())
-        val path = Path.of(requireNotNull(configured))
+        val path = Path.of(
+            System.getenv("DUALDEX_OFFICIAL_FIRERED_ROM")
+                ?: "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
+        )
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
 
         val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
@@ -131,6 +139,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
 
         assertEquals(0x03005008L, runtime.saveBlock1PointerAddress)
         assertEquals(0x0300500CL, runtime.saveBlock2PointerAddress)
+        requireNotNull(runtime.pokemonStoragePointerAddress)
+        assertEquals(14, runtime.pokemonStorageBoxCount)
         assertEquals(null, runtime.extendedSaveAddress)
         assertNull(runtime.liveClockAddress)
         assertNull(runtime.liveClockSchedule)
@@ -150,9 +160,10 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
 
     @Test
     fun officialEmeraldPublishesTheCompleteSourceVerifiedPlayerRuntimeDescriptor() {
-        val configured = System.getenv("DUALDEX_OFFICIAL_EMERALD_ROM")
-        assumeTrue("set DUALDEX_OFFICIAL_EMERALD_ROM to run this live-ROM regression", !configured.isNullOrBlank())
-        val path = Path.of(requireNotNull(configured))
+        val path = Path.of(
+            System.getenv("DUALDEX_OFFICIAL_EMERALD_ROM")
+                ?: "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Emerald Version (USA, Europe).gba",
+        )
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
 
         val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
@@ -161,6 +172,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
 
         assertEquals(0x03005D8CL, runtime.saveBlock1PointerAddress)
         assertEquals(0x03005D90L, runtime.saveBlock2PointerAddress)
+        requireNotNull(runtime.pokemonStoragePointerAddress)
+        assertEquals(14, runtime.pokemonStorageBoxCount)
         requireNotNull(runtime.liveClockAddress)
         assertNull(runtime.liveClockSchedule)
         val save = requireNotNull(runtime.saveRuntimeAbi)
@@ -215,6 +228,25 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         assertEquals(0x0202420CL, battleUi.targetCursorAddress)
     }
 
+    @Test
+    fun odysseyPublishesSourceDerivedLiveStorageWithoutARomProfile() {
+        val path = Path.of(
+            System.getenv("DUALDEX_ODYSSEY_ROM")
+                ?: "D:/Temp/PokemonHacks/corpus/expanded/roms/0123-5e7ce46db2ce/Odyssey (v4.1.1).gba",
+        )
+        assumeTrue("real Odyssey ROM does not exist: $path", Files.isRegularFile(path))
+
+        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        assertEquals(ODYSSEY_SHA256, parsed.analysis.sha256)
+        val runtime = requireNotNull(requireNotNull(parsed.catalog).runtimeMetadata.gen3RuntimeMemoryLayout)
+
+        requireNotNull(runtime.pokemonStoragePointerAddress)
+        assertEquals(14, runtime.pokemonStorageBoxCount)
+        assertEquals(30, runtime.pokemonStorageBoxCapacity)
+        assertEquals(80, runtime.pokemonStorageRecordSize)
+        assertEquals(4, runtime.pokemonStorageRecordsOffset)
+    }
+
     private companion object {
         const val MODERN_EMERALD_SHA256 =
             "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895"
@@ -228,5 +260,7 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
             "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb"
         const val UNBOUND_SHA256 =
             "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7"
+        const val ODYSSEY_SHA256 =
+            "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0"
     }
 }

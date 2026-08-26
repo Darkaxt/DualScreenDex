@@ -63,6 +63,17 @@ object Gen3PlayerRuntimeLayoutResolver {
                 else -> null
             }
         } else null
+        val storageShape = if (family == EngineFamily.RUBY_SAPPHIRE && directSave != null) {
+            StorageShape(RETAIL_STORAGE_BOXES)
+        } else {
+            saveGroup?.let { resolveStorageShape(rom, it, expandedSave) }
+        }
+        val storageAddress = storageShape?.let {
+            expandedSave?.storageAddress ?: directSave?.let { resolveDirectStorageAddress(references, storageShape.boxCount) }
+        }
+        val storagePointer = storageShape?.takeIf { storageAddress == null }?.let {
+            resolveStoragePointer(references, saveBlock1Pointer, saveBlock2Pointer)
+        }
         val party = resolveParty(base, references)
         val battle = resolveBattleLayout(references)
         return base.copy(
@@ -71,12 +82,108 @@ object Gen3PlayerRuntimeLayoutResolver {
             saveBlock2Address = saveGroup?.let { directSave?.saveBlock2Address },
             saveBlock1PointerAddress = saveGroup?.let { saveBlock1Pointer },
             saveBlock2PointerAddress = saveGroup?.let { saveBlock2Pointer },
+            pokemonStorageAddress = storageAddress,
+            pokemonStoragePointerAddress = storagePointer,
+            pokemonStorageBoxCount = (storageAddress ?: storagePointer)?.let { storageShape?.boxCount },
+            pokemonStorageBoxCapacity = (storageAddress ?: storagePointer)?.let { STORAGE_BOX_CAPACITY },
+            pokemonStorageRecordSize = (storageAddress ?: storagePointer)?.let { STORAGE_RECORD_SIZE },
+            pokemonStorageRecordsOffset = (storageAddress ?: storagePointer)?.let { STORAGE_RECORDS_OFFSET },
             extendedSaveAddress = saveGroup?.extendedSaveDataSize?.takeIf { it > 0 }
                 ?.let { expandedSave?.extendedSaveAddress },
             saveRuntimeAbi = saveGroup,
             partyAbi = party,
             battleUiAbi = battle?.battleUi,
         )
+    }
+
+    private fun resolveStoragePointer(
+        references: Map<Long, Int>,
+        saveBlock1PointerAddress: Long?,
+        saveBlock2PointerAddress: Long?,
+    ): Long? {
+        val save1 = saveBlock1PointerAddress ?: return null
+        val save2 = saveBlock2PointerAddress ?: return null
+        if (save2 != save1 + POINTER_BYTES) return null
+        val candidate = save2 + POINTER_BYTES
+        return candidate.takeIf { it in IWRAM_START..IWRAM_END - POINTER_BYTES + 1 }
+    }
+
+    private fun resolveDirectStorageAddress(references: Map<Long, Int>, boxCount: Int): Long? {
+        val recordsEnd = STORAGE_RECORDS_OFFSET + boxCount * STORAGE_BOX_CAPACITY * STORAGE_RECORD_SIZE
+        val structureEnd = recordsEnd + boxCount * (STORAGE_BOX_NAME_BYTES + STORAGE_WALLPAPER_BYTES)
+        val scored = references.keys.map { it - STORAGE_RECORDS_OFFSET }
+            .filter { base ->
+                base and 3L == 0L && base in EWRAM_START..EWRAM_END - structureEnd &&
+                    (references[base + STORAGE_RECORDS_OFFSET] ?: 0) >= MIN_DIRECT_STORAGE_REFERENCES
+            }
+            .distinct()
+            .associateWith { base ->
+                DirectStorageScore(
+                    recordsBaseReferences = references.getValue(base + STORAGE_RECORDS_OFFSET),
+                    structureReferences = references.filterKeys {
+                        it in base + STORAGE_RECORDS_OFFSET until base + structureEnd
+                    }.values.sum(),
+                )
+            }
+        val sourceBase = EWRAM_START.takeIf {
+            (references[it + STORAGE_RECORDS_OFFSET] ?: 0) >= MIN_DIRECT_STORAGE_REFERENCES &&
+                it + structureEnd <= EWRAM_END + 1
+        }
+        val best = scored.values.maxWithOrNull(
+            compareBy<DirectStorageScore>(DirectStorageScore::recordsBaseReferences)
+                .thenBy(DirectStorageScore::structureReferences),
+        )?.takeIf { it.structureReferences >= MIN_DIRECT_STORAGE_TOTAL_REFERENCES } ?: return sourceBase
+        return scored.filterValues { it == best }.keys.singleOrNull()
+            ?: sourceBase
+    }
+
+    private fun resolveStorageShape(
+        rom: RomImage,
+        saveAbi: CatalogGen3SaveRuntimeAbi,
+        expandedSave: ExpandedSaveResolution?,
+    ): StorageShape? {
+        if (expandedSave != null) {
+            val storageBytes = CFRU_SECTION_SIZES.slice(5..13).sum()
+            return storageShapeFromBytes(storageBytes)
+        }
+        val counts = buildList {
+            var offset = 0
+            while (offset <= rom.size - SAVE_SLOT_LAYOUT_BYTES) {
+                val entries = List(SAVE_SLOT_SECTION_COUNT) { index ->
+                    SaveSlotEntry(
+                        byteOffset = rom.u16le(offset + index * SAVE_SLOT_ENTRY_BYTES),
+                        byteCount = rom.u16le(offset + index * SAVE_SLOT_ENTRY_BYTES + 2),
+                    )
+                }
+                val stride = entries[2].byteOffset
+                val validStride = stride in MIN_SAVE_SECTION_STRIDE..MAX_SAVE_SECTION_STRIDE && stride % 4 == 0
+                val save2Valid = entries[0].byteOffset == 0 &&
+                    entries[0].byteCount in saveAbi.saveBlock2Size..saveAbi.saveBlock2Size + MAX_SAVE_ABI_GROWTH
+                val save1Valid = validStride && (1..4).all { section ->
+                    val chunk = section - 1
+                    entries[section].byteOffset == chunk * stride && entries[section].byteCount in 1..stride
+                } && entries.slice(1..4).sumOf(SaveSlotEntry::byteCount) in
+                    saveAbi.saveBlock1Size..saveAbi.saveBlock1Size + MAX_SAVE_ABI_GROWTH
+                val storageValid = validStride && (5..13).all { section ->
+                    val chunk = section - 5
+                    entries[section].byteOffset == chunk * stride && entries[section].byteCount in 1..stride
+                }
+                if (save2Valid && save1Valid && storageValid) {
+                    storageShapeFromBytes(entries.slice(5..13).sumOf(SaveSlotEntry::byteCount))?.let(::add)
+                }
+                offset += 4
+            }
+        }
+        return counts.distinct().singleOrNull()
+    }
+
+    private fun storageShapeFromBytes(storageBytes: Int): StorageShape? {
+        val boxCount = ((storageBytes - STORAGE_RECORDS_OFFSET) /
+            (STORAGE_BOX_CAPACITY * STORAGE_RECORD_SIZE)).takeIf { it in MIN_STORAGE_BOXES..MAX_STORAGE_BOXES }
+            ?: return null
+        val recordsEnd = STORAGE_RECORDS_OFFSET + boxCount * STORAGE_BOX_CAPACITY * STORAGE_RECORD_SIZE
+        val structureEnd = recordsEnd + boxCount * (STORAGE_BOX_NAME_BYTES + STORAGE_WALLPAPER_BYTES)
+        return StorageShape(boxCount).takeIf { storageBytes in structureEnd..<(structureEnd + STORAGE_RECORD_SIZE) }
     }
 
     /**
@@ -511,6 +618,7 @@ object Gen3PlayerRuntimeLayoutResolver {
             ExpandedSaveResolution(
                 saveBlock1PointerAddress = pointerGlobals.first,
                 saveBlock2PointerAddress = pointerGlobals.second,
+                storageAddress = directory.storageAddress,
                 extendedSaveAddress = extendedBase,
                 pockets = pockets,
             )
@@ -728,6 +836,23 @@ object Gen3PlayerRuntimeLayoutResolver {
     private const val MIN_SAVE_BLOCK_POINTER_LOADS = 20
     private const val MIN_SAVE_FIELD_LOADS = 4
     private const val MIN_ADJACENT_SAVE_FIELD_LOADS = 1
+    private const val POINTER_BYTES = 4L
+    private const val MIN_DIRECT_STORAGE_REFERENCES = 1
+    private const val MIN_DIRECT_STORAGE_TOTAL_REFERENCES = 8
+    private const val STORAGE_RECORDS_OFFSET = 4
+    private const val STORAGE_BOX_CAPACITY = 30
+    private const val STORAGE_RECORD_SIZE = 80
+    private const val STORAGE_BOX_NAME_BYTES = 9
+    private const val STORAGE_WALLPAPER_BYTES = 1
+    private const val MIN_STORAGE_BOXES = 14
+    private const val MAX_STORAGE_BOXES = 15
+    private const val RETAIL_STORAGE_BOXES = 14
+    private const val SAVE_SLOT_SECTION_COUNT = 14
+    private const val SAVE_SLOT_ENTRY_BYTES = 4
+    private const val SAVE_SLOT_LAYOUT_BYTES = SAVE_SLOT_SECTION_COUNT * SAVE_SLOT_ENTRY_BYTES
+    private const val MIN_SAVE_SECTION_STRIDE = 0xF00
+    private const val MAX_SAVE_SECTION_STRIDE = 0xFF4
+    private const val MAX_SAVE_ABI_GROWTH = 0x100
     private const val SAVE2_GENDER_OFFSET = 0x08
     private const val SAVE2_TRAINER_ID_OFFSET = 0x0A
     private const val SAVE2_PLAY_HOURS_OFFSET = 0x0E
@@ -840,9 +965,13 @@ object Gen3PlayerRuntimeLayoutResolver {
     private data class ExpandedSaveResolution(
         val saveBlock1PointerAddress: Long,
         val saveBlock2PointerAddress: Long,
+        val storageAddress: Long,
         val extendedSaveAddress: Long,
         val pockets: List<CatalogGen3BagPocketAbi>,
     )
+    private data class StorageShape(val boxCount: Int)
+    private data class SaveSlotEntry(val byteOffset: Int, val byteCount: Int)
+    private data class DirectStorageScore(val recordsBaseReferences: Int, val structureReferences: Int)
     private data class DirectSaveResolution(
         val saveBlock1Address: Long,
         val saveBlock2Address: Long,

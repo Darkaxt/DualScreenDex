@@ -10,11 +10,13 @@ data class Gen3LiveReadWindow(val id: String, val address: Long, val byteCount: 
 data class Gen3LivePointers(
     val saveBlock1Address: Long?,
     val saveBlock2Address: Long?,
+    val pokemonStorageAddress: Long? = null,
 )
 
 data class Gen3LiveMemoryValues(
     val location: LiveValue<Int>,
     val party: LiveValue<List<OwnedIndividual>>,
+    val storedIndividuals: LiveValue<List<OwnedIndividual>>,
     val clock: LiveValue<LiveClockState>,
     val eventFlags: LiveValue<Set<Int>>,
 )
@@ -27,17 +29,22 @@ object Gen3LiveMemoryReader {
     const val PARTY_ID = "live-party"
     const val SAVE_BLOCK1_POINTER_ID = "live-save-block-1-pointer"
     const val SAVE_BLOCK2_POINTER_ID = "live-save-block-2-pointer"
+    const val STORAGE_POINTER_ID = "live-pokemon-storage-pointer"
+    const val STORAGE_ID = "live-pokemon-storage-records"
     const val EXTENDED_SAVE_ID = "live-extended-save"
     const val CLOCK_ID = "live-game-clock"
 
-    fun pointerWindows(layout: Gen3RuntimeMemoryLayout): List<Gen3LiveReadWindow> {
-        val saveBlock1Pointer = layout.saveBlock1PointerAddress ?: return emptyList()
-        val saveBlock2Pointer = layout.saveBlock2PointerAddress ?: return emptyList()
-        return listOf(
-            Gen3LiveReadWindow(SAVE_BLOCK1_POINTER_ID, saveBlock1Pointer, POINTER_BYTES),
-            Gen3LiveReadWindow(SAVE_BLOCK2_POINTER_ID, saveBlock2Pointer, POINTER_BYTES),
-        )
-    }
+    fun pointerWindows(layout: Gen3RuntimeMemoryLayout): List<Gen3LiveReadWindow> = buildList {
+            layout.saveBlock1PointerAddress?.let { saveBlock1Pointer ->
+                add(Gen3LiveReadWindow(SAVE_BLOCK1_POINTER_ID, saveBlock1Pointer, POINTER_BYTES))
+            }
+            layout.saveBlock2PointerAddress?.let { saveBlock2Pointer ->
+                add(Gen3LiveReadWindow(SAVE_BLOCK2_POINTER_ID, saveBlock2Pointer, POINTER_BYTES))
+            }
+            layout.pokemonStoragePointerAddress?.let { address ->
+                add(Gen3LiveReadWindow(STORAGE_POINTER_ID, address, POINTER_BYTES))
+            }
+        }
 
     fun decodePointers(
         regions: Map<String, ByteArray>,
@@ -47,6 +54,9 @@ object Gen3LiveMemoryReader {
             ?: decodePointer(regions[SAVE_BLOCK1_POINTER_ID], layout.saveBlock1Size),
         saveBlock2Address = layout.saveBlock2Address
             ?: decodePointer(regions[SAVE_BLOCK2_POINTER_ID], layout.saveBlock2Size),
+        pokemonStorageAddress = layout.pokemonStorageAddress ?: layout.pokemonStoragePointerAddress?.let {
+            decodePointer(regions[STORAGE_POINTER_ID], storageFootprint(layout))
+        },
     )
 
     fun dependentWindows(
@@ -58,6 +68,15 @@ object Gen3LiveMemoryReader {
         }
         pointers.saveBlock2Address?.let { address ->
             add(Gen3LiveReadWindow(SAVE_BLOCK2_ID, address, requireNotNull(layout.saveBlock2Size)))
+        }
+        pointers.pokemonStorageAddress?.let { address ->
+            add(
+                Gen3LiveReadWindow(
+                    STORAGE_ID,
+                    address + requireNotNull(layout.pokemonStorageRecordsOffset),
+                    storageRecordBytes(layout),
+                ),
+            )
         }
         layout.extendedSaveAddress?.let { address ->
             add(Gen3LiveReadWindow(EXTENDED_SAVE_ID, address, requireNotNull(layout.extendedSaveSize)))
@@ -93,6 +112,7 @@ object Gen3LiveMemoryReader {
         return Gen3LiveMemoryValues(
             location = decodeLocation(saveBlock1, layout),
             party = decodeParty(regions[PARTY_COUNT_ID], regions[PARTY_ID], layout, saveContext),
+            storedIndividuals = decodeStorage(regions[STORAGE_ID], layout, saveContext),
             clock = decodeClock(regions[CLOCK_ID]),
             eventFlags = decodeEventFlags(saveBlock1, saveAbi),
         )
@@ -170,6 +190,29 @@ object Gen3LiveMemoryReader {
         else unavailable(LiveUnavailableCode.INVALID_VALUE, "one or more party records failed validation")
     }
 
+    fun decodeStorage(
+        bytes: ByteArray?,
+        layout: Gen3RuntimeMemoryLayout,
+        context: SaveParseContext?,
+    ): LiveValue<List<OwnedIndividual>> {
+        val expected = runCatching { storageRecordBytes(layout) }.getOrNull()
+            ?: return unavailable(LiveUnavailableCode.UNSUPPORTED_LAYOUT, "Pokemon storage ABI was unavailable")
+        if (bytes?.size != expected || context == null) {
+            return unavailable(LiveUnavailableCode.MISSING_REGION, "complete Pokemon storage bytes or parser context were unavailable")
+        }
+        val recordSize = requireNotNull(layout.pokemonStorageRecordSize)
+        val capacity = requireNotNull(layout.pokemonStorageBoxCount) * requireNotNull(layout.pokemonStorageBoxCapacity)
+        val decoded = mutableListOf<OwnedIndividual>()
+        repeat(capacity) { index ->
+            val offset = index * recordSize
+            if ((offset until offset + recordSize).all { bytes[it].toInt() == 0 }) return@repeat
+            val individual = Gen3PokemonCodec.decode(bytes, offset, "box-$index", context)
+                ?: return unavailable(LiveUnavailableCode.INVALID_VALUE, "one or more storage records failed checksum or species validation")
+            decoded += individual
+        }
+        return LiveValue.Available(decoded)
+    }
+
     private fun decodePointer(bytes: ByteArray?, byteCount: Int?): Long? {
         if (bytes?.size != POINTER_BYTES || byteCount == null) return null
         val address = bytes.foldIndexed(0L) { index, result, byte ->
@@ -177,6 +220,13 @@ object Gen3LiveMemoryReader {
         }
         return address.takeIf { it >= EWRAM_START && it + byteCount <= EWRAM_END_EXCLUSIVE }
     }
+
+    private fun storageRecordBytes(layout: Gen3RuntimeMemoryLayout): Int =
+        requireNotNull(layout.pokemonStorageBoxCount) * requireNotNull(layout.pokemonStorageBoxCapacity) *
+            requireNotNull(layout.pokemonStorageRecordSize)
+
+    private fun storageFootprint(layout: Gen3RuntimeMemoryLayout): Int =
+        requireNotNull(layout.pokemonStorageRecordsOffset) + storageRecordBytes(layout)
 
     private fun <T> unavailable(code: LiveUnavailableCode, detail: String): LiveValue<T> =
         LiveValue.Unavailable(LiveUnavailableReason(code, detail))

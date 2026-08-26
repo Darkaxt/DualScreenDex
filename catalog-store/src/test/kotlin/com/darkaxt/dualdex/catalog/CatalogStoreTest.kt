@@ -1185,6 +1185,11 @@ class CatalogStoreTest {
                     nonWildBattleMask = 0x8FFF8B72.toInt(),
                     saveBlock1PointerAddress = 0x030036F0L,
                     saveBlock2PointerAddress = 0x030036F4L,
+                    pokemonStoragePointerAddress = 0x030036F8L,
+                    pokemonStorageBoxCount = 14,
+                    pokemonStorageBoxCapacity = 30,
+                    pokemonStorageRecordSize = 80,
+                    pokemonStorageRecordsOffset = 4,
                     saveRuntimeAbi = CatalogGen3SaveRuntimeAbi(
                         saveBlock1Size = 0x3D88,
                         saveBlock2Size = 0x0F2C,
