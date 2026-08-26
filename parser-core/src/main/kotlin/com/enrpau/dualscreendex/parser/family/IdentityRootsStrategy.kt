@@ -392,9 +392,12 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                     inherited.baseStats?.count ?: 412,
                     28,
                 ),
-                moveNames = headerPointers.moveNames?.let {
-                    TableLayout(it, inherited.moveNames?.count ?: 355, 13)
-                } ?: inherited.moveNames,
+                moveNames = publishedSemanticTable(
+                    headerPointers.moveNames,
+                    inherited.moveNames,
+                    inherited.moveNames?.count ?: 355,
+                    13,
+                ),
                 moveData = publishedSemanticTable(
                     headerPointers.moveData,
                     inherited.moveData,

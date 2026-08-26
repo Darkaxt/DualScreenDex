@@ -115,18 +115,18 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
             null
         }
         val embeddedLearnsets = core.headerlessEmbeddedLearnsets
-        val legacyEvolutions = embeddedEvolutions?.evidence ?: evolutionAndLearnset?.evolutions ?: if (generation == 3) {
-            if (expansion != null) {
+        val legacyEvolutions = embeddedEvolutions?.evidence ?: when {
+            generation == 3 && identity.headerlessUnifiedSpecies != null ->
+                missingEvidence("embedded unified-species evolution pointers not resolved")
+            evolutionAndLearnset != null -> evolutionAndLearnset.evolutions
+            generation == 3 && expansion != null ->
                 PokeemeraldExpansionResolver.validateEvolutions(rom, expansion)
-            } else {
-                DatasetResolvers.gen3Evolutions(
-                    session,
-                    core.speciesCount ?: profile?.internalSpeciesCount ?: 412,
-                    tables.evolutions,
-                )
-            }
-        } else {
-            missingEvidence("combined evolution/learnset table not resolved")
+            generation == 3 -> DatasetResolvers.gen3Evolutions(
+                session,
+                core.speciesCount ?: profile?.internalSpeciesCount ?: 412,
+                tables.evolutions,
+            )
+            else -> missingEvidence("combined evolution/learnset table not resolved")
         }
         val evolutionResolution = embeddedEvolutions?.let {
             ResolvedEvolutionEvidence(it.evidence, it.resolved)
