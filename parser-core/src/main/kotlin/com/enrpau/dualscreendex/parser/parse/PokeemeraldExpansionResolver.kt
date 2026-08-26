@@ -36,6 +36,36 @@ object PokeemeraldExpansionResolver {
         }.singleOrNull()
     }
 
+    fun validateSpeciesNames(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence {
+        val table = resolution.tables.speciesNames ?: error("resolved expansion species-name table is absent")
+        return validateActiveSpeciesRows(
+            rom = rom,
+            resolution = resolution,
+            label = "species names",
+            minimumRatio = 0.85,
+            offset = table.offset,
+            recordSize = table.recordSize,
+        ) { record ->
+            plausibleInlineName(
+                rom,
+                record + resolution.metadata.speciesNameOffset,
+                resolution.metadata.speciesNameWidth,
+            )
+        }
+    }
+
+    fun validateBaseStats(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence {
+        val table = resolution.tables.baseStats ?: error("resolved expansion species table is absent")
+        return validateActiveSpeciesRows(
+            rom = rom,
+            resolution = resolution,
+            label = "base stats",
+            minimumRatio = 0.90,
+            offset = table.offset,
+            recordSize = resolution.metadata.speciesRecordSize,
+        ) { record -> plausibleStats(rom, record) }
+    }
+
     fun validateDescriptions(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence {
         val table = resolution.tables.baseStats ?: error("resolved expansion species table is absent")
         return validateSpeciesPointerField(
@@ -53,8 +83,9 @@ object PokeemeraldExpansionResolver {
     fun validateSprites(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence {
         val table = resolution.tables.baseStats ?: error("resolved expansion species table is absent")
         val stride = resolution.metadata.speciesRecordSize
+        val active = activeSpeciesIds(rom, resolution)
         var valid = 0
-        repeat(resolution.speciesCount) { id ->
+        active.forEach { id ->
             val record = table.offset + id * stride
             val graphicsPointer = runCatching {
                 rom.gbaPointer(record + resolution.metadata.frontSpritePointerOffset)
@@ -73,17 +104,20 @@ object PokeemeraldExpansionResolver {
             } == true
             if (graphicsValid && paletteValid) valid++
         }
-        val confidence = valid.toDouble() / resolution.speciesCount
+        val confidence = valid.toDouble() / active.size.coerceAtLeast(1)
         return ValidationEvidence(
-            compatible = confidence >= 0.80,
+            compatible = active.isNotEmpty() && confidence >= 0.80,
             validRecords = valid,
             totalRecords = resolution.speciesCount,
             confidence = confidence,
-            reasons = if (confidence >= 0.80) emptyList() else {
-                listOf("decodable expansion front sprites and raw palettes $valid/${resolution.speciesCount} below 80%")
+            reasons = if (active.isNotEmpty() && confidence >= 0.80) emptyList() else {
+                listOf("decodable expansion front sprites and raw palettes $valid/${active.size} below 80%")
             },
             offset = table.offset + resolution.metadata.frontSpritePointerOffset,
             recordSize = 4,
+            coveredRecords = valid,
+            expectedRecords = active.size,
+            incompleteRecords = active.size - valid,
         )
     }
 
@@ -99,22 +133,39 @@ object PokeemeraldExpansionResolver {
     fun validateEvolutions(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence {
         val table = resolution.tables.baseStats ?: error("resolved expansion species table is absent")
         val stride = resolution.metadata.speciesRecordSize
+        val active = activeSpeciesIds(rom, resolution)
+        val elementSize = resolution.metadata.evolutionRecordSize
         var valid = 0
-        repeat(resolution.speciesCount) { id ->
-            val field = table.offset + id * stride + resolution.metadata.evolutionPointerOffset
-            val raw = rom.u32le(field)
-            if (raw == 0L || rom.gbaPointer(field)?.let { plausibleEvolution(rom, it, resolution.speciesCount) } == true) valid++
+        if (elementSize != null) {
+            active.forEach { id ->
+                val field = table.offset + id * stride + resolution.metadata.evolutionPointerOffset
+                val raw = rom.u32le(field)
+                val rowIsValid = when {
+                    raw == 0L -> true
+                    else -> rom.gbaPointer(field)?.let { pointer ->
+                        validateEvolutionList(rom, pointer, elementSize, resolution.speciesCount).valid
+                    } == true
+                }
+                if (rowIsValid) valid++
+            }
         }
-        val confidence = valid.toDouble() / resolution.speciesCount
+        val confidence = valid.toDouble() / active.size.coerceAtLeast(1)
         return ValidationEvidence(
-            compatible = confidence >= 0.98,
+            compatible = elementSize != null && active.isNotEmpty() && confidence >= 0.98,
             validRecords = valid,
             totalRecords = resolution.speciesCount,
             confidence = confidence,
-            reasons = if (confidence >= 0.98) emptyList() else listOf("valid expansion evolution fields $valid/${resolution.speciesCount} below 98%"),
+            reasons = when {
+                elementSize == null -> listOf("expansion evolution record ABI was not structurally resolved")
+                active.isNotEmpty() && confidence >= 0.98 -> emptyList()
+                else -> listOf("complete expansion evolution fields $valid/${active.size} below 98%")
+            },
             offset = table.offset + resolution.metadata.evolutionPointerOffset,
             recordSize = 4,
-            elementSize = 12,
+            elementSize = elementSize,
+            coveredRecords = valid,
+            expectedRecords = active.size,
+            incompleteRecords = active.size - valid,
         )
     }
 
@@ -128,21 +179,68 @@ object PokeemeraldExpansionResolver {
     ): ValidationEvidence {
         val table = resolution.tables.baseStats ?: error("resolved expansion species table is absent")
         val stride = resolution.metadata.speciesRecordSize
+        val active = activeSpeciesIds(rom, resolution)
         var valid = 0
-        repeat(resolution.speciesCount) { id ->
+        active.forEach { id ->
             val pointer = rom.gbaPointer(table.offset + id * stride + fieldOffset)
             if (pointer != null && targetIsValid(pointer)) valid++
         }
-        val confidence = valid.toDouble() / resolution.speciesCount
+        val confidence = valid.toDouble() / active.size.coerceAtLeast(1)
         return ValidationEvidence(
-            compatible = confidence >= minimumRatio,
+            compatible = active.isNotEmpty() && confidence >= minimumRatio,
             validRecords = valid,
             totalRecords = resolution.speciesCount,
             confidence = confidence,
-            reasons = if (confidence >= minimumRatio) emptyList() else listOf("valid expansion $label fields $valid/${resolution.speciesCount} below $minimumRatio"),
+            reasons = if (active.isNotEmpty() && confidence >= minimumRatio) emptyList() else {
+                listOf("valid expansion $label fields $valid/${active.size} below $minimumRatio")
+            },
             offset = table.offset + fieldOffset,
             recordSize = 4,
+            coveredRecords = valid,
+            expectedRecords = active.size,
+            incompleteRecords = active.size - valid,
         )
+    }
+
+    private fun validateActiveSpeciesRows(
+        rom: RomImage,
+        resolution: PokeemeraldExpansionResolution,
+        label: String,
+        minimumRatio: Double,
+        offset: Int,
+        recordSize: Int,
+        rowIsValid: (Int) -> Boolean,
+    ): ValidationEvidence {
+        val table = resolution.tables.baseStats ?: error("resolved expansion species table is absent")
+        val stride = resolution.metadata.speciesRecordSize
+        val active = activeSpeciesIds(rom, resolution)
+        val valid = active.count { id -> rowIsValid(table.offset + id * stride) }
+        val confidence = valid.toDouble() / active.size.coerceAtLeast(1)
+        return ValidationEvidence(
+            compatible = active.isNotEmpty() && confidence >= minimumRatio,
+            validRecords = valid,
+            totalRecords = resolution.speciesCount,
+            confidence = confidence,
+            reasons = if (active.isNotEmpty() && confidence >= minimumRatio) emptyList() else {
+                listOf("valid active expansion $label $valid/${active.size} below $minimumRatio")
+            },
+            offset = offset,
+            recordSize = recordSize,
+            coveredRecords = valid,
+            expectedRecords = active.size,
+            incompleteRecords = active.size - valid,
+        )
+    }
+
+    private fun activeSpeciesIds(
+        rom: RomImage,
+        resolution: PokeemeraldExpansionResolution,
+    ): List<Int> {
+        val table = resolution.tables.baseStats ?: error("resolved expansion species table is absent")
+        val stride = resolution.metadata.speciesRecordSize
+        return (1 until resolution.speciesCount).filter { id ->
+            rom.u16le(table.offset + id * stride + resolution.metadata.nationalDexOffset) > 0
+        }
     }
 
     private fun tryResolve(rom: RomImage, header: Int): PokeemeraldExpansionResolution? = try {
@@ -156,6 +254,7 @@ object PokeemeraldExpansionResolver {
         val speciesBase = rom.gbaPointer(gfHeader + 0xBC) ?: return null
         val moveBase = rom.gbaPointer(gfHeader + 0xCC) ?: return null
         val species = inferSpeciesShape(rom, speciesBase, speciesCount, moveCount) ?: return null
+        val evolutionRecordSize = inferEvolutionRecordSize(rom, speciesBase, species, speciesCount)
         val moveStride = inferMoveStride(rom, moveBase, moveCount) ?: return null
         val ability = inferAbilityShape(rom, abilityBase, abilityCount) ?: return null
         val typeChart = locateTypeChart(rom, moveBase, moveCount, moveStride) ?: return null
@@ -185,6 +284,7 @@ object PokeemeraldExpansionResolver {
             abilityRecordSize = ability.stride,
             abilityNameWidth = ability.nameWidth,
             abilityDescriptionPointerOffset = ability.descriptionOffset,
+            evolutionRecordSize = evolutionRecordSize,
         )
         val tables = ProfileTables(
             speciesNames = TableLayout(
@@ -208,14 +308,16 @@ object PokeemeraldExpansionResolver {
                 recordSize = typeChart.typeCount * 4,
                 elementSize = 4,
             ),
-            evolutions = TableLayout(
-                speciesBase + species.levelUpOffset + 12,
-                speciesCount,
-                4,
-                stride = species.stride,
-                valuesArePointers = true,
-                elementSize = 12,
-            ),
+            evolutions = evolutionRecordSize?.let { recordSize ->
+                TableLayout(
+                    speciesBase + species.levelUpOffset + 12,
+                    speciesCount,
+                    4,
+                    stride = species.stride,
+                    valuesArePointers = true,
+                    elementSize = recordSize,
+                )
+            },
             learnsets = TableLayout(
                 speciesBase + species.levelUpOffset,
                 speciesCount,
@@ -295,20 +397,26 @@ object PokeemeraldExpansionResolver {
                 if (names < sample.size * 0.85) continue
                 val categories = sample.count { id -> plausibleInlineName(rom, base + id * stride + nameOffset - 13, 13) }
                 if (categories < sample.size * 0.80) continue
-                val natDexOffset = ((nameOffset + 12)..minOf(stride - 2, nameOffset + 32))
-                    .firstOrNull { field -> field % 2 == 0 && sample.count { id -> rom.u16le(base + id * stride + field) == id } >= sample.size * 0.90 }
-                    ?: continue
+                val natDexOffset = inferNationalDexOffset(
+                    rom = rom,
+                    base = base,
+                    stride = stride,
+                    count = count,
+                    nameOffset = nameOffset,
+                    sample = sample,
+                ) ?: continue
                 val levelUp = inferLearnsetPointerOffset(rom, base, stride, sample, count, moveCount)
                     ?: continue
+                val descriptionOffset = alignToWord(natDexOffset + 14)
                 candidates += SpeciesShape(
                     stride = stride,
                     nameOffset = nameOffset,
                     nameWidth = 13,
                     categoryOffset = nameOffset - 13,
                     nationalDexOffset = natDexOffset,
-                    descriptionOffset = natDexOffset + 16,
-                    frontSpriteOffset = natDexOffset + 28,
-                    paletteOffset = natDexOffset + 36,
+                    descriptionOffset = descriptionOffset,
+                    frontSpriteOffset = descriptionOffset + 12,
+                    paletteOffset = descriptionOffset + 20,
                     abilitiesOffset = 24,
                     growthRateOffset = 21,
                     levelUpOffset = levelUp,
@@ -317,6 +425,31 @@ object PokeemeraldExpansionResolver {
             }
         }
         return candidates.maxWithOrNull(compareBy<SpeciesShape> { it.score }.thenByDescending { it.stride })
+    }
+
+    private fun inferNationalDexOffset(
+        rom: RomImage,
+        base: Int,
+        stride: Int,
+        count: Int,
+        nameOffset: Int,
+        sample: List<Int>,
+    ): Int? {
+        val eligible = ((nameOffset + 12)..minOf(stride - 2, nameOffset + 32))
+            .filter { field ->
+                field % 2 == 0 &&
+                    sample.count { id -> rom.u16le(base + id * stride + field) == id } >= sample.size * 0.90
+            }
+        if (eligible.isEmpty()) return null
+        val active = (1 until count).filter { id ->
+            val record = base + id * stride
+            plausibleStats(rom, record) && plausibleInlineName(rom, record + nameOffset, 13)
+        }
+        val scores = eligible.associateWith { field ->
+            active.count { id -> rom.u16le(base + id * stride + field) == id }
+        }
+        val bestScore = scores.values.maxOrNull() ?: return null
+        return scores.filterValues { it == bestScore }.keys.minOrNull()
     }
 
     private fun inferLearnsetPointerOffset(
@@ -351,7 +484,7 @@ object PokeemeraldExpansionResolver {
     }
 
     private fun inferMoveStride(rom: RomImage, base: Int, count: Int): Int? {
-        val sample = sampleIds(count, 32)
+        val sample = sampleIdsAcrossExtent(count, 32)
         return (20..128 step 4).mapNotNull { stride ->
             if (base.toLong() + count.toLong() * stride > rom.size) return@mapNotNull null
             val valid = sample.count { id ->
@@ -412,9 +545,20 @@ object PokeemeraldExpansionResolver {
         return candidates.singleOrNull()
     }
 
+    private fun alignToWord(value: Int): Int = (value + 3) and -4
+
     private fun sampleIds(count: Int, maximum: Int): List<Int> {
         val live = count - 1
         return (1..minOf(live, maximum)).toList()
+    }
+
+    private fun sampleIdsAcrossExtent(count: Int, maximum: Int): List<Int> {
+        val last = count - 1
+        if (last <= maximum) return (1..last).toList()
+        if (maximum == 1) return listOf(1)
+        return List(maximum) { index ->
+            1 + (index.toLong() * (last - 1) / (maximum - 1)).toInt()
+        }.distinct()
     }
 
     private fun plausibleStats(rom: RomImage, offset: Int): Boolean =
@@ -430,6 +574,71 @@ object PokeemeraldExpansionResolver {
     private fun plausibleMoveList(rom: RomImage, offset: Int, moveCount: Int): Boolean {
         val move = rom.u16le(offset)
         return move == 0xFFFF || move in 0 until moveCount
+    }
+
+    private fun inferEvolutionRecordSize(
+        rom: RomImage,
+        speciesBase: Int,
+        species: SpeciesShape,
+        speciesCount: Int,
+    ): Int? {
+        val active = (1 until speciesCount).filter { id ->
+            rom.u16le(speciesBase + id * species.stride + species.nationalDexOffset) > 0
+        }
+        val evaluated = listOf(6, 8, 12).map { recordSize ->
+            var validPointers = 0
+            var invalidPointers = 0
+            var edges = 0
+            active.forEach { id ->
+                val field = speciesBase + id * species.stride + species.levelUpOffset + 12
+                if (rom.u32le(field) == 0L) return@forEach
+                val result = rom.gbaPointer(field)?.let { pointer ->
+                    validateEvolutionList(rom, pointer, recordSize, speciesCount)
+                }
+                if (result?.valid == true) {
+                    validPointers++
+                    edges += result.edges
+                } else {
+                    invalidPointers++
+                }
+            }
+            EvolutionAbiCandidate(recordSize, validPointers, invalidPointers, edges)
+        }
+        val candidates = evaluated.filter { candidate ->
+            candidate.validPointers > 0 && candidate.confidence >= 0.98
+        }
+        val ranking = compareBy<EvolutionAbiCandidate> { it.confidence }
+            .thenBy { it.validPointers }
+            .thenBy { it.edges }
+        val best = candidates.maxWithOrNull(ranking) ?: return null
+        return best.recordSize.takeUnless { selected ->
+            candidates.any { candidate ->
+                candidate.recordSize != selected && ranking.compare(candidate, best) == 0
+            }
+        }
+    }
+
+    private fun validateEvolutionList(
+        rom: RomImage,
+        offset: Int,
+        recordSize: Int,
+        speciesCount: Int,
+    ): EvolutionListValidation {
+        var cursor = offset
+        var edges = 0
+        repeat(32) {
+            if (cursor !in 0..rom.size - 2) return EvolutionListValidation(false, edges)
+            val method = rom.u16le(cursor)
+            if (method == 0xFFFF) return EvolutionListValidation(true, edges)
+            if (cursor.toLong() + recordSize > rom.size || method !in 0..1024) {
+                return EvolutionListValidation(false, edges)
+            }
+            val target = rom.u16le(cursor + 4)
+            if (target !in 1 until speciesCount) return EvolutionListValidation(false, edges)
+            edges++
+            cursor += recordSize
+        }
+        return EvolutionListValidation(false, edges)
     }
 
     private fun plausibleEvolution(rom: RomImage, offset: Int, speciesCount: Int): Boolean {
@@ -451,6 +660,21 @@ object PokeemeraldExpansionResolver {
             ?.plus(1) ?: minOf(32, rom.size - offset)
         return codec.decode(rom.slice(offset, length))
     }
+
+    private data class EvolutionAbiCandidate(
+        val recordSize: Int,
+        val validPointers: Int,
+        val invalidPointers: Int,
+        val edges: Int,
+    ) {
+        val confidence: Double
+            get() = validPointers.toDouble() / (validPointers + invalidPointers).coerceAtLeast(1)
+    }
+
+    private data class EvolutionListValidation(
+        val valid: Boolean,
+        val edges: Int,
+    )
 
     private data class SpeciesShape(
         val stride: Int,

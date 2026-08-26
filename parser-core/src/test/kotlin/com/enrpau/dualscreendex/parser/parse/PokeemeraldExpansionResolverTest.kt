@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.family.resolvedLayout
 import com.enrpau.dualscreendex.parser.io.RomImage
 import java.util.Base64
 import org.junit.Assert.assertEquals
@@ -32,6 +33,105 @@ class PokeemeraldExpansionResolverTest {
     }
 
     @Test
+    fun samplesMoveTableAcrossPublishedExtentToRejectAliasedStride() {
+        val resolved = requireNotNull(
+            PokeemeraldExpansionResolver.resolve(
+                RomImage(fixture(moveCount = 80, moveStride = 48)),
+            ),
+        )
+
+        assertEquals(48, resolved.tables.moveNames?.stride)
+    }
+
+    @Test
+    fun scoresNationalDexFieldAcrossActiveSpeciesInsteadOfAcceptingAnEarlyCryAlias() {
+        val resolved = requireNotNull(
+            PokeemeraldExpansionResolver.resolve(
+                RomImage(
+                    fixture(
+                        speciesCount = 80,
+                        nationalDexOffset = 62,
+                        cryAliasThrough = 24,
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(62, resolved.metadata.nationalDexOffset)
+        assertEquals(64, resolved.metadata.heightOffset)
+        assertEquals(66, resolved.metadata.weightOffset)
+        assertEquals(76, resolved.metadata.descriptionPointerOffset)
+        assertEquals(88, resolved.metadata.frontSpritePointerOffset)
+        assertEquals(96, resolved.metadata.normalPalettePointerOffset)
+    }
+
+    @Test
+    fun validatesOnlyPositiveDexRowsInSparsePublishedSpeciesExtents() {
+        val bytes = fixture(speciesCount = 80, activeSpeciesCount = 40).also {
+            Base64.getDecoder().decode("ASAIAAAAKAABAAAAAAH+BwEAAAA=").copyInto(it, 0x8100)
+            it[0x8200 + 2] = 0x1F
+        }
+        val rom = RomImage(bytes)
+        val resolved = requireNotNull(PokeemeraldExpansionResolver.resolve(rom))
+
+        val evidence = listOf(
+            PokeemeraldExpansionResolver.validateSpeciesNames(rom, resolved),
+            PokeemeraldExpansionResolver.validateBaseStats(rom, resolved),
+            PokeemeraldExpansionResolver.validateDescriptions(rom, resolved),
+            PokeemeraldExpansionResolver.validateSprites(rom, resolved),
+            PokeemeraldExpansionResolver.validateLearnsets(rom, resolved),
+            PokeemeraldExpansionResolver.validateEvolutions(rom, resolved),
+        )
+
+        evidence.forEach {
+            assertEquals(true, it.compatible)
+            assertEquals(40, it.validRecords)
+            assertEquals(80, it.totalRecords)
+            assertEquals(40, it.coveredRecords)
+            assertEquals(40, it.expectedRecords)
+            assertEquals(0, it.incompleteRecords)
+        }
+        assertEquals(
+            80,
+            requireNotNull(
+                resolvedLayout(requireNotNull(resolved.tables.speciesNames), evidence.first()),
+            ).count,
+        )
+    }
+
+    @Test
+    fun infersCompleteSixByteEightByteAndTwelveByteEvolutionRecords() {
+        val sixByte = requireNotNull(
+            PokeemeraldExpansionResolver.resolve(RomImage(fixture(evolutionRecordSize = 6))),
+        )
+        val eightByte = requireNotNull(
+            PokeemeraldExpansionResolver.resolve(RomImage(fixture(evolutionRecordSize = 8))),
+        )
+        val twelveByte = requireNotNull(
+            PokeemeraldExpansionResolver.resolve(RomImage(fixture(evolutionRecordSize = 12))),
+        )
+
+        assertEquals(6, sixByte.metadata.evolutionRecordSize)
+        assertEquals(6, sixByte.tables.evolutions?.elementSize)
+        assertEquals(8, eightByte.metadata.evolutionRecordSize)
+        assertEquals(8, eightByte.tables.evolutions?.elementSize)
+        assertEquals(12, twelveByte.metadata.evolutionRecordSize)
+        assertEquals(12, twelveByte.tables.evolutions?.elementSize)
+    }
+
+    @Test
+    fun disablesOnlyEvolutionResolutionWhenNoCandidateAbiTerminates() {
+        val rom = RomImage(fixture(evolutionRecordSize = 6, terminateEvolutions = false))
+        val resolved = requireNotNull(PokeemeraldExpansionResolver.resolve(rom))
+
+        assertEquals(null, resolved.metadata.evolutionRecordSize)
+        assertEquals(null, resolved.tables.evolutions)
+        assertEquals(false, PokeemeraldExpansionResolver.validateEvolutions(rom, resolved).compatible)
+        assertNotNull(resolved.tables.speciesNames)
+        assertNotNull(resolved.tables.baseStats)
+    }
+
+    @Test
     fun descriptionValidationPreservesTheSpeciesTableRootAndStride() {
         val bytes = fixture()
         val resolved = requireNotNull(PokeemeraldExpansionResolver.resolve(RomImage(bytes)))
@@ -61,7 +161,16 @@ class PokeemeraldExpansionResolverTest {
         assertEquals(0, malformedEvidence.validRecords)
     }
 
-    private fun fixture(): ByteArray {
+    private fun fixture(
+        moveCount: Int = 16,
+        moveStride: Int = 64,
+        speciesCount: Int = 20,
+        activeSpeciesCount: Int = speciesCount - 1,
+        nationalDexOffset: Int = 60,
+        cryAliasThrough: Int = 0,
+        evolutionRecordSize: Int = 12,
+        terminateEvolutions: Boolean = true,
+    ): ByteArray {
         val bytes = ByteArray(0x9000)
         writeAscii(bytes, 0x108, "pokemon emerald version")
         writePointer(bytes, 0x1BC, 0x1000)
@@ -71,14 +180,14 @@ class PokeemeraldExpansionResolverTest {
         bytes[0x20A] = 1
         bytes[0x20B] = 15
         bytes[0x20C] = 3
-        writeU16(bytes, 0x20E, 16)
-        writeU16(bytes, 0x210, 20)
+        writeU16(bytes, 0x20E, moveCount)
+        writeU16(bytes, 0x210, speciesCount)
         writeU16(bytes, 0x212, 8)
         writePointer(bytes, 0x214, 0x7000)
 
-        repeat(20) { id ->
+        repeat(speciesCount) { id ->
             val base = 0x1000 + id * 180
-            if (id > 0) {
+            if (id in 1..activeSpeciesCount) {
                 repeat(6) { bytes[base + it] = (40 + id).toByte() }
                 bytes[base + 6] = 12
                 bytes[base + 7] = 3
@@ -86,9 +195,12 @@ class PokeemeraldExpansionResolverTest {
                 writeU16(bytes, base + 24, 65)
                 encodeGba(bytes, base + 31, "SEED")
                 encodeGba(bytes, base + 44, if (id == 1) "BULBA" else "MON")
-                writeU16(bytes, base + 60, id)
-                writeU16(bytes, base + 62, 7)
-                writeU16(bytes, base + 64, 69)
+                if (nationalDexOffset > 60) {
+                    writeU16(bytes, base + 60, if (id <= cryAliasThrough) id else 1)
+                }
+                writeU16(bytes, base + nationalDexOffset, id)
+                writeU16(bytes, base + nationalDexOffset + 2, 7)
+                writeU16(bytes, base + nationalDexOffset + 4, 69)
                 writePointer(bytes, base + 76, 0x8000)
                 writePointer(bytes, base + 88, 0x8100)
                 writePointer(bytes, base + 96, 0x8200)
@@ -96,11 +208,12 @@ class PokeemeraldExpansionResolverTest {
                 writePointer(bytes, base + 152, 0x8400)
                 writePointer(bytes, base + 156, 0x8500)
                 writePointer(bytes, base + 160, 0x8600)
+                writeU32(bytes, base + 164, 1)
             }
         }
 
-        repeat(16) { id ->
-            val base = 0x5000 + id * 64
+        repeat(moveCount) { id ->
+            val base = 0x5000 + id * moveStride
             writePointer(bytes, base, 0x6000 + id * 16)
             writePointer(bytes, base + 4, 0x6500)
             encodeGba(bytes, 0x6000 + id * 16, if (id == 1) "POUND" else if (id == 0) "NONE" else "MOVE")
@@ -117,6 +230,14 @@ class PokeemeraldExpansionResolverTest {
         }
         encodeGba(bytes, 0x6500, "DESCRIPTION")
         encodeGba(bytes, 0x8000, "A SEED POKEMON")
+        val evolutionEntries = if (terminateEvolutions) 1 else 32
+        repeat(evolutionEntries) { index ->
+            val entry = 0x8600 + index * evolutionRecordSize
+            writeU16(bytes, entry, 1)
+            writeU16(bytes, entry + 2, 16)
+            writeU16(bytes, entry + 4, 2)
+        }
+        if (terminateEvolutions) writeU16(bytes, 0x8600 + evolutionRecordSize, 0xFFFF)
         repeat(20 * 20) { index -> writeU32(bytes, 0x8800 + index * 4, 4096) }
         writeU32(bytes, 0x8800 + (1 * 20 + 6) * 4, 2048)
         writeU32(bytes, 0x8800 + (1 * 20 + 8) * 4, 0)

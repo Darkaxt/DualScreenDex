@@ -879,6 +879,38 @@ class RecordMaterializersTest {
     }
 
     @Test
+    fun materializesAllPositiveDexExpansionRowsAcrossThePhysicalExtent() {
+        val bytes = ByteArray(1200)
+        val species = 100
+        val stride = 180
+        listOf(1 to 1, 3 to 981).forEach { (id, dex) ->
+            val record = species + id * stride
+            repeat(6) { bytes[record + it] = 40 }
+            bytes[record + 6] = 1
+            bytes[record + 7] = 2
+            encodeGbaName(bytes, record + 44, if (id == 1) "FIRST" else "LATE")
+            writeU16(bytes, record + 60, dex)
+        }
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.EMERALD,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = 4,
+            moveCount = 2,
+            tables = ProfileTables(
+                speciesNames = TableLayout(species + 44, 4, 13, stride = stride),
+                baseStats = TableLayout(species, 4, stride, stride = stride),
+            ),
+            pokeemeraldExpansion = expansionMetadata(stride),
+        )
+
+        val records = RecordMaterializers.species(RomImage(bytes), layout)
+
+        assertEquals(setOf(1, 3), records.keys)
+        assertEquals(981, records.getValue(3).dexNumber.value)
+    }
+
+    @Test
     fun joinsGenOneInternalNamesToDexOrderedStats() {
         val bytes = ByteArray(512)
         byteArrayOf(1, 0, 3, 2).copyInto(bytes, 50)

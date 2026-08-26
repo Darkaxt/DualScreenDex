@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.parse.DatasetResolvers
 import com.enrpau.dualscreendex.parser.parse.Gen3DynamicTableResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3PublishedPartialBaseStatsResolver
+import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
 import com.enrpau.dualscreendex.parser.parse.PublishedPartialBaseStatsCandidate
 import com.enrpau.dualscreendex.parser.parse.PublishedPartialBaseStatsResolution
 import com.enrpau.dualscreendex.parser.dataset.moves.MoveDetailsAbi
@@ -188,7 +189,8 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             }
         }
         var speciesNamesLayout = tables.speciesNames
-        var names = headerlessUnifiedSpecies?.speciesNamesEvidence
+        var names = expansion?.let { PokeemeraldExpansionResolver.validateSpeciesNames(rom, it) }
+            ?: headerlessUnifiedSpecies?.speciesNamesEvidence
             ?: validateNames(rom, speciesNamesLayout, speciesCount, codec, generation)
         if (generation == 2 && !names.compatible && speciesCount != null) {
             TableValidators.locateFixedNameTable(
@@ -202,7 +204,11 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 names = relocated
             }
         }
-        var stats = headerlessUnifiedSpecies?.baseStatsEvidence ?: publishedDataEvidence ?: dynamicBaseStatsEvidence ?: baseStatsLayout?.let {
+        var stats = expansion?.let { PokeemeraldExpansionResolver.validateBaseStats(rom, it) }
+            ?: headerlessUnifiedSpecies?.baseStatsEvidence
+            ?: publishedDataEvidence
+            ?: dynamicBaseStatsEvidence
+            ?: baseStatsLayout?.let {
             val validationCount = if (generation == 1) it.count else speciesCount ?: it.count
             TableValidators.baseStats(rom, it.offset, validationCount, it.recordSize, generation)
         } ?: missing("species base-stat table not resolved")

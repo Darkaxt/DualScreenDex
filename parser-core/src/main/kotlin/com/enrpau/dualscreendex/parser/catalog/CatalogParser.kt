@@ -283,7 +283,7 @@ object CatalogMaterializer {
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.SPECIES_MEDIA, 2, 5, mediaCatalog))
 
         reportCatalogWork(onWork, CatalogWorkModule.EVOLUTIONS_AND_LEARNSETS)
-        val evolutions = RelationshipMaterializers.evolutions(rom, layout)
+        val evolutions = RelationshipMaterializers.evolutions(rom, layout, mediaSpecies.keys)
         val learnsets = RelationshipMaterializers.learnsets(rom, layout)
         reportCatalogWork(onWork, CatalogWorkModule.ENCOUNTERS)
         val encounterMaterialization = EncounterMaterializer.materializeWithEvidence(rom, layout)

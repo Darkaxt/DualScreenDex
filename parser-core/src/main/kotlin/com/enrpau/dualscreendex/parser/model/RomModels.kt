@@ -256,6 +256,7 @@ data class PokeemeraldExpansionMetadata(
     val abilityRecordSize: Int,
     val abilityNameWidth: Int,
     val abilityDescriptionPointerOffset: Int,
+    val evolutionRecordSize: Int? = 12,
 )
 
 data class RomProfile(

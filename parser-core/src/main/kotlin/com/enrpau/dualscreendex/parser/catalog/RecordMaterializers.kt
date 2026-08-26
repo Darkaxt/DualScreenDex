@@ -42,14 +42,18 @@ object RecordMaterializers {
         }
         val expansion = layout.pokeemeraldExpansion
         val unified = layout.headerlessUnifiedSpecies
-        val nameIndexes = if (unified != null) {
-            val table = requireNotNull(stats)
-            val stride = table.stride ?: unified.speciesRecordSize
-            (1 until names.count).filter { id ->
-                rom.u8(table.offset + id * stride + unified.activePredicateOffset) != 0
+        val nameIndexes = when {
+            expansion != null -> (1 until names.count).filter { id ->
+                (dexNumbers[id] ?: 0) > 0
             }
-        } else {
-            (0 until names.count).toList()
+            unified != null -> {
+                val table = requireNotNull(stats)
+                val stride = table.stride ?: unified.speciesRecordSize
+                (1 until names.count).filter { id ->
+                    rom.u8(table.offset + id * stride + unified.activePredicateOffset) != 0
+                }
+            }
+            else -> (0 until names.count).toList()
         }
         val records = nameIndexes.associate { nameIndex ->
             val id = firstId + nameIndex

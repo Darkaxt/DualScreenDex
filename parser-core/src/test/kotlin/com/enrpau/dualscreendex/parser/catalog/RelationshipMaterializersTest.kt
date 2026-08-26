@@ -524,6 +524,43 @@ class RelationshipMaterializersTest {
     }
 
     @Test
+    fun materializesResolvedSixByteExpansionEvolutionsAndClosesTargets() {
+        val bytes = ByteArray(1024)
+        val species = 32
+        val stride = 180
+        putGbaPointer(bytes, species + stride + 160, 800)
+        putU16(bytes, 800, 1)
+        putU16(bytes, 802, 16)
+        putU16(bytes, 804, 2)
+        putU16(bytes, 806, 0xFFFF)
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.EMERALD,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = 2,
+            moveCount = 100,
+            tables = ProfileTables(
+                evolutions = TableLayout(
+                    species + 160,
+                    2,
+                    4,
+                    stride = stride,
+                    valuesArePointers = true,
+                    elementSize = 6,
+                ),
+            ),
+            pokeemeraldExpansion = expansionMetadata(stride).copy(evolutionRecordSize = 6),
+        )
+
+        val allEdges = RelationshipMaterializers.evolutions(RomImage(bytes), layout)
+        val closedEdges = RelationshipMaterializers.evolutions(RomImage(bytes), layout, setOf(1))
+
+        assertEquals(6, allEdges.getValue(1).single().raw.size)
+        assertEquals(2, allEdges.getValue(1).single().targetSpeciesId)
+        assertTrue(closedEdges.getValue(1).isEmpty())
+    }
+
+    @Test
     fun materializesCombinedGenTwoEvolutionAndLearnsetStream() {
         val bytes = ByteArray(0x8000)
         putU16(bytes, 0, 0x4020)

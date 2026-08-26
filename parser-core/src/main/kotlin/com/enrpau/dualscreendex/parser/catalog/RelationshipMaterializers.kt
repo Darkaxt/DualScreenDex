@@ -99,16 +99,26 @@ object RelationshipMaterializers {
         }
     }
 
-    fun evolutions(rom: RomImage, layout: ResolvedRomLayout): Map<Int, List<EvolutionEdge>> {
+    fun evolutions(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        validSpeciesIds: Set<Int>? = null,
+    ): Map<Int, List<EvolutionEdge>> {
         val table = layout.tables.evolutions ?: return emptyMap()
         if (table.count <= 0) return emptyMap()
         if (layout.generation < 3) return gen12Relationships(rom, layout, table).first
         if (layout.pokeemeraldExpansion != null) {
             val stride = table.stride ?: layout.pokeemeraldExpansion.speciesRecordSize
+            val elementSize = table.elementSize ?: layout.pokeemeraldExpansion.evolutionRecordSize
+                ?: return emptyMap()
+            if (elementSize !in setOf(6, 8, 12)) return emptyMap()
             return buildMap {
                 repeat(table.count) { speciesId ->
                     val pointer = rom.gbaPointer(table.offset + speciesId * stride)
-                    val edges = if (pointer == null) emptyList() else readExpansionEvolutions(rom, pointer)
+                    val decoded = pointer?.let { readExpansionEvolutions(rom, it, elementSize) }.orEmpty()
+                    val edges = validSpeciesIds?.let { valid ->
+                        decoded.filter { edge -> edge.targetSpeciesId in valid }
+                    } ?: decoded
                     put(speciesId, edges)
                 }
             }
@@ -141,22 +151,27 @@ object RelationshipMaterializers {
         }
     }
 
-    private fun readExpansionEvolutions(rom: RomImage, offset: Int): List<EvolutionEdge> = buildList {
+    private fun readExpansionEvolutions(
+        rom: RomImage,
+        offset: Int,
+        recordSize: Int,
+    ): List<EvolutionEdge>? {
+        val edges = mutableListOf<EvolutionEdge>()
         var cursor = offset
         repeat(32) {
+            if (cursor !in 0..rom.size - 2) return null
             val method = rom.u16le(cursor)
-            if (method == 0xFFFF) return@buildList
-            val raw = rom.slice(cursor, 12)
-            add(
-                EvolutionEdge(
-                    targetSpeciesId = rom.u16le(cursor + 4),
-                    methodId = method,
-                    parameter = rom.u16le(cursor + 2),
-                    raw = raw,
-                ),
+            if (method == 0xFFFF) return edges
+            if (cursor.toLong() + recordSize > rom.size || method !in 0..1024) return null
+            edges += EvolutionEdge(
+                targetSpeciesId = rom.u16le(cursor + 4),
+                methodId = method,
+                parameter = rom.u16le(cursor + 2),
+                raw = rom.slice(cursor, recordSize),
             )
-            cursor += 12
+            cursor += recordSize
         }
+        return null
     }
 
     private fun gen12Descriptions(
