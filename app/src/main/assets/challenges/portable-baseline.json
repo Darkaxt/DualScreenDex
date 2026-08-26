@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "challenges": [
+    {
+      "key": "collection-first-partner",
+      "title": "A New Partner",
+      "description": "Catch your first Pokémon on this journey.",
+      "category": "COLLECTION",
+      "requiredCapabilities": ["POKEDEX_FACTS"],
+      "organicSafe": true,
+      "operator": "COUNT_AT_LEAST",
+      "metric": "captures",
+      "target": 1,
+      "sourceInspiration": "portable-pattern"
+    },
+    {
+      "key": "collection-growing-roster",
+      "title": "Growing Roster",
+      "description": "Catch ten different Pokémon during this journey.",
+      "category": "COLLECTION",
+      "requiredCapabilities": ["POKEDEX_FACTS"],
+      "organicSafe": true,
+      "operator": "COUNT_AT_LEAST",
+      "metric": "captures",
+      "target": 10,
+      "sourceInspiration": "portable-pattern"
+    },
+    {
+      "key": "party-new-form",
+      "title": "A New Form",
+      "description": "Witness one of your Pokémon evolve.",
+      "category": "PARTY",
+      "requiredCapabilities": ["OWNED_INDIVIDUALS"],
+      "organicSafe": true,
+      "operator": "COUNT_AT_LEAST",
+      "metric": "evolutions",
+      "target": 1,
+      "sourceInspiration": "portable-pattern"
+    },
+    {
+      "key": "exploration-open-road",
+      "title": "Open Road",
+      "description": "Visit five distinct areas with DualDex alongside you.",
+      "category": "EXPLORATION",
+      "requiredCapabilities": ["LOCATION_FACTS"],
+      "organicSafe": true,
+      "operator": "COUNT_AT_LEAST",
+      "metric": "areas",
+      "target": 5,
+      "sourceInspiration": "portable-pattern"
+    },
+    {
+      "key": "exploration-curious-eye",
+      "title": "Curious Eye",
+      "description": "Discover five points of interest while exploring.",
+      "category": "EXPLORATION",
+      "requiredCapabilities": ["POI_FACTS"],
+      "organicSafe": true,
+      "operator": "COUNT_AT_LEAST",
+      "metric": "pois",
+      "target": 5,
+      "sourceInspiration": "portable-pattern"
+    },
+    {
+      "key": "battle-seasoned",
+      "title": "Seasoned Battler",
+      "description": "Take part in twenty-five battles during this journey.",
+      "category": "BATTLE",
+      "requiredCapabilities": ["BATTLE_FACTS"],
+      "organicSafe": true,
+      "operator": "COUNT_AT_LEAST",
+      "metric": "battles",
+      "target": 25,
+      "sourceInspiration": "portable-pattern"
+    }
+  ]
+}
