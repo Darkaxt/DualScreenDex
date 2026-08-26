@@ -22,7 +22,7 @@ These captures come from the signed RC66 APK running a real Modern Emerald sessi
 DualDex reconstructs local maps from ROM graphics and event data, then combines them with live player coordinates. The map preserves Organic discovery and fog of war, exposes discovered POIs through category filters, follows the trainer until manual navigation takes control, and keeps the in-game clock visible for future day/night rendering.
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-local-map.webp" width="70%" alt="DualDex local map tracking the trainer on Route 101 with the live clock and discovered location">
+  <img src="docs/images/live/dualdex-rc66-local-map.webp" width="92%" alt="DualDex local map tracking the trainer on Route 101 with the live clock and discovered location">
 </p>
 
 <p align="center">
@@ -56,7 +56,7 @@ The encounter page opens automatically from validated live battle state and reso
 The Pokédex joins the ROM-derived species catalog with live seen, caught, and team knowledge. Its browser and counters adapt to the selected list; Entry includes the ROM text and trainer-relative height; Stats combines base values with a Level 50 projection; Moves exposes the validated learnset; Area renders known habitats; and More surfaces parsed ability conditions, evolutions, and locations when Organic discovery permits them.
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-pokedex-browser.webp" width="70%" alt="DualDex Pokédex browser with All Caught Team and Area tabs plus the adaptive counter">
+  <img src="docs/images/live/dualdex-rc66-pokedex-browser.webp" width="92%" alt="DualDex Pokédex browser with All Caught Team and Area tabs plus the adaptive counter">
 </p>
 
 <p align="center">
@@ -91,7 +91,7 @@ The Pokédex joins the ROM-derived species catalog with live seen, caught, and t
 </p>
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-pokedex-evolutions.webp" width="70%" alt="DualDex Pokédex More tab showing Torchic evolution and discovered locations">
+  <img src="docs/images/live/dualdex-rc66-pokedex-evolutions.webp" width="92%" alt="DualDex Pokédex More tab showing Torchic evolution and discovered locations">
 </p>
 
 <p align="center">
@@ -125,7 +125,7 @@ Party pages consume the same unified live snapshot as battle and the Trainer Car
 The Trainer Card is a live-memory view rather than a separately maintained profile. It presents trainer identity and sprite, money, play time, Pokédex seen/caught totals, card progression, and badge state through the same snapshot used by the rest of DualDex, with validated recovery reserved for fields that are temporarily unavailable live.
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-trainer-card.webp" width="70%" alt="DualDex Trainer Card showing live trainer identity money play time Pokédex totals sprite and badges">
+  <img src="docs/images/live/dualdex-rc66-trainer-card.webp" width="92%" alt="DualDex Trainer Card showing live trainer identity money play time Pokédex totals sprite and badges">
 </p>
 
 <p align="center">
