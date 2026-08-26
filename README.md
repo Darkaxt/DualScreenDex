@@ -11,35 +11,126 @@ The game remains on the primary display. DualDex detects the active GB, GBC, or 
 
 DualDex targets the AYN Thor's 3.92-inch lower display as a physically small companion surface, not as a high-resolution tablet. Browsing and species details are separate pages, battle tabs show one question at a time, and redundant global bottom navigation is omitted. Settings stay in the header; battle context opens and closes automatically.
 
+## Live feature tour
+
+These captures come from the signed RC66 APK running a real Modern Emerald session on an AYN Thor. They are grouped by feature so each supported tab and drill-down is visible rather than represented by a single promotional screen.
+
+### Local Map
+
+DualDex reconstructs local maps from ROM graphics and event data, then combines them with live player coordinates. The map preserves Organic discovery and fog of war, exposes discovered POIs through category filters, follows the trainer until manual navigation takes control, and keeps the in-game clock visible for future day/night rendering.
+
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-local-map.webp" width="31%" alt="DualDex live local map tracking the trainer on Route 101">
-  <img src="docs/images/live/dualdex-rc66-wild-rarity.webp" width="31%" alt="DualDex wild encounter rarity assessment for Zigzagoon">
-  <img src="docs/images/live/dualdex-rc66-wild-attack.webp" width="31%" alt="DualDex selected attack details during a wild encounter">
+  <img src="docs/images/live/dualdex-rc66-local-map.webp" width="70%" alt="DualDex local map tracking the trainer on Route 101 with the live clock and discovered location">
 </p>
 
 <p align="center">
-  <sub>Live local map · Wild rarity · Selected attack</sub>
+  <sub><strong>Local Map</strong> — trainer tracking, live clock, map controls, and a discovered POI</sub>
+</p>
+
+### Wild Encounter
+
+The encounter page opens automatically from validated live battle state and resolves the current opponent without OCR. Entry follows the active information policy; Attack explains the selected move and known effectiveness; Rarity evaluates recruitment from relative level and IV quality; and Moves remembers only attacks actually observed in Organic mode instead of exposing the opponent's hidden loadout.
+
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-wild-entry.webp" width="46%" alt="DualDex Wild Encounter Entry tab with Organic Pokédex knowledge locked">
+  <img src="docs/images/live/dualdex-rc66-wild-attack.webp" width="46%" alt="DualDex Wild Encounter Attack tab showing Scratch metadata and effectiveness">
 </p>
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-trainer-card.webp" width="46%" alt="DualDex live Trainer Card with identity and progress fields">
-  <img src="docs/images/live/dualdex-rc66-party-detail.webp" width="46%" alt="DualDex Party detail with rarity nature ability experience and stats">
+  <sub><strong>Entry</strong> — policy-filtered knowledge · <strong>Attack</strong> — selected move details</sub>
 </p>
 
 <p align="center">
-  <sub>Trainer Card · Party detail</sub>
+  <img src="docs/images/live/dualdex-rc66-wild-rarity.webp" width="46%" alt="DualDex Wild Encounter Rarity tab rating a Zigzagoon as Ordinary Standard">
+  <img src="docs/images/live/dualdex-rc66-wild-moves.webp" width="46%" alt="DualDex Wild Encounter Moves tab showing the observed move Growl and its frequency">
 </p>
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-height-comparison.webp" width="46%" alt="DualDex Pokédex height comparison using the live trainer sprite">
-  <img src="docs/images/live/dualdex-rc66-ability-behavior.webp" width="46%" alt="DualDex parsed ability behavior with activation and power conditions">
+  <sub><strong>Rarity</strong> — IV and level recruitment signal · <strong>Moves</strong> — observed attacks only</sub>
+</p>
+
+### Pokédex
+
+The Pokédex joins the ROM-derived species catalog with live seen, caught, and team knowledge. Its browser and counters adapt to the selected list; Entry includes the ROM text and trainer-relative height; Stats combines base values with a Level 50 projection; Moves exposes the validated learnset; Area renders known habitats; and More surfaces parsed ability conditions, evolutions, and locations when Organic discovery permits them.
+
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-pokedex-browser.webp" width="70%" alt="DualDex Pokédex browser with All Caught Team and Area tabs plus the adaptive counter">
 </p>
 
 <p align="center">
-  <sub>Height comparison · Parsed ability behavior</sub>
+  <sub><strong>Browser</strong> — live knowledge lists, filters, and adaptive totals</sub>
 </p>
 
-These are live captures from the signed RC66 APK running on an AYN Thor with a real Modern Emerald session. The shown map, Pokémon names and sprites, types, moves, rarity inputs, party state, Trainer Card fields, and ability conditions come from the ROM-derived catalog and unified live snapshot. No bundled Pokédex database or synthetic Pokémon artwork is used.
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-pokedex-entry.webp" width="46%" alt="DualDex Pokédex Entry tab showing Torchic description height and weight">
+  <img src="docs/images/live/dualdex-rc66-height-comparison.webp" width="46%" alt="DualDex Pokédex Entry height comparison using the current trainer sprite">
+</p>
+
+<p align="center">
+  <sub><strong>Entry</strong> — ROM description and measurements · <strong>Height</strong> — trainer-relative scale</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-pokedex-stats.webp" width="46%" alt="DualDex Pokédex Stats tab showing base stats and Level 50 innate ranges">
+  <img src="docs/images/live/dualdex-rc66-pokedex-moves.webp" width="46%" alt="DualDex Pokédex Moves tab showing Torchic level-up moves">
+</p>
+
+<p align="center">
+  <sub><strong>Stats</strong> — base values and projected ranges · <strong>Moves</strong> — parsed learnset</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-pokedex-area.webp" width="46%" alt="DualDex Pokédex Area tab rendering Zigzagoon habitat locations">
+  <img src="docs/images/live/dualdex-rc66-ability-behavior.webp" width="46%" alt="DualDex Pokédex More tab showing parsed Blaze activation and power conditions">
+</p>
+
+<p align="center">
+  <sub><strong>Area</strong> — known habitat map · <strong>More: Ability</strong> — parsed activation and effect</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-pokedex-evolutions.webp" width="70%" alt="DualDex Pokédex More tab showing Torchic evolution and discovered locations">
+</p>
+
+<p align="center">
+  <sub><strong>More: Evolution</strong> — evolution method and discovered locations</sub>
+</p>
+
+### Party
+
+Party pages consume the same unified live snapshot as battle and the Trainer Card. The overview uses the six-slot game layout, while each Pokémon opens a detail view with rarity, HP, experience, held item, and current stats. Nature and Ability drill-downs add ROM-resolved stat effects, temperament, activation conditions, and mechanical power without duplicating hardcoded UI tables.
+
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-party-overview.webp" width="46%" alt="DualDex Party overview using a three-row two-column team layout">
+  <img src="docs/images/live/dualdex-rc66-party-detail.webp" width="46%" alt="DualDex Party Pokémon detail showing Torchic rarity nature ability experience and stats">
+</p>
+
+<p align="center">
+  <sub><strong>Overview</strong> — live six-slot team · <strong>Pokémon detail</strong> — current individual state</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-nature-detail.webp" width="46%" alt="DualDex Nature detail showing Timid stat profile and flavor preferences">
+  <img src="docs/images/live/dualdex-rc66-party-ability-detail.webp" width="46%" alt="DualDex Party Ability detail showing Blaze effect activation power and known captures">
+</p>
+
+<p align="center">
+  <sub><strong>Nature detail</strong> — translated stat profile · <strong>Ability detail</strong> — parsed mechanics</sub>
+</p>
+
+### Trainer Card
+
+The Trainer Card is a live-memory view rather than a separately maintained profile. It presents trainer identity and sprite, money, play time, Pokédex seen/caught totals, card progression, and badge state through the same snapshot used by the rest of DualDex, with validated recovery reserved for fields that are temporarily unavailable live.
+
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-trainer-card.webp" width="70%" alt="DualDex Trainer Card showing live trainer identity money play time Pokédex totals sprite and badges">
+</p>
+
+<p align="center">
+  <sub><strong>Trainer Card</strong> — live identity, progress, Pokédex totals, and badges</sub>
+</p>
+
+Every shown map, Pokémon name and sprite, type, move, rarity input, party field, Trainer Card value, nature, ability condition, and evolution comes from the ROM-derived catalog or unified live snapshot. No bundled Pokédex database or synthetic Pokémon artwork is used.
 
 ## Why this fork is different
 
