@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Catalog, State } from '../models';
 import { Header, identitySpriteClass, maskIdentityName, PokedexAvatar, Segmented, speciesIdentityKnowledge, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
@@ -176,6 +177,92 @@ export function heightChartMaximum(pokemonMeters: number): number {
   return Math.max(1.7, pokemonMeters) / .8;
 }
 
+export function opaquePixelBounds(
+  rgba: Uint8ClampedArray,
+  width: number,
+  height: number,
+): { left: number; top: number; width: number; height: number } | null {
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0
+      || rgba.length !== width * height * 4) {
+    throw new TypeError('RGBA dimensions must match the pixel buffer');
+  }
+  let left = width;
+  let top = height;
+  let right = -1;
+  let bottom = -1;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (rgba[(y * width + x) * 4 + 3] === 0) continue;
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  return right < left || bottom < top
+    ? null
+    : { left, top, width: right - left + 1, height: bottom - top + 1 };
+}
+
+function AlphaTrimmedHeightSprite({ src, className = '' }: { src: string; className?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [trimmed, setTrimmed] = useState(false);
+  useEffect(() => setTrimmed(false), [src]);
+  const trim = (image: HTMLImageElement) => {
+    const canvas = canvasRef.current;
+    if (!canvas || image.naturalWidth <= 0 || image.naturalHeight <= 0) return;
+    try {
+      const staging = document.createElement('canvas');
+      staging.width = image.naturalWidth;
+      staging.height = image.naturalHeight;
+      const stagingContext = staging.getContext('2d', { willReadFrequently: true });
+      if (!stagingContext) return;
+      stagingContext.imageSmoothingEnabled = false;
+      stagingContext.drawImage(image, 0, 0);
+      const bounds = opaquePixelBounds(
+        stagingContext.getImageData(0, 0, staging.width, staging.height).data,
+        staging.width,
+        staging.height,
+      );
+      if (!bounds) return;
+      canvas.width = bounds.width;
+      canvas.height = bounds.height;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      context.imageSmoothingEnabled = false;
+      context.drawImage(
+        image,
+        bounds.left,
+        bounds.top,
+        bounds.width,
+        bounds.height,
+        0,
+        0,
+        bounds.width,
+        bounds.height,
+      );
+      setTrimmed(true);
+    } catch {
+      setTrimmed(false);
+    }
+  };
+  return <>
+    <img
+      class={`${className} height-sprite-fallback`.trim()}
+      src={src}
+      alt=""
+      hidden={trimmed}
+      onLoad={event => trim(event.currentTarget)}
+    />
+    <canvas
+      ref={canvasRef}
+      class={`${className} height-sprite-canvas`.trim()}
+      data-alpha-trimmed={trimmed ? 'true' : 'false'}
+      hidden={!trimmed}
+    />
+  </>;
+}
+
 function HeightComparison({ species, platform, knowledge, trainerAvatarUrl }: {
   species: Catalog['species'][number];
   platform: string;
@@ -206,12 +293,12 @@ function HeightComparison({ species, platform, knowledge, trainerAvatarUrl }: {
       ><i>{tick.toFixed(tick % 1 === 0 ? 0 : 1)} m</i></span>)}
       <span class="height-figure height-person">
         {trainerAvatarUrl
-          ? <img src={trainerAvatarUrl} alt="" />
+          ? <AlphaTrimmedHeightSprite src={trainerAvatarUrl} />
           : <svg viewBox="0 0 64 170"><circle cx="32" cy="17" r="15" /><path d="M22 35h20l7 52-9 2-3-32v50l8 60H33l-5-48-5 48H11l8-60V57l-3 32-9-2 7-52h8Z" /></svg>}
       </span>
       <span class="height-figure height-pokemon">
         {species.hasSprite
-          ? <img class={identitySpriteClass(knowledge)} src={`/api/sprites/species/${species.id}.png`} alt="" />
+          ? <AlphaTrimmedHeightSprite className={identitySpriteClass(knowledge)} src={`/api/sprites/species/${species.id}.png`} />
           : <svg class="height-pokemon-silhouette" viewBox="0 0 120 100"><path d="M18 65c0-22 13-39 34-43l7-17 10 18c23 6 36 24 33 45l15 12-20 3c-8 10-20 15-36 15-25 0-43-12-43-33Zm12-31L10 20l24 3m61 15 18-13-8 23" /></svg>}
       </span>
     </div>

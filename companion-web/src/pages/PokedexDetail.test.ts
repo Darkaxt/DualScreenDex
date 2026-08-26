@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { baseStatSummary, formatHeight, formatWeight, heightChartMaximum, heightInMeters, projectedStatRange, wildLevelRange } from './PokedexDetail';
+import { baseStatSummary, formatHeight, formatWeight, heightChartMaximum, heightInMeters, opaquePixelBounds, projectedStatRange, wildLevelRange } from './PokedexDetail';
 
 describe('ROM Pokédex measurements', () => {
   it('renders Gen III decimetres and hectograms as metric values', () => {
@@ -17,6 +17,16 @@ describe('ROM Pokédex measurements', () => {
     expect(heightInMeters((7 << 8) | 5, 'GBC')).toBeCloseTo(1.7018, 4);
     expect(heightChartMaximum(.7)).toBe(2.125);
     expect(heightChartMaximum(2.6)).toBe(3.25);
+  });
+
+  it('measures the visible sprite instead of its transparent image canvas', () => {
+    const rgba = new Uint8ClampedArray(4 * 6 * 4);
+    for (let y = 2; y <= 4; y += 1) {
+      for (let x = 1; x <= 2; x += 1) rgba[(y * 4 + x) * 4 + 3] = 255;
+    }
+
+    expect(opaquePixelBounds(rgba, 4, 6)).toEqual({ left: 1, top: 2, width: 2, height: 3 });
+    expect(opaquePixelBounds(new Uint8ClampedArray(4 * 6 * 4), 4, 6)).toBeNull();
   });
 });
 

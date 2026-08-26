@@ -280,7 +280,8 @@ button { cursor: pointer; }
 .height-comparison-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .height-comparison-heading .eyebrow { margin: 0; }
 .height-comparison-heading strong { font-size: .76em; }
-.height-ruler { position: relative; height: 226px; margin: 9px 10px 0 49px; border-bottom: 2px solid var(--line); }
+.height-ruler { position: relative; height: 226px; margin: 9px 10px 0 49px; }
+.height-ruler::after { content: ""; position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; border-top: 2px solid var(--line); pointer-events: none; }
 .height-ruler-line { position: absolute; left: 0; right: 0; border-top: 1px dashed color-mix(in srgb, var(--line) 52%, transparent); }
 .height-ruler-line.major { border-top-style: solid; border-top-color: color-mix(in srgb, var(--line) 72%, transparent); }
 .height-ruler-line i { position: absolute; right: calc(100% + 8px); width: 39px; translate: 0 -50%; color: var(--muted); font-size: .54em; font-style: normal; font-weight: 900; text-align: right; }
@@ -290,6 +291,8 @@ button { cursor: pointer; }
 .height-person img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; image-rendering: pixelated; }
 .height-pokemon { left: 52%; width: min(33%, 188px); height: var(--pokemon-height); min-height: 22px; }
 .height-pokemon img, .height-pokemon svg { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; image-rendering: pixelated; }
+.height-figure .height-sprite-canvas { flex: none; width: auto; max-width: none; height: 100%; image-rendering: pixelated; }
+.height-figure .height-sprite-canvas[hidden], .height-figure .height-sprite-fallback[hidden] { display: none; }
 .height-pokemon-silhouette { overflow: visible; fill: color-mix(in srgb, var(--ink) 86%, transparent); stroke: var(--ink); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 .fact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }.fact-grid span { padding: 9px 10px; background: #dce3ca; }.fact-grid small, .move-metadata small { display: block; color: #687366; font-size: .8em; font-weight: 900; letter-spacing: .08em; }.fact-grid strong { display: block; margin-top: 5px; font-size: 1.08em; }
 .withheld { padding: 18px 12px; border-left: 5px solid #879b67; background: #e0e5cc; }.withheld strong { font-size: .8em; letter-spacing: .08em; }.withheld p { margin-bottom: 0; line-height: 1.4; color: #596357; }

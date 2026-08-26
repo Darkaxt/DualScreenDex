@@ -218,7 +218,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await expect(page.getByRole('img', { name: 'Height comparison for BULBASAUR: 0.7 m beside a 1.7 m person' })).toBeVisible();
   await expect.poll(() => page.locator('.height-ruler').evaluate(node => {
     const ruler = node.getBoundingClientRect();
-    const person = node.querySelector('.height-person')!.getBoundingClientRect();
+    const person = node.querySelector('.height-person canvas[data-alpha-trimmed="true"]')!.getBoundingClientRect();
     const pokemon = node.querySelector('.height-pokemon')!.getBoundingClientRect();
     const rounded = (value: number) => Math.round(value * 100) / 100;
     return {
