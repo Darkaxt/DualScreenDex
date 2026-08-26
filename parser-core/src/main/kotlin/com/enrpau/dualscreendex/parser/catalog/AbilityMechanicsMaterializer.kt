@@ -16,7 +16,7 @@ enum class AbilityMechanicKind {
 }
 
 enum class AbilityMechanicConditionKind {
-    MOVE_SPLIT, ATTACKER_STATUS_NON_ZERO, SWITCH_IN, MOVE_POWER_NON_ZERO,
+    MOVE_SPLIT, ATTACKER_STATUS_NON_ZERO, SWITCH_IN, MOVE_POWER_NON_ZERO, ATTACKING_MOVE_TYPE,
 }
 
 data class AbilityMechanicCondition(
