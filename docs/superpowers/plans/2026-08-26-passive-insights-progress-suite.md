@@ -375,7 +375,7 @@ Pop-Location
 - [x] **Step 2: Record Objectives population as a Stage 3 deferral while the absent section remains truthful.**
 - [x] **Step 3: Fix every other blocker/error and run affected full Kotlin/browser suites.**
 - [x] **Step 4: Commit the complete feature and audit.**
-- [ ] **Step 5: Only now discover and publish the next unused numeric RC using the common signed-artifact gate. Do not install it.**
+- [x] **Step 5: Only now discover and publish the next unused numeric RC using the common signed-artifact gate. Do not install it.**
 
 ---
 
