@@ -23,6 +23,7 @@ import com.darkaxt.dualdex.save.BagPocketSnapshot
 import com.darkaxt.dualdex.save.TrainerPlayTime
 import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.save.LevelUpRulesetDetectionFingerprint
+import com.darkaxt.dualdex.save.OwnedIndividual
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import java.util.Collections
@@ -190,6 +191,7 @@ class UnifiedGameStateDecoder(
                 ),
                 pokedex = com.darkaxt.dualdex.battle.LivePokedexState(unavailable, unavailable),
                 party = unavailable,
+                storedIndividuals = unavailable,
                 battle = LiveValue.Available(battle),
                 location = LiveLocationState(
                     areaBaseId = areaBaseId?.let { LiveValue.Available(it) } ?: unavailable,
@@ -251,6 +253,7 @@ class UnifiedGameStateDecoder(
                 trainer = player.trainer,
                 pokedex = player.pokedex,
                 party = party,
+                storedIndividuals = unavailable("live owned storage layout was unavailable"),
                 battle = LiveValue.Available(battle),
                 location = LiveLocationState(
                     areaBaseId = areaBaseId?.let { LiveValue.Available(it) }
@@ -494,6 +497,13 @@ class UnifiedGameStateDecoder(
         val playerRecovery = saved.takeIf { liveEstablished }
         val recoveryTrainer = playerRecovery?.trainer
         val savedBag = playerRecovery?.bag.orEmpty().associateBy(BagPocketSnapshot::pocket)
+        val resolvedParty = resolve(live?.party, playerRecovery?.party)
+        val resolvedStored = resolve(live?.storedIndividuals, playerRecovery?.storedIndividuals)
+        val boxes = resolvedStorageBoxes(
+            generation = active.generation,
+            stored = resolvedStored,
+            party = resolvedParty.value.orEmpty(),
+        )
         return ResolvedGameSnapshot(
             romIdentity = active.romIdentity,
             generation = active.generation,
@@ -521,8 +531,10 @@ class UnifiedGameStateDecoder(
                     active.saveParseContext,
                 ),
             ),
-            party = resolve(live?.party, playerRecovery?.party),
-            storedIndividuals = resolve(null, playerRecovery?.storedIndividuals),
+            ownedStorage = ResolvedOwnedStorageState(
+                party = resolvedParty,
+                boxes = boxes,
+            ),
             battle = resolve(live?.battle, null),
             battleKnowledge = battleKnowledge,
             location = ResolvedLocationState(
@@ -554,6 +566,62 @@ class UnifiedGameStateDecoder(
         } else {
             ResolvedValue.unavailable()
         }
+    }
+
+    private fun resolvedStorageBoxes(
+        generation: Int,
+        stored: ResolvedValue<List<OwnedIndividual>>,
+        party: List<OwnedIndividual>,
+    ): ResolvedValue<List<ResolvedStorageBox>> {
+        val individuals = stored.value ?: return ResolvedValue.unavailable()
+        val partyIdentities = party.mapNotNull(OwnedIndividual::individualIdentity).toSet()
+        val partyFallbacks = party.filter { it.individualIdentity == null }
+            .groupingBy(OwnedIndividual::validatedRecordDigest)
+            .eachCount()
+            .toMutableMap()
+        val deduplicated = individuals.filter { individual ->
+            val identity = individual.individualIdentity
+            if (identity != null) return@filter identity !in partyIdentities
+            val digest = individual.validatedRecordDigest()
+            val remaining = partyFallbacks[digest] ?: 0
+            if (remaining <= 0) true else {
+                partyFallbacks[digest] = remaining - 1
+                false
+            }
+        }
+        val boxes = deduplicated.mapNotNull { individual ->
+            storageCoordinates(individual.stableLocation, generation)?.let { (box, slot) ->
+                Triple(box, slot, individual)
+            }
+        }.groupBy { it.first }
+            .toSortedMap()
+            .map { (boxIndex, entries) ->
+                ResolvedStorageBox(
+                    index = boxIndex,
+                    slots = entries.sortedBy { it.second }.map { (_, slot, individual) ->
+                        ResolvedStorageSlot(slot, individual)
+                    },
+                )
+            }
+        return when (stored.source) {
+            ResolvedValueSource.LIVE -> ResolvedValue.live(boxes)
+            ResolvedValueSource.RECOVERY -> ResolvedValue.recovery(boxes)
+            ResolvedValueSource.UNAVAILABLE -> ResolvedValue.unavailable()
+        }
+    }
+
+    private fun storageCoordinates(location: String, generation: Int): Pair<Int, Int>? {
+        BOX_SLOT_LOCATION.matchEntire(location)?.let { match ->
+            val box = match.groupValues[1].toIntOrNull()?.minus(1) ?: return null
+            val slot = match.groupValues[2].toIntOrNull() ?: return null
+            return (box to slot).takeIf { box >= 0 && slot >= 0 }
+        }
+        FLAT_BOX_LOCATION.matchEntire(location)?.let { match ->
+            val flat = match.groupValues[1].toIntOrNull() ?: return null
+            val capacity = if (generation == 3) GEN3_BOX_CAPACITY else GB_BOX_CAPACITY
+            return (flat / capacity) to (flat % capacity)
+        }
+        return null
     }
 
     private fun resolvePokedexSpecies(
@@ -702,4 +770,11 @@ class UnifiedGameStateDecoder(
         val bag: Map<BagPocket, LiveValue<BagPocketSnapshot>>,
         val eventFlags: LiveValue<Set<Int>>,
     )
+
+    private companion object {
+        val BOX_SLOT_LOCATION = Regex("box-(\\d+)-(\\d+)")
+        val FLAT_BOX_LOCATION = Regex("box-(\\d+)")
+        const val GB_BOX_CAPACITY = 20
+        const val GEN3_BOX_CAPACITY = 30
+    }
 }

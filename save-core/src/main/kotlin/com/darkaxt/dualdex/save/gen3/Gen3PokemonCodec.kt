@@ -88,6 +88,7 @@ object Gen3PokemonCodec {
         OwnedIndividual(
             stableLocation = stableLocation,
             speciesId = speciesId,
+            individualIdentity = "%08x%08x".format(personality, otId),
             formId = formId,
             level = level,
             isEgg = isEgg,
