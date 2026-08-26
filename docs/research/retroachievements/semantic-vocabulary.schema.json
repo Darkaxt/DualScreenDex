@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Darkaxt/DualScreenDex/schemas/retroachievements/semantic-vocabulary.schema.json",
+  "title": "DualScreenDex Pokemon Achievement Semantic Classification",
+  "description": "Commit-safe classification metadata derived from authenticated RetroAchievements research payloads without redistributing source titles, descriptions, trigger expressions, or credentials.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "sourceManifestSha256",
+    "classifiedAt",
+    "summary",
+    "records"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "sourceManifestSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "classifiedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/record"
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "semanticFamily": {
+      "type": "string",
+      "enum": [
+        "PROGRESSION",
+        "COLLECTION",
+        "EXPLORATION",
+        "PARTY",
+        "BATTLE",
+        "SESSION",
+        "STREAK",
+        "MINIGAME",
+        "TIME",
+        "COMPLETION",
+        "GAME_SPECIFIC",
+        "UNCLASSIFIED"
+      ]
+    },
+    "predicateOperator": {
+      "type": "string",
+      "enum": [
+        "FACT_TRUE",
+        "FACT_FALSE",
+        "VALUE_EQUALS",
+        "VALUE_DIFFERS",
+        "VALUE_EXCEEDS",
+        "VALUE_BELOW",
+        "SET_CONTAINS",
+        "SET_COUNT",
+        "EVENT_ONCE",
+        "EVENT_COUNT",
+        "EVENTS_IN_ORDER",
+        "CONDITION_AT_BATTLE_START",
+        "CONDITION_THROUGHOUT_BATTLE",
+        "CONDITION_AT_BATTLE_COMPLETION",
+        "NO_FORBIDDEN_EVENT",
+        "BOUNDED_GROUP_COMPLETE",
+        "PROGRESS_CURRENT_TARGET",
+        "RESET",
+        "PAUSE",
+        "MISS",
+        "COMPLETE"
+      ]
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "MAX_LEVEL",
+            "MAX_PARTY_SIZE",
+            "ITEM_USE_POLICY",
+            "RESET_POLICY",
+            "TIME_WINDOW",
+            "BATTLE_MODE",
+            "REQUIRED_COUNT",
+            "ALLOWED_TYPE",
+            "FORBIDDEN_TYPE",
+            "ALLOWED_SPECIES",
+            "FORBIDDEN_SPECIES",
+            "AREA_BOUNDARY",
+            "ORDERING",
+            "SEQUENCE",
+            "NO_FORBIDDEN_EVENT"
+          ]
+        },
+        "value": {
+          "type": [
+            "string",
+            "integer",
+            "boolean"
+          ]
+        }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generation",
+        "displayOrder",
+        "sourceGameId",
+        "achievementId",
+        "sourceUrl",
+        "sourceModifiedAt",
+        "officialClassification",
+        "sourceTitleSha256",
+        "sourceDescriptionSha256",
+        "semanticFamily",
+        "constraints",
+        "portabilityTier",
+        "templateKey",
+        "templateTitle",
+        "templateDescription",
+        "requiredFacts",
+        "requiredEvents",
+        "requiredCatalogRoles",
+        "temporalScope",
+        "predicateOperators",
+        "knowledgeVisibility",
+        "requiredCapabilities",
+        "outcome",
+        "reason"
+      ],
+      "properties": {
+        "generation": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "displayOrder": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceGameId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "achievementId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceUrl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "sourceModifiedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "officialClassification": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceTitleSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sourceDescriptionSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "semanticFamily": {
+          "$ref": "#/$defs/semanticFamily"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/constraint"
+          }
+        },
+        "portabilityTier": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "templateKey": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "templateTitle": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "templateDescription": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requiredFacts": {
+          "$ref": "#/$defs/uniqueStrings"
+        },
+        "requiredEvents": {
+          "$ref": "#/$defs/uniqueStrings"
+        },
+        "requiredCatalogRoles": {
+          "$ref": "#/$defs/uniqueStrings"
+        },
+        "temporalScope": {
+          "type": "string",
+          "enum": [
+            "CURRENT_SNAPSHOT",
+            "BATTLE_EPOCH",
+            "AREA_EPOCH",
+            "SESSION_EPOCH",
+            "PLAYTHROUGH",
+            "GAME_SPECIFIC",
+            "UNRESOLVED"
+          ]
+        },
+        "predicateOperators": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/predicateOperator"
+          }
+        },
+        "knowledgeVisibility": {
+          "type": "string",
+          "enum": [
+            "CAPABILITY_AND_KNOWLEDGE_GATED",
+            "DEVELOPER_RESEARCH_ONLY"
+          ]
+        },
+        "requiredCapabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "CLASSIFIED",
+            "UNCLASSIFIED"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "classified",
+        "unclassified",
+        "expressible",
+        "byFamily",
+        "byTier",
+        "byExclusionReason"
+      ],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "classified": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unclassified": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expressible": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byFamily": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "byTier": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "byExclusionReason": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "uniqueStrings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
