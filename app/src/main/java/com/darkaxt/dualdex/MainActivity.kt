@@ -170,6 +170,19 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    private val compatibilityExportPicker = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) {
+            runCatching {
+                val bytes = (application as DualDexApplication).exportCompatibilityReport()
+                requireNotNull(contentResolver.openOutputStream(uri, "wt")) { "selected export document is not writable" }
+                    .use { it.write(bytes) }
+            }.onSuccess {
+                Toast.makeText(this, "Compatibility report exported", Toast.LENGTH_SHORT).show()
+            }.onFailure { failure ->
+                Toast.makeText(this, failure.message ?: "Compatibility report export failed", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
     private val overlayPermission = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         val application = application as DualDexApplication
         if (Settings.canDrawOverlays(this)) {
@@ -222,6 +235,8 @@ class MainActivity : AppCompatActivity() {
             exportMapper()
         } else if (intent.getBooleanExtra(EXTRA_EXPORT_PERFORMANCE, false)) {
             exportPerformanceLog()
+        } else if (intent.getBooleanExtra(EXTRA_EXPORT_COMPATIBILITY, false)) {
+            exportCompatibilityReport()
         } else {
             restoreOverlayMode()
         }
@@ -271,6 +286,7 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
         if (intent.getBooleanExtra(EXTRA_EXPORT_MAPPER, false)) exportMapper()
         if (intent.getBooleanExtra(EXTRA_EXPORT_PERFORMANCE, false)) exportPerformanceLog()
+        if (intent.getBooleanExtra(EXTRA_EXPORT_COMPATIBILITY, false)) exportCompatibilityReport()
     }
 
     private fun showCompanionOrRecovery() {
@@ -299,6 +315,7 @@ class MainActivity : AppCompatActivity() {
                     NativeSetupRoute.OPEN_RETROARCH -> application.retroArchSetup?.launchRetroArch()
                     NativeSetupRoute.EXPORT_MAPPER -> exportMapper()
                     NativeSetupRoute.EXPORT_PERFORMANCE -> exportPerformanceLog()
+                    NativeSetupRoute.EXPORT_COMPATIBILITY -> exportCompatibilityReport()
                     NativeSetupRoute.SHOW_OVERLAY -> showOverlay()
                     NativeSetupRoute.DOCK_OVERLAY -> {
                         FloatingCompanionService.dock(this)
@@ -365,6 +382,11 @@ class MainActivity : AppCompatActivity() {
     private fun exportPerformanceLog() {
         val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(Date())
         performanceExportPicker.launch("dualdex-performance-$timestamp.ndjson")
+    }
+
+    private fun exportCompatibilityReport() {
+        val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(Date())
+        compatibilityExportPicker.launch("dualdex-compatibility-$timestamp.json")
     }
 
     fun moveToDisplayTarget(target: DisplayTarget) {
@@ -467,6 +489,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_EXPORT_MAPPER = "com.darkaxt.dualdex.EXPORT_MAPPER"
         const val EXTRA_EXPORT_PERFORMANCE = "com.darkaxt.dualdex.EXPORT_PERFORMANCE"
+        const val EXTRA_EXPORT_COMPATIBILITY = "com.darkaxt.dualdex.EXPORT_COMPATIBILITY"
         private const val EXTRA_DISPLAY_ATTEMPT = "com.darkaxt.dualdex.DISPLAY_ATTEMPT"
         private const val EXTRA_WEB_ROUTE = "com.darkaxt.dualdex.WEB_ROUTE"
 

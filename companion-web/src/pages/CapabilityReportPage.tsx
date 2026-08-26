@@ -41,7 +41,7 @@ export function CapabilityReportPage({ romHash, refreshMarker, onBack }: { romHa
   };
 
   return <section class="screen capability-screen">
-    <Header title="CAPABILITY REPORT" kicker="LOADED ROM · READ ONLY" onBack={onBack} />
+    <Header title="COMPATIBILITY REPORT" kicker="LOADED ROM · READ ONLY" onBack={onBack} />
     <div class="capability-content" data-scroll-region>
       {currentView && <>
         <section class="capability-identity">
@@ -51,6 +51,7 @@ export function CapabilityReportPage({ romHash, refreshMarker, onBack }: { romHa
           <span>CRC32 {currentView.crc32 ? currentView.crc32.toUpperCase() : 'N/F'} · SHA-256 {currentView.sha256 ? currentView.sha256.slice(0, 12).toUpperCase() : 'N/F'}</span>
           <span>{rulesetLabel(currentView)}{currentView.rulesetAssumed ? ' · ASSUMED' : ''}</span>
         </section>
+        <CompatibilitySummary view={currentView} />
         <section class="capability-list" aria-label="ROM capabilities">
           {Array.isArray(currentView.capabilities) && currentView.capabilities.map((raw, index) => {
             const capability = normalizeCapability(raw);
@@ -68,12 +69,41 @@ export function CapabilityReportPage({ romHash, refreshMarker, onBack }: { romHa
         </section>
         <section class="capability-actions">
           <button type="button" onClick={() => void copy()}>COPY REPORT</button>
+          <a href="dualdex://compatibility/export">EXPORT REPORT</a>
           {copyStatus && <span role="status">{copyStatus}</span>}
         </section>
       </>}
       {!currentView && !error && <p class="capability-loading" role="status">LOADING CAPABILITIES</p>}
       {error && <section class="paper-panel capability-error"><p role="alert">{error}</p><button type="button" onClick={() => setReloadKey(value => value + 1)}>RETRY</button></section>}
     </div>
+  </section>;
+}
+
+function CompatibilitySummary({ view }: { view: DiagnosticView }) {
+  if (!view.runtime && !view.map && !view.cache && !view.environment) return null;
+  return <section class="compatibility-summary" aria-label="Current compatibility">
+    {view.runtime && <article>
+      <p class="eyebrow">RUNTIME</p>
+      <strong>{pretty(view.runtime.retroArchConnection)} · {view.runtime.gameAccessReady ? 'GAME ACCESS READY' : 'WAITING FOR GAME ACCESS'}</strong>
+      <span>{pretty(view.runtime.contentResolution)} · SAVE {pretty(view.runtime.saveRamStatus)}</span>
+    </article>}
+    {view.map && <article>
+      <p class="eyebrow">CURRENT MAP</p>
+      <strong>{pretty(view.map.presentation)}</strong>
+      <span>{view.map.currentAreaName ?? 'AREA UNAVAILABLE'} · PLAYER {pretty(view.map.playerPositionStatus)}</span>
+      <span>{pretty(view.map.lighting)} · POIS {view.map.visiblePois}/{view.map.totalPois}</span>
+      {view.map.fallbackReason && <span>FALLBACK {pretty(view.map.fallbackReason)}</span>}
+    </article>}
+    {view.cache && <article>
+      <p class="eyebrow">MAP CACHE</p>
+      <strong>{view.cache.entries} RASTERS · {view.cache.renders} RENDERS</strong>
+      <span>{view.cache.hits} hits · {view.cache.evictions} evictions · {view.cache.encodedBytes} bytes</span>
+    </article>}
+    {view.environment && <article>
+      <p class="eyebrow">REPORT CONTRACT</p>
+      <strong>{view.environment.appVersion ?? 'APP VERSION UNAVAILABLE'}</strong>
+      <span>Catalog {view.environment.catalogSchemaVersion} · Parser {view.environment.parserSchemaVersion} · Report {view.reportSchemaVersion ?? 1}</span>
+    </article>}
   </section>;
 }
 
@@ -85,6 +115,8 @@ function CapabilityDetails({ capability, status }: { capability: DiagnosticCapab
       <div><dt>CONFIDENCE</dt><dd>{Number.isFinite(capability.confidence) ? `${(capability.confidence * 100).toFixed(1)}%` : absent}</dd></div>
       <div><dt>ROM OFFSET</dt><dd>{capability.offset == null ? absent : `0x${capability.offset.toString(16).toUpperCase()}`}</dd></div>
       <div><dt>VALID / TOTAL</dt><dd>{capability.validRecords == null || capability.totalRecords == null ? absent : `${capability.validRecords} / ${capability.totalRecords}`}</dd></div>
+      <div><dt>COVERED / EXPECTED</dt><dd>{capability.coveredRecords == null || capability.expectedRecords == null ? absent : `${capability.coveredRecords} / ${capability.expectedRecords}`}</dd></div>
+      <div><dt>INCOMPLETE</dt><dd>{value(capability.incompleteRecords)}</dd></div>
       <div><dt>COUNT</dt><dd>{value(capability.count)}</dd></div>
       <div><dt>RECORD SIZE</dt><dd>{value(capability.recordSize, ' bytes')}</dd></div>
       <div><dt>ELEMENT SIZE</dt><dd class="capability-element-size">{value(capability.elementSize, ' bytes')}</dd></div>
@@ -106,6 +138,9 @@ function normalizeCapability(value: DiagnosticCapability): DiagnosticCapability 
     elementSize: typeof raw.elementSize === 'number' ? raw.elementSize : null,
     validRecords: typeof raw.validRecords === 'number' ? raw.validRecords : null,
     totalRecords: typeof raw.totalRecords === 'number' ? raw.totalRecords : null,
+    coveredRecords: typeof raw.coveredRecords === 'number' ? raw.coveredRecords : null,
+    expectedRecords: typeof raw.expectedRecords === 'number' ? raw.expectedRecords : null,
+    incompleteRecords: typeof raw.incompleteRecords === 'number' ? raw.incompleteRecords : null,
     reviewStatus: typeof raw.reviewStatus === 'string' ? raw.reviewStatus : null,
     reasons: Array.isArray(raw.reasons) ? raw.reasons.filter(reason => typeof reason === 'string') : [],
   };
@@ -116,14 +151,18 @@ function displayStatus(capability: DiagnosticCapability): string {
   if (capability.status === 'AMBIGUOUS') return 'AMBIGUOUS';
   if (capability.status === 'PARTIAL' || (capability.status === 'AVAILABLE' && capability.reviewStatus === 'MANUAL_REVIEW') || (
     capability.status === 'AVAILABLE' && capability.validRecords != null && capability.totalRecords != null && capability.validRecords < capability.totalRecords
+  ) || (
+    capability.status === 'AVAILABLE' && capability.coveredRecords != null && capability.expectedRecords != null && capability.coveredRecords < capability.expectedRecords
   )) return 'PARTIAL';
   if (capability.status === 'NOT_FOUND') return 'NOT FOUND';
   return pretty(capability.status || 'NOT_FOUND');
 }
 
 function coverageText(capability: DiagnosticCapability): string | null {
-  if (capability.validRecords == null || capability.totalRecords == null || capability.totalRecords <= 0) return null;
-  return `${capability.validRecords} / ${capability.totalRecords} records · ${(capability.validRecords / capability.totalRecords * 100).toFixed(1)}%`;
+  const covered = capability.coveredRecords ?? capability.validRecords;
+  const expected = capability.expectedRecords ?? capability.totalRecords;
+  if (covered == null || expected == null || expected <= 0) return null;
+  return `${covered} / ${expected} records · ${(covered / expected * 100).toFixed(1)}%`;
 }
 
 function rulesetLabel(view: DiagnosticView): string {
@@ -140,8 +179,17 @@ export function stableReport(view: DiagnosticView): string {
     ...capability,
     reasons: capability.reasons.map(sanitizeText),
   }));
+  const map = view.map ? {
+    ...view.map,
+    currentAreaName: sanitizeNullable(view.map.currentAreaName),
+    localMapKey: sanitizeNullable(view.map.localMapKey),
+    sceneKey: sanitizeNullable(view.map.sceneKey),
+    atlasRegionKey: sanitizeNullable(view.map.atlasRegionKey),
+    fallbackReason: sanitizeNullable(view.map.fallbackReason),
+  } : null;
   return JSON.stringify({
-    romName: view.romName,
+    reportSchemaVersion: view.reportSchemaVersion ?? 1,
+    romName: sanitizeNullable(view.romName),
     sha256: view.sha256,
     crc32: view.crc32,
     family: view.family,
@@ -149,11 +197,25 @@ export function stableReport(view: DiagnosticView): string {
     activeRulesetId: view.activeRulesetId,
     rulesetAssumed: view.rulesetAssumed,
     rulesets: view.rulesets,
+    environment: view.environment ?? null,
+    runtime: view.runtime ?? null,
+    map,
+    cache: view.cache ?? null,
     capabilities,
     parserDiagnostics: view.parserDiagnostics.map(sanitizeText),
+    privacy: view.privacy ?? {
+      containsRomBytes: false,
+      containsMemoryBytes: false,
+      containsSaveData: false,
+      containsPrivatePaths: false,
+    },
   }, null, 2);
 }
 
+function sanitizeNullable(value: string | null): string | null {
+  return value == null ? null : sanitizeText(value);
+}
+
 function sanitizeText(value: string): string {
-  return value.replace(/(?:[A-Za-z]:[\\/]|\/storage\/|\/sdcard\/)[^\r\n]*/gi, '[path omitted]');
+  return value.replace(/(?:[A-Za-z]:[\\/]|\\\\[^\\/\r\n]+[\\/]|\/(?:data|storage|sdcard|home|Users|private|var|tmp|mnt|media|Volumes)\/|(?:content|file):\/\/)[^\r\n]*/gi, '[path omitted]');
 }

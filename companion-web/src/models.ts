@@ -372,8 +372,64 @@ export interface DiagnosticCapability {
   elementSize?: number | null;
   validRecords?: number | null;
   totalRecords?: number | null;
+  coveredRecords?: number | null;
+  expectedRecords?: number | null;
+  incompleteRecords?: number | null;
   reviewStatus?: string | null;
   reasons: string[];
+}
+
+export interface DiagnosticEnvironment {
+  appVersion: string | null;
+  catalogSchemaVersion: number;
+  parserSchemaVersion: number;
+}
+
+export interface DiagnosticRuntime {
+  retroArchConnection: string;
+  contentResolution: string;
+  gameAccessReady: boolean;
+  saveRamStatus: string;
+  saveAutosaveStatus: string;
+  saveCapabilities: Record<string, string>;
+  catalogLoadingActive: boolean;
+  catalogLoadingPhase: string;
+  catalogLoadingCompletedUnits: number;
+  catalogLoadingTotalUnits: number;
+}
+
+export interface DiagnosticMap {
+  presentation: string;
+  currentAreaBaseId: number | null;
+  currentAreaName: string | null;
+  localMapKey: string | null;
+  sceneKey: string | null;
+  atlasRegionKey: string | null;
+  playerPositionStatus: string;
+  playerX: number | null;
+  playerY: number | null;
+  lighting: string;
+  totalPois: number;
+  visiblePois: number;
+  collectedPois: number;
+  localMapStatus: string;
+  worldMapStatus: string;
+  fallbackReason: string | null;
+}
+
+export interface DiagnosticCache {
+  entries: number;
+  encodedBytes: number;
+  hits: number;
+  renders: number;
+  evictions: number;
+}
+
+export interface DiagnosticPrivacy {
+  containsRomBytes: boolean;
+  containsMemoryBytes: boolean;
+  containsSaveData: boolean;
+  containsPrivatePaths: boolean;
 }
 
 export interface DiagnosticView {
@@ -389,4 +445,10 @@ export interface DiagnosticView {
   parserDiagnostics: string[];
   species: Species | null;
   move: Move | null;
+  reportSchemaVersion?: number;
+  environment?: DiagnosticEnvironment | null;
+  runtime?: DiagnosticRuntime | null;
+  map?: DiagnosticMap | null;
+  cache?: DiagnosticCache | null;
+  privacy?: DiagnosticPrivacy;
 }

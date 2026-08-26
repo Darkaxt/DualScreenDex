@@ -161,10 +161,11 @@ describe('production settings copy', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} onOpenCapabilities={onOpenCapabilities} onOpenMapper={onOpenMapper} />);
 
     expect(screen.getByText('DEBUG')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'CAPABILITY REPORT' }));
+    fireEvent.click(screen.getByRole('button', { name: 'COMPATIBILITY REPORT' }));
 
     expect(onOpenCapabilities).toHaveBeenCalledOnce();
     expect(onOpenMapper).not.toHaveBeenCalled();
+    expect(screen.getByText(/exclude ROM, save, and memory bytes plus private paths/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'CAPTURE MEMORY REPORT' })).toBeTruthy();
   });
 

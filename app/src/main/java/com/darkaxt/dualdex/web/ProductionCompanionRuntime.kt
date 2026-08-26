@@ -2,6 +2,7 @@ package com.darkaxt.dualdex.web
 
 import com.darkaxt.dualdex.catalog.CatalogCacheDecision
 import com.darkaxt.dualdex.catalog.CatalogRepository
+import com.darkaxt.dualdex.catalog.CatalogSchema
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.catalog.catalogWriteProgress
@@ -139,6 +140,7 @@ class ProductionCompanionRuntime(
     },
     private val mapAssetRenderCache: MapAssetRenderCache = MapAssetRenderCache(),
     private val performanceRecorder: PerformanceRecorder = PerformanceRecorder(),
+    private val appVersion: String? = null,
     internal val transientGameState: TransientGameStateSource,
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
@@ -903,7 +905,7 @@ class ProductionCompanionRuntime(
         val current = requireNotNull(catalog) { "load a ROM before requesting diagnostics" }
         val snapshot = gateway.bootstrap()
         val active = resolveRuleset(snapshot.settings.ruleset)
-        return ApiViewBuilder.diagnostics(
+        val base = ApiViewBuilder.diagnostics(
             current,
             snapshot.catalogName,
             active?.id,
@@ -911,7 +913,19 @@ class ProductionCompanionRuntime(
             speciesId,
             moveId,
         )
+        return CompatibilityReportBuilder.build(
+            base = base,
+            catalog = current,
+            state = stateView(snapshot),
+            cacheStats = mapAssetRenderCache.stats(),
+            appVersion = appVersion,
+            catalogSchemaVersion = CatalogSchema.version,
+            parserSchemaVersion = CatalogSchema.parserSchemaVersion,
+        )
     }
+
+    fun exportCompatibilityReport(): ByteArray =
+        CompatibilityReportSerializer.toBytes(diagnostics(speciesId = null, moveId = null))
 
     override fun close() {
         transientGameStateSubscription.close()

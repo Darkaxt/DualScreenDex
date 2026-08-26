@@ -65,6 +65,14 @@ class DualDexApplication : Application() {
         return performanceLog?.export() ?: ByteArray(0)
     }
 
+    fun exportCompatibilityReport(): ByteArray =
+        requireNotNull(loopbackServer) { "compatibility report is unavailable" }.exportCompatibilityReport()
+
+    @Suppress("DEPRECATION")
+    private fun packageVersionName(): String? = runCatching {
+        packageManager.getPackageInfo(packageName, 0).versionName
+    }.getOrNull()
+
     fun updateDisplayMode(mode: String) {
         loopbackServer?.updateDisplayMode(mode)
     }
@@ -225,6 +233,7 @@ class DualDexApplication : Application() {
                     .apply()
             },
             performanceRecorder = performanceRecorder,
+            appVersion = packageVersionName(),
             transientGameState = transientGameState,
         )
         metricsRuntime = runtime

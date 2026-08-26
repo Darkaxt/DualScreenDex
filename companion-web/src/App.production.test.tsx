@@ -465,7 +465,7 @@ describe('production application shell', () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'CAPABILITY REPORT' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'COMPATIBILITY REPORT' }));
 
     expect(await screen.findByText('LOADED ROM · READ ONLY')).toBeTruthy();
     expect(screen.queryByText('ISSUE REPORT MEMORY CAPTURE')).toBeNull();

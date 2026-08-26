@@ -102,6 +102,8 @@ class AndroidLoopbackServer(
 
     fun ballSpritePng(id: Int): ByteArray? = runtime.ballSprite(id)?.let(PngEncoder::encode)
 
+    fun exportCompatibilityReport(): ByteArray = runtime.exportCompatibilityReport()
+
     fun updateDisplayMode(mode: String) {
         runtime.action("SETTINGS", mapOf("displayMode" to mode))
     }

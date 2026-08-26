@@ -232,6 +232,62 @@ data class DiagnosticCapabilityView(
     val totalRecords: Int? = null,
     val elementSize: Int? = null,
     val reviewStatus: String = "NONE",
+    val coveredRecords: Int? = null,
+    val expectedRecords: Int? = null,
+    val incompleteRecords: Int? = null,
+)
+
+data class DiagnosticEnvironmentView(
+    val appVersion: String?,
+    val catalogSchemaVersion: Int,
+    val parserSchemaVersion: Int,
+)
+
+data class DiagnosticRuntimeView(
+    val retroArchConnection: String,
+    val contentResolution: String,
+    val gameAccessReady: Boolean,
+    val saveRamStatus: String,
+    val saveAutosaveStatus: String,
+    val saveCapabilities: Map<String, String>,
+    val catalogLoadingActive: Boolean,
+    val catalogLoadingPhase: String,
+    val catalogLoadingCompletedUnits: Int,
+    val catalogLoadingTotalUnits: Int,
+)
+
+data class DiagnosticMapView(
+    val presentation: String,
+    val currentAreaBaseId: Int?,
+    val currentAreaName: String?,
+    val localMapKey: String?,
+    val sceneKey: String?,
+    val atlasRegionKey: String?,
+    val playerPositionStatus: String,
+    val playerX: Int?,
+    val playerY: Int?,
+    val lighting: String,
+    val totalPois: Int,
+    val visiblePois: Int,
+    val collectedPois: Int,
+    val localMapStatus: String,
+    val worldMapStatus: String,
+    val fallbackReason: String?,
+)
+
+data class DiagnosticCacheView(
+    val entries: Int,
+    val encodedBytes: Int,
+    val hits: Long,
+    val renders: Long,
+    val evictions: Long,
+)
+
+data class DiagnosticPrivacyView(
+    val containsRomBytes: Boolean = false,
+    val containsMemoryBytes: Boolean = false,
+    val containsSaveData: Boolean = false,
+    val containsPrivatePaths: Boolean = false,
 )
 
 data class DiagnosticView(
@@ -247,6 +303,12 @@ data class DiagnosticView(
     val parserDiagnostics: List<String>,
     val species: SpeciesView?,
     val move: MoveView?,
+    val reportSchemaVersion: Int = 1,
+    val environment: DiagnosticEnvironmentView? = null,
+    val runtime: DiagnosticRuntimeView? = null,
+    val map: DiagnosticMapView? = null,
+    val cache: DiagnosticCacheView? = null,
+    val privacy: DiagnosticPrivacyView = DiagnosticPrivacyView(),
 )
 
 data class StateView(
@@ -901,11 +963,15 @@ object ApiViewBuilder {
             capabilities = catalog.capabilities.values.sortedBy { it.capability.ordinal }.map {
                 val validRecords = it.validRecords
                 val totalRecords = it.totalRecords
+                val coveredRecords = it.coveredRecords
+                val expectedRecords = it.expectedRecords
                 DiagnosticCapabilityView(
                     it.capability.name,
                     if (
-                        it.status == com.enrpau.dualscreendex.parser.model.CapabilityStatus.AVAILABLE &&
-                        validRecords != null && totalRecords != null && validRecords < totalRecords
+                        it.status == com.enrpau.dualscreendex.parser.model.CapabilityStatus.AVAILABLE && (
+                            validRecords != null && totalRecords != null && validRecords < totalRecords ||
+                                coveredRecords != null && expectedRecords != null && coveredRecords < expectedRecords
+                            )
                     ) "PARTIAL" else it.status.name,
                     it.confidence,
                     it.offset,
@@ -916,6 +982,9 @@ object ApiViewBuilder {
                     totalRecords,
                     it.elementSize,
                     it.reviewStatus.name,
+                    it.coveredRecords,
+                    it.expectedRecords,
+                    it.incompleteRecords,
                 )
             },
             parserDiagnostics = catalog.diagnostics,

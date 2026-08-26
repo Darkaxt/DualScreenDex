@@ -9,6 +9,7 @@ enum class NativeSetupRoute {
     OPEN_RETROARCH,
     EXPORT_MAPPER,
     EXPORT_PERFORMANCE,
+    EXPORT_COMPATIBILITY,
     SHOW_OVERLAY,
     DOCK_OVERLAY;
 
@@ -25,6 +26,7 @@ enum class NativeSetupRoute {
                 "open" to "/retroarch" -> OPEN_RETROARCH
                 "mapper" to "/export" -> EXPORT_MAPPER
                 "performance" to "/export" -> EXPORT_PERFORMANCE
+                "compatibility" to "/export" -> EXPORT_COMPATIBILITY
                 "overlay" to "/show" -> SHOW_OVERLAY
                 "overlay" to "/dock" -> DOCK_OVERLAY
                 else -> null

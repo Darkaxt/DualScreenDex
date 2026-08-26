@@ -6,6 +6,8 @@ The game remains on the primary display. DualDex detects the active GB, GBC, or 
 
 > [!IMPORTANT]
 > The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.66` makes one unified snapshot the sole transient-state authority across Trainer Card, Pokédex, Party, battle, Atlas, clock, bag, flags, readiness, and recovery, eliminating stale parallel-state counts. Unsupported features remain explicit instead of aborting otherwise valid catalogs.
+>
+> Current static compatibility evidence comes from the exact [331-ROM Gen I–III full-corpus review](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.md) and its [machine-readable JSON](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.json): 256 catalogs select and persist, overall applicable-table coverage is **73.80%**, and shared-table coverage improves from RC21's **67.13%** to **73.91%**.
 
 ## Thor-first UI direction
 
@@ -224,7 +226,7 @@ The production settings include:
 - automatic target opening and independent Attack, Rarity, and Observed Moves switches for supported live layouts;
 - `Docked` or `Overlay` display mode, with Docked as the default.
 
-They also include Game/Dark/Light themes, Auto/Handheld/External display targeting, ruleset selection, scoped catalog maintenance, RetroArch setup/status, SaveRAM diagnostics, issue-report controls, and a bounded overlay-size control. Controller navigation remains later work.
+They also include Game/Dark/Light themes, Auto/Handheld/External display targeting, ruleset selection, scoped catalog maintenance, RetroArch setup/status, SaveRAM diagnostics, issue-report controls, and a bounded overlay-size control. The controller remains focused on the game; the assisted companion window is touch-operated.
 
 Auto density responds to usable display size and Android font scale. It may wrap or scroll secondary content, but it may not make target identity, caught state, or the selected-attack result unreadably small.
 
@@ -290,7 +292,8 @@ The release candidate contains:
 - Area-filter sun/moon markers derived from the parsed encounter windows;
 - passive live battle context for validated Generation I and III structures, with frequency-only opponent move history and local discovery persistence;
 - one unified transient-state boundary for Trainer Card, Pokédex, Party, progression, battle, Atlas, clock, readiness, bag, and event flags, with field-level live authority and identity-gated recovery;
-- Discovered, Organic, and Hidden presentation policies; and
+- Discovered, Organic, and Hidden presentation policies;
+- an in-app read-only compatibility report covering static capabilities, current map/runtime state, and map-render cache health, with copy and user-selected privacy-safe JSON export; and
 - human-readable and machine-readable compatibility reports.
 
 The current [Gen I–III full-corpus status](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.md), with its [machine-readable evidence](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.json), reruns both the current parser and RC21 against the same exact corpus:
@@ -330,7 +333,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 
 | Area | Status |
 | --- | --- |
-| Static GB/GBC/GBA ROM parser | Current full corpus: 256/331 selected and persisted/reopened; 72 explicit no-family matches, two ambiguous, one bounded oversized-input error |
+| Static GB/GBC/GBA ROM parser | [Current full corpus](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.md) ([JSON](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.json)): 256/331 selected and persisted/reopened; 72 explicit no-family matches, two ambiguous, one bounded oversized-input error |
 | Direct and streamed ZIP input | Implemented |
 | Decoded `ParsedCatalog` materialization | Implemented |
 | Progressive partial-catalog loading | Implemented in the Android runtime with `Loading... (N%)` state |

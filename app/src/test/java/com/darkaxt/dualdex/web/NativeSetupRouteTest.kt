@@ -13,6 +13,7 @@ class NativeSetupRouteTest {
         assertEquals(NativeSetupRoute.OPEN_RETROARCH, NativeSetupRoute.parse("dualdex://open/retroarch"))
         assertEquals(NativeSetupRoute.EXPORT_MAPPER, NativeSetupRoute.parse("dualdex://mapper/export"))
         assertEquals(NativeSetupRoute.EXPORT_PERFORMANCE, NativeSetupRoute.parse("dualdex://performance/export"))
+        assertEquals(NativeSetupRoute.EXPORT_COMPATIBILITY, NativeSetupRoute.parse("dualdex://compatibility/export"))
         assertEquals(NativeSetupRoute.SHOW_OVERLAY, NativeSetupRoute.parse("dualdex://overlay/show"))
         assertEquals(NativeSetupRoute.DOCK_OVERLAY, NativeSetupRoute.parse("dualdex://overlay/dock"))
 
@@ -20,6 +21,7 @@ class NativeSetupRouteTest {
         assertNull(NativeSetupRoute.parse("dualdex://grant/roms?unexpected=true"))
         assertNull(NativeSetupRoute.parse("dualdex://grant/files/extra"))
         assertNull(NativeSetupRoute.parse("dualdex://performance/export?path=private"))
+        assertNull(NativeSetupRoute.parse("dualdex://compatibility/export?path=private"))
         assertNull(NativeSetupRoute.parse("dualdex://overlay/show/extra"))
         assertNull(NativeSetupRoute.parse("https://grant/retroarch"))
         assertNull(NativeSetupRoute.parse("javascript:alert(1)"))

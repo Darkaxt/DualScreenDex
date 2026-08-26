@@ -808,6 +808,9 @@ class ApiViewBuilderTest {
                     elementSize = 4,
                     validRecords = 7,
                     totalRecords = 10,
+                    coveredRecords = 6,
+                    expectedRecords = 9,
+                    incompleteRecords = 3,
                     reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
                     status = CapabilityStatus.AVAILABLE,
                 ),
@@ -826,6 +829,9 @@ class ApiViewBuilderTest {
         assertEquals("PARTIAL", capability.status)
         assertEquals(7, capability.validRecords)
         assertEquals(10, capability.totalRecords)
+        assertEquals(6, capability.coveredRecords)
+        assertEquals(9, capability.expectedRecords)
+        assertEquals(3, capability.incompleteRecords)
         assertEquals(4, capability.elementSize)
         assertEquals("MANUAL_REVIEW", capability.reviewStatus)
     }
