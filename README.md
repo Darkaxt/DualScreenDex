@@ -185,23 +185,36 @@ The release candidate contains:
 - Discovered, Organic, and Hidden presentation policies; and
 - human-readable and machine-readable compatibility reports.
 
-The frozen release gates distinguish base parsing from optional capability coverage:
+The current [Gen I–III full-corpus status](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.md), with its [machine-readable evidence](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.json), reruns both the current parser and RC21 against the same exact corpus:
+
+- 333 input rows become **331** unique SHA-256 identities: Gen I 95, Gen II 27, and Gen III 209;
+- the current parser selects **256**, leaves 72 explicit no-family matches and two ambiguous, and rejects one oversized identity before parsing;
+- all 256 selected catalogs persist and reopen, with zero SQLite errors; and
+- on the 23 table types shared with RC21, weighted static coverage rises from **67.13%** to **73.91%**: 125 ROMs improve, 187 remain equal, and 19 decrease.
+
+| Static corpus coverage | Applicable table types | Current coverage | RC21 on the same corpus |
+| --- | ---: | ---: | ---: |
+| Generation I | 16 | **87.10%** | 58.81% |
+| Generation II | 19 | **48.36%** | 48.36% |
+| Generation III | 24 | **72.35%** | 71.77% across the 23 shared tables |
+| All generations | 24 | **73.80%** across 7,029 applicable ROM/table cells | 67.13% across shared tables |
+
+The one material input regression is tracked as `G3-INPUT-001`: Adventure Red's 33,555,563-byte image exceeds the GBA's 32 MiB addressable ROM window and now fails closed. The other 18 decreases are bounded Local-map fractions of 0.01–0.54 percentage points: their base catalogs still select and persist while malformed maps or POIs are skipped independently. Saffron remains the only selected identity with decoded cross-reference errors, unchanged at 533, under `G3-SAFFRON-001`.
+
+The earlier frozen release gates remain useful narrower controls:
 
 - **50/50** exact first-corpus ROMs select one base family, persist and reopen, and close every catalog reference;
 - evolution data is complete and available on **50/50** exact first-corpus ROMs, with zero malformed rows, deterministic semantic edge maps, and exact SQLite reopen parity;
-- the broader unique-ROM baseline covers **332** rehashed identities: 230 selected, 100 explicit no-family matches, two ambiguous, and zero per-ROM parser errors;
 - normalized world maps are completely available on **26/50** exact first-corpus rows, producing 81 regions; the other 24 rows expose no map assets and retain the ordinary Pokédex/Area experience; and
 - the five official Generation III ROMs expose source-backed implementation behavior for **77/77** named abilities. Decoded ROM comparisons link 55/77 in Ruby/Sapphire, 58/77 in Emerald, and 57/77 in FireRed/LeafGreen to the typed ability field; independently normalized numeric formulas remain exact Attack ×2 mechanics for abilities 37 and 74. The broader first-50 ARM7 survey remains **38/46** applicable production proofs.
 
-These denominators are deliberately different. A selected base catalog is not counted as a working map or proven mechanic, and a fail-closed optional capability is never counted as a success.
-
-The RC21-corrected [Gen I–III table coverage report](docs/reports/2026-08-20-gen1-gen3-table-coverage.md), with its [machine-readable JSON](docs/reports/2026-08-20-gen1-gen3-table-coverage.json), publishes percentage coverage for all 23 table types across 331 unique ROMs. It records zero parser errors and zero selected catalogs without persistence. Its generation and overall result cells contain percentages only; genuinely inapplicable generation/table combinations remain `N/A` rather than being counted as either success or failure.
+These denominators are deliberately different. A selected base catalog is not counted as a working map or proven mechanic, `NOT_APPLICABLE` is excluded, and a fail-closed optional capability is never counted as a success. The [RC21 table report](docs/reports/2026-08-20-gen1-gen3-table-coverage.md) remains immutable historical evidence rather than being rewritten with current results.
 
 The [unified transient-state audit](docs/reports/2026-08-25-unified-game-state-final-audit.md), with its [machine-readable JSON](docs/reports/2026-08-25-unified-game-state-compatibility.json), separately publishes exact percentages for nine live-state field groups across the official Gen I–III controls, Modern Emerald, Unbound, and Odyssey. It also records live-over-recovery behavior, checkpoint write boundaries, read-window bytes, and zero retained raw-memory bytes; those percentages are not static table or THUMB coverage.
 
 Numeric ability mechanics are tracked separately from names and descriptions. The production resolver follows decoded calls and use-def relationships from parser-selected layouts into typed battle fields, predicates, arithmetic, and writeback. It never substitutes familiar series values, names, hashes, symbols, or fixed routine addresses for missing proof.
 
-Read the player-facing [ROM Hacks Compatibility report](reports/dualdex-rom-hacks-compatibility.md), with its [machine-readable JSON](reports/dualdex-rom-hacks-compatibility.json), for the reviewed first 50 ROMs grouped by generation and engine family. The separate [Parser Compatibility report](reports/dualdex-parser-compatibility.md) and [schema-11 JSON evidence](reports/dualdex-parser-compatibility.json) retain the reviewed RC24 evidence contract; the independent [exact first-50 base release gate](docs/reports/2026-08-13-base-first50-release-gate.md) records RC25's 50/50 result without rewriting that historical report. Optional capability evidence is published independently in the [exact first-50 evolution gate](docs/reports/2026-08-14-first50-evolution-completeness.md), [Celia Pokédex-description closure](docs/reports/2026-08-14-first50-celia-pokedex-descriptions.md), [world-map first-50 release gate](docs/reports/2026-08-13-map-first50-release-gate.md), and [ARM7TDMI first-50 survey](docs/reports/arm7-first50-compatibility-survey.md). The [full unique-ROM base audit](docs/reports/2026-08-13-base-full332-compatibility.md) keeps broader coverage visible without treating every optional feature as resolved. Reports contain structural evidence and hashes, but no decoded bulk tables, sprites, ROM bytes, saves, trainer data, or private paths.
+Read the player-facing [ROM Hacks Compatibility report](reports/dualdex-rom-hacks-compatibility.md), with its [machine-readable JSON](reports/dualdex-rom-hacks-compatibility.json), for the reviewed first 50 ROMs grouped by generation and engine family. The separate [Parser Compatibility report](reports/dualdex-parser-compatibility.md) and [schema-11 JSON evidence](reports/dualdex-parser-compatibility.json) retain the reviewed RC24 evidence contract; the independent [exact first-50 base release gate](docs/reports/2026-08-13-base-first50-release-gate.md) records RC25's 50/50 result without rewriting that historical report. Optional capability evidence is published independently in the [exact first-50 evolution gate](docs/reports/2026-08-14-first50-evolution-completeness.md), [Celia Pokédex-description closure](docs/reports/2026-08-14-first50-celia-pokedex-descriptions.md), [world-map first-50 release gate](docs/reports/2026-08-13-map-first50-release-gate.md), and [ARM7TDMI first-50 survey](docs/reports/arm7-first50-compatibility-survey.md). The historical [full unique-ROM base audit](docs/reports/2026-08-13-base-full332-compatibility.md) preserves its original routing baseline. Reports contain structural evidence and hashes, but no decoded bulk tables, sprites, ROM bytes, saves, trainer data, or private paths.
 
 SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1-gen2-saveram-compatibility.md) and [Generation III](docs/reports/gen3-saveram-compatibility.md). These reports contain no ROM/save bytes, trainer data, or private filesystem paths.
 
@@ -209,7 +222,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 
 | Area | Status |
 | --- | --- |
-| Static GB/GBC/GBA ROM parser | Implemented and corpus-validated |
+| Static GB/GBC/GBA ROM parser | Current full corpus: 256/331 selected and persisted/reopened; 72 explicit no-family matches, two ambiguous, one bounded oversized-input error |
 | Direct and streamed ZIP input | Implemented |
 | Decoded `ParsedCatalog` materialization | Implemented |
 | Progressive partial-catalog loading | Implemented in the Android runtime with `Loading... (N%)` state |
@@ -218,7 +231,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Area encounters, type colors, and type chart | Implemented and reported independently |
 | Ability descriptions and focused detail pages | Implemented for validated ROMs |
 | Ability implementation | Five official Gen III ROMs: 77/77 source-backed behavior records; binary linkage 55–58/77; normalized numeric mechanics remain 2/77 |
-| ROM-derived world maps | Complete on 26/50 exact first-corpus rows with normalized raster/geometry/location evidence; unresolved maps fail closed to the normal Pokédex/Area UI |
+| ROM-derived maps | Current corpus coverage — World: Gen I 87.37%, Gen II 40.74%, Gen III 54.55%; Local: Gen I 54.74%, Gen II 18.52%, Gen III 59.35%; malformed optional rows fail closed independently |
 | Packaged production UI | Implemented and exact-viewport browser/WebView validated |
 | Browser-hosted plausible simulator | Retained as a development harness; absent from production assets |
 | Loopback HTTP companion server | Implemented and bound only to `127.0.0.1` |
@@ -230,7 +243,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC13 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | [`v1.1.0-rc.62`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.62) is the latest published prerelease. Protected workflow `32794571643` built and signed commit `6b48c52f8e04667c0c58e4feec54b00ad6f078a4`; the public APK matches the published checksum and pinned release certificate. |
+| Signed candidate target | [`v1.1.0-rc.66`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.66) is the latest published prerelease. Protected workflow `32913290247` built and signed commit `7f2207c02e9f967dc0ba7802472a6746f04a0c1f`; the anonymous public APK matches the published checksum, provenance, and pinned release certificate. |
 
 ## Parser development
 
@@ -314,7 +327,8 @@ The labeled [Modern Emerald analysis](docs/reports/modern-emerald-memory-mapper-
 - [ROM parser and passive companion foundation](docs/superpowers/specs/2026-08-08-dualdex-rom-parser-companion-design.md)
 - [ROM Hacks Compatibility](reports/dualdex-rom-hacks-compatibility.md)
 - [Parser Compatibility](reports/dualdex-parser-compatibility.md)
-- [RC21-corrected Gen I–III table coverage](docs/reports/2026-08-20-gen1-gen3-table-coverage.md)
+- [Current Gen I–III full-corpus status](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.md)
+- [Historical RC21 Gen I–III table coverage](docs/reports/2026-08-20-gen1-gen3-table-coverage.md)
 - [Save-synchronized knowledge checkpoint verification](docs/reports/save-synchronized-knowledge-checkpoints.md)
 
 ## Relationship to Kanto Gear
