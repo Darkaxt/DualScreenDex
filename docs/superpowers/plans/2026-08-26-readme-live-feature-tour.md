@@ -85,7 +85,7 @@ Keep the existing small-screen design paragraph, remove the generic image rows, 
 
 - [ ] **Step 2: Add Local Map documentation**
 
-Add the live-map paragraph, centered map capture, and `Local map` caption.
+Add the live-map paragraph, centered 92% map capture, and `Local map` caption.
 
 - [ ] **Step 3: Add all Wild Encounter tabs**
 
@@ -93,7 +93,7 @@ Add a concise live-target/Organic-policy paragraph followed by two rows containi
 
 - [ ] **Step 4: Add all Pokédex tabs and captured subviews**
 
-Add the ROM-catalog/live-knowledge paragraph followed by Browser, Entry text, height comparison, Stats, Moves, Area, ability behavior, and evolutions/locations. Use one 70% browser image and paired 46% rows for the remaining captures, with the final evolution image centered at 70%.
+Add the ROM-catalog/live-knowledge paragraph followed by Browser, Entry text, height comparison, Stats, Moves, Area, ability behavior, and evolutions/locations. Use one 92% browser image and paired 46% rows for the remaining captures, with the final evolution image centered at 92%.
 
 - [ ] **Step 5: Add all Party views**
 
@@ -101,7 +101,7 @@ Add the unified-snapshot paragraph followed by Overview, Pokémon detail, Nature
 
 - [ ] **Step 6: Add Trainer Card documentation and provenance**
 
-Add the live-card paragraph and centered approved card capture, then close the tour with the signed-RC66/Modern-Emerald provenance statement.
+Add the live-card paragraph and centered 92% approved card capture, then close the tour with the signed-RC66/Modern-Emerald provenance statement.
 
 ### Task 4: Verify and publish the feature tour
 
@@ -110,7 +110,7 @@ Add the live-card paragraph and centered approved card capture, then close the t
 
 - [ ] **Step 1: Audit README structure and references**
 
-Assert five `###` category headings, 18 unique `docs/images/live/dualdex-rc66-*.webp` references, one visible caption for every asset, and no references to the former seven-image gallery block.
+Assert five `###` category headings, 18 unique `docs/images/live/dualdex-rc66-*.webp` references, one visible caption for every asset, a 92% width for all four single-image rows, paired images at 46% each, and no references to the former seven-image gallery block.
 
 - [ ] **Step 2: Render-review a contact sheet**
 
