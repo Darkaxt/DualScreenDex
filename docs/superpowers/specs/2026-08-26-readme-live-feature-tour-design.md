@@ -89,7 +89,7 @@ The paragraph explains the live identity, money, play time, Pokédex totals, tra
 - Add `## Live feature tour` immediately after it.
 - Use `###` headings for the five feature categories.
 - Put one concise explanatory paragraph directly below each heading.
-- Use a common 92% row width: a centered 92% image for a single view or two 46% images for a two-column row. Keep captions naming every tab or subview.
+- Use a common 46% capture width for every image. A single capture remains centered at 46%; a two-column row contains two equally sized 46% captures. Keep captions naming every tab or subview.
 - End the tour with one provenance sentence covering signed RC66, the real Modern Emerald session, ROM-derived catalog data, and the unified live snapshot.
 - Keep the later architecture and compatibility documentation intact for this change.
 
@@ -110,7 +110,7 @@ The paragraph explains the live identity, money, play time, Pokédex totals, tra
 - Local Map and Trainer Card each have their own category and paragraph.
 - All 18 referenced files exist as 1240 × 1080 lossless WebP assets.
 - Every image has descriptive alt text and a visible caption.
-- Single-image and two-image rows occupy the same 92% content width.
+- Every individual capture is rendered at the same 46% width, whether it appears alone or beside another capture.
 - The original seven-image generic gallery is absent.
 - No system/debug frame is published.
 - `git diff --check` passes and only the README, 11 new images, the design, and the plan change.
