@@ -76,10 +76,15 @@ class PlaythroughJournalCoordinator(
                     increment("pois")
                 }
             }
-            is GameEvent.BattleStarted -> increment("battles")
-            is GameEvent.BattleEnded,
-            is GameEvent.PartyChanged,
-            -> Unit
+            is GameEvent.BattleStarted -> {
+                increment("battles")
+                when (event.encounterKind?.uppercase()) {
+                    "WILD" -> increment("wildEncounters")
+                    "TRAINER" -> increment("trainerBattles")
+                }
+            }
+            is GameEvent.PartyChanged -> increment("partyChanges")
+            is GameEvent.BattleEnded -> Unit
             is GameEvent.SaveObserved -> {
                 if (journal.timeline.lastOrNull()?.saveFingerprint != event.fingerprint.lowercase()) {
                     increment("saves")

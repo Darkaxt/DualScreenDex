@@ -464,11 +464,11 @@ Pop-Location
 - Modify: existing performance collector/tests.
 - Modify at release gate only: release readiness/workflow files.
 
-- [ ] **Step 1: Validate all 11 official controls plus Modern Emerald, Unbound, and Odyssey with real save/memory/source evidence where applicable.**
-- [ ] **Step 2: Report current-total fields, observable event families, baseline applicable templates, and validated templates as separate percentages.**
-- [ ] **Step 3: Prove exact identity isolation, APK-update retention, unchanged-save no-write behavior, bounded journal growth, and absence of false transition events.**
-- [ ] **Step 4: Compare Sections 3, 5, 7, 11.1–11.2, 12–15, and 17 against the audit table.**
-- [ ] **Step 5: Close the Stage 2 Objectives deferral and assign Tier 2/3 expansion to Stage 6. Fix every blocker/error.**
+- [x] **Step 1: Validate all 11 official controls plus Modern Emerald, Unbound, and Odyssey with real save/memory/source evidence where applicable.**
+- [x] **Step 2: Report current-total fields, observable event families, baseline applicable templates, and validated templates as separate percentages.**
+- [x] **Step 3: Prove exact identity isolation, APK-update retention, unchanged-save no-write behavior, bounded journal growth, and absence of false transition events.**
+- [x] **Step 4: Compare Sections 3, 5, 7, 11.1–11.2, 12–15, and 17 against the audit table.**
+- [x] **Step 5: Close the Stage 2 Objectives deferral and assign Tier 2/3 expansion to Stage 6. Fix every blocker/error.**
 - [ ] **Step 6: Run full affected suites, commit the complete feature/audit, then discover and publish exactly one next numeric RC. Do not install it.**
 
 ---

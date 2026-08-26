@@ -23,6 +23,13 @@ class PerformanceComponentMetricsTest {
             areaGuideProjections = 3,
             areaGuideProjectionCpuNanos = 1200,
             areaGuideRetainedItems = 14,
+            progressSemanticEvaluations = 9,
+            progressSemanticCpuNanos = 2400,
+            progressEvents = 7,
+            progressChallengeEvaluations = 4,
+            progressChallengeCpuNanos = 800,
+            progressJournalEntries = 3,
+            progressJournalRetainedItems = 22,
         ).counters()
 
         assertEquals(3L, counters["mapCache.entries"])
@@ -35,6 +42,13 @@ class PerformanceComponentMetricsTest {
         assertEquals(3L, counters["areaGuide.projections"])
         assertEquals(1200L, counters["areaGuide.projectionCpuNanos"])
         assertEquals(14L, counters["areaGuide.retainedItems"])
+        assertEquals(9L, counters["progress.semanticEvaluations"])
+        assertEquals(2400L, counters["progress.semanticCpuNanos"])
+        assertEquals(7L, counters["progress.events"])
+        assertEquals(4L, counters["progress.challengeEvaluations"])
+        assertEquals(800L, counters["progress.challengeCpuNanos"])
+        assertEquals(3L, counters["progress.journalEntries"])
+        assertEquals(22L, counters["progress.journalRetainedItems"])
         assertFalse(counters.keys.any { it.contains("path", ignoreCase = true) })
     }
 

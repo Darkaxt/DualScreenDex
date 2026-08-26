@@ -1,0 +1,935 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-27",
+  "feature": "Trainer Progress, Challenges, Save Timeline, and Atlas Objectives",
+  "definitions": {
+    "currentTotalFields": "Five current resolved-snapshot fields: play time, badges, Pokédex seen, Pokédex caught, and money.",
+    "observableEventFamilies": "Nine deduplicated journal event families: captures, evolutions, areas, POIs, battles, wild encounters, trainer battles, Party changes, and changed-save observations.",
+    "baselineApplicableTemplates": "Offline Tier 1 templates whose declared semantic capabilities are present for the control.",
+    "fullyObservableTemplates": "Applicable templates whose complete predicate inputs are available from the unified snapshot and journal.",
+    "validatedTemplates": "Fully observable templates accepted by the implemented bounded predicate vocabulary and its tests."
+  },
+  "reference": {
+    "classified": {
+      "covered": 883,
+      "total": 1003,
+      "percent": 88.04
+    },
+    "expressible": {
+      "covered": 883,
+      "total": 883,
+      "percent": 100
+    }
+  },
+  "controlCount": 14,
+  "controls": [
+    {
+      "id": "red",
+      "name": "Pokémon Red",
+      "generation": 1,
+      "sha256": "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
+      "currentFields": {
+        "playTime": false,
+        "badges": false,
+        "seen": false,
+        "caught": false,
+        "money": false
+      },
+      "observableEvents": {
+        "captures": false,
+        "evolutions": false,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": false,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 0,
+          "total": 5,
+          "percent": 0,
+          "notFound": 5
+        },
+        "observableEventFamilies": {
+          "covered": 6,
+          "total": 9,
+          "percent": 66.67,
+          "notFound": 3
+        },
+        "baselineApplicableTemplates": {
+          "covered": 3,
+          "total": 6,
+          "percent": 50,
+          "notApplicable": 3
+        },
+        "fullyObservableTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "blue",
+      "name": "Pokémon Blue",
+      "generation": 1,
+      "sha256": "2a951313c2640e8c2cb21f25d1db019ae6245d9c7121f754fa61afd7bee6452d",
+      "currentFields": {
+        "playTime": false,
+        "badges": false,
+        "seen": false,
+        "caught": false,
+        "money": false
+      },
+      "observableEvents": {
+        "captures": false,
+        "evolutions": false,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": false,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 0,
+          "total": 5,
+          "percent": 0,
+          "notFound": 5
+        },
+        "observableEventFamilies": {
+          "covered": 6,
+          "total": 9,
+          "percent": 66.67,
+          "notFound": 3
+        },
+        "baselineApplicableTemplates": {
+          "covered": 3,
+          "total": 6,
+          "percent": 50,
+          "notApplicable": 3
+        },
+        "fullyObservableTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "yellow",
+      "name": "Pokémon Yellow",
+      "generation": 1,
+      "sha256": "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
+      "currentFields": {
+        "playTime": false,
+        "badges": false,
+        "seen": false,
+        "caught": false,
+        "money": false
+      },
+      "observableEvents": {
+        "captures": false,
+        "evolutions": false,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": false,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 0,
+          "total": 5,
+          "percent": 0,
+          "notFound": 5
+        },
+        "observableEventFamilies": {
+          "covered": 6,
+          "total": 9,
+          "percent": 66.67,
+          "notFound": 3
+        },
+        "baselineApplicableTemplates": {
+          "covered": 3,
+          "total": 6,
+          "percent": 50,
+          "notApplicable": 3
+        },
+        "fullyObservableTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "gold",
+      "name": "Pokémon Gold",
+      "generation": 2,
+      "sha256": "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e",
+      "currentFields": {
+        "playTime": false,
+        "badges": false,
+        "seen": false,
+        "caught": false,
+        "money": false
+      },
+      "observableEvents": {
+        "captures": false,
+        "evolutions": false,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": false,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 0,
+          "total": 5,
+          "percent": 0,
+          "notFound": 5
+        },
+        "observableEventFamilies": {
+          "covered": 6,
+          "total": 9,
+          "percent": 66.67,
+          "notFound": 3
+        },
+        "baselineApplicableTemplates": {
+          "covered": 3,
+          "total": 6,
+          "percent": 50,
+          "notApplicable": 3
+        },
+        "fullyObservableTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "silver",
+      "name": "Pokémon Silver",
+      "generation": 2,
+      "sha256": "72b190859a59623cbef6c49d601f8de52c1d2331b4f08a8d2acc17274fc19a8c",
+      "currentFields": {
+        "playTime": false,
+        "badges": false,
+        "seen": false,
+        "caught": false,
+        "money": false
+      },
+      "observableEvents": {
+        "captures": false,
+        "evolutions": false,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": false,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 0,
+          "total": 5,
+          "percent": 0,
+          "notFound": 5
+        },
+        "observableEventFamilies": {
+          "covered": 6,
+          "total": 9,
+          "percent": 66.67,
+          "notFound": 3
+        },
+        "baselineApplicableTemplates": {
+          "covered": 3,
+          "total": 6,
+          "percent": 50,
+          "notApplicable": 3
+        },
+        "fullyObservableTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "crystal",
+      "name": "Pokémon Crystal",
+      "generation": 2,
+      "sha256": "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2",
+      "currentFields": {
+        "playTime": false,
+        "badges": false,
+        "seen": false,
+        "caught": false,
+        "money": false
+      },
+      "observableEvents": {
+        "captures": false,
+        "evolutions": false,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": false,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 0,
+          "total": 5,
+          "percent": 0,
+          "notFound": 5
+        },
+        "observableEventFamilies": {
+          "covered": 6,
+          "total": 9,
+          "percent": 66.67,
+          "notFound": 3
+        },
+        "baselineApplicableTemplates": {
+          "covered": 3,
+          "total": 6,
+          "percent": 50,
+          "notApplicable": 3
+        },
+        "fullyObservableTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 3,
+          "total": 3,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "ruby",
+      "name": "Pokémon Ruby",
+      "generation": 3,
+      "sha256": "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
+      "currentFields": {
+        "playTime": true,
+        "badges": true,
+        "seen": true,
+        "caught": true,
+        "money": true
+      },
+      "observableEvents": {
+        "captures": true,
+        "evolutions": true,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": true,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "collection-first-partner",
+        "collection-growing-roster",
+        "party-new-form",
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100,
+          "notFound": 0
+        },
+        "observableEventFamilies": {
+          "covered": 9,
+          "total": 9,
+          "percent": 100,
+          "notFound": 0
+        },
+        "baselineApplicableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notApplicable": 0
+        },
+        "fullyObservableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "sapphire",
+      "name": "Pokémon Sapphire",
+      "generation": 3,
+      "sha256": "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb",
+      "currentFields": {
+        "playTime": true,
+        "badges": true,
+        "seen": true,
+        "caught": true,
+        "money": true
+      },
+      "observableEvents": {
+        "captures": true,
+        "evolutions": true,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": true,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "collection-first-partner",
+        "collection-growing-roster",
+        "party-new-form",
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100,
+          "notFound": 0
+        },
+        "observableEventFamilies": {
+          "covered": 9,
+          "total": 9,
+          "percent": 100,
+          "notFound": 0
+        },
+        "baselineApplicableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notApplicable": 0
+        },
+        "fullyObservableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "emerald",
+      "name": "Pokémon Emerald",
+      "generation": 3,
+      "sha256": "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
+      "currentFields": {
+        "playTime": true,
+        "badges": true,
+        "seen": true,
+        "caught": true,
+        "money": true
+      },
+      "observableEvents": {
+        "captures": true,
+        "evolutions": true,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": true,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "collection-first-partner",
+        "collection-growing-roster",
+        "party-new-form",
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100,
+          "notFound": 0
+        },
+        "observableEventFamilies": {
+          "covered": 9,
+          "total": 9,
+          "percent": 100,
+          "notFound": 0
+        },
+        "baselineApplicableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notApplicable": 0
+        },
+        "fullyObservableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "firered",
+      "name": "Pokémon FireRed",
+      "generation": 3,
+      "sha256": "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+      "currentFields": {
+        "playTime": true,
+        "badges": true,
+        "seen": true,
+        "caught": true,
+        "money": true
+      },
+      "observableEvents": {
+        "captures": true,
+        "evolutions": true,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": true,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "collection-first-partner",
+        "collection-growing-roster",
+        "party-new-form",
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100,
+          "notFound": 0
+        },
+        "observableEventFamilies": {
+          "covered": 9,
+          "total": 9,
+          "percent": 100,
+          "notFound": 0
+        },
+        "baselineApplicableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notApplicable": 0
+        },
+        "fullyObservableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "leafgreen",
+      "name": "Pokémon LeafGreen",
+      "generation": 3,
+      "sha256": "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825",
+      "currentFields": {
+        "playTime": true,
+        "badges": true,
+        "seen": true,
+        "caught": true,
+        "money": true
+      },
+      "observableEvents": {
+        "captures": true,
+        "evolutions": true,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": true,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "collection-first-partner",
+        "collection-growing-roster",
+        "party-new-form",
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100,
+          "notFound": 0
+        },
+        "observableEventFamilies": {
+          "covered": 9,
+          "total": 9,
+          "percent": 100,
+          "notFound": 0
+        },
+        "baselineApplicableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notApplicable": 0
+        },
+        "fullyObservableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "modern-emerald",
+      "name": "Modern Emerald",
+      "sha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+      "currentFields": {
+        "playTime": true,
+        "badges": true,
+        "seen": true,
+        "caught": true,
+        "money": true
+      },
+      "observableEvents": {
+        "captures": true,
+        "evolutions": true,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": true,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "collection-first-partner",
+        "collection-growing-roster",
+        "party-new-form",
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100,
+          "notFound": 0
+        },
+        "observableEventFamilies": {
+          "covered": 9,
+          "total": 9,
+          "percent": 100,
+          "notFound": 0
+        },
+        "baselineApplicableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notApplicable": 0
+        },
+        "fullyObservableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "unbound",
+      "name": "Pokémon Unbound",
+      "sha256": "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7",
+      "currentFields": {
+        "playTime": true,
+        "badges": true,
+        "seen": true,
+        "caught": true,
+        "money": true
+      },
+      "observableEvents": {
+        "captures": true,
+        "evolutions": true,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": true,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "collection-first-partner",
+        "collection-growing-roster",
+        "party-new-form",
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100,
+          "notFound": 0
+        },
+        "observableEventFamilies": {
+          "covered": 9,
+          "total": 9,
+          "percent": 100,
+          "notFound": 0
+        },
+        "baselineApplicableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notApplicable": 0
+        },
+        "fullyObservableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "odyssey",
+      "name": "Pokémon Odyssey",
+      "sha256": "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
+      "currentFields": {
+        "playTime": true,
+        "badges": true,
+        "seen": true,
+        "caught": true,
+        "money": true
+      },
+      "observableEvents": {
+        "captures": true,
+        "evolutions": true,
+        "areas": true,
+        "pois": true,
+        "battles": true,
+        "wildEncounters": true,
+        "trainerBattles": true,
+        "partyChanges": true,
+        "saveObservations": true
+      },
+      "applicableChallengeKeys": [
+        "collection-first-partner",
+        "collection-growing-roster",
+        "party-new-form",
+        "exploration-open-road",
+        "exploration-curious-eye",
+        "battle-seasoned"
+      ],
+      "coverage": {
+        "currentTotalFields": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100,
+          "notFound": 0
+        },
+        "observableEventFamilies": {
+          "covered": 9,
+          "total": 9,
+          "percent": 100,
+          "notFound": 0
+        },
+        "baselineApplicableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notApplicable": 0
+        },
+        "fullyObservableTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "notFound": 0
+        },
+        "validatedTemplates": {
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "error": 0
+        }
+      }
+    }
+  ],
+  "aggregate": {
+    "currentTotalFields": {
+      "covered": 40,
+      "total": 70,
+      "percent": 57.14,
+      "notFound": 30
+    },
+    "observableEventFamilies": {
+      "covered": 108,
+      "total": 126,
+      "percent": 85.71,
+      "notFound": 18
+    },
+    "baselineApplicableTemplates": {
+      "covered": 66,
+      "total": 84,
+      "percent": 78.57,
+      "notApplicable": 18
+    },
+    "fullyObservableTemplates": {
+      "covered": 66,
+      "total": 66,
+      "percent": 100,
+      "notFound": 0
+    },
+    "validatedTemplates": {
+      "covered": 66,
+      "total": 66,
+      "percent": 100,
+      "error": 0
+    }
+  },
+  "errors": []
+}

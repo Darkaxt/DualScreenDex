@@ -178,6 +178,13 @@ class DualDexApplication : Application() {
                     areaGuideProjections = runtime["areaGuide.projections"],
                     areaGuideProjectionCpuNanos = runtime["areaGuide.projectionCpuNanos"],
                     areaGuideRetainedItems = runtime["areaGuide.retainedItems"],
+                    progressSemanticEvaluations = runtime["progress.semanticEvaluations"],
+                    progressSemanticCpuNanos = runtime["progress.semanticCpuNanos"],
+                    progressEvents = runtime["progress.events"],
+                    progressChallengeEvaluations = runtime["progress.challengeEvaluations"],
+                    progressChallengeCpuNanos = runtime["progress.challengeCpuNanos"],
+                    progressJournalEntries = runtime["progress.journalEntries"],
+                    progressJournalRetainedItems = runtime["progress.journalRetainedItems"],
                 ).counters() +
                     runtime +
                     metricsServer?.performanceCounters().orEmpty()

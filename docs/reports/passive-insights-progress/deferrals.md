@@ -4,10 +4,6 @@ This register distinguishes later-stage work from Stage 0 blockers. Stage 0 has 
 
 | Deferred requirement | Assigned stage | Entry condition | Required completion evidence |
 | --- | --- | --- | --- |
-| Runtime semantic fact projection and stable snapshot transitions | Stage 3 | Unified live snapshot remains the sole transient authority | Transition tests for reconnect, reset, save change, battle, Party, Pokédex, area, POI, and metric events with 0 false positive events |
-| ROM-save-scoped event journal and save-synchronized timeline | Stage 3 | Stable playthrough identity and atomic sidecar contract | Persistence/recovery tests plus real save/memory controls |
-| Baseline Tier 1 challenge applicability, completion, progress, pause, reset, miss, and visibility evaluation | Stage 3 | Semantic facts/events and journal are proven | Numeric applicable, observable, and validated percentages per required ROM |
-| Atlas Objectives projection | Stage 3 | Applicable knowledge-safe challenges exist | Objective projection and Organic/Discovered visibility tests without map-state regressions |
 | Tier 2 structurally mapped challenge expansion | Stage 6 | Required catalog entity/event mapping validates for each ROM | Per-ROM applicable and fully observable percentages |
 | Tier 3 game-specific mechanic adapters | Stage 6 | A source-backed mechanic adapter is proven without retail fallback | Real ROM/source/memory tuple evidence and mutation rejection |
 | The 120 / 1,003 ambiguous references | Stage 6 research review | New high-signal semantic evidence or a concrete missing operator exists | Explicit reclassification or retained Tier 4 exclusion; no guessed rules |
@@ -25,3 +21,16 @@ The Stage 1 compatibility report records Gen I/II live Party fields and Unbound/
 Atlas Area Guide is implemented and removed from the generic runtime-page deferral. It composes the existing area, encounter, POI, discovery, and ROM-save-scoped filter projections without introducing another parser, live decoder, poller, or persistence store.
 
 The Objectives section remains assigned to Stage 3. It stays absent until the semantic fact/event journal can supply applicable, knowledge-safe local challenges. The Stage 2 report records unresolved area names, named exit targets, encounter levels, and POI contents as `NOT_FOUND`; those field states are not reclassified as deferrals and never receive stock-ROM substitutes.
+
+## Stage 3 disposition
+
+The four Stage 3 deferrals are closed on 2026-08-27:
+
+| Closed requirement | Closure evidence |
+| --- | --- |
+| Runtime semantic facts and stable transitions | `SemanticFactSet`, `SnapshotTransitionEvaluator`, and live/recovery projection tests cover captures, evolutions, areas, POIs, battle lifecycle, Party changes, changed saves, reconnects, identity switches, repeated polls, and the `48/48 -> 1/1 -> 1/2` instability without false events. |
+| ROM-save journal and Save Timeline | Schema-2 checkpoint embedding, exact identity decode, atomic sidecar replacement, unchanged-save no-write, restart recovery, deterministic 512-entry compaction, and same-save challenge-delta tests are complete. |
+| Baseline Tier 1 challenges | Six independently worded offline templates are capability-gated and incremental. The 14-control report measures 66/84 applicable template slots, with 66/66 fully observable and 66/66 validated. |
+| Atlas Objectives | The Area Guide consumes only incomplete, applicable, Organic-safe Exploration challenges for the resolved current area; absent challenges leave the section absent. |
+
+Tier 2/3 dynamic challenge packs, game-specific temporal adapters, and explicit reset/pause/miss lifecycles remain assigned to Stage 6. They are not required by the six completed count-based Tier 1 templates and do not weaken the Stage 3 Progress, Timeline, or Objectives contract.

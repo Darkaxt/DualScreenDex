@@ -204,6 +204,11 @@ class ProductionCompanionRuntime(
     private val areaGuideProjections = AtomicLong()
     private val areaGuideProjectionCpuNanos = AtomicLong()
     private val areaGuideRetainedItems = AtomicLong()
+    private val progressSemanticEvaluations = AtomicLong()
+    private val progressSemanticCpuNanos = AtomicLong()
+    private val progressEvents = AtomicLong()
+    private val progressChallengeEvaluations = AtomicLong()
+    private val progressChallengeCpuNanos = AtomicLong()
     private val challengeEngine = ChallengeEngine()
     private val challengeEvaluations = linkedMapOf<PlaythroughKey, ChallengeEvaluation>()
     private val challengeCapabilities = linkedMapOf<PlaythroughKey, Set<String>>()
@@ -250,13 +255,21 @@ class ProductionCompanionRuntime(
             ?.let { sample -> battleState(sample, overworld.ledger, overworld.areaBaseId, currentCatalog) }
 
         matching?.let { resolved ->
-            ResolvedSemanticFactProjector.project(resolved, overworld.ledger, battleEpoch)?.let { facts ->
-                val transition = SnapshotTransitionEvaluator.evaluate(semanticBaseline, facts)
-                semanticBaseline = transition.baseline
-                val saveEvents = transition.events.filterIsInstance<GameEvent.SaveObserved>()
-                journalRegistry.accept(facts.playthrough, transition.events - saveEvents.toSet())
-                updateChallenges(facts.playthrough, resolved, transition.events)
-                journalRegistry.accept(facts.playthrough, saveEvents)
+            var projected: Pair<PlaythroughKey, List<GameEvent>>? = null
+            progressSemanticCpuNanos.addAndGet(measureNanoTime {
+                ResolvedSemanticFactProjector.project(resolved, overworld.ledger, battleEpoch)?.let { facts ->
+                    val transition = SnapshotTransitionEvaluator.evaluate(semanticBaseline, facts)
+                    semanticBaseline = transition.baseline
+                    projected = facts.playthrough to transition.events
+                }
+            })
+            projected?.let { (playthrough, events) ->
+                progressSemanticEvaluations.incrementAndGet()
+                progressEvents.addAndGet(events.size.toLong())
+                val saveEvents = events.filterIsInstance<GameEvent.SaveObserved>()
+                journalRegistry.accept(playthrough, events - saveEvents.toSet())
+                updateChallenges(playthrough, resolved, events)
+                journalRegistry.accept(playthrough, saveEvents)
             }
         }
 
@@ -969,18 +982,22 @@ class ProductionCompanionRuntime(
         }
         if (changedDependencies != null && changedDependencies.isEmpty()) return
         val saveFingerprint = events.filterIsInstance<GameEvent.SaveObserved>().lastOrNull()?.fingerprint
-        val evaluation = challengeEngine.evaluate(
-            definitions = challengeDefinitions,
-            context = ChallengeContext(
-                metrics = journal.trackedCounts,
-                capabilities = capabilities,
-                organicMode = gateway.bootstrap().settings.knowledgeMode == KnowledgeMode.ORGANIC,
-            ),
-            priorStates = journal.challengeStates,
-            changedDependencies = changedDependencies,
-            nowEpochMs = System.currentTimeMillis(),
-            saveFingerprint = saveFingerprint,
-        )
+        lateinit var evaluation: ChallengeEvaluation
+        progressChallengeCpuNanos.addAndGet(measureNanoTime {
+            evaluation = challengeEngine.evaluate(
+                definitions = challengeDefinitions,
+                context = ChallengeContext(
+                    metrics = journal.trackedCounts,
+                    capabilities = capabilities,
+                    organicMode = gateway.bootstrap().settings.knowledgeMode == KnowledgeMode.ORGANIC,
+                ),
+                priorStates = journal.challengeStates,
+                changedDependencies = changedDependencies,
+                nowEpochMs = System.currentTimeMillis(),
+                saveFingerprint = saveFingerprint,
+            )
+        })
+        progressChallengeEvaluations.incrementAndGet()
         journalRegistry.updateChallengeStates(playthrough, evaluation.states)
         challengeEvaluations[playthrough] = evaluation
         cachedState = null
@@ -1063,6 +1080,7 @@ class ProductionCompanionRuntime(
     fun performanceCounters(): Map<String, Long> = mapAssetRenderCache.stats().let { stats ->
         val state = resolvedStateDispatchMetrics()
         val dispatch = gateway.metrics()
+        val journal = activePlaythrough()?.let(journalRegistry::current)
         mapOf(
             "mapCache.entries" to stats.entries.toLong(),
             "mapCache.encodedBytes" to stats.encodedBytes.toLong(),
@@ -1083,6 +1101,13 @@ class ProductionCompanionRuntime(
             "areaGuide.projections" to areaGuideProjections.get(),
             "areaGuide.projectionCpuNanos" to areaGuideProjectionCpuNanos.get(),
             "areaGuide.retainedItems" to areaGuideRetainedItems.get(),
+            "progress.semanticEvaluations" to progressSemanticEvaluations.get(),
+            "progress.semanticCpuNanos" to progressSemanticCpuNanos.get(),
+            "progress.events" to progressEvents.get(),
+            "progress.challengeEvaluations" to progressChallengeEvaluations.get(),
+            "progress.challengeCpuNanos" to progressChallengeCpuNanos.get(),
+            "progress.journalEntries" to (journal?.timeline?.size?.toLong() ?: 0L),
+            "progress.journalRetainedItems" to (journal?.retainedItemCount()?.toLong() ?: 0L),
         ) + transientGameState.performanceCounters()
     }
 

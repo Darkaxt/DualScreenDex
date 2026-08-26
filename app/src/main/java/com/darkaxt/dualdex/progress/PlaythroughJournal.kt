@@ -27,6 +27,16 @@ data class PlaythroughJournal(
     val timeline: List<TimelineEntry> = emptyList(),
     val preferences: Map<String, String> = emptyMap(),
 ) {
+    fun retainedItemCount(): Int =
+        trackedCounts.size +
+            capturedDexNumbers.size +
+            evolvedIndividualKeys.size +
+            visitedAreaIds.size +
+            discoveredPoiIds.size +
+            challengeStates.size +
+            timeline.sumOf { 1 + it.deltas.size } +
+            preferences.size
+
     fun sanitizedAndCompacted(limit: Int = MAX_TIMELINE_ENTRIES): PlaythroughJournal {
         require(limit > 0)
         val cleanTimeline = timeline.mapNotNull { entry ->
@@ -97,4 +107,3 @@ data class PlaythroughJournal(
         private fun cleanToken(value: String) = value.trim().take(MAX_TOKEN_LENGTH).takeIf { it.isNotEmpty() }
     }
 }
-

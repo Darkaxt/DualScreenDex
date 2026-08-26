@@ -32,6 +32,8 @@ class PlaythroughJournalCoordinatorTest {
         assertEquals(1L, journal.trackedCounts["captures"])
         assertEquals(1L, journal.trackedCounts["evolutions"])
         assertEquals(1L, journal.trackedCounts["battles"])
+        assertEquals(1L, journal.trackedCounts["wildEncounters"])
+        assertEquals(1L, journal.trackedCounts["partyChanges"])
         assertEquals(1L, journal.trackedCounts["saves"])
         assertEquals(1, journal.timeline.size)
         assertEquals("c".repeat(64), journal.timeline.single().saveFingerprint)

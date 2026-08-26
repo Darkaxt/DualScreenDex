@@ -26,10 +26,13 @@ object TrainerProgressProjector {
         )
         val trackedLabels = linkedMapOf(
             "battles" to "Battles",
+            "wildEncounters" to "Wild encounters",
+            "trainerBattles" to "Trainer battles",
             "captures" to "Captures",
             "evolutions" to "Evolutions",
             "areas" to "Areas visited",
             "pois" to "Points discovered",
+            "partyChanges" to "Party changes",
             "saves" to "Saves observed",
             "challenges" to "Challenges completed",
         )

@@ -1321,6 +1321,10 @@ class ProductionCompanionRuntimeTest {
         assertEquals(1L, runtime.performanceCounters().getValue("areaGuide.projections"))
         assertTrue(runtime.performanceCounters().getValue("areaGuide.projectionCpuNanos") > 0L)
         assertEquals(0L, runtime.performanceCounters().getValue("areaGuide.retainedItems"))
+        assertEquals(0L, runtime.performanceCounters().getValue("progress.semanticEvaluations"))
+        assertEquals(0L, runtime.performanceCounters().getValue("progress.events"))
+        assertEquals(0L, runtime.performanceCounters().getValue("progress.journalEntries"))
+        assertEquals(0L, runtime.performanceCounters().getValue("progress.journalRetainedItems"))
         runtime.close()
     }
     @Test
@@ -2723,6 +2727,10 @@ class ProductionCompanionRuntimeTest {
         assertTrue(runtime.gateway.bootstrap().ledger.teamSpecies.isEmpty())
         assertTrue(runtime.stateView().speciesState.values.none { it.team })
         assertTrue(runtime.stateView().trainerCardUnlocked)
+        assertTrue(runtime.performanceCounters().getValue("progress.semanticEvaluations") >= 3L)
+        assertTrue(runtime.performanceCounters().getValue("progress.semanticCpuNanos") > 0L)
+        assertTrue(runtime.performanceCounters().getValue("progress.events") > 0L)
+        assertTrue(runtime.performanceCounters().getValue("progress.journalRetainedItems") > 0L)
         runtime.close()
     }
 

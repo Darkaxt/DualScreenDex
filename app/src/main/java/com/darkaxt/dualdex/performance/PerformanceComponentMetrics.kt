@@ -16,6 +16,13 @@ data class PerformanceComponentMetrics(
     val areaGuideProjections: Long? = null,
     val areaGuideProjectionCpuNanos: Long? = null,
     val areaGuideRetainedItems: Long? = null,
+    val progressSemanticEvaluations: Long? = null,
+    val progressSemanticCpuNanos: Long? = null,
+    val progressEvents: Long? = null,
+    val progressChallengeEvaluations: Long? = null,
+    val progressChallengeCpuNanos: Long? = null,
+    val progressJournalEntries: Long? = null,
+    val progressJournalRetainedItems: Long? = null,
 ) {
     fun counters(): Map<String, Long> = buildMap {
         mapCacheEntries?.let { put("mapCache.entries", it.toLong()) }
@@ -33,5 +40,12 @@ data class PerformanceComponentMetrics(
         areaGuideProjections?.let { put("areaGuide.projections", it) }
         areaGuideProjectionCpuNanos?.let { put("areaGuide.projectionCpuNanos", it) }
         areaGuideRetainedItems?.let { put("areaGuide.retainedItems", it) }
+        progressSemanticEvaluations?.let { put("progress.semanticEvaluations", it) }
+        progressSemanticCpuNanos?.let { put("progress.semanticCpuNanos", it) }
+        progressEvents?.let { put("progress.events", it) }
+        progressChallengeEvaluations?.let { put("progress.challengeEvaluations", it) }
+        progressChallengeCpuNanos?.let { put("progress.challengeCpuNanos", it) }
+        progressJournalEntries?.let { put("progress.journalEntries", it) }
+        progressJournalRetainedItems?.let { put("progress.journalRetainedItems", it) }
     }
 }
