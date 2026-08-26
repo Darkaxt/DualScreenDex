@@ -19,3 +19,9 @@ This register distinguishes later-stage work from Stage 0 blockers. Stage 0 has 
 Party Analysis is implemented and removed from the generic runtime-page deferral. Its current facts continue to come directly from the unified resolved snapshot. The shared `SemanticFactProjector`, transition evaluator, and event journal remain assigned to Stage 3 because they are temporal dependencies of Progress, Challenges, Objectives, and Save Timeline—not an alternate Party-state pipe.
 
 The Stage 1 compatibility report records Gen I/II live Party fields and Unbound/Odyssey typed defensive ability modifiers as `NOT_FOUND`, and Gen I/II abilities as `NOT_APPLICABLE`. Those evidence states are not reclassified as deferrals. Calculations that require them remain absent.
+
+## Stage 2 disposition
+
+Atlas Area Guide is implemented and removed from the generic runtime-page deferral. It composes the existing area, encounter, POI, discovery, and ROM-save-scoped filter projections without introducing another parser, live decoder, poller, or persistence store.
+
+The Objectives section remains assigned to Stage 3. It stays absent until the semantic fact/event journal can supply applicable, knowledge-safe local challenges. The Stage 2 report records unresolved area names, named exit targets, encounter levels, and POI contents as `NOT_FOUND`; those field states are not reclassified as deferrals and never receive stock-ROM substitutes.

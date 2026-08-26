@@ -371,10 +371,10 @@ Pop-Location
 - Modify: `docs/reports/passive-insights-progress/deferrals.md`
 - Modify at release gate only: release readiness/workflow files.
 
-- [ ] **Step 1: Compare Sections 3, 9, 12, 14, 15, and 17 against the audit table.**
-- [ ] **Step 2: Record Objectives population as a Stage 3 deferral while the absent section remains truthful.**
-- [ ] **Step 3: Fix every other blocker/error and run affected full Kotlin/browser suites.**
-- [ ] **Step 4: Commit the complete feature and audit.**
+- [x] **Step 1: Compare Sections 3, 9, 12, 14, 15, and 17 against the audit table.**
+- [x] **Step 2: Record Objectives population as a Stage 3 deferral while the absent section remains truthful.**
+- [x] **Step 3: Fix every other blocker/error and run affected full Kotlin/browser suites.**
+- [x] **Step 4: Commit the complete feature and audit.**
 - [ ] **Step 5: Only now discover and publish the next unused numeric RC using the common signed-artifact gate. Do not install it.**
 
 ---
