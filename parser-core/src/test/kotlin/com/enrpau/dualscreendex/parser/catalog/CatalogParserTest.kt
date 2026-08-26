@@ -26,6 +26,7 @@ import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
+import com.enrpau.dualscreendex.parser.parse.LocalMapResolution
 import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import java.util.Base64
 import org.junit.Assert.assertEquals
@@ -107,6 +108,53 @@ class CatalogParserTest {
         val evidence = catalog.capabilities.getValue(RomCapability.LOCAL_MAP)
         assertEquals(CapabilityStatus.NOT_FOUND, evidence.status)
         assertTrue(evidence.reasons.any { it.contains("local-map stage: resolver-exception") })
+    }
+
+    @Test
+    fun partialLocalMapEvidencePublishesExactCoverageCounts() {
+        val rom = RomImage(ByteArray(0x200))
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, 0, 0, ProfileTables(),
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+        val assetKey = "local/test/map"
+        val localMap = LocalMap(
+            key = "test-map",
+            displayName = "Test Map",
+            baseAreaId = 1,
+            pixelWidth = 16,
+            pixelHeight = 16,
+            gridWidth = 1,
+            gridHeight = 1,
+            imageAssetKey = assetKey,
+        )
+        val png = PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))
+
+        val catalog = CatalogMaterializer.materialize(
+            rom = rom,
+            analysis = analysis,
+            layout = layout,
+            resolveLocalMaps = { _, _ ->
+                LocalMapResolution.Resolved(
+                    catalog = LocalMapCatalog(
+                        maps = listOf(localMap),
+                        assets = mapOf(assetKey to png),
+                    ),
+                    reasons = listOf("one map retained"),
+                    skippedMaps = 1,
+                )
+            },
+        )
+
+        val evidence = catalog.capabilities.getValue(RomCapability.LOCAL_MAP)
+        assertEquals(CapabilityStatus.PARTIAL, evidence.status)
+        assertEquals(1, evidence.coveredRecords)
+        assertEquals(2, evidence.expectedRecords)
+        assertEquals(1, evidence.incompleteRecords)
+        assertEquals(0.5, evidence.confidence, 0.0)
     }
 
     @Test

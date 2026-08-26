@@ -624,6 +624,9 @@ object CatalogMaterializer {
                     compatible = true,
                     confidence = localMapResolution.catalog.maps.size.toDouble() / total.coerceAtLeast(1),
                     count = localMapResolution.catalog.maps.size,
+                    coveredRecords = localMapResolution.catalog.maps.size,
+                    expectedRecords = total,
+                    incompleteRecords = localMapResolution.skippedMaps,
                     reasons = localMapResolution.reasons + if (localMapResolution.skippedMaps > 0) {
                         listOf("skipped ${localMapResolution.skippedMaps} maps that failed bounded rendering")
                     } else {
