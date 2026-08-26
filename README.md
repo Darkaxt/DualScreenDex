@@ -5,24 +5,41 @@ DualDex is a passive Pokédex companion for mainline-family Pokémon games runni
 The game remains on the primary display. DualDex detects the active GB, GBC, or GBA content, parses the user's ROM into a local SQLite Pokédex, and reads supported transient game state through RetroArch's read-only Network Commands. One unified snapshot supplies every feature; live fields are authoritative and validated save/checkpoint recovery fills only fields that are unavailable live. It does this without OCR, screenshots, cheats, memory writes, or per-hack profiles. A separately isolated issue-report tool can export read-only evidence for unsupported layouts, but its dumps never feed the production Pokédex.
 
 > [!IMPORTANT]
-> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.63` makes one unified snapshot the sole transient-state authority across Trainer Card, Pokédex, Party, battle, Atlas, clock, bag, flags, readiness, and recovery, eliminating stale parallel-state counts. Unsupported features remain explicit instead of aborting otherwise valid catalogs.
+> The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.66` makes one unified snapshot the sole transient-state authority across Trainer Card, Pokédex, Party, battle, Atlas, clock, bag, flags, readiness, and recovery, eliminating stale parallel-state counts. Unsupported features remain explicit instead of aborting otherwise valid catalogs.
 
 ## Thor-first UI direction
 
 DualDex targets the AYN Thor's 3.92-inch lower display as a physically small companion surface, not as a high-resolution tablet. Browsing and species details are separate pages, battle tabs show one question at a time, and redundant global bottom navigation is omitted. Settings stay in the header; battle context opens and closes automatically.
 
 <p align="center">
-  <img src="docs/images/dualdex-v1-pokedex-browse.png" width="31%" alt="DualDex v1 Thor-sized ROM Pokédex browser">
-  <img src="docs/images/dualdex-v1-charizard-entry.png" width="31%" alt="DualDex v1 ROM-derived Charizard entry">
-  <img src="docs/images/dualdex-v1-move-detail.png" width="31%" alt="DualDex v1 ROM-derived Flamethrower detail">
+  <img src="docs/images/live/dualdex-rc66-local-map.webp" width="31%" alt="DualDex live local map tracking the trainer on Route 101">
+  <img src="docs/images/live/dualdex-rc66-wild-rarity.webp" width="31%" alt="DualDex wild encounter rarity assessment for Zigzagoon">
+  <img src="docs/images/live/dualdex-rc66-wild-attack.webp" width="31%" alt="DualDex selected attack details during a wild encounter">
 </p>
 
 <p align="center">
-  <img src="docs/images/dualdex-v1-settings.png" width="40%" alt="DualDex v1 compact settings page">
-  <img src="docs/images/dualdex-v1-memory-mapper.png" width="40%" alt="DualDex v1 disabled read-only Memory Mapper Lab">
+  <sub>Live local map · Wild rarity · Selected attack</sub>
 </p>
 
-These are production-UI screenshots from the packaged Android debug APK at the 406 × 354 reference viewport, using a streamed Modern Emerald 3.5 ZIP. Every shown Pokémon name, sprite, entry, type, type color, move, and move description comes from that ROM's parsed catalog. No emoji, bundled Pokédex database, or synthetic Pokémon artwork is used.
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-trainer-card.webp" width="46%" alt="DualDex live Trainer Card with identity and progress fields">
+  <img src="docs/images/live/dualdex-rc66-party-detail.webp" width="46%" alt="DualDex Party detail with rarity nature ability experience and stats">
+</p>
+
+<p align="center">
+  <sub>Trainer Card · Party detail</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/live/dualdex-rc66-height-comparison.webp" width="46%" alt="DualDex Pokédex height comparison using the live trainer sprite">
+  <img src="docs/images/live/dualdex-rc66-ability-behavior.webp" width="46%" alt="DualDex parsed ability behavior with activation and power conditions">
+</p>
+
+<p align="center">
+  <sub>Height comparison · Parsed ability behavior</sub>
+</p>
+
+These are live captures from the signed RC66 APK running on an AYN Thor with a real Modern Emerald session. The shown map, Pokémon names and sprites, types, moves, rarity inputs, party state, Trainer Card fields, and ability conditions come from the ROM-derived catalog and unified live snapshot. No bundled Pokédex database or synthetic Pokémon artwork is used.
 
 ## Why this fork is different
 
