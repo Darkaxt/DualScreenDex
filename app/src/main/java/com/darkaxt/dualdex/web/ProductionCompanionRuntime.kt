@@ -98,6 +98,20 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.darkaxt.dualdex.performance.PerformanceRecorder
+import com.darkaxt.dualdex.progress.ChallengeContext
+import com.darkaxt.dualdex.progress.ChallengeDefinition
+import com.darkaxt.dualdex.progress.ChallengeEngine
+import com.darkaxt.dualdex.progress.ChallengeEvaluation
+import com.darkaxt.dualdex.progress.ChallengeCategory
+import com.darkaxt.dualdex.progress.PlaythroughJournalRegistry
+import com.darkaxt.dualdex.progress.ResolvedSemanticFactProjector
+import com.darkaxt.dualdex.progress.TrainerProgressProjector
+import com.enrpau.dualscreendex.companion.api.TrainerProgressView
+import com.enrpau.dualscreendex.companion.map.AreaGuideObjective
+import com.enrpau.dualscreendex.companion.semantic.GameEvent
+import com.enrpau.dualscreendex.companion.semantic.PlaythroughKey
+import com.enrpau.dualscreendex.companion.semantic.SemanticFactSet
+import com.enrpau.dualscreendex.companion.semantic.SnapshotTransitionEvaluator
 import java.io.InputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -155,6 +169,8 @@ class ProductionCompanionRuntime(
     private val mapAssetRenderCache: MapAssetRenderCache = MapAssetRenderCache(),
     private val performanceRecorder: PerformanceRecorder = PerformanceRecorder(),
     private val appVersion: String? = null,
+    private val journalRegistry: PlaythroughJournalRegistry = PlaythroughJournalRegistry(),
+    private val challengeDefinitions: List<ChallengeDefinition> = emptyList(),
     internal val transientGameState: TransientGameStateSource,
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
@@ -188,6 +204,13 @@ class ProductionCompanionRuntime(
     private val areaGuideProjections = AtomicLong()
     private val areaGuideProjectionCpuNanos = AtomicLong()
     private val areaGuideRetainedItems = AtomicLong()
+    private val challengeEngine = ChallengeEngine()
+    private val challengeEvaluations = linkedMapOf<PlaythroughKey, ChallengeEvaluation>()
+    private val challengeCapabilities = linkedMapOf<PlaythroughKey, Set<String>>()
+    private val pendingProgressPreferences = linkedMapOf<String, String>()
+    private var semanticBaseline: SemanticFactSet? = null
+    private var battleEpoch = 0L
+    private var battleWasActive = false
     private val transientGameStateSubscription = transientGameState.subscribe { update ->
         applyResolvedGameState(update)
     }
@@ -218,9 +241,24 @@ class ProductionCompanionRuntime(
         ledger = resolvedBattleKnowledge(matching, currentCatalog, ledger)
         val overworld = resolvedOverworldProjection(matching, currentCatalog, ledger)
         val liveBattle = matching?.battle?.value
+        if (liveBattle != null) {
+            if (liveBattle.active && !battleWasActive) battleEpoch++
+            battleWasActive = liveBattle.active
+        }
         val battle = liveBattle?.sample
             ?.takeIf { liveBattle.active }
             ?.let { sample -> battleState(sample, overworld.ledger, overworld.areaBaseId, currentCatalog) }
+
+        matching?.let { resolved ->
+            ResolvedSemanticFactProjector.project(resolved, overworld.ledger, battleEpoch)?.let { facts ->
+                val transition = SnapshotTransitionEvaluator.evaluate(semanticBaseline, facts)
+                semanticBaseline = transition.baseline
+                val saveEvents = transition.events.filterIsInstance<GameEvent.SaveObserved>()
+                journalRegistry.accept(facts.playthrough, transition.events - saveEvents.toSet())
+                updateChallenges(facts.playthrough, resolved, transition.events)
+                journalRegistry.accept(facts.playthrough, saveEvents)
+            }
+        }
 
         gateway.dispatch(
             CompanionAction.ResolvedGameStateChanged(
@@ -550,6 +588,7 @@ class ProductionCompanionRuntime(
         val active = resolveRuleset(snapshot.settings.ruleset)
         var partyAnalysis: PartyAnalysis? = null
         var areaGuideProjection: AreaGuideProjection? = null
+        val trainerProgress = trainerProgress(snapshot)
         if (currentCatalog != null) {
             partyAnalysisCpuNanos.addAndGet(
                 measureNanoTime {
@@ -559,7 +598,11 @@ class ProductionCompanionRuntime(
             partyAnalysisRecomputations.incrementAndGet()
             areaGuideProjectionCpuNanos.addAndGet(
                 measureNanoTime {
-                    areaGuideProjection = AreaGuideBuilder.project(currentCatalog, snapshot)
+                    areaGuideProjection = AreaGuideBuilder.project(
+                        currentCatalog,
+                        snapshot,
+                        objectivesByArea = progressObjectives(snapshot, trainerProgress),
+                    )
                 },
             )
             areaGuideProjections.incrementAndGet()
@@ -575,6 +618,7 @@ class ProductionCompanionRuntime(
             saveRam = saveRam,
             partyAnalysis = partyAnalysis,
             areaGuideProjection = areaGuideProjection,
+            trainerProgress = trainerProgress,
         ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
     }
 
@@ -868,12 +912,119 @@ class ProductionCompanionRuntime(
                 )
             }
             "MAP_POI_SETTINGS" -> updateLocalMapPoiPreferences(values)
+            "TRAINER_DESTINATION" -> updateProgressPreference("trainer-destination", values, setOf("CARD", "PROGRESS"))
+            "PROGRESS_SECTION" -> updateProgressPreference(
+                "trainer-progress-section",
+                values,
+                setOf("METRICS", "CHALLENGES", "TIMELINE"),
+            )
             "SETTINGS" -> updateSettings(values)
             "TAB", "BATTLE_TAB" -> gateway.dispatch(CompanionAction.SetBattleTab(BattleTab.valueOf(requireNotNull(values["tab"]).uppercase())))
             "TARGET", "SELECT_TARGET" -> gateway.dispatch(CompanionAction.SelectTarget(requireInt(values, "index")))
             else -> throw IllegalArgumentException("unknown production action: $type")
         }
         return stateView()
+    }
+
+    private fun updateProgressPreference(key: String, values: Map<String, String?>, accepted: Set<String>) {
+        val value = requireNotNull(values["value"]).uppercase()
+        require(value in accepted) { "invalid progress selection" }
+        val playthrough = activePlaythrough()
+        if (playthrough == null) pendingProgressPreferences[key] = value
+        else journalRegistry.updatePreferences(playthrough, mapOf(key to value))
+        cachedState = null
+    }
+
+    private fun activePlaythrough(): PlaythroughKey? {
+        val resolved = resolvedGameState ?: return null
+        val saveIdentity = resolved.recovery.saveIdentity ?: return null
+        return PlaythroughKey(resolved.romIdentity.lowercase(), saveIdentity.lowercase())
+    }
+
+    private fun updateChallenges(
+        playthrough: PlaythroughKey,
+        resolved: ResolvedGameSnapshot,
+        events: List<GameEvent>,
+    ) {
+        if (challengeDefinitions.isEmpty()) return
+        val journal = journalRegistry.current(playthrough)
+        val capabilities = progressCapabilities(resolved)
+        val priorCapabilities = challengeCapabilities.put(playthrough, capabilities)
+        val changedDependencies = if (priorCapabilities != capabilities || challengeEvaluations[playthrough] == null) {
+            null
+        } else {
+            events.flatMapTo(linkedSetOf()) { event ->
+                when (event) {
+                    is GameEvent.Captured -> listOf("metric:captures")
+                    is GameEvent.Evolved -> listOf("metric:evolutions")
+                    is GameEvent.AreaVisited -> listOf("metric:areas")
+                    is GameEvent.PoiDiscovered -> listOf("metric:pois")
+                    is GameEvent.BattleStarted -> listOf("metric:battles")
+                    is GameEvent.SaveObserved -> challengeDefinitions.flatMap { it.predicate.dependencies() }
+                    is GameEvent.BattleEnded,
+                    is GameEvent.PartyChanged,
+                    -> emptyList()
+                }
+            }
+        }
+        if (changedDependencies != null && changedDependencies.isEmpty()) return
+        val saveFingerprint = events.filterIsInstance<GameEvent.SaveObserved>().lastOrNull()?.fingerprint
+        val evaluation = challengeEngine.evaluate(
+            definitions = challengeDefinitions,
+            context = ChallengeContext(
+                metrics = journal.trackedCounts,
+                capabilities = capabilities,
+                organicMode = gateway.bootstrap().settings.knowledgeMode == KnowledgeMode.ORGANIC,
+            ),
+            priorStates = journal.challengeStates,
+            changedDependencies = changedDependencies,
+            nowEpochMs = System.currentTimeMillis(),
+            saveFingerprint = saveFingerprint,
+        )
+        journalRegistry.updateChallengeStates(playthrough, evaluation.states)
+        challengeEvaluations[playthrough] = evaluation
+        cachedState = null
+    }
+
+    private fun progressCapabilities(resolved: ResolvedGameSnapshot): Set<String> = buildSet {
+        if (resolved.pokedex.caughtSpeciesIds.value != null) add("POKEDEX_FACTS")
+        if (resolved.party.value != null && resolved.storedIndividuals.value != null) add("OWNED_INDIVIDUALS")
+        if (resolved.location.areaBaseId.value != null) add("LOCATION_FACTS")
+        if (catalog?.localMaps?.pois?.isNotEmpty() == true) add("POI_FACTS")
+        if (resolved.battle.value != null) add("BATTLE_FACTS")
+    }
+
+    private fun trainerProgress(snapshot: AppSnapshot): TrainerProgressView? {
+        val playthrough = activePlaythrough()
+        if (playthrough == null) {
+            if (!snapshot.ledger.trainerCardUnlocked) return null
+            val rom = catalog?.romSha256 ?: return null
+            return TrainerProgressProjector.project(
+                snapshot,
+                com.darkaxt.dualdex.progress.PlaythroughJournal.empty(PlaythroughKey(rom, "0".repeat(64))).copy(
+                    preferences = pendingProgressPreferences.toMap(),
+                ),
+                ChallengeEvaluation(emptyList(), emptyMap()),
+            )
+        }
+        if (pendingProgressPreferences.isNotEmpty()) {
+            journalRegistry.updatePreferences(playthrough, pendingProgressPreferences.toMap())
+            pendingProgressPreferences.clear()
+        }
+        val journal = journalRegistry.current(playthrough)
+        val evaluation = challengeEvaluations[playthrough] ?: ChallengeEvaluation(emptyList(), journal.challengeStates)
+        return TrainerProgressProjector.project(snapshot, journal, evaluation)
+    }
+
+    private fun progressObjectives(
+        snapshot: AppSnapshot,
+        progress: TrainerProgressView?,
+    ): Map<Int, List<AreaGuideObjective>> {
+        val area = snapshot.liveAreaBaseId ?: return emptyMap()
+        val exploration = progress?.challenges.orEmpty()
+            .filter { it.category == ChallengeCategory.EXPLORATION.name && !it.complete }
+            .map { AreaGuideObjective(it.key, it.title) }
+        return if (exploration.isEmpty()) emptyMap() else mapOf(area to exploration)
     }
 
     @Synchronized

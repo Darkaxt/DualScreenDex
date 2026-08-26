@@ -8,6 +8,8 @@ import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.catalog.CatalogCacheDecision
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointStore
+import com.darkaxt.dualdex.progress.PlaythroughJournalRegistry
+import com.darkaxt.dualdex.progress.PortableChallengeCatalog
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import com.darkaxt.dualdex.live.ResolvedStateTraceSink
 import com.darkaxt.dualdex.performance.AndroidPerformanceLog
@@ -207,6 +209,10 @@ class DualDexApplication : Application() {
             }
         }
         lateinit var runtime: ProductionCompanionRuntime
+        val playthroughJournals = PlaythroughJournalRegistry()
+        val portableChallenges = runCatching {
+            assets.open("challenges/portable-baseline.json").use { PortableChallengeCatalog.decode(it.readBytes()) }
+        }.getOrDefault(emptyList())
         val transientGameState = UnifiedGameStateDecoder(
             stateTraceSink = ResolvedStateTraceSink { trace ->
                 runCatching { Log.i(STATE_LOG_TAG, performanceGson.toJson(trace)) }
@@ -238,6 +244,8 @@ class DualDexApplication : Application() {
             },
             performanceRecorder = performanceRecorder,
             appVersion = packageVersionName(),
+            journalRegistry = playthroughJournals,
+            challengeDefinitions = portableChallenges,
             transientGameState = transientGameState,
         )
         metricsRuntime = runtime
@@ -261,6 +269,7 @@ class DualDexApplication : Application() {
                 SaveKnowledgeCheckpointCoordinator(
                     SaveKnowledgeCheckpointStore(File(filesDir, "knowledge-checkpoints")),
                     transientGameState::acceptRecovery,
+                    playthroughJournals,
                 ),
             )
             mapperCandidate = MemoryMapperCoordinator(

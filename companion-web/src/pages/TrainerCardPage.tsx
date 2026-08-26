@@ -2,10 +2,15 @@ import type { State } from '../models';
 import { Header } from '../components';
 
 export function TrainerCardPage({ state, onBack }: { state: State; onBack: () => void }) {
-  const trainer = state.trainer;
-  return <section class="screen trainer-screen">
+  return <section class="screen trainer-screen trainer-card-screen">
     <Header title="TRAINER CARD" onBack={onBack} />
-    {!trainer ? <div class="empty-state trainer-unavailable"><strong>TRAINER CARD UNAVAILABLE</strong><p>Your Trainer Card will appear here when it can be read from the game.</p></div> :
+    <TrainerCardContent state={state} />
+  </section>;
+}
+
+export function TrainerCardContent({ state }: { state: State }) {
+  const trainer = state.trainer;
+  return !trainer ? <div class="empty-state trainer-unavailable"><strong>TRAINER CARD UNAVAILABLE</strong><p>Your Trainer Card will appear here when it can be read from the game.</p></div> :
       <div class="trainer-card-content" data-scroll-region>
         <article class="trainer-card-shell">
           <header class="trainer-card-strip"><strong>TRAINER CARD</strong><span>ID {trainer.publicTrainerId == null ? '—' : String(trainer.publicTrainerId).padStart(5, '0')}</span></header>
@@ -32,6 +37,5 @@ export function TrainerCardPage({ state, onBack }: { state: State; onBack: () =>
             </span>)}
           </div></section>
         </article>
-      </div>}
-  </section>;
+      </div>;
 }

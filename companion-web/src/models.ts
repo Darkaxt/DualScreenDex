@@ -345,6 +345,7 @@ export interface State {
   observedMoves: Record<number, { moveId: number; frequency: number }[]>;
   trainerCardUnlocked?: boolean;
   trainer?: TrainerView | null;
+  trainerProgress?: TrainerProgressView | null;
   trainerAvatarUrl?: string | null;
   trainerMapSpriteUrl?: string | null;
   trainerMapSpriteWidth?: number | null;
@@ -393,6 +394,37 @@ export interface TrainerView {
   stars: number | null;
   avatarUrl: string | null;
   badges: { index: number; earned: boolean | null; imageUrl: string | null }[];
+}
+
+export interface TrainerProgressView {
+  selectedDestination: 'CARD' | 'PROGRESS';
+  selectedSection: 'METRICS' | 'CHALLENGES' | 'TIMELINE';
+  gameTotals: ProgressMetricView[];
+  trackedJourney: ProgressMetricView[];
+  challenges: ChallengeView[];
+  timeline: TimelineEntryView[];
+}
+
+export interface ProgressMetricView {
+  key: string;
+  label: string;
+  value: number | null;
+}
+
+export interface ChallengeView {
+  key: string;
+  title: string;
+  description: string;
+  category: 'PROGRESS' | 'COLLECTION' | 'EXPLORATION' | 'BATTLE' | 'PARTY' | 'SPECIAL';
+  progress: number | null;
+  target: number | null;
+  complete: boolean;
+}
+
+export interface TimelineEntryView {
+  recordedAtEpochMs: number;
+  changes: string[];
+  milestone: boolean;
 }
 
 export interface PartyMemberView {

@@ -14,7 +14,7 @@ import { SetupPage } from './pages/SetupPage';
 import { MemoryMapperPage } from './pages/MemoryMapperPage';
 import { CapabilityReportPage } from './pages/CapabilityReportPage';
 import { MapPage } from './pages/MapPage';
-import { TrainerCardPage } from './pages/TrainerCardPage';
+import { TrainerPage } from './pages/TrainerPage';
 import { PartyPage } from './pages/PartyPage';
 import { PartyAnalysisPage } from './pages/PartyAnalysisPage';
 
@@ -211,7 +211,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
       }} /> : <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={openMap} />;
-      case 'TRAINER': return <TrainerCardPage state={state} onBack={() => void send('BACK')} />;
+      case 'TRAINER': return <TrainerPage state={state} send={(type, values) => void send(type, values)} onBack={() => void send('BACK')} />;
       case 'PARTY': {
         const occupied = new Set((state.party ?? []).filter(member => member.occupied).map(member => member.slot));
         const selectedSlot = partySelection.catalogHash === catalog.hash && partySelection.slot != null && occupied.has(partySelection.slot)

@@ -540,6 +540,7 @@ class UnifiedGameStateDecoder(
                 saveIdentity = saved?.saveIdentity,
                 saveRam = recoveryStatus,
                 observationKind = recovery?.observation?.kind,
+                saveFileFingerprint = recovery?.observation?.fingerprint?.sha256,
                 checkpointLedger = recovery?.checkpointLedger,
                 resetKnowledge = recoveryResetKnowledge,
             ),

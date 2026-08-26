@@ -390,10 +390,10 @@ Pop-Location
 - Create: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/semantic/SnapshotTransitionEvaluator.kt`
 - Create: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/semantic/SnapshotTransitionEvaluatorTest.kt`
 
-- [ ] **Step 1: Add RED tests for captures, evolutions, area visits, POI discoveries, battle start/end, Party changes, and save observations.**
-- [ ] **Step 2: Reproduce `48/48 -> 1/1 -> 1/2`, reconnect, cache reload, repeated poll, and live/recovery authority transitions; assert zero false events.**
-- [ ] **Step 3: Implement pure comparison over stable immutable snapshots and established battle/save lifecycle epochs.**
-- [ ] **Step 4: Run GREEN and commit.**
+- [x] **Step 1: Add RED tests for captures, evolutions, area visits, POI discoveries, battle start/end, Party changes, and save observations.**
+- [x] **Step 2: Reproduce `48/48 -> 1/1 -> 1/2`, reconnect, cache reload, repeated poll, and live/recovery authority transitions; assert zero false events.**
+- [x] **Step 3: Implement pure comparison over stable immutable snapshots and established battle/save lifecycle epochs.**
+- [x] **Step 4: Run GREEN and commit.**
 
 ### Task 3.2: Add one ROM-save-scoped journal and atomic persistence
 
@@ -408,11 +408,11 @@ Pop-Location
 - Modify: `app/src/main/java/com/darkaxt/dualdex/knowledge/SaveKnowledgeCheckpointCodec.kt`
 - Modify: `app/src/main/java/com/darkaxt/dualdex/knowledge/SaveKnowledgeCheckpointCoordinator.kt`
 
-- [ ] **Step 1: Add RED identity, migration, sanitization, atomic-write, and 512-entry deterministic compaction tests.**
-- [ ] **Step 2: Store only historical facts, tracked counts, challenge state, timeline entries, and designated preferences.**
-- [ ] **Step 3: Reuse the validated changed-save fingerprint and checkpoint write path; write nothing for `INITIAL`, `UNCHANGED`, malformed, mismatched, or recovery-only observations.**
-- [ ] **Step 4: Keep current Trainer, Party, PC, Pokédex, money, clock, location, bag, and battle state out of journal authority.**
-- [ ] **Step 5: Run knowledge/save/progress tests GREEN and commit.**
+- [x] **Step 1: Add RED identity, migration, sanitization, atomic-write, and 512-entry deterministic compaction tests.**
+- [x] **Step 2: Store only historical facts, tracked counts, challenge state, timeline entries, and designated preferences.**
+- [x] **Step 3: Reuse the validated changed-save fingerprint and checkpoint write path; write nothing for `INITIAL`, `UNCHANGED`, malformed, mismatched, or recovery-only observations.**
+- [x] **Step 4: Keep current Trainer, Party, PC, Pokédex, money, clock, location, bag, and battle state out of journal authority.**
+- [x] **Step 5: Run knowledge/save/progress tests GREEN and commit.**
 
 ### Task 3.3: Implement baseline challenge evaluation
 
@@ -423,11 +423,11 @@ Pop-Location
 - Create: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/progress/ChallengeEngineTest.kt`
 - Create: `app/src/main/assets/challenges/portable-baseline.json`
 
-- [ ] **Step 1: Add RED tests for each initial predicate operator and capability-gated applicability.**
-- [ ] **Step 2: Implement only independently worded Tier 1 templates required for baseline Progress.**
-- [ ] **Step 3: Hide or generically mask future undiscovered entities in Organic mode.**
-- [ ] **Step 4: Preserve first proven completion save/time and evaluate incrementally without rescanning the full journal.**
-- [ ] **Step 5: Run GREEN and commit.**
+- [x] **Step 1: Add RED tests for each initial predicate operator and capability-gated applicability.**
+- [x] **Step 2: Implement only independently worded Tier 1 templates required for baseline Progress.**
+- [x] **Step 3: Hide or generically mask future undiscovered entities in Organic mode.**
+- [x] **Step 4: Preserve first proven completion save/time and evaluate incrementally without rescanning the full journal.**
+- [x] **Step 5: Run GREEN and commit.**
 
 ### Task 3.4: Expose Metrics, Challenges, Timeline, and Atlas objectives
 
@@ -446,12 +446,12 @@ Pop-Location
 - Modify: `companion-web/src/App.tsx`
 - Modify: `companion-web/src/styles.css`
 
-- [ ] **Step 1: Add RED tests for CARD/PROGRESS and METRICS/CHALLENGES/TIMELINE navigation, remembered ROM-save-scoped selection, and immediate Trainer-license availability.**
-- [ ] **Step 2: Expose game totals from the current resolved snapshot and tracked journey values from the journal with explicit player-facing scope.**
-- [ ] **Step 3: Render challenge progress and meaningful save deltas without addresses, parser stages, flag IDs, provenance, or internal capability labels.**
-- [ ] **Step 4: Populate Area Guide Objectives only with applicable knowledge-safe local challenges.**
-- [ ] **Step 5: Prove Trainer Card and Pokédex totals are identical projections of the resolved snapshot.**
-- [ ] **Step 6: Run focused Kotlin/browser tests and commit.**
+- [x] **Step 1: Add RED tests for CARD/PROGRESS and METRICS/CHALLENGES/TIMELINE navigation, remembered ROM-save-scoped selection, and immediate Trainer-license availability.**
+- [x] **Step 2: Expose game totals from the current resolved snapshot and tracked journey values from the journal with explicit player-facing scope.**
+- [x] **Step 3: Render challenge progress and meaningful save deltas without addresses, parser stages, flag IDs, provenance, or internal capability labels.**
+- [x] **Step 4: Populate Area Guide Objectives only with applicable knowledge-safe local challenges.**
+- [x] **Step 5: Prove Trainer Card and Pokédex totals are identical projections of the resolved snapshot.**
+- [x] **Step 6: Run focused Kotlin/browser tests and commit.**
 
 ### Task 3.5: Profile, audit, and release Progress/Timeline
 

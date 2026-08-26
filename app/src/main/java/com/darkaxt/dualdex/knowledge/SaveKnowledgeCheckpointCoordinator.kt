@@ -5,12 +5,13 @@ import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.live.RecoveryApplication
 import com.darkaxt.dualdex.live.RecoveryProjection
 import com.enrpau.dualscreendex.companion.api.SaveRamView
-import com.darkaxt.dualdex.progress.PlaythroughJournalCoordinator
+import com.darkaxt.dualdex.progress.PlaythroughJournalSession
+import com.enrpau.dualscreendex.companion.semantic.PlaythroughKey
 
 class SaveKnowledgeCheckpointCoordinator(
     private val checkpoints: KnowledgeCheckpointStore,
     private val applyRecovery: (RecoveryProjection) -> RecoveryApplication,
-    private val journal: PlaythroughJournalCoordinator? = null,
+    private val journal: PlaythroughJournalSession? = null,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun apply(result: SaveMonitorResult, saveView: SaveRamView): Boolean {
@@ -47,7 +48,7 @@ class SaveKnowledgeCheckpointCoordinator(
                         key = key,
                         capturedAtEpochMs = clock(),
                         ledger = application.checkpointLedger,
-                        journal = journal?.current(),
+                        journal = journal?.current(PlaythroughKey(key.romSha256, key.saveIdentity)),
                     ),
                 )
             }

@@ -423,6 +423,7 @@ data class StateView(
     val gameTime: GameClockView? = null,
     val gameAccessReady: Boolean = false,
     val areaGuide: AreaGuideView? = null,
+    val trainerProgress: TrainerProgressView? = null,
 )
 data class GameClockView(
     val hours: Int?,
@@ -442,6 +443,29 @@ data class TrainerView(
     val stars: Int?,
     val avatarUrl: String?,
     val badges: List<TrainerBadgeView>,
+)
+data class TrainerProgressView(
+    val selectedDestination: String,
+    val selectedSection: String,
+    val gameTotals: List<ProgressMetricView>,
+    val trackedJourney: List<ProgressMetricView>,
+    val challenges: List<ChallengeView>,
+    val timeline: List<TimelineEntryView>,
+)
+data class ProgressMetricView(val key: String, val label: String, val value: Long?)
+data class ChallengeView(
+    val key: String,
+    val title: String,
+    val description: String,
+    val category: String,
+    val progress: Long?,
+    val target: Long?,
+    val complete: Boolean,
+)
+data class TimelineEntryView(
+    val recordedAtEpochMs: Long,
+    val changes: List<String>,
+    val milestone: Boolean,
 )
 data class TrainerBadgeView(val index: Int, val earned: Boolean?, val imageUrl: String?)
 data class PartyMemberView(
@@ -799,6 +823,7 @@ object ApiViewBuilder {
         saveRam: SaveRamView = SaveRamView(),
         partyAnalysis: PartyAnalysis? = null,
         areaGuideProjection: AreaGuideProjection? = null,
+        trainerProgress: TrainerProgressView? = null,
     ): StateView {
         val effectiveAreaBaseId = snapshot.liveAreaBaseId
         val encounterAreasById = catalog?.encounterAreas.orEmpty().associateBy { it.id }
@@ -990,6 +1015,7 @@ object ApiViewBuilder {
             snapshot.gameTime?.let { GameClockView(it.hours, it.minutes, it.phase?.name, it.phaseProgress) },
             snapshot.gameAccessReady,
             areaGuide,
+            trainerProgress,
         )
     }
 

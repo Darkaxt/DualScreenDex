@@ -32,6 +32,7 @@ class PlaythroughJournalCoordinatorTest {
         assertEquals(1L, journal.trackedCounts["captures"])
         assertEquals(1L, journal.trackedCounts["evolutions"])
         assertEquals(1L, journal.trackedCounts["battles"])
+        assertEquals(1L, journal.trackedCounts["saves"])
         assertEquals(1, journal.timeline.size)
         assertEquals("c".repeat(64), journal.timeline.single().saveFingerprint)
         assertEquals(1L, journal.timeline.single().deltas["captures"])
@@ -79,5 +80,22 @@ class PlaythroughJournalCoordinatorTest {
         assertTrue(compacted.timeline.contains(entries[100]))
         assertTrue(compacted.timeline.contains(entries[200]))
         assertEquals(compacted, journal.sanitizedAndCompacted())
+    }
+
+    @Test
+    fun `new challenge completions join the next save timeline exactly once`() {
+        val coordinator = PlaythroughJournalCoordinator(key, clock = { 5678 })
+        val completed = ChallengeJournalState(
+            progress = 1,
+            completedAtEpochMs = 1234,
+        )
+
+        coordinator.updateChallengeStates(mapOf("first-capture" to completed))
+        coordinator.updateChallengeStates(mapOf("first-capture" to completed))
+        coordinator.accept(listOf(GameEvent.SaveObserved("d".repeat(64))))
+
+        val journal = coordinator.current()
+        assertEquals(1L, journal.trackedCounts["challenges"])
+        assertEquals(1L, journal.timeline.single().deltas["challenges"])
     }
 }

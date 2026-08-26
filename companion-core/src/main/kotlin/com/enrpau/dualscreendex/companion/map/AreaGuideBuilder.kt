@@ -12,12 +12,16 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 
 object AreaGuideBuilder {
-    fun project(catalog: ParsedCatalog, snapshot: AppSnapshot): AreaGuideProjection {
+    fun project(
+        catalog: ParsedCatalog,
+        snapshot: AppSnapshot,
+        objectivesByArea: Map<Int, List<AreaGuideObjective>> = emptyMap(),
+    ): AreaGuideProjection {
         val names = areaNames(catalog)
         val projectedPoints = projectPoints(catalog, snapshot, names)
         return AreaGuideProjection(
             points = projectedPoints,
-            guide = build(catalog, snapshot, names, projectedPoints),
+            guide = build(catalog, snapshot, names, projectedPoints, objectivesByArea),
         )
     }
 
@@ -28,6 +32,7 @@ object AreaGuideBuilder {
         snapshot: AppSnapshot,
         names: Map<Int, String>,
         projectedPoints: List<AreaGuidePoint>,
+        objectivesByArea: Map<Int, List<AreaGuideObjective>>,
     ): AreaGuide {
         val allAreaIds = buildSet {
             addAll(names.keys)
@@ -79,7 +84,7 @@ object AreaGuideBuilder {
                     it.category == AreaGuidePointCategory.AVAILABLE_ITEM ||
                         it.category == AreaGuidePointCategory.COLLECTED_ITEM
                 },
-                objectives = emptyList(),
+                objectives = objectivesByArea[baseAreaId].orEmpty(),
             )
         }
         return AreaGuide(snapshot.liveAreaBaseId, areas)

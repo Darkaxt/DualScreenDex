@@ -7,7 +7,7 @@ class ChallengeEngine {
         priorStates: Map<String, ChallengeJournalState>,
         changedDependencies: Set<String>? = null,
         nowEpochMs: Long,
-        saveFingerprint: String,
+        saveFingerprint: String?,
     ): ChallengeEvaluation {
         val states = priorStates.toMutableMap()
         val visible = buildList {
@@ -24,21 +24,21 @@ class ChallengeEngine {
                         progress = prior.progress,
                     )
                 }
-                val next = if (shouldEvaluate) {
+                val next: ChallengeJournalState = if (shouldEvaluate) {
                     ChallengeJournalState(
                         progress = predicate.progress ?: if (predicate.complete) 1 else 0,
                         completedAtEpochMs = prior?.completedAtEpochMs ?: nowEpochMs.takeIf { predicate.complete },
                         completedAtSaveFingerprint = prior?.completedAtSaveFingerprint
-                            ?: saveFingerprint.takeIf { predicate.complete },
+                            ?: saveFingerprint?.takeIf { predicate.complete },
                     )
-                } else prior
-                if (next != null) states[definition.key] = next
+                } else requireNotNull(prior)
+                states[definition.key] = next
                 add(
                     ChallengeResult(
                         definition = definition,
-                        progress = predicate.progress ?: next?.progress,
+                        progress = predicate.progress ?: next.progress,
                         target = predicate.target,
-                        complete = next?.completedAtEpochMs != null || predicate.complete,
+                        complete = next.completedAtEpochMs != null || predicate.complete,
                     ),
                 )
             }
@@ -51,4 +51,3 @@ class ChallengeEngine {
             definition.requiredCapabilities.all { it in context.capabilities && it !in context.unobservableCapabilities } &&
             (!context.organicMode || definition.organicSafe)
 }
-

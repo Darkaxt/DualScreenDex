@@ -98,4 +98,14 @@ describe('AreaGuideDrawer', () => {
     expect(screen.queryByText('Species 1')).toBeNull();
     expect(container.querySelectorAll('.area-guide-encounter-row').length).toBeLessThan(80);
   });
+
+  it('shows only supplied knowledge-safe objectives', () => {
+    render(<AreaGuideDrawer
+      area={{ ...area, objectives: [{ key: 'open-road', title: 'Open Road' }] }}
+      onClose={vi.fn()}
+    />);
+
+    expect(screen.getByText('OBJECTIVES')).toBeTruthy();
+    expect(screen.getByText('Open Road')).toBeTruthy();
+  });
 });

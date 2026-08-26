@@ -97,6 +97,7 @@ data class RecoveryState(
     val saveIdentity: String? = null,
     val saveRam: SaveRamView? = null,
     val observationKind: SaveObservationKind? = null,
+    val saveFileFingerprint: String? = null,
     val checkpointLedger: KnowledgeLedger? = null,
     val resetKnowledge: Boolean = false,
 )

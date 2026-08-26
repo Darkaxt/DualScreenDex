@@ -123,6 +123,22 @@ class AreaGuideBuilderTest {
         assertNull(unnamed.label)
     }
 
+    @Test
+    fun objectivesAreAttachedOnlyToTheirKnowledgeVisibleArea() {
+        val objective = AreaGuideObjective("open-road", "Open Road")
+        val guide = AreaGuideBuilder.project(
+            catalog(),
+            organicSnapshot(
+                visitedAreaBaseIds = setOf(ROUTE, TOWN),
+                seenSpeciesByArea = emptyMap(),
+            ),
+            objectivesByArea = mapOf(ROUTE to listOf(objective)),
+        ).guide
+
+        assertEquals(listOf(objective), guide.areas.single { it.baseAreaId == ROUTE }.objectives)
+        assertEquals(emptyList<AreaGuideObjective>(), guide.areas.single { it.baseAreaId == TOWN }.objectives)
+    }
+
     private fun organicSnapshot(
         visitedAreaBaseIds: Set<Int>,
         seenSpeciesByArea: Map<Int, Set<Int>>,
