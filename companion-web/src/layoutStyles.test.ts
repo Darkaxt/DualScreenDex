@@ -54,4 +54,17 @@ describe('screen layout containment', () => {
     expect(styles).not.toContain('.map-navigation-row')
     expect(styles).not.toContain('[data-map-navigation-row]')
   })
+
+  it('bounds the Area Guide over the map and gives long guide sections one windowed scroll region', () => {
+    const drawerRule = styles.match(/\.area-guide-drawer\s*\{([^}]*)\}/)?.[1]
+    const contentRule = styles.match(/\.area-guide-content\s*\{([^}]*)\}/)?.[1]
+    const listRule = styles.match(/\.area-guide-windowed-list\.is-virtual\s*\{([^}]*)\}/)?.[1]
+
+    expect(drawerRule).toMatch(/position\s*:\s*absolute/)
+    expect(drawerRule).toMatch(/bottom\s*:\s*12px/)
+    expect(drawerRule).toMatch(/overflow\s*:\s*hidden/)
+    expect(contentRule).toMatch(/min-height\s*:\s*0/)
+    expect(contentRule).toMatch(/overflow-y\s*:\s*auto/)
+    expect(listRule).toMatch(/overflow-y\s*:\s*auto/)
+  })
 })

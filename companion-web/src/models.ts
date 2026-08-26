@@ -176,6 +176,62 @@ export interface LocalMapPoiPreferences {
   labelZoomThresholdPercent: number;
 }
 
+export interface AreaGuideView {
+  trackedAreaBaseId: number | null;
+  areas: AreaGuideAreaView[];
+}
+
+export interface AreaGuideAreaView {
+  baseAreaId: number;
+  name: string;
+  overview: AreaGuideOverviewView;
+  encounters: AreaGuideEncounterGroupView[];
+  placesAndServices: AreaGuidePointView[];
+  trainersAndPeople: AreaGuidePointView[];
+  items: AreaGuidePointView[];
+  objectives: AreaGuideObjectiveView[];
+}
+
+export interface AreaGuideOverviewView {
+  knownPointCount: number;
+  totalPointCount: number | null;
+  collectedItemCount: number;
+  exits: { baseAreaId: number; name: string }[];
+}
+
+export interface AreaGuideEncounterGroupView {
+  name: string | null;
+  windows: string[];
+  species: AreaGuideEncounterSpeciesView[];
+}
+
+export interface AreaGuideEncounterSpeciesView {
+  speciesId: number;
+  name: string;
+  minimumLevel: number;
+  maximumLevel: number;
+  ratePercent: number | null;
+}
+
+export interface AreaGuidePointView {
+  key: string;
+  localMapKey: string;
+  baseAreaId: number;
+  tileX: number;
+  tileY: number;
+  category: LocalMapPoiCategory;
+  state: LocalMapPoiState;
+  label: string | null;
+  service: string | null;
+  itemId: number | null;
+  destinationBaseAreaId: number | null;
+}
+
+export interface AreaGuideObjectiveView {
+  key: string;
+  title: string;
+}
+
 export interface WorldMapRegion {
   key: string;
   displayName: string | null;
@@ -278,6 +334,7 @@ export interface State {
   currentMapPosition?: { x: number; y: number } | null;
   localMapPois?: LocalMapPoiView[];
   localMapPoiPreferences?: LocalMapPoiPreferences;
+  areaGuide?: AreaGuideView | null;
   gameTime?: GameTime | null;
   currentAreaSpeciesIds?: number[];
   revealedAreaBaseIds?: number[];

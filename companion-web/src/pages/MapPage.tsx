@@ -1,9 +1,10 @@
 import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { DexIcon, FilterIcon, MapIcon, SettingsIcon } from '../components';
+import { AreaGuideIcon, DexIcon, FilterIcon, MapIcon, SettingsIcon } from '../components';
 import { GameClockIndicator } from '../GameClockIndicator';
 import { AcceleratedMapFollower, anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, shouldGlideCamera, type MapViewport } from '../mapEngine';
 import type { Catalog, LocalMapPoiPreferences, LocalMapPoiView, LocalMapScenePlacementView, LocalMapSceneView, State, WorldMapLocation, WorldMapRegion } from '../models';
+import { AreaGuideDrawer } from './AreaGuideDrawer';
 
 interface MapPageProps {
   catalog: Catalog;
@@ -64,6 +65,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const fogVisible = activeMode === 'ATLAS' && state.settings.knowledgeMode !== 'DISCOVERED';
   const [legendOpen, setLegendOpen] = useState(false);
   const [poiFiltersOpen, setPoiFiltersOpen] = useState(false);
+  const [areaGuideOpen, setAreaGuideOpen] = useState(false);
+  const [selectedGuideAreaBaseId, setSelectedGuideAreaBaseId] = useState<number | null>(null);
   const [selectedPoiKey, setSelectedPoiKey] = useState<string | null>(null);
   const [followingPlayer, setFollowingPlayer] = useState(false);
   const stageRef = useRef<HTMLElement>(null);
@@ -112,6 +115,11 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     [catalog.localMaps],
   );
   const poiPreferences = state.localMapPoiPreferences ?? DEFAULT_POI_PREFERENCES;
+  const areaGuideAreas = state.areaGuide?.areas ?? [];
+  const activeGuideArea = areaGuideAreas.find(area => area.baseAreaId === selectedGuideAreaBaseId)
+    ?? areaGuideAreas.find(area => area.baseAreaId === state.areaGuide?.trackedAreaBaseId)
+    ?? areaGuideAreas.find(area => area.baseAreaId === state.currentAreaBaseId)
+    ?? areaGuideAreas[0];
   const selectedCandidate = region?.locations.find(location => location.key === selectedKey);
   const selectedLocation = fogVisible
     ? revealedLocations.find(location => location.key === selectedCandidate?.key) ?? currentLocation
@@ -302,6 +310,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   }
 
   function recenter() {
+    setSelectedGuideAreaBaseId(null);
+    if (activeMode === 'ATLAS' && currentLocation) setSelectedKey(currentLocation.key);
     if (activeMode === 'LOCAL' && playerPosition) {
       setFollowingPlayer(true);
       cancelCameraAnimation();
@@ -343,7 +353,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
 
   function onPointerDown(event: JSX.TargetedPointerEvent<HTMLElement>) {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    if ((event.target as Element).closest('.map-control, .map-legend-panel')) return;
+    if ((event.target as Element).closest('.map-control, .map-legend-panel, .area-guide-drawer, .map-local-poi-label')) return;
     const point = pointerPoint(event);
     const markerKey = (event.target as Element).closest<HTMLElement>('.map-marker')?.dataset.markerKey;
     if (markerKey) pressedMarkerRef.current.set(event.pointerId, markerKey);
@@ -375,7 +385,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     allowMarkerSelectionRef.current = result.select;
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     if (gestureRef.current.activeCount === 0) event.currentTarget.classList.remove('is-manipulating');
-    if (result.select && markerKey) setSelectedKey(markerKey);
+    if (result.select && markerKey) selectAtlasLocation(markerKey);
     event.preventDefault();
   }
 
@@ -445,12 +455,40 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
     )
     : new Map<string, PoiLabelPlacement>();
   const selectedPoi = localPoiMarkers.find(marker => marker.poi.key === selectedPoiKey)?.poi;
+  const selectableGuidePointKeys = new Set(poiIconsVisible ? localPoiMarkers.map(marker => marker.poi.key) : []);
+
+  function selectAtlasLocation(key: string) {
+    setSelectedKey(key);
+    const location = region?.locations.find(candidate => candidate.key === key);
+    const baseAreaId = location?.baseAreaIds.find(candidate => areaGuideAreas.some(area => area.baseAreaId === candidate));
+    if (baseAreaId != null) setSelectedGuideAreaBaseId(baseAreaId);
+  }
+
+  function selectGuideArea(baseAreaId: number) {
+    if (!areaGuideAreas.some(area => area.baseAreaId === baseAreaId)) return;
+    setSelectedGuideAreaBaseId(baseAreaId);
+    const location = region?.locations.find(candidate => candidate.baseAreaIds.includes(baseAreaId));
+    if (location) setSelectedKey(location.key);
+  }
+
+  const manuallySelectedGuide = selectedGuideAreaBaseId != null
+    && selectedGuideAreaBaseId !== state.areaGuide?.trackedAreaBaseId;
+  const headerAreaName = manuallySelectedGuide && activeGuideArea
+    ? activeGuideArea.name
+    : activeMode === 'LOCAL'
+      ? displayName
+      : selectedLocation?.displayName ?? state.currentAreaName ?? 'Atlas';
+  const headerAreaContext = manuallySelectedGuide
+    ? 'MAP POINT'
+    : activeMode === 'LOCAL' || selectedIsCurrent
+      ? 'CURRENT'
+      : selectedLocation ? 'MAP POINT' : 'ATLAS';
 
   return <section class="screen map-screen">
     <header class="map-page-header">
       <div class="map-current-location">
-        <strong>{activeMode === 'LOCAL' ? displayName : selectedLocation?.displayName ?? state.currentAreaName ?? 'Atlas'}</strong>
-        <span>{activeMode === 'LOCAL' || selectedIsCurrent ? 'CURRENT' : selectedLocation ? 'MAP POINT' : 'ATLAS'}</span>
+        <strong>{headerAreaName}</strong>
+        <span>{headerAreaContext}</span>
       </div>
       {state.gameTime && <GameClockIndicator clock={state.gameTime} />}
       <div class="header-actions map-header-actions">
@@ -510,7 +548,21 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
         {localScene && mountedScenePlacements.map(placement => {
           const name = localMapNames.get(placement.localMapKey);
           if (!name || placement.localMapKey === activePlacement?.localMapKey) return null;
-          return <span
+          const guideAvailable = areaGuideAreas.some(area => area.baseAreaId === placement.baseAreaId);
+          const content = guideAvailable ? <button
+            key={`poi/${placement.localMapKey}`}
+            class="map-local-poi-label"
+            aria-label={`Open ${name} area guide`}
+            style={{
+              left: `${(placement.pixelX + placement.pixelWidth / 2) / localScene.pixelWidth * 100}%`,
+              top: `${placement.pixelY / localScene.pixelHeight * 100}%`,
+            }}
+            onPointerDown={event => event.stopPropagation()}
+            onClick={() => {
+              selectGuideArea(placement.baseAreaId);
+              setAreaGuideOpen(true);
+            }}
+          >{name}</button> : <span
             key={`poi/${placement.localMapKey}`}
             class="map-local-poi-label"
             aria-label={`Map location: ${name}`}
@@ -519,6 +571,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
               top: `${placement.pixelY / localScene.pixelHeight * 100}%`,
             }}
           >{name}</span>;
+          return content;
         })}
         {fogVisible && region && <canvas ref={fogRef} class="map-fog" width={region.pixelWidth} height={region.pixelHeight} aria-hidden="true" />}
         {markerLocations.map(location => {
@@ -534,7 +587,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
                 event.preventDefault();
                 return;
               }
-              setSelectedKey(location.key);
+              selectAtlasLocation(location.key);
             }}
           ><span /></button>;
         })}
@@ -566,6 +619,16 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       </div>
 
       <nav class="map-utility-rail" aria-label="Map utilities">
+        {activeGuideArea && <button
+          class="map-control map-area-guide-control"
+          aria-label="Area Guide"
+          aria-expanded={areaGuideOpen}
+          onClick={() => {
+            setLegendOpen(false);
+            setPoiFiltersOpen(false);
+            setAreaGuideOpen(value => !value);
+          }}
+        ><AreaGuideIcon /></button>}
         {activeMode === 'ATLAS' && maps.length > 1 && <button class="map-control" aria-label="Choose map region" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>}
         {activeMode === 'LOCAL' && <button class="map-control map-poi-filter-control" aria-label="Map POI filters" aria-expanded={poiFiltersOpen} onClick={() => setPoiFiltersOpen(value => !value)}><FilterIcon /></button>}
         {legendOpen && activeMode === 'ATLAS' && maps.length > 1 && <div class="map-legend-panel">
@@ -582,6 +645,14 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           <PoiToggle label="Unknown POIs" checked={poiPreferences.showUnknownPois} onChange={checked => onUpdatePoiPreferences?.({ showUnknownPois: checked })} />
         </div>}
       </nav>
+
+      {areaGuideOpen && activeGuideArea && <AreaGuideDrawer
+        area={activeGuideArea}
+        onClose={() => setAreaGuideOpen(false)}
+        onSelectArea={selectGuideArea}
+        onSelectPoint={key => setSelectedPoiKey(key)}
+        selectablePointKeys={selectableGuidePointKeys}
+      />}
 
       {selectedPoi && <aside class="map-poi-card" aria-label="Map point details">
         <button aria-label="Close map point details" onClick={() => setSelectedPoiKey(null)}>×</button>

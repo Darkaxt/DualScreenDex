@@ -341,13 +341,13 @@ Pop-Location
 - Modify: `companion-web/src/styles.css`
 - Modify: `companion-web/src/layoutStyles.test.ts`
 
-- [ ] **Step 1: Add RED tests for opening/closing, tracked-area changes, manual selection, item/POI visibility, and filter reuse.**
-- [ ] **Step 2: Add one Area Guide control styled consistently with existing Atlas controls.**
-- [ ] **Step 3: Render a drawer over the current map and virtualize long sections.**
-- [ ] **Step 4: Keep center, zoom, tracking, fog, POI filter state, label thresholds, and mounted-raster set unchanged across drawer operations.**
-- [ ] **Step 5: Allow centering/highlighting only for already knowledge-visible POIs.**
-- [ ] **Step 6: Run the focused browser tests and production build GREEN.**
-- [ ] **Step 7: Commit the drawer.**
+- [x] **Step 1: Add RED tests for opening/closing, tracked-area changes, manual selection, item/POI visibility, and filter reuse.**
+- [x] **Step 2: Add one Area Guide control styled consistently with existing Atlas controls.**
+- [x] **Step 3: Render a drawer over the current map and virtualize long sections.**
+- [x] **Step 4: Keep center, zoom, tracking, fog, POI filter state, label thresholds, and mounted-raster set unchanged across drawer operations.**
+- [x] **Step 5: Allow centering/highlighting only for already knowledge-visible POIs.**
+- [x] **Step 6: Run the focused browser tests and production build GREEN.**
+- [x] **Step 7: Commit the drawer.**
 
 ### Task 2.3: Prove map continuity and real content
 

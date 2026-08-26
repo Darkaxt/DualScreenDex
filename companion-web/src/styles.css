@@ -789,7 +789,7 @@ button { cursor: pointer; }
 .map-plane > img, .map-fog { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; pointer-events: none; }
 .map-plane > img.map-scene-tile { inset: auto; z-index: 1; }
 .map-scene-placement-fog { position: absolute; z-index: 2; background: #000; pointer-events: none; }
-.map-local-poi-label { position: absolute; z-index: 4; max-width: min(180px, 90%); translate: -50% 8px; overflow: hidden; padding: 4px 7px; border: 1px solid #d9ffff; border-radius: 2px; color: #eaffff; background: #0b2b2be8; box-shadow: 0 2px 0 #071e18cc; font: 900 .58em/1.1 var(--font-sans); text-overflow: ellipsis; text-shadow: 0 1px #000; white-space: nowrap; pointer-events: none; }.map-local-poi-label.is-current { color: #102419; background: #62dfe1; text-shadow: none; }
+.map-local-poi-label { position: absolute; z-index: 4; max-width: min(180px, 90%); translate: -50% 8px; overflow: hidden; padding: 4px 7px; border: 1px solid #d9ffff; border-radius: 2px; color: #eaffff; background: #0b2b2be8; box-shadow: 0 2px 0 #071e18cc; font: 900 .58em/1.1 var(--font-sans); text-overflow: ellipsis; text-shadow: 0 1px #000; white-space: nowrap; pointer-events: none; }.map-local-poi-label:is(button) { pointer-events: auto; }.map-local-poi-label:is(button):focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }.map-local-poi-label.is-current { color: #102419; background: #62dfe1; text-shadow: none; }
 .map-fog { z-index: 2; }
 .map-utility-rail, .map-zoom-rail { position: absolute; z-index: 6; top: 12px; display: grid; gap: 7px; }
 .map-utility-rail { left: 12px; }.map-zoom-rail { right: 12px; }
@@ -813,6 +813,57 @@ button { cursor: pointer; }
 .map-poi-card { position: absolute; z-index: 7; left: 50%; bottom: 14px; min-width: 190px; max-width: min(360px, calc(100% - 130px)); translate: -50% 0; display: grid; gap: 4px; padding: 10px 36px 10px 12px; border: 1px solid var(--theme-border); color: var(--theme-text); background: var(--theme-panel); box-shadow: 7px 8px 0 #0007; }
 .map-poi-card > button { position: absolute; right: 7px; top: 6px; width: 26px; height: 26px; padding: 0; border: 1px solid var(--theme-border); color: inherit; background: transparent; }
 .map-poi-card small { color: var(--muted); text-transform: uppercase; }
+.map-area-guide-control > svg { fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+.area-guide-drawer { position: absolute; z-index: 8; left: 70px; top: 12px; bottom: 12px; width: min(410px, calc(100% - 140px)); min-width: 280px; display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; border: 1px solid var(--line); color: var(--ink); background-color: color-mix(in srgb, var(--paper) 97%, transparent); background-image: linear-gradient(color-mix(in srgb, var(--line) 13%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--line) 13%, transparent) 1px, transparent 1px); background-size: 18px 18px; box-shadow: 8px 9px 0 #0009; backdrop-filter: blur(8px); cursor: default; touch-action: pan-y; user-select: text; }
+.area-guide-drawer > header { min-height: 48px; display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; border-bottom: 3px solid #62dfe1; color: var(--acid); background: var(--forest-800); }
+.area-guide-drawer > header strong { padding: 0 14px; font: 950 .82rem/1 var(--font-sans); letter-spacing: .12em; }
+.area-guide-drawer > header button { align-self: stretch; padding: 0; border: 0; border-left: 1px solid #ffffff2b; color: inherit; background: transparent; font: 500 1.55rem/1 Georgia, serif; }
+.area-guide-drawer > header button:hover, .area-guide-drawer > header button:focus-visible { color: #fff; background: #ffffff12; outline: none; }
+.area-guide-content { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 11px; }
+.area-guide-section + .area-guide-section { margin-top: 12px; }
+.area-guide-section h2 { margin: 0 0 6px; padding: 5px 8px; border-left: 4px solid var(--theme-accent, var(--forest-700)); color: var(--ink); background: color-mix(in srgb, var(--paper-deep) 88%, transparent); font: 950 .69rem/1 var(--font-sans); letter-spacing: .1em; }
+.area-guide-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.area-guide-summary span { min-width: 0; display: grid; align-content: center; min-height: 44px; padding: 5px 7px; border: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 88%, white); color: var(--muted); font: 800 .67rem/1.15 var(--font-sans); }
+.area-guide-summary strong { display: block; color: var(--ink); font-size: 1.18rem; line-height: 1; }
+.area-guide-exits { display: grid; gap: 4px; margin-top: 7px; }
+.area-guide-exits > small { color: var(--muted); font: 900 .58rem/1 var(--font-sans); letter-spacing: .09em; }
+.area-guide-exits button { min-height: 36px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 5px 9px; border: 1px solid var(--line); color: var(--ink); background: var(--paper); font-size: .75rem; font-weight: 900; text-align: left; }
+.area-guide-exits button span { color: var(--theme-accent, var(--forest-700)); font-size: 1.3rem; }
+.area-guide-windowed-list { min-height: 0; overflow: hidden; border: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 92%, transparent); }
+.area-guide-windowed-list.is-virtual { overflow-y: auto; overscroll-behavior: contain; }
+.area-guide-windowed-spacer { position: relative; }
+.area-guide-windowed-content { width: 100%; }
+.area-guide-windowed-item { height: 56px; border-bottom: 1px solid color-mix(in srgb, var(--line) 58%, transparent); }
+.area-guide-windowed-item:last-child { border-bottom: 0; }
+.area-guide-encounter-row { height: 100%; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 8px; }
+.area-guide-encounter-row img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+.area-guide-encounter-row > span { min-width: 0; display: grid; gap: 2px; }
+.area-guide-encounter-row strong { overflow: hidden; font-family: Georgia, serif; font-size: .79rem; text-overflow: ellipsis; white-space: nowrap; }
+.area-guide-encounter-row small { overflow: hidden; color: var(--muted); font: 800 .59rem/1 var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }
+.area-guide-encounter-row b { color: var(--ink); font-size: .66rem; white-space: nowrap; }
+.area-guide-point-row { width: 100%; height: 100%; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 5px 8px; border: 0; color: var(--ink); background: transparent; text-align: left; }
+button.area-guide-point-row:hover, button.area-guide-point-row:focus-visible, .area-guide-exits button:hover, .area-guide-exits button:focus-visible { background: color-mix(in srgb, var(--theme-accent, var(--acid)) 18%, var(--paper)); outline: 2px solid color-mix(in srgb, var(--theme-accent, var(--acid)) 65%, transparent); outline-offset: -2px; }
+.area-guide-point-row > span:nth-child(2) { min-width: 0; display: grid; gap: 2px; }
+.area-guide-point-row strong { overflow: hidden; font-size: .73rem; text-overflow: ellipsis; white-space: nowrap; }
+.area-guide-point-row small { color: var(--muted); font-size: .59rem; }
+.area-guide-point-row i { color: var(--theme-accent, var(--forest-700)); font: 900 1rem/1 var(--font-sans); }
+.area-guide-point-symbol { width: 20px; height: 20px; display: grid; place-items: center; border: 2px solid var(--line); border-radius: 50%; background: var(--paper-deep); }
+.area-guide-point-symbol::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--theme-accent, var(--forest-700)); }
+.area-guide-point-symbol.is-available_item, .area-guide-point-symbol.is-collected_item { border-radius: 2px; }
+.area-guide-point-symbol.is-available_item::after, .area-guide-point-symbol.is-collected_item::after { width: 10px; height: 2px; border-radius: 0; }
+.area-guide-static-list, .area-guide-text-row { display: grid; }
+.area-guide-text-row { min-height: 42px; align-content: center; padding: 7px 9px; border: 1px solid var(--line); background: var(--paper); font-size: .73rem; font-weight: 800; }
+[data-theme="game"][data-contrast="normal"] .area-guide-drawer { color: var(--theme-text); background-color: color-mix(in srgb, var(--theme-panel) 97%, transparent); border-color: var(--theme-border); box-shadow: 8px 9px 0 var(--theme-menu-shadow); }
+[data-theme="game"][data-contrast="normal"] .area-guide-drawer > header { color: var(--theme-accent-text); background: var(--theme-header); border-color: var(--theme-accent); }
+[data-theme="game"][data-contrast="normal"] .area-guide-section h2 { color: var(--theme-text); background: var(--theme-menu); border-color: var(--theme-accent); }
+[data-theme="game"][data-contrast="normal"] .area-guide-summary span,
+[data-theme="game"][data-contrast="normal"] .area-guide-windowed-list,
+[data-theme="game"][data-contrast="normal"] .area-guide-exits button,
+[data-theme="game"][data-contrast="normal"] .area-guide-text-row { color: var(--theme-text); background: var(--theme-panel); border-color: var(--theme-border); }
+[data-theme="game"][data-contrast="normal"] .area-guide-summary strong,
+[data-theme="game"][data-contrast="normal"] .area-guide-encounter-row b,
+[data-theme="game"][data-contrast="normal"] .area-guide-point-row,
+[data-theme="game"][data-contrast="normal"] .area-guide-exits button { color: var(--theme-text); }
 .map-player-marker { pointer-events: none; }.map-player-marker.is-fallback { width: 17px; height: 17px; border: 2px solid #102419; border-radius: 50%; background: var(--acid); }.map-player-marker.is-fallback .map-player-dot { position: absolute; inset: 4px; border-radius: 50%; background: #102419; }.map-player-marker.has-sprite { min-width: 16px; min-height: 32px; translate: -50% -75%; border: 0; background: transparent; box-shadow: none; animation: none; }.map-player-marker.has-sprite img { width: 100%; height: 100%; display: block; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 1px 0 #071e18) drop-shadow(0 0 2px #62dfe1); }
 @keyframes current-map-point { 0%, 100% { box-shadow: 0 0 0 3px #0b1f18cc, 0 2px 5px #000; } 50% { box-shadow: 0 0 0 7px #d9f47a55, 0 2px 5px #000; } }
 

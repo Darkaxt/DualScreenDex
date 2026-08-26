@@ -42,6 +42,90 @@ const state: State = {
 };
 
 describe('normalized world map presentation', () => {
+  it('opens the Area Guide for the tracked or manually selected Atlas area without changing map state', () => {
+    const guideState: State = {
+      ...state,
+      areaGuide: {
+        trackedAreaBaseId: 0x10,
+        areas: [
+          {
+            baseAreaId: 0x10, name: 'Route 101',
+            overview: { knownPointCount: 0, totalPointCount: null, collectedItemCount: 0, exits: [] },
+            encounters: [], placesAndServices: [], trainersAndPeople: [], items: [], objectives: [],
+          },
+          {
+            baseAreaId: 0x11, name: 'Oldale Town',
+            overview: { knownPointCount: 1, totalPointCount: null, collectedItemCount: 0, exits: [{ baseAreaId: 0x10, name: 'Route 101' }] },
+            encounters: [], placesAndServices: [], trainersAndPeople: [], items: [], objectives: [],
+          },
+        ],
+      },
+    };
+    render(<MapPage catalog={catalog} state={guideState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+    const stage = screen.getByRole('region', { name: 'Interactive world map' });
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    const scale = stage.dataset.scale;
+    const panX = stage.dataset.panX;
+    const panY = stage.dataset.panY;
+
+    const guideControl = screen.getByRole('button', { name: 'Area Guide' });
+    expect(guideControl.classList.contains('map-control')).toBe(true);
+    expect(guideControl.querySelector('svg')?.dataset.semanticIcon).toBe('area-guide');
+    fireEvent.click(guideControl);
+    expect(screen.getByRole('complementary', { name: 'Area guide' }).dataset.areaBaseId).toBe('16');
+    fireEvent.click(screen.getByRole('button', { name: 'Oldale Town' }));
+    expect(screen.getByRole('complementary', { name: 'Area guide' }).dataset.areaBaseId).toBe('17');
+    fireEvent.click(screen.getByRole('button', { name: 'Close area guide' }));
+
+    expect(stage.dataset.scale).toBe(scale);
+    expect(stage.dataset.panX).toBe(panX);
+    expect(stage.dataset.panY).toBe(panY);
+    expect(screen.queryByRole('complementary', { name: 'Area guide' })).toBeNull();
+  });
+
+  it('follows live area changes until a manual guide selection is held, then resumes on recenter', () => {
+    const guideState: State = {
+      ...state,
+      areaGuide: {
+        trackedAreaBaseId: 0x10,
+        areas: [
+          {
+            baseAreaId: 0x10, name: 'Route 101',
+            overview: { knownPointCount: 0, totalPointCount: null, collectedItemCount: 0, exits: [] },
+            encounters: [], placesAndServices: [], trainersAndPeople: [], items: [], objectives: [],
+          },
+          {
+            baseAreaId: 0x11, name: 'Oldale Town',
+            overview: { knownPointCount: 0, totalPointCount: null, collectedItemCount: 0, exits: [] },
+            encounters: [], placesAndServices: [], trainersAndPeople: [], items: [], objectives: [],
+          },
+        ],
+      },
+    };
+    const view = render(<MapPage catalog={catalog} state={guideState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Area Guide' }));
+    expect(screen.getByRole('complementary', { name: 'Area guide' }).dataset.areaBaseId).toBe('16');
+
+    const movedState = {
+      ...guideState,
+      currentAreaBaseId: 0x11,
+      currentAreaName: 'Oldale Town',
+      areaGuide: { ...guideState.areaGuide!, trackedAreaBaseId: 0x11 },
+    };
+    view.rerender(<MapPage catalog={catalog} state={movedState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+    expect(screen.getByRole('complementary', { name: 'Area guide' }).dataset.areaBaseId).toBe('17');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Route 101' }));
+    expect(screen.getByRole('complementary', { name: 'Area guide' }).dataset.areaBaseId).toBe('16');
+    view.rerender(<MapPage catalog={catalog} state={movedState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+    expect(screen.getByRole('complementary', { name: 'Area guide' }).dataset.areaBaseId).toBe('16');
+    expect(document.querySelector('.map-current-location span')?.textContent).toBe('MAP POINT');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recenter map' }));
+    expect(screen.getByRole('complementary', { name: 'Area guide' }).dataset.areaBaseId).toBe('17');
+    expect(document.querySelector('.map-current-location span')?.textContent).toBe('CURRENT');
+  });
+
   it('shows only location context on the left and Pokédex-style actions on the right', () => {
     const openAreaDex = vi.fn();
     const openSettings = vi.fn();
@@ -232,6 +316,33 @@ describe('optional local map presentation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Map POI filters' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Available items' }));
     expect(updatePoiPreferences).toHaveBeenCalledWith({ showAvailableItems: false });
+  });
+
+  it('highlights only a knowledge-visible POI selected from the Area Guide', () => {
+    const poiState = {
+      ...state,
+      currentMapPosition: { x: 12, y: 7 },
+      localMapPois: [
+        { key: 'house', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 4, tileY: 4, category: 'SERVICE', state: 'IDENTIFIED', displayName: 'Your House', service: 'BUILDING', itemId: null, itemName: null, destinationBaseAreaId: null },
+      ],
+      areaGuide: {
+        trackedAreaBaseId: 0x10,
+        areas: [{
+          baseAreaId: 0x10, name: 'Route 101',
+          overview: { knownPointCount: 1, totalPointCount: null, collectedItemCount: 0, exits: [] },
+          encounters: [],
+          placesAndServices: [{ key: 'house', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 4, tileY: 4, category: 'SERVICE', state: 'IDENTIFIED', label: 'Your House', service: 'BUILDING', itemId: null, destinationBaseAreaId: null }],
+          trainersAndPeople: [], items: [], objectives: [],
+        }],
+      },
+    } as State;
+    const { container } = render(<MapPage catalog={localCatalog} state={poiState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Area Guide' }));
+    expect(screen.getAllByRole('button', { name: 'Map POI filters' })).toHaveLength(1);
+    expect(screen.queryByText('Map details')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show Your House on map' }));
+    expect(container.querySelector('[data-poi-key="house"]')?.classList.contains('is-selected')).toBe(true);
   });
 
   it('applies normalized POI zoom thresholds above the starting Local zoom', () => {

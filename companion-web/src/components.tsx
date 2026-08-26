@@ -79,6 +79,13 @@ export function MapIcon() {
   </svg>;
 }
 
+export function AreaGuideIcon() {
+  return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="area-guide">
+    <path d="M4 5.5h7.5c1.4 0 2.5.8 2.5 2.1 0-1.3 1.1-2.1 2.5-2.1H24v17h-7.5c-1.4 0-2.5.7-2.5 1.8 0-1.1-1.1-1.8-2.5-1.8H4Z" />
+    <path d="M14 7.6v16.7M7.5 10h4M7.5 13h4M16.5 10h4M16.5 13h4M16.5 16h3" />
+  </svg>;
+}
+
 export function FilterIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true" data-semantic-icon="filter">
     <path d="M3 5h18l-7 8v5.5l-4 2V13Z" />
