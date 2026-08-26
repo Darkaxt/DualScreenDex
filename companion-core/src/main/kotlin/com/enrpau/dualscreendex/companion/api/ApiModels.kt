@@ -4,6 +4,15 @@ import com.enrpau.dualscreendex.companion.battle.RarityEvaluator
 import com.enrpau.dualscreendex.companion.analysis.PartyAnalysis
 import com.enrpau.dualscreendex.companion.analysis.PartyAnalyzer
 import com.enrpau.dualscreendex.companion.knowledge.KnowledgePolicy
+import com.enrpau.dualscreendex.companion.map.AreaGuide
+import com.enrpau.dualscreendex.companion.map.AreaGuideArea
+import com.enrpau.dualscreendex.companion.map.AreaGuideBuilder
+import com.enrpau.dualscreendex.companion.map.AreaGuideEncounterGroup
+import com.enrpau.dualscreendex.companion.map.AreaGuideEncounterSpecies
+import com.enrpau.dualscreendex.companion.map.AreaGuideObjective
+import com.enrpau.dualscreendex.companion.map.AreaGuideOverview
+import com.enrpau.dualscreendex.companion.map.AreaGuidePoint
+import com.enrpau.dualscreendex.companion.map.AreaGuidePointCategory
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.MoveObservation
@@ -111,6 +120,61 @@ data class LocalMapPoiView(
     val itemName: String?,
     val destinationBaseAreaId: Int?,
 )
+
+data class AreaGuideView(
+    val trackedAreaBaseId: Int?,
+    val areas: List<AreaGuideAreaView>,
+)
+
+data class AreaGuideAreaView(
+    val baseAreaId: Int,
+    val name: String,
+    val overview: AreaGuideOverviewView,
+    val encounters: List<AreaGuideEncounterGroupView>,
+    val placesAndServices: List<AreaGuidePointView>,
+    val trainersAndPeople: List<AreaGuidePointView>,
+    val items: List<AreaGuidePointView>,
+    val objectives: List<AreaGuideObjectiveView>,
+)
+
+data class AreaGuideOverviewView(
+    val knownPointCount: Int,
+    val totalPointCount: Int?,
+    val collectedItemCount: Int,
+    val exits: List<AreaGuideExitView>,
+)
+
+data class AreaGuideExitView(val baseAreaId: Int, val name: String)
+
+data class AreaGuideEncounterGroupView(
+    val name: String?,
+    val windows: List<String>,
+    val species: List<AreaGuideEncounterSpeciesView>,
+)
+
+data class AreaGuideEncounterSpeciesView(
+    val speciesId: Int,
+    val name: String,
+    val minimumLevel: Int,
+    val maximumLevel: Int,
+    val ratePercent: Int?,
+)
+
+data class AreaGuidePointView(
+    val key: String,
+    val localMapKey: String,
+    val baseAreaId: Int,
+    val tileX: Int,
+    val tileY: Int,
+    val category: String,
+    val state: String,
+    val label: String?,
+    val service: String?,
+    val itemId: Int?,
+    val destinationBaseAreaId: Int?,
+)
+
+data class AreaGuideObjectiveView(val key: String, val title: String)
 
 data class WorldMapRegionView(
     val key: String,
@@ -357,6 +421,7 @@ data class StateView(
     val saveRam: SaveRamView = SaveRamView(),
     val gameTime: GameClockView? = null,
     val gameAccessReady: Boolean = false,
+    val areaGuide: AreaGuideView? = null,
 )
 data class GameClockView(
     val hours: Int?,
@@ -780,55 +845,27 @@ object ApiViewBuilder {
             .flatMap { (areaBaseId, speciesIds) -> speciesIds.map { speciesId -> speciesId to areaBaseId } }
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, areaBaseIds) -> areaBaseIds.distinct().sorted() }
-        val localMapPois = catalog?.localMaps?.pois.orEmpty().mapNotNull { poi ->
-            val resolvedCollected = poi.item?.collectionFlagId in snapshot.resolvedEventFlags.orEmpty()
-            val collected = resolvedCollected || poi.key in snapshot.ledger.collectedPoiKeys
-            val explicitlyIdentified = resolvedCollected ||
-                poi.key in snapshot.ledger.identifiedPoiKeys ||
-                poi.key in snapshot.ledger.enteredPoiKeys
-            val proximityRevealed = poi.key in snapshot.ledger.proximityRevealedPoiKeys
-            val identified = snapshot.settings.knowledgeMode == KnowledgeMode.DISCOVERED || collected || explicitlyIdentified
-            val visibleWithoutDiscovery = poi.organicVisibility ==
-                com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility.VISIBLE
-            val included = when (snapshot.settings.knowledgeMode) {
-                KnowledgeMode.HIDDEN -> false
-                KnowledgeMode.DISCOVERED -> true
-                KnowledgeMode.ORGANIC -> visibleWithoutDiscovery || proximityRevealed || identified
-            }
-            if (!included) return@mapNotNull null
-            val state = when {
-                collected -> "COLLECTED"
-                identified -> "IDENTIFIED"
-                else -> "SILHOUETTE"
-            }
-            val category = when {
-                collected -> "COLLECTED_ITEM"
-                poi.kind == com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind.VISIBLE_ITEM ||
-                    poi.kind == com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind.HIDDEN_ITEM -> "AVAILABLE_ITEM"
-                poi.kind == com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind.SERVICE -> "SERVICE"
-                poi.kind == com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind.PLACE -> "PLACE"
-                else -> "UNKNOWN"
-            }
+        val projectedMapPoints = catalog?.let { AreaGuideBuilder.projectPoints(it, snapshot) }.orEmpty()
+        val localMapPois = projectedMapPoints.map { point ->
+            val item = point.category == AreaGuidePointCategory.AVAILABLE_ITEM ||
+                point.category == AreaGuidePointCategory.COLLECTED_ITEM
             LocalMapPoiView(
-                key = poi.key,
-                localMapKey = poi.localMapKey,
-                baseAreaId = poi.baseAreaId,
-                tileX = poi.tileX,
-                tileY = poi.tileY,
-                category = category,
-                state = state,
-                displayName = poiDisplayName(
-                    poi,
-                    snapshot.trainerCardState?.identity?.gender,
-                    snapshot.trainerCardState?.identity?.name,
-                )
-                    .takeIf { identified },
-                service = poi.service?.name,
-                itemId = poi.item?.itemId.takeIf { identified },
-                itemName = poi.item?.displayName.takeIf { identified },
-                destinationBaseAreaId = poi.destinationBaseAreaId.takeIf { identified },
+                key = point.key,
+                localMapKey = point.localMapKey,
+                baseAreaId = point.baseAreaId,
+                tileX = point.tileX,
+                tileY = point.tileY,
+                category = point.category.name,
+                state = point.state.name,
+                displayName = point.label.takeUnless { item },
+                service = point.service,
+                itemId = point.itemId,
+                itemName = point.label.takeIf { item },
+                destinationBaseAreaId = point.destinationBaseAreaId,
             )
         }
+        val areaGuide = catalog?.let { AreaGuideBuilder.build(it, snapshot).toView() }
+            ?.takeIf { it.areas.isNotEmpty() }
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = effectiveOwned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
@@ -949,6 +986,7 @@ object ApiViewBuilder {
             saveRam,
             snapshot.gameTime?.let { GameClockView(it.hours, it.minutes, it.phase?.name, it.phaseProgress) },
             snapshot.gameAccessReady,
+            areaGuide,
         )
     }
 
@@ -1142,6 +1180,59 @@ object ApiViewBuilder {
 
     private fun localMapAssetUrl(key: String): String =
         "/api/maps/${URLEncoder.encode(key, StandardCharsets.UTF_8)}.png"
+
+    private fun AreaGuide.toView() = AreaGuideView(
+        trackedAreaBaseId = trackedAreaBaseId,
+        areas = areas.map { it.toView() },
+    )
+
+    private fun AreaGuideArea.toView() = AreaGuideAreaView(
+        baseAreaId = baseAreaId,
+        name = name,
+        overview = overview.toView(),
+        encounters = encounters.map { it.toView() },
+        placesAndServices = placesAndServices.map { it.toView() },
+        trainersAndPeople = trainersAndPeople.map { it.toView() },
+        items = items.map { it.toView() },
+        objectives = objectives.map { it.toView() },
+    )
+
+    private fun AreaGuideOverview.toView() = AreaGuideOverviewView(
+        knownPointCount = knownPointCount,
+        totalPointCount = totalPointCount,
+        collectedItemCount = collectedItemCount,
+        exits = exits.map { AreaGuideExitView(it.baseAreaId, it.name) },
+    )
+
+    private fun AreaGuideEncounterGroup.toView() = AreaGuideEncounterGroupView(
+        name = name,
+        windows = windows,
+        species = species.map { it.toView() },
+    )
+
+    private fun AreaGuideEncounterSpecies.toView() = AreaGuideEncounterSpeciesView(
+        speciesId = speciesId,
+        name = name,
+        minimumLevel = minimumLevel,
+        maximumLevel = maximumLevel,
+        ratePercent = ratePercent,
+    )
+
+    private fun AreaGuidePoint.toView() = AreaGuidePointView(
+        key = key,
+        localMapKey = localMapKey,
+        baseAreaId = baseAreaId,
+        tileX = tileX,
+        tileY = tileY,
+        category = category.name,
+        state = state.name,
+        label = label,
+        service = service,
+        itemId = itemId,
+        destinationBaseAreaId = destinationBaseAreaId,
+    )
+
+    private fun AreaGuideObjective.toView() = AreaGuideObjectiveView(key, title)
 
     private fun poiDisplayName(
         poi: com.enrpau.dualscreendex.parser.catalog.LocalMapPoi,

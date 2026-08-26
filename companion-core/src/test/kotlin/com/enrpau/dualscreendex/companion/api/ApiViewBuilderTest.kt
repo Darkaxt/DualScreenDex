@@ -36,6 +36,7 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiService
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScene
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
@@ -199,6 +200,53 @@ class ApiViewBuilderTest {
         assertNull(revealed.localMapPois.single { it.key == hidden.key }.itemId)
         assertEquals(setOf(13, 110), discovered.localMapPois.mapNotNullTo(mutableSetOf()) { it.itemId })
         assertEquals(setOf("IDENTIFIED"), discovered.localMapPois.mapTo(mutableSetOf()) { it.state })
+    }
+
+    @Test
+    fun areaGuideAndAtlasMarkersUseTheSameKnowledgeSafePointProjection() {
+        val map = LocalMap("local/0010", "Route 101", 0x0010, 160, 160, 10, 10, "local/0010/map")
+        val entrance = LocalMapPoi(
+            key = "local/0010/house",
+            localMapKey = map.key,
+            baseAreaId = map.baseAreaId,
+            tileX = 3,
+            tileY = 4,
+            kind = LocalMapPoiKind.SERVICE,
+            organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
+            displayName = "{PLAYER}'s House\nThe second line must remain hidden",
+            service = LocalMapPoiService.BUILDING,
+        )
+        val catalog = ParsedCatalog(
+            "a".repeat(64), EngineFamily.EMERALD, Platform.GBA,
+            runtimeMetadata = CatalogRuntimeMetadata(areaNamesByBaseId = mapOf(map.baseAreaId to "Route 101")),
+            localMaps = LocalMapCatalog(
+                maps = listOf(map),
+                assets = mapOf(
+                    map.imageAssetKey to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)),
+                ),
+                pois = listOf(entrance),
+            ),
+        )
+        val state = ApiViewBuilder.state(
+            AppSnapshot(
+                liveAreaBaseId = map.baseAreaId,
+                settings = CompanionSettings(knowledgeMode = KnowledgeMode.ORGANIC),
+                ledger = KnowledgeLedger(
+                    visitedAreaBaseIds = setOf(map.baseAreaId),
+                    proximityRevealedPoiKeys = setOf(entrance.key),
+                    identifiedPoiKeys = setOf(entrance.key),
+                ),
+            ),
+            catalog,
+        )
+
+        val marker = state.localMapPois.single()
+        val guide = requireNotNull(state.areaGuide)
+        val guidePoint = guide.areas.single().placesAndServices.single()
+        assertEquals(marker.key, guidePoint.key)
+        assertEquals("Your House", marker.displayName)
+        assertEquals(marker.displayName, guidePoint.label)
+        assertEquals(map.baseAreaId, guide.trackedAreaBaseId)
     }
 
     @Test

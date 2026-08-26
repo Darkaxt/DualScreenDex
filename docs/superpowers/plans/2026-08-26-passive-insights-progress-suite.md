@@ -322,12 +322,12 @@ Pop-Location
 - Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/api/ApiModels.kt`
 - Modify: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/api/ApiViewBuilderTest.kt`
 
-- [ ] **Step 1: Add RED tests for tracked area, manually selected area, Organic projection, Discovered projection, and unsupported sections.**
-- [ ] **Step 2: Build Overview, Encounters, Places/Services, Trainers/People, Items, and Objectives from the same area/POI/knowledge inputs already used by Atlas.**
-- [ ] **Step 3: Omit unsupported sections; never emit `Place`, duplicate area names, hidden POIs, or raw parser/capability values.**
-- [ ] **Step 4: Normalize sign text to its first meaningful expanded line and use `Your` when live player substitution is unavailable.**
-- [ ] **Step 5: Project `AreaGuideView` through `StateView` and run focused tests GREEN.**
-- [ ] **Step 6: Commit the projection.**
+- [x] **Step 1: Add RED tests for tracked area, manually selected area, Organic projection, Discovered projection, and unsupported sections.**
+- [x] **Step 2: Build Overview, Encounters, Places/Services, Trainers/People, Items, and Objectives from the same area/POI/knowledge inputs already used by Atlas.**
+- [x] **Step 3: Omit unsupported sections; never emit `Place`, duplicate area names, hidden POIs, or raw parser/capability values.**
+- [x] **Step 4: Normalize sign text to its first meaningful expanded line and use `Your` when live player substitution is unavailable.**
+- [x] **Step 5: Project `AreaGuideView` through `StateView` and run focused tests GREEN.**
+- [x] **Step 6: Commit the projection.**
 
 ### Task 2.2: Implement the drawer without disturbing map state
 
