@@ -14,6 +14,7 @@ internal object EmbeddedEvolutionPointerResolver {
     private val supportedRecordSizes = intArrayOf(6, 8, 12)
     private const val maximumEntriesPerSpecies = 64
     private const val maximumMethod = 0x0FFF
+    private const val noneMethod = 0xFFFE
     private const val listTerminator = 0xFFFF
 
     data class Resolution(
@@ -110,6 +111,7 @@ internal object EmbeddedEvolutionPointerResolver {
                         terminated = true
                         break
                     }
+                    if (method == noneMethod) continue
                     if (method > maximumMethod) return null
                     val target = session.rom.u16le(entry + 4)
                     // Expansion consumers sanitize SPECIES_NONE and inactive IDs before using them.
