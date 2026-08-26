@@ -222,6 +222,24 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   useEffect(() => () => cancelCameraAnimation(), []);
 
   useEffect(() => {
+    if (!areaGuideOpen) return;
+    const closeOnCompanionBack = (event: Event) => {
+      (event as Event & { dualdexHandled?: boolean }).dualdexHandled = true;
+      event.preventDefault();
+      setAreaGuideOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAreaGuideOpen(false);
+    };
+    window.addEventListener('dualdexback', closeOnCompanionBack);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('dualdexback', closeOnCompanionBack);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [areaGuideOpen]);
+
+  useEffect(() => {
     if (!followingPlayer || activeMode !== 'LOCAL' || !activeMap || !playerPosition) return;
     const previous = lastFollowedPositionRef.current;
     const canGlide = previous?.mapKey === activeMap.key && shouldGlideCamera(

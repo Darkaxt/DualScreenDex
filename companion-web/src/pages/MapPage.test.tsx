@@ -795,6 +795,32 @@ describe('optional local map presentation', () => {
     rect.mockRestore();
   });
 
+  it('consumes companion Back in the Area Guide before leaving the map', async () => {
+    const guide = {
+      trackedAreaBaseId: 0x10,
+      areas: [{
+        baseAreaId: 0x10, name: 'Route 101',
+        overview: { knownPointCount: 0, totalPointCount: null, collectedItemCount: 0, exits: [] },
+        encounters: [], placesAndServices: [], trainersAndPeople: [], items: [], objectives: [],
+      }],
+    };
+    render(<MapPage
+      catalog={connectedCatalog}
+      state={{ ...state, areaGuide: guide }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: 'Area Guide' }));
+
+    const back = new Event('dualdexback', { cancelable: true }) as Event & { dualdexHandled?: boolean };
+    window.dispatchEvent(back);
+
+    expect(back.defaultPrevented).toBe(true);
+    expect(back.dualdexHandled).toBe(true);
+    await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Area guide' })).toBeNull());
+    expect(screen.getByRole('region', { name: 'Interactive local map' })).toBeTruthy();
+  });
+
   it('updates every dynamic raster in a connected scene without moving the viewport', () => {
     const dynamicSceneCatalog: Catalog = {
       ...connectedCatalog,
