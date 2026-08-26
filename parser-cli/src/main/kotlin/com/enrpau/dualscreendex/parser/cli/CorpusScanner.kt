@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.cli
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
@@ -16,13 +17,13 @@ data class CorpusInput(
     internal fun loadRom(): RomImage {
         val inputPath = requireNotNull(path) { "input has no ROM path" }
         return if (archiveEntry == null) {
-            Files.newInputStream(inputPath).use(RomImage::from)
+            RomSourceLoader.load(displayName, inputPath).rom
         } else {
             ZipFile(inputPath.toFile()).use { zip ->
                 val entry = zip.getEntry(archiveEntry)
                     ?.takeUnless { it.isDirectory }
                     ?: throw IllegalArgumentException("archive entry is missing: $archiveEntry")
-                zip.getInputStream(entry).use(RomImage::from)
+                zip.getInputStream(entry).use { RomSourceLoader.load(displayName, it).rom }
             }
         }
     }

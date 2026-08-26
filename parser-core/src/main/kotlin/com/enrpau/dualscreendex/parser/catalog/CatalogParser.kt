@@ -632,7 +632,9 @@ object CatalogMaterializer {
                     } else {
                         emptyList()
                     },
-                    status = if (localMapResolution.skippedMaps == 0) {
+                    status = if (
+                        localMapResolution.skippedMaps == 0 && localMapResolution.partialSubsystemFailures == 0
+                    ) {
                         CapabilityStatus.AVAILABLE
                     } else {
                         CapabilityStatus.PARTIAL

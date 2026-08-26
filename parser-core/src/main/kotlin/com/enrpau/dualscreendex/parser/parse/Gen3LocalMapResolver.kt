@@ -157,7 +157,8 @@ internal object Gen3LocalMapResolver {
             } else {
                 emptyList()
             } + skippedReasons + poiResolution.skippedReasons,
-            skippedMaps = skippedReasons.size + poiResolution.skippedReasons.size,
+            skippedMaps = skippedReasons.size,
+            partialSubsystemFailures = poiResolution.skippedReasons.size,
         )
     }
 

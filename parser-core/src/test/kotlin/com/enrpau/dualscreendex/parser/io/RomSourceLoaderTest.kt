@@ -32,6 +32,50 @@ class RomSourceLoaderTest {
     }
 
     @Test
+    fun trimsBoundedUnaddressableTrailerFromStructurallyValidGbaSources() {
+        val source = gbaBytes(RomImage.MAX_SIZE_BYTES + 1_131)
+        source.fill(0x5A, RomImage.MAX_SIZE_BYTES)
+
+        val loaded = RomSourceLoader.load("Pokemon Adventure.gba", source)
+
+        assertEquals(RomImage.MAX_SIZE_BYTES, loaded.rom.size)
+        assertEquals(0, loaded.rom.u8(RomImage.MAX_SIZE_BYTES - 1))
+    }
+
+    @Test
+    fun trimsBoundedUnaddressableTrailerFromOwnedGbaPaths() {
+        val directory = temporaryDirectory()
+        val path = directory.resolve("upload.body")
+        try {
+            Files.newByteChannel(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE).use { channel ->
+                channel.write(java.nio.ByteBuffer.wrap(gbaBytes(0x200)))
+                channel.position(RomImage.MAX_SIZE_BYTES.toLong() + 1_130)
+                channel.write(java.nio.ByteBuffer.wrap(byteArrayOf(0x5A)))
+            }
+
+            val loaded = RomSourceLoader.load("Pokemon Adventure.gba", path)
+
+            assertEquals(RomImage.MAX_SIZE_BYTES, loaded.rom.size)
+        } finally {
+            Files.deleteIfExists(path)
+            Files.deleteIfExists(directory)
+        }
+    }
+
+    @Test
+    fun rejectsUnrecognizedOrUnboundedGbaOverflow() {
+        val unrecognized = assertThrows(IllegalArgumentException::class.java) {
+            RomSourceLoader.load("invalid.gba", ByteArray(RomImage.MAX_SIZE_BYTES + 1))
+        }
+        assertTrue(unrecognized.message.orEmpty().contains("32 MiB"))
+
+        val unbounded = assertThrows(IllegalArgumentException::class.java) {
+            RomSourceLoader.load("oversized.gba", gbaBytes(RomImage.MAX_SIZE_BYTES + 4_097))
+        }
+        assertTrue(unbounded.message.orEmpty().contains("32 MiB"))
+    }
+
+    @Test
     fun rejectsCompressedSourcesAboveSixtyFourMebibytesBeforeDecode() {
         val directory = temporaryDirectory()
         val path = directory.resolve("oversized.body")
@@ -73,6 +117,15 @@ class RomSourceLoaderTest {
             Files.deleteIfExists(path)
             Files.deleteIfExists(directory)
         }
+    }
+
+    private fun gbaBytes(size: Int): ByteArray = ByteArray(size).also { bytes ->
+        byteArrayOf(
+            0x24, 0xFF.toByte(), 0xAE.toByte(), 0x51, 0x69, 0x9A.toByte(),
+            0xA2.toByte(), 0x21, 0x3D, 0x84.toByte(), 0x82.toByte(), 0x0A,
+        ).copyInto(bytes, 0x04)
+        "TEST ROM".encodeToByteArray().copyInto(bytes, 0xA0)
+        "TEST".encodeToByteArray().copyInto(bytes, 0xAC)
     }
 
     private fun temporaryDirectory(): Path {

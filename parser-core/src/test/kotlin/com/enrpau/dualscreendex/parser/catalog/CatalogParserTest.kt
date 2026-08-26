@@ -158,6 +158,53 @@ class CatalogParserTest {
     }
 
     @Test
+    fun partialLocalMapSubsystemFailureDoesNotInventMissingMaps() {
+        val rom = RomImage(ByteArray(0x200))
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, 0, 0, ProfileTables(),
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+        val assetKey = "local/test/map"
+        val localMap = LocalMap(
+            key = "test-map",
+            displayName = "Test Map",
+            baseAreaId = 1,
+            pixelWidth = 16,
+            pixelHeight = 16,
+            gridWidth = 1,
+            gridHeight = 1,
+            imageAssetKey = assetKey,
+        )
+        val png = PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))
+
+        val catalog = CatalogMaterializer.materialize(
+            rom = rom,
+            analysis = analysis,
+            layout = layout,
+            resolveLocalMaps = { _, _ ->
+                LocalMapResolution.Resolved(
+                    catalog = LocalMapCatalog(
+                        maps = listOf(localMap),
+                        assets = mapOf(assetKey to png),
+                    ),
+                    reasons = listOf("map 0x0001 POIs: malformed optional records"),
+                    partialSubsystemFailures = 1,
+                )
+            },
+        )
+
+        val evidence = catalog.capabilities.getValue(RomCapability.LOCAL_MAP)
+        assertEquals(CapabilityStatus.PARTIAL, evidence.status)
+        assertEquals(1, evidence.coveredRecords)
+        assertEquals(1, evidence.expectedRecords)
+        assertEquals(0, evidence.incompleteRecords)
+        assertEquals(1.0, evidence.confidence, 0.0)
+    }
+
+    @Test
     fun themeMaterializerRunsAfterNormalizedWorldMapAssetsResolve() {
         val rom = RomImage(ByteArray(0x200))
         val layout = ResolvedRomLayout(
