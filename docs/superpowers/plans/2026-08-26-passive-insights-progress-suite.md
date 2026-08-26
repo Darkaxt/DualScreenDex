@@ -106,11 +106,11 @@ No new subsystem may add a RetroArch poller, independently read a whole ROM/save
 - Create: `docs/research/retroachievements/official-gen1-gen3-manifest.json`
 - Modify: `.gitignore`
 
-- [ ] **Step 1: Add failing extractor tests.**
+- [x] **Step 1: Add failing extractor tests.**
 
-Test authenticated pagination, exact game IDs, normalized title/description/points fields, deterministic sorting, payload hashing, retryable API errors, and fail-closed malformed responses. The test writes only beneath the process temporary directory.
+Test the authenticated eleven-game iteration, exact game IDs, normalized title/description/classification/provenance fields, deterministic sorting, payload hashing, retryable API errors, and fail-closed malformed responses. `API_GetGameExtended` returns one complete achievement set per game and therefore has no pagination contract. The test writes only beneath the process temporary directory.
 
-- [ ] **Step 2: Run the focused RED test.**
+- [x] **Step 2: Run the focused RED test.**
 
 ```powershell
 node --test tools/retroachievements/extract-pokemon-achievements.test.mjs
@@ -118,15 +118,15 @@ node --test tools/retroachievements/extract-pokemon-achievements.test.mjs
 
 Expected: failure because the extractor does not exist.
 
-- [ ] **Step 3: Implement the extractor.**
+- [x] **Step 3: Implement the extractor.**
 
-Accept the API credential through an environment variable, never a command-line argument or repository file. Persist raw authenticated responses under `D:\Temp\dualdex-retroachievements\raw`; write a commit-safe manifest containing game ID, generation, retrieval time, achievement count, and SHA-256 for each raw payload.
+Accept the API credential through an environment variable, never a command-line argument or repository file. Persist only the permitted sanitized research fields under `D:\Temp\dualdex-retroachievements\research`; reject unexpected fields on reuse. Write a commit-safe manifest containing game ID, generation, retrieval time, achievement count, and SHA-256 for each uncommitted research payload. Do not persist the wider authenticated API response.
 
-- [ ] **Step 4: Run the test and one authenticated extraction.**
+- [x] **Step 4: Run the test and one authenticated extraction.**
 
 Require 11 exact official game IDs and record the extracted count without assuming the earlier 1,003 total is unchanged.
 
-- [ ] **Step 5: Commit the extractor and manifest only.**
+- [x] **Step 5: Commit the extractor and manifest only.**
 
 ```powershell
 git add .gitignore tools/retroachievements/extract-pokemon-achievements.mjs tools/retroachievements/extract-pokemon-achievements.test.mjs docs/research/retroachievements/official-gen1-gen3-manifest.json
@@ -143,25 +143,25 @@ git commit -m "research: freeze official Pokemon achievement manifest"
 - Create: `docs/research/retroachievements/official-gen1-gen3-classification.json`
 - Create: `docs/reports/passive-insights-progress/reference-classification.md`
 
-- [ ] **Step 1: Write RED tests for deterministic classification.**
+- [x] **Step 1: Write RED tests for deterministic classification.**
 
 Cover boolean facts, typed comparisons, set membership/counts, event counts/order, temporal scopes, forbidden events, bounded-group completion, progress targets, reset/pause/miss/completion predicates, and Tier 4 research exclusions.
 
-- [ ] **Step 2: Run the classifier RED test.**
+- [x] **Step 2: Run the classifier RED test.**
 
 ```powershell
 node --test tools/retroachievements/classify-pokemon-achievements.test.mjs
 ```
 
-- [ ] **Step 3: Implement independently worded templates.**
+- [x] **Step 3: Implement independently worded templates.**
 
 The output retains source IDs for traceability but does not copy achievement logic or claim RetroAchievements credit. Each record declares its required facts, events, catalog roles, temporal scope, portability tier, classification outcome, and reason.
 
-- [ ] **Step 4: Generate and validate the report.**
+- [x] **Step 4: Generate and validate the report.**
 
 Report `classified / extracted`, `expressible / classified`, and exclusions by reason. Validate output against the schema and prove identical input produces byte-identical derived JSON.
 
-- [ ] **Step 5: Commit the vocabulary and derived evidence.**
+- [x] **Step 5: Commit the vocabulary and derived evidence.**
 
 ```powershell
 git add tools/retroachievements docs/research/retroachievements docs/reports/passive-insights-progress/reference-classification.md
@@ -175,10 +175,10 @@ git commit -m "research: classify portable Pokemon challenge semantics"
 - Create: `docs/reports/passive-insights-progress/stage-0-reference-audit.md`
 - Create: `docs/reports/passive-insights-progress/deferrals.md`
 
-- [ ] **Step 1: Compare Sections 4, 5.2–5.4, 11.1–11.2, and 15.2 of the specification against the artifacts.**
-- [ ] **Step 2: Mark runtime evaluation and UI as named Stage 3/6 deferrals.**
-- [ ] **Step 3: Resolve every Stage 0 blocker/error.**
-- [ ] **Step 4: Commit the audit. Do not change release metadata, create a tag, or publish an APK.**
+- [x] **Step 1: Compare Sections 4, 5.2–5.4, 11.1–11.2, and 15.2 of the specification against the artifacts.**
+- [x] **Step 2: Mark runtime evaluation and UI as named Stage 3/6 deferrals.**
+- [x] **Step 3: Resolve every Stage 0 blocker/error.**
+- [x] **Step 4: Commit the audit. Do not change release metadata, create a tag, or publish an APK.**
 
 ---
 
