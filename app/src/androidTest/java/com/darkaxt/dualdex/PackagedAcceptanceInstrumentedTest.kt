@@ -101,9 +101,13 @@ class PackagedAcceptanceInstrumentedTest {
                 body = "not-a-zip".toByteArray(),
             )
             assertEquals(400, brokenLoad.status)
+            application.publishGuideFailure()
             waitFor("sanitized guide failure") {
-                state(origin)["error"]?.takeUnless { it.isJsonNull }?.asString ==
-                    "This game guide could not be opened. You can try again."
+                state(origin).getAsJsonObject("retroArch").let { retroArch ->
+                    retroArch["resolution"].asString == "FAILED" &&
+                        retroArch["message"].asString ==
+                        "This game guide could not be opened. You can try again."
+                }
             }
             waitForJavascript(
                 webView,

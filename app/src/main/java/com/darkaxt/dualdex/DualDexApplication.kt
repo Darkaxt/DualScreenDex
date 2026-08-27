@@ -138,6 +138,8 @@ open class DualDexApplication : Application() {
 
     protected open fun sharedStorageGateway(): SharedStorageGateway = SharedStorageGateway.android(this)
 
+    protected open fun onCompanionRuntimeCreated(runtime: ProductionCompanionRuntime) = Unit
+
     @Synchronized
     fun startLoopback(): Boolean {
         if (loopbackServer != null) return true
@@ -261,6 +263,7 @@ open class DualDexApplication : Application() {
             challengeDefinitions = portableChallenges,
             transientGameState = transientGameState,
         )
+        onCompanionRuntimeCreated(runtime)
         metricsRuntime = runtime
         val candidate = AndroidLoopbackServer(
             runtime,
