@@ -643,11 +643,11 @@ Release gate status: the exact signed `v1.1.0-rc.73-hotfix.1` candidate is verif
 - Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/progress/ChallengeEngine.kt`
 - Modify: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/progress/ChallengeEngineTest.kt`
 
-- [ ] **Step 1: Select only classified achievements that require existing operators and proven normalized roles/events.**
-- [ ] **Step 2: Add one RED test per new semantic family before adding its template.**
-- [ ] **Step 3: Bind badge, leader, area collectible, regional target, and other entities through parsed catalog roles only.**
-- [ ] **Step 4: Require a proven adapter for Tier 3; keep Tier 4 in research evidence and outside runtime.**
-- [ ] **Step 5: Run deterministic inventory/evaluation tests GREEN and commit in small semantic-family commits.**
+- [x] **Step 1: Select only classified achievements that require existing operators and proven normalized roles/events.**
+- [x] **Step 2: Add one RED test per new semantic family before adding its template.**
+- [x] **Step 3: Bind badge, leader, area collectible, regional target, and other entities through parsed catalog roles only.**
+- [x] **Step 4: Require a proven adapter for Tier 3; keep Tier 4 in research evidence and outside runtime.**
+- [x] **Step 5: Run deterministic inventory/evaluation tests GREEN and commit in small semantic-family commits.**
 
 ### Task 6.2: Validate dynamic binding and mutation rejection
 
@@ -658,10 +658,10 @@ Release gate status: the exact signed `v1.1.0-rc.73-hotfix.1` candidate is verif
 - Create: `tools/reports/challenge-expansion-compatibility.mjs`
 - Create: `docs/reports/passive-insights-progress/challenge-expansion-compatibility.json`
 
-- [ ] **Step 1: Freeze deterministic inventories and results for all 11 official controls.**
-- [ ] **Step 2: Prove Modern Emerald, Unbound, and Odyssey dynamic binding without ROM-name/hash/offset selectors.**
-- [ ] **Step 3: Mutate flag roles, identifiers, temporal windows, and ambiguous entities; require dependent challenges to disappear or report `NOT_FOUND`, never silently rebind.**
-- [ ] **Step 4: Report the five required challenge percentages from specification Section 15.2.**
+- [x] **Step 1: Freeze deterministic inventories and results for all 11 official controls.**
+- [x] **Step 2: Prove Modern Emerald, Unbound, and Odyssey dynamic binding without ROM-name/hash/offset selectors.**
+- [x] **Step 3: Mutate flag roles, identifiers, temporal windows, and ambiguous entities; require dependent challenges to disappear or report `NOT_FOUND`, never silently rebind.**
+- [x] **Step 4: Report the five required challenge percentages from specification Section 15.2.**
 
 ### Task 6.3: Add Organic challenge disclosure and percentages
 
@@ -699,10 +699,10 @@ Release gate status: the exact signed `v1.1.0-rc.73-hotfix.1` candidate is verif
 - Modify: compatibility documentation linked by `README.md`.
 - Modify at release gate only: release readiness/workflow files.
 
-- [ ] **Step 1: Compare Sections 3, 11–15, and 17 against the challenge-expansion audit.**
-- [ ] **Step 2: Close every challenge-expansion deferral; retain Tier 4 only as a documented research exclusion and assign any suite-wide presentation normalization explicitly to Stage 7.**
-- [ ] **Step 3: Re-run challenge inventory, dynamic binding, mutation rejection, Organic privacy, identity/persistence, compatibility, and performance gates.**
-- [ ] **Step 4: Run the affected repository verification.**
+- [x] **Step 1: Compare Sections 3, 11–15, and 17 against the challenge-expansion audit.**
+- [x] **Step 2: Close every challenge-expansion deferral; retain Tier 4 only as a documented research exclusion and assign any suite-wide presentation normalization explicitly to Stage 7.**
+- [x] **Step 3: Re-run challenge inventory, dynamic binding, mutation rejection, Organic privacy, identity/persistence, compatibility, and performance gates.**
+- [x] **Step 4: Run the affected repository verification.**
 
 ```powershell
 .\gradlew.bat :save-core:test :battle-memory:test :parser-core:test :catalog-store:test :companion-core:test :app:testDebugUnitTest :app:lintDebug :app:assembleRelease --no-daemon --console=plain
@@ -713,7 +713,7 @@ Pop-Location
 node --test tools/release/release-workflow.test.mjs tools/release/release-metadata.test.mjs
 ```
 
-- [ ] **Step 5: Commit challenge-expansion documentation and evidence before release metadata.**
+- [x] **Step 5: Commit challenge-expansion documentation and evidence before release metadata.**
 - [ ] **Step 6: Discover and publish exactly one next unused numeric RC through the protected signing workflow; verify version, checksum, certificate, release notes, and compatibility assets. Do not install it.**
 
 ---

@@ -4,11 +4,8 @@ This register distinguishes later-stage work from Stage 0 blockers. Stage 0 has 
 
 | Deferred requirement | Assigned stage | Entry condition | Required completion evidence |
 | --- | --- | --- | --- |
-| Tier 2 structurally mapped challenge expansion | Stage 6 | Required catalog entity/event mapping validates for each ROM | Per-ROM applicable and fully observable percentages |
-| Tier 3 game-specific mechanic adapters | Stage 6 | A source-backed mechanic adapter is proven without retail fallback | Real ROM/source/memory tuple evidence and mutation rejection |
-| The 120 / 1,003 ambiguous references | Stage 6 research review | New high-signal semantic evidence or a concrete missing operator exists | Explicit reclassification or retained Tier 4 exclusion; no guessed rules |
-| Tier 4 glitch, trade, unavailable frame-transition, or irreducibly ambiguous references | Stage 6 research exclusions | Only reconsider when DualDex can prove the required fact/event safely | Retained numeric exclusion reasons or validated independent adapter |
-| Runtime pages and UI | Feature stages 1–6 | Each feature's data contract passes before UI work | Feature specification audit and one RC only after the complete feature gate |
+| Tier 4 glitch, trade, unavailable frame-transition, or irreducibly ambiguous references | Research exclusion after Stage 6 | Only reconsider when DualDex can prove the required fact/event safely | New real semantic evidence and a separately audited implementation; no guessed rules |
+| Cross-feature typography, themes, surfaces, icons, spacing, scroll ownership, and route evidence | Stage 7 | All six feature data contracts and independent RC gates complete | Measured 1024×768 route/font/style/screenshot matrix and final conformance audit |
 
 ## Stage 1 disposition
 
@@ -46,3 +43,11 @@ The Stage 4 report records unexposed Gen I/II owned-record fields, Gen I/II live
 Selected-move Damage Forecast is implemented and removed from the generic runtime-page deferral. It consumes the existing resolved battle snapshot, performs no memory or SaveRAM read, memoizes one immutable input/result pair, and renders exact, bounded, or absent outcomes inside Battle Attack.
 
 The Stage 5 report records missing runtime Gen I/II formula proof, rejected hack formula semantics, live multi-hit/fixed-damage semantics, held-item modifiers, and unresolved hack ability modifiers as numeric `NOT_FOUND` evidence. Those states are not reclassified as deferrals and receive no stock fallback. Their dependent forecast remains absent while ordinary move metadata and effectiveness stay available.
+
+## Stage 6 disposition
+
+Portable Challenge expansion is implemented and removed from the Tier 2/runtime deferrals. Badge, regional Pokédex, and area-collectible templates bind only to validated catalog roles; the 14 exact controls produce deterministic inventories with 65.48% applicable combined template slots, 94.55% fully observable/applicable slots, 100.00% validated/observable slots, and zero errors.
+
+The Tier 3 adapter family was investigated across all 14 controls and remains **0/14 `NOT_FOUND`**. No source-backed control proved a safe game-specific mechanic adapter, so no adapter-bound challenge is generated and this evidence state is not relabeled as deferred work. Gym Leader roles are likewise **0/14 `NOT_FOUND`** and receive no name, ancestry, or retail fallback.
+
+Organic disclosure is complete: completed and next-ranked tiers, scope-aware noise suppression, per-objective percentages, and the knowledge-safe overall denominator share the engine result consumed by Trainer Progress and Atlas. The remaining cross-feature icon, typography, theme, spacing, scroll, and route normalization belongs exclusively to Stage 7. Tier 4 remains the sole challenge-family research exclusion.
