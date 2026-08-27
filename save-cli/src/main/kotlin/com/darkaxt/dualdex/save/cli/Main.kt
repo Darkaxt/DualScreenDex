@@ -20,7 +20,7 @@ fun main(arguments: Array<String>) {
         return
     }
     val options = try {
-        SaveCliOptions.parse(arguments)
+        SaveCliOptions.parse(arguments).also(SaveCliPathPolicy::validate)
     } catch (failure: IllegalArgumentException) {
         System.err.println("${failure.message}\n$USAGE")
         exitProcess(2)
