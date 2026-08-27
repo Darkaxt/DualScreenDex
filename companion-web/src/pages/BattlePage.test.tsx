@@ -124,6 +124,56 @@ describe('battle layout', () => {
     expect(screen.queryByRole('button', { name: 'RESOLVE ATTACK' })).toBeNull();
   });
 
+  it('shows an exact damage forecast beside the selected move without implementation details', () => {
+    const { catalog, state } = fixture(1);
+    state.battle!.damageForecast = {
+      confidence: 'EXACT', minimumHp: 35, maximumHp: 42,
+      minimumTargetPercent: 43.75, maximumTargetPercent: 52.5,
+      minimumHitsToKnockOut: 2, maximumHitsToKnockOut: 3,
+      accuracyPercent: 95, effectivenessPercent: 200,
+      conditions: ['Same-type bonus'], uncertainty: null,
+    };
+
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('35–42 HP')).toBeTruthy();
+    expect(screen.getByText('43.8–52.5%')).toBeTruthy();
+    expect(screen.getByText('2–3 hits')).toBeTruthy();
+    expect(screen.getByText('95%')).toBeTruthy();
+    expect(screen.getByText('Same-type bonus')).toBeTruthy();
+    expect(container.querySelector('.attack-card')?.textContent).not.toMatch(/THUMB|pointer|offset|capability|parser|compiled source/i);
+  });
+
+  it('explains a bounded forecast in player-facing language', () => {
+    const { catalog, state } = fixture(1);
+    state.battle!.damageForecast = {
+      confidence: 'BOUNDED', minimumHp: 28, maximumHp: 55,
+      minimumTargetPercent: 35, maximumTargetPercent: 68.75,
+      minimumHitsToKnockOut: 2, maximumHitsToKnockOut: 4,
+      accuracyPercent: 100, effectivenessPercent: 100,
+      conditions: ['Weather may change the result'],
+      uncertainty: 'Weather could change before the move lands.',
+    };
+
+    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('28–55 HP')).toBeTruthy();
+    expect(screen.getByText('Weather could change before the move lands.')).toBeTruthy();
+  });
+
+  it('keeps the ordinary move card useful when no forecast is available', () => {
+    const { catalog, state } = fixture(1);
+    state.battle!.damageForecast = null;
+
+    const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('Pound')).toBeTruthy();
+    expect(screen.getByText('40')).toBeTruthy();
+    expect(screen.getByText('NEUTRAL')).toBeTruthy();
+    expect(container.querySelector('.damage-forecast')).toBeNull();
+    expect(container.querySelector('.attack-card')?.textContent).not.toMatch(/unavailable|not found|error|failed/i);
+  });
+
   it('renders five stars between the name and Pokédex shortcut with half-star fill', () => {
     const { catalog, state } = fixture(1);
     state.battle!.opponents[0].rarity = {
