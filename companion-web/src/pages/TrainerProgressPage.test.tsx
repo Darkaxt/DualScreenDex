@@ -12,6 +12,12 @@ describe('Trainer progress', () => {
 
     expect(screen.getByRole('button', { name: 'Card' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Progress' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Card' }).closest('.app-header')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Progress' }).closest('.app-header')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Card' }).querySelector('[data-semantic-icon="trainer-card"]')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Progress' }).querySelector('[data-semantic-icon="trainer-progress"]')).toBeTruthy();
+    expect(document.querySelector('.trainer-destination-tabs')).toBeNull();
+    expect(document.querySelectorAll('.trainer-progress-tabs')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Metrics' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Challenges' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Timeline' })).toBeTruthy();

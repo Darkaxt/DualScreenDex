@@ -83,4 +83,16 @@ describe('screen layout containment', () => {
     expect(styles).toContain('[data-theme="game"][data-contrast="normal"] .damage-forecast')
     expect(battleSource).not.toMatch(/setInterval|setTimeout|requestAnimationFrame|fetch\s*\(/)
   })
+
+  it('keeps Trainer destination switching in compact header controls', () => {
+    const trainerRule = styles.match(/\.trainer-screen\s*\{([^}]*)\}/)?.[1]
+    const switcherRule = styles.match(/\.trainer-destination-switcher\s*\{([^}]*)\}/)?.[1]
+    const actionRule = styles.match(/\.trainer-destination-action\s*\{([^}]*)\}/)?.[1]
+
+    expect(trainerRule).toMatch(/grid-template-rows\s*:\s*auto minmax\(0, 1fr\)/)
+    expect(switcherRule).toMatch(/grid-auto-columns\s*:\s*48px/)
+    expect(actionRule).toMatch(/min-width\s*:\s*48px/)
+    expect(actionRule).toMatch(/min-height\s*:\s*48px/)
+    expect(styles).not.toContain('.trainer-destination-tabs')
+  })
 })

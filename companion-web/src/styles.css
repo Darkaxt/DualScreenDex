@@ -68,16 +68,19 @@ button { cursor: pointer; }
 .game-time-celestial.is-day svg { fill: #ffd83d; stroke: #fff6b0; stroke-width: 1.4; stroke-linecap: round; }
 .game-time-celestial.is-night svg { fill: #e7efff; stroke: #fff; stroke-width: .8; stroke-linejoin: round; }
 .header-title, .header-actions, .header-action { position: relative; z-index: 2; }
-.map-action svg, .trainer-action svg, .party-action svg, .analysis-action svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.map-action svg, .trainer-action svg, .party-action svg, .analysis-action svg, .trainer-destination-action svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .party-action .party-ball-upper { fill: currentColor; stroke: none; opacity: .72; }.party-action .party-ball-body, .party-action .party-ball-divider, .party-action .party-ball-button-ring { fill: none; stroke: currentColor; }.party-action .party-ball-button-ring { fill: var(--theme-header, #173c2d); stroke-width: 1.6; }.party-action .party-ball-button-center { fill: currentColor; stroke: none; }
 
-.trainer-screen { grid-template-rows: auto auto minmax(0, 1fr); }
+.trainer-screen { grid-template-rows: auto minmax(0, 1fr); }
 .trainer-card-screen, .party-screen { grid-template-rows: auto minmax(0, 1fr); }
 .trainer-card-content, .party-content { min-height: 0; overflow: auto; }
-.trainer-destination-tabs, .trainer-progress-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(120px, 1fr); border-bottom: 2px solid var(--line); background: var(--paper-deep); }
-.trainer-destination-tabs button, .trainer-progress-tabs button { min-height: 43px; padding: 7px 13px; border: 0; border-right: 1px solid var(--line); color: var(--ink); background: var(--paper); font-size: .82rem; font-weight: 950; letter-spacing: .06em; text-transform: uppercase; }
-.trainer-destination-tabs button:last-child, .trainer-progress-tabs button:last-child { border-right: 0; }
-.trainer-destination-tabs button.active, .trainer-progress-tabs button.active { color: var(--theme-accent-text, white); background: var(--theme-accent, var(--forest-700)); box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--acid) 70%, white); }
+.trainer-destination-switcher { height: 100%; display: grid; grid-auto-flow: column; grid-auto-columns: 48px; }
+.trainer-destination-action { min-width: 48px; min-height: 48px; color: inherit; }
+.trainer-destination-action[aria-pressed="true"] { color: var(--theme-accent-text, white); background: var(--theme-accent, var(--forest-700)); box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--acid) 70%, white); }
+.trainer-progress-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(120px, 1fr); border-bottom: 2px solid var(--line); background: var(--paper-deep); }
+.trainer-progress-tabs button { min-height: 43px; padding: 7px 13px; border: 0; border-right: 1px solid var(--line); color: var(--ink); background: var(--paper); font-size: .82rem; font-weight: 950; letter-spacing: .06em; text-transform: uppercase; }
+.trainer-progress-tabs button:last-child { border-right: 0; }
+.trainer-progress-tabs button.active { color: var(--theme-accent-text, white); background: var(--theme-accent, var(--forest-700)); box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--acid) 70%, white); }
 .trainer-progress-content { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; color: var(--ink); background-color: var(--paper-deep); background-image: linear-gradient(#82947a1f 1px, transparent 1px), linear-gradient(90deg, #82947a1f 1px, transparent 1px); background-size: 18px 18px; }
 .trainer-progress-tabs { align-self: start; grid-auto-columns: minmax(110px, 1fr); }
 .progress-metric-columns, .challenge-groups, .timeline-panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px; }
@@ -648,11 +651,8 @@ button { cursor: pointer; }
   border-color: var(--theme-border);
   box-shadow: 7px 8px 0 var(--theme-menu-shadow), inset 0 0 0 2px color-mix(in srgb, var(--theme-panel) 76%, white);
 }
-[data-theme="game"][data-contrast="normal"] .trainer-destination-tabs,
 [data-theme="game"][data-contrast="normal"] .trainer-progress-tabs { background: var(--theme-menu); border-color: var(--theme-border); }
-[data-theme="game"][data-contrast="normal"] .trainer-destination-tabs button,
 [data-theme="game"][data-contrast="normal"] .trainer-progress-tabs button { color: var(--theme-text); background: var(--theme-panel); border-color: var(--theme-border); }
-[data-theme="game"][data-contrast="normal"] .trainer-destination-tabs button.active,
 [data-theme="game"][data-contrast="normal"] .trainer-progress-tabs button.active { color: var(--theme-accent-text); background: var(--theme-accent); }
 [data-theme="game"][data-contrast="normal"] .progress-panel,
 [data-theme="game"][data-contrast="normal"] .challenge-card,

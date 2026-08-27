@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import { GameClockIndicator } from './GameClockIndicator';
 import type { Catalog, GameTime, KnowledgeMode, SpeciesState, TypeInfo } from './models';
 
@@ -109,11 +110,18 @@ export function SettingsIcon() {
   </svg>;
 }
 
-function TrainerIcon() {
-  return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="trainer">
+export function TrainerCardIcon() {
+  return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="trainer-card">
     <rect x="3" y="5" width="22" height="18" rx="2" />
     <circle cx="10" cy="12" r="3" />
     <path d="M6 19c.8-2.8 2.2-4 4-4s3.2 1.2 4 4M17 10h5M17 14h5M17 18h3" />
+  </svg>;
+}
+
+export function ProgressTrophyIcon() {
+  return <svg viewBox="0 0 28 28" aria-hidden="true" data-semantic-icon="trainer-progress">
+    <path d="M9 4h10v4.5c0 4.2-2 7-5 7s-5-2.8-5-7Z" />
+    <path d="M9 6H5v2.5c0 2.5 1.7 4.2 4.5 4.5M19 6h4v2.5c0 2.5-1.7 4.2-4.5 4.5M14 15.5V21M10 24h8M11 21h6" />
   </svg>;
 }
 
@@ -135,16 +143,28 @@ function AnalysisIcon() {
   </svg>;
 }
 
-export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty, onAnalysis }: { title: string; kicker?: string; gameTime?: GameTime | null; onBack?: () => void; onSettings?: () => void; onMap?: () => void; onTrainer?: () => void; onParty?: () => void; onAnalysis?: () => void }) {
-  const hasActions = Boolean(onTrainer || onParty || onMap || onSettings || onAnalysis);
+export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty, onAnalysis, actions }: {
+  title: string;
+  kicker?: string;
+  gameTime?: GameTime | null;
+  onBack?: () => void;
+  onSettings?: () => void;
+  onMap?: () => void;
+  onTrainer?: () => void;
+  onParty?: () => void;
+  onAnalysis?: () => void;
+  actions?: ComponentChildren;
+}) {
+  const hasActions = Boolean(actions || onTrainer || onParty || onMap || onSettings || onAnalysis);
   return (
     <header class={`app-header ${onBack ? '' : 'app-header-root'}`}>
       {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
       <div class="header-title"><strong>{title}</strong>{kicker && <small>{kicker}</small>}</div>
       {gameTime && <GameClockIndicator clock={gameTime} />}
       {hasActions ? <div class="header-actions">
+        {actions}
         {onAnalysis && <button class="header-action analysis-action" onClick={onAnalysis} aria-label="Party Analysis"><AnalysisIcon /></button>}
-        {onTrainer && <button class="header-action trainer-action" onClick={onTrainer} aria-label="Trainer Card"><TrainerIcon /></button>}
+        {onTrainer && <button class="header-action trainer-action" onClick={onTrainer} aria-label="Trainer Card"><TrainerCardIcon /></button>}
         {onParty && <button class="header-action party-action" onClick={onParty} aria-label="Party"><PartyIcon /></button>}
         {onMap && <button class="header-action map-action" onClick={onMap} aria-label="Open Map"><MapIcon /></button>}
         {onSettings && <button class="header-action settings-action" onClick={onSettings} aria-label="Settings"><SettingsIcon /></button>}
