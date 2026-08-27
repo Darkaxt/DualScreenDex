@@ -694,6 +694,7 @@ Release gate status: the exact signed `v1.1.0-rc.73-hotfix.1` candidate is verif
 **Files:**
 
 - Create: `docs/reports/passive-insights-progress/challenge-expansion-audit.md`
+- Create: `docs/reports/passive-insights-progress/qa-hardening-convergence.md`
 - Modify: `docs/reports/passive-insights-progress/deferrals.md`
 - Modify: `README.md`
 - Modify: compatibility documentation linked by `README.md`.
@@ -714,6 +715,7 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 ```
 
 - [x] **Step 5: Commit challenge-expansion documentation and evidence before release metadata.**
+- [x] **Step 5a: Merge the committed `qa/project-wide-hardening` tip into an isolated disposable tree and run the complete Stage 6 browser, parser, persistence, live-state, Android unit, lint, and release-assembly gates. Record the exact candidate and QA commits; the result applies only to that pair.**
 - [ ] **Step 6: Discover and publish exactly one next unused numeric RC through the protected signing workflow; verify version, checksum, certificate, release notes, and compatibility assets. Do not install it.**
 
 ---
@@ -791,6 +793,7 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 - [ ] **Step 2: Revalidate all six independent feature audits, Organic disclosure, navigation, current-state authority, save-scoped persistence, compatibility reports, and performance profiling after normalization.**
 - [ ] **Step 3: Resolve every `BLOCKER` and `ERROR`; close all named Stage 7 deferrals and retain only explicitly documented Tier 4 research exclusions or genuinely out-of-scope future redesign ideas.**
 - [ ] **Step 4: Run the complete repository verification.**
+- [ ] **Step 4a: Fetch `qa/project-wide-hardening` again and repeat the combined-tree gate for its current committed tip. If the hardening branch has reached `master`, run against the actual merge commit and do not reuse an earlier simulated-merge result. Resolve every regression before release.**
 
 ```powershell
 .\gradlew.bat :save-core:test :battle-memory:test :parser-core:test :catalog-store:test :companion-core:test :app:testDebugUnitTest :app:lintDebug :app:assembleRelease --no-daemon --console=plain
@@ -812,6 +815,7 @@ node --test tools/reports/validate-ui-conformance.test.mjs tools/release/release
 Use this only after the current feature or conformance audit contains no `BLOCKER` or `ERROR` and its stage contract is complete.
 
 - [ ] Fetch `fork/master` and all remote tags; reconcile upstream without absorbing unrelated work.
+- [ ] Fetch `fork/qa/project-wide-hardening`, record its exact committed tip, and test the release candidate in an isolated combined tree. After the hardening branch reaches `master`, repeat the complete gate against the actual resulting `master` commit.
 - [ ] Derive the next unused `v1.1.0-rc.N` with `N <= 98`; never infer it from local branch names or preallocate it.
 - [ ] Add exactly one stage readiness field to `release/v1-ready.json` and require it in `.github/workflows/release.yml`.
 - [ ] Add a workflow test proving the new readiness gate and required audit/compatibility assets.
