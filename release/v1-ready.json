@@ -156,6 +156,7 @@
   "v11Rc73DamageForecast": true,
   "v11Rc75PortableChallengeExpansion": true,
   "v11Rc76PortableChallengeExpansion": true,
+  "v11Stage7CrossFeatureUiConformance": true,
   "v11SaveSynchronizedKnowledgeCheckpoints": true,
   "gen1CompiledEvolutionCoveragePercent": 96.62,
   "gen1CompiledLearnsetCoveragePercent": 93.56,

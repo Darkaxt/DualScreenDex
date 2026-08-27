@@ -179,7 +179,7 @@ test("runs Android deployment safety checks in CI and before release signing", (
   assert.match(workflow.slice(0, workflow.indexOf("  sign-and-publish:")), command);
 });
 
-test("publishes the independently gated base, map, evolution, and ARM7 compatibility evidence", () => {
+test("publishes independently gated compatibility and UI-conformance evidence", () => {
   const requiredEvidence = [
     "dualdex-base-first50-release-gate.json",
     "dualdex-base-first50-release-gate.md",
@@ -211,6 +211,15 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
     "dualdex-damage-forecast-audit.md",
     "dualdex-challenge-expansion-compatibility.json",
     "dualdex-challenge-expansion-audit.md",
+    "dualdex-ui-conformance-audit.md",
+    "dualdex-ui-conformance-route-matrix.json",
+    "dualdex-ui-conformance-font-matrix.json",
+    "dualdex-ui-conformance-font-matrix.md",
+    "dualdex-ui-conformance-computed-styles.json",
+    "dualdex-ui-conformance-screenshots.json",
+    "dualdex-ui-conformance-summary.json",
+    "dualdex-ui-conformance-summary.md",
+    "dualdex-qa-hardening-convergence.md",
     "dualdex-storage-guide-load-hardening.md",
     "dualdex-save-synchronized-knowledge-checkpoints.md",
   ];
@@ -307,6 +316,7 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc71StorageGuideLoadHardening == true/);
   assert.match(workflow, /\.v11Rc72PokedexSpecimens == true/);
   assert.match(workflow, /\.v11Rc76PortableChallengeExpansion == true/);
+  assert.match(workflow, /\.v11Stage7CrossFeatureUiConformance == true/);
   assert.match(workflow, /\.aggregate\.currentTotalFields\.covered == 40/);
   assert.match(workflow, /\.aggregate\.observableEventFamilies\.total == 126/);
   assert.match(workflow, /\.aggregate\.baselineApplicableTemplates\.covered == 66/);
