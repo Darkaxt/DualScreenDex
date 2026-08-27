@@ -519,12 +519,23 @@ class ProductionCompanionRuntime(
                 }
                 publishParsed(generation, name, parsed)
                 notifyCompletion(onComplete, Result.success(Unit))
+            } catch (failure: OutOfMemoryError) {
+                failCatalogLoad(generation, onComplete, failure)
             } catch (failure: Exception) {
-                performanceRecorder.loadFailed(failure)
-                publishTransitionFailure(generation, "FAILED", failure.message ?: failure.javaClass.simpleName)
-                notifyCompletion(onComplete, Result.failure(failure))
+                failCatalogLoad(generation, onComplete, failure)
             }
         }
+    }
+
+    private fun failCatalogLoad(
+        generation: Long,
+        onComplete: ((Result<Unit>) -> Unit)?,
+        failure: Throwable,
+    ) {
+        val publicFailure = GuideLoadFailure.from(failure)
+        runCatching { performanceRecorder.loadFailed(failure) }
+        publishTransitionFailure(generation, "FAILED", publicFailure.message)
+        notifyCompletion(onComplete, Result.failure(publicFailure))
     }
 
     /** Test and cache-reopen seam; Stage 2 will use this for persisted catalogs. */

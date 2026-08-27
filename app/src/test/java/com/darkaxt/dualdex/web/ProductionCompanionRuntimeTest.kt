@@ -148,6 +148,41 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun parserMemoryExhaustionFailsClosedWithoutEscapingAndRetainsDebugStage() {
+        val events = mutableListOf<PerformanceEvent>()
+        val rom = RomImage(ByteArray(0xC0))
+        var completion: Result<Unit>? = null
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = RecordingCatalogRepository(),
+            parseCatalog = { _, _, work ->
+                work(CatalogWorkProgress(CatalogWorkModule.ROM_IDENTITY))
+                throw OutOfMemoryError("synthetic allocator detail")
+            },
+            performanceRecorder = recordingPerformance(events),
+        )
+
+        runtime.load(LoadedRom("memory.gba", rom)) { completion = it }
+
+        assertTrue(completion?.isFailure == true)
+        assertEquals(
+            "There was not enough free memory to open this game guide. Close other apps and try again.",
+            completion?.exceptionOrNull()?.message,
+        )
+        assertFalse(runtime.gateway.bootstrap().catalogReady)
+        assertNull(runtime.catalogHash())
+        assertEquals(
+            listOf("ROM_IDENTITY"),
+            events.filter { it.kind == PerformanceEventKind.STAGE_FINISHED }.map(PerformanceEvent::stage),
+        )
+        assertEquals(
+            "OutOfMemoryError",
+            events.single { it.kind == PerformanceEventKind.LOAD_FAILED }.failureType,
+        )
+        runtime.close()
+    }
+
+    @Test
     fun profilerRecordsGameAccessOnlyAfterTheOneWayReadinessGateOpens() {
         val events = mutableListOf<PerformanceEvent>()
         val hash = "d".repeat(64)
