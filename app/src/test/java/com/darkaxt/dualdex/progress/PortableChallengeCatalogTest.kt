@@ -17,4 +17,16 @@ class PortableChallengeCatalogTest {
         assertTrue(definitions.all { it.requiredCapabilities.isNotEmpty() && it.organicSafe })
         assertTrue(definitions.all { it.sourceInspiration == "portable-pattern" })
     }
+
+    @Test
+    fun `bundled extension declares role bound tier two and adapter gated tier three templates`() {
+        val file = File("src/main/assets/challenges/portable-extended.json")
+        val templates = PortableChallengeCatalog.decodeTemplates(file.readBytes())
+
+        assertEquals(6, templates.size)
+        assertEquals(setOf(2, 3), templates.mapTo(sortedSetOf()) { it.portabilityTier })
+        assertTrue(templates.filter { it.portabilityTier == 2 }.all { it.requiredCatalogRoles.isNotEmpty() })
+        assertTrue(templates.filter { it.portabilityTier == 3 }.all { it.requiredAdapters.isNotEmpty() })
+        assertTrue(templates.all { it.sourceInspiration == "classified-portable-pattern" })
+    }
 }

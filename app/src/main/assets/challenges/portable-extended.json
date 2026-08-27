@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "templates": [
+    {
+      "key": "progress-first-badge",
+      "title": "First Badge",
+      "description": "Earn your first resolved badge.",
+      "category": "PROGRESS",
+      "portabilityTier": 2,
+      "requiredCapabilities": ["PROGRESSION_FACTS"],
+      "requiredCatalogRoles": ["BADGE_SEQUENCE"],
+      "requiredAdapters": [],
+      "organicSafe": true,
+      "binding": "BADGE_COUNT",
+      "sourceInspiration": "classified-portable-pattern"
+    },
+    {
+      "key": "progress-all-badges",
+      "title": "Badge Collection",
+      "description": "Earn every badge in the resolved badge sequence.",
+      "category": "PROGRESS",
+      "portabilityTier": 2,
+      "requiredCapabilities": ["PROGRESSION_FACTS"],
+      "requiredCatalogRoles": ["BADGE_SEQUENCE"],
+      "requiredAdapters": [],
+      "organicSafe": true,
+      "binding": "ALL_BADGES",
+      "sourceInspiration": "classified-portable-pattern"
+    },
+    {
+      "key": "collection-regional-record",
+      "title": "Regional Record",
+      "description": "Register every species in the resolved regional Pokédex.",
+      "category": "COLLECTION",
+      "portabilityTier": 2,
+      "requiredCapabilities": ["CATALOG_GROUP", "COMPLETION_FACTS", "POKEDEX_FACTS"],
+      "requiredCatalogRoles": ["REGIONAL_POKEDEX"],
+      "requiredAdapters": [],
+      "organicSafe": true,
+      "binding": "REGIONAL_COLLECTION",
+      "sourceInspiration": "classified-portable-pattern"
+    },
+    {
+      "key": "exploration-area-items",
+      "title": "Local Collector",
+      "description": "Collect every resolved item in {name}.",
+      "category": "EXPLORATION",
+      "portabilityTier": 2,
+      "requiredCapabilities": ["CATALOG_GROUP", "COMPLETION_FACTS", "POI_FACTS"],
+      "requiredCatalogRoles": ["AREA_COLLECTIBLES"],
+      "requiredAdapters": [],
+      "organicSafe": true,
+      "binding": "AREA_COLLECTIBLES",
+      "sourceInspiration": "classified-portable-pattern"
+    },
+    {
+      "key": "battle-leader-no-items",
+      "title": "Prepared Victory",
+      "description": "Defeat {name} without using an item during the battle.",
+      "category": "BATTLE",
+      "portabilityTier": 2,
+      "requiredCapabilities": ["BATTLE_EVENTS", "BATTLE_ITEM_EVENTS"],
+      "requiredCatalogRoles": ["GYM_LEADER"],
+      "requiredAdapters": [],
+      "organicSafe": true,
+      "binding": "GYM_LEADER_NO_ITEMS",
+      "sourceInspiration": "classified-portable-pattern"
+    },
+    {
+      "key": "special-minigame",
+      "title": "{name}",
+      "description": "Complete the resolved {name} objective.",
+      "category": "SPECIAL",
+      "portabilityTier": 3,
+      "requiredCapabilities": ["MINIGAME_ADAPTER"],
+      "requiredCatalogRoles": ["MINIGAME"],
+      "requiredAdapters": ["MINIGAME"],
+      "organicSafe": true,
+      "binding": "MINIGAME_RESULT",
+      "sourceInspiration": "classified-portable-pattern"
+    }
+  ]
+}

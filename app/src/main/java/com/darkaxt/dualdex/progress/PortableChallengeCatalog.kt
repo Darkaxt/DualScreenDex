@@ -31,9 +31,60 @@ object PortableChallengeCatalog {
         }.distinctBy { it.key }
     }
 
+    fun decodeTemplates(bytes: ByteArray): List<PortableChallengeTemplate> {
+        val stored = runCatching {
+            gson.fromJson(bytes.toString(Charsets.UTF_8), StoredTemplateCatalog::class.java)
+        }.getOrNull() ?: return emptyList()
+        if (stored.schema != 1) return emptyList()
+        return stored.templates.mapNotNull { template ->
+            if (
+                template.key.isBlank() || template.title.isBlank() || template.description.isBlank() ||
+                template.portabilityTier !in 2..3 || template.requiredCapabilities.isEmpty() ||
+                template.requiredCatalogRoles.isEmpty() ||
+                (template.portabilityTier == 3 && template.requiredAdapters.isEmpty())
+            ) return@mapNotNull null
+            val category = runCatching { ChallengeCategory.valueOf(template.category) }.getOrNull()
+                ?: return@mapNotNull null
+            val binding = runCatching { PortableChallengeBinding.valueOf(template.binding) }.getOrNull()
+                ?: return@mapNotNull null
+            PortableChallengeTemplate(
+                key = template.key,
+                title = template.title,
+                description = template.description,
+                category = category,
+                portabilityTier = template.portabilityTier,
+                requiredCapabilities = template.requiredCapabilities.toSet(),
+                requiredCatalogRoles = template.requiredCatalogRoles.toSet(),
+                requiredAdapters = template.requiredAdapters.toSet(),
+                organicSafe = template.organicSafe,
+                binding = binding,
+                sourceInspiration = template.sourceInspiration,
+            )
+        }.distinctBy { it.key }
+    }
+
     private data class StoredCatalog(
         val schema: Int = 0,
         val challenges: List<StoredChallenge> = emptyList(),
+    )
+
+    private data class StoredTemplateCatalog(
+        val schema: Int = 0,
+        val templates: List<StoredTemplate> = emptyList(),
+    )
+
+    private data class StoredTemplate(
+        val key: String = "",
+        val title: String = "",
+        val description: String = "",
+        val category: String = "",
+        val portabilityTier: Int = 0,
+        val requiredCapabilities: List<String> = emptyList(),
+        val requiredCatalogRoles: List<String> = emptyList(),
+        val requiredAdapters: List<String> = emptyList(),
+        val organicSafe: Boolean = false,
+        val binding: String = "",
+        val sourceInspiration: String = "",
     )
 
     private data class StoredChallenge(
@@ -49,4 +100,3 @@ object PortableChallengeCatalog {
         val sourceInspiration: String = "",
     )
 }
-
