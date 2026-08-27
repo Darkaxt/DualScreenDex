@@ -791,11 +791,11 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 - Modify: compatibility documentation linked by `README.md` only when regenerated evidence changes a published percentage.
 - Modify at release gate only: release readiness/workflow files.
 
-- [ ] **Step 1: Compare parent specification Sections 3–18 and every requirement in the Stage 7 conformance specification against implementation, automated, and real-data evidence.**
-- [ ] **Step 2: Revalidate all six independent feature audits, Organic disclosure, navigation, current-state authority, save-scoped persistence, compatibility reports, and performance profiling after normalization.**
-- [ ] **Step 3: Resolve every `BLOCKER` and `ERROR`; close all named Stage 7 deferrals and retain only explicitly documented Tier 4 research exclusions or genuinely out-of-scope future redesign ideas.**
-- [ ] **Step 4: Run the complete repository verification.**
-- [ ] **Step 4a: Fetch `qa/project-wide-hardening` again and repeat the combined-tree gate for its current committed tip. If the hardening branch has reached `master`, run against the actual merge commit and do not reuse an earlier simulated-merge result. Resolve every regression before release.**
+- [x] **Step 1: Compare parent specification Sections 3–18 and every requirement in the Stage 7 conformance specification against implementation, automated, and real-data evidence.**
+- [x] **Step 2: Revalidate all six independent feature audits, Organic disclosure, navigation, current-state authority, save-scoped persistence, compatibility reports, and performance profiling after normalization.**
+- [x] **Step 3: Resolve every `BLOCKER` and `ERROR`; close all named Stage 7 deferrals and retain only explicitly documented Tier 4 research exclusions or genuinely out-of-scope future redesign ideas.**
+- [x] **Step 4: Run the complete repository verification.**
+- [x] **Step 4a: Fetch `qa/project-wide-hardening` again and repeat the combined-tree gate for its current committed tip. If the hardening branch has reached `master`, run against the actual merge commit and do not reuse an earlier simulated-merge result. Resolve every regression before release.**
 
 ```powershell
 .\gradlew.bat :save-core:test :battle-memory:test :parser-core:test :catalog-store:test :companion-core:test :app:testDebugUnitTest :app:lintDebug :app:assembleRelease --no-daemon --console=plain
@@ -807,7 +807,7 @@ Pop-Location
 node --test tools/reports/validate-ui-conformance.test.mjs tools/release/release-workflow.test.mjs tools/release/release-metadata.test.mjs
 ```
 
-- [ ] **Step 5: Commit the final suite audit and documentation before release metadata.**
+- [x] **Step 5: Commit the final suite audit and documentation before release metadata.**
 - [ ] **Step 6: Discover and publish exactly one next unused numeric consolidation RC through the protected signing workflow; verify version, checksum, certificate, release notes, UI evidence assets, and compatibility assets. Do not install or launch it.**
 
 ---
