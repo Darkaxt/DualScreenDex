@@ -44,6 +44,18 @@ class GuideActivationGateTest {
     }
 
     @Test
+    fun `cancelled stale activation releases loading without latching failure`() {
+        val gate = GuideActivationGate()
+
+        assertTrue(gate.tryBegin("source-a"))
+        gate.cancel("source-a")
+
+        assertFalse(gate.isLoading("source-a"))
+        assertFalse(gate.isFailed("source-a"))
+        assertTrue(gate.tryBegin("source-b"))
+    }
+
+    @Test
     fun `only one activation can be in flight`() {
         val gate = GuideActivationGate()
 

@@ -148,6 +148,37 @@ class SavePollingMonitorTest {
     }
 
     @Test
+    fun sessionExpiryDuringSaveReadPreventsPersistenceAndPublication() {
+        val repository = FakeSnapshots()
+        val associations = FakeAssociations()
+        var current = true
+        val monitor = SavePollingMonitor(
+            associations,
+            repository,
+            parser = { _, parseContext -> SaveParseResult.Parsed(snapshot(parseContext.romIdentity, 12)) },
+        )
+        val candidate = source("save", 100, byteArrayOf(1, 2, 3)) { current = false }
+
+        val result = monitor.poll(context, listOf(candidate), "VERIFIED") { current }
+
+        assertNull(result)
+        assertEquals(0, repository.writes)
+        assertNull(associations.selectedFor(context.romIdentity))
+    }
+
+    @Test
+    fun expiredSessionDoesNotReadARecoverySnapshot() {
+        val repository = FakeSnapshots().apply { write(snapshot(context.romIdentity, 11), 100, 200) }
+        val monitor = SavePollingMonitor(FakeAssociations(), repository)
+        val readsBeforeRestore = repository.reads
+
+        val restored = monitor.restore(context, "UNVERIFIED") { false }
+
+        assertNull(restored)
+        assertEquals(readsBeforeRestore, repository.reads)
+    }
+
+    @Test
     fun restoresTheLastCommittedSnapshotWithoutNeedingRetroArchToBeRunning() {
         val repository = FakeSnapshots().apply { write(snapshot(context.romIdentity, 11), 100, 200) }
         val monitor = SavePollingMonitor(FakeAssociations(), repository, clock = { 999 })

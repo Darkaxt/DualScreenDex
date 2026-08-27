@@ -12,6 +12,7 @@ import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.darkaxt.dualdex.progress.PlaythroughJournal
 import com.darkaxt.dualdex.progress.PlaythroughJournalCoordinator
+import com.darkaxt.dualdex.progress.PlaythroughJournalSession
 import com.enrpau.dualscreendex.companion.semantic.PlaythroughKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -70,6 +71,45 @@ class SaveKnowledgeCheckpointCoordinatorTest {
         assertEquals(frozen, checkpoints.writes.single().ledger)
         assertEquals("TIMELINE", checkpoints.writes.single().journal?.preferences?.get("trainer-progress-section"))
         assertEquals(500, checkpoints.writes.single().capturedAtEpochMs)
+    }
+
+    @Test
+    fun rejectedRecoveryIdentityNeverRestoresItsJournal() {
+        val rejected = result(SaveObservationKind.INITIAL, 1)
+        val restoredJournal = PlaythroughJournal.empty(PlaythroughKey(romSha, saveIdentity)).copy(
+            preferences = mapOf("trainer-progress-section" to "REJECTED"),
+        )
+        var journalRestores = 0
+        val journal = object : PlaythroughJournalSession {
+            override fun restore(restored: PlaythroughJournal): Boolean {
+                journalRestores++
+                return true
+            }
+
+            override fun current(playthrough: PlaythroughKey): PlaythroughJournal? = null
+        }
+        val checkpoints = object : KnowledgeCheckpointStore {
+            override fun readExact(source: SaveDocumentSource, key: SaveCheckpointKey): KnowledgeLedger? = null
+            override fun readCheckpointExact(source: SaveDocumentSource, key: SaveCheckpointKey) = SaveKnowledgeCheckpoint(
+                portable = false,
+                key = key,
+                capturedAtEpochMs = 1,
+                ledger = KnowledgeLedger(),
+                journal = restoredJournal,
+            )
+
+            override fun write(source: SaveDocumentSource, checkpoint: SaveKnowledgeCheckpoint) =
+                CheckpointStorage.APP_PRIVATE_FALLBACK
+        }
+        val coordinator = SaveKnowledgeCheckpointCoordinator(
+            checkpoints,
+            applyRecovery = { RecoveryApplication(false) },
+            journal = journal,
+        )
+
+        assertTrue(!coordinator.apply(rejected, SaveRamView(status = "MATCHED")))
+
+        assertEquals(0, journalRestores)
     }
 
     @Test

@@ -516,6 +516,13 @@ class ProductionCompanionRuntime(
         performanceRecorder.loadFailed(failure)
     }
 
+    @Synchronized
+    fun cancelPendingCatalogLoad() {
+        if (!gateway.bootstrap().catalogLoading.active) return
+        val generation = loadGeneration.incrementAndGet()
+        publishTransitionFailure(generation, "IDLE")
+    }
+
     private fun loadInternal(name: String, rom: RomImage, onComplete: ((Result<Unit>) -> Unit)?) {
         if (activeCatalogMatches(rom.sha256)) {
             notifyCompletion(onComplete, Result.success(Unit))

@@ -31,6 +31,11 @@ internal class GuideActivationGate {
     }
 
     @Synchronized
+    fun cancel(sourceId: String) {
+        if (loadingSource == sourceId) loadingSource = null
+    }
+
+    @Synchronized
     fun retry(sourceId: String): Boolean {
         if (failedSource != sourceId) return false
         failedSource = null

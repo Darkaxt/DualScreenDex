@@ -48,10 +48,18 @@ class SavePollingMonitor(
 ) {
     private val lastAccepted = mutableMapOf<String, AcceptedSave>()
 
+    fun restore(context: SaveParseContext, autosaveStatus: String): SaveMonitorResult? =
+        restore(context, autosaveStatus) { true }
+
     @Synchronized
-    fun restore(context: SaveParseContext, autosaveStatus: String): SaveMonitorResult? {
+    fun restore(
+        context: SaveParseContext,
+        autosaveStatus: String,
+        isCurrent: () -> Boolean,
+    ): SaveMonitorResult? {
+        if (!isCurrent()) return null
         val stored = snapshots.read(context.romIdentity) ?: return null
-        if (!stored.snapshot.romIdentity.equals(context.romIdentity, ignoreCase = true)) return null
+        if (!isCurrent() || !stored.snapshot.romIdentity.equals(context.romIdentity, ignoreCase = true)) return null
         return SaveMonitorResult(
             status = SaveMonitorStatus.MATCHED,
             autosaveStatus = autosaveStatus,
@@ -62,12 +70,20 @@ class SavePollingMonitor(
         )
     }
 
+    fun poll(
+        context: SaveParseContext,
+        candidates: List<SaveDocumentSource>,
+        autosaveStatus: String,
+    ): SaveMonitorResult = requireNotNull(poll(context, candidates, autosaveStatus) { true })
+
     @Synchronized
     fun poll(
         context: SaveParseContext,
         candidates: List<SaveDocumentSource>,
         autosaveStatus: String,
-    ): SaveMonitorResult {
+        isCurrent: () -> Boolean,
+    ): SaveMonitorResult? {
+        if (!isCurrent()) return null
         val rom = context.romIdentity.lowercase()
         val previous = lastAccepted[rom]
         val unchangedSource = previous?.let { accepted ->
@@ -76,10 +92,13 @@ class SavePollingMonitor(
             }
         }
         if (unchangedSource != null) {
+            if (!isCurrent()) return null
             return matched(unchangedSource, previous.retained, autosaveStatus, previous.fileFingerprint)
         }
 
+        if (!isCurrent()) return null
         val retained = previous?.retained ?: snapshots.read(rom)
+        if (!isCurrent()) return null
         if (candidates.isEmpty()) {
             return SaveMonitorResult(
                 status = if (retained == null) SaveMonitorStatus.UNAVAILABLE else SaveMonitorStatus.STALE,
@@ -90,17 +109,19 @@ class SavePollingMonitor(
             )
         }
 
+        if (!isCurrent()) return null
         val remembered = associations.selectedFor(rom)
         val preferred = candidates.singleOrNull { it.id == remembered }
 
         val preferredAttempt = preferred?.let { source ->
-            attempt(source, context)
+            attempt(source, context, isCurrent)
         }
         val attempts = if (preferredAttempt != null) {
             listOf(preferredAttempt)
         } else {
-            candidates.filterNot { it.id == preferred?.id }.mapNotNull { source -> attempt(source, context) }
+            candidates.filterNot { it.id == preferred?.id }.mapNotNull { source -> attempt(source, context, isCurrent) }
         }
+        if (!isCurrent()) return null
         if (attempts.size > 1) {
             return SaveMonitorResult(
                 status = SaveMonitorStatus.AMBIGUOUS,
@@ -133,8 +154,11 @@ class SavePollingMonitor(
         }
         val refreshed = clock()
         val stored = StoredSaveSnapshot(snapshot, source.lastModifiedEpochMs, refreshed)
+        if (!isCurrent()) return null
         snapshots.write(snapshot, source.lastModifiedEpochMs, refreshed)
+        if (!isCurrent()) return null
         associations.remember(rom, source.id)
+        if (!isCurrent()) return null
         lastAccepted[rom] = AcceptedSave(
             sourceId = source.id,
             saveIdentity = snapshot.saveIdentity,
@@ -175,9 +199,16 @@ class SavePollingMonitor(
         observation = SaveObservation(SaveObservationKind.UNCHANGED, source, fileFingerprint),
     )
 
-    private fun attempt(source: SaveDocumentSource, context: SaveParseContext): AcceptedAttempt? {
+    private fun attempt(
+        source: SaveDocumentSource,
+        context: SaveParseContext,
+        isCurrent: () -> Boolean,
+    ): AcceptedAttempt? {
+        if (!isCurrent()) return null
         val bytes = runCatching(source.read).getOrNull() ?: return null
+        if (!isCurrent()) return null
         val parsed = runCatching { parser(bytes, context) }.getOrNull() as? SaveParseResult.Parsed ?: return null
+        if (!isCurrent()) return null
         return AcceptedAttempt(
             source = source,
             snapshot = parsed.snapshot,

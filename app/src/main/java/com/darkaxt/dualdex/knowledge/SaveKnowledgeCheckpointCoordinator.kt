@@ -25,7 +25,6 @@ class SaveKnowledgeCheckpointCoordinator(
         } else {
             null
         }
-        checkpoint?.journal?.let { journal?.restore(it) }
         val checkpointLedger = checkpoint?.ledger ?: if (
             checkpoint == null && (observation.kind == SaveObservationKind.INITIAL || observation.kind == SaveObservationKind.SWITCHED)
         ) {
@@ -39,6 +38,9 @@ class SaveKnowledgeCheckpointCoordinator(
                 checkpointLedger = checkpointLedger,
             ),
         )
+        if (application.accepted) {
+            checkpoint?.journal?.let { journal?.restore(it) }
+        }
         if (observation.kind == SaveObservationKind.CHANGED && application.checkpointLedger != null) {
             runCatching {
                 checkpoints.write(
