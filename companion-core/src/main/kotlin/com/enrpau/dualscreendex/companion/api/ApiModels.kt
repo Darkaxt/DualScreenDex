@@ -569,6 +569,8 @@ data class RetroArchView(
     val systemId: String? = null,
     val gameBasename: String? = null,
     val contentCrc32: String? = null,
+    val contentSha256: String? = null,
+    val sessionEpoch: Long? = null,
     val resolution: String = "NO_CONTENT",
     val activeSource: String? = null,
     val savefileDirectory: String? = null,

@@ -12,6 +12,7 @@ import com.darkaxt.dualdex.live.TransientGameStateContext
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
 private data class Gen3LiveLocation(val areaBaseId: Int, val position: RuntimeMapPosition?)
@@ -80,16 +81,16 @@ class BattleMemoryCoordinator(
     private val transientGameState: UnifiedGameStateDecoder,
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     private val pollingIntervalProvider: () -> Int = { 5 },
-    autoStart: Boolean = true,
+    private val heartbeatExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "dualdex-battle-memory").apply { isDaemon = true }
+    },
+    private val autoStart: Boolean = true,
 ) : AutoCloseable {
     private val gen1Resolver = Gen1BattleLayoutResolver()
     private val gen2Resolver = Gen2BattleLayoutResolver()
     private val gen3Resolver = Gen3BattleLayoutResolver()
     private val gen3MainResolver = Gen3MainStateResolver()
     private val tracker = BattleObservationTracker()
-    private val heartbeatExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
-        Thread(runnable, "dualdex-battle-memory").apply { isDaemon = true }
-    }
     private var sessionIdentity: String? = null
     private var sessionGeneration = 0
     private var eligible = false
@@ -110,11 +111,8 @@ class BattleMemoryCoordinator(
     private var awaitingOverworldAfterOutcome = false
     private var pendingLivePointers: Gen3LivePointers? = null
     private var unifiedSampleId = 0L
+    private var heartbeatTask: ScheduledFuture<*>? = null
     @Volatile private var closed = false
-
-    init {
-        if (autoStart) scheduleHeartbeat(0)
-    }
 
     @Synchronized
     fun updateSession(connected: Boolean, systemId: String?, romIdentity: String?) {
@@ -155,6 +153,9 @@ class BattleMemoryCoordinator(
             val update = BattleTrackingUpdate(active = false, sample = null, ended = true)
             transientGameState.acceptBattleTracking(update)
         }
+        if (autoStart) {
+            if (nextEligible) scheduleHeartbeat(0) else cancelHeartbeat()
+        }
     }
 
     @Synchronized
@@ -182,6 +183,9 @@ class BattleMemoryCoordinator(
                     scratchBuffers = metrics.scratchBuffers,
                     regionBuffers = metrics.regionBuffers,
                     completionRegionClones = metrics.completionRegionClones,
+                    packetsPolled = metrics.packetsPolled,
+                    ignoredPackets = metrics.ignoredPackets,
+                    drainQuotaHits = metrics.drainQuotaHits,
                 )
                 reader = null
                 if (readMode == ReadMode.LIVE_POINTERS) {
@@ -192,23 +196,36 @@ class BattleMemoryCoordinator(
                 }
                 process(state.regions, context)
             }
-            is CoreMemoryReadState.Failed -> {
-                val metrics = current.metrics()
-                transientGameState.recordLiveMemoryRead(
-                    packets = metrics.matchedPackets,
-                    bytes = metrics.payloadBytes,
-                    completedSamples = 0,
-                    scratchBuffers = metrics.scratchBuffers,
-                    regionBuffers = metrics.regionBuffers,
-                    completionRegionClones = metrics.completionRegionClones,
-                )
-                reader = null
-                closeTransport()
-                tracker.missed().takeIf(BattleTrackingUpdate::active)?.let { update ->
-                    transientGameState.acceptBattleTracking(update)
-                }
-            }
+            is CoreMemoryReadState.Failed -> handleTerminalReadFailure(current)
         }
+    }
+
+    private fun startSession(session: CoreMemoryReadSession, regions: List<CoreMemoryRegion>) {
+        reader = session
+        if (session.start(regions) is CoreMemoryReadState.Failed) {
+            handleTerminalReadFailure(session)
+        }
+    }
+
+    private fun handleTerminalReadFailure(session: CoreMemoryReadSession) {
+        val metrics = session.metrics()
+        transientGameState.recordLiveMemoryRead(
+            packets = metrics.matchedPackets,
+            bytes = metrics.payloadBytes,
+            completedSamples = 0,
+            scratchBuffers = metrics.scratchBuffers,
+            regionBuffers = metrics.regionBuffers,
+            completionRegionClones = metrics.completionRegionClones,
+            packetsPolled = metrics.packetsPolled,
+            ignoredPackets = metrics.ignoredPackets,
+            drainQuotaHits = metrics.drainQuotaHits,
+        )
+        reader = null
+        closeTransport()
+        tracker.missed().takeIf(BattleTrackingUpdate::active)?.let { update ->
+            transientGameState.acceptBattleTracking(update)
+        }
+        transientGameState.suspendLive()
     }
 
     private fun startRead() {
@@ -216,14 +233,14 @@ class BattleMemoryCoordinator(
         val session = CoreMemoryReadSession(connection::send, connection::poll, PRODUCTION_CHUNK_BYTES)
         if (sessionGeneration == 1) {
             val layout = cachedLayout
-            if (layout == null) {
+            val regions = if (layout == null) {
                 readMode = ReadMode.DISCOVERY
-                session.start(listOf(CoreMemoryRegion("wram", GEN1_WRAM_BASE, GEN1_WRAM_BYTES)))
+                listOf(CoreMemoryRegion("wram", GEN1_WRAM_BASE, GEN1_WRAM_BYTES))
             } else {
                 readMode = ReadMode.CACHED
                 cachedWindowStart = layout.moveCursorOffset
                 val cachedWindowBytes = layout.battlerCountOffset + GEN1_BATTLE_TYPE_DELTA + 1 - cachedWindowStart
-                session.start(buildList {
+                buildList {
                     add(
                         CoreMemoryRegion(
                             "battle-window",
@@ -243,23 +260,23 @@ class BattleMemoryCoordinator(
                             )
                         }
                     }
-                })
+                }
             }
-            reader = session
+            startSession(session, regions)
             return
         }
         if (sessionGeneration == 2) {
             readMode = if (cachedLayout == null) ReadMode.DISCOVERY else ReadMode.CACHED
             cachedWindowStart = 0
             val layout = cachedLayout
-            if (layout == null) {
-                session.start(listOf(CoreMemoryRegion("wram", GEN1_WRAM_BASE, GEN1_WRAM_BYTES)))
+            val regions = if (layout == null) {
+                listOf(CoreMemoryRegion("wram", GEN1_WRAM_BASE, GEN1_WRAM_BYTES))
             } else {
                 val playerStart = gen2PlayerWindowStart(layout)
                 val playerEnd = gen2PlayerWindowEnd(layout)
                 val enemyStart = gen2EnemyWindowStart(layout)
                 val enemyEnd = gen2EnemyWindowEnd(layout)
-                session.start(buildList {
+                buildList {
                     add(CoreMemoryRegion("player-state", GEN1_WRAM_BASE + playerStart, playerEnd - playerStart))
                     add(CoreMemoryRegion("enemy-state", GEN1_WRAM_BASE + enemyStart, enemyEnd - enemyStart))
                     catalogProvider()?.liveAreaMemoryLayout?.let { location ->
@@ -277,9 +294,9 @@ class BattleMemoryCoordinator(
                     catalogProvider()?.gen2TimeOfDayWramOffset?.let { offset ->
                         add(CoreMemoryRegion("live-game-clock", GEN1_WRAM_BASE + offset, 1))
                     }
-                })
+                }
             }
-            reader = session
+            startSession(session, regions)
             return
         }
         val layout = cachedLayout
@@ -291,18 +308,16 @@ class BattleMemoryCoordinator(
         }.orEmpty()
         if (runtimeLayout != null && pointerWindows.isNotEmpty()) {
             val pointers = pendingLivePointers
-            if (pointers == null) {
+            val regions = if (pointers == null) {
                 readMode = ReadMode.LIVE_POINTERS
-                session.start(
-                    pointerWindows.map { window ->
-                        CoreMemoryRegion(window.id, window.address, window.byteCount)
-                    },
-                )
+                pointerWindows.map { window ->
+                    CoreMemoryRegion(window.id, window.address, window.byteCount)
+                }
             } else {
                 readMode = ReadMode.LIVE_DEPENDENT
                 val battleLayout = layout ?: parserResolvedGen3BattleLayout(requireNotNull(context))
                 if (battleLayout != null) cachedLayout = battleLayout
-                session.start(buildList {
+                buildList {
                     val valueWindows = transientGameState.gen3ValueReadPlan(runtimeLayout, pointers)
                     addAll(valueWindows.map { window ->
                         CoreMemoryRegion(window.id, window.address, window.byteCount)
@@ -332,15 +347,15 @@ class BattleMemoryCoordinator(
                             ),
                         )
                     }
-                })
+                }
             }
-            reader = session
+            startSession(session, regions)
             return
         }
         if (layout == null && runtimeLayout != null && !gen3BattleDiscoveryRequested) {
             readMode = ReadMode.RUNTIME
             requestedSaveBlock1Address = cachedSaveBlock1Address
-            session.start(buildList {
+            startSession(session, buildList {
                 add(CoreMemoryRegion(
                     "main-state",
                     runtimeLayout.mainAddress,
@@ -373,14 +388,13 @@ class BattleMemoryCoordinator(
                 }
                 addAll(liveIndependentRegions(context))
             })
-            reader = session
             return
         }
         if (layout == null) {
             readMode = ReadMode.DISCOVERY
             gen3BattleDiscoveryRequested = false
             requestedSaveBlock1Address = null
-            session.start(buildList {
+            startSession(session, buildList {
                 add(CoreMemoryRegion("ewram", EWRAM_BASE, EWRAM_BYTES))
                 add(CoreMemoryRegion("iwram", IWRAM_BASE, IWRAM_BYTES))
                 pointerGlobal?.let { add(CoreMemoryRegion("save-block-pointer", it, 4)) }
@@ -390,7 +404,7 @@ class BattleMemoryCoordinator(
             readMode = ReadMode.CACHED
             cachedWindowStart = layout.battleMonsOffset - COUNT_DELTA
             requestedSaveBlock1Address = cachedSaveBlock1Address
-            session.start(buildList {
+            startSession(session, buildList {
                 add(CoreMemoryRegion(
                         "battle-window",
                         EWRAM_BASE + cachedWindowStart,
@@ -435,7 +449,6 @@ class BattleMemoryCoordinator(
                 addAll(liveIndependentRegions(context))
             })
         }
-        reader = session
     }
 
     private fun process(regions: Map<String, ByteArray>, context: BattleCatalogContext) {
@@ -969,19 +982,33 @@ class BattleMemoryCoordinator(
     )
 
     private fun safeHeartbeat() {
-        runCatching(::heartbeat)
+        runCatching(::heartbeat).onFailure {
+            synchronized(this) {
+                resetReader()
+                transientGameState.suspendLive()
+            }
+        }
+    }
+
+    private fun scheduledHeartbeat() {
+        synchronized(this) {
+            heartbeatTask = null
+            if (closed || !eligible) return
+        }
+        safeHeartbeat()
+        synchronized(this) {
+            if (!closed && eligible) scheduleHeartbeat(nextHeartbeatDelay())
+        }
     }
 
     private fun scheduleHeartbeat(delayMillis: Long) {
-        heartbeatExecutor.schedule(
-            {
-                if (closed) return@schedule
-                safeHeartbeat()
-                if (!closed) scheduleHeartbeat(nextHeartbeatDelay())
-            },
-            delayMillis,
-            TimeUnit.MILLISECONDS,
-        )
+        if (closed || !eligible || heartbeatTask != null) return
+        heartbeatTask = heartbeatExecutor.schedule(::scheduledHeartbeat, delayMillis, TimeUnit.MILLISECONDS)
+    }
+
+    private fun cancelHeartbeat() {
+        heartbeatTask?.cancel(false)
+        heartbeatTask = null
     }
 
     @Synchronized
@@ -1014,8 +1041,8 @@ class BattleMemoryCoordinator(
 
     override fun close() {
         closed = true
-        heartbeatExecutor.shutdown()
         synchronized(this) {
+            cancelHeartbeat()
             resetReader()
             eligible = false
             sessionIdentity = null
@@ -1023,6 +1050,7 @@ class BattleMemoryCoordinator(
             tracker.reset()
             transientGameState.endSession()
         }
+        heartbeatExecutor.shutdownNow()
     }
 
     private enum class ReadMode { DISCOVERY, RUNTIME, CACHED, LIVE_POINTERS, LIVE_DEPENDENT }

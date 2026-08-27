@@ -6,7 +6,9 @@ import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.google.gson.GsonBuilder
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+
 
 data class MapperSnapshotView(
     val id: String,
@@ -32,24 +34,24 @@ data class MapperStateView(
     val error: String? = null,
 )
 
-/** Optional app adapter. It owns its UDP socket, files, and worker independently of the catalog runtime. */
+/** Optional app adapter. It owns its UDP sockets, files, and worker independently of the catalog runtime. */
 class MemoryMapperCoordinator(
     private val sessionStore: MapperSessionStore,
     private val retroArch: () -> RetroArchView,
+    private val commitIfSessionCurrent: (Long, () -> Unit) -> Boolean,
     private val transportFactory: () -> NetworkCommandTransport = { UdpNetworkCommandTransport() },
     private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "dualdex-memory-mapper").apply { isDaemon = true }
     },
-    startHeartbeat: Boolean = true,
+    private val startHeartbeat: Boolean = true,
 ) : AutoCloseable {
     private var state = MapperStateView()
-    private var transport: NetworkCommandTransport? = null
     private var lab: MemoryMapperLab? = null
     private var active: ActiveCapture? = null
-
-    init {
-        if (startHeartbeat) scheduler.scheduleWithFixedDelay(::heartbeatSafely, 0, HEARTBEAT_MILLIS, TimeUnit.MILLISECONDS)
-    }
+    private var enabledAuthority: MapperAuthority? = null
+    private var mapperEpoch = 0L
+    private var heartbeatTask: ScheduledFuture<*>? = null
+    @Volatile private var closed = false
 
     @Synchronized fun snapshot(): MapperStateView = state
 
@@ -82,108 +84,210 @@ class MemoryMapperCoordinator(
     @Synchronized
     fun heartbeatNow() {
         val capture = active ?: return
+        if (!authorityIsCurrent(capture)) {
+            failAuthority(capture)
+            return
+        }
         when (val progress = capture.reader.heartbeat()) {
             HeartbeatReadState.Idle -> Unit
             is HeartbeatReadState.Reading -> state = state.copy(
-                completedBytes = progress.completedBytes, totalBytes = progress.totalBytes,
+                completedBytes = progress.completedBytes,
+                totalBytes = progress.totalBytes,
             )
             is HeartbeatReadState.Failed -> {
-                active = null
+                finishCapture(capture)
                 state = state.copy(captureLabel = null, completedBytes = 0, totalBytes = 0, error = progress.reason)
             }
             is HeartbeatReadState.Complete -> {
-                active = null
-                when (val result = requireNotNull(lab).record(capture.label, progress.regions, capture.customLabel)) {
-                    CaptureResult.Disabled -> state = state.copy(captureLabel = null, error = "mapper was disabled")
-                    is CaptureResult.Failed -> state = state.copy(captureLabel = null, error = result.reason)
-                    is CaptureResult.Captured -> {
-                        val record = requireNotNull(lab).record()
-                        sessionStore.write(record)
-                        state = state.copy(
-                            captureLabel = null, completedBytes = progress.regions.values.sumOf(ByteArray::size),
-                            totalBytes = progress.regions.values.sumOf(ByteArray::size), snapshots = snapshotViews(record),
-                            latestDiff = latestDiff(record), error = null,
-                        )
+                if (!authorityIsCurrent(capture)) {
+                    failAuthority(capture)
+                    return
+                }
+                finishCapture(capture)
+                val committed = commitIfSessionCurrent(capture.authority.sessionEpoch) {
+                    when (val result = requireNotNull(lab).record(capture.label, progress.regions, capture.customLabel)) {
+                        CaptureResult.Disabled -> state = state.copy(captureLabel = null, error = "mapper was disabled")
+                        is CaptureResult.Failed -> state = state.copy(captureLabel = null, error = result.reason)
+                        is CaptureResult.Captured -> {
+                            val record = requireNotNull(lab).record()
+                            sessionStore.write(record)
+                            state = state.copy(
+                                captureLabel = null,
+                                completedBytes = progress.regions.values.sumOf(ByteArray::size),
+                                totalBytes = progress.regions.values.sumOf(ByteArray::size),
+                                snapshots = snapshotViews(record),
+                                latestDiff = latestDiff(record),
+                                error = null,
+                            )
+                        }
                     }
                 }
+                if (!committed) failAuthority(capture)
             }
         }
     }
 
     @Synchronized
     override fun close() {
+        if (closed) return
+        closed = true
         disable()
-        scheduler.shutdown()
+        scheduler.shutdownNow()
     }
 
     private fun enable(privacyAcknowledged: Boolean) {
         require(privacyAcknowledged) { "acknowledge the mapper privacy warning before enabling it" }
         if (state.enabled) return
         val session = retroArch()
-        require(session.connection in setOf("PLAYING", "PAUSED")) { "RetroArch must be running supported content" }
-        val descriptors = descriptorsFor(session.systemId)
-        val candidate = transportFactory()
+        val authority = requireNotNull(verifiedAuthority(session)) {
+            "RetroArch must have SHA-256-verified active content before enabling the mapper"
+        }
+        val descriptors = descriptorsFor(authority.systemId)
+        mapperEpoch++
         val newLab = MemoryMapperLab(
             transport = ReadOnlyMemoryTransport { error("heartbeat captures use the non-blocking transport") },
             descriptors = descriptors,
-            coreIdentity = session.systemId ?: "UNKNOWN_CORE",
-            contentIdentity = session.contentCrc32 ?: session.gameBasename ?: "UNKNOWN_CONTENT",
+            coreIdentity = authority.systemId,
+            contentIdentity = authority.contentSha256,
         ).also { it.enable(true) }
-        transport = candidate
+        enabledAuthority = authority
         lab = newLab
         state = MapperStateView(
-            enabled = true, privacyAcknowledged = true, coreIdentity = session.systemId,
-            contentIdentity = session.contentCrc32 ?: session.gameBasename, descriptors = descriptors,
+            enabled = true,
+            privacyAcknowledged = true,
+            coreIdentity = authority.systemId,
+            contentIdentity = authority.contentSha256,
+            descriptors = descriptors,
         )
     }
 
     private fun disable() {
-        active = null
+        mapperEpoch++
+        active?.let(::finishCapture)
         lab?.disable()
-        transport?.close()
-        transport = null
+        enabledAuthority = null
+        cancelHeartbeat()
         state = state.copy(enabled = false, captureLabel = null, completedBytes = 0, totalBytes = 0)
     }
 
     private fun capture(values: Map<String, String?>) {
         require(state.enabled) { "the memory mapper is disabled" }
         check(active == null) { "a memory capture is already in progress" }
+        val authority = requireNotNull(enabledAuthority)
+        require(verifiedAuthority(retroArch()) == authority) { "verified RetroArch content authority changed" }
         val label = MapperLabel.valueOf(requireNotNull(values["label"]) { "capture label is required" }.uppercase())
         val custom = values["customLabel"]?.trim()?.takeIf(String::isNotEmpty)
         require(label != MapperLabel.CUSTOM || custom != null) { "a custom mapper label is required" }
-        val network = requireNotNull(transport)
+        val network = transportFactory()
         val reader = HeartbeatMemoryReader(
-            RawCommandSender(network::send), RawCommandPoller(network::poll), state.descriptors,
+            RawCommandSender(network::send),
+            RawCommandPoller(network::poll),
+            state.descriptors,
         )
-        active = ActiveCapture(label, custom, reader)
-        val progress = reader.start() as HeartbeatReadState.Reading
+        val capture = ActiveCapture(label, custom, reader, network, authority, mapperEpoch)
+        active = capture
+        when (val progress = reader.start()) {
+            is HeartbeatReadState.Reading -> {
+                state = state.copy(
+                    captureLabel = custom ?: label.name,
+                    completedBytes = progress.completedBytes,
+                    totalBytes = progress.totalBytes,
+                    error = null,
+                )
+                scheduleHeartbeat(0)
+            }
+            is HeartbeatReadState.Failed -> {
+                finishCapture(capture)
+                state = state.copy(captureLabel = null, error = progress.reason)
+            }
+            HeartbeatReadState.Idle,
+            is HeartbeatReadState.Complete -> error("mapper reader returned an invalid initial state")
+        }
+    }
+
+    private fun verifiedAuthority(session: RetroArchView): MapperAuthority? {
+        if (session.connection !in setOf("PLAYING", "PAUSED") || session.resolution != "ACTIVE") return null
+        val systemId = session.systemId ?: return null
+        val sha256 = session.contentSha256?.lowercase()
+            ?.takeIf { value -> value.length == 64 && value.all { it in '0'..'9' || it in 'a'..'f' } }
+            ?: return null
+        val sessionEpoch = session.sessionEpoch ?: return null
+        return MapperAuthority(systemId, sha256, sessionEpoch)
+    }
+
+    private fun authorityIsCurrent(capture: ActiveCapture): Boolean =
+        capture.mapperEpoch == mapperEpoch &&
+            capture.authority == enabledAuthority &&
+            verifiedAuthority(retroArch()) == capture.authority
+
+    private fun failAuthority(capture: ActiveCapture) {
+        finishCapture(capture)
+        mapperEpoch++
+        lab?.disable()
+        enabledAuthority = null
         state = state.copy(
-            captureLabel = custom ?: label.name, completedBytes = progress.completedBytes,
-            totalBytes = progress.totalBytes, error = null,
+            enabled = false,
+            captureLabel = null,
+            completedBytes = 0,
+            totalBytes = 0,
+            error = "Verified RetroArch content authority changed during the mapper capture",
         )
+    }
+
+    private fun finishCapture(capture: ActiveCapture) {
+        if (active === capture) active = null
+        runCatching(capture.transport::close)
+        cancelHeartbeat()
     }
 
     private fun heartbeatSafely() {
         runCatching(::heartbeatNow).onFailure { failure ->
             synchronized(this) {
-                active = null
-                state = state.copy(captureLabel = null, error = failure.message ?: failure.javaClass.simpleName)
+                active?.let(::finishCapture)
+                mapperEpoch++
+                lab?.disable()
+                enabledAuthority = null
+                state = state.copy(
+                    enabled = false,
+                    captureLabel = null,
+                    completedBytes = 0,
+                    totalBytes = 0,
+                    error = failure.message ?: failure.javaClass.simpleName,
+                )
             }
         }
     }
 
-    private fun descriptorsFor(systemId: String?): List<MemoryDescriptor> {
-        val normalized = systemId?.uppercase().orEmpty()
+    @Synchronized
+    private fun scheduledHeartbeat() {
+        heartbeatTask = null
+        if (closed || active == null) return
+        heartbeatSafely()
+        if (!closed && active != null) scheduleHeartbeat(HEARTBEAT_MILLIS)
+    }
+
+    private fun scheduleHeartbeat(delayMillis: Long) {
+        if (!startHeartbeat || closed || active == null || heartbeatTask != null) return
+        heartbeatTask = scheduler.schedule(::scheduledHeartbeat, delayMillis, TimeUnit.MILLISECONDS)
+    }
+
+    private fun cancelHeartbeat() {
+        heartbeatTask?.cancel(false)
+        heartbeatTask = null
+    }
+
+    private fun descriptorsFor(systemId: String): List<MemoryDescriptor> {
+        val normalized = systemId.uppercase()
         return when {
-        normalized == "GBA" || "GAME BOY ADVANCE" in normalized || "GAME_BOY_ADVANCE" in normalized -> listOf(
-            MemoryDescriptor("ewram", "External work RAM", 0x0200_0000, 0x40000),
-            MemoryDescriptor("iwram", "Internal work RAM", 0x0300_0000, 0x8000),
-        )
-        normalized in setOf("GB", "GBC") || "GAME BOY" in normalized || "GAME_BOY" in normalized -> listOf(
-            MemoryDescriptor("wram", "Work RAM", 0xC000, 0x2000),
-            MemoryDescriptor("hram", "High RAM", 0xFF80, 0x7F),
-        )
-        else -> error("the active RetroArch system is not supported by the mapper")
+            normalized == "GBA" || "GAME BOY ADVANCE" in normalized || "GAME_BOY_ADVANCE" in normalized -> listOf(
+                MemoryDescriptor("ewram", "External work RAM", 0x0200_0000, 0x40000),
+                MemoryDescriptor("iwram", "Internal work RAM", 0x0300_0000, 0x8000),
+            )
+            normalized in setOf("GB", "GBC") || "GAME BOY" in normalized || "GAME_BOY" in normalized -> listOf(
+                MemoryDescriptor("wram", "Work RAM", 0xC000, 0x2000),
+                MemoryDescriptor("hram", "High RAM", 0xFF80, 0x7F),
+            )
+            else -> error("the active RetroArch system is not supported by the mapper")
         }
     }
 
@@ -195,15 +299,23 @@ class MemoryMapperCoordinator(
         ?.let { SnapshotDiff.between(it[0], it[1]) }
         ?.let { MapperDiffView(it.changedBytes, it.ranges.size, it.omittedRanges) }
 
+    private data class MapperAuthority(
+        val systemId: String,
+        val contentSha256: String,
+        val sessionEpoch: Long,
+    )
+
     private data class ActiveCapture(
         val label: MapperLabel,
         val customLabel: String?,
         val reader: HeartbeatMemoryReader,
+        val transport: NetworkCommandTransport,
+        val authority: MapperAuthority,
+        val mapperEpoch: Long,
     )
 
     companion object {
-        // One request remains in flight at a time. A short heartbeat keeps a full GBA capture
-        // practical without turning a missing reply into a cancellation timeout.
+        // One request remains in flight at a time. Scheduling exists only while a capture is active.
         private const val HEARTBEAT_MILLIS = 25L
     }
 }

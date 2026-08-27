@@ -56,6 +56,9 @@ class UnifiedGameStateDecoder(
     private val liveMemoryScratchBuffers = AtomicLong()
     private val liveMemoryRegionBuffers = AtomicLong()
     private val liveMemoryCompletionClones = AtomicLong()
+    private val liveMemoryPacketsPolled = AtomicLong()
+    private val liveMemoryIgnoredPackets = AtomicLong()
+    private val liveMemoryDrainQuotaHits = AtomicLong()
 
     override val current: ResolvedGameSnapshot?
         @Synchronized get() = published
@@ -67,6 +70,9 @@ class UnifiedGameStateDecoder(
         "liveMemory.scratchBuffers" to liveMemoryScratchBuffers.get(),
         "liveMemory.regionBuffers" to liveMemoryRegionBuffers.get(),
         "liveMemory.completionRegionClones" to liveMemoryCompletionClones.get(),
+        "liveMemory.packetsPolled" to liveMemoryPacketsPolled.get(),
+        "liveMemory.ignoredPackets" to liveMemoryIgnoredPackets.get(),
+        "liveMemory.drainQuotaHits" to liveMemoryDrainQuotaHits.get(),
     )
 
     fun recordLiveMemoryRead(
@@ -76,6 +82,9 @@ class UnifiedGameStateDecoder(
         scratchBuffers: Long,
         regionBuffers: Long,
         completionRegionClones: Long,
+        packetsPolled: Long,
+        ignoredPackets: Long,
+        drainQuotaHits: Long,
     ) {
         liveMemoryPackets.addAndGet(packets)
         liveMemoryBytes.addAndGet(bytes)
@@ -83,6 +92,9 @@ class UnifiedGameStateDecoder(
         liveMemoryScratchBuffers.addAndGet(scratchBuffers)
         liveMemoryRegionBuffers.addAndGet(regionBuffers)
         liveMemoryCompletionClones.addAndGet(completionRegionClones)
+        liveMemoryPacketsPolled.addAndGet(packetsPolled)
+        liveMemoryIgnoredPackets.addAndGet(ignoredPackets)
+        liveMemoryDrainQuotaHits.addAndGet(drainQuotaHits)
     }
 
     @Synchronized

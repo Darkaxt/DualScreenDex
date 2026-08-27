@@ -1,5 +1,7 @@
 package com.darkaxt.dualdex.setup
 
+import com.darkaxt.dualdex.retroarch.ConfigInstallTransaction
+import com.darkaxt.dualdex.retroarch.ConfigInstallTransactionState
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -37,14 +39,24 @@ class FileRetroArchConfigStoreTest {
         assertEquals("/storage/emulated/0/RetroArch/saves", store.readSaveSettings().savefileDirectory)
         assertEquals("VERIFIED", store.readSaveSettings().autosaveStatus)
 
+        val transaction = ConfigInstallTransaction(
+            originalSha256 = "a".repeat(64),
+            intendedSha256 = "b".repeat(64),
+            state = ConfigInstallTransactionState.PREPARED,
+        )
         store.writeRecovery(original)
+        store.writeTransaction(transaction)
         store.writeConfig(replacement)
 
         assertArrayEquals(replacement, store.readConfig())
         assertArrayEquals(original, store.readRecovery())
+        assertEquals(transaction, store.readTransaction())
+        assertFalse(requireNotNull(config.parentFile).listFiles().orEmpty().any { it.name.endsWith(".dualdex-tmp") })
 
         store.deleteRecovery()
+        store.deleteTransaction()
         assertNull(store.readRecovery())
+        assertNull(store.readTransaction())
     }
 
     @Test

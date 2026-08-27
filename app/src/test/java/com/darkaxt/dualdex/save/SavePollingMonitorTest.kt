@@ -43,11 +43,61 @@ class SavePollingMonitorTest {
         assertEquals(SaveObservationKind.UNCHANGED, second.observation?.kind)
         assertNull(second.snapshot)
         assertEquals(1, parses)
-        assertEquals(1, sourceReads)
+        assertEquals(2, sourceReads)
         assertEquals(1, repository.reads)
         assertEquals(1, associations.selections)
         assertEquals(1, repository.writes)
         assertEquals("save", associations.selectedFor(context.romIdentity))
+    }
+
+    @Test
+    fun sameMetadataCannotHideChangedBytes() {
+        val repository = FakeSnapshots()
+        var bytes = byteArrayOf(1, 2, 3)
+        var parses = 0
+        val monitor = SavePollingMonitor(
+            FakeAssociations(),
+            repository,
+            parser = { input, parseContext ->
+                parses++
+                SaveParseResult.Parsed(snapshot(parseContext.romIdentity, input.first().toLong()))
+            },
+        )
+        val source = source("save", 100L, bytes) { }
+        val mutableSource = source.copy(open = { bytes.inputStream() })
+        monitor.poll(context, listOf(mutableSource), "VERIFIED")
+
+        bytes = byteArrayOf(2, 2, 3)
+        val changed = monitor.poll(context, listOf(mutableSource), "VERIFIED")
+
+        assertEquals(SaveMonitorStatus.MATCHED, changed.status)
+        assertEquals(SaveObservationKind.CHANGED, changed.observation?.kind)
+        assertEquals(2L, changed.snapshot?.saveCounter)
+        assertEquals(2, parses)
+        assertEquals(2, repository.writes)
+    }
+
+    @Test
+    fun sameMetadataInvalidBytesRetainTheLastGoodSnapshot() {
+        val repository = FakeSnapshots()
+        var bytes = byteArrayOf(1, 2, 3)
+        val monitor = SavePollingMonitor(
+            FakeAssociations(),
+            repository,
+            parser = { input, parseContext ->
+                if (input.first() == 0.toByte()) SaveParseResult.Unsupported(listOf("partial write"))
+                else SaveParseResult.Parsed(snapshot(parseContext.romIdentity, input.first().toLong()))
+            },
+        )
+        val source = source("save", 100L, bytes).copy(open = { bytes.inputStream() })
+        monitor.poll(context, listOf(source), "VERIFIED")
+
+        bytes = byteArrayOf(0, 2, 3)
+        val stale = monitor.poll(context, listOf(source), "VERIFIED")
+
+        assertEquals(SaveMonitorStatus.STALE, stale.status)
+        assertEquals(1L, stale.retained?.snapshot?.saveCounter)
+        assertEquals(1, repository.writes)
     }
 
     @Test

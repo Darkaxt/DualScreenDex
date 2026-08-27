@@ -2,14 +2,14 @@ package com.darkaxt.dualdex.retroarch
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertSame
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.ArrayDeque
 
 class CoreMemoryReaderTest {
     @Test
-    fun reusesOneScratchAndTransfersOwnedRegionBuffersWithoutTerminalCopies() {
+    fun completionSnapshotsDefensivelyCopyRetainedRegionBuffers() {
         val replies = ArrayDeque<ByteArray>()
         var scratchConstructions = 0
         val regionBuffers = mutableListOf<ByteArray>()
@@ -33,16 +33,19 @@ class CoreMemoryReaderTest {
         replies += "READ_CORE_MEMORY 2001004 04 05 06 07".toByteArray()
 
         val complete = reader.heartbeat() as CoreMemoryReadState.Complete
-        val repeated = reader.heartbeat() as CoreMemoryReadState.Complete
-
         assertEquals(1, scratchConstructions)
         assertArrayEquals(byteArrayOf(0, 1, 2, 3, 4, 5), complete.regions.getValue("first"))
         assertArrayEquals(byteArrayOf(2, 3, 4, 5, 6, 7), complete.regions.getValue("second"))
-        assertSame(regionBuffers[0], complete.regions.getValue("first"))
-        assertSame(regionBuffers[1], complete.regions.getValue("second"))
-        assertSame(complete, repeated)
-        assertSame(complete.regions.getValue("first"), repeated.regions.getValue("first"))
-        assertEquals(CoreMemoryReadMetrics(2, 8, 1, 2, 0), reader.metrics())
+        assertNotSame(regionBuffers[0], complete.regions.getValue("first"))
+        assertNotSame(regionBuffers[1], complete.regions.getValue("second"))
+
+        complete.regions.getValue("first")[0] = 99
+        val repeated = reader.heartbeat() as CoreMemoryReadState.Complete
+
+        assertArrayEquals(byteArrayOf(0, 1, 2, 3, 4, 5), repeated.regions.getValue("first"))
+        assertArrayEquals(byteArrayOf(0, 1, 2, 3, 4, 5), regionBuffers[0])
+        assertNotSame(complete.regions.getValue("first"), repeated.regions.getValue("first"))
+        assertEquals(CoreMemoryReadMetrics(2, 8, 1, 2, 4, 2, 0, 0), reader.metrics())
     }
 
     @Test
@@ -69,6 +72,46 @@ class CoreMemoryReaderTest {
         val complete = reader.heartbeat() as CoreMemoryReadState.Complete
         assertArrayEquals(byteArrayOf(0, 1, 2, 3, 4, 5), complete.regions.getValue("ewram"))
         assertTrue(sent.all { it.startsWith("READ_CORE_MEMORY ") })
+    }
+
+    @Test
+    fun boundsIrrelevantPacketsPerHeartbeatAndEventuallyHandlesTheMatch() {
+        val replies = ArrayDeque<ByteArray>()
+        repeat(10) { replies += "READ_CORE_MEMORY 2002000 00".toByteArray() }
+        replies += "READ_CORE_MEMORY 2001000 2A".toByteArray()
+        val reader = CoreMemoryReadSession(
+            sender = {},
+            poller = { replies.pollFirst() },
+            maximumPacketsPerHeartbeat = 3,
+        )
+        reader.start(listOf(CoreMemoryRegion("window", 0x02001000, 1)))
+
+        repeat(3) {
+            assertTrue(reader.heartbeat() is CoreMemoryReadState.Reading)
+        }
+        val complete = reader.heartbeat() as CoreMemoryReadState.Complete
+
+        assertArrayEquals(byteArrayOf(0x2A), complete.regions.getValue("window"))
+        assertEquals(11, reader.metrics().packetsPolled)
+        assertEquals(10, reader.metrics().ignoredPackets)
+        assertEquals(3, reader.metrics().drainQuotaHits)
+    }
+
+    @Test
+    fun senderAndPollerExceptionsBecomeBoundedTerminalFailures() {
+        val sendFailure = CoreMemoryReadSession(
+            sender = { throw IllegalStateException("private send detail") },
+            poller = { null },
+        ).start(listOf(CoreMemoryRegion("window", 0x02001000, 1))) as CoreMemoryReadState.Failed
+        val pollFailureReader = CoreMemoryReadSession(
+            sender = {},
+            poller = { throw IllegalStateException("private poll detail") },
+        )
+        pollFailureReader.start(listOf(CoreMemoryRegion("window", 0x02001000, 1)))
+        val pollFailure = pollFailureReader.heartbeat() as CoreMemoryReadState.Failed
+
+        assertEquals("RetroArch memory transport failed", sendFailure.reason)
+        assertEquals("RetroArch memory transport failed", pollFailure.reason)
     }
 
     @Test

@@ -90,15 +90,6 @@ class SavePollingMonitor(
         if (!isCurrent()) return null
         val rom = context.romIdentity.lowercase()
         val previous = lastAccepted[rom]
-        val unchangedSource = previous?.let { accepted ->
-            candidates.singleOrNull {
-                it.id == accepted.sourceId && it.documentFingerprint() == accepted.documentFingerprint
-            }
-        }
-        if (unchangedSource != null) {
-            if (!isCurrent()) return null
-            return matched(unchangedSource, previous.retained, autosaveStatus, previous.fileFingerprint)
-        }
 
         if (!isCurrent()) return null
         val retained = previous?.retained ?: snapshots.read(rom)
@@ -114,16 +105,19 @@ class SavePollingMonitor(
         }
 
         if (!isCurrent()) return null
-        val remembered = associations.selectedFor(rom)
+        val remembered = previous?.sourceId?.takeIf { sourceId -> candidates.any { it.id == sourceId } }
+            ?: associations.selectedFor(rom)
         val preferred = candidates.singleOrNull { it.id == remembered }
 
         val preferredAttempt = preferred?.let { source ->
-            attempt(source, context, isCurrent)
+            attempt(source, context, previous, isCurrent)
         }
         val attempts = if (preferredAttempt != null) {
             listOf(preferredAttempt)
         } else {
-            candidates.filterNot { it.id == preferred?.id }.mapNotNull { source -> attempt(source, context, isCurrent) }
+            candidates.filterNot { it.id == preferred?.id }.mapNotNull { source ->
+                attempt(source, context, previous, isCurrent)
+            }
         }
         if (!isCurrent()) return null
         if (attempts.size > 1) {
@@ -148,6 +142,11 @@ class SavePollingMonitor(
         }
 
         val source = accepted.source
+        val reusedRetained = accepted.reusedRetained
+        if (reusedRetained != null) {
+            if (!isCurrent()) return null
+            return matched(source, reusedRetained, autosaveStatus, accepted.fileFingerprint)
+        }
         val snapshot = accepted.snapshot
         val observationKind = when {
             previous == null -> SaveObservationKind.INITIAL
@@ -206,6 +205,7 @@ class SavePollingMonitor(
     private fun attempt(
         source: SaveDocumentSource,
         context: SaveParseContext,
+        previous: AcceptedSave?,
         isCurrent: () -> Boolean,
     ): AcceptedAttempt? {
         if (!isCurrent()) return null
@@ -217,16 +217,31 @@ class SavePollingMonitor(
             null
         } ?: return null
         if (!isCurrent()) return null
+        val fileFingerprint = SaveFileFingerprint(
+            sha256 = MessageDigest.getInstance("SHA-256").digest(bytes).toHex(),
+            size = bytes.size.toLong(),
+            lastModifiedEpochMs = source.lastModifiedEpochMs,
+        )
+        if (
+            previous != null &&
+            source.id == previous.sourceId &&
+            source.documentFingerprint() == previous.documentFingerprint &&
+            fileFingerprint.sha256 == previous.fileFingerprint.sha256 &&
+            fileFingerprint.size == previous.fileFingerprint.size
+        ) {
+            return AcceptedAttempt(
+                source = source,
+                snapshot = previous.retained.snapshot,
+                fileFingerprint = fileFingerprint,
+                reusedRetained = previous.retained,
+            )
+        }
         val parsed = runCatching { parser(bytes, context) }.getOrNull() as? SaveParseResult.Parsed ?: return null
         if (!isCurrent()) return null
         return AcceptedAttempt(
             source = source,
             snapshot = parsed.snapshot,
-            fileFingerprint = SaveFileFingerprint(
-                sha256 = MessageDigest.getInstance("SHA-256").digest(bytes).toHex(),
-                size = bytes.size.toLong(),
-                lastModifiedEpochMs = source.lastModifiedEpochMs,
-            ),
+            fileFingerprint = fileFingerprint,
         )
     }
 
@@ -266,6 +281,7 @@ class SavePollingMonitor(
         val source: SaveDocumentSource,
         val snapshot: SaveSnapshot,
         val fileFingerprint: SaveFileFingerprint,
+        val reusedRetained: StoredSaveSnapshot? = null,
     )
 
     private data class AcceptedSave(

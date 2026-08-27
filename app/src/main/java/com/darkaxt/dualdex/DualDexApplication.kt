@@ -306,7 +306,9 @@ open class DualDexApplication : Application() {
                 sharedStorage = sharedStorageGateway(),
             )
             mapperCandidate = MemoryMapperCoordinator(
-                MapperSessionStore(File(filesDir, "memory-mapper")), runtime::retroArchState,
+                MapperSessionStore(File(filesDir, "memory-mapper")),
+                runtime::retroArchState,
+                requireNotNull(setupCandidate)::commitMapperIfCurrent,
             )
             metricsMapper = mapperCandidate
             candidate.setMapperHandler(object : MapperHttpHandler {

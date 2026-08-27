@@ -9,8 +9,63 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.ArrayDeque
+import java.util.concurrent.ScheduledThreadPoolExecutor
 
 class BattleMemoryCoordinatorTest {
+    @Test
+    fun ineligibleCoordinatorSchedulesNoIdleHeartbeat() {
+        val scheduler = ScheduledThreadPoolExecutor(1)
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { null },
+            transientGameState = com.darkaxt.dualdex.live.UnifiedGameStateDecoder(),
+            heartbeatExecutor = scheduler,
+        )
+
+        assertEquals(0, scheduler.queue.size)
+        coordinator.updateSession(connected = false, systemId = null, romIdentity = null)
+        assertEquals(0, scheduler.queue.size)
+
+        coordinator.close()
+    }
+
+    @Test
+    fun terminalMemoryTransportFailureSuspendsStaleLiveAuthority() {
+        val wram = ByteArray(0x2000).apply {
+            this[0x135d] = 0x28
+            this[0x1360] = 7
+            this[0x1361] = 12
+        }
+        val state = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val transport = MemoryTransport(wram, 0xc000)
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { gen1Context() },
+            transientGameState = state,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy", romIdentity = "rom")
+        repeat(2) { coordinator.heartbeat() }
+        assertEquals(0x28, state.current?.location?.areaBaseId?.value)
+
+        transport.failPolls = true
+        repeat(2) { coordinator.heartbeat() }
+
+        assertNull(state.current)
+
+        transport.failPolls = false
+        repeat(2) { coordinator.heartbeat() }
+        assertEquals(0x28, state.current?.location?.areaBaseId?.value)
+
+        transport.failSends = true
+        coordinator.heartbeat()
+        assertNull(state.current)
+
+        transport.failSends = false
+        repeat(2) { coordinator.heartbeat() }
+        assertEquals(0x28, state.current?.location?.areaBaseId?.value)
+        coordinator.close()
+    }
+
     @Test
     fun publishesTheRightPlayerBattlersMoveWithAnIndependentDoubleBattleTarget() {
         val ewram = ByteArray(0x40000)
@@ -1112,9 +1167,12 @@ class BattleMemoryCoordinatorTest {
         private val extraMemory: Map<Long, ByteArray> = emptyMap(),
     ) : NetworkCommandTransport {
         val commands = mutableListOf<String>()
+        var failPolls = false
+        var failSends = false
         private val replies = ArrayDeque<ByteArray>()
 
         override fun send(payload: ByteArray) {
+            if (failSends) error("injected send failure")
             val command = payload.toString(Charsets.US_ASCII)
             commands += command
             val parts = command.split(' ')
@@ -1135,7 +1193,10 @@ class BattleMemoryCoordinatorTest {
             replies += "READ_CORE_MEMORY ${parts[1]} $encoded".toByteArray()
         }
 
-        override fun poll(): ByteArray? = replies.pollFirst()
+        override fun poll(): ByteArray? {
+            if (failPolls) error("injected poll failure")
+            return replies.pollFirst()
+        }
         override fun close() = Unit
     }
 }

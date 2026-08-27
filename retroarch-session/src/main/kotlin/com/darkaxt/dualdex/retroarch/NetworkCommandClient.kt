@@ -30,19 +30,35 @@ interface RetroArchCommandPort : AutoCloseable {
     fun poll(): List<NetworkResponse>
 }
 
+data class NetworkCommandMetrics(
+    val packetsPolled: Long,
+    val drainQuotaHits: Long,
+)
+
 class NetworkCommandClient(
     private val transport: NetworkCommandTransport,
+    private val maximumPacketsPerPoll: Int = DEFAULT_PACKETS_PER_POLL,
 ) : RetroArchCommandPort {
+    private var packetsPolled = 0L
+    private var drainQuotaHits = 0L
+
+    init {
+        require(maximumPacketsPerPoll > 0) { "network command packet quota must be positive" }
+    }
     override fun requestStatus() = send("GET_STATUS")
     override fun requestVersion() = send("VERSION")
     override fun requestConfig(parameter: ConfigParameter) = send("GET_CONFIG_PARAM ${parameter.wireName}")
 
     override fun poll(): List<NetworkResponse> = buildList {
-        while (true) {
+        while (size < maximumPacketsPerPoll) {
             val payload = transport.poll() ?: break
+            packetsPolled++
             add(parseResponse(payload.toString(Charsets.US_ASCII).trim().trimEnd('\u0000')))
         }
+        if (size == maximumPacketsPerPoll) drainQuotaHits++
     }
+
+    fun metrics(): NetworkCommandMetrics = NetworkCommandMetrics(packetsPolled, drainQuotaHits)
 
     override fun close() = transport.close()
 
@@ -62,6 +78,10 @@ class NetworkCommandClient(
         } else {
             NetworkResponse.Unknown(raw)
         }
+    }
+
+    companion object {
+        const val DEFAULT_PACKETS_PER_POLL = 256
     }
 }
 

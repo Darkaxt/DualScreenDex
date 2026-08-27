@@ -26,8 +26,20 @@ class MemoryMapperIsolationInstrumentedTest {
         val network = FakeTransport()
         val coordinator = MemoryMapperCoordinator(
             MapperSessionStore(File(root, "memory-mapper")),
-            { RetroArchView(connection = "PLAYING", systemId = "Nintendo - Game Boy", contentCrc32 = "1234ABCD") },
-            { network }, Executors.newSingleThreadScheduledExecutor(), startHeartbeat = false,
+            {
+                RetroArchView(
+                    connection = "PLAYING",
+                    systemId = "Nintendo - Game Boy",
+                    contentCrc32 = "1234ABCD",
+                    contentSha256 = "a".repeat(64),
+                    sessionEpoch = 1,
+                    resolution = "ACTIVE",
+                )
+            },
+            commitIfSessionCurrent = { _, commit -> commit(); true },
+            transportFactory = { network },
+            scheduler = Executors.newSingleThreadScheduledExecutor(),
+            startHeartbeat = false,
         )
         try {
             assertFalse(coordinator.snapshot().enabled)

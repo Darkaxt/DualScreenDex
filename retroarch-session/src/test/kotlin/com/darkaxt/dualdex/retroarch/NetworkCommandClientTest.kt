@@ -23,7 +23,7 @@ class NetworkCommandClientTest {
     }
 
     @Test
-    fun pollsEveryAvailableResponseWithoutBlocking() {
+    fun pollsAvailableResponsesWithinTheConfiguredQuota() {
         val transport = FakeTransport().apply {
             responses += "GET_STATUS CONTENTLESS".toByteArray()
             responses += "GET_CONFIG_PARAM savefile_directory /storage/emulated/0/RetroArch/saves".toByteArray()
@@ -38,6 +38,19 @@ class NetworkCommandClientTest {
             client.poll(),
         )
         assertEquals(emptyList<NetworkResponse>(), client.poll())
+    }
+
+    @Test
+    fun carriesPacketsBeyondTheQuotaIntoLaterPolls() {
+        val transport = FakeTransport().apply {
+            repeat(5) { responses += "GET_STATUS CONTENTLESS".toByteArray() }
+        }
+        val client = NetworkCommandClient(transport, maximumPacketsPerPoll = 2)
+
+        assertEquals(2, client.poll().size)
+        assertEquals(2, client.poll().size)
+        assertEquals(1, client.poll().size)
+        assertEquals(NetworkCommandMetrics(packetsPolled = 5, drainQuotaHits = 2), client.metrics())
     }
 
     @Test

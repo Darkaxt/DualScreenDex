@@ -26,6 +26,9 @@ data class CoreMemoryReadMetrics(
     val scratchBuffers: Long,
     val regionBuffers: Long,
     val completionRegionClones: Long,
+    val packetsPolled: Long = 0,
+    val ignoredPackets: Long = 0,
+    val drainQuotaHits: Long = 0,
 )
 
 private data class CoreMemorySpan(
@@ -47,6 +50,7 @@ class CoreMemoryReadSession(
     private val sender: (ByteArray) -> Unit,
     private val poller: () -> ByteArray?,
     private val maximumChunkBytes: Int = DEFAULT_CHUNK_BYTES,
+    private val maximumPacketsPerHeartbeat: Int = DEFAULT_PACKETS_PER_HEARTBEAT,
     private val scratchBufferFactory: (Int) -> ByteArray = ::ByteArray,
     private val regionBufferFactory: (Int) -> ByteArray = ::ByteArray,
 ) {
@@ -56,13 +60,19 @@ class CoreMemoryReadSession(
     private var buffers = emptyMap<String, ByteArray>()
     private var requestIndex = -1
     private var completedBytes = 0
-    private var terminal: CoreMemoryReadState? = null
+    private var terminalFailure: CoreMemoryReadState.Failed? = null
+    private var complete = false
     private lateinit var scratch: ByteArray
     private var matchedPackets = 0L
     private var payloadBytes = 0L
+    private var completionRegionClones = 0L
+    private var packetsPolled = 0L
+    private var ignoredPackets = 0L
+    private var drainQuotaHits = 0L
 
     init {
         require(maximumChunkBytes in 1..MAX_CHUNK_BYTES) { "core-memory chunk is outside the safe UDP packet limit" }
+        require(maximumPacketsPerHeartbeat > 0) { "core-memory packet quota must be positive" }
     }
 
     fun start(regions: List<CoreMemoryRegion>): CoreMemoryReadState {
@@ -78,22 +88,35 @@ class CoreMemoryReadSession(
         scratch = scratchBufferFactory(maximumChunkBytes)
         require(scratch.size >= maximumChunkBytes) { "core-memory scratch buffer is smaller than the configured chunk" }
         requestIndex = 0
-        sendCurrent()
-        return state()
+        return try {
+            sendCurrent()
+            state()
+        } catch (_: Exception) {
+            failTransport()
+        }
     }
 
     fun heartbeat(): CoreMemoryReadState {
-        terminal?.let { return it }
+        terminalFailure?.let { return it }
+        if (complete) return completion()
         if (requestIndex < 0) return CoreMemoryReadState.Idle
         var advanced = false
-        while (true) {
-            val response = poller() ?: break
+        var heartbeatPackets = 0
+        while (heartbeatPackets < maximumPacketsPerHeartbeat) {
+            val response = try {
+                poller()
+            } catch (_: Exception) {
+                return failTransport()
+            } ?: break
+            heartbeatPackets++
+            packetsPolled++
             val request = requests[requestIndex]
             when (val result = CoreMemoryReplyParser.parse(request.address, request.length, response, scratch, 0)) {
-                CoreMemoryReply.Ignored -> continue
-                is CoreMemoryReply.Failed -> {
-                    return CoreMemoryReadState.Failed(result.reason).also { terminal = it }
+                CoreMemoryReply.Ignored -> {
+                    ignoredPackets++
+                    continue
                 }
+                is CoreMemoryReply.Failed -> return fail(result.reason)
                 CoreMemoryReply.Matched -> {
                     scatter(request, scratch)
                     matchedPackets++
@@ -104,11 +127,23 @@ class CoreMemoryReadSession(
             requestIndex++
             advanced = true
             if (requestIndex >= requests.size) {
-                return CoreMemoryReadState.Complete(buffers.toMap()).also { terminal = it }
+                complete = true
+                return completion()
             }
-            sendCurrent()
+            try {
+                sendCurrent()
+            } catch (_: Exception) {
+                return failTransport()
+            }
         }
-        if (!advanced) sendCurrent()
+        if (heartbeatPackets == maximumPacketsPerHeartbeat) drainQuotaHits++
+        if (!advanced) {
+            try {
+                sendCurrent()
+            } catch (_: Exception) {
+                return failTransport()
+            }
+        }
         return state()
     }
 
@@ -117,7 +152,10 @@ class CoreMemoryReadSession(
         payloadBytes = payloadBytes,
         scratchBuffers = if (::scratch.isInitialized) 1 else 0,
         regionBuffers = buffers.size.toLong(),
-        completionRegionClones = 0,
+        completionRegionClones = completionRegionClones,
+        packetsPolled = packetsPolled,
+        ignoredPackets = ignoredPackets,
+        drainQuotaHits = drainQuotaHits,
     )
 
     private fun requestsFor(span: CoreMemorySpan): List<CoreMemoryRequest> = buildList {
@@ -168,12 +206,25 @@ class CoreMemoryReadSession(
         sender(command.toByteArray(Charsets.US_ASCII))
     }
 
-    private fun state(): CoreMemoryReadState = terminal
-        ?: CoreMemoryReadState.Reading(completedBytes, spans.sumOf(CoreMemorySpan::size))
+    private fun completion(): CoreMemoryReadState.Complete {
+        completionRegionClones += buffers.size
+        return CoreMemoryReadState.Complete(buffers.mapValues { (_, bytes) -> bytes.copyOf() })
+    }
+
+    private fun fail(reason: String): CoreMemoryReadState.Failed = CoreMemoryReadState.Failed(reason).also {
+        terminalFailure = it
+    }
+
+    private fun failTransport(): CoreMemoryReadState.Failed = fail("RetroArch memory transport failed")
+
+    private fun state(): CoreMemoryReadState = terminalFailure
+        ?: if (complete) completion()
+        else CoreMemoryReadState.Reading(completedBytes, spans.sumOf(CoreMemorySpan::size))
 
     companion object {
         const val DEFAULT_CHUNK_BYTES = 512
         const val MAX_CHUNK_BYTES = 1024
+        const val DEFAULT_PACKETS_PER_HEARTBEAT = 512
         private const val MAX_TOTAL_BYTES = 4L * 1024 * 1024
     }
 }

@@ -38,6 +38,7 @@ import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.darkaxt.dualdex.storage.StorageAccessPolicy
 import com.darkaxt.dualdex.storage.StorageIndexAction
 import com.darkaxt.dualdex.storage.StorageSetupStatusPolicy
+import com.darkaxt.dualdex.storage.StoredSafIndexEligibility
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.web.GuideLoadFailure
 import com.enrpau.dualscreendex.companion.api.RetroArchView
@@ -48,6 +49,7 @@ import java.io.File
 import java.net.URI
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicBoolean
@@ -80,7 +82,11 @@ class RetroArchSetupCoordinator(
     private val heartbeat: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "dualdex-retroarch-heartbeat").apply { isDaemon = true }
     }
-    private val monitor = AtomicReference<SessionMonitor?>(null)
+    private val commandMonitor = CommandMonitorLifecycle {
+        SessionMonitor(NetworkCommandClient(UdpNetworkCommandTransport(commandPort)))
+    }
+    private var heartbeatTask: ScheduledFuture<*>? = null
+    @Volatile private var closed = false
     private val battleMemory = BattleMemoryCoordinator(
         catalogProvider = runtime::battleCatalogContext,
         transientGameState = transientGameState,
@@ -98,6 +104,7 @@ class RetroArchSetupCoordinator(
     private val directRefreshStarted = AtomicBoolean(false)
     private val directConfigAttempt = AtomicReference<String?>(null)
     private val lastStorageAccess = AtomicBoolean(sharedStorage.isGranted())
+    private val lastSafGrant = AtomicBoolean(storedSafGrantIsValid())
     private val sessionEpoch = SessionEpochGate()
     private val activeEntry = AtomicReference<RomIndexEntry?>(null)
     private val lastSaveCandidates = AtomicReference<List<SaveDocumentSource>>(emptyList())
@@ -109,7 +116,7 @@ class RetroArchSetupCoordinator(
     init {
         publish(view.get())
         refreshStorageAccess()
-        heartbeat.scheduleWithFixedDelay(::monitorHeartbeat, 0, HEARTBEAT_INTERVAL_SECONDS, TimeUnit.SECONDS)
+        scheduleMonitorHeartbeat(0)
     }
 
     fun applyConfigTree(uri: Uri) {
@@ -161,6 +168,7 @@ class RetroArchSetupCoordinator(
             return
         }
         preferences.edit().putString(ROM_TREE_URI, uri.toString()).apply()
+        lastSafGrant.set(storedSafGrantIsValid())
         update { it.copy(romGrant = "INDEXING", message = "Indexing granted GB, GBC, GBA, and ZIP sources…") }
         worker.execute {
             val previousEntries = indexStore.read(uri.toString())
@@ -195,11 +203,12 @@ class RetroArchSetupCoordinator(
                 directIndexReady.set(false)
                 directRefreshStarted.set(false)
                 directConfigAttempt.set(null)
-                entries.set(loadSafStoredIndex())
+                val romGranted = storedRomTree()?.let(::hasReadGrant) == true
+                lastSafGrant.set(romGranted)
+                if (romGranted) entries.set(loadSafStoredIndex()) else quarantineSafEntries()
                 lastSaveCandidates.set(emptyList())
                 discoveredSaveRom.set(null)
                 discoveredSaveBasename.set(null)
-                val romGranted = storedRomTree()?.let(::hasReadGrant) == true
                 val configGranted = storedConfigTree()?.let(::hasConfigGrant) == true
                 val storageStatus = StorageSetupStatusPolicy.available(
                     allFilesGranted = false,
@@ -242,7 +251,14 @@ class RetroArchSetupCoordinator(
 
     fun snapshot(): RetroArchView = view.get()
 
+    fun commitMapperIfCurrent(expectedEpoch: Long, commit: () -> Unit): Boolean =
+        sessionEpoch.commitIfCurrent(expectedEpoch, commit)
+
     fun retryGuideLoad(): Boolean {
+        if (!sharedStorage.isGranted() && !storedSafGrantIsValid()) {
+            quarantineSafEntries()
+            return false
+        }
         val entry = activeEntry.get() ?: return false
         val token = sessionEpoch.capture(entry.sessionIdentity()) ?: return false
         if (!activationGate.retry(entry.sourceId)) return false
@@ -278,14 +294,17 @@ class RetroArchSetupCoordinator(
     }
 
     override fun close() {
+        closed = true
+        heartbeatTask?.cancel(false)
+        heartbeatTask = null
         sessionEpoch.close()
         activeEntry.getAndSet(null)?.let { activationGate.cancel(it.sourceId) }
         runtime.cancelPendingCatalogLoad()
-        heartbeat.shutdown()
+        heartbeat.shutdownNow()
         battleMemory.close()
         worker.shutdown()
         indexWorker.shutdown()
-        monitor.get()?.close()
+        commandMonitor.close()
     }
 
     private fun indexSharedStorage() {
@@ -419,10 +438,11 @@ class RetroArchSetupCoordinator(
         runtime.runtimePerformanceHeartbeat()
         val storageGranted = sharedStorage.isGranted()
         if (lastStorageAccess.getAndSet(storageGranted) != storageGranted) refreshStorageAccess()
-        runCatching { monitor().heartbeat() }
+        runCatching { commandMonitor.monitor().heartbeat() }
             .onSuccess { session ->
+                commandMonitor.recordSuccess()
                 val status = session.lastStatus as? RetroArchStatus.Running
-                val resolution = session.lastStatus?.let { RomSessionResolver.resolve(it, entries.get()) }
+                val resolution = session.lastStatus?.let { RomSessionResolver.resolve(it, eligibleRomEntries()) }
                     ?: SessionResolution.NoContent
                 val connected = session.connection != RetroArchConnection.DISCONNECTED
                 val restartVerified = restartVerifier.observe(session.connection)
@@ -458,6 +478,9 @@ class RetroArchSetupCoordinator(
                         systemId = status?.systemId,
                         gameBasename = status?.gameBasename,
                         contentCrc32 = status?.crc32,
+                        contentSha256 = authorizedEntry?.sha256?.takeIf { active },
+                        sessionEpoch = token?.epoch?.takeIf { active },
+                        activeSource = authorizedEntry?.sourceName?.takeIf { active },
                         savefileDirectory = session.savefileDirectory,
                         resolution = when (resolution) {
                             SessionResolution.NoContent -> "NO_CONTENT"
@@ -493,13 +516,31 @@ class RetroArchSetupCoordinator(
                     }
                 }
             }
-            .onFailure { failure ->
-                sessionEpoch.observe(null)
-                activeEntry.getAndSet(null)?.let { activationGate.cancel(it.sourceId) }
-                runtime.cancelPendingCatalogLoad()
-                battleMemory.updateSession(false, null, null)
-                update { it.copy(connection = "DISCONNECTED", message = failure.message) }
+            .onFailure {
+                commandMonitor.recordFailure()
+                suspendCommandAuthority("RetroArch command monitoring is temporarily unavailable.")
             }
+    }
+
+    private fun suspendCommandAuthority(message: String) {
+        sessionEpoch.observe(null)
+        activeEntry.getAndSet(null)?.let { activationGate.cancel(it.sourceId) }
+        runtime.cancelPendingCatalogLoad()
+        battleMemory.updateSession(false, null, null)
+        update {
+            it.copy(
+                connection = "RETRYING",
+                systemId = null,
+                gameBasename = null,
+                contentCrc32 = null,
+                contentSha256 = null,
+                sessionEpoch = null,
+                activeSource = null,
+                savefileDirectory = null,
+                resolution = "NO_CONTENT",
+                message = message,
+            )
+        }
     }
 
     private fun activate(entry: RomIndexEntry, token: SessionWorkToken) {
@@ -550,6 +591,8 @@ class RetroArchSetupCoordinator(
                         update {
                             it.copy(
                                 activeSource = entry.sourceName,
+                                contentSha256 = entry.sha256,
+                                sessionEpoch = token.epoch,
                                 resolution = "ACTIVE",
                                 message = "Opened ${entry.sourceName}.",
                             )
@@ -787,17 +830,73 @@ class RetroArchSetupCoordinator(
     private fun connectionOf(value: String): RetroArchConnection =
         RetroArchConnection.entries.firstOrNull { it.name == value } ?: RetroArchConnection.DISCONNECTED
 
-    private fun monitor(): SessionMonitor {
-        monitor.get()?.let { return it }
-        val candidate = SessionMonitor(NetworkCommandClient(UdpNetworkCommandTransport(commandPort)))
-        return if (monitor.compareAndSet(null, candidate)) candidate else {
-            candidate.close()
-            requireNotNull(monitor.get())
+    private fun scheduledMonitorHeartbeat() {
+        synchronized(this) {
+            heartbeatTask = null
+            if (closed) return
+        }
+        runCatching(::monitorHeartbeat).onFailure {
+            commandMonitor.recordFailure()
+            suspendCommandAuthority("RetroArch command monitoring is temporarily unavailable.")
+        }
+        synchronized(this) {
+            if (!closed) scheduleMonitorHeartbeat(commandMonitor.nextDelayMillis())
+        }
+    }
+
+    @Synchronized
+    private fun scheduleMonitorHeartbeat(delayMillis: Long) {
+        if (closed || heartbeatTask != null) return
+        heartbeatTask = heartbeat.schedule(::scheduledMonitorHeartbeat, delayMillis, TimeUnit.MILLISECONDS)
+    }
+
+    private fun eligibleRomEntries(): List<RomIndexEntry> {
+        if (sharedStorage.isGranted()) return entries.get()
+        val valid = storedSafGrantIsValid()
+        val previous = lastSafGrant.getAndSet(valid)
+        if (!valid) {
+            quarantineSafEntries()
+            return emptyList()
+        }
+        if (!previous) entries.set(loadSafStoredIndex())
+        return entries.get()
+    }
+
+    private fun storedSafGrantIsValid(): Boolean {
+        val storedUri = preferences.getString(ROM_TREE_URI, null)
+        val readableGrants = context.contentResolver.persistedUriPermissions
+            .asSequence()
+            .filter { it.isReadPermission }
+            .map { it.uri.toString() }
+            .toSet()
+        return StoredSafIndexEligibility.isEligible(storedUri, readableGrants)
+    }
+
+    private fun quarantineSafEntries() {
+        val hadEntries = entries.getAndSet(emptyList()).isNotEmpty()
+        val previousEntry = activeEntry.getAndSet(null)
+        if (!hadEntries && previousEntry == null) return
+        sessionEpoch.observe(null)
+        previousEntry?.let { activationGate.cancel(it.sourceId) }
+        runtime.cancelPendingCatalogLoad()
+        battleMemory.updateSession(false, null, null)
+        lastSaveCandidates.set(emptyList())
+        update {
+            it.copy(
+                romGrant = "MISSING",
+                indexedRoms = 0,
+                resolution = "NO_CONTENT",
+                activeSource = null,
+                contentSha256 = null,
+                sessionEpoch = null,
+                message = "ROM folder access is missing. Select the folder again to restore indexed access.",
+            )
         }
     }
 
     private fun loadSafStoredIndex(): List<RomIndexEntry> {
         val uri = preferences.getString(ROM_TREE_URI, null) ?: return emptyList()
+        if (!storedSafGrantIsValid()) return emptyList()
         return indexStore.read(uri)
     }
 
@@ -845,7 +944,6 @@ class RetroArchSetupCoordinator(
         const val CONFIG_TREE_URI = "config-tree-uri"
         const val ROM_TREE_URI = "rom-tree-uri"
         const val ALL_FILES_INDEX_KEY = "all-files://shared-storage"
-        const val HEARTBEAT_INTERVAL_SECONDS = 2L
         const val LOG_TAG = "DualDexSaveRAM"
         val RETROARCH_PACKAGES = listOf("com.retroarch", "com.retroarch.aarch64", "com.retroarch.ra32")
     }

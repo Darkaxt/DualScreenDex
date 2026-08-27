@@ -28,19 +28,25 @@ class SessionMonitorTest {
     }
 
     @Test
-    fun missedMonitoringHeartbeatsBecomeDisconnectedWithoutClearingLastContent() {
+    fun configAndUnknownRepliesCannotKeepStaleContentAuthorityAlive() {
+        val running = RetroArchStatus.Running(false, "Nintendo - Game Boy Advance", "Pokemon Emerald", "1F1C08FB")
         val port = FakePort().apply {
-            responses += NetworkResponse.Status(RetroArchStatus.Contentless)
+            responses += NetworkResponse.Status(running)
         }
         val monitor = SessionMonitor(port, missedHeartbeatLimit = 2)
-        monitor.heartbeat()
+        assertEquals(RetroArchConnection.PLAYING, monitor.heartbeat().connection)
 
-        assertEquals(RetroArchConnection.CONTENTLESS, monitor.heartbeat().connection)
+        port.responses += NetworkResponse.Config(ConfigParameter.SAVEFILE_DIRECTORY, "/saves")
+        assertEquals(RetroArchConnection.PLAYING, monitor.heartbeat().connection)
+        port.responses += NetworkResponse.Unknown("unrelated reply")
         val disconnected = monitor.heartbeat()
 
         assertEquals(RetroArchConnection.DISCONNECTED, disconnected.connection)
-        assertEquals(RetroArchStatus.Contentless, disconnected.lastStatus)
+        assertNull(disconnected.lastStatus)
         assertNull(disconnected.error)
+
+        port.responses += NetworkResponse.Status(running)
+        assertEquals(RetroArchConnection.PLAYING, monitor.heartbeat().connection)
     }
 
     private class FakePort : RetroArchCommandPort {

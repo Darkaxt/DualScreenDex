@@ -36,6 +36,13 @@ internal class SessionEpochGate {
         !closed && token.epoch == epoch && token.identity == identity
 
     @Synchronized
+    fun commitIfCurrent(expectedEpoch: Long, commit: () -> Unit): Boolean {
+        if (closed || identity == null || epoch != expectedEpoch) return false
+        commit()
+        return true
+    }
+
+    @Synchronized
     fun close() {
         if (closed) return
         closed = true

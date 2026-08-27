@@ -53,7 +53,7 @@ class MemoryMapperLab(
                 val immutable = bytes.copyOf()
                 MemoryRegionSnapshot(descriptor, immutable, sha256(immutable))
             }
-            MemorySnapshot(
+            val snapshot = MemorySnapshot(
                 id = idFactory(),
                 label = label,
                 customLabel = customLabel?.trim()?.takeIf(String::isNotEmpty),
@@ -61,7 +61,9 @@ class MemoryMapperLab(
                 coreIdentity = coreIdentity,
                 contentIdentity = contentIdentity,
                 regions = regions,
-            ).also(::retain)
+            )
+            retain(snapshot)
+            snapshot.detached()
         }.fold(CaptureResult::Captured) { CaptureResult.Failed(it.message ?: it.javaClass.simpleName) }
     }
 
@@ -77,15 +79,17 @@ class MemoryMapperLab(
                 val immutable = bytes.copyOf()
                 MemoryRegionSnapshot(descriptor, immutable, sha256(immutable))
             }
-            MemorySnapshot(
+            val snapshot = MemorySnapshot(
                 id = idFactory(), label = label, customLabel = customLabel?.trim()?.takeIf(String::isNotEmpty),
                 capturedAtEpochMs = clock(), coreIdentity = coreIdentity, contentIdentity = contentIdentity,
                 regions = snapshots,
-            ).also(::retain)
+            )
+            retain(snapshot)
+            snapshot.detached()
         }.fold(CaptureResult::Captured) { CaptureResult.Failed(it.message ?: it.javaClass.simpleName) }
     }
 
-    fun snapshots(): List<MemorySnapshot> = history.toList()
+    fun snapshots(): List<MemorySnapshot> = history.map(MemorySnapshot::detached)
 
     fun record(): MapperSessionRecord = MapperSessionRecord(
         id = sessionId,

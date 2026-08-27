@@ -34,3 +34,7 @@ data class MapperSessionRecord(
     val descriptors: List<MemoryDescriptor>,
     val snapshots: List<MemorySnapshot>,
 )
+
+internal fun MemorySnapshot.detached(): MemorySnapshot = copy(
+    regions = regions.map { region -> region.copy(bytes = region.bytes.copyOf()) },
+)

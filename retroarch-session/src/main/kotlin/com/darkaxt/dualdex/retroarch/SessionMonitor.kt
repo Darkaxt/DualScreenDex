@@ -18,7 +18,7 @@ class SessionMonitor(
     private val missedHeartbeatLimit: Int = 3,
 ) : AutoCloseable {
     private var state = SessionMonitorState()
-    private var missedHeartbeats = 0
+    private var missedStatusHeartbeats = 0
 
     init {
         require(missedHeartbeatLimit > 0) { "missed heartbeat limit must be positive" }
@@ -39,9 +39,16 @@ class SessionMonitor(
                 is NetworkResponse.Unknown -> current
             }
         }
-        if (responses.isEmpty()) missedHeartbeats += 1 else missedHeartbeats = 0
-        if (missedHeartbeats >= missedHeartbeatLimit) {
-            state = state.copy(connection = RetroArchConnection.DISCONNECTED, error = null)
+        val hasFreshStatus = responses.any { response ->
+            response is NetworkResponse.Status && response.value !is RetroArchStatus.Malformed
+        }
+        if (hasFreshStatus) missedStatusHeartbeats = 0 else missedStatusHeartbeats += 1
+        if (missedStatusHeartbeats >= missedHeartbeatLimit) {
+            state = state.copy(
+                connection = RetroArchConnection.DISCONNECTED,
+                lastStatus = null,
+                error = null,
+            )
         }
 
         port.requestStatus()

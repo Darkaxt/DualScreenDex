@@ -1,5 +1,6 @@
 package com.darkaxt.dualdex.mapper
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
@@ -19,6 +20,22 @@ class MapperSessionTest {
         lab.enable(privacyAcknowledged = true)
         assertTrue(lab.capture(MapperLabel.OVERWORLD) is CaptureResult.Captured)
         assertEquals(listOf(MemoryRead(0x02000000, 4)), transport.requests)
+    }
+
+    @Test
+    fun publicSnapshotsCannotMutateRetainedMapperHistory() {
+        val lab = MemoryMapperLab(RecordingTransport(), listOf(descriptor))
+        lab.enable(privacyAcknowledged = true)
+
+        val captured = lab.capture(MapperLabel.OVERWORLD) as CaptureResult.Captured
+        captured.snapshot.regions.single().bytes[0] = 99
+        val listed = lab.snapshots().single()
+        listed.regions.single().bytes[1] = 88
+        val recorded = lab.record().snapshots.single()
+        recorded.regions.single().bytes[2] = 77
+
+        assertArrayEquals(byteArrayOf(1, 2, 3, 4), lab.snapshots().single().regions.single().bytes)
+        assertEquals(captured.snapshot.regions.single().sha256, lab.snapshots().single().regions.single().sha256)
     }
 
     @Test
