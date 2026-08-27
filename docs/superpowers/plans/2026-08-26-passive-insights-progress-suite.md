@@ -628,6 +628,8 @@ Pop-Location
 - [x] **Step 3: Compare Sections 3, 10, 12, 14, 15, and 17; fix every blocker/error.**
 - [ ] **Step 4: Run all affected suites, commit the complete feature/audit, then discover and publish exactly one next numeric RC. Do not install it.**
 
+Release gate status: the exact signed `v1.1.0-rc.73-hotfix.1` candidate is verified as a nonpublic draft. The repository's promotion policy requires user-owned physical AYN Thor validation for this runtime/UI change; the automated passive-catalog substitution does not apply. Step 4 remains open until that exact signed APK is promoted without replacement.
+
 ---
 
 ## Stage 6 — Feature F: Portable Challenge Engine Expansion — sixth feature RC
