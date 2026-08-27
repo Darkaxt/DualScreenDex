@@ -18,6 +18,10 @@ const gradleBuild = readFileSync(
   join(repositoryRoot, "app", "build.gradle.kts"),
   "utf8",
 );
+const catalogSchema = readFileSync(
+  join(repositoryRoot, "catalog-store", "src", "main", "kotlin", "com", "darkaxt", "dualdex", "catalog", "CatalogSchema.kt"),
+  "utf8",
+);
 
 test("keeps every production signing secret inside the protected signing job", () => {
   const signingJob = workflow.indexOf("  sign-and-publish:");
@@ -85,6 +89,10 @@ test("derives release versions from protected Gradle properties", () => {
   assert.match(gradleBuild, /providers\.gradleProperty\("dualdexVersionName"\)/);
   assert.match(gradleBuild, /providers\.gradleProperty\("dualdexVersionCode"\)/);
   assert.doesNotMatch(gradleBuild, /DUALDEX_RELEASE_(KEYSTORE|STORE|KEY)/);
+});
+
+test("requires the parser cache revision that rebuilds hybrid move output", () => {
+  assert.match(catalogSchema, /const val parserSchemaVersion = 43\b/);
 });
 
 test("runs Android deployment safety checks in CI and before release signing", () => {

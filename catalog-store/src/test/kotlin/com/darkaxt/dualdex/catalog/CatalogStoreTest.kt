@@ -460,7 +460,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(42, CatalogSchema.parserSchemaVersion)
+        assertEquals(43, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -766,7 +766,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(42, CatalogSchema.parserSchemaVersion)
+        assertEquals(43, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -913,6 +913,28 @@ class CatalogStoreTest {
         val reparsed = catalog.copy(diagnostics = listOf("reparsed with the current schema"))
         cache.write(reparsed, source, CatalogWriteProgress.complete())
 
+        assertEquals(reparsed, cache.readComplete(catalog.romSha256)?.catalog)
+    }
+
+    @Test
+    fun `revision 42 caches are invalidated so hybrid move details are rebuilt`() {
+        assertEquals(43, CatalogSchema.parserSchemaVersion)
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("4".repeat(64)).copy(diagnostics = listOf("pre-hybrid move output"))
+        val source = CatalogSourceMetadata.direct("Inclement Emerald.gba", 32 * 1024 * 1024, "POKEMON EMER")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute(
+                "UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1",
+                listOf(42),
+            )
+        }
+
+        assertNull(cache.readComplete(catalog.romSha256))
+
+        val reparsed = catalog.copy(diagnostics = listOf("hybrid move output rebuilt"))
+        cache.write(reparsed, source, CatalogWriteProgress.complete())
         assertEquals(reparsed, cache.readComplete(catalog.romSha256)?.catalog)
     }
 
