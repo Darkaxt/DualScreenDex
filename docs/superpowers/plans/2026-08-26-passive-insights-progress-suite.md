@@ -623,9 +623,9 @@ Pop-Location
 - Modify: existing performance collector/tests.
 - Modify at release gate only: release readiness/workflow files.
 
-- [ ] **Step 1: Report numeric exact, bounded, absent, `NOT_FOUND`, `NOT_APPLICABLE`, and `ERROR` outcomes by required mechanic for every control.**
-- [ ] **Step 2: Prove no duplicate memory read, polling loop, stale attacker/target flicker, or sustained render loop.**
-- [ ] **Step 3: Compare Sections 3, 10, 12, 14, 15, and 17; fix every blocker/error.**
+- [x] **Step 1: Report numeric exact, bounded, absent, `NOT_FOUND`, `NOT_APPLICABLE`, and `ERROR` outcomes by required mechanic for every control.**
+- [x] **Step 2: Prove no duplicate memory read, polling loop, stale attacker/target flicker, or sustained render loop.**
+- [x] **Step 3: Compare Sections 3, 10, 12, 14, 15, and 17; fix every blocker/error.**
 - [ ] **Step 4: Run all affected suites, commit the complete feature/audit, then discover and publish exactly one next numeric RC. Do not install it.**
 
 ---
