@@ -31,6 +31,8 @@ import com.darkaxt.dualdex.overlay.OverlayStartupAction
 import com.darkaxt.dualdex.overlay.OverlayStartupPolicy
 import com.darkaxt.dualdex.rom.RomDocumentPicker
 import com.darkaxt.dualdex.setup.SetupDocumentPicker
+import com.darkaxt.dualdex.setup.SetupPickerRequest
+import com.darkaxt.dualdex.storage.AllFilesSettingsLauncher
 import com.darkaxt.dualdex.web.DualDexWebView
 import com.darkaxt.dualdex.web.NativeSetupRoute
 import com.darkaxt.dualdex.display.DisplayCandidate
@@ -251,6 +253,7 @@ class MainActivity : AppCompatActivity() {
             onConfigTree = { uri -> (application as DualDexApplication).retroArchSetup?.applyConfigTree(uri) },
             onRomTree = { uri -> (application as DualDexApplication).retroArchSetup?.applyRomTree(uri) },
         )
+        consumeSetupPickerRequest(intent)
         showCompanionOrRecovery()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -316,6 +319,18 @@ class MainActivity : AppCompatActivity() {
         if (intent.getBooleanExtra(EXTRA_EXPORT_MAPPER, false)) exportMapper()
         if (intent.getBooleanExtra(EXTRA_EXPORT_PERFORMANCE, false)) exportPerformanceLog()
         if (intent.getBooleanExtra(EXTRA_EXPORT_COMPATIBILITY, false)) exportCompatibilityReport()
+        consumeSetupPickerRequest(intent)
+    }
+
+    private fun consumeSetupPickerRequest(intent: Intent) {
+        when (SetupPickerRequest.consume(
+            read = { intent.getStringExtra(SetupPickerRequest.EXTRA) },
+            clear = { intent.removeExtra(SetupPickerRequest.EXTRA) },
+        )) {
+            SetupPickerRequest.RETROARCH -> setupPicker.openConfigTree()
+            SetupPickerRequest.ROMS -> setupPicker.openRomTree()
+            null -> Unit
+        }
     }
 
     private fun showCompanionOrRecovery() {
@@ -333,14 +348,12 @@ class MainActivity : AppCompatActivity() {
             picker,
             onNativeSetupRoute = { route ->
                 when (route) {
-                    NativeSetupRoute.GRANT_ALL_FILES -> startActivity(
-                        Intent(
-                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                            Uri.parse("package:$packageName"),
-                        ),
-                    )
+                    NativeSetupRoute.GRANT_ALL_FILES -> AllFilesSettingsLauncher.open(this) {
+                        setupPicker.openRomTree()
+                    }
                     NativeSetupRoute.GRANT_RETROARCH -> setupPicker.openConfigTree()
                     NativeSetupRoute.GRANT_ROMS -> setupPicker.openRomTree()
+                    NativeSetupRoute.RESCAN_ROMS -> application.retroArchSetup?.rescanGameLibrary()
                     NativeSetupRoute.OPEN_RETROARCH -> application.retroArchSetup?.launchRetroArch()
                     NativeSetupRoute.EXPORT_MAPPER -> exportMapper()
                     NativeSetupRoute.EXPORT_PERFORMANCE -> exportPerformanceLog()

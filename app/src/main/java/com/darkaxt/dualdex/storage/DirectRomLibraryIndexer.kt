@@ -7,7 +7,11 @@ import java.util.ArrayDeque
 class DirectRomLibraryIndexer internal constructor(
     private val identityReader: (File) -> StreamingRomSourceIdentity = StreamingRomSourceReader::read,
 ) {
-    fun index(roots: List<File>, previousEntries: List<RomIndexEntry> = emptyList()): RomLibraryIndexResult {
+    fun index(
+        roots: List<File>,
+        previousEntries: List<RomIndexEntry> = emptyList(),
+        forceRefresh: Boolean = false,
+    ): RomLibraryIndexResult {
         val entries = mutableListOf<RomIndexEntry>()
         val warnings = mutableListOf<String>()
         val previousBySource = previousEntries.associateBy(RomIndexEntry::sourceId)
@@ -17,6 +21,7 @@ class DirectRomLibraryIndexer internal constructor(
                 val sourceSize = source.length()
                 val sourceModified = source.lastModified()
                 val previous = previousBySource[sourceId]
+                    ?.takeUnless { forceRefresh }
                     ?.takeIf {
                         it.sourceSize == sourceSize &&
                             it.sourceLastModifiedEpochMs == sourceModified

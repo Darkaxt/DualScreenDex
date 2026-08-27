@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import com.darkaxt.dualdex.performance.PrivacySafeDiagnostics
 import com.darkaxt.dualdex.retroarch.ConfigInstallResult
 import com.darkaxt.dualdex.retroarch.NetworkCommandClient
 import com.darkaxt.dualdex.retroarch.RetroArchConfigInstaller
@@ -101,6 +102,8 @@ class RetroArchSetupCoordinator(
     private val activationGate = GuideActivationGate()
     private val pollingSave = AtomicBoolean(false)
     private val directIndexing = AtomicBoolean(false)
+    private val pendingForcedDirectRescan = AtomicBoolean(false)
+    private val safRescanning = AtomicBoolean(false)
     private val directRefreshStarted = AtomicBoolean(false)
     private val directConfigAttempt = AtomicReference<String?>(null)
     private val lastStorageAccess = AtomicBoolean(sharedStorage.isGranted())
@@ -249,6 +252,19 @@ class RetroArchSetupCoordinator(
         }
     }
 
+    fun rescanGameLibrary() {
+        if (sharedStorage.isGranted()) {
+            indexSharedStorage(forceRefresh = true)
+            return
+        }
+        val uri = storedRomTree()
+        if (uri == null || !hasReadGrant(uri)) {
+            quarantineSafEntries()
+            return
+        }
+        rescanSafTree(uri)
+    }
+
     fun snapshot(): RetroArchView = view.get()
 
     fun commitMapperIfCurrent(expectedEpoch: Long, commit: () -> Unit): Boolean =
@@ -307,15 +323,76 @@ class RetroArchSetupCoordinator(
         commandMonitor.close()
     }
 
-    private fun indexSharedStorage() {
-        if (!directIndexing.compareAndSet(false, true)) return
+    private fun rescanSafTree(uri: Uri) {
+        if (!safRescanning.compareAndSet(false, true)) return
+        val retainedEntries = entries.get()
+        update {
+            it.copy(
+                romGrant = "INDEXING",
+                message = "Rescanning the selected game folder…",
+            )
+        }
+        worker.execute {
+            try {
+                val indexed = AndroidRomLibraryIndexer(context.contentResolver).index(uri, emptyList())
+                if (!hasReadGrant(uri) || sharedStorage.isGranted()) {
+                    refreshStorageAccess()
+                    return@execute
+                }
+                indexStore.write(uri.toString(), indexed.entries)
+                entries.set(indexed.entries)
+                activationGate.clearFailure()
+                update {
+                    it.copy(
+                        romGrant = "GRANTED",
+                        indexedRoms = indexed.entries.size,
+                        message = when {
+                            indexed.entries.isEmpty() -> "No GB, GBC, GBA, or single-ROM ZIP sources were found in the selected folder."
+                            indexed.warnings.isEmpty() -> "Rescan found ${indexed.entries.size} ROM sources."
+                            else -> "Rescan found ${indexed.entries.size} sources; ${indexed.warnings.size} unreadable sources were skipped."
+                        },
+                    )
+                }
+            } catch (failure: Exception) {
+                if (sharedStorage.isGranted() || !hasReadGrant(uri)) {
+                    refreshStorageAccess()
+                    return@execute
+                }
+                val status = StorageSetupStatusPolicy.failed(
+                    allFilesGranted = false,
+                    retainedDirectIndex = false,
+                    safIndexGranted = hasReadGrant(uri),
+                )
+                update {
+                    it.copy(
+                        storageGrant = status.storageGrant,
+                        romGrant = "FAILED",
+                        indexedRoms = retainedEntries.size,
+                        message = "Game rescan could not finish. The previous game index remains active.",
+                    )
+                }
+            } finally {
+                safRescanning.set(false)
+            }
+        }
+    }
+
+    private fun indexSharedStorage(forceRefresh: Boolean = false) {
+        if (!directIndexing.compareAndSet(false, true)) {
+            if (forceRefresh) pendingForcedDirectRescan.set(true)
+            return
+        }
         val retainedDirectIndex = directIndexReady.get()
         val indexingStatus = StorageSetupStatusPolicy.indexing(allFilesGranted = sharedStorage.isGranted())
         update {
             it.copy(
                 storageGrant = indexingStatus.storageGrant,
                 romGrant = indexingStatus.romGrant,
-                message = "Indexing GB, GBC, GBA, and ZIP sources across shared storage…",
+                message = if (forceRefresh) {
+                    "Rescanning GB, GBC, GBA, and ZIP sources across shared storage…"
+                } else {
+                    "Indexing GB, GBC, GBA, and ZIP sources across shared storage…"
+                },
             )
         }
         indexWorker.execute {
@@ -325,10 +402,11 @@ class RetroArchSetupCoordinator(
                 val indexed = DirectRomLibraryIndexer().index(
                     roots,
                     directIndexStore.read(ALL_FILES_INDEX_KEY),
+                    forceRefresh = forceRefresh,
                 )
                 if (!sharedStorage.isGranted()) return@execute
-                entries.set(indexed.entries)
                 directIndexStore.write(ALL_FILES_INDEX_KEY, indexed.entries)
+                entries.set(indexed.entries)
                 directIndexReady.set(true)
                 activationGate.clearFailure()
                 val readyStatus = StorageSetupStatusPolicy.available(
@@ -351,7 +429,7 @@ class RetroArchSetupCoordinator(
                 configureDirectRetroArch(roots)
             } catch (failure: Exception) {
                 directIndexReady.set(retainedDirectIndex)
-                directRefreshStarted.set(false)
+                if (!forceRefresh) directRefreshStarted.set(false)
                 val safIndexGranted = storedRomTree()?.let(::hasReadGrant) == true
                 if (!retainedDirectIndex && safIndexGranted) entries.set(loadSafStoredIndex())
                 val failedStatus = StorageSetupStatusPolicy.failed(
@@ -362,13 +440,20 @@ class RetroArchSetupCoordinator(
                 update {
                     it.copy(
                         storageGrant = failedStatus.storageGrant,
-                        romGrant = failedStatus.romGrant,
+                        romGrant = if (forceRefresh) "FAILED" else failedStatus.romGrant,
                         indexedRoms = entries.get().size,
-                        message = "Game discovery could not finish. The folder fallback remains available.",
+                        message = if (forceRefresh && retainedDirectIndex) {
+                            "Game rescan could not finish. The previous game index remains active."
+                        } else {
+                            "Game discovery could not finish. The folder fallback remains available."
+                        },
                     )
                 }
             } finally {
                 directIndexing.set(false)
+                if (pendingForcedDirectRescan.getAndSet(false) && sharedStorage.isGranted()) {
+                    indexSharedStorage(forceRefresh = true)
+                }
             }
         }
     }
@@ -754,7 +839,14 @@ class RetroArchSetupCoordinator(
             saveMonitor.restore(parseContext, autosaveStatus) { sessionEpoch.isCurrent(token) }
         } catch (failure: Exception) {
             if (!sessionEpoch.isCurrent(token)) return
-            Log.e(LOG_TAG, "Could not restore the cached SaveRAM snapshot", failure)
+            Log.e(
+                LOG_TAG,
+                PrivacySafeDiagnostics.message(
+                    category = "SAVE_RAM",
+                    outcome = "RESTORE_FAILED",
+                    failure = failure,
+                ),
+            )
             transientGameState.acceptRecoveryStatus(
                 SaveRamView(
                     status = "STALE",

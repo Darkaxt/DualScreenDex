@@ -13,6 +13,9 @@ describe('RetroArch setup', () => {
     expect(screen.queryByText('PASSIVE CONNECTION')).toBeNull();
     expect(screen.getByText('RETROARCH CONNECTION')).toBeTruthy();
     expect(screen.getByText(/automatically finds supported games and their save files/i)).toBeTruthy();
+    expect(screen.getByText(/Android\/data and Android\/obb remain protected/i)).toBeTruthy();
+    expect(screen.getByText(/public shared storage or use the folder fallback/i)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'RESCAN GAMES' }).getAttribute('href')).toBe('dualdex://games/rescan');
     expect(screen.getByText(/fully close RetroArch before setup/i)).toBeTruthy();
     expect(screen.getByText(/not considered active until DualDex verifies/i)).toBeTruthy();
     expect(screen.getByText(/Settings → Network → Network Commands/i)).toBeTruthy();
@@ -49,6 +52,7 @@ describe('RetroArch setup', () => {
     expect(screen.queryByRole('link', { name: 'GRANT ALL FILES ACCESS' })).toBeNull();
     expect(screen.getByText('Ready')).toBeTruthy();
     expect(screen.getByText('Finding your games…')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'RESCAN GAMES' })).toBeNull();
   });
 
   it('keeps granted storage ready when indexing fails', () => {
@@ -60,6 +64,16 @@ describe('RetroArch setup', () => {
     expect(screen.queryByRole('link', { name: 'GRANT ALL FILES ACCESS' })).toBeNull();
     expect(screen.getByText('Ready')).toBeTruthy();
     expect(screen.getByText(/Games could not be indexed/i)).toBeTruthy();
+  });
+
+  it('explains that a failed rescan retains the previous game index', () => {
+    render(<SetupPage state={{
+      ...state,
+      retroArch: { ...state.retroArch, storageGrant: 'GRANTED', romGrant: 'FAILED', indexedRoms: 12 },
+    }} send={vi.fn()} />);
+
+    expect(screen.getByText(/previous game index remains active/i)).toBeTruthy();
+    expect(screen.getByText(/12 games found/i)).toBeTruthy();
   });
 
   it('offers an explicit guide retry only after a failed activation', () => {

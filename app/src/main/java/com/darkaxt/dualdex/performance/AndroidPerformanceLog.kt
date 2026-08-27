@@ -16,7 +16,12 @@ class AndroidPerformanceLog(
     }
 
     @Synchronized
-    override fun append(event: PerformanceEvent) {
+    override fun append(event: PerformanceEvent) = appendEncoded(event)
+
+    @Synchronized
+    fun append(event: PreviousProcessExitEvent) = appendEncoded(event)
+
+    private fun appendEncoded(event: Any) {
         val encoded = (gson.toJson(event) + "\n").toByteArray(Charsets.UTF_8)
         if (encoded.size > maximumSegmentBytes) return
         val active = File(directory, ACTIVE_FILE_NAME)

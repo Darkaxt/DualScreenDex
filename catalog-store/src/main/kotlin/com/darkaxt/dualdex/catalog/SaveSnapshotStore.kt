@@ -11,7 +11,6 @@ data class StoredSaveSnapshot(
 )
 
 data class SaveSnapshotCorruption(
-    val romSha256Prefix: String,
     val reason: String,
 )
 
@@ -88,7 +87,7 @@ class SaveSnapshotStore(
                 database.transaction {
                     database.execute("DELETE FROM save_snapshot WHERE id = 1")
                 }
-                reportCorruption(normalizedSha, failure)
+                reportCorruption(failure)
                 null
             }
         }
@@ -122,20 +121,12 @@ class SaveSnapshotStore(
         throw CorruptSnapshotPayloadException(failure)
     }
 
-    private fun reportCorruption(
-        romSha256: String,
-        failure: CorruptSnapshotPayloadException,
-    ) {
+    private fun reportCorruption(failure: CorruptSnapshotPayloadException) {
         val reason = failure.cause?.javaClass?.simpleName
             ?.take(MAX_DIAGNOSTIC_REASON_LENGTH)
             .orEmpty()
         runCatching {
-            onCorruptSnapshot(
-                SaveSnapshotCorruption(
-                    romSha256Prefix = romSha256.take(DIAGNOSTIC_HASH_PREFIX_LENGTH),
-                    reason = reason,
-                ),
-            )
+            onCorruptSnapshot(SaveSnapshotCorruption(reason = reason))
         }
     }
 
@@ -227,7 +218,6 @@ class SaveSnapshotStore(
 
     private companion object {
         const val SNAPSHOT_DIRECTORY = "save-snapshots"
-        const val DIAGNOSTIC_HASH_PREFIX_LENGTH = 12
         const val MAX_DIAGNOSTIC_REASON_LENGTH = 64
         val LEGACY_CATALOG_FILE = Regex("[0-9a-fA-F]{64}\\.sqlite")
     }

@@ -166,7 +166,7 @@ class SaveSnapshotStoreTest {
 
             assertNull(store.read(romHash))
             assertEquals(
-                listOf(SaveSnapshotCorruption("f".repeat(12), "JsonSyntaxException")),
+                listOf(SaveSnapshotCorruption("JsonSyntaxException")),
                 diagnostics,
             )
             assertTrue(databaseFile.isFile)

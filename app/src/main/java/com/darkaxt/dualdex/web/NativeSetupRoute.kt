@@ -6,6 +6,7 @@ enum class NativeSetupRoute {
     GRANT_ALL_FILES,
     GRANT_RETROARCH,
     GRANT_ROMS,
+    RESCAN_ROMS,
     OPEN_RETROARCH,
     EXPORT_MAPPER,
     EXPORT_PERFORMANCE,
@@ -24,6 +25,7 @@ enum class NativeSetupRoute {
                 "grant" to "/files" -> GRANT_ALL_FILES
                 "grant" to "/retroarch" -> GRANT_RETROARCH
                 "grant" to "/roms" -> GRANT_ROMS
+                "games" to "/rescan" -> RESCAN_ROMS
                 "open" to "/retroarch" -> OPEN_RETROARCH
                 "mapper" to "/export" -> EXPORT_MAPPER
                 "performance" to "/export" -> EXPORT_PERFORMANCE

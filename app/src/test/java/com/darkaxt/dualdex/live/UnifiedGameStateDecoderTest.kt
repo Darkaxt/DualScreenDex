@@ -332,6 +332,9 @@ class UnifiedGameStateDecoderTest {
         assertFalse(encoded.contains("Game.srm"))
         assertFalse(encoded.contains("file:///"))
         assertFalse(encoded.contains("252"))
+        assertFalse(encoded.contains(ROM.take(12)))
+        assertFalse(encoded.contains("fingerprint", ignoreCase = true))
+        assertFalse(encoded.contains("00000bb8"))
     }
 
     @Test

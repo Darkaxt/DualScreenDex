@@ -18,7 +18,6 @@ data class ResolvedStateFieldTrace(
     val source: ResolvedValueSource?,
     val available: Boolean,
     val count: Int? = null,
-    val fingerprint: String? = null,
 )
 
 data class ResolvedStateFieldChange(
@@ -31,7 +30,6 @@ data class ResolvedStateTraceEvent(
     val schemaVersion: Int = RESOLVED_STATE_TRACE_SCHEMA_VERSION,
     val revision: Long,
     val trigger: ResolvedStateTraceTrigger,
-    val romSha256Prefix: String?,
     val generation: Int?,
     val sampleId: Long?,
     val recoveryApplicationId: Long?,
@@ -57,7 +55,6 @@ internal fun resolvedStateTraceEvent(
     return ResolvedStateTraceEvent(
         revision = revision,
         trigger = trigger,
-        romSha256Prefix = reference?.romIdentity?.sha256Prefix(),
         generation = reference?.generation,
         sampleId = next?.sampleId,
         recoveryApplicationId = next?.recovery?.applicationId,
@@ -76,8 +73,8 @@ internal fun resolvedStateTraceEvent(
 private fun ResolvedGameSnapshot?.traceFields(): Map<String, ResolvedStateFieldTrace> {
     val snapshot = this ?: return emptyMap()
     return buildMap {
-        put("trainer.identity", snapshot.trainer.identity.traceValue(includeFingerprint = false))
-        put("trainer.publicId", snapshot.trainer.publicTrainerId.traceValue(includeFingerprint = false))
+        put("trainer.identity", snapshot.trainer.identity.traceValue())
+        put("trainer.publicId", snapshot.trainer.publicTrainerId.traceValue())
         put("trainer.money", snapshot.trainer.money.traceValue())
         put("trainer.playTime", snapshot.trainer.playTime.traceValue())
         put("trainer.badges", snapshot.trainer.badgeFlags.traceValue())
@@ -93,7 +90,6 @@ private fun ResolvedGameSnapshot?.traceFields(): Map<String, ResolvedStateFieldT
         put(
             "battle.knowledge",
             directTraceValue(
-                value = snapshot.battleKnowledge,
                 source = ResolvedValueSource.LIVE,
                 count = snapshot.battleKnowledge.observedMoves.values.sumOf { it.size } +
                     snapshot.battleKnowledge.seenSpeciesIds.size +
@@ -110,15 +106,8 @@ private fun ResolvedGameSnapshot?.traceFields(): Map<String, ResolvedStateFieldT
         put("levelUpRuleset", snapshot.levelUpRulesetId.traceValue())
         put(
             "recovery",
-            snapshot.recovery.applicationId?.let { applicationId ->
-                directTraceValue(
-                    value = listOf(
-                        applicationId,
-                        snapshot.recovery.observationKind,
-                        snapshot.recovery.resetKnowledge,
-                    ),
-                    source = ResolvedValueSource.RECOVERY,
-                )
+            snapshot.recovery.applicationId?.let {
+                directTraceValue(source = ResolvedValueSource.RECOVERY)
             } ?: ResolvedStateFieldTrace(
                 source = ResolvedValueSource.UNAVAILABLE,
                 available = false,
@@ -126,13 +115,12 @@ private fun ResolvedGameSnapshot?.traceFields(): Map<String, ResolvedStateFieldT
         )
         put(
             "session.gameAccessReady",
-            directTraceValue(snapshot.gameAccessReady(), ResolvedValueSource.LIVE),
+            directTraceValue(ResolvedValueSource.LIVE),
         )
     }
 }
 
 private fun <T> ResolvedValue<T>.traceValue(
-    includeFingerprint: Boolean = true,
     count: ((T) -> Int)? = null,
 ): ResolvedStateFieldTrace {
     val resolved = value
@@ -143,26 +131,16 @@ private fun <T> ResolvedValue<T>.traceValue(
         source = source,
         available = true,
         count = count?.invoke(resolved),
-        fingerprint = resolved.takeIf { includeFingerprint }?.privacySafeFingerprint(),
     )
 }
 
 private fun directTraceValue(
-    value: Any,
     source: ResolvedValueSource,
     count: Int? = null,
 ): ResolvedStateFieldTrace = ResolvedStateFieldTrace(
     source = source,
     available = true,
     count = count,
-    fingerprint = value.privacySafeFingerprint(),
 )
 
-private fun Any.privacySafeFingerprint(): String =
-    Integer.toUnsignedString(hashCode(), 16).padStart(8, '0')
-
-private fun String.sha256Prefix(): String? = lowercase()
-    .takeIf { it.length == 64 && it.all { character -> character in '0'..'9' || character in 'a'..'f' } }
-    ?.take(12)
-
-private const val RESOLVED_STATE_TRACE_SCHEMA_VERSION = 1
+private const val RESOLVED_STATE_TRACE_SCHEMA_VERSION = 2

@@ -32,7 +32,6 @@ data class PerformanceEvent(
     val wallClockEpochMillis: Long,
     val elapsedMillis: Long,
     val kind: PerformanceEventKind,
-    val romSha256Prefix: String? = null,
     val generation: Int? = null,
     val stage: String? = null,
     val stageElapsedMillis: Long? = null,
@@ -55,4 +54,4 @@ fun interface PerformanceWorkDispatcher {
     fun dispatch(work: () -> Unit)
 }
 
-const val PERFORMANCE_SCHEMA_VERSION = 2
+const val PERFORMANCE_SCHEMA_VERSION = 3

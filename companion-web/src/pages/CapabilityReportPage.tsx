@@ -180,18 +180,18 @@ export function stableReport(view: DiagnosticView): string {
     reasons: capability.reasons.map(sanitizeText),
   }));
   const map = view.map ? {
-    ...view.map,
-    currentAreaName: sanitizeNullable(view.map.currentAreaName),
-    localMapKey: sanitizeNullable(view.map.localMapKey),
-    sceneKey: sanitizeNullable(view.map.sceneKey),
-    atlasRegionKey: sanitizeNullable(view.map.atlasRegionKey),
+    presentation: view.map.presentation,
+    playerPositionStatus: view.map.playerPositionStatus,
+    lighting: view.map.lighting,
+    totalPois: view.map.totalPois,
+    visiblePois: view.map.visiblePois,
+    collectedPois: view.map.collectedPois,
+    localMapStatus: view.map.localMapStatus,
+    worldMapStatus: view.map.worldMapStatus,
     fallbackReason: sanitizeNullable(view.map.fallbackReason),
   } : null;
   return JSON.stringify({
-    reportSchemaVersion: view.reportSchemaVersion ?? 1,
-    romName: sanitizeNullable(view.romName),
-    sha256: view.sha256,
-    crc32: view.crc32,
+    reportSchemaVersion: 2,
     family: view.family,
     platform: view.platform,
     activeRulesetId: view.activeRulesetId,

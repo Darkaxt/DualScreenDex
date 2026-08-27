@@ -15,11 +15,16 @@ import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import com.darkaxt.dualdex.live.ResolvedStateTraceSink
 import com.darkaxt.dualdex.performance.AndroidPerformanceLog
 import com.darkaxt.dualdex.performance.AndroidPerformanceSampler
+import com.darkaxt.dualdex.performance.AndroidPreviousProcessExitSource
 import com.darkaxt.dualdex.performance.BoundedPerformanceWorkDispatcher
 import com.darkaxt.dualdex.performance.PerformanceComponentMetrics
 import com.darkaxt.dualdex.performance.PerformanceEventSink
 import com.darkaxt.dualdex.performance.PerformanceEventKind
 import com.darkaxt.dualdex.performance.PerformanceRecorder
+import com.darkaxt.dualdex.performance.PreviousProcessExitRecorder
+import com.darkaxt.dualdex.performance.PreviousProcessExitSink
+import com.darkaxt.dualdex.performance.PrivacySafeDiagnostics
+import com.darkaxt.dualdex.performance.SharedPreferencesPreviousProcessExitMarker
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
@@ -153,6 +158,11 @@ open class DualDexApplication : Application() {
         val profilerLog = performanceLog ?: AndroidPerformanceLog(File(filesDir, "diagnostics")).also {
             performanceLog = it
         }
+        PreviousProcessExitRecorder(
+            source = AndroidPreviousProcessExitSource(this),
+            marker = SharedPreferencesPreviousProcessExitMarker(preferences),
+            sink = PreviousProcessExitSink(profilerLog::append),
+        ).recordLatest()
         val profilerDispatcher = performanceDispatcher ?: BoundedPerformanceWorkDispatcher().also {
             performanceDispatcher = it
         }
@@ -208,26 +218,24 @@ open class DualDexApplication : Application() {
         val saveSnapshots = SaveSnapshotStore(
             catalogDirectory,
             AndroidCatalogDatabaseFactory,
-            onCorruptSnapshot = { event ->
+            onCorruptSnapshot = {
                 Log.w(
                     SAVE_SNAPSHOT_LOG_TAG,
-                    "quarantined sha256Prefix=${event.romSha256Prefix} reason=${event.reason}",
+                    PrivacySafeDiagnostics.message(
+                        category = "SAVE_SNAPSHOT",
+                        outcome = "QUARANTINED",
+                    ),
                 )
             },
         )
         val cache = CatalogCache(catalogDirectory, AndroidCatalogDatabaseFactory) { event ->
-            val message = buildString {
-                append(event.decision.name)
-                append(" sha256=")
-                append(event.sha256)
-                event.failure?.let { failure ->
-                    append(" failure=")
-                    append(failure.javaClass.simpleName)
-                    failure.message?.takeIf(String::isNotBlank)?.let { append(": ").append(it) }
-                }
-            }
+            val message = PrivacySafeDiagnostics.message(
+                category = "CATALOG_CACHE",
+                outcome = event.decision.name,
+                failure = event.failure,
+            )
             if (event.decision == CatalogCacheDecision.REJECTED_EXCEPTION) {
-                Log.w(CACHE_LOG_TAG, message, event.failure)
+                Log.w(CACHE_LOG_TAG, message)
             } else {
                 Log.i(CACHE_LOG_TAG, message)
             }

@@ -53,8 +53,8 @@ class AndroidPerformanceLogTest {
         log.append(event(sessionId = "safe-session", elapsedMillis = 42L))
 
         val json = log.export().toString(Charsets.UTF_8)
-        assertTrue(json.contains("\"schemaVersion\":2"))
-        assertTrue(json.contains("\"romSha256Prefix\":\"aaaaaaaaaaaa\""))
+        assertTrue(json.contains("\"schemaVersion\":3"))
+        assertFalse(json.contains("romSha256", ignoreCase = true))
         assertFalse(json.contains("romPath", ignoreCase = true))
         assertFalse(json.contains("player", ignoreCase = true))
         assertFalse(json.contains("rawMemory", ignoreCase = true))
@@ -91,6 +91,27 @@ class AndroidPerformanceLogTest {
     }
 
     @Test
+    fun `previous process exit is locally exportable without raw platform detail`() {
+        val root = Files.createTempDirectory(Path.of("build"), "previous-exit-").also(roots::add).toFile()
+        val log = AndroidPerformanceLog(root)
+
+        log.append(
+            PreviousProcessExitEvent(
+                category = PreviousProcessExitCategory.ANR,
+                timestampBucket = 79_866,
+                memoryBucket = "64_TO_127_MIB",
+            ),
+        )
+
+        val json = log.export().toString(Charsets.UTF_8)
+        assertTrue(json.contains("\"category\":\"ANR\""))
+        assertTrue(json.contains("\"timestampBucket\":79866"))
+        assertTrue(json.contains("\"memoryBucket\":\"64_TO_127_MIB\""))
+        assertFalse(json.contains("description", ignoreCase = true))
+        assertFalse(json.contains("trace", ignoreCase = true))
+    }
+
+    @Test
     fun `failed rotation drops the new record instead of exceeding the segment bound`() {
         val root = Files.createTempDirectory(Path.of("build"), "performance-rotation-failure-").also(roots::add).toFile()
         val active = root.resolve(AndroidPerformanceLog.ACTIVE_FILE_NAME)
@@ -113,7 +134,6 @@ class AndroidPerformanceLogTest {
         wallClockEpochMillis = 1_725_000_000_000L + elapsedMillis,
         elapsedMillis = elapsedMillis,
         kind = PerformanceEventKind.RUNTIME_MINUTE,
-        romSha256Prefix = "aaaaaaaaaaaa",
         generation = 3,
         runtimeMinute = elapsedMillis,
         metrics = PerformanceMetrics(javaHeapUsedBytes = 10L),
@@ -122,7 +142,6 @@ class AndroidPerformanceLogTest {
     private fun stateTrace(revision: Long) = ResolvedStateTraceEvent(
         revision = revision,
         trigger = ResolvedStateTraceTrigger.LIVE_SAMPLE,
-        romSha256Prefix = "aaaaaaaaaaaa",
         generation = 3,
         sampleId = revision,
         recoveryApplicationId = 2,
@@ -131,8 +150,8 @@ class AndroidPerformanceLogTest {
         fields = listOf(
             ResolvedStateFieldChange(
                 field = "pokedex.caught",
-                before = ResolvedStateFieldTrace(ResolvedValueSource.RECOVERY, true, count = 52, fingerprint = "old"),
-                after = ResolvedStateFieldTrace(ResolvedValueSource.LIVE, true, count = 1, fingerprint = "new"),
+                before = ResolvedStateFieldTrace(ResolvedValueSource.RECOVERY, true, count = 52),
+                after = ResolvedStateFieldTrace(ResolvedValueSource.LIVE, true, count = 1),
             ),
         ),
     )

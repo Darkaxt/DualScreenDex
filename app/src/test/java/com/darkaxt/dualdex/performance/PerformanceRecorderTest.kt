@@ -6,7 +6,9 @@ import com.darkaxt.dualdex.live.ResolvedStateFieldTrace
 import com.darkaxt.dualdex.live.ResolvedStateTraceEvent
 import com.darkaxt.dualdex.live.ResolvedStateTraceTrigger
 import com.darkaxt.dualdex.live.ResolvedValueSource
+import com.google.gson.Gson
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,7 +39,7 @@ class PerformanceRecorderTest {
         assertEquals(trace, events.last().stateChange)
         assertEquals(PerformanceMetrics(), events.last().metrics)
         assertEquals("state-session", events.last().sessionId)
-        assertEquals("aaaaaaaaaaaa", events.last().romSha256Prefix)
+        assertFalse(Gson().toJson(events.last()).contains("aaaaaaaaaaaa"))
     }
 
     @Test
@@ -104,7 +106,7 @@ class PerformanceRecorderTest {
             ),
             events.map(PerformanceEvent::kind),
         )
-        assertEquals("aaaaaaaaaaaa", events.first().romSha256Prefix)
+        assertFalse(Gson().toJson(events).contains("aaaaaaaaaaaa"))
         assertEquals("MISS_FILE_ABSENT", events[1].cacheDecision)
         assertEquals("ROM_IDENTITY", events[2].stage)
         assertEquals(7L, events[2].stageElapsedMillis)
@@ -160,7 +162,6 @@ class PerformanceRecorderTest {
     private fun stateTrace() = ResolvedStateTraceEvent(
         revision = 7,
         trigger = ResolvedStateTraceTrigger.LIVE_SAMPLE,
-        romSha256Prefix = "aaaaaaaaaaaa",
         generation = 3,
         sampleId = 14,
         recoveryApplicationId = 2,
@@ -169,8 +170,8 @@ class PerformanceRecorderTest {
         fields = listOf(
             ResolvedStateFieldChange(
                 field = "pokedex.caught",
-                before = ResolvedStateFieldTrace(ResolvedValueSource.RECOVERY, true, count = 52, fingerprint = "old"),
-                after = ResolvedStateFieldTrace(ResolvedValueSource.LIVE, true, count = 1, fingerprint = "new"),
+                before = ResolvedStateFieldTrace(ResolvedValueSource.RECOVERY, true, count = 52),
+                after = ResolvedStateFieldTrace(ResolvedValueSource.LIVE, true, count = 1),
             ),
         ),
     )
