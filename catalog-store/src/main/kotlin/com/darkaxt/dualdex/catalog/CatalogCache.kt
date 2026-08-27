@@ -45,8 +45,11 @@ class CatalogCache(
 
     @Synchronized
     override fun write(catalog: ParsedCatalog, source: CatalogSourceMetadata, progress: CatalogWriteProgress) {
-        databaseFactory.open(fileFor(catalog.romSha256)).use { database ->
-            CatalogWriter(database).write(catalog, source, progress)
+        val file = fileFor(catalog.romSha256)
+        CanonicalDatabaseWriteCoordinator.write(file) {
+            databaseFactory.open(file).use { database ->
+                CatalogWriter(database).write(catalog, source, progress)
+            }
         }
     }
 

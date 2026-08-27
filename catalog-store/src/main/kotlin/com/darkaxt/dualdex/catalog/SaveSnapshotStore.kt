@@ -10,6 +10,11 @@ data class StoredSaveSnapshot(
     val refreshedAtEpochMs: Long,
 )
 
+data class SaveSnapshotCorruption(
+    val romSha256Prefix: String,
+    val reason: String,
+)
+
 interface SaveSnapshotRepository {
     fun write(snapshot: SaveSnapshot, sourceLastModifiedEpochMs: Long, refreshedAtEpochMs: Long)
     fun read(romSha256: String): StoredSaveSnapshot?
@@ -19,6 +24,7 @@ class SaveSnapshotStore(
     private val catalogDirectory: File,
     private val databaseFactory: CatalogDatabaseFactory,
     private val gson: Gson = Gson(),
+    private val onCorruptSnapshot: (SaveSnapshotCorruption) -> Unit = {},
 ) : SaveSnapshotRepository {
     private val snapshotDirectory = File(catalogDirectory, SNAPSHOT_DIRECTORY)
 
@@ -60,20 +66,76 @@ class SaveSnapshotStore(
         if (!file.isFile) return null
         return databaseFactory.open(file).use { database ->
             SaveSnapshotMigration.prepare(database)
-            database.query(
+            val record = database.query(
                 """
-                SELECT rom_sha256, payload_json, source_last_modified_epoch_ms, refreshed_at_epoch_ms
+                SELECT rom_sha256, save_identity, save_schema_id, payload_json,
+                       source_last_modified_epoch_ms, refreshed_at_epoch_ms
                 FROM save_snapshot WHERE id = 1
                 """.trimIndent(),
             ) { row ->
-                val storedHash = requireNotNull(row.string("rom_sha256"))
-                require(storedHash.equals(normalizedSha, ignoreCase = true)) { "SaveRAM snapshot belongs to another ROM" }
-                StoredSaveSnapshot(
-                    snapshot = gson.fromJson(requireNotNull(row.string("payload_json")), SaveSnapshot::class.java),
+                SnapshotRecord(
+                    romSha256 = requireNotNull(row.string("rom_sha256")),
+                    saveIdentity = requireNotNull(row.string("save_identity")),
+                    saveSchemaId = requireNotNull(row.string("save_schema_id")),
+                    payloadJson = requireNotNull(row.string("payload_json")),
                     sourceLastModifiedEpochMs = requireNotNull(row.long("source_last_modified_epoch_ms")),
                     refreshedAtEpochMs = requireNotNull(row.long("refreshed_at_epoch_ms")),
                 )
-            }.singleOrNull()
+            }.singleOrNull() ?: return@use null
+            try {
+                decode(normalizedSha, record)
+            } catch (failure: CorruptSnapshotPayloadException) {
+                database.transaction {
+                    database.execute("DELETE FROM save_snapshot WHERE id = 1")
+                }
+                reportCorruption(normalizedSha, failure)
+                null
+            }
+        }
+    }
+
+    private fun decode(
+        requestedSha: String,
+        record: SnapshotRecord,
+    ): StoredSaveSnapshot = try {
+        require(record.romSha256.equals(requestedSha, ignoreCase = true)) {
+            "SaveRAM snapshot belongs to another ROM"
+        }
+        val snapshot = requireNotNull(
+            gson.fromJson(record.payloadJson, SaveSnapshot::class.java),
+        ) { "SaveRAM snapshot payload is null" }
+        require(snapshot.romIdentity.equals(requestedSha, ignoreCase = true)) {
+            "SaveRAM snapshot payload belongs to another ROM"
+        }
+        require(snapshot.saveIdentity == record.saveIdentity) {
+            "SaveRAM snapshot identity metadata does not match its payload"
+        }
+        require(snapshot.schemaId == record.saveSchemaId) {
+            "SaveRAM snapshot schema metadata does not match its payload"
+        }
+        StoredSaveSnapshot(
+            snapshot = snapshot,
+            sourceLastModifiedEpochMs = record.sourceLastModifiedEpochMs,
+            refreshedAtEpochMs = record.refreshedAtEpochMs,
+        )
+    } catch (failure: Exception) {
+        throw CorruptSnapshotPayloadException(failure)
+    }
+
+    private fun reportCorruption(
+        romSha256: String,
+        failure: CorruptSnapshotPayloadException,
+    ) {
+        val reason = failure.cause?.javaClass?.simpleName
+            ?.take(MAX_DIAGNOSTIC_REASON_LENGTH)
+            .orEmpty()
+        runCatching {
+            onCorruptSnapshot(
+                SaveSnapshotCorruption(
+                    romSha256Prefix = romSha256.take(DIAGNOSTIC_HASH_PREFIX_LENGTH),
+                    reason = reason,
+                ),
+            )
         }
     }
 
@@ -116,25 +178,28 @@ class SaveSnapshotStore(
 
     private fun writeRecord(record: SnapshotRecord) {
         requireHash(record.romSha256)
-        databaseFactory.open(fileFor(record.romSha256)).use { database ->
-            SaveSnapshotMigration.prepare(database)
-            database.transaction {
-                database.execute(
-                    """
-                    INSERT OR REPLACE INTO save_snapshot (
-                        id, rom_sha256, save_identity, save_schema_id, payload_json,
-                        source_last_modified_epoch_ms, refreshed_at_epoch_ms
-                    ) VALUES (1, ?, ?, ?, ?, ?, ?)
-                    """.trimIndent(),
-                    listOf(
-                        record.romSha256.lowercase(),
-                        record.saveIdentity,
-                        record.saveSchemaId,
-                        record.payloadJson,
-                        record.sourceLastModifiedEpochMs,
-                        record.refreshedAtEpochMs,
-                    ),
-                )
+        val file = fileFor(record.romSha256)
+        CanonicalDatabaseWriteCoordinator.write(file) {
+            databaseFactory.open(file).use { database ->
+                SaveSnapshotMigration.prepare(database)
+                database.transaction {
+                    database.execute(
+                        """
+                        INSERT OR REPLACE INTO save_snapshot (
+                            id, rom_sha256, save_identity, save_schema_id, payload_json,
+                            source_last_modified_epoch_ms, refreshed_at_epoch_ms
+                        ) VALUES (1, ?, ?, ?, ?, ?, ?)
+                        """.trimIndent(),
+                        listOf(
+                            record.romSha256.lowercase(),
+                            record.saveIdentity,
+                            record.saveSchemaId,
+                            record.payloadJson,
+                            record.sourceLastModifiedEpochMs,
+                            record.refreshedAtEpochMs,
+                        ),
+                    )
+                }
             }
         }
     }
@@ -156,8 +221,14 @@ class SaveSnapshotStore(
         val refreshedAtEpochMs: Long,
     )
 
+    private class CorruptSnapshotPayloadException(
+        cause: Exception,
+    ) : Exception(cause)
+
     private companion object {
         const val SNAPSHOT_DIRECTORY = "save-snapshots"
+        const val DIAGNOSTIC_HASH_PREFIX_LENGTH = 12
+        const val MAX_DIAGNOSTIC_REASON_LENGTH = 64
         val LEGACY_CATALOG_FILE = Regex("[0-9a-fA-F]{64}\\.sqlite")
     }
 }

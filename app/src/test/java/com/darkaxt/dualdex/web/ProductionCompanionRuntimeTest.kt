@@ -1771,6 +1771,48 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun checkpointPersistenceFailureDoesNotSuppressAValidInMemoryCatalog() {
+        listOf<Throwable>(
+            IllegalStateException("disk unavailable"),
+            OutOfMemoryError("checkpoint allocation failed"),
+        ).forEach { failure ->
+            val incoming = ParsedCatalog("b".repeat(64), EngineFamily.EMERALD, Platform.GBA)
+            val repository = RecordingCatalogRepository(writeFailure = failure)
+            val runtime = ProductionCompanionRuntime(
+                parserWorker = ImmediateExecutorService(),
+                catalogRepository = repository,
+                parseCatalog = { _, checkpoint, _ ->
+                    checkpoint(
+                        CatalogMaterializationProgress(
+                            CatalogMaterializationPhase.ESSENTIAL,
+                            1,
+                            2,
+                            incoming,
+                        ),
+                    )
+                    checkpoint(
+                        CatalogMaterializationProgress(
+                            CatalogMaterializationPhase.COMPLETE,
+                            2,
+                            2,
+                            incoming,
+                        ),
+                    )
+                    incoming
+                },
+            )
+
+            runtime.load("incoming.gba", RomImage(ByteArray(0xC0)))
+
+            assertEquals(1, repository.writeCalls)
+            assertTrue(runtime.gateway.bootstrap().catalogReady)
+            assertEquals(incoming.romSha256, runtime.catalogHash())
+            assertNull(repository.readComplete(incoming.romSha256))
+            runtime.close()
+        }
+    }
+
+    @Test
     fun progressiveParsePublishesTheCurrentCatalogModule() {
         val incoming = ParsedCatalog("b".repeat(64), EngineFamily.EMERALD, Platform.GBA)
         val executor = HoldingExecutorService()
@@ -3179,6 +3221,7 @@ class ProductionCompanionRuntimeTest {
 
     private class RecordingCatalogRepository(
         private val decision: CatalogCacheDecision = CatalogCacheDecision.MISS_FILE_ABSENT,
+        private val writeFailure: Throwable? = null,
     ) : CatalogRepository {
         var writeCalls = 0
 
@@ -3188,6 +3231,7 @@ class ProductionCompanionRuntimeTest {
             progress: CatalogWriteProgress,
         ) {
             writeCalls++
+            writeFailure?.let { throw it }
         }
 
         override fun readComplete(sha256: String): StoredCatalog? = null

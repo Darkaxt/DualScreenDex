@@ -1,7 +1,7 @@
 package com.darkaxt.dualdex.save
 
-import com.darkaxt.dualdex.catalog.StoredSaveSnapshot
 import com.darkaxt.dualdex.catalog.SaveSnapshotRepository
+import com.darkaxt.dualdex.catalog.StoredSaveSnapshot
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveParseResult
 import com.darkaxt.dualdex.save.SaveSnapshot
@@ -100,6 +100,30 @@ class SavePollingMonitorTest {
         assertEquals(3L, failed.retained?.snapshot?.saveCounter)
         assertEquals(1, repository.writes)
         assertEquals("UNVERIFIED", failed.autosaveStatus)
+    }
+
+    @Test
+    fun validCandidateMatchesAfterACorruptRetainedSnapshotWasQuarantined() {
+        val repository = FakeSnapshots()
+        val monitor = SavePollingMonitor(
+            FakeAssociations(),
+            repository,
+            parser = { _, parseContext ->
+                SaveParseResult.Parsed(snapshot(parseContext.romIdentity, 12))
+            },
+            clock = { 950L },
+        )
+
+        val result = monitor.poll(
+            context,
+            listOf(source("current", 300, byteArrayOf(1, 2, 3))),
+            "VERIFIED",
+        )
+
+        assertEquals(SaveMonitorStatus.MATCHED, result.status)
+        assertEquals(12L, result.snapshot?.saveCounter)
+        assertEquals(1, repository.writes)
+        assertEquals(12L, repository.read(context.romIdentity)?.snapshot?.saveCounter)
     }
 
     @Test

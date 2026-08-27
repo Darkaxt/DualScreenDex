@@ -11,6 +11,7 @@ import java.nio.file.Files
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -134,6 +135,89 @@ class SaveSnapshotStoreTest {
 
             assertNull(CatalogCache(directory, JdbcCatalogDatabaseFactory).readComplete(romHash))
             assertEquals(snapshot, store.read(romHash)?.snapshot)
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun malformedSnapshotIsQuarantinedWithoutRemovingTheStore() {
+        val directory = Files.createTempDirectory("dualdex-save-store-malformed").toFile()
+        try {
+            val romHash = "f".repeat(64)
+            val diagnostics = mutableListOf<SaveSnapshotCorruption>()
+            val store = SaveSnapshotStore(
+                directory,
+                JdbcCatalogDatabaseFactory,
+                onCorruptSnapshot = diagnostics::add,
+            )
+            store.write(
+                fixture(romHash, counter = 10, species = 25),
+                sourceLastModifiedEpochMs = 1_400,
+                refreshedAtEpochMs = 1_500,
+            )
+            val databaseFile = directory.resolve("save-snapshots/$romHash.sqlite")
+            JdbcCatalogDatabaseFactory.open(databaseFile).use { database ->
+                database.execute(
+                    "UPDATE save_snapshot SET payload_json = ? WHERE id = 1",
+                    listOf("{"),
+                )
+            }
+
+            assertNull(store.read(romHash))
+            assertEquals(
+                listOf(SaveSnapshotCorruption("f".repeat(12), "JsonSyntaxException")),
+                diagnostics,
+            )
+            assertTrue(databaseFile.isFile)
+            JdbcCatalogDatabaseFactory.open(databaseFile).use { database ->
+                assertEquals(
+                    listOf(0L),
+                    database.query("SELECT COUNT(*) AS count FROM save_snapshot") { row ->
+                        requireNotNull(row.long("count"))
+                    },
+                )
+            }
+
+            val replacement = fixture(romHash, counter = 11, species = 133)
+            store.write(
+                replacement,
+                sourceLastModifiedEpochMs = 1_600,
+                refreshedAtEpochMs = 1_700,
+            )
+            assertEquals(replacement, store.read(romHash)?.snapshot)
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun snapshotSchemaFailureIsNotMisclassifiedAsPayloadCorruption() {
+        val directory = Files.createTempDirectory("dualdex-save-store-schema").toFile()
+        try {
+            val romHash = "9".repeat(64)
+            val expected = fixture(romHash, counter = 12, species = 150)
+            val store = SaveSnapshotStore(directory, JdbcCatalogDatabaseFactory)
+            store.write(expected, sourceLastModifiedEpochMs = 1_800, refreshedAtEpochMs = 1_900)
+            val databaseFile = directory.resolve("save-snapshots/$romHash.sqlite")
+            JdbcCatalogDatabaseFactory.open(databaseFile).use { database ->
+                database.execute("PRAGMA user_version = 999")
+            }
+
+            assertThrows(IllegalArgumentException::class.java) {
+                store.read(romHash)
+            }
+
+            JdbcCatalogDatabaseFactory.open(databaseFile).use { database ->
+                assertEquals(
+                    listOf(1L),
+                    database.query("SELECT COUNT(*) AS count FROM save_snapshot") { row ->
+                        requireNotNull(row.long("count"))
+                    },
+                )
+                database.execute("PRAGMA user_version = ${SaveSnapshotSchema.version}")
+            }
+            assertEquals(expected, store.read(romHash)?.snapshot)
         } finally {
             directory.deleteRecursively()
         }

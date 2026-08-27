@@ -140,6 +140,8 @@ private fun AreaGuideProjection.retainedItemCount(): Int = guide.areas.sumOf { a
         area.objectives.size
 }
 
+private const val CHECKPOINT_WRITE_FAILED = "CHECKPOINT_WRITE_FAILED"
+
 /** Production ROM catalog runtime. It deliberately has no simulator dependency or battle generator. */
 class ProductionCompanionRuntime(
     private val parserWorker: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
@@ -180,6 +182,7 @@ class ProductionCompanionRuntime(
     private var catalog: ParsedCatalog? = null
     @Volatile private var settingsRomSha256: String? = null
     @Volatile private var settingsWritesEnabled = true
+    @Volatile private var checkpointWritesEnabled = true
     @Volatile private var retroArch = RetroArchView()
     @Volatile private var saveRam = SaveRamView()
     @Volatile private var catalogLoadingMessage: String? = null
@@ -1346,12 +1349,25 @@ class ProductionCompanionRuntime(
         progress: CatalogMaterializationProgress,
         source: CatalogSourceMetadata,
     ) {
-        if (generation != loadGeneration.get()) return
-        catalogRepository?.write(
-            progress.catalog,
-            source,
-            catalogWriteProgress(progress),
-        )
+        if (generation != loadGeneration.get() || !checkpointWritesEnabled) return
+        try {
+            catalogRepository?.write(
+                progress.catalog,
+                source,
+                catalogWriteProgress(progress),
+            )
+        } catch (_: OutOfMemoryError) {
+            disableCheckpointWrites()
+        } catch (_: Exception) {
+            disableCheckpointWrites()
+        }
+    }
+
+    private fun disableCheckpointWrites() {
+        checkpointWritesEnabled = false
+        runCatching {
+            performanceRecorder.cacheDecision(CHECKPOINT_WRITE_FAILED)
+        }
     }
 
     @Synchronized
@@ -1437,6 +1453,7 @@ class ProductionCompanionRuntime(
         lastRecoveryApplicationId = null
         settingsRomSha256 = null
         settingsWritesEnabled = false
+        checkpointWritesEnabled = true
         clearLevelUpRulesetDetection()
         gateway.dispatch(
             CompanionAction.CatalogLoadingChanged(

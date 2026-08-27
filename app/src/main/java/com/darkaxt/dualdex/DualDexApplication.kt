@@ -205,7 +205,16 @@ open class DualDexApplication : Application() {
             ),
         )
         val catalogDirectory = File(filesDir, "catalogs")
-        val saveSnapshots = SaveSnapshotStore(catalogDirectory, AndroidCatalogDatabaseFactory)
+        val saveSnapshots = SaveSnapshotStore(
+            catalogDirectory,
+            AndroidCatalogDatabaseFactory,
+            onCorruptSnapshot = { event ->
+                Log.w(
+                    SAVE_SNAPSHOT_LOG_TAG,
+                    "quarantined sha256Prefix=${event.romSha256Prefix} reason=${event.reason}",
+                )
+            },
+        )
         val cache = CatalogCache(catalogDirectory, AndroidCatalogDatabaseFactory) { event ->
             val message = buildString {
                 append(event.decision.name)
@@ -338,6 +347,7 @@ open class DualDexApplication : Application() {
 
     private companion object {
         const val CACHE_LOG_TAG = "DualDexCache"
+        const val SAVE_SNAPSHOT_LOG_TAG = "DualDexSave"
         const val PERFORMANCE_LOG_TAG = "DualDexPerf"
         const val STATE_LOG_TAG = "DualDexState"
         const val PREFERENCES_NAME = "dualdex-runtime"
