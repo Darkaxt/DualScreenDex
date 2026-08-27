@@ -213,6 +213,7 @@ class ProductionCompanionRuntime(
     private val areaGuideProjections = AtomicLong()
     private val areaGuideProjectionCpuNanos = AtomicLong()
     private val areaGuideRetainedItems = AtomicLong()
+    private val damageForecastMemoizer = DamageForecastMemoizer()
     private val progressSemanticEvaluations = AtomicLong()
     private val progressSemanticCpuNanos = AtomicLong()
     private val progressEvents = AtomicLong()
@@ -938,6 +939,12 @@ class ProductionCompanionRuntime(
                 moveHistory = ledger.observedMoves[opponent.speciesId].orEmpty(),
             )
         }
+        val forecastInput = DamageForecastAssembler.input(
+            sample = sample,
+            catalog = currentCatalog,
+            knowledgeMode = gateway.bootstrap().settings.knowledgeMode,
+            formula = DamageFormulaPolicy.resolve(currentCatalog),
+        )
         return BattleState(
             opponents = opponents,
             targetIndex = sample.target.opponentIndex.coerceIn(0, (opponents.size - 1).coerceAtLeast(0)),
@@ -975,6 +982,7 @@ class ProductionCompanionRuntime(
                 )
                 assessment.innateTier != null && assessment.stars != null
             } ?: false,
+            damageForecast = damageForecastMemoizer.forecast(forecastInput),
         )
     }
 
@@ -1218,6 +1226,9 @@ class ProductionCompanionRuntime(
             "areaGuide.projections" to areaGuideProjections.get(),
             "areaGuide.projectionCpuNanos" to areaGuideProjectionCpuNanos.get(),
             "areaGuide.retainedItems" to areaGuideRetainedItems.get(),
+            "damageForecast.recomputations" to damageForecastMemoizer.recomputationCount,
+            "damageForecast.cpuNanos" to damageForecastMemoizer.calculationCpuNanos,
+            "damageForecast.retainedInputs" to damageForecastMemoizer.retainedInputCount,
             "progress.semanticEvaluations" to progressSemanticEvaluations.get(),
             "progress.semanticCpuNanos" to progressSemanticCpuNanos.get(),
             "progress.events" to progressEvents.get(),
@@ -1589,6 +1600,7 @@ class ProductionCompanionRuntime(
     private fun clearCatalogProjectionCaches() {
         cachedSaveParseContext = null
         cachedBattleCatalogContext = null
+        damageForecastMemoizer.clear()
     }
 
 }

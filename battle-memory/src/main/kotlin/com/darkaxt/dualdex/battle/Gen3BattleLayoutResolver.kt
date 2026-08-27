@@ -127,6 +127,13 @@ class Gen3BattleLayoutResolver {
             typeIds = typeIds,
             abilityId = abilityId,
             personality = bytes.u32(offset + PERSONALITY_OFFSET),
+            attack = stats[0],
+            defense = stats[1],
+            speed = stats[2],
+            specialAttack = stats[3],
+            specialDefense = stats[4],
+            status = bytes.u32(offset + STATUS_OFFSET),
+            heldItemId = bytes.u16(offset + ITEM_OFFSET).takeIf { it != 0 },
         )
     }
 
@@ -166,6 +173,8 @@ class Gen3BattleLayoutResolver {
         private const val HP_OFFSET = 0x28
         private const val LEVEL_OFFSET = 0x2A
         private const val MAX_HP_OFFSET = 0x2C
+        private const val ITEM_OFFSET = 0x2E
         private const val PERSONALITY_OFFSET = 0x48
+        private const val STATUS_OFFSET = 0x50
     }
 }

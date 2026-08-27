@@ -207,6 +207,8 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
     "dualdex-progress-timeline-audit.md",
     "dualdex-specimens-compatibility.json",
     "dualdex-specimens-audit.md",
+    "dualdex-damage-forecast-compatibility.json",
+    "dualdex-damage-forecast-audit.md",
     "dualdex-storage-guide-load-hardening.md",
     "dualdex-save-synchronized-knowledge-checkpoints.md",
   ];

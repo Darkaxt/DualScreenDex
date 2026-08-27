@@ -931,7 +931,7 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun `revision 34 caches are invalidated so GB map scenes and trainer assets are rebuilt`() {
+    fun `revision 34 catalogs are invalidated so GB map scenes and trainer assets are rebuilt`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("d".repeat(64))

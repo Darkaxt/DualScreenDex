@@ -362,6 +362,7 @@ export interface State {
     encounterKind: 'WILD' | 'TRAINER' | 'UNKNOWN';
     effectiveness: string | null;
     effectivenessKnown: boolean;
+    damageForecast?: DamageForecast | null;
   };
   catalogReady: boolean;
   catalogName: string | null;
@@ -381,6 +382,20 @@ export interface GameTime {
   minutes: number | null;
   phase?: MapLighting | null;
   phaseProgress?: number | null;
+}
+
+export interface DamageForecast {
+  confidence: 'EXACT' | 'BOUNDED';
+  minimumHp: number;
+  maximumHp: number;
+  minimumTargetPercent: number;
+  maximumTargetPercent: number;
+  minimumHitsToKnockOut: number;
+  maximumHitsToKnockOut: number;
+  accuracyPercent: number;
+  effectivenessPercent: number;
+  conditions: string[];
+  uncertainty: string | null;
 }
 
 export interface TrainerView {

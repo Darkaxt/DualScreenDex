@@ -562,10 +562,10 @@ Pop-Location
 - Create: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/battle/DamageForecast.kt`
 - Create: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/battle/DamageForecastModelsTest.kt`
 
-- [ ] **Step 1: Add RED model tests for exact, bounded, and absent outcomes.**
-- [ ] **Step 2: Define one immutable input containing formula evidence, attacker, target, move, field state, type chart, and proven modifiers.**
-- [ ] **Step 3: Require explicit semantic evidence for every admitted mechanic; absence must withhold or safely bound the result.**
-- [ ] **Step 4: Run GREEN and commit.**
+- [x] **Step 1: Add RED model tests for exact, bounded, and absent outcomes.**
+- [x] **Step 2: Define one immutable input containing formula evidence, attacker, target, move, field state, type chart, and proven modifiers.**
+- [x] **Step 3: Require explicit semantic evidence for every admitted mechanic; absence must withhold or safely bound the result.**
+- [x] **Step 4: Run GREEN and commit.**
 
 ### Task 5.2: Implement official formula families and mutation rejection
 
@@ -575,10 +575,10 @@ Pop-Location
 - Create: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/battle/DamageForecastCalculatorTest.kt`
 - Create: `companion-core/src/test/kotlin/com/enrpau/dualscreendex/companion/battle/DamageForecastRealControlTest.kt`
 
-- [ ] **Step 1: Add RED golden tests for official Gen I, II, and III real ROM-derived move/type inputs.**
-- [ ] **Step 2: Independently cover physical/special rules, STAB, effectiveness, random factor, status, critical, weather, multi-hit, fixed damage, immunity, ability, and item paths where proven.**
-- [ ] **Step 3: Add source-backed Modern Emerald, Unbound, and Odyssey mutation controls that reject altered or unknown semantics rather than applying retail rules.**
-- [ ] **Step 4: Implement integer-accurate calculation and bounded uncertainty; run GREEN and commit.**
+- [x] **Step 1: Add RED golden tests for official Gen I, II, and III real ROM-derived move/type inputs.**
+- [x] **Step 2: Independently cover physical/special rules, STAB, effectiveness, random factor, status, critical, weather, multi-hit, fixed damage, immunity, ability, and item paths where proven.**
+- [x] **Step 3: Add source-backed Modern Emerald, Unbound, and Odyssey mutation controls that reject altered or unknown semantics rather than applying retail rules.**
+- [x] **Step 4: Implement integer-accurate calculation and bounded uncertainty; run GREEN and commit.**
 
 ### Task 5.3: Assemble forecast input from the unified live snapshot
 
@@ -590,11 +590,11 @@ Pop-Location
 - Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/model/AppModels.kt`
 - Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/api/ApiModels.kt`
 
-- [ ] **Step 1: Add RED tests for selected move, resolved double-battle command owner, automatic/manual target, attacker/target changes, and late stable updates.**
-- [ ] **Step 2: Add only missing live fields to the existing bounded read plan.**
-- [ ] **Step 3: Memoize by immutable forecast-input equality; no recalculation occurs on irrelevant polling samples.**
-- [ ] **Step 4: Preserve Organic opponent privacy and omit forecasts when hidden ability/state can make the result misleading.**
-- [ ] **Step 5: Run GREEN and commit.**
+- [x] **Step 1: Add RED tests for selected move, resolved double-battle command owner, automatic/manual target, attacker/target changes, and late stable updates.**
+- [x] **Step 2: Add only missing live fields to the existing bounded read plan.**
+- [x] **Step 3: Memoize by immutable forecast-input equality; no recalculation occurs on irrelevant polling samples.**
+- [x] **Step 4: Preserve Organic opponent privacy and omit forecasts when hidden ability/state can make the result misleading.**
+- [x] **Step 5: Run GREEN and commit.**
 
 ### Task 5.4: Integrate the forecast into Battle Attack
 
@@ -606,11 +606,11 @@ Pop-Location
 - Modify: `companion-web/src/styles.css`
 - Modify: `companion-web/src/layoutStyles.test.ts`
 
-- [ ] **Step 1: Add RED tests for exact, bounded, and absent presentation in the selected-move Attack panel.**
-- [ ] **Step 2: Show HP range, target-HP percentage, hit range to knock out, accuracy, effectiveness, and only active player-visible conditions.**
-- [ ] **Step 3: Keep existing move metadata/effectiveness when the forecast is absent and show no technical error panel.**
-- [ ] **Step 4: Assert no mechanic IDs, THUMB provenance, pointer/source labels, or capability codes reach ordinary UI.**
-- [ ] **Step 5: Run browser tests/build GREEN and commit.**
+- [x] **Step 1: Add RED tests for exact, bounded, and absent presentation in the selected-move Attack panel.**
+- [x] **Step 2: Show HP range, target-HP percentage, hit range to knock out, accuracy, effectiveness, and only active player-visible conditions.**
+- [x] **Step 3: Keep existing move metadata/effectiveness when the forecast is absent and show no technical error panel.**
+- [x] **Step 4: Assert no mechanic IDs, THUMB provenance, pointer/source labels, or capability codes reach ordinary UI.**
+- [x] **Step 5: Run browser tests/build GREEN and commit.**
 
 ### Task 5.5: Profile, audit, and release Damage Forecast
 
@@ -623,9 +623,9 @@ Pop-Location
 - Modify: existing performance collector/tests.
 - Modify at release gate only: release readiness/workflow files.
 
-- [ ] **Step 1: Report numeric exact, bounded, absent, `NOT_FOUND`, `NOT_APPLICABLE`, and `ERROR` outcomes by required mechanic for every control.**
-- [ ] **Step 2: Prove no duplicate memory read, polling loop, stale attacker/target flicker, or sustained render loop.**
-- [ ] **Step 3: Compare Sections 3, 10, 12, 14, 15, and 17; fix every blocker/error.**
+- [x] **Step 1: Report numeric exact, bounded, absent, `NOT_FOUND`, `NOT_APPLICABLE`, and `ERROR` outcomes by required mechanic for every control.**
+- [x] **Step 2: Prove no duplicate memory read, polling loop, stale attacker/target flicker, or sustained render loop.**
+- [x] **Step 3: Compare Sections 3, 10, 12, 14, 15, and 17; fix every blocker/error.**
 - [ ] **Step 4: Run all affected suites, commit the complete feature/audit, then discover and publish exactly one next numeric RC. Do not install it.**
 
 ---
@@ -726,7 +726,7 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 - Modify: `companion-web/src/layoutStyles.test.ts`
 
 - [ ] **Step 1: Add RED component and layout tests for shared header/separator, page/paper/grid/panel surfaces, card geometry, semantic typography tiers, controls, icons, focus, and touch targets.**
-- [ ] **Step 2: Replace the Trainer `CARD`/`PROGRESS` full-width destination row with compact theme-consistent top-right icon buttons; leave at most one horizontal Progress section row and preserve selection, accessibility, and Back-stack state.**
+- [ ] **Step 2: Replace the Trainer `CARD`/`PROGRESS` full-width destination row with compact theme-consistent top-right icon buttons: retain the established card icon for Trainer Card and use the conventional trophy icon for Challenges/Progress; leave at most one horizontal Progress section row and preserve selection, accessibility, and Back-stack state.**
 - [ ] **Step 3: Remove route-local legacy olive/forest, fixed yellow/white, one-off font, missing-pattern, and mismatched shadow/border rules by consuming shared tokens and primitives. Do not change feature semantics, data authority, disclosure, map behavior, or calculations.**
 - [ ] **Step 4: Normalize spacing, vertical centering, content use, icon containers, empty/unavailable states, and exactly one intentional scroll owner per route at every required font scale.**
 - [ ] **Step 5: Run component, navigation, and layout suites GREEN; commit by coherent visual contract rather than page-by-page cosmetic churn.**

@@ -203,6 +203,13 @@ class Gen2BattleLayoutResolver {
             typeIds = typeIds,
             abilityId = 0,
             personality = 0,
+            attack = stats[0],
+            defense = stats[1],
+            speed = stats[2],
+            specialAttack = stats[3],
+            specialDefense = stats[4],
+            status = bytes.be16(STATUS_OFFSET + offset).toLong(),
+            heldItemId = bytes.u8(offset + ITEM_OFFSET).takeIf { it != 0 },
         )
     }
 
@@ -250,11 +257,13 @@ class Gen2BattleLayoutResolver {
         private const val DVS_OFFSET = 6
         private const val PP_OFFSET = 8
         private const val LEVEL_OFFSET = 13
+        private const val STATUS_OFFSET = 14
         private const val HP_OFFSET = 16
         private const val MAX_HP_OFFSET = 18
         private const val STATS_OFFSET = 20
         private const val TYPE1_OFFSET = 30
         private const val TYPE2_OFFSET = 31
+        private const val ITEM_OFFSET = 1
         private const val PP_MASK = 0x3f
     }
 }

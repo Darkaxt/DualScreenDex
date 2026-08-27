@@ -128,6 +128,11 @@ class Gen1BattleLayoutResolver {
         }
         val attackDefense = bytes.u8(offset + DVS_OFFSET)
         val speedSpecial = bytes.u8(offset + DVS_OFFSET + 1)
+        val attack = bytes.be16(offset + ATTACK_OFFSET)
+        val defense = bytes.be16(offset + DEFENSE_OFFSET)
+        val speed = bytes.be16(offset + SPEED_OFFSET)
+        val special = bytes.be16(offset + SPECIAL_OFFSET)
+        if (listOf(attack, defense, speed, special).any { it !in 1..999 }) return null
         return BattleMonSnapshot(
             battlerIndex = battlerIndex,
             position = position,
@@ -142,6 +147,12 @@ class Gen1BattleLayoutResolver {
             typeIds = typeIds,
             abilityId = 0,
             personality = 0,
+            attack = attack,
+            defense = defense,
+            speed = speed,
+            specialAttack = special,
+            specialDefense = special,
+            status = bytes.u8(offset + STATUS_OFFSET).toLong(),
         )
     }
 
@@ -179,6 +190,11 @@ class Gen1BattleLayoutResolver {
         private const val DVS_OFFSET = 12
         private const val LEVEL_OFFSET = 14
         private const val MAX_HP_OFFSET = 15
+        private const val ATTACK_OFFSET = 17
+        private const val DEFENSE_OFFSET = 19
+        private const val SPEED_OFFSET = 21
+        private const val SPECIAL_OFFSET = 23
+        private const val STATUS_OFFSET = 4
         private const val PP_OFFSET = 25
         private const val PP_MASK = 0x3f
     }

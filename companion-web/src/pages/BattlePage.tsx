@@ -46,8 +46,31 @@ function Attack({ catalog, move, state, openMove }: { catalog: Catalog; move?: M
   return <div class="attack-card">
     <div class="attack-heading"><div><small>SELECTED ATTACK</small><button class="move-link" onClick={() => openMove(move.id)}>{move.name}</button></div><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></div>
     <div class="move-metadata"><span><small>POWER</small><strong>{move.power ? move.power : '—'}</strong></span><span><small>PRECISION</small><strong>{move.accuracy ? `${move.accuracy}%` : '—'}</strong></span><span><small>PP</small><strong>{move.pp || '—'}</strong></span><span><small>CLASS</small><strong>{move.category ?? '—'}</strong></span></div>
+    {state.battle?.damageForecast && <DamageForecastPanel forecast={state.battle.damageForecast} />}
     <div class={`effect-result ${effectClass}`}><small>EFFECTIVENESS</small><strong>{effect}</strong></div>
   </div>;
+}
+
+function DamageForecastPanel({ forecast }: { forecast: NonNullable<NonNullable<State['battle']>['damageForecast']> }) {
+  return <section class="damage-forecast" aria-label="Damage forecast">
+    <div class="damage-forecast-grid">
+      <span><small>DAMAGE</small><strong>{formatIntegerRange(forecast.minimumHp, forecast.maximumHp)} HP</strong></span>
+      <span><small>OF TARGET HP</small><strong>{formatDecimalRange(forecast.minimumTargetPercent, forecast.maximumTargetPercent)}%</strong></span>
+      <span><small>TO KNOCK OUT</small><strong>{formatIntegerRange(forecast.minimumHitsToKnockOut, forecast.maximumHitsToKnockOut)} {forecast.maximumHitsToKnockOut === 1 ? 'hit' : 'hits'}</strong></span>
+      <span><small>HIT CHANCE</small><strong>{forecast.accuracyPercent}%</strong></span>
+    </div>
+    {forecast.conditions.length > 0 && <div class="damage-conditions">{forecast.conditions.map(condition => <span key={condition}>{condition}</span>)}</div>}
+    {forecast.confidence === 'BOUNDED' && forecast.uncertainty && <p class="damage-uncertainty">{forecast.uncertainty}</p>}
+  </section>;
+}
+
+function formatIntegerRange(minimum: number, maximum: number): string {
+  return minimum === maximum ? String(minimum) : `${minimum}–${maximum}`;
+}
+
+function formatDecimalRange(minimum: number, maximum: number): string {
+  const format = (value: number) => Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
+  return minimum === maximum ? format(minimum) : `${format(minimum)}–${format(maximum)}`;
 }
 
 export function RarityStars({ rarity }: { rarity: RarityModel }) {

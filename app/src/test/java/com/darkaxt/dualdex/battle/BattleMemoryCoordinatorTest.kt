@@ -1077,6 +1077,10 @@ class BattleMemoryCoordinatorTest {
         bytes[offset + 14] = level.toByte()
         bytes[offset + 15] = (hp ushr 8).toByte()
         bytes[offset + 16] = hp.toByte()
+        repeat(4) { index ->
+            bytes[offset + 17 + index * 2] = 0
+            bytes[offset + 18 + index * 2] = 10
+        }
         pp.forEachIndexed { index, value -> bytes[offset + 25 + index] = value.toByte() }
     }
 
