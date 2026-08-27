@@ -824,6 +824,7 @@ object ApiViewBuilder {
         partyAnalysis: PartyAnalysis? = null,
         areaGuideProjection: AreaGuideProjection? = null,
         trainerProgress: TrainerProgressView? = null,
+        version: Long = snapshot.version,
     ): StateView {
         val effectiveAreaBaseId = snapshot.liveAreaBaseId
         val encounterAreasById = catalog?.encounterAreas.orEmpty().associateBy { it.id }
@@ -917,7 +918,7 @@ object ApiViewBuilder {
         val trainerMapSpriteKey = trainerMapSpriteAssetKey(snapshot, catalog)
         val trainerMapSprite = trainerMapSpriteKey?.let { catalog?.trainerAssets?.assets?.get(it) }
         return StateView(
-            snapshot.version,
+            version,
             snapshot.screen.name,
             snapshot.priorScreen.name,
             snapshot.settingsReturnScreen.name,

@@ -1498,6 +1498,27 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun nativeRuntimeViewsAdvanceTheDeliveredVersionOnlyWhenTheyChange() {
+        val runtime = ProductionCompanionRuntime()
+        val initial = runtime.stateView()
+        val retroArch = RetroArchView(storageGrant = "GRANTED", romGrant = "INDEXING")
+
+        runtime.updateRetroArch(retroArch)
+        val afterRetroArch = runtime.stateView()
+        runtime.updateRetroArch(retroArch)
+        val afterEqualRetroArch = runtime.stateView()
+        runtime.updateSaveRam(SaveRamView(status = "MATCHED", sourceName = "fixture.srm"))
+        val afterSaveRam = runtime.stateView()
+        val afterGatewayAction = runtime.action("SCREEN", mapOf("screen" to "SETUP"))
+
+        assertTrue(afterRetroArch.version > initial.version)
+        assertEquals(afterRetroArch.version, afterEqualRetroArch.version)
+        assertTrue(afterSaveRam.version > afterRetroArch.version)
+        assertTrue(afterGatewayAction.version > afterSaveRam.version)
+        runtime.close()
+    }
+
+    @Test
     fun exposesRetroArchSetupAndSessionStateWithoutRequiringACatalog() {
         val runtime = ProductionCompanionRuntime()
         runtime.updateRetroArch(

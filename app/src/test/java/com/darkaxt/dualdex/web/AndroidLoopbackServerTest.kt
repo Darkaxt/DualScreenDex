@@ -1,5 +1,6 @@
 package com.darkaxt.dualdex.web
 
+import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
@@ -307,6 +308,30 @@ class AndroidLoopbackServerTest {
             assertTrue(bootstrap.contains("\"battle\":null"))
         } finally {
             server.close()
+        }
+    }
+
+    @Test
+    fun returnsNativeRuntimeChangesAfterTheClientCurrentVersion() {
+        val runtime = ProductionCompanionRuntime()
+        val server = AndroidLoopbackServer(runtime) { null }
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+            val currentVersion = runtime.stateView().version
+
+            runtime.updateRetroArch(RetroArchView(storageGrant = "GRANTED", romGrant = "INDEXING"))
+
+            val changed = URI("$base/api/state?sinceVersion=$currentVersion")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(200, changed.responseCode)
+            val body = changed.inputStream.reader().readText()
+            assertTrue(body.contains("\"version\":"))
+            assertTrue(body.contains("\"storageGrant\":\"GRANTED\""))
+            assertTrue(runtime.stateView().version > currentVersion)
+        } finally {
+            server.close()
+            runtime.close()
         }
     }
 

@@ -191,6 +191,8 @@ class ProductionCompanionRuntime(
             settings = initialSettings,
         ),
     )
+    private var observedGatewayVersion = gateway.bootstrap().version
+    private var deliveryVersion = observedGatewayVersion
     @Volatile private var resolvedGameState: ResolvedGameSnapshot? = null
     private var lastRecoveryApplicationId: Long? = null
     private val resolvedPublications = AtomicLong()
@@ -606,6 +608,7 @@ class ProductionCompanionRuntime(
 
     @Synchronized
     fun stateView(snapshot: AppSnapshot = gateway.bootstrap()): StateView {
+        observeGatewayVersion(snapshot.version)
         val currentCatalog = catalog
         cachedState?.let { cached ->
             if (
@@ -649,17 +652,36 @@ class ProductionCompanionRuntime(
             partyAnalysis = partyAnalysis,
             areaGuideProjection = areaGuideProjection,
             trainerProgress = trainerProgress,
+            version = deliveryVersion,
         ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
     }
 
+    @Synchronized
     fun updateRetroArch(state: RetroArchView) {
+        if (retroArch == state) return
         retroArch = state
+        advanceDeliveryVersion()
     }
 
     fun retroArchState(): RetroArchView = retroArch
 
+    @Synchronized
     fun updateSaveRam(state: SaveRamView) {
+        if (saveRam == state) return
         saveRam = state
+        advanceDeliveryVersion()
+    }
+
+    private fun observeGatewayVersion(version: Long) {
+        if (version <= observedGatewayVersion) return
+        deliveryVersion += version - observedGatewayVersion
+        observedGatewayVersion = version
+        cachedState = null
+    }
+
+    private fun advanceDeliveryVersion() {
+        deliveryVersion++
+        cachedState = null
     }
 
     fun updateOverlayScale(scale: Double) {
