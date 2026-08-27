@@ -34,6 +34,10 @@ class QaDualDexApplication : DualDexApplication() {
         )
     }
 
+    fun clearGuideFailure() {
+        requireNotNull(runtime.get()).updateRetroArch(requireNotNull(retroArchSetup).snapshot())
+    }
+
     protected override fun sharedStorageGateway(): SharedStorageGateway = SharedStorageGateway(
         accessCheck = storageGranted::get,
         rootProvider = {

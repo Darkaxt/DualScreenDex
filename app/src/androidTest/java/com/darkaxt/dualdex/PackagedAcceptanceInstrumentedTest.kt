@@ -131,6 +131,8 @@ class PackagedAcceptanceInstrumentedTest {
                 ),
             )
             assertTrue(webViewUrl(webView)?.startsWith(origin) == true)
+            application.clearGuideFailure()
+            waitForJavascript(webView, "document.querySelector('[role=alert]') === null")
 
             val cachedRom = byteArrayOf(1, 3, 3, 7, 9, 2, 6, 5)
             val loaded = RomSourceLoader.load("qa-cache.gba", cachedRom)
