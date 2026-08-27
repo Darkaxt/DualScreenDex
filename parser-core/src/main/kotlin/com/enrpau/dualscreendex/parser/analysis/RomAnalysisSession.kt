@@ -53,6 +53,7 @@ class RomAnalysisSession(
     exactProfile: RomProfile? = null,
     val limits: ResolutionLimits = ResolutionLimits(),
     private val gbaReferenceIndexFactory: GbaReferenceIndexFactory = DefaultGbaReferenceIndexFactory,
+    val cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
 ) {
     private val nominatedGbaReferenceSiteCache = mutableMapOf<Int, GbaTargetReferenceEvidence?>()
     val exactProfileIdentity: ExactProfileIdentity? = exactProfile?.let {
@@ -63,10 +64,17 @@ class RomAnalysisSession(
     }
 
     val gbaReferenceIndex: GbaReferenceIndex? by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        cancellation.throwIfCancellationRequested()
         if (header.platform == Platform.GBA) {
-            gbaReferenceIndexFactory.build(rom, limits)
+            if (gbaReferenceIndexFactory === DefaultGbaReferenceIndexFactory) {
+                SafeGbaReferenceIndexBuilder.build(rom, limits, cancellation)
+            } else {
+                gbaReferenceIndexFactory.build(rom, limits)
+            }
         } else {
             null
+        }.also {
+            cancellation.throwIfCancellationRequested()
         }
     }
 
@@ -98,6 +106,7 @@ class RomAnalysisSession(
                 targetOffset = targetOffset,
                 expectedCount = indexed.count,
                 maxSites = limits.maxNominatedGbaReferenceSites,
+                cancellation = cancellation,
             )
         }
         nominatedGbaReferenceSiteCache[targetOffset] = resolved

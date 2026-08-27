@@ -336,6 +336,11 @@ export interface State {
   localMapPois?: LocalMapPoiView[];
   localMapPoiPreferences?: LocalMapPoiPreferences;
   areaGuide?: AreaGuideView | null;
+  areaGuideAvailability?: {
+    status: 'AVAILABLE' | 'UNAVAILABLE' | 'NOT_APPLICABLE';
+    stage?: string | null;
+    failureClass?: string | null;
+  };
   gameTime?: GameTime | null;
   currentAreaSpeciesIds?: number[];
   revealedAreaBaseIds?: number[];

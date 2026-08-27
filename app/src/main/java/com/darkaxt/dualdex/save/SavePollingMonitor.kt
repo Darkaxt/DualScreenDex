@@ -8,7 +8,11 @@ import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveParseResult
 import com.darkaxt.dualdex.save.SaveParser
 import com.darkaxt.dualdex.save.SaveSnapshot
+import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
+
+internal const val MAX_SUPPORTED_SAVE_BYTES = 128 * 1024
+private const val SAVE_READ_BUFFER_BYTES = 8 * 1024
 
 enum class SaveMonitorStatus { UNAVAILABLE, MATCHED, AMBIGUOUS, STALE }
 
@@ -205,7 +209,13 @@ class SavePollingMonitor(
         isCurrent: () -> Boolean,
     ): AcceptedAttempt? {
         if (!isCurrent()) return null
-        val bytes = runCatching(source.read).getOrNull() ?: return null
+        val bytes = try {
+            readBounded(source)
+        } catch (_: OutOfMemoryError) {
+            null
+        } catch (_: Exception) {
+            null
+        } ?: return null
         if (!isCurrent()) return null
         val parsed = runCatching { parser(bytes, context) }.getOrNull() as? SaveParseResult.Parsed ?: return null
         if (!isCurrent()) return null
@@ -218,6 +228,32 @@ class SavePollingMonitor(
                 lastModifiedEpochMs = source.lastModifiedEpochMs,
             ),
         )
+    }
+
+    private fun readBounded(source: SaveDocumentSource): ByteArray? {
+        if (source.size > MAX_SUPPORTED_SAVE_BYTES) return null
+        return source.open().use { input ->
+            val output = ByteArrayOutputStream(
+                source.size.takeIf { it in 1..MAX_SUPPORTED_SAVE_BYTES.toLong() }?.toInt() ?: SAVE_READ_BUFFER_BYTES,
+            )
+            val buffer = ByteArray(SAVE_READ_BUFFER_BYTES)
+            var total = 0
+            while (total <= MAX_SUPPORTED_SAVE_BYTES) {
+                val remaining = MAX_SUPPORTED_SAVE_BYTES + 1 - total
+                val read = input.read(buffer, 0, minOf(buffer.size, remaining))
+                if (read < 0) return@use output.toByteArray()
+                if (read == 0) {
+                    val single = input.read()
+                    if (single < 0) return@use output.toByteArray()
+                    output.write(single)
+                    total++
+                    continue
+                }
+                output.write(buffer, 0, read)
+                total += read
+            }
+            null
+        }
     }
 
     private fun ByteArray.toHex() = joinToString("") { "%02x".format(it) }

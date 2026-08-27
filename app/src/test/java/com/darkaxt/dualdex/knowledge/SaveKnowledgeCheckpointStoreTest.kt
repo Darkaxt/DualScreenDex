@@ -53,7 +53,7 @@ class SaveKnowledgeCheckpointStoreTest {
     @Test
     fun sourceWithoutAtomicSiblingUsesIsolatedFallback() {
         val fallback = temporary.newFolder("private", "knowledge-checkpoints")
-        val source = SaveDocumentSource("content://save", "Game.srm", "Game.srm", 4, 100, { byteArrayOf() })
+        val source = SaveDocumentSource("content://save", "Game.srm", "Game.srm", 4, 100, { byteArrayOf().inputStream() })
         val store = SaveKnowledgeCheckpointStore(fallback)
 
         assertEquals(CheckpointStorage.APP_PRIVATE_FALLBACK, store.write(source, checkpoint.copy(portable = false)))
@@ -69,7 +69,7 @@ class SaveKnowledgeCheckpointStoreTest {
         legacy.resolve("${key.romSha256}.${key.saveIdentity}.json").writeBytes(
             KnowledgeLedgerJsonCodec().encode(KnowledgeLedger(seenSpecies = setOf(25))),
         )
-        val source = SaveDocumentSource("content://save", "Game.srm", "Game.srm", 4, 100, { byteArrayOf() })
+        val source = SaveDocumentSource("content://save", "Game.srm", "Game.srm", 4, 100, { byteArrayOf().inputStream() })
 
         assertNull(SaveKnowledgeCheckpointStore(fallback).readExact(source, key))
     }

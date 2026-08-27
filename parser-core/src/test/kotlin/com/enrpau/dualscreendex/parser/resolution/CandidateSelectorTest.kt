@@ -1,11 +1,14 @@
 package com.enrpau.dualscreendex.parser.resolution
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationSource
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomHeader
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -330,6 +333,30 @@ class CandidateSelectorTest {
             (forward as DatasetResolution.Unavailable).reasons,
         )
         assertEquals(forward, reverse)
+    }
+
+    @Test
+    fun cancellationStopsLazyCandidateEnumerationBeforeTheNextCandidateIsConsumed() {
+        val cancellation = ParserCancellationSource()
+        val visited = mutableListOf<String>()
+        val candidates = sequence {
+            visited += "first"
+            yield(candidate(layout = "first"))
+            cancellation.cancel()
+            visited += "second"
+            yield(candidate(layout = "second"))
+        }
+        val session = RomAnalysisSession(
+            rom = RomImage(ByteArray(0x200)),
+            header = RomHeader(Platform.GBA, "TEST"),
+            cancellation = cancellation.token,
+        )
+
+        assertThrows(ParserCancellationException::class.java) {
+            CandidateSelector.select(session, DatasetKind.EVOLUTIONS, candidates)
+        }
+
+        assertEquals(listOf("first", "second"), visited)
     }
 
     private fun select(

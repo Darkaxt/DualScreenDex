@@ -17,11 +17,15 @@ object AreaGuideBuilder {
         snapshot: AppSnapshot,
         objectivesByArea: Map<Int, List<AreaGuideObjective>> = emptyMap(),
     ): AreaGuideProjection {
+        requireBoundedInput(catalog, objectivesByArea)
         val names = areaNames(catalog)
+        requireAtMost("area-count", names.size.toLong(), MAX_AREA_COUNT)
         val projectedPoints = projectPoints(catalog, snapshot, names)
+        val guide = build(catalog, snapshot, names, projectedPoints, objectivesByArea)
+        requireAtMost("retained-output", retainedItemCount(projectedPoints, guide), MAX_RETAINED_ITEMS)
         return AreaGuideProjection(
             points = projectedPoints,
-            guide = build(catalog, snapshot, names, projectedPoints, objectivesByArea),
+            guide = guide,
         )
     }
 
@@ -267,6 +271,40 @@ object AreaGuideBuilder {
         }
     }
 
+    private fun requireBoundedInput(
+        catalog: ParsedCatalog,
+        objectivesByArea: Map<Int, List<AreaGuideObjective>>,
+    ) {
+        requireAtMost("point-input", catalog.localMaps.pois.size.toLong(), MAX_POINT_COUNT)
+        requireAtMost("encounter-input", catalog.encounterAreas.size.toLong(), MAX_ENCOUNTER_AREA_COUNT)
+        requireAtMost(
+            "encounter-slot-input",
+            catalog.encounterAreas.sumOf { it.slots.size.toLong() },
+            MAX_ENCOUNTER_SLOT_COUNT,
+        )
+        requireAtMost(
+            "scene-placement-input",
+            catalog.localMaps.scenes.sumOf { it.placements.size.toLong() },
+            MAX_SCENE_PLACEMENT_COUNT,
+        )
+        requireAtMost(
+            "objective-input",
+            objectivesByArea.values.sumOf { it.size.toLong() },
+            MAX_OBJECTIVE_COUNT,
+        )
+    }
+
+    private fun retainedItemCount(points: List<AreaGuidePoint>, guide: AreaGuide): Long =
+        points.size.toLong() + guide.areas.sumOf { area ->
+            1L + area.overview.exits.size +
+                area.encounters.size + area.encounters.sumOf { it.species.size.toLong() } +
+                area.placesAndServices.size + area.trainersAndPeople.size + area.items.size + area.objectives.size
+        }
+
+    private fun requireAtMost(stage: String, observed: Long, limit: Long) {
+        if (observed > limit) throw AreaGuideProjectionLimitException(stage, observed, limit)
+    }
+
     private fun normalizeText(template: String?, trainerName: String?, areaName: String?): String? {
         val meaningful = template
             ?.replace("\r\n", "\n")
@@ -288,4 +326,12 @@ object AreaGuideBuilder {
             it.equals("Place", ignoreCase = true) || areaName?.let { area -> it.equals(area, ignoreCase = true) } == true
         }
     }
+
+    private const val MAX_AREA_COUNT = 2_048L
+    private const val MAX_POINT_COUNT = 8_192L
+    private const val MAX_ENCOUNTER_AREA_COUNT = 8_192L
+    private const val MAX_ENCOUNTER_SLOT_COUNT = 32_768L
+    private const val MAX_SCENE_PLACEMENT_COUNT = 16_384L
+    private const val MAX_OBJECTIVE_COUNT = 8_192L
+    private const val MAX_RETAINED_ITEMS = 65_536L
 }

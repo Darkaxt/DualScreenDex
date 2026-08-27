@@ -811,7 +811,7 @@ class UnifiedGameStateDecoderTest {
             name = "Game.srm",
             size = 4,
             lastModifiedEpochMs = version.toLong(),
-            read = { byteArrayOf(1, 2, 3, 4) },
+            open = { byteArrayOf(1, 2, 3, 4).inputStream() },
         ),
         fingerprint = SaveFileFingerprint(version.toString(16).padStart(64, '0'), 4, version.toLong()),
     )

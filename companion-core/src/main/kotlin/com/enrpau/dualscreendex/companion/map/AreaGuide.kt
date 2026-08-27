@@ -10,6 +10,21 @@ data class AreaGuideProjection(
     val guide: AreaGuide,
 )
 
+sealed interface AreaGuideProjectionOutcome {
+    data class Available(val projection: AreaGuideProjection) : AreaGuideProjectionOutcome
+
+    data class Unavailable(
+        val stage: String,
+        val failureClass: String,
+    ) : AreaGuideProjectionOutcome
+}
+
+class AreaGuideProjectionLimitException(
+    val stage: String,
+    val observed: Long,
+    val limit: Long,
+) : IllegalStateException("area-guide $stage limit exceeded ($observed > $limit)")
+
 data class AreaGuideArea(
     val baseAreaId: Int,
     val name: String,

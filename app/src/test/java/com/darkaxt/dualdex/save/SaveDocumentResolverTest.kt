@@ -70,6 +70,6 @@ class SaveDocumentResolverTest {
         name = path.substringAfterLast('/'),
         size = 128 * 1024L,
         lastModifiedEpochMs = 1,
-        read = { byteArrayOf() },
+        open = { byteArrayOf().inputStream() },
     )
 }

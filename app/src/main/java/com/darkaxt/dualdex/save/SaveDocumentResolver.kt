@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.save
 
 import com.darkaxt.dualdex.retroarch.RomIndexEntry
+import java.io.InputStream
 
 interface AtomicSiblingTarget {
     fun read(name: String): ByteArray?
@@ -13,7 +14,7 @@ data class SaveDocumentSource(
     val name: String,
     val size: Long,
     val lastModifiedEpochMs: Long,
-    val read: () -> ByteArray,
+    val open: () -> InputStream,
     val atomicSiblingTarget: AtomicSiblingTarget? = null,
 )
 

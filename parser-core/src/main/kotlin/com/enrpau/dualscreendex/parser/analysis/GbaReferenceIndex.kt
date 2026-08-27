@@ -168,11 +168,18 @@ internal object DefaultGbaReferenceIndexFactory : GbaReferenceIndexFactory {
 }
 
 internal object SafeGbaReferenceIndexBuilder {
-    fun build(rom: RomImage, limits: ResolutionLimits): GbaReferenceIndex {
+    fun build(
+        rom: RomImage,
+        limits: ResolutionLimits,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): GbaReferenceIndex {
         val targets = linkedMapOf<Int, TargetAccumulator>()
         val romSize = rom.size.toLong()
         var instructionOffset = 0L
         while (instructionOffset <= romSize - THUMB_INSTRUCTION_BYTES) {
+            if (instructionOffset % CANCELLATION_CHECK_INTERVAL_BYTES == 0L) {
+                cancellation.throwIfCancellationRequested()
+            }
             val instruction = rom.u16le(instructionOffset.toInt())
             if (instruction and THUMB_LITERAL_LOAD_MASK == THUMB_LITERAL_LOAD_OPCODE) {
                 val pc = checkedAdd(instructionOffset, THUMB_PC_ADVANCE)?.and(-4L)
@@ -206,6 +213,7 @@ internal object SafeGbaReferenceIndexBuilder {
             instructionOffset = checkedAdd(instructionOffset, THUMB_INSTRUCTION_BYTES) ?: break
         }
 
+        cancellation.throwIfCancellationRequested()
         val published = targets.mapValues { (_, accumulator) ->
             accumulator.publish(limits.maxCompiledReferenceSitesPerCandidate)
         }
@@ -251,6 +259,7 @@ internal object SafeGbaReferenceIndexBuilder {
     }
 
     private const val THUMB_INSTRUCTION_BYTES = 2L
+    private const val CANCELLATION_CHECK_INTERVAL_BYTES = 4_096L
     private const val THUMB_PC_ADVANCE = 4L
     private const val THUMB_LITERAL_LOAD_MASK = 0xF800
     private const val THUMB_LITERAL_LOAD_OPCODE = 0x4800
@@ -264,10 +273,14 @@ internal object SafeGbaReferenceSiteEnumerator {
         targetOffset: Int,
         expectedCount: Int,
         maxSites: Int,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): GbaTargetReferenceEvidence {
         val sites = ArrayList<Int>(minOf(expectedCount, maxSites))
         var instructionOffset = 0
         while (instructionOffset <= rom.size - 2) {
+            if (instructionOffset % CANCELLATION_CHECK_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
             val instruction = rom.u16le(instructionOffset)
             if (instruction and 0xF800 == 0x4800) {
                 val pc = (instructionOffset + 4) and -4
@@ -291,6 +304,7 @@ internal object SafeGbaReferenceSiteEnumerator {
             }
             instructionOffset += 2
         }
+        cancellation.throwIfCancellationRequested()
         val mismatch = sites.size != expectedCount
         return GbaTargetReferenceEvidence(
             count = expectedCount,
@@ -305,4 +319,6 @@ internal object SafeGbaReferenceSiteEnumerator {
             },
         )
     }
+
+    private const val CANCELLATION_CHECK_INTERVAL_BYTES = 4_096
 }

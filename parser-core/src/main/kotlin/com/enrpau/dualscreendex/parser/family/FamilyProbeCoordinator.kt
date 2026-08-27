@@ -157,22 +157,32 @@ class FamilyProbeCoordinator(
     private val strategies: FamilyProbeStrategies = productionStrategies(),
 ) {
     fun probe(session: RomAnalysisSession, definition: EngineFamilyDefinition): ParserProbe {
+        session.cancellation.throwIfCancellationRequested()
         var state = FamilyProbeState.empty()
         state = strategies.identityRoots.execute(session, definition, state)
+        session.cancellation.throwIfCancellationRequested()
         (state.identityRoots as? IdentityRootsPhaseResult.Rejected)?.let { rejected ->
             return rejected.probe
         }
         state = strategies.coreDatasets.execute(session, definition, state)
+        session.cancellation.throwIfCancellationRequested()
         state = strategies.semanticDomain.execute(session, definition, state)
+        session.cancellation.throwIfCancellationRequested()
         state = strategies.dependentDatasets.execute(session, definition, state)
+        session.cancellation.throwIfCancellationRequested()
         state = strategies.capabilityAggregation.execute(session, definition, state)
+        session.cancellation.throwIfCancellationRequested()
         return requireNotNull(state.probe) {
             "${FamilyProbePhase.CAPABILITY_AGGREGATION} must publish a parser probe for ${definition.family}"
         }
     }
 
-    fun probeAll(session: RomAnalysisSession): List<ParserProbe> =
-        EngineFamilyDefinitions.all.map { definition -> probe(session, definition) }
+    fun probeAll(session: RomAnalysisSession): List<ParserProbe> = buildList {
+        EngineFamilyDefinitions.all.forEach { definition ->
+            session.cancellation.throwIfCancellationRequested()
+            add(probe(session, definition))
+        }
+    }
 
     companion object {
         private fun productionStrategies() = FamilyProbeStrategies(

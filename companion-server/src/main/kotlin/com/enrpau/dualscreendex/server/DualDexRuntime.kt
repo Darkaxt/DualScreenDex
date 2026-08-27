@@ -18,6 +18,7 @@ import com.enrpau.dualscreendex.companion.model.PokedexFilter
 import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
 import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationSource
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
@@ -32,8 +33,10 @@ import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.simulator.EncounterSimulator
 import com.enrpau.dualscreendex.simulator.SimulationRequest
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicLong
 
 class DualDexRuntime(
@@ -44,6 +47,8 @@ class DualDexRuntime(
     private var catalog: ParsedCatalog? = null
     private var simulator: EncounterSimulator? = null
     private val loadGeneration = AtomicLong()
+    private var parserCancellation: ParserCancellationSource? = null
+    private var parserFuture: Future<*>? = null
     val gateway = CompanionGateway()
 
     fun load(path: Path) = load(RomSourceLoader.load(path))
@@ -53,51 +58,68 @@ class DualDexRuntime(
     }
 
     fun load(name: String, rom: RomImage) {
-        val generation = loadGeneration.incrementAndGet()
-        synchronized(this) {
+        val cancellation = ParserCancellationSource()
+        val generation = synchronized(this) {
+            cancelParserWork()
+            val nextGeneration = loadGeneration.incrementAndGet()
+            parserCancellation = cancellation
             catalog = null
             simulator = null
+            gateway.dispatch(
+                CompanionAction.CatalogLoadingChanged(
+                    CatalogLoadingState(active = true, phase = "IDENTIFYING", completedUnits = 0, totalUnits = 5),
+                    name,
+                ),
+            )
+            nextGeneration
         }
-        gateway.dispatch(
-            CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(active = true, phase = "IDENTIFYING", completedUnits = 0, totalUnits = 5),
-                name,
-            ),
-        )
-        parserWorker.execute {
+        val future = parserWorker.submit {
             try {
                 val parsed = CatalogParser.parse(
                     rom = rom,
-                    onProgress = { progress -> publishProgress(generation, progress) },
+                    cancellation = cancellation.token,
+                    onProgress = { progress -> publishProgress(generation, cancellation, progress) },
                 ).catalog
                     ?: error("ROM did not produce a selected mainline-family catalog")
-                if (generation != loadGeneration.get()) return@execute
+                cancellation.token.throwIfCancellationRequested()
                 synchronized(this) {
+                    cancellation.token.throwIfCancellationRequested()
+                    if (generation != loadGeneration.get()) return@synchronized
                     catalog = parsed
                     simulator = EncounterSimulator(parsed)
+                    gateway.dispatch(CompanionAction.CatalogLoaded(name))
+                    gateway.dispatch(
+                        CompanionAction.CatalogLoadingChanged(
+                            CatalogLoadingState(false, "COMPLETE", 5, 5),
+                            name,
+                        ),
+                    )
                 }
-                gateway.dispatch(CompanionAction.CatalogLoaded(name))
-                gateway.dispatch(
-                    CompanionAction.CatalogLoadingChanged(
-                        CatalogLoadingState(false, "COMPLETE", 5, 5),
-                        name,
-                    ),
-                )
+            } catch (failure: CancellationException) {
+                publishLoadFailure(generation, cancellation, name, failure)
             } catch (failure: Exception) {
-                if (generation != loadGeneration.get()) return@execute
-                gateway.dispatch(CompanionAction.Failure(failure.message ?: failure.javaClass.simpleName))
-                gateway.dispatch(
-                    CompanionAction.CatalogLoadingChanged(
-                        CatalogLoadingState(false, "FAILED", 0, 5),
-                        name,
-                    ),
-                )
+                publishLoadFailure(generation, cancellation, name, failure)
+            } finally {
+                synchronized(this) {
+                    if (parserCancellation === cancellation) {
+                        parserCancellation = null
+                        parserFuture = null
+                    }
+                }
+            }
+        }
+        synchronized(this) {
+            if (parserCancellation === cancellation) {
+                parserFuture = future
+            } else {
+                future.cancel(true)
             }
         }
     }
 
     @Synchronized
     fun loadCatalog(name: String, parsed: ParsedCatalog) {
+        cancelParserWork()
         loadGeneration.incrementAndGet()
         catalog = parsed
         simulator = EncounterSimulator(parsed)
@@ -186,7 +208,11 @@ class DualDexRuntime(
     fun catalogHash(): String? = catalog?.romSha256
 
     override fun close() {
-        parserWorker.shutdown()
+        synchronized(this) {
+            cancelParserWork()
+            loadGeneration.incrementAndGet()
+        }
+        parserWorker.shutdownNow()
     }
 
     @Synchronized
@@ -286,22 +312,55 @@ class DualDexRuntime(
         return requireNotNull(resolved) { "unknown catalog ruleset: $selection" }.id
     }
 
-    private fun publishProgress(generation: Long, progress: CatalogMaterializationProgress) {
-        if (generation != loadGeneration.get()) return
+    private fun publishLoadFailure(
+        generation: Long,
+        cancellation: ParserCancellationSource,
+        name: String,
+        failure: Throwable,
+    ) {
         synchronized(this) {
+            if (cancellation.isCancellationRequested || generation != loadGeneration.get()) return
+            catalog = null
+            simulator = null
+            gateway.dispatch(CompanionAction.Failure(failure.message ?: failure.javaClass.simpleName))
+            gateway.dispatch(
+                CompanionAction.CatalogLoadingChanged(
+                    CatalogLoadingState(false, "FAILED", 0, 5),
+                    name,
+                ),
+            )
+        }
+    }
+
+    private fun publishProgress(
+        generation: Long,
+        cancellation: ParserCancellationSource,
+        progress: CatalogMaterializationProgress,
+    ) {
+        cancellation.token.throwIfCancellationRequested()
+        synchronized(this) {
+            cancellation.token.throwIfCancellationRequested()
+            if (generation != loadGeneration.get()) return@synchronized
             catalog = progress.catalog
             simulator = EncounterSimulator(progress.catalog)
-        }
-        gateway.dispatch(
-            CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(
-                    active = progress.completedUnits < progress.totalUnits,
-                    phase = progress.phase.name,
-                    completedUnits = progress.completedUnits,
-                    totalUnits = progress.totalUnits,
+            gateway.dispatch(
+                CompanionAction.CatalogLoadingChanged(
+                    CatalogLoadingState(
+                        active = progress.completedUnits < progress.totalUnits,
+                        phase = progress.phase.name,
+                        completedUnits = progress.completedUnits,
+                        totalUnits = progress.totalUnits,
+                    ),
                 ),
-            ),
-        )
+            )
+        }
+    }
+
+    private fun cancelParserWork() {
+        parserCancellation?.cancel()
+        parserFuture?.cancel(true)
+        parserCancellation = null
+        parserFuture = null
     }
 
     private fun requireInt(values: Map<String, String?>, key: String): Int =

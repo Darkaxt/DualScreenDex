@@ -9,6 +9,7 @@ import com.darkaxt.dualdex.save.SaveSpeciesContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.io.InputStream
 import java.security.MessageDigest
 
 class SavePollingMonitorTest {
@@ -172,6 +173,93 @@ class SavePollingMonitorTest {
     }
 
     @Test
+    fun rejectsOversizedMetadataWithoutOpeningTheSource() {
+        var opens = 0
+        var parses = 0
+        val monitor = SavePollingMonitor(
+            FakeAssociations(),
+            FakeSnapshots(),
+            parser = { _, parseContext ->
+                parses++
+                SaveParseResult.Parsed(snapshot(parseContext.romIdentity, 1))
+            },
+        )
+        val source = streamSource(
+            id = "oversized",
+            modified = 1,
+            size = Long.MAX_VALUE,
+        ) {
+            opens++
+            byteArrayOf(1).inputStream()
+        }
+
+        val result = monitor.poll(context, listOf(source), "VERIFIED")
+
+        assertEquals(SaveMonitorStatus.UNAVAILABLE, result.status)
+        assertEquals(0, opens)
+        assertEquals(0, parses)
+    }
+
+    @Test
+    fun falseMetadataCannotHideAnEndlessSourceAndTheLastValidSnapshotIsRetained() {
+        val repository = FakeSnapshots()
+        var parses = 0
+        val monitor = SavePollingMonitor(
+            FakeAssociations(),
+            repository,
+            parser = { _, parseContext ->
+                parses++
+                SaveParseResult.Parsed(snapshot(parseContext.romIdentity, 9))
+            },
+        )
+        monitor.poll(context, listOf(source("save", 1, byteArrayOf(1, 2, 3))), "VERIFIED")
+        var bytesRead = 0
+        val endless = streamSource(id = "save", modified = 2, size = 0) {
+            object : InputStream() {
+                override fun read(): Int {
+                    bytesRead++
+                    return 1
+                }
+
+                override fun read(target: ByteArray, offset: Int, length: Int): Int {
+                    target.fill(1, offset, offset + length)
+                    bytesRead += length
+                    return length
+                }
+            }
+        }
+
+        val result = monitor.poll(context, listOf(endless), "VERIFIED")
+
+        assertEquals(SaveMonitorStatus.STALE, result.status)
+        assertEquals(9L, result.retained?.snapshot?.saveCounter)
+        assertEquals(MAX_SUPPORTED_SAVE_BYTES + 1, bytesRead)
+        assertEquals(1, parses)
+        assertEquals(1, repository.writes)
+    }
+
+    @Test
+    fun validMaximumSaveParsesWhenProviderSizeMetadataIsMissing() {
+        var parsedSize = 0
+        val monitor = SavePollingMonitor(
+            FakeAssociations(),
+            FakeSnapshots(),
+            parser = { bytes, parseContext ->
+                parsedSize = bytes.size
+                SaveParseResult.Parsed(snapshot(parseContext.romIdentity, 10))
+            },
+        )
+        val source = streamSource(id = "maximum", modified = 1, size = 0) {
+            ByteArray(MAX_SUPPORTED_SAVE_BYTES).inputStream()
+        }
+
+        val result = monitor.poll(context, listOf(source), "VERIFIED")
+
+        assertEquals(SaveMonitorStatus.MATCHED, result.status)
+        assertEquals(MAX_SUPPORTED_SAVE_BYTES, parsedSize)
+    }
+
+    @Test
     fun sessionExpiryDuringSaveReadPreventsPersistenceAndPublication() {
         val repository = FakeSnapshots()
         val associations = FakeAssociations()
@@ -215,13 +303,27 @@ class SavePollingMonitorTest {
         assertEquals(1, repository.writes)
     }
 
+    private fun streamSource(
+        id: String,
+        modified: Long,
+        size: Long,
+        open: () -> InputStream,
+    ) = SaveDocumentSource(
+        id = id,
+        displayPath = "RetroArch/saves/$id.srm",
+        name = "$id.srm",
+        size = size,
+        lastModifiedEpochMs = modified,
+        open = open,
+    )
+
     private fun source(id: String, modified: Long, bytes: ByteArray, onRead: () -> Unit = {}) = SaveDocumentSource(
         id = id,
         displayPath = "RetroArch/saves/$id.srm",
         name = "$id.srm",
         size = bytes.size.toLong(),
         lastModifiedEpochMs = modified,
-        read = { onRead(); bytes.copyOf() },
+        open = { onRead(); bytes.inputStream() },
     )
 
     private fun snapshot(rom: String, counter: Long, identity: String = "b".repeat(64)) = SaveSnapshot(

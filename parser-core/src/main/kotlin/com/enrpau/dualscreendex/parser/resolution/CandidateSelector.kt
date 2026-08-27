@@ -9,9 +9,11 @@ object CandidateSelector {
         candidates: Sequence<DatasetCandidate<TLayout>>,
         structuralAnchorPolicy: StructuralAnchorPolicy = StructuralAnchorPolicy.denyAll(),
     ): DatasetResolution<TLayout> {
+        session.cancellation.throwIfCancellationRequested()
         val retained = ArrayList<DatasetCandidate<TLayout>>()
         val iterator = candidates.iterator()
         while (iterator.hasNext()) {
+            session.cancellation.throwIfCancellationRequested()
             val candidate = iterator.next()
             if (retained.size == session.limits.maxCandidatesPerDataset) {
                 return DatasetResolution.BudgetExceeded(
@@ -30,6 +32,7 @@ object CandidateSelector {
             retained += candidate
         }
 
+        session.cancellation.throwIfCancellationRequested()
         val candidatesByIdentity = retained.groupBy { it.identity }
         val conflictingIdentity = candidatesByIdentity
             .asSequence()

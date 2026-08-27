@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolver
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
@@ -14,6 +15,7 @@ import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
+import java.util.concurrent.CancellationException
 
 internal object Gen3LocalMapResolver {
     fun resolve(
@@ -21,12 +23,15 @@ internal object Gen3LocalMapResolver {
         encounterBaseIds: Set<Int>,
         family: EngineFamily,
     ): LocalMapResolution {
+        val cancellation = session.cancellation
+        cancellation.throwIfCancellationRequested()
         val format = Gen3LocalMapFormat.forFamily(family)
             ?: return LocalMapResolution.Unavailable("tileset-abi", "no canonical local-map ABI exists for $family")
         val references = session.gbaReferenceIndex
             ?.takeUnless { it.overflowed }
             ?: return LocalMapResolution.Unavailable("reference-index", "compiled GBA reference index is unavailable")
         val completeHeaders = Gen3MapLocationResolver.resolveHeaderByBaseArea(session.rom, encounterBaseIds, references)
+        cancellation.throwIfCancellationRequested()
         if (completeHeaders.isEmpty()) {
             return LocalMapResolution.Unavailable("map-groups", "no unique compiled gMapGroups authority was resolved")
         }
@@ -38,14 +43,16 @@ internal object Gen3LocalMapResolver {
         }
 
         val names = Gen3MapLocationResolver.resolveDetailed(session.rom, encounterBaseIds, references)
+        cancellation.throwIfCancellationRequested()
         var selectedHeaders = completeHeaders
-        var descriptorBatch = readDescriptors(session.rom, selectedHeaders, names)
+        var descriptorBatch = readDescriptors(session.rom, selectedHeaders, names, cancellation)
         if (descriptorBatch.descriptors.sumOf { it.pixelCount.toLong() } > MAX_TOTAL_PIXELS) {
             val reachableHeaders = Gen3MapLocationResolver.resolveReachableHeaderByBaseArea(
                 session.rom,
                 encounterBaseIds,
                 references,
             )
+            cancellation.throwIfCancellationRequested()
             if (reachableHeaders.isEmpty()) {
                 return LocalMapResolution.BudgetExceeded(
                     "raster-pixels",
@@ -53,7 +60,7 @@ internal object Gen3LocalMapResolver {
                 )
             }
             selectedHeaders = reachableHeaders
-            descriptorBatch = readDescriptors(session.rom, selectedHeaders, names)
+            descriptorBatch = readDescriptors(session.rom, selectedHeaders, names, cancellation)
         }
         val descriptors = descriptorBatch.descriptors
         val skippedReasons = descriptorBatch.skippedReasons
@@ -67,11 +74,14 @@ internal object Gen3LocalMapResolver {
         var encodedBytes = 0L
         var uniquePixels = 0L
         descriptors.forEach { descriptor ->
+            cancellation.throwIfCancellationRequested()
             runCatching {
                 val dynamicLighting = lightingModel != null && descriptor.naturalLighting
-                val raster = renderIndexed(session.rom, descriptor, format, tilesets, dynamicLighting)
+                val raster = renderIndexed(session.rom, descriptor, format, tilesets, dynamicLighting, cancellation)
+                cancellation.throwIfCancellationRequested()
                 val assetKey = if (dynamicLighting) {
                     val compressed = LocalMapRasterCodec.compress(raster.indices)
+                    cancellation.throwIfCancellationRequested()
                     val asset = TimedIndexedMapAsset(
                         pixelWidth = raster.pixelWidth,
                         pixelHeight = raster.pixelHeight,
@@ -100,7 +110,8 @@ internal object Gen3LocalMapResolver {
                         timedAssets[newAssetKey] = asset
                     }
                 } else {
-                    val asset = PngMapAsset(PngEncoder.encode(raster.toRgbaSprite()))
+                    val asset = PngMapAsset(PngEncoder.encode(raster.toRgbaSprite(cancellation), cancellation))
+                    cancellation.throwIfCancellationRequested()
                     assetKeyByPng[asset] ?: descriptor.assetKey.also { newAssetKey ->
                         uniquePixels += descriptor.pixelCount
                         if (uniquePixels > MAX_TOTAL_PIXELS) {
@@ -120,18 +131,28 @@ internal object Gen3LocalMapResolver {
                         assets[newAssetKey] = asset
                     }
                 }
+                cancellation.throwIfCancellationRequested()
                 maps += descriptor.toLocalMap(assetKey)
             }.onFailure { failure ->
+                if (failure is CancellationException) throw failure
                 skippedReasons += "map 0x${descriptor.baseAreaId.toString(16).padStart(4, '0')} render: ${failure.message}"
             }
         }
         if (maps.isEmpty()) {
             return LocalMapResolution.Unavailable("render", "no local map could be rendered from resolved map headers")
         }
+        cancellation.throwIfCancellationRequested()
         val scenes = runCatching {
-            Gen3MapSceneResolver.resolve(session.rom, selectedHeaders, maps)
-        }.getOrDefault(emptyList())
+            Gen3MapSceneResolver.resolve(session.rom, selectedHeaders, maps).also {
+                cancellation.throwIfCancellationRequested()
+            }
+        }.getOrElse { failure ->
+            if (failure is CancellationException) throw failure
+            emptyList()
+        }
+        cancellation.throwIfCancellationRequested()
         val poiResolution = Gen3LocalMapPoiResolver.resolve(session.rom, selectedHeaders, maps, family)
+        cancellation.throwIfCancellationRequested()
         val catalog = LocalMapCatalog(
             maps = maps,
             assets = assets,
@@ -139,6 +160,7 @@ internal object Gen3LocalMapResolver {
             scenes = scenes,
             pois = poiResolution.pois,
         ).validate()
+        cancellation.throwIfCancellationRequested()
         return LocalMapResolution.Resolved(
             catalog = catalog,
             reasons = listOf(
@@ -167,16 +189,23 @@ internal object Gen3LocalMapResolver {
         rom: RomImage,
         headers: Map<Int, Int>,
         names: com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolution?,
+        cancellation: ParserCancellationToken,
     ): DescriptorBatch {
         val descriptors = mutableListOf<MapDescriptor>()
         val skippedReasons = mutableListOf<String>()
         headers.toSortedMap().forEach { (baseAreaId, header) ->
+            cancellation.throwIfCancellationRequested()
             runCatching { readDescriptor(rom, baseAreaId, header, names) }
-                .onSuccess(descriptors::add)
+                .onSuccess {
+                    cancellation.throwIfCancellationRequested()
+                    descriptors += it
+                }
                 .onFailure { failure ->
+                    if (failure is CancellationException) throw failure
                     skippedReasons += "map 0x${baseAreaId.toString(16).padStart(4, '0')} metadata: ${failure.message}"
                 }
         }
+        cancellation.throwIfCancellationRequested()
         return DescriptorBatch(descriptors, skippedReasons)
     }
 
@@ -222,17 +251,26 @@ internal object Gen3LocalMapResolver {
         format: Gen3LocalMapFormat,
         tilesetCache: MutableMap<Int, TilesetData>,
         dynamicLighting: Boolean,
+        cancellation: ParserCancellationToken,
     ): IndexedRaster {
+        cancellation.throwIfCancellationRequested()
         val primary = tilesetCache.getOrPut(map.primaryTileset) { readTileset(rom, map.primaryTileset, format) }
+        cancellation.throwIfCancellationRequested()
         val secondary = tilesetCache.getOrPut(map.secondaryTileset) { readTileset(rom, map.secondaryTileset, format) }
+        cancellation.throwIfCancellationRequested()
         require(!primary.secondary && secondary.secondary) { "map layout has invalid primary/secondary tileset roles" }
         val palettes = readPalettes(rom, primary, secondary, format, dynamicLighting)
+        cancellation.throwIfCancellationRequested()
         val metatileCache = mutableMapOf<Int, ByteArray>()
         val pixelWidth = map.width * METATILE_PIXELS
         val pixels = ByteArray(map.pixelCount)
         repeat(map.height) { mapY ->
             repeat(map.width) { mapX ->
-                val cell = rom.u16le(map.mapCells + (mapY * map.width + mapX) * 2)
+                val cellIndex = mapY * map.width + mapX
+                if (cellIndex % RASTER_CANCELLATION_CELLS == 0) {
+                    cancellation.throwIfCancellationRequested()
+                }
+                val cell = rom.u16le(map.mapCells + cellIndex * 2)
                 val metatileId = cell and format.metatileIdMask
                 val metatile = metatileCache.getOrPut(metatileId) {
                     renderMetatile(rom, metatileId, primary, secondary, format)
@@ -247,6 +285,7 @@ internal object Gen3LocalMapResolver {
                 }
             }
         }
+        cancellation.throwIfCancellationRequested()
         return IndexedRaster(pixelWidth, map.height * METATILE_PIXELS, pixels, palettes)
     }
 
@@ -532,11 +571,16 @@ internal object Gen3LocalMapResolver {
         val indices: ByteArray,
         val palettes: PaletteData,
     ) {
-        fun toRgbaSprite(): RgbaSprite = RgbaSprite(
+        fun toRgbaSprite(cancellation: ParserCancellationToken): RgbaSprite = RgbaSprite(
             pixelWidth,
             pixelHeight,
             IntArray(indices.size) { index ->
+                if (index % PIXEL_CANCELLATION_INTERVAL == 0) {
+                    cancellation.throwIfCancellationRequested()
+                }
                 TileRenderer.bgr555ToArgb(palettes.base[indices[index].toInt() and 0xff] and 0x7FFF, false)
+            }.also {
+                cancellation.throwIfCancellationRequested()
             },
         )
     }
@@ -562,6 +606,8 @@ internal object Gen3LocalMapResolver {
     private const val TILE_PIXELS = 8
     private const val TILES_PER_LAYER = 4
     private const val METATILE_PIXELS = 16
+    private const val RASTER_CANCELLATION_CELLS = 64
+    private const val PIXEL_CANCELLATION_INTERVAL = 4_096
     private const val MAX_MAPS = 1024
     private const val MAX_GRID_DIMENSION = 256
     private const val MAX_MAP_PIXELS = 2_000_000L

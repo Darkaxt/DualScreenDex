@@ -24,10 +24,15 @@ import com.darkaxt.dualdex.progress.PortableChallengeTemplate
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.SaveObservation
 import com.darkaxt.dualdex.save.SaveSnapshot
+import com.enrpau.dualscreendex.companion.map.AreaGuideBuilder
+import com.enrpau.dualscreendex.companion.map.AreaGuideObjective
+import com.enrpau.dualscreendex.companion.map.AreaGuideProjection
+import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.CatalogWorkProgress
@@ -56,13 +61,24 @@ internal fun ProductionCompanionRuntime(
     onRomSettingsChanged: (String?, CompanionSettings) -> Unit = { _, settings -> onSettingsChanged(settings) },
     onRomDisplayModeChanged: (DisplayMode) -> Unit = {},
     onCatalogCleared: () -> Unit = {},
-    parseCatalog: (
+    parseCatalog: ((
         RomImage,
         (CatalogMaterializationProgress) -> Unit,
         (CatalogWorkProgress) -> Unit,
-    ) -> ParsedCatalog? = { rom, progress, work ->
-        CatalogParser.parseWithWork(rom, progress, work).catalog
+    ) -> ParsedCatalog?)? = null,
+    parseCatalogWithCancellation: (
+        RomImage,
+        ParserCancellationToken,
+        (CatalogMaterializationProgress) -> Unit,
+        (CatalogWorkProgress) -> Unit,
+    ) -> ParsedCatalog? = { rom, cancellation, progress, work ->
+        CatalogParser.parseWithWork(rom, cancellation, progress, work).catalog
     },
+    projectAreaGuide: (
+        ParsedCatalog,
+        AppSnapshot,
+        Map<Int, List<AreaGuideObjective>>,
+    ) -> AreaGuideProjection = AreaGuideBuilder::project,
     mapAssetRenderer: (
         ParsedCatalog,
         String,
@@ -88,6 +104,8 @@ internal fun ProductionCompanionRuntime(
     onRomDisplayModeChanged = onRomDisplayModeChanged,
     onCatalogCleared = onCatalogCleared,
     parseCatalog = parseCatalog,
+    parseCatalogWithCancellation = parseCatalogWithCancellation,
+    projectAreaGuide = projectAreaGuide,
     mapAssetRenderer = mapAssetRenderer,
     mapAssetRenderCache = mapAssetRenderCache,
     performanceRecorder = performanceRecorder,

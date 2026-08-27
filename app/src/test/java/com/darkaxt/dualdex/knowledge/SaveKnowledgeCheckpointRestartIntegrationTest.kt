@@ -98,7 +98,7 @@ class SaveKnowledgeCheckpointRestartIntegrationTest {
         snapshot: SaveSnapshot,
         kind: SaveObservationKind,
     ): SaveMonitorResult {
-        val bytes = source.read()
+        val bytes = source.open().use { it.readBytes() }
         val observation = SaveObservation(
             kind,
             source,

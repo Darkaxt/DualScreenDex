@@ -1,15 +1,21 @@
 package com.enrpau.dualscreendex.parser.sprite
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import java.io.ByteArrayOutputStream
 import java.util.zip.CRC32
 import java.util.zip.DeflaterOutputStream
 
 object PngEncoder {
-    fun encode(sprite: RgbaSprite): ByteArray {
+    fun encode(
+        sprite: RgbaSprite,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): ByteArray {
         require(sprite.argb.size == sprite.width * sprite.height)
+        cancellation.throwIfCancellationRequested()
         val raw = ByteArrayOutputStream()
         repeat(sprite.height) { y ->
+            cancellation.throwIfCancellationRequested()
             raw.write(0)
             repeat(sprite.width) { x ->
                 val color = sprite.argb[y * sprite.width + x]
@@ -19,9 +25,11 @@ object PngEncoder {
                 raw.write(color ushr 24 and 0xFF)
             }
         }
+        cancellation.throwIfCancellationRequested()
         val compressed = ByteArrayOutputStream().also { output ->
             DeflaterOutputStream(output).use { it.write(raw.toByteArray()) }
         }.toByteArray()
+        cancellation.throwIfCancellationRequested()
         return ByteArrayOutputStream().also { png ->
             png.write(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))
             val header = ByteArrayOutputStream().also {
@@ -32,7 +40,9 @@ object PngEncoder {
             writeChunk(png, "IHDR", header)
             writeChunk(png, "IDAT", compressed)
             writeChunk(png, "IEND", byteArrayOf())
-        }.toByteArray()
+        }.toByteArray().also {
+            cancellation.throwIfCancellationRequested()
+        }
     }
 
     private fun writeChunk(output: ByteArrayOutputStream, type: String, data: ByteArray) {

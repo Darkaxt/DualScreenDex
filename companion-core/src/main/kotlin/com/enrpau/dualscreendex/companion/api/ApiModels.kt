@@ -14,7 +14,8 @@ import com.enrpau.dualscreendex.companion.map.AreaGuideObjective
 import com.enrpau.dualscreendex.companion.map.AreaGuideOverview
 import com.enrpau.dualscreendex.companion.map.AreaGuidePoint
 import com.enrpau.dualscreendex.companion.map.AreaGuidePointCategory
-import com.enrpau.dualscreendex.companion.map.AreaGuideProjection
+import com.enrpau.dualscreendex.companion.map.AreaGuideProjectionLimitException
+import com.enrpau.dualscreendex.companion.map.AreaGuideProjectionOutcome
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.MoveObservation
@@ -179,6 +180,11 @@ data class AreaGuidePointView(
 )
 
 data class AreaGuideObjectiveView(val key: String, val title: String)
+data class AreaGuideAvailabilityView(
+    val status: String,
+    val stage: String? = null,
+    val failureClass: String? = null,
+)
 
 data class WorldMapRegionView(
     val key: String,
@@ -426,6 +432,7 @@ data class StateView(
     val gameTime: GameClockView? = null,
     val gameAccessReady: Boolean = false,
     val areaGuide: AreaGuideView? = null,
+    val areaGuideAvailability: AreaGuideAvailabilityView = AreaGuideAvailabilityView("NOT_APPLICABLE"),
     val trainerProgress: TrainerProgressView? = null,
 )
 data class GameClockView(
@@ -887,7 +894,7 @@ object ApiViewBuilder {
         retroArch: RetroArchView = RetroArchView(),
         saveRam: SaveRamView = SaveRamView(),
         partyAnalysis: PartyAnalysis? = null,
-        areaGuideProjection: AreaGuideProjection? = null,
+        areaGuideProjection: AreaGuideProjectionOutcome? = null,
         trainerProgress: TrainerProgressView? = null,
         version: Long = snapshot.version,
     ): StateView {
@@ -938,7 +945,17 @@ object ApiViewBuilder {
             .flatMap { (areaBaseId, speciesIds) -> speciesIds.map { speciesId -> speciesId to areaBaseId } }
             .groupBy({ it.first }, { it.second })
             .mapValues { (_, areaBaseIds) -> areaBaseIds.distinct().sorted() }
-        val effectiveAreaGuideProjection = areaGuideProjection ?: catalog?.let { AreaGuideBuilder.project(it, snapshot) }
+        val areaGuideOutcome = areaGuideProjection ?: catalog?.let { activeCatalog ->
+            try {
+                AreaGuideProjectionOutcome.Available(AreaGuideBuilder.project(activeCatalog, snapshot))
+            } catch (failure: OutOfMemoryError) {
+                unavailableAreaGuide(failure)
+            } catch (failure: Exception) {
+                unavailableAreaGuide(failure)
+            }
+        }
+        val effectiveAreaGuideProjection =
+            (areaGuideOutcome as? AreaGuideProjectionOutcome.Available)?.projection
         val projectedMapPoints = effectiveAreaGuideProjection?.points.orEmpty()
         val localMapPois = projectedMapPoints.map { point ->
             val item = point.category == AreaGuidePointCategory.AVAILABLE_ITEM ||
@@ -960,6 +977,15 @@ object ApiViewBuilder {
         }
         val areaGuide = effectiveAreaGuideProjection?.guide?.toView()
             ?.takeIf { it.areas.isNotEmpty() }
+        val areaGuideAvailability = when (areaGuideOutcome) {
+            is AreaGuideProjectionOutcome.Available -> AreaGuideAvailabilityView("AVAILABLE")
+            is AreaGuideProjectionOutcome.Unavailable -> AreaGuideAvailabilityView(
+                status = "UNAVAILABLE",
+                stage = areaGuideOutcome.stage,
+                failureClass = areaGuideOutcome.failureClass,
+            )
+            null -> AreaGuideAvailabilityView("NOT_APPLICABLE")
+        }
         val specimenCounts = catalog?.let { activeCatalog ->
             distinctResolvedIndividuals(snapshot, activeCatalog)
                 .groupingBy { canonicalSpeciesKey(activeCatalog, it.individual.speciesId) }
@@ -1102,6 +1128,7 @@ object ApiViewBuilder {
             snapshot.gameTime?.let { GameClockView(it.hours, it.minutes, it.phase?.name, it.phaseProgress) },
             snapshot.gameAccessReady,
             areaGuide,
+            areaGuideAvailability,
             trainerProgress,
         )
     }
@@ -1443,6 +1470,22 @@ object ApiViewBuilder {
 
     private fun localMapAssetUrl(key: String): String =
         "/api/maps/${URLEncoder.encode(key, StandardCharsets.UTF_8)}.png"
+
+    private fun unavailableAreaGuide(failure: Throwable) = AreaGuideProjectionOutcome.Unavailable(
+        stage = boundedProjectionDiagnostic(
+            (failure as? AreaGuideProjectionLimitException)?.stage ?: "projection",
+            "projection",
+        ),
+        failureClass = boundedProjectionDiagnostic(
+            failure.javaClass.simpleName,
+            if (failure is OutOfMemoryError) "OutOfMemoryError" else "Exception",
+        ),
+    )
+
+    private fun boundedProjectionDiagnostic(value: String, fallback: String): String = value
+        .filter { it.isLetterOrDigit() || it == '-' || it == '_' || it == '.' }
+        .take(64)
+        .ifBlank { fallback }
 
     private fun AreaGuide.toView() = AreaGuideView(
         trackedAreaBaseId = trackedAreaBaseId,

@@ -27,7 +27,7 @@ class SaveKnowledgeCheckpointCoordinatorTest {
         name = "Game.srm",
         size = 4,
         lastModifiedEpochMs = 100,
-        read = { byteArrayOf(1, 2, 3, 4) },
+        open = { byteArrayOf(1, 2, 3, 4).inputStream() },
     )
 
     @Test

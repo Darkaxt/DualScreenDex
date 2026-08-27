@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
@@ -21,6 +22,7 @@ import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.Locale
+import java.util.concurrent.CancellationException
 import java.util.zip.InflaterInputStream
 
 data class CatalogParseResult(
@@ -61,7 +63,14 @@ internal fun reportCatalogWork(
     onWork: ((CatalogWorkProgress) -> Unit)?,
     module: CatalogWorkModule,
 ) {
-    if (onWork != null) runCatching { onWork(CatalogWorkProgress(module)) }
+    if (onWork == null) return
+    try {
+        onWork(CatalogWorkProgress(module))
+    } catch (failure: CancellationException) {
+        throw failure
+    } catch (_: Exception) {
+        // Progress observers are optional and must not fail parsing.
+    }
 }
 
 data class CatalogMaterializationProgress(
@@ -77,12 +86,30 @@ object CatalogParser {
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
     ): CatalogParseResult = parseWithWork(rom, onProgress, null)
 
+    fun parse(
+        rom: RomImage,
+        cancellation: ParserCancellationToken,
+        onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+    ): CatalogParseResult = parseWithWork(rom, cancellation, onProgress, null)
+
     fun parseWithWork(
         rom: RomImage,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
         onWork: ((CatalogWorkProgress) -> Unit)? = null,
+    ): CatalogParseResult = parseWithWork(
+        rom,
+        ParserCancellationToken.NONE,
+        onProgress,
+        onWork,
+    )
+
+    fun parseWithWork(
+        rom: RomImage,
+        cancellation: ParserCancellationToken,
+        onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+        onWork: ((CatalogWorkProgress) -> Unit)? = null,
     ): CatalogParseResult {
-        val attempt = parseCatchingWithWork(rom, onProgress, onWork)
+        val attempt = parseCatchingWithWork(rom, cancellation, onProgress, onWork)
         return CatalogParseResult(
             attempt.analysis,
             attempt.layout,
@@ -95,14 +122,34 @@ object CatalogParser {
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
     ): CatalogParseAttempt = parseCatchingWithWork(rom, onProgress, null)
 
+    fun parseCatching(
+        rom: RomImage,
+        cancellation: ParserCancellationToken,
+        onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+    ): CatalogParseAttempt = parseCatchingWithWork(rom, cancellation, onProgress, null)
+
     fun parseCatchingWithWork(
         rom: RomImage,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
         onWork: ((CatalogWorkProgress) -> Unit)? = null,
+    ): CatalogParseAttempt = parseCatchingWithWork(
+        rom,
+        ParserCancellationToken.NONE,
+        onProgress,
+        onWork,
+    )
+
+    fun parseCatchingWithWork(
+        rom: RomImage,
+        cancellation: ParserCancellationToken,
+        onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
+        onWork: ((CatalogWorkProgress) -> Unit)? = null,
     ): CatalogParseAttempt {
-        val context = ParserOrchestrator.analyzeForCatalog(rom, onWork)
+        cancellation.throwIfCancellationRequested()
+        val context = ParserOrchestrator.analyzeForCatalog(rom, onWork, cancellation)
         val analysis = context.analysis
         if (analysis.status != SelectionStatus.SELECTED || analysis.selectedFamily == null) {
+            cancellation.throwIfCancellationRequested()
             return CatalogParseAttempt(analysis, null, null)
         }
         val layout = analysis.probes.singleOrNull { it.family == analysis.selectedFamily }?.resolvedLayout
@@ -123,6 +170,7 @@ object CatalogParser {
                     resolveMoveDescriptions = context.resolveMoveDescriptions,
                     resolveAbilityMechanics = context.resolveAbilityMechanics,
                     resolveNatures = context.resolveNatures,
+                    cancellation = cancellation,
                 )
             },
         )
@@ -142,10 +190,22 @@ object CatalogMaterializer {
         resolveMoveDescriptions: ((ResolvedRomLayout) -> MoveDescriptionResult?)? = null,
         resolveAbilityMechanics: ((ResolvedRomLayout, Map<Int, AbilityRecord>, Map<Int, TypeRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?)? = null,
         resolveNatures: ((ResolvedRomLayout) -> NatureResolution)? = null,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
         materializeTheme: ((Map<CatalogThemeAssetClass, List<RgbaSprite>>, List<DirectCatalogThemePalette>) -> CatalogTheme) =
             RomThemeMaterializer::materialize,
     ): ParsedCatalog {
-        reportCatalogWork(onWork, CatalogWorkModule.CORE_RECORDS)
+        fun beginWork(module: CatalogWorkModule) {
+            cancellation.throwIfCancellationRequested()
+            reportCatalogWork(onWork, module)
+            cancellation.throwIfCancellationRequested()
+        }
+        fun publishProgress(progress: CatalogMaterializationProgress) {
+            cancellation.throwIfCancellationRequested()
+            onProgress?.invoke(progress)
+            cancellation.throwIfCancellationRequested()
+        }
+
+        beginWork(CatalogWorkModule.CORE_RECORDS)
         val rawSpecies = RecordMaterializers.species(rom, layout)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
             layout.resolvedDatasets.abilityNames?.catalogDirectAbilityIds()?.let { catalogIds ->
@@ -242,9 +302,9 @@ object CatalogMaterializer {
             typeChart = chart,
             capabilities = initialCapabilities,
         )
-        onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, essentialCatalog))
+        publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, essentialCatalog))
 
-        reportCatalogWork(onWork, CatalogWorkModule.SPECIES_MEDIA)
+        beginWork(CatalogWorkModule.SPECIES_MEDIA)
         val descriptionMaterialization = runCatching {
             RelationshipMaterializers.descriptionsWithEvidence(
                 rom,
@@ -253,6 +313,7 @@ object CatalogMaterializer {
         }.getOrElse {
             RecordMaterialization(emptyMap(), emptyMap())
         }
+        cancellation.throwIfCancellationRequested()
         val descriptions = descriptionMaterialization.records
         val sprites = SpriteMaterializer.pokemon(rom, layout)
         val resolvedSprites = resolveSpriteAliases(baseSpecies, sprites, layout.generation)
@@ -306,10 +367,10 @@ object CatalogMaterializer {
             speciesById = mediaSpecies,
             capabilities = mediaCapabilities,
         )
-        onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.SPECIES_MEDIA, 2, 5, mediaCatalog))
+        publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.SPECIES_MEDIA, 2, 5, mediaCatalog))
 
-        reportCatalogWork(onWork, CatalogWorkModule.EVOLUTIONS_AND_LEARNSETS)
-        reportCatalogWork(onWork, CatalogWorkModule.ENCOUNTERS)
+        beginWork(CatalogWorkModule.EVOLUTIONS_AND_LEARNSETS)
+        beginWork(CatalogWorkModule.ENCOUNTERS)
         val encounterMaterialization = EncounterMaterializer.materializeWithEvidence(rom, layout)
         val rawEncounters = encounterMaterialization.areas
         val runtimeMetadata = if (layout.generation == 3) {
@@ -348,6 +409,7 @@ object CatalogMaterializer {
                 learnsets = RecordMaterialization(emptyMap(), emptyMap()),
             )
         }
+        cancellation.throwIfCancellationRequested()
         val evolutions = relationshipMaterialization.evolutions.records
         val learnsets = relationshipMaterialization.learnsets.records
         val relationshipSpecies = closedMediaSpecies.mapValues { (id, record) ->
@@ -399,9 +461,9 @@ object CatalogMaterializer {
             runtimeMetadata = runtimeMetadata,
             capabilities = relationshipCapabilities,
         )
-        onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.RELATIONSHIPS, 3, 5, relationshipCatalog))
+        publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.RELATIONSHIPS, 3, 5, relationshipCatalog))
 
-        reportCatalogWork(onWork, CatalogWorkModule.MOVE_DATA)
+        beginWork(CatalogWorkModule.MOVE_DATA)
         val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
         val moveDescriptions = resolveMoveDescriptions?.invoke(layout)
             ?: MoveDescriptionMaterializer.materialize(rom, layout)
@@ -410,7 +472,8 @@ object CatalogMaterializer {
         }.getOrElse {
             MoveAcquisitionMaterialization(emptyMap(), emptyMap())
         }
-        reportCatalogWork(onWork, CatalogWorkModule.ABILITY_DATA)
+        cancellation.throwIfCancellationRequested()
+        beginWork(CatalogWorkModule.ABILITY_DATA)
         val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
         val abilityMechanics = resolveAbilityMechanics?.invoke(layout, abilities, baseTypes, abilityDescriptions)
             ?: AbilityMechanicsMaterializer.materialize(rom, layout, abilities, baseTypes, abilityDescriptions)
@@ -597,7 +660,7 @@ object CatalogMaterializer {
                 status = if (layout.generation == 3) CapabilityStatus.NOT_FOUND else CapabilityStatus.NOT_APPLICABLE,
             )
         }
-        reportCatalogWork(onWork, CatalogWorkModule.MAPS)
+        beginWork(CatalogWorkModule.MAPS)
         val encounterAreaIdStride = if (layout.pokeemeraldExpansion == null) 10 else 100
         val worldMapResolution = if (layout.generation in 1..3 && resolveWorldMap != null) {
             try {
@@ -607,6 +670,8 @@ object CatalogMaterializer {
                 ).also { resolution ->
                     if (resolution is WorldMapResolution.Resolved) resolution.catalog.validate()
                 }
+            } catch (failure: CancellationException) {
+                throw failure
             } catch (failure: Exception) {
                 WorldMapResolution.Unavailable(
                     stage = "resolver-exception",
@@ -673,6 +738,8 @@ object CatalogMaterializer {
                 resolveLocalMaps(layout.generation, encounterBaseIds).also { resolution ->
                     if (resolution is LocalMapResolution.Resolved) resolution.catalog.validate()
                 }
+            } catch (failure: CancellationException) {
+                throw failure
             } catch (failure: Exception) {
                 LocalMapResolution.Unavailable(
                     stage = "resolver-exception",
@@ -740,7 +807,7 @@ object CatalogMaterializer {
                 status = CapabilityStatus.NOT_APPLICABLE,
             )
         }
-        reportCatalogWork(onWork, CatalogWorkModule.TRAINER_AND_THEME)
+        beginWork(CatalogWorkModule.TRAINER_AND_THEME)
         val trainerAssets = runCatching {
             when (layout.generation) {
                 1, 2 -> GbTrainerAssetResolver.resolve(rom, layout.family)
@@ -748,13 +815,15 @@ object CatalogMaterializer {
                 else -> null
             }
         }.getOrNull() ?: TrainerAssetCatalog()
+        cancellation.throwIfCancellationRequested()
         val theme = runCatching {
             materializeTheme(
                 catalogThemeAssets(species, trainerAssets, worldMaps, localMaps),
                 emptyList(),
             ).validate()
         }.getOrElse { CatalogTheme.neutral() }
-        reportCatalogWork(onWork, CatalogWorkModule.CATALOG_STORAGE)
+        cancellation.throwIfCancellationRequested()
+        beginWork(CatalogWorkModule.CATALOG_STORAGE)
         val catalog = ParsedCatalog(
             romSha256 = analysis.sha256,
             family = layout.family,
@@ -813,8 +882,8 @@ object CatalogMaterializer {
                 }
             },
         )
-        onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.EXTENDED, 4, 5, catalog))
-        onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, catalog))
+        publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.EXTENDED, 4, 5, catalog))
+        publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, catalog))
         return catalog
     }
 

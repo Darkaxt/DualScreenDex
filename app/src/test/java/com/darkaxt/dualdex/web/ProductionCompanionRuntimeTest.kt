@@ -23,6 +23,8 @@ import com.darkaxt.dualdex.save.SaveDocumentSource
 import com.darkaxt.dualdex.save.SaveObservation
 import com.darkaxt.dualdex.save.SaveObservationKind
 import com.darkaxt.dualdex.knowledge.SaveFileFingerprint
+import com.enrpau.dualscreendex.companion.map.AreaGuideBuilder
+import com.enrpau.dualscreendex.companion.map.AreaGuideProjectionLimitException
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.darkaxt.dualdex.save.SavedArea
 import com.darkaxt.dualdex.save.TrainerSnapshot
@@ -36,6 +38,8 @@ import com.darkaxt.dualdex.performance.PerformanceRecorder
 import com.darkaxt.dualdex.battle.LiveClockState
 import com.darkaxt.dualdex.battle.LiveGameSnapshot
 import com.darkaxt.dualdex.battle.LiveValue
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
@@ -81,6 +85,7 @@ import org.junit.Assert.assertSame
 import org.junit.Test
 import java.util.Collections
 import java.util.concurrent.AbstractExecutorService
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import com.darkaxt.dualdex.battle.BattleMemorySample
 import com.darkaxt.dualdex.battle.BattleMatchupObservation
@@ -1968,6 +1973,139 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun areaGuideProjectionFailuresDisableOnlyThatProjectionAndCacheTheFailureKey() {
+        listOf<Throwable>(
+            IllegalStateException("private projection details"),
+            AreaGuideProjectionLimitException("point-input", 8_193, 8_192),
+            OutOfMemoryError("private allocation details"),
+        ).forEach { failure ->
+            var attempts = 0
+            val catalog = ParsedCatalog("a".repeat(64), EngineFamily.EMERALD, Platform.GBA)
+            val runtime = ProductionCompanionRuntime(
+                projectAreaGuide = { _, _, _ ->
+                    attempts++
+                    throw failure
+                },
+            )
+            runtime.loadCatalog("guide.gba", catalog)
+
+            val unavailable = runtime.stateView()
+            runtime.updateRetroArch(RetroArchView(connection = "CONNECTED"))
+            val repeated = runtime.stateView()
+
+            assertEquals("UNAVAILABLE", unavailable.areaGuideAvailability.status)
+            assertEquals(
+                if (failure is AreaGuideProjectionLimitException) "point-input" else "projection",
+                unavailable.areaGuideAvailability.stage,
+            )
+            assertEquals(failure.javaClass.simpleName, unavailable.areaGuideAvailability.failureClass)
+            assertNull(unavailable.areaGuide)
+            assertEquals("UNAVAILABLE", repeated.areaGuideAvailability.status)
+            assertEquals(1, attempts)
+            assertEquals(catalog.romSha256, runtime.catalogHash())
+            assertTrue(runtime.bootstrap().catalog != null)
+            runtime.diagnostics(null, null)
+            runtime.close()
+        }
+    }
+
+    @Test
+    fun areaGuideProjectionRecoversWhenAChangedStateProducesAValidKey() {
+        var attempts = 0
+        val catalog = ParsedCatalog("a".repeat(64), EngineFamily.EMERALD, Platform.GBA)
+        val runtime = ProductionCompanionRuntime(
+            projectAreaGuide = { activeCatalog, snapshot, objectives ->
+                attempts++
+                if (attempts == 1) throw IllegalArgumentException("first projection fails")
+                AreaGuideBuilder.project(activeCatalog, snapshot, objectives)
+            },
+        )
+        runtime.loadCatalog("guide.gba", catalog)
+
+        val unavailable = runtime.stateView()
+        val recovered = runtime.action("SETTINGS", mapOf("theme" to "DARK"))
+
+        assertEquals("UNAVAILABLE", unavailable.areaGuideAvailability.status)
+        assertEquals("AVAILABLE", recovered.areaGuideAvailability.status)
+        assertNull(recovered.error)
+        assertEquals(2, attempts)
+        assertEquals(catalog.romSha256, runtime.catalogHash())
+        runtime.close()
+    }
+
+    @Test
+    fun supersededParserStopsBeforeTheWinningParserStartsAndCannotPublishAgain() {
+        val romA = RomImage(ByteArray(0xC0))
+        val romB = RomImage(ByteArray(0xC0).also { it[0] = 1 })
+        val parsedA = ParsedCatalog(romA.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val parsedB = ParsedCatalog(romB.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val aStarted = CountDownLatch(1)
+        val aCancelled = CountDownLatch(1)
+        val releaseA = CountDownLatch(1)
+        val bStarted = CountDownLatch(1)
+        val bCompleted = CountDownLatch(1)
+        val completions = Collections.synchronizedList(mutableListOf<Pair<String, Boolean>>())
+        val committed = Collections.synchronizedList(mutableListOf<String>())
+        val repository = RecordingCatalogRepository()
+        val runtime = ProductionCompanionRuntime(
+            catalogRepository = repository,
+            onCatalogCommitted = { sha256: String, _: String -> committed += sha256 },
+            parseCatalogWithCancellation = {
+                    rom: RomImage,
+                    cancellation: ParserCancellationToken,
+                    progress: (CatalogMaterializationProgress) -> Unit,
+                    _: (CatalogWorkProgress) -> Unit,
+                ->
+                if (rom.sha256 == romA.sha256) {
+                    aStarted.countDown()
+                    try {
+                        releaseA.await(5, TimeUnit.SECONDS)
+                    } catch (_: InterruptedException) {
+                        cancellation.throwIfCancellationRequested()
+                    } finally {
+                        aCancelled.countDown()
+                    }
+                    parsedA
+                } else {
+                    bStarted.countDown()
+                    progress(
+                        CatalogMaterializationProgress(
+                            CatalogMaterializationPhase.COMPLETE,
+                            5,
+                            5,
+                            parsedB,
+                        ),
+                    )
+                    parsedB
+                }
+            },
+        )
+
+        runtime.load(LoadedRom("a.gba", romA)) { result: Result<Unit> ->
+            completions += "a" to result.isSuccess
+        }
+        assertTrue(aStarted.await(2, TimeUnit.SECONDS))
+
+        runtime.load(LoadedRom("b.gba", romB)) { result: Result<Unit> ->
+            completions += "b" to result.isSuccess
+            bCompleted.countDown()
+        }
+
+        assertTrue(bStarted.await(2, TimeUnit.SECONDS))
+        assertEquals(1L, releaseA.count)
+        assertTrue(aCancelled.await(2, TimeUnit.SECONDS))
+        assertTrue(bCompleted.await(2, TimeUnit.SECONDS))
+        assertEquals(listOf("a" to false, "b" to true), completions)
+        assertEquals(listOf(parsedB.romSha256), committed)
+        assertEquals(1, repository.writeCalls)
+        assertEquals(parsedB.romSha256, runtime.catalogHash())
+        assertEquals("COMPLETE", runtime.gateway.bootstrap().catalogLoading.phase)
+        assertNull(runtime.stateView().error)
+        releaseA.countDown()
+        runtime.close()
+    }
+
+    @Test
     fun supersededProgressNeverReplacesTheWinningCatalogOrItsSettings() {
         val hashA = "a".repeat(64)
         val winner = ParsedCatalog("b".repeat(64), EngineFamily.EMERALD, Platform.GBA)
@@ -3487,7 +3625,7 @@ class ProductionCompanionRuntimeTest {
             name = "$sourceId.srm",
             size = 1,
             lastModifiedEpochMs = version.toLong(),
-            read = { byteArrayOf(version.toByte()) },
+            open = { byteArrayOf(version.toByte()).inputStream() },
         ),
         fingerprint = SaveFileFingerprint(
             sha256 = version.toString(16).padStart(64, '0'),

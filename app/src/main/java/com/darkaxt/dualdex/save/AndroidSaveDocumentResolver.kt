@@ -30,7 +30,7 @@ class AndroidSaveDocumentResolver(
                 name = cursor.getString(0),
                 size = cursor.getLong(1),
                 lastModifiedEpochMs = cursor.getLong(2),
-                read = { readerFor(uri) },
+                open = { openStream(uri) },
             )
         }
     }
@@ -54,10 +54,10 @@ class AndroidSaveDocumentResolver(
         name = name,
         size = size,
         lastModifiedEpochMs = lastModifiedEpochMs,
-        read = { readerFor(uri) },
+        open = { openStream(uri) },
     )
 
-    private fun readerFor(uri: Uri): ByteArray = resolver.openInputStream(uri)?.use { it.readBytes() }
+    private fun openStream(uri: Uri) = resolver.openInputStream(uri)
         ?: error("document provider did not open SaveRAM for reading")
 
     private companion object {

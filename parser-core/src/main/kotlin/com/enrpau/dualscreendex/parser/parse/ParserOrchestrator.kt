@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolver
 import com.enrpau.dualscreendex.parser.catalog.AbilityDescriptionResult
@@ -47,25 +48,38 @@ object ParserOrchestrator {
     const val minimumMargin = 10
     private val familyProbeCoordinator = FamilyProbeCoordinator()
 
-    fun analyze(rom: RomImage): ParseResult = analyze(rom, ::newSession)
+    fun analyze(rom: RomImage): ParseResult = analyze(rom) { analyzedRom, header, exactProfile ->
+        newSession(analyzedRom, header, exactProfile)
+    }
 
     internal fun analyzeForCatalog(
         rom: RomImage,
         onWork: ((CatalogWorkProgress) -> Unit)? = null,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): CatalogAnalysisContext {
-        lateinit var sharedSession: RomAnalysisSession
-        val analysis = analyze(rom, onWork) { analyzedRom, header, exactProfile ->
-            newSession(analyzedRom, header, exactProfile).also { sharedSession = it }
+        cancellation.throwIfCancellationRequested()
+        val cancellationAwareWork = { progress: CatalogWorkProgress ->
+            cancellation.throwIfCancellationRequested()
+            onWork?.invoke(progress)
+            cancellation.throwIfCancellationRequested()
         }
+        lateinit var sharedSession: RomAnalysisSession
+        val analysis = analyze(rom, cancellationAwareWork) { analyzedRom, header, exactProfile ->
+            newSession(analyzedRom, header, exactProfile, cancellation).also { sharedSession = it }
+        }
+        cancellation.throwIfCancellationRequested()
         return CatalogAnalysisContext(
             analysis = analysis,
             resolveMoveDescriptions = { layout ->
+                sharedSession.cancellation.throwIfCancellationRequested()
                 MoveDescriptionMaterializer.materialize(sharedSession.rom, layout, sharedSession.gbaReferenceIndex)
             },
             resolveAbilityMechanics = { layout, abilities, types, descriptions ->
+                sharedSession.cancellation.throwIfCancellationRequested()
                 AbilityMechanicsMaterializer.materialize(sharedSession, layout, abilities, types, descriptions)
             },
             resolveNatures = { layout ->
+                sharedSession.cancellation.throwIfCancellationRequested()
                 if (layout.generation == 3) {
                     Gen3NatureResolver.resolve(sharedSession)
                 } else {
@@ -73,6 +87,7 @@ object ParserOrchestrator {
                 }
             },
             resolveGen3AreaNames = { baseAreaIds ->
+                sharedSession.cancellation.throwIfCancellationRequested()
                 val references = sharedSession.gbaReferenceIndex
                 if (references == null || references.overflowed) {
                     emptyMap()
@@ -81,6 +96,7 @@ object ParserOrchestrator {
                 }
             },
             resolveLocalMaps = { generation, baseAreaIds ->
+                sharedSession.cancellation.throwIfCancellationRequested()
                 when (generation) {
                     1 -> Gen1LocalMapResolver.resolve(
                         sharedSession,
@@ -104,6 +120,7 @@ object ParserOrchestrator {
                 }
             },
             resolveWorldMap = { generation, baseAreaIds ->
+                sharedSession.cancellation.throwIfCancellationRequested()
                 when (generation) {
                     1 -> Gen1WorldMapResolver.resolve(sharedSession, baseAreaIds)
                     2 -> Gen2WorldMapResolver.resolve(sharedSession, baseAreaIds)
@@ -167,10 +184,12 @@ object ParserOrchestrator {
         rom: RomImage,
         header: RomHeader,
         exactProfile: RomProfile?,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): RomAnalysisSession = RomAnalysisSession(
         rom = rom,
         header = header,
         exactProfile = exactProfile,
+        cancellation = cancellation,
     )
 
     internal fun applySpeciesSemanticDomain(

@@ -26,9 +26,29 @@ import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class AreaGuideBuilderTest {
+    @Test
+    fun oversizedPointInputFailsBeforeProjectionAllocation() {
+        val base = catalog()
+        val point = base.localMaps.pois.first()
+        val oversized = base.copy(
+            localMaps = base.localMaps.copy(
+                pois = List(8_193) { index -> point.copy(key = "point-$index") },
+            ),
+        )
+
+        val failure = assertThrows(AreaGuideProjectionLimitException::class.java) {
+            AreaGuideBuilder.project(oversized, AppSnapshot())
+        }
+
+        assertEquals("point-input", failure.stage)
+        assertEquals(8_193L, failure.observed)
+        assertEquals(8_192L, failure.limit)
+    }
+
     @Test
     fun trackedAndManuallySelectableAreasShareOneImmutableProjection() {
         val guide = AreaGuideBuilder.build(

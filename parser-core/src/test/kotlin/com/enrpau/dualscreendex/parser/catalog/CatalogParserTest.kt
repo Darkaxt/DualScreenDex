@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameCodec
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableLayout
@@ -31,10 +32,32 @@ import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogParserTest {
+    @Test
+    fun optionalResolverDoesNotConvertParserCancellationIntoUnavailableEvidence() {
+        val rom = RomImage(ByteArray(0x200))
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, 0, 0, ProfileTables(),
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+
+        assertThrows(ParserCancellationException::class.java) {
+            CatalogMaterializer.materialize(
+                rom = rom,
+                analysis = analysis,
+                layout = layout,
+                resolveWorldMap = { _, _ -> throw ParserCancellationException() },
+            )
+        }
+    }
+
     @Test
     fun optionalWorldMapResolverFailureKeepsTheBaseCatalogUsable() {
         val rom = RomImage(ByteArray(0x200))

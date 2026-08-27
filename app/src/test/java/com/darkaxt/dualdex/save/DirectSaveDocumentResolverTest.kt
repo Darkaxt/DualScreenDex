@@ -41,7 +41,7 @@ class DirectSaveDocumentResolverTest {
         assertEquals(1, sources.size)
         assertEquals(matching.canonicalFile.toURI().normalize().toString(), sources.single().id)
         assertEquals(matching.canonicalPath, sources.single().displayPath)
-        assertArrayEquals(byteArrayOf(1, 2, 3), sources.single().read())
+        assertArrayEquals(byteArrayOf(1, 2, 3), sources.single().open().use { it.readBytes() })
     }
 
     @Test
@@ -71,7 +71,7 @@ class DirectSaveDocumentResolverTest {
 
         assertEquals(4, refreshed.size)
         assertTrue(refreshed.lastModifiedEpochMs > original.lastModifiedEpochMs)
-        assertArrayEquals(byteArrayOf(8, 9, 10, 11), refreshed.read())
+        assertArrayEquals(byteArrayOf(8, 9, 10, 11), refreshed.open().use { it.readBytes() })
     }
 
     @Test

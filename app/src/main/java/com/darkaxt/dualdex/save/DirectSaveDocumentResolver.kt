@@ -47,7 +47,7 @@ object DirectSaveDocumentResolver {
             name = name,
             size = length(),
             lastModifiedEpochMs = lastModified(),
-            read = { readBytes() },
+            open = { inputStream() },
             atomicSiblingTarget = FileAtomicSiblingTarget(requireNotNull(save.parentFile)),
         )
     }
