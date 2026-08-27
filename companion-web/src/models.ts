@@ -275,6 +275,7 @@ export interface SpeciesState {
   ballId: number | null;
   preferredLevel?: number | null;
   innateTier?: string | null;
+  specimenCount?: number;
 }
 
 export interface SaveRamState {
@@ -452,6 +453,50 @@ export interface PartyMemberView {
   rarity?: Rarity | null;
   stats: Record<string, number>;
   moves: { slot: number; moveId: number | null; name: string | null; currentPp: number | null; maximumPp: number | null }[];
+}
+
+export interface OwnedIndividualLocationView {
+  kind: 'PARTY' | 'BOX';
+  label: string;
+  boxNumber: number | null;
+  slotNumber: number;
+}
+
+export interface OwnedIndividualView {
+  key: string;
+  location: OwnedIndividualLocationView;
+  speciesId: number;
+  formId: number | null;
+  speciesName: string;
+  spriteUrl: string | null;
+  typeIds: number[];
+  nickname: string | null;
+  level: number | null;
+  isEgg: boolean;
+  gender: 'MALE' | 'FEMALE' | 'GENDERLESS' | null;
+  natureId: number | null;
+  nature: string | null;
+  abilityId: number | null;
+  abilityName: string | null;
+  heldItemId: number | null;
+  heldItemName?: string | null;
+  hasHeldItem: boolean | null;
+  currentHp: number | null;
+  maximumHp: number | null;
+  status: string | null;
+  experienceProgress: number | null;
+  rarity: Rarity | null;
+  stats: Record<string, number>;
+  moves: { slot: number; moveId: number | null; name: string | null; currentPp: number | null; maximumPp: number | null }[];
+  ivs: number[];
+  dvs: number[];
+}
+
+export interface SpecimenCollectionView {
+  version: number;
+  speciesId: number;
+  speciesName: string;
+  specimens: OwnedIndividualView[];
 }
 
 export interface PartyAnalysis {

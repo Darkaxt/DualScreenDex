@@ -7,6 +7,7 @@ import com.darkaxt.dualdex.live.RecoveryState
 import com.darkaxt.dualdex.live.ResolvedBattleKnowledge
 import com.darkaxt.dualdex.live.ResolvedGameSnapshot
 import com.darkaxt.dualdex.live.ResolvedLocationState
+import com.darkaxt.dualdex.live.ResolvedOwnedStorageState
 import com.darkaxt.dualdex.live.ResolvedPokedexState
 import com.darkaxt.dualdex.live.ResolvedTrainerState
 import com.darkaxt.dualdex.live.ResolvedValue
@@ -44,8 +45,10 @@ class ResolvedSemanticFactProjectorTest {
                 resolved(TrainerPlayTime(1, 2)), resolved(0), resolved(0),
             ),
             pokedex = ResolvedPokedexState(resolved(setOf(25)), resolved(setOf(25))),
-            party = resolved(listOf(OwnedIndividual("party:0", 25))),
-            storedIndividuals = resolved(emptyList()),
+            ownedStorage = ResolvedOwnedStorageState(
+                party = resolved(listOf(OwnedIndividual("party:0", 25))),
+                boxes = resolved(emptyList()),
+            ),
             battle = resolved(LiveBattleState(false, null, BattleEncounterKind.UNKNOWN)),
             battleKnowledge = ResolvedBattleKnowledge(),
             location = ResolvedLocationState(resolved(0x0101), ResolvedValue.unavailable()),

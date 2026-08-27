@@ -24,6 +24,7 @@ class Gen3LiveSectionFingerprintsTest {
 
         assertOnlyChanged(regions, baseline, Gen3LiveMemoryReader.SAVE_BLOCK2_ID, 0, Gen3LiveDecodedSection.PLAYER)
         assertOnlyChanged(regions, baseline, Gen3LiveMemoryReader.PARTY_ID, 40, Gen3LiveDecodedSection.PARTY)
+        assertOnlyChanged(regions, baseline, Gen3LiveMemoryReader.STORAGE_ID, 80, Gen3LiveDecodedSection.STORAGE)
         assertOnlyChanged(regions, baseline, Gen3LiveMemoryReader.CLOCK_ID, 4, Gen3LiveDecodedSection.OVERWORLD)
         assertOnlyChanged(regions, baseline, Gen3LiveMemoryReader.SAVE_BLOCK1_ID, 0x20, Gen3LiveDecodedSection.PROGRESSION)
     }
@@ -69,6 +70,7 @@ class Gen3LiveSectionFingerprintsTest {
         Gen3LiveMemoryReader.SAVE_BLOCK2_ID to ByteArray(0x280),
         Gen3LiveMemoryReader.PARTY_COUNT_ID to byteArrayOf(1),
         Gen3LiveMemoryReader.PARTY_ID to ByteArray(600),
+        Gen3LiveMemoryReader.STORAGE_ID to ByteArray(14 * 30 * 80),
         Gen3LiveMemoryReader.CLOCK_ID to byteArrayOf(0, 0, 12, 30, 10),
     )
 
@@ -85,6 +87,11 @@ class Gen3LiveSectionFingerprintsTest {
         playerPartyRecordSize = 100,
         saveBlock1PointerAddress = 0x03001000,
         saveBlock2PointerAddress = 0x03001004,
+        pokemonStoragePointerAddress = 0x03001008,
+        pokemonStorageBoxCount = 14,
+        pokemonStorageBoxCapacity = 30,
+        pokemonStorageRecordSize = 80,
+        pokemonStorageRecordsOffset = 4,
         saveBlock1Size = 0x100,
         saveBlock2Size = 0x280,
     )

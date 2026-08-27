@@ -2,6 +2,7 @@ package com.darkaxt.dualdex.save
 
 import com.darkaxt.dualdex.save.gen3.Gen3TextEncoding
 import com.darkaxt.dualdex.save.gen3.Gen3SaveRuntimeAbi
+import java.security.MessageDigest
 
 data class SaveSpeciesContext(
     val speciesId: Int,
@@ -40,6 +41,7 @@ data class SavedArea(val mapGroup: Int, val mapNumber: Int) {
 data class OwnedIndividual(
     val stableLocation: String,
     val speciesId: Int,
+    val individualIdentity: String? = null,
     val formId: Int? = null,
     val level: Int? = null,
     val isEgg: Boolean = false,
@@ -48,7 +50,43 @@ data class OwnedIndividual(
     val captureBallId: Int? = null,
     val experience: Long? = null,
     val details: PartyMemberDetails? = null,
-)
+) {
+    init {
+        require(stableLocation.isNotBlank()) { "owned individual location must not be blank" }
+        require(speciesId > 0) { "owned individual species ID must be positive" }
+        require(individualIdentity == null || individualIdentity.matches(Regex("[0-9a-f]{16}"))) {
+            "individual identity must be a normalized 64-bit hex value"
+        }
+    }
+
+    /** Digest of fields shared by Party and boxed representations; location and volatile battle fields are excluded. */
+    fun validatedRecordDigest(): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        fun text(value: Any?) {
+            digest.update((value?.toString() ?: "-").toByteArray(Charsets.UTF_8))
+            digest.update(0)
+        }
+        text(speciesId)
+        text(formId)
+        text(level)
+        text(isEgg)
+        ivs.orEmpty().forEach(::text)
+        dvs.orEmpty().forEach(::text)
+        text(captureBallId)
+        text(experience)
+        text(details?.nickname)
+        text(details?.personality)
+        text(details?.gender)
+        text(details?.natureId)
+        text(details?.heldItemId)
+        text(details?.friendship)
+        text(details?.abilitySlot)
+        details?.moveIds.orEmpty().forEach(::text)
+        details?.movePp.orEmpty().forEach(::text)
+        details?.movePpBonuses.orEmpty().forEach(::text)
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+}
 
 data class SaveSnapshot(
     val romIdentity: String,

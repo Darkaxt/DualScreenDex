@@ -10,6 +10,24 @@ beforeEach(() => {
 });
 
 describe('Pokédex evolution navigation', () => {
+  it('offers specimens only when decoded owned instances exist', () => {
+    const openSpecimens = vi.fn();
+    const props = { catalog, send: vi.fn(), tab: 'MORE' as const, setTab: vi.fn(), openMove: vi.fn(), openAbility: vi.fn(), openSpecimens };
+    const rendered = render(<PokedexDetail {...props} state={{
+      ...state,
+      speciesState: { 5: { ...state.speciesState[5], specimenCount: 2 } },
+    }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'VIEW SPECIMENS' }));
+    expect(openSpecimens).toHaveBeenCalledWith(5);
+
+    rendered.rerender(<PokedexDetail {...props} state={{
+      ...state,
+      speciesState: { 5: { ...state.speciesState[5], caught: true, specimenCount: 0 } },
+    }} />);
+    expect(screen.queryByRole('button', { name: 'VIEW SPECIMENS' })).toBeNull();
+  });
+
   it('uses MORE space for the selected species ability instead of forcing a sparse detail page', () => {
     const openAbility = vi.fn();
     render(<PokedexDetail

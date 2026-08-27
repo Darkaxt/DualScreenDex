@@ -34,3 +34,9 @@ The four Stage 3 deferrals are closed on 2026-08-27:
 | Atlas Objectives | The Area Guide consumes only incomplete, applicable, Organic-safe Exploration challenges for the resolved current area; absent challenges leave the section absent. |
 
 Tier 2/3 dynamic challenge packs, game-specific temporal adapters, and explicit reset/pause/miss lifecycles remain assigned to Stage 6. They are not required by the six completed count-based Tier 1 templates and do not weaken the Stage 3 Progress, Timeline, or Objectives contract.
+
+## Stage 4 disposition
+
+Pokédex Specimens is implemented and removed from the generic runtime-page deferral. It enumerates decoded Party and PC instances inside the caught species' existing `MORE` flow, reuses Party's individual detail component and child destinations, and introduces neither a standalone PC page nor another live/save decoder.
+
+The Stage 4 report records unexposed Gen I/II owned-record fields, Gen I/II live PC storage, and the erased Unbound recovery control as numeric `NOT_FOUND` evidence. Generation-defined absent mechanics remain `NOT_APPLICABLE`. Those evidence states are not reclassified as deferrals: the UI simply omits unvalidated fields, while exact SaveRAM recovery supplies Gen I/II boxes and the source-backed live layout supplies Unbound storage. No later stage is assigned to fabricate or assume the missing values.

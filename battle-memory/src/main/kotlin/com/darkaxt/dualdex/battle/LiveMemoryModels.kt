@@ -117,6 +117,12 @@ data class LiveGameSnapshot(
     val trainer: LiveTrainerState,
     val pokedex: LivePokedexState,
     val party: LiveValue<List<OwnedIndividual>>,
+    val storedIndividuals: LiveValue<List<OwnedIndividual>> = LiveValue.Unavailable(
+        LiveUnavailableReason(
+            LiveUnavailableCode.UNSUPPORTED_LAYOUT,
+            "live owned storage layout was unavailable",
+        ),
+    ),
     val battle: LiveValue<LiveBattleState>,
     val location: LiveLocationState,
     val clock: LiveValue<LiveClockState>,

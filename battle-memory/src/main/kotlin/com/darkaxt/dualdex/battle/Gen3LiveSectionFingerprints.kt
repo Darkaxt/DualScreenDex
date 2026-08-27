@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicLong
 enum class Gen3LiveDecodedSection(val metricName: String) {
     PLAYER("player"),
     PARTY("party"),
+    STORAGE("storage"),
     OVERWORLD("overworld"),
     PROGRESSION("progression"),
 }
@@ -16,12 +17,14 @@ enum class Gen3LiveDecodedSection(val metricName: String) {
 data class Gen3LiveSectionFingerprintSet(
     val player: String,
     val party: String,
+    val storage: String,
     val overworld: String,
     val progression: String,
 ) {
     operator fun get(section: Gen3LiveDecodedSection): String = when (section) {
         Gen3LiveDecodedSection.PLAYER -> player
         Gen3LiveDecodedSection.PARTY -> party
+        Gen3LiveDecodedSection.STORAGE -> storage
         Gen3LiveDecodedSection.OVERWORLD -> overworld
         Gen3LiveDecodedSection.PROGRESSION -> progression
     }
@@ -46,6 +49,15 @@ object Gen3LiveSectionFingerprints {
                 regions[Gen3LiveMemoryReader.PARTY_ID],
                 0,
                 (layout.playerPartyCapacity ?: 0) * (layout.playerPartyRecordSize ?: 0),
+            )
+        }
+        val storage = digest {
+            slice(
+                "storage-records",
+                regions[Gen3LiveMemoryReader.STORAGE_ID],
+                0,
+                (layout.pokemonStorageBoxCount ?: 0) * (layout.pokemonStorageBoxCapacity ?: 0) *
+                    (layout.pokemonStorageRecordSize ?: 0),
             )
         }
         val player = digest {
@@ -90,7 +102,7 @@ object Gen3LiveSectionFingerprints {
                 }
             }
         }
-        return Gen3LiveSectionFingerprintSet(player, party, overworld, progression)
+        return Gen3LiveSectionFingerprintSet(player, party, storage, overworld, progression)
     }
 
     fun combine(first: String, second: String): String = digest {

@@ -212,6 +212,9 @@ class AndroidLoopbackServer(
         request.method == "GET" && request.path == "/api/health" -> jsonResponse(mapOf("ok" to true))
         request.method == "GET" && request.path == "/api/bootstrap" -> jsonResponse(runtime.bootstrap())
         request.method == "GET" && request.path == "/api/state" -> stateResponse(request)
+        request.method == "GET" && request.path == "/api/specimens" -> jsonResponse(
+            runtime.specimens(requireNotNull(request.query["speciesId"]?.toIntOrNull()) { "speciesId is required" }),
+        )
         request.method == "POST" && request.path == "/api/actions" -> handleAction(request)
         request.method == "GET" && request.path == "/api/mapper/state" -> jsonResponse(requireNotNull(mapperHandler) { "mapper is unavailable" }.state())
         request.method == "POST" && request.path == "/api/mapper/actions" -> handleMapperAction(request)

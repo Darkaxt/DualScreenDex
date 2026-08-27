@@ -18,6 +18,8 @@ import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
+import com.enrpau.dualscreendex.companion.model.OwnedIndividualLocationKind
+import com.enrpau.dualscreendex.companion.model.ResolvedOwnedIndividual
 import com.enrpau.dualscreendex.companion.owned.PreferredIndividualSelector
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
@@ -501,6 +503,46 @@ data class PartyMoveView(
     val currentPp: Int?,
     val maximumPp: Int?,
 )
+data class SpecimenCollectionView(
+    val version: Long,
+    val speciesId: Int,
+    val speciesName: String,
+    val specimens: List<OwnedIndividualView>,
+)
+data class OwnedIndividualLocationView(
+    val kind: String,
+    val label: String,
+    val boxNumber: Int? = null,
+    val slotNumber: Int,
+)
+data class OwnedIndividualView(
+    val key: String,
+    val location: OwnedIndividualLocationView,
+    val speciesId: Int,
+    val formId: Int?,
+    val speciesName: String,
+    val spriteUrl: String?,
+    val typeIds: List<Int>,
+    val nickname: String?,
+    val level: Int?,
+    val isEgg: Boolean,
+    val gender: String?,
+    val natureId: Int?,
+    val nature: String?,
+    val abilityId: Int?,
+    val abilityName: String?,
+    val heldItemId: Int?,
+    val hasHeldItem: Boolean?,
+    val currentHp: Int?,
+    val maximumHp: Int?,
+    val status: String?,
+    val experienceProgress: Double?,
+    val rarity: RarityView?,
+    val stats: Map<String, Int>,
+    val moves: List<PartyMoveView>,
+    val ivs: List<Int>,
+    val dvs: List<Int>,
+)
 data class MapPositionView(val x: Int, val y: Int)
 data class RetroArchView(
     val storageGrant: String = "MISSING",
@@ -548,6 +590,7 @@ data class SpeciesStateView(
     val ballId: Int?,
     val preferredLevel: Int? = null,
     val innateTier: String? = null,
+    val specimenCount: Int = 0,
 )
 data class BattleView(
     val opponents: List<OpponentView>,
@@ -895,6 +938,11 @@ object ApiViewBuilder {
         }
         val areaGuide = effectiveAreaGuideProjection?.guide?.toView()
             ?.takeIf { it.areas.isNotEmpty() }
+        val specimenCounts = catalog?.let { activeCatalog ->
+            distinctResolvedIndividuals(snapshot, activeCatalog)
+                .groupingBy { canonicalSpeciesKey(activeCatalog, it.individual.speciesId) }
+                .eachCount()
+        }.orEmpty()
         val speciesState = catalog?.navigableSpecies()?.associate { species ->
             val owned = effectiveOwned.filter { it.speciesId == species.id }
             val preferred = PreferredIndividualSelector.select(owned)
@@ -906,6 +954,7 @@ object ApiViewBuilder {
                     ?.takeIf { it in catalog.captureBallsById },
                 preferredLevel = preferred?.level,
                 innateTier = preferred?.let(PreferredIndividualSelector::tier)?.takeUnless { it == "UNAVAILABLE" },
+                specimenCount = specimenCounts[canonicalSpeciesKey(catalog, species.id)] ?: 0,
             )
         }.orEmpty()
         val activeBattle = snapshot.battle
@@ -1083,6 +1132,153 @@ object ApiViewBuilder {
     private fun List<MoveObservation>.toObservedMoveViews(): List<ObservedMoveView> =
         sortedWith(compareByDescending<MoveObservation> { it.frequency }.thenBy { it.moveId })
             .map { ObservedMoveView(it.moveId, it.frequency) }
+
+    fun specimens(snapshot: AppSnapshot, catalog: ParsedCatalog, speciesId: Int): SpecimenCollectionView {
+        val selected = requireNotNull(catalog.speciesById[speciesId]) { "species is unavailable" }
+        val selectedKey = canonicalSpeciesKey(catalog, speciesId)
+        val specimens = distinctResolvedIndividuals(snapshot, catalog)
+            .filter { canonicalSpeciesKey(catalog, it.individual.speciesId) == selectedKey }
+            .mapNotNull { resolved -> specimenView(snapshot, catalog, resolved) }
+        return SpecimenCollectionView(
+            version = snapshot.version,
+            speciesId = speciesId,
+            speciesName = selected.name.value?.takeIf(String::isNotBlank) ?: "Pokémon",
+            specimens = specimens,
+        )
+    }
+
+    private fun distinctResolvedIndividuals(
+        snapshot: AppSnapshot,
+        catalog: ParsedCatalog,
+    ): List<ResolvedOwnedIndividual> = snapshot.resolvedOwnedIndividuals.orEmpty()
+        .distinctBy { stableSpecimenKey(snapshot, catalog, it) }
+
+    private fun stableSpecimenKey(
+        snapshot: AppSnapshot,
+        catalog: ParsedCatalog,
+        resolved: ResolvedOwnedIndividual,
+    ): String = resolved.individual.individualIdentity?.let { "individual:$it" } ?: buildString {
+        append(catalog.romSha256.lowercase())
+        append(':')
+        append(snapshot.resolvedSaveIdentity ?: "current-session")
+        append(':')
+        append(resolved.location.kind.name)
+        append(':')
+        append(resolved.location.boxIndex ?: -1)
+        append(':')
+        append(resolved.location.slotIndex)
+        append(':')
+        append(resolved.individual.validatedRecordDigest())
+    }
+
+    private fun canonicalSpeciesKey(catalog: ParsedCatalog, speciesId: Int): String =
+        catalog.speciesById[speciesId]?.dexNumber?.value?.takeIf { it > 0 }?.let { "dex:$it" }
+            ?: "species:$speciesId"
+
+    private fun specimenView(
+        snapshot: AppSnapshot,
+        catalog: ParsedCatalog,
+        resolved: ResolvedOwnedIndividual,
+    ): OwnedIndividualView? {
+        val individual = resolved.individual
+        val species = catalog.speciesById[individual.speciesId] ?: return null
+        val speciesName = species.name.value?.takeIf(String::isNotBlank) ?: return null
+        val details = individual.details
+        val abilityId = details?.abilityId ?: details?.abilitySlot?.let { slot ->
+            species.abilityIds.value?.getOrNull(slot)
+        }
+        val abilityName = abilityId?.let { catalog.abilitiesById[it]?.name?.value?.takeIf(String::isNotBlank) }
+        val nature = details?.natureId?.let(catalog.naturesById::get)
+        val generation = when (catalog.platform.name) {
+            "GBA" -> 3
+            "GBC" -> 2
+            else -> 1
+        }
+        val rarity = individual.level?.takeIf { it > 0 }?.let { level ->
+            RarityEvaluator.evaluate(
+                individual = com.enrpau.dualscreendex.companion.model.OwnedPokemon(
+                    stableKey = stableSpecimenKey(snapshot, catalog, resolved),
+                    speciesId = individual.speciesId,
+                    generation = generation,
+                    level = level,
+                    ivs = individual.ivs.orEmpty(),
+                    dvs = individual.dvs.orEmpty(),
+                    isEgg = individual.isEgg,
+                    party = resolved.location.kind == OwnedIndividualLocationKind.PARTY,
+                ),
+                currentAreaBaseId = null,
+                encounterAreas = emptyList(),
+            ).takeIf { it.innateTier != null }
+        }
+        val location = when (resolved.location.kind) {
+            OwnedIndividualLocationKind.PARTY -> OwnedIndividualLocationView(
+                kind = "PARTY",
+                label = "Party · Slot ${resolved.location.slotIndex + 1}",
+                slotNumber = resolved.location.slotIndex + 1,
+            )
+            OwnedIndividualLocationKind.BOX -> OwnedIndividualLocationView(
+                kind = "BOX",
+                label = "Box ${requireNotNull(resolved.location.boxIndex) + 1} · Slot ${resolved.location.slotIndex + 1}",
+                boxNumber = resolved.location.boxIndex + 1,
+                slotNumber = resolved.location.slotIndex + 1,
+            )
+        }
+        return OwnedIndividualView(
+            key = stableSpecimenKey(snapshot, catalog, resolved),
+            location = location,
+            speciesId = individual.speciesId,
+            formId = individual.formId,
+            speciesName = speciesName,
+            spriteUrl = individual.speciesId.takeIf { species.sprite.value != null }
+                ?.let { "/api/sprites/species/$it.png" },
+            typeIds = species.typeIds.value.orEmpty(),
+            nickname = details?.nickname,
+            level = individual.level,
+            isEgg = individual.isEgg,
+            gender = details?.gender?.let(::partyGender),
+            natureId = nature?.id,
+            nature = nature?.name,
+            abilityId = abilityId.takeIf { abilityName != null },
+            abilityName = abilityName,
+            heldItemId = details?.heldItemId,
+            hasHeldItem = details?.let { it.heldItemId != null },
+            currentHp = details?.currentHp,
+            maximumHp = details?.maximumHp,
+            status = details?.status?.let(::partyStatus),
+            experienceProgress = details?.experienceProgress,
+            rarity = rarity?.let {
+                RarityView(
+                    relativeTier = null,
+                    innateTier = it.innateTier?.name,
+                    baseStars = it.baseStars,
+                    areaAdjustment = null,
+                    stars = it.stars,
+                    areaOutcome = it.areaOutcome.name,
+                    currentAreaBaseId = null,
+                    currentAreaName = null,
+                    matchingAreaCount = 0,
+                    candidateAreaCount = 0,
+                )
+            },
+            stats = details?.stats.orEmpty().takeIf { it.size == STAT_NAMES.size }
+                ?.let { STAT_NAMES.zip(it).toMap(linkedMapOf()) }
+                .orEmpty(),
+            moves = (0 until MOVE_SLOT_COUNT).map { slot ->
+                val moveId = details?.moveIds?.getOrNull(slot)?.takeIf { it > 0 }
+                val move = moveId?.let(catalog.movesById::get)
+                val name = move?.name?.value?.takeIf(String::isNotBlank)
+                PartyMoveView(
+                    slot = slot,
+                    moveId = moveId.takeIf { name != null },
+                    name = name,
+                    currentPp = details?.movePp?.getOrNull(slot).takeIf { name != null },
+                    maximumPp = move?.pp?.value.takeIf { name != null },
+                )
+            },
+            ivs = individual.ivs.orEmpty(),
+            dvs = individual.dvs.orEmpty(),
+        )
+    }
 
     private fun trainerView(snapshot: AppSnapshot, catalog: ParsedCatalog?): TrainerView? {
         val resolved = snapshot.trainerCardState ?: return null

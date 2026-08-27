@@ -83,6 +83,32 @@ data class ResolvedLocationState(
     val position: ResolvedValue<RuntimeMapPosition>,
 )
 
+data class ResolvedStorageSlot(
+    val index: Int,
+    val individual: OwnedIndividual,
+) {
+    init {
+        require(index >= 0) { "storage slot index must not be negative" }
+    }
+}
+
+data class ResolvedStorageBox(
+    val index: Int,
+    val slots: List<ResolvedStorageSlot>,
+) {
+    init {
+        require(index >= 0) { "storage box index must not be negative" }
+        require(slots.map(ResolvedStorageSlot::index).distinct().size == slots.size) {
+            "storage box slots must be unique"
+        }
+    }
+}
+
+data class ResolvedOwnedStorageState(
+    val party: ResolvedValue<List<OwnedIndividual>>,
+    val boxes: ResolvedValue<List<ResolvedStorageBox>>,
+)
+
 data class ResolvedBattleKnowledge(
     val observedMoves: Map<Int, Map<Int, Int>> = emptyMap(),
     val seenSpeciesIds: Set<Int> = emptySet(),
@@ -108,8 +134,7 @@ data class ResolvedGameSnapshot(
     val sampleId: Long?,
     val trainer: ResolvedTrainerState,
     val pokedex: ResolvedPokedexState,
-    val party: ResolvedValue<List<OwnedIndividual>>,
-    val storedIndividuals: ResolvedValue<List<OwnedIndividual>>,
+    val ownedStorage: ResolvedOwnedStorageState,
     val battle: ResolvedValue<LiveBattleState>,
     val battleKnowledge: ResolvedBattleKnowledge,
     val location: ResolvedLocationState,
@@ -118,7 +143,18 @@ data class ResolvedGameSnapshot(
     val eventFlags: ResolvedValue<Set<Int>>,
     val levelUpRulesetId: ResolvedValue<String>,
     val recovery: RecoveryState,
-)
+) {
+    val party: ResolvedValue<List<OwnedIndividual>> get() = ownedStorage.party
+    val storedIndividuals: ResolvedValue<List<OwnedIndividual>> get() = ownedStorage.boxes.map { boxes ->
+        boxes.flatMap { box -> box.slots.sortedBy(ResolvedStorageSlot::index).map(ResolvedStorageSlot::individual) }
+    }
+}
+
+private fun <T, R> ResolvedValue<T>.map(transform: (T) -> R): ResolvedValue<R> = when (source) {
+    ResolvedValueSource.LIVE -> ResolvedValue.live(transform(requireNotNull(value)))
+    ResolvedValueSource.RECOVERY -> ResolvedValue.recovery(transform(requireNotNull(value)))
+    ResolvedValueSource.UNAVAILABLE -> ResolvedValue.unavailable()
+}
 
 data class TransientGameStateContext(
     val romIdentity: String,

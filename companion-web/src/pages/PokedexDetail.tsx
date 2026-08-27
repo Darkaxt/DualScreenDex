@@ -14,7 +14,8 @@ export function PokedexDetail({
   tab,
   setTab,
   openMove,
-  openAbility: _openAbility
+  openAbility: _openAbility,
+  openSpecimens,
 }: {
   catalog: Catalog;
   state: State;
@@ -23,6 +24,7 @@ export function PokedexDetail({
   setTab: (tab: DetailTab) => void;
   openMove: (moveId: number) => void;
   openAbility: (abilityId: number) => void;
+  openSpecimens?: (speciesId: number) => void;
 }) {
   const species = catalog.species.find(item => item.id === state.selectedSpeciesId) ?? catalog.species[0];
   if (!species) return null;
@@ -92,6 +94,10 @@ export function PokedexDetail({
       </div>}
       {displayTab === 'AREA' && <PokemonAreaMap catalog={catalog} state={state} speciesId={species.id} send={send} />}
       {unlocked && displayTab === 'MORE' && <div class="paper-panel more-sections">
+        {(status?.specimenCount ?? 0) > 0 && <section class="specimen-entry-section">
+          <div><p class="eyebrow">YOUR POKÉMON</p><strong>{status?.specimenCount} {status?.specimenCount === 1 ? 'specimen' : 'specimens'}</strong></div>
+          <button type="button" onClick={() => openSpecimens?.(species.id)}>VIEW SPECIMENS</button>
+        </section>}
         {species.abilities.length > 0 && <section><p class="eyebrow">ABILITIES</p><div class="inline-abilities">{species.abilities.map(ability => <article class="inline-ability" key={ability.id}>
           <header><strong>{ability.name}</strong><span>#{ability.id}</span></header>
           <p>{ability.description || gameplayCopy.abilityUnavailable}</p>
@@ -120,7 +126,7 @@ export function PokedexDetail({
             : <div class="evolution-row" key={`${evolution.targetSpeciesId}-${index}`}>{content}</div>;
         })}</section>}
         {locations.length > 0 && <section><p class="eyebrow">LOCATIONS</p>{locations.map(({ area, slots }) => <div class="data-row location-row" key={area.id}><strong>{area.name}</strong><span>{wildLevelRange(slots)}{slots.some(slot => slot.weight != null) ? ` · ${Math.max(...slots.map(slot => slot.weight ?? 0))}%` : ''}</span></div>)}</section>}
-        {species.abilities.length === 0 && species.evolutions.length === 0 && locations.length === 0 && <div class="empty-state">{gameplayCopy.noAdditionalData}</div>}
+        {species.abilities.length === 0 && species.evolutions.length === 0 && locations.length === 0 && (status?.specimenCount ?? 0) === 0 && <div class="empty-state">{gameplayCopy.noAdditionalData}</div>}
       </div>}
     </div>
   </section>;

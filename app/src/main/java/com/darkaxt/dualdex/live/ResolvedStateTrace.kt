@@ -84,8 +84,11 @@ private fun ResolvedGameSnapshot?.traceFields(): Map<String, ResolvedStateFieldT
         put("trainer.stars", snapshot.trainer.stars.traceValue())
         put("pokedex.seen", snapshot.pokedex.seenSpeciesIds.traceValue { it.size })
         put("pokedex.caught", snapshot.pokedex.caughtSpeciesIds.traceValue { it.size })
-        put("party", snapshot.party.traceValue { it.size })
-        put("stored", snapshot.storedIndividuals.traceValue { it.size })
+        put("owned.party", snapshot.ownedStorage.party.traceValue { it.size })
+        put(
+            "owned.boxes",
+            snapshot.ownedStorage.boxes.traceValue { boxes -> boxes.sumOf { box -> box.slots.size } },
+        )
         put("battle", snapshot.battle.traceValue())
         put(
             "battle.knowledge",

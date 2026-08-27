@@ -23,6 +23,7 @@ import com.darkaxt.dualdex.save.TrainerSnapshot
 import com.darkaxt.dualdex.save.BagEntry
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.BagPocketSnapshot
+import com.darkaxt.dualdex.save.OwnedIndividual
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.darkaxt.dualdex.knowledge.SaveFileFingerprint
@@ -34,6 +35,107 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class UnifiedGameStateDecoderTest {
+    @Test
+    fun `owned storage prefers live party and boxes over recovery`() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(
+            recovery(
+                ROM,
+                party = listOf(OwnedIndividual("party-0", 1)),
+                stored = listOf(OwnedIndividual("box-0", 2)),
+            ),
+        )
+
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 1,
+                money = LiveValue.Available(3_000L),
+                party = LiveValue.Available(listOf(OwnedIndividual("party-0", 3))),
+                stored = LiveValue.Available(listOf(OwnedIndividual("box-0", 4))),
+            ),
+        )
+
+        val storage = requireNotNull(decoder.current).ownedStorage
+        assertEquals(ResolvedValueSource.LIVE, storage.party.source)
+        assertEquals(listOf(3), storage.party.value?.map(OwnedIndividual::speciesId))
+        assertEquals(ResolvedValueSource.LIVE, storage.boxes.source)
+        assertEquals(listOf(4), storage.boxes.value?.flatMap { box -> box.slots }?.map { it.individual.speciesId })
+    }
+
+    @Test
+    fun `validated empty live boxes clear recovered storage`() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(
+            recovery(ROM, stored = listOf(OwnedIndividual("box-0", 2))),
+        )
+
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 1,
+                money = LiveValue.Available(3_000L),
+                stored = LiveValue.Available(emptyList()),
+            ),
+        )
+
+        val boxes = requireNotNull(decoder.current).ownedStorage.boxes
+        assertEquals(ResolvedValueSource.LIVE, boxes.source)
+        assertEquals(emptyList<ResolvedStorageBox>(), boxes.value)
+    }
+
+    @Test
+    fun `unsupported live storage falls back to exact recovery boxes`() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(
+            recovery(ROM, stored = listOf(OwnedIndividual("box-31", 2))),
+        )
+
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 1,
+                money = LiveValue.Available(3_000L),
+                stored = unavailable(),
+            ),
+        )
+
+        val boxes = requireNotNull(decoder.current).ownedStorage.boxes
+        assertEquals(ResolvedValueSource.RECOVERY, boxes.source)
+        assertEquals(2, boxes.value?.single { it.index == 1 }?.slots?.single { it.index == 1 }?.individual?.speciesId)
+    }
+
+    @Test
+    fun `stable individual identity prevents party and box duplication`() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM))
+        decoder.acceptRecovery(
+            recovery(
+                ROM,
+                stored = listOf(OwnedIndividual("box-0", 2, individualIdentity = "aabbccdd11223344")),
+            ),
+        )
+
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                rom = ROM,
+                sampleId = 1,
+                money = LiveValue.Available(3_000L),
+                party = LiveValue.Available(
+                    listOf(OwnedIndividual("party-0", 2, individualIdentity = "aabbccdd11223344")),
+                ),
+                stored = unavailable(),
+            ),
+        )
+
+        val storage = requireNotNull(decoder.current).ownedStorage
+        assertEquals(1, storage.party.value?.size)
+        assertTrue(storage.boxes.value.orEmpty().flatMap(ResolvedStorageBox::slots).isEmpty())
+    }
+
     @Test
     fun `trace proves recovery is hidden until the first live player sample`() {
         val events = mutableListOf<ResolvedStateTraceEvent>()
@@ -672,6 +774,8 @@ class UnifiedGameStateDecoderTest {
         money: Long = 500L,
         seen: Set<Int> = setOf(1),
         caught: Set<Int> = setOf(1),
+        party: List<OwnedIndividual> = emptyList(),
+        stored: List<OwnedIndividual> = emptyList(),
     ) = RecoveryProjection(
         snapshot = SaveSnapshot(
             romIdentity = rom,
@@ -681,8 +785,8 @@ class UnifiedGameStateDecoderTest {
             currentArea = null,
             seenDexNumbers = seen,
             caughtDexNumbers = caught,
-            party = emptyList(),
-            storedIndividuals = emptyList(),
+            party = party,
+            storedIndividuals = stored,
             capabilities = emptyMap(),
             trainer = TrainerSnapshot(
                 name = "RED",
@@ -718,6 +822,8 @@ class UnifiedGameStateDecoderTest {
         money: LiveValue<Long>,
         seen: LiveValue<Set<Int>> = unavailable(),
         caught: LiveValue<Set<Int>> = unavailable(),
+        party: LiveValue<List<OwnedIndividual>> = LiveValue.Available(emptyList()),
+        stored: LiveValue<List<OwnedIndividual>> = unavailable(),
     ) = LiveGameSnapshot(
         romIdentity = rom,
         generation = 3,
@@ -731,7 +837,8 @@ class UnifiedGameStateDecoderTest {
             stars = unavailable(),
         ),
         pokedex = LivePokedexState(seen, caught),
-        party = LiveValue.Available(emptyList()),
+        party = party,
+        storedIndividuals = stored,
         battle = unavailable(),
         location = LiveLocationState(unavailable(), unavailable()),
         clock = LiveValue.Available(LiveClockState(12, 30, 10)),

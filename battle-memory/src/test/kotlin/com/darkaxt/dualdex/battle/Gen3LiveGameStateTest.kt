@@ -23,6 +23,8 @@ class Gen3LiveMemoryReaderTest {
             saveBlock2Address = 0x02002000,
             saveBlock1PointerAddress = null,
             saveBlock2PointerAddress = null,
+            pokemonStorageAddress = 0x02010000,
+            pokemonStoragePointerAddress = null,
         )
 
         assertEquals(emptyList<Any>(), Gen3LiveMemoryReader.pointerWindows(layout))
@@ -33,6 +35,7 @@ class Gen3LiveMemoryReaderTest {
             listOf(
                 Gen3LiveMemoryReader.SAVE_BLOCK1_ID,
                 Gen3LiveMemoryReader.SAVE_BLOCK2_ID,
+                Gen3LiveMemoryReader.STORAGE_ID,
                 Gen3LiveMemoryReader.PARTY_COUNT_ID,
                 Gen3LiveMemoryReader.PARTY_ID,
                 Gen3LiveMemoryReader.CLOCK_ID,
@@ -45,7 +48,7 @@ class Gen3LiveMemoryReaderTest {
     fun readsPointerGlobalsBeforeValidatedDependentWindows() {
         val layout = layout().copy(extendedSaveAddress = 0x02030000, extendedSaveSize = 0x2000)
         assertEquals(
-            listOf(0x03001000L, 0x03001004L),
+            listOf(0x03001000L, 0x03001004L, 0x03001008L),
             Gen3LiveMemoryReader.pointerWindows(layout).map { it.address },
         )
 
@@ -53,6 +56,7 @@ class Gen3LiveMemoryReaderTest {
             mapOf(
                 Gen3LiveMemoryReader.SAVE_BLOCK1_POINTER_ID to pointer(0x02001000L),
                 Gen3LiveMemoryReader.SAVE_BLOCK2_POINTER_ID to pointer(0x01002000L),
+                Gen3LiveMemoryReader.STORAGE_POINTER_ID to pointer(0x02010000L),
             ),
             layout,
         )
@@ -61,6 +65,7 @@ class Gen3LiveMemoryReaderTest {
         assertEquals(
             listOf(
                 Gen3LiveMemoryReader.SAVE_BLOCK1_ID,
+                Gen3LiveMemoryReader.STORAGE_ID,
                 Gen3LiveMemoryReader.EXTENDED_SAVE_ID,
                 Gen3LiveMemoryReader.PARTY_COUNT_ID,
                 Gen3LiveMemoryReader.PARTY_ID,
@@ -154,6 +159,48 @@ class Gen3LiveMemoryReaderTest {
     }
 
     @Test
+    fun decodesValidatedLiveBoxesAndAcceptsAValidatedEmptyStorageWindow() {
+        val storage = ByteArray(14 * 30 * 80).apply {
+            plainPartyRecord(this, 31 * 80, species = 277, level = 0)
+        }
+        val context = SaveParseContext("rom", mapOf(277 to SaveSpeciesContext(277, 252, 0)))
+
+        val populated = Gen3LiveMemoryReader.decode(
+            regions = mapOf(Gen3LiveMemoryReader.STORAGE_ID to storage),
+            layout = layout(),
+            saveContext = context,
+        ).storedIndividuals
+        val empty = Gen3LiveMemoryReader.decode(
+            regions = mapOf(Gen3LiveMemoryReader.STORAGE_ID to ByteArray(storage.size)),
+            layout = layout(),
+            saveContext = context,
+        ).storedIndividuals
+
+        assertEquals(listOf(277), populated.valueOrNull()?.map { it.speciesId })
+        assertEquals(listOf("box-31"), populated.valueOrNull()?.map { it.stableLocation })
+        assertEquals(emptyList<Any>(), empty.valueOrNull())
+    }
+
+    @Test
+    fun rejectsPartialOrCorruptLiveStorageWithoutClearingRecovery() {
+        val context = SaveParseContext("rom", mapOf(277 to SaveSpeciesContext(277, 252, 0)))
+        val completeBytes = 14 * 30 * 80
+        val corrupt = ByteArray(completeBytes).apply {
+            this[19] = 0x02
+            putU16(this, 32, 999)
+        }
+
+        fun decode(bytes: ByteArray) = Gen3LiveMemoryReader.decode(
+            regions = mapOf(Gen3LiveMemoryReader.STORAGE_ID to bytes),
+            layout = layout(),
+            saveContext = context,
+        ).storedIndividuals
+
+        assertTrue(decode(ByteArray(completeBytes - 1)) is LiveValue.Unavailable)
+        assertTrue(decode(corrupt) is LiveValue.Unavailable)
+    }
+
+    @Test
     fun liveSaveBlockPublishesSetEventFlagsFromTheTypedWindow() {
         val saveBlock1 = ByteArray(0x100).apply {
             this[0x20 + 1007 / 8] = (1 shl (1007 % 8)).toByte()
@@ -182,6 +229,11 @@ class Gen3LiveMemoryReaderTest {
         playerPartyAddress = 0x02000300,
         saveBlock1PointerAddress = 0x03001000,
         saveBlock2PointerAddress = 0x03001004,
+        pokemonStoragePointerAddress = 0x03001008,
+        pokemonStorageBoxCount = 14,
+        pokemonStorageBoxCapacity = 30,
+        pokemonStorageRecordSize = 80,
+        pokemonStorageRecordsOffset = 4,
         saveBlock1Size = 0x100,
         saveBlock2Size = 0x80,
     )
