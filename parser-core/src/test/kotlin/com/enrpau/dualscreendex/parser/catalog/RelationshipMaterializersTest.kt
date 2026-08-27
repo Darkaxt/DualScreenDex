@@ -182,7 +182,7 @@ class RelationshipMaterializersTest {
     }
 
     @Test
-    fun skipsMalformedAndOutOfBoundsGbaEvolutionSlotsWhileKeepingValidEdges() {
+    fun quarantinesMalformedGbaEvolutionRowsInsteadOfPublishingPartialEdges() {
         val bytes = ByteArray(48)
         putU16(bytes, 0, 4)
         putU16(bytes, 2, 16)
@@ -198,14 +198,16 @@ class RelationshipMaterializersTest {
             evolutions = TableLayout(0, 3, 16, elementSize = 8),
         ).withTypedEvolutions(bytes)
 
-        val result = RelationshipMaterializers.evolutions(RomImage(bytes), layout)
-
-        assertTrue(result.getValue(0).isEmpty())
-        assertEquals(
-            listOf(EvolutionEdge(2, 4, 32, bytes.copyOfRange(24, 32), conditionValue = 0)),
-            result.getValue(1),
+        val result = RelationshipMaterializers.evolutionsWithEvidence(
+            RomImage(bytes),
+            layout,
         )
-        assertTrue(result.getValue(2).isEmpty())
+
+        assertTrue(result.records.getValue(0).isEmpty())
+        assertFalse(result.records.containsKey(1))
+        assertTrue(result.records.getValue(2).isEmpty())
+        assertTrue(result.failures.containsKey(1))
+        assertFalse(result.failures.containsKey(2))
     }
 
     @Test
@@ -558,6 +560,86 @@ class RelationshipMaterializersTest {
         assertEquals(6, allEdges.getValue(1).single().raw.size)
         assertEquals(2, allEdges.getValue(1).single().targetSpeciesId)
         assertTrue(closedEdges.getValue(1).isEmpty())
+    }
+
+    @Test
+    fun materializesValidGenTwoLearnsetAndQuarantinesEofUnterminatedNeighbor() {
+        val bytes = ByteArray(0x8000)
+        putU16(bytes, 0, 0x4020)
+        putU16(bytes, 2, 0x7FFE)
+        bytes[0x4020] = 0
+        bytes[0x4021] = 5
+        bytes[0x4022] = 33
+        bytes[0x4023] = 0
+        bytes[0x7FFE] = 0
+        bytes[0x7FFF] = 5
+        val table = TableLayout(
+            offset = 0,
+            count = 2,
+            recordSize = 2,
+            variableLength = true,
+            bank = 1,
+        )
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.CRYSTAL,
+            generation = 2,
+            platform = Platform.GBC,
+            speciesCount = 2,
+            moveCount = 100,
+            tables = ProfileTables(
+                evolutions = table,
+                learnsets = table,
+            ),
+        )
+
+        val result = RelationshipMaterializers.relationshipsWithEvidence(
+            RomImage(bytes),
+            layout,
+        )
+
+        assertEquals(
+            listOf(LearnsetEntry(5, 33)),
+            result.learnsets.records.getValue(1),
+        )
+        assertFalse(result.learnsets.records.containsKey(2))
+        assertTrue(result.learnsets.failures.containsKey(2))
+        assertEquals(emptyList<EvolutionEdge>(), result.evolutions.records.getValue(1))
+        assertEquals(emptyList<EvolutionEdge>(), result.evolutions.records.getValue(2))
+    }
+
+    @Test
+    fun unsupportedGenTwoEvolutionMethodQuarantinesTheCombinedLearnset() {
+        val bytes = ByteArray(0x8000)
+        putU16(bytes, 0, 0x4020)
+        byteArrayOf(6, 0, 5, 33, 0).copyInto(bytes, 0x4020)
+        val table = TableLayout(
+            offset = 0,
+            count = 1,
+            recordSize = 2,
+            variableLength = true,
+            bank = 1,
+        )
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.CRYSTAL,
+            generation = 2,
+            platform = Platform.GBC,
+            speciesCount = 1,
+            moveCount = 100,
+            tables = ProfileTables(
+                evolutions = table,
+                learnsets = table,
+            ),
+        )
+
+        val result = RelationshipMaterializers.relationshipsWithEvidence(
+            RomImage(bytes),
+            layout,
+        )
+
+        assertFalse(result.evolutions.records.containsKey(1))
+        assertTrue(result.evolutions.failures.containsKey(1))
+        assertFalse(result.learnsets.records.containsKey(1))
+        assertTrue(result.learnsets.failures.containsKey(1))
     }
 
     @Test

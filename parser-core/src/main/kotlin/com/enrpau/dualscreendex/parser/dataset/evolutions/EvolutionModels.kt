@@ -135,15 +135,15 @@ class ResolvedEvolutionLayout(
 
     /** Pure catalog projection. Physical row zero is always the structural species-none sentinel. */
     fun catalogEvolutions(): Map<Int, List<EvolutionEdge>> = Collections.unmodifiableMap(
-        rows.associate { row ->
-            row.rowIndex to Collections.unmodifiableList(
-                when (row) {
-                    is EvolutionRowOutcome.Decoded -> row.edges.map(EvolutionEdgeValue::toCatalogEdge)
-                    is EvolutionRowOutcome.Malformed -> row.edges.map(EvolutionEdgeValue::toCatalogEdge)
-                    is EvolutionRowOutcome.StructuralEmpty -> emptyList()
-                },
-            )
-        },
+        rows.mapNotNull { row ->
+            when (row) {
+                is EvolutionRowOutcome.Decoded -> row.rowIndex to Collections.unmodifiableList(
+                    row.edges.map(EvolutionEdgeValue::toCatalogEdge),
+                )
+                is EvolutionRowOutcome.StructuralEmpty -> row.rowIndex to emptyList()
+                is EvolutionRowOutcome.Malformed -> null
+            }
+        }.toMap(),
     )
 
     override fun equals(other: Any?): Boolean = other is ResolvedEvolutionLayout &&

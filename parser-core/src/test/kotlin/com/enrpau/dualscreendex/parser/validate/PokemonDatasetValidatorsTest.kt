@@ -166,6 +166,28 @@ class PokemonDatasetValidatorsTest {
     }
 
     @Test
+    fun gen12ValidationRetainsValidRowsWhenLaterRowEndsAtEof() {
+        val bytes = ByteArray(0x8000)
+        putU16(bytes, 0x100, 0x4200)
+        putU16(bytes, 0x102, 0x7FFE)
+        byteArrayOf(0, 5, 10, 0).copyInto(bytes, 0x4200)
+        bytes[0x7FFE] = 0
+        bytes[0x7FFF] = 5
+
+        val result = PokemonDatasetValidators.gen12EvolutionsAndLearnsets(
+            RomImage(bytes),
+            pointerTableOffset = 0x100,
+            speciesCount = 2,
+            tableBank = 1,
+            moveCount = 30,
+            generation = 2,
+        )
+
+        assertEquals(2, result.evolutions.validRecords)
+        assertEquals(1, result.learnsets.validRecords)
+    }
+
+    @Test
     fun acceptsGen2VariableWidthEvolutionRecords() {
         val bytes = ByteArray(0x10000)
         putU16(bytes, 0x100, 0x4200)

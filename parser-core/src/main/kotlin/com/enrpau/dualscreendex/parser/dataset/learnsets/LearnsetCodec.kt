@@ -185,10 +185,13 @@ class ResolvedSelectedLearnsetTable(
 
     fun catalogEntries(): Map<Int, List<LearnsetEntry>> = Collections.unmodifiableMap(
         layout.rows.mapNotNull { row ->
-            val decoded = row as? LearnsetRowOutcome.Decoded ?: return@mapNotNull null
-            row.rowIndex to Collections.unmodifiableList(
-                decoded.entries.map { entry -> LearnsetEntry(entry.level, entry.moveId) },
-            )
+            when (row) {
+                is LearnsetRowOutcome.Decoded -> row.rowIndex to Collections.unmodifiableList(
+                    row.entries.map { entry -> LearnsetEntry(entry.level, entry.moveId) },
+                )
+                is LearnsetRowOutcome.StructuralEmpty -> row.rowIndex to emptyList()
+                is LearnsetRowOutcome.Malformed -> null
+            }
         }.toMap(),
     )
 

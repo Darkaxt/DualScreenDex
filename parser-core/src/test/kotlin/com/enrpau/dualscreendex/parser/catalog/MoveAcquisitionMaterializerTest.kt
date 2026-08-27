@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
@@ -209,6 +210,65 @@ class MoveAcquisitionMaterializerTest {
             result.acquisitionsBySpecies.getValue(1)
                 .filter { it.method == MoveAcquisitionMethod.TUTOR }
                 .map { it.moveId },
+        )
+    }
+
+    @Test
+    fun expansionMoveListsQuarantineAnEofRowAndReportPartialCoverage() {
+        val bytes = ByteArray(0x800)
+        val speciesOffset = 0x100
+        val stride = 180
+        putPointer(bytes, speciesOffset + stride + 152, 0x600)
+        putPointer(bytes, speciesOffset + stride + 156, 0x620)
+        putPointer(bytes, speciesOffset + stride * 2 + 152, 0x7FE)
+        putPointer(bytes, speciesOffset + stride * 2 + 156, 0x620)
+        putU16(bytes, 0x600, 33)
+        putU16(bytes, 0x602, 0xFFFF)
+        putU16(bytes, 0x620, 44)
+        putU16(bytes, 0x622, 0xFFFF)
+        putU16(bytes, 0x7FE, 33)
+        val metadata = PokeemeraldExpansionMetadata(
+            0x204, 1, 15, 3, stride, 44, 13, 31, 60, 62, 64, 76, 88, 96,
+            24, 21, 148, 152, 156, 160, 64, 28, 20, 20,
+        )
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.EMERALD,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = 3,
+            moveCount = 100,
+            tables = ProfileTables(
+                baseStats = TableLayout(
+                    speciesOffset,
+                    3,
+                    stride,
+                    stride = stride,
+                ),
+            ),
+            pokeemeraldExpansion = metadata,
+        )
+
+        val result = MoveAcquisitionMaterializer.materialize(
+            RomImage(bytes),
+            layout,
+        )
+
+        assertEquals(
+            listOf(MoveAcquisition(33, MoveAcquisitionMethod.MACHINE)),
+            result.acquisitionsBySpecies.getValue(1)
+                .filter { it.method == MoveAcquisitionMethod.MACHINE },
+        )
+        assertEquals(
+            CapabilityStatus.PARTIAL,
+            result.evidence.getValue(MoveAcquisitionMethod.MACHINE).status,
+        )
+        assertEquals(
+            setOf(1),
+            result.successfulSpeciesByMethod.getValue(MoveAcquisitionMethod.MACHINE),
+        )
+        assertEquals(
+            setOf(2),
+            result.failedSpeciesByMethod.getValue(MoveAcquisitionMethod.MACHINE),
         )
     }
 

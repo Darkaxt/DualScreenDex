@@ -81,13 +81,21 @@ class EvolutionCodec {
             )
             is ExtentCheck.Valid -> Unit
         }
-        val rows = try {
-            List(layout.count) { rowIndex -> characterizeGen12Row(session, layout, rowIndex) }
-        } catch (error: RomBoundsException) {
-            return Gen12CombinedStreamOutcome.Rejected(
-                layout,
-                error.message ?: "combined evolution and learnset stream is out of bounds",
-            )
+        val rows = List(layout.count) { rowIndex ->
+            try {
+                characterizeGen12Row(session, layout, rowIndex)
+            } catch (error: RomBoundsException) {
+                Gen12CombinedRowCharacterization(
+                    rowIndex = rowIndex,
+                    evolutions = EvolutionRowOutcome.Malformed(
+                        rowIndex,
+                        emptyList(),
+                        listOf("combined relationship row exceeds the ROM extent"),
+                    ),
+                    learnsetEntries = 0,
+                    learnsetValid = false,
+                )
+            }
         }
         return Gen12CombinedStreamOutcome.Decoded(layout, rows)
     }
@@ -191,18 +199,22 @@ class EvolutionCodec {
         }
         var learnsetEntries = 0
         var learnsetValid = evolutionReasons.isEmpty()
-        while (learnsetEntries < MAX_GEN12_LEARNSET_ENTRIES) {
-            val level = session.rom.u8(cursor)
-            if (level == 0) break
-            val move = session.rom.u8(cursor + 1)
-            if (level !in 1..100 || move !in 1..layout.moveCount) {
-                learnsetValid = false
-                break
+        try {
+            while (learnsetEntries < MAX_GEN12_LEARNSET_ENTRIES) {
+                val level = session.rom.u8(cursor)
+                if (level == 0) break
+                val move = session.rom.u8(cursor + 1)
+                if (level !in 1..100 || move !in 1..layout.moveCount) {
+                    learnsetValid = false
+                    break
+                }
+                cursor += 2
+                learnsetEntries++
             }
-            cursor += 2
-            learnsetEntries++
+            if (session.rom.u8(cursor) != 0) learnsetValid = false
+        } catch (_: RomBoundsException) {
+            learnsetValid = false
         }
-        if (session.rom.u8(cursor) != 0) learnsetValid = false
         val evolutionOutcome = when {
             evolutionReasons.isNotEmpty() -> EvolutionRowOutcome.Malformed(rowIndex, edges, evolutionReasons)
             edges.isEmpty() -> EvolutionRowOutcome.StructuralEmpty(rowIndex)

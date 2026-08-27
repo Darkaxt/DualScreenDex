@@ -112,6 +112,32 @@ class EvolutionCodecTest {
     }
 
     @Test
+    fun combinedStreamQuarantinesAnEofRowWithoutDiscardingValidRows() {
+        val bytes = ByteArray(0x8000)
+        putU16(bytes, 0x100, 0x4200)
+        putU16(bytes, 0x102, 0x7FFE)
+        byteArrayOf(0, 5, 20, 0).copyInto(bytes, 0x4200)
+        bytes[0x7FFE] = 0
+        bytes[0x7FFF] = 5
+
+        val outcome = codec.characterizeGen12Combined(
+            evolutionSession(bytes),
+            Gen12CombinedStreamLayout(
+                pointerTableOffset = 0x100,
+                count = 2,
+                tableBank = 1,
+                generation = 2,
+                moveCount = 30,
+            ),
+        ) as Gen12CombinedStreamOutcome.Decoded
+
+        assertTrue(outcome.rows[0].evolutions is EvolutionRowOutcome.StructuralEmpty)
+        assertTrue(outcome.rows[0].learnsetValid)
+        assertTrue(outcome.rows[1].evolutions is EvolutionRowOutcome.StructuralEmpty)
+        assertEquals(false, outcome.rows[1].learnsetValid)
+    }
+
+    @Test
     fun combinedStreamOutcomeDoesNotExposeAMutableRowList() {
         val bytes = ByteArray(0x10000)
         putU16(bytes, 0x100, 0x4200)

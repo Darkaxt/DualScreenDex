@@ -245,7 +245,15 @@ object CatalogMaterializer {
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, essentialCatalog))
 
         reportCatalogWork(onWork, CatalogWorkModule.SPECIES_MEDIA)
-        val descriptions = RelationshipMaterializers.descriptions(rom, layout)
+        val descriptionMaterialization = runCatching {
+            RelationshipMaterializers.descriptionsWithEvidence(
+                rom,
+                layout,
+            )
+        }.getOrElse {
+            RecordMaterialization(emptyMap(), emptyMap())
+        }
+        val descriptions = descriptionMaterialization.records
         val sprites = SpriteMaterializer.pokemon(rom, layout)
         val resolvedSprites = resolveSpriteAliases(baseSpecies, sprites, layout.generation)
         val mediaSpecies = baseSpecies.mapValues { (id, record) ->
@@ -279,12 +287,28 @@ object CatalogMaterializer {
                 },
             )
         }
-        val mediaCatalog = essentialCatalog.copy(speciesById = mediaSpecies)
+        val mediaCapabilities = initialCapabilities.toMutableMap()
+        val expectedDescriptions = mediaSpecies.count { (id, record) ->
+            id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE
+        }
+        val coveredDescriptions = mediaSpecies.count { (id, record) ->
+            id > 0 && record.description.status == CapabilityStatus.AVAILABLE
+        }
+        mediaCapabilities[RomCapability.POKEDEX_DESCRIPTIONS] = materializationCapability(
+            capability = RomCapability.POKEDEX_DESCRIPTIONS,
+            covered = coveredDescriptions,
+            expected = expectedDescriptions,
+            availableReason = "decoded bounded Pokédex descriptions",
+            partialReason = "some Pokédex descriptions were malformed or unavailable",
+            unavailableReason = "Pokédex descriptions were not materialized",
+        )
+        val mediaCatalog = essentialCatalog.copy(
+            speciesById = mediaSpecies,
+            capabilities = mediaCapabilities,
+        )
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.SPECIES_MEDIA, 2, 5, mediaCatalog))
 
         reportCatalogWork(onWork, CatalogWorkModule.EVOLUTIONS_AND_LEARNSETS)
-        val evolutions = RelationshipMaterializers.evolutions(rom, layout, mediaSpecies.keys)
-        val learnsets = RelationshipMaterializers.learnsets(rom, layout)
         reportCatalogWork(onWork, CatalogWorkModule.ENCOUNTERS)
         val encounterMaterialization = EncounterMaterializer.materializeWithEvidence(rom, layout)
         val rawEncounters = encounterMaterialization.areas
@@ -304,32 +328,76 @@ object CatalogMaterializer {
             CatalogRuntimeMetadata()
         }
         val encounters = applyResolvedAreaNames(rawEncounters, runtimeMetadata.areaNamesByBaseId)
-        val relationshipSpecies = mediaSpecies.mapValues { (id, record) ->
+        val closedMediaSpecies = EncounterReferencedSpeciesClosure.close(
+            rom = rom,
+            generation = layout.generation,
+            names = layout.tables.speciesNames,
+            namesStatus = initialCapabilities[RomCapability.SPECIES_NAMES]?.status,
+            species = mediaSpecies,
+            encounters = encounters,
+        )
+        val relationshipMaterialization = runCatching {
+            RelationshipMaterializers.relationshipsWithEvidence(
+                rom,
+                layout,
+                closedMediaSpecies.keys,
+            )
+        }.getOrElse {
+            RelationshipMaterialization(
+                evolutions = RecordMaterialization(emptyMap(), emptyMap()),
+                learnsets = RecordMaterialization(emptyMap(), emptyMap()),
+            )
+        }
+        val evolutions = relationshipMaterialization.evolutions.records
+        val learnsets = relationshipMaterialization.learnsets.records
+        val relationshipSpecies = closedMediaSpecies.mapValues { (id, record) ->
             record.copy(
                 evolutionEdges = if (layout.tables.evolutions != null) {
-                    CatalogField.available(evolutions[id].orEmpty())
+                    materializedField(
+                        relationshipMaterialization.evolutions,
+                        id,
+                        "evolution row",
+                    )
                 } else {
                     CatalogField.notFound("evolution table was not resolved")
                 },
                 learnset = if (layout.tables.learnsets != null) {
-                    CatalogField.available(learnsets[id].orEmpty())
+                    materializedField(
+                        relationshipMaterialization.learnsets,
+                        id,
+                        "learnset row",
+                    )
                 } else {
                     CatalogField.notFound("learnset table was not resolved")
                 },
             )
         }
-        val closedRelationshipSpecies = EncounterReferencedSpeciesClosure.close(
-            rom = rom,
-            generation = layout.generation,
-            names = layout.tables.speciesNames,
-            namesStatus = initialCapabilities[RomCapability.SPECIES_NAMES]?.status,
-            species = relationshipSpecies,
-            encounters = encounters,
+        val relationshipCapabilities = mediaCapabilities.toMutableMap()
+        relationshipCapabilities[RomCapability.EVOLUTIONS] = materializationCapability(
+            capability = RomCapability.EVOLUTIONS,
+            covered = relationshipSpecies.values.count {
+                it.evolutionEdges.status == CapabilityStatus.AVAILABLE
+            },
+            expected = relationshipSpecies.size,
+            availableReason = "decoded bounded evolution relationships",
+            partialReason = "some evolution rows were malformed or unavailable",
+            unavailableReason = "evolution relationships were not materialized",
+        )
+        relationshipCapabilities[RomCapability.LEARNSETS] = materializationCapability(
+            capability = RomCapability.LEARNSETS,
+            covered = relationshipSpecies.values.count {
+                it.learnset.status == CapabilityStatus.AVAILABLE
+            },
+            expected = relationshipSpecies.size,
+            availableReason = "decoded explicitly terminated learnsets",
+            partialReason = "some learnset rows were malformed or unavailable",
+            unavailableReason = "learnsets were not materialized",
         )
         val relationshipCatalog = mediaCatalog.copy(
-            speciesById = closedRelationshipSpecies,
+            speciesById = relationshipSpecies,
             encounterAreas = encounters,
             runtimeMetadata = runtimeMetadata,
+            capabilities = relationshipCapabilities,
         )
         onProgress?.invoke(CatalogMaterializationProgress(CatalogMaterializationPhase.RELATIONSHIPS, 3, 5, relationshipCatalog))
 
@@ -337,18 +405,21 @@ object CatalogMaterializer {
         val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
         val moveDescriptions = resolveMoveDescriptions?.invoke(layout)
             ?: MoveDescriptionMaterializer.materialize(rom, layout)
-        val moveAcquisitions = MoveAcquisitionMaterializer.materialize(rom, layout)
+        val moveAcquisitions = runCatching {
+            MoveAcquisitionMaterializer.materialize(rom, layout)
+        }.getOrElse {
+            MoveAcquisitionMaterialization(emptyMap(), emptyMap())
+        }
         reportCatalogWork(onWork, CatalogWorkModule.ABILITY_DATA)
         val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
         val abilityMechanics = resolveAbilityMechanics?.invoke(layout, abilities, baseTypes, abilityDescriptions)
             ?: AbilityMechanicsMaterializer.materialize(rom, layout, abilities, baseTypes, abilityDescriptions)
-        val species = closedRelationshipSpecies.mapValues { (id, record) ->
+        val species = relationshipSpecies.mapValues { (id, record) ->
             record.copy(
-                moveAcquisitions = if (moveAcquisitions.evidence.values.any { it.compatible }) {
-                    CatalogField.available(moveAcquisitions.acquisitionsBySpecies[id].orEmpty())
-                } else {
-                    CatalogField.notFound("non-level move acquisition tables were not resolved")
-                },
+                moveAcquisitions = moveAcquisitionField(
+                    moveAcquisitions,
+                    id,
+                ),
             )
         }
         val validTypeIds = layout.resolvedDatasets.typeChart?.table?.typeCount
@@ -395,7 +466,7 @@ object CatalogMaterializer {
         } else {
             emptyMap()
         }
-        val capabilities = initialCapabilities.toMutableMap()
+        val capabilities = relationshipCapabilities.toMutableMap()
         capabilities[RomCapability.MOVE_DESCRIPTIONS] = if (moveDescriptions != null) {
             val expected = moves.keys.count { it > 0 }
             val covered = moveDescriptions.descriptions.keys.count { it > 0 && it in moves }
@@ -912,6 +983,75 @@ object CatalogMaterializer {
         val sprite: RgbaSprite,
         val reasons: List<String> = emptyList(),
     )
+
+    private fun moveAcquisitionField(
+        materialization: MoveAcquisitionMaterialization,
+        id: Int,
+    ): CatalogField<List<MoveAcquisition>> {
+        if (materialization.failedSpeciesByMethod.values.any { id in it }) {
+            return CatalogField.notFound(
+                "a non-level move acquisition row was malformed for species $id",
+            )
+        }
+        val applicableMethods = materialization.evidence
+            .filterValues(CapabilityEvidence::compatible)
+            .keys
+        if (applicableMethods.isEmpty()) {
+            return CatalogField.notFound(
+                "non-level move acquisition tables were not resolved",
+            )
+        }
+        return CatalogField.available(
+            materialization.acquisitionsBySpecies[id].orEmpty(),
+        )
+    }
+
+    private fun <T> materializedField(
+        materialization: RecordMaterialization<T>,
+        id: Int,
+        label: String,
+    ): CatalogField<T> = if (id in materialization.records) {
+        CatalogField.available(materialization.records.getValue(id))
+    } else {
+        CatalogField.notFound(
+            materialization.failures[id]
+                ?: "$label was not materialized for species $id",
+        )
+    }
+
+    private fun materializationCapability(
+        capability: RomCapability,
+        covered: Int,
+        expected: Int,
+        availableReason: String,
+        partialReason: String,
+        unavailableReason: String,
+    ): CapabilityEvidence {
+        val incomplete = (expected - covered).coerceAtLeast(0)
+        val status = when {
+            covered <= 0 -> CapabilityStatus.NOT_FOUND
+            incomplete > 0 -> CapabilityStatus.PARTIAL
+            else -> CapabilityStatus.AVAILABLE
+        }
+        val reason = when (status) {
+            CapabilityStatus.AVAILABLE -> availableReason
+            CapabilityStatus.PARTIAL -> "$partialReason ($covered/$expected)"
+            else -> unavailableReason
+        }
+        return CapabilityEvidence(
+            capability = capability,
+            compatible = covered > 0,
+            confidence = if (expected > 0) covered.toDouble() / expected else 0.0,
+            count = covered.takeIf { it > 0 },
+            reasons = listOf(reason),
+            status = status,
+            validRecords = covered,
+            totalRecords = expected,
+            coveredRecords = covered,
+            expectedRecords = expected,
+            incompleteRecords = incomplete,
+        )
+    }
 
     private fun collectionCapability(
         capability: RomCapability,

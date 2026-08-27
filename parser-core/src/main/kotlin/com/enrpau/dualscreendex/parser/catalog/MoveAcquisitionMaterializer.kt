@@ -11,6 +11,8 @@ import com.enrpau.dualscreendex.parser.parse.Gen1CompiledMachineResolver
 data class MoveAcquisitionMaterialization(
     val acquisitionsBySpecies: Map<Int, List<MoveAcquisition>>,
     val evidence: Map<MoveAcquisitionMethod, CapabilityEvidence>,
+    val successfulSpeciesByMethod: Map<MoveAcquisitionMethod, Set<Int>> = emptyMap(),
+    val failedSpeciesByMethod: Map<MoveAcquisitionMethod, Set<Int>> = emptyMap(),
 )
 
 object MoveAcquisitionMaterializer {
@@ -103,6 +105,16 @@ object MoveAcquisitionMaterializer {
         return MoveAcquisitionMaterialization(
             acquisitionsBySpecies = bySpecies.mapValues { (_, values) -> values.distinct() },
             evidence = evidence,
+            successfulSpeciesByMethod = mapOf(
+                MoveAcquisitionMethod.MACHINE to machines?.acquisitions?.keys.orEmpty(),
+                MoveAcquisitionMethod.EGG to eggs?.acquisitions?.keys.orEmpty(),
+                MoveAcquisitionMethod.TUTOR to tutors?.acquisitions?.keys.orEmpty(),
+            ),
+            failedSpeciesByMethod = mapOf(
+                MoveAcquisitionMethod.MACHINE to machines?.failedSpecies.orEmpty(),
+                MoveAcquisitionMethod.EGG to eggs?.failedSpecies.orEmpty(),
+                MoveAcquisitionMethod.TUTOR to tutors?.failedSpecies.orEmpty(),
+            ),
         )
     }
 
@@ -113,53 +125,55 @@ object MoveAcquisitionMaterializer {
         val stride = species.stride ?: expansion.speciesRecordSize
         val bySpecies = linkedMapOf<Int, MutableList<MoveAcquisition>>()
 
-        fun read(fieldOffset: Int, method: MoveAcquisitionMethod): Pair<Int, Int> {
-            var populatedSpecies = 0
+        fun read(fieldOffset: Int, method: MoveAcquisitionMethod): ExpansionRead {
+            val successfulSpecies = linkedSetOf<Int>()
+            val failedSpecies = linkedSetOf<Int>()
             var links = 0
             repeat(species.count) { speciesId ->
-                val pointer = rom.gbaPointer(species.offset + speciesId * stride + fieldOffset) ?: return@repeat
-                val seen = mutableSetOf<Int>()
-                val moves = buildList {
-                    var cursor = pointer
-                    repeat(1024) {
-                        val move = rom.u16le(cursor)
-                        if (move == 0xFFFF) return@buildList
-                        if (move !in 1 until moveCount) return@buildList
-                        if (seen.add(move)) {
-                            add(MoveAcquisition(move, method))
-                        }
-                        cursor += 2
-                    }
+                if (speciesId == 0) return@repeat
+                val moves = runCatching {
+                    val field = species.offset + speciesId * stride + fieldOffset
+                    val pointer = rom.gbaPointer(field)
+                        ?: error("invalid expansion move-list pointer")
+                    decodeExpansionMoveList(
+                        rom,
+                        pointer,
+                        moveCount,
+                        method,
+                    ) ?: error("unterminated expansion move-list row")
+                }.getOrElse {
+                    failedSpecies += speciesId
+                    return@repeat
                 }
+                successfulSpecies += speciesId
+                links += moves.size
                 if (moves.isNotEmpty()) {
-                    populatedSpecies++
-                    links += moves.size
                     bySpecies.getOrPut(speciesId) { mutableListOf() }.addAll(moves)
                 }
             }
-            return populatedSpecies to links
+            return ExpansionRead(successfulSpecies, failedSpecies, links)
         }
 
-        val (teachableSpecies, teachableLinks) = read(expansion.teachablePointerOffset, MoveAcquisitionMethod.MACHINE)
-        val (eggSpecies, eggLinks) = read(expansion.eggMovePointerOffset, MoveAcquisitionMethod.EGG)
-        val evidence = linkedMapOf<MoveAcquisitionMethod, CapabilityEvidence>()
-        evidence[MoveAcquisitionMethod.MACHINE] = CapabilityEvidence(
-            capability = RomCapability.MACHINE_MOVES,
-            compatible = teachableSpecies > 0,
-            confidence = if (teachableSpecies > 0) 1.0 else 0.0,
-            offset = species.offset + expansion.teachablePointerOffset,
-            count = teachableLinks,
-            reasons = listOf("decoded integrated expansion teachable-move lists; machine and tutor provenance is combined"),
-            status = if (teachableSpecies > 0) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
+        val teachable = read(
+            expansion.teachablePointerOffset,
+            MoveAcquisitionMethod.MACHINE,
         )
-        evidence[MoveAcquisitionMethod.EGG] = CapabilityEvidence(
+        val eggs = read(
+            expansion.eggMovePointerOffset,
+            MoveAcquisitionMethod.EGG,
+        )
+        val evidence = linkedMapOf<MoveAcquisitionMethod, CapabilityEvidence>()
+        evidence[MoveAcquisitionMethod.MACHINE] = expansionEvidence(
+            capability = RomCapability.MACHINE_MOVES,
+            result = teachable,
+            offset = species.offset + expansion.teachablePointerOffset,
+            reason = "decoded integrated expansion teachable-move lists; machine and tutor provenance is combined",
+        )
+        evidence[MoveAcquisitionMethod.EGG] = expansionEvidence(
             capability = RomCapability.EGG_MOVES,
-            compatible = eggSpecies > 0,
-            confidence = if (eggSpecies > 0) 1.0 else 0.0,
+            result = eggs,
             offset = species.offset + expansion.eggMovePointerOffset,
-            count = eggLinks,
-            reasons = listOf("decoded integrated expansion egg-move lists"),
-            status = if (eggSpecies > 0) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
+            reason = "decoded integrated expansion egg-move lists",
         )
         evidence[MoveAcquisitionMethod.TUTOR] = CapabilityEvidence(
             capability = RomCapability.TUTOR_MOVES,
@@ -172,6 +186,68 @@ object MoveAcquisitionMaterializer {
         return MoveAcquisitionMaterialization(
             acquisitionsBySpecies = bySpecies.mapValues { (_, values) -> values.distinct() },
             evidence = evidence,
+            successfulSpeciesByMethod = mapOf(
+                MoveAcquisitionMethod.MACHINE to teachable.successfulSpecies,
+                MoveAcquisitionMethod.EGG to eggs.successfulSpecies,
+            ),
+            failedSpeciesByMethod = mapOf(
+                MoveAcquisitionMethod.MACHINE to teachable.failedSpecies,
+                MoveAcquisitionMethod.EGG to eggs.failedSpecies,
+            ),
+        )
+    }
+
+    private fun decodeExpansionMoveList(
+        rom: RomImage,
+        offset: Int,
+        moveCount: Int,
+        method: MoveAcquisitionMethod,
+    ): List<MoveAcquisition>? {
+        val moves = mutableListOf<MoveAcquisition>()
+        val seen = mutableSetOf<Int>()
+        repeat(MAX_EXPANSION_MOVE_LIST_ENTRIES) { index ->
+            val cursor = offset.toLong() + index * 2L
+            if (cursor + 2 > rom.size.toLong()) return null
+            val move = rom.u16le(cursor.toInt())
+            if (move == MOVE_LIST_TERMINATOR) return moves
+            if (move !in 1 until moveCount) return null
+            if (seen.add(move)) moves += MoveAcquisition(move, method)
+        }
+        return null
+    }
+
+    private fun expansionEvidence(
+        capability: RomCapability,
+        result: ExpansionRead,
+        offset: Int,
+        reason: String,
+    ): CapabilityEvidence {
+        val covered = result.successfulSpecies.size
+        val expected = covered + result.failedSpecies.size
+        val status = when {
+            covered == 0 -> CapabilityStatus.NOT_FOUND
+            result.failedSpecies.isNotEmpty() -> CapabilityStatus.PARTIAL
+            else -> CapabilityStatus.AVAILABLE
+        }
+        return CapabilityEvidence(
+            capability = capability,
+            compatible = covered > 0,
+            confidence = if (expected > 0) covered.toDouble() / expected else 0.0,
+            offset = offset,
+            count = result.links,
+            reasons = listOf(
+                if (status == CapabilityStatus.PARTIAL) {
+                    "$reason ($covered/$expected species rows)"
+                } else {
+                    reason
+                },
+            ),
+            status = status,
+            validRecords = covered,
+            totalRecords = expected,
+            coveredRecords = covered,
+            expectedRecords = expected,
+            incompleteRecords = result.failedSpecies.size,
         )
     }
 
@@ -182,23 +258,44 @@ object MoveAcquisitionMaterializer {
         method: MoveAcquisitionMethod,
     ): Candidate? {
         val species = layout.headerlessUnifiedSpecies ?: return null
-        val fallback = rom.gbaPointer(species.speciesTableOffset + fieldOffset) ?: return null
+        val fallback = runCatching {
+            rom.gbaPointer(species.speciesTableOffset + fieldOffset)
+        }.getOrNull() ?: return null
         val acquisitions = linkedMapOf<Int, List<MoveAcquisition>>()
-        var links = 0
+        val failedSpecies = linkedSetOf<Int>()
         repeat(layout.speciesCount ?: return null) { speciesId ->
             val record = species.speciesTableOffset + speciesId * species.speciesRecordSize
-            if (rom.u8(record + species.activePredicateOffset) == 0) return@repeat
-            val raw = rom.u32le(record + fieldOffset)
-            val pointer = if (raw == 0L) fallback else rom.gbaPointer(record + fieldOffset) ?: return null
-            val moves = decodeHeaderlessMoveList(rom, pointer, method) ?: return null
+            val active = runCatching {
+                rom.u8(record + species.activePredicateOffset) != 0
+            }.getOrElse {
+                failedSpecies += speciesId
+                return@repeat
+            }
+            if (!active) return@repeat
+            val moves = runCatching {
+                val raw = rom.u32le(record + fieldOffset)
+                val pointer = if (raw == 0L) {
+                    fallback
+                } else {
+                    rom.gbaPointer(record + fieldOffset)
+                        ?: error("invalid unified move-list pointer")
+                }
+                decodeHeaderlessMoveList(rom, pointer, method)
+                    ?: error("unterminated unified move-list row")
+            }.getOrElse {
+                failedSpecies += speciesId
+                return@repeat
+            }
             acquisitions[speciesId] = moves
-            links += moves.size
         }
         return Candidate(
             sourceOffset = species.speciesTableOffset + fieldOffset,
-            confidence = 1.0,
+            confidence = if (failedSpecies.isEmpty()) 1.0 else {
+                acquisitions.size.toDouble() / (acquisitions.size + failedSpecies.size)
+            },
             acquisitions = acquisitions,
-        ).takeIf { links > 0 }
+            failedSpecies = failedSpecies,
+        )
     }
 
     private fun decodeHeaderlessMoveList(
@@ -1034,20 +1131,48 @@ object MoveAcquisitionMaterializer {
         availableReason: String,
         unavailableReason: String,
         unavailableStatus: CapabilityStatus = CapabilityStatus.NOT_FOUND,
-    ) = CapabilityEvidence(
-        capability = capability,
-        compatible = candidate != null,
-        confidence = candidate?.confidence ?: 0.0,
-        offset = candidate?.sourceOffset,
-        count = candidate?.acquisitions?.values?.sumOf { it.size },
-        reasons = listOf(if (candidate != null) availableReason else unavailableReason),
-        status = if (candidate != null) CapabilityStatus.AVAILABLE else unavailableStatus,
-    )
+    ): CapabilityEvidence {
+        val covered = candidate?.acquisitions?.size ?: 0
+        val incomplete = candidate?.failedSpecies?.size ?: 0
+        val expected = covered + incomplete
+        val status = when {
+            candidate == null -> unavailableStatus
+            incomplete > 0 -> CapabilityStatus.PARTIAL
+            else -> CapabilityStatus.AVAILABLE
+        }
+        return CapabilityEvidence(
+            capability = capability,
+            compatible = candidate != null,
+            confidence = candidate?.confidence ?: 0.0,
+            offset = candidate?.sourceOffset,
+            count = candidate?.acquisitions?.values?.sumOf { it.size },
+            reasons = listOf(
+                when (status) {
+                    CapabilityStatus.PARTIAL -> "$availableReason ($covered/$expected species rows)"
+                    CapabilityStatus.AVAILABLE -> availableReason
+                    else -> unavailableReason
+                },
+            ),
+            status = status,
+            validRecords = covered.takeIf { candidate != null },
+            totalRecords = expected.takeIf { candidate != null },
+            coveredRecords = covered.takeIf { candidate != null },
+            expectedRecords = expected.takeIf { candidate != null },
+            incompleteRecords = incomplete.takeIf { candidate != null },
+        )
+    }
 
     private data class Candidate(
         val sourceOffset: Int,
         val confidence: Double,
         val acquisitions: Map<Int, List<MoveAcquisition>>,
+        val failedSpecies: Set<Int> = emptySet(),
+    )
+
+    private data class ExpansionRead(
+        val successfulSpecies: Set<Int>,
+        val failedSpecies: Set<Int>,
+        val links: Int,
     )
 
     private data class BitfieldPairCandidate(
@@ -1120,6 +1245,8 @@ object MoveAcquisitionMaterializer {
     private const val MAX_RUNTIME_TUTOR_COUNT = 32
     private const val MAX_HEADERLESS_MOVE_ID = 4095
     private const val MAX_HEADERLESS_MOVE_LIST_ENTRIES = 1024
+    private const val MAX_EXPANSION_MOVE_LIST_ENTRIES = 1024
+    private const val MOVE_LIST_TERMINATOR = 0xFFFF
     private const val MAX_TUTOR_MOVES_PER_SPECIES = 128
     private const val MIN_TUTOR_SPECIES_COVERAGE = 0.8
     private const val CFRU_MACHINE_FLAGS_SLOT = 0x043C68

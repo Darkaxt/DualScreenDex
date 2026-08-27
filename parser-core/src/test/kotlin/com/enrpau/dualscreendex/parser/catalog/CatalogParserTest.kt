@@ -514,6 +514,144 @@ class CatalogParserTest {
     }
 
     @Test
+    fun expansionDescriptionFailureIsIsolatedAndReportedAsPartial() {
+        val bytes = ByteArray(2048)
+        val stride = 180
+        repeat(2) { index ->
+            val id = index + 1
+            val row = id * stride
+            repeat(6) { stat -> bytes[row + stat] = (40 + stat).toByte() }
+            bytes[row + 6] = 12
+            bytes[row + 7] = 3
+            encodeGbaText(bytes, row + 31, "MOUSE")
+            encodeGbaText(bytes, row + 44, if (id == 1) "ONE" else "TWO")
+            putU16(bytes, row + 60, id)
+            putU16(bytes, row + 62, 4)
+            putU16(bytes, row + 64, 60)
+        }
+        putGbaPointer(bytes, stride + 76, 1000)
+        encodeGbaText(bytes, 1000, "VALID DESCRIPTION")
+        putGbaPointer(bytes, stride * 2 + 76, bytes.lastIndex)
+        bytes[bytes.lastIndex] = 0
+        val metadata = PokeemeraldExpansionMetadata(
+            0x204, 1, 15, 3, stride, 44, 13, 31, 60, 62, 64, 76, 88, 96,
+            24, 21, 148, 152, 156, 160, 64, 28, 20, 20,
+        )
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.EMERALD,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = 3,
+            moveCount = 0,
+            tables = ProfileTables(
+                speciesNames = TableLayout(44, 3, 13, stride = stride),
+                baseStats = TableLayout(0, 3, stride, stride = stride),
+                descriptions = TableLayout(
+                    0,
+                    3,
+                    stride,
+                    stride = stride,
+                    pointerOffsets = listOf(76),
+                ),
+            ),
+            pokeemeraldExpansion = metadata,
+        )
+        val rom = RomImage(bytes)
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"),
+            rom.sha256,
+            rom.crc32,
+            rom.size,
+            SelectionStatus.SELECTED,
+            EngineFamily.EMERALD,
+            null,
+            20,
+            emptyList(),
+            emptyList(),
+        )
+
+        val catalog = CatalogMaterializer.materialize(rom, analysis, layout)
+
+        assertEquals(
+            "VALID DESCRIPTION",
+            catalog.speciesById.getValue(1).description.value,
+        )
+        assertEquals(
+            CapabilityStatus.NOT_FOUND,
+            catalog.speciesById.getValue(2).description.status,
+        )
+        val evidence = catalog.capabilities.getValue(
+            RomCapability.POKEDEX_DESCRIPTIONS,
+        )
+        assertEquals(CapabilityStatus.PARTIAL, evidence.status)
+        assertEquals(1, evidence.coveredRecords)
+        assertEquals(2, evidence.expectedRecords)
+        assertEquals(1, evidence.incompleteRecords)
+    }
+
+    @Test
+    fun allMalformedMachineRowsDoNotHideBehindValidEggMoves() {
+        val bytes = ByteArray(2048)
+        val stride = 180
+        repeat(2) { index ->
+            val id = index + 1
+            val row = id * stride
+            repeat(6) { stat -> bytes[row + stat] = (40 + stat).toByte() }
+            bytes[row + 6] = 12
+            bytes[row + 7] = 3
+            encodeGbaText(bytes, row + 44, if (id == 1) "ONE" else "TWO")
+            putU16(bytes, row + 60, id)
+            putU16(bytes, row + 62, 4)
+            putU16(bytes, row + 64, 60)
+            putGbaPointer(bytes, row + 152, 0x7FE)
+            putGbaPointer(bytes, row + 156, 0x700)
+        }
+        putU16(bytes, 0x700, 44)
+        putU16(bytes, 0x702, 0xFFFF)
+        putU16(bytes, 0x7FE, 33)
+        val metadata = PokeemeraldExpansionMetadata(
+            0x204, 1, 15, 3, stride, 44, 13, 31, 60, 62, 64, 76, 88, 96,
+            24, 21, 148, 152, 156, 160, 64, 28, 20, 20,
+        )
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.EMERALD,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = 3,
+            moveCount = 100,
+            tables = ProfileTables(
+                speciesNames = TableLayout(44, 3, 13, stride = stride),
+                baseStats = TableLayout(0, 3, stride, stride = stride),
+            ),
+            pokeemeraldExpansion = metadata,
+        )
+        val rom = RomImage(bytes)
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"),
+            rom.sha256,
+            rom.crc32,
+            rom.size,
+            SelectionStatus.SELECTED,
+            EngineFamily.EMERALD,
+            null,
+            20,
+            emptyList(),
+            emptyList(),
+        )
+
+        val catalog = CatalogMaterializer.materialize(rom, analysis, layout)
+
+        assertEquals(
+            CapabilityStatus.NOT_FOUND,
+            catalog.speciesById.getValue(1).moveAcquisitions.status,
+        )
+        assertEquals(
+            CapabilityStatus.NOT_FOUND,
+            catalog.speciesById.getValue(2).moveAcquisitions.status,
+        )
+    }
+
+    @Test
     fun materializerJoinsDexDescriptionToRomNativeSpeciesId() {
         val bytes = ByteArray(512) { 0xFF.toByte() }
         encodeGbaText(bytes, 0, "NONE")
@@ -560,6 +698,79 @@ class CatalogParserTest {
         assertEquals("BULBA", catalog.speciesById.getValue(1).name.value)
         assertEquals("A SEED", catalog.speciesById.getValue(1).description.value)
         assertEquals(1, catalog.speciesById.getValue(1).dexNumber.value)
+    }
+
+    @Test
+    fun malformedOptionalLearnsetProducesPartialUsableCatalog() {
+        val bytes = ByteArray(0x8000)
+        encodeGbText(bytes, 0x100, "ONE")
+        encodeGbText(bytes, 0x10A, "TWO")
+        putU16(bytes, 0, 0x4020)
+        putU16(bytes, 2, 0x7FFE)
+        bytes[0x4020] = 0
+        bytes[0x4021] = 5
+        bytes[0x4022] = 33
+        bytes[0x4023] = 0
+        bytes[0x7FFE] = 0
+        bytes[0x7FFF] = 5
+        val relationships = TableLayout(
+            offset = 0,
+            count = 2,
+            recordSize = 2,
+            variableLength = true,
+            bank = 1,
+        )
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.CRYSTAL,
+            generation = 2,
+            platform = Platform.GBC,
+            speciesCount = 2,
+            moveCount = 100,
+            tables = ProfileTables(
+                speciesNames = TableLayout(0x100, 2, 10),
+                evolutions = relationships,
+                learnsets = relationships,
+            ),
+        )
+        val rom = RomImage(bytes)
+        val analysis = ParseResult(
+            RomHeader(Platform.GBC, "TEST"),
+            rom.sha256,
+            rom.crc32,
+            rom.size,
+            SelectionStatus.SELECTED,
+            EngineFamily.CRYSTAL,
+            null,
+            20,
+            emptyList(),
+            emptyList(),
+        )
+
+        val catalog = CatalogMaterializer.materialize(
+            rom,
+            analysis,
+            layout,
+        )
+
+        assertEquals(
+            CapabilityStatus.AVAILABLE,
+            catalog.speciesById.getValue(1).learnset.status,
+        )
+        assertEquals(
+            listOf(LearnsetEntry(5, 33)),
+            catalog.speciesById.getValue(1).learnset.value,
+        )
+        assertEquals(
+            CapabilityStatus.NOT_FOUND,
+            catalog.speciesById.getValue(2).learnset.status,
+        )
+        assertNull(catalog.speciesById.getValue(2).learnset.value)
+        val evidence = catalog.capabilities.getValue(RomCapability.LEARNSETS)
+        assertEquals(CapabilityStatus.PARTIAL, evidence.status)
+        assertTrue(evidence.compatible)
+        assertEquals(1, evidence.coveredRecords)
+        assertEquals(2, evidence.expectedRecords)
+        assertEquals(1, evidence.incompleteRecords)
     }
 
     @Test
@@ -657,6 +868,17 @@ class CatalogParserTest {
         )
 
         assertEquals(rom.sha256, catalog.romSha256)
+    }
+
+    private fun encodeGbText(target: ByteArray, offset: Int, value: String) {
+        value.forEachIndexed { index, char ->
+            target[offset + index] = when (char) {
+                ' ' -> 0x7F
+                in 'A'..'Z' -> (0x80 + char.code - 'A'.code).toByte()
+                else -> error("unsupported fixture character")
+            }
+        }
+        target[offset + value.length] = 0x50
     }
 
     private fun encodeGbaText(target: ByteArray, offset: Int, value: String) {
