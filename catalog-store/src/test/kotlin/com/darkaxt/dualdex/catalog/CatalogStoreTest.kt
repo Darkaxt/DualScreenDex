@@ -929,6 +929,30 @@ class CatalogStoreTest {
     }
 
     @Test
+    fun `cache rejects a valid catalog stored under another ROM identity`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val requestedSha = "a".repeat(64)
+        val storedCatalog = completeCatalog("b".repeat(64))
+        cache.write(
+            storedCatalog,
+            CatalogSourceMetadata.direct("Control-B.gba", 16_777_216, "CONTROL B"),
+            CatalogWriteProgress.complete(),
+        )
+        Files.copy(
+            cache.fileFor(storedCatalog.romSha256).toPath(),
+            cache.fileFor(requestedSha).toPath(),
+        )
+
+        val lookup = cache.lookupComplete(requestedSha)
+
+        assertNull(lookup.stored)
+        assertEquals(CatalogCacheDecision.REJECTED_EXCEPTION, lookup.decision)
+        assertFalse(cache.fileFor(requestedSha).exists())
+        assertEquals(storedCatalog, cache.readComplete(storedCatalog.romSha256)?.catalog)
+    }
+
+    @Test
     fun `corrupt cache is rejected and removed so the ROM can be parsed again`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)

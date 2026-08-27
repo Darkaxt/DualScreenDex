@@ -535,10 +535,15 @@ class ProductionCompanionRuntime(
         parserWorker.execute {
             try {
                 val lookup = catalogRepository?.lookupComplete(rom.sha256)
-                performanceRecorder.cacheDecision(
-                    (lookup?.decision ?: CatalogCacheDecision.MISS_FILE_ABSENT).name,
-                )
-                val cached = lookup?.stored
+                val cached = lookup?.stored?.takeIf { stored ->
+                    stored.catalog.matchesIdentity(rom.sha256)
+                }
+                val cacheDecision = if (lookup?.stored != null && cached == null) {
+                    CatalogCacheDecision.REJECTED_EXCEPTION
+                } else {
+                    lookup?.decision ?: CatalogCacheDecision.MISS_FILE_ABSENT
+                }
+                performanceRecorder.cacheDecision(cacheDecision.name)
                 if (cached != null) {
                     if (generation != loadGeneration.get()) {
                         notifyCompletion(onComplete, Result.failure(IllegalStateException("catalog load was superseded")))
@@ -550,7 +555,7 @@ class ProductionCompanionRuntime(
                 }
                 setCatalogLoadingMessage(
                     generation,
-                    cacheRefreshMessage(lookup?.decision ?: CatalogCacheDecision.MISS_FILE_ABSENT),
+                    cacheRefreshMessage(cacheDecision),
                 )
                 publishWork(generation, CatalogWorkProgress(CatalogWorkModule.ROM_IDENTITY), source.displayName)
                 val parsed = parseCatalog(
@@ -608,7 +613,9 @@ class ProductionCompanionRuntime(
     @Synchronized
     fun restoreCatalog(sha256: String): Boolean {
         performanceRecorder.beginLoad(sha256, null)
-        val stored = catalogRepository?.readComplete(sha256)
+        val stored = catalogRepository?.readComplete(sha256)?.takeIf { candidate ->
+            candidate.catalog.matchesIdentity(sha256)
+        }
         if (stored == null) {
             performanceRecorder.cacheDecision(CatalogCacheDecision.MISS_FILE_ABSENT.name)
             performanceRecorder.loadFailed(IllegalStateException("stored catalog was unavailable"))
@@ -626,16 +633,33 @@ class ProductionCompanionRuntime(
         performanceRecorder.beginLoad(sha256, null)
         val generation = beginCatalogTransition(sha256, null, "CACHE_REOPEN")
         parserWorker.execute {
-            val stored = catalogRepository?.readComplete(sha256)
-            if (stored == null) {
-                performanceRecorder.cacheDecision(CatalogCacheDecision.MISS_FILE_ABSENT.name)
-                performanceRecorder.loadFailed(IllegalStateException("stored catalog was unavailable"))
-                publishTransitionFailure(generation, "IDLE")
-            } else {
-                performanceRecorder.cacheDecision(CatalogCacheDecision.HIT.name)
-                publishReopened(generation, stored.source.displayName, stored.catalog)
+            try {
+                val stored = catalogRepository?.readComplete(sha256)?.takeIf { candidate ->
+                    candidate.catalog.matchesIdentity(sha256)
+                }
+                if (stored == null) {
+                    performanceRecorder.cacheDecision(CatalogCacheDecision.MISS_FILE_ABSENT.name)
+                    performanceRecorder.loadFailed(IllegalStateException("stored catalog was unavailable"))
+                    publishTransitionFailure(generation, "IDLE")
+                } else {
+                    performanceRecorder.cacheDecision(CatalogCacheDecision.HIT.name)
+                    publishReopened(generation, stored.source.displayName, stored.catalog)
+                }
+            } catch (failure: OutOfMemoryError) {
+                failCatalogRestore(generation, failure)
+            } catch (failure: Exception) {
+                failCatalogRestore(generation, failure)
             }
         }
+    }
+
+    private fun ParsedCatalog.matchesIdentity(sha256: String): Boolean =
+        romSha256.equals(sha256, ignoreCase = true)
+
+    private fun failCatalogRestore(generation: Long, failure: Throwable) {
+        val publicFailure = GuideLoadFailure.from(failure)
+        runCatching { performanceRecorder.loadFailed(failure) }
+        publishTransitionFailure(generation, "FAILED", publicFailure.message)
     }
 
     @Synchronized

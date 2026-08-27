@@ -1956,6 +1956,63 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun mismatchedCacheIdentityIsIgnoredAndTheRequestedRomIsParsed() {
+        val rom = RomImage(ByteArray(0xC0))
+        val requested = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val wrong = StoredCatalog(
+            ParsedCatalog("b".repeat(64), EngineFamily.EMERALD, Platform.GBA),
+            CatalogSourceMetadata.direct("wrong.gba", 1, "WRONG"),
+            CatalogWriteProgress.complete(),
+            committedSections = emptySet(),
+            writtenAtEpochMs = 1,
+        )
+        var parseCalls = 0
+        val runtime = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = ReadCatalogRepository { wrong },
+            parseCatalog = { _, _, _ ->
+                parseCalls++
+                requested
+            },
+        )
+
+        runtime.load("requested.gba", rom)
+
+        assertEquals(1, parseCalls)
+        assertEquals(requested.romSha256, runtime.catalogHash())
+        runtime.close()
+    }
+
+    @Test
+    fun restorePathsRejectAStoredCatalogForAnotherIdentity() {
+        val requestedSha = "a".repeat(64)
+        val wrong = StoredCatalog(
+            ParsedCatalog("b".repeat(64), EngineFamily.EMERALD, Platform.GBA),
+            CatalogSourceMetadata.direct("wrong.gba", 1, "WRONG"),
+            CatalogWriteProgress.complete(),
+            committedSections = emptySet(),
+            writtenAtEpochMs = 1,
+        )
+
+        val synchronous = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = ReadCatalogRepository { wrong },
+        )
+        assertFalse(synchronous.restoreCatalog(requestedSha))
+        assertNull(synchronous.catalogHash())
+        synchronous.close()
+
+        val asynchronous = ProductionCompanionRuntime(
+            parserWorker = ImmediateExecutorService(),
+            catalogRepository = ReadCatalogRepository { wrong },
+        )
+        asynchronous.restoreCatalogAsync(requestedSha)
+        assertNull(asynchronous.catalogHash())
+        assertFalse(asynchronous.stateView().loading.active)
+        asynchronous.close()
+    }
+
+    @Test
     fun incompatibleStoredCatalogExplainsWhyTheGameGuideIsRefreshed() {
         val rom = RomImage(ByteArray(0xC0))
         val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
@@ -1978,6 +2035,33 @@ class ProductionCompanionRuntimeTest {
         assertTrue(messages.contains("Saved guide data needs to be refreshed for this version."))
         subscription.close()
         runtime.close()
+    }
+
+    @Test
+    fun asyncRestoreFailuresAlwaysPublishATerminalState() {
+        listOf(
+            "invalid" to ReadCatalogRepository { sha256 ->
+                require(sha256.matches(Regex("[0-9a-fA-F]{64}"))) { "catalog SHA-256 is invalid" }
+                null
+            },
+            "a".repeat(64) to ReadCatalogRepository {
+                throw IllegalStateException("repository unavailable")
+            },
+        ).forEach { (sha256, repository) ->
+            val runtime = ProductionCompanionRuntime(
+                parserWorker = ImmediateExecutorService(),
+                catalogRepository = repository,
+            )
+
+            runtime.restoreCatalogAsync(sha256)
+
+            val state = runtime.stateView()
+            assertFalse(state.loading.active)
+            assertEquals("FAILED", state.loading.phase)
+            assertEquals("This game guide could not be opened. You can try again.", state.error)
+            assertNull(runtime.catalogHash())
+            runtime.close()
+        }
     }
 
     @Test
@@ -3062,6 +3146,20 @@ class ProductionCompanionRuntimeTest {
         sprite = CatalogField.notFound("fixture"),
         growthRate = CatalogField.available(0),
     )
+
+    private class ReadCatalogRepository(
+        private val reader: (String) -> StoredCatalog?,
+    ) : CatalogRepository {
+        override fun write(
+            catalog: ParsedCatalog,
+            source: CatalogSourceMetadata,
+            progress: CatalogWriteProgress,
+        ) = Unit
+
+        override fun readComplete(sha256: String): StoredCatalog? = reader(sha256)
+
+        override fun findCompleted(crc32: String, romSize: Int, romTitle: String?): List<StoredCatalog> = emptyList()
+    }
 
     private class FakeCatalogRepository(private val stored: StoredCatalog) : CatalogRepository {
         var writeCalls = 0

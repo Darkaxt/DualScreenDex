@@ -62,6 +62,9 @@ class CatalogCache(
         }
         return try {
             val stored = databaseFactory.open(file).use { database -> CatalogReader(database).readComplete() }
+            require(stored == null || stored.catalog.romSha256.equals(normalizedSha, ignoreCase = true)) {
+                "embedded catalog identity does not match the requested cache key"
+            }
             lookup(
                 normalizedSha,
                 if (stored == null) CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE else CatalogCacheDecision.HIT,
