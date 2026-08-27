@@ -5,7 +5,6 @@ import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
-import java.util.zip.ZipFile
 
 data class CorpusInput(
     val displayName: String,
@@ -19,12 +18,11 @@ data class CorpusInput(
         return if (archiveEntry == null) {
             RomSourceLoader.load(displayName, inputPath).rom
         } else {
-            ZipFile(inputPath.toFile()).use { zip ->
-                val entry = zip.getEntry(archiveEntry)
-                    ?.takeUnless { it.isDirectory }
-                    ?: throw IllegalArgumentException("archive entry is missing: $archiveEntry")
-                zip.getInputStream(entry).use { RomSourceLoader.load(displayName, it).rom }
-            }
+            RomSourceLoader.loadZipEntry(
+                inputPath.fileName.toString(),
+                inputPath,
+                archiveEntry,
+            ).rom
         }
     }
 }
@@ -32,21 +30,22 @@ data class CorpusInput(
 class CorpusScanner(
     private val includeAllRomNames: Boolean = false,
 ) {
-    fun scan(roots: List<Path>): List<CorpusInput> = roots
-        .flatMap { root -> scan(root) }
-        .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.source + "!" + (it.archiveEntry ?: "") })
+    fun scan(roots: List<Path>): Sequence<CorpusInput> = roots.asSequence()
+        .flatMap(::scan)
 
-    fun scan(root: Path): List<CorpusInput> {
+    fun scan(root: Path): Sequence<CorpusInput> = sequence {
         if (!Files.exists(root)) {
-            return listOf(error(root.fileName?.toString() ?: root.toString(), root.toString(), "root does not exist"))
+            yield(error(root.fileName?.toString() ?: root.toString(), root.toString(), "root does not exist"))
+            return@sequence
         }
-        val files = Files.walk(root).use { stream ->
-            stream.filter(Files::isRegularFile)
-                .filter { supportedOuterExtension(it) }
-                .sorted(compareBy<Path> { normalizedRelative(root, it).lowercase(Locale.ROOT) })
-                .toList()
+        Files.walk(root).use { stream ->
+            val files = stream.iterator()
+            while (files.hasNext()) {
+                val file = files.next()
+                if (!Files.isRegularFile(file) || !supportedOuterExtension(file)) continue
+                for (input in scanFile(root, file)) yield(input)
+            }
         }
-        return files.flatMap { file -> scanFile(root, file) }
     }
 
     private fun scanFile(root: Path, file: Path): List<CorpusInput> {
@@ -65,21 +64,26 @@ class CorpusScanner(
         if (isExcludedNonMainlineName(file.fileName.toString())) return emptyList()
         val outerMatches = isPokemonName(file.fileName.toString())
         return try {
-            ZipFile(file.toFile()).use { zip ->
-                zip.entries().asSequence()
-                    .filterNot { it.isDirectory }
-                    .filter { supportedRomExtension(it.name) }
-                    .filter { includeAllRomNames || outerMatches || isPokemonName(Path.of(it.name).fileName.toString()) }
-                    .filterNot { isExcludedNonMainlineName(Path.of(it.name).fileName.toString()) }
-                    .sortedBy { it.name.lowercase(Locale.ROOT) }
-                    .map { entry ->
-                        val displayName = "${file.fileName}!${entry.name}"
-                        CorpusInput(displayName, source, archiveEntry = entry.name, path = file)
-                    }
-                    .toList()
-            }
+            RomSourceLoader.zipRomEntries(file.fileName.toString(), file)
+                .asSequence()
+                .filter { supportedRomExtension(it) }
+                .filter { entryName ->
+                    val fileName = Path.of(entryName).fileName.toString()
+                    (includeAllRomNames || outerMatches || isPokemonName(fileName)) &&
+                        !isExcludedNonMainlineName(fileName)
+                }
+                .sortedBy { it.lowercase(Locale.ROOT) }
+                .map { entryName ->
+                    val displayName = "${file.fileName}!$entryName"
+                    CorpusInput(displayName, source, archiveEntry = entryName, path = file)
+                }
+                .toList()
         } catch (failure: Exception) {
-            if (outerMatches) listOf(error(file.fileName.toString(), source, readableMessage(failure))) else emptyList()
+            if (outerMatches || includeAllRomNames) {
+                listOf(error(file.fileName.toString(), source, readableMessage(failure)))
+            } else {
+                emptyList()
+            }
         }
     }
 

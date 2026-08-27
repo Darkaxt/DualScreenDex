@@ -2,10 +2,14 @@ package com.enrpau.dualscreendex.parser.cli
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.nio.ByteBuffer
 import java.nio.file.Files
+import java.nio.file.StandardOpenOption
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -37,7 +41,7 @@ class CorpusScannerTest {
         }
         val archiveBefore = Files.readAllBytes(archive)
 
-        val found = CorpusScanner().scan(root)
+        val found = CorpusScanner().scan(root).toList()
 
         assertEquals(
             listOf("Pokemon Pack.zip!Pokemon Hack.gbc", "Pokemon Test.gba"),
@@ -78,6 +82,44 @@ class CorpusScannerTest {
     }
 
     @Test
+    fun rejectsOversizedArchivesDuringDiscovery() {
+        val root = temporaryFolder.newFolder("oversized-archive").toPath()
+        val archive = root.resolve("Pokemon Oversized.zip")
+        Files.newByteChannel(
+            archive,
+            StandardOpenOption.CREATE_NEW,
+            StandardOpenOption.WRITE,
+        ).use { channel ->
+            channel.position(64L * 1024 * 1024)
+            channel.write(ByteBuffer.wrap(byteArrayOf(0)))
+        }
+
+        val result = CorpusScanner().scan(root).single()
+
+        assertTrue(result.error.orEmpty().contains("64 MiB"))
+    }
+
+    @Test
+    fun rejectsExcessiveArchiveEntriesBeforePublishingRomInputs() {
+        val root = temporaryFolder.newFolder("entry-budget").toPath()
+        val archive = root.resolve("Pokemon Entries.zip")
+        ZipOutputStream(Files.newOutputStream(archive)).use { zip ->
+            zip.putNextEntry(ZipEntry("Pokemon Valid.gba"))
+            zip.write(ByteArray(0x150))
+            zip.closeEntry()
+            repeat(1_024) { index ->
+                zip.putNextEntry(ZipEntry("notes/$index.txt"))
+                zip.closeEntry()
+            }
+        }
+
+        val result = CorpusScanner().scan(root).single()
+
+        assertTrue(result.error.orEmpty().contains("entry count"))
+        assertNull(result.path)
+    }
+
+    @Test
     fun excludesNonMainlineOfficialGamesFromCurrentStudy() {
         val root = temporaryFolder.newFolder("non-mainline").toPath()
         Files.write(root.resolve("Pokemon Pinball.gbc"), ByteArray(0x150))
@@ -90,7 +132,7 @@ class CorpusScannerTest {
             zip.closeEntry()
         }
 
-        assertEquals(emptyList<CorpusInput>(), CorpusScanner().scan(root))
+        assertEquals(emptyList<CorpusInput>(), CorpusScanner().scan(root).toList())
     }
 
     @Test
@@ -99,7 +141,7 @@ class CorpusScannerTest {
         Files.write(root.resolve("Gaia.gba"), ByteArray(0xC0))
         Files.write(root.resolve("Pokemon Pinball.gbc"), ByteArray(0x150))
 
-        val found = CorpusScanner(includeAllRomNames = true).scan(root)
+        val found = CorpusScanner(includeAllRomNames = true).scan(root).toList()
 
         assertEquals(listOf("Gaia.gba"), found.map(CorpusInput::displayName))
     }

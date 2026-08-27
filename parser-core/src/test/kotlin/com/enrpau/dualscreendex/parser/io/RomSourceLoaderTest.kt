@@ -96,6 +96,40 @@ class RomSourceLoaderTest {
     }
 
     @Test
+    fun preflightsMultipleZipMembersAndLoadsOneSelectedEntry() {
+        val directory = temporaryDirectory()
+        val path = directory.resolve("corpus.zip")
+        val first = ByteArray(0x150) { 1 }
+        val second = ByteArray(0x150) { 2 }
+        try {
+            ZipOutputStream(Files.newOutputStream(path)).use { zip ->
+                zip.putNextEntry(ZipEntry("first.gb"))
+                zip.write(first)
+                zip.closeEntry()
+                zip.putNextEntry(ZipEntry("second.gbc"))
+                zip.write(second)
+                zip.closeEntry()
+            }
+
+            assertEquals(
+                listOf("first.gb", "second.gbc"),
+                RomSourceLoader.zipRomEntries("corpus.zip", path),
+            )
+            val loaded = RomSourceLoader.loadZipEntry(
+                "corpus.zip",
+                path,
+                "second.gbc",
+            )
+
+            assertEquals("corpus.zip!second.gbc", loaded.displayName)
+            assertArrayEquals(second, loaded.rom.slice(0, second.size))
+        } finally {
+            Files.deleteIfExists(path)
+            Files.deleteIfExists(directory)
+        }
+    }
+
+    @Test
     fun rejectsOversizedDeflatedNonRomMembersAfterAValidRom() {
         val directory = temporaryDirectory()
         val path = directory.resolve("deflated-bomb.zip")
@@ -116,9 +150,17 @@ class RomSourceLoaderTest {
             val inspectFailure = assertThrows(IllegalArgumentException::class.java) {
                 RomSourceLoader.inspect(path)
             }
+            val discoveryFailure = assertThrows(IllegalArgumentException::class.java) {
+                RomSourceLoader.zipRomEntries(path.fileName.toString(), path)
+            }
+            val selectedFailure = assertThrows(IllegalArgumentException::class.java) {
+                RomSourceLoader.loadZipEntry(path.fileName.toString(), path, "valid.gba")
+            }
 
             assertTrue(loadFailure.message.orEmpty().contains("non-ROM member"))
             assertTrue(inspectFailure.message.orEmpty().contains("non-ROM member"))
+            assertTrue(discoveryFailure.message.orEmpty().contains("non-ROM member"))
+            assertTrue(selectedFailure.message.orEmpty().contains("non-ROM member"))
         } finally {
             Files.deleteIfExists(path)
             Files.deleteIfExists(directory)
@@ -143,8 +185,16 @@ class RomSourceLoaderTest {
             val failure = assertThrows(IllegalArgumentException::class.java) {
                 RomSourceLoader.load(path)
             }
+            val discoveryFailure = assertThrows(IllegalArgumentException::class.java) {
+                RomSourceLoader.zipRomEntries(path.fileName.toString(), path)
+            }
+            val selectedFailure = assertThrows(IllegalArgumentException::class.java) {
+                RomSourceLoader.loadZipEntry(path.fileName.toString(), path, "valid.gba")
+            }
 
             assertTrue(failure.message.orEmpty().contains("entry count"))
+            assertTrue(discoveryFailure.message.orEmpty().contains("entry count"))
+            assertTrue(selectedFailure.message.orEmpty().contains("entry count"))
         } finally {
             Files.deleteIfExists(path)
             Files.deleteIfExists(directory)

@@ -10,15 +10,21 @@ import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Callable
-import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
 import kotlin.time.measureTimedValue
 import kotlin.time.measureTime
 
 private const val USAGE =
     "parser-cli <root> [<root> ...] --json <path> --markdown <path> " +
-        "[--cache-dir <path>] [--jobs <count>] [--all-roms]"
+        "[--cache-dir <path>] [--jobs <1..8>] [--all-roms]"
+internal const val MAX_CLI_JOBS = 8
+private const val QUEUED_TASKS_PER_WORKER = 1
 private val DEFAULT_JOBS = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
 
 fun main(arguments: Array<String>) {
@@ -37,10 +43,9 @@ fun main(arguments: Array<String>) {
     val scanner = CorpusScanner(includeAllRomNames = options.includeAllRomNames)
     val inputs = scanner.scan(options.roots)
     val cache = options.cacheDirectory?.let { CatalogCache(it.toFile(), JdbcCatalogDatabaseFactory) }
-    val workerCount = minOf(options.jobs, inputs.size).takeIf { it > 0 } ?: 0
-    println("Evaluating ${inputs.size} inputs with $workerCount worker${if (workerCount == 1) "" else "s"}")
-    val results = mapConcurrentlyOrdered(inputs, options.jobs) { index, input ->
-        println("[${index + 1}/${inputs.size}] ${input.displayName}")
+    println("Evaluating inputs with up to ${options.jobs} workers")
+    val results = mapConcurrentlyOrdered(inputs.asIterable(), options.jobs) { index, input ->
+        println("[${index + 1}] ${input.displayName}")
         val result = if (input.error != null) {
             CorpusResult(input.displayName, input.source, input.archiveEntry, 0, error = input.error)
         } else {
@@ -80,7 +85,7 @@ fun main(arguments: Array<String>) {
             }
         }
         println(
-            "[${index + 1}/${inputs.size}] -> ${result.result?.status ?: "ERROR"}" +
+            "[${index + 1}] -> ${result.result?.status ?: "ERROR"}" +
                 (result.result?.selectedFamily?.let { " / $it" } ?: "") +
                 (result.persistence?.let { " / SQLite ${it.bytes} bytes, reopen ${it.reopenMillis} ms" } ?: ""),
         )
@@ -103,19 +108,51 @@ fun main(arguments: Array<String>) {
 }
 
 internal fun <T, R> mapConcurrentlyOrdered(
-    inputs: List<T>,
+    inputs: Iterable<T>,
     jobs: Int,
     transform: (Int, T) -> R,
 ): List<R> {
     require(jobs > 0) { "jobs must be positive" }
-    if (inputs.isEmpty()) return emptyList()
-    if (jobs == 1) return inputs.mapIndexed(transform)
+    val effectiveJobs = jobs.coerceAtMost(MAX_CLI_JOBS)
+    if (effectiveJobs == 1) return inputs.mapIndexed(transform)
 
-    val executor = Executors.newFixedThreadPool(minOf(jobs, inputs.size))
+    val queueCapacity = effectiveJobs * QUEUED_TASKS_PER_WORKER
+    val maximumInFlight = effectiveJobs + queueCapacity
+    val executor = ThreadPoolExecutor(
+        effectiveJobs,
+        effectiveJobs,
+        0L,
+        TimeUnit.MILLISECONDS,
+        ArrayBlockingQueue(queueCapacity),
+    ) { task, target ->
+        if (target.isShutdown) {
+            throw RejectedExecutionException("parser worker queue is shut down")
+        }
+        target.queue.put(task)
+    }
+    val iterator = inputs.iterator()
+    val inFlight = ArrayDeque<Future<R>>(maximumInFlight)
+    val results = mutableListOf<R>()
+    var exhausted = false
+    var nextIndex = 0
     return try {
-        inputs.mapIndexed { index, input ->
-            executor.submit(Callable { transform(index, input) })
-        }.map { future -> future.get() }
+        while (!exhausted || inFlight.isNotEmpty()) {
+            while (!exhausted && inFlight.size < maximumInFlight) {
+                if (iterator.hasNext()) {
+                    val index = nextIndex++
+                    val input = iterator.next()
+                    inFlight.addLast(
+                        executor.submit(Callable { transform(index, input) }),
+                    )
+                } else {
+                    exhausted = true
+                }
+            }
+            if (inFlight.isNotEmpty()) {
+                results += inFlight.removeFirst().get()
+            }
+        }
+        results
     } finally {
         executor.shutdownNow()
     }
@@ -215,6 +252,7 @@ internal data class CliOptions(
 
         private fun jobCountAfter(arguments: Array<String>, index: Int): Int =
             arguments.getOrNull(index)?.toIntOrNull()?.takeIf { it > 0 }
+                ?.coerceAtMost(MAX_CLI_JOBS)
                 ?: throw IllegalArgumentException("--jobs requires a positive integer")
 
         private fun valueAfter(arguments: Array<String>, index: Int, option: String): Path {

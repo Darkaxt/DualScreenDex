@@ -18,6 +18,23 @@ class CliOptionsTest {
     }
 
     @Test
+    fun capsExcessiveJobCountAtTheDocumentedMaximum() {
+        val options = CliOptions.parse(
+            arrayOf(
+                "roms",
+                "--json",
+                "report.json",
+                "--markdown",
+                "report.md",
+                "--jobs",
+                Int.MAX_VALUE.toString(),
+            ),
+        )
+
+        assertEquals(8, options.jobs)
+    }
+
+    @Test
     fun rejectsNonPositiveJobCount() {
         val failure = assertThrows(IllegalArgumentException::class.java) {
             CliOptions.parse(

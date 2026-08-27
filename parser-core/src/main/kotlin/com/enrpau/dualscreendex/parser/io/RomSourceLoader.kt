@@ -12,6 +12,7 @@ import java.nio.file.Path
 import java.nio.channels.SeekableByteChannel
 import java.security.MessageDigest
 import java.util.zip.CRC32
+import java.util.zip.ZipException
 import java.util.zip.ZipInputStream
 
 data class LoadedRom(val displayName: String, val rom: RomImage)
@@ -49,6 +50,30 @@ object RomSourceLoader {
                 .use { sevenZip -> loadSevenZip(name, sevenZip) }
         }
         return Files.newInputStream(path).buffered().use { input -> load(name, input) }
+    }
+
+    /** Preflights one ZIP through the core archive policy before exposing bounded ROM members. */
+    fun zipRomEntries(name: String, path: Path): List<String> {
+        requireZipSource(name, path)
+        return Files.newInputStream(path).buffered().use { input ->
+            listZipRomEntries(SourceSizeLimitInputStream(input, MAX_COMPRESSED_SOURCE_BYTES))
+        }
+    }
+
+    /** Revalidates the complete ZIP and materializes only [entryName] after bounded extraction. */
+    fun loadZipEntry(
+        name: String,
+        path: Path,
+        entryName: String,
+    ): LoadedRom {
+        requireZipSource(name, path)
+        return Files.newInputStream(path).buffered().use { input ->
+            loadSelectedZipRom(
+                name,
+                entryName,
+                SourceSizeLimitInputStream(input, MAX_COMPRESSED_SOURCE_BYTES),
+            )
+        }
     }
 
     fun inspect(path: Path): InspectedRomSource {
@@ -155,6 +180,42 @@ object RomSourceLoader {
         readRom: (String, String, InputStream) -> T,
     ): T {
         var selected: T? = null
+        visitZipRomEntries(input) { entryName, extension, member ->
+            require(selected == null) { "archive contains multiple ROM entries" }
+            selected = readRom("$name!$entryName", extension, member)
+        }
+        return requireNotNull(selected) { "archive contains no supported ROM entry" }
+    }
+
+    private fun listZipRomEntries(input: InputStream): List<String> = buildList {
+        visitZipRomEntries(input) { entryName, _, _ ->
+            require(entryName !in this) { "archive contains duplicate ROM entry $entryName" }
+            add(entryName)
+        }
+    }
+
+    private fun loadSelectedZipRom(
+        name: String,
+        entryName: String,
+        input: InputStream,
+    ): LoadedRom {
+        var selected: LoadedRom? = null
+        visitZipRomEntries(input) { candidate, extension, member ->
+            if (candidate == entryName) {
+                require(selected == null) { "archive contains duplicate ROM entry $entryName" }
+                selected = LoadedRom(
+                    "$name!$candidate",
+                    loadRom(extension, member),
+                )
+            }
+        }
+        return requireNotNull(selected) { "archive entry is missing: $entryName" }
+    }
+
+    private fun visitZipRomEntries(
+        input: InputStream,
+        onRom: (String, String, InputStream) -> Unit,
+    ) {
         val budget = ArchiveExtractionBudget()
         ZipInputStream(BufferedInputStream(input)).use { zip ->
             while (true) {
@@ -162,16 +223,17 @@ object RomSourceLoader {
                 budget.enterEntry()
                 val extension = entry.name.substringAfterLast('.', "").lowercase()
                 if (!entry.isDirectory && extension in extensions) {
-                    require(selected == null) { "archive contains multiple ROM entries" }
                     val maximumBytes = maximumRomSourceBytes(extension)
                     require(entry.size < 0 || entry.size <= maximumBytes) {
                         "ROM exceeds 32 MiB extracted limit"
                     }
-                    selected = readRom(
-                        "$name!${entry.name}",
-                        extension,
-                        budget.member(zip, maximumBytes, "ROM exceeds 32 MiB extracted limit"),
+                    val member = budget.member(
+                        zip,
+                        maximumBytes,
+                        "ROM exceeds 32 MiB extracted limit",
                     )
+                    onRom(entry.name, extension, member)
+                    member.drain()
                 } else if (!entry.isDirectory) {
                     require(entry.size < 0 || entry.size <= MAX_NONSELECTED_DRAIN_BYTES) {
                         "archive non-ROM member exceeds 8 MiB drain limit"
@@ -185,7 +247,6 @@ object RomSourceLoader {
                 zip.closeEntry()
             }
         }
-        return requireNotNull(selected) { "archive contains no supported ROM entry" }
     }
 
     private fun loadSevenZip(name: String, sevenZip: SevenZFile): LoadedRom =
@@ -304,6 +365,18 @@ object RomSourceLoader {
             output.write(buffer, 0, count)
         }
         return output.toByteArray()
+    }
+
+    private fun requireZipSource(name: String, path: Path) {
+        require(sourceExtension(name) == "zip") { "selected archive member loading requires a .zip source" }
+        require(Files.isRegularFile(path)) { "ROM source is not a readable file: $path" }
+        require(Files.size(path) <= MAX_COMPRESSED_SOURCE_BYTES) {
+            "compressed ROM source exceeds 64 MiB limit"
+        }
+        val signature = Files.newInputStream(path).use { it.readNBytes(2) }
+        if (!signature.contentEquals(byteArrayOf('P'.code.toByte(), 'K'.code.toByte()))) {
+            throw ZipException("invalid ZIP header")
+        }
     }
 
     private fun sourceExtension(name: String): String = name.substringAfterLast('.', "").lowercase()

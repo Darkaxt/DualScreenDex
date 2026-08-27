@@ -379,7 +379,7 @@ Scan one or more user-owned ROM directories read-only:
   --jobs 8
 ```
 
-The scanner accepts `.gb`, `.gbc`, and `.gba` files plus matching entries inside ZIP archives. It loads each ROM only when a worker is ready and never extracts temporary ROM files. Scans use up to four workers by default; pass `--jobs N` to select a different positive worker count for the available CPU and memory.
+The scanner accepts `.gb`, `.gbc`, and `.gba` files plus matching entries inside ZIP archives. It preflights each archive through the core extraction limits, loads each ROM only when bounded worker capacity is available, and never extracts temporary ROM files. Scans use up to four workers by default; `--jobs N` accepts positive values and caps the effective worker count at eight.
 
 ## Run the browser development harness
 
