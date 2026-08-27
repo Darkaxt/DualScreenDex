@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Path
@@ -164,7 +165,7 @@ class DamageForecastRealControlTest {
         val fallback: String,
         val formula: DamageFormulaEvidence,
     ) {
-        fun path(): Path = Path.of(System.getenv(environmentVariable) ?: fallback)
+        fun path(): Path = controlPath(environmentVariable, fallback)
     }
 
     private data class HackControl(
@@ -174,6 +175,22 @@ class DamageForecastRealControlTest {
         val sourcePath: String,
         val alteredSourceMarker: String?,
     ) {
-        fun path(): Path = Path.of(System.getenv(environmentVariable) ?: fallback)
+        fun path(): Path = controlPath(environmentVariable, fallback)
+    }
+
+    companion object {
+        private fun controlPath(environmentVariable: String, fallback: String): Path {
+            val configured = System.getenv(environmentVariable)?.takeIf(String::isNotBlank)
+            val path = Path.of(configured ?: fallback)
+            if (configured == null) {
+                assumeTrue(
+                    "set $environmentVariable to run this exact real-ROM control",
+                    Files.isRegularFile(path),
+                )
+            } else {
+                assertTrue("configured real ROM control does not exist: $path", Files.isRegularFile(path))
+            }
+            return path
+        }
     }
 }

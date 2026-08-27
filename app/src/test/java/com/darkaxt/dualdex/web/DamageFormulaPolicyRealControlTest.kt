@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Path
@@ -40,8 +41,13 @@ class DamageFormulaPolicyRealControlTest {
     }
 
     private fun catalog(environment: String, fallback: String) =
-        Path.of(System.getenv(environment) ?: fallback).let { path ->
-            assertTrue("real ROM control does not exist: $path", Files.isRegularFile(path))
+        System.getenv(environment)?.takeIf(String::isNotBlank).let { configured ->
+            val path = Path.of(configured ?: fallback)
+            if (configured == null) {
+                assumeTrue("set $environment to run this exact real-ROM control", Files.isRegularFile(path))
+            } else {
+                assertTrue("configured real ROM control does not exist: $path", Files.isRegularFile(path))
+            }
             requireNotNull(CatalogParser.parse(RomSourceLoader.load(path).rom).catalog)
         }
 }
