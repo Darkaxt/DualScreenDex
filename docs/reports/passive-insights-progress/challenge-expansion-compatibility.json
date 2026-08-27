@@ -1,0 +1,1034 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-27",
+  "feature": "Portable Challenge Engine Expansion",
+  "definitions": {
+    "templatesApplicable": "Offline templates whose complete parsed semantic role is resolved for the control.",
+    "templatesFullyObservable": "Applicable templates whose complete current-snapshot or journal inputs are observable.",
+    "templatesValidated": "Fully observable templates proven by deterministic binding, evaluation, identity, and mutation tests."
+  },
+  "reference": {
+    "descriptionsClassified": {
+      "covered": 883,
+      "total": 1003,
+      "percent": 88.04
+    },
+    "templatesExpressible": {
+      "covered": 883,
+      "total": 883,
+      "percent": 100
+    },
+    "tier2Classified": 401,
+    "tier3Classified": 33,
+    "tier4ResearchExclusions": {
+      "count": 120,
+      "outcome": "NOT_APPLICABLE"
+    }
+  },
+  "templateCatalog": {
+    "baseline": 6,
+    "extended": 6,
+    "total": 12
+  },
+  "controlCount": 14,
+  "controls": [
+    {
+      "id": "red",
+      "name": "Pokémon Red",
+      "generation": 1,
+      "sha256": "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
+      "resolvedRoles": {
+        "badgeCount": 0,
+        "regionalSpecies": 151,
+        "collectibleAreas": 37,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 38,
+      "applicableTemplateKeys": [
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 2,
+          "total": 6,
+          "percent": 33.33,
+          "notFound": 4,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 1,
+          "total": 2,
+          "percent": 50,
+          "notFound": 1
+        },
+        "extensionValidatedTemplates": {
+          "covered": 1,
+          "total": 1,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 5,
+          "total": 12,
+          "percent": 41.67,
+          "notApplicable": 3,
+          "notFound": 4,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 4,
+          "total": 5,
+          "percent": 80,
+          "notApplicable": 0,
+          "notFound": 1,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "blue",
+      "name": "Pokémon Blue",
+      "generation": 1,
+      "sha256": "2a951313c2640e8c2cb21f25d1db019ae6245d9c7121f754fa61afd7bee6452d",
+      "resolvedRoles": {
+        "badgeCount": 0,
+        "regionalSpecies": 151,
+        "collectibleAreas": 37,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 38,
+      "applicableTemplateKeys": [
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 2,
+          "total": 6,
+          "percent": 33.33,
+          "notFound": 4,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 1,
+          "total": 2,
+          "percent": 50,
+          "notFound": 1
+        },
+        "extensionValidatedTemplates": {
+          "covered": 1,
+          "total": 1,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 5,
+          "total": 12,
+          "percent": 41.67,
+          "notApplicable": 3,
+          "notFound": 4,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 4,
+          "total": 5,
+          "percent": 80,
+          "notApplicable": 0,
+          "notFound": 1,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "yellow",
+      "name": "Pokémon Yellow",
+      "generation": 1,
+      "sha256": "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
+      "resolvedRoles": {
+        "badgeCount": 0,
+        "regionalSpecies": 151,
+        "collectibleAreas": 38,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 39,
+      "applicableTemplateKeys": [
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 2,
+          "total": 6,
+          "percent": 33.33,
+          "notFound": 4,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 1,
+          "total": 2,
+          "percent": 50,
+          "notFound": 1
+        },
+        "extensionValidatedTemplates": {
+          "covered": 1,
+          "total": 1,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 5,
+          "total": 12,
+          "percent": 41.67,
+          "notApplicable": 3,
+          "notFound": 4,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 4,
+          "total": 5,
+          "percent": 80,
+          "notApplicable": 0,
+          "notFound": 1,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "gold",
+      "name": "Pokémon Gold",
+      "generation": 2,
+      "sha256": "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e",
+      "resolvedRoles": {
+        "badgeCount": 0,
+        "regionalSpecies": 251,
+        "collectibleAreas": 95,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 96,
+      "applicableTemplateKeys": [
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 2,
+          "total": 6,
+          "percent": 33.33,
+          "notFound": 4,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 1,
+          "total": 2,
+          "percent": 50,
+          "notFound": 1
+        },
+        "extensionValidatedTemplates": {
+          "covered": 1,
+          "total": 1,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 5,
+          "total": 12,
+          "percent": 41.67,
+          "notApplicable": 3,
+          "notFound": 4,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 4,
+          "total": 5,
+          "percent": 80,
+          "notApplicable": 0,
+          "notFound": 1,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "silver",
+      "name": "Pokémon Silver",
+      "generation": 2,
+      "sha256": "72b190859a59623cbef6c49d601f8de52c1d2331b4f08a8d2acc17274fc19a8c",
+      "resolvedRoles": {
+        "badgeCount": 0,
+        "regionalSpecies": 251,
+        "collectibleAreas": 95,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 96,
+      "applicableTemplateKeys": [
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 2,
+          "total": 6,
+          "percent": 33.33,
+          "notFound": 4,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 1,
+          "total": 2,
+          "percent": 50,
+          "notFound": 1
+        },
+        "extensionValidatedTemplates": {
+          "covered": 1,
+          "total": 1,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 5,
+          "total": 12,
+          "percent": 41.67,
+          "notApplicable": 3,
+          "notFound": 4,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 4,
+          "total": 5,
+          "percent": 80,
+          "notApplicable": 0,
+          "notFound": 1,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "crystal",
+      "name": "Pokémon Crystal",
+      "generation": 2,
+      "sha256": "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2",
+      "resolvedRoles": {
+        "badgeCount": 0,
+        "regionalSpecies": 251,
+        "collectibleAreas": 102,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 103,
+      "applicableTemplateKeys": [
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 2,
+          "total": 6,
+          "percent": 33.33,
+          "notFound": 4,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 1,
+          "total": 2,
+          "percent": 50,
+          "notFound": 1
+        },
+        "extensionValidatedTemplates": {
+          "covered": 1,
+          "total": 1,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 5,
+          "total": 12,
+          "percent": 41.67,
+          "notApplicable": 3,
+          "notFound": 4,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 4,
+          "total": 5,
+          "percent": 80,
+          "notApplicable": 0,
+          "notFound": 1,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "ruby",
+      "name": "Pokémon Ruby",
+      "generation": 3,
+      "sha256": "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
+      "resolvedRoles": {
+        "badgeCount": 8,
+        "regionalSpecies": 386,
+        "collectibleAreas": 87,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 90,
+      "applicableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 4,
+          "total": 6,
+          "percent": 66.67,
+          "notFound": 2,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notFound": 0
+        },
+        "extensionValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 10,
+          "total": 12,
+          "percent": 83.33,
+          "notApplicable": 0,
+          "notFound": 2,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "sapphire",
+      "name": "Pokémon Sapphire",
+      "generation": 3,
+      "sha256": "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb",
+      "resolvedRoles": {
+        "badgeCount": 8,
+        "regionalSpecies": 386,
+        "collectibleAreas": 87,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 90,
+      "applicableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 4,
+          "total": 6,
+          "percent": 66.67,
+          "notFound": 2,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notFound": 0
+        },
+        "extensionValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 10,
+          "total": 12,
+          "percent": 83.33,
+          "notApplicable": 0,
+          "notFound": 2,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "emerald",
+      "name": "Pokémon Emerald",
+      "generation": 3,
+      "sha256": "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
+      "resolvedRoles": {
+        "badgeCount": 8,
+        "regionalSpecies": 386,
+        "collectibleAreas": 96,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 99,
+      "applicableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 4,
+          "total": 6,
+          "percent": 66.67,
+          "notFound": 2,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notFound": 0
+        },
+        "extensionValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 10,
+          "total": 12,
+          "percent": 83.33,
+          "notApplicable": 0,
+          "notFound": 2,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "firered",
+      "name": "Pokémon FireRed",
+      "generation": 3,
+      "sha256": "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+      "resolvedRoles": {
+        "badgeCount": 8,
+        "regionalSpecies": 386,
+        "collectibleAreas": 81,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 84,
+      "applicableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 4,
+          "total": 6,
+          "percent": 66.67,
+          "notFound": 2,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notFound": 0
+        },
+        "extensionValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 10,
+          "total": 12,
+          "percent": 83.33,
+          "notApplicable": 0,
+          "notFound": 2,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "leafgreen",
+      "name": "Pokémon LeafGreen",
+      "generation": 3,
+      "sha256": "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825",
+      "resolvedRoles": {
+        "badgeCount": 8,
+        "regionalSpecies": 386,
+        "collectibleAreas": 81,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 84,
+      "applicableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 4,
+          "total": 6,
+          "percent": 66.67,
+          "notFound": 2,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notFound": 0
+        },
+        "extensionValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 10,
+          "total": 12,
+          "percent": 83.33,
+          "notApplicable": 0,
+          "notFound": 2,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "modern-emerald",
+      "name": "Modern Emerald",
+      "sha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+      "resolvedRoles": {
+        "badgeCount": 8,
+        "regionalSpecies": 428,
+        "collectibleAreas": 97,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 100,
+      "applicableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 4,
+          "total": 6,
+          "percent": 66.67,
+          "notFound": 2,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notFound": 0
+        },
+        "extensionValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 10,
+          "total": 12,
+          "percent": 83.33,
+          "notApplicable": 0,
+          "notFound": 2,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "unbound",
+      "name": "Pokémon Unbound",
+      "sha256": "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7",
+      "resolvedRoles": {
+        "badgeCount": 8,
+        "regionalSpecies": 1266,
+        "collectibleAreas": 122,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 125,
+      "applicableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 4,
+          "total": 6,
+          "percent": 66.67,
+          "notFound": 2,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notFound": 0
+        },
+        "extensionValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 10,
+          "total": 12,
+          "percent": 83.33,
+          "notApplicable": 0,
+          "notFound": 2,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    },
+    {
+      "id": "odyssey",
+      "name": "Pokémon Odyssey",
+      "sha256": "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
+      "resolvedRoles": {
+        "badgeCount": 8,
+        "regionalSpecies": 409,
+        "collectibleAreas": 8,
+        "gymLeaders": 0,
+        "provenAdapters": 0
+      },
+      "generatedDefinitions": 11,
+      "applicableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "fullyObservableTemplateKeys": [
+        "progress-first-badge",
+        "progress-all-badges",
+        "collection-regional-record",
+        "exploration-area-items"
+      ],
+      "coverage": {
+        "extensionApplicableTemplates": {
+          "covered": 4,
+          "total": 6,
+          "percent": 66.67,
+          "notFound": 2,
+          "notApplicable": 0
+        },
+        "extensionFullyObservableTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "notFound": 0
+        },
+        "extensionValidatedTemplates": {
+          "covered": 4,
+          "total": 4,
+          "percent": 100,
+          "error": 0
+        },
+        "allApplicableTemplates": {
+          "covered": 10,
+          "total": 12,
+          "percent": 83.33,
+          "notApplicable": 0,
+          "notFound": 2,
+          "error": 0
+        },
+        "allFullyObservableTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        },
+        "allValidatedTemplates": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100,
+          "notApplicable": 0,
+          "notFound": 0,
+          "error": 0
+        }
+      }
+    }
+  ],
+  "aggregate": {
+    "allApplicableTemplates": {
+      "covered": 110,
+      "total": 168,
+      "percent": 65.48,
+      "notApplicable": 18,
+      "notFound": 40,
+      "error": 0
+    },
+    "allFullyObservableTemplates": {
+      "covered": 104,
+      "total": 110,
+      "percent": 94.55,
+      "notApplicable": 0,
+      "notFound": 6,
+      "error": 0
+    },
+    "allValidatedTemplates": {
+      "covered": 104,
+      "total": 104,
+      "percent": 100,
+      "notApplicable": 0,
+      "notFound": 0,
+      "error": 0
+    }
+  },
+  "unresolved": {
+    "gymLeaderRole": {
+      "controls": 14,
+      "outcome": "NOT_FOUND"
+    },
+    "tier3Adapters": {
+      "controls": 14,
+      "outcome": "NOT_FOUND"
+    }
+  },
+  "errors": []
+}
