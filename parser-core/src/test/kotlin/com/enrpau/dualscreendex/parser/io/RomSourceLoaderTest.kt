@@ -76,6 +76,103 @@ class RomSourceLoaderTest {
     }
 
     @Test
+    fun inspectionAndLoadingRetainTheSameAddressableGbaIdentity() {
+        val directory = temporaryDirectory()
+        val path = directory.resolve("trailer.gba")
+        try {
+            val source = gbaBytes(RomImage.MAX_SIZE_BYTES + 1_131)
+            source.fill(0x5A, RomImage.MAX_SIZE_BYTES)
+            Files.write(path, source)
+
+            val inspected = RomSourceLoader.inspect(path)
+            val loaded = RomSourceLoader.load(path)
+
+            assertEquals(loaded.rom.sha256, inspected.sha256)
+            assertEquals(loaded.rom.crc32, inspected.crc32)
+        } finally {
+            Files.deleteIfExists(path)
+            Files.deleteIfExists(directory)
+        }
+    }
+
+    @Test
+    fun rejectsOversizedDeflatedNonRomMembersAfterAValidRom() {
+        val directory = temporaryDirectory()
+        val path = directory.resolve("deflated-bomb.zip")
+        try {
+            ZipOutputStream(Files.newOutputStream(path)).use { zip ->
+                zip.putNextEntry(ZipEntry("valid.gba"))
+                zip.write(gbaBytes(0x200))
+                zip.closeEntry()
+                zip.putNextEntry(ZipEntry("notes.txt"))
+                val block = ByteArray(64 * 1024)
+                repeat((8 * 1024 * 1024 / block.size) + 1) { zip.write(block) }
+                zip.closeEntry()
+            }
+
+            val loadFailure = assertThrows(IllegalArgumentException::class.java) {
+                RomSourceLoader.load(path)
+            }
+            val inspectFailure = assertThrows(IllegalArgumentException::class.java) {
+                RomSourceLoader.inspect(path)
+            }
+
+            assertTrue(loadFailure.message.orEmpty().contains("non-ROM member"))
+            assertTrue(inspectFailure.message.orEmpty().contains("non-ROM member"))
+        } finally {
+            Files.deleteIfExists(path)
+            Files.deleteIfExists(directory)
+        }
+    }
+
+    @Test
+    fun rejectsArchivesBeyondTheEntryCountLimit() {
+        val directory = temporaryDirectory()
+        val path = directory.resolve("too-many-entries.zip")
+        try {
+            ZipOutputStream(Files.newOutputStream(path)).use { zip ->
+                zip.putNextEntry(ZipEntry("valid.gba"))
+                zip.write(gbaBytes(0x200))
+                zip.closeEntry()
+                repeat(1_024) { index ->
+                    zip.putNextEntry(ZipEntry("notes/$index.txt"))
+                    zip.closeEntry()
+                }
+            }
+
+            val failure = assertThrows(IllegalArgumentException::class.java) {
+                RomSourceLoader.load(path)
+            }
+
+            assertTrue(failure.message.orEmpty().contains("entry count"))
+        } finally {
+            Files.deleteIfExists(path)
+            Files.deleteIfExists(directory)
+        }
+    }
+
+    @Test
+    fun rejectsOversizedRawInspectionFromFileMetadata() {
+        val directory = temporaryDirectory()
+        val path = directory.resolve("oversized.gb")
+        try {
+            Files.newByteChannel(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE).use { channel ->
+                channel.position(RomImage.MAX_SIZE_BYTES.toLong())
+                channel.write(java.nio.ByteBuffer.wrap(byteArrayOf(0)))
+            }
+
+            val failure = assertThrows(IllegalArgumentException::class.java) {
+                RomSourceLoader.inspect(path)
+            }
+
+            assertTrue(failure.message.orEmpty().contains("32 MiB"))
+        } finally {
+            Files.deleteIfExists(path)
+            Files.deleteIfExists(directory)
+        }
+    }
+
+    @Test
     fun rejectsCompressedSourcesAboveSixtyFourMebibytesBeforeDecode() {
         val directory = temporaryDirectory()
         val path = directory.resolve("oversized.body")

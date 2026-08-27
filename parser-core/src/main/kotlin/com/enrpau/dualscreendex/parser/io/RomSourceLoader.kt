@@ -54,14 +54,33 @@ object RomSourceLoader {
     fun inspect(path: Path): InspectedRomSource {
         require(Files.isRegularFile(path)) { "ROM source is not a readable file: $path" }
         val name = path.fileName.toString()
-        require(name.substringAfterLast('.', "").equals("7z", ignoreCase = true)) {
-            "streaming inspection is currently required only for .7z sources"
+        val extension = sourceExtension(name)
+        val maximumSourceBytes = if (extension in extensions) {
+            maximumRomSourceBytes(extension)
+        } else {
+            MAX_COMPRESSED_SOURCE_BYTES
         }
-        return SevenZFile.builder()
-            .setFile(path.toFile())
-            .setMaxMemoryLimitKiB(SEVEN_Z_MEMORY_LIMIT_KIB)
-            .get()
-            .use { sevenZip -> inspectSevenZip(name, sevenZip) }
+        require(Files.size(path) <= maximumSourceBytes) {
+            if (extension in extensions) {
+                "ROM exceeds 32 MiB extracted limit"
+            } else {
+                "compressed ROM source exceeds 64 MiB limit"
+            }
+        }
+        return when {
+            extension in extensions -> Files.newInputStream(path).buffered().use { input ->
+                inspectRom(name, input)
+            }
+            extension == "zip" -> Files.newInputStream(path).buffered().use { input ->
+                inspectZip(name, SourceSizeLimitInputStream(input, MAX_COMPRESSED_SOURCE_BYTES))
+            }
+            extension == "7z" -> SevenZFile.builder()
+                .setFile(path.toFile())
+                .setMaxMemoryLimitKiB(SEVEN_Z_MEMORY_LIMIT_KIB)
+                .get()
+                .use { sevenZip -> inspectSevenZip(name, sevenZip) }
+            else -> error("supported sources are .gb, .gbc, .gba, .zip, and .7z")
+        }
     }
 
     fun load(name: String, input: InputStream): LoadedRom {
@@ -120,18 +139,48 @@ object RomSourceLoader {
             .use { sevenZip -> loadSevenZip(name, sevenZip) }
     }
 
-    private fun loadZip(name: String, input: InputStream): LoadedRom {
-        var selected: LoadedRom? = null
+    private fun loadZip(name: String, input: InputStream): LoadedRom =
+        selectZipRom(name, input) { displayName, extension, member ->
+            LoadedRom(displayName, loadRom(extension, member))
+        }
+
+    private fun inspectZip(name: String, input: InputStream): InspectedRomSource =
+        selectZipRom(name, input) { displayName, _, member ->
+            inspectRom(displayName, member)
+        }
+
+    private fun <T> selectZipRom(
+        name: String,
+        input: InputStream,
+        readRom: (String, String, InputStream) -> T,
+    ): T {
+        var selected: T? = null
+        val budget = ArchiveExtractionBudget()
         ZipInputStream(BufferedInputStream(input)).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
+                budget.enterEntry()
                 val extension = entry.name.substringAfterLast('.', "").lowercase()
                 if (!entry.isDirectory && extension in extensions) {
                     require(selected == null) { "archive contains multiple ROM entries" }
-                    require(entry.size < 0 || entry.size <= maximumRomSourceBytes(extension)) {
+                    val maximumBytes = maximumRomSourceBytes(extension)
+                    require(entry.size < 0 || entry.size <= maximumBytes) {
                         "ROM exceeds 32 MiB extracted limit"
                     }
-                    selected = LoadedRom("$name!${entry.name}", loadRom(extension, zip))
+                    selected = readRom(
+                        "$name!${entry.name}",
+                        extension,
+                        budget.member(zip, maximumBytes, "ROM exceeds 32 MiB extracted limit"),
+                    )
+                } else if (!entry.isDirectory) {
+                    require(entry.size < 0 || entry.size <= MAX_NONSELECTED_DRAIN_BYTES) {
+                        "archive non-ROM member exceeds 8 MiB drain limit"
+                    }
+                    budget.member(
+                        zip,
+                        MAX_NONSELECTED_DRAIN_BYTES,
+                        "archive non-ROM member exceeds 8 MiB drain limit",
+                    ).drain()
                 }
                 zip.closeEntry()
             }
@@ -139,17 +188,40 @@ object RomSourceLoader {
         return requireNotNull(selected) { "archive contains no supported ROM entry" }
     }
 
-    private fun loadSevenZip(name: String, sevenZip: SevenZFile): LoadedRom {
-        var selected: LoadedRom? = null
+    private fun loadSevenZip(name: String, sevenZip: SevenZFile): LoadedRom =
+        selectSevenZipRom(name, sevenZip) { displayName, extension, member ->
+            LoadedRom(displayName, loadRom(extension, member))
+        }
+
+    private fun inspectSevenZip(name: String, sevenZip: SevenZFile): InspectedRomSource =
+        selectSevenZipRom(name, sevenZip) { displayName, _, member ->
+            inspectRom(displayName, member)
+        }
+
+    private fun <T> selectSevenZipRom(
+        name: String,
+        sevenZip: SevenZFile,
+        readRom: (String, String, InputStream) -> T,
+    ): T {
+        var selected: T? = null
+        val budget = ArchiveExtractionBudget()
         while (true) {
             val entry = sevenZip.nextEntry ?: break
+            budget.enterEntry()
             val entryName = entry.name ?: continue
             val extension = entryName.substringAfterLast('.', "").lowercase()
             if (!entry.isDirectory && extension in extensions) {
                 require(selected == null) { "archive contains multiple ROM entries" }
-                require(entry.size <= maximumRomSourceBytes(extension)) { "ROM exceeds 32 MiB extracted limit" }
+                val maximumBytes = maximumRomSourceBytes(extension)
+                require(entry.size < 0 || entry.size <= maximumBytes) {
+                    "ROM exceeds 32 MiB extracted limit"
+                }
                 selected = sevenZip.getInputStream(entry).use { member ->
-                    LoadedRom("$name!$entryName", loadRom(extension, member))
+                    readRom(
+                        "$name!$entryName",
+                        extension,
+                        budget.member(member, maximumBytes, "ROM exceeds 32 MiB extracted limit"),
+                    )
                 }
             }
         }
@@ -183,23 +255,6 @@ object RomSourceLoader {
 
     private fun maximumRomSourceBytes(extension: String): Long =
         if (extension == GBA_EXTENSION) MAX_GBA_SOURCE_BYTES.toLong() else MAX_ROM_BYTES.toLong()
-
-    private fun inspectSevenZip(name: String, sevenZip: SevenZFile): InspectedRomSource {
-        var selected: InspectedRomSource? = null
-        while (true) {
-            val entry = sevenZip.nextEntry ?: break
-            val entryName = entry.name ?: continue
-            val extension = entryName.substringAfterLast('.', "").lowercase()
-            if (!entry.isDirectory && extension in extensions) {
-                require(selected == null) { "archive contains multiple ROM entries" }
-                require(entry.size <= maximumRomSourceBytes(extension)) { "ROM exceeds 32 MiB extracted limit" }
-                selected = sevenZip.getInputStream(entry).use { member ->
-                    inspectRom("$name!$entryName", member)
-                }
-            }
-        }
-        return requireNotNull(selected) { "archive contains no supported ROM entry" }
-    }
 
     private fun inspectRom(displayName: String, input: InputStream): InspectedRomSource {
         val extension = sourceExtension(displayName)
@@ -253,6 +308,9 @@ object RomSourceLoader {
 
     private fun sourceExtension(name: String): String = name.substringAfterLast('.', "").lowercase()
 
+    private const val MAX_ARCHIVE_ENTRIES = 1_024
+    private const val MAX_ARCHIVE_EXTRACTED_BYTES = 64L * 1024 * 1024
+    private const val MAX_NONSELECTED_DRAIN_BYTES = 8L * 1024 * 1024
     private const val SEVEN_Z_MEMORY_LIMIT_KIB = 64 * 1024
     private const val MAX_COMPRESSED_SOURCE_BYTES = 64L * 1024 * 1024
     private const val MAX_ROM_BYTES = RomImage.MAX_SIZE_BYTES
@@ -261,6 +319,55 @@ object RomSourceLoader {
     private const val GBA_EXTENSION = "gba"
     private const val HEADER_BYTES = 0x150
     private const val STREAM_BUFFER_BYTES = 64 * 1024
+
+    private class ArchiveExtractionBudget {
+        private var entries = 0
+        private var extractedBytes = 0L
+
+        fun enterEntry() {
+            entries++
+            require(entries <= MAX_ARCHIVE_ENTRIES) {
+                "archive entry count exceeds 1024 limit"
+            }
+        }
+
+        fun member(
+            input: InputStream,
+            maximumMemberBytes: Long,
+            memberFailure: String,
+        ): InputStream = object : FilterInputStream(input) {
+            private var memberBytes = 0L
+
+            override fun read(): Int = super.read().also { value ->
+                if (value >= 0) claim(1)
+            }
+
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
+                super.read(buffer, offset, length).also { count ->
+                    if (count > 0) claim(count.toLong())
+                }
+
+            override fun close() = Unit
+
+            private fun claim(bytes: Long) {
+                require(memberBytes <= maximumMemberBytes - bytes) {
+                    memberFailure
+                }
+                require(extractedBytes <= MAX_ARCHIVE_EXTRACTED_BYTES - bytes) {
+                    "archive extracted bytes exceed 64 MiB limit"
+                }
+                memberBytes += bytes
+                extractedBytes += bytes
+            }
+        }
+    }
+
+    private fun InputStream.drain() {
+        val buffer = ByteArray(STREAM_BUFFER_BYTES)
+        while (read(buffer) >= 0) {
+            // Sequential ZIP members must be consumed through the extraction budget.
+        }
+    }
 
     private class AddressableGbaAccumulator {
         private var bytes = ByteArray(minOf(STREAM_BUFFER_BYTES, MAX_ROM_BYTES))

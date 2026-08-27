@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.storage
 
 import com.darkaxt.dualdex.retroarch.RomPlatform
+import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -65,6 +66,26 @@ class DirectRomLibraryIndexerTest {
 
         assertEquals(setOf(direct.name, "${archive.name}!Emerald.gba"), loaded.keys)
         assertTrue(loaded.values.all { it.rom.sha256 == loaded.values.first().rom.sha256 })
+    }
+
+    @Test
+    fun `index and load share retained-byte identity for a permitted GBA trailer`() {
+        val root = temporaryRoot()
+        val source = File(root, "Pokemon Trailer.gba")
+        source.outputStream().channel.use { channel ->
+            channel.write(java.nio.ByteBuffer.wrap(gameBoyAdvanceRom()))
+            channel.position(RomImage.MAX_SIZE_BYTES.toLong() - 1)
+            channel.write(java.nio.ByteBuffer.wrap(byteArrayOf(0)))
+            channel.write(java.nio.ByteBuffer.wrap(ByteArray(1_131) { 0x5A }))
+        }
+
+        val indexed = DirectRomLibraryIndexer().index(listOf(root))
+        val loaded = RomSourceLoader.load(source.toPath())
+
+        assertTrue(indexed.warnings.isEmpty())
+        assertEquals(1, indexed.entries.size)
+        assertEquals(loaded.rom.sha256, indexed.entries.single().sha256)
+        assertEquals(loaded.rom.crc32, indexed.entries.single().crc32)
     }
 
     @Test
