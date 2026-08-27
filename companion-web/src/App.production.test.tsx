@@ -141,6 +141,41 @@ describe('production application shell', () => {
     expect(screen.queryByText(/extracted assets stay local/)).toBeNull();
   });
 
+  it('surfaces an asynchronous guide failure on Welcome with reachable recovery', async () => {
+    let publishState!: (state: Bootstrap['state']) => void;
+    vi.mocked(events).mockImplementationOnce((_currentVersion, onState) => {
+      publishState = onState;
+      return () => undefined;
+    });
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      catalog: null,
+      state: { ...fixture.state, catalogReady: false, error: null },
+    });
+
+    render(<App />);
+    expect(await screen.findByText('Choose a Pokémon game to begin.')).toBeTruthy();
+
+    publishState({
+      ...fixture.state,
+      version: fixture.state.version + 1,
+      catalogReady: false,
+      error: 'This game guide could not be opened. You can try again.',
+      retroArch: {
+        storageGrant: 'GRANTED', configGrant: 'GRANTED', romGrant: 'GRANTED', configState: 'VERIFIED',
+        restartRequired: false, connection: 'PLAYING', systemId: 'Nintendo - Game Boy Advance',
+        gameBasename: 'fixture.gba', contentCrc32: '12345678', resolution: 'FAILED', activeSource: null,
+        savefileDirectory: null, indexedRoms: 1, message: 'This game guide could not be opened. You can try again.',
+      },
+      loading: { active: false, phase: 'FAILED', completedUnits: 0, totalUnits: 11 },
+    });
+
+    expect((await screen.findByRole('alert')).textContent).toBe('This game guide could not be opened. You can try again.');
+    expect(screen.getByRole('link', { name: 'RETRY OPENING GAME GUIDE' }).getAttribute('href')).toBe('dualdex://guide/retry');
+    expect(screen.getByText('LOAD ROM OR ZIP')).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/0x1234|sha-?256|OutOfMemoryError/i);
+  });
+
   it('keeps Trainer and Party shortcuts inside the existing application header', async () => {
     render(<App />);
 

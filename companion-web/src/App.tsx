@@ -102,6 +102,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 
   const loadingLabel = loadingModuleLabel(state.loading.phase);
   const waitingForGame = shouldWaitForGameAccess(state);
+  const displayedError = error ?? state.error;
 
   useEffect(() => {
     const handleCompanionBack = (event: Event) => {
@@ -156,7 +157,8 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       busy={busy}
       loading={state.loading}
       loadingLabel={state.loading.active ? loadingLabel : 'Preparing your companion'}
-      error={error}
+      error={displayedError}
+      showGuideRetry={state.retroArch?.resolution === 'FAILED'}
       onUpload={onUpload}
       openSetup={() => void send('SCREEN', { screen: 'SETUP' })}
     />;
@@ -250,7 +252,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       {showDevelopmentTools && <div class="device-sensor" />}
       <div class="device-screen">
         <div class="screen-host">{screen}</div>
-        {catalog && state.loading.active && <div class={`loading-indicator ${loadingOriginClass(state.loading)}`} role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}{error && catalog && <div class="error-toast" role="alert">{error}</div>}
+        {catalog && state.loading.active && <div class={`loading-indicator ${loadingOriginClass(state.loading)}`} role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}{displayedError && catalog && <div class="error-toast" role="alert">{displayedError}</div>}
       </div>
     </div>
   </main>;
@@ -313,11 +315,11 @@ export function shouldWaitForGameAccess(state: State): boolean {
   return state.catalogReady && liveSession && catalogSession && state.gameAccessReady === false;
 }
 
-function Welcome({ busy, loading, loadingLabel, error, onUpload, openSetup }: { busy: boolean; loading: State['loading']; loadingLabel: string; error: string | null; onUpload: (file: File) => void; openSetup: () => void }) {
+function Welcome({ busy, loading, loadingLabel, error, showGuideRetry, onUpload, openSetup }: { busy: boolean; loading: State['loading']; loadingLabel: string; error: string | null; showGuideRetry: boolean; onUpload: (file: File) => void; openSetup: () => void }) {
   const active = busy || loading.active;
   return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><h1>DUALDEX</h1>{active
     ? <WelcomeLoadingProgress label={loadingLabel} loading={loading} />
-    : <><p>Choose a Pokémon game to begin.</p><div class="welcome-actions"><label class="welcome-upload"><span>LOAD ROM OR ZIP</span><input type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>CONNECT RETROARCH</button></div></>}{error && <div class="welcome-error">{error}</div>}</section>;
+    : <><p>Choose a Pokémon game to begin.</p><div class="welcome-actions"><label class="welcome-upload"><span>LOAD ROM OR ZIP</span><input type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>CONNECT RETROARCH</button></div></>}{error && <div class="welcome-error" role="alert">{error}</div>}{showGuideRetry && <a class="setup-action setup-action-primary" href="dualdex://guide/retry">RETRY OPENING GAME GUIDE</a>}</section>;
 }
 
 function WelcomeLoadingProgress({ label, loading }: { label: string; loading: State['loading'] }) {

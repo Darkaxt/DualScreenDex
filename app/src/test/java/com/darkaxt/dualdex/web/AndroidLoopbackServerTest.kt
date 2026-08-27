@@ -107,6 +107,46 @@ class AndroidLoopbackServerTest {
     }
 
     @Test
+    fun containsManualSourceFailuresAndKeepsServingRequests() {
+        val runtime = ProductionCompanionRuntime()
+        val server = AndroidLoopbackServer(
+            runtime,
+            romSourceLoader = { name, _ ->
+                if (name == "memory.gba") throw OutOfMemoryError("private source path and allocator detail")
+                else throw IllegalStateException("private source path and parser detail")
+            },
+            assetLoader = { null },
+        )
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+
+            fun upload(name: String): String {
+                val connection = URI("$base/api/load?name=$name").toURL().openConnection() as HttpURLConnection
+                connection.requestMethod = "POST"
+                connection.doOutput = true
+                connection.setFixedLengthStreamingMode(0x200)
+                connection.outputStream.use { it.write(ByteArray(0x200)) }
+                assertEquals(400, connection.responseCode)
+                return connection.errorStream.reader().readText()
+            }
+
+            val memoryFailure = upload("memory.gba")
+            assertTrue(memoryFailure.contains("There was not enough free memory to open this game guide"))
+            assertFalse(memoryFailure.contains("private source path"))
+            assertFalse(memoryFailure.contains("OutOfMemoryError"))
+
+            val ordinaryFailure = upload("ordinary.gba")
+            assertTrue(ordinaryFailure.contains("This game guide could not be opened. You can try again."))
+            assertFalse(ordinaryFailure.contains("private source path"))
+            assertFalse(ordinaryFailure.contains("IllegalStateException"))
+            assertTrue(URI("$base/api/health").toURL().readText().contains("\"ok\":true"))
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
     fun routesMapLocationSelectionThroughTheLoopbackActionApi() {
         val areaId = 0x0011 * 10 + 1
         val secondAreaId = 0x0012 * 10 + 1

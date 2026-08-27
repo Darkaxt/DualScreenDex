@@ -2,6 +2,8 @@ package com.darkaxt.dualdex.web
 
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
+import com.enrpau.dualscreendex.parser.io.LoadedRom
+import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -60,6 +62,7 @@ class AndroidLoopbackServer(
         require(directory.isDirectory || directory.mkdirs()) { "request body directory could not be created" }
         File.createTempFile("request-", ".body", directory).toPath()
     },
+    private val romSourceLoader: (String, Path) -> LoadedRom = { name, path -> RomSourceLoader.load(name, path) },
     private val assetLoader: (String) -> ByteArray?,
 ) : AutoCloseable {
     private val gson: Gson = GsonBuilder().serializeNulls().create()
@@ -279,7 +282,19 @@ class AndroidLoopbackServer(
     private fun handleLoad(request: Request): Response {
         val name = request.query["name"] ?: error("upload name is required")
         val path = requireNotNull(request.body.path) { "upload body is required" }
-        return jsonResponse(runtime.load(com.enrpau.dualscreendex.parser.io.RomSourceLoader.load(name, path)))
+        val source = try {
+            romSourceLoader(name, path)
+        } catch (failure: OutOfMemoryError) {
+            throw recordSourceFailure(failure)
+        } catch (failure: Exception) {
+            throw recordSourceFailure(failure)
+        }
+        return jsonResponse(runtime.load(source))
+    }
+
+    private fun recordSourceFailure(failure: Throwable): GuideLoadFailure {
+        runCatching { runtime.recordRomSourceLoadFailure("", failure) }
+        return GuideLoadFailure.from(failure)
     }
 
     private fun spriteResponse(path: String, species: Boolean): Response {
