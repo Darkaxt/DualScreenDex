@@ -485,10 +485,10 @@ Pop-Location
 - Modify: `app/src/test/java/com/darkaxt/dualdex/live/UnifiedGameStateDecoderTest.kt`
 - Modify: `app/src/test/java/com/darkaxt/dualdex/live/UnifiedGameStateRealControlTest.kt`
 
-- [ ] **Step 1: Add RED tests for `ResolvedOwnedStorageState(party, boxes)`, live-over-recovery replacement, validated empty live boxes, and unsupported live storage fallback.**
-- [ ] **Step 2: Preserve `UnifiedGameStateDecoder` as the sole merger and remove direct feature access to `SaveSnapshot.storedIndividuals`.**
-- [ ] **Step 3: Deduplicate Party/storage by stable individual identity where available, otherwise by ROM-save-scoped storage location plus validated record digest.**
-- [ ] **Step 4: Run GREEN and commit.**
+- [x] **Step 1: Add RED tests for `ResolvedOwnedStorageState(party, boxes)`, live-over-recovery replacement, validated empty live boxes, and unsupported live storage fallback.**
+- [x] **Step 2: Preserve `UnifiedGameStateDecoder` as the sole merger and remove direct feature access to `SaveSnapshot.storedIndividuals`.**
+- [x] **Step 3: Deduplicate Party/storage by stable individual identity where available, otherwise by ROM-save-scoped storage location plus validated record digest.**
+- [x] **Step 4: Run GREEN and commit.**
 
 ### Task 4.2: Decode live PC storage without a second poller
 
@@ -500,11 +500,11 @@ Pop-Location
 - Modify: `app/src/main/java/com/darkaxt/dualdex/live/UnifiedGameStateDecoder.kt`
 - Create: generation-specific real-control tests beside the affected resolvers/readers.
 
-- [ ] **Step 1: Freeze official real ROM/save/memory/source tuples for each applicable generation before code changes.**
-- [ ] **Step 2: Add narrow RED tests for structurally validated storage ranges, record checksum/encryption, empty boxes, partial boxes, and corrupt records.**
-- [ ] **Step 3: Extend the existing read plan with bounded storage regions; do not add an independent poll loop or whole-memory copy.**
-- [ ] **Step 4: Prove Modern Emerald, Unbound, and Odyssey with source-backed layouts; fail closed for unresolved hacks.**
-- [ ] **Step 5: Run parser/save/battle/live tests GREEN and commit.**
+- [x] **Step 1: Freeze official real ROM/save/memory/source tuples for each applicable generation before code changes.**
+- [x] **Step 2: Add narrow RED tests for structurally validated storage ranges, record checksum/encryption, empty boxes, partial boxes, and corrupt records.**
+- [x] **Step 3: Extend the existing read plan with bounded storage regions; do not add an independent poll loop or whole-memory copy.**
+- [x] **Step 4: Prove Modern Emerald, Unbound, and Odyssey with source-backed layouts; fail closed for unresolved hacks.**
+- [x] **Step 5: Run parser/save/battle/live tests GREEN and commit.**
 
 ### Task 4.3: Add specimen API, routes, and shared individual details
 
@@ -522,12 +522,12 @@ Pop-Location
 - Modify: `companion-web/src/App.tsx`
 - Modify: `companion-web/src/styles.css`
 
-- [ ] **Step 1: Add RED tests proving one caught species lists all and only its Party/PC instances and a caught flag alone invents no card.**
-- [ ] **Step 2: Expose only validated specimen fields and a player-facing Party/box-slot location.**
-- [ ] **Step 3: Reuse one individual-detail component for Party and Specimens, including nature/ability/move/species child routes.**
-- [ ] **Step 4: Preserve species-list scroll position and one-level Back behavior.**
-- [ ] **Step 5: Keep uncaught species, hidden encounters, opponent knowledge, and undiscovered evolution identities hidden under existing Organic policy.**
-- [ ] **Step 6: Run focused tests/build GREEN and commit.**
+- [x] **Step 1: Add RED tests proving one caught species lists all and only its Party/PC instances and a caught flag alone invents no card.**
+- [x] **Step 2: Expose only validated specimen fields and a player-facing Party/box-slot location.**
+- [x] **Step 3: Reuse one individual-detail component for Party and Specimens, including nature/ability/move/species child routes.**
+- [x] **Step 4: Preserve species-list scroll position and one-level Back behavior.**
+- [x] **Step 5: Keep uncaught species, hidden encounters, opponent knowledge, and undiscovered evolution identities hidden under existing Organic policy.**
+- [x] **Step 6: Run focused tests/build GREEN and commit.**
 
 ### Task 4.4: Validate, audit, and release Specimens
 
@@ -539,10 +539,10 @@ Pop-Location
 - Modify: `docs/reports/passive-insights-progress/deferrals.md`
 - Modify at release gate only: release readiness/workflow files.
 
-- [ ] **Step 1: Validate official Gen I/II/III plus Modern Emerald, Unbound, and Odyssey using real record controls.**
-- [ ] **Step 2: Report numeric coverage for identity, species/form, level, nickname, gender, HP/status, EXP, nature, ability, held item, moves, IV/DV, rarity, and storage location.**
-- [ ] **Step 3: Prove Party-to-PC and PC-to-Party movement neither duplicates nor loses individuals.**
-- [ ] **Step 4: Compare Sections 3, 8, 12–15, and 17; fix every blocker/error.**
+- [x] **Step 1: Validate official Gen I/II/III plus Modern Emerald, Unbound, and Odyssey using real record controls.**
+- [x] **Step 2: Report numeric coverage for identity, species/form, level, nickname, gender, HP/status, EXP, nature, ability, held item, moves, IV/DV, rarity, and storage location.**
+- [x] **Step 3: Prove Party-to-PC and PC-to-Party movement neither duplicates nor loses individuals.**
+- [x] **Step 4: Compare Sections 3, 8, 12–15, and 17; fix every blocker/error.**
 - [ ] **Step 5: Run affected full suites, commit the complete feature/audit, then discover and publish exactly one next numeric RC. Do not install it.**
 
 ---

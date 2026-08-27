@@ -159,6 +159,27 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
     }
 
     @Test
+    fun officialLeafGreenPublishesItsOwnExactStorageDescriptor() {
+        val path = Path.of(
+            System.getenv("DUALDEX_OFFICIAL_LEAFGREEN_ROM")
+                ?: "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
+        )
+        assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
+
+        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        assertEquals(OFFICIAL_LEAFGREEN_SHA256, parsed.analysis.sha256)
+        val runtime = requireNotNull(requireNotNull(parsed.catalog).runtimeMetadata.gen3RuntimeMemoryLayout)
+
+        assertEquals(0x03005008L, runtime.saveBlock1PointerAddress)
+        assertEquals(0x0300500CL, runtime.saveBlock2PointerAddress)
+        requireNotNull(runtime.pokemonStoragePointerAddress)
+        assertEquals(14, runtime.pokemonStorageBoxCount)
+        assertEquals(30, runtime.pokemonStorageBoxCapacity)
+        assertEquals(80, runtime.pokemonStorageRecordSize)
+        assertEquals(4, runtime.pokemonStorageRecordsOffset)
+    }
+
+    @Test
     fun officialEmeraldPublishesTheCompleteSourceVerifiedPlayerRuntimeDescriptor() {
         val path = Path.of(
             System.getenv("DUALDEX_OFFICIAL_EMERALD_ROM")
@@ -254,6 +275,8 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
             "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af"
         const val OFFICIAL_FIRERED_SHA256 =
             "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059"
+        const val OFFICIAL_LEAFGREEN_SHA256 =
+            "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825"
         const val OFFICIAL_RUBY_SHA256 =
             "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c"
         const val OFFICIAL_SAPPHIRE_SHA256 =

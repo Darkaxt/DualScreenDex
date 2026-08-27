@@ -81,6 +81,43 @@ class SpecimenViewTest {
         assertTrue(specimens.specimens.isEmpty())
     }
 
+    @Test
+    fun stableIdentitySurvivesPartyToPcAndPcToPartyMovementWithoutDuplication() {
+        val identity = "4444444444444444"
+        val partyIndividual = specimen("party-0", 25, identity, "SPARK")
+        val boxedIndividual = partyIndividual.copy(stableLocation = "box-62")
+        fun view(individual: OwnedIndividual, location: OwnedIndividualLocation) = ApiViewBuilder.specimens(
+            AppSnapshot(
+                resolvedSaveIdentity = "save-a",
+                resolvedOwnedIndividuals = listOf(ResolvedOwnedIndividual(individual, location)),
+            ),
+            catalog(),
+            25,
+        )
+
+        val inParty = view(
+            partyIndividual,
+            OwnedIndividualLocation(OwnedIndividualLocationKind.PARTY, slotIndex = 0),
+        )
+        val inPc = view(
+            boxedIndividual,
+            OwnedIndividualLocation(OwnedIndividualLocationKind.BOX, boxIndex = 2, slotIndex = 2),
+        )
+        val backInParty = view(
+            partyIndividual.copy(stableLocation = "party-1"),
+            OwnedIndividualLocation(OwnedIndividualLocationKind.PARTY, slotIndex = 1),
+        )
+
+        assertEquals(1, inParty.specimens.size)
+        assertEquals(1, inPc.specimens.size)
+        assertEquals(1, backInParty.specimens.size)
+        assertEquals(inParty.specimens.single().key, inPc.specimens.single().key)
+        assertEquals(inPc.specimens.single().key, backInParty.specimens.single().key)
+        assertEquals("Party · Slot 1", inParty.specimens.single().location.label)
+        assertEquals("Box 3 · Slot 3", inPc.specimens.single().location.label)
+        assertEquals("Party · Slot 2", backInParty.specimens.single().location.label)
+    }
+
     private fun specimen(
         location: String,
         speciesId: Int,

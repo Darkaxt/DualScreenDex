@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "evidenceRefs": [
+    "docs/reports/gen1-gen2-saveram-compatibility.md",
+    "docs/reports/gen3-saveram-compatibility.md",
+    "docs/reports/2026-08-25-unified-state-stage-2-audit.md"
+  ],
+  "profiles": {
+    "gen1": {
+      "fields": {
+        "identity": 1,
+        "speciesForm": 1,
+        "level": 1,
+        "nickname": 0,
+        "gender": null,
+        "hpStatus": 0,
+        "experience": 0,
+        "nature": null,
+        "ability": null,
+        "heldItem": null,
+        "moves": 0,
+        "ivDv": 1,
+        "rarity": 1,
+        "storageLocation": 1
+      },
+      "sources": {
+        "party": 1,
+        "boxes": 1,
+        "liveBoxes": 0,
+        "exactRecoveryBoxes": 1,
+        "recordIntegrity": 1,
+        "validatedEmpty": 1
+      }
+    },
+    "gen2": {
+      "fields": {
+        "identity": 1,
+        "speciesForm": 1,
+        "level": 1,
+        "nickname": 0,
+        "gender": 0,
+        "hpStatus": 0,
+        "experience": 0,
+        "nature": null,
+        "ability": null,
+        "heldItem": 0,
+        "moves": 0,
+        "ivDv": 1,
+        "rarity": 1,
+        "storageLocation": 1
+      },
+      "sources": {
+        "party": 1,
+        "boxes": 1,
+        "liveBoxes": 0,
+        "exactRecoveryBoxes": 1,
+        "recordIntegrity": 1,
+        "validatedEmpty": 1
+      }
+    },
+    "gen3": {
+      "fields": {
+        "identity": 1,
+        "speciesForm": 1,
+        "level": 1,
+        "nickname": 1,
+        "gender": 1,
+        "hpStatus": 1,
+        "experience": 1,
+        "nature": 1,
+        "ability": 1,
+        "heldItem": 1,
+        "moves": 1,
+        "ivDv": 1,
+        "rarity": 1,
+        "storageLocation": 1
+      },
+      "sources": {
+        "party": 1,
+        "boxes": 1,
+        "liveBoxes": 1,
+        "exactRecoveryBoxes": 1,
+        "recordIntegrity": 1,
+        "validatedEmpty": 1
+      }
+    },
+    "unbound": {
+      "fields": {
+        "identity": 1,
+        "speciesForm": 1,
+        "level": 1,
+        "nickname": 1,
+        "gender": 1,
+        "hpStatus": 1,
+        "experience": 1,
+        "nature": 1,
+        "ability": 1,
+        "heldItem": 1,
+        "moves": 1,
+        "ivDv": 1,
+        "rarity": 1,
+        "storageLocation": 1
+      },
+      "sources": {
+        "party": 1,
+        "boxes": 1,
+        "liveBoxes": 1,
+        "exactRecoveryBoxes": 0,
+        "recordIntegrity": 1,
+        "validatedEmpty": 1
+      }
+    }
+  },
+  "controls": [
+    { "id": "red", "generation": 1, "sha256": "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b", "profile": "gen1" },
+    { "id": "blue", "generation": 1, "sha256": "2a951313c2640e8c2cb21f25d1db019ae6245d9c7121f754fa61afd7bee6452d", "profile": "gen1" },
+    { "id": "yellow", "generation": 1, "sha256": "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf", "profile": "gen1" },
+    { "id": "gold", "generation": 2, "sha256": "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e", "profile": "gen2" },
+    { "id": "silver", "generation": 2, "sha256": "72b190859a59623cbef6c49d601f8de52c1d2331b4f08a8d2acc17274fc19a8c", "profile": "gen2" },
+    { "id": "crystal", "generation": 2, "sha256": "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2", "profile": "gen2" },
+    { "id": "ruby", "generation": 3, "sha256": "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c", "profile": "gen3" },
+    { "id": "sapphire", "generation": 3, "sha256": "02ca41513580a8b780989dee428df747b52a0b1a55bec617886b4059eb1152fb", "profile": "gen3" },
+    { "id": "emerald", "generation": 3, "sha256": "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af", "profile": "gen3" },
+    { "id": "firered", "generation": 3, "sha256": "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059", "profile": "gen3" },
+    { "id": "leafgreen", "generation": 3, "sha256": "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825", "profile": "gen3" },
+    { "id": "modern-emerald", "generation": 3, "sha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", "profile": "gen3" },
+    { "id": "unbound", "generation": 3, "sha256": "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7", "profile": "unbound" },
+    { "id": "odyssey", "generation": 3, "sha256": "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0", "profile": "gen3" }
+  ]
+}
