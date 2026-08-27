@@ -152,6 +152,7 @@
   "v11Rc69AreaGuide": true,
   "v11Rc70TrainerProgressTimeline": true,
   "v11Rc71StorageGuideLoadHardening": true,
+  "v11Rc72PokedexSpecimens": true,
   "v11SaveSynchronizedKnowledgeCheckpoints": true,
   "gen1CompiledEvolutionCoveragePercent": 96.62,
   "gen1CompiledLearnsetCoveragePercent": 93.56,
