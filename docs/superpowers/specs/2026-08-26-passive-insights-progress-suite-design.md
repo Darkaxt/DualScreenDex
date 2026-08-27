@@ -4,8 +4,8 @@
 | --- | --- |
 | Status | Approved product direction consolidated for staged implementation |
 | Date | 2026-08-26 |
-| Scope | Party Analysis, Progress and Challenges, Save Timeline, Pokédex Specimens, Atlas Area Guide, and selected-move Damage Forecast |
-| Delivery model | One independently planned, implemented, audited, and accepted feature at a time |
+| Scope | Party Analysis, Progress and Challenges, Save Timeline, Pokédex Specimens, Atlas Area Guide, selected-move Damage Forecast, and final cross-feature UI conformance |
+| Delivery model | One independently planned, implemented, audited, and accepted feature at a time, followed by one final conformance stage |
 | Primary authority | `UnifiedGameStateDecoder` and its immutable `ResolvedGameSnapshot` |
 
 ## 1. Outcome
@@ -56,6 +56,7 @@ This specification extends, and does not weaken, these existing contracts:
 - `2026-08-21-pokedex-party-interaction-design.md`: Party remains a 2×3 board and selected-member details use the established focused detail route/dialog.
 - `2026-08-21-gen3-local-map-poi-discovery-design.md`: Atlas POIs, Organic discovery, filters, zoom thresholds, and save-scoped knowledge remain authoritative.
 - `2026-08-21-cross-page-ui-conformance-design.md`: all new pages use the approved ROM-derived theme, physical font floors, accessibility contract, and ordinary-page diagnostic ban.
+- `2026-08-27-passive-insights-ui-conformance-design.md`: after all six features exist, Stage 7 measures and normalizes their routes together and owns the final suite-wide UI audit.
 - `2026-08-12-organic-rarity-assessments-design.md`: ordinary UI uses concise player-facing language rather than parser or formula provenance.
 
 If an older document conflicts specifically with one of the six features in scope, this specification is authoritative for that feature. It does not supersede unrelated battle, map, parser, theme, loading, or release requirements.
@@ -578,6 +579,8 @@ All new UI follows these rules:
 - real buttons, keyboard focus, accessible names, non-color-only status cues, and screen-reader progress labels;
 - no document-level horizontal or vertical overflow at the production 4:3 viewport.
 
+Trainer Card and Trainer Progress use compact, theme-consistent icon controls in the upper-right corner to switch between `CARD` and `PROGRESS`. They do not add a second full-width destination-tab row. Progress retains at most one horizontal row for Metrics, Challenges, Timeline, and approved peer sections. The active icon remains unambiguous and accessible, and switching preserves the remembered ROM-save-scoped destination and real Back-stack state.
+
 ## 13. Persistence and identity
 
 One `PlaythroughJournal` belongs to exactly:
@@ -673,6 +676,10 @@ Deliver generation formulas and capability-gated modifiers into the existing Att
 
 Use the classified reference corpus and evidence from the official/hack controls to add Tier 2 and Tier 3 templates incrementally. Tier 4 references remain documented research exclusions.
 
+### Stage 7 — Cross-feature UI conformance
+
+Measure and normalize every new suite route against the approved DualDex interface after all six features exist. Enforce computed theme colors, paper/grid patterns, typography floors and hierarchy, spacing, controls, accessibility, overflow, navigation, and the ordinary-UI diagnostic ban across the required theme and font-scale matrix. This stage owns the final suite-wide audit and publishes one consolidation RC; it does not redesign or change feature semantics.
+
 ## 17. Stage audit protocol
 
 After every stage, create one audit table with:
@@ -705,4 +712,5 @@ The suite is complete when:
 - Organic mode reveals no undiscovered entity through analysis, challenges, specimens, guide, timeline, or forecast;
 - official and source-backed hack reports quantify applicable coverage per feature;
 - performance profiling proves no duplicate pollers, full-memory copies, persistent render loops, or unbounded journal growth; and
-- the final release audit links each requirement to code, tests, real-data evidence, documentation, signed artifact, and published compatibility percentages.
+- the Stage 7 conformance audit has no unresolved `BLOCKER` or `ERROR`; and
+- the final Stage 7 release audit links each requirement to code, tests, real-data evidence, documentation, signed artifact, and published compatibility percentages.
