@@ -19,6 +19,8 @@ import com.darkaxt.dualdex.live.RecoveryProjection
 import com.darkaxt.dualdex.live.TransientGameStateContext
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import com.darkaxt.dualdex.performance.PerformanceRecorder
+import com.darkaxt.dualdex.progress.ChallengeDefinition
+import com.darkaxt.dualdex.progress.PortableChallengeTemplate
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.SaveObservation
 import com.darkaxt.dualdex.save.SaveSnapshot
@@ -72,6 +74,8 @@ internal fun ProductionCompanionRuntime(
     },
     mapAssetRenderCache: MapAssetRenderCache = MapAssetRenderCache(),
     performanceRecorder: PerformanceRecorder = PerformanceRecorder(),
+    challengeDefinitions: List<ChallengeDefinition> = emptyList(),
+    challengeTemplates: List<PortableChallengeTemplate> = emptyList(),
 ): ProductionCompanionRuntime = ProductionCompanionRuntime(
     parserWorker = parserWorker,
     catalogRepository = catalogRepository,
@@ -87,6 +91,8 @@ internal fun ProductionCompanionRuntime(
     mapAssetRenderer = mapAssetRenderer,
     mapAssetRenderCache = mapAssetRenderCache,
     performanceRecorder = performanceRecorder,
+    challengeDefinitions = challengeDefinitions,
+    challengeTemplates = challengeTemplates,
     transientGameState = UnifiedGameStateDecoder(),
 )
 

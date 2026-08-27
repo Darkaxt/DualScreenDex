@@ -14,6 +14,10 @@ data class ChallengeContext(
     val currentValues: Map<String, Number> = emptyMap(),
     val capabilities: Set<String> = emptySet(),
     val unobservableCapabilities: Set<String> = emptySet(),
+    val resolvedCatalogEntities: Set<String> = emptySet(),
+    val knownCatalogEntities: Set<String> = emptySet(),
+    val currentCatalogEntities: Set<String> = emptySet(),
+    val provenAdapters: Set<String> = emptySet(),
     val catalogEntitiesResolved: Boolean = true,
     val organicMode: Boolean = true,
 )
@@ -80,6 +84,20 @@ sealed interface ChallengePredicate {
         override fun dependencies() = setOf("set:$set")
     }
 
+    data class SetContainsAll(val set: String, val required: Set<String>) : ChallengePredicate {
+        init {
+            require(required.isNotEmpty())
+        }
+
+        override fun evaluate(context: ChallengeContext): PredicateEvaluation {
+            val actual = context.sets[set].orEmpty()
+            val current = required.count(actual::contains).toLong()
+            return PredicateEvaluation(current == required.size.toLong(), current, required.size.toLong())
+        }
+
+        override fun dependencies() = setOf("set:$set")
+    }
+
     data class Ordered(val sequence: String, val required: List<String>) : ChallengePredicate {
         override fun evaluate(context: ChallengeContext): PredicateEvaluation {
             val actual = context.sequences[sequence].orEmpty()
@@ -125,20 +143,39 @@ data class ChallengeDefinition(
     val description: String,
     val category: ChallengeCategory,
     val requiredCapabilities: Set<String>,
+    val requiredCatalogEntities: Set<String> = emptySet(),
+    val requiredKnowledgeEntities: Set<String> = emptySet(),
+    val requiredAdapters: Set<String> = emptySet(),
+    val progressionGroup: String? = null,
+    val progressionRank: Int? = null,
+    val disclosureScope: String? = null,
     val organicSafe: Boolean,
     val predicate: ChallengePredicate,
+    val resetWhen: ChallengePredicate? = null,
+    val pauseWhen: ChallengePredicate? = null,
+    val missWhen: ChallengePredicate? = null,
     val sourceInspiration: String = "portable-pattern",
-)
+) {
+    init {
+        require((progressionGroup == null) == (progressionRank == null))
+        require(progressionGroup == null || progressionGroup.isNotBlank())
+        require(progressionRank == null || progressionRank > 0)
+        require(disclosureScope == null || disclosureScope.isNotBlank())
+    }
+}
 
 data class ChallengeResult(
     val definition: ChallengeDefinition,
     val progress: Long?,
     val target: Long?,
     val complete: Boolean,
+    val paused: Boolean = false,
+    val missed: Boolean = false,
 )
 
 data class ChallengeEvaluation(
     val visible: List<ChallengeResult>,
     val states: Map<String, ChallengeJournalState>,
+    val applicableCount: Int = visible.size,
+    val completedCount: Int = visible.count(ChallengeResult::complete),
 )
-

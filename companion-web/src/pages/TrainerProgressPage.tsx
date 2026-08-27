@@ -43,12 +43,25 @@ function MetricSection({ title, metrics }: { title: string; metrics: TrainerProg
 function Challenges({ progress }: { progress: TrainerProgressView }) {
   if (progress.challenges.length === 0) return <ProgressEmpty title="NO CHALLENGES YET" detail="Objectives will appear as this game’s features become available." />;
   const categories = [...new Set(progress.challenges.map(challenge => challenge.category))];
-  return <div class="challenge-groups">{categories.map(category => <section key={category} class="progress-panel challenge-group">
+  return <div class="challenge-groups">
+    {progress.challengeSummary.completionPercent != null && <section class="challenge-summary" aria-label={`Overall challenge progress: ${progress.challengeSummary.completionPercent}%`}>
+      <strong>{progress.challengeSummary.completionPercent}%</strong>
+      <span>OVERALL PROGRESS</span>
+      <small>{progress.challengeSummary.completed} / {progress.challengeSummary.applicable} completed</small>
+    </section>}
+    {categories.map(category => <section key={category} class="progress-panel challenge-group">
     <h2>{titleCase(category)}</h2>
     <div class="challenge-list">{progress.challenges.filter(challenge => challenge.category === category).map(challenge => <article key={challenge.key} class={`challenge-card ${challenge.complete ? 'is-complete' : ''}`}>
       <div><strong>{challenge.title}</strong>{challenge.complete && <span>COMPLETE</span>}</div>
       <p>{challenge.description}</p>
-      {challenge.target != null && <div class="challenge-progress"><i style={{ width: `${Math.min(100, Math.max(0, ((challenge.progress ?? 0) / challenge.target) * 100))}%` }} /><b>{challenge.progress ?? 0} / {challenge.target}</b></div>}
+      {challenge.target != null && challenge.completionPercent != null && <div
+        class="challenge-progress"
+        role="progressbar"
+        aria-label={`${challenge.title}: ${challenge.completionPercent}% complete`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={challenge.completionPercent}
+      ><i style={{ width: `${challenge.completionPercent}%` }} /><b>{challenge.progress ?? 0} / {challenge.target} · {challenge.completionPercent}%</b></div>}
     </article>)}</div>
   </section>)}</div>;
 }

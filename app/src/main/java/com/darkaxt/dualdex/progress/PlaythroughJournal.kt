@@ -4,8 +4,11 @@ import com.enrpau.dualscreendex.companion.semantic.PlaythroughKey
 
 data class ChallengeJournalState(
     val progress: Long = 0,
+    val target: Long? = null,
     val completedAtEpochMs: Long? = null,
     val completedAtSaveFingerprint: String? = null,
+    val paused: Boolean = false,
+    val missed: Boolean = false,
 )
 
 data class TimelineEntry(
@@ -64,13 +67,19 @@ data class PlaythroughJournal(
         )
     }
 
-    private fun ChallengeJournalState.sanitized() = copy(
-        progress = progress.coerceAtLeast(0),
-        completedAtEpochMs = completedAtEpochMs?.takeIf { it >= 0 },
-        completedAtSaveFingerprint = completedAtSaveFingerprint
-            ?.lowercase()
-            ?.takeIf { it.matches(SHA256) },
-    )
+    private fun ChallengeJournalState.sanitized(): ChallengeJournalState {
+        val completedAt = completedAtEpochMs?.takeIf { it >= 0 }
+        return copy(
+            progress = progress.coerceAtLeast(0),
+            target = target?.coerceAtLeast(0),
+            completedAtEpochMs = completedAt,
+            completedAtSaveFingerprint = completedAtSaveFingerprint
+                ?.lowercase()
+                ?.takeIf { it.matches(SHA256) },
+            paused = completedAt == null && paused && !missed,
+            missed = completedAt == null && missed,
+        )
+    }
 
     private fun Map<String, Long>.cleanCounts(allowZero: Boolean = false) = entries.mapNotNull { (key, value) ->
         val cleanKey = cleanToken(key) ?: return@mapNotNull null

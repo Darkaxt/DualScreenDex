@@ -91,8 +91,106 @@ import com.darkaxt.dualdex.battle.BattleEncounterKind
 import com.darkaxt.dualdex.battle.ResolvedBattleLayout
 import com.darkaxt.dualdex.battle.TargetMode
 import com.darkaxt.dualdex.battle.RuntimeMapPosition
+import com.darkaxt.dualdex.progress.PortableChallengeCatalog
+import java.io.File
 
 class ProductionCompanionRuntimeTest {
+    @Test
+    fun roleBoundChallengesUseTheUnifiedSnapshotAndSkipUnchangedPublications() {
+        val identity = "4".repeat(64)
+        val saveIdentity = "5".repeat(64)
+        val firstMap = LocalMap("local/0007", "First Area", 7, 16, 16, 1, 1, "local/0007/map")
+        val secondMap = LocalMap("local/0008", "Second Area", 8, 16, 16, 1, 1, "local/0008/map")
+        val png = PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))
+        val templates = PortableChallengeCatalog.decodeTemplates(
+            File("src/main/assets/challenges/portable-extended.json").readBytes(),
+        )
+        val runtime = ProductionCompanionRuntime(challengeTemplates = templates)
+        runtime.loadCatalog(
+            "fixture.gba",
+            ParsedCatalog(
+                identity,
+                EngineFamily.EMERALD,
+                Platform.GBA,
+                speciesById = mapOf(1 to saveSpecies(1)),
+                localMaps = LocalMapCatalog(
+                    maps = listOf(firstMap, secondMap),
+                    assets = mapOf(firstMap.imageAssetKey to png, secondMap.imageAssetKey to png),
+                    pois = listOf(
+                        challengeItem("area-7-item", firstMap, 10),
+                        challengeItem("area-8-item", secondMap, 11),
+                    ),
+                ),
+                runtimeMetadata = CatalogRuntimeMetadata(
+                    areaNamesByBaseId = mapOf(7 to "First Area", 8 to "Second Area"),
+                ),
+            ),
+        )
+        assertTrue(runtime.applySaveSnapshot(emptySave(identity, saveIdentity), SaveRamView(status = "MATCHED")))
+        runtime.updateLiveArea(7)
+        val empty = liveSnapshot(
+            identity,
+            LiveValue.Available(trainer("MAY", 3_000).copy(dexSeen = 0, dexCaught = 0)),
+            LiveValue.Available(emptyList()),
+            location = LiveValue.Available(7),
+        )
+
+        runtime.updateLiveGameState(empty)
+        val afterFirst = runtime.performanceCounters().getValue("progress.challengeEvaluations")
+        runtime.updateLiveGameState(empty.copy(sampleId = empty.sampleId + 1))
+
+        assertEquals(afterFirst, runtime.performanceCounters().getValue("progress.challengeEvaluations"))
+        assertEquals(
+            listOf("collection-regional-record", "exploration-area-items-base-7"),
+            runtime.stateView().trainerProgress?.challenges?.map { it.key },
+        )
+        assertEquals(2, runtime.stateView().trainerProgress?.challengeSummary?.applicable)
+        assertFalse(
+            runtime.stateView().trainerProgress!!.challenges
+                .single { it.key == "collection-regional-record" }
+                .complete,
+        )
+        assertEquals(
+            listOf("exploration-area-items-base-7"),
+            runtime.stateView().areaGuide?.areas?.single { it.baseAreaId == 7 }?.objectives?.map { it.key },
+        )
+
+        runtime.updateLiveArea(8)
+        assertEquals(
+            listOf("collection-regional-record", "exploration-area-items-base-8"),
+            runtime.stateView().trainerProgress?.challenges?.map { it.key },
+        )
+        assertEquals(3, runtime.stateView().trainerProgress?.challengeSummary?.applicable)
+        assertEquals(
+            listOf("exploration-area-items-base-8"),
+            runtime.stateView().areaGuide?.areas?.single { it.baseAreaId == 8 }?.objectives?.map { it.key },
+        )
+        val afterAreaSwitch = runtime.performanceCounters().getValue("progress.challengeEvaluations")
+
+        runtime.updateLiveGameState(
+            liveSnapshot(
+                identity,
+                LiveValue.Available(trainer("MAY", 3_000).copy(dexSeen = 1, dexCaught = 1)),
+                LiveValue.Available(emptyList()),
+            ),
+        )
+
+        assertTrue(runtime.stateView().trainerProgress!!.challenges.single { it.key == "collection-regional-record" }.complete)
+        assertEquals(afterAreaSwitch + 1, runtime.performanceCounters().getValue("progress.challengeEvaluations"))
+        runtime.close()
+    }
+
+    private fun challengeItem(key: String, map: LocalMap, flag: Int) = LocalMapPoi(
+        key = key,
+        localMapKey = map.key,
+        baseAreaId = map.baseAreaId,
+        tileX = 0,
+        tileY = 0,
+        kind = LocalMapPoiKind.VISIBLE_ITEM,
+        organicVisibility = LocalMapPoiOrganicVisibility.VISIBLE,
+        item = LocalMapPoiItem(itemId = 1, collectionFlagId = flag),
+    )
+
     @Test
     fun profilerDistinguishesColdParsingFromCacheReopen() {
         val bytes = ByteArray(0xC0)
