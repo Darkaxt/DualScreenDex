@@ -219,6 +219,32 @@ button { cursor: pointer; }
 .party-move-row button { padding: 0; border: 0; color: var(--forest-700); background: transparent; font-weight: 900; text-align: left; text-decoration: underline; }
 .party-move-row > strong { color: #7c8578; }
 .party-move-row span { color: #667164; font-size: .8em; font-weight: 900; }
+.individual-innate-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.individual-innate-grid > span { min-width: 0; padding: 8px; background: var(--paper-deep); }
+.individual-innate-grid small, .individual-innate-grid strong { display: block; }
+.individual-innate-grid small { color: var(--muted); font-size: .72em; font-weight: 900; letter-spacing: .07em; }
+.individual-innate-grid strong { margin-top: 5px; overflow-wrap: anywhere; font-size: .9em; }
+
+.specimen-entry-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 2px solid var(--line); background: var(--paper-deep); }
+.specimen-entry-section .eyebrow { margin: 0 0 4px; }
+.specimen-entry-section strong { font-family: Georgia, serif; font-size: 1.08em; }
+.specimen-entry-section > button { min-height: 40px; padding: 0 14px; border: 2px solid var(--forest-800); color: var(--paper); background: var(--forest-700); font-size: .72em; font-weight: 950; letter-spacing: .06em; }
+.specimens-screen { grid-template-rows: auto minmax(0, 1fr); }
+.specimens-content { position: relative; min-height: 0; overflow: auto; padding: 14px 16px 22px; color: var(--ink); background-color: var(--paper-deep); background-image: linear-gradient(#82947a1f 1px, transparent 1px), linear-gradient(90deg, #82947a1f 1px, transparent 1px); background-size: 18px 18px; }
+.specimens-grid { width: min(960px, 100%); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 auto; }
+.specimen-card { min-width: 0; display: grid; grid-template-columns: clamp(72px, 9vw, 92px) minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 11px 13px; border: 2px solid var(--line); border-radius: 3px; color: var(--ink); background: var(--paper); text-align: left; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--paper) 72%, white), 4px 4px 0 color-mix(in srgb, var(--forest-950) 38%, transparent); }
+.specimen-card:hover, .specimen-card:focus-visible { border-color: var(--acid); outline: 2px solid var(--forest-800); outline-offset: -4px; }
+.specimen-card > .party-sprite { border-color: transparent; background: transparent; }
+.specimen-card-copy { min-width: 0; display: grid; gap: 3px; }
+.specimen-card-copy strong, .specimen-card-copy small, .specimen-card-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.specimen-card-copy strong { font-size: clamp(16px, 2.45vw, 25px); }
+.specimen-card-copy small { color: var(--muted); font-size: clamp(11px, 1.55vw, 16px); font-weight: 900; letter-spacing: .06em; }
+.specimen-card-copy span { margin-top: 4px; color: var(--muted); font-size: clamp(12px, 1.65vw, 17px); font-weight: 850; }
+.specimen-card-meta { display: grid; justify-items: end; gap: 7px; }
+.specimen-card-meta > b { padding: 3px 6px; color: var(--paper); background: var(--forest-700); font-size: .7em; }
+.specimen-card-meta .rarity-stars { font-size: clamp(.72rem, 1.35vw, .95rem); }
+.specimens-loading { min-height: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-weight: 900; }
+.specimens-loading > span { width: 22px; height: 22px; border: 3px solid color-mix(in srgb, var(--forest-700) 35%, transparent); border-top-color: var(--forest-700); border-radius: 50%; animation: loading-spin .8s linear infinite; }
 
 .party-analysis-screen { grid-template-rows: auto 1fr; }
 .party-analysis-content { min-height: 0; overflow: auto; padding: 14px 16px 24px; background: transparent; }

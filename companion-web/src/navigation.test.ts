@@ -23,6 +23,16 @@ describe('client navigation stack', () => {
     expect(popRoute(species).at(-1)).toEqual(member);
   });
 
+  it('restores the same specimen list beneath an individual and its linked details', () => {
+    const list: UiRoute = { kind: 'SPECIMENS', speciesId: 25, catalogHash: 'sha' };
+    const individual: UiRoute = { kind: 'SPECIMEN', speciesId: 25, specimenKey: 'individual:1', catalogHash: 'sha' };
+    const routes = [list, individual, { kind: 'NATURE', id: 3 } satisfies UiRoute];
+
+    const individualRestored = popRoute(routes);
+    expect(individualRestored.at(-1)).toEqual(individual);
+    expect(popRoute(individualRestored).at(-1)).toEqual(list);
+  });
+
   it('does not add adjacent duplicate routes and remains bounded', () => {
     const map: UiRoute = { kind: 'MAP', originScreen: 'POKEDEX' };
     expect(pushRoute(pushRoute([], map), map)).toEqual([map]);

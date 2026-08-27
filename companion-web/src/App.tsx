@@ -17,6 +17,7 @@ import { MapPage } from './pages/MapPage';
 import { TrainerPage } from './pages/TrainerPage';
 import { PartyPage } from './pages/PartyPage';
 import { PartyAnalysisPage } from './pages/PartyAnalysisPage';
+import { SpecimensPage } from './pages/SpecimensPage';
 
 export interface DevelopmentToolsProps {
   catalog: Catalog | null;
@@ -51,6 +52,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'AREA' | 'MORE'>('ENTRY');
   const [partySelection, setPartySelection] = useState<{ catalogHash: string; slot: number | null }>({ catalogHash: '', slot: null });
   const [partyScroll, setPartyScroll] = useState<{ catalogHash: string; top: number }>({ catalogHash: '', top: 0 });
+  const [specimenScroll, setSpecimenScroll] = useState<{ key: string; top: number }>({ key: '', top: 0 });
   const lastCatalogRefresh = useRef('');
   const battleWasForegroundRef = useRef(false);
   const activeRoute = routes.at(-1);
@@ -179,6 +181,31 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       const nature = catalog.natures?.find(candidate => candidate.id === activeRoute.id);
       if (nature) return <NatureDetail nature={nature} onBack={closeRoute} />;
     }
+    if (activeRoute?.kind === 'SPECIMENS' || activeRoute?.kind === 'SPECIMEN') {
+      const speciesId = activeRoute.speciesId;
+      const catalogHash = activeRoute.catalogHash;
+      if (catalogHash === catalog.hash) {
+        const scrollKey = `${catalogHash}:${speciesId}`;
+        return <SpecimensPage
+          catalog={catalog}
+          speciesId={speciesId}
+          stateVersion={state.version}
+          detailKey={activeRoute.kind === 'SPECIMEN' ? activeRoute.specimenKey : null}
+          initialScrollTop={specimenScroll.key === scrollKey ? specimenScroll.top : 0}
+          onScrollTopChange={top => setSpecimenScroll({ key: scrollKey, top })}
+          onBack={closeRoute}
+          onOpenDetail={specimenKey => openRoute({ kind: 'SPECIMEN', speciesId, specimenKey, catalogHash })}
+          onCloseDetail={closeRoute}
+          openMove={id => openRoute({ kind: 'MOVE', id })}
+          openAbility={id => openRoute({ kind: 'ABILITY', id })}
+          openNature={id => openRoute({ kind: 'NATURE', id })}
+          openSpecies={id => {
+            setDetailTab('ENTRY');
+            openRoute({ kind: 'SPECIES', id });
+          }}
+        />;
+      }
+    }
     if (activeRoute?.kind === 'SPECIES') return <PokedexDetail
       catalog={catalog}
       state={{ ...state, screen: 'DETAIL', selectedSpeciesId: activeRoute.id }}
@@ -191,6 +218,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       setTab={setDetailTab}
       openMove={id => openRoute({ kind: 'MOVE', id })}
       openAbility={id => openRoute({ kind: 'ABILITY', id })}
+      openSpecimens={speciesId => openRoute({ kind: 'SPECIMENS', speciesId, catalogHash: catalog.hash })}
     />;
     if (activeRoute?.kind === 'PARTY_ANALYSIS' && activeRoute.catalogHash === catalog.hash && state.partyAnalysis) return <PartyAnalysisPage
       catalog={catalog}
@@ -206,7 +234,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       }}
     />;
     switch (state.screen) {
-      case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={id => openRoute({ kind: 'MOVE', id })} openAbility={id => openRoute({ kind: 'ABILITY', id })} />;
+      case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={id => openRoute({ kind: 'MOVE', id })} openAbility={id => openRoute({ kind: 'ABILITY', id })} openSpecimens={speciesId => openRoute({ kind: 'SPECIMENS', speciesId, catalogHash: catalog.hash })} />;
       case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={id => openRoute({ kind: 'MOVE', id })} openSpecies={speciesId => {
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
@@ -243,7 +271,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })} onOpenMapper={() => openRoute({ kind: 'MAPPER' })} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={openMap} />;
     }
-  }, [catalog, state, busy, error, detailTab, routes, partySelection, partyScroll, waitingForGame]);
+  }, [catalog, state, busy, error, detailTab, routes, partySelection, partyScroll, specimenScroll, waitingForGame]);
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
     <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={applicationThemeStyle(catalog, state.settings)} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>

@@ -6,6 +6,8 @@ export type UiRoute =
   | { kind: 'CAPABILITIES' }
   | { kind: 'PARTY_ANALYSIS'; catalogHash: string }
   | { kind: 'PARTY_MEMBER'; slot: number; catalogHash: string }
+  | { kind: 'SPECIMENS'; speciesId: number; catalogHash: string }
+  | { kind: 'SPECIMEN'; speciesId: number; specimenKey: string; catalogHash: string }
   | { kind: 'SPECIES'; id: number }
   | { kind: 'MOVE'; id: number }
   | { kind: 'ABILITY'; id: number }
@@ -28,6 +30,8 @@ export function sameRoute(left: UiRoute | undefined, right: UiRoute | undefined)
     case 'MAP': return right.kind === 'MAP' && left.originScreen === right.originScreen;
     case 'PARTY_ANALYSIS': return right.kind === 'PARTY_ANALYSIS' && left.catalogHash === right.catalogHash;
     case 'PARTY_MEMBER': return right.kind === 'PARTY_MEMBER' && left.slot === right.slot && left.catalogHash === right.catalogHash;
+    case 'SPECIMENS': return right.kind === 'SPECIMENS' && left.speciesId === right.speciesId && left.catalogHash === right.catalogHash;
+    case 'SPECIMEN': return right.kind === 'SPECIMEN' && left.speciesId === right.speciesId && left.specimenKey === right.specimenKey && left.catalogHash === right.catalogHash;
     case 'MOVE':
     case 'ABILITY':
     case 'NATURE':

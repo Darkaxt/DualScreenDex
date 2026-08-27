@@ -1,4 +1,4 @@
-import type { Bootstrap, DiagnosticView, State } from './models';
+import type { Bootstrap, DiagnosticView, SpecimenCollectionView, State } from './models';
 
 export async function bootstrap(): Promise<Bootstrap> {
   const response = await fetch('/api/bootstrap');
@@ -31,6 +31,13 @@ export async function diagnostics(speciesId?: number | null, moveId?: number | n
   const response = await fetch(`/api/diagnostics?${query}`);
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error ?? `Diagnostics failed (${response.status})`);
+  return payload;
+}
+
+export async function specimens(speciesId: number): Promise<SpecimenCollectionView> {
+  const response = await fetch(`/api/specimens?speciesId=${encodeURIComponent(speciesId)}`);
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error ?? `Specimens failed (${response.status})`);
   return payload;
 }
 

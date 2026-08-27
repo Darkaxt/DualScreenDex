@@ -24,6 +24,7 @@ import com.enrpau.dualscreendex.companion.api.BootstrapView
 import com.enrpau.dualscreendex.companion.api.DiagnosticView
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
+import com.enrpau.dualscreendex.companion.api.SpecimenCollectionView
 import com.enrpau.dualscreendex.companion.api.StateView
 import com.enrpau.dualscreendex.companion.analysis.PartyAnalysis
 import com.enrpau.dualscreendex.companion.analysis.PartyAnalyzer
@@ -53,7 +54,10 @@ import com.enrpau.dualscreendex.companion.knowledge.LocalMapPoiKnowledgeMapper
 import com.enrpau.dualscreendex.companion.model.MatchupKey
 import com.enrpau.dualscreendex.companion.model.MoveObservation
 import com.enrpau.dualscreendex.companion.model.OpponentState
+import com.enrpau.dualscreendex.companion.model.OwnedIndividualLocation
+import com.enrpau.dualscreendex.companion.model.OwnedIndividualLocationKind
 import com.enrpau.dualscreendex.companion.model.PokedexFilter
+import com.enrpau.dualscreendex.companion.model.ResolvedOwnedIndividual
 import com.enrpau.dualscreendex.companion.model.Theme
 import com.enrpau.dualscreendex.companion.model.TrainerCardState
 import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
@@ -287,6 +291,8 @@ class ProductionCompanionRuntime(
                 gameAccessReady = overworld.gameAccessReady,
                 battle = battle,
                 ledger = overworld.ledger,
+                ownedIndividuals = party.ownedIndividuals,
+                saveIdentity = matching?.recovery?.saveIdentity,
             ),
         )
     }
@@ -373,6 +379,30 @@ class ProductionCompanionRuntime(
         currentCatalog: ParsedCatalog,
     ): ResolvedPartyProjection {
         val party = matching?.party?.value.orEmpty()
+        val ownedIndividuals = buildList {
+            party.forEachIndexed { slotIndex, individual ->
+                add(
+                    ResolvedOwnedIndividual(
+                        individual,
+                        OwnedIndividualLocation(OwnedIndividualLocationKind.PARTY, slotIndex = slotIndex),
+                    ),
+                )
+            }
+            matching?.ownedStorage?.boxes?.value.orEmpty().forEach { box ->
+                box.slots.forEach { slot ->
+                    add(
+                        ResolvedOwnedIndividual(
+                            slot.individual,
+                            OwnedIndividualLocation(
+                                OwnedIndividualLocationKind.BOX,
+                                boxIndex = box.index,
+                                slotIndex = slot.index,
+                            ),
+                        ),
+                    )
+                }
+            }
+        }
         val partyKeys = party.mapTo(mutableSetOf(), OwnedIndividual::stableLocation)
         val owned = (matching?.storedIndividuals?.value.orEmpty() + party)
             .distinctBy(OwnedIndividual::stableLocation)
@@ -394,7 +424,7 @@ class ProductionCompanionRuntime(
             value.value?.let { pocket to it }
         }.toMap()
         val eventFlags = matching?.eventFlags?.value
-        return ResolvedPartyProjection(party, owned, bag, eventFlags)
+        return ResolvedPartyProjection(party, owned, ownedIndividuals, bag, eventFlags)
     }
 
     private fun resolvedOverworldProjection(
@@ -448,6 +478,7 @@ class ProductionCompanionRuntime(
     private data class ResolvedPartyProjection(
         val party: List<OwnedIndividual>,
         val owned: List<com.enrpau.dualscreendex.companion.model.OwnedPokemon>,
+        val ownedIndividuals: List<ResolvedOwnedIndividual>,
         val bag: Map<BagPocket, com.darkaxt.dualdex.save.BagPocketSnapshot>,
         val eventFlags: Set<Int>?,
     )
@@ -634,6 +665,13 @@ class ProductionCompanionRuntime(
             trainerProgress = trainerProgress,
         ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
     }
+
+    @Synchronized
+    fun specimens(speciesId: Int): SpecimenCollectionView = ApiViewBuilder.specimens(
+        snapshot = gateway.bootstrap(),
+        catalog = requireNotNull(catalog) { "game guide is unavailable" },
+        speciesId = speciesId,
+    )
 
     fun updateRetroArch(state: RetroArchView) {
         retroArch = state

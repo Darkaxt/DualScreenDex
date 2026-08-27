@@ -45,6 +45,27 @@ data class OwnedPokemon(
     val party: Boolean = false,
 )
 
+enum class OwnedIndividualLocationKind { PARTY, BOX }
+
+data class OwnedIndividualLocation(
+    val kind: OwnedIndividualLocationKind,
+    val boxIndex: Int? = null,
+    val slotIndex: Int,
+) {
+    init {
+        require(slotIndex >= 0) { "owned individual slot must not be negative" }
+        require((kind == OwnedIndividualLocationKind.BOX) == (boxIndex != null)) {
+            "only boxed individuals may carry a box index"
+        }
+        require(boxIndex == null || boxIndex >= 0) { "owned individual box must not be negative" }
+    }
+}
+
+data class ResolvedOwnedIndividual(
+    val individual: OwnedIndividual,
+    val location: OwnedIndividualLocation,
+)
+
 data class MoveObservation(
     val moveId: Int,
     val frequency: Int,
@@ -182,6 +203,8 @@ data class AppSnapshot(
     val resolvedPokedex: ResolvedPokedexProjection? = null,
     val party: List<OwnedIndividual> = emptyList(),
     val resolvedOwned: List<OwnedPokemon>? = null,
+    val resolvedOwnedIndividuals: List<ResolvedOwnedIndividual>? = null,
+    val resolvedSaveIdentity: String? = null,
     val resolvedBag: Map<BagPocket, BagPocketSnapshot> = emptyMap(),
     val resolvedEventFlags: Set<Int>? = null,
     val liveMapPosition: LiveMapPosition? = null,
@@ -223,6 +246,8 @@ sealed interface CompanionAction {
         val gameAccessReady: Boolean,
         val battle: BattleState?,
         val ledger: KnowledgeLedger,
+        val ownedIndividuals: List<ResolvedOwnedIndividual> = emptyList(),
+        val saveIdentity: String? = null,
     ) : CompanionAction
     data class ReplaceLedger(val ledger: KnowledgeLedger) : CompanionAction
     data class Failure(val message: String) : CompanionAction
