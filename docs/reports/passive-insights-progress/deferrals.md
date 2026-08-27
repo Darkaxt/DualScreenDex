@@ -40,3 +40,9 @@ Tier 2/3 dynamic challenge packs, game-specific temporal adapters, and explicit 
 Pokédex Specimens is implemented and removed from the generic runtime-page deferral. It enumerates decoded Party and PC instances inside the caught species' existing `MORE` flow, reuses Party's individual detail component and child destinations, and introduces neither a standalone PC page nor another live/save decoder.
 
 The Stage 4 report records unexposed Gen I/II owned-record fields, Gen I/II live PC storage, and the erased Unbound recovery control as numeric `NOT_FOUND` evidence. Generation-defined absent mechanics remain `NOT_APPLICABLE`. Those evidence states are not reclassified as deferrals: the UI simply omits unvalidated fields, while exact SaveRAM recovery supplies Gen I/II boxes and the source-backed live layout supplies Unbound storage. No later stage is assigned to fabricate or assume the missing values.
+
+## Stage 5 disposition
+
+Selected-move Damage Forecast is implemented and removed from the generic runtime-page deferral. It consumes the existing resolved battle snapshot, performs no memory or SaveRAM read, memoizes one immutable input/result pair, and renders exact, bounded, or absent outcomes inside Battle Attack.
+
+The Stage 5 report records missing runtime Gen I/II formula proof, rejected hack formula semantics, live multi-hit/fixed-damage semantics, held-item modifiers, and unresolved hack ability modifiers as numeric `NOT_FOUND` evidence. Those states are not reclassified as deferrals and receive no stock fallback. Their dependent forecast remains absent while ordinary move metadata and effectiveness stay available.

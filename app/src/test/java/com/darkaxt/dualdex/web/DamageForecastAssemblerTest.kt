@@ -58,10 +58,30 @@ class DamageForecastAssemblerTest {
         val input = DamageForecastAssembler.input(sample(owner = 2, target = 1), catalog(), KnowledgeMode.DISCOVERED, formula())
 
         val first = memoizer.forecast(input)
+        val cpuAfterFirst = memoizer.calculationCpuNanos
         val second = memoizer.forecast(input)
 
         assertSame(first, second)
         assertEquals(1, memoizer.recomputationCount)
+        assertTrue(cpuAfterFirst > 0)
+        assertEquals(cpuAfterFirst, memoizer.calculationCpuNanos)
+        assertEquals(1, memoizer.retainedInputCount)
+    }
+
+    @Test
+    fun `late stable attacker and target changes replace one forecast without stale flicker`() {
+        val memoizer = DamageForecastMemoizer()
+        val firstInput = DamageForecastAssembler.input(sample(owner = 0, target = 0), catalog(), KnowledgeMode.DISCOVERED, formula())
+        val changedInput = DamageForecastAssembler.input(sample(owner = 2, target = 1), catalog(), KnowledgeMode.DISCOVERED, formula())
+
+        val first = memoizer.forecast(firstInput)
+        val changed = memoizer.forecast(changedInput)
+        val stable = memoizer.forecast(changedInput)
+
+        assertNotEquals(first, changed)
+        assertSame(changed, stable)
+        assertEquals(2, memoizer.recomputationCount)
+        assertEquals(1, memoizer.retainedInputCount)
     }
 
     @Test

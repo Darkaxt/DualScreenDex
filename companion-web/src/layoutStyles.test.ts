@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 const styles = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8')
 const areaGuideSource = readFileSync(join(process.cwd(), 'src', 'pages', 'AreaGuideDrawer.tsx'), 'utf8')
+const battleSource = readFileSync(join(process.cwd(), 'src', 'pages', 'BattlePage.tsx'), 'utf8')
 
 describe('screen layout containment', () => {
   it('keeps root titles left aligned when the header also has actions', () => {
@@ -72,5 +73,14 @@ describe('screen layout containment', () => {
   it('does not give the Area Guide its own polling or animation loop', () => {
     expect(areaGuideSource).not.toMatch(/setInterval|setTimeout|requestAnimationFrame|fetch\s*\(/)
     expect(areaGuideSource).toContain("console.debug(JSON.stringify({ event: 'area-guide-render', renderMillis, retainedItems }))")
+  })
+
+  it('keeps the damage forecast inside the existing Battle scroll owner and theme surfaces', () => {
+    const gridRule = styles.match(/\.damage-forecast-grid\s*\{([^}]*)\}/)?.[1]
+
+    expect(styles).toMatch(/\.detail-content,\s*\.battle-content[^{}]*\{[^}]*overflow\s*:\s*auto/)
+    expect(gridRule).toMatch(/grid-template-columns\s*:\s*repeat\(4, minmax\(0, 1fr\)\)/)
+    expect(styles).toContain('[data-theme="game"][data-contrast="normal"] .damage-forecast')
+    expect(battleSource).not.toMatch(/setInterval|setTimeout|requestAnimationFrame|fetch\s*\(/)
   })
 })

@@ -230,10 +230,16 @@ internal class DamageForecastMemoizer {
     private var previousResult: DamageForecast? = null
     var recomputationCount: Long = 0
         private set
+    var calculationCpuNanos: Long = 0
+        private set
+    val retainedInputCount: Long
+        get() = if (previousResult == null) 0 else 1
 
     fun forecast(input: DamageForecastInput?): DamageForecast {
         if (previousResult != null && previousInput == input) return requireNotNull(previousResult)
+        val started = System.nanoTime()
         return DamageForecastCalculator.calculate(input).also { result ->
+            calculationCpuNanos += System.nanoTime() - started
             previousInput = input
             previousResult = result
             recomputationCount++

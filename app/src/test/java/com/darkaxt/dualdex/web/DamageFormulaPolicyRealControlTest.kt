@@ -11,12 +11,21 @@ import java.nio.file.Path
 
 class DamageFormulaPolicyRealControlTest {
     @Test
-    fun `official Emerald admits decoded retail formula while altered hack surfaces reject it`() {
-        val official = catalog(
-            "DUALDEX_OFFICIAL_EMERALD_ROM",
-            "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Emerald Version (USA, Europe).gba",
-        )
-        assertNotNull(DamageFormulaPolicy.resolve(official))
+    fun `official third generation controls admit the validated formula while altered hack surfaces reject it`() {
+        listOf(
+            "DUALDEX_OFFICIAL_RUBY_ROM" to
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
+            "DUALDEX_OFFICIAL_SAPPHIRE_ROM" to
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba",
+            "DUALDEX_OFFICIAL_EMERALD_ROM" to
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Emerald Version (USA, Europe).gba",
+            "DUALDEX_OFFICIAL_FIRERED_ROM" to
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
+            "DUALDEX_OFFICIAL_LEAFGREEN_ROM" to
+                "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba",
+        ).forEach { (environment, fallback) ->
+            assertNotNull(environment, DamageFormulaPolicy.resolve(catalog(environment, fallback)))
+        }
 
         listOf(
             "DUALDEX_MODERN_EMERALD_ROM" to
