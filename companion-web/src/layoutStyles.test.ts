@@ -95,4 +95,32 @@ describe('screen layout containment', () => {
     expect(actionRule).toMatch(/min-height\s*:\s*48px/)
     expect(styles).not.toContain('.trainer-destination-tabs')
   })
+
+  it('uses one shared token-backed grid surface for every new non-map route', () => {
+    const rootRule = styles.match(/:root\s*\{([^}]*)\}/)?.[1]
+    const sharedRule = styles.match(/\.trainer-card-content,\s*\.trainer-progress-content,\s*\.party-analysis-content,\s*\.specimens-content\s*\{([^}]*)\}/)?.[1]
+
+    expect(rootRule).toMatch(/--ui-grid-line\s*:/)
+    expect(rootRule).toMatch(/--ui-raised-shadow\s*:/)
+    expect(sharedRule).toMatch(/background-color\s*:\s*var\(--paper-deep\)/)
+    expect(sharedRule).toMatch(/background-image\s*:/)
+  })
+
+  it('keeps new route surfaces theme-driven outside GAME mode too', () => {
+    const trainerCardRule = styles.match(/\.trainer-card-content\s*\{([^}]*)\}/)?.[1]
+    const damageRule = styles.match(/\.damage-forecast\s*\{([^}]*)\}/)?.[1]
+    const specimenRule = styles.match(/\.specimen-card\s*\{([^}]*)\}/)?.[1]
+
+    expect(trainerCardRule).not.toMatch(/#[0-9a-f]{3,8}/i)
+    expect(damageRule).toMatch(/background\s*:\s*var\(--paper-deep\)/)
+    expect(damageRule).not.toMatch(/#[0-9a-f]{3,8}/i)
+    expect(specimenRule).toMatch(/box-shadow\s*:.*var\(--ui-raised-shadow\)/)
+  })
+
+  it('enforces the physical text floor on the smallest new-route labels', () => {
+    expect(styles).toContain('--ui-min-text: 11.2px')
+    expect(styles).toMatch(/\.challenge-card > div:first-child span[^{}]*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.6rem\)/)
+    expect(styles).toMatch(/\.damage-forecast-grid small[^{}]*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.64em\)/)
+    expect(styles).toMatch(/\.area-guide-exits > small[^{}]*\{[^}]*font\s*:\s*900 max\(var\(--ui-min-text\),\s*\.58rem\)/)
+  })
 })

@@ -9,6 +9,34 @@ import org.junit.Test
 
 class RomDerivedThemeLiveRomTest {
     @Test
+    fun exactModernEmeraldProducesItsOwnStableReadableTheme() {
+        val configured = System.getenv("DUALDEX_MODERN_EMERALD_ROM")
+        assumeTrue("set DUALDEX_MODERN_EMERALD_ROM to run this exact theme control", !configured.isNullOrBlank())
+        val path = Path.of(requireNotNull(configured))
+        assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals("21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", rom.sha256)
+
+        val actual = requireNotNull(CatalogParser.parse(rom).catalog).theme.validate()
+
+        assertEquals(
+            theme(
+                setOf(
+                    CatalogThemeAssetClass.TRAINER,
+                    CatalogThemeAssetClass.WORLD_MAP,
+                    CatalogThemeAssetClass.LOCAL_MAP,
+                    CatalogThemeAssetClass.SPECIES,
+                ),
+                CatalogThemeTokens(
+                    0x0245E6, 0x205AE8, 0xDCDC02, 0x888801, 0xFCFCFC, 0x929292,
+                    0xFDFDFD, 0x010101, 0x030303, 0x000000, 0x356FFB, 0x000000,
+                ),
+            ),
+            actual,
+        )
+    }
+
+    @Test
     fun exactReferenceRomsProduceStableReadableThemesAcrossFreshParses() {
         val actual = controls.associate { control ->
             val configured = System.getenv(control.environmentVariable)

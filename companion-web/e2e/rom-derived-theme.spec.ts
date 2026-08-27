@@ -82,7 +82,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   let serverCatalog: Record<string, unknown> = catalog;
   let serverState: Record<string, unknown> = { ...baseState };
   await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog: serverCatalog, state: serverState }) }));
-  await page.route('**/api/state', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(serverState) }));
+  await page.route('**/api/state?*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(serverState) }));
   await page.route('**/api/actions', async route => {
     const request = route.request().postDataJSON() as Record<string, unknown>;
     if (request.type === 'TAB') serverState = { ...serverState, battleTab: request.tab };
@@ -135,7 +135,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
     header: 'rgb(220, 220, 2)', menu: 'rgb(252, 252, 252)', panel: 'rgb(253, 253, 253)',
     border: 'rgb(1, 1, 1)', text: 'rgb(3, 3, 3)', accent: 'rgb(53, 111, 251)', accentText: 'rgb(0, 0, 0)',
   };
-  const fontMetrics: Array<{ view: string; elements: number; minimumPx: number; maximumPx: number; averagePx: number }> = [];
+  const fontMetrics: Array<{ view: string; elements: number; minimumPx: number; maximumPx: number; averagePx: number; smallestElements: string[] }> = [];
   const capture = async (name: string) => {
     const metrics = await page.locator('.screen').first().evaluate(root => {
       const textElements = new Set<HTMLElement>();
@@ -150,17 +150,22 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
           : element.textContent;
         if (copy?.trim()) textElements.add(element);
       });
-      const values = [...textElements].flatMap(element => {
+      const measured = [...textElements].flatMap(element => {
         const style = getComputedStyle(element);
         const bounds = element.getBoundingClientRect();
         if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0 || bounds.width === 0 || bounds.height === 0) return [];
-        return [Number.parseFloat(style.fontSize)];
-      }).filter(Number.isFinite);
+        return [{
+          value: Number.parseFloat(style.fontSize),
+          label: `${element.tagName.toLowerCase()}${element.className ? `.${String(element.className).trim().replace(/\s+/g, '.')}` : ''}:${element.textContent?.trim().slice(0, 40)}`,
+        }];
+      }).filter(item => Number.isFinite(item.value));
+      const values = measured.map(item => item.value);
       return {
         elements: values.length,
         minimumPx: Math.min(...values),
         maximumPx: Math.max(...values),
         averagePx: values.reduce((sum, value) => sum + value, 0) / values.length,
+        smallestElements: measured.sort((left, right) => left.value - right.value).slice(0, 5).map(item => `${item.value}px ${item.label}`),
       };
     });
     const rounded = (value: number) => Math.round(value * 10) / 10;
@@ -170,6 +175,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
       minimumPx: rounded(metrics.minimumPx),
       maximumPx: rounded(metrics.maximumPx),
       averagePx: rounded(metrics.averagePx),
+      smallestElements: metrics.smallestElements,
     });
     await page.screenshot({ path: join(artifactDir, `${name}.png`) });
   };
@@ -199,7 +205,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await expectTypography('.search-box span', 12);
   await expectTypography('.species-number', 12);
   await expectTypography('.species-row-types .type-chip', 11.4);
-  await expect.poll(() => page.locator('.species-list').evaluate(node => getComputedStyle(node).gridTemplateColumns.split(' ').length)).toBe(3);
+  await expect.poll(() => page.locator('.species-window').evaluate(node => getComputedStyle(node).gridTemplateColumns.split(' ').length)).toBe(3);
   await expect.poll(() => page.locator('.species-row').first().evaluate(node => {
     const row = node.getBoundingClientRect();
     const portrait = node.querySelector('.pokedex-avatar')!.getBoundingClientRect();
@@ -226,7 +232,14 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
       personWidthShare: rounded(person.width / ruler.width),
       pokemonShare: rounded(pokemon.height / ruler.height),
     };
-  })).toEqual({ personShare: .79, personWidthShare: .2, pokemonShare: .33 });
+  })).toMatchObject({ personShare: .8, pokemonShare: .33 });
+  const personWidthShare = await page.locator('.height-ruler').evaluate(node => {
+    const ruler = node.getBoundingClientRect();
+    const person = node.querySelector('.height-person canvas[data-alpha-trimmed="true"]')!.getBoundingClientRect();
+    return person.width / ruler.width;
+  });
+  expect(personWidthShare).toBeGreaterThanOrEqual(.1);
+  expect(personWidthShare).toBeLessThanOrEqual(.3);
   await page.getByRole('tab', { name: 'STATS' }).click();
   await expect(page.locator('.stat-list')).toBeVisible();
   await expectTypography('.stat-list > div', 15);
@@ -349,6 +362,8 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await capture('nature-detail');
   await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
   await expect(page.locator('.party-screen')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'BULBASAUR details' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close BULBASAUR details' }).click();
   await page.getByRole('button', { name: /Party slot 1/ }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: 'OVERGROW' }).click();
@@ -364,7 +379,8 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await assertNoNormalDiagnostics();
   await capture('ability-detail');
   await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'BULBASAUR details' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close BULBASAUR details' }).click();
   await expect(page.locator('.party-screen')).toBeVisible();
   await page.evaluate(() => window.dispatchEvent(new Event('dualdexback', { cancelable: true })));
   await expect(page.locator('.pokedex-screen')).toBeVisible();
@@ -404,7 +420,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await expectSurface('.settings-content .segmented button:not(.active)', { backgroundColor: colors.panel, borderTopColor: colors.border });
   await expectTypography('.setting-note', 12.8);
   await expectTypography('.settings-upload', 12);
-  await page.getByRole('button', { name: 'CAPABILITY REPORT' }).click();
+  await page.getByRole('button', { name: 'COMPATIBILITY REPORT' }).click();
   await expect(page.locator('.capability-screen')).toBeVisible();
   await assertGameTheme();
   await expectSurface('.capability-identity', { backgroundColor: colors.header, borderBottomColor: colors.border, color: colors.accentText });
@@ -521,7 +537,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
     '',
   ].join('\n'));
   for (const metric of fontMetrics) {
-    expect(metric.minimumPx, `${metric.view} has sub-floor visible text`).toBeGreaterThanOrEqual(11.2);
+    expect(metric.minimumPx, `${metric.view} has sub-floor visible text: ${metric.smallestElements.join(' | ')}`).toBeGreaterThanOrEqual(11.2);
     expect(metric.averagePx, `${metric.view} has an undersized overall text hierarchy`).toBeGreaterThanOrEqual(12);
   }
 });

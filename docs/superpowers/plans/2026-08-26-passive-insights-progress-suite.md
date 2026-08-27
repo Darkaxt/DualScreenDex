@@ -734,9 +734,9 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 - Modify: `companion-web/src/App.production.test.tsx`
 
 - [ ] **Step 1: Add RED route coverage for Party Analysis; Area Guide; Progress/Metrics/Challenges/Timeline; Specimens/individual detail; Damage Forecast; and challenge-expansion list/detail states, including empty, populated, unavailable, and withheld variants where applicable.**
-- [ ] **Step 2: Register established Party, Trainer Card, Pokédex, Atlas, and Battle routes as regression baselines rather than redesign targets.**
-- [ ] **Step 3: Define the production 1024×768 matrix at 85%, 100%, and 135% font scale for Light, Dark, High Contrast, and ROM-derived `GAME` themes from official Gen I/II/III plus Modern Emerald, Unbound, and Odyssey controls.**
-- [ ] **Step 4: Write a deterministic route manifest with required state, theme, font scale, expected pattern family, scroll owner, and baseline relation. Run RED and commit the contract.**
+- [x] **Step 2: Register established Party, Trainer Card, Pokédex, Atlas, and Battle routes as regression baselines rather than redesign targets.**
+- [x] **Step 3: Define the production 1024×768 matrix at 85%, 100%, and 135% font scale for Light, Dark, High Contrast, and ROM-derived `GAME` themes from official Gen I/II/III plus Modern Emerald, Unbound, and Odyssey controls.**
+- [x] **Step 4: Write a deterministic route manifest with required state, theme, font scale, expected pattern family, scroll owner, and baseline relation. Run RED and commit the contract.**
 
 ### Task 7.2: Normalize shared chrome and feature surfaces
 
@@ -757,9 +757,9 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 - Modify: `companion-web/src/styles.css`
 - Modify: `companion-web/src/layoutStyles.test.ts`
 
-- [ ] **Step 1: Add RED component and layout tests for shared header/separator, page/paper/grid/panel surfaces, card geometry, semantic typography tiers, controls, icons, focus, and touch targets.**
-- [ ] **Step 2: Replace the Trainer `CARD`/`PROGRESS` full-width destination row with compact theme-consistent top-right icon buttons: retain the established card icon for Trainer Card and use the conventional trophy icon for Challenges/Progress; leave at most one horizontal Progress section row and preserve selection, accessibility, and Back-stack state.**
-- [ ] **Step 3: Remove route-local legacy olive/forest, fixed yellow/white, one-off font, missing-pattern, and mismatched shadow/border rules by consuming shared tokens and primitives. Do not change feature semantics, data authority, disclosure, map behavior, or calculations.**
+- [x] **Step 1: Add RED component and layout tests for shared header/separator, page/paper/grid/panel surfaces, card geometry, semantic typography tiers, controls, icons, focus, and touch targets.**
+- [x] **Step 2: Replace the Trainer `CARD`/`PROGRESS` full-width destination row with compact theme-consistent top-right icon buttons: retain the established card icon for Trainer Card and use the conventional trophy icon for Challenges/Progress; leave at most one horizontal Progress section row and preserve selection, accessibility, and Back-stack state.**
+- [x] **Step 3: Remove route-local legacy olive/forest, fixed yellow/white, one-off font, missing-pattern, and mismatched shadow/border rules by consuming shared tokens and primitives. Do not change feature semantics, data authority, disclosure, map behavior, or calculations.**
 - [ ] **Step 4: Normalize spacing, vertical centering, content use, icon containers, empty/unavailable states, and exactly one intentional scroll owner per route at every required font scale.**
 - [ ] **Step 5: Run component, navigation, and layout suites GREEN; commit by coherent visual contract rather than page-by-page cosmetic churn.**
 
