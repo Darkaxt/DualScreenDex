@@ -31,7 +31,11 @@ class GbaSmolDecoderRealControlTest {
             assertArrayEquals(
                 expected.fileName,
                 source,
-                GbaRomCompression.decodeAt(rom, expected.offset),
+                GbaRomCompression.decodeAt(
+                    rom,
+                    expected.offset,
+                    GbaDecodeContract.WORLD_MAP,
+                ),
             )
         }
     }

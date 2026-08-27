@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
@@ -257,7 +258,7 @@ internal object Gen3LocalMapResolver {
         val tileCount = if (secondary) format.totalTiles - format.primaryTiles else format.primaryTiles
         val graphicsBytes = tileCount * TILE_BYTES
         val graphics = if (flags and COMPRESSED_FLAG != 0) {
-            val decoded = GbaRomCompression.decodeAt(rom, graphicsOffset)
+            val decoded = GbaRomCompression.decodeAt(rom, graphicsOffset, GbaDecodeContract.LOCAL_MAP)
             require(decoded.size <= graphicsBytes) {
                 "compressed tileset graphics exceed canonical ${format.label} capacity"
             }

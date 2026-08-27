@@ -39,7 +39,7 @@ object SpriteMaterializer {
                     val sprite = runCatching {
                         val entry = table.offset + id * stride
                         val pointer = rom.gbaPointer(entry) ?: error("invalid embedded front-sprite pointer")
-                        val graphics = GbaRomCompression.decodeAt(rom, pointer)
+                        val graphics = GbaRomCompression.decodeAt(rom, pointer, GbaDecodeContract.SPECIES_SPRITE)
                         require(graphics.size >= 2048)
                         val indexed = TileRenderer.gba4Bpp(graphics.copyOf(2048), 8, 8)
                         val palettePointer = rom.gbaPointer(entry + paletteDelta)
@@ -64,7 +64,7 @@ object SpriteMaterializer {
                     val entry = table.offset + id * table.recordSize
                     val pointer = rom.gbaPointer(entry) ?: error("invalid GBA sprite pointer")
                     val frameSize = rom.u16le(entry + 4)
-                    val decoded = GbaRomCompression.decodeAt(rom, pointer)
+                    val decoded = GbaRomCompression.decodeAt(rom, pointer, GbaDecodeContract.SPECIES_SPRITE)
                     val frame = decoded.copyOf(minOf(frameSize, decoded.size))
                     val tiles = squareTileWidth(frame.size, 32)
                     val indexed = TileRenderer.gba4Bpp(frame, tiles, tiles)
@@ -80,7 +80,7 @@ object SpriteMaterializer {
     private fun embeddedPaletteBytes(rom: RomImage, offset: Int): ByteArray {
         val decodedSize = GbaRomCompression.decodedSizeAtOrNull(rom, offset)
         return if (decodedSize != null && decodedSize in 2..32 && decodedSize % 2 == 0) {
-            GbaRomCompression.decodeAt(rom, offset).copyOf(32)
+            GbaRomCompression.decodeAt(rom, offset, GbaDecodeContract.PALETTE).copyOf(32)
         } else {
             rom.slice(offset, 32)
         }
@@ -230,7 +230,7 @@ object SpriteMaterializer {
 
     private fun readGbaPalette(rom: RomImage, table: Int, id: Int): ShortArray? = runCatching {
         val pointer = rom.gbaPointer(table + id * 8) ?: error("invalid GBA palette pointer")
-        val decoded = GbaRomCompression.decodeAt(rom, pointer)
+        val decoded = GbaRomCompression.decodeAt(rom, pointer, GbaDecodeContract.PALETTE)
         require(decoded.size >= 32)
         ShortArray(16) { index ->
             ((decoded[index * 2].toInt() and 0xFF) or ((decoded[index * 2 + 1].toInt() and 0xFF) shl 8)).toShort()

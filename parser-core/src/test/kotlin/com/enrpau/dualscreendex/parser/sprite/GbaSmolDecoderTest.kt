@@ -119,8 +119,22 @@ class GbaSmolDecoderTest {
         lz.copyInto(bytes, 64)
 
         val rom = RomImage(bytes)
-        assertArrayEquals(ByteArray(2048).also { it[0] = 1 }, GbaRomCompression.decodeAt(rom, 16))
-        assertArrayEquals(byteArrayOf(1, 2, 3), GbaRomCompression.decodeAt(rom, 64))
+        assertArrayEquals(
+            ByteArray(2048).also { it[0] = 1 },
+            GbaRomCompression.decodeAt(
+                rom,
+                16,
+                GbaDecodeContract.SPECIES_SPRITE,
+            ),
+        )
+        assertArrayEquals(
+            byteArrayOf(1, 2, 3),
+            GbaRomCompression.decodeAt(
+                rom,
+                64,
+                GbaDecodeContract.SPECIES_SPRITE,
+            ),
+        )
     }
 
     private fun formulaFixture(size: Int, variant: Int): ByteArray = ByteArray(size) { index ->

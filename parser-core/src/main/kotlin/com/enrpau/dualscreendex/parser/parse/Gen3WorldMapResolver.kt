@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 
 /**
@@ -641,7 +642,7 @@ object Gen3WorldMapResolver {
     private fun decodeTableStream(rom: RomImage, offset: Int): CompressedStream? {
         val declared = GbaRomCompression.decodedSizeAtOrNull(rom, offset) ?: return null
         if (declared !in 1..MAX_DECOMPRESSED_ASSET_BYTES) return null
-        return runCatching { CompressedStream(offset, GbaRomCompression.decodeAt(rom, offset)) }.getOrNull()
+        return runCatching { CompressedStream(offset, GbaRomCompression.decodeAt(rom, offset, GbaDecodeContract.WORLD_MAP)) }.getOrNull()
     }
 
     private fun romPointerAtOrNull(rom: RomImage, offset: Int): Int? {
@@ -1463,7 +1464,7 @@ object Gen3WorldMapResolver {
             if (rom.u8(offset) != GBA_LZ77_HEADER) return@mapNotNull null
             val declared = GbaRomCompression.decodedSizeAtOrNull(rom, offset) ?: return@mapNotNull null
             if (declared !in 1..MAX_DECOMPRESSED_ASSET_BYTES) return@mapNotNull null
-            runCatching { CompressedStream(offset, GbaRomCompression.decodeAt(rom, offset)) }.getOrNull()
+            runCatching { CompressedStream(offset, GbaRomCompression.decodeAt(rom, offset, GbaDecodeContract.WORLD_MAP)) }.getOrNull()
         }
 
     private fun authoritative(candidates: List<AssetCandidate>): List<AssetCandidate> {

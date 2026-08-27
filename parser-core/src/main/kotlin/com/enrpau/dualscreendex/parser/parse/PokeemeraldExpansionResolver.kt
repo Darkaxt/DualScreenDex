@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
+import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
@@ -95,7 +96,7 @@ object PokeemeraldExpansionResolver {
             }.getOrNull()
             val graphicsValid = graphicsPointer?.let { pointer ->
                 runCatching {
-                    val decoded = GbaRomCompression.decodeAt(rom, pointer)
+                    val decoded = GbaRomCompression.decodeAt(rom, pointer, GbaDecodeContract.SPECIES_SPRITE)
                     decoded.size >= 2048 && decoded.size % 2048 == 0
                 }.getOrDefault(false)
             } == true

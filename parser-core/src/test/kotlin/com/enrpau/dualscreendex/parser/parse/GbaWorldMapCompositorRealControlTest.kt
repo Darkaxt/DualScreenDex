@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import java.nio.ByteBuffer
@@ -122,7 +123,11 @@ class GbaWorldMapCompositorRealControlTest {
     @Test
     fun dreamstoneFlyGraphicsCannotSatisfyThe8BppMap() {
         val rom = control("DUALDEX_DREAMSTONE_ROM", DREAMSTONE_SHA)
-        val flyTiles = GbaRomCompression.decodeAt(rom, 0xE846E8)
+        val flyTiles = GbaRomCompression.decodeAt(
+            rom,
+            0xE846E8,
+            GbaDecodeContract.WORLD_MAP,
+        )
         val tilemap = decoded(rom, 0xE843E8, DREAMSTONE_MAP_SHA)
         val palette = palette(rom, 0xE826E8, 32, DREAMSTONE_PALETTE_SHA)
 
@@ -371,7 +376,11 @@ class GbaWorldMapCompositorRealControlTest {
     }
 
     private fun decoded(rom: RomImage, offset: Int, expectedSha: String): ByteArray =
-        GbaRomCompression.decodeAt(rom, offset).also { assertEquals(expectedSha, sha256(it)) }
+        GbaRomCompression.decodeAt(
+            rom,
+            offset,
+            GbaDecodeContract.WORLD_MAP,
+        ).also { assertEquals(expectedSha, sha256(it)) }
 
     private fun palette(
         rom: RomImage,

@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.TrainerAssetCatalog
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.sprite.IndexedSprite
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
@@ -321,10 +322,14 @@ object Gen3TrainerAssetResolver {
     ): RgbaSprite? = runCatching {
         require(index in 0 until count)
         val graphicsPointer = requireNotNull(rom.gbaPointer(sheetTable + index * TABLE_RECORD_BYTES))
-        val graphics = GbaRomCompression.decodeAt(rom, graphicsPointer)
+        val graphics = GbaRomCompression.decodeAt(
+            rom,
+            graphicsPointer,
+            GbaDecodeContract.TRAINER_SPRITE,
+        )
         require(graphics.size >= TRAINER_PIC_BYTES)
         val palettePointer = requireNotNull(rom.gbaPointer(paletteTable + index * TABLE_RECORD_BYTES))
-        val paletteBytes = GbaRomCompression.decodeAt(rom, palettePointer)
+        val paletteBytes = GbaRomCompression.decodeAt(rom, palettePointer, GbaDecodeContract.PALETTE)
         require(paletteBytes.size == PALETTE_BYTES)
         TileRenderer.applyBgr555Palette(
             TileRenderer.gba4Bpp(graphics.copyOf(TRAINER_PIC_BYTES), 8, 8),
@@ -355,7 +360,13 @@ object Gen3TrainerAssetResolver {
                     val pointer = literalRomPointer(rom, offset, loadGraphics)
                     val decoded = pointer?.let { candidate ->
                         if (GbaRomCompression.decodedSizeAtOrNull(rom, candidate) == BADGE_SHEET_BYTES) {
-                            runCatching { GbaRomCompression.decodeAt(rom, candidate) }.getOrNull()
+                            runCatching {
+                                GbaRomCompression.decodeAt(
+                                    rom,
+                                    candidate,
+                                    GbaDecodeContract.TRAINER_SPRITE,
+                                )
+                            }.getOrNull()
                         } else null
                     }
                     if (decoded != null && validBadgeGrid(TileRenderer.gba4Bpp(decoded, 16, 2))) {

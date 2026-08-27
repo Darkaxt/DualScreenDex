@@ -1,12 +1,17 @@
 package com.enrpau.dualscreendex.parser.sprite
 
 object GbaLz77Decoder {
-    fun decode(source: ByteArray): ByteArray {
+    fun decode(
+        source: ByteArray,
+        maximumDecodedBytes: Int,
+    ): ByteArray {
+        require(maximumDecodedBytes > 0) { "GBA LZ77 decoded-size limit must be positive" }
         require(source.size >= 4 && source[0].toInt() and 0xFF == 0x10) { "invalid GBA LZ77 header" }
         val size = (source[1].toInt() and 0xFF) or
             ((source[2].toInt() and 0xFF) shl 8) or
             ((source[3].toInt() and 0xFF) shl 16)
         require(size > 0) { "GBA LZ77 output is empty" }
+        require(size <= maximumDecodedBytes) { "GBA LZ77 decoded-size limit exceeded" }
         val output = ByteArray(size)
         var input = 4
         var written = 0

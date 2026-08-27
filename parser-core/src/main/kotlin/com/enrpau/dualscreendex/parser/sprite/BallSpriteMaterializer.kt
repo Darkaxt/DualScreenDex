@@ -19,7 +19,7 @@ object BallSpriteMaterializer {
             val sprite = runCatching {
                 val gfxPointer = rom.gbaPointer(sheets + ballIndex * 8) ?: error("invalid ball gfx pointer")
                 val palettePointer = rom.gbaPointer(palettes + ballIndex * 8) ?: error("invalid ball palette pointer")
-                val gfx = GbaRomCompression.decodeAt(rom, gfxPointer)
+                val gfx = GbaRomCompression.decodeAt(rom, gfxPointer, GbaDecodeContract.BALL_SPRITE)
                 require(gfx.size >= FIRST_FRAME_SIZE)
                 val paletteBytes = paletteBytesAt(rom, palettePointer)
                 require(paletteBytes.size >= 32)
@@ -62,7 +62,7 @@ object BallSpriteMaterializer {
                 val paletteEntry = metadata.paletteTableOffset + ballIndex * 8
                 val gfxPointer = rom.gbaPointer(sheetEntry) ?: error("invalid expanded ball gfx pointer")
                 val palettePointer = rom.gbaPointer(paletteEntry) ?: error("invalid expanded ball palette pointer")
-                val gfx = GbaRomCompression.decodeAt(rom, gfxPointer)
+                val gfx = GbaRomCompression.decodeAt(rom, gfxPointer, GbaDecodeContract.BALL_SPRITE)
                 require(gfx.size >= FIRST_FRAME_SIZE) { "expanded ball graphics are shorter than one frame" }
                 val paletteBytes = strictPaletteBytesAt(rom, palettePointer)
                 val palette = ShortArray(16) { index ->
@@ -98,7 +98,7 @@ object BallSpriteMaterializer {
             val sprite = runCatching {
                 val gfxPointer = rom.gbaPointer(entry) ?: error("invalid integrated ball gfx pointer")
                 val palettePointer = rom.gbaPointer(entry + 8) ?: error("invalid integrated ball palette pointer")
-                val gfx = if (rom.u8(gfxPointer) == 0x10) GbaRomCompression.decodeAt(rom, gfxPointer)
+                val gfx = if (rom.u8(gfxPointer) == 0x10) GbaRomCompression.decodeAt(rom, gfxPointer, GbaDecodeContract.BALL_SPRITE)
                     else rom.slice(gfxPointer, SHEET_SIZE)
                 require(gfx.size >= FIRST_FRAME_SIZE)
                 val paletteBytes = paletteBytesAt(rom, palettePointer)
@@ -197,12 +197,12 @@ object BallSpriteMaterializer {
     private fun strictPaletteBytesAt(rom: RomImage, pointer: Int): ByteArray {
         if (rom.u8(pointer) != 0x10) return rom.slice(pointer, 32)
         require(rom.u24le(pointer + 1) == 32) { "compressed expanded ball palette does not declare 32 bytes" }
-        return GbaRomCompression.decodeAt(rom, pointer)
+        return GbaRomCompression.decodeAt(rom, pointer, GbaDecodeContract.PALETTE)
     }
 
     private fun paletteBytesAt(rom: RomImage, pointer: Int): ByteArray =
         if (rom.u8(pointer) == 0x10 && rom.u24le(pointer + 1) == 32) {
-            GbaRomCompression.decodeAt(rom, pointer)
+            GbaRomCompression.decodeAt(rom, pointer, GbaDecodeContract.PALETTE)
         } else {
             rom.slice(pointer, 32)
         }

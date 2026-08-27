@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.sprite
 
+import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -62,6 +63,31 @@ class SpriteMaterializerTest {
         assertEquals(64, sprite.width)
         assertEquals(64, sprite.height)
         assertEquals(0xFFFF0000.toInt(), sprite.argb[0])
+    }
+
+    @Test
+    fun oversizedGbaSpriteBecomesUnavailableWithoutAbortingMaterialization() {
+        val bytes = ByteArray(256)
+        putGbaPointer(bytes, 0, 128)
+        putU16(bytes, 4, 32)
+        byteArrayOf(0x10, 0, 1, 1).copyInto(bytes, 128)
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.EMERALD,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = 1,
+            moveCount = 0,
+            tables = ProfileTables(
+                sprites = TableLayout(0, 1, 8),
+            ),
+        )
+
+        val sprites = SpriteMaterializer.pokemon(
+            RomImage(bytes),
+            layout,
+        )
+
+        assertEquals(emptyMap<Int, RgbaSprite>(), sprites)
     }
 
     @Test

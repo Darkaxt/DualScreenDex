@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.model.HeaderlessUnifiedSpeciesMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
+import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
@@ -477,13 +478,13 @@ internal object PublishedUnifiedSpeciesResolver {
         val decodedSize = GbaRomCompression.decodedSizeAtOrNull(rom, offset) ?: return@runCatching false
         decodedSize in FRONT_SPRITE_FRAME_BYTES..MAX_FRONT_SPRITE_BYTES &&
             decodedSize % FRONT_SPRITE_FRAME_BYTES == 0 &&
-            GbaRomCompression.decodeAt(rom, offset).size == decodedSize
+            GbaRomCompression.decodeAt(rom, offset, GbaDecodeContract.SPECIES_SPRITE).size == decodedSize
     }.getOrDefault(false)
 
     private fun validPalette(rom: RomImage, offset: Int): Boolean = runCatching {
         val decodedSize = GbaRomCompression.decodedSizeAtOrNull(rom, offset)
         val bytes = if (decodedSize != null && decodedSize in 2..32 && decodedSize % 2 == 0) {
-            GbaRomCompression.decodeAt(rom, offset)
+            GbaRomCompression.decodeAt(rom, offset, GbaDecodeContract.PALETTE)
         } else {
             rom.slice(offset, 32)
         }

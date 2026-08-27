@@ -2,6 +2,17 @@ package com.enrpau.dualscreendex.parser.sprite
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 
+internal enum class GbaDecodeContract(
+    val maximumDecodedBytes: Int,
+) {
+    SPECIES_SPRITE(64 * 1024),
+    PALETTE(4 * 1024),
+    BALL_SPRITE(16 * 1024),
+    TRAINER_SPRITE(64 * 1024),
+    LOCAL_MAP(4 * 1024 * 1024),
+    WORLD_MAP(4 * 1024 * 1024),
+}
+
 internal object GbaRomCompression {
     fun decodedSizeAtOrNull(rom: RomImage, offset: Int): Int? {
         if (offset < 0 || offset.toLong() + 4 > rom.size.toLong()) return null
@@ -16,8 +27,19 @@ internal object GbaRomCompression {
         }.getOrNull()
     }
 
-    fun decodeAt(rom: RomImage, offset: Int): ByteArray = if (rom.u8(offset) == GBA_LZ77_HEADER) {
-        GbaLz77Decoder.decode(rom.slice(offset, compressedLength(rom, offset)))
+    fun decodeAt(
+        rom: RomImage,
+        offset: Int,
+        contract: GbaDecodeContract,
+    ): ByteArray = if (rom.u8(offset) == GBA_LZ77_HEADER) {
+        val decodedSize = rom.u24le(offset + 1)
+        require(decodedSize in 1..contract.maximumDecodedBytes) {
+            "GBA LZ77 decoded-size limit exceeded for ${contract.name}"
+        }
+        GbaLz77Decoder.decode(
+            rom.slice(offset, compressedLength(rom, offset)),
+            contract.maximumDecodedBytes,
+        )
     } else {
         require(offset >= 0 && offset.toLong() + 8 <= rom.size.toLong()) {
             "truncated SMOL stream"
@@ -25,6 +47,9 @@ internal object GbaRomCompression {
         val header = rom.slice(offset, 8)
         val encodedLength = GbaSmolDecoder.encodedLengthFromHeader(header)
         require(encodedLength <= MAX_SMOL_ENCODED_BYTES) { "SMOL stream exceeds encoded-size bound" }
+        require(GbaSmolDecoder.decodedSize(header) <= contract.maximumDecodedBytes) {
+            "SMOL decoded-size limit exceeded for ${contract.name}"
+        }
         require(offset.toLong() + encodedLength <= rom.size.toLong()) { "truncated SMOL stream" }
         GbaSmolDecoder.decode(rom.slice(offset, encodedLength))
     }

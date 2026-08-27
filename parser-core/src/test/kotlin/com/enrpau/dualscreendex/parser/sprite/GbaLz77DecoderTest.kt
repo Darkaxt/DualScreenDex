@@ -1,6 +1,8 @@
 package com.enrpau.dualscreendex.parser.sprite
 
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GbaLz77DecoderTest {
@@ -13,7 +15,7 @@ class GbaLz77DecoderTest {
             0x10, 0x01,
         )
 
-        assertArrayEquals("ABABAB".toByteArray(), GbaLz77Decoder.decode(compressed))
+        assertArrayEquals("ABABAB".toByteArray(), GbaLz77Decoder.decode(compressed, 1_024))
     }
 
     @Test
@@ -25,6 +27,17 @@ class GbaLz77DecoderTest {
             0x10, 0x01,
         )
 
-        assertArrayEquals("ABABA".toByteArray(), GbaLz77Decoder.decode(compressed))
+        assertArrayEquals("ABABA".toByteArray(), GbaLz77Decoder.decode(compressed, 1_024))
+    }
+
+    @Test
+    fun rejectsDeclaredOutputBeyondTheContractBeforeReadingPackets() {
+        val headerOnly = byteArrayOf(0x10, 0, 0, 1)
+
+        val failure = assertThrows(IllegalArgumentException::class.java) {
+            GbaLz77Decoder.decode(headerOnly, maximumDecodedBytes = 4_096)
+        }
+
+        assertTrue(failure.message.orEmpty().contains("decoded-size limit"))
     }
 }

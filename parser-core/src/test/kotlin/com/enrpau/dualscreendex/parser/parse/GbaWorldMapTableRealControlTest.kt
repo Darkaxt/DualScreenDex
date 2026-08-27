@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import java.nio.file.Files
@@ -28,8 +29,16 @@ class GbaWorldMapTableRealControlTest {
             RegionAsset(0xCB7130, 0xCB7208, 0xCB7694),
         ).mapIndexed { slot, asset ->
             val composition = GbaWorldMapCompositor.compose(
-                GbaRomCompression.decodeAt(rom, asset.graphicsOffset),
-                GbaRomCompression.decodeAt(rom, asset.mapOffset),
+                GbaRomCompression.decodeAt(
+                    rom,
+                    asset.graphicsOffset,
+                    GbaDecodeContract.WORLD_MAP,
+                ),
+                GbaRomCompression.decodeAt(
+                    rom,
+                    asset.mapOffset,
+                    GbaDecodeContract.WORLD_MAP,
+                ),
                 ShortArray(PALETTE_COLORS) { index ->
                     rom.u16le(asset.paletteOffset + index * 2).toShort()
                 },
