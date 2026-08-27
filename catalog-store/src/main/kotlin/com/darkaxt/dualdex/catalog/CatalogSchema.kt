@@ -65,21 +65,9 @@ object CatalogSchema {
         """.trimIndent(),
         "CREATE INDEX IF NOT EXISTS catalog_section_chunks_name ON catalog_section_chunks(section_name, chunk_index)",
         "CREATE INDEX IF NOT EXISTS catalog_metadata_crc_size ON catalog_metadata(crc32, rom_size)",
-        """
-        CREATE TABLE IF NOT EXISTS save_snapshot (
-            id INTEGER PRIMARY KEY CHECK (id = 1),
-            rom_sha256 TEXT NOT NULL,
-            save_identity TEXT NOT NULL,
-            save_schema_id TEXT NOT NULL,
-            payload_json TEXT NOT NULL,
-            source_last_modified_epoch_ms INTEGER NOT NULL,
-            refreshed_at_epoch_ms INTEGER NOT NULL
-        )
-        """.trimIndent(),
     )
 
     val dropStatements = listOf(
-        "DROP TABLE IF EXISTS save_snapshot",
         "DROP TABLE IF EXISTS catalog_section_chunks",
         "DROP TABLE IF EXISTS catalog_sections",
         "DROP TABLE IF EXISTS catalog_metadata",

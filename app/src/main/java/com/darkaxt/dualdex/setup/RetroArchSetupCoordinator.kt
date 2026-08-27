@@ -17,6 +17,7 @@ import com.darkaxt.dualdex.retroarch.SessionMonitor
 import com.darkaxt.dualdex.retroarch.SessionResolution
 import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
+import com.darkaxt.dualdex.catalog.SaveSnapshotRepository
 import com.darkaxt.dualdex.catalog.SaveSnapshotStore
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
@@ -57,6 +58,10 @@ class RetroArchSetupCoordinator(
     private val transientGameState: UnifiedGameStateDecoder,
     private val checkpointCoordinator: SaveKnowledgeCheckpointCoordinator,
     private val commandPort: Int = UdpNetworkCommandTransport.DEFAULT_PORT,
+    private val saveSnapshotRepository: SaveSnapshotRepository = SaveSnapshotStore(
+        File(context.filesDir, "catalogs"),
+        AndroidCatalogDatabaseFactory,
+    ),
 ) : AutoCloseable {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val indexStore = RomIndexStore(File(context.filesDir, "retroarch/rom-index.json"))
@@ -64,7 +69,7 @@ class RetroArchSetupCoordinator(
     private val sharedStorage = SharedStorageGateway.android(context)
     private val saveMonitor = SavePollingMonitor(
         SaveAssociationStore(File(context.filesDir, "retroarch/save-associations.json")),
-        SaveSnapshotStore(File(context.filesDir, "catalogs"), AndroidCatalogDatabaseFactory),
+        saveSnapshotRepository,
     )
     private val worker = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "dualdex-retroarch-setup").apply { isDaemon = true }

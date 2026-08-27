@@ -6,6 +6,7 @@ import android.util.Log
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.catalog.CatalogCacheDecision
+import com.darkaxt.dualdex.catalog.SaveSnapshotStore
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointStore
 import com.darkaxt.dualdex.progress.PlaythroughJournalRegistry
@@ -198,7 +199,9 @@ class DualDexApplication : Application() {
                 },
             ),
         )
-        val cache = CatalogCache(File(filesDir, "catalogs"), AndroidCatalogDatabaseFactory) { event ->
+        val catalogDirectory = File(filesDir, "catalogs")
+        val saveSnapshots = SaveSnapshotStore(catalogDirectory, AndroidCatalogDatabaseFactory)
+        val cache = CatalogCache(catalogDirectory, AndroidCatalogDatabaseFactory) { event ->
             val message = buildString {
                 append(event.decision.name)
                 append(" sha256=")
@@ -278,6 +281,7 @@ class DualDexApplication : Application() {
                     transientGameState::acceptRecovery,
                     playthroughJournals,
                 ),
+                saveSnapshotRepository = saveSnapshots,
             )
             mapperCandidate = MemoryMapperCoordinator(
                 MapperSessionStore(File(filesDir, "memory-mapper")), runtime::retroArchState,

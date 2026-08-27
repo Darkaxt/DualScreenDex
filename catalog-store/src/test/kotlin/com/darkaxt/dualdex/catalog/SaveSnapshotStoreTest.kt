@@ -6,6 +6,7 @@ import com.darkaxt.dualdex.save.SaveCapabilityEvidence
 import com.darkaxt.dualdex.save.SaveCapabilityStatus
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SavedArea
+import com.google.gson.Gson
 import java.nio.file.Files
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -55,7 +56,7 @@ class SaveSnapshotStoreTest {
                 sourceLastModifiedEpochMs = 500,
                 refreshedAtEpochMs = 600,
             )
-            JdbcCatalogDatabaseFactory.open(directory.resolve("$romHash.sqlite")).use { database ->
+            JdbcCatalogDatabaseFactory.open(directory.resolve("save-snapshots/$romHash.sqlite")).use { database ->
                 val current = database.query("SELECT payload_json FROM save_snapshot WHERE id = 1") { row ->
                     requireNotNull(row.string("payload_json"))
                 }.single()
@@ -74,6 +75,118 @@ class SaveSnapshotStoreTest {
             assertNull(reopened.levelUpRulesetDetectionFingerprint)
         } finally {
             directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun inactiveCatalogCleanupDoesNotDeleteRecoverySnapshots() {
+        val directory = Files.createTempDirectory("dualdex-save-store-cleanup").toFile()
+        try {
+            val romHash = "c".repeat(64)
+            val snapshot = fixture(romHash, counter = 7, species = 133)
+            val store = SaveSnapshotStore(directory, JdbcCatalogDatabaseFactory)
+            store.write(snapshot, sourceLastModifiedEpochMs = 700, refreshedAtEpochMs = 800)
+
+            CatalogCache(directory, JdbcCatalogDatabaseFactory).clearInactive(activeSha256 = null)
+
+            assertEquals(snapshot, store.read(romHash)?.snapshot)
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun corruptCatalogRemovalDoesNotDeleteRecoverySnapshots() {
+        val directory = Files.createTempDirectory("dualdex-save-store-corrupt").toFile()
+        try {
+            val romHash = "d".repeat(64)
+            val snapshot = fixture(romHash, counter = 8, species = 150)
+            val store = SaveSnapshotStore(directory, JdbcCatalogDatabaseFactory)
+            store.write(snapshot, sourceLastModifiedEpochMs = 900, refreshedAtEpochMs = 1_000)
+            JdbcCatalogDatabaseFactory.open(directory.resolve("$romHash.sqlite")).use { database ->
+                CatalogMigration.prepare(database)
+                database.execute(
+                    """
+                    INSERT OR REPLACE INTO catalog_metadata (
+                        id, schema_version, parser_schema_version, sha256, crc32, rom_size, rom_title,
+                        source_name, source_kind, source_entry, family, platform, phase,
+                        completed_units, total_units, is_complete, written_at_epoch_ms
+                    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, 1, ?)
+                    """.trimIndent(),
+                    listOf(
+                        CatalogSchema.version,
+                        CatalogSchema.parserSchemaVersion,
+                        romHash,
+                        "12345678",
+                        1024,
+                        "CONTROL",
+                        "Control.gba",
+                        "INVALID_SOURCE_KIND",
+                        "GEN3_DECOMP",
+                        "GBA",
+                        "COMPLETE",
+                        1,
+                        1,
+                        1_100,
+                    ),
+                )
+            }
+
+            assertNull(CatalogCache(directory, JdbcCatalogDatabaseFactory).readComplete(romHash))
+            assertEquals(snapshot, store.read(romHash)?.snapshot)
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun legacySnapshotMigratesBeforeCatalogSchemaRebuild() {
+        val directory = Files.createTempDirectory("dualdex-save-store-migration").toFile()
+        try {
+            val romHash = "e".repeat(64)
+            val snapshot = fixture(romHash, counter = 9, species = 151)
+            writeLegacySnapshot(directory, snapshot, sourceLastModifiedEpochMs = 1_200, refreshedAtEpochMs = 1_300)
+
+            val store = SaveSnapshotStore(directory, JdbcCatalogDatabaseFactory)
+            JdbcCatalogDatabaseFactory.open(directory.resolve("$romHash.sqlite")).use { database ->
+                database.execute("PRAGMA user_version = 999")
+                CatalogMigration.prepare(database)
+            }
+
+            val reopened = requireNotNull(store.read(romHash))
+            assertEquals(snapshot, reopened.snapshot)
+            assertEquals(1_200L, reopened.sourceLastModifiedEpochMs)
+            assertEquals(1_300L, reopened.refreshedAtEpochMs)
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    private fun writeLegacySnapshot(
+        directory: java.io.File,
+        snapshot: SaveSnapshot,
+        sourceLastModifiedEpochMs: Long,
+        refreshedAtEpochMs: Long,
+    ) {
+        JdbcCatalogDatabaseFactory.open(directory.resolve("${snapshot.romIdentity}.sqlite")).use { database ->
+            CatalogMigration.prepare(database)
+            SaveSnapshotSchema.createStatements.forEach(database::execute)
+            database.execute(
+                """
+                INSERT OR REPLACE INTO save_snapshot (
+                    id, rom_sha256, save_identity, save_schema_id, payload_json,
+                    source_last_modified_epoch_ms, refreshed_at_epoch_ms
+                ) VALUES (1, ?, ?, ?, ?, ?, ?)
+                """.trimIndent(),
+                listOf(
+                    snapshot.romIdentity,
+                    snapshot.saveIdentity,
+                    snapshot.schemaId,
+                    Gson().toJson(snapshot),
+                    sourceLastModifiedEpochMs,
+                    refreshedAtEpochMs,
+                ),
+            )
         }
     }
 
