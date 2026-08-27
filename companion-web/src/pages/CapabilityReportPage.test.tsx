@@ -43,7 +43,12 @@ describe('loaded ROM capability report', () => {
 
   it('copies only the stable diagnostic contract and reports fetch failures with retry', async () => {
     const fetch = vi.fn()
-      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'Parser snapshot unavailable' }) })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        headers: { get: () => 'application/json; charset=utf-8' },
+        json: async () => ({ error: { message: 'Parser snapshot unavailable' } }),
+      })
       .mockResolvedValueOnce(response({
         ...diagnosticFixture,
         rawMemory: 'SECRET',
@@ -134,5 +139,10 @@ const diagnosticFixture = {
 };
 
 function response(value: unknown) {
-  return { ok: true, json: async () => value } as Response;
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/json; charset=utf-8' },
+    json: async () => value,
+  } as unknown as Response;
 }
