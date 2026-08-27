@@ -183,6 +183,24 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun romSourceMemoryFailureRetainsItsDebugStageWithoutStartingTheParser() {
+        val events = mutableListOf<PerformanceEvent>()
+        val runtime = ProductionCompanionRuntime(performanceRecorder = recordingPerformance(events))
+
+        runtime.recordRomSourceLoadFailure("a".repeat(64), OutOfMemoryError("synthetic allocator detail"))
+
+        assertEquals(
+            listOf("ROM_SOURCE"),
+            events.filter { it.kind == PerformanceEventKind.STAGE_FINISHED }.map(PerformanceEvent::stage),
+        )
+        assertEquals(
+            "OutOfMemoryError",
+            events.single { it.kind == PerformanceEventKind.LOAD_FAILED }.failureType,
+        )
+        runtime.close()
+    }
+
+    @Test
     fun profilerRecordsGameAccessOnlyAfterTheOneWayReadinessGateOpens() {
         val events = mutableListOf<PerformanceEvent>()
         val hash = "d".repeat(64)

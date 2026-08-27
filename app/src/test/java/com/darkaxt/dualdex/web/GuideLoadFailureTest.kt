@@ -27,4 +27,11 @@ class GuideLoadFailureTest {
         assertEquals("This game guide could not be opened. You can try again.", failure.message)
         assertSame(cause, failure.cause)
     }
+
+    @Test
+    fun `an already sanitized failure is not wrapped again`() {
+        val failure = GuideLoadFailure.from(OutOfMemoryError("synthetic allocator detail"))
+
+        assertSame(failure, GuideLoadFailure.from(failure))
+    }
 }

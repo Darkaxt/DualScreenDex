@@ -10,6 +10,7 @@ enum class NativeSetupRoute {
     EXPORT_MAPPER,
     EXPORT_PERFORMANCE,
     EXPORT_COMPATIBILITY,
+    RETRY_GUIDE,
     SHOW_OVERLAY,
     DOCK_OVERLAY;
 
@@ -27,6 +28,7 @@ enum class NativeSetupRoute {
                 "mapper" to "/export" -> EXPORT_MAPPER
                 "performance" to "/export" -> EXPORT_PERFORMANCE
                 "compatibility" to "/export" -> EXPORT_COMPATIBILITY
+                "guide" to "/retry" -> RETRY_GUIDE
                 "overlay" to "/show" -> SHOW_OVERLAY
                 "overlay" to "/dock" -> DOCK_OVERLAY
                 else -> null

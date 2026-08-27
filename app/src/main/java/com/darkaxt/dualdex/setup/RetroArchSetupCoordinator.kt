@@ -38,6 +38,7 @@ import com.darkaxt.dualdex.storage.StorageAccessPolicy
 import com.darkaxt.dualdex.storage.StorageIndexAction
 import com.darkaxt.dualdex.storage.StorageSetupStatusPolicy
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
+import com.darkaxt.dualdex.web.GuideLoadFailure
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveCandidateView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
@@ -86,7 +87,7 @@ class RetroArchSetupCoordinator(
     private val entries = AtomicReference(cachedDirectEntries.ifEmpty(::loadSafStoredIndex))
     private val directIndexReady = AtomicBoolean(cachedDirectEntries.isNotEmpty())
     private val view = AtomicReference(initialView())
-    private val activating = AtomicReference<String?>(null)
+    private val activationGate = GuideActivationGate()
     private val pollingSave = AtomicBoolean(false)
     private val directIndexing = AtomicBoolean(false)
     private val directRefreshStarted = AtomicBoolean(false)
@@ -160,6 +161,7 @@ class RetroArchSetupCoordinator(
             val result = runCatching { AndroidRomLibraryIndexer(context.contentResolver).index(uri, previousEntries) }
             result.onSuccess { indexed ->
                 indexStore.write(uri.toString(), indexed.entries)
+                activationGate.clearFailure()
                 if (!sharedStorage.isGranted()) entries.set(indexed.entries)
                 update {
                     it.copy(
@@ -174,7 +176,7 @@ class RetroArchSetupCoordinator(
                     )
                 }
             }.onFailure { failure ->
-                update { it.copy(romGrant = "FAILED", message = failure.message ?: failure.javaClass.simpleName) }
+                update { it.copy(romGrant = "FAILED", message = "The selected game folder could not be indexed.") }
             }
         }
     }
@@ -234,6 +236,13 @@ class RetroArchSetupCoordinator(
 
     fun snapshot(): RetroArchView = view.get()
 
+    fun retryGuideLoad(): Boolean {
+        val entry = activeEntry.get() ?: return false
+        if (!activationGate.retry(entry.sourceId)) return false
+        activate(entry)
+        return true
+    }
+
     fun selectSave(documentId: String): Boolean {
         val entry = activeEntry.get() ?: return false
         if (lastSaveCandidates.get().none { it.id == documentId }) return false
@@ -289,6 +298,7 @@ class RetroArchSetupCoordinator(
                 entries.set(indexed.entries)
                 directIndexStore.write(ALL_FILES_INDEX_KEY, indexed.entries)
                 directIndexReady.set(true)
+                activationGate.clearFailure()
                 val readyStatus = StorageSetupStatusPolicy.available(
                     allFilesGranted = true,
                     directIndexReady = true,
@@ -322,7 +332,7 @@ class RetroArchSetupCoordinator(
                         storageGrant = failedStatus.storageGrant,
                         romGrant = failedStatus.romGrant,
                         indexedRoms = entries.get().size,
-                        message = failure.message ?: failure.javaClass.simpleName,
+                        message = "Game discovery could not finish. The folder fallback remains available.",
                     )
                 }
             } finally {
@@ -408,7 +418,8 @@ class RetroArchSetupCoordinator(
                 val active = resolvedEntry != null &&
                     resolvedEntry.sha256 == lastActivatedSha &&
                     runtime.catalogHash() == resolvedEntry.sha256
-                val loading = resolvedEntry?.sourceId == activating.get()
+                val loading = resolvedEntry?.sourceId?.let(activationGate::isLoading) == true
+                val failed = resolvedEntry?.sourceId?.let(activationGate::isFailed) == true
                 activeEntry.set(resolvedEntry)
                 battleMemory.updateSession(
                     connected = connected && active,
@@ -429,6 +440,7 @@ class RetroArchSetupCoordinator(
                             is SessionResolution.Resolved -> when {
                                 active -> "ACTIVE"
                                 loading -> "LOADING"
+                                failed -> "FAILED"
                                 else -> "RESOLVED"
                             }
                             is SessionResolution.Ambiguous -> "AMBIGUOUS"
@@ -437,6 +449,7 @@ class RetroArchSetupCoordinator(
                         message = session.error ?: when {
                             connected && active -> "Opened ${resolvedEntry.sourceName}."
                             connected && loading -> "Opening the SHA-256-verified active catalog…"
+                            connected && failed -> current.message
                             connected && resolution is SessionResolution.Resolved -> "Active content matched; verifying its SHA-256."
                             connected && resolution is SessionResolution.Ambiguous -> "Multiple granted sources match the active content. Select the ROM manually."
                             connected && resolution is SessionResolution.NotFound -> resolution.reason
@@ -456,7 +469,7 @@ class RetroArchSetupCoordinator(
 
     private fun activate(entry: RomIndexEntry) {
         if (entry.sha256 == lastActivatedSha && runtime.catalogHash() == entry.sha256) return
-        if (!activating.compareAndSet(null, entry.sourceId)) return
+        if (!activationGate.tryBegin(entry.sourceId)) return
         update { it.copy(resolution = "LOADING", message = "Verifying the active ROM before opening its catalog…") }
         worker.execute {
             try {
@@ -476,6 +489,7 @@ class RetroArchSetupCoordinator(
                 update { it.copy(resolution = "LOADING", message = "Opening the SHA-256-verified active catalog…") }
                 runtime.load(loaded) { result ->
                     result.onSuccess {
+                        activationGate.finishSuccess(entry.sourceId)
                         lastActivatedSha = entry.sha256
                         update {
                             it.copy(
@@ -484,16 +498,22 @@ class RetroArchSetupCoordinator(
                                 message = "Opened ${entry.sourceName}.",
                             )
                         }
-                    }.onFailure { failure ->
-                        update { it.copy(resolution = "FAILED", message = failure.message ?: failure.javaClass.simpleName) }
-                    }
-                    activating.compareAndSet(entry.sourceId, null)
+                    }.onFailure { failure -> failActivation(entry, failure) }
                 }
+            } catch (failure: OutOfMemoryError) {
+                runCatching { runtime.recordRomSourceLoadFailure(entry.sha256, failure) }
+                failActivation(entry, failure)
             } catch (failure: Exception) {
-                update { it.copy(resolution = "FAILED", message = failure.message ?: failure.javaClass.simpleName) }
-                activating.compareAndSet(entry.sourceId, null)
+                runCatching { runtime.recordRomSourceLoadFailure(entry.sha256, failure) }
+                failActivation(entry, failure)
             }
         }
+    }
+
+    private fun failActivation(entry: RomIndexEntry, failure: Throwable) {
+        val publicFailure = GuideLoadFailure.from(failure)
+        activationGate.finishFailure(entry.sourceId)
+        update { it.copy(resolution = "FAILED", message = publicFailure.message) }
     }
 
     private fun pollSave(entry: RomIndexEntry) {

@@ -477,6 +477,12 @@ class ProductionCompanionRuntime(
         loadInternal(name, rom, null)
     }
 
+    fun recordRomSourceLoadFailure(romSha256: String, failure: Throwable) {
+        performanceRecorder.beginLoad(romSha256, generation = null)
+        performanceRecorder.transitionStage("ROM_SOURCE")
+        performanceRecorder.loadFailed(failure)
+    }
+
     private fun loadInternal(name: String, rom: RomImage, onComplete: ((Result<Unit>) -> Unit)?) {
         if (activeCatalogMatches(rom.sha256)) {
             notifyCompletion(onComplete, Result.success(Unit))

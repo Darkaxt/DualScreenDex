@@ -62,6 +62,10 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
           <span><small>COMPANION</small><strong>{retroArch.connection === 'CONNECTED' ? 'Ready' : 'Waiting for a game'}</strong></span>
         </div>
         <a class="setup-action setup-action-primary" href="dualdex://open/retroarch">OPEN RETROARCH</a>
+        {retroArch.resolution === 'FAILED' && <>
+          <p class="warning-note" role="alert">{retroArch.message ?? 'This game guide could not be opened. You can try again.'}</p>
+          <a class="setup-action setup-action-primary" href="dualdex://guide/retry">RETRY OPENING GAME GUIDE</a>
+        </>}
       </SetupStep>
 
       {retroArch.restartRequired && <p class="setup-message" role="status">Fully restart RetroArch, then return here.</p>}

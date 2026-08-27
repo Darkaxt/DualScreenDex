@@ -62,6 +62,16 @@ describe('RetroArch setup', () => {
     expect(screen.getByText(/Games could not be indexed/i)).toBeTruthy();
   });
 
+  it('offers an explicit guide retry only after a failed activation', () => {
+    const failed = { ...state, retroArch: { ...state.retroArch, resolution: 'FAILED' } };
+    const { rerender } = render(<SetupPage state={failed} send={vi.fn()} />);
+
+    expect(screen.getByRole('link', { name: 'RETRY OPENING GAME GUIDE' }).getAttribute('href')).toBe('dualdex://guide/retry');
+
+    rerender(<SetupPage state={state} send={vi.fn()} />);
+    expect(screen.queryByRole('link', { name: 'RETRY OPENING GAME GUIDE' })).toBeNull();
+  });
+
   it('returns to the previous screen', () => {
     const send = vi.fn();
     render(<SetupPage state={state} send={send} />);

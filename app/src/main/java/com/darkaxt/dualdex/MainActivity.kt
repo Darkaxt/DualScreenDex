@@ -316,6 +316,7 @@ class MainActivity : AppCompatActivity() {
                     NativeSetupRoute.EXPORT_MAPPER -> exportMapper()
                     NativeSetupRoute.EXPORT_PERFORMANCE -> exportPerformanceLog()
                     NativeSetupRoute.EXPORT_COMPATIBILITY -> exportCompatibilityReport()
+                    NativeSetupRoute.RETRY_GUIDE -> application.retroArchSetup?.retryGuideLoad()
                     NativeSetupRoute.SHOW_OVERLAY -> showOverlay()
                     NativeSetupRoute.DOCK_OVERLAY -> {
                         FloatingCompanionService.dock(this)
