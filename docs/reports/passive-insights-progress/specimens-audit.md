@@ -74,3 +74,14 @@ npm run build
 ```
 
 Observed results: report transformer 2/2; affected JVM/Android suites 1,836 tests with 0 failures and 0 errors; browser suite 220/220 across 30 files; production TypeScript/Vite build successful.
+
+## RC72 publication evidence
+
+- Protected workflow: [run 33034605844](https://github.com/Darkaxt/DualScreenDex/actions/runs/33034605844), completed successfully.
+- Public release: [DualDex 1.1.0-rc.72](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.1.0-rc.72), prerelease, not draft.
+- Exact tag commit and published provenance commit: `722d77bcaf9756cc273049d545f127381bf75154`.
+- Public package identity: `com.darkaxt.dualdex`, version name `1.1.0-rc.72`, version code `1010072`.
+- Downloaded APK SHA-256: `A9D99668343DA3AAEA6B6D43CDE4DF27797EC8724B43133AED1BF5411262C635`; exact match with `SHA256SUMS.txt`, GitHub's asset digest, and `provenance.json`.
+- APK signature: one RSA-4096 signer using APK Signature Scheme v3; certificate SHA-256 `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`, matching the repository fingerprint and downloaded release certificate.
+- Downloaded evidence assets: the compatibility report retains 14 controls, 148/178 applicable fields, 77/84 acquisition/integrity sources, and 0 errors; the audit checksum matches the release manifest.
+- No APK was installed or launched.
