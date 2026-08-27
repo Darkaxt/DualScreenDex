@@ -726,7 +726,7 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 - Modify: `companion-web/src/layoutStyles.test.ts`
 
 - [ ] **Step 1: Add RED component and layout tests for shared header/separator, page/paper/grid/panel surfaces, card geometry, semantic typography tiers, controls, icons, focus, and touch targets.**
-- [ ] **Step 2: Replace the Trainer `CARD`/`PROGRESS` full-width destination row with compact theme-consistent top-right icon buttons; leave at most one horizontal Progress section row and preserve selection, accessibility, and Back-stack state.**
+- [ ] **Step 2: Replace the Trainer `CARD`/`PROGRESS` full-width destination row with compact theme-consistent top-right icon buttons: retain the established card icon for Trainer Card and use the conventional trophy icon for Challenges/Progress; leave at most one horizontal Progress section row and preserve selection, accessibility, and Back-stack state.**
 - [ ] **Step 3: Remove route-local legacy olive/forest, fixed yellow/white, one-off font, missing-pattern, and mismatched shadow/border rules by consuming shared tokens and primitives. Do not change feature semantics, data authority, disclosure, map behavior, or calculations.**
 - [ ] **Step 4: Normalize spacing, vertical centering, content use, icon containers, empty/unavailable states, and exactly one intentional scroll owner per route at every required font scale.**
 - [ ] **Step 5: Run component, navigation, and layout suites GREEN; commit by coherent visual contract rather than page-by-page cosmetic churn.**

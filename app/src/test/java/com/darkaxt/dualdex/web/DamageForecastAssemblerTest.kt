@@ -71,7 +71,7 @@ class DamageForecastAssemblerTest {
     @Test
     fun `late stable attacker and target changes replace one forecast without stale flicker`() {
         val memoizer = DamageForecastMemoizer()
-        val firstInput = DamageForecastAssembler.input(sample(owner = 0, target = 0), catalog(), KnowledgeMode.DISCOVERED, formula())
+        val firstInput = DamageForecastAssembler.input(sample(owner = 2, target = 0), catalog(), KnowledgeMode.DISCOVERED, formula())
         val changedInput = DamageForecastAssembler.input(sample(owner = 2, target = 1), catalog(), KnowledgeMode.DISCOVERED, formula())
 
         val first = memoizer.forecast(firstInput)
