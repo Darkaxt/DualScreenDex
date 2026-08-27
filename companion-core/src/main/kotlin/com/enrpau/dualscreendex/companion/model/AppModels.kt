@@ -4,6 +4,7 @@ import com.darkaxt.dualdex.save.OwnedIndividual
 import com.darkaxt.dualdex.save.BagPocket
 import com.darkaxt.dualdex.save.BagPocketSnapshot
 import com.darkaxt.dualdex.save.TrainerIdentity
+import com.enrpau.dualscreendex.companion.battle.DamageForecast
 
 enum class KnowledgeMode { DISCOVERED, ORGANIC, HIDDEN }
 enum class AppScreen { POKEDEX, DETAIL, BATTLE, TRAINER, PARTY, SETTINGS, SETUP }
@@ -137,6 +138,7 @@ data class BattleState(
     val capabilities: Map<String, String> = emptyMap(),
     val encounterKind: BattleEncounterKind = BattleEncounterKind.UNKNOWN,
     val rarityUsable: Boolean = false,
+    val damageForecast: DamageForecast = DamageForecast.Absent("Not enough battle information yet."),
 )
 
 data class CatalogLoadingState(

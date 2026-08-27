@@ -37,6 +37,14 @@ class Gen3BattleLayoutResolverTest {
         assertEquals(11, resolved.sample.selectedMoveId)
         assertEquals(TargetMode.AUTOMATIC, resolved.sample.target.mode)
         assertEquals(0, resolved.sample.target.opponentIndex)
+        val player = resolved.sample.battlers.single { it.position and 1 == 0 }
+        assertEquals(22, player.attack)
+        assertEquals(20, player.defense)
+        assertEquals(24, player.specialAttack)
+        assertEquals(21, player.specialDefense)
+        assertEquals(18, player.speed)
+        assertEquals(42, player.heldItemId)
+        assertEquals(0x10L, player.status)
     }
 
     @Test
@@ -191,7 +199,9 @@ class Gen3BattleLayoutResolverTest {
         putU16(bytes, offset + 0x28, 15)
         bytes[offset + 0x2A] = mon.level.toByte()
         putU16(bytes, offset + 0x2C, 15)
+        putU16(bytes, offset + 0x2E, 42)
         putU32(bytes, offset + 0x48, mon.personality)
+        putU32(bytes, offset + 0x50, 0x10)
     }
 
     private fun mon(species: Int, level: Int, type1: Int, type2: Int, moves: IntArray, pp: IntArray, personality: Int = species) =

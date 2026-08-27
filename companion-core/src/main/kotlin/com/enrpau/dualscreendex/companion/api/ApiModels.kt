@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.companion.api
 
 import com.enrpau.dualscreendex.companion.battle.RarityEvaluator
+import com.enrpau.dualscreendex.companion.battle.DamageForecast
 import com.enrpau.dualscreendex.companion.analysis.PartyAnalysis
 import com.enrpau.dualscreendex.companion.analysis.PartyAnalyzer
 import com.enrpau.dualscreendex.companion.knowledge.KnowledgePolicy
@@ -601,6 +602,20 @@ data class BattleView(
     val encounterKind: String,
     val effectiveness: String?,
     val effectivenessKnown: Boolean,
+    val damageForecast: DamageForecastView? = null,
+)
+data class DamageForecastView(
+    val confidence: String,
+    val minimumHp: Int,
+    val maximumHp: Int,
+    val minimumTargetPercent: Double,
+    val maximumTargetPercent: Double,
+    val minimumHitsToKnockOut: Int,
+    val maximumHitsToKnockOut: Int,
+    val accuracyPercent: Int,
+    val effectivenessPercent: Int,
+    val conditions: List<String>,
+    val uncertainty: String?,
 )
 data class OpponentView(
     val speciesId: Int,
@@ -1046,6 +1061,21 @@ object ApiViewBuilder {
                     encounterKind = battle.encounterKind.name,
                     effectiveness = knownEffectiveness?.name,
                     effectivenessKnown = knownEffectiveness != null,
+                    damageForecast = (battle.damageForecast as? DamageForecast.Available)?.let { forecast ->
+                        DamageForecastView(
+                            confidence = forecast.confidence.name,
+                            minimumHp = forecast.damage.minimum,
+                            maximumHp = forecast.damage.maximum,
+                            minimumTargetPercent = forecast.targetHpPercent.minimum,
+                            maximumTargetPercent = forecast.targetHpPercent.maximum,
+                            minimumHitsToKnockOut = forecast.hitsToKnockOut.minimum,
+                            maximumHitsToKnockOut = forecast.hitsToKnockOut.maximum,
+                            accuracyPercent = forecast.accuracyPercent,
+                            effectivenessPercent = forecast.effectivenessPercent,
+                            conditions = forecast.conditionLabels,
+                            uncertainty = forecast.uncertainty,
+                        )
+                    },
                 )
             },
             snapshot.catalogReady,

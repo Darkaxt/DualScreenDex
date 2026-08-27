@@ -60,6 +60,13 @@ data class BattleMonSnapshot(
     val typeIds: List<Int>,
     val abilityId: Int,
     val personality: Long,
+    val attack: Int? = null,
+    val defense: Int? = null,
+    val speed: Int? = null,
+    val specialAttack: Int? = null,
+    val specialDefense: Int? = null,
+    val status: Long? = null,
+    val heldItemId: Int? = null,
 )
 
 data class BattleMemorySample(

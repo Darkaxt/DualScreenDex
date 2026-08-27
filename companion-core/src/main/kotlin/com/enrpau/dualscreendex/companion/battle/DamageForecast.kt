@@ -103,6 +103,7 @@ data class ForecastBattler(
     val status: ForecastStatus,
     val abilityId: Int?,
     val heldItemId: Int?,
+    val battlerIndex: Int? = null,
 ) {
     init {
         require(level > 0) { "battler level must be positive" }
@@ -113,6 +114,7 @@ data class ForecastBattler(
         require(typeIds.isNotEmpty() && typeIds.all { it >= 0 }) { "battler types are invalid" }
         require(abilityId == null || abilityId > 0) { "ability ID must be positive" }
         require(heldItemId == null || heldItemId > 0) { "held item ID must be positive" }
+        require(battlerIndex == null || battlerIndex >= 0) { "battler index must not be negative" }
     }
 }
 

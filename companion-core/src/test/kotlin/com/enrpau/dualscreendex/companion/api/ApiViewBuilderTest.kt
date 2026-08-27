@@ -14,6 +14,10 @@ import com.enrpau.dualscreendex.companion.model.LiveMapPosition
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
 import com.enrpau.dualscreendex.companion.model.TrainerCardState
+import com.enrpau.dualscreendex.companion.battle.DamageForecast
+import com.enrpau.dualscreendex.companion.battle.DamageForecastConfidence
+import com.enrpau.dualscreendex.companion.battle.DecimalRange
+import com.enrpau.dualscreendex.companion.battle.InclusiveRange
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicCondition
@@ -65,6 +69,51 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ApiViewBuilderTest {
+    @Test
+    fun battleForecastProjectsOnlyPlayerFacingCalculatedValues() {
+        val snapshot = AppSnapshot(
+            battle = BattleState(
+                opponents = listOf(OpponentState(1, 12, moveHistory = emptyList())),
+                damageForecast = DamageForecast.Available(
+                    confidence = DamageForecastConfidence.BOUNDED,
+                    damage = InclusiveRange(35, 42),
+                    targetHpPercent = DecimalRange(43.75, 52.5),
+                    hitsToKnockOut = InclusiveRange(2, 3),
+                    accuracyPercent = 95,
+                    effectivenessPercent = 200,
+                    conditionLabels = listOf("Same-type bonus", "Rain may change the result"),
+                    uncertainty = "Weather could change before the move lands.",
+                ),
+            ),
+        )
+
+        val forecast = ApiViewBuilder.state(snapshot, catalog = null).battle!!.damageForecast!!
+
+        assertEquals("BOUNDED", forecast.confidence)
+        assertEquals(35, forecast.minimumHp)
+        assertEquals(42, forecast.maximumHp)
+        assertEquals(43.75, forecast.minimumTargetPercent, 0.0)
+        assertEquals(52.5, forecast.maximumTargetPercent, 0.0)
+        assertEquals(2, forecast.minimumHitsToKnockOut)
+        assertEquals(3, forecast.maximumHitsToKnockOut)
+        assertEquals(95, forecast.accuracyPercent)
+        assertEquals(200, forecast.effectivenessPercent)
+        assertEquals(listOf("Same-type bonus", "Rain may change the result"), forecast.conditions)
+        assertEquals("Weather could change before the move lands.", forecast.uncertainty)
+    }
+
+    @Test
+    fun unavailableBattleForecastIsOmittedInsteadOfExposingAnInternalReason() {
+        val snapshot = AppSnapshot(
+            battle = BattleState(
+                opponents = listOf(OpponentState(1, 12, moveHistory = emptyList())),
+                damageForecast = DamageForecast.Absent("Not enough battle information yet."),
+            ),
+        )
+
+        assertNull(ApiViewBuilder.state(snapshot, catalog = null).battle!!.damageForecast)
+    }
+
     @Test
     fun stateProjectsPartyAnalysisFromTheCurrentPartyAndActiveCatalogOnly() {
         val catalog = ParsedCatalog(

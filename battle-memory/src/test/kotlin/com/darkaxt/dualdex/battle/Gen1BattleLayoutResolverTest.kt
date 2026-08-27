@@ -96,6 +96,9 @@ class Gen1BattleLayoutResolverTest {
         bytes[offset + 13] = dv2.toByte()
         bytes[offset + 14] = level.toByte()
         putBe16(bytes, offset + 15, maxHp)
+        listOf(18, 17, 16, 15).forEachIndexed { index, stat ->
+            putBe16(bytes, offset + 17 + index * 2, stat)
+        }
         pp.forEachIndexed { index, value -> bytes[offset + 25 + index] = value.toByte() }
     }
 
