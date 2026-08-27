@@ -23,6 +23,11 @@ class ChallengeEngineTest {
         assertTrue(ChallengePredicate.Compare("money", NumericComparison.GREATER_THAN, 100).evaluate(context).complete)
         assertTrue(ChallengePredicate.SetContains("types", "FIRE").evaluate(context).complete)
         assertTrue(ChallengePredicate.SetSizeAtLeast("types", 2).evaluate(context).complete)
+        assertTrue(
+            ChallengePredicate.SetContainsAll("types", setOf("FIRE", "WATER"))
+                .evaluate(context)
+                .complete,
+        )
         assertTrue(ChallengePredicate.Ordered("areas", listOf("HOME", "TOWN")).evaluate(context).complete)
         assertTrue(ChallengePredicate.EpochAtLeast("battle", 4).evaluate(context).complete)
         assertTrue(ChallengePredicate.PreviousCompare("party.size", NumericComparison.GREATER_THAN).evaluate(context).complete)
@@ -34,6 +39,39 @@ class ChallengeEngineTest {
                 ),
             ).evaluate(context).complete,
         )
+    }
+
+    @Test
+    fun `catalog roles adapters and organic knowledge fail closed independently`() {
+        val engine = ChallengeEngine()
+        val definitions = listOf(
+            definition("badge", setOf("PROGRESSION_FACTS")).copy(
+                requiredCatalogEntities = setOf("BADGE_SEQUENCE"),
+            ),
+            definition("leader", setOf("BATTLE_EVENTS")).copy(
+                requiredCatalogEntities = setOf("GYM_LEADER:leader-1"),
+            ),
+            definition("minigame", setOf("MINIGAME_ADAPTER")).copy(
+                requiredAdapters = setOf("MINIGAME:adapter-1"),
+            ),
+            definition("area", setOf("COMPLETION_FACTS")).copy(
+                requiredCatalogEntities = setOf("AREA_COLLECTIBLES:area-1"),
+                requiredKnowledgeEntities = setOf("AREA:area-1"),
+            ),
+        )
+
+        val context = ChallengeContext(
+            metrics = mapOf("captures" to 1),
+            capabilities = setOf("PROGRESSION_FACTS", "BATTLE_EVENTS", "MINIGAME_ADAPTER", "COMPLETION_FACTS"),
+            resolvedCatalogEntities = setOf("BADGE_SEQUENCE", "AREA_COLLECTIBLES:area-1"),
+            provenAdapters = emptySet(),
+            knownCatalogEntities = emptySet(),
+            organicMode = true,
+        )
+
+        val evaluation = engine.evaluate(definitions, context, emptyMap(), nowEpochMs = 500, saveFingerprint = null)
+
+        assertEquals(listOf("badge"), evaluation.visible.map { it.definition.key })
     }
 
     @Test

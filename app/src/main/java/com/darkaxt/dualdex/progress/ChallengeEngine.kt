@@ -49,5 +49,8 @@ class ChallengeEngine {
     private fun applicable(definition: ChallengeDefinition, context: ChallengeContext): Boolean =
         context.catalogEntitiesResolved &&
             definition.requiredCapabilities.all { it in context.capabilities && it !in context.unobservableCapabilities } &&
-            (!context.organicMode || definition.organicSafe)
+            definition.requiredCatalogEntities.all(context.resolvedCatalogEntities::contains) &&
+            definition.requiredAdapters.all(context.provenAdapters::contains) &&
+            (!context.organicMode || definition.organicSafe &&
+                definition.requiredKnowledgeEntities.all(context.knownCatalogEntities::contains))
 }

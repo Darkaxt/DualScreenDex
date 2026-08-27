@@ -14,6 +14,9 @@ data class ChallengeContext(
     val currentValues: Map<String, Number> = emptyMap(),
     val capabilities: Set<String> = emptySet(),
     val unobservableCapabilities: Set<String> = emptySet(),
+    val resolvedCatalogEntities: Set<String> = emptySet(),
+    val knownCatalogEntities: Set<String> = emptySet(),
+    val provenAdapters: Set<String> = emptySet(),
     val catalogEntitiesResolved: Boolean = true,
     val organicMode: Boolean = true,
 )
@@ -80,6 +83,20 @@ sealed interface ChallengePredicate {
         override fun dependencies() = setOf("set:$set")
     }
 
+    data class SetContainsAll(val set: String, val required: Set<String>) : ChallengePredicate {
+        init {
+            require(required.isNotEmpty())
+        }
+
+        override fun evaluate(context: ChallengeContext): PredicateEvaluation {
+            val actual = context.sets[set].orEmpty()
+            val current = required.count(actual::contains).toLong()
+            return PredicateEvaluation(current == required.size.toLong(), current, required.size.toLong())
+        }
+
+        override fun dependencies() = setOf("set:$set")
+    }
+
     data class Ordered(val sequence: String, val required: List<String>) : ChallengePredicate {
         override fun evaluate(context: ChallengeContext): PredicateEvaluation {
             val actual = context.sequences[sequence].orEmpty()
@@ -125,6 +142,9 @@ data class ChallengeDefinition(
     val description: String,
     val category: ChallengeCategory,
     val requiredCapabilities: Set<String>,
+    val requiredCatalogEntities: Set<String> = emptySet(),
+    val requiredKnowledgeEntities: Set<String> = emptySet(),
+    val requiredAdapters: Set<String> = emptySet(),
     val organicSafe: Boolean,
     val predicate: ChallengePredicate,
     val sourceInspiration: String = "portable-pattern",
@@ -141,4 +161,3 @@ data class ChallengeEvaluation(
     val visible: List<ChallengeResult>,
     val states: Map<String, ChallengeJournalState>,
 )
-
