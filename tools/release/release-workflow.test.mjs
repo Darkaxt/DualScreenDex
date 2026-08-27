@@ -95,6 +95,19 @@ test("requires the parser cache revision that rebuilds hybrid move output", () =
   assert.match(catalogSchema, /const val parserSchemaVersion = 43\b/);
 });
 
+test("runs every included JVM and app unit suite in CI", () => {
+  const unitTestStep = continuousIntegrationWorkflow.slice(
+    continuousIntegrationWorkflow.indexOf("      - name: Run Kotlin tests"),
+    continuousIntegrationWorkflow.indexOf("      - name: Test web UI"),
+  );
+
+  assert.match(
+    unitTestStep,
+    /gradlew\.bat verifySecureBuildDependencies test :app:testDebugUnitTest --stacktrace/,
+  );
+  assert.doesNotMatch(unitTestStep, /:parser-core:test/);
+});
+
 test("runs Android deployment safety checks in CI and before release signing", () => {
   const command = /pwsh -File tools\/android\/Test-DualDexAndroidTools\.ps1/;
 
