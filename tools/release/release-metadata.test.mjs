@@ -62,7 +62,7 @@ function runMetadata(tag, finalAuthorization, existingTags = []) {
   }
 }
 
-test("derives a monotonic, public prerelease identity for an RC", () => {
+test("derives a monotonic, nonpublic draft identity for an RC", () => {
   const result = runMetadata("v1.1.0-rc.4");
 
   assert.equal(result.status, 0, result.stderr);
@@ -71,7 +71,7 @@ test("derives a monotonic, public prerelease identity for an RC", () => {
     version_name: "1.1.0-rc.4",
     version_code: "1010004",
     release_kind: "candidate",
-    draft: "false",
+    draft: "true",
     prerelease: "true",
     application_id: "com.darkaxt.dualdex",
     certificate_sha256: "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",

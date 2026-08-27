@@ -74,3 +74,7 @@ jobs:
 
       - name: Verify tracked-file whitespace
         run: git diff --check
+
+  packaged-android:
+    name: Packaged Android acceptance
+    uses: ./.github/workflows/packaged-android.yml

@@ -62,11 +62,11 @@ class RetroArchSetupCoordinator(
         File(context.filesDir, "catalogs"),
         AndroidCatalogDatabaseFactory,
     ),
+    private val sharedStorage: SharedStorageGateway = SharedStorageGateway.android(context),
 ) : AutoCloseable {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val indexStore = RomIndexStore(File(context.filesDir, "retroarch/rom-index.json"))
     private val directIndexStore = RomIndexStore(File(context.filesDir, "retroarch/direct-rom-index.json"))
-    private val sharedStorage = SharedStorageGateway.android(context)
     private val saveMonitor = SavePollingMonitor(
         SaveAssociationStore(File(context.filesDir, "retroarch/save-associations.json")),
         saveSnapshotRepository,

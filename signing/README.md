@@ -18,4 +18,6 @@ The encrypted keystore and credentials are held as GitHub environment secrets:
 
 The GitHub environment is the release-signing authority. There is no user recovery phrase and no local production-signing path. Never commit a keystore, properties file, or credential export.
 
-The release workflow must be dispatched from a new `v1.*` source tag. It runs all tests and creates an unsigned APK before entering the protected environment, reconstructs the keystore only in that protected job, verifies the pinned fingerprint, signs and verifies the APK, and creates a new GitHub Release without replacing an existing one. RC releases remain draft prereleases until the downloaded artifact passes the dedicated AVD and physical Thor gates.
+The release workflow must be dispatched from a new `v1.*` source tag. It runs all tests and creates an unsigned APK before entering the protected environment, reconstructs the keystore only in that protected job, verifies the pinned fingerprint, signs and verifies the APK, and creates a new GitHub Release without replacing an existing one. RC releases are always draft prereleases.
+
+After the required packaged Android and physical Thor gates pass, or the user authorizes the documented passive-catalog substitution, add the exact-hash record described in `release/candidate-promotions/README.md`. The separate protected promotion workflow validates the existing signed asset and makes that same release public without rebuilding, resigning, uploading, or replacing its APK.

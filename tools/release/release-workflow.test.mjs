@@ -10,6 +10,18 @@ const workflow = readFileSync(
   join(repositoryRoot, ".github", "workflows", "release.yml"),
   "utf8",
 );
+const promotionWorkflow = readFileSync(
+  join(repositoryRoot, ".github", "workflows", "promote-candidate.yml"),
+  "utf8",
+);
+const packagedAndroidWorkflow = readFileSync(
+  join(repositoryRoot, ".github", "workflows", "packaged-android.yml"),
+  "utf8",
+);
+const releaseMetadata = readFileSync(
+  join(repositoryRoot, "tools", "release", "derive-release-metadata.mjs"),
+  "utf8",
+);
 const continuousIntegrationWorkflow = readFileSync(
   join(repositoryRoot, ".github", "workflows", "ci.yml"),
   "utf8",
@@ -23,6 +35,58 @@ const catalogSchema = readFileSync(
   "utf8",
 );
 
+test("keeps candidates draft until protected exact-artifact promotion", () => {
+  assert.match(releaseMetadata, /draft:\s*String\(parsedTag\.isCandidate\)/);
+  assert.match(workflow, /if \[\[ "\$DRAFT" == "true" \]\]; then flags\+=\(--draft\); fi/);
+  assert.match(promotionWorkflow, /environment:\s*release-promotion/);
+  assert.match(promotionWorkflow, /permissions:\s*\n\s*contents:\s*write\s*\n\s*actions:\s*read/);
+  assert.match(promotionWorkflow, /release\/candidate-promotions\/\$RELEASE_TAG\.json/);
+  assert.match(promotionWorkflow, /validate-candidate-promotion\.mjs/);
+  assert.match(promotionWorkflow, /apksigner verify --verbose --print-certs/);
+  assert.match(promotionWorkflow, /--apk-signer-verification/);
+  assert.match(promotionWorkflow, /actions\/runs\/\$run_id/);
+  assert.match(promotionWorkflow, /\.conclusion == "success"/);
+  assert.match(promotionWorkflow, /gh release download/);
+  assert.match(promotionWorkflow, /initial_apk_asset_id/);
+  assert.match(promotionWorkflow, /current_apk_asset_id/);
+  assert.match(promotionWorkflow, /-F draft=false/);
+  assert.match(promotionWorkflow, /-F prerelease=true/);
+});
+
+test("runs reusable installed-app acceptance before signing or promotion", () => {
+  assert.match(gradleBuild, /localDevices\s*\{[\s\S]*create\("qaApi35"\)/);
+  assert.match(gradleBuild, /testInstrumentationRunnerArguments\["useTestStorageService"\]\s*=\s*"true"/);
+  assert.match(packagedAndroidWorkflow, /workflow_call:/);
+  assert.match(packagedAndroidWorkflow, /workflow_dispatch:/);
+  assert.match(packagedAndroidWorkflow, /:app:qaApi35DebugAndroidTest --stacktrace/);
+  assert.match(packagedAndroidWorkflow, /managed_device_android_test_additional_output/);
+  assert.match(packagedAndroidWorkflow, /androidTest-results\/managedDevice/);
+  assert.match(packagedAndroidWorkflow, /dualdex-packaged-android-evidence/);
+  assert.ok(
+    packagedAndroidWorkflow.indexOf(":app:qaApi35DebugAndroidTest") <
+      packagedAndroidWorkflow.indexOf("dualdex-packaged-android-evidence"),
+    "packaged evidence must be emitted only after the managed-device task",
+  );
+  assert.match(continuousIntegrationWorkflow, /uses:\s*\.\/\.github\/workflows\/packaged-android\.yml/);
+  assert.match(workflow, /packaged-android-acceptance:[\s\S]*uses:\s*\.\/\.github\/workflows\/packaged-android\.yml/);
+  assert.match(workflow, /needs:\s*\[verify-and-build, packaged-android-acceptance\]/);
+});
+
+test("promotion verifies immutable packaged evidence from the pinned workflow", () => {
+  assert.match(promotionWorkflow, /\.path == \$path/);
+  assert.match(promotionWorkflow, /\.github\/workflows\/release\.yml/);
+  assert.match(promotionWorkflow, /dualdex-packaged-android-evidence/);
+  assert.match(promotionWorkflow, /packagedAndroidEvidenceArtifactDigest/);
+  assert.match(promotionWorkflow, /actions\/artifacts\/\$artifact_id\/zip/);
+  assert.match(promotionWorkflow, /qaApi35DebugAndroidTest/);
+});
+
+test("promotion never rebuilds, resigns, uploads, or replaces the candidate APK", () => {
+  assert.doesNotMatch(promotionWorkflow, /gradlew|assemble|apksigner sign|zipalign/);
+  assert.doesNotMatch(promotionWorkflow, /secrets\.|gh release create|gh release upload/);
+  assert.doesNotMatch(promotionWorkflow, /actions\/upload-artifact/);
+});
+
 test("keeps every production signing secret inside the protected signing job", () => {
   const signingJob = workflow.indexOf("  sign-and-publish:");
   const firstSecret = workflow.indexOf("${{ secrets.");
@@ -30,7 +94,7 @@ test("keeps every production signing secret inside the protected signing job", (
   assert.notEqual(signingJob, -1, "missing sign-and-publish job");
   assert.ok(firstSecret > signingJob, "a signing secret is referenced before the protected job");
   assert.match(workflow.slice(signingJob), /environment:\s*release-signing/);
-  assert.match(workflow.slice(signingJob), /needs:\s*verify-and-build/);
+  assert.match(workflow.slice(signingJob), /needs:\s*\[verify-and-build, packaged-android-acceptance\]/);
 });
 
 test("tests and builds the unsigned APK before entering the signing environment", () => {
@@ -272,12 +336,15 @@ test("pins every CI and release action to an immutable commit", () => {
   for (const [name, source] of [
     ["CI", continuousIntegrationWorkflow],
     ["release", workflow],
+    ["promotion", promotionWorkflow],
+    ["packaged Android", packagedAndroidWorkflow],
   ]) {
     const actionReferences = [...source.matchAll(/uses:\s*([^\s#]+)/g)].map(
       (match) => match[1],
     );
     assert.ok(actionReferences.length > 0);
     for (const reference of actionReferences) {
+      if (reference.startsWith("./")) continue;
       assert.match(reference, /@[a-f0-9]{40}$/, `${name} floating action reference: ${reference}`);
     }
   }

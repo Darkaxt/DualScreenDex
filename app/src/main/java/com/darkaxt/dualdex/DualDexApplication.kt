@@ -24,6 +24,7 @@ import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
 import com.darkaxt.dualdex.settings.SettingsRepository
+import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.darkaxt.dualdex.mapper.MapperSessionStore
 import com.darkaxt.dualdex.mapper.MemoryMapperCoordinator
 import com.darkaxt.dualdex.overlay.OverlaySizeStore
@@ -40,7 +41,7 @@ import java.io.FileNotFoundException
 import java.io.File
 import java.lang.ref.WeakReference
 
-class DualDexApplication : Application() {
+open class DualDexApplication : Application() {
     @Volatile var loopbackServer: AndroidLoopbackServer? = null
         private set
     @Volatile var startupFailure: Throwable? = null
@@ -134,6 +135,8 @@ class DualDexApplication : Application() {
         super.onCreate()
         startLoopback()
     }
+
+    protected open fun sharedStorageGateway(): SharedStorageGateway = SharedStorageGateway.android(this)
 
     @Synchronized
     fun startLoopback(): Boolean {
@@ -282,6 +285,7 @@ class DualDexApplication : Application() {
                     playthroughJournals,
                 ),
                 saveSnapshotRepository = saveSnapshots,
+                sharedStorage = sharedStorageGateway(),
             )
             mapperCandidate = MemoryMapperCoordinator(
                 MapperSessionStore(File(filesDir, "memory-mapper")), runtime::retroArchState,

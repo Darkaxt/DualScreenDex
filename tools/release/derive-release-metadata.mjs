@@ -168,7 +168,7 @@ export function deriveReleaseMetadata({
     version_name: parsedTag.releaseVersionName,
     version_code: String(parsedTag.versionCode),
     release_kind: parsedTag.isCandidate ? "candidate" : "final",
-    draft: "false",
+    draft: String(parsedTag.isCandidate),
     prerelease: String(parsedTag.isCandidate),
     application_id: EXPECTED_APPLICATION_ID,
     certificate_sha256: certificateSha256,

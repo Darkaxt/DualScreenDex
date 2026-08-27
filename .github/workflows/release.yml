@@ -281,8 +281,12 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  packaged-android-acceptance:
+    name: Packaged Android acceptance
+    uses: ./.github/workflows/packaged-android.yml
+
   sign-and-publish:
-    needs: verify-and-build
+    needs: [verify-and-build, packaged-android-acceptance]
     runs-on: ubuntu-latest
     environment: release-signing
     permissions:

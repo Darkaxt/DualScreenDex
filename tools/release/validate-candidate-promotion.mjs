@@ -1,0 +1,252 @@
+import { createHash } from "node:crypto";
+import { basename } from "node:path";
+import { pathToFileURL } from "node:url";
+import { readFileSync } from "node:fs";
+import process from "node:process";
+
+const EXPECTED_APPLICATION_ID = "com.darkaxt.dualdex";
+
+function parseArguments(argumentsList) {
+  const parsed = {};
+  for (let index = 0; index < argumentsList.length; index += 2) {
+    const key = argumentsList[index];
+    const value = argumentsList[index + 1];
+    if (!key?.startsWith("--") || value === undefined) {
+      throw new Error(`Invalid argument list near ${key ?? "<end>"}`);
+    }
+    parsed[key.slice(2)] = value;
+  }
+  return parsed;
+}
+
+function requireArgument(argumentsMap, name) {
+  const value = argumentsMap[name];
+  if (!value) throw new Error(`Required argument --${name} is missing`);
+  return value;
+}
+
+function requireJson(path, description) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (failure) {
+    throw new Error(`${description} could not be read: ${failure.message}`);
+  }
+}
+
+function requireCondition(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+function normalizeSha256(value, description) {
+  const normalized = String(value ?? "")
+    .replaceAll(":", "")
+    .replaceAll(/\s/g, "")
+    .toUpperCase();
+  if (!/^[A-F0-9]{64}$/.test(normalized)) {
+    throw new Error(`${description} is not a SHA-256 fingerprint`);
+  }
+  return normalized;
+}
+
+function fileSha256(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex").toUpperCase();
+}
+
+function verifiedApkSigner(path) {
+  const verification = readFileSync(path, "utf8");
+  const match = /^(?:Signer #[0-9]+|V[0-9.]+ Signer):? certificate SHA-256 digest: ([A-Fa-f0-9:]{64,95})$/m.exec(
+    verification,
+  );
+  requireCondition(match != null, "APK signer verification did not report a certificate SHA-256");
+  return normalizeSha256(match[1], "Cryptographically verified APK signer");
+}
+
+function checksumFor(checksumsPath, assetName) {
+  const matches = readFileSync(checksumsPath, "utf8")
+    .split(/\r?\n/)
+    .map((line) => /^([A-Fa-f0-9]{64}) [ *](.+)$/.exec(line))
+    .filter((match) => match?.[2] === assetName);
+  requireCondition(matches.length === 1, `Checksum manifest must name ${assetName} exactly once`);
+  return normalizeSha256(matches[0][1], "Checksum-manifest APK hash");
+}
+
+function isWorkflowRunUrl(value, repository) {
+  try {
+    const url = new URL(value);
+    const prefix = `/${repository}/actions/runs/`;
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "github.com" &&
+      url.username === "" &&
+      url.password === "" &&
+      url.search === "" &&
+      url.hash === "" &&
+      url.pathname.startsWith(prefix) &&
+      /^[1-9]\d*$/.test(url.pathname.slice(prefix.length))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function validatePackagedAndroidAndThor(
+  record,
+  repository,
+  artifactIdentity,
+) {
+  requireCondition(
+    record.packagedAndroidValidated === true &&
+      isWorkflowRunUrl(record.packagedAndroidWorkflowRunUrl, repository) &&
+      /^sha256:[A-Fa-f0-9]{64}$/.test(
+        record.packagedAndroidEvidenceArtifactDigest ?? "",
+      ),
+    "Packaged Android validation requires a successful workflow-run URL",
+  );
+  const thor = record.thorValidationRecord;
+  requireCondition(
+    record.thorValidated === true &&
+      thor?.status === "PASSED" &&
+      thor.candidateTag === artifactIdentity.candidateTag &&
+      normalizeSha256(thor.apkSha256, "Thor-validated APK hash") ===
+        artifactIdentity.apkSha256 &&
+      normalizeSha256(thor.validatedSignerSha256, "Thor-validated signer") ===
+        artifactIdentity.certificateSha256 &&
+      thor.checklistVersion === 1,
+    "Thor validation must identify the exact candidate artifact and checklist",
+  );
+}
+
+function validateAutomatedPassiveCatalog(record, repository) {
+  const complete =
+    record.userAuthorizedAutomatedPromotion === true &&
+    record.gameplayRuntimeChanged === false &&
+    Number.isInteger(record.exactRomControls) &&
+    record.exactRomControls >= 5 &&
+    record.catalogPersistenceValidated === true &&
+    record.runtimeApiValidated === true &&
+    record.webPresentationValidated === true &&
+    isWorkflowRunUrl(record.automatedValidationWorkflowRunUrl, repository) &&
+    /^docs\/reports\/candidate-promotions\/[A-Za-z0-9._-]+\.json$/.test(
+      record.automatedEvidencePath ?? "",
+    ) &&
+    /^[A-Fa-f0-9]{64}$/.test(record.automatedEvidenceSha256 ?? "");
+  requireCondition(
+    complete,
+    "Automated passive-catalog promotion requires complete authorized substitution evidence",
+  );
+}
+
+export function validateCandidatePromotion({
+  record,
+  provenance,
+  checksumsPath,
+  apkPath,
+  certificateFingerprint,
+  apkSignerVerificationPath,
+}) {
+  requireCondition(record?.schema === 1, "Promotion record schema is unsupported");
+  requireCondition(
+    /^v\d+\.\d+\.\d+-rc\.[1-9]\d*(?:-hotfix\.[1-9]\d*)?$/.test(record.candidateTag ?? ""),
+    "Promotion record does not name a release candidate",
+  );
+  requireCondition(provenance?.schema === 1, "Candidate provenance schema is unsupported");
+  requireCondition(provenance.releaseKind === "candidate", "Provenance is not for a candidate");
+  requireCondition(
+    provenance.tag === record.candidateTag,
+    "Promotion record and provenance candidate tags disagree",
+  );
+  requireCondition(
+    provenance.applicationId === EXPECTED_APPLICATION_ID,
+    "Candidate provenance has an unexpected application ID",
+  );
+
+  const actualApkSha256 = fileSha256(apkPath);
+  const recordApkSha256 = normalizeSha256(record.apkSha256, "Promotion-record APK hash");
+  const provenanceApkSha256 = normalizeSha256(provenance.apkSha256, "Provenance APK hash");
+  const manifestApkSha256 = checksumFor(checksumsPath, basename(apkPath));
+  requireCondition(
+    [recordApkSha256, provenanceApkSha256, manifestApkSha256].every(
+      (hash) => hash === actualApkSha256,
+    ),
+    "APK hash does not match the promotion record, provenance, and checksum manifest",
+  );
+
+  const pinnedCertificateSha256 = normalizeSha256(
+    certificateFingerprint,
+    "Pinned certificate",
+  );
+  const recordCertificateSha256 = normalizeSha256(
+    record.validatedSignerSha256,
+    "Promotion-record signer",
+  );
+  const provenanceCertificateSha256 = normalizeSha256(
+    provenance.certificateSha256,
+    "Provenance signer",
+  );
+  const actualCertificateSha256 = verifiedApkSigner(apkSignerVerificationPath);
+  requireCondition(
+    actualCertificateSha256 === pinnedCertificateSha256 &&
+      recordCertificateSha256 === pinnedCertificateSha256 &&
+      provenanceCertificateSha256 === pinnedCertificateSha256,
+    "APK signer does not match the pinned production certificate",
+  );
+
+  const expectedReleaseRunUrl =
+    `https://github.com/${provenance.repository}/actions/runs/${provenance.workflowRunId}`;
+  requireCondition(
+    record.releaseWorkflowRunUrl === expectedReleaseRunUrl,
+    "Promotion record does not identify the signing workflow run from provenance",
+  );
+  requireCondition(record.releaseCiValidated === true, "Release CI validation is required");
+
+  const artifactIdentity = {
+    candidateTag: record.candidateTag,
+    apkSha256: actualApkSha256,
+    certificateSha256: pinnedCertificateSha256,
+  };
+  if (record.validationMode === "packaged-android-and-thor") {
+    validatePackagedAndroidAndThor(record, provenance.repository, artifactIdentity);
+  } else if (record.validationMode === "automated-passive-catalog") {
+    validateAutomatedPassiveCatalog(record, provenance.repository);
+  } else {
+    throw new Error(`Unsupported candidate validation mode: ${record.validationMode ?? "<missing>"}`);
+  }
+
+  return {
+    candidateTag: record.candidateTag,
+    apkSha256: actualApkSha256,
+    certificateSha256: pinnedCertificateSha256,
+    validationMode: record.validationMode,
+  };
+}
+
+function runCli() {
+  const argumentsMap = parseArguments(process.argv.slice(2));
+  const result = validateCandidatePromotion({
+    record: requireJson(requireArgument(argumentsMap, "record"), "Promotion record"),
+    provenance: requireJson(
+      requireArgument(argumentsMap, "provenance"),
+      "Candidate provenance",
+    ),
+    checksumsPath: requireArgument(argumentsMap, "checksums"),
+    apkPath: requireArgument(argumentsMap, "apk"),
+    certificateFingerprint: readFileSync(
+      requireArgument(argumentsMap, "certificate-fingerprint"),
+      "utf8",
+    ),
+    apkSignerVerificationPath: requireArgument(
+      argumentsMap,
+      "apk-signer-verification",
+    ),
+  });
+  process.stdout.write(`${JSON.stringify(result)}\n`);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    runCli();
+  } catch (failure) {
+    process.stderr.write(`${failure instanceof Error ? failure.message : String(failure)}\n`);
+    process.exitCode = 1;
+  }
+}

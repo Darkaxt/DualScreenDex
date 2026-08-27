@@ -46,7 +46,8 @@ android {
         versionCode = dualDexVersionCode
         versionName = dualDexVersionName
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.darkaxt.dualdex.QaAndroidJUnitRunner"
+        testInstrumentationRunnerArguments["useTestStorageService"] = "true"
     }
 
     buildTypes {
@@ -60,6 +61,17 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+    testOptions {
+        managedDevices {
+            localDevices {
+                create("qaApi35") {
+                    device = "Pixel 2"
+                    apiLevel = 35
+                    systemImageSource = "aosp"
+                }
+            }
         }
     }
     compileOptions {
@@ -85,6 +97,8 @@ dependencies {
     testImplementation("org.xerial:sqlite-jdbc:3.53.1.0")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestUtil("androidx.test.services:test-services:1.5.0")
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("com.google.code.gson:gson:2.10.1")
 }
