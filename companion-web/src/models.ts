@@ -417,6 +417,7 @@ export interface TrainerProgressView {
   selectedSection: 'METRICS' | 'CHALLENGES' | 'TIMELINE';
   gameTotals: ProgressMetricView[];
   trackedJourney: ProgressMetricView[];
+  challengeSummary: ChallengeSummaryView;
   challenges: ChallengeView[];
   timeline: TimelineEntryView[];
 }
@@ -427,6 +428,12 @@ export interface ProgressMetricView {
   value: number | null;
 }
 
+export interface ChallengeSummaryView {
+  completed: number;
+  applicable: number;
+  completionPercent: number | null;
+}
+
 export interface ChallengeView {
   key: string;
   title: string;
@@ -434,6 +441,7 @@ export interface ChallengeView {
   category: 'PROGRESS' | 'COLLECTION' | 'EXPLORATION' | 'BATTLE' | 'PARTY' | 'SPECIAL';
   progress: number | null;
   target: number | null;
+  completionPercent: number | null;
   complete: boolean;
 }
 

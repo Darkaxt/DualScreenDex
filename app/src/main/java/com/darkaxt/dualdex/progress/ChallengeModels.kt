@@ -16,6 +16,7 @@ data class ChallengeContext(
     val unobservableCapabilities: Set<String> = emptySet(),
     val resolvedCatalogEntities: Set<String> = emptySet(),
     val knownCatalogEntities: Set<String> = emptySet(),
+    val currentCatalogEntities: Set<String> = emptySet(),
     val provenAdapters: Set<String> = emptySet(),
     val catalogEntitiesResolved: Boolean = true,
     val organicMode: Boolean = true,
@@ -145,13 +146,23 @@ data class ChallengeDefinition(
     val requiredCatalogEntities: Set<String> = emptySet(),
     val requiredKnowledgeEntities: Set<String> = emptySet(),
     val requiredAdapters: Set<String> = emptySet(),
+    val progressionGroup: String? = null,
+    val progressionRank: Int? = null,
+    val disclosureScope: String? = null,
     val organicSafe: Boolean,
     val predicate: ChallengePredicate,
     val resetWhen: ChallengePredicate? = null,
     val pauseWhen: ChallengePredicate? = null,
     val missWhen: ChallengePredicate? = null,
     val sourceInspiration: String = "portable-pattern",
-)
+) {
+    init {
+        require((progressionGroup == null) == (progressionRank == null))
+        require(progressionGroup == null || progressionGroup.isNotBlank())
+        require(progressionRank == null || progressionRank > 0)
+        require(disclosureScope == null || disclosureScope.isNotBlank())
+    }
+}
 
 data class ChallengeResult(
     val definition: ChallengeDefinition,
@@ -165,4 +176,6 @@ data class ChallengeResult(
 data class ChallengeEvaluation(
     val visible: List<ChallengeResult>,
     val states: Map<String, ChallengeJournalState>,
+    val applicableCount: Int = visible.size,
+    val completedCount: Int = visible.count(ChallengeResult::complete),
 )

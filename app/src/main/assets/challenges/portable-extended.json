@@ -12,6 +12,8 @@
       "requiredAdapters": [],
       "requiredTemporalWindow": "PLAYTHROUGH",
       "organicSafe": true,
+      "progressionGroup": "badge-progression",
+      "progressionRank": 1,
       "binding": "BADGE_COUNT",
       "sourceInspiration": "classified-portable-pattern"
     },
@@ -26,6 +28,8 @@
       "requiredAdapters": [],
       "requiredTemporalWindow": "PLAYTHROUGH",
       "organicSafe": true,
+      "progressionGroup": "badge-progression",
+      "progressionRank": 2,
       "binding": "ALL_BADGES",
       "sourceInspiration": "classified-portable-pattern"
     },

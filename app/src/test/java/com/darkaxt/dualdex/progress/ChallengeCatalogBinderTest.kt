@@ -29,9 +29,17 @@ class ChallengeCatalogBinderTest {
         assertTrue(bound.any { it.key == "progress-first-badge" })
         assertTrue(bound.any { it.key == "progress-all-badges" && it.predicate.evaluate(ChallengeContext(metrics = mapOf("trainer.badges" to 8))).complete })
         assertTrue(bound.any { it.key == "collection-regional-record" })
-        assertTrue(bound.any { it.key == "exploration-area-items-area-7" && "Green Path" in it.description })
+        assertTrue(bound.any {
+            it.key == "exploration-area-items-area-7" &&
+                "Green Path" in it.description &&
+                it.disclosureScope == "AREA:area-7"
+        })
         assertTrue(bound.any { it.key == "battle-leader-no-items-leader-2" && "River Leader" in it.description })
         assertTrue(bound.any { it.key == "special-minigame-contest" })
+        assertEquals(
+            listOf(1, 2),
+            bound.filter { it.progressionGroup == "badge-progression" }.map { it.progressionRank },
+        )
         assertFalse(bound.any { "rom" in it.key.lowercase() })
     }
 

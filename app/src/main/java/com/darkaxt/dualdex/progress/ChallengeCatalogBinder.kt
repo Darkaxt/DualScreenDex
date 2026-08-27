@@ -20,6 +20,8 @@ data class PortableChallengeTemplate(
     val requiredAdapters: Set<String>,
     val requiredTemporalWindow: String,
     val organicSafe: Boolean,
+    val progressionGroup: String? = null,
+    val progressionRank: Int? = null,
     val binding: PortableChallengeBinding,
     val sourceInspiration: String,
 )
@@ -166,6 +168,9 @@ object ChallengeCatalogBinder {
         requiredCatalogEntities = setOf(catalogEntity),
         requiredKnowledgeEntities = setOfNotNull(knowledgeEntity),
         requiredAdapters = setOfNotNull(adapter),
+        progressionGroup = progressionGroup,
+        progressionRank = progressionRank,
+        disclosureScope = knowledgeEntity,
         organicSafe = organicSafe,
         predicate = predicate,
         sourceInspiration = sourceInspiration,

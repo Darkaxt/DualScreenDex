@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.companion.model.TrainerCardState
 import com.enrpau.dualscreendex.companion.semantic.PlaythroughKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class TrainerProgressProjectorTest {
@@ -70,7 +71,59 @@ class TrainerProgressProjectorTest {
             view.timeline.single().changes,
         )
         assertEquals("A New Partner", view.challenges.single().title)
+        assertEquals(100, view.challenges.single().completionPercent)
+        assertEquals(1, view.challengeSummary.completed)
+        assertEquals(1, view.challengeSummary.applicable)
+        assertEquals(100, view.challengeSummary.completionPercent)
         assertFalse(view.toString().contains("parser", ignoreCase = true))
         assertFalse(view.toString().contains("capability", ignoreCase = true))
+    }
+
+    @Test
+    fun `projects bounded challenge and overall percentages without inventing an empty denominator`() {
+        val snapshot = AppSnapshot(
+            trainerCardState = TrainerCardState(
+                identity = TrainerIdentity("MAY", 1),
+                publicTrainerId = 12345,
+                money = 3000,
+                playTimeHours = 0,
+                playTimeMinutes = 5,
+                badgeFlags = 0,
+                dexSeen = 1,
+                dexCaught = 1,
+                stars = 0,
+            ),
+        )
+        val journal = PlaythroughJournal.empty(key)
+        val definition = ChallengeDefinition(
+            key = "roster",
+            title = "Growing Roster",
+            description = "Catch five different Pokémon.",
+            category = ChallengeCategory.COLLECTION,
+            requiredCapabilities = setOf("POKEDEX_FACTS"),
+            organicSafe = true,
+            predicate = ChallengePredicate.CountAtLeast("captures", 5),
+        )
+        val evaluation = ChallengeEvaluation(
+            visible = listOf(ChallengeResult(definition, progress = 2, target = 5, complete = false)),
+            states = emptyMap(),
+            applicableCount = 4,
+            completedCount = 1,
+        )
+
+        val view = TrainerProgressProjector.project(snapshot, journal, evaluation)
+
+        assertEquals(40, view.challenges.single().completionPercent)
+        assertEquals(25, view.challengeSummary.completionPercent)
+        assertEquals(1, view.challengeSummary.completed)
+        assertEquals(4, view.challengeSummary.applicable)
+
+        val empty = TrainerProgressProjector.project(
+            snapshot,
+            journal,
+            ChallengeEvaluation(emptyList(), emptyMap()),
+        )
+        assertNull(empty.challengeSummary.completionPercent)
+        assertEquals(0, empty.challengeSummary.applicable)
     }
 }

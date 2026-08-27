@@ -144,6 +144,7 @@ class ProductionCompanionRuntimeTest {
             listOf("collection-regional-record", "exploration-area-items-base-7"),
             runtime.stateView().trainerProgress?.challenges?.map { it.key },
         )
+        assertEquals(2, runtime.stateView().trainerProgress?.challengeSummary?.applicable)
         assertFalse(
             runtime.stateView().trainerProgress!!.challenges
                 .single { it.key == "collection-regional-record" }
@@ -155,6 +156,11 @@ class ProductionCompanionRuntimeTest {
         )
 
         runtime.updateLiveArea(8)
+        assertEquals(
+            listOf("collection-regional-record", "exploration-area-items-base-8"),
+            runtime.stateView().trainerProgress?.challenges?.map { it.key },
+        )
+        assertEquals(3, runtime.stateView().trainerProgress?.challengeSummary?.applicable)
         assertEquals(
             listOf("exploration-area-items-base-8"),
             runtime.stateView().areaGuide?.areas?.single { it.baseAreaId == 8 }?.objectives?.map { it.key },

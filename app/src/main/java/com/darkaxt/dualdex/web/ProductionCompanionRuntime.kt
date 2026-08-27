@@ -1082,6 +1082,9 @@ class ProductionCompanionRuntime(
             knownCatalogEntities = challengeCatalogBindings.areaCollectibles
                 .filter { it.baseAreaId in ledger.visitedAreaBaseIds }
                 .mapTo(linkedSetOf()) { "AREA:${it.key}" },
+            currentCatalogEntities = setOfNotNull(
+                resolved.location.areaBaseId.value?.let { "AREA:base-$it" },
+            ),
             provenAdapters = challengeCatalogBindings.provenAdapters,
             organicMode = gateway.bootstrap().settings.knowledgeMode == KnowledgeMode.ORGANIC,
         )

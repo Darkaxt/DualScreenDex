@@ -452,10 +452,16 @@ data class TrainerProgressView(
     val selectedSection: String,
     val gameTotals: List<ProgressMetricView>,
     val trackedJourney: List<ProgressMetricView>,
+    val challengeSummary: ChallengeSummaryView,
     val challenges: List<ChallengeView>,
     val timeline: List<TimelineEntryView>,
 )
 data class ProgressMetricView(val key: String, val label: String, val value: Long?)
+data class ChallengeSummaryView(
+    val completed: Int,
+    val applicable: Int,
+    val completionPercent: Int?,
+)
 data class ChallengeView(
     val key: String,
     val title: String,
@@ -463,6 +469,7 @@ data class ChallengeView(
     val category: String,
     val progress: Long?,
     val target: Long?,
+    val completionPercent: Int?,
     val complete: Boolean,
 )
 data class TimelineEntryView(

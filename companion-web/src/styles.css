@@ -91,6 +91,10 @@ button { cursor: pointer; }
 .progress-metric-grid dt { color: var(--muted); font-size: .78rem; font-weight: 850; }
 .progress-metric-grid dd { font: 950 1.03rem/1 Georgia, serif; }
 .challenge-groups { display: grid; align-content: start; gap: 12px; }
+.challenge-summary { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; min-height: 54px; padding: 9px 12px; border: 2px solid var(--line); color: var(--ink); background: color-mix(in srgb, var(--paper) 96%, transparent); box-shadow: 4px 4px 0 #17271e3d; }
+.challenge-summary strong { color: var(--theme-accent, var(--forest-700)); font-family: Georgia, serif; font-size: 1.28rem; }
+.challenge-summary span { font-size: .78rem; font-weight: 950; letter-spacing: .08em; }
+.challenge-summary small { color: var(--muted); font-size: .74rem; font-weight: 850; }
 .challenge-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 9px; }
 .challenge-card { min-width: 0; padding: 10px; border: 1px solid var(--line); background: var(--paper); box-shadow: 2px 2px 0 color-mix(in srgb, var(--line) 48%, transparent); }
 .challenge-card > div:first-child { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
@@ -651,7 +655,8 @@ button { cursor: pointer; }
 [data-theme="game"][data-contrast="normal"] .trainer-destination-tabs button.active,
 [data-theme="game"][data-contrast="normal"] .trainer-progress-tabs button.active { color: var(--theme-accent-text); background: var(--theme-accent); }
 [data-theme="game"][data-contrast="normal"] .progress-panel,
-[data-theme="game"][data-contrast="normal"] .challenge-card { color: var(--theme-text); background: var(--theme-panel); border-color: var(--theme-border); box-shadow: 4px 4px 0 var(--theme-menu-shadow); }
+[data-theme="game"][data-contrast="normal"] .challenge-card,
+[data-theme="game"][data-contrast="normal"] .challenge-summary { color: var(--theme-text); background: var(--theme-panel); border-color: var(--theme-border); box-shadow: 4px 4px 0 var(--theme-menu-shadow); }
 [data-theme="game"][data-contrast="normal"] .progress-panel > h2 { color: var(--theme-accent-text); background: var(--theme-header); border-color: var(--theme-border); }
 [data-theme="game"][data-contrast="normal"] .challenge-progress,
 [data-theme="game"][data-contrast="normal"] .timeline-panel li span { color: var(--theme-text); background: var(--theme-menu); border-color: var(--theme-border); }

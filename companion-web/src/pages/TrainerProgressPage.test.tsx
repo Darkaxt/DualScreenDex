@@ -26,19 +26,57 @@ describe('Trainer progress', () => {
     expect(send).toHaveBeenCalledWith('TRAINER_DESTINATION', { value: 'CARD' });
   });
 
-  it('shows player-facing challenge and timeline details without internals', () => {
+  it('shows player-facing challenge percentages and timeline details without internals', () => {
     const state = trainerState();
     state.trainerProgress!.selectedSection = 'CHALLENGES';
     const { rerender, container } = render(<TrainerPage state={state} send={vi.fn()} onBack={vi.fn()} />);
 
     expect(screen.getByText('A New Partner')).toBeTruthy();
     expect(screen.getByText('Catch your first Pokémon on this journey.')).toBeTruthy();
-    expect(screen.getByText('1 / 1')).toBeTruthy();
+    expect(screen.getByText('1 / 1 · 100%')).toBeTruthy();
+    expect(screen.getByText('100%')).toBeTruthy();
+    expect(screen.getByText('1 / 1 completed')).toBeTruthy();
 
     state.trainerProgress!.selectedSection = 'TIMELINE';
     rerender(<TrainerPage state={{ ...state }} send={vi.fn()} onBack={vi.fn()} />);
     expect(screen.getByText('Captures +1')).toBeTruthy();
     expect(container.textContent).not.toMatch(/parser|address|offset|capability|fingerprint/i);
+  });
+
+  it('renders bounded overall and in-progress percentages with accessible progress semantics', () => {
+    const state = trainerState();
+    state.trainerProgress!.selectedSection = 'CHALLENGES';
+    state.trainerProgress!.challengeSummary = { completed: 1, applicable: 4, completionPercent: 25 };
+    state.trainerProgress!.challenges = [{
+      key: 'roster',
+      title: 'Growing Roster',
+      description: 'Catch five different Pokémon.',
+      category: 'COLLECTION',
+      progress: 2,
+      target: 5,
+      completionPercent: 40,
+      complete: false,
+    }];
+
+    render(<TrainerPage state={state} send={vi.fn()} onBack={vi.fn()} />);
+
+    expect(screen.getByText('25%')).toBeTruthy();
+    expect(screen.getByText('1 / 4 completed')).toBeTruthy();
+    expect(screen.getByText('2 / 5 · 40%')).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: 'Growing Roster: 40% complete' })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/parser|capability|provenance|hidden tier/i);
+  });
+
+  it('keeps the empty state free of a fabricated overall percentage', () => {
+    const state = trainerState();
+    state.trainerProgress!.selectedSection = 'CHALLENGES';
+    state.trainerProgress!.challengeSummary = { completed: 0, applicable: 0, completionPercent: null };
+    state.trainerProgress!.challenges = [];
+
+    render(<TrainerPage state={state} send={vi.fn()} onBack={vi.fn()} />);
+
+    expect(screen.getByText('NO CHALLENGES YET')).toBeTruthy();
+    expect(screen.queryByText(/%/)).toBeNull();
   });
 });
 
@@ -62,7 +100,8 @@ function trainerState(): State {
         { key: 'seen', label: 'Pokédex seen', value: 12 },
       ],
       trackedJourney: [{ key: 'captures', label: 'Captures', value: 2 }],
-      challenges: [{ key: 'first', title: 'A New Partner', description: 'Catch your first Pokémon on this journey.', category: 'COLLECTION', progress: 1, target: 1, complete: true }],
+      challengeSummary: { completed: 1, applicable: 1, completionPercent: 100 },
+      challenges: [{ key: 'first', title: 'A New Partner', description: 'Catch your first Pokémon on this journey.', category: 'COLLECTION', progress: 1, target: 1, completionPercent: 100, complete: true }],
       timeline: [{ recordedAtEpochMs: 1000, changes: ['Captures +1'], milestone: true }],
     },
     party: [],

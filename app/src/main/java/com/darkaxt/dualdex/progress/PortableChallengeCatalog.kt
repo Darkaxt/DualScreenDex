@@ -14,7 +14,8 @@ object PortableChallengeCatalog {
             if (
                 challenge.key.isBlank() || challenge.title.isBlank() || challenge.description.isBlank() ||
                 challenge.requiredCapabilities.isEmpty() || challenge.operator != "COUNT_AT_LEAST" ||
-                challenge.metric.isBlank() || challenge.target <= 0
+                challenge.metric.isBlank() || challenge.target <= 0 ||
+                !validProgression(challenge.progressionGroup, challenge.progressionRank)
             ) return@mapNotNull null
             val category = runCatching { ChallengeCategory.valueOf(challenge.category) }.getOrNull()
                 ?: return@mapNotNull null
@@ -24,6 +25,8 @@ object PortableChallengeCatalog {
                 description = challenge.description,
                 category = category,
                 requiredCapabilities = challenge.requiredCapabilities.toSet(),
+                progressionGroup = challenge.progressionGroup,
+                progressionRank = challenge.progressionRank,
                 organicSafe = challenge.organicSafe,
                 predicate = ChallengePredicate.CountAtLeast(challenge.metric, challenge.target),
                 sourceInspiration = challenge.sourceInspiration,
@@ -42,6 +45,7 @@ object PortableChallengeCatalog {
                 template.portabilityTier !in 2..3 || template.requiredCapabilities.isEmpty() ||
                 template.requiredCatalogRoles.isEmpty() ||
                 template.requiredTemporalWindow !in SUPPORTED_TEMPORAL_WINDOWS ||
+                !validProgression(template.progressionGroup, template.progressionRank) ||
                 (template.portabilityTier == 3 && template.requiredAdapters.isEmpty())
             ) return@mapNotNull null
             val category = runCatching { ChallengeCategory.valueOf(template.category) }.getOrNull()
@@ -59,6 +63,8 @@ object PortableChallengeCatalog {
                 requiredAdapters = template.requiredAdapters.toSet(),
                 requiredTemporalWindow = template.requiredTemporalWindow,
                 organicSafe = template.organicSafe,
+                progressionGroup = template.progressionGroup,
+                progressionRank = template.progressionRank,
                 binding = binding,
                 sourceInspiration = template.sourceInspiration,
             )
@@ -86,6 +92,8 @@ object PortableChallengeCatalog {
         val requiredAdapters: List<String> = emptyList(),
         val requiredTemporalWindow: String = "",
         val organicSafe: Boolean = false,
+        val progressionGroup: String? = null,
+        val progressionRank: Int? = null,
         val binding: String = "",
         val sourceInspiration: String = "",
     )
@@ -97,6 +105,8 @@ object PortableChallengeCatalog {
         val category: String = "",
         val requiredCapabilities: List<String> = emptyList(),
         val organicSafe: Boolean = false,
+        val progressionGroup: String? = null,
+        val progressionRank: Int? = null,
         val operator: String = "",
         val metric: String = "",
         val target: Long = 0,
@@ -110,4 +120,10 @@ object PortableChallengeCatalog {
         "SESSION_EPOCH",
         "GAME_SPECIFIC",
     )
+
+    private fun validProgression(group: String?, rank: Int?): Boolean = when {
+        group == null && rank == null -> true
+        group.isNullOrBlank() || rank == null -> false
+        else -> rank > 0
+    }
 }

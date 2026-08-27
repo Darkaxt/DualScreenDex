@@ -538,7 +538,23 @@ Challenge templates bind to catalog roles rather than retail identities. Example
 
 Templates may use player-facing entity names after catalog resolution. Selection logic may not use ROM filenames, project names, SHA lists, fixed retail offsets, or guessed ancestry.
 
-### 11.4 Non-goals
+### 11.4 Organic challenge disclosure and progress
+
+The applicable challenge universe is computed only after capability, catalog-role, adapter, temporal-window, and Organic knowledge gates have succeeded. Challenges whose entities remain undiscovered or whose semantic inputs are not proven are absent from both presentation and percentage denominators.
+
+Organic mode suppresses noise without changing persisted challenge state:
+
+- completed challenges remain visible;
+- a ranked challenge chain shows every completed tier and only its lowest-ranked unfinished tier; higher unfinished tiers remain hidden until the preceding tier completes;
+- an entity-scoped challenge appears when its scope is current, when its progress is greater than zero, or when it is complete; untouched objectives for other known scopes remain hidden;
+- independent unscoped challenges remain visible, so the page still explains the currently available objectives;
+- the overall result is `completed / applicable` plus an integer percentage, including knowledge-safe hidden upper tiers but excluding undiscovered or unsupported challenges;
+- an in-progress challenge with a positive target shows a bounded integer `current / target` percentage; completion always reports 100%; and
+- Discovered mode shows every applicable challenge without the Organic chain or scope suppression.
+
+No hidden challenge title, entity, or target may be inferred from the overall summary. There is no arbitrary maximum-card cap; suppression follows semantic chain and scope rules only.
+
+### 11.5 Non-goals
 
 - No arbitrary downloaded rule scripts.
 - No remote execution or runtime API requirement.
@@ -546,7 +562,7 @@ Templates may use player-facing entity names after catalog resolution. Selection
 - No challenge that requires a sampling rate DualDex cannot observe reliably.
 - No automatic publication of challenge packs to RetroAchievements.
 
-### 11.5 Acceptance gate
+### 11.6 Acceptance gate
 
 - Every generated challenge can print its required semantic capabilities in Debug Settings or an offline report.
 - Removing one capability removes only dependent challenges.
@@ -554,6 +570,7 @@ Templates may use player-facing entity names after catalog resolution. Selection
 - At least Modern Emerald, Unbound, and Odyssey prove dynamic binding without ROM-name selectors for the semantic families their sources expose.
 - Mutation controls reject changed flag roles, reordered identifiers, unsupported temporal windows, and ambiguous entities.
 - Ordinary UI contains independent DualDex wording and never claims RetroAchievements credit.
+- Organic controls prove upper-tier suppression, scoped-noise suppression, per-card percentages, and the knowledge-safe overall denominator; Discovered mode proves the complete applicable inventory remains reachable.
 
 ## 12. Shared navigation and visual contract
 

@@ -663,7 +663,33 @@ Release gate status: the exact signed `v1.1.0-rc.73-hotfix.1` candidate is verif
 - [ ] **Step 3: Mutate flag roles, identifiers, temporal windows, and ambiguous entities; require dependent challenges to disappear or report `NOT_FOUND`, never silently rebind.**
 - [ ] **Step 4: Report the five required challenge percentages from specification Section 15.2.**
 
-### Task 6.3: Audit and release challenge expansion
+### Task 6.3: Add Organic challenge disclosure and percentages
+
+**Files:**
+
+- Modify: `app/src/main/java/com/darkaxt/dualdex/progress/ChallengeModels.kt`
+- Modify: `app/src/main/java/com/darkaxt/dualdex/progress/ChallengeEngine.kt`
+- Modify: `app/src/main/java/com/darkaxt/dualdex/progress/PortableChallengeCatalog.kt`
+- Modify: `app/src/main/java/com/darkaxt/dualdex/progress/ChallengeCatalogBinder.kt`
+- Modify: `app/src/main/java/com/darkaxt/dualdex/progress/TrainerProgressProjector.kt`
+- Modify: `app/src/main/java/com/darkaxt/dualdex/web/ProductionCompanionRuntime.kt`
+- Modify: `companion-core/src/main/kotlin/com/enrpau/dualscreendex/companion/api/ApiModels.kt`
+- Modify: `companion-web/src/models.ts`
+- Modify: `companion-web/src/pages/TrainerProgressPage.tsx`
+- Modify: `companion-web/src/styles.css`
+- Test: `app/src/test/java/com/darkaxt/dualdex/progress/ChallengeEngineTest.kt`
+- Test: `app/src/test/java/com/darkaxt/dualdex/progress/TrainerProgressProjectorTest.kt`
+- Create: `companion-web/src/pages/TrainerProgressPage.test.tsx`
+
+- [x] **Step 1: Write RED engine tests proving completed-plus-next-tier Organic disclosure, current/started scoped disclosure, knowledge-safe denominators, and full Discovered inventory.**
+- [x] **Step 2: Run the focused engine test and require the new assertions to fail before implementation.**
+- [x] **Step 3: Add explicit progression-chain metadata, disclosure scopes, and current-scope context; keep applicability and presentation as separate engine results.**
+- [x] **Step 4: Write RED projector and web tests for bounded card percentages, the overall percentage, zero-applicable behavior, and ordinary player-facing copy.**
+- [x] **Step 5: Run the focused projector/web tests and require the new assertions to fail before implementation.**
+- [x] **Step 6: Project the shared numeric summary through the Kotlin/TypeScript API and render it above the challenge groups without diagnostic or hidden-identity text.**
+- [x] **Step 7: Run the focused engine, projector, runtime, catalog, and web tests GREEN; commit the disclosure feature separately.**
+
+### Task 6.4: Audit and release challenge expansion
 
 **Files:**
 

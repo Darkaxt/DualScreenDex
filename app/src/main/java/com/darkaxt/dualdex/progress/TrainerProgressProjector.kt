@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.progress
 
 import com.enrpau.dualscreendex.companion.api.ChallengeView
+import com.enrpau.dualscreendex.companion.api.ChallengeSummaryView
 import com.enrpau.dualscreendex.companion.api.ProgressMetricView
 import com.enrpau.dualscreendex.companion.api.TimelineEntryView
 import com.enrpau.dualscreendex.companion.api.TrainerProgressView
@@ -48,6 +49,15 @@ object TrainerProgressProjector {
                 ?: "METRICS",
             gameTotals = gameTotals,
             trackedJourney = trackedJourney,
+            challengeSummary = ChallengeSummaryView(
+                completed = challenges.completedCount,
+                applicable = challenges.applicableCount,
+                completionPercent = percentage(
+                    current = challenges.completedCount.toLong(),
+                    target = challenges.applicableCount.toLong(),
+                    complete = challenges.applicableCount > 0 && challenges.completedCount >= challenges.applicableCount,
+                ),
+            ),
             challenges = challenges.visible.map { result ->
                 ChallengeView(
                     key = result.definition.key,
@@ -56,6 +66,7 @@ object TrainerProgressProjector {
                     category = result.definition.category.name,
                     progress = result.progress,
                     target = result.target,
+                    completionPercent = percentage(result.progress, result.target, result.complete),
                     complete = result.complete,
                 )
             },
@@ -69,5 +80,11 @@ object TrainerProgressProjector {
                 )
             }.filter { it.changes.isNotEmpty() },
         )
+    }
+
+    private fun percentage(current: Long?, target: Long?, complete: Boolean): Int? {
+        if (complete) return 100
+        if (current == null || target == null || target <= 0L) return null
+        return ((current.coerceIn(0L, target).toDouble() / target.toDouble()) * 100.0).toInt()
     }
 }

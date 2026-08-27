@@ -10,7 +10,7 @@ class ChallengeEngine {
         saveFingerprint: String?,
     ): ChallengeEvaluation {
         val states = priorStates.toMutableMap()
-        val visible = buildList {
+        val applicable = buildList {
             definitions.forEach { definition ->
                 if (!applicable(definition, context)) return@forEach
                 val prior = priorStates[definition.key]
@@ -41,7 +41,38 @@ class ChallengeEngine {
                 )
             }
         }
-        return ChallengeEvaluation(visible, states)
+        return ChallengeEvaluation(
+            visible = disclose(applicable, context),
+            states = states,
+            applicableCount = applicable.size,
+            completedCount = applicable.count(ChallengeResult::complete),
+        )
+    }
+
+    private fun disclose(
+        applicable: List<ChallengeResult>,
+        context: ChallengeContext,
+    ): List<ChallengeResult> {
+        if (!context.organicMode) return applicable
+        val nextRankByGroup = applicable
+            .filterNot(ChallengeResult::complete)
+            .mapNotNull { result ->
+                val group = result.definition.progressionGroup ?: return@mapNotNull null
+                val rank = result.definition.progressionRank ?: return@mapNotNull null
+                group to rank
+            }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, ranks) -> ranks.min() }
+        return applicable.filter { result ->
+            val definition = result.definition
+            val chainVisible = definition.progressionGroup?.let { group ->
+                result.complete || definition.progressionRank == nextRankByGroup[group]
+            } ?: true
+            val scopeVisible = definition.disclosureScope?.let { scope ->
+                result.complete || (result.progress ?: 0L) > 0L || scope in context.currentCatalogEntities
+            } ?: true
+            chainVisible && scopeVisible
+        }
     }
 
     private fun nextState(

@@ -98,6 +98,94 @@ class ChallengeEngineTest {
     }
 
     @Test
+    fun `organic disclosure keeps completed and next tiers while discovered mode exposes the applicable inventory`() {
+        val engine = ChallengeEngine()
+        val first = definition("first-partner", setOf("POKEDEX_FACTS")).copy(
+            progressionGroup = "captured-species",
+            progressionRank = 1,
+            predicate = ChallengePredicate.CountAtLeast("captures", 1),
+        )
+        val growing = definition("growing-roster", setOf("POKEDEX_FACTS")).copy(
+            progressionGroup = "captured-species",
+            progressionRank = 2,
+            predicate = ChallengePredicate.CountAtLeast("captures", 10),
+        )
+        val organicAtZero = ChallengeContext(
+            metrics = mapOf("captures" to 0),
+            capabilities = setOf("POKEDEX_FACTS"),
+            organicMode = true,
+        )
+
+        val initial = engine.evaluate(listOf(first, growing), organicAtZero, emptyMap(), nowEpochMs = 1, saveFingerprint = null)
+
+        assertEquals(listOf("first-partner"), initial.visible.map { it.definition.key })
+        assertEquals(2, initial.applicableCount)
+        assertEquals(0, initial.completedCount)
+
+        val afterFirst = engine.evaluate(
+            listOf(first, growing),
+            organicAtZero.copy(metrics = mapOf("captures" to 1)),
+            initial.states,
+            nowEpochMs = 2,
+            saveFingerprint = null,
+        )
+
+        assertEquals(listOf("first-partner", "growing-roster"), afterFirst.visible.map { it.definition.key })
+        assertTrue(afterFirst.visible.first().complete)
+        assertEquals(2, afterFirst.applicableCount)
+        assertEquals(1, afterFirst.completedCount)
+
+        val discovered = engine.evaluate(
+            listOf(first, growing),
+            organicAtZero.copy(organicMode = false),
+            emptyMap(),
+            nowEpochMs = 3,
+            saveFingerprint = null,
+        )
+
+        assertEquals(listOf("first-partner", "growing-roster"), discovered.visible.map { it.definition.key })
+        assertEquals(2, discovered.applicableCount)
+    }
+
+    @Test
+    fun `organic disclosure hides untouched off-scope challenges but retains current started and completed scopes`() {
+        val engine = ChallengeEngine()
+        fun scoped(key: String, scope: String, metric: String) = definition(key, setOf("POI_FACTS"), metric).copy(
+            requiredKnowledgeEntities = setOf(scope),
+            disclosureScope = scope,
+            predicate = ChallengePredicate.CountAtLeast(metric, 3),
+        )
+        val current = scoped("current", "AREA:base-1", "area.current")
+        val started = scoped("started", "AREA:base-2", "area.started")
+        val untouched = scoped("untouched", "AREA:base-3", "area.untouched")
+        val completed = scoped("completed", "AREA:base-4", "area.completed")
+        val context = ChallengeContext(
+            metrics = mapOf(
+                "area.current" to 0,
+                "area.started" to 1,
+                "area.untouched" to 0,
+                "area.completed" to 3,
+            ),
+            capabilities = setOf("POI_FACTS"),
+            knownCatalogEntities = setOf("AREA:base-1", "AREA:base-2", "AREA:base-3", "AREA:base-4"),
+            currentCatalogEntities = setOf("AREA:base-1"),
+            organicMode = true,
+        )
+
+        val evaluation = engine.evaluate(
+            listOf(current, started, untouched, completed),
+            context,
+            emptyMap(),
+            nowEpochMs = 10,
+            saveFingerprint = null,
+        )
+
+        assertEquals(listOf("current", "started", "completed"), evaluation.visible.map { it.definition.key })
+        assertEquals(4, evaluation.applicableCount)
+        assertEquals(1, evaluation.completedCount)
+    }
+
+    @Test
     fun `incremental evaluation keeps unaffected states and first completion reference`() {
         val engine = ChallengeEngine()
         val definitions = listOf(definition("capture", setOf("POKEDEX_FACTS")), definition("battle", setOf("BATTLE_FACTS"), "battles"))
