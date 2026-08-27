@@ -14,6 +14,10 @@ class PlaythroughJournalCodecTest {
         val journal = PlaythroughJournal.empty(key).copy(
             trackedCounts = mapOf("captures" to 2),
             capturedDexNumbers = setOf(25, 133),
+            challengeStates = mapOf(
+                "active-streak" to ChallengeJournalState(progress = 2, target = 3, paused = true),
+                "missed-streak" to ChallengeJournalState(progress = 1, target = 3, missed = true),
+            ),
             preferences = mapOf("trainer-progress-section" to "TIMELINE"),
         )
         val bytes = codec.encode(journal)

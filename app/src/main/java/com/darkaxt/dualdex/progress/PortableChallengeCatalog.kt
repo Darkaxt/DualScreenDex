@@ -41,6 +41,7 @@ object PortableChallengeCatalog {
                 template.key.isBlank() || template.title.isBlank() || template.description.isBlank() ||
                 template.portabilityTier !in 2..3 || template.requiredCapabilities.isEmpty() ||
                 template.requiredCatalogRoles.isEmpty() ||
+                template.requiredTemporalWindow !in SUPPORTED_TEMPORAL_WINDOWS ||
                 (template.portabilityTier == 3 && template.requiredAdapters.isEmpty())
             ) return@mapNotNull null
             val category = runCatching { ChallengeCategory.valueOf(template.category) }.getOrNull()
@@ -56,6 +57,7 @@ object PortableChallengeCatalog {
                 requiredCapabilities = template.requiredCapabilities.toSet(),
                 requiredCatalogRoles = template.requiredCatalogRoles.toSet(),
                 requiredAdapters = template.requiredAdapters.toSet(),
+                requiredTemporalWindow = template.requiredTemporalWindow,
                 organicSafe = template.organicSafe,
                 binding = binding,
                 sourceInspiration = template.sourceInspiration,
@@ -82,6 +84,7 @@ object PortableChallengeCatalog {
         val requiredCapabilities: List<String> = emptyList(),
         val requiredCatalogRoles: List<String> = emptyList(),
         val requiredAdapters: List<String> = emptyList(),
+        val requiredTemporalWindow: String = "",
         val organicSafe: Boolean = false,
         val binding: String = "",
         val sourceInspiration: String = "",
@@ -98,5 +101,13 @@ object PortableChallengeCatalog {
         val metric: String = "",
         val target: Long = 0,
         val sourceInspiration: String = "",
+    )
+
+    private val SUPPORTED_TEMPORAL_WINDOWS = setOf(
+        "PLAYTHROUGH",
+        "BATTLE_EPOCH",
+        "AREA_EPOCH",
+        "SESSION_EPOCH",
+        "GAME_SPECIFIC",
     )
 }

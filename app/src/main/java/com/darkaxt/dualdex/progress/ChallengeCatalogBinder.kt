@@ -18,6 +18,7 @@ data class PortableChallengeTemplate(
     val requiredCapabilities: Set<String>,
     val requiredCatalogRoles: Set<String>,
     val requiredAdapters: Set<String>,
+    val requiredTemporalWindow: String,
     val organicSafe: Boolean,
     val binding: PortableChallengeBinding,
     val sourceInspiration: String,
@@ -46,7 +47,17 @@ data class ChallengeCatalogBindings(
     val areaCollectibles: List<AreaCollectibleBinding> = emptyList(),
     val gymLeaders: List<GymLeaderBinding> = emptyList(),
     val provenAdapters: Set<String> = emptySet(),
+    val provenTemporalWindows: Set<String> = setOf("PLAYTHROUGH"),
 ) {
+    init {
+        require(badgeCount == null || badgeCount > 0)
+        require(regionalSpeciesIds.all { it > 0 })
+        require(areaCollectibles.map(AreaCollectibleBinding::key).distinct().size == areaCollectibles.size)
+        require(gymLeaders.map(GymLeaderBinding::key).distinct().size == gymLeaders.size)
+        require(provenAdapters.all { it.matches(ADAPTER_TOKEN) })
+        require(provenTemporalWindows.all { it in TEMPORAL_WINDOWS })
+    }
+
     val resolvedCatalogEntities: Set<String> = buildSet {
         if (badgeCount != null) add(BADGE_SEQUENCE)
         if (regionalSpeciesIds.isNotEmpty()) add(REGIONAL_POKEDEX)
@@ -60,6 +71,8 @@ data class ChallengeCatalogBindings(
         const val REGIONAL_POKEDEX = "REGIONAL_POKEDEX"
         const val AREA_COLLECTIBLES = "AREA_COLLECTIBLES"
         const val GYM_LEADER = "GYM_LEADER"
+        private val ADAPTER_TOKEN = Regex("[A-Z_]+:[a-z0-9][a-z0-9-]{0,63}")
+        private val TEMPORAL_WINDOWS = setOf("PLAYTHROUGH", "BATTLE_EPOCH", "AREA_EPOCH", "SESSION_EPOCH", "GAME_SPECIFIC")
     }
 }
 
@@ -69,6 +82,7 @@ object ChallengeCatalogBinder {
         bindings: ChallengeCatalogBindings,
     ): List<ChallengeDefinition> = buildList {
         templates.forEach { template ->
+            if (template.requiredTemporalWindow !in bindings.provenTemporalWindows) return@forEach
             when (template.binding) {
                 PortableChallengeBinding.BADGE_COUNT -> bindings.badgeCount
                     ?.takeIf { it > 0 }
@@ -92,7 +106,7 @@ object ChallengeCatalogBinder {
                             ),
                         )
                     }
-                PortableChallengeBinding.AREA_COLLECTIBLES -> bindings.areaCollectibles.forEach { area ->
+                PortableChallengeBinding.AREA_COLLECTIBLES -> bindings.areaCollectibles.sortedBy(AreaCollectibleBinding::key).forEach { area ->
                     add(
                         template.definition(
                             keySuffix = area.key,
@@ -103,7 +117,7 @@ object ChallengeCatalogBinder {
                         ),
                     )
                 }
-                PortableChallengeBinding.GYM_LEADER_NO_ITEMS -> bindings.gymLeaders.forEach { leader ->
+                PortableChallengeBinding.GYM_LEADER_NO_ITEMS -> bindings.gymLeaders.sortedBy(GymLeaderBinding::key).forEach { leader ->
                     add(
                         template.definition(
                             keySuffix = leader.key,

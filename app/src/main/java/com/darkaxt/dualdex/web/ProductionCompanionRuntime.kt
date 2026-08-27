@@ -103,11 +103,15 @@ import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.darkaxt.dualdex.performance.PerformanceRecorder
 import com.darkaxt.dualdex.progress.ChallengeContext
+import com.darkaxt.dualdex.progress.ChallengeCatalogBinder
+import com.darkaxt.dualdex.progress.ChallengeCatalogBindings
+import com.darkaxt.dualdex.progress.ChallengeCatalogRoleResolver
 import com.darkaxt.dualdex.progress.ChallengeDefinition
 import com.darkaxt.dualdex.progress.ChallengeEngine
 import com.darkaxt.dualdex.progress.ChallengeEvaluation
 import com.darkaxt.dualdex.progress.ChallengeCategory
 import com.darkaxt.dualdex.progress.PlaythroughJournalRegistry
+import com.darkaxt.dualdex.progress.PortableChallengeTemplate
 import com.darkaxt.dualdex.progress.ResolvedSemanticFactProjector
 import com.darkaxt.dualdex.progress.TrainerProgressProjector
 import com.enrpau.dualscreendex.companion.api.TrainerProgressView
@@ -175,6 +179,7 @@ class ProductionCompanionRuntime(
     private val appVersion: String? = null,
     private val journalRegistry: PlaythroughJournalRegistry = PlaythroughJournalRegistry(),
     private val challengeDefinitions: List<ChallengeDefinition> = emptyList(),
+    private val challengeTemplates: List<PortableChallengeTemplate> = emptyList(),
     internal val transientGameState: TransientGameStateSource,
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
@@ -218,7 +223,9 @@ class ProductionCompanionRuntime(
     private val progressChallengeCpuNanos = AtomicLong()
     private val challengeEngine = ChallengeEngine()
     private val challengeEvaluations = linkedMapOf<PlaythroughKey, ChallengeEvaluation>()
-    private val challengeCapabilities = linkedMapOf<PlaythroughKey, Set<String>>()
+    private val challengeContexts = linkedMapOf<PlaythroughKey, ChallengeContext>()
+    private var challengeCatalogBindings = ChallengeCatalogBindings()
+    private var activeChallengeDefinitions = challengeDefinitions
     private val pendingProgressPreferences = linkedMapOf<String, String>()
     private var semanticBaseline: SemanticFactSet? = null
     private var battleEpoch = 0L
@@ -275,7 +282,7 @@ class ProductionCompanionRuntime(
                 progressEvents.addAndGet(events.size.toLong())
                 val saveEvents = events.filterIsInstance<GameEvent.SaveObserved>()
                 journalRegistry.accept(playthrough, events - saveEvents.toSet())
-                updateChallenges(playthrough, resolved, events)
+                updateChallenges(playthrough, resolved, overworld.ledger, events)
                 journalRegistry.accept(playthrough, saveEvents)
             }
         }
@@ -593,6 +600,7 @@ class ProductionCompanionRuntime(
         beginCatalogTransition(parsed.romSha256, name, "CACHE_REOPEN")
         applyWinningCatalogSettings(parsed.romSha256)
         catalog = parsed
+        activateChallengeCatalog(parsed)
         settingsWritesEnabled = true
         gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
         gateway.dispatch(
@@ -1055,40 +1063,51 @@ class ProductionCompanionRuntime(
     private fun updateChallenges(
         playthrough: PlaythroughKey,
         resolved: ResolvedGameSnapshot,
+        ledger: KnowledgeLedger,
         events: List<GameEvent>,
     ) {
-        if (challengeDefinitions.isEmpty()) return
+        if (activeChallengeDefinitions.isEmpty()) return
         val journal = journalRegistry.current(playthrough)
         val capabilities = progressCapabilities(resolved)
-        val priorCapabilities = challengeCapabilities.put(playthrough, capabilities)
-        val changedDependencies = if (priorCapabilities != capabilities || challengeEvaluations[playthrough] == null) {
+        val context = ChallengeContext(
+            metrics = journal.trackedCounts + mapOf(
+                "trainer.badges" to (resolved.trainer.badgeFlags.value?.countOneBits() ?: 0),
+            ),
+            sets = mapOf(
+                "pokedex.caughtSpeciesIds" to resolved.pokedex.caughtSpeciesIds.value.orEmpty().mapTo(sortedSetOf(), Int::toString),
+                "map.collectedPoiKeys" to ledger.collectedPoiKeys,
+            ),
+            capabilities = capabilities,
+            resolvedCatalogEntities = challengeCatalogBindings.resolvedCatalogEntities,
+            knownCatalogEntities = challengeCatalogBindings.areaCollectibles
+                .filter { it.baseAreaId in ledger.visitedAreaBaseIds }
+                .mapTo(linkedSetOf()) { "AREA:${it.key}" },
+            provenAdapters = challengeCatalogBindings.provenAdapters,
+            organicMode = gateway.bootstrap().settings.knowledgeMode == KnowledgeMode.ORGANIC,
+        )
+        val priorContext = challengeContexts.put(playthrough, context)
+        if (priorContext == context && challengeEvaluations[playthrough] != null && events.none { it is GameEvent.SaveObserved }) return
+        val changedDependencies = if (
+            priorContext == null ||
+            priorContext.capabilities != context.capabilities ||
+            priorContext.unobservableCapabilities != context.unobservableCapabilities ||
+            priorContext.resolvedCatalogEntities != context.resolvedCatalogEntities ||
+            priorContext.knownCatalogEntities != context.knownCatalogEntities ||
+            priorContext.provenAdapters != context.provenAdapters ||
+            priorContext.catalogEntitiesResolved != context.catalogEntitiesResolved ||
+            priorContext.organicMode != context.organicMode ||
+            events.any { it is GameEvent.SaveObserved }
+        ) {
             null
         } else {
-            events.flatMapTo(linkedSetOf()) { event ->
-                when (event) {
-                    is GameEvent.Captured -> listOf("metric:captures")
-                    is GameEvent.Evolved -> listOf("metric:evolutions")
-                    is GameEvent.AreaVisited -> listOf("metric:areas")
-                    is GameEvent.PoiDiscovered -> listOf("metric:pois")
-                    is GameEvent.BattleStarted -> listOf("metric:battles")
-                    is GameEvent.SaveObserved -> challengeDefinitions.flatMap { it.predicate.dependencies() }
-                    is GameEvent.BattleEnded,
-                    is GameEvent.PartyChanged,
-                    -> emptyList()
-                }
-            }
+            priorContext.changedDependencies(context)
         }
-        if (changedDependencies != null && changedDependencies.isEmpty()) return
         val saveFingerprint = events.filterIsInstance<GameEvent.SaveObserved>().lastOrNull()?.fingerprint
         lateinit var evaluation: ChallengeEvaluation
         progressChallengeCpuNanos.addAndGet(measureNanoTime {
             evaluation = challengeEngine.evaluate(
-                definitions = challengeDefinitions,
-                context = ChallengeContext(
-                    metrics = journal.trackedCounts,
-                    capabilities = capabilities,
-                    organicMode = gateway.bootstrap().settings.knowledgeMode == KnowledgeMode.ORGANIC,
-                ),
+                definitions = activeChallengeDefinitions,
+                context = context,
                 priorStates = journal.challengeStates,
                 changedDependencies = changedDependencies,
                 nowEpochMs = System.currentTimeMillis(),
@@ -1107,7 +1126,39 @@ class ProductionCompanionRuntime(
         if (resolved.location.areaBaseId.value != null) add("LOCATION_FACTS")
         if (catalog?.localMaps?.pois?.isNotEmpty() == true) add("POI_FACTS")
         if (resolved.battle.value != null) add("BATTLE_FACTS")
+        if (challengeCatalogBindings.badgeCount != null && resolved.trainer.badgeFlags.value != null) {
+            add("PROGRESSION_FACTS")
+        }
+        if (challengeCatalogBindings.regionalSpeciesIds.isNotEmpty()) {
+            add("CATALOG_GROUP")
+            if (resolved.pokedex.caughtSpeciesIds.value != null) add("COMPLETION_FACTS")
+        }
+        if (challengeCatalogBindings.areaCollectibles.isNotEmpty()) {
+            add("CATALOG_GROUP")
+            add("COMPLETION_FACTS")
+        }
     }
+
+    private fun activateChallengeCatalog(current: ParsedCatalog) {
+        challengeCatalogBindings = ChallengeCatalogRoleResolver.resolve(current)
+        activeChallengeDefinitions = challengeDefinitions +
+            ChallengeCatalogBinder.bind(challengeTemplates, challengeCatalogBindings)
+        challengeEvaluations.clear()
+        challengeContexts.clear()
+    }
+
+    private fun ChallengeContext.changedDependencies(next: ChallengeContext): Set<String> = buildSet {
+        changedMapKeys(metrics, next.metrics).forEach { add("metric:$it") }
+        changedMapKeys(booleans, next.booleans).forEach { add("boolean:$it") }
+        changedMapKeys(sets, next.sets).forEach { add("set:$it") }
+        changedMapKeys(sequences, next.sequences).forEach { add("sequence:$it") }
+        changedMapKeys(epochs, next.epochs).forEach { add("epoch:$it") }
+        changedMapKeys(previousValues, next.previousValues).forEach { add("previous:$it") }
+        changedMapKeys(currentValues, next.currentValues).forEach { add("previous:$it") }
+    }
+
+    private fun <T> changedMapKeys(previous: Map<String, T>, next: Map<String, T>): Set<String> =
+        (previous.keys + next.keys).filterTo(linkedSetOf()) { previous[it] != next[it] }
 
     private fun trainerProgress(snapshot: AppSnapshot): TrainerProgressView? {
         val playthrough = activePlaythrough()
@@ -1136,8 +1187,17 @@ class ProductionCompanionRuntime(
         progress: TrainerProgressView?,
     ): Map<Int, List<AreaGuideObjective>> {
         val area = snapshot.liveAreaBaseId ?: return emptyMap()
+        val currentAreaEntity = "AREA:base-$area"
+        val definitionsByKey = activeChallengeDefinitions.associateBy(ChallengeDefinition::key)
         val exploration = progress?.challenges.orEmpty()
             .filter { it.category == ChallengeCategory.EXPLORATION.name && !it.complete }
+            .filter { challenge ->
+                val areaScopes = definitionsByKey[challenge.key]
+                    ?.requiredKnowledgeEntities
+                    .orEmpty()
+                    .filter { it.startsWith("AREA:") }
+                areaScopes.isEmpty() || currentAreaEntity in areaScopes
+            }
             .map { AreaGuideObjective(it.key, it.title) }
         return if (exploration.isEmpty()) emptyMap() else mapOf(area to exploration)
     }
@@ -1370,6 +1430,7 @@ class ProductionCompanionRuntime(
             gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
             gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
             catalog = reopened
+            activateChallengeCatalog(reopened)
             settingsWritesEnabled = true
             onCatalogCommitted(reopened.romSha256, name)
             gateway.dispatch(
@@ -1419,6 +1480,10 @@ class ProductionCompanionRuntime(
         val generation = loadGeneration.incrementAndGet()
         catalogLoadingMessage = null
         catalog = null
+        challengeCatalogBindings = ChallengeCatalogBindings()
+        activeChallengeDefinitions = challengeDefinitions
+        challengeEvaluations.clear()
+        challengeContexts.clear()
         clearCatalogProjectionCaches()
         mapAssetRenderCache.clear()
         lastRecoveryApplicationId = null
@@ -1471,6 +1536,7 @@ class ProductionCompanionRuntime(
         if (generation != loadGeneration.get()) return
         applyWinningCatalogSettings(parsed.romSha256)
         catalog = parsed
+        activateChallengeCatalog(parsed)
         settingsWritesEnabled = true
         gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
         onCatalogCommitted(parsed.romSha256, name)

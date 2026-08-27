@@ -147,6 +147,9 @@ data class ChallengeDefinition(
     val requiredAdapters: Set<String> = emptySet(),
     val organicSafe: Boolean,
     val predicate: ChallengePredicate,
+    val resetWhen: ChallengePredicate? = null,
+    val pauseWhen: ChallengePredicate? = null,
+    val missWhen: ChallengePredicate? = null,
     val sourceInspiration: String = "portable-pattern",
 )
 
@@ -155,6 +158,8 @@ data class ChallengeResult(
     val progress: Long?,
     val target: Long?,
     val complete: Boolean,
+    val paused: Boolean = false,
+    val missed: Boolean = false,
 )
 
 data class ChallengeEvaluation(

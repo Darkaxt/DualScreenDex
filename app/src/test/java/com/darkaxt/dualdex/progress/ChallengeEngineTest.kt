@@ -102,7 +102,12 @@ class ChallengeEngineTest {
         val engine = ChallengeEngine()
         val definitions = listOf(definition("capture", setOf("POKEDEX_FACTS")), definition("battle", setOf("BATTLE_FACTS"), "battles"))
         val prior = mapOf(
-            "capture" to ChallengeJournalState(1, completedAtEpochMs = 100, completedAtSaveFingerprint = "a".repeat(64)),
+            "capture" to ChallengeJournalState(
+                progress = 1,
+                target = 1,
+                completedAtEpochMs = 100,
+                completedAtSaveFingerprint = "a".repeat(64),
+            ),
             "battle" to ChallengeJournalState(0),
         )
         val context = ChallengeContext(
@@ -120,7 +125,77 @@ class ChallengeEngineTest {
         )
 
         assertEquals(prior.getValue("capture"), result.states.getValue("capture"))
+        assertEquals(1L, result.visible.single { it.definition.key == "capture" }.target)
         assertEquals(500L, result.states.getValue("battle").completedAtEpochMs)
+    }
+
+    @Test
+    fun `reset pause miss and completion lifecycles remain independent`() {
+        val engine = ChallengeEngine()
+        val definition = definition("streak", setOf("BATTLE_FACTS"), "wins").copy(
+            predicate = ChallengePredicate.CountAtLeast("wins", 3),
+            resetWhen = ChallengePredicate.BooleanFact("session.reset"),
+            pauseWhen = ChallengePredicate.BooleanFact("session.paused"),
+            missWhen = ChallengePredicate.BooleanFact("session.failed"),
+        )
+        val active = ChallengeContext(
+            metrics = mapOf("wins" to 2),
+            capabilities = setOf("BATTLE_FACTS"),
+        )
+
+        val started = engine.evaluate(listOf(definition), active, emptyMap(), nowEpochMs = 1, saveFingerprint = null)
+        assertEquals(2, started.states.getValue("streak").progress)
+        assertEquals(3L, started.states.getValue("streak").target)
+
+        val paused = engine.evaluate(
+            listOf(definition),
+            active.copy(metrics = mapOf("wins" to 3), booleans = mapOf("session.paused" to true)),
+            started.states,
+            nowEpochMs = 2,
+            saveFingerprint = null,
+        )
+        assertEquals(2, paused.states.getValue("streak").progress)
+        assertTrue(paused.states.getValue("streak").paused)
+
+        val missed = engine.evaluate(
+            listOf(definition),
+            active.copy(booleans = mapOf("session.failed" to true)),
+            paused.states,
+            nowEpochMs = 3,
+            saveFingerprint = null,
+        )
+        assertTrue(missed.states.getValue("streak").missed)
+        assertFalse(missed.visible.single().complete)
+
+        val stillMissed = engine.evaluate(
+            listOf(definition),
+            active.copy(metrics = mapOf("wins" to 3)),
+            missed.states,
+            nowEpochMs = 4,
+            saveFingerprint = null,
+        )
+        assertTrue(stillMissed.states.getValue("streak").missed)
+
+        val reset = engine.evaluate(
+            listOf(definition),
+            active.copy(booleans = mapOf("session.reset" to true)),
+            missed.states,
+            nowEpochMs = 5,
+            saveFingerprint = null,
+        )
+        assertEquals(0, reset.states.getValue("streak").progress)
+        assertFalse(reset.states.getValue("streak").paused)
+        assertFalse(reset.states.getValue("streak").missed)
+
+        val completed = engine.evaluate(
+            listOf(definition),
+            active.copy(metrics = mapOf("wins" to 3)),
+            reset.states,
+            nowEpochMs = 6,
+            saveFingerprint = null,
+        )
+        assertTrue(completed.visible.single().complete)
+        assertEquals(3L, completed.visible.single().target)
     }
 
     private fun definition(

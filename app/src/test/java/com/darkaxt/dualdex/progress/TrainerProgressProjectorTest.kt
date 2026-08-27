@@ -47,7 +47,13 @@ class TrainerProgressProjectorTest {
         )
         val evaluation = ChallengeEvaluation(
             visible = listOf(ChallengeResult(definition, 2, 1, true)),
-            states = mapOf("capture" to ChallengeJournalState(2, 400, "c".repeat(64))),
+            states = mapOf(
+                "capture" to ChallengeJournalState(
+                    progress = 2,
+                    completedAtEpochMs = 400,
+                    completedAtSaveFingerprint = "c".repeat(64),
+                ),
+            ),
         )
 
         val view = TrainerProgressProjector.project(snapshot, journal, evaluation)

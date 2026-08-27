@@ -29,4 +29,15 @@ class PortableChallengeCatalogTest {
         assertTrue(templates.filter { it.portabilityTier == 3 }.all { it.requiredAdapters.isNotEmpty() })
         assertTrue(templates.all { it.sourceInspiration == "classified-portable-pattern" })
     }
+
+    @Test
+    fun `unsupported temporal window rejects only its dependent template`() {
+        val file = File("src/main/assets/challenges/portable-extended.json")
+        val mutated = file.readText().replaceFirst("\"PLAYTHROUGH\"", "\"FRAME_EXACT\"")
+
+        val templates = PortableChallengeCatalog.decodeTemplates(mutated.toByteArray())
+
+        assertEquals(5, templates.size)
+        assertTrue(templates.none { it.key == "progress-first-badge" })
+    }
 }

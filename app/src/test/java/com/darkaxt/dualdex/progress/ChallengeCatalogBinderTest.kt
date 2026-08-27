@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.progress
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class ChallengeCatalogBinderTest {
@@ -19,6 +20,7 @@ class ChallengeCatalogBinderTest {
             ),
             gymLeaders = listOf(GymLeaderBinding("leader-2", "River Leader")),
             provenAdapters = setOf("MINIGAME:contest"),
+            provenTemporalWindows = setOf("PLAYTHROUGH", "BATTLE_EPOCH", "GAME_SPECIFIC"),
         )
 
         val bound = ChallengeCatalogBinder.bind(templates, bindings)
@@ -44,13 +46,50 @@ class ChallengeCatalogBinderTest {
             areaCollectibles = listOf(AreaCollectibleBinding("area-1", "First Area", setOf("item-1"))),
             gymLeaders = listOf(GymLeaderBinding("leader-1", "First Leader")),
             provenAdapters = setOf("MINIGAME:contest"),
+            provenTemporalWindows = setOf("PLAYTHROUGH", "BATTLE_EPOCH", "GAME_SPECIFIC"),
         )
 
         val all = ChallengeCatalogBinder.bind(templates, complete)
         val withoutLeader = ChallengeCatalogBinder.bind(templates, complete.copy(gymLeaders = emptyList()))
         val withoutAdapter = ChallengeCatalogBinder.bind(templates, complete.copy(provenAdapters = emptySet()))
+        val withoutBattleWindow = ChallengeCatalogBinder.bind(
+            templates,
+            complete.copy(provenTemporalWindows = setOf("PLAYTHROUGH", "GAME_SPECIFIC")),
+        )
 
         assertEquals(all.map { it.key }.filterNot { it.startsWith("battle-leader") }, withoutLeader.map { it.key })
         assertEquals(all.map { it.key }.filterNot { it.startsWith("special-minigame") }, withoutAdapter.map { it.key })
+        assertEquals(all.map { it.key }.filterNot { it.startsWith("battle-leader") }, withoutBattleWindow.map { it.key })
+    }
+
+    @Test
+    fun `reordered bindings preserve identifiers and ambiguous identifiers are rejected`() {
+        val templates = PortableChallengeCatalog.decodeTemplates(
+            java.io.File("src/main/assets/challenges/portable-extended.json").readBytes(),
+        )
+        val first = AreaCollectibleBinding("area-1", "First Area", setOf("item-1"))
+        val second = AreaCollectibleBinding("area-2", "Second Area", setOf("item-2"))
+        val forward = ChallengeCatalogBinder.bind(
+            templates,
+            ChallengeCatalogBindings(areaCollectibles = listOf(first, second)),
+        )
+        val reversed = ChallengeCatalogBinder.bind(
+            templates,
+            ChallengeCatalogBindings(areaCollectibles = listOf(second, first)),
+        )
+
+        assertEquals(forward.map { it.key }, reversed.map { it.key })
+        try {
+            ChallengeCatalogBindings(areaCollectibles = listOf(first, first.copy(displayName = "Ambiguous")))
+            fail("duplicate semantic identifiers must fail closed")
+        } catch (_: IllegalArgumentException) {
+            // Expected: an ambiguous identifier must never silently select one candidate.
+        }
+        try {
+            ChallengeCatalogBindings(provenAdapters = setOf("MINIGAME:../../retail-offset"))
+            fail("invalid adapter identifiers must fail closed")
+        } catch (_: IllegalArgumentException) {
+            // Expected: adapters are explicit proven semantic bindings, not locator strings.
+        }
     }
 }

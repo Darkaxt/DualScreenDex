@@ -228,6 +228,11 @@ open class DualDexApplication : Application() {
         val portableChallenges = runCatching {
             assets.open("challenges/portable-baseline.json").use { PortableChallengeCatalog.decode(it.readBytes()) }
         }.getOrDefault(emptyList())
+        val portableChallengeTemplates = runCatching {
+            assets.open("challenges/portable-extended.json").use {
+                PortableChallengeCatalog.decodeTemplates(it.readBytes())
+            }
+        }.getOrDefault(emptyList())
         val transientGameState = UnifiedGameStateDecoder(
             stateTraceSink = ResolvedStateTraceSink { trace ->
                 runCatching { Log.i(STATE_LOG_TAG, performanceGson.toJson(trace)) }
@@ -261,6 +266,7 @@ open class DualDexApplication : Application() {
             appVersion = packageVersionName(),
             journalRegistry = playthroughJournals,
             challengeDefinitions = portableChallenges,
+            challengeTemplates = portableChallengeTemplates,
             transientGameState = transientGameState,
         )
         onCompanionRuntimeCreated(runtime)
