@@ -25,3 +25,17 @@ The isolated Gradle run took 41 minutes 13 seconds while several unrelated JVM b
 ## Mandatory landing gate
 
 This report does not approve later QA hardening commits. Before each remaining RC, fetch and record the current committed QA tip and rerun the combined-tree gate. When `qa/project-wide-hardening` reaches `master`, rerun the complete repository and specification matrices against the actual resulting `master` commit. Any failure is a release blocker; an earlier simulated-merge pass cannot be reused.
+
+## 2026-08-27 landed-master control
+
+The QA branch reached both `fork/master` and `fork/qa/project-wide-hardening` at `81182eb6` (`docs: close QA hardening stage 4`). This landing included three commits newer than the pre-merge control: bounded parser and guide cancellation, isolated optional-data cache invalidation, and the closing QA audit.
+
+The Stage 6 guide-recovery fix and convergence record were rebased onto that exact landing. The complete gate was then repeated on the resulting authoritative tree:
+
+- Browser production suite: 30 files and 227 tests passed.
+- Browser production build: passed.
+- Kotlin and Android gate: all required save, battle-memory, parser, catalog, companion, app unit, lint, and release-assembly tasks passed.
+- Gradle result: 103 actionable tasks; 41 executed and 62 up to date; `BUILD SUCCESSFUL` in 52 minutes 12 seconds under concurrent JVM load.
+- Merge state: no unresolved paths and no uncommitted QA work was read or modified.
+
+This closes the QA-landing regression blocker for the tested `81182eb6` master commit. Any later hardening commit remains subject to the mandatory gate above.
