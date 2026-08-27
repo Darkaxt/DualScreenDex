@@ -402,6 +402,55 @@ class Gen3DynamicTableResolverTest {
     }
 
     @Test
+    fun resolvesPublishedHybridBattleMoveRecords() {
+        val bytes = ByteArray(0x16000)
+        val wrongMoves = 0x3000
+        val moves = 0xA000
+        val speciesCount = 80
+        val moveCount = 100
+        fillHybridBattleMoves(bytes, moves, moveCount)
+        writePointer(bytes, 0x1CC, moves)
+
+        val resolved = Gen3DynamicTableResolver.resolve(
+            RomImage(bytes),
+            ProfileTables(moveData = TableLayout(wrongMoves, moveCount, 12)),
+            speciesCount,
+            moveCount,
+        )
+
+        assertEquals(moves, resolved.moveData?.offset)
+        assertEquals(20, resolved.moveData?.recordSize)
+        assertEquals(TableRecordFormat.HYBRID_BATTLE_MOVE_20, resolved.moveData?.format)
+    }
+
+    @Test
+    fun trimsAdjacentNonMoveAndEmptySuffixAfterCompleteHybridPrefix() {
+        val bytes = ByteArray(0x16000)
+        val moves = 0xA000
+        val moveCount = 100
+        fillHybridBattleMoves(bytes, moves, moveCount)
+        val adjacentData = moves + (moveCount - 2) * 20
+        bytes.fill(0, adjacentData, moves + moveCount * 20)
+        writeU16(bytes, adjacentData, 52)
+        bytes[adjacentData + 2] = 16
+        bytes[adjacentData + 4] = 1
+        bytes[adjacentData + 5] = 1
+        repeat(6) { bytes[adjacentData + 8 + it] = 0xFF.toByte() }
+        writePointer(bytes, 0x1CC, moves)
+
+        val resolved = Gen3DynamicTableResolver.resolve(
+            RomImage(bytes),
+            ProfileTables(moveData = TableLayout(0x3000, moveCount, 12)),
+            speciesCount = 80,
+            moveCount = moveCount,
+        )
+
+        assertEquals(moves, resolved.moveData?.offset)
+        assertEquals(moveCount - 2, resolved.moveData?.count)
+        assertEquals(TableRecordFormat.HYBRID_BATTLE_MOVE_20, resolved.moveData?.format)
+    }
+
+    @Test
     fun rejectsEquallyCredibleExpandedMoveRootsAsAmbiguous() {
         val bytes = ByteArray(0x18000)
         val firstMoves = 0x8000
@@ -579,6 +628,25 @@ class Gen3DynamicTableResolverTest {
 
         assertEquals(moves, resolved.moveData?.offset)
         assertEquals(TableRecordFormat.CFRU_MOVE_16, resolved.moveData?.format)
+    }
+
+    private fun fillHybridBattleMoves(bytes: ByteArray, offset: Int, count: Int) {
+        repeat(count) { id ->
+            val base = offset + id * 20
+            if (id > 0) {
+                writeU16(bytes, base, id % 400)
+                bytes[base + 2] = (20 + id % 180).toByte()
+                bytes[base + 3] = (id % 19).toByte()
+                bytes[base + 4] = 100
+                bytes[base + 5] = 20
+                bytes[base + 6] = 10
+                writeU16(bytes, base + 8, 1 shl (id % 8))
+                bytes[base + 10] = (if (id % 2 == 0) 1 else 0xFF).toByte()
+                bytes[base + 12] = 0x33
+                bytes[base + 16] = (id % 3).toByte()
+                bytes[base + 17] = (id % 32).toByte()
+            }
+        }
     }
 
     private fun fillBattleEngineMoves(

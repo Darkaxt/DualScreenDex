@@ -508,6 +508,12 @@ class ProductionCompanionRuntime(
         loadInternal(name, rom, null)
     }
 
+    fun recordRomSourceLoadFailure(romSha256: String, failure: Throwable) {
+        performanceRecorder.beginLoad(romSha256, generation = null)
+        performanceRecorder.transitionStage("ROM_SOURCE")
+        performanceRecorder.loadFailed(failure)
+    }
+
     private fun loadInternal(name: String, rom: RomImage, onComplete: ((Result<Unit>) -> Unit)?) {
         if (activeCatalogMatches(rom.sha256)) {
             notifyCompletion(onComplete, Result.success(Unit))
@@ -550,12 +556,23 @@ class ProductionCompanionRuntime(
                 }
                 publishParsed(generation, name, parsed)
                 notifyCompletion(onComplete, Result.success(Unit))
+            } catch (failure: OutOfMemoryError) {
+                failCatalogLoad(generation, onComplete, failure)
             } catch (failure: Exception) {
-                performanceRecorder.loadFailed(failure)
-                publishTransitionFailure(generation, "FAILED", failure.message ?: failure.javaClass.simpleName)
-                notifyCompletion(onComplete, Result.failure(failure))
+                failCatalogLoad(generation, onComplete, failure)
             }
         }
+    }
+
+    private fun failCatalogLoad(
+        generation: Long,
+        onComplete: ((Result<Unit>) -> Unit)?,
+        failure: Throwable,
+    ) {
+        val publicFailure = GuideLoadFailure.from(failure)
+        runCatching { performanceRecorder.loadFailed(failure) }
+        publishTransitionFailure(generation, "FAILED", publicFailure.message)
+        notifyCompletion(onComplete, Result.failure(publicFailure))
     }
 
     /** Test and cache-reopen seam; Stage 2 will use this for persisted catalogs. */

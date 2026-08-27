@@ -660,6 +660,78 @@ object TableValidators {
         )
     }
 
+    /**
+     * Validates the aligned 20-byte BattleMove ABI with widened effect, byte power/type fields,
+     * u16 target, u32 flags, split, and argument fields. All compiler padding must remain zero.
+     */
+    fun hybridBattleMoveData(
+        rom: RomImage,
+        offset: Int,
+        count: Int,
+    ): ValidationEvidence = safely(offset, 20, count) {
+        val plausibleRows = BooleanArray(count)
+        val reservedRows = BooleanArray(count)
+        var populated = 0
+        repeat(count) { index ->
+            val base = offset + index * 20
+            val reserved = (0 until 20).all { rom.u8(base + it) == 0 }
+            val accuracy = rom.u8(base + 4)
+            val secondaryChance = rom.u8(base + 6)
+            val priority = rom.u8(base + 10).toByte().toInt()
+            val plausible = reserved || (
+                rom.u8(base + 3) in 0..31 &&
+                    (accuracy == 0 || accuracy in 10..100 || accuracy == 0xFF) &&
+                    rom.u8(base + 5) in 0..64 &&
+                    (secondaryChance in 0..100 || secondaryChance == 0xFF) &&
+                    priority in -8..7 &&
+                    rom.u8(base + 7) == 0 &&
+                    rom.u8(base + 11) == 0 &&
+                    rom.u8(base + 16) in 0..2 &&
+                    rom.u8(base + 18) == 0 &&
+                    rom.u8(base + 19) == 0
+                )
+            plausibleRows[index] = plausible
+            reservedRows[index] = reserved
+            if (!reserved) populated++
+        }
+        val firstInvalid = plausibleRows.indexOfFirst { !it }
+        if (firstInvalid in maxOf(3, count / 2) until count - 1 &&
+            !reservedRows[firstInvalid] &&
+            plausibleRows.copyOfRange(0, firstInvalid).all { it } &&
+            reservedRows.copyOfRange(firstInvalid + 1, count).all { it } &&
+            populated - 1 >= firstInvalid - 1
+        ) {
+            return@safely ValidationEvidence(
+                compatible = true,
+                validRecords = firstInvalid,
+                totalRecords = firstInvalid,
+                confidence = 1.0,
+                reasons = listOf(
+                    "trimmed adjacent non-move data and an empty suffix after a complete hybrid BattleMove table",
+                ),
+                offset = offset,
+                recordSize = 20,
+            )
+        }
+        val valid = plausibleRows.count { it }
+        val confidence = valid.toDouble() / count.coerceAtLeast(1)
+        val populatedRatio = populated.toDouble() / (count - 1).coerceAtLeast(1)
+        val compatible = valid == count && populatedRatio >= 0.80
+        ValidationEvidence(
+            compatible = compatible,
+            validRecords = valid,
+            totalRecords = count,
+            confidence = minOf(confidence, populatedRatio),
+            reasons = if (compatible) {
+                listOf("validated aligned 20-byte hybrid BattleMove records")
+            } else {
+                listOf("plausible hybrid BattleMove records $valid/$count; populated $populated/${(count - 1).coerceAtLeast(1)}")
+            },
+            offset = offset,
+            recordSize = 20,
+        )
+    }
+
     /** Validates the later 20-byte Battle Engine move ABI with flags, split, and Z-move fields. */
     fun battleEngineMoveData(
         rom: RomImage,

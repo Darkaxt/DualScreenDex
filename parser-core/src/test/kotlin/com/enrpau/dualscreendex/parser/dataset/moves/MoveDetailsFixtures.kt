@@ -119,6 +119,38 @@ internal fun putCfruMove(
     putMoveU32(bytes, offset + 12, flags)
 }
 
+internal fun putHybridBattleMove(
+    bytes: ByteArray,
+    offset: Int,
+    effect: Int = 700,
+    power: Int = 250,
+    type: Int = 18,
+    accuracy: Int = 100,
+    pp: Int = 5,
+    secondaryChance: Int = 30,
+    target: Int = 0x1234,
+    priority: Int = -3,
+    flags: Long = 0x89ABCDEFL,
+    split: Int = 2,
+    argument: Int = 19,
+) {
+    putMoveU16(bytes, offset, effect)
+    bytes[offset + 2] = power.toByte()
+    bytes[offset + 3] = type.toByte()
+    bytes[offset + 4] = accuracy.toByte()
+    bytes[offset + 5] = pp.toByte()
+    bytes[offset + 6] = secondaryChance.toByte()
+    bytes[offset + 7] = 0
+    putMoveU16(bytes, offset + 8, target)
+    bytes[offset + 10] = priority.toByte()
+    bytes[offset + 11] = 0
+    putMoveU32(bytes, offset + 12, flags)
+    bytes[offset + 16] = split.toByte()
+    bytes[offset + 17] = argument.toByte()
+    bytes[offset + 18] = 0
+    bytes[offset + 19] = 0
+}
+
 internal fun putBattleEngineMove(
     bytes: ByteArray,
     offset: Int,

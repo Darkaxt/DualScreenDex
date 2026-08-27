@@ -280,6 +280,7 @@ class FloatingCompanionService : Service() {
                 ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
             NativeSetupRoute.OPEN_RETROARCH -> (application as DualDexApplication).retroArchSetup?.launchRetroArch()
+            NativeSetupRoute.RETRY_GUIDE -> (application as DualDexApplication).retroArchSetup?.retryGuideLoad()
             NativeSetupRoute.EXPORT_MAPPER -> startActivity(
                 Intent(this, MainActivity::class.java)
                     .putExtra(MainActivity.EXTRA_EXPORT_MAPPER, true)

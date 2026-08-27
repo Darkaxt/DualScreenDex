@@ -262,6 +262,8 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                     inferredMoveCount ?: it.count,
                     Gen3DynamicTableResolver.moveTypeUpperBound(tables),
                 )
+            } else if (it.format == TableRecordFormat.HYBRID_BATTLE_MOVE_20) {
+                TableValidators.hybridBattleMoveData(rom, it.offset, inferredMoveCount ?: it.count)
             } else if (it.format == TableRecordFormat.BATTLE_ENGINE_MOVE_20) {
                 TableValidators.battleEngineMoveData(rom, it.offset, inferredMoveCount ?: it.count)
             } else {

@@ -31,8 +31,10 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
 
       <SetupStep number="1" title="SHARED STORAGE" status={retroArch.storageGrant}>
         <p>All Files Access automatically finds supported games and their save files, even when they use separate folders.</p>
-        <a class="setup-action setup-action-primary" href="dualdex://grant/files">GRANT ALL FILES ACCESS</a>
+        {retroArch.storageGrant === 'MISSING' && <a class="setup-action setup-action-primary" href="dualdex://grant/files">GRANT ALL FILES ACCESS</a>}
         <small>{retroArch.indexedRoms} games found.</small>
+        {retroArch.romGrant === 'INDEXING' && <p class="setup-message" role="status">Finding your games…</p>}
+        {retroArch.romGrant === 'FAILED' && <p class="warning-note">Games could not be indexed. Select the game folder below or try again.</p>}
         {retroArch.storageGrant === 'MISSING' && <p class="warning-note">Save files in separate folders cannot be found until storage access is granted.</p>}
         <div class="setup-manual-path">
           <strong>FOLDER FALLBACK</strong>
@@ -60,6 +62,10 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
           <span><small>COMPANION</small><strong>{retroArch.connection === 'CONNECTED' ? 'Ready' : 'Waiting for a game'}</strong></span>
         </div>
         <a class="setup-action setup-action-primary" href="dualdex://open/retroarch">OPEN RETROARCH</a>
+        {retroArch.resolution === 'FAILED' && <>
+          <p class="warning-note" role="alert">{retroArch.message ?? 'This game guide could not be opened. You can try again.'}</p>
+          <a class="setup-action setup-action-primary" href="dualdex://guide/retry">RETRY OPENING GAME GUIDE</a>
+        </>}
       </SetupStep>
 
       {retroArch.restartRequired && <p class="setup-message" role="status">Fully restart RetroArch, then return here.</p>}

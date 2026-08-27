@@ -26,7 +26,7 @@ describe('RetroArch setup', () => {
   });
 
   it('makes All Files Access primary while retaining the two folder fallbacks', () => {
-    render(<SetupPage state={state} send={vi.fn()} />);
+    render(<SetupPage state={{ ...state, retroArch: { ...state.retroArch, storageGrant: 'MISSING' } }} send={vi.fn()} />);
 
     expect(screen.getByRole('link', { name: 'GRANT ALL FILES ACCESS' }).getAttribute('href')).toBe('dualdex://grant/files');
     expect(screen.getByRole('link', { name: 'SELECT RETROARCH FOLDER' }).getAttribute('href')).toBe('dualdex://grant/retroarch');
@@ -38,6 +38,38 @@ describe('RetroArch setup', () => {
     render(<SetupPage state={{ ...state, retroArch: { ...state.retroArch, storageGrant: 'MISSING' } }} send={vi.fn()} />);
 
     expect(screen.getByText(/Save files in separate folders cannot be found until storage access is granted/i)).toBeTruthy();
+  });
+
+  it('keeps granted storage ready while game discovery is indexing', () => {
+    render(<SetupPage state={{
+      ...state,
+      retroArch: { ...state.retroArch, storageGrant: 'GRANTED', romGrant: 'INDEXING', indexedRoms: 0 },
+    }} send={vi.fn()} />);
+
+    expect(screen.queryByRole('link', { name: 'GRANT ALL FILES ACCESS' })).toBeNull();
+    expect(screen.getByText('Ready')).toBeTruthy();
+    expect(screen.getByText('Finding your games…')).toBeTruthy();
+  });
+
+  it('keeps granted storage ready when indexing fails', () => {
+    render(<SetupPage state={{
+      ...state,
+      retroArch: { ...state.retroArch, storageGrant: 'GRANTED', romGrant: 'FAILED', indexedRoms: 0 },
+    }} send={vi.fn()} />);
+
+    expect(screen.queryByRole('link', { name: 'GRANT ALL FILES ACCESS' })).toBeNull();
+    expect(screen.getByText('Ready')).toBeTruthy();
+    expect(screen.getByText(/Games could not be indexed/i)).toBeTruthy();
+  });
+
+  it('offers an explicit guide retry only after a failed activation', () => {
+    const failed = { ...state, retroArch: { ...state.retroArch, resolution: 'FAILED' } };
+    const { rerender } = render(<SetupPage state={failed} send={vi.fn()} />);
+
+    expect(screen.getByRole('link', { name: 'RETRY OPENING GAME GUIDE' }).getAttribute('href')).toBe('dualdex://guide/retry');
+
+    rerender(<SetupPage state={state} send={vi.fn()} />);
+    expect(screen.queryByRole('link', { name: 'RETRY OPENING GAME GUIDE' })).toBeNull();
   });
 
   it('returns to the previous screen', () => {

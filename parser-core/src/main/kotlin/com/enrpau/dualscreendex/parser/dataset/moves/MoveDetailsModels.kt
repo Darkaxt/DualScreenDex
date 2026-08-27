@@ -20,6 +20,9 @@ enum class MoveDetailsAbi(
     /** Widened retail fields with u16 target, byte flags/string/dance fields, and two-byte tail padding. */
     WIDENED_RETAIL_16(16, TableRecordFormat.WIDENED_RETAIL_MOVE_16),
 
+    /** Widened effect with byte power/type fields and aligned flags/split/argument fields. */
+    HYBRID_BATTLE_MOVE_20(20, TableRecordFormat.HYBRID_BATTLE_MOVE_20),
+
     /** Later Battle Engine ABI with u16 target, u32 flags, split, and Z-move metadata. */
     BATTLE_ENGINE_20(20, TableRecordFormat.BATTLE_ENGINE_MOVE_20),
 

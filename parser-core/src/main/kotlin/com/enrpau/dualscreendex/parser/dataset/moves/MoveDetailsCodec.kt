@@ -58,18 +58,35 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
         }
 
         val widened = abi != MoveDetailsAbi.RETAIL_12
-        val typeId = session.rom.u8(recordOffset + if (widened) EXTENDED_TYPE_OFFSET else RETAIL_TYPE_OFFSET)
-        val accuracy = session.rom.u8(
-            recordOffset + if (widened) EXTENDED_ACCURACY_OFFSET else RETAIL_ACCURACY_OFFSET,
-        )
-        val pp = session.rom.u8(recordOffset + if (widened) EXTENDED_PP_OFFSET else RETAIL_PP_OFFSET)
-        val secondaryChance = session.rom.u8(
-            recordOffset + if (widened) EXTENDED_SECONDARY_CHANCE_OFFSET else RETAIL_SECONDARY_CHANCE_OFFSET,
-        )
+        val typeOffset = when (abi) {
+            MoveDetailsAbi.RETAIL_12 -> RETAIL_TYPE_OFFSET
+            MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> HYBRID_TYPE_OFFSET
+            else -> EXTENDED_TYPE_OFFSET
+        }
+        val accuracyOffset = when (abi) {
+            MoveDetailsAbi.RETAIL_12 -> RETAIL_ACCURACY_OFFSET
+            MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> HYBRID_ACCURACY_OFFSET
+            else -> EXTENDED_ACCURACY_OFFSET
+        }
+        val ppOffset = when (abi) {
+            MoveDetailsAbi.RETAIL_12 -> RETAIL_PP_OFFSET
+            MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> HYBRID_PP_OFFSET
+            else -> EXTENDED_PP_OFFSET
+        }
+        val secondaryChanceOffset = when (abi) {
+            MoveDetailsAbi.RETAIL_12 -> RETAIL_SECONDARY_CHANCE_OFFSET
+            MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> HYBRID_SECONDARY_CHANCE_OFFSET
+            else -> EXTENDED_SECONDARY_CHANCE_OFFSET
+        }
+        val typeId = session.rom.u8(recordOffset + typeOffset)
+        val accuracy = session.rom.u8(recordOffset + accuracyOffset)
+        val pp = session.rom.u8(recordOffset + ppOffset)
+        val secondaryChance = session.rom.u8(recordOffset + secondaryChanceOffset)
         val priorityOffset = when (abi) {
             MoveDetailsAbi.RETAIL_12 -> RETAIL_PRIORITY_OFFSET
             MoveDetailsAbi.CFRU_16 -> CFRU_PRIORITY_OFFSET
             MoveDetailsAbi.WIDENED_RETAIL_16 -> WIDENED_RETAIL_PRIORITY_OFFSET
+            MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> HYBRID_PRIORITY_OFFSET
             MoveDetailsAbi.BATTLE_ENGINE_20 -> BATTLE_ENGINE_PRIORITY_OFFSET
             MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
         }
@@ -78,6 +95,7 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
             MoveDetailsAbi.RETAIL_12 -> null
             MoveDetailsAbi.CFRU_16 -> session.rom.u8(recordOffset + CFRU_SPLIT_OFFSET)
             MoveDetailsAbi.WIDENED_RETAIL_16 -> null
+            MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> session.rom.u8(recordOffset + HYBRID_SPLIT_OFFSET)
             MoveDetailsAbi.BATTLE_ENGINE_20 -> session.rom.u8(recordOffset + BATTLE_ENGINE_SPLIT_OFFSET)
             MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
         }
@@ -110,6 +128,10 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
                     session.rom.u8(recordOffset + WIDENED_RETAIL_PADDING_OFFSET + 1) != 0)
             ) {
                 add("widened retail ABI tail padding is nonzero")
+            } else if (abi == MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 &&
+                HYBRID_PADDING_OFFSETS.any { session.rom.u8(recordOffset + it) != 0 }
+            ) {
+                add("hybrid BattleMove ABI padding is nonzero")
             } else if (abi != MoveDetailsAbi.RETAIL_12 &&
                 abi != MoveDetailsAbi.WIDENED_RETAIL_16 &&
                 session.rom.u8(recordOffset + EXTENDED_PADDING_OFFSET) != 0
@@ -122,7 +144,9 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
                 add("widened retail dance flag is not boolean")
             }
             if (
-                abi != MoveDetailsAbi.RETAIL_12 && abi != MoveDetailsAbi.WIDENED_RETAIL_16 &&
+                abi != MoveDetailsAbi.RETAIL_12 &&
+                abi != MoveDetailsAbi.WIDENED_RETAIL_16 &&
+                abi != MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 &&
                 session.rom.u16le(recordOffset + POWER_OFFSET) > MAX_WIDENED_POWER
             ) {
                 add("widened power exceeds $MAX_WIDENED_POWER")
@@ -173,6 +197,21 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
                 flags = session.rom.u8(recordOffset + WIDENED_RETAIL_FLAGS_OFFSET).toLong(),
                 split = null,
                 argument = null,
+                zMovePower = null,
+                zMoveEffect = null,
+            )
+            MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> Gen3MoveDetailsRecord(
+                effectId = session.rom.u16le(recordOffset),
+                power = session.rom.u8(recordOffset + HYBRID_POWER_OFFSET),
+                typeId = typeId,
+                accuracy = accuracy,
+                pp = pp,
+                secondaryEffectChance = secondaryChance,
+                targetMask = session.rom.u16le(recordOffset + HYBRID_TARGET_OFFSET),
+                priority = priority,
+                flags = session.rom.u32le(recordOffset + HYBRID_FLAGS_OFFSET),
+                split = requireNotNull(MoveSplit.fromRaw(requireNotNull(splitRaw))),
+                argument = session.rom.u8(recordOffset + HYBRID_ARGUMENT_OFFSET),
                 zMovePower = null,
                 zMoveEffect = null,
             )
@@ -261,6 +300,17 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
         const val WIDENED_RETAIL_FLAGS_OFFSET = 11
         const val WIDENED_RETAIL_DANCE_OFFSET = 13
         const val WIDENED_RETAIL_PADDING_OFFSET = 14
+        const val HYBRID_POWER_OFFSET = 2
+        const val HYBRID_TYPE_OFFSET = 3
+        const val HYBRID_ACCURACY_OFFSET = 4
+        const val HYBRID_PP_OFFSET = 5
+        const val HYBRID_SECONDARY_CHANCE_OFFSET = 6
+        const val HYBRID_TARGET_OFFSET = 8
+        const val HYBRID_PRIORITY_OFFSET = 10
+        const val HYBRID_FLAGS_OFFSET = 12
+        const val HYBRID_SPLIT_OFFSET = 16
+        const val HYBRID_ARGUMENT_OFFSET = 17
+        val HYBRID_PADDING_OFFSETS = intArrayOf(7, 11, 18, 19)
         const val BATTLE_ENGINE_TARGET_OFFSET = 8
         const val BATTLE_ENGINE_PRIORITY_OFFSET = 10
         const val BATTLE_ENGINE_FLAGS_OFFSET = 12
