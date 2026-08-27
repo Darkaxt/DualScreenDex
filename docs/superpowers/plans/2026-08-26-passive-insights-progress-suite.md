@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver Party Analysis, Atlas Area Guide, Trainer Progress and Save Timeline, Pokédex Specimens, selected-move Damage Forecast, and portable Challenges as six independently complete, measured, and releasable features.
+**Goal:** Deliver Party Analysis, Atlas Area Guide, Trainer Progress and Save Timeline, Pokédex Specimens, selected-move Damage Forecast, and portable Challenges as six independently complete, measured, and releasable features, then normalize all new routes in one final UI-conformance stage.
 
 **Architecture:** Keep `UnifiedGameStateDecoder` and its immutable `ResolvedGameSnapshot` as the only current-state authority. Add deterministic companion-core projections for analysis, guide, progress, storage, and forecast; expose them through the existing API; render them through the existing Preact navigation stack; store only historical events and preferences in one ROM-SHA-plus-save-identity journal. Static facts come from the active parsed catalog, never from ROM names, filenames, hashes, retail offsets, or presumed ancestry.
 
 **Tech Stack:** Kotlin/JVM, Android Kotlin, Gradle, Gson, Preact, TypeScript, Vitest, Playwright, Node.js tooling, GitHub Actions protected Android signing.
 
-**Governing specification:** `docs/superpowers/specs/2026-08-26-passive-insights-progress-suite-design.md`
+**Governing specifications:** `docs/superpowers/specs/2026-08-26-passive-insights-progress-suite-design.md` and `docs/superpowers/specs/2026-08-27-passive-insights-ui-conformance-design.md`
 
-**Execution order:** Reference corpus → Party Analysis → Atlas Area Guide → Trainer Progress/Timeline → Pokédex Specimens → Damage Forecast → challenge expansion. This ordering implements the later requirement to deliver the easiest complete wins first. It supersedes the older feature order without weakening any feature contract.
+**Execution order:** Reference corpus → Party Analysis → Atlas Area Guide → Trainer Progress/Timeline → Pokédex Specimens → Damage Forecast → challenge expansion → cross-feature UI conformance. This ordering implements the later requirement to deliver the easiest complete wins first and ensures the visual audit includes every final route. It supersedes the older feature order without weakening any feature contract.
 
 **Evidence rule:** Use the real official and source-backed ROM/save/memory/source controls named by the specification first. Synthetic inputs are allowed only after the real structure is established, and only for malformed, ambiguous, boundary, mutation, or lifecycle cases. A synthetic pass is never compatibility evidence.
 
@@ -20,7 +20,7 @@
 
 ## Release and stage invariants
 
-Every feature stage follows this exact sequence:
+Every feature stage and the final conformance stage follow this exact sequence:
 
 1. Add the smallest failing contract test.
 2. Implement the pure model or projection.
@@ -32,7 +32,7 @@ Every feature stage follows this exact sequence:
 8. Fix every `BLOCKER` and `ERROR` before advancing.
 9. Publish exactly one next unused numeric RC only after every current-feature requirement is `SATISFIED` or genuinely `NOT_APPLICABLE`, with any cross-feature dependency assigned to a named later stage as `DEFERRED`.
 
-Stage 0 is reference preparation, not a product feature, and creates no RC. Intermediate commits, tooling, models, and UI slices create no RC. The RC number is discovered from remote tags only after the feature gate passes; RC numbers are never reserved at stage start.
+Stage 0 is reference preparation, not a product feature, and creates no RC. Stages 1–6 each create one complete feature RC. Stage 7 creates one consolidation RC only after its complete conformance gate passes. Intermediate commits, tooling, models, and UI slices create no RC. The RC number is discovered from remote tags only after the stage gate passes; RC numbers are never reserved at stage start.
 
 No plan task installs or launches the APK on a console or emulator. Device acceptance remains user-owned unless separately requested.
 
@@ -54,6 +54,12 @@ Create and update these paths throughout execution:
 - `docs/reports/passive-insights-progress/damage-forecast-compatibility.json`
 - `docs/reports/passive-insights-progress/challenge-expansion-audit.md`
 - `docs/reports/passive-insights-progress/challenge-expansion-compatibility.json`
+- `docs/reports/passive-insights-progress/ui-conformance-route-matrix.json`
+- `docs/reports/passive-insights-progress/ui-conformance-font-matrix.json`
+- `docs/reports/passive-insights-progress/ui-conformance-font-matrix.md`
+- `docs/reports/passive-insights-progress/ui-conformance-computed-styles.json`
+- `docs/reports/passive-insights-progress/ui-conformance-screenshots.json`
+- `docs/reports/passive-insights-progress/ui-conformance-audit.md`
 
 Every audit table uses:
 
@@ -655,7 +661,7 @@ Pop-Location
 - [ ] **Step 3: Mutate flag roles, identifiers, temporal windows, and ambiguous entities; require dependent challenges to disappear or report `NOT_FOUND`, never silently rebind.**
 - [ ] **Step 4: Report the five required challenge percentages from specification Section 15.2.**
 
-### Task 6.3: Audit the completed suite and release challenge expansion
+### Task 6.3: Audit and release challenge expansion
 
 **Files:**
 
@@ -665,10 +671,10 @@ Pop-Location
 - Modify: compatibility documentation linked by `README.md`.
 - Modify at release gate only: release readiness/workflow files.
 
-- [ ] **Step 1: Compare Sections 3–18 against the final audit, including all six independent feature audits.**
-- [ ] **Step 2: Close every in-scope deferral; retain Tier 4 only as a documented research exclusion.**
-- [ ] **Step 3: Re-run diagnostic-leakage scans, navigation tests, Organic privacy tests, identity/persistence tests, compatibility reports, and performance gates.**
-- [ ] **Step 4: Run the complete repository verification.**
+- [ ] **Step 1: Compare Sections 3, 11–15, and 17 against the challenge-expansion audit.**
+- [ ] **Step 2: Close every challenge-expansion deferral; retain Tier 4 only as a documented research exclusion and assign any suite-wide presentation normalization explicitly to Stage 7.**
+- [ ] **Step 3: Re-run challenge inventory, dynamic binding, mutation rejection, Organic privacy, identity/persistence, compatibility, and performance gates.**
+- [ ] **Step 4: Run the affected repository verification.**
 
 ```powershell
 .\gradlew.bat :save-core:test :battle-memory:test :parser-core:test :catalog-store:test :companion-core:test :app:testDebugUnitTest :app:lintDebug :app:assembleRelease --no-daemon --console=plain
@@ -679,18 +685,107 @@ Pop-Location
 node --test tools/release/release-workflow.test.mjs tools/release/release-metadata.test.mjs
 ```
 
-- [ ] **Step 5: Commit documentation and final suite evidence before release metadata.**
+- [ ] **Step 5: Commit challenge-expansion documentation and evidence before release metadata.**
 - [ ] **Step 6: Discover and publish exactly one next unused numeric RC through the protected signing workflow; verify version, checksum, certificate, release notes, and compatibility assets. Do not install it.**
+
+---
+
+## Stage 7 — Cross-feature UI Conformance — consolidation RC
+
+### Task 7.1: Freeze the route, theme, and font-scale matrix
+
+**Files:**
+
+- Create: `companion-web/e2e/passive-insights-ui-conformance.spec.ts`
+- Create: `docs/reports/passive-insights-progress/ui-conformance-route-matrix.json`
+- Modify: `companion-web/e2e/rom-derived-theme.spec.ts`
+- Modify: `companion-web/src/App.production.test.tsx`
+
+- [ ] **Step 1: Add RED route coverage for Party Analysis; Area Guide; Progress/Metrics/Challenges/Timeline; Specimens/individual detail; Damage Forecast; and challenge-expansion list/detail states, including empty, populated, unavailable, and withheld variants where applicable.**
+- [ ] **Step 2: Register established Party, Trainer Card, Pokédex, Atlas, and Battle routes as regression baselines rather than redesign targets.**
+- [ ] **Step 3: Define the production 1024×768 matrix at 85%, 100%, and 135% font scale for Light, Dark, High Contrast, and ROM-derived `GAME` themes from official Gen I/II/III plus Modern Emerald, Unbound, and Odyssey controls.**
+- [ ] **Step 4: Write a deterministic route manifest with required state, theme, font scale, expected pattern family, scroll owner, and baseline relation. Run RED and commit the contract.**
+
+### Task 7.2: Normalize shared chrome and feature surfaces
+
+**Files:**
+
+- Modify: `companion-web/src/components.tsx`
+- Modify: `companion-web/src/components.test.tsx`
+- Modify: `companion-web/src/App.tsx`
+- Modify: `companion-web/src/pages/TrainerPage.tsx`
+- Modify: `companion-web/src/pages/TrainerCardPage.tsx`
+- Modify: `companion-web/src/pages/TrainerProgressPage.tsx`
+- Modify: `companion-web/src/pages/PartyAnalysisPage.tsx`
+- Modify: `companion-web/src/pages/AreaGuideDrawer.tsx`
+- Modify: `companion-web/src/pages/SpecimensPage.tsx`
+- Modify: `companion-web/src/pages/OwnedIndividualDetail.tsx`
+- Modify: `companion-web/src/pages/BattlePage.tsx`
+- Modify: only additional Stage 6 challenge page files discovered by `rg --files companion-web/src/pages`.
+- Modify: `companion-web/src/styles.css`
+- Modify: `companion-web/src/layoutStyles.test.ts`
+
+- [ ] **Step 1: Add RED component and layout tests for shared header/separator, page/paper/grid/panel surfaces, card geometry, semantic typography tiers, controls, icons, focus, and touch targets.**
+- [ ] **Step 2: Replace the Trainer `CARD`/`PROGRESS` full-width destination row with compact theme-consistent top-right icon buttons; leave at most one horizontal Progress section row and preserve selection, accessibility, and Back-stack state.**
+- [ ] **Step 3: Remove route-local legacy olive/forest, fixed yellow/white, one-off font, missing-pattern, and mismatched shadow/border rules by consuming shared tokens and primitives. Do not change feature semantics, data authority, disclosure, map behavior, or calculations.**
+- [ ] **Step 4: Normalize spacing, vertical centering, content use, icon containers, empty/unavailable states, and exactly one intentional scroll owner per route at every required font scale.**
+- [ ] **Step 5: Run component, navigation, and layout suites GREEN; commit by coherent visual contract rather than page-by-page cosmetic churn.**
+
+### Task 7.3: Generate measured cross-route evidence
+
+**Files:**
+
+- Modify: `companion-web/e2e/passive-insights-ui-conformance.spec.ts`
+- Create: `tools/reports/validate-ui-conformance.mjs`
+- Create: `tools/reports/validate-ui-conformance.test.mjs`
+- Create: `docs/reports/passive-insights-progress/ui-conformance-font-matrix.json`
+- Create: `docs/reports/passive-insights-progress/ui-conformance-font-matrix.md`
+- Create: `docs/reports/passive-insights-progress/ui-conformance-computed-styles.json`
+- Create: `docs/reports/passive-insights-progress/ui-conformance-screenshots.json`
+
+- [ ] **Step 1: For every matrix row, record visible-text count plus minimum, maximum, and unweighted average computed font size; require minimum ≥ 11.2 px and average ≥ 12 px without flattening semantic hierarchy.**
+- [ ] **Step 2: Record computed page, header, separator, panel, menu, card, text, border, shadow, control, icon, focus, semantic-color, and background-pattern values from rendered elements—not only root tokens.**
+- [ ] **Step 3: Assert contrast, non-color status cues, accessible names, focus visibility, touch-target size, line wrapping, truncation, body overflow, clipping, nested scrolling, and route-owned scroll behavior.**
+- [ ] **Step 4: Scan visible copy, accessible names, tooltips, empty states, withheld states, and fallbacks for diagnostic/provenance leakage outside Settings → Debug.**
+- [ ] **Step 5: Capture every matrix row, retain a durable screenshot manifest and representative references, validate report completeness with the Node tool, run GREEN, and commit the generated evidence.**
+
+### Task 7.4: Close the suite audit and publish the consolidation RC
+
+**Files:**
+
+- Create: `docs/reports/passive-insights-progress/ui-conformance-audit.md`
+- Modify: `docs/reports/passive-insights-progress/deferrals.md`
+- Modify: `README.md`
+- Modify: compatibility documentation linked by `README.md` only when regenerated evidence changes a published percentage.
+- Modify at release gate only: release readiness/workflow files.
+
+- [ ] **Step 1: Compare parent specification Sections 3–18 and every requirement in the Stage 7 conformance specification against implementation, automated, and real-data evidence.**
+- [ ] **Step 2: Revalidate all six independent feature audits, Organic disclosure, navigation, current-state authority, save-scoped persistence, compatibility reports, and performance profiling after normalization.**
+- [ ] **Step 3: Resolve every `BLOCKER` and `ERROR`; close all named Stage 7 deferrals and retain only explicitly documented Tier 4 research exclusions or genuinely out-of-scope future redesign ideas.**
+- [ ] **Step 4: Run the complete repository verification.**
+
+```powershell
+.\gradlew.bat :save-core:test :battle-memory:test :parser-core:test :catalog-store:test :companion-core:test :app:testDebugUnitTest :app:lintDebug :app:assembleRelease --no-daemon --console=plain
+Push-Location companion-web
+npm test
+npm run build
+npx playwright test e2e/rom-derived-theme.spec.ts e2e/passive-insights-ui-conformance.spec.ts
+Pop-Location
+node --test tools/reports/validate-ui-conformance.test.mjs tools/release/release-workflow.test.mjs tools/release/release-metadata.test.mjs
+```
+
+- [ ] **Step 5: Commit the final suite audit and documentation before release metadata.**
+- [ ] **Step 6: Discover and publish exactly one next unused numeric consolidation RC through the protected signing workflow; verify version, checksum, certificate, release notes, UI evidence assets, and compatibility assets. Do not install or launch it.**
 
 ---
 
 ## Common feature release procedure
 
-Use this only after the current feature audit contains no `BLOCKER` or `ERROR` and its user contract is complete.
+Use this only after the current feature or conformance audit contains no `BLOCKER` or `ERROR` and its stage contract is complete.
 
 - [ ] Fetch `fork/master` and all remote tags; reconcile upstream without absorbing unrelated work.
 - [ ] Derive the next unused `v1.1.0-rc.N` with `N <= 98`; never infer it from local branch names or preallocate it.
-- [ ] Add exactly one feature readiness field to `release/v1-ready.json` and require it in `.github/workflows/release.yml`.
+- [ ] Add exactly one stage readiness field to `release/v1-ready.json` and require it in `.github/workflows/release.yml`.
 - [ ] Add a workflow test proving the new readiness gate and required audit/compatibility assets.
 - [ ] Run release metadata/workflow tests and the feature's complete build gate.
 - [ ] Commit release metadata separately from implementation.
@@ -708,6 +803,7 @@ If implementation, evidence, or packaging validation fails before publication, r
 Before declaring the plan complete, verify that execution has produced:
 
 - six independent feature audits and six numeric compatibility reports;
+- one Stage 7 route matrix, font matrix, computed-style matrix, screenshot manifest, and conformance audit;
 - one Stage 0 audit and immutable reference manifest;
 - one resolved current-state authority and one isolated historical journal;
 - zero ordinary-UI diagnostic/provenance strings;
@@ -716,4 +812,4 @@ Before declaring the plan complete, verify that execution has produced:
 - Organic-mode evidence for every feature;
 - official Gen I–III and Modern Emerald/Unbound/Odyssey evidence where applicable;
 - no duplicate pollers, full-memory copies, unbounded journal growth, or persistent render loops; and
-- exactly one RC after each fully implemented feature, with no RC for Stage 0 or partial work.
+- exactly one RC after each of the six fully implemented features, one consolidation RC after complete Stage 7 conformance, and no RC for Stage 0 or partial work.
