@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "viewport": { "width": 1024, "height": 768 },
+  "fontScales": [0.85, 1, 1.35],
+  "themes": [
+    { "id": "game-gen1", "kind": "GAME", "control": "official Gen I" },
+    { "id": "game-gen2", "kind": "GAME", "control": "official Gen II" },
+    { "id": "game-gen3", "kind": "GAME", "control": "official Gen III" },
+    { "id": "game-modern-emerald", "kind": "GAME", "control": "Modern Emerald" },
+    { "id": "game-unbound", "kind": "GAME", "control": "Pokémon Unbound" },
+    { "id": "game-odyssey", "kind": "GAME", "control": "Pokémon Odyssey" },
+    { "id": "light", "kind": "FIXED", "control": "Light" },
+    { "id": "dark", "kind": "FIXED", "control": "Dark" },
+    { "id": "high-contrast", "kind": "FIXED", "control": "High Contrast" }
+  ],
+  "routes": [
+    { "id": "baseline-pokedex", "family": "baseline", "state": "populated", "pattern": "grid", "scrollOwner": ".species-list", "baseline": "RC25 Pokédex" },
+    { "id": "baseline-party", "family": "baseline", "state": "populated", "pattern": "grid", "scrollOwner": ".party-content", "baseline": "RC25 Party" },
+    { "id": "baseline-trainer-card", "family": "baseline", "state": "populated", "pattern": "grid", "scrollOwner": ".trainer-card-content", "baseline": "RC25 Trainer Card" },
+    { "id": "baseline-atlas", "family": "baseline", "state": "local-map", "pattern": "map", "scrollOwner": null, "baseline": "RC30 local Atlas" },
+    { "id": "baseline-battle", "family": "baseline", "state": "entry", "pattern": "grid", "scrollOwner": ".battle-content", "baseline": "RC25 Battle" },
+
+    { "id": "party-analysis-summary", "family": "party-analysis", "state": "summary", "pattern": "grid", "scrollOwner": ".party-analysis-content", "baseline": "Party cards and detail typography" },
+    { "id": "party-analysis-comparison", "family": "party-analysis", "state": "offense-defense", "pattern": "grid", "scrollOwner": ".party-analysis-content", "baseline": "Party cards and detail typography" },
+    { "id": "party-analysis-linked-detail", "family": "party-analysis", "state": "member-detail", "pattern": "paper", "scrollOwner": ".party-detail-window", "baseline": "Party individual detail" },
+
+    { "id": "area-guide-collapsed", "family": "area-guide", "state": "closed", "pattern": "map", "scrollOwner": null, "baseline": "Atlas chrome" },
+    { "id": "area-guide-populated", "family": "area-guide", "state": "populated", "pattern": "map", "scrollOwner": ".area-guide-content", "baseline": "Atlas chrome and POIs" },
+    { "id": "area-guide-empty", "family": "area-guide", "state": "overview-only", "pattern": "map", "scrollOwner": ".area-guide-content", "baseline": "Atlas chrome and empty panels" },
+
+    { "id": "progress-metrics", "family": "trainer-progress", "state": "metrics", "pattern": "grid", "scrollOwner": ".progress-metric-columns", "baseline": "Trainer Card" },
+    { "id": "progress-challenges", "family": "trainer-progress", "state": "challenges-populated", "pattern": "grid", "scrollOwner": ".challenge-groups", "baseline": "Trainer Card" },
+    { "id": "progress-challenges-empty", "family": "trainer-progress", "state": "challenges-empty", "pattern": "grid", "scrollOwner": null, "baseline": "Trainer empty state" },
+    { "id": "progress-timeline", "family": "trainer-progress", "state": "timeline-populated", "pattern": "grid", "scrollOwner": ".timeline-panel", "baseline": "Trainer Card" },
+    { "id": "progress-timeline-empty", "family": "trainer-progress", "state": "timeline-empty", "pattern": "grid", "scrollOwner": null, "baseline": "Trainer empty state" },
+
+    { "id": "specimens-loading", "family": "specimens", "state": "loading", "pattern": "grid", "scrollOwner": ".specimens-content", "baseline": "Party roster" },
+    { "id": "specimens-unavailable", "family": "specimens", "state": "unavailable", "pattern": "grid", "scrollOwner": ".specimens-content", "baseline": "Party empty state" },
+    { "id": "specimens-empty", "family": "specimens", "state": "empty", "pattern": "grid", "scrollOwner": ".specimens-content", "baseline": "Party empty state" },
+    { "id": "specimens-single", "family": "specimens", "state": "single", "pattern": "grid", "scrollOwner": ".specimens-content", "baseline": "Party roster" },
+    { "id": "specimens-multiple", "family": "specimens", "state": "multiple", "pattern": "grid", "scrollOwner": ".specimens-content", "baseline": "Party roster" },
+    { "id": "specimens-detail", "family": "specimens", "state": "individual-detail", "pattern": "paper", "scrollOwner": ".party-detail-window", "baseline": "Party individual detail" },
+
+    { "id": "damage-exact", "family": "damage-forecast", "state": "exact", "pattern": "grid", "scrollOwner": ".battle-content", "baseline": "Battle Attack" },
+    { "id": "damage-bounded", "family": "damage-forecast", "state": "bounded", "pattern": "grid", "scrollOwner": ".battle-content", "baseline": "Battle Attack" },
+    { "id": "damage-withheld", "family": "damage-forecast", "state": "withheld", "pattern": "grid", "scrollOwner": ".battle-content", "baseline": "Battle Attack empty state" },
+    { "id": "damage-unavailable", "family": "damage-forecast", "state": "unavailable", "pattern": "grid", "scrollOwner": ".battle-content", "baseline": "Battle Attack without forecast" },
+
+    { "id": "challenge-expansion-list", "family": "challenges", "state": "organic-list", "pattern": "grid", "scrollOwner": ".challenge-groups", "baseline": "Trainer Progress" },
+    { "id": "challenge-expansion-detail", "family": "challenges", "state": "objective-card", "pattern": "paper", "scrollOwner": ".challenge-groups", "baseline": "Trainer Progress challenge card" }
+  ],
+  "expectedMatrixRows": 756
+}
