@@ -306,7 +306,7 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc70TrainerProgressTimeline == true/);
   assert.match(workflow, /\.v11Rc71StorageGuideLoadHardening == true/);
   assert.match(workflow, /\.v11Rc72PokedexSpecimens == true/);
-  assert.match(workflow, /\.v11Rc75PortableChallengeExpansion == true/);
+  assert.match(workflow, /\.v11Rc76PortableChallengeExpansion == true/);
   assert.match(workflow, /\.aggregate\.currentTotalFields\.covered == 40/);
   assert.match(workflow, /\.aggregate\.observableEventFamilies\.total == 126/);
   assert.match(workflow, /\.aggregate\.baselineApplicableTemplates\.covered == 66/);
