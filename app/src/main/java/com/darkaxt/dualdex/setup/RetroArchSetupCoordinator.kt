@@ -36,6 +36,7 @@ import com.darkaxt.dualdex.storage.AndroidRomSourceLoader
 import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.darkaxt.dualdex.storage.StorageAccessPolicy
 import com.darkaxt.dualdex.storage.StorageIndexAction
+import com.darkaxt.dualdex.storage.StorageSetupStatusPolicy
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveCandidateView
@@ -192,11 +193,16 @@ class RetroArchSetupCoordinator(
                 discoveredSaveBasename.set(null)
                 val romGranted = storedRomTree()?.let(::hasReadGrant) == true
                 val configGranted = storedConfigTree()?.let(::hasConfigGrant) == true
+                val storageStatus = StorageSetupStatusPolicy.available(
+                    allFilesGranted = false,
+                    directIndexReady = false,
+                    safIndexGranted = romGranted,
+                )
                 update {
                     it.copy(
-                        storageGrant = "MISSING",
+                        storageGrant = storageStatus.storageGrant,
                         configGrant = if (configGranted) "GRANTED" else "MISSING",
-                        romGrant = if (romGranted) "GRANTED" else "MISSING",
+                        romGrant = storageStatus.romGrant,
                         indexedRoms = entries.get().size,
                         message = "Grant All files access for automatic multi-folder ROM and SaveRAM discovery; folder selection remains available as a fallback.",
                     )
@@ -204,10 +210,15 @@ class RetroArchSetupCoordinator(
             }
 
             StorageIndexAction.USE_DIRECT -> {
+                val storageStatus = StorageSetupStatusPolicy.available(
+                    allFilesGranted = true,
+                    directIndexReady = true,
+                    safIndexGranted = storedRomTree()?.let(::hasReadGrant) == true,
+                )
                 update {
                     it.copy(
-                        storageGrant = "GRANTED",
-                        romGrant = "GRANTED",
+                        storageGrant = storageStatus.storageGrant,
+                        romGrant = storageStatus.romGrant,
                         indexedRoms = entries.get().size,
                     )
                 }
@@ -258,10 +269,11 @@ class RetroArchSetupCoordinator(
     private fun indexSharedStorage() {
         if (!directIndexing.compareAndSet(false, true)) return
         val retainedDirectIndex = directIndexReady.get()
+        val indexingStatus = StorageSetupStatusPolicy.indexing(allFilesGranted = sharedStorage.isGranted())
         update {
             it.copy(
-                storageGrant = "INDEXING",
-                romGrant = "INDEXING",
+                storageGrant = indexingStatus.storageGrant,
+                romGrant = indexingStatus.romGrant,
                 message = "Indexing GB, GBC, GBA, and ZIP sources across shared storage…",
             )
         }
@@ -277,10 +289,15 @@ class RetroArchSetupCoordinator(
                 entries.set(indexed.entries)
                 directIndexStore.write(ALL_FILES_INDEX_KEY, indexed.entries)
                 directIndexReady.set(true)
+                val readyStatus = StorageSetupStatusPolicy.available(
+                    allFilesGranted = true,
+                    directIndexReady = true,
+                    safIndexGranted = storedRomTree()?.let(::hasReadGrant) == true,
+                )
                 update {
                     it.copy(
-                        storageGrant = "GRANTED",
-                        romGrant = "GRANTED",
+                        storageGrant = readyStatus.storageGrant,
+                        romGrant = readyStatus.romGrant,
                         indexedRoms = indexed.entries.size,
                         message = when {
                             indexed.entries.isEmpty() -> "All files access is active, but no supported GB, GBC, GBA, or single-ROM ZIP source was found."
@@ -293,18 +310,18 @@ class RetroArchSetupCoordinator(
             } catch (failure: Exception) {
                 directIndexReady.set(retainedDirectIndex)
                 directRefreshStarted.set(false)
+                val safIndexGranted = storedRomTree()?.let(::hasReadGrant) == true
+                if (!retainedDirectIndex && safIndexGranted) entries.set(loadSafStoredIndex())
+                val failedStatus = StorageSetupStatusPolicy.failed(
+                    allFilesGranted = sharedStorage.isGranted(),
+                    retainedDirectIndex = retainedDirectIndex,
+                    safIndexGranted = safIndexGranted,
+                )
                 update {
                     it.copy(
-                        storageGrant = when {
-                            !sharedStorage.isGranted() -> "MISSING"
-                            retainedDirectIndex -> "GRANTED"
-                            else -> "FAILED"
-                        },
-                        romGrant = when {
-                            retainedDirectIndex -> "GRANTED"
-                            storedRomTree()?.let(::hasReadGrant) == true -> "GRANTED"
-                            else -> "FAILED"
-                        },
+                        storageGrant = failedStatus.storageGrant,
+                        romGrant = failedStatus.romGrant,
+                        indexedRoms = entries.get().size,
                         message = failure.message ?: failure.javaClass.simpleName,
                     )
                 }
@@ -683,15 +700,15 @@ class RetroArchSetupCoordinator(
         val configGranted = directConfigFound ||
             (configUri != null && persisted[configUri]?.isReadPermission == true && persisted[configUri]?.isWritePermission == true)
         val safRomGranted = romUri != null && persisted[romUri]?.isReadPermission == true
+        val storageStatus = StorageSetupStatusPolicy.available(
+            allFilesGranted = storageGranted,
+            directIndexReady = directIndexReady.get(),
+            safIndexGranted = safRomGranted,
+        )
         return RetroArchView(
-            storageGrant = if (storageGranted) "GRANTED" else "MISSING",
+            storageGrant = storageStatus.storageGrant,
             configGrant = if (configGranted) "GRANTED" else "MISSING",
-            romGrant = when {
-                storageGranted && directIndexReady.get() -> "GRANTED"
-                storageGranted -> "INDEXING"
-                safRomGranted -> "GRANTED"
-                else -> "MISSING"
-            },
+            romGrant = storageStatus.romGrant,
             configState = if (configGranted) "UNVERIFIED" else "NOT_CONFIGURED",
             indexedRoms = if (storageGranted || safRomGranted) entries.get().size else 0,
             message = "DualDex remains usable with manual ROM selection while RetroArch is disconnected.",
