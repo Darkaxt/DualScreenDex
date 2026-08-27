@@ -155,8 +155,8 @@ test("derives release versions from protected Gradle properties", () => {
   assert.doesNotMatch(gradleBuild, /DUALDEX_RELEASE_(KEYSTORE|STORE|KEY)/);
 });
 
-test("requires the parser cache revision that rebuilds hybrid move output", () => {
-  assert.match(catalogSchema, /const val parserSchemaVersion = 43\b/);
+test("requires the parser cache revision that rebuilds isolated optional data", () => {
+  assert.match(catalogSchema, /const val parserSchemaVersion = 44\b/);
 });
 
 test("runs every included JVM and app unit suite in CI", () => {
