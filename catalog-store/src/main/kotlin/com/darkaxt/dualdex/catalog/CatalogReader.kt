@@ -25,11 +25,14 @@ import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.FilterInputStream
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.lang.reflect.Type
+import java.security.DigestInputStream
+import java.security.MessageDigest
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
@@ -77,16 +80,33 @@ class CatalogReader(private val database: CatalogDatabase) {
             metadata.parserSchemaVersion != CatalogSchema.parserSchemaVersion
         ) return null
 
-        val sectionEncodings = database.query(
-            "SELECT name, encoding FROM catalog_sections",
+        val sectionRows = database.query(
+            "SELECT name, encoding, payload FROM catalog_sections LIMIT ?",
+            listOf(CatalogSchema.requiredSections.size + 1),
         ) { row ->
-            row.requiredString("name") to row.requiredString("encoding")
-        }.toMap()
-        val sections = sectionEncodings.keys
-        require(sections == CatalogSchema.requiredSections) { "completed catalog has missing or unknown sections" }
-        require(sectionEncodings.values.all { it == CHUNKED_ENCODING }) {
+            SectionMetadata(
+                name = row.requiredString("name"),
+                encoding = row.requiredString("encoding"),
+                digest = requireNotNull(row.bytes("payload")) {
+                    "catalog section digest is null"
+                },
+            )
+        }
+        require(sectionRows.size <= CatalogSchema.requiredSections.size) {
+            "catalog contains too many sections"
+        }
+        val sectionMetadata = sectionRows.associateBy(SectionMetadata::name)
+        val sections = sectionMetadata.keys
+        require(sections == CatalogSchema.requiredSections) {
+            "completed catalog has missing or unknown sections"
+        }
+        require(sectionMetadata.values.all { it.encoding == CHUNKED_ENCODING }) {
             "unsupported catalog section encoding"
         }
+        require(sectionMetadata.values.all { it.digest.size == SHA_256_BYTES }) {
+            "catalog section digest has an invalid size"
+        }
+        val budget = CatalogReadBudget()
 
         return StoredCatalog(
             catalog = codec.decode(metadata.sha256, metadata.crc32, metadata.family, metadata.platform) { name, type ->
@@ -99,15 +119,40 @@ class CatalogReader(private val database: CatalogDatabase) {
                     """.trimIndent(),
                     listOf(name),
                 ) { rows ->
-                    val input = CatalogChunkInputStream(name) {
+                    val input = CatalogChunkInputStream(
+                        sectionName = name,
+                        maximumChunks = CatalogSchema.maximumSectionChunks,
+                        maximumEncodedBytes = CatalogSchema.maximumSectionEncodedBytes,
+                        onEncodedBytes = budget::claimEncoded,
+                    ) {
                         rows.next()?.let { row ->
                             CatalogChunk(
                                 requireNotNull(row.long("chunk_index")).toInt(),
-                                requireNotNull(row.bytes("payload")) { "catalog section chunk payload is null" },
+                                requireNotNull(row.bytes("payload")) {
+                                    "catalog section chunk payload is null"
+                                },
                             )
                         }
                     }
-                    codec.decodeSection(input, type)
+                    val digest = MessageDigest.getInstance("SHA-256")
+                    val encoded = DigestInputStream(input, digest)
+                    val decoded = codec.decodeSection(
+                        NonClosingInputStream(encoded),
+                        type,
+                        name,
+                        CatalogSchema.maximumSectionInflatedBytes,
+                        budget::claimInflated,
+                    )
+                    encoded.drain()
+                    require(
+                        MessageDigest.isEqual(
+                            sectionMetadata.getValue(name).digest,
+                            digest.digest(),
+                        ),
+                    ) {
+                        "catalog section digest does not match: $name"
+                    }
+                    decoded
                 }
             },
             source = CatalogSourceMetadata(
@@ -127,6 +172,12 @@ class CatalogReader(private val database: CatalogDatabase) {
             writtenAtEpochMs = metadata.writtenAt,
         )
     }
+
+    private data class SectionMetadata(
+        val name: String,
+        val encoding: String,
+        val digest: ByteArray,
+    )
 
     private data class Metadata(
         val schemaVersion: Int,
@@ -149,6 +200,37 @@ class CatalogReader(private val database: CatalogDatabase) {
 
     private companion object {
         const val CHUNKED_ENCODING = "gzip+json+chunks-v1"
+        const val SHA_256_BYTES = 32
+    }
+}
+
+private class CatalogReadBudget {
+    private var encodedBytes = 0L
+    private var inflatedBytes = 0L
+
+    fun claimEncoded(bytes: Int) {
+        require(bytes >= 0 && encodedBytes <= CatalogSchema.maximumCatalogEncodedBytes - bytes) {
+            "catalog encoded-byte limit exceeded"
+        }
+        encodedBytes += bytes
+    }
+
+    fun claimInflated(bytes: Int) {
+        require(bytes >= 0 && inflatedBytes <= CatalogSchema.maximumCatalogInflatedBytes - bytes) {
+            "catalog inflated-byte limit exceeded"
+        }
+        inflatedBytes += bytes
+    }
+}
+
+private class NonClosingInputStream(input: InputStream) : FilterInputStream(input) {
+    override fun close() = Unit
+}
+
+private fun InputStream.drain() {
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    while (read(buffer) >= 0) {
+        // Drain the encoded section so its complete digest and byte budget are verified.
     }
 }
 
@@ -255,13 +337,62 @@ internal class CatalogSectionCodec {
         }
     }
 
-    fun decodeSection(payload: InputStream, type: Type): Any {
+    fun decodeSection(
+        payload: InputStream,
+        type: Type,
+        sectionName: String = "catalog section",
+        maximumInflatedBytes: Int = CatalogSchema.maximumSectionInflatedBytes,
+        onInflatedBytes: (Int) -> Unit = {},
+    ): Any {
         return GZIPInputStream(payload).use { gzip ->
-            InputStreamReader(gzip, Charsets.UTF_8).use { reader -> gson.fromJson(reader, type) }
+            val bounded = CatalogInflatedInputStream(
+                gzip,
+                sectionName,
+                maximumInflatedBytes,
+                onInflatedBytes,
+            )
+            InputStreamReader(bounded, Charsets.UTF_8).use { reader ->
+                val decoded = gson.fromJson<Any>(reader, type)
+                val remainder = CharArray(DEFAULT_BUFFER_SIZE)
+                while (reader.read(remainder) >= 0) {
+                    // Verify the complete gzip stream, including bounded trailing whitespace.
+                }
+                decoded
+            }
         }
     }
 
     private inline fun <reified T> type(): Type = object : TypeToken<T>() {}.type
+}
+
+internal class CatalogInflatedInputStream(
+    input: InputStream,
+    private val sectionName: String,
+    private val maximumBytes: Int,
+    private val onBytes: (Int) -> Unit = {},
+) : FilterInputStream(input) {
+    private var consumedBytes = 0L
+
+    init {
+        require(maximumBytes > 0) { "catalog inflate limit must be positive" }
+    }
+
+    override fun read(): Int = super.read().also { value ->
+        if (value >= 0) claim(1)
+    }
+
+    override fun read(destination: ByteArray, destinationOffset: Int, length: Int): Int =
+        super.read(destination, destinationOffset, length).also { count ->
+            if (count > 0) claim(count)
+        }
+
+    private fun claim(bytes: Int) {
+        require(consumedBytes <= maximumBytes.toLong() - bytes) {
+            "catalog section inflate limit exceeded: $sectionName"
+        }
+        onBytes(bytes)
+        consumedBytes += bytes
+    }
 }
 
 internal data class CatalogChunk(
@@ -271,12 +402,21 @@ internal data class CatalogChunk(
 
 internal class CatalogChunkInputStream(
     private val sectionName: String,
+    private val maximumChunks: Int = CatalogSchema.maximumSectionChunks,
+    private val maximumEncodedBytes: Int = CatalogSchema.maximumSectionEncodedBytes,
+    private val onEncodedBytes: (Int) -> Unit = {},
     private val nextChunk: () -> CatalogChunk?,
 ) : InputStream() {
     private var current = ByteArray(0)
     private var offset = 0
     private var expectedIndex = 0
+    private var encodedBytes = 0L
     private var exhausted = false
+
+    init {
+        require(maximumChunks > 0) { "catalog section chunk limit must be positive" }
+        require(maximumEncodedBytes > 0) { "catalog section encoded-byte limit must be positive" }
+    }
 
     override fun read(): Int {
         if (!ensureAvailable()) return -1
@@ -284,7 +424,11 @@ internal class CatalogChunkInputStream(
     }
 
     override fun read(destination: ByteArray, destinationOffset: Int, length: Int): Int {
-        require(destinationOffset >= 0 && length >= 0 && destinationOffset + length <= destination.size) {
+        require(
+            destinationOffset >= 0 &&
+                length >= 0 &&
+                destinationOffset <= destination.size - length,
+        ) {
             "catalog chunk destination range is invalid"
         }
         if (length == 0) return 0
@@ -306,7 +450,20 @@ internal class CatalogChunkInputStream(
             require(chunk.index == expectedIndex) {
                 "catalog section chunks are not contiguous: $sectionName"
             }
-            require(chunk.payload.isNotEmpty()) { "catalog section chunk is empty: $sectionName" }
+            require(expectedIndex < maximumChunks) {
+                "catalog section chunk limit exceeded: $sectionName"
+            }
+            require(chunk.payload.isNotEmpty()) {
+                "catalog section chunk is empty: $sectionName"
+            }
+            require(chunk.payload.size <= CatalogSchema.sectionChunkBytes) {
+                "catalog section chunk is oversized: $sectionName"
+            }
+            require(encodedBytes <= maximumEncodedBytes.toLong() - chunk.payload.size) {
+                "catalog section encoded-byte limit exceeded: $sectionName"
+            }
+            onEncodedBytes(chunk.payload.size)
+            encodedBytes += chunk.payload.size
             expectedIndex++
             current = chunk.payload
             offset = 0

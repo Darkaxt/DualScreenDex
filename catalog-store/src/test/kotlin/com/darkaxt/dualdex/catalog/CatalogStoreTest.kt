@@ -76,6 +76,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
+import com.google.gson.reflect.TypeToken
 import java.nio.file.Files
 import java.nio.file.Path
 import java.io.ByteArrayInputStream
@@ -123,6 +124,57 @@ class CatalogStoreTest {
             assertThrows(IllegalArgumentException::class.java) {
                 CatalogChunkInputStream("invalid") { pending.removeFirstOrNull() }.readBytes()
             }
+        }
+    }
+
+    @Test
+    fun `catalog chunk stream enforces chunk and encoded byte limits`() {
+        val tooMany = ArrayDeque(
+            listOf(
+                CatalogChunk(0, byteArrayOf(1)),
+                CatalogChunk(1, byteArrayOf(2)),
+                CatalogChunk(2, byteArrayOf(3)),
+            ),
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            CatalogChunkInputStream(
+                sectionName = "chunk-limit",
+                maximumChunks = 2,
+                maximumEncodedBytes = 8,
+            ) { tooMany.removeFirstOrNull() }.readBytes()
+        }
+
+        val tooLarge = ArrayDeque(
+            listOf(
+                CatalogChunk(0, byteArrayOf(1, 2)),
+                CatalogChunk(1, byteArrayOf(3, 4)),
+            ),
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            CatalogChunkInputStream(
+                sectionName = "byte-limit",
+                maximumChunks = 4,
+                maximumEncodedBytes = 3,
+            ) { tooLarge.removeFirstOrNull() }.readBytes()
+        }
+    }
+
+    @Test
+    fun `catalog section codec rejects gzip beyond its inflate limit`() {
+        val payload = ByteArrayOutputStream().also { output ->
+            GZIPOutputStream(output).use { gzip ->
+                gzip.write(("\"ok\"" + " ".repeat(256)).toByteArray(Charsets.UTF_8))
+            }
+        }.toByteArray()
+        val stringType = object : TypeToken<String>() {}.type
+
+        assertThrows(IllegalArgumentException::class.java) {
+            CatalogSectionCodec().decodeSection(
+                ByteArrayInputStream(payload),
+                stringType,
+                sectionName = "inflate-limit",
+                maximumInflatedBytes = 64,
+            )
         }
     }
 
@@ -950,6 +1002,39 @@ class CatalogStoreTest {
         assertEquals(CatalogCacheDecision.REJECTED_EXCEPTION, lookup.decision)
         assertFalse(cache.fileFor(requestedSha).exists())
         assertEquals(storedCatalog, cache.readComplete(storedCatalog.romSha256)?.catalog)
+    }
+
+    @Test
+    fun `cache rejects valid gzip substituted without its matching digest`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("8".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Control.gba", 16_777_216, "CONTROL"),
+            CatalogWriteProgress.complete(),
+        )
+        val replacement = ByteArrayOutputStream().also { output ->
+            GZIPOutputStream(output).use { gzip ->
+                gzip.write("[\"substituted\"]".toByteArray(Charsets.UTF_8))
+            }
+        }.toByteArray()
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("DELETE FROM catalog_section_chunks WHERE section_name = 'diagnostics'")
+            database.execute(
+                """
+                INSERT INTO catalog_section_chunks(section_name, chunk_index, payload)
+                VALUES ('diagnostics', 0, ?)
+                """.trimIndent(),
+                listOf(replacement),
+            )
+        }
+
+        val lookup = cache.lookupComplete(catalog.romSha256)
+
+        assertNull(lookup.stored)
+        assertEquals(CatalogCacheDecision.REJECTED_EXCEPTION, lookup.decision)
+        assertFalse(cache.fileFor(catalog.romSha256).exists())
     }
 
     @Test

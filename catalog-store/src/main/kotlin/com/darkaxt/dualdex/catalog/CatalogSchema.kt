@@ -5,6 +5,13 @@ object CatalogSchema {
     const val parserSchemaVersion = 43
     const val sectionChunkBytes = 256 * 1024
 
+    // The largest retained corpus database is 6.9 MiB; keep broad map-heavy headroom without unbounded decode.
+    const val maximumSectionChunks = 128
+    const val maximumSectionEncodedBytes = 32 * 1024 * 1024
+    const val maximumCatalogEncodedBytes = 64 * 1024 * 1024
+    const val maximumSectionInflatedBytes = 128 * 1024 * 1024
+    const val maximumCatalogInflatedBytes = 256 * 1024 * 1024
+
     val requiredSections = linkedSetOf(
         "species",
         "moves",
