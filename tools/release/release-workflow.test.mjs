@@ -209,6 +209,8 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
     "dualdex-specimens-audit.md",
     "dualdex-damage-forecast-compatibility.json",
     "dualdex-damage-forecast-audit.md",
+    "dualdex-challenge-expansion-compatibility.json",
+    "dualdex-challenge-expansion-audit.md",
     "dualdex-storage-guide-load-hardening.md",
     "dualdex-save-synchronized-knowledge-checkpoints.md",
   ];
@@ -304,11 +306,16 @@ test("publishes the independently gated base, map, evolution, and ARM7 compatibi
   assert.match(workflow, /\.v11Rc70TrainerProgressTimeline == true/);
   assert.match(workflow, /\.v11Rc71StorageGuideLoadHardening == true/);
   assert.match(workflow, /\.v11Rc72PokedexSpecimens == true/);
+  assert.match(workflow, /\.v11Rc75PortableChallengeExpansion == true/);
   assert.match(workflow, /\.aggregate\.currentTotalFields\.covered == 40/);
   assert.match(workflow, /\.aggregate\.observableEventFamilies\.total == 126/);
   assert.match(workflow, /\.aggregate\.baselineApplicableTemplates\.covered == 66/);
   assert.match(workflow, /\.aggregate\.applicableFields\.covered == 148/);
   assert.match(workflow, /\.aggregate\.applicableSources\.total == 84/);
+  assert.match(workflow, /\.reference\.descriptionsClassified\.covered == 883/);
+  assert.match(workflow, /\.aggregate\.allApplicableTemplates\.covered == 110/);
+  assert.match(workflow, /\.aggregate\.allFullyObservableTemplates\.covered == 104/);
+  assert.match(workflow, /\.aggregate\.allValidatedTemplates\.covered == 104/);
   assert.match(workflow, /\.v11SaveSynchronizedKnowledgeCheckpoints == true/);
   assert.match(workflow, /\.gen1CompiledEvolutionCoveragePercent == 96\.62/);
   assert.match(workflow, /\.gen1CompiledLearnsetCoveragePercent == 93\.56/);
