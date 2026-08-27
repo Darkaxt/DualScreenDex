@@ -160,7 +160,7 @@ describe('production application shell', () => {
       ...fixture.state,
       version: fixture.state.version + 1,
       catalogReady: false,
-      error: 'This game guide could not be opened. You can try again.',
+      error: null,
       retroArch: {
         storageGrant: 'GRANTED', configGrant: 'GRANTED', romGrant: 'GRANTED', configState: 'VERIFIED',
         restartRequired: false, connection: 'PLAYING', systemId: 'Nintendo - Game Boy Advance',

@@ -104,7 +104,9 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 
   const loadingLabel = loadingModuleLabel(state.loading.phase);
   const waitingForGame = shouldWaitForGameAccess(state);
-  const displayedError = error ?? state.error;
+  const displayedError = error
+    ?? state.error
+    ?? (state.retroArch?.resolution === 'FAILED' ? state.retroArch.message : null);
 
   useEffect(() => {
     const handleCompanionBack = (event: Event) => {
