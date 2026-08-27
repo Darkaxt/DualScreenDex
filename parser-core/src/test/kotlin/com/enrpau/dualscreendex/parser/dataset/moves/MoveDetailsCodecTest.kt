@@ -55,6 +55,41 @@ class MoveDetailsCodecTest {
     }
 
     @Test
+    fun decodesHybridBattleMoveFieldsAtTheirAlignedTwentyByteOffsets() {
+        val bytes = ByteArray(64)
+        putHybridBattleMove(bytes, 8)
+        val row = decodedRow(bytes, MoveDetailsTableLayout(8, 1, MoveDetailsAbi.HYBRID_BATTLE_MOVE_20))
+
+        assertEquals(700, row.effectId)
+        assertEquals(250, row.power)
+        assertEquals(18, row.typeId)
+        assertEquals(100, row.accuracy)
+        assertEquals(5, row.pp)
+        assertEquals(30, row.secondaryEffectChance)
+        assertEquals(0x1234, row.targetMask)
+        assertEquals(-3, row.priority)
+        assertEquals(0x89ABCDEFL, row.flags)
+        assertEquals(MoveSplit.STATUS, row.split)
+        assertEquals(19, row.argument)
+        assertNull(row.zMovePower)
+        assertNull(row.zMoveEffect)
+    }
+
+    @Test
+    fun rejectsNonzeroHybridBattleMovePadding() {
+        val bytes = ByteArray(64)
+        putHybridBattleMove(bytes, 8)
+        bytes[15] = 1
+        val outcome = MoveDetailsCodec().decode(
+            moveDetailsSession(bytes),
+            MoveDetailsTableLayout(8, 1, MoveDetailsAbi.HYBRID_BATTLE_MOVE_20),
+        ) as MoveDetailsTableOutcome.Decoded
+
+        val malformed = outcome.rows.single() as MoveDetailsRowOutcome.Malformed
+        assertTrue(malformed.reasons.any { it.contains("padding") })
+    }
+
+    @Test
     fun decodesClassicBattleEngineTwentyByteExtensionsWithoutNarrowing() {
         val bytes = ByteArray(64)
         putBattleEngineMove(bytes, 8)
@@ -178,6 +213,7 @@ class MoveDetailsCodecTest {
                 MoveDetailsAbi.RETAIL_12 -> putRetailMove(bytes, 7)
                 MoveDetailsAbi.CFRU_16 -> putCfruMove(bytes, 7)
                 MoveDetailsAbi.WIDENED_RETAIL_16 -> putWidenedRetailMove(bytes, 7)
+                MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> putHybridBattleMove(bytes, 7)
                 MoveDetailsAbi.BATTLE_ENGINE_20 -> putBattleEngineMove(bytes, 7)
                 MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> putUnifiedMoveInfo(bytes, 7)
             }

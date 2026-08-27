@@ -334,6 +334,20 @@ object Gen3DynamicTableResolver {
                         }
                     }
                     if (offset.toLong() + moveCount.toLong() * 20 <= rom.size &&
+                        plausibleHybridBattleMoveSample(rom, offset, moveCount)
+                    ) {
+                        val evidence = TableValidators.hybridBattleMoveData(rom, offset, moveCount)
+                        if (evidence.compatible) {
+                            add(
+                                DynamicMoveCandidate(
+                                    evidence,
+                                    references[offset] ?: 0,
+                                    TableRecordFormat.HYBRID_BATTLE_MOVE_20,
+                                ),
+                            )
+                        }
+                    }
+                    if (offset.toLong() + moveCount.toLong() * 20 <= rom.size &&
                         plausibleBattleEngineMoveSample(rom, offset, moveCount)
                     ) {
                         val evidence = TableValidators.battleEngineMoveData(rom, offset, moveCount)
@@ -469,6 +483,8 @@ object Gen3DynamicTableResolver {
                     maximumMoveTypeId,
                     MAX_PREFILTER_RECORDS,
                 )) ||
+            (tableFits(rom, offset, moveCount, 20) &&
+                plausibleHybridBattleMoveSample(rom, offset, moveCount, MAX_PREFILTER_RECORDS)) ||
             (tableFits(rom, offset, moveCount, 20) &&
                 plausibleBattleEngineMoveSample(rom, offset, moveCount, MAX_PREFILTER_RECORDS))
 
@@ -613,6 +629,37 @@ object Gen3DynamicTableResolver {
         val chartEntries = tables.typeChart?.count ?: return 0xFF
         val dimension = kotlin.math.sqrt(chartEntries.toDouble()).toInt()
         return if (dimension in 1..256 && dimension * dimension == chartEntries) dimension - 1 else 0xFF
+    }
+
+    private fun plausibleHybridBattleMoveSample(
+        rom: RomImage,
+        offset: Int,
+        count: Int,
+        maximumSample: Int = 96,
+    ): Boolean {
+        val sample = minOf(count, maximumSample)
+        if (sample < 4) return false
+        var plausible = 0
+        var populated = 0
+        for (index in 1 until sample) {
+            val base = offset + index * 20
+            val reserved = (0 until 20).all { rom.u8(base + it) == 0 }
+            if (!reserved) populated++
+            val accuracy = rom.u8(base + 4)
+            val secondaryChance = rom.u8(base + 6)
+            if (reserved || (
+                    rom.u8(base + 3) in 0..31 &&
+                        (accuracy == 0 || accuracy in 10..100 || accuracy == 0xFF) &&
+                        rom.u8(base + 5) in 0..64 &&
+                        (secondaryChance in 0..100 || secondaryChance == 0xFF) &&
+                        rom.u8(base + 10).toByte().toInt() in -8..7 &&
+                        rom.u8(base + 7) == 0 && rom.u8(base + 11) == 0 &&
+                        rom.u8(base + 16) in 0..2 &&
+                        rom.u8(base + 18) == 0 && rom.u8(base + 19) == 0
+                    )
+            ) plausible++
+        }
+        return plausible * 10 >= (sample - 1) * 9 && populated * 5 >= (sample - 1) * 4
     }
 
     private fun plausibleBattleEngineMoveSample(rom: RomImage, offset: Int, count: Int, maximumSample: Int = 96): Boolean {
