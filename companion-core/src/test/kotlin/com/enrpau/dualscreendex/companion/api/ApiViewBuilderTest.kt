@@ -265,8 +265,34 @@ class ApiViewBuilderTest {
             displayName = "{PLAYER}'s House\nThe second line must remain hidden",
             service = LocalMapPoiService.BUILDING,
         )
+        val speciesWithSprite = com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
+            id = 1,
+            dexNumber = CatalogField.available(1),
+            name = CatalogField.available("VISIBLE"),
+            typeIds = CatalogField.available(listOf(1)),
+            baseStats = CatalogField.notFound("fixture"),
+            sprite = CatalogField.available(RgbaSprite(1, 1, intArrayOf(0xFFFFFFFF.toInt()))),
+        )
+        val speciesWithoutSprite = speciesWithSprite.copy(
+            id = 2,
+            dexNumber = CatalogField.available(2),
+            name = CatalogField.available("MISSING"),
+            sprite = CatalogField.notFound("fixture"),
+        )
         val catalog = ParsedCatalog(
             "a".repeat(64), EngineFamily.EMERALD, Platform.GBA,
+            speciesById = mapOf(1 to speciesWithSprite, 2 to speciesWithoutSprite),
+            encounterAreas = listOf(
+                EncounterArea(
+                    id = map.baseAreaId * 10 + 1,
+                    name = CatalogField.available("Route 101 grass"),
+                    methodId = 1,
+                    slots = listOf(
+                        EncounterSlot(1, 2, 3, 50),
+                        EncounterSlot(2, 2, 3, 50),
+                    ),
+                ),
+            ),
             runtimeMetadata = CatalogRuntimeMetadata(areaNamesByBaseId = mapOf(map.baseAreaId to "Route 101")),
             localMaps = LocalMapCatalog(
                 maps = listOf(map),
@@ -281,6 +307,8 @@ class ApiViewBuilderTest {
                 liveAreaBaseId = map.baseAreaId,
                 settings = CompanionSettings(knowledgeMode = KnowledgeMode.ORGANIC),
                 ledger = KnowledgeLedger(
+                    seenSpecies = setOf(1, 2),
+                    seenSpeciesByArea = mapOf(map.baseAreaId to setOf(1, 2)),
                     visitedAreaBaseIds = setOf(map.baseAreaId),
                     proximityRevealedPoiKeys = setOf(entrance.key),
                     identifiedPoiKeys = setOf(entrance.key),
@@ -296,6 +324,10 @@ class ApiViewBuilderTest {
         assertEquals("Your House", marker.displayName)
         assertEquals(marker.displayName, guidePoint.label)
         assertEquals(map.baseAreaId, guide.trackedAreaBaseId)
+        val encounters = guide.areas.single().encounters.flatMap { it.species }
+        assertEquals(setOf(1, 2), encounters.map { it.speciesId }.toSet())
+        assertEquals(true, encounters.single { it.speciesId == 1 }.hasSprite)
+        assertEquals(false, encounters.single { it.speciesId == 2 }.hasSprite)
     }
 
     @Test
@@ -507,7 +539,7 @@ class ApiViewBuilderTest {
         assertEquals(864, scene.pixelHeight)
         assertEquals(listOf(0, 576), scene.placements.map { it.pixelY })
         assertTrue(scene.placements.none { it.dynamicLighting })
-        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Fplayer.png", state.trainerMapSpriteUrl)
+        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Fplayer.png?catalog=${catalog.romSha256}", state.trainerMapSpriteUrl)
         assertEquals(16, state.trainerMapSpriteWidth)
         assertEquals(16, state.trainerMapSpriteHeight)
         assertEquals(palletTown.baseAreaId, state.currentAreaBaseId)
@@ -571,7 +603,7 @@ class ApiViewBuilderTest {
         assertEquals(listOf(0, 960), scene.placements.map { it.pixelX })
         assertEquals(listOf(960, 320), scene.placements.map { it.pixelWidth })
         assertTrue(scene.placements.all { it.dynamicLighting })
-        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Fplayer.png", state.trainerMapSpriteUrl)
+        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Fplayer.png?catalog=${catalog.romSha256}", state.trainerMapSpriteUrl)
         assertEquals(16, state.trainerMapSpriteWidth)
         assertEquals(16, state.trainerMapSpriteHeight)
         assertEquals(newBark.baseAreaId, state.currentAreaBaseId)
@@ -671,18 +703,18 @@ class ApiViewBuilderTest {
         val catalogView = ApiViewBuilder.catalog(catalog)
 
         assertEquals("MAY", state.trainer?.name)
-        assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainer?.avatarUrl)
-        assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainerAvatarUrl)
-        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Ffemale.png", state.trainerMapSpriteUrl)
+        assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png?catalog=${catalog.romSha256}", state.trainer?.avatarUrl)
+        assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png?catalog=${catalog.romSha256}", state.trainerAvatarUrl)
+        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Ffemale.png?catalog=${catalog.romSha256}", state.trainerMapSpriteUrl)
         assertEquals(16, state.trainerMapSpriteWidth)
         assertEquals(32, state.trainerMapSpriteHeight)
         assertEquals(listOf(true, false, true), state.trainer?.badges?.take(3)?.map { it.earned })
-        assertEquals("/api/trainer-assets/trainer%2Fbadge%2F1.png", state.trainer?.badges?.first()?.imageUrl)
+        assertEquals("/api/trainer-assets/trainer%2Fbadge%2F1.png?catalog=${catalog.romSha256}", state.trainer?.badges?.first()?.imageUrl)
         assertEquals(6, state.party.size)
         val lead = state.party.first()
         assertEquals(true, lead.occupied)
         assertEquals("PIKACHU", lead.speciesName)
-        assertEquals("/api/sprites/species/25.png", lead.spriteUrl)
+        assertEquals("/api/sprites/species/25.png?catalog=${catalog.romSha256}", lead.spriteUrl)
         assertEquals("Static", lead.abilityName)
         assertEquals(3, lead.natureId)
         assertEquals("Resolute", lead.nature)
@@ -740,9 +772,9 @@ class ApiViewBuilderTest {
         assertNull(state.trainer?.dexCaught)
         assertNull(state.trainer?.stars)
         assertTrue(state.trainer!!.badges.all { it.earned == null })
-        assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png", state.trainerAvatarUrl)
+        assertEquals("/api/trainer-assets/trainer%2Favatar%2Ffemale.png?catalog=${catalog.romSha256}", state.trainerAvatarUrl)
         assertEquals(state.trainerAvatarUrl, state.trainer.avatarUrl)
-        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Ffemale.png", state.trainerMapSpriteUrl)
+        assertEquals("/api/trainer-assets/trainer%2Foverworld%2Ffemale.png?catalog=${catalog.romSha256}", state.trainerMapSpriteUrl)
         assertEquals(16, state.trainerMapSpriteWidth)
         assertEquals(32, state.trainerMapSpriteHeight)
     }
@@ -833,7 +865,7 @@ class ApiViewBuilderTest {
         assertEquals(120, map.pixelHeight)
         assertEquals(28, map.gridWidth)
         assertEquals(15, map.gridHeight)
-        assertEquals("/api/maps/world%2Fgen3-region-0.png", map.imageUrl)
+        assertEquals("/api/maps/world%2Fgen3-region-0.png?catalog=${catalog.romSha256}", map.imageUrl)
         assertEquals(listOf(0x10, 0x11), map.locations.single().baseAreaIds)
         assertEquals(WorldMapCellView(3, 11, 2, 1), map.locations.single().geometry.single())
         val localMaps = ApiViewBuilder.catalog(catalog).localMaps
@@ -841,7 +873,7 @@ class ApiViewBuilderTest {
         assertEquals(0x10, local.baseAreaId)
         assertEquals(320, local.pixelWidth)
         assertEquals(20, local.gridWidth)
-        assertEquals("/api/maps/local%2F0010%2Fmap.png", local.imageUrl)
+        assertEquals("/api/maps/local%2F0010%2Fmap.png?catalog=${catalog.romSha256}", local.imageUrl)
         assertEquals(false, local.dynamicLighting)
         assertEquals(true, localMaps.single { it.baseAreaId == 0x11 }.dynamicLighting)
         val scene = ApiViewBuilder.catalog(catalog).mapScenes.single()
@@ -849,7 +881,7 @@ class ApiViewBuilderTest {
         assertEquals(336, scene.pixelWidth)
         assertEquals(320, scene.pixelHeight)
         assertEquals(listOf(0x10, 0x11), scene.placements.map { it.baseAreaId })
-        assertEquals("/api/maps/local%2F0011%2Fmap.png", scene.placements.last().imageUrl)
+        assertEquals("/api/maps/local%2F0011%2Fmap.png?catalog=${catalog.romSha256}", scene.placements.last().imageUrl)
         assertEquals(true, scene.placements.last().dynamicLighting)
     }
 

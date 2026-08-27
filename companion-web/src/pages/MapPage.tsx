@@ -666,6 +666,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
 
       {areaGuideOpen && activeGuideArea && <AreaGuideDrawer
         area={activeGuideArea}
+        catalogHash={catalog.hash}
         onClose={() => setAreaGuideOpen(false)}
         onSelectArea={selectGuideArea}
         onSelectPoint={key => setSelectedPoiKey(key)}

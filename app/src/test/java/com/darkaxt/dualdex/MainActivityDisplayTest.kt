@@ -10,6 +10,7 @@ import org.junit.Test
 class MainActivityDisplayTest {
     private val handheld = DisplayCandidate(0, isDefault = true, isPresentation = false)
     private val external = DisplayCandidate(7, isDefault = false, isPresentation = true)
+    private val routeMarker = "/#dualdex=%7B%22version%22%3A1%7D"
 
     @Test fun lifecycleRegistersAndUnregistersOneListener() {
         val port = FakeDisplayPort(environment(DisplayTarget.AUTO, 0, listOf(handheld)))
@@ -32,7 +33,7 @@ class MainActivityDisplayTest {
 
         port.fire(DisplayEvent.Added(7))
 
-        assertEquals(listOf(DisplayLaunch(7, "/party?slot=2")), port.launches)
+        assertEquals(listOf(DisplayLaunch(7, routeMarker)), port.launches)
     }
 
     @Test fun aUniqueExternalDisplayRestoresAfterRemovalAndReturn() {
@@ -49,7 +50,7 @@ class MainActivityDisplayTest {
 
         port.current = environment(DisplayTarget.EXTERNAL, 0, listOf(handheld, external))
         port.fire(DisplayEvent.Added(7))
-        assertEquals(listOf(DisplayLaunch(7, "/party?slot=2")), port.launches)
+        assertEquals(listOf(DisplayLaunch(7, routeMarker)), port.launches)
     }
 
     @Test fun aFailedAttemptDoesNotCreateAForegroundLaunchLoop() {
@@ -73,7 +74,7 @@ class MainActivityDisplayTest {
         port.current = environment(DisplayTarget.EXTERNAL, 0, listOf(handheld, external))
         port.fire(DisplayEvent.Added(7))
 
-        assertEquals(listOf(DisplayLaunch(7, "/party?slot=2")), port.launches)
+        assertEquals(listOf(DisplayLaunch(7, routeMarker)), port.launches)
     }
 
     @Test fun targetChangesAreEvaluatedWithoutWaitingForResume() {
@@ -82,7 +83,15 @@ class MainActivityDisplayTest {
 
         continuity.onTargetChanged(DisplayTarget.EXTERNAL)
 
-        assertEquals(listOf(DisplayLaunch(7, "/party?slot=2")), port.launches)
+        assertEquals(listOf(DisplayLaunch(7, routeMarker)), port.launches)
+    }
+
+    @Test fun displayTransferAcceptsOnlyTheBoundedRouteCodecMarker() {
+        assertEquals(routeMarker, WebRouteMarker.normalize(routeMarker))
+        assertNull(WebRouteMarker.normalize("/party?slot=2"))
+        assertNull(WebRouteMarker.normalize("/#dualdex="))
+        assertNull(WebRouteMarker.normalize("/#dualdex=%7Bbroken%"))
+        assertNull(WebRouteMarker.normalize("/#dualdex=${"A".repeat(8192)}"))
     }
 
     private fun environment(
@@ -93,7 +102,7 @@ class MainActivityDisplayTest {
         target = target,
         currentDisplayId = currentDisplayId,
         candidates = candidates,
-        webRouteMarker = "/party?slot=2",
+        webRouteMarker = routeMarker,
     )
 
     private class FakeDisplayPort(initial: DisplayEnvironment) : MainActivityDisplayPort {

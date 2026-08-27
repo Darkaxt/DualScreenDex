@@ -16,6 +16,7 @@ data class SimulationRequest(
     val maximumLevel: Int = 45,
     val captured: Boolean = false,
     val areaId: Int? = null,
+    val encounterOrdinal: Long = 0,
 )
 
 data class SimulationResult(
@@ -65,7 +66,7 @@ class EncounterSimulator(private val catalog: ParsedCatalog) {
             opponents.distinctBy { it.speciesId }.forEach { opponent ->
                 repeat(2) { copy ->
                     owned += OwnedPokemon(
-                        stableKey = "sim-${request.seed}-${opponent.speciesId}-$copy",
+                        stableKey = "sim-${request.seed}-${request.encounterOrdinal}-${opponent.speciesId}-$copy",
                         speciesId = opponent.speciesId,
                         generation = generation,
                         level = opponent.level + copy,

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Catalog, State } from '../models';
 import { Header, identitySpriteClass, maskIdentityName, PokedexAvatar, Segmented, speciesIdentityKnowledge, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
+import { catalogMediaUrl } from '../media';
 import { AbilityMechanics } from './AbilityDetail';
 import { PokemonAreaMap } from './PokemonAreaMap';
 
@@ -55,7 +56,13 @@ export function PokedexDetail({
       {!unlocked && !observedOnly && displayTab !== 'AREA' && <div class="paper-panel withheld"><strong>{gameplayCopy.dataUnavailable}</strong><p>{gameplayCopy.catchForFullData}</p></div>}
       {unlocked && displayTab === 'ENTRY' && <>
         <div class="paper-panel"><p class="eyebrow">POKÉDEX ENTRY</p><p class="entry-copy">{species.description || gameplayCopy.pokedexUnavailable}</p><div class="fact-grid"><span><small>HEIGHT</small><strong>{formatHeight(species.height, catalog.platform)}</strong></span><span><small>WEIGHT</small><strong>{formatWeight(species.weight, catalog.platform)}</strong></span></div></div>
-        <HeightComparison species={species} platform={catalog.platform} knowledge={identityKnowledge} trainerAvatarUrl={state.trainerAvatarUrl ?? state.trainer?.avatarUrl ?? null} />
+        <HeightComparison
+          species={species}
+          platform={catalog.platform}
+          knowledge={identityKnowledge}
+          catalogHash={catalog.hash}
+          trainerAvatarUrl={catalogMediaUrl(state.trainerAvatarUrl ?? state.trainer?.avatarUrl, catalog.hash)}
+        />
       </>}
       {unlocked && displayTab === 'STATS' && <div class="paper-panel">
         <div class="section-heading"><div><p class="eyebrow">BASE STATS + INNATE RANGE</p><p>Lv 50 projection · no EV/stat experience · neutral nature where applicable.</p></div><strong>BST {baseStatSummary(species.stats)}</strong></div>
@@ -111,7 +118,7 @@ export function PokedexDetail({
           const targetName = knowledge === 'unknown' ? maskIdentityName(resolvedTargetName) : resolvedTargetName;
           const sprite = <span class="evolution-sprite-frame">{target?.hasSprite
             ? <img
-                src={`/api/sprites/species/${evolution.targetSpeciesId}.png`}
+                src={catalogMediaUrl(`/api/sprites/species/${evolution.targetSpeciesId}.png`, catalog.hash)}
                 alt={knowledge === 'unknown' ? 'Unidentified evolution sprite' : `${targetName} evolution sprite`}
                 aria-hidden="true"
                 class={identitySpriteClass(knowledge)}
@@ -269,10 +276,11 @@ function AlphaTrimmedHeightSprite({ src, className = '' }: { src: string; classN
   </>;
 }
 
-function HeightComparison({ species, platform, knowledge, trainerAvatarUrl }: {
+function HeightComparison({ species, platform, knowledge, catalogHash, trainerAvatarUrl }: {
   species: Catalog['species'][number];
   platform: string;
   knowledge: ReturnType<typeof speciesIdentityKnowledge>;
+  catalogHash: string;
   trainerAvatarUrl: string | null;
 }) {
   const pokemonMeters = heightInMeters(species.height, platform);
@@ -304,7 +312,7 @@ function HeightComparison({ species, platform, knowledge, trainerAvatarUrl }: {
       </span>
       <span class="height-figure height-pokemon">
         {species.hasSprite
-          ? <AlphaTrimmedHeightSprite className={identitySpriteClass(knowledge)} src={`/api/sprites/species/${species.id}.png`} />
+          ? <AlphaTrimmedHeightSprite className={identitySpriteClass(knowledge)} src={catalogMediaUrl(`/api/sprites/species/${species.id}.png`, catalogHash)} />
           : <svg class="height-pokemon-silhouette" viewBox="0 0 120 100"><path d="M18 65c0-22 13-39 34-43l7-17 10 18c23 6 36 24 33 45l15 12-20 3c-8 10-20 15-36 15-25 0-43-12-43-33Zm12-31L10 20l24 3m61 15 18-13-8 23" /></svg>}
       </span>
     </div>

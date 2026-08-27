@@ -1,6 +1,8 @@
 package com.darkaxt.dualdex.web
 
 import com.enrpau.dualscreendex.companion.api.RetroArchView
+import com.enrpau.dualscreendex.parser.catalog.BaseStats
+import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
@@ -16,12 +18,15 @@ import com.enrpau.dualscreendex.parser.catalog.MapTimePaletteModel
 import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
+import com.enrpau.dualscreendex.parser.catalog.TrainerAssetCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.google.gson.JsonParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -29,8 +34,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.net.HttpURLConnection
-import java.net.URI
+import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.SocketTimeoutException
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.imageio.ImageIO
@@ -53,13 +60,335 @@ class AndroidLoopbackServerTest {
                 it.getOutputStream().write("GET /api/health HTTP/1.1\r\n\r\n".toByteArray(Charsets.US_ASCII))
                 it.getOutputStream().flush()
 
-                assertTrue(it.getInputStream().bufferedReader().readLine().contains(" 503 "))
+                assertRawApiError(
+                    it.getInputStream().readBytes().toString(Charsets.UTF_8),
+                    status = 503,
+                    code = "SERVER_BUSY",
+                    retryable = true,
+                )
             }
             val capacity = server.capacitySnapshot()
             assertTrue(capacity.workerThreads <= 4)
             assertTrue(capacity.activeConnections <= 8)
         } finally {
             occupied.forEach { runCatching { it.close() } }
+            server.close()
+        }
+    }
+
+    @Test
+    fun timesOutFourPartialRequestsAndRecoversForBootstrap() {
+        val server = AndroidLoopbackServer(
+            ProductionCompanionRuntime(),
+            requestReadTimeoutMillis = 250,
+            requestLifetimeMillis = 1_000,
+            responseWriteTimeoutMillis = 1_000,
+            assetLoader = { null },
+        )
+        val partial = mutableListOf<Socket>()
+        try {
+            server.start()
+            repeat(4) {
+                partial += Socket(AndroidLoopbackServer.LOOPBACK_HOST, server.address.port).apply {
+                    soTimeout = 5_000
+                    getOutputStream().write(
+                        "GET /api/bootstrap HTTP/1.1\r\nHost: 127.0.0.1\r\n".toByteArray(Charsets.US_ASCII),
+                    )
+                    getOutputStream().flush()
+                }
+            }
+
+            partial.forEach { client ->
+                assertRawApiError(
+                    client.getInputStream().readBytes().toString(Charsets.UTF_8),
+                    status = 400,
+                    code = "REQUEST_TIMEOUT",
+                    retryable = true,
+                )
+            }
+            val bootstrap = URI("http://127.0.0.1:${server.address.port}/api/bootstrap")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(200, bootstrap.responseCode)
+            assertTrue(bootstrap.inputStream.reader().readText().contains("\"state\""))
+        } finally {
+            partial.forEach { runCatching { it.close() } }
+            server.close()
+        }
+    }
+
+    @Test
+    fun closeInterruptsAClientBlockedInRequestHeaders() {
+        val server = AndroidLoopbackServer(ProductionCompanionRuntime()) { null }
+        val client = Socket()
+        var serverClosed = false
+        try {
+            server.start()
+            client.connect(InetSocketAddress(AndroidLoopbackServer.LOOPBACK_HOST, server.address.port))
+            client.soTimeout = 1_000
+            client.getOutputStream().write("GET /api/health HTTP/1.1\r\n".toByteArray(Charsets.US_ASCII))
+            client.getOutputStream().flush()
+            assertTrue(waitUntil(1_000) { server.capacitySnapshot().activeConnections == 1 })
+
+            server.close()
+            serverClosed = true
+
+            val result = runCatching { client.getInputStream().read() }
+            assertFalse(result.exceptionOrNull() is SocketTimeoutException)
+            assertTrue(result.getOrNull() == -1 || result.exceptionOrNull() != null)
+        } finally {
+            runCatching { client.close() }
+            if (!serverClosed) server.close()
+        }
+    }
+
+    @Test
+    fun boundsHeaderCountAndAggregateHeaderBytesWithoutStoppingTheServer() {
+        val server = AndroidLoopbackServer(ProductionCompanionRuntime()) { null }
+        try {
+            server.start()
+            val tooManyHeaders = buildString {
+                append("GET /api/health HTTP/1.1\r\n")
+                repeat(101) { append("X-Header-$it: value\r\n") }
+                append("\r\n")
+            }
+            assertRawApiError(
+                rawRequest(server.address.port, tooManyHeaders),
+                status = 400,
+                code = "INVALID_REQUEST",
+                retryable = false,
+            )
+
+            val tooManyHeaderBytes = buildString {
+                append("GET /api/health HTTP/1.1\r\n")
+                repeat(64) { index ->
+                    append("X-Large-$index: ")
+                    append("a".repeat(1_100))
+                    append("\r\n")
+                }
+                append("\r\n")
+            }
+            assertRawApiError(
+                rawRequest(server.address.port, tooManyHeaderBytes),
+                status = 400,
+                code = "INVALID_REQUEST",
+                retryable = false,
+            )
+
+            assertTrue(URI("http://127.0.0.1:${server.address.port}/api/health").toURL().readText().contains("true"))
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun boundsAResponseWriteWhenTheClientDoesNotRead() {
+        val largeAsset = ByteArray(16 * 1024 * 1024) { 1 }
+        val server = AndroidLoopbackServer(
+            ProductionCompanionRuntime(),
+            responseWriteTimeoutMillis = 500,
+            assetLoader = { path -> largeAsset.takeIf { path == "large.bin" } },
+        )
+        val client = Socket().apply { receiveBufferSize = 1_024 }
+        try {
+            server.start()
+            client.connect(InetSocketAddress(AndroidLoopbackServer.LOOPBACK_HOST, server.address.port))
+            client.getOutputStream().write("GET /large.bin HTTP/1.1\r\n\r\n".toByteArray(Charsets.US_ASCII))
+            client.getOutputStream().flush()
+            assertTrue(waitUntil(1_000) { server.capacitySnapshot().activeConnections == 1 })
+
+            assertTrue(waitUntil(5_000) { server.capacitySnapshot().activeConnections == 0 })
+            val bootstrap = URI("http://127.0.0.1:${server.address.port}/api/bootstrap")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(200, bootstrap.responseCode)
+        } finally {
+            client.close()
+            server.close()
+        }
+    }
+
+    @Test
+    fun apiErrorsUseTheSharedSafeEnvelopeForEveryServerErrorStatus() {
+        val server = AndroidLoopbackServer(ProductionCompanionRuntime()) { null }
+        server.setMapperHandler(object : MapperHttpHandler {
+            override fun state(): Any = throw RuntimeException("private mapper implementation detail")
+            override fun action(type: String, values: Map<String, String?>): Any = Unit
+            override fun exportRaw(): ByteArray = byteArrayOf()
+        })
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+
+            assertApiError(
+                URI("$base/api/specimens").toURL().openConnection() as HttpURLConnection,
+                status = 400,
+                code = "INVALID_REQUEST",
+                retryable = false,
+            )
+            val unknownAction = (URI("$base/api/actions").toURL().openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                outputStream.use { it.write("{\"type\":\"private-action-detail\"}".toByteArray()) }
+            }
+            val invalidActionMessage = assertApiError(
+                unknownAction,
+                status = 400,
+                code = "INVALID_REQUEST",
+                retryable = false,
+            )
+            assertFalse(invalidActionMessage.contains("private-action-detail"))
+            assertApiError(
+                URI("$base/api/unknown").toURL().openConnection() as HttpURLConnection,
+                status = 404,
+                code = "NOT_FOUND",
+                retryable = false,
+            )
+            assertApiError(
+                (URI("$base/api/unknown").toURL().openConnection() as HttpURLConnection).apply {
+                    requestMethod = "DELETE"
+                },
+                status = 404,
+                code = "NOT_FOUND",
+                retryable = false,
+            )
+            assertApiError(
+                URI("$base/api/sprites/species/not-a-species.png").toURL().openConnection() as HttpURLConnection,
+                status = 404,
+                code = "NOT_FOUND",
+                retryable = false,
+            )
+            assertApiError(
+                URI("$base/api/sprites/species/1.jpg").toURL().openConnection() as HttpURLConnection,
+                status = 404,
+                code = "NOT_FOUND",
+                retryable = false,
+            )
+            assertApiError(
+                URI("$base/api").toURL().openConnection() as HttpURLConnection,
+                status = 404,
+                code = "NOT_FOUND",
+                retryable = false,
+            )
+            assertApiError(
+                (URI("$base/api/health").toURL().openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                },
+                status = 405,
+                code = "METHOD_NOT_ALLOWED",
+                retryable = false,
+            )
+            val internalMessage = assertApiError(
+                URI("$base/api/mapper/state").toURL().openConnection() as HttpURLConnection,
+                status = 500,
+                code = "INTERNAL_ERROR",
+                retryable = true,
+            )
+            assertFalse(internalMessage.contains("private mapper"))
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun fallsBackToTheSpaOnlyForExtensionlessHtmlNavigation() {
+        val index = "<html>DualDex SPA</html>".toByteArray()
+        val script = "export const ready = true".toByteArray()
+        val server = AndroidLoopbackServer(ProductionCompanionRuntime()) { path ->
+            when (path) {
+                "index.html" -> index
+                "assets/app.js" -> script
+                else -> null
+            }
+        }
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+            val navigation = (URI("$base/pokedex/species/25").toURL().openConnection() as HttpURLConnection).apply {
+                setRequestProperty("Accept", "text/html")
+            }
+            assertEquals(200, navigation.responseCode)
+            assertEquals("text/html; charset=utf-8", navigation.contentType)
+            assertEquals(index.toList(), navigation.inputStream.readBytes().toList())
+
+            val nonNavigation = (URI("$base/pokedex/species/25").toURL().openConnection() as HttpURLConnection).apply {
+                setRequestProperty("Accept", "application/json")
+            }
+            assertEquals(404, nonNavigation.responseCode)
+            assertFalse(nonNavigation.errorStream.readBytes().toList() == index.toList())
+
+            val existingScript = URI("$base/assets/app.js").toURL().openConnection() as HttpURLConnection
+            assertEquals(200, existingScript.responseCode)
+            assertEquals("no-cache", existingScript.getHeaderField("Cache-Control"))
+            assertEquals(script.toList(), existingScript.inputStream.readBytes().toList())
+
+            val encodedAsset = (URI("$base/assets/missing%2Ejs").toURL().openConnection() as HttpURLConnection).apply {
+                setRequestProperty("Accept", "text/html")
+            }
+            assertEquals(404, encodedAsset.responseCode)
+            assertEquals("no-cache", encodedAsset.getHeaderField("Cache-Control"))
+            assertFalse(encodedAsset.errorStream.readBytes().toList() == index.toList())
+
+            listOf("missing.js", "missing.css", "missing.png", "missing.svg", "missing.map").forEach { path ->
+                val missing = URI("$base/assets/$path").toURL().openConnection() as HttpURLConnection
+                assertEquals(path, 404, missing.responseCode)
+                assertEquals(path, "no-cache", missing.getHeaderField("Cache-Control"))
+                assertFalse(path, missing.errorStream.readBytes().toList() == index.toList())
+            }
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun catalogMediaRequiresRevalidationInsteadOfImmutableCaching() {
+        val sprite = RgbaSprite(1, 1, intArrayOf(0xff123456.toInt()))
+        val trainerSprite = RgbaSprite(64, 64, IntArray(64 * 64) { 0xff123456.toInt() })
+        val runtime = ProductionCompanionRuntime().apply {
+            loadCatalog(
+                "media.gba",
+                ParsedCatalog(
+                    "catalog-sha",
+                    EngineFamily.EMERALD,
+                    Platform.GBA,
+                    speciesById = mapOf(
+                        1 to SpeciesRecord(
+                            id = 1,
+                            dexNumber = CatalogField.available(1),
+                            name = CatalogField.available("SPECIES"),
+                            typeIds = CatalogField.available(emptyList()),
+                            baseStats = CatalogField.available(BaseStats(1, 1, 1, 1, 1, 1)),
+                            sprite = CatalogField.available(sprite),
+                        ),
+                    ),
+                    captureBallsById = mapOf(
+                        1 to CaptureBallRecord(
+                            id = 1,
+                            name = CatalogField.available("BALL"),
+                            sprite = CatalogField.available(sprite),
+                        ),
+                    ),
+                    trainerAssets = TrainerAssetCatalog(
+                        avatarAssetKeys = mapOf(0 to "trainer/avatar", 1 to "trainer/avatar"),
+                        assets = mapOf("trainer/avatar" to trainerSprite),
+                    ),
+                ),
+            )
+        }
+        val server = AndroidLoopbackServer(runtime) { null }
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+            listOf(
+                "/api/sprites/species/1.png",
+                "/api/sprites/balls/1.png",
+                "/api/trainer-assets/trainer%2Favatar.png",
+            ).forEach { path ->
+                val media = URI(base + path).toURL().openConnection() as HttpURLConnection
+                assertEquals(path, 200, media.responseCode)
+                assertEquals(path, "no-cache", media.getHeaderField("Cache-Control"))
+                assertFalse(path, media.getHeaderField("Cache-Control").contains("immutable"))
+                media.inputStream.use { it.readBytes() }
+            }
+        } finally {
             server.close()
         }
     }
@@ -272,6 +601,7 @@ class AndroidLoopbackServerTest {
             val map = URI("$base/api/maps/world%2Fregion-0.png").toURL().openConnection() as HttpURLConnection
             assertEquals(200, map.responseCode)
             assertEquals("image/png", map.contentType)
+            assertEquals("no-cache", map.getHeaderField("Cache-Control"))
             assertTrue(map.inputStream.readBytes().copyOfRange(1, 4).contentEquals("PNG".toByteArray()))
             val local = URI("$base/api/maps/local%2F0001%2Fmap.png").toURL().openConnection() as HttpURLConnection
             assertEquals(200, local.responseCode)
@@ -408,6 +738,45 @@ class AndroidLoopbackServerTest {
     }
 
     @Test
+    fun rejectsMalformedAndNegativeStateVersionsWithTheApiErrorEnvelope() {
+        val server = AndroidLoopbackServer(ProductionCompanionRuntime()) { null }
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+
+            listOf("invalid", "-1").forEach { sinceVersion ->
+                assertApiError(
+                    URI("$base/api/state?sinceVersion=$sinceVersion").toURL().openConnection() as HttpURLConnection,
+                    status = 400,
+                    code = "INVALID_REQUEST",
+                    retryable = false,
+                )
+            }
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun returnsCurrentStateWhenClientVersionIsAheadAfterAServerReset() {
+        val runtime = ProductionCompanionRuntime()
+        val server = AndroidLoopbackServer(runtime) { null }
+        try {
+            server.start()
+            val currentVersion = runtime.stateView().version
+
+            val resetEvidence = URI(
+                "http://127.0.0.1:${server.address.port}/api/state?sinceVersion=${currentVersion + 1}",
+            ).toURL().openConnection() as HttpURLConnection
+
+            assertEquals(200, resetEvidence.responseCode)
+            assertTrue(resetEvidence.inputStream.reader().readText().contains("\"version\":$currentVersion"))
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
     fun secondsOnlyUnifiedClockSampleLeavesStateVersionAndHttpBodyUnchanged() {
         val hash = "5".repeat(64)
         val source = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
@@ -477,6 +846,60 @@ class AndroidLoopbackServerTest {
         } finally {
             server.close()
         }
+    }
+
+    private fun assertApiError(
+        connection: HttpURLConnection,
+        status: Int,
+        code: String,
+        retryable: Boolean,
+    ): String {
+        assertEquals(status, connection.responseCode)
+        assertEquals("application/json; charset=utf-8", connection.contentType)
+        assertEquals("no-store", connection.getHeaderField("Cache-Control"))
+        val body = requireNotNull(connection.errorStream).reader().readText()
+        return assertApiErrorBody(body, code, retryable)
+    }
+
+    private fun assertRawApiError(
+        response: String,
+        status: Int,
+        code: String,
+        retryable: Boolean,
+    ) {
+        val headers = response.substringBefore("\r\n\r\n")
+        assertTrue(headers.startsWith("HTTP/1.1 $status "))
+        assertTrue(headers.contains("Content-Type: application/json; charset=utf-8", ignoreCase = true))
+        assertTrue(headers.contains("Cache-Control: no-store", ignoreCase = true))
+        assertApiErrorBody(response.substringAfter("\r\n\r\n"), code, retryable)
+    }
+
+    private fun assertApiErrorBody(body: String, code: String, retryable: Boolean): String {
+        val envelope = JsonParser.parseString(body).asJsonObject
+        assertEquals(setOf("error"), envelope.keySet())
+        val error = envelope.getAsJsonObject("error")
+        assertEquals(setOf("code", "message", "retryable"), error.keySet())
+        assertEquals(code, error.get("code").asString)
+        assertEquals(retryable, error.get("retryable").asBoolean)
+        return error.get("message").asString.also { assertTrue(it.isNotBlank()) }
+    }
+
+    private fun rawRequest(port: Int, request: String): String =
+        Socket(AndroidLoopbackServer.LOOPBACK_HOST, port).use { client ->
+            client.soTimeout = 5_000
+            client.getOutputStream().write(request.toByteArray(Charsets.US_ASCII))
+            client.getOutputStream().flush()
+            client.shutdownOutput()
+            client.getInputStream().readBytes().toString(Charsets.UTF_8)
+        }
+
+    private fun waitUntil(timeoutMillis: Long, condition: () -> Boolean): Boolean {
+        val deadline = System.nanoTime() + timeoutMillis * 1_000_000
+        while (System.nanoTime() < deadline) {
+            if (condition()) return true
+            Thread.sleep(10)
+        }
+        return condition()
     }
 
     private fun timedAsset(): TimedIndexedMapAsset {

@@ -278,6 +278,14 @@ jobs:
         working-directory: companion-web
         run: npm test -- --run
 
+      - name: Install Playwright Chromium
+        working-directory: companion-web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run public Chromium acceptance
+        working-directory: companion-web
+        run: npm run test:e2e:ci
+
       - name: Build web UI
         working-directory: companion-web
         run: npm run build

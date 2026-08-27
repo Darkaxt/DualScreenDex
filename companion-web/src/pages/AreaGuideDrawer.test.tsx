@@ -19,8 +19,8 @@ const area: AreaGuideAreaView = {
   },
   encounters: [{
     name: 'Grass', windows: ['DAY', 'NIGHT'], species: [
-      { speciesId: 261, name: 'Poochyena', minimumLevel: 2, maximumLevel: 3, ratePercent: 60 },
-      { speciesId: 263, name: 'Zigzagoon', minimumLevel: 2, maximumLevel: 4, ratePercent: null },
+      { speciesId: 261, name: 'Poochyena', minimumLevel: 2, maximumLevel: 3, ratePercent: 60, hasSprite: true },
+      { speciesId: 263, name: 'Zigzagoon', minimumLevel: 2, maximumLevel: 4, ratePercent: null, hasSprite: false },
     ],
   }],
   placesAndServices: [{
@@ -42,7 +42,7 @@ describe('AreaGuideDrawer', () => {
     const close = vi.fn();
     const selectPoint = vi.fn();
     const selectArea = vi.fn();
-    render(<AreaGuideDrawer
+    const { container } = render(<AreaGuideDrawer
       area={area}
       onClose={close}
       onSelectPoint={selectPoint}
@@ -60,6 +60,9 @@ describe('AreaGuideDrawer', () => {
     expect(screen.queryByText('Place')).toBeNull();
     expect(screen.getByText('Lv. 2–3 · 60%')).toBeTruthy();
     expect(screen.getByText('Lv. 2–4')).toBeTruthy();
+    expect(container.querySelectorAll('.area-guide-encounter-row img')).toHaveLength(1);
+    expect(container.querySelector('img')?.getAttribute('src')).toBe('/api/sprites/species/261.png');
+    expect(container.querySelectorAll('.area-guide-sprite-unavailable')).toHaveLength(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Show Your House on map' }));
     expect(selectPoint).toHaveBeenCalledWith('house');
@@ -81,6 +84,7 @@ describe('AreaGuideDrawer', () => {
           minimumLevel: 2,
           maximumLevel: 4,
           ratePercent: 1,
+          hasSprite: false,
         })),
       }],
       placesAndServices: [],

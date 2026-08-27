@@ -1,9 +1,11 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { catalogMediaUrl } from '../media';
 import type { AreaGuideAreaView, AreaGuideEncounterSpeciesView, AreaGuidePointView } from '../models';
 
 interface AreaGuideDrawerProps {
   area: AreaGuideAreaView;
+  catalogHash?: string;
   onClose: () => void;
   onSelectPoint?: (key: string) => void;
   onSelectArea?: (baseAreaId: number) => void;
@@ -23,6 +25,7 @@ const VIRTUAL_OVERSCAN_ROWS = 2;
 
 export function AreaGuideDrawer({
   area,
+  catalogHash,
   onClose,
   onSelectPoint,
   onSelectArea,
@@ -90,7 +93,7 @@ export function AreaGuideDrawer({
           ariaLabel="Wild Pokémon"
           items={encounterRows}
           itemKey={row => row.key}
-          renderItem={row => <EncounterSpeciesRow row={row} />}
+          renderItem={row => <EncounterSpeciesRow row={row} catalogHash={catalogHash} />}
         />
       </GuideSection>}
 
@@ -134,15 +137,18 @@ function GuideSection({ title, children }: { title: string; children: ComponentC
   </section>;
 }
 
-function EncounterSpeciesRow({ row }: { row: EncounterRow }) {
+function EncounterSpeciesRow({ row, catalogHash }: { row: EncounterRow; catalogHash?: string }) {
   const { species } = row;
+  const spriteUrl = `/api/sprites/species/${species.speciesId}.png`;
   const level = species.minimumLevel === species.maximumLevel
     ? `Lv. ${species.minimumLevel}`
     : `Lv. ${species.minimumLevel}–${species.maximumLevel}`;
   const detail = species.ratePercent == null ? level : `${level} · ${species.ratePercent}%`;
   const context = [row.groupName, windowLabel(row.windows)].filter(Boolean).join(' · ');
   return <div class="area-guide-encounter-row">
-    <img src={`/api/sprites/species/${species.speciesId}.png`} alt="" loading="lazy" decoding="async" />
+    {species.hasSprite
+      ? <img src={catalogHash ? catalogMediaUrl(spriteUrl, catalogHash) : spriteUrl} alt="" loading="lazy" decoding="async" />
+      : <span class="area-guide-sprite-unavailable" aria-hidden="true" />}
     <span>
       <strong>{species.name}</strong>
       {context && <small>{context}</small>}

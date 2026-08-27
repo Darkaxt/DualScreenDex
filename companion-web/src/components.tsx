@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import { GameClockIndicator } from './GameClockIndicator';
+import { catalogMediaUrl } from './media';
 import type { Catalog, GameTime, KnowledgeMode, SpeciesState, TypeInfo } from './models';
 
 export type SpeciesIdentityKnowledge = 'unknown' | 'seen' | 'captured';
@@ -15,17 +16,17 @@ export function identitySpriteClass(knowledge: SpeciesIdentityKnowledge): string
   return knowledge === 'unknown' ? 'identity-silhouette' : knowledge === 'seen' ? 'identity-seen' : '';
 }
 
-export function Sprite({ speciesId, name, available, large = false, knowledge = 'captured' }: { speciesId: number; name: string; available: boolean; large?: boolean; knowledge?: SpeciesIdentityKnowledge }) {
+export function Sprite({ speciesId, name, available, catalogHash, large = false, knowledge = 'captured' }: { speciesId: number; name: string; available: boolean; catalogHash: string; large?: boolean; knowledge?: SpeciesIdentityKnowledge }) {
   return (
     <div class={`sprite-frame ${large ? 'sprite-large' : ''}`}>
-      {available ? <img loading="lazy" decoding="async" class={identitySpriteClass(knowledge)} src={`/api/sprites/species/${speciesId}.png`} alt={knowledge === 'unknown' ? 'Unidentified Pokémon' : `${name} sprite`} /> : <span class="sprite-missing" aria-label="Sprite unavailable" />}
+      {available ? <img loading="lazy" decoding="async" class={identitySpriteClass(knowledge)} src={catalogMediaUrl(`/api/sprites/species/${speciesId}.png`, catalogHash)} alt={knowledge === 'unknown' ? 'Unidentified Pokémon' : `${name} sprite`} /> : <span class="sprite-missing" aria-label="Sprite unavailable" />}
     </div>
   );
 }
 
 export function PokedexAvatar({ speciesId, name, available, state, catalog, large = false, knowledge = 'captured' }: { speciesId: number; name: string; available: boolean; state?: SpeciesState; catalog: Catalog; large?: boolean; knowledge?: SpeciesIdentityKnowledge }) {
   return <span class={`pokedex-avatar ${large ? 'pokedex-avatar-large' : ''}`}>
-    <Sprite speciesId={speciesId} name={name} available={available} large={large} knowledge={knowledge} />
+    <Sprite speciesId={speciesId} name={name} available={available} catalogHash={catalog.hash} large={large} knowledge={knowledge} />
     <CaughtBadge state={state} catalog={catalog} />
   </span>;
 }
@@ -60,7 +61,7 @@ export function CaughtBadge({ state, catalog }: { state?: SpeciesState; catalog:
   if (!caught) return null;
   const ball = state?.ballId != null && catalog.balls.some(item => item.id === state.ballId && item.hasSprite);
   return <span class="caught-avatar-badge">{ball
-    ? <img loading="lazy" decoding="async" class="ball-art" src={`/api/sprites/balls/${state!.ballId}.png`} alt="Caught" />
+    ? <img loading="lazy" decoding="async" class="ball-art" src={catalogMediaUrl(`/api/sprites/balls/${state!.ballId}.png`, catalog.hash)} alt="Caught" />
     : <span class="ball-mark ball-caught" aria-label="Caught"><i /></span>}
   </span>;
 }

@@ -18,6 +18,21 @@ import org.junit.Test
 
 class EncounterSimulatorTest {
     @Test
+    fun encounterOrdinalsKeepRepeatedSeededCapturesUnique() {
+        val simulator = EncounterSimulator(catalog())
+        val first = simulator.generate(SimulationRequest(seed = 44, captured = true, encounterOrdinal = 7))
+        val second = simulator.generate(
+            SimulationRequest(seed = 44, captured = true, encounterOrdinal = 8),
+            previous = first.ledger,
+        )
+
+        val keys = second.ledger.owned.map { it.stableKey }
+        assertEquals(keys.size, keys.distinct().size)
+        assertTrue(keys.any { "-7-" in it })
+        assertTrue(keys.any { "-8-" in it })
+    }
+
+    @Test
     fun isDeterministicAndUsesOnlyLevelEligibleMoves() {
         val simulator = EncounterSimulator(catalog())
         val request = SimulationRequest(seed = 44, opponentCount = 2, minimumLevel = 10, maximumLevel = 10)

@@ -46,6 +46,7 @@ class DualDexRuntime(
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
     private var simulator: EncounterSimulator? = null
+    private var encounterOrdinal = 0L
     private val loadGeneration = AtomicLong()
     private var parserCancellation: ParserCancellationSource? = null
     private var parserFuture: Future<*>? = null
@@ -162,6 +163,7 @@ class DualDexRuntime(
                         maximumLevel = values["maximumLevel"]?.toIntOrNull() ?: 45,
                         captured = values["captured"].toBoolean(),
                         areaId = values["areaId"]?.toIntOrNull(),
+                        encounterOrdinal = encounterOrdinal++,
                     ),
                     snapshot.ledger,
                     activeRulesetId = generationRulesetId(snapshot.settings.ruleset),

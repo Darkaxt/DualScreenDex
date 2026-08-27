@@ -18,6 +18,21 @@ import org.junit.Test
 
 class DualDexRuntimeTest {
     @Test
+    fun repeatedCapturedEncountersRemainUniqueAcrossCatalogReloads() {
+        val runtime = DualDexRuntime()
+        val catalog = simulationCatalog(multiTable = false)
+        runtime.loadCatalog("fixture.gba", catalog)
+        runtime.action("GENERATE", mapOf("seed" to "1", "captured" to "true"))
+
+        runtime.loadCatalog("fixture.gba", catalog)
+        runtime.action("GENERATE", mapOf("seed" to "1", "captured" to "true"))
+
+        val keys = runtime.gateway.bootstrap().ledger.owned.map { it.stableKey }
+        assertEquals(keys.size, keys.distinct().size)
+        runtime.close()
+    }
+
+    @Test
     fun autoRemainsUnresolvedWithoutSaveDetectionAndManualSelectionOnlyChangesActiveId() {
         val runtime = DualDexRuntime()
         runtime.loadCatalog(

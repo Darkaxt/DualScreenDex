@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.server
 
+import com.enrpau.dualscreendex.parser.catalog.BaseStats
+import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.IndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
@@ -8,12 +10,17 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
 import com.enrpau.dualscreendex.parser.catalog.MapTimeBlend
 import com.enrpau.dualscreendex.parser.catalog.MapTimePaletteModel
-import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
+import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.google.gson.JsonParser
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -45,6 +52,245 @@ class ServerContractTest {
         } finally {
             server.close()
             Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun returnsNoContentOnlyWhenTheClientHasTheCurrentStateVersion() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val runtime = DualDexRuntime()
+        val server = DualDexServer(runtime, root, 0)
+        try {
+            server.start()
+            val currentVersion = runtime.stateView().version
+            val unchanged = get(server, "/api/state?sinceVersion=$currentVersion")
+
+            assertEquals(204, unchanged.responseCode)
+            assertNull(unchanged.contentType)
+            assertTrue(unchanged.inputStream.readBytes().isEmpty())
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun returnsCurrentStateWhenTheClientVersionIsAheadAfterAServerReset() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val runtime = DualDexRuntime()
+        val server = DualDexServer(runtime, root, 0)
+        try {
+            server.start()
+            val currentVersion = runtime.stateView().version
+            val reset = get(server, "/api/state?sinceVersion=${currentVersion + 1}")
+
+            assertEquals(200, reset.responseCode)
+            assertTrue(reset.inputStream.reader().readText().contains("\"version\":$currentVersion"))
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun rejectsInvalidStateVersionsWithTheSharedJsonErrorEnvelope() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val server = DualDexServer(DualDexRuntime(), root, 0)
+        try {
+            server.start()
+
+            assertApiError(get(server, "/api/state?sinceVersion=invalid"), 400, "INVALID_REQUEST", retryable = false)
+            assertApiError(get(server, "/api/state?sinceVersion=-1"), 400, "INVALID_REQUEST", retryable = false)
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun usesTheSharedJsonErrorEnvelopeForDesktopApiFailures() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val server = DualDexServer(DualDexRuntime(), root, 0)
+        try {
+            server.start()
+
+            assertApiError(get(server, "/api/missing"), 404, "NOT_FOUND", retryable = false)
+            assertApiError(
+                get(server, "/api/missing").apply { requestMethod = "DELETE" },
+                404,
+                "NOT_FOUND",
+                retryable = false,
+            )
+            assertApiError(
+                get(server, "/api/sprites/species/not-a-species.png"),
+                404,
+                "NOT_FOUND",
+                retryable = false,
+            )
+            assertApiError(
+                get(server, "/api/sprites/species/1.jpg"),
+                404,
+                "NOT_FOUND",
+                retryable = false,
+            )
+            val wrongMethod = get(server, "/api/health").apply { requestMethod = "POST" }
+            assertApiError(wrongMethod, 405, "METHOD_NOT_ALLOWED", retryable = false)
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun sanitizesUnexpectedDesktopApiFailures() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val runtime = DualDexRuntime()
+        val gateway = DualDexRuntime::class.java.getDeclaredField("gateway")
+        gateway.isAccessible = true
+        gateway.set(runtime, null)
+        val server = DualDexServer(runtime, root, 0)
+        try {
+            server.start()
+
+            assertApiError(get(server, "/api/bootstrap"), 500, "INTERNAL_ERROR", retryable = true)
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun reportsTemporarilyUnavailableDesktopApiWorkAsRetryable() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val runtime = DualDexRuntime().also(DualDexRuntime::close)
+        val server = DualDexServer(runtime, root, 0)
+        try {
+            server.start()
+            val unavailable = get(server, "/api/load?name=fixture.gb").apply {
+                requestMethod = "POST"
+                doOutput = true
+                outputStream.use { it.write(byteArrayOf(0)) }
+            }
+
+            assertApiError(unavailable, 503, "SERVER_BUSY", retryable = true)
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun fallsBackToTheSpaOnlyForExtensionlessHtmlNavigation() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        Files.writeString(root.resolve("index.html"), "<!doctype html><title>DualDex</title>")
+        Files.writeString(root.resolve("app.js"), "export const ready = true")
+        val server = DualDexServer(DualDexRuntime(), root, 0)
+        try {
+            server.start()
+
+            val navigation = get(server, "/party/member/1", accept = "text/html")
+            assertEquals(200, navigation.responseCode)
+            assertEquals("text/html; charset=utf-8", navigation.contentType)
+            assertEquals("no-cache", navigation.getHeaderField("Cache-Control"))
+            assertTrue(navigation.inputStream.reader().readText().contains("DualDex"))
+
+            val nonNavigation = get(server, "/party/member/1", accept = "application/json")
+            assertEquals(404, nonNavigation.responseCode)
+            assertFalse(nonNavigation.errorStream.reader().readText().contains("<!doctype html>"))
+
+            val script = get(server, "/app.js")
+            assertEquals(200, script.responseCode)
+            assertEquals("text/javascript; charset=utf-8", script.contentType)
+            assertEquals("no-cache", script.getHeaderField("Cache-Control"))
+            assertTrue(script.inputStream.reader().readText().contains("ready"))
+
+            val encodedAsset = get(server, "/missing%2Ejs", accept = "text/html")
+            assertEquals(404, encodedAsset.responseCode)
+            assertEquals("no-cache", encodedAsset.getHeaderField("Cache-Control"))
+            assertFalse(encodedAsset.errorStream.reader().readText().contains("<!doctype html>"))
+
+            listOf("/missing.js", "/missing.css", "/missing.png", "/missing.svg", "/missing.map").forEach { path ->
+                val missing = get(server, path, accept = "*/*")
+                assertEquals(path, 404, missing.responseCode)
+                assertEquals(path, "no-cache", missing.getHeaderField("Cache-Control"))
+                assertFalse(missing.errorStream.reader().readText().contains("<!doctype html>"))
+            }
+        } finally {
+            server.close()
+            root.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun requiresCatalogMediaToRevalidateInsteadOfCachingImmutableUrls() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val runtime = DualDexRuntime().apply { loadCatalog("fixture.gba", mediaCatalog()) }
+        val server = DualDexServer(runtime, root, 0)
+        try {
+            server.start()
+
+            val sprite = get(server, "/api/sprites/species/1.png")
+            assertEquals(200, sprite.responseCode)
+            assertEquals("no-cache", sprite.getHeaderField("Cache-Control"))
+            assertFalse(sprite.getHeaderField("Cache-Control").contains("immutable"))
+            val map = get(server, "/api/maps/local%2F0001%2Fmap.png")
+            assertEquals(200, map.responseCode)
+            assertEquals("no-cache", map.getHeaderField("Cache-Control"))
+            assertFalse(map.getHeaderField("Cache-Control").contains("immutable"))
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun conflatingEventSlotRetainsOnlyTheLatestPendingState() {
+        val slot = ConflatingSlot<String>()
+
+        slot.replace("version-1")
+        slot.replace("version-2")
+
+        assertEquals("version-2", slot.take())
+    }
+
+    @Test
+    fun closingAnEventSlotUnblocksAnIdleDesktopEventClient() {
+        val slot = ConflatingSlot<String>()
+        val reader = java.util.concurrent.Executors.newSingleThreadExecutor()
+        try {
+            val pending = reader.submit<String?> { slot.take() }
+
+            slot.close()
+
+            assertNull(pending.get(1, java.util.concurrent.TimeUnit.SECONDS))
+        } finally {
+            reader.shutdownNow()
+        }
+    }
+
+    @Test
+    fun forcesBlockedDesktopEventWritesClosedAtTheDeadline() {
+        val scheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
+        val writer = java.util.concurrent.Executors.newSingleThreadExecutor()
+        try {
+            val closed = java.util.concurrent.CountDownLatch(1)
+            val releaseWrite = java.util.concurrent.CountDownLatch(1)
+            val deadline = WriteDeadline(scheduler, 50)
+            val pending = writer.submit {
+                deadline.run(
+                    onDeadline = {
+                        closed.countDown()
+                        releaseWrite.countDown()
+                    },
+                    action = { releaseWrite.await() },
+                )
+            }
+
+            assertTrue(closed.await(1, java.util.concurrent.TimeUnit.SECONDS))
+            pending.get(1, java.util.concurrent.TimeUnit.SECONDS)
+        } finally {
+            writer.shutdownNow()
+            scheduler.shutdownNow()
         }
     }
 
@@ -172,6 +418,66 @@ class ServerContractTest {
             server.close()
             Files.deleteIfExists(root)
         }
+    }
+
+    private fun get(
+        server: DualDexServer,
+        path: String,
+        accept: String? = null,
+    ): HttpURLConnection = URI("http://127.0.0.1:${server.address.port}$path")
+        .toURL().openConnection().let { it as HttpURLConnection }
+        .apply { accept?.let { setRequestProperty("Accept", it) } }
+
+    private fun assertApiError(
+        connection: HttpURLConnection,
+        status: Int,
+        code: String,
+        retryable: Boolean,
+    ) {
+        assertEquals(status, connection.responseCode)
+        assertEquals("application/json; charset=utf-8", connection.contentType)
+        assertEquals("no-store", connection.getHeaderField("Cache-Control"))
+        val body = connection.errorStream.reader().readText()
+        val root = JsonParser.parseString(body).asJsonObject
+        assertEquals(setOf("error"), root.keySet())
+        val error = root.getAsJsonObject("error")
+        assertEquals(setOf("code", "message", "retryable"), error.keySet())
+        assertEquals(code, error.get("code").asString)
+        assertEquals(
+            when (code) {
+                "INVALID_REQUEST" -> "The request was invalid."
+                "NOT_FOUND" -> "The requested resource was not found."
+                "METHOD_NOT_ALLOWED" -> "The request method is not allowed."
+                "INTERNAL_ERROR" -> "The server could not complete the request."
+                "SERVER_BUSY" -> "The server is busy. Try again."
+                else -> error("unexpected API error code: $code")
+            },
+            error.get("message").asString,
+        )
+        assertEquals(retryable, error.get("retryable").asBoolean)
+        assertFalse(body.contains("Exception", ignoreCase = true))
+    }
+
+    private fun mediaCatalog(): ParsedCatalog {
+        val mapBytes = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
+        val species = SpeciesRecord(
+            id = 1,
+            dexNumber = CatalogField.available(1),
+            name = CatalogField.available("SPECIES"),
+            typeIds = CatalogField.available(listOf(1)),
+            baseStats = CatalogField.available(BaseStats(50, 50, 50, 50, 50, 50)),
+            sprite = CatalogField.available(RgbaSprite(1, 1, intArrayOf(0xFFFFFFFF.toInt()))),
+        )
+        return ParsedCatalog(
+            "media-hash",
+            EngineFamily.EMERALD,
+            Platform.GBA,
+            speciesById = mapOf(1 to species),
+            localMaps = LocalMapCatalog(
+                maps = listOf(LocalMap("local/0001", "Fixture", 1, 16, 16, 1, 1, "local/0001/map")),
+                assets = mapOf("local/0001/map" to PngMapAsset(mapBytes)),
+            ),
+        )
     }
 
     private fun timedAsset(): TimedIndexedMapAsset {

@@ -1,6 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bootstrap } from './models';
+import { decodeRouteHash, encodeRouteHash } from './navigation';
 
 const fixture: Bootstrap = {
   catalog: {
@@ -56,6 +57,7 @@ vi.mock('./gateway', () => ({
 }));
 
 import { action, bootstrap, events } from './gateway';
+import type { ConnectionStatus } from './gateway';
 import { App, catalogRefreshMarker, loadingModuleLabel, loadingOriginClass } from './App';
 
 afterEach(cleanup);
@@ -63,6 +65,7 @@ afterEach(cleanup);
 describe('production application shell', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState(null, '', '/');
     document.body.replaceChildren();
     class TestResizeObserver {
       constructor(private readonly callback: ResizeObserverCallback) {}
@@ -459,6 +462,45 @@ describe('production application shell', () => {
     expect(loadingOriginClass({ active: false, phase: 'COMPLETE', completedUnits: 11, totalUnits: 11 })).toBe('');
   });
 
+  it('shows bounded reconnecting and failed connection states', async () => {
+    let updateConnection!: (status: ConnectionStatus) => void;
+    vi.mocked(events).mockImplementationOnce((_currentVersion, _onState, onConnection) => {
+      updateConnection = onConnection ?? (() => undefined);
+      return () => undefined;
+    });
+    render(<App />);
+    await screen.findByText('POKÉDEX');
+
+    act(() => updateConnection('RECONNECTING'));
+    expect(screen.getByText('Reconnecting to the companion…').getAttribute('role')).toBe('status');
+
+    act(() => updateConnection('FAILED'));
+    expect(screen.getByRole('alert').textContent).toBe('The companion is unavailable. Retrying automatically…');
+
+    act(() => updateConnection('CONNECTED'));
+    expect(screen.queryByText(/companion is unavailable|Reconnecting to the companion/)).toBeNull();
+  });
+
+  it('accepts a lower authoritative version after server restart', async () => {
+    let refreshAfterReconnect!: () => void | Promise<void>;
+    vi.mocked(events).mockImplementationOnce((_currentVersion, _onState, _onConnection, onRefreshRequired) => {
+      refreshAfterReconnect = onRefreshRequired ?? (() => undefined);
+      return () => undefined;
+    });
+    vi.mocked(bootstrap)
+      .mockResolvedValueOnce(fixture)
+      .mockResolvedValueOnce({
+        ...fixture,
+        state: { ...fixture.state, version: 0, screen: 'SETTINGS' },
+      });
+    render(<App />);
+    await screen.findByText('POKÉDEX');
+
+    await act(async () => { await refreshAfterReconnect(); });
+
+    await waitFor(() => expect(screen.getByText('SETTINGS')).toBeTruthy());
+  });
+
   it('keeps technical failures out of normal screens', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     vi.mocked(bootstrap).mockRejectedValueOnce(new Error('Parser table layout at ROM 0x1234 failed CRC32 DEADBEEF'));
@@ -469,6 +511,44 @@ describe('production application shell', () => {
     expect(screen.queryByText(/Parser table layout|CRC32 DEADBEEF|0x1234/)).toBeNull();
     expect(consoleError).toHaveBeenCalledOnce();
     consoleError.mockRestore();
+  });
+
+  it('restores a validated local route after browser refresh', async () => {
+    window.history.replaceState({ dualdexRouteIndex: 2 }, '', encodeRouteHash([
+      { kind: 'MAP', originScreen: 'POKEDEX' },
+    ], fixture.catalog!.hash));
+
+    render(<App />);
+
+    expect(await screen.findByRole('region', { name: 'Interactive world map' })).toBeTruthy();
+    expect(window.history.state).toEqual({ dualdexRouteIndex: 2 });
+  });
+
+  it('publishes opened routes and follows browser history', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
+
+    expect(decodeRouteHash(window.location.hash, fixture.catalog!)).toEqual([
+      { kind: 'MAP', originScreen: 'POKEDEX' },
+    ]);
+
+    window.history.replaceState({ dualdexRouteIndex: 0 }, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Interactive world map' })).toBeNull());
+    expect(screen.getByText('POKÉDEX')).toBeTruthy();
+  });
+
+  it('clears a stale transferred route instead of applying it to another catalog', async () => {
+    window.history.replaceState(null, '', encodeRouteHash([
+      { kind: 'MAP', originScreen: 'POKEDEX' },
+    ], 'stale-sha'));
+
+    render(<App />);
+
+    await screen.findByText('POKÉDEX');
+    expect(window.location.hash).toBe('');
+    expect(screen.queryByRole('region', { name: 'Interactive world map' })).toBeNull();
   });
 
   it('consumes companion Back locally and never leaves the root Pokédex', async () => {

@@ -514,6 +514,7 @@ button { cursor: pointer; }
 .welcome-error, .error-toast { font-size: .85em; }
 .rarity-card > small { font-size: .95em; }
 .rarity-card p { max-width: 560px; font-size: 1.05em; }
+.connection-toast { position: absolute; z-index: 30; top: 64px; left: 50%; translate: -50% 0; max-width: calc(100% - 24px); padding: 8px 12px; border: 1px solid #ffe06688; color: #fff4b8; background: #473d17e8; box-shadow: 0 4px 14px #0005; font-size: .72em; font-weight: 900; text-align: center; pointer-events: none; }.connection-toast.is-failed { border-color: #ff9d9888; color: white; background: #8d2428eb; }
 .error-toast { position: absolute; z-index: 20; left: 10px; right: 10px; bottom: 10px; padding: 10px; color: white; background: #8d2428; box-shadow: 0 4px 16px #0006; font-size: .75em; }.loading-indicator { position: absolute; z-index: 40; top: 32px; right: 52px; height: 22px; display: flex; align-items: center; min-width: 75px; padding: 0 7px; border: 1px solid #d9f47a55; border-radius: 4px; color: #eff7cf; background: #071e18b8; backdrop-filter: blur(4px); font-size: .59em; font-weight: 900; letter-spacing: .06em; white-space: nowrap; pointer-events: none; }.loading-indicator i::after { content: ""; animation: loading-dots 1.2s steps(1, end) infinite; } @keyframes loading-dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75%, 100% { content: "..."; } }
 .loading-indicator { top: 30px; height: 26px; min-width: 88px; padding-inline: 8px; font-size: .75em; }
 
@@ -958,6 +959,7 @@ button { cursor: pointer; }
 .area-guide-windowed-item:last-child { border-bottom: 0; }
 .area-guide-encounter-row { height: 100%; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 8px; }
 .area-guide-encounter-row img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+.area-guide-sprite-unavailable { width: 40px; height: 40px; border: 1px dashed color-mix(in srgb, var(--line) 70%, transparent); background: color-mix(in srgb, var(--paper-deep) 55%, transparent); }
 .area-guide-encounter-row > span { min-width: 0; display: grid; gap: 2px; }
 .area-guide-encounter-row strong { overflow: hidden; font-family: Georgia, serif; font-size: max(var(--ui-min-text), .79rem); text-overflow: ellipsis; white-space: nowrap; }
 .area-guide-encounter-row small { overflow: hidden; color: var(--muted); font: 800 max(var(--ui-min-text), .59rem)/1 var(--font-sans); text-overflow: ellipsis; white-space: nowrap; }

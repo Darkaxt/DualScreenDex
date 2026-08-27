@@ -72,6 +72,29 @@ test("runs reusable installed-app acceptance before signing or promotion", () =>
   assert.match(workflow, /needs:\s*\[verify-and-build, packaged-android-acceptance\]/);
 });
 
+test("gates CI and release with portable public Chromium acceptance", () => {
+  const browserJob = continuousIntegrationWorkflow.slice(
+    continuousIntegrationWorkflow.indexOf("  browser-e2e:"),
+    continuousIntegrationWorkflow.indexOf("  packaged-android:"),
+  );
+  const unsignedReleaseJob = workflow.slice(
+    workflow.indexOf("  verify-and-build:"),
+    workflow.indexOf("  sign-and-publish:"),
+  );
+
+  assert.match(browserJob, /runs-on:\s*ubuntu-latest/);
+  assert.match(browserJob, /working-directory:\s*companion-web[\s\S]*run:\s*npm ci/);
+  assert.match(browserJob, /npx playwright install --with-deps chromium/);
+  assert.match(browserJob, /npm run test:e2e:ci/);
+  assert.match(unsignedReleaseJob, /npx playwright install --with-deps chromium/);
+  assert.match(unsignedReleaseJob, /npm run test:e2e:ci/);
+  assert.ok(
+    unsignedReleaseJob.indexOf("npm run test:e2e:ci") <
+      unsignedReleaseJob.indexOf(":app:assembleRelease"),
+    "public Chromium acceptance must finish before the unsigned release build",
+  );
+});
+
 test("promotion verifies immutable packaged evidence from the pinned workflow", () => {
   assert.match(promotionWorkflow, /\.path == \$path/);
   assert.match(promotionWorkflow, /\.github\/workflows\/release\.yml/);

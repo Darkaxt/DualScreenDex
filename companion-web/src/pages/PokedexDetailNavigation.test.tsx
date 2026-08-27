@@ -68,8 +68,8 @@ describe('Pokédex evolution navigation', () => {
 
     const chart = screen.getByRole('img', { name: 'Height comparison for Charmeleon: 1.7 m beside a 1.7 m person' });
     expect(chart.querySelectorAll('.height-ruler-line').length).toBeGreaterThanOrEqual(5);
-    expect(chart.querySelector('.height-person img')?.getAttribute('src')).toBe(avatarUrl);
-    expect(chart.querySelector('.height-pokemon img')?.getAttribute('src')).toBe('/api/sprites/species/5.png');
+    expect(chart.querySelector('.height-person img')?.getAttribute('src')).toBe(`${avatarUrl}?catalog=${catalog.hash}`);
+    expect(chart.querySelector('.height-pokemon img')?.getAttribute('src')).toBe(`/api/sprites/species/5.png?catalog=${catalog.hash}`);
   });
 
   it('uses a generic Pokédex Entry fallback when compatible text is unavailable', () => {

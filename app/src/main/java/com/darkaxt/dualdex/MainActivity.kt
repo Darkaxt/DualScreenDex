@@ -59,6 +59,35 @@ internal object MainActivityBackPolicy {
         if (webViewAlive) MainActivityBackAction.DISPATCH_TO_COMPANION else MainActivityBackAction.BACKGROUND_TASK
 }
 
+internal object WebRouteMarker {
+    private const val PREFIX = "/#dualdex="
+    private const val MAX_LENGTH = 8_193
+
+    fun normalize(candidate: String?): String? {
+        if (candidate == null || candidate.length > MAX_LENGTH || !candidate.startsWith(PREFIX)) return null
+        val payload = candidate.substring(PREFIX.length)
+        if (payload.isEmpty()) return null
+        var index = 0
+        while (index < payload.length) {
+            val character = payload[index]
+            when {
+                character == '%' -> {
+                    if (index + 2 >= payload.length ||
+                        !payload[index + 1].isHexDigit() ||
+                        !payload[index + 2].isHexDigit()
+                    ) return null
+                    index += 3
+                }
+                character.isLetterOrDigit() || character in "-_.!~*'()" -> index += 1
+                else -> return null
+            }
+        }
+        return candidate
+    }
+
+    private fun Char.isHexDigit(): Boolean = this in '0'..'9' || this in 'a'..'f' || this in 'A'..'F'
+}
+
 internal interface MainActivityDisplayPort {
     fun environment(): DisplayEnvironment
     fun register(listener: (DisplayEvent) -> Unit)
@@ -337,7 +366,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(host)
         keepContentInsideSystemBars(host)
         application.activateCompanionSurface(webView)
-        val routeMarker = normalizedWebRoute(intent.getStringExtra(EXTRA_WEB_ROUTE))
+        val routeMarker = WebRouteMarker.normalize(intent.getStringExtra(EXTRA_WEB_ROUTE))
         if (routeMarker == null) webView.open() else webView.loadUrl("$origin$routeMarker")
     }
 
@@ -430,12 +459,8 @@ class MainActivity : AppCompatActivity() {
         val origin = (application as DualDexApplication).localOrigin ?: return null
         val currentUrl = companionWebView?.url ?: return null
         if (!currentUrl.startsWith(origin)) return null
-        return normalizedWebRoute(currentUrl.removePrefix(origin))
+        return WebRouteMarker.normalize(currentUrl.removePrefix(origin))
     }
-
-    private fun normalizedWebRoute(candidate: String?): String? = candidate
-        ?.takeIf { it.startsWith('/') && !it.startsWith("//") }
-        ?.takeIf { '\r' !in it && '\n' !in it }
 
     private fun showRecovery(failure: Throwable?) {
         companionWebView?.let { (application as DualDexApplication).releaseCompanionSurface(it) }

@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test e2e/height-comparison.spec.ts e2e/companion-resilience.spec.ts",
+    "test:e2e:evidence": "playwright test e2e/map-presentation.spec.ts e2e/party-artwork.spec.ts e2e/rom-derived-theme.spec.ts"
   },
   "dependencies": {
     "@preact/signals": "^2.2.1",

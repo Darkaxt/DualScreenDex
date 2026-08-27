@@ -1,7 +1,74 @@
 import { describe, expect, it } from 'vitest';
-import { popRoute, pushRoute, type UiRoute } from './navigation';
+import { decodeRouteHash, encodeRouteHash, popRoute, pushRoute, type UiRoute } from './navigation';
+import type { Catalog } from './models';
+
+const catalog = {
+  hash: 'sha',
+  species: [{ id: 1, abilities: [{ id: 65 }] }],
+  moves: [{ id: 2 }],
+  natures: [{ id: 3 }],
+} as Catalog;
+
+function routeHash(payload: unknown) {
+  return `#dualdex=${encodeURIComponent(JSON.stringify(payload))}`;
+}
 
 describe('client navigation stack', () => {
+  it('round trips a catalog-bound nested route stack', () => {
+    const routes: UiRoute[] = [
+      { kind: 'PARTY_MEMBER', slot: 0, catalogHash: 'sha' },
+      { kind: 'ABILITY', id: 65 },
+    ];
+
+    expect(decodeRouteHash(encodeRouteHash(routes, catalog.hash), catalog)).toEqual(routes);
+  });
+
+  it('rejects malformed, stale, and unavailable routes', () => {
+    const stale = encodeRouteHash([{ kind: 'SPECIES', id: 1 }], 'old-sha');
+    const unavailable = encodeRouteHash([{ kind: 'SPECIES', id: 999 }], catalog.hash);
+
+    expect(decodeRouteHash('#dualdex=%7Bbroken', catalog)).toEqual([]);
+    expect(decodeRouteHash(stale, catalog)).toEqual([]);
+    expect(decodeRouteHash(unavailable, catalog)).toEqual([]);
+  });
+
+  it('keeps a maximum valid stack within the transferred marker bound', () => {
+    const routes = Array.from({ length: 16 }, (_, index) => ({
+      kind: 'SPECIMEN' as const,
+      speciesId: 1,
+      specimenKey: `${index}-${'x'.repeat(124)}`,
+      catalogHash: catalog.hash,
+    }));
+    const hash = encodeRouteHash(routes, catalog.hash);
+
+    expect(hash.length).toBeLessThanOrEqual(8192);
+    expect(decodeRouteHash(hash, catalog)).toEqual(routes);
+  });
+
+  it('rejects invalid entity references and party slots', () => {
+    const invalidRoutes: UiRoute[][] = [
+      [{ kind: 'MOVE', id: 999 }],
+      [{ kind: 'ABILITY', id: 999 }],
+      [{ kind: 'NATURE', id: 999 }],
+      [{ kind: 'PARTY_MEMBER', slot: 6, catalogHash: catalog.hash }],
+      [{ kind: 'SPECIMENS', speciesId: 999, catalogHash: catalog.hash }],
+      [{ kind: 'SPECIMEN', speciesId: 1, specimenKey: '', catalogHash: catalog.hash }],
+    ];
+
+    for (const routes of invalidRoutes) {
+      expect(decodeRouteHash(encodeRouteHash(routes, catalog.hash), catalog)).toEqual([]);
+    }
+  });
+
+  it('rejects unknown route kinds, unsupported versions, and oversized stacks', () => {
+    const base = { version: 1, catalogHash: catalog.hash };
+    const tooManyRoutes = Array.from({ length: 17 }, () => ({ kind: 'SPECIES', id: 1 }));
+
+    expect(decodeRouteHash(routeHash({ ...base, routes: [{ kind: 'UNKNOWN' }] }), catalog)).toEqual([]);
+    expect(decodeRouteHash(routeHash({ ...base, version: 2, routes: [] }), catalog)).toEqual([]);
+    expect(decodeRouteHash(routeHash({ ...base, routes: tooManyRoutes }), catalog)).toEqual([]);
+  });
+
   it('restores a Party member beneath its Ability page', () => {
     const party: UiRoute = { kind: 'PARTY_MEMBER', slot: 0, catalogHash: 'sha' };
     const routes = pushRoute(pushRoute([], party), { kind: 'ABILITY', id: 65 });

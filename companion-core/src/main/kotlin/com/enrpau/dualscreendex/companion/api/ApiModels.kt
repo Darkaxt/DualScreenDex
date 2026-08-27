@@ -33,6 +33,14 @@ import java.nio.charset.StandardCharsets
 
 data class BootstrapView(val catalog: CatalogView?, val state: StateView)
 
+data class ApiErrorView(val error: ApiErrorDetailView)
+
+data class ApiErrorDetailView(
+    val code: String,
+    val message: String,
+    val retryable: Boolean,
+)
+
 data class CatalogView(
     val hash: String,
     val crc32: String,
@@ -163,6 +171,7 @@ data class AreaGuideEncounterSpeciesView(
     val minimumLevel: Int,
     val maximumLevel: Int,
     val ratePercent: Int?,
+    val hasSprite: Boolean,
 )
 
 data class AreaGuidePointView(
@@ -811,7 +820,10 @@ object ApiViewBuilder {
                 pixelHeight = region.pixelHeight,
                 gridWidth = region.gridWidth,
                 gridHeight = region.gridHeight,
-                imageUrl = "/api/maps/${URLEncoder.encode(region.imageAssetKey, StandardCharsets.UTF_8)}.png",
+                imageUrl = catalogMediaUrl(
+                    "/api/maps/${URLEncoder.encode(region.imageAssetKey, StandardCharsets.UTF_8)}.png",
+                    catalog.romSha256,
+                ),
                 locations = region.locations.map { location ->
                     WorldMapLocationView(
                         key = location.key,
@@ -833,7 +845,7 @@ object ApiViewBuilder {
                 pixelHeight = map.pixelHeight,
                 gridWidth = map.gridWidth,
                 gridHeight = map.gridHeight,
-                imageUrl = localMapAssetUrl(map.imageAssetKey),
+                imageUrl = localMapAssetUrl(map.imageAssetKey, catalog.romSha256),
                 dynamicLighting = catalog.localMaps.isDynamic(map.imageAssetKey),
             )
         },
@@ -857,7 +869,7 @@ object ApiViewBuilder {
                         pixelHeight = map.pixelHeight,
                         gridWidth = map.gridWidth,
                         gridHeight = map.gridHeight,
-                        imageUrl = localMapAssetUrl(map.imageAssetKey),
+                        imageUrl = localMapAssetUrl(map.imageAssetKey, catalog.romSha256),
                         dynamicLighting = catalog.localMaps.isDynamic(map.imageAssetKey),
                     )
                 },
@@ -977,7 +989,7 @@ object ApiViewBuilder {
                 destinationBaseAreaId = point.destinationBaseAreaId,
             )
         }
-        val areaGuide = effectiveAreaGuideProjection?.guide?.toView()
+        val areaGuide = effectiveAreaGuideProjection?.guide?.toView(catalog)
             ?.takeIf { it.areas.isNotEmpty() }
         val areaGuideAvailability = when (areaGuideOutcome) {
             is AreaGuideProjectionOutcome.Available -> AreaGuideAvailabilityView("AVAILABLE")
@@ -1044,7 +1056,7 @@ object ApiViewBuilder {
             snapshot.ledger.trainerCardUnlocked,
             trainerView(snapshot, catalog),
             trainerAvatarUrl(snapshot, catalog),
-            trainerMapSpriteKey?.let(::trainerAssetUrl),
+            trainerMapSpriteKey?.let { trainerAssetUrl(it, catalog?.romSha256) },
             trainerMapSprite?.width,
             trainerMapSprite?.height,
             partyView(snapshot, catalog),
@@ -1296,7 +1308,7 @@ object ApiViewBuilder {
             formId = individual.formId,
             speciesName = speciesName,
             spriteUrl = individual.speciesId.takeIf { species.sprite.value != null }
-                ?.let { "/api/sprites/species/$it.png" },
+                ?.let { catalogMediaUrl("/api/sprites/species/$it.png", catalog.romSha256) },
             typeIds = species.typeIds.value.orEmpty(),
             nickname = details?.nickname,
             level = individual.level,
@@ -1360,14 +1372,16 @@ object ApiViewBuilder {
             dexSeen = resolved.dexSeen,
             dexCaught = resolved.dexCaught,
             stars = resolved.stars,
-            avatarUrl = assets?.avatarAssetKeys?.get(identity.gender)?.let(::trainerAssetUrl),
+            avatarUrl = assets?.avatarAssetKeys?.get(identity.gender)
+                ?.let { trainerAssetUrl(it, catalog.romSha256) },
             badges = (0 until 8).map { badgeIndex ->
                 TrainerBadgeView(
                     index = badgeIndex,
                     earned = resolved.badgeFlags?.let {
                         it and (1 shl badgeIndex) != 0
                     },
-                    imageUrl = assets?.badgeAssetKeys?.getOrNull(badgeIndex)?.let(::trainerAssetUrl),
+                    imageUrl = assets?.badgeAssetKeys?.getOrNull(badgeIndex)
+                        ?.let { trainerAssetUrl(it, catalog.romSha256) },
                 )
             },
         )
@@ -1375,7 +1389,8 @@ object ApiViewBuilder {
 
     private fun trainerAvatarUrl(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
         val gender = snapshot.trainerCardState?.identity?.gender ?: return null
-        return catalog?.trainerAssets?.avatarAssetKeys?.get(gender)?.let(::trainerAssetUrl)
+        return catalog?.trainerAssets?.avatarAssetKeys?.get(gender)
+            ?.let { trainerAssetUrl(it, catalog.romSha256) }
     }
 
     private fun trainerMapSpriteAssetKey(snapshot: AppSnapshot, catalog: ParsedCatalog?): String? {
@@ -1421,7 +1436,7 @@ object ApiViewBuilder {
                 speciesId = individual.speciesId.takeIf { speciesName != null },
                 speciesName = speciesName,
                 spriteUrl = individual.speciesId.takeIf { species?.sprite?.value != null }
-                    ?.let { "/api/sprites/species/$it.png" },
+                    ?.let { catalogMediaUrl("/api/sprites/species/$it.png", catalog?.romSha256) },
                 typeIds = species?.typeIds?.value.orEmpty(),
                 nickname = details?.nickname,
                 level = individual.level,
@@ -1470,8 +1485,14 @@ object ApiViewBuilder {
             )
         }
 
-    private fun localMapAssetUrl(key: String): String =
-        "/api/maps/${URLEncoder.encode(key, StandardCharsets.UTF_8)}.png"
+    private fun localMapAssetUrl(key: String, catalogHash: String): String = catalogMediaUrl(
+        "/api/maps/${URLEncoder.encode(key, StandardCharsets.UTF_8)}.png",
+        catalogHash,
+    )
+
+    private fun catalogMediaUrl(path: String, catalogHash: String?): String = catalogHash?.let {
+        "$path?catalog=${URLEncoder.encode(it, StandardCharsets.UTF_8)}"
+    } ?: path
 
     private fun unavailableAreaGuide(failure: Throwable) = AreaGuideProjectionOutcome.Unavailable(
         stage = boundedProjectionDiagnostic(
@@ -1489,16 +1510,16 @@ object ApiViewBuilder {
         .take(64)
         .ifBlank { fallback }
 
-    private fun AreaGuide.toView() = AreaGuideView(
+    private fun AreaGuide.toView(catalog: ParsedCatalog?) = AreaGuideView(
         trackedAreaBaseId = trackedAreaBaseId,
-        areas = areas.map { it.toView() },
+        areas = areas.map { it.toView(catalog) },
     )
 
-    private fun AreaGuideArea.toView() = AreaGuideAreaView(
+    private fun AreaGuideArea.toView(catalog: ParsedCatalog?) = AreaGuideAreaView(
         baseAreaId = baseAreaId,
         name = name,
         overview = overview.toView(),
-        encounters = encounters.map { it.toView() },
+        encounters = encounters.map { it.toView(catalog) },
         placesAndServices = placesAndServices.map { it.toView() },
         trainersAndPeople = trainersAndPeople.map { it.toView() },
         items = items.map { it.toView() },
@@ -1512,18 +1533,19 @@ object ApiViewBuilder {
         exits = exits.map { AreaGuideExitView(it.baseAreaId, it.name) },
     )
 
-    private fun AreaGuideEncounterGroup.toView() = AreaGuideEncounterGroupView(
+    private fun AreaGuideEncounterGroup.toView(catalog: ParsedCatalog?) = AreaGuideEncounterGroupView(
         name = name,
         windows = windows,
-        species = species.map { it.toView() },
+        species = species.map { it.toView(catalog) },
     )
 
-    private fun AreaGuideEncounterSpecies.toView() = AreaGuideEncounterSpeciesView(
+    private fun AreaGuideEncounterSpecies.toView(catalog: ParsedCatalog?) = AreaGuideEncounterSpeciesView(
         speciesId = speciesId,
         name = name,
         minimumLevel = minimumLevel,
         maximumLevel = maximumLevel,
         ratePercent = ratePercent,
+        hasSprite = catalog?.speciesById?.get(speciesId)?.sprite?.value != null,
     )
 
     private fun AreaGuidePoint.toView() = AreaGuidePointView(
@@ -1556,8 +1578,10 @@ object ApiViewBuilder {
     private fun LocalMapCatalog.isDynamic(key: String): Boolean =
         key in indexedAssets || key in timedAssets
 
-    private fun trainerAssetUrl(key: String): String =
-        "/api/trainer-assets/${URLEncoder.encode(key, StandardCharsets.UTF_8)}.png"
+    private fun trainerAssetUrl(key: String, catalogHash: String?): String = catalogMediaUrl(
+        "/api/trainer-assets/${URLEncoder.encode(key, StandardCharsets.UTF_8)}.png",
+        catalogHash,
+    )
 
     private fun partyGender(gender: Int): String? = when (gender) {
         0 -> "MALE"

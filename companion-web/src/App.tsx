@@ -1,8 +1,8 @@
 import type { ComponentType, JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { action, bootstrap, events, uploadRom } from './gateway';
+import { action, bootstrap, events, uploadRom, type ConnectionStatus } from './gateway';
 import type { Bootstrap, Catalog, State } from './models';
-import { popRoute, pushRoute, type UiRoute } from './navigation';
+import { decodeRouteHash, encodeRouteHash, popRoute, pushRoute, type UiRoute } from './navigation';
 import { PokedexBrowse } from './pages/PokedexBrowse';
 import { PokedexDetail } from './pages/PokedexDetail';
 import { BattlePage } from './pages/BattlePage';
@@ -47,6 +47,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [state, setState] = useState<State>(emptyState);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('CONNECTED');
   const [busy, setBusy] = useState(true);
   const [routes, setRoutes] = useState<UiRoute[]>([]);
   const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'AREA' | 'MORE'>('ENTRY');
@@ -57,9 +58,13 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const battleWasForegroundRef = useRef(false);
   const activeRoute = routes.at(-1);
   const routesRef = useRef(routes);
+  const catalogRef = useRef(catalog);
+  const routeCatalogInitializedRef = useRef(false);
+  const routeHistoryIndexRef = useRef(0);
   const screenRef = useRef(state.screen);
   const stateVersionRef = useRef(state.version);
   routesRef.current = routes;
+  catalogRef.current = catalog;
   screenRef.current = state.screen;
   stateVersionRef.current = state.version;
 
@@ -68,21 +73,114 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     setError(message);
   };
 
+  function setClientRoutes(next: UiRoute[]) {
+    routesRef.current = next;
+    setRoutes(next);
+  }
+
+  function routeUrl(next: UiRoute[], catalogHash: string): string {
+    if (next.length > 0) return encodeRouteHash(next, catalogHash);
+    const hash = window.location.hash.startsWith('#dualdex=') ? '' : window.location.hash;
+    return `${window.location.pathname}${window.location.search}${hash}`;
+  }
+
+  function currentRouteHistoryIndex(): number {
+    const value: unknown = window.history.state?.dualdexRouteIndex;
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
+  }
+
+  function replaceRoutes(next: UiRoute[], catalogHash = catalogRef.current?.hash, routeIndex = 0) {
+    setClientRoutes(next);
+    routeHistoryIndexRef.current = routeIndex;
+    if (catalogHash) {
+      window.history.replaceState({ dualdexRouteIndex: routeIndex }, '', routeUrl(next, catalogHash));
+    }
+  }
+
+  function pushClientRoute(route: UiRoute) {
+    const activeCatalog = catalogRef.current;
+    if (!activeCatalog) return;
+    const next = pushRoute(routesRef.current, route);
+    if (next === routesRef.current) return;
+    const routeIndex = routeHistoryIndexRef.current + 1;
+    routeHistoryIndexRef.current = routeIndex;
+    window.history.pushState(
+      { dualdexRouteIndex: routeIndex },
+      '',
+      routeUrl(next, activeCatalog.hash),
+    );
+    setClientRoutes(next);
+  }
+
+  function closeClientRoute() {
+    if (routesRef.current.length === 0) return;
+    if (routeHistoryIndexRef.current > 0) {
+      routeHistoryIndexRef.current -= 1;
+      setClientRoutes(popRoute(routesRef.current));
+      window.history.back();
+      return;
+    }
+    replaceRoutes(popRoute(routesRef.current));
+  }
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const activeCatalog = catalogRef.current;
+      if (!activeCatalog) return;
+      const routeIndex = currentRouteHistoryIndex();
+      const restored = decodeRouteHash(window.location.hash, activeCatalog);
+      routeHistoryIndexRef.current = routeIndex;
+      setClientRoutes(restored);
+      if (restored.length === 0 && window.location.hash.startsWith('#dualdex=')) {
+        window.history.replaceState({ dualdexRouteIndex: routeIndex }, '', routeUrl([], activeCatalog.hash));
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => {
     bootstrap().then(applyBootstrap).catch(failure => reportFailure(failure, 'The companion could not start. Please try again.')).finally(() => setBusy(false));
     return events(() => stateVersionRef.current, incoming => {
       setState(current => incoming.version > current.version ? incoming : current);
       const marker = catalogRefreshMarker(incoming);
       if (marker && marker !== lastCatalogRefresh.current) {
-        lastCatalogRefresh.current = marker;
-        bootstrap().then(applyBootstrap).catch(failure => reportFailure(failure, 'Your game guide could not be refreshed. Please try again.'));
+        bootstrap().then(value => {
+          applyBootstrap(value);
+          lastCatalogRefresh.current = marker;
+        }).catch(failure => reportFailure(failure, 'Your game guide could not be refreshed. Please try again.'));
       }
-    });
+    }, setConnectionStatus, () => bootstrap()
+      .then(value => applyBootstrap(value, true))
+      .catch(failure => {
+        reportFailure(failure, 'The companion could not reconnect. It will keep trying.');
+        throw failure;
+      }));
   }, []);
 
-  const applyBootstrap = (value: Bootstrap) => {
+  const applyBootstrap = (value: Bootstrap, resetStateVersion = false) => {
+    const previousCatalogHash = catalogRef.current?.hash ?? null;
+    const nextCatalogHash = value.catalog?.hash ?? null;
+    catalogRef.current = value.catalog;
     setCatalog(value.catalog);
-    setState(current => value.state.version >= current.version ? value.state : current);
+    if (!routeCatalogInitializedRef.current || previousCatalogHash !== nextCatalogHash) {
+      routeCatalogInitializedRef.current = true;
+      if (value.catalog) {
+        const restored = decodeRouteHash(window.location.hash, value.catalog);
+        replaceRoutes(
+          restored,
+          value.catalog.hash,
+          restored.length > 0 ? currentRouteHistoryIndex() : 0,
+        );
+      } else {
+        setClientRoutes([]);
+        routeHistoryIndexRef.current = 0;
+        if (window.location.hash.startsWith('#dualdex=')) {
+          window.history.replaceState({ dualdexRouteIndex: 0 }, '', routeUrl([], ''));
+        }
+      }
+    }
+    setState(current => (resetStateVersion || value.state.version >= current.version) ? value.state : current);
     setError(null);
   };
 
@@ -107,6 +205,11 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const displayedError = error
     ?? state.error
     ?? (state.retroArch?.resolution === 'FAILED' ? state.retroArch.message : null);
+  const connectionMessage = connectionStatus === 'RECONNECTING'
+    ? 'Reconnecting to the companion…'
+    : connectionStatus === 'FAILED'
+      ? 'The companion is unavailable. Retrying automatically…'
+      : null;
 
   useEffect(() => {
     const handleCompanionBack = (event: Event) => {
@@ -119,7 +222,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         const currentScreen = screenRef.current;
         if (currentRoutes.length > 0) {
           if (currentRoute?.kind === 'PARTY_MEMBER' && currentScreen !== 'PARTY') void send('BACK');
-          else setRoutes(current => popRoute(current));
+          else closeClientRoute();
         }
         else if (currentScreen !== 'POKEDEX') void send('BACK');
       });
@@ -130,26 +233,26 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 
   useEffect(() => {
     const battleForeground = state.screen === 'BATTLE' && state.battle != null;
-    if (battleForeground && !battleWasForegroundRef.current) setRoutes([]);
+    if (battleForeground && !battleWasForegroundRef.current) replaceRoutes([]);
     battleWasForegroundRef.current = battleForeground;
   }, [state.screen, state.battle != null]);
 
   useEffect(() => {
     if (activeRoute?.kind === 'MAP' && state.screen !== activeRoute.originScreen) {
-      setRoutes(current => popRoute(current));
+      replaceRoutes(popRoute(routesRef.current));
     }
   }, [activeRoute, state.screen]);
 
   function openMap() {
-    setRoutes(current => pushRoute(current, { kind: 'MAP', originScreen: state.screen }));
+    pushClientRoute({ kind: 'MAP', originScreen: state.screen });
   }
 
   function openRoute(route: UiRoute) {
-    setRoutes(current => pushRoute(current, route));
+    pushClientRoute(route);
   }
 
   function closeRoute() {
-    setRoutes(current => popRoute(current));
+    closeClientRoute();
   }
 
   const screen = useMemo(() => {
@@ -170,11 +273,11 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       catalog={catalog}
       state={state}
       onOpenPokedex={() => {
-        setRoutes([]);
+        replaceRoutes([]);
         void send('SCREEN', { screen: 'POKEDEX' });
       }}
       onOpenSettings={() => {
-        setRoutes([]);
+        replaceRoutes([]);
         void send('SCREEN', { screen: 'SETTINGS' });
       }}
       onUpdatePoiPreferences={values => void send('MAP_POI_SETTINGS', values)}
@@ -282,6 +385,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       {showDevelopmentTools && <div class="device-sensor" />}
       <div class="device-screen">
         <div class="screen-host">{screen}</div>
+        {connectionMessage && <div
+          class={`connection-toast is-${connectionStatus.toLowerCase()}`}
+          role={connectionStatus === 'FAILED' ? 'alert' : 'status'}
+        >{connectionMessage}</div>}
         {catalog && state.loading.active && <div class={`loading-indicator ${loadingOriginClass(state.loading)}`} role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}{displayedError && catalog && <div class="error-toast" role="alert">{displayedError}</div>}
       </div>
     </div>

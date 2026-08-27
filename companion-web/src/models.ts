@@ -211,6 +211,7 @@ export interface AreaGuideEncounterSpeciesView {
   minimumLevel: number;
   maximumLevel: number;
   ratePercent: number | null;
+  hasSprite: boolean;
 }
 
 export interface AreaGuidePointView {
