@@ -26,7 +26,7 @@ class RomSessionResolverTest {
     }
 
     @Test
-    fun currentRetroArchSystemSlugAndBasenameResolveAnIndexedArchiveMember() {
+    fun currentRetroArchSystemSlugAndBasenameDiscoverAnIndexedArchiveMemberWithoutAuthorizingIt() {
         val modernEmerald = emerald.copy(
             sourceId = "modern-emerald-zip",
             sourceName = "Pokemon - Modern Emerald Version v3.5 (USA, Europe).zip!Pokemon - Modern Emerald Version v3.5 (USA, Europe).gba",
@@ -45,11 +45,11 @@ class RomSessionResolverTest {
             listOf(emerald, modernEmerald),
         )
 
-        assertEquals(SessionResolution.Resolved(modernEmerald), result)
+        assertEquals(SessionResolution.Unverified(modernEmerald), result)
     }
 
     @Test
-    fun retroArchArchiveBasenameResolvesTheIndexedMemberFromTheObservedModernEmerald7z() {
+    fun retroArchArchiveBasenameDiscoversTheIndexedMemberWithoutAuthorizingIt() {
         val modernEmerald = emerald.copy(
             sourceId = "modern-emerald-7z",
             sourceName = "Pokemon Modern Emerald (v3.5).7z!Modern Emerald (v3.5).gba",
@@ -68,7 +68,18 @@ class RomSessionResolverTest {
             listOf(emerald, modernEmerald),
         )
 
-        assertEquals(SessionResolution.Resolved(modernEmerald), result)
+        assertEquals(SessionResolution.Unverified(modernEmerald), result)
+    }
+
+    @Test
+    fun duplicateBasenameSourcesWithoutCrcRemainUnverifiedEvenWhenTheirIndexedShaMatches() {
+        val second = emerald.copy(sourceId = "emerald-zip", archiveEntry = "Pokemon Emerald.gba")
+        val result = RomSessionResolver.resolve(
+            RetroArchStatus.Running(false, "Nintendo - Game Boy Advance", emerald.gameBasename, null),
+            listOf(second, emerald),
+        )
+
+        assertEquals(SessionResolution.Unverified(emerald), result)
     }
 
     @Test

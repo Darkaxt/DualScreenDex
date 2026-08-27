@@ -448,6 +448,7 @@ class RetroArchSetupCoordinator(
                                 failed -> "FAILED"
                                 else -> "RESOLVED"
                             }
+                            is SessionResolution.Unverified -> "UNVERIFIED"
                             is SessionResolution.Ambiguous -> "AMBIGUOUS"
                             is SessionResolution.NotFound -> "NOT_FOUND"
                         },
@@ -456,6 +457,8 @@ class RetroArchSetupCoordinator(
                             connected && loading -> "Opening the SHA-256-verified active catalog…"
                             connected && failed -> current.message
                             connected && resolution is SessionResolution.Resolved -> "Active content matched; verifying its SHA-256."
+                            connected && resolution is SessionResolution.Unverified ->
+                                "A matching filename was found, but RetroArch did not provide content identity. Live features are paused."
                             connected && resolution is SessionResolution.Ambiguous -> "Multiple granted sources match the active content. Select the ROM manually."
                             connected && resolution is SessionResolution.NotFound -> resolution.reason
                             connected -> "RetroArch Network Commands verified."

@@ -17,6 +17,7 @@ data class RomIndexEntry(
 sealed interface SessionResolution {
     data object NoContent : SessionResolution
     data class Resolved(val entry: RomIndexEntry) : SessionResolution
+    data class Unverified(val entry: RomIndexEntry) : SessionResolution
     data class Ambiguous(val entries: List<RomIndexEntry>) : SessionResolution
     data class NotFound(val reason: String) : SessionResolution
 }
@@ -35,7 +36,8 @@ object RomSessionResolver {
         val platforms = compatiblePlatforms(status.systemId)
         if (platforms.isEmpty()) return SessionResolution.NotFound("unsupported RetroArch system: ${status.systemId}")
         val compatible = entries.filter { it.platform in platforms }
-        val matches = if (status.crc32 != null) {
+        val verified = status.crc32 != null
+        val matches = if (verified) {
             compatible.filter { it.crc32.equals(status.crc32, ignoreCase = true) }
         } else {
             val basename = normalizedBasename(status.gameBasename)
@@ -46,18 +48,21 @@ object RomSessionResolver {
                 if (status.crc32 != null) "no granted ROM has CRC32 ${status.crc32}"
                 else "no granted ROM matches ${status.gameBasename}",
             )
-            1 -> SessionResolution.Resolved(matches.single())
+            1 -> resolutionFor(matches.single(), verified)
             else -> {
                 val sorted = matches.sortedBy { it.sourceId }
                 val hashes = sorted.map { it.sha256.lowercase() }.distinct()
                 if (hashes.size == 1 && hashes.single().matches(SHA_256)) {
-                    SessionResolution.Resolved(sorted.first())
+                    resolutionFor(sorted.first(), verified)
                 } else {
                     SessionResolution.Ambiguous(sorted)
                 }
             }
         }
     }
+
+    private fun resolutionFor(entry: RomIndexEntry, verified: Boolean): SessionResolution =
+        if (verified) SessionResolution.Resolved(entry) else SessionResolution.Unverified(entry)
 
     private fun compatiblePlatforms(systemId: String): Set<RomPlatform> {
         val value = systemId.lowercase().replace('_', ' ').replace('-', ' ')
