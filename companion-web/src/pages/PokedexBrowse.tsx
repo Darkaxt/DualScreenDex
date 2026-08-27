@@ -121,7 +121,7 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
     </div>
     {activeFilter !== 'TEAM' && <div class="pokedex-search-dock">
       <div class="pokedex-search-row">
-        <label class="search-box"><span>SEARCH</span><input value={search} onInput={event => setSearch(event.currentTarget.value)} placeholder="NAME OR NUMBER" /></label>
+        <label class="search-box"><span>SEARCH</span><input aria-label="Search Pokémon" value={search} onInput={event => setSearch(event.currentTarget.value)} placeholder="NAME OR NUMBER" /></label>
         <output
           class="pokedex-result-count"
           aria-label={activeFilter === 'CAUGHT' ? `${ownedCount} caught` : `${ownedCount} owned, ${foundCount} found`}

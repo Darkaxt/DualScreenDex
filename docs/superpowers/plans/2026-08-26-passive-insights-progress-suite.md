@@ -733,7 +733,7 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 - Modify: `companion-web/e2e/rom-derived-theme.spec.ts`
 - Modify: `companion-web/src/App.production.test.tsx`
 
-- [ ] **Step 1: Add RED route coverage for Party Analysis; Area Guide; Progress/Metrics/Challenges/Timeline; Specimens/individual detail; Damage Forecast; and challenge-expansion list/detail states, including empty, populated, unavailable, and withheld variants where applicable.**
+- [x] **Step 1: Add RED route coverage for Party Analysis; Area Guide; Progress/Metrics/Challenges/Timeline; Specimens/individual detail; Damage Forecast; and challenge-expansion list/detail states, including empty, populated, unavailable, and withheld variants where applicable.**
 - [x] **Step 2: Register established Party, Trainer Card, Pokédex, Atlas, and Battle routes as regression baselines rather than redesign targets.**
 - [x] **Step 3: Define the production 1024×768 matrix at 85%, 100%, and 135% font scale for Light, Dark, High Contrast, and ROM-derived `GAME` themes from official Gen I/II/III plus Modern Emerald, Unbound, and Odyssey controls.**
 - [x] **Step 4: Write a deterministic route manifest with required state, theme, font scale, expected pattern family, scroll owner, and baseline relation. Run RED and commit the contract.**
@@ -760,8 +760,8 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 - [x] **Step 1: Add RED component and layout tests for shared header/separator, page/paper/grid/panel surfaces, card geometry, semantic typography tiers, controls, icons, focus, and touch targets.**
 - [x] **Step 2: Replace the Trainer `CARD`/`PROGRESS` full-width destination row with compact theme-consistent top-right icon buttons: retain the established card icon for Trainer Card and use the conventional trophy icon for Challenges/Progress; leave at most one horizontal Progress section row and preserve selection, accessibility, and Back-stack state.**
 - [x] **Step 3: Remove route-local legacy olive/forest, fixed yellow/white, one-off font, missing-pattern, and mismatched shadow/border rules by consuming shared tokens and primitives. Do not change feature semantics, data authority, disclosure, map behavior, or calculations.**
-- [ ] **Step 4: Normalize spacing, vertical centering, content use, icon containers, empty/unavailable states, and exactly one intentional scroll owner per route at every required font scale.**
-- [ ] **Step 5: Run component, navigation, and layout suites GREEN; commit by coherent visual contract rather than page-by-page cosmetic churn.**
+- [x] **Step 4: Normalize spacing, vertical centering, content use, icon containers, empty/unavailable states, and exactly one intentional scroll owner per route at every required font scale.**
+- [x] **Step 5: Run component, navigation, and layout suites GREEN; commit by coherent visual contract rather than page-by-page cosmetic churn.**
 
 ### Task 7.3: Generate measured cross-route evidence
 
@@ -775,11 +775,11 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 - Create: `docs/reports/passive-insights-progress/ui-conformance-computed-styles.json`
 - Create: `docs/reports/passive-insights-progress/ui-conformance-screenshots.json`
 
-- [ ] **Step 1: For every matrix row, record visible-text count plus minimum, maximum, and unweighted average computed font size; require minimum ≥ 11.2 px and average ≥ 12 px without flattening semantic hierarchy.**
-- [ ] **Step 2: Record computed page, header, separator, panel, menu, card, text, border, shadow, control, icon, focus, semantic-color, and background-pattern values from rendered elements—not only root tokens.**
-- [ ] **Step 3: Assert contrast, non-color status cues, accessible names, focus visibility, touch-target size, line wrapping, truncation, body overflow, clipping, nested scrolling, and route-owned scroll behavior.**
-- [ ] **Step 4: Scan visible copy, accessible names, tooltips, empty states, withheld states, and fallbacks for diagnostic/provenance leakage outside Settings → Debug.**
-- [ ] **Step 5: Capture every matrix row, retain a durable screenshot manifest and representative references, validate report completeness with the Node tool, run GREEN, and commit the generated evidence.**
+- [x] **Step 1: For every matrix row, record visible-text count plus minimum, maximum, and unweighted average computed font size; require minimum ≥ 11.2 px and average ≥ 12 px without flattening semantic hierarchy.**
+- [x] **Step 2: Record computed page, header, separator, panel, menu, card, text, border, shadow, control, icon, focus, semantic-color, and background-pattern values from rendered elements—not only root tokens.**
+- [x] **Step 3: Assert contrast, non-color status cues, accessible names, focus visibility, touch-target size, line wrapping, truncation, body overflow, clipping, nested scrolling, and route-owned scroll behavior.**
+- [x] **Step 4: Scan visible copy, accessible names, tooltips, empty states, withheld states, and fallbacks for diagnostic/provenance leakage outside Settings → Debug.**
+- [x] **Step 5: Capture every matrix row, retain a durable screenshot manifest and representative references, validate report completeness with the Node tool, run GREEN, and commit the generated evidence.**
 
 ### Task 7.4: Close the suite audit and publish the consolidation RC
 

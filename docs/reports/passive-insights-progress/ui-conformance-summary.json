@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-08-27",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "routeCount": 28,
+  "themeCount": 9,
+  "fontScaleCount": 3,
+  "matrixRows": 756,
+  "gates": {
+    "typography": true,
+    "contrast": true,
+    "overflow": true,
+    "scrollOwnership": true,
+    "accessibleNames": true,
+    "touchTargets": true,
+    "focus": true,
+    "diagnosticBoundary": true,
+    "screenshots": true
+  },
+  "errors": []
+}

@@ -14,7 +14,7 @@
     { "id": "high-contrast", "kind": "FIXED", "control": "High Contrast" }
   ],
   "routes": [
-    { "id": "baseline-pokedex", "family": "baseline", "state": "populated", "pattern": "grid", "scrollOwner": ".species-list", "baseline": "RC25 Pokédex" },
+    { "id": "baseline-pokedex", "family": "baseline", "state": "populated", "pattern": "grid", "scrollOwner": ".species-window", "baseline": "RC25 Pokédex" },
     { "id": "baseline-party", "family": "baseline", "state": "populated", "pattern": "grid", "scrollOwner": ".party-content", "baseline": "RC25 Party" },
     { "id": "baseline-trainer-card", "family": "baseline", "state": "populated", "pattern": "grid", "scrollOwner": ".trainer-card-content", "baseline": "RC25 Trainer Card" },
     { "id": "baseline-atlas", "family": "baseline", "state": "local-map", "pattern": "map", "scrollOwner": null, "baseline": "RC30 local Atlas" },
