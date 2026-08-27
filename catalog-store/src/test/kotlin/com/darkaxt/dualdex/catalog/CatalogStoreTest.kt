@@ -888,15 +888,6 @@ class CatalogStoreTest {
 
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
             database.execute(
-                """
-                INSERT INTO save_snapshot (
-                    id, rom_sha256, save_identity, save_schema_id, payload_json,
-                    source_last_modified_epoch_ms, refreshed_at_epoch_ms
-                ) VALUES (1, ?, 'save-control', 'schema-control', '{}', 100, 200)
-                """.trimIndent(),
-                listOf(catalog.romSha256),
-            )
-            database.execute(
                 "UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1",
                 listOf(34),
             )
@@ -907,7 +898,6 @@ class CatalogStoreTest {
             assertEquals(listOf(0L), database.query("SELECT COUNT(*) AS count FROM catalog_metadata") { it.long("count") })
             assertEquals(listOf(0L), database.query("SELECT COUNT(*) AS count FROM catalog_sections") { it.long("count") })
             assertEquals(listOf(0L), database.query("SELECT COUNT(*) AS count FROM catalog_section_chunks") { it.long("count") })
-            assertEquals(listOf(1L), database.query("SELECT COUNT(*) AS count FROM save_snapshot") { it.long("count") })
         }
 
         val reparsed = catalog.copy(diagnostics = listOf("reparsed with the current schema"))

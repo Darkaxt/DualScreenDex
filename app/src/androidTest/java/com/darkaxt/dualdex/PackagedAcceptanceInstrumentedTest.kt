@@ -78,7 +78,7 @@ class PackagedAcceptanceInstrumentedTest {
             assertEquals(200, openSetup.status)
             waitForJavascript(
                 webView,
-                "document.body.innerText.includes('Game discovery could not finish')",
+                "document.body.innerText.includes('Games could not be indexed')",
             )
             screenshot("02-index-failure.png")
 
