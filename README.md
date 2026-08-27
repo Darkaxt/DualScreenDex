@@ -359,7 +359,7 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 | Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
 | Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC13 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
 | Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Signed candidate target | `v1.1.0-rc.77` is the Stage 7 cross-feature UI conformance candidate prepared for protected signing after the project-wide QA hardening landed on `master`. Protected source, build, packaged-app, signing, checksum, certificate, provenance, QA-convergence, compatibility, and UI-evidence gates apply; physical acceptance remains with the user. |
+| Signed candidate target | `v1.1.0-rc.77` is the signed Stage 7 cross-feature UI conformance draft prerelease created by [protected workflow run 33118408017](https://github.com/Darkaxt/DualScreenDex/actions/runs/33118408017) after project-wide QA hardening landed on `master`. Source, build, packaged-app, signing, checksum, certificate, provenance, QA-convergence, compatibility, and UI-evidence gates passed; physical acceptance remains with the user. |
 
 ## Parser development
 

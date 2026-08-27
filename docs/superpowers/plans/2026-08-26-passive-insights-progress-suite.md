@@ -808,7 +808,7 @@ node --test tools/reports/validate-ui-conformance.test.mjs tools/release/release
 ```
 
 - [x] **Step 5: Commit the final suite audit and documentation before release metadata.**
-- [ ] **Step 6: Discover and publish exactly one next unused numeric consolidation RC through the protected signing workflow; verify version, checksum, certificate, release notes, UI evidence assets, and compatibility assets. Do not install or launch it.**
+- [x] **Step 6: Discover and publish exactly one next unused numeric consolidation RC through the protected signing workflow; verify version, checksum, certificate, release notes, UI evidence assets, and compatibility assets. Do not install or launch it.**
 
 ---
 
