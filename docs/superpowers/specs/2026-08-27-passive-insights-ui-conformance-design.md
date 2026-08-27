@@ -99,6 +99,12 @@ The audit checks:
 
 Touch targets must retain the established minimum physical size even when visible icons are smaller. Empty, unavailable, and capability-gated states must occupy the same visual system as populated states and must not resemble diagnostics.
 
+### 6.1 Trainer destination switching
+
+Trainer Card and Trainer Progress must not add a second full-width row of destination tabs. The `CARD`/`PROGRESS` destination switcher is represented by a compact group of theme-consistent icon buttons in the upper-right corner of the Trainer surface. The active destination has an unambiguous selected state, and every icon has an accessible name and focus/pressed treatment without requiring a permanent text label.
+
+Progress keeps at most one horizontal section row for Metrics, Challenges, Timeline, and any approved peer section. This preserves the content height and prevents the current destination switcher plus Progress sections from rendering as two stacked tab rows. Switching destination or section must continue to preserve the remembered ROM-save-scoped selection and the existing real Back-stack contract.
+
 ## 7. Content and diagnostic boundary
 
 Normal headers and cards use player-facing names only. They must not show parser provenance, raw offsets, capability labels, implementation source, memory authority, cache state, extraction method, confidence internals, or Organic/Discovered state as a debug subtitle.
@@ -149,4 +155,3 @@ Stage 7 does not:
 - add debug data to ordinary UI;
 - consume a feature RC for partial normalization; or
 - install, launch, or interact with a console during release validation.
-
