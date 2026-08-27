@@ -543,7 +543,7 @@ Pop-Location
 - [x] **Step 2: Report numeric coverage for identity, species/form, level, nickname, gender, HP/status, EXP, nature, ability, held item, moves, IV/DV, rarity, and storage location.**
 - [x] **Step 3: Prove Party-to-PC and PC-to-Party movement neither duplicates nor loses individuals.**
 - [x] **Step 4: Compare Sections 3, 8, 12–15, and 17; fix every blocker/error.**
-- [ ] **Step 5: Run affected full suites, commit the complete feature/audit, then discover and publish exactly one next numeric RC. Do not install it.**
+- [x] **Step 5: Run affected full suites, commit the complete feature/audit, then discover and publish exactly one next numeric RC. Do not install it.**
 
 ---
 
