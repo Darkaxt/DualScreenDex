@@ -55,7 +55,7 @@ class PreviousProcessExitRecorder(
             timestampBucket = snapshot.timestampEpochMillis.coerceAtLeast(0L) / TIMESTAMP_BUCKET_MILLIS,
             memoryBucket = memoryBucket(maxOf(snapshot.pssKilobytes, snapshot.rssKilobytes)),
         )
-        val markerValue = "${event.category}:${event.timestampBucket}:${event.memoryBucket}"
+        val markerValue = "${snapshot.timestampEpochMillis.coerceAtLeast(0L)}:${event.category}:${event.memoryBucket}"
         if (runCatching(marker::read).getOrNull() == markerValue) return null
         return runCatching {
             sink.append(event)

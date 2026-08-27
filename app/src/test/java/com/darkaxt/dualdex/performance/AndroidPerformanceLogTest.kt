@@ -61,6 +61,29 @@ class AndroidPerformanceLogTest {
     }
 
     @Test
+    fun `upgrading the diagnostic contract purges legacy reversible records`() {
+        val root = Files.createTempDirectory(Path.of("build"), "performance-upgrade-").also(roots::add).toFile()
+        root.resolve(AndroidPerformanceLog.ACTIVE_FILE_NAME).writeText(
+            """{"schemaVersion":1,"fingerprint":"00000bb8","playerX":12}""",
+        )
+        root.resolve(AndroidPerformanceLog.PREVIOUS_FILE_NAME).writeText(
+            """{"schemaVersion":2,"romSha256Prefix":"aaaaaaaaaaaa"}""",
+        )
+
+        val log = AndroidPerformanceLog(root)
+        log.append(event(sessionId = "current-contract", elapsedMillis = 42L))
+
+        val exported = log.export().toString(Charsets.UTF_8)
+        assertTrue(exported.contains("current-contract"))
+        assertFalse(exported.contains("00000bb8"))
+        assertFalse(exported.contains("playerX"))
+        assertFalse(exported.contains("aaaaaaaaaaaa"))
+        assertFalse(exported.contains("romSha256Prefix"))
+        assertTrue(root.resolve(AndroidPerformanceLog.CONTRACT_FILE_NAME).isFile)
+        assertTrue(AndroidPerformanceLog(root).export().contentEquals(log.export()))
+    }
+
+    @Test
     fun `state changes share the bounded log without exposing private values`() {
         val root = Files.createTempDirectory(Path.of("build"), "performance-state-").also(roots::add).toFile()
         val log = AndroidPerformanceLog(root, maximumSegmentBytes = 640)
@@ -114,18 +137,29 @@ class AndroidPerformanceLogTest {
     @Test
     fun `failed rotation drops the new record instead of exceeding the segment bound`() {
         val root = Files.createTempDirectory(Path.of("build"), "performance-rotation-failure-").also(roots::add).toFile()
+        val log = AndroidPerformanceLog(root, maximumSegmentBytes = 640)
         val active = root.resolve(AndroidPerformanceLog.ACTIVE_FILE_NAME)
         active.writeBytes(ByteArray(620))
         root.resolve(AndroidPerformanceLog.PREVIOUS_FILE_NAME).apply {
             mkdir()
             resolve("still-in-use").writeText("occupied")
         }
-        val log = AndroidPerformanceLog(root, maximumSegmentBytes = 640)
 
         log.append(event(sessionId = "must-be-dropped", elapsedMillis = 99L))
 
         assertTrue(active.length() <= 640L)
         assertFalse(active.readText().contains("must-be-dropped"))
+    }
+
+    @Test
+    fun `diagnostic write failure is contained instead of escaping the app`() {
+        val root = Files.createTempDirectory(Path.of("build"), "performance-write-failure-").also(roots::add).toFile()
+        val log = AndroidPerformanceLog(root)
+        root.resolve(AndroidPerformanceLog.ACTIVE_FILE_NAME).mkdir()
+
+        log.append(event(sessionId = "must-be-contained", elapsedMillis = 100L))
+
+        assertTrue(log.export().isEmpty())
     }
 
     private fun event(sessionId: String, elapsedMillis: Long) = PerformanceEvent(

@@ -54,6 +54,40 @@ class PreviousProcessExitRecorderTest {
     }
 
     @Test
+    fun `distinct exits in the same coarse bucket are each recorded once`() {
+        var timestamp = 1_725_123_456_789L
+        var marker: String? = null
+        val events = mutableListOf<PreviousProcessExitEvent>()
+        val recorder = PreviousProcessExitRecorder(
+            source = PreviousProcessExitSource {
+                PreviousProcessExitSnapshot(
+                    category = PreviousProcessExitCategory.CRASH,
+                    timestampEpochMillis = timestamp,
+                    pssKilobytes = 100_000L,
+                    rssKilobytes = 100_000L,
+                )
+            },
+            marker = object : PreviousProcessExitMarker {
+                override fun read(): String? = marker
+                override fun write(value: String) { marker = value }
+            },
+            sink = PreviousProcessExitSink(events::add),
+        )
+
+        val first = requireNotNull(recorder.recordLatest())
+        assertNull(recorder.recordLatest())
+        timestamp += 1_000L
+        val second = requireNotNull(recorder.recordLatest())
+        assertNull(recorder.recordLatest())
+
+        assertEquals(first.timestampBucket, second.timestampBucket)
+        assertEquals(2, events.size)
+        val exported = Gson().toJson(events)
+        assertFalse(exported.contains("1725123456789"))
+        assertFalse(exported.contains("1725123457789"))
+    }
+
+    @Test
     fun `records no event when platform history is unavailable`() {
         val events = mutableListOf<PreviousProcessExitEvent>()
         val recorder = PreviousProcessExitRecorder(
