@@ -694,6 +694,7 @@ Release gate status: the exact signed `v1.1.0-rc.73-hotfix.1` candidate is verif
 **Files:**
 
 - Create: `docs/reports/passive-insights-progress/challenge-expansion-audit.md`
+- Create: `docs/reports/passive-insights-progress/challenge-expansion-release.md`
 - Create: `docs/reports/passive-insights-progress/qa-hardening-convergence.md`
 - Modify: `docs/reports/passive-insights-progress/deferrals.md`
 - Modify: `README.md`
@@ -717,7 +718,7 @@ node --test tools/release/release-workflow.test.mjs tools/release/release-metada
 - [x] **Step 5: Commit challenge-expansion documentation and evidence before release metadata.**
 - [x] **Step 5a: Merge the committed `qa/project-wide-hardening` tip into an isolated disposable tree and run the complete Stage 6 browser, parser, persistence, live-state, Android unit, lint, and release-assembly gates. Record the exact candidate and QA commits; the result applies only to that pair.**
 - [x] **Step 5b: Rebase the Stage 6 follow-ups onto the actual `qa/project-wide-hardening` landing on `master` and repeat the complete gate against that authoritative tree.**
-- [ ] **Step 6: Discover and publish exactly one next unused numeric RC through the protected signing workflow; verify version, checksum, certificate, release notes, and compatibility assets. Do not install it.**
+- [x] **Step 6: Discover and publish exactly one next unused numeric RC through the protected signing workflow; verify version, checksum, certificate, release notes, and compatibility assets. Do not install it.**
 
 ---
 
