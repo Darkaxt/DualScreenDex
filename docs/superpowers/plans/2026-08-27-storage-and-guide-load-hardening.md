@@ -79,6 +79,6 @@ assertEquals(StorageSetupStatus("MISSING", "GRANTED"), StorageSetupStatusPolicy.
 - [x] **Step 2: Run `./gradlew.bat :app:testDebugUnitTest :app:lintDebug :app:assembleRelease --no-daemon --console=plain`.**
 - [x] **Step 3: Run `npm test` and `npm run build` from `companion-web`.**
 - [x] **Step 4: Run `node --test tools/release/release-workflow.test.mjs tools/release/release-metadata.test.mjs`.**
-- [ ] **Step 5: Commit the audit, fetch tags, derive the next unused numeric RC, update release metadata, and run the release checks again.**
+- [x] **Step 5: Commit the audit, fetch tags, derive the next unused numeric RC, update release metadata, and run the release checks again.**
 - [ ] **Step 6: Push the source commits and tag through the protected signing workflow; verify public APK version, checksum, signer, provenance, and exact tag commit. Do not install or launch it.**
 - [ ] **Step 7: Merge the hardening commits into `feature/passive-insights-stage4-specimens`, resolve only direct overlaps, rerun affected focused tests, and resume Stage 4 Task 4.3.**

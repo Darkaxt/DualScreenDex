@@ -32,5 +32,6 @@ All 13 specification requirements have direct implementation and regression evid
 
 - `companion-web`: 29 test files and 215 tests passed; the TypeScript/Vite production build completed.
 - Gradle: `:catalog-store:test`, `:app:testDebugUnitTest`, `:app:lintDebug`, and `:app:assembleRelease` completed successfully in one gate (94 tasks, 55 executed and 39 up to date).
+- After merging the one newer `master` parser commit, `:parser-core:test`, the real `UnifiedGameStateRealControlTest`, every hardening regression class, lint, and release assembly passed again against the exact candidate source (95 tasks, 25 executed and 70 up to date).
 - Release policy: 18 metadata/workflow tests passed with no failure, cancellation, skip, or todo.
 - Public RC71 artifact identity, checksum, certificate, provenance, and exact tag-commit evidence remain the publication step; no APK has been installed or launched.

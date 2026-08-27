@@ -110,6 +110,7 @@ jobs:
             docs/reports/passive-insights-progress/area-guide-audit.md \
             docs/reports/passive-insights-progress/progress-timeline-compatibility.json \
             docs/reports/passive-insights-progress/progress-timeline-audit.md \
+            docs/reports/2026-08-27-storage-and-guide-load-hardening.md \
             docs/reports/save-synchronized-knowledge-checkpoints.md \
             release/POST_RELEASE_CHECKLIST.md; do
             test -s "$document"
@@ -150,6 +151,7 @@ jobs:
           jq -e '.v11Rc68PartyAnalysis == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc69AreaGuide == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc70TrainerProgressTimeline == true' release/v1-ready.json >/dev/null
+          jq -e '.v11Rc71StorageGuideLoadHardening == true' release/v1-ready.json >/dev/null
           jq -e '.v11SaveSynchronizedKnowledgeCheckpoints == true' release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
@@ -182,6 +184,7 @@ jobs:
             docs/reports/passive-insights-progress/area-guide-audit.md \
             docs/reports/passive-insights-progress/progress-timeline-compatibility.json \
             docs/reports/passive-insights-progress/progress-timeline-audit.md \
+            docs/reports/2026-08-27-storage-and-guide-load-hardening.md \
             docs/reports/save-synchronized-knowledge-checkpoints.md; then
             echo 'Compatibility documentation contains a private path.'
             exit 1
@@ -431,6 +434,7 @@ jobs:
           cp docs/reports/passive-insights-progress/area-guide-audit.md "$ASSETS/dualdex-area-guide-audit.md"
           cp docs/reports/passive-insights-progress/progress-timeline-compatibility.json "$ASSETS/dualdex-progress-timeline-compatibility.json"
           cp docs/reports/passive-insights-progress/progress-timeline-audit.md "$ASSETS/dualdex-progress-timeline-audit.md"
+          cp docs/reports/2026-08-27-storage-and-guide-load-hardening.md "$ASSETS/dualdex-storage-guide-load-hardening.md"
           cp docs/reports/save-synchronized-knowledge-checkpoints.md "$ASSETS/dualdex-save-synchronized-knowledge-checkpoints.md"
           release_notes="release/RELEASE_NOTES_${RELEASE_TAG#v}.md"
           test -s "$release_notes"
@@ -499,6 +503,7 @@ jobs:
               dualdex-area-guide-audit.md \
               dualdex-progress-timeline-compatibility.json \
               dualdex-progress-timeline-audit.md \
+              dualdex-storage-guide-load-hardening.md \
               dualdex-save-synchronized-knowledge-checkpoints.md \
               RELEASE_NOTES.md \
               provenance.json > SHA256SUMS.txt
@@ -565,6 +570,7 @@ jobs:
             "$ASSETS/dualdex-area-guide-audit.md" \
             "$ASSETS/dualdex-progress-timeline-compatibility.json" \
             "$ASSETS/dualdex-progress-timeline-audit.md" \
+            "$ASSETS/dualdex-storage-guide-load-hardening.md" \
             "$ASSETS/dualdex-save-synchronized-knowledge-checkpoints.md" \
             "$ASSETS/RELEASE_NOTES.md"
 
