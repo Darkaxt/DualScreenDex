@@ -232,7 +232,7 @@ test("requires a machine-readable cache decision for parser and catalog changes"
   assert.match(verifyJob, /--catalog-schema/);
   assert.match(verifyJob, /--output "\$RUNNER_TEMP\/release-evidence-validation\.json"/);
   assert.match(verifyJob, /--release-evidence-validation/);
-  assert.doesNotMatch(workflow, /parserSchemaVersion\s*==\s*45/);
+  assert.doesNotMatch(workflow, /parserSchemaVersion\s*==\s*\d+/);
 });
 
 test("runs every included JVM and app unit suite in CI", () => {

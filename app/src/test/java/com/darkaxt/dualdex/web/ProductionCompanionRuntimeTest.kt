@@ -2041,6 +2041,7 @@ class ProductionCompanionRuntimeTest {
         val parsedB = ParsedCatalog(romB.sha256, EngineFamily.EMERALD, Platform.GBA)
         val aStarted = CountDownLatch(1)
         val aCancelled = CountDownLatch(1)
+        lateinit var productionAdapterToken: ParserCancellationToken
         val releaseA = CountDownLatch(1)
         val bStarted = CountDownLatch(1)
         val bCompleted = CountDownLatch(1)
@@ -2057,6 +2058,7 @@ class ProductionCompanionRuntimeTest {
                     _: (CatalogWorkProgress) -> Unit,
                 ->
                 if (rom.sha256 == romA.sha256) {
+                    productionAdapterToken = cancellation
                     aStarted.countDown()
                     try {
                         releaseA.await(5, TimeUnit.SECONDS)
@@ -2091,6 +2093,9 @@ class ProductionCompanionRuntimeTest {
             bCompleted.countDown()
         }
 
+        assertThrows(ParserCancellationException::class.java) {
+            productionAdapterToken.throwIfCancellationRequested()
+        }
         assertTrue(bStarted.await(2, TimeUnit.SECONDS))
         assertEquals(1L, releaseA.count)
         assertTrue(aCancelled.await(2, TimeUnit.SECONDS))

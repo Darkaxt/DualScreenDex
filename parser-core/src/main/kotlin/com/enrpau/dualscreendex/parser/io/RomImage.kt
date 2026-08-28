@@ -64,12 +64,33 @@ class RomImage private constructor(source: ByteArray, copySource: Boolean) {
     }
 
     fun findAll(pattern: ByteArray, start: Int = 0, endExclusive: Int = size): List<Int> {
-        if (pattern.isEmpty()) return emptyList()
-        requireRange(start, endExclusive - start)
         val matches = mutableListOf<Int>()
+        visitMatches(pattern, start, endExclusive) { offset ->
+            matches += offset
+            true
+        }
+        return matches
+    }
+
+    /**
+     * Visits matching offsets without retaining them. Returning false from [visitor] stops the scan.
+     * [onCheck] runs at the start and after each fixed interval so callers can enforce cancellation.
+     */
+    fun visitMatches(
+        pattern: ByteArray,
+        start: Int = 0,
+        endExclusive: Int = size,
+        checkIntervalBytes: Int = DEFAULT_SCAN_CHECK_INTERVAL_BYTES,
+        onCheck: () -> Unit = {},
+        visitor: (Int) -> Boolean,
+    ): Boolean {
+        require(checkIntervalBytes > 0) { "scan check interval must be positive" }
+        requireRange(start, endExclusive - start)
+        if (pattern.isEmpty() || pattern.size > endExclusive - start) return true
         var offset = start
         val last = endExclusive - pattern.size
         while (offset <= last) {
+            if ((offset - start) % checkIntervalBytes == 0) onCheck()
             var matchesAtOffset = true
             for (index in pattern.indices) {
                 if (bytes[offset + index] != pattern[index]) {
@@ -77,10 +98,10 @@ class RomImage private constructor(source: ByteArray, copySource: Boolean) {
                     break
                 }
             }
-            if (matchesAtOffset) matches += offset
+            if (matchesAtOffset && !visitor(offset)) return false
             offset++
         }
-        return matches
+        return true
     }
 
     private fun requireRange(offset: Int, length: Int) {
@@ -109,6 +130,7 @@ class RomImage private constructor(source: ByteArray, copySource: Boolean) {
         fun consume(source: ByteArray): RomImage = RomImage(source, copySource = false)
 
         const val MAX_SIZE_BYTES = 32 * 1024 * 1024
+        const val DEFAULT_SCAN_CHECK_INTERVAL_BYTES = 4 * 1024
         private const val STREAM_BUFFER_BYTES = 64 * 1024
     }
 }

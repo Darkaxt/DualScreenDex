@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.cli
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
@@ -9,6 +10,32 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class ParallelMapOrderedTest {
+    @Test
+    fun boundsTotalInputsBeforeAnyResultsCanBeMaterialized() {
+        val discovered = AtomicInteger()
+        val inputs = sequence {
+            repeat(20) { value ->
+                discovered.incrementAndGet()
+                yield(value)
+            }
+        }
+
+        val failure = assertThrows(IllegalArgumentException::class.java) {
+            boundedCorpusInputs(inputs, maximumInputs = 3)
+        }
+
+        assertEquals(4, discovered.get())
+        assertTrue(failure.message.orEmpty().contains("at most 3 inputs"))
+    }
+
+    @Test
+    fun boundedTotalInputsRetainDiscoveryOrder() {
+        assertEquals(
+            listOf(3, 1, 2),
+            boundedCorpusInputs(sequenceOf(3, 1, 2), maximumInputs = 3),
+        )
+    }
+
     @Test
     fun runsWorkConcurrentlyAndReturnsResultsInInputOrder() {
         val started = CountDownLatch(2)

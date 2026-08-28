@@ -466,7 +466,7 @@ object CatalogMaterializer {
         beginWork(CatalogWorkModule.MOVE_DATA)
         val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
         val moveDescriptions = resolveMoveDescriptions?.invoke(layout)
-            ?: MoveDescriptionMaterializer.materialize(rom, layout)
+            ?: MoveDescriptionMaterializer.materialize(rom, layout, cancellation = cancellation)
         val moveAcquisitions = runCatching {
             MoveAcquisitionMaterializer.materialize(rom, layout)
         }.getOrElse {

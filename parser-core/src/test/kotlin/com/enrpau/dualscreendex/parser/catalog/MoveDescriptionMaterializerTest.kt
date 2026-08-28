@@ -1,6 +1,9 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -8,6 +11,7 @@ import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class MoveDescriptionMaterializerTest {
@@ -84,6 +88,41 @@ class MoveDescriptionMaterializerTest {
         assertEquals(tableOffset, result?.sourceOffset)
         assertEquals(8, result?.descriptions?.size)
         assertEquals("May lower the foe's Speed.", result?.descriptions?.get(10))
+    }
+
+    @Test
+    fun fallbackPointerScanChecksCancellationAtFixedIntervals() {
+        var checks = 0
+        val cancellation = ParserCancellationToken {
+            checks++
+            if (checks == 3) throw ParserCancellationException()
+        }
+
+        assertThrows(ParserCancellationException::class.java) {
+            MoveDescriptionMaterializer.materialize(
+                RomImage(ByteArray(16_384) { 0x08 }),
+                layout(moveCount = 4),
+                cancellation = cancellation,
+                limits = ResolutionLimits(maxProbeWorkPerDataset = 128),
+            )
+        }
+
+        assertEquals(3, checks)
+    }
+
+    @Test(timeout = 5_000)
+    fun denseFallbackPointerDataFailsOnlyTheOptionalCapabilityAtItsBudget() {
+        val result = MoveDescriptionMaterializer.materialize(
+            RomImage(ByteArray(RomImage.MAX_SIZE_BYTES) { 0x08 }),
+            layout(moveCount = 4),
+            limits = ResolutionLimits(
+                maxProbeRootsPerDataset = 16,
+                maxProbeWorkPerDataset = 64,
+                maxCandidatesPerDataset = 8,
+            ),
+        )
+
+        assertNull(result)
     }
 
     @Test

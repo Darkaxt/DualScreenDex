@@ -146,7 +146,12 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                 baseProfile != null && when {
                     compiled.speciesCount < baseProfile.internalSpeciesCount -> true
                     compiled.speciesCount > baseProfile.internalSpeciesCount ->
-                        Gen2CompiledSpriteResolver.resolve(session.rom, compiled.speciesCount) != null
+                        Gen2CompiledSpriteResolver.resolve(
+                            session.rom,
+                            compiled.speciesCount,
+                            session.cancellation,
+                            session.limits,
+                        ) != null
                     else -> false
                 }
             }
@@ -293,7 +298,12 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         val compiledSpriteTable = if (generation == 2 && exact == null) {
             compiledMoveTableResolution.tables.sprites?.let { inherited ->
                 val speciesCount = compiledMoveTableResolution.tables.speciesNames?.count ?: inherited.count
-                Gen2CompiledSpriteResolver.resolve(session.rom, speciesCount)
+                Gen2CompiledSpriteResolver.resolve(
+                    session.rom,
+                    speciesCount,
+                    session.cancellation,
+                    session.limits,
+                )
             }
         } else {
             null

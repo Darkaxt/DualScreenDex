@@ -1,8 +1,11 @@
 package com.enrpau.dualscreendex.parser.validate
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -87,6 +90,33 @@ class SpriteValidatorsTest {
         )
 
         assertTrue(result.compatible)
+    }
+
+    @Test
+    fun cancelsInsideDenseStructurallyValidGen2LzCommandsBeforeLateFailure() {
+        val bytes = ByteArray(0x8000)
+        bytes[0] = 1
+        putU16(bytes, 1, 0x4100)
+        bytes[3] = 1
+        putU16(bytes, 4, 0x4100)
+        repeat(512) { bytes[0x4100 + it] = 0x60 }
+        var checks = 0
+        val cancellation = ParserCancellationToken {
+            checks++
+            if (checks == 10) throw ParserCancellationException()
+        }
+
+        assertThrows(ParserCancellationException::class.java) {
+            SpriteValidators.gen2(
+                RomImage(bytes),
+                pointerTableOffset = 0,
+                speciesCount = 1,
+                bankAdjustment = 0,
+                cancellation = cancellation,
+            )
+        }
+
+        assertEquals(10, checks)
     }
 
     @Test

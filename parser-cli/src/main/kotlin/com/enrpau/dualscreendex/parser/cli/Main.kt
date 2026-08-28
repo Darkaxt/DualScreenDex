@@ -24,8 +24,9 @@ import kotlin.time.measureTime
 private const val USAGE =
     "parser-cli <root> [<root> ...] --json <path> --markdown <path> " +
         "--execution-receipt <path> --source-commit <40-char commit> " +
-        "[--cache-dir <path>] [--jobs <1..8>] [--all-roms]"
+        "[--cache-dir <path>] [--jobs <1..8>] [--all-roms] (maximum 10000 inputs)"
 internal const val MAX_CLI_JOBS = 8
+internal const val MAX_CLI_INPUTS = 10_000
 private const val QUEUED_TASKS_PER_WORKER = 1
 private val DEFAULT_JOBS = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
 
@@ -53,10 +54,10 @@ fun main(arguments: Array<String>) {
         generatorSha256 = runtimeClasspathSha256(generatorArtifacts),
     )
     val scanner = CorpusScanner(includeAllRomNames = options.includeAllRomNames)
-    val inputs = scanner.scan(options.roots)
+    val inputs = boundedCorpusInputs(scanner.scan(options.roots))
     val cache = options.cacheDirectory?.let { CatalogCache(it.toFile(), JdbcCatalogDatabaseFactory) }
-    println("Evaluating inputs with up to ${options.jobs} workers")
-    val results = mapConcurrentlyOrdered(inputs.asIterable(), options.jobs) { index, input ->
+    println("Evaluating ${inputs.size} inputs with up to ${options.jobs} workers")
+    val results = mapConcurrentlyOrdered(inputs, options.jobs) { index, input ->
         println("[${index + 1}] ${input.displayName}")
         val result = if (input.error != null) {
             CorpusResult(input.displayName, input.source, input.archiveEntry, 0, error = input.error)
@@ -156,6 +157,22 @@ private fun embeddedSourceCommit(generatorArtifact: Path): String = JarFile(gene
         "parser CLI build has no valid embedded source commit"
     }
     sourceCommit
+}
+
+internal fun <T> boundedCorpusInputs(
+    inputs: Sequence<T>,
+    maximumInputs: Int = MAX_CLI_INPUTS,
+): List<T> {
+    require(maximumInputs > 0) { "maximum inputs must be positive" }
+    val iterator = inputs.iterator()
+    val retained = ArrayList<T>(maximumInputs)
+    while (iterator.hasNext()) {
+        require(retained.size < maximumInputs) {
+            "parser-cli accepts at most $maximumInputs inputs; narrow the supplied roots"
+        }
+        retained += iterator.next()
+    }
+    return retained
 }
 
 internal fun <T, R> mapConcurrentlyOrdered(

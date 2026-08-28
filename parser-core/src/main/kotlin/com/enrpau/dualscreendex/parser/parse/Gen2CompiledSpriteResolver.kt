@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.validate.SpriteValidators
@@ -13,24 +15,60 @@ internal object Gen2CompiledSpriteResolver {
     private const val VARIANT_ROW_BYTES = 4
     private const val MAX_VARIANT_ROWS = 64
 
-    fun resolve(rom: RomImage, speciesCount: Int): TableLayout? {
+    fun resolve(
+        rom: RomImage,
+        speciesCount: Int,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+        limits: ResolutionLimits = ResolutionLimits(),
+    ): TableLayout? {
         if (speciesCount !in 1..255) return null
-        val candidates = buildList {
-            rom.findAll(byteArrayOf(LOAD_A_ABSOLUTE.toByte())).mapNotNullTo(this) { offset ->
-                parseNormalConsumer(rom, offset, speciesCount)
-            }
-            rom.findAll(byteArrayOf(LOAD_HL_IMMEDIATE.toByte())).mapNotNullTo(this) { offset ->
-                parseVariantConsumer(rom, offset, speciesCount)
-            }
+        cancellation.throwIfCancellationRequested()
+        return try {
+            resolveBounded(rom, speciesCount, cancellation, CompiledSpriteBudget(limits))
+        } catch (_: CompiledSpriteBudgetExceededException) {
+            null
         }
-        return candidates.distinct().singleOrNull()
+    }
+
+    private fun resolveBounded(
+        rom: RomImage,
+        speciesCount: Int,
+        cancellation: ParserCancellationToken,
+        budget: CompiledSpriteBudget,
+    ): TableLayout? {
+        val candidates = linkedSetOf<TableLayout>()
+
+        fun scan(opcode: Int, parser: (Int) -> TableLayout?): Boolean = rom.visitMatches(
+            pattern = byteArrayOf(opcode.toByte()),
+            onCheck = cancellation::throwIfCancellationRequested,
+        ) { offset ->
+            budget.recordMatch()
+            val candidate = parser(offset) ?: return@visitMatches true
+            candidates += candidate
+            candidates.size <= 1
+        }
+
+        if (!scan(LOAD_A_ABSOLUTE) { offset ->
+                parseNormalConsumer(rom, offset, speciesCount, cancellation, budget)
+            }
+        ) return null
+        if (!scan(LOAD_HL_IMMEDIATE) { offset ->
+                parseVariantConsumer(rom, offset, speciesCount, cancellation, budget)
+            }
+        ) return null
+        cancellation.throwIfCancellationRequested()
+        return candidates.singleOrNull()
     }
 
     private fun parseNormalConsumer(
         rom: RomImage,
         offset: Int,
         speciesCount: Int,
-    ): TableLayout? = runCatching {
+        cancellation: ParserCancellationToken,
+        budget: CompiledSpriteBudget,
+    ): TableLayout? {
+        cancellation.throwIfCancellationRequested()
+        budget.recordWork()
         if (
             offset + NORMAL_CONSUMER_BYTES > rom.size ||
             rom.u8(offset + 3) != COMPARE_IMMEDIATE ||
@@ -57,28 +95,45 @@ internal object Gen2CompiledSpriteResolver {
             rom.u8(offset + 36) != CALL ||
             rom.u8(offset + 39) != POP_BC ||
             rom.u8(offset + 40) != RETURN
-        ) return@runCatching null
+        ) return null
 
         val pointer = rom.u16le(offset + 20)
-        val normalRoot = rom.gbBankAddress(rom.u8(offset + 11), pointer)
-            ?: return@runCatching null
-        val unownRoot = rom.gbBankAddress(rom.u8(offset + 18), pointer)
-            ?: return@runCatching null
-        if (normalRoot == unownRoot) return@runCatching null
-        if (!SpriteValidators.gen2(rom, normalRoot, speciesCount, 0).compatible) {
-            return@runCatching null
-        }
-        if (!SpriteValidators.gen2(rom, unownRoot, UNOWN_FORM_COUNT, 0).compatible) {
-            return@runCatching null
-        }
-        TableLayout(normalRoot, speciesCount, RECORD_SIZE)
-    }.getOrNull()
+        val normalRoot = rom.gbBankAddress(rom.u8(offset + 11), pointer) ?: return null
+        val unownRoot = rom.gbBankAddress(rom.u8(offset + 18), pointer) ?: return null
+        if (normalRoot == unownRoot) return null
+        budget.recordRoot(normalRoot)
+        budget.recordRoot(unownRoot)
+        budget.recordCandidate()
+        if (!SpriteValidators.gen2(
+                rom,
+                normalRoot,
+                speciesCount,
+                0,
+                cancellation = cancellation,
+                consumeWork = budget::recordWork,
+            ).compatible
+        ) return null
+        if (!SpriteValidators.gen2(
+                rom,
+                unownRoot,
+                UNOWN_FORM_COUNT,
+                0,
+                cancellation = cancellation,
+                consumeWork = budget::recordWork,
+            ).compatible
+        ) return null
+        return TableLayout(normalRoot, speciesCount, RECORD_SIZE)
+    }
 
     private fun parseVariantConsumer(
         rom: RomImage,
         offset: Int,
         speciesCount: Int,
-    ): TableLayout? = runCatching {
+        cancellation: ParserCancellationToken,
+        budget: CompiledSpriteBudget,
+    ): TableLayout? {
+        cancellation.throwIfCancellationRequested()
+        budget.recordWork()
         if (
             offset + VARIANT_CONSUMER_BYTES > rom.size ||
             rom.u8(offset) != LOAD_HL_IMMEDIATE ||
@@ -92,33 +147,81 @@ internal object Gen2CompiledSpriteResolver {
             rom.u8(offset + 13) != LOAD_H_HL ||
             rom.u8(offset + 14) != LOAD_L_A ||
             rom.u8(offset + 15) != RETURN
-        ) return@runCatching null
+        ) return null
 
         val consumerBank = offset / BANK_BYTES
-        val table = rom.gbBankAddress(consumerBank, rom.u16le(offset + 1)) ?: return@runCatching null
+        val table = rom.gbBankAddress(consumerBank, rom.u16le(offset + 1)) ?: return null
         val species = linkedSetOf<Int>()
         var cursor = table
         repeat(MAX_VARIANT_ROWS) {
-            if (cursor + VARIANT_ROW_BYTES > rom.size) return@runCatching null
+            cancellation.throwIfCancellationRequested()
+            budget.recordWork()
+            if (cursor + VARIANT_ROW_BYTES > rom.size) return null
             val id = rom.u8(cursor)
-            val root = rom.gbBankAddress(rom.u8(cursor + 1), rom.u16le(cursor + 2))
-                ?: return@runCatching null
+            val root = rom.gbBankAddress(rom.u8(cursor + 1), rom.u16le(cursor + 2)) ?: return null
+            budget.recordRoot(root)
+            budget.recordCandidate()
             if (id == END_MARKER) {
-                if (species.isEmpty()) return@runCatching null
-                if (!SpriteValidators.gen2(rom, root, speciesCount, 0).compatible) {
-                    return@runCatching null
-                }
-                return@runCatching TableLayout(root, speciesCount, RECORD_SIZE)
+                if (species.isEmpty()) return null
+                if (!SpriteValidators.gen2(
+                        rom,
+                        root,
+                        speciesCount,
+                        0,
+                        cancellation = cancellation,
+                        consumeWork = budget::recordWork,
+                    ).compatible
+                ) return null
+                return TableLayout(root, speciesCount, RECORD_SIZE)
             }
-            if (id !in 1..speciesCount || !species.add(id)) return@runCatching null
-            if (!SpriteValidators.gen2(rom, root, 1, 0).compatible) return@runCatching null
+            if (id !in 1..speciesCount || !species.add(id)) return null
+            if (!SpriteValidators.gen2(
+                    rom,
+                    root,
+                    1,
+                    0,
+                    cancellation = cancellation,
+                    consumeWork = budget::recordWork,
+                ).compatible
+            ) return null
             cursor += VARIANT_ROW_BYTES
         }
-        null
-    }.getOrNull()
+        return null
+    }
 
     private fun branchTarget(opcodeOffset: Int, encodedDelta: Int): Int =
         opcodeOffset + 2 + encodedDelta.toByte().toInt()
+
+    private class CompiledSpriteBudget(private val limits: ResolutionLimits) {
+        private val roots = linkedSetOf<Int>()
+        private var matches = 0
+        private var candidates = 0
+        private var work = 0
+
+        fun recordMatch() {
+            if (matches == limits.maxProbeWorkPerDataset) throw CompiledSpriteBudgetExceededException()
+            matches++
+            recordWork()
+        }
+
+        fun recordRoot(root: Int) {
+            if (root in roots) return
+            if (roots.size == limits.maxProbeRootsPerDataset) throw CompiledSpriteBudgetExceededException()
+            roots += root
+        }
+
+        fun recordCandidate() {
+            if (candidates == limits.maxCandidatesPerDataset) throw CompiledSpriteBudgetExceededException()
+            candidates++
+        }
+
+        fun recordWork() {
+            if (work == limits.maxProbeWorkPerDataset) throw CompiledSpriteBudgetExceededException()
+            work++
+        }
+    }
+
+    private class CompiledSpriteBudgetExceededException : RuntimeException(null, null, false, false)
 
     private const val BANK_BYTES = 0x4000
     private const val END_MARKER = 0xff
