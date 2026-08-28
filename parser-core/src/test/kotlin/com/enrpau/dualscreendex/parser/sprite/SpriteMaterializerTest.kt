@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.sprite
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -10,6 +12,7 @@ import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import java.util.Base64
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class SpriteMaterializerTest {
@@ -261,6 +264,30 @@ class SpriteMaterializerTest {
     }
 
     @Test
+    fun genOnePropagatesCancellationDuringDetachedScan() {
+        val bytes = ByteArray(0x8000)
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.RED_BLUE,
+            generation = 1,
+            platform = Platform.GB,
+            speciesCount = 1,
+            moveCount = 0,
+            tables = ProfileTables(sprites = TableLayout(0, 1, 28)),
+        )
+        val cancellation = CancelAfterChecks(successfulChecks = 1)
+
+        assertThrows(ParserCancellationException::class.java) {
+            SpriteMaterializer.pokemon(
+                RomImage(bytes),
+                layout,
+                cancellation = cancellation,
+            )
+        }
+
+        assertEquals(2, cancellation.checks)
+    }
+
+    @Test
     fun decodesGenOneFrontSpriteUsingTheBaseRecordBank() {
         val bytes = ByteArray(0xC000)
         bytes[10] = 0x11
@@ -284,6 +311,16 @@ class SpriteMaterializerTest {
 
         assertEquals(8, sprite.width)
         assertEquals(true, sprite.argb.all { it == 0 })
+    }
+
+    private class CancelAfterChecks(private val successfulChecks: Int) : ParserCancellationToken {
+        var checks: Int = 0
+            private set
+
+        override fun throwIfCancellationRequested() {
+            checks++
+            if (checks > successfulChecks) throw ParserCancellationException()
+        }
     }
 
     private fun gbaLiteral(raw: ByteArray): ByteArray {

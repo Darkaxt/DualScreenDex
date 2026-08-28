@@ -83,7 +83,7 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
         if (generation == 1 && tables.sprites != null) {
             sprites = Gen1DetachedSpeciesResolver.completeEvidence(
                 sprites,
-                Gen1DetachedSpeciesResolver.resolve(rom, tables.sprites),
+                Gen1DetachedSpeciesResolver.resolve(rom, tables.sprites, session.cancellation),
                 "sprite record",
             )
         }

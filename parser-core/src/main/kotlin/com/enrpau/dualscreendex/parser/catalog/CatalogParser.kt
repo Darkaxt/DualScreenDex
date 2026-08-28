@@ -315,7 +315,7 @@ object CatalogMaterializer {
         }
         cancellation.throwIfCancellationRequested()
         val descriptions = descriptionMaterialization.records
-        val sprites = SpriteMaterializer.pokemon(rom, layout)
+        val sprites = SpriteMaterializer.pokemon(rom, layout, cancellation = cancellation)
         val resolvedSprites = resolveSpriteAliases(baseSpecies, sprites, layout.generation)
         val mediaSpecies = baseSpecies.mapValues { (id, record) ->
             val dex = record.dexNumber.value ?: id

@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameCodec
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableLayout
@@ -31,6 +32,7 @@ import com.enrpau.dualscreendex.parser.parse.LocalMapResolution
 import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import java.util.Base64
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -56,6 +58,42 @@ class CatalogParserTest {
                 resolveWorldMap = { _, _ -> throw ParserCancellationException() },
             )
         }
+    }
+
+    @Test
+    fun speciesMediaPropagatesCancellationIntoDetachedSpriteScanning() {
+        val rom = RomImage(ByteArray(0x8000))
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.RED_BLUE,
+            generation = 1,
+            platform = Platform.GB,
+            speciesCount = 1,
+            moveCount = 0,
+            tables = ProfileTables(sprites = TableLayout(0, 1, 28)),
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GB, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.RED_BLUE, null, 20, emptyList(), emptyList(),
+        )
+        val cancellation = CancelAfterChecks(successfulChecks = 8)
+        var mediaPublished = false
+
+        assertThrows(ParserCancellationException::class.java) {
+            CatalogMaterializer.materialize(
+                rom = rom,
+                analysis = analysis,
+                layout = layout,
+                cancellation = cancellation,
+                onProgress = { progress ->
+                    if (progress.phase == CatalogMaterializationPhase.SPECIES_MEDIA) {
+                        mediaPublished = true
+                    }
+                },
+            )
+        }
+
+        assertFalse(mediaPublished)
+        assertEquals(9, cancellation.checks)
     }
 
     @Test
@@ -891,6 +929,16 @@ class CatalogParserTest {
         )
 
         assertEquals(rom.sha256, catalog.romSha256)
+    }
+
+    private class CancelAfterChecks(private val successfulChecks: Int) : ParserCancellationToken {
+        var checks: Int = 0
+            private set
+
+        override fun throwIfCancellationRequested() {
+            checks++
+            if (checks > successfulChecks) throw ParserCancellationException()
+        }
     }
 
     private fun encodeGbText(target: ByteArray, offset: Int, value: String) {

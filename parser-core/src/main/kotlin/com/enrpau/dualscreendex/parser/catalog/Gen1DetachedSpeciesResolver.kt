@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
@@ -14,26 +15,63 @@ internal data class Gen1DetachedSpeciesRecord(
 
 /** Resolves the source-defined Gen I record stored outside the ordinary Dex-ordered table. */
 internal object Gen1DetachedSpeciesResolver {
-    fun resolve(rom: RomImage, table: TableLayout): Map<Int, Gen1DetachedSpeciesRecord> {
+    fun resolve(
+        rom: RomImage,
+        table: TableLayout,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): Map<Int, Gen1DetachedSpeciesRecord> {
         if (table.count <= 0 || table.recordSize != RECORD_SIZE) return emptyMap()
         val ordinaryEnd = table.offset.toLong() + table.count.toLong() * table.recordSize
         if (table.offset < 0 || ordinaryEnd > rom.size.toLong()) return emptyMap()
+        cancellation.throwIfCancellationRequested()
 
-        val missingDexNumbers = (1..table.count).filter { dexNumber ->
+        val searchableDexCount = minOf(table.count, MAX_DEX_NUMBER)
+        val missingDexNumbers = BooleanArray(searchableDexCount + 1)
+        var missingCount = 0
+        for (dexNumber in 1..searchableDexCount) {
             val offset = table.offset + (dexNumber - 1) * table.recordSize
-            !validRecord(rom, offset, dexNumber)
+            if (!validRecord(rom, offset, dexNumber)) {
+                missingDexNumbers[dexNumber] = true
+                missingCount++
+            }
         }
-        if (missingDexNumbers.isEmpty()) return emptyMap()
+        if (missingCount == 0) return emptyMap()
 
-        return missingDexNumbers.mapNotNull { dexNumber ->
-            val candidates = (0..rom.size - RECORD_SIZE).asSequence()
-                .filterNot { offset -> offset >= table.offset && offset.toLong() < ordinaryEnd }
-                .filter { offset -> rom.u8(offset) == dexNumber }
-                .filter { offset -> validRecord(rom, offset, dexNumber) }
-                .mapNotNull { offset -> detachedRecord(rom, offset, dexNumber) }
-                .toList()
-            candidates.singleOrNull()?.let { dexNumber to it }
-        }.toMap()
+        val consumers = farCopyConsumers(rom, cancellation) ?: return emptyMap()
+        if (consumers.isEmpty()) return emptyMap()
+        val candidates = arrayOfNulls<Gen1DetachedSpeciesRecord>(searchableDexCount + 1)
+        val ambiguous = BooleanArray(searchableDexCount + 1)
+        var candidateCount = 0
+        var offset = 0
+        while (offset <= rom.size - RECORD_SIZE) {
+            if (offset % CANCELLATION_CHECK_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
+            if (offset < table.offset || offset.toLong() >= ordinaryEnd) {
+                val dexNumber = rom.u8(offset)
+                if (dexNumber in 1..searchableDexCount && missingDexNumbers[dexNumber] &&
+                    validRecord(rom, offset, dexNumber)
+                ) {
+                    val candidate = detachedRecord(rom, offset, dexNumber, consumers)
+                    if (candidate != null) {
+                        candidateCount++
+                        if (candidateCount > MAX_DETACHED_CANDIDATES) return emptyMap()
+                        if (candidates[dexNumber] == null && !ambiguous[dexNumber]) {
+                            candidates[dexNumber] = candidate
+                        } else {
+                            candidates[dexNumber] = null
+                            ambiguous[dexNumber] = true
+                        }
+                    }
+                }
+            }
+            offset++
+        }
+        return buildMap {
+            for (dexNumber in 1..searchableDexCount) {
+                if (!ambiguous[dexNumber]) candidates[dexNumber]?.let { put(dexNumber, it) }
+            }
+        }
     }
 
     fun completeEvidence(
@@ -59,11 +97,16 @@ internal object Gen1DetachedSpeciesResolver {
         return decodeSprite(rom, record.bank, rom.u16le(record.offset + FRONT_POINTER_OFFSET), dimensions)
     }
 
-    private fun detachedRecord(rom: RomImage, offset: Int, dexNumber: Int): Gen1DetachedSpeciesRecord? {
+    private fun detachedRecord(
+        rom: RomImage,
+        offset: Int,
+        dexNumber: Int,
+        consumers: Set<Int>,
+    ): Gen1DetachedSpeciesRecord? {
         val bank = offset / BANK_SIZE
         if (bank <= 0) return null
         val address = BANKED_ADDRESS_START + offset % BANK_SIZE
-        if (!hasFarCopyConsumer(rom, address, bank)) return null
+        if (consumerKey(address, bank) !in consumers) return null
         val dimensions = rom.u8(offset + DIMENSIONS_OFFSET)
         decodeSprite(rom, bank, rom.u16le(offset + FRONT_POINTER_OFFSET), dimensions) ?: return null
         decodeSprite(rom, bank, rom.u16le(offset + BACK_POINTER_OFFSET), expectedDimensions = null) ?: return null
@@ -90,19 +133,30 @@ internal object Gen1DetachedSpeciesResolver {
             ?.takeIf { expectedDimensions == null || expectedDimensions == ((it.width / 8) shl 4 or (it.height / 8)) }
     }
 
-    /** `ld hl,record; ld de,destination; ld bc,28; ld a,bank; call FarCopyData`. */
-    private fun hasFarCopyConsumer(rom: RomImage, address: Int, bank: Int): Boolean {
+    /** Indexes `ld hl,record; ld de,destination; ld bc,28; ld a,bank; call FarCopyData`. */
+    private fun farCopyConsumers(rom: RomImage, cancellation: ParserCancellationToken): Set<Int>? {
+        val consumers = linkedSetOf<Int>()
         val instructionBytes = 14
-        for (offset in 0..rom.size - instructionBytes) {
-            if (rom.u8(offset) == 0x21 && rom.u16le(offset + 1) == address &&
+        var offset = 0
+        while (offset <= rom.size - instructionBytes) {
+            if (offset % CANCELLATION_CHECK_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
+            if (rom.u8(offset) == 0x21 &&
                 rom.u8(offset + 3) == 0x11 &&
                 rom.u8(offset + 6) == 0x01 && rom.u16le(offset + 7) == RECORD_SIZE &&
-                rom.u8(offset + 9) == 0x3E && rom.u8(offset + 10) == bank &&
+                rom.u8(offset + 9) == 0x3E &&
                 rom.u8(offset + 11) == 0xCD
-            ) return true
+            ) {
+                consumers += consumerKey(rom.u16le(offset + 1), rom.u8(offset + 10))
+                if (consumers.size > MAX_FAR_COPY_CONSUMERS) return null
+            }
+            offset++
         }
-        return false
+        return consumers
     }
+
+    private fun consumerKey(address: Int, bank: Int): Int = bank shl 16 or address
 
     private const val RECORD_SIZE = 28
     private const val DIMENSIONS_OFFSET = 10
@@ -111,4 +165,8 @@ internal object Gen1DetachedSpeciesResolver {
     private const val BANK_SIZE = 0x4000
     private const val BANKED_ADDRESS_START = 0x4000
     private const val BANKED_ADDRESS_END = 0x7FFF
+    private const val MAX_DEX_NUMBER = 0xFF
+    private const val MAX_FAR_COPY_CONSUMERS = 4_096
+    private const val MAX_DETACHED_CANDIDATES = 4_096
+    private const val CANCELLATION_CHECK_INTERVAL_BYTES = 4 * 1_024
 }

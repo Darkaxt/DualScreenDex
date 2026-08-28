@@ -215,7 +215,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         if (generation == 1 && baseStatsLayout != null) {
             stats = Gen1DetachedSpeciesResolver.completeEvidence(
                 stats,
-                Gen1DetachedSpeciesResolver.resolve(rom, baseStatsLayout),
+                Gen1DetachedSpeciesResolver.resolve(rom, baseStatsLayout, session.cancellation),
                 "base-stat record",
             )
         }

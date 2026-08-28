@@ -12,7 +12,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Callable
-import java.util.concurrent.Future
+import java.util.concurrent.ExecutorCompletionService
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -131,32 +131,35 @@ internal fun <T, R> mapConcurrentlyOrdered(
         target.queue.put(task)
     }
     val iterator = inputs.iterator()
-    val inFlight = ArrayDeque<Future<R>>(maximumInFlight)
-    val results = mutableListOf<R>()
+    val completion = ExecutorCompletionService<IndexedResult<R>>(executor)
+    val results = mutableListOf<IndexedResult<R>>()
     var exhausted = false
+    var inFlight = 0
     var nextIndex = 0
     return try {
-        while (!exhausted || inFlight.isNotEmpty()) {
-            while (!exhausted && inFlight.size < maximumInFlight) {
+        while (!exhausted || inFlight > 0) {
+            while (!exhausted && inFlight < maximumInFlight) {
                 if (iterator.hasNext()) {
                     val index = nextIndex++
                     val input = iterator.next()
-                    inFlight.addLast(
-                        executor.submit(Callable { transform(index, input) }),
-                    )
+                    completion.submit(Callable { IndexedResult(index, transform(index, input)) })
+                    inFlight++
                 } else {
                     exhausted = true
                 }
             }
-            if (inFlight.isNotEmpty()) {
-                results += inFlight.removeFirst().get()
+            if (inFlight > 0) {
+                results += completion.take().get()
+                inFlight--
             }
         }
-        results
+        results.sortedBy { it.index }.map { it.value }
     } finally {
         executor.shutdownNow()
     }
 }
+
+private data class IndexedResult<R>(val index: Int, val value: R)
 
 private fun persistCatalog(
     cache: CatalogCache,

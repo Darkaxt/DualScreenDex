@@ -223,7 +223,7 @@ test("derives release versions from protected Gradle properties", () => {
 });
 
 test("requires the parser cache revision that rebuilds isolated optional data", () => {
-  assert.match(catalogSchema, /const val parserSchemaVersion = 44\b/);
+  assert.match(catalogSchema, /const val parserSchemaVersion = 45\b/);
 });
 
 test("runs every included JVM and app unit suite in CI", () => {
