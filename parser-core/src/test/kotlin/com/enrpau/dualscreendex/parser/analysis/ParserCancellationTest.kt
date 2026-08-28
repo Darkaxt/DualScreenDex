@@ -5,10 +5,15 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledSpriteResolver
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ParserCancellationTest {
     @Test
@@ -30,6 +35,54 @@ class ParserCancellationTest {
             }
         } finally {
             Thread.interrupted()
+        }
+    }
+
+    @Test
+    fun cancellationTransitionCannotInterleaveWithPublication() {
+        val source = ParserCancellationSource()
+        val publicationEntered = CountDownLatch(1)
+        val inspectCancellation = CountDownLatch(1)
+        val cancellationInspected = CountDownLatch(1)
+        val releasePublication = CountDownLatch(1)
+        val cancellationStarted = CountDownLatch(1)
+        val cancelledDuringPublication = AtomicBoolean(true)
+        val executor = Executors.newFixedThreadPool(2)
+        val publication = executor.submit {
+            source.token.publish {
+                publicationEntered.countDown()
+                check(inspectCancellation.await(5, TimeUnit.SECONDS)) {
+                    "cancellation inspection timed out"
+                }
+                cancelledDuringPublication.set(source.isCancellationRequested)
+                cancellationInspected.countDown()
+                check(releasePublication.await(5, TimeUnit.SECONDS)) {
+                    "publication release timed out"
+                }
+            }
+        }
+
+        try {
+            assertTrue(publicationEntered.await(5, TimeUnit.SECONDS))
+            val cancellation = executor.submit {
+                cancellationStarted.countDown()
+                source.cancel()
+            }
+            assertTrue(cancellationStarted.await(5, TimeUnit.SECONDS))
+            inspectCancellation.countDown()
+            assertTrue(cancellationInspected.await(5, TimeUnit.SECONDS))
+            assertFalse(cancelledDuringPublication.get())
+            releasePublication.countDown()
+            publication.get(5, TimeUnit.SECONDS)
+            cancellation.get(5, TimeUnit.SECONDS)
+            assertTrue(source.isCancellationRequested)
+            assertThrows(ParserCancellationException::class.java) {
+                source.token.publish {}
+            }
+        } finally {
+            inspectCancellation.countDown()
+            releasePublication.countDown()
+            executor.shutdownNow()
         }
     }
 

@@ -80,22 +80,39 @@ class CatalogReader(private val database: CatalogDatabase) {
             metadata.parserSchemaVersion != CatalogSchema.parserSchemaVersion
         ) return null
 
-        val sectionRows = database.query(
-            "SELECT name, encoding, payload FROM catalog_sections LIMIT ?",
+        val sectionLengthRows = database.query(
+            "SELECT name, encoding, length(payload) AS payload_length FROM catalog_sections LIMIT ?",
             listOf(CatalogSchema.requiredSections.size + 1),
         ) { row ->
-            SectionMetadata(
+            SectionLengthMetadata(
                 name = row.requiredString("name"),
                 encoding = row.requiredString("encoding"),
-                digest = requireNotNull(row.bytes("payload")) {
-                    "catalog section digest is null"
-                },
+                payloadLength = row.requiredLong("payload_length"),
             )
         }
-        require(sectionRows.size <= CatalogSchema.requiredSections.size) {
+        require(sectionLengthRows.size <= CatalogSchema.requiredSections.size) {
             "catalog contains too many sections"
         }
-        val sectionMetadata = sectionRows.associateBy(SectionMetadata::name)
+        val sectionMetadata = sectionLengthRows.associate { section ->
+            require(section.payloadLength == SHA_256_BYTES.toLong()) {
+                "catalog section digest has an invalid size"
+            }
+            val digest = requireNotNull(
+                database.readBlob(
+                    "SELECT payload AS payload FROM catalog_sections WHERE name = ? AND length(payload) = ?",
+                    listOf(section.name, section.payloadLength),
+                    SHA_256_BYTES,
+                ),
+            ) { "catalog section digest is null or changed during retrieval" }
+            require(digest.size.toLong() == section.payloadLength) {
+                "catalog section digest length changed during retrieval"
+            }
+            section.name to SectionMetadata(
+                name = section.name,
+                encoding = section.encoding,
+                digest = digest,
+            )
+        }
         val sections = sectionMetadata.keys
         require(sections == CatalogSchema.requiredSections) {
             "completed catalog has missing or unknown sections"
@@ -103,57 +120,121 @@ class CatalogReader(private val database: CatalogDatabase) {
         require(sectionMetadata.values.all { it.encoding == CHUNKED_ENCODING }) {
             "unsupported catalog section encoding"
         }
-        require(sectionMetadata.values.all { it.digest.size == SHA_256_BYTES }) {
-            "catalog section digest has an invalid size"
+        val chunkAggregates = database.query(
+            """
+            SELECT section_name,
+                   COUNT(*) AS chunk_count,
+                   COALESCE(SUM(length(payload)), 0) AS payload_bytes,
+                   COALESCE(MAX(length(payload)), 0) AS maximum_payload_bytes
+            FROM catalog_section_chunks
+            GROUP BY section_name
+            LIMIT ?
+            """.trimIndent(),
+            listOf(CatalogSchema.requiredSections.size + 1),
+        ) { row ->
+            ChunkAggregate(
+                sectionName = row.requiredString("section_name"),
+                chunkCount = row.requiredLong("chunk_count"),
+                payloadBytes = row.requiredLong("payload_bytes"),
+                maximumPayloadBytes = row.requiredLong("maximum_payload_bytes"),
+            )
+        }
+        require(chunkAggregates.size <= CatalogSchema.requiredSections.size) {
+            "catalog contains chunk aggregates for too many sections"
+        }
+        val chunkAggregateBySection = chunkAggregates.associateBy(ChunkAggregate::sectionName)
+        var aggregateEncodedBytes = 0L
+        chunkAggregateBySection.values.forEach { aggregate ->
+            require(aggregate.chunkCount in 1..CatalogSchema.maximumSectionChunks.toLong()) {
+                "catalog section chunk limit exceeded: ${aggregate.sectionName}"
+            }
+            require(aggregate.maximumPayloadBytes in 1..CatalogSchema.sectionChunkBytes.toLong()) {
+                "catalog section chunk is oversized: ${aggregate.sectionName}"
+            }
+            require(aggregate.payloadBytes in aggregate.chunkCount..CatalogSchema.maximumSectionEncodedBytes.toLong()) {
+                "catalog section encoded-byte limit exceeded: ${aggregate.sectionName}"
+            }
+            require(
+                aggregateEncodedBytes <= CatalogSchema.maximumCatalogEncodedBytes.toLong() - aggregate.payloadBytes,
+            ) {
+                "catalog encoded-byte limit exceeded"
+            }
+            aggregateEncodedBytes += aggregate.payloadBytes
+        }
+        require(chunkAggregateBySection.keys == CatalogSchema.requiredSections) {
+            "completed catalog has missing or unknown section chunks"
         }
         val budget = CatalogReadBudget()
 
         return StoredCatalog(
             catalog = codec.decode(metadata.sha256, metadata.crc32, metadata.family, metadata.platform) { name, type ->
-                database.streamQuery(
+                val chunkRows = database.query(
                     """
-                    SELECT chunk_index, payload
+                    SELECT chunk_index, length(payload) AS payload_length
                     FROM catalog_section_chunks
                     WHERE section_name = ?
                     ORDER BY chunk_index
                     """.trimIndent(),
                     listOf(name),
-                ) { rows ->
-                    val input = CatalogChunkInputStream(
-                        sectionName = name,
-                        maximumChunks = CatalogSchema.maximumSectionChunks,
-                        maximumEncodedBytes = CatalogSchema.maximumSectionEncodedBytes,
-                        onEncodedBytes = budget::claimEncoded,
-                    ) {
-                        rows.next()?.let { row ->
-                            CatalogChunk(
-                                requireNotNull(row.long("chunk_index")).toInt(),
-                                requireNotNull(row.bytes("payload")) {
-                                    "catalog section chunk payload is null"
-                                },
-                            )
-                        }
-                    }
-                    val digest = MessageDigest.getInstance("SHA-256")
-                    val encoded = DigestInputStream(input, digest)
-                    val decoded = codec.decodeSection(
-                        NonClosingInputStream(encoded),
-                        type,
-                        name,
-                        CatalogSchema.maximumSectionInflatedBytes,
-                        budget::claimInflated,
+                ) { row ->
+                    ChunkLengthMetadata(
+                        index = row.requiredLong("chunk_index").toInt(),
+                        payloadLength = row.requiredLong("payload_length"),
                     )
-                    encoded.drain()
-                    require(
-                        MessageDigest.isEqual(
-                            sectionMetadata.getValue(name).digest,
-                            digest.digest(),
-                        ),
-                    ) {
-                        "catalog section digest does not match: $name"
-                    }
-                    decoded
                 }
+                require(chunkRows.size.toLong() == chunkAggregateBySection.getValue(name).chunkCount) {
+                    "catalog section chunk count changed during retrieval: $name"
+                }
+                val chunks = chunkRows.iterator()
+                val input = CatalogChunkInputStream(
+                    sectionName = name,
+                    maximumChunks = CatalogSchema.maximumSectionChunks,
+                    maximumEncodedBytes = CatalogSchema.maximumSectionEncodedBytes,
+                    onEncodedBytes = budget::claimEncoded,
+                ) {
+                    if (!chunks.hasNext()) {
+                        null
+                    } else {
+                        val chunk = chunks.next()
+                        require(chunk.payloadLength in 1..CatalogSchema.sectionChunkBytes.toLong()) {
+                            "catalog section chunk is oversized: $name"
+                        }
+                        val payload = requireNotNull(
+                            database.readBlob(
+                                """
+                                SELECT payload AS payload
+                                FROM catalog_section_chunks
+                                WHERE section_name = ? AND chunk_index = ? AND length(payload) = ?
+                                """.trimIndent(),
+                                listOf(name, chunk.index, chunk.payloadLength),
+                                CatalogSchema.sectionChunkBytes,
+                            ),
+                        ) { "catalog section chunk payload is null or changed during retrieval: $name" }
+                        require(payload.size.toLong() == chunk.payloadLength) {
+                            "catalog section chunk length changed during retrieval: $name"
+                        }
+                        CatalogChunk(chunk.index, payload)
+                    }
+                }
+                val digest = MessageDigest.getInstance("SHA-256")
+                val encoded = DigestInputStream(input, digest)
+                val decoded = codec.decodeSection(
+                    NonClosingInputStream(encoded),
+                    type,
+                    name,
+                    CatalogSchema.maximumSectionInflatedBytes,
+                    budget::claimInflated,
+                )
+                encoded.drain()
+                require(
+                    MessageDigest.isEqual(
+                        sectionMetadata.getValue(name).digest,
+                        digest.digest(),
+                    ),
+                ) {
+                    "catalog section digest does not match: $name"
+                }
+                decoded
             },
             source = CatalogSourceMetadata(
                 metadata.sourceName,
@@ -173,10 +254,28 @@ class CatalogReader(private val database: CatalogDatabase) {
         )
     }
 
+    private data class SectionLengthMetadata(
+        val name: String,
+        val encoding: String,
+        val payloadLength: Long,
+    )
+
     private data class SectionMetadata(
         val name: String,
         val encoding: String,
         val digest: ByteArray,
+    )
+
+    private data class ChunkLengthMetadata(
+        val index: Int,
+        val payloadLength: Long,
+    )
+
+    private data class ChunkAggregate(
+        val sectionName: String,
+        val chunkCount: Long,
+        val payloadBytes: Long,
+        val maximumPayloadBytes: Long,
     )
 
     private data class Metadata(

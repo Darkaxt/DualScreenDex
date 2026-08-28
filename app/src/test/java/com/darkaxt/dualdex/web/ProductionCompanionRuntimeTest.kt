@@ -86,6 +86,7 @@ import org.junit.Test
 import java.util.Collections
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import com.darkaxt.dualdex.battle.BattleMemorySample
 import com.darkaxt.dualdex.battle.BattleMatchupObservation
@@ -2031,6 +2032,95 @@ class ProductionCompanionRuntimeTest {
         assertEquals(2, attempts)
         assertEquals(catalog.romSha256, runtime.catalogHash())
         runtime.close()
+    }
+
+    @Test
+    fun supersedingLoadCancelsCheckpointEncodingWithoutWaitingForItsRuntimeMonitor() {
+        val romA = RomImage(ByteArray(0xC0))
+        val romB = RomImage(ByteArray(0xC0).also { it[0] = 1 })
+        val parsedA = ParsedCatalog(romA.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val parsedB = ParsedCatalog(romB.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val aWriteEntered = CountDownLatch(1)
+        val aWriteCancelled = CountDownLatch(1)
+        val releaseAWrite = CountDownLatch(1)
+        val bCompleted = CountDownLatch(1)
+        val repository = object : CatalogRepository {
+            override fun write(
+                catalog: ParsedCatalog,
+                source: CatalogSourceMetadata,
+                progress: CatalogWriteProgress,
+            ) {
+                error("checkpoint writes must retain the production cancellation token")
+            }
+
+            override fun write(
+                catalog: ParsedCatalog,
+                source: CatalogSourceMetadata,
+                progress: CatalogWriteProgress,
+                cancellation: ParserCancellationToken,
+            ) {
+                if (catalog.romSha256 != romA.sha256) return
+                aWriteEntered.countDown()
+                while (true) {
+                    try {
+                        if (releaseAWrite.await(10, TimeUnit.MILLISECONDS)) return
+                    } catch (_: InterruptedException) {
+                        // The production cancellation token remains authoritative after worker interruption.
+                    }
+                    try {
+                        cancellation.throwIfCancellationRequested()
+                    } catch (failure: ParserCancellationException) {
+                        aWriteCancelled.countDown()
+                        throw failure
+                    }
+                }
+            }
+
+            override fun readComplete(sha256: String): StoredCatalog? = null
+
+            override fun findCompleted(crc32: String, romSize: Int, romTitle: String?): List<StoredCatalog> = emptyList()
+        }
+        val runtime = ProductionCompanionRuntime(
+            catalogRepository = repository,
+            parseCatalogWithCancellation = {
+                    rom: RomImage,
+                    _: ParserCancellationToken,
+                    progress: (CatalogMaterializationProgress) -> Unit,
+                    _: (CatalogWorkProgress) -> Unit,
+                ->
+                val catalog = if (rom.sha256 == romA.sha256) parsedA else parsedB
+                progress(
+                    CatalogMaterializationProgress(
+                        CatalogMaterializationPhase.COMPLETE,
+                        5,
+                        5,
+                        catalog,
+                    ),
+                )
+                catalog
+            },
+        )
+        val loadExecutor = Executors.newSingleThreadExecutor()
+        try {
+            runtime.load(LoadedRom("a.gba", romA)) {}
+            assertTrue(aWriteEntered.await(2, TimeUnit.SECONDS))
+
+            val bLoad = loadExecutor.submit {
+                runtime.load(LoadedRom("b.gba", romB)) { bCompleted.countDown() }
+            }
+
+            assertTrue(
+                "superseding load could not cancel checkpoint encoding while it held the runtime monitor",
+                aWriteCancelled.await(500, TimeUnit.MILLISECONDS),
+            )
+            bLoad.get(2, TimeUnit.SECONDS)
+            assertTrue(bCompleted.await(2, TimeUnit.SECONDS))
+            assertEquals(parsedB.romSha256, runtime.catalogHash())
+        } finally {
+            releaseAWrite.countDown()
+            runtime.close()
+            loadExecutor.shutdownNow()
+        }
     }
 
     @Test

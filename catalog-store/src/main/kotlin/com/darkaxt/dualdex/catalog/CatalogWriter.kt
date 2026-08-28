@@ -1,8 +1,10 @@
 package com.darkaxt.dualdex.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import java.io.FilterOutputStream
 import java.io.OutputStream
 import java.security.DigestOutputStream
 import java.security.MessageDigest
@@ -78,12 +80,20 @@ class CatalogWriter(
 ) {
     private val codec = CatalogSectionCodec()
 
-    fun write(catalog: ParsedCatalog, source: CatalogSourceMetadata, progress: CatalogWriteProgress) {
+    fun write(
+        catalog: ParsedCatalog,
+        source: CatalogSourceMetadata,
+        progress: CatalogWriteProgress,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ) {
+        cancellation.throwIfCancellationRequested()
         require(catalog.romSha256.matches(Regex("[0-9a-fA-F]{64}"))) { "catalog SHA-256 is invalid" }
         require(catalog.romCrc32.matches(Regex("[0-9a-fA-F]{8}"))) { "catalog CRC32 is invalid" }
         val now = clock()
         CatalogMigration.prepare(database)
-        database.transaction {
+        cancellation.throwIfCancellationRequested()
+        database.transaction(cancellation) {
+            cancellation.throwIfCancellationRequested()
             database.execute(
                 """
                 INSERT OR REPLACE INTO catalog_metadata (
@@ -112,13 +122,23 @@ class CatalogWriter(
                 ),
             )
             progress.changedSections.forEach { name ->
-                val previousDigest = database.query(
-                    "SELECT payload FROM catalog_sections WHERE name = ?",
+                cancellation.throwIfCancellationRequested()
+                val previousDigestLength = database.query(
+                    "SELECT length(payload) AS payload_length FROM catalog_sections WHERE name = ?",
                     listOf(name),
-                ) { row -> row.bytes("payload") }.singleOrNull()
+                ) { row -> requireNotNull(row.long("payload_length")) }.singleOrNull()
+                val previousDigest = previousDigestLength
+                    ?.takeIf { it == SHA_256_BYTES.toLong() }
+                    ?.let { payloadLength ->
+                        database.readBlob(
+                            "SELECT payload AS payload FROM catalog_sections WHERE name = ? AND length(payload) = ?",
+                            listOf(name, payloadLength),
+                            SHA_256_BYTES,
+                        )
+                    }
                 val candidateDigest = previousDigest
                     ?.takeIf { it.size == SHA_256_BYTES }
-                    ?.let { codec.encodedDigest(catalog, name) }
+                    ?.let { codec.encodedDigest(catalog, name, cancellation) }
                 if (candidateDigest != null && previousDigest.contentEquals(candidateDigest)) {
                     database.execute(
                         "UPDATE catalog_sections SET committed_phase = ?, written_at_epoch_ms = ? WHERE name = ?",
@@ -131,6 +151,7 @@ class CatalogWriter(
                     listOf(name),
                 )
                 val output = CatalogChunkOutputStream(CatalogSchema.sectionChunkBytes) { index, chunk ->
+                    cancellation.throwIfCancellationRequested()
                     database.execute(
                         """
                         INSERT INTO catalog_section_chunks (section_name, chunk_index, payload)
@@ -138,8 +159,10 @@ class CatalogWriter(
                         """.trimIndent(),
                         listOf(name, index, chunk),
                     )
+                    cancellation.throwIfCancellationRequested()
                 }
-                val writtenDigest = codec.writeSectionAndDigest(catalog, name, output)
+                val writtenDigest = codec.writeSectionAndDigest(catalog, name, output, cancellation)
+                cancellation.throwIfCancellationRequested()
                 database.execute(
                     """
                     INSERT OR REPLACE INTO catalog_sections
@@ -149,32 +172,64 @@ class CatalogWriter(
                     listOf(name, writtenDigest, progress.phase, now),
                 )
             }
+            cancellation.throwIfCancellationRequested()
             if (progress.complete) {
                 val committed = database.query("SELECT name FROM catalog_sections") { row ->
                     requireNotNull(row.string("name"))
                 }.toSet()
                 require(committed == CatalogSchema.requiredSections) { "complete catalog transaction has missing sections" }
             }
+            cancellation.throwIfCancellationRequested()
         }
     }
 }
 
-private fun CatalogSectionCodec.encodedDigest(catalog: ParsedCatalog, name: String): ByteArray {
+private fun CatalogSectionCodec.encodedDigest(
+    catalog: ParsedCatalog,
+    name: String,
+    cancellation: ParserCancellationToken,
+): ByteArray {
     val sink = object : OutputStream() {
         override fun write(value: Int) = Unit
         override fun write(bytes: ByteArray, offset: Int, length: Int) = Unit
     }
-    return writeSectionAndDigest(catalog, name, sink)
+    return writeSectionAndDigest(catalog, name, sink, cancellation)
 }
 
 private fun CatalogSectionCodec.writeSectionAndDigest(
     catalog: ParsedCatalog,
     name: String,
     output: OutputStream,
+    cancellation: ParserCancellationToken,
 ): ByteArray {
     val digest = MessageDigest.getInstance("SHA-256")
-    DigestOutputStream(output, digest).use { encoded -> writeSection(catalog, name, encoded) }
+    val cancellableOutput = CancellationCheckingOutputStream(output, cancellation)
+    DigestOutputStream(cancellableOutput, digest).use { encoded -> writeSection(catalog, name, encoded) }
+    cancellation.throwIfCancellationRequested()
     return digest.digest()
+}
+
+private class CancellationCheckingOutputStream(
+    output: OutputStream,
+    private val cancellation: ParserCancellationToken,
+) : FilterOutputStream(output) {
+    override fun write(value: Int) {
+        cancellation.throwIfCancellationRequested()
+        out.write(value)
+        cancellation.throwIfCancellationRequested()
+    }
+
+    override fun write(bytes: ByteArray, offset: Int, length: Int) {
+        cancellation.throwIfCancellationRequested()
+        out.write(bytes, offset, length)
+        cancellation.throwIfCancellationRequested()
+    }
+
+    override fun close() {
+        cancellation.throwIfCancellationRequested()
+        super.close()
+        cancellation.throwIfCancellationRequested()
+    }
 }
 
 internal class CatalogChunkOutputStream(

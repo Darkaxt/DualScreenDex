@@ -121,6 +121,53 @@ class ParallelMapOrderedTest {
     }
 
     @Test
+    fun duplicateKeyPersistenceCannotSaturateParserWorkersAheadOfAnotherKey() {
+        val firstPersistenceStarted = CountDownLatch(1)
+        val releaseFirstPersistence = CountDownLatch(1)
+        val secondPersistenceFinished = CountDownLatch(1)
+        val firstInvocations = AtomicInteger()
+        val caller = Executors.newSingleThreadExecutor()
+        KeyedTaskScheduler<String, String>(
+            parallelism = 2,
+            maximumDistinctTasks = 4,
+        ).use { scheduler ->
+            val future = caller.submit<List<String>> {
+                mapConcurrentlyOrdered(
+                    List(8) { "sha-a" } + "sha-b",
+                    jobs = 4,
+                ) { _, sha ->
+                    scheduler.schedule(sha) {
+                        if (sha == "sha-a") {
+                            firstInvocations.incrementAndGet()
+                            firstPersistenceStarted.countDown()
+                            check(releaseFirstPersistence.await(5, TimeUnit.SECONDS)) {
+                                "first persistence timed out"
+                            }
+                        } else {
+                            secondPersistenceFinished.countDown()
+                        }
+                        sha
+                    }
+                    sha
+                }
+            }
+
+            try {
+                assertTrue("first persistence did not start", firstPersistenceStarted.await(5, TimeUnit.SECONDS))
+                assertTrue(
+                    "different-key persistence remained queued behind duplicate waiters",
+                    secondPersistenceFinished.await(2, TimeUnit.SECONDS),
+                )
+                assertEquals(List(8) { "sha-a" } + "sha-b", future.get(5, TimeUnit.SECONDS))
+                assertEquals(1, firstInvocations.get())
+            } finally {
+                releaseFirstPersistence.countDown()
+                caller.shutdownNow()
+            }
+        }
+    }
+
+    @Test
     fun capsEffectiveWorkerConcurrencyDefensively() {
         val active = AtomicInteger()
         val peak = AtomicInteger()

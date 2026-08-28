@@ -1508,20 +1508,22 @@ class ProductionCompanionRuntime(
         } else rulesets.firstOrNull { it.id == selection }
     }
 
-    @Synchronized
     private fun publishCheckpoint(
         task: CatalogLoadTask,
         progress: CatalogMaterializationProgress,
         source: CatalogSourceMetadata,
     ) {
-        requireActive(task)
-        if (!checkpointWritesEnabled) return
+        synchronized(this) {
+            requireActive(task)
+            if (!checkpointWritesEnabled) return
+        }
         try {
             requireActive(task)
             catalogRepository?.write(
                 progress.catalog,
                 source,
                 catalogWriteProgress(progress),
+                task.cancellation.token,
             )
         } catch (failure: ParserCancellationException) {
             throw failure
@@ -1535,6 +1537,7 @@ class ProductionCompanionRuntime(
         requireActive(task)
     }
 
+    @Synchronized
     private fun disableCheckpointWrites() {
         checkpointWritesEnabled = false
         runCatching {

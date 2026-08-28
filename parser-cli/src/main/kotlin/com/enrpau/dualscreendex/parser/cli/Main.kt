@@ -12,8 +12,11 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Callable
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorCompletionService
+import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.Semaphore
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.jar.JarFile
@@ -56,53 +59,70 @@ fun main(arguments: Array<String>) {
     val scanner = CorpusScanner(includeAllRomNames = options.includeAllRomNames)
     val inputs = boundedCorpusInputs(scanner.scan(options.roots))
     val cache = options.cacheDirectory?.let { CatalogCache(it.toFile(), JdbcCatalogDatabaseFactory) }
-    println("Evaluating ${inputs.size} inputs with up to ${options.jobs} workers")
-    val results = mapConcurrentlyOrdered(inputs, options.jobs) { index, input ->
-        println("[${index + 1}] ${input.displayName}")
-        val result = if (input.error != null) {
-            CorpusResult(input.displayName, input.source, input.archiveEntry, 0, error = input.error)
-        } else {
-            try {
-                val rom = input.loadRom()
-                val measured = measureTimedValue { CatalogParser.parseCatching(rom) }
-                val materialized = measured.value.catalog?.getOrNull()
-                val persisted = if (cache != null && materialized != null) {
-                    runCatching { persistCatalog(cache, input, measured.value.analysis, materialized) }
-                } else {
-                    null
-                }
-                CorpusResult(
-                    input.displayName,
-                    input.source,
-                    input.archiveEntry,
-                    measured.duration.inWholeMilliseconds,
-                    result = materialized?.let { catalog ->
-                        measured.value.analysis.copy(
-                            capabilities = catalog.capabilities.values.sortedBy { it.capability.ordinal },
-                        )
-                    } ?: measured.value.analysis,
-                    catalog = materialized?.let(CatalogMetrics.Companion::from),
-                    samples = materialized?.let(CatalogSamples.Companion::from),
-                    catalogError = measured.value.catalog?.exceptionOrNull()?.let(::readableFailure),
-                    persistence = persisted?.getOrNull(),
-                    persistenceError = persisted?.exceptionOrNull()?.let(::readableFailure),
-                )
-            } catch (failure: Exception) {
-                CorpusResult(
-                    input.displayName,
-                    input.source,
-                    input.archiveEntry,
-                    0,
-                    error = "${failure.javaClass.simpleName}: ${failure.message ?: "parser failure"}",
-                )
-            }
-        }
-        println(
-            "[${index + 1}] -> ${result.result?.status ?: "ERROR"}" +
-                (result.result?.selectedFamily?.let { " / $it" } ?: "") +
-                (result.persistence?.let { " / SQLite ${it.bytes} bytes, reopen ${it.reopenMillis} ms" } ?: ""),
+    val persistenceScheduler = cache?.let {
+        val parallelism = options.jobs.coerceAtMost(MAX_CLI_JOBS)
+        KeyedTaskScheduler<String, Result<CatalogPersistenceMetrics>>(
+            parallelism = parallelism,
+            maximumDistinctTasks = parallelism * 2,
         )
-        result
+    }
+    println("Evaluating ${inputs.size} inputs with up to ${options.jobs} workers")
+    val pendingResults = try {
+        mapConcurrentlyOrdered(inputs, options.jobs) { index, input ->
+            println("[${index + 1}] ${input.displayName}")
+            var persistence: CompletableFuture<Result<CatalogPersistenceMetrics>>? = null
+            val result = if (input.error != null) {
+                CorpusResult(input.displayName, input.source, input.archiveEntry, 0, error = input.error)
+            } else {
+                try {
+                    val rom = input.loadRom()
+                    val measured = measureTimedValue { CatalogParser.parseCatching(rom) }
+                    val materialized = measured.value.catalog?.getOrNull()
+                    if (cache != null && persistenceScheduler != null && materialized != null) {
+                        persistence = persistenceScheduler.schedule(materialized.romSha256.lowercase()) {
+                            runCatching {
+                                persistCatalog(cache, input, measured.value.analysis, materialized)
+                            }
+                        }
+                    }
+                    CorpusResult(
+                        input.displayName,
+                        input.source,
+                        input.archiveEntry,
+                        measured.duration.inWholeMilliseconds,
+                        result = materialized?.let { catalog ->
+                            measured.value.analysis.copy(
+                                capabilities = catalog.capabilities.values.sortedBy { it.capability.ordinal },
+                            )
+                        } ?: measured.value.analysis,
+                        catalog = materialized?.let(CatalogMetrics.Companion::from),
+                        samples = materialized?.let(CatalogSamples.Companion::from),
+                        catalogError = measured.value.catalog?.exceptionOrNull()?.let(::readableFailure),
+                    )
+                } catch (failure: Exception) {
+                    CorpusResult(
+                        input.displayName,
+                        input.source,
+                        input.archiveEntry,
+                        0,
+                        error = "${failure.javaClass.simpleName}: ${failure.message ?: "parser failure"}",
+                    )
+                }
+            }
+            println(
+                "[${index + 1}] -> ${result.result?.status ?: "ERROR"}" +
+                    (result.result?.selectedFamily?.let { " / $it" } ?: ""),
+            )
+            PendingCorpusResult(result, persistence)
+        }
+    } catch (failure: Throwable) {
+        persistenceScheduler?.close()
+        throw failure
+    }
+    val results = try {
+        pendingResults.map(PendingCorpusResult::await)
+    } finally {
+        persistenceScheduler?.close()
     }
     val report = CorpusReport(
         execution = executionIdentity,
@@ -228,6 +248,83 @@ internal fun <T, R> mapConcurrentlyOrdered(
 }
 
 private data class IndexedResult<R>(val index: Int, val value: R)
+
+private data class PendingCorpusResult(
+    val result: CorpusResult,
+    val persistence: CompletableFuture<Result<CatalogPersistenceMetrics>>?,
+) {
+    fun await(): CorpusResult {
+        val persisted = persistence?.let { future ->
+            try {
+                future.get()
+            } catch (failure: Exception) {
+                Result.failure(failure.cause ?: failure)
+            }
+        }
+        val persistenceError = persisted?.exceptionOrNull()?.let(::readableFailure)
+        return result.copy(
+            persistence = persisted?.getOrNull(),
+            persistenceError = persistenceError,
+            manualReviewRequired = result.manualReviewRequired || persistenceError != null,
+        )
+    }
+}
+
+internal class KeyedTaskScheduler<K, V>(
+    parallelism: Int,
+    maximumDistinctTasks: Int,
+) : AutoCloseable {
+    private val executor = Executors.newFixedThreadPool(parallelism)
+    private val capacity = Semaphore(maximumDistinctTasks)
+    private val monitor = Any()
+    private val tasks = HashMap<K, CompletableFuture<V>>()
+
+    init {
+        require(parallelism > 0) { "scheduler parallelism must be positive" }
+        require(maximumDistinctTasks >= parallelism) {
+            "scheduler task capacity must cover its workers"
+        }
+    }
+
+    fun schedule(key: K, task: () -> V): CompletableFuture<V> {
+        synchronized(monitor) {
+            tasks[key]?.let { return it }
+        }
+        capacity.acquire()
+        val future = synchronized(monitor) {
+            tasks[key]?.also {
+                capacity.release()
+                return it
+            }
+            CompletableFuture<V>().also { tasks[key] = it }
+        }
+        try {
+            executor.execute {
+                try {
+                    future.complete(task())
+                } catch (failure: Throwable) {
+                    future.completeExceptionally(failure)
+                } finally {
+                    capacity.release()
+                }
+            }
+        } catch (failure: Throwable) {
+            future.completeExceptionally(failure)
+            capacity.release()
+        }
+        return future
+    }
+
+    override fun close() {
+        executor.shutdown()
+        if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+            executor.shutdownNow()
+            check(executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                "keyed task scheduler did not stop"
+            }
+        }
+    }
+}
 
 private fun persistCatalog(
     cache: CatalogCache,

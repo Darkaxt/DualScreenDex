@@ -1,10 +1,21 @@
 package com.darkaxt.dualdex.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import java.io.File
 
 interface CatalogRepository {
     fun write(catalog: ParsedCatalog, source: CatalogSourceMetadata, progress: CatalogWriteProgress)
+    fun write(
+        catalog: ParsedCatalog,
+        source: CatalogSourceMetadata,
+        progress: CatalogWriteProgress,
+        cancellation: ParserCancellationToken,
+    ) {
+        cancellation.throwIfCancellationRequested()
+        write(catalog, source, progress)
+        cancellation.throwIfCancellationRequested()
+    }
     fun readComplete(sha256: String): StoredCatalog?
     fun lookupComplete(sha256: String): CatalogCacheLookup = readComplete(sha256).let { stored ->
         CatalogCacheLookup(
@@ -43,22 +54,34 @@ class CatalogCache(
         require(directory.isDirectory) { "catalog cache path is not a directory: $directory" }
     }
 
-    @Synchronized
     override fun write(catalog: ParsedCatalog, source: CatalogSourceMetadata, progress: CatalogWriteProgress) {
+        write(catalog, source, progress, ParserCancellationToken.NONE)
+    }
+
+    override fun write(
+        catalog: ParsedCatalog,
+        source: CatalogSourceMetadata,
+        progress: CatalogWriteProgress,
+        cancellation: ParserCancellationToken,
+    ) {
         val file = fileFor(catalog.romSha256)
         CanonicalDatabaseWriteCoordinator.write(file) {
             databaseFactory.open(file).use { database ->
-                CatalogWriter(database).write(catalog, source, progress)
+                CatalogWriter(database).write(catalog, source, progress, cancellation)
             }
         }
     }
 
-    @Synchronized
     override fun readComplete(sha256: String): StoredCatalog? = lookupComplete(sha256).stored
 
-    @Synchronized
     override fun lookupComplete(sha256: String): CatalogCacheLookup {
         val file = fileFor(sha256)
+        return CanonicalDatabaseWriteCoordinator.write(file) {
+            lookupCompleteCoordinated(file)
+        }
+    }
+
+    private fun lookupCompleteCoordinated(file: File): CatalogCacheLookup {
         val normalizedSha = file.nameWithoutExtension
         if (!file.isFile) {
             return lookup(normalizedSha, CatalogCacheDecision.MISS_FILE_ABSENT)
@@ -81,7 +104,6 @@ class CatalogCache(
         }
     }
 
-    @Synchronized
     override fun findCompleted(crc32: String, romSize: Int, romTitle: String?): List<StoredCatalog> =
         directory.listFiles { file -> file.isFile && file.extension == "sqlite" }.orEmpty()
             .mapNotNull { file -> readComplete(file.nameWithoutExtension) }
@@ -98,7 +120,6 @@ class CatalogCache(
     }
 
     /** Removes only inactive parser databases. SaveRAM snapshots and knowledge records are not in this namespace. */
-    @Synchronized
     fun clearInactive(activeSha256: String?): Int {
         val active = activeSha256?.also {
             require(it.matches(Regex("[0-9a-fA-F]{64}"))) { "active catalog SHA-256 is invalid" }
@@ -107,10 +128,17 @@ class CatalogCache(
         val candidates = directory.listFiles().orEmpty().filter { file ->
             CACHE_FILE.matches(file.name) && file.name.substringBefore(".sqlite").lowercase() != active
         }
-        candidates.forEach { file ->
-            check(file.canonicalFile.parentFile == root) { "refusing to clear a cache outside its directory" }
-            check(file.delete() || !file.exists()) { "inactive catalog cache could not be removed: $file" }
-        }
+        candidates.groupBy { file -> file.name.substringBefore(".sqlite").lowercase() }
+            .forEach { (sha256, files) ->
+                CanonicalDatabaseWriteCoordinator.write(fileFor(sha256)) {
+                    files.forEach { file ->
+                        check(file.canonicalFile.parentFile == root) {
+                            "refusing to clear a cache outside its directory"
+                        }
+                        check(file.delete() || !file.exists()) { "inactive catalog cache could not be removed: $file" }
+                    }
+                }
+            }
         return candidates.count { !it.exists() }
     }
 
