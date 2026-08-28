@@ -1,0 +1,965 @@
+{
+  "schema": 1,
+  "records": [
+    {
+      "sourceGameId": 515,
+      "achievementId": 33613,
+      "sourceDescriptionSha256": "8233830ea8b6ef8197bae0160d8f3c379056b45fb23a08b8d108aec8f2b76817",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 515,
+      "achievementId": 33618,
+      "sourceDescriptionSha256": "90f353a89f800f7ecb11504128ee2f66747f3604ce48d99df585f528ed80a7b1",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 515,
+      "achievementId": 33626,
+      "sourceDescriptionSha256": "04ad8590cb5f8d76cabe6da50dfa86df332f34e4cfe869911286fbb8e2055227",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 515,
+      "achievementId": 33628,
+      "sourceDescriptionSha256": "8701cd762a1385cb8876b271dfb350cd1b2a1fabea0c0a9d3df527bebfcd6c68",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 515,
+      "achievementId": 33630,
+      "sourceDescriptionSha256": "03fe6bb009b879fec060e47616367af57def8b2d8a0098fd1d955ec213a3a1e6",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 515,
+      "achievementId": 33631,
+      "sourceDescriptionSha256": "1fb60e3fcd52c10507e4201d66665783041d94c3f0e02a97c64ab043e33cfa03",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 515,
+      "achievementId": 33632,
+      "sourceDescriptionSha256": "1144745cfd93ab260cc4fb27e0af82cedc900485ab0560c1a4aa47521220e079",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 515,
+      "achievementId": 33633,
+      "sourceDescriptionSha256": "bebeb9f9c90dcf40d626c6a81573e1468f31de0d9add92f525e999f8cbed702a",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 515,
+      "achievementId": 195145,
+      "sourceDescriptionSha256": "0787d8878773dd0121cde3c85d325e2cc81ba3a7d2202acfdf288be141f730b2",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 515,
+      "achievementId": 195152,
+      "sourceDescriptionSha256": "07a4a599f21f7627cac37bfcff8a5fecb46bc04fe473e94bc7e91ca1e78ec44d",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 576,
+      "achievementId": 5086,
+      "sourceDescriptionSha256": "4692c7355705468996e778109d794997138c15636d2954778cddb931e5f057cf",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 576,
+      "achievementId": 155179,
+      "sourceDescriptionSha256": "b1a86fe411f4b3750b96368175cbeddd0e64a7a0dcfc137baabfe93f958fb7a5",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 576,
+      "achievementId": 155193,
+      "sourceDescriptionSha256": "21f1ea1180b3b0329b8b4ba9e4f64e5343e7e1a72c457fd2759f02c09ea2ded0",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 576,
+      "achievementId": 155201,
+      "sourceDescriptionSha256": "e1878584ffcccf2ad772f50e463fed009474b2de01222925dfa2e520a90ded23",
+      "semanticFamily": "COMPLETION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 576,
+      "achievementId": 155202,
+      "sourceDescriptionSha256": "70a01035f15beb15709a271d8856a5b96c40ec42a559d5b0d2679da497950bdd",
+      "semanticFamily": "COMPLETION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 586,
+      "achievementId": 540266,
+      "sourceDescriptionSha256": "0901b673efc91a3f2324d552836c26614a306032cf65c3887c6032b4016d480b",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 586,
+      "achievementId": 540269,
+      "sourceDescriptionSha256": "173e526b60da6244fe29688a6744f2d74f5eddc6dcd5cea22c1f7119469c6872",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 586,
+      "achievementId": 540284,
+      "sourceDescriptionSha256": "700e479cec81fd13eb083d371f7ce188877b99ba3c30667bd0543675e1e58fdd",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 586,
+      "achievementId": 540336,
+      "sourceDescriptionSha256": "12278f93c6f9bc0960bae8003023f26ffde755b493fe28b2e39423dd220a1b60",
+      "semanticFamily": "BATTLE",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 27608,
+      "sourceDescriptionSha256": "f4503fbc190ffaffba357618787a41cf8ebd056a455c55bd48cc7ce2470c2c12",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 57270,
+      "sourceDescriptionSha256": "30d585cc8c94445fe0ca3c93b3506db27c908a867b21f63f71cc993723e72c2f",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 57272,
+      "sourceDescriptionSha256": "2b68f87fc926cde65e4d71c93616c95d51d5278a013d9f502ec412801bb3d10c",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537124,
+      "sourceDescriptionSha256": "1f8a8f2987a13e4c8bfa88d8cc4b7622662059c1d1f89060dc01bcd32ca2f970",
+      "semanticFamily": "COMPLETION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537138,
+      "sourceDescriptionSha256": "22e111b790df3ff23623bec1ebaba577868665016c8b5accdbc85088b6c22edb",
+      "semanticFamily": "PARTY",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537183,
+      "sourceDescriptionSha256": "6edd0b1624138065bff39731aad3c8977f5802206b9d601fb25a99cacf85c278",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537184,
+      "sourceDescriptionSha256": "472880b012bbabd5c310864a1036c7c48a18a0d258b69dadb367aff660b1d78f",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537185,
+      "sourceDescriptionSha256": "9117a0f061c487acd3a4bb9602cc0eb95ce71770dd37d9217b0db00593e941be",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537187,
+      "sourceDescriptionSha256": "929a708c5637743ee1ff88b637ad6ed643ba1cda35b7763015d59077915bdc36",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537190,
+      "sourceDescriptionSha256": "f6b6cbbb7f824b4fea946ee0103df8a7bd60f5607ac158fde5f6b0de8289d954",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537192,
+      "sourceDescriptionSha256": "f8b03f823205570a56b2dc1bc52fbfb548496f1dee605d543e1edf9844f3b18a",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537193,
+      "sourceDescriptionSha256": "bfb7c11f084367b8f8e9fe30597cf9aaefb6bf85638700901b4613d7c38faf50",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537198,
+      "sourceDescriptionSha256": "906bcafcdf39a9a84b350c2a6ee13c6e8f322a51255ab2ffd2ab1773f242b079",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537205,
+      "sourceDescriptionSha256": "39cc08ed8c5a1d9abd5978910685fa1775568d4f5c96343c0c5148445b122e4e",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537212,
+      "sourceDescriptionSha256": "e8cc163bb9be14bf90065952bc8054a4907f1b61c16e8bcfe86d237095c6bd3f",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537213,
+      "sourceDescriptionSha256": "3fde76dab84e83fa8fc7bee8b63de5122893d7651b0c422290713fb95b8c6516",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537217,
+      "sourceDescriptionSha256": "b5252ce1aa851c66a0ad3a829a6c1021eaf753160612f5b70855f43d9daea7b5",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537225,
+      "sourceDescriptionSha256": "0797037131b2ed6f99ca23e9ec674852461c36f9cc4eb50db50222c443026598",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537226,
+      "sourceDescriptionSha256": "aa0b3904257ad9cc4998d750e95a6f85edcb7dc2e3efa3d9ad0a4fb453fe1931",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537228,
+      "sourceDescriptionSha256": "4632d5155184e737b8be1aa44db35a3e91fcc16d44b84842fef4c742ea5aa6eb",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537231,
+      "sourceDescriptionSha256": "e9a700a799268d39afac396d9c45af6adcd0c13c575657a6932798884d6724f1",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537237,
+      "sourceDescriptionSha256": "384dbaa2869bb5c2283f1bebf33a0016c0098d84f2205f34a12824228d2a46c9",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 668,
+      "achievementId": 537450,
+      "sourceDescriptionSha256": "68f3674ea6e6bbd02c3b6c2f671fb5fd9f5a90794e2f13864630789dca170499",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 722,
+      "achievementId": 5113,
+      "sourceDescriptionSha256": "4692c7355705468996e778109d794997138c15636d2954778cddb931e5f057cf",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 4445,
+      "sourceDescriptionSha256": "44fb2d1d2cb86776e8d75ad2e11834c4fc931fb490bf4c6bd37a9532290efc78",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81680,
+      "sourceDescriptionSha256": "edba8ea61232535eb1757e56ee4f23491381732f6d6c129804922e8adc38408d",
+      "semanticFamily": "EXPLORATION",
+      "portabilityTier": 3,
+      "recoveryPath": "SEQUENCE_SENSITIVE"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81814,
+      "sourceDescriptionSha256": "d206db5ec39a0a7003c58b9fbe0bd3c7092ce8acf6115ebf4957a87e5263fc91",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81815,
+      "sourceDescriptionSha256": "5d2628f4ea0c39abe05b7ce440b7249ba2b4e5c3967547aecc888367847cc59c",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81816,
+      "sourceDescriptionSha256": "039fac9b70ce6302a2dcdd620f303298276cd7c5f398f9cf44bf13f06f29a3ff",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81817,
+      "sourceDescriptionSha256": "18d11362801d590d5a10e64b3697a4ee1607c0ad377daed58e635a0ffdcc334b",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81818,
+      "sourceDescriptionSha256": "8931213674decd1c4e3f6795ec6793e92e87db0e3c400bc22c9b28966f9fdda1",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81819,
+      "sourceDescriptionSha256": "82f2322bd847992395c60cd386845de40f1f309f4e7dcb454d9c919e0f6119bd",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81820,
+      "sourceDescriptionSha256": "feba163602a4065f42fae7084f6b620da1441c2af66b31154e8b444c5ea06862",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81976,
+      "sourceDescriptionSha256": "fcf8c64548752f350dd5709b8d672958251f4b26a9143a7df9d6ed5469cb8cdd",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81977,
+      "sourceDescriptionSha256": "6f25ad3cd0f2d1036a6d9ff6fbcca3254004a8a4f8789e7f244d2af5d65fbcb5",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 81978,
+      "sourceDescriptionSha256": "3293fb908301b5d095bbf3a63d9bebe7e33bb290690d33685a433500a1da3e28",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 723,
+      "achievementId": 82089,
+      "sourceDescriptionSha256": "0843aa5e0a21f2b3b6179285c46813717098d4463bbfd089cc8f48e0d7dea81f",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "SEQUENCE_SENSITIVE"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 4414,
+      "sourceDescriptionSha256": "700e479cec81fd13eb083d371f7ce188877b99ba3c30667bd0543675e1e58fdd",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108035,
+      "sourceDescriptionSha256": "8afa7e945d0f928a81b34c9bb969ae2bd8005ff98f3635617b49fdabc4ead0d3",
+      "semanticFamily": "EXPLORATION",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108040,
+      "sourceDescriptionSha256": "cb7783dcf3e94442d31cb924a6c370af3c096250685d9956aaa937046145cd07",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108042,
+      "sourceDescriptionSha256": "60fd292f1deb9066cfd85b167f011ec0cda942380d957e5f618d801e42e923aa",
+      "semanticFamily": "BATTLE",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108057,
+      "sourceDescriptionSha256": "df5e1750f9a8adc383e48a010a6effb7b295a498eaf88b619a521709050ef8cf",
+      "semanticFamily": "EXPLORATION",
+      "portabilityTier": 3,
+      "recoveryPath": "SEQUENCE_SENSITIVE"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108064,
+      "sourceDescriptionSha256": "99bffa8752acaf1788aa16be323a10c60b6a023daa588b1738369a512979fb7c",
+      "semanticFamily": "EXPLORATION",
+      "portabilityTier": 3,
+      "recoveryPath": "SEQUENCE_SENSITIVE"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108066,
+      "sourceDescriptionSha256": "d0d8fc2f6a0539df449bb16a6045e8545a79f97322246dd755bbf7220fc1d643",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108067,
+      "sourceDescriptionSha256": "fa3688c9d57fafcaae300c9cb6a198e374c5b3135a31836278cf0f3334865c1d",
+      "semanticFamily": "EXPLORATION",
+      "portabilityTier": 3,
+      "recoveryPath": "SEQUENCE_SENSITIVE"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108069,
+      "sourceDescriptionSha256": "c076fba1e7eb98ffd17db37a2b3f1b05c2b521860d37c1df60aa25ff1acae695",
+      "semanticFamily": "EXPLORATION",
+      "portabilityTier": 3,
+      "recoveryPath": "SEQUENCE_SENSITIVE"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108138,
+      "sourceDescriptionSha256": "b01c7a25a5c7bff8cc7dff712f235e7197b12321c1a6a710b19c56c9717b37db",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108139,
+      "sourceDescriptionSha256": "173e526b60da6244fe29688a6744f2d74f5eddc6dcd5cea22c1f7119469c6872",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108172,
+      "sourceDescriptionSha256": "167a6a04076bf4c3e88e0067c1db3f913ee2a629ebdb0b12fd418d9175a2eb76",
+      "semanticFamily": "BATTLE",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108173,
+      "sourceDescriptionSha256": "e5248be1576cc403efa25da94c8148ff6667b506ba206f3fc73fd30ee0d0bf07",
+      "semanticFamily": "BATTLE",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108182,
+      "sourceDescriptionSha256": "33e17a6c4cbde48c2e5ccb65dfa34c825202f1d5215993eec72b9304bc06f57f",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108364,
+      "sourceDescriptionSha256": "fbb8fd1e43f168bf9713ded5e93a5db4b888c0280a73b7c731d73583c54e3a68",
+      "semanticFamily": "BATTLE",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 724,
+      "achievementId": 108370,
+      "sourceDescriptionSha256": "bbc743f57ef99c7a39abc528a5d5fc5211c5295030fe26513a9031eac015e821",
+      "semanticFamily": "PARTY",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 34797,
+      "sourceDescriptionSha256": "8233830ea8b6ef8197bae0160d8f3c379056b45fb23a08b8d108aec8f2b76817",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 34802,
+      "sourceDescriptionSha256": "90f353a89f800f7ecb11504128ee2f66747f3604ce48d99df585f528ed80a7b1",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 34810,
+      "sourceDescriptionSha256": "31fca93842c64bd749da50ae4e54581781ddd7844ea9f0d58e2fddd9be9befad",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 34812,
+      "sourceDescriptionSha256": "8701cd762a1385cb8876b271dfb350cd1b2a1fabea0c0a9d3df527bebfcd6c68",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 34814,
+      "sourceDescriptionSha256": "03fe6bb009b879fec060e47616367af57def8b2d8a0098fd1d955ec213a3a1e6",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 34815,
+      "sourceDescriptionSha256": "1fb60e3fcd52c10507e4201d66665783041d94c3f0e02a97c64ab043e33cfa03",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 34816,
+      "sourceDescriptionSha256": "1144745cfd93ab260cc4fb27e0af82cedc900485ab0560c1a4aa47521220e079",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 34817,
+      "sourceDescriptionSha256": "bebeb9f9c90dcf40d626c6a81573e1468f31de0d9add92f525e999f8cbed702a",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 541903,
+      "sourceDescriptionSha256": "a580cab6184ec5deb0e9126fe1199556004ce13000834dd80755588411ec1491",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 541906,
+      "sourceDescriptionSha256": "968b971d70c234a61bde3dc1711db00d9b231e8f330ae47ae09bbf652bb8bfc4",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 541926,
+      "sourceDescriptionSha256": "c70fbbdc206fc758a203e6cfd6650d956edeef59583ce3d4f03192355bedde01",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 541962,
+      "sourceDescriptionSha256": "4e6db6a413f821a6503cb6b84fd4eb2622026427cb9a772acea3769d8a1156ec",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 541965,
+      "sourceDescriptionSha256": "a3dbe11e210f78757101d1fe4359d2983a12d9b0fd90cb7c8e2c13ad58357f51",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 541970,
+      "sourceDescriptionSha256": "bcc99db333a84acad542df20da11815bcc4df7591c2fe47ac5d6e7378238997f",
+      "semanticFamily": "COLLECTION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 541982,
+      "sourceDescriptionSha256": "eaa0efd90f9c4728b95d8179d1aea4e9567d5ea9e3ba95e7039cf480896ed73b",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 541984,
+      "sourceDescriptionSha256": "4d4f0bfc62856e962e6aaf7ae0bb776bf99f39d72e118402d19c5d4ce8fca395",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 788,
+      "achievementId": 541991,
+      "sourceDescriptionSha256": "dc5f0290e08c83940dace2f75bc404fb30183e6fbe4b4b8c795de3886d36d9fc",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 790,
+      "achievementId": 31223,
+      "sourceDescriptionSha256": "8fdefaa4f7a63fc5d62701b9901c2e5188310d07fa74395c0ea194be0b448efb",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 790,
+      "achievementId": 91986,
+      "sourceDescriptionSha256": "3c808d79f34997be44e3b1f8c3d6fd5a27b9ccd3806986efb5981311df922f0d",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 790,
+      "achievementId": 91987,
+      "sourceDescriptionSha256": "4d4f55b2d26d408a3dd15dcfe59d9c4866085d85ffd986bc6624ea752c7f912c",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 790,
+      "achievementId": 91991,
+      "sourceDescriptionSha256": "99da3cc174d04584b19919c36c37982db304f5b2c561a56de7411f14dadd28d4",
+      "semanticFamily": "COMPLETION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 790,
+      "achievementId": 91995,
+      "sourceDescriptionSha256": "88688a6f7eef3bc42072eb6c240acfef65ba2bdb0957e6d09667a48058994471",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 790,
+      "achievementId": 91996,
+      "sourceDescriptionSha256": "a5670c4ca02022b6406068ee7cf4c2aaa9a4ae4049a03cbb7663c0cedccb4efd",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 790,
+      "achievementId": 91997,
+      "sourceDescriptionSha256": "5f79b1ca109df7c7cf05820d5219b855fe609ba51c8ef972054630928cee9637",
+      "semanticFamily": "PARTY",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 790,
+      "achievementId": 92001,
+      "sourceDescriptionSha256": "824eb1d0750143f451e13a1dd8a36df8062adf675be1adea9f0a1049b43e0a48",
+      "semanticFamily": "PARTY",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 791,
+      "achievementId": 31169,
+      "sourceDescriptionSha256": "671873423750c8410f81547f203bd85cc8ce2bfff4ce4d1a84e4a75e85d4745b",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 791,
+      "achievementId": 92006,
+      "sourceDescriptionSha256": "8555eb434f8bba50cd00d66b31e9ad99fd740a9070e05d41cdc2c039b729fb4d",
+      "semanticFamily": "MINIGAME",
+      "portabilityTier": 3,
+      "recoveryPath": "SEQUENCE_SENSITIVE"
+    },
+    {
+      "sourceGameId": 791,
+      "achievementId": 92007,
+      "sourceDescriptionSha256": "d08fd770df5cb93e7f53b99f12c867e35ae299abfae314959f56ea8f63187e81",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 791,
+      "achievementId": 92009,
+      "sourceDescriptionSha256": "6dfccf646a81b8e14515c1e1648bb1dc86b48083c5714a0ff2139c4169d8fa16",
+      "semanticFamily": "MINIGAME",
+      "portabilityTier": 3,
+      "recoveryPath": "SEQUENCE_SENSITIVE"
+    },
+    {
+      "sourceGameId": 791,
+      "achievementId": 92017,
+      "sourceDescriptionSha256": "5f5073cfbaed6794529bcffa897e35c7594c10237a3dfb89c2e2f9b23ad382f0",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 791,
+      "achievementId": 92020,
+      "sourceDescriptionSha256": "e0d3578166442dd6cf253b03d048795bdf0c24d3bd6ca05458f6dda162b26536",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 791,
+      "achievementId": 92024,
+      "sourceDescriptionSha256": "b50f12c9d984de7e2f47f7045b834653a16a6b83045dbbff3a6ca441c45aa216",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 5636,
+      "sourceDescriptionSha256": "7b570b7a9bd7982da2d4fdf1fe3281667f68ac117c39e9a23ae305f0e9e66da7",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199566,
+      "sourceDescriptionSha256": "4438a420da0578bf43ab918e024ea8a1ea098826e490be8fd1e479de03a96327",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199569,
+      "sourceDescriptionSha256": "c0f2dee8aff3f05204f6f3ca75fa74f77c70fb412acfc06603058197d2b10099",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199580,
+      "sourceDescriptionSha256": "c49593776359eb1972c2e3f1432310adfda774e1de7d80456888113880f4f03b",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199585,
+      "sourceDescriptionSha256": "dc7025c83a8103e2a59c3a6a62b0ebdf0c4b234828f8db6f3caa4293f7dddfd4",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199594,
+      "sourceDescriptionSha256": "e045e75175773e29cd475e634e50fbed9fd80655edc6ac41e83e44f8d68adb9f",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199595,
+      "sourceDescriptionSha256": "5da2ec84f692311ef9b853a1df3e9baa4567fe21eb97dc40f2e57c40f200cffb",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199596,
+      "sourceDescriptionSha256": "8d6036f069589ad5b61d4eacdac89855db6011e6e495e33e955bf0bcac3fecab",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199597,
+      "sourceDescriptionSha256": "7551ed8d4fd8c63d2bfc3e4ea15fe942a2fb6bcc084ec8bdd5e0e9067581f47b",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199621,
+      "sourceDescriptionSha256": "06e051c1969d43758f6ed0ded3142de5529770041d44d8bb442dae82e3345796",
+      "semanticFamily": "BATTLE",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199625,
+      "sourceDescriptionSha256": "2070bcac521b6899f0e2f4712ddb05126904101988d6266e416d463d30296798",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199626,
+      "sourceDescriptionSha256": "715863a212dceb76bc432376fa8f5b5af6fa00f7998672661ec7aa198b553361",
+      "semanticFamily": "BATTLE",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199628,
+      "sourceDescriptionSha256": "fa6cafece9ed3a67c8aa9c563b18da3858e4efda9dd7f9037db9d2bc35fed5fa",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199631,
+      "sourceDescriptionSha256": "be1e9c3a5c7f2eb09feb20f6964d06ce40210e6495005ba36c0cbca625ae9165",
+      "semanticFamily": "GAME_SPECIFIC",
+      "portabilityTier": 3,
+      "recoveryPath": "GAME_SPECIFIC_ADAPTER"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199633,
+      "sourceDescriptionSha256": "6cb2175975f996453bd3eec5c9b6ccc831ef638ef50ea84055f8c57059d4ed98",
+      "semanticFamily": "PARTY",
+      "portabilityTier": 2,
+      "recoveryPath": "NORMALIZED_LIVE_RULE"
+    },
+    {
+      "sourceGameId": 810,
+      "achievementId": 199638,
+      "sourceDescriptionSha256": "39fe0e48b504abda613d3f9885800a18d17c318e37838ca90b37c1cdb063f116",
+      "semanticFamily": "PROGRESSION",
+      "portabilityTier": 2,
+      "recoveryPath": "PERSISTENT_SOURCE_FACT"
+    }
+  ]
+}

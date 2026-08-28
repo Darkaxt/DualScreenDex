@@ -402,7 +402,8 @@ test("publishes independently gated compatibility and UI-conformance evidence", 
   assert.match(workflow, /\.aggregate\.baselineApplicableTemplates\.covered == 66/);
   assert.match(workflow, /\.aggregate\.applicableFields\.covered == 148/);
   assert.match(workflow, /\.aggregate\.applicableSources\.total == 84/);
-  assert.match(workflow, /\.reference\.descriptionsClassified\.covered == 883/);
+  assert.match(workflow, /\.reference\.classified\.covered == 1003/);
+  assert.match(workflow, /\.reference\.descriptionsClassified\.covered == 1003/);
   assert.match(workflow, /\.aggregate\.allApplicableTemplates\.covered == 110/);
   assert.match(workflow, /\.aggregate\.allFullyObservableTemplates\.covered == 104/);
   assert.match(workflow, /\.aggregate\.allValidatedTemplates\.covered == 104/);

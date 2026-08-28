@@ -4,7 +4,7 @@ This register distinguishes later-stage work from Stage 0 blockers. Stage 0 has 
 
 | Deferred requirement | Assigned stage | Entry condition | Required completion evidence |
 | --- | --- | --- | --- |
-| Tier 4 glitch, trade, unavailable frame-transition, or irreducibly ambiguous references | Research exclusion after Stage 6 | Only reconsider when DualDex can prove the required fact/event safely | New real semantic evidence and a separately audited implementation; no guessed rules |
+| 120 semantically recovered references without exact runtime facts/adapters | Post-Stage 7 semantic recovery | Add an equivalent only when `ResolvedGameSnapshot` proves its complete condition and temporal boundary | 120/120 identities and description hashes classified; each runtime addition still requires real source-backed fact or adapter evidence |
 
 ## Stage 1 disposition
 
@@ -49,10 +49,10 @@ Portable Challenge expansion is implemented and removed from the Tier 2/runtime 
 
 The Tier 3 adapter family was investigated across all 14 controls and remains **0/14 `NOT_FOUND`**. No source-backed control proved a safe game-specific mechanic adapter, so no adapter-bound challenge is generated and this evidence state is not relabeled as deferred work. Gym Leader roles are likewise **0/14 `NOT_FOUND`** and receive no name, ancestry, or retail fallback.
 
-Organic disclosure is complete: completed and next-ranked tiers, scope-aware noise suppression, per-objective percentages, and the knowledge-safe overall denominator share the engine result consumed by Trainer Progress and Atlas. Cross-feature icon, typography, theme, spacing, scroll, and route normalization was assigned to Stage 7 and is closed below. Tier 4 remains the sole challenge-family research exclusion.
+Organic disclosure is complete: completed and next-ranked tiers, scope-aware noise suppression, per-objective percentages, and the knowledge-safe overall denominator share the engine result consumed by Trainer Progress and Atlas. Cross-feature icon, typography, theme, spacing, scroll, and route normalization was assigned to Stage 7 and is closed below. The former 120-row classifier exclusion is now fully classified, while exact runtime equivalents remain separately capability-gated.
 
 ## Stage 7 disposition
 
 Cross-feature typography, themes, surfaces, icons, spacing, scroll ownership, focus, touch targets, and route evidence are complete. The deterministic 1024×768 matrix validates 28 routes across nine themes and three font scales: 756/756 rendered rows with zero blockers and zero errors. The route/font/computed-style/screenshot evidence and final conformance audit are committed beside this register.
 
-Tier 4 remains the only suite research exclusion. It will be reconsidered after the current plan, using new semantic evidence rather than guessed rules.
+Reference semantic classification is **1,003/1,003 (100.00%)**. Exact runtime equivalents added by the recovery are **0/120 (0.00%)** because the current resolved snapshot does not yet prove their complete conditions. RetroAchievements trigger expressions imported: **0**. The remaining work is divided into 56 persistent source facts, 13 normalized live rules, 43 game-specific adapters, and eight sequence-sensitive objectives; each remains absent until its own live/source evidence is complete.

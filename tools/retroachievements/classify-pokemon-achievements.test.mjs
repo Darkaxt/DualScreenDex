@@ -86,6 +86,126 @@ test("fails closed when prose has no unambiguous semantic signal", () => {
   assert.equal(result.templateDescription, null);
 });
 
+test("applies a curated semantic override only to the exact source description fingerprint", () => {
+  const achievement = record("Glance at a mysterious bird in the distance using the binoculars.", {
+    sourceGameId: 586,
+    achievementId: 540269,
+  });
+  const semanticOverride = {
+    sourceGameId: 586,
+    achievementId: 540269,
+    sourceDescriptionSha256: sha256(achievement.description),
+    semanticFamily: "GAME_SPECIFIC",
+    portabilityTier: 3,
+    recoveryPath: "GAME_SPECIFIC_ADAPTER",
+  };
+
+  const result = classifyAchievement(achievement, semanticOverride);
+
+  assert.equal(result.semanticFamily, "GAME_SPECIFIC");
+  assert.equal(result.portabilityTier, 3);
+  assert.equal(result.outcome, "CLASSIFIED");
+  assert.equal(result.recoveryPath, "GAME_SPECIFIC_ADAPTER");
+  assert.match(result.reason, /curated semantic review/i);
+  assert.deepEqual(result.requiredCapabilities, ["GAME_SPECIFIC_ADAPTER"]);
+  assert.equal(result.templateKey, "GAME_SPECIFIC_ADAPTER");
+
+  assert.throws(
+    () => classifyAchievement(achievement, { ...semanticOverride, sourceDescriptionSha256: "0".repeat(64) }),
+    /description fingerprint/i,
+  );
+});
+
+test("rejects duplicate, orphaned, and malformed semantic overrides", async () => {
+  const root = await mkdtemp(join(TEST_TEMP_ROOT, "dualdex-ra-overrides-"));
+  try {
+    const researchDirectory = join(root, "research");
+    const achievement = record("A strange secret awaits.", {
+      sourceGameId: 724,
+      achievementId: 7,
+    });
+    const researchText = JSON.stringify({
+      schema: 1,
+      sourceSystem: "RetroAchievements",
+      generation: 1,
+      sourceGameId: 724,
+      sourceGameTitle: "Pokemon Red Version",
+      expectedTitle: "Pokemon Red Version",
+      sourceUrl: "https://retroachievements.org/game/724",
+      extractedAt: EXTRACTED_AT,
+      sourceModifiedAt: "2026-01-02 00:00:00",
+      achievements: [achievement],
+    });
+    await import("node:fs/promises").then(({ mkdir }) => mkdir(researchDirectory, { recursive: true }));
+    await writeFile(join(researchDirectory, "game-724.json"), researchText, "utf8");
+    const manifest = {
+      schema: 1,
+      extractedAt: EXTRACTED_AT,
+      gameCount: 1,
+      achievementCount: 1,
+      games: [{
+        gameId: 724,
+        generation: 1,
+        achievementCount: 1,
+        researchFile: "game-724.json",
+        researchSha256: sha256(researchText),
+      }],
+    };
+    const validRecord = {
+      sourceGameId: 724,
+      achievementId: 7,
+      sourceDescriptionSha256: sha256(achievement.description),
+      semanticFamily: "PROGRESSION",
+      portabilityTier: 2,
+      recoveryPath: "PERSISTENT_SOURCE_FACT",
+    };
+
+    await assert.rejects(
+      classifyReferenceCorpus({
+        manifest,
+        researchDirectory,
+        semanticOverrides: { schema: 1, records: [validRecord, validRecord] },
+      }),
+      /duplicate semantic override/i,
+    );
+    await assert.rejects(
+      classifyReferenceCorpus({
+        manifest,
+        researchDirectory,
+        semanticOverrides: {
+          schema: 1,
+          records: [{ ...validRecord, achievementId: 8 }],
+        },
+      }),
+      /orphaned semantic override/i,
+    );
+    await assert.rejects(
+      classifyReferenceCorpus({
+        manifest,
+        researchDirectory,
+        semanticOverrides: {
+          schema: 1,
+          records: [{ ...validRecord, recoveryPath: "TRIGGER_BYTECODE" }],
+        },
+      }),
+      /recovery path/i,
+    );
+    await assert.rejects(
+      classifyReferenceCorpus({
+        manifest,
+        researchDirectory,
+        semanticOverrides: {
+          schema: 1,
+          records: [{ ...validRecord, semanticFamily: "UNCLASSIFIED" }],
+        },
+      }),
+      /semantic family/i,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("classifies sanitized research payloads deterministically without redistributing source prose", async () => {
   const root = await mkdtemp(join(TEST_TEMP_ROOT, "dualdex-ra-classify-"));
   try {
@@ -154,6 +274,12 @@ test("classifies sanitized research payloads deterministically without redistrib
         UNCLASSIFIED: 1,
       },
       byTier: { "1": 1, "2": 0, "3": 0, "4": 1 },
+      byRecoveryPath: {
+        PERSISTENT_SOURCE_FACT: 0,
+        NORMALIZED_LIVE_RULE: 0,
+        GAME_SPECIFIC_ADAPTER: 0,
+        SEQUENCE_SENSITIVE: 0,
+      },
       byExclusionReason: { "description is ambiguous under the fail-closed vocabulary": 1 },
     });
     assert.equal(serialized.includes("Private source title"), false);
@@ -280,6 +406,12 @@ test("renders numeric coverage and exclusion reasons in the research report", ()
       expressible: 6,
       byFamily: { COLLECTION: 3, GAME_SPECIFIC: 2, UNCLASSIFIED: 2, BATTLE: 3 },
       byTier: { "1": 4, "2": 2, "3": 2, "4": 2 },
+      byRecoveryPath: {
+        PERSISTENT_SOURCE_FACT: 1,
+        NORMALIZED_LIVE_RULE: 1,
+        GAME_SPECIFIC_ADAPTER: 0,
+        SEQUENCE_SENSITIVE: 0,
+      },
       byExclusionReason: { "description is ambiguous under the fail-closed vocabulary": 2 },
     },
     records: [],
@@ -290,6 +422,8 @@ test("renders numeric coverage and exclusion reasons in the research report", ()
   assert.match(report, /UNCLASSIFIED.*2/);
   assert.match(report, /Exclusions by reason/);
   assert.match(report, /ambiguous under the fail-closed vocabulary.*2/);
+  assert.match(report, /PERSISTENT_SOURCE_FACT.*1.*10\.00%/);
+  assert.match(report, /NORMALIZED_LIVE_RULE.*1.*10\.00%/);
   assert.doesNotMatch(report, /good|partial|mostly/i);
 });
 
@@ -327,10 +461,76 @@ test("publishes a closed semantic vocabulary schema", async () => {
   for (const field of [
     "templateTitle", "templateDescription", "requiredFacts", "requiredEvents",
     "requiredCatalogRoles", "temporalScope", "predicateOperators", "knowledgeVisibility",
+    "recoveryPath",
   ]) {
     assert.ok(schema.$defs.record.required.includes(field), field);
   }
+  assert.deepEqual(schema.$defs.recoveryPath.enum, [
+    "PERSISTENT_SOURCE_FACT",
+    "NORMALIZED_LIVE_RULE",
+    "GAME_SPECIFIC_ADAPTER",
+    "SEQUENCE_SENSITIVE",
+  ]);
+  assert.deepEqual(schema.$defs.record.properties.recoveryPath.anyOf, [
+    { $ref: "#/$defs/recoveryPath" },
+    { type: "null" },
+  ]);
+  assert.ok(schema.$defs.summary.required.includes("byRecoveryPath"));
+  assert.equal(schema.$defs.summary.properties.byRecoveryPath.additionalProperties, false);
+  assert.deepEqual(schema.$defs.summary.properties.byRecoveryPath.required, [
+    "PERSISTENT_SOURCE_FACT",
+    "NORMALIZED_LIVE_RULE",
+    "GAME_SPECIFIC_ADAPTER",
+    "SEQUENCE_SENSITIVE",
+  ]);
   assert.equal(schema.$defs.record.additionalProperties, false);
+});
+
+test("committed official corpus recovers every reviewed reference without trigger bytecode", async () => {
+  const classificationPath = fileURLToPath(new URL(
+    "../../docs/research/retroachievements/official-gen1-gen3-classification.json",
+    import.meta.url,
+  ));
+  const document = JSON.parse(await readFile(classificationPath, "utf8"));
+  const recoveryCounts = document.records.reduce((counts, entry) => {
+    if (entry.recoveryPath !== null) counts[entry.recoveryPath] = (counts[entry.recoveryPath] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  assert.equal(document.summary.total, 1003);
+  assert.equal(document.summary.classified, 1003);
+  assert.equal(document.summary.unclassified, 0);
+  assert.equal(document.summary.expressible, 1003);
+  assert.deepEqual(recoveryCounts, {
+    PERSISTENT_SOURCE_FACT: 56,
+    NORMALIZED_LIVE_RULE: 13,
+    GAME_SPECIFIC_ADAPTER: 43,
+    SEQUENCE_SENSITIVE: 8,
+  });
+  assert.equal(JSON.stringify(document).includes("MemAddr"), false);
+  assert.equal(JSON.stringify(document).includes("Trigger"), false);
+});
+
+test("classification validation rejects unknown recovery paths and inconsistent recovery counts", async () => {
+  const classificationPath = fileURLToPath(new URL(
+    "../../docs/research/retroachievements/official-gen1-gen3-classification.json",
+    import.meta.url,
+  ));
+  const document = JSON.parse(await readFile(classificationPath, "utf8"));
+  const recoveredIndex = document.records.findIndex((entry) => entry.recoveryPath !== null);
+  assert.notEqual(recoveredIndex, -1);
+
+  const unknownPath = structuredClone(document);
+  unknownPath.records[recoveredIndex].recoveryPath = "TRIGGER_BYTECODE";
+  assert.throws(() => validateClassificationDocument(unknownPath), /recovery path/i);
+
+  const inconsistentSummary = structuredClone(document);
+  inconsistentSummary.summary.byRecoveryPath.PERSISTENT_SOURCE_FACT -= 1;
+  assert.throws(() => validateClassificationDocument(inconsistentSummary), /recovery summary/i);
+
+  const inconsistentOutcome = structuredClone(document);
+  inconsistentOutcome.records[recoveredIndex].outcome = "UNCLASSIFIED";
+  assert.throws(() => validateClassificationDocument(inconsistentOutcome), /recovered classification/i);
 });
 
 function record(description, overrides = {}) {

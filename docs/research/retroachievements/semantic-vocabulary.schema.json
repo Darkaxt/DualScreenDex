@@ -55,6 +55,15 @@
         "UNCLASSIFIED"
       ]
     },
+    "recoveryPath": {
+      "type": "string",
+      "enum": [
+        "PERSISTENT_SOURCE_FACT",
+        "NORMALIZED_LIVE_RULE",
+        "GAME_SPECIFIC_ADAPTER",
+        "SEQUENCE_SENSITIVE"
+      ]
+    },
     "predicateOperator": {
       "type": "string",
       "enum": [
@@ -144,6 +153,7 @@
         "predicateOperators",
         "knowledgeVisibility",
         "requiredCapabilities",
+        "recoveryPath",
         "outcome",
         "reason"
       ],
@@ -264,6 +274,16 @@
             "type": "string"
           }
         },
+        "recoveryPath": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/recoveryPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "outcome": {
           "type": "string",
           "enum": [
@@ -287,6 +307,7 @@
         "expressible",
         "byFamily",
         "byTier",
+        "byRecoveryPath",
         "byExclusionReason"
       ],
       "properties": {
@@ -326,6 +347,34 @@
           "additionalProperties": {
             "type": "integer",
             "minimum": 0
+          }
+        },
+        "byRecoveryPath": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "PERSISTENT_SOURCE_FACT",
+            "NORMALIZED_LIVE_RULE",
+            "GAME_SPECIFIC_ADAPTER",
+            "SEQUENCE_SENSITIVE"
+          ],
+          "properties": {
+            "PERSISTENT_SOURCE_FACT": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "NORMALIZED_LIVE_RULE": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "GAME_SPECIFIC_ADAPTER": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "SEQUENCE_SENSITIVE": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "byExclusionReason": {

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { buildChallengeExpansionCompatibility } from "./challenge-expansion-compatibility.mjs";
 
@@ -67,7 +69,15 @@ function fixture() {
     progressReport,
     baselineCatalog: { schema: 1, challenges: Array.from({ length: 6 }, (_, index) => ({ key: `base-${index}` })) },
     extendedCatalog: { schema: 1, templates: structuredClone(templates) },
-    classification: { summary: { total: 1003, classified: 883, unclassified: 120, expressible: 883, byTier: { 2: 401, 3: 33, 4: 120 } } },
+    classification: {
+      summary: {
+        total: 1003,
+        classified: 1003,
+        unclassified: 0,
+        expressible: 1003,
+        byTier: { 1: 449, 2: 470, 3: 84, 4: 0 },
+      },
+    },
     inventoryManifest,
     date: "2026-08-27",
   };
@@ -76,8 +86,8 @@ function fixture() {
 test("reports the five numeric challenge measures across exactly fourteen controls", () => {
   const report = buildChallengeExpansionCompatibility(fixture());
 
-  assert.deepEqual(report.reference.descriptionsClassified, { covered: 883, total: 1003, percent: 88.04 });
-  assert.deepEqual(report.reference.templatesExpressible, { covered: 883, total: 883, percent: 100 });
+  assert.deepEqual(report.reference.descriptionsClassified, { covered: 1003, total: 1003, percent: 100 });
+  assert.deepEqual(report.reference.templatesExpressible, { covered: 1003, total: 1003, percent: 100 });
   assert.deepEqual(report.controls[0].coverage.allApplicableTemplates, {
     covered: 5, total: 12, percent: 41.67, notApplicable: 3, notFound: 4, error: 0,
   });
@@ -106,4 +116,22 @@ test("rejects identity drift malformed temporal rules and inventory drift", () =
   const inventoryDrift = fixture();
   inventoryDrift.inventoryManifest.controls[0].inventory = 99;
   assert.throws(() => buildChallengeExpansionCompatibility(inventoryDrift), /definition inventory mismatch/);
+});
+
+test("documents semantic recovery separately from exact runtime equivalents", async () => {
+  const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+  const audit = await readFile(
+    `${repositoryRoot}/docs/reports/passive-insights-progress/challenge-expansion-audit.md`,
+    "utf8",
+  );
+  const deferrals = await readFile(
+    `${repositoryRoot}/docs/reports/passive-insights-progress/deferrals.md`,
+    "utf8",
+  );
+  const combined = `${audit}\n${deferrals}`;
+
+  assert.match(combined, /semantic classification[^\n]*1,003\s*\/\s*1,003[^\n]*100\.00%/i);
+  assert.match(combined, /exact runtime equivalents[^\n]*0\s*\/\s*120[^\n]*0\.00%/i);
+  assert.match(combined, /trigger (?:bytecode|expressions)[^\n]*0/i);
+  assert.doesNotMatch(combined, /Tier 4 ambiguous\/glitch\/trade\/unavailable-frame references:\s*\*\*120/i);
 });

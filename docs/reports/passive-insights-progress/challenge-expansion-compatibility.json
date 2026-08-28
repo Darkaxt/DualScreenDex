@@ -9,19 +9,19 @@
   },
   "reference": {
     "descriptionsClassified": {
-      "covered": 883,
+      "covered": 1003,
       "total": 1003,
-      "percent": 88.04
-    },
-    "templatesExpressible": {
-      "covered": 883,
-      "total": 883,
       "percent": 100
     },
-    "tier2Classified": 401,
-    "tier3Classified": 33,
+    "templatesExpressible": {
+      "covered": 1003,
+      "total": 1003,
+      "percent": 100
+    },
+    "tier2Classified": 470,
+    "tier3Classified": 84,
     "tier4ResearchExclusions": {
-      "count": 120,
+      "count": 0,
       "outcome": "NOT_APPLICABLE"
     }
   },

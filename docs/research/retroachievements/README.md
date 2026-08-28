@@ -28,6 +28,7 @@ The repository contains only:
 
 - `official-gen1-gen3-manifest.json`: identity, counts, provenance, retrieval mode, and SHA-256 for each uncommitted research payload;
 - `official-gen1-gen3-classification.json`: source IDs and hashes plus DualDex-authored semantic metadata; it contains no source title or description prose;
+- `official-gen1-gen3-semantic-overrides.json`: 120 manually reviewed, description-fingerprint-bound semantic corrections with no prose, executable predicate, trigger, address, offset, or ROM identity selector;
 - `semantic-vocabulary.schema.json`: the closed commit-safe classification vocabulary.
 
 ## Credential and regeneration contract
@@ -52,7 +53,9 @@ node tools/retroachievements/classify-pokemon-achievements.mjs
 Remove-Item Env:DUALDEX_RA_REUSE_EXISTING
 ```
 
-The extractor writes payloads and the manifest atomically. Cache-only regeneration preserves the original extraction time and payload fingerprint. The classifier validates every fingerprint and exact field set before producing derived artifacts.
+The extractor writes payloads and the manifest atomically. Cache-only regeneration preserves the original extraction time and payload fingerprint. The classifier validates every fingerprint and exact field set before producing derived artifacts. A curated override is accepted only when its source game ID, achievement ID, and current description SHA-256 all match; duplicates, stale fingerprints, orphaned entries, unknown families, and unknown recovery paths fail closed.
+
+Current research coverage is **1,003/1,003 classified (100.00%)** and **1,003/1,003 expressible (100.00%)**. This is semantic research coverage, not a claim that 1,003 exact challenges are active in the APK. The 120 curated corrections are divided into 56 persistent source facts, 13 normalized live rules, 43 game-specific adapters, and eight sequence-sensitive objectives. Exact runtime equivalents from this recovery remain **0/120** until the unified resolved snapshot proves every required fact and temporal condition.
 
 ## Independent implementation boundary
 

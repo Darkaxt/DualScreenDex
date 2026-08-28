@@ -37,7 +37,7 @@ const challenges = {
   ],
 };
 
-const classification = { summary: { total: 1003, classified: 883, expressible: 883 } };
+const classification = { summary: { total: 1003, classified: 1003, expressible: 1003 } };
 
 test("reports current totals events and templates as separate numeric percentages", () => {
   const report = buildProgressTimelineCompatibility({
@@ -49,8 +49,8 @@ test("reports current totals events and templates as separate numeric percentage
     date: "2026-08-27",
   });
 
-  assert.deepEqual(report.reference.classified, { covered: 883, total: 1003, percent: 88.04 });
-  assert.deepEqual(report.reference.expressible, { covered: 883, total: 883, percent: 100 });
+  assert.deepEqual(report.reference.classified, { covered: 1003, total: 1003, percent: 100 });
+  assert.deepEqual(report.reference.expressible, { covered: 1003, total: 1003, percent: 100 });
   assert.deepEqual(report.controls[0].coverage.currentTotalFields, { covered: 0, total: 5, percent: 0, notFound: 5 });
   assert.deepEqual(report.controls[0].coverage.observableEventFamilies, { covered: 6, total: 9, percent: 66.67, notFound: 3 });
   assert.deepEqual(report.controls[0].coverage.baselineApplicableTemplates, { covered: 3, total: 5, percent: 60, notApplicable: 2 });

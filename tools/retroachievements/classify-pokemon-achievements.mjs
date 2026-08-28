@@ -147,25 +147,55 @@ const REQUIRED_CAPABILITIES = Object.freeze({
   UNCLASSIFIED: [],
 });
 
-export function classifyAchievement(achievement) {
+const RECOVERY_PATH_TIERS = Object.freeze({
+  PERSISTENT_SOURCE_FACT: 2,
+  NORMALIZED_LIVE_RULE: 2,
+  GAME_SPECIFIC_ADAPTER: 3,
+  SEQUENCE_SENSITIVE: 3,
+});
+
+const SEMANTIC_OVERRIDE_FIELDS = Object.freeze([
+  "sourceGameId",
+  "achievementId",
+  "sourceDescriptionSha256",
+  "semanticFamily",
+  "portabilityTier",
+  "recoveryPath",
+]);
+
+export function classifyAchievement(achievement, semanticOverride = null) {
   if (!achievement || typeof achievement.description !== "string") {
     throw new TypeError("achievement.description must be a string");
   }
   const description = achievement.description.trim();
-  const matched = FAMILY_RULES.find(({ pattern }) => pattern.test(description));
-  const semanticFamily = matched?.name ?? "UNCLASSIFIED";
+  const sourceGameId = requiredInteger(achievement.sourceGameId, "sourceGameId");
+  const achievementId = requiredInteger(achievement.achievementId, "achievementId");
+  const descriptionFingerprint = sha256(description);
+  if (semanticOverride !== null) {
+    validateSemanticOverrideRecord(semanticOverride);
+    if (semanticOverride.sourceGameId !== sourceGameId || semanticOverride.achievementId !== achievementId) {
+      throw new Error(`semantic override identity mismatch for ${sourceGameId}:${achievementId}`);
+    }
+    if (semanticOverride.sourceDescriptionSha256 !== descriptionFingerprint) {
+      throw new Error(`semantic override description fingerprint mismatch for ${sourceGameId}:${achievementId}`);
+    }
+  }
+  const matched = semanticOverride
+    ? FAMILY_RULES.find(({ name }) => name === semanticOverride.semanticFamily)
+    : FAMILY_RULES.find(({ pattern }) => pattern.test(description));
+  const semanticFamily = semanticOverride?.semanticFamily ?? matched?.name ?? "UNCLASSIFIED";
   const outcome = matched ? "CLASSIFIED" : "UNCLASSIFIED";
-  const portabilityTier = matched?.portabilityTier ?? 4;
+  const portabilityTier = semanticOverride?.portabilityTier ?? matched?.portabilityTier ?? 4;
   const constraints = extractConstraints(description);
   const semantic = matched ? FAMILY_SEMANTICS[semanticFamily] : null;
   return {
-    sourceGameId: requiredInteger(achievement.sourceGameId, "sourceGameId"),
-    achievementId: requiredInteger(achievement.achievementId, "achievementId"),
+    sourceGameId,
+    achievementId,
     sourceUrl: nullableString(achievement.sourceUrl),
     sourceModifiedAt: nullableString(achievement.sourceModifiedAt),
     officialClassification: nullableString(achievement.officialClassification),
     sourceTitleSha256: sha256(requiredString(achievement.title, "title")),
-    sourceDescriptionSha256: sha256(description),
+    sourceDescriptionSha256: descriptionFingerprint,
     semanticFamily,
     constraints,
     portabilityTier,
@@ -183,15 +213,20 @@ export function classifyAchievement(achievement) {
       ? "CAPABILITY_AND_KNOWLEDGE_GATED"
       : "DEVELOPER_RESEARCH_ONLY",
     requiredCapabilities: REQUIRED_CAPABILITIES[semanticFamily],
+    recoveryPath: semanticOverride?.recoveryPath ?? null,
     outcome,
-    reason: matched
-      ? `matched high-signal ${semanticFamily.toLowerCase()} language`
+    reason: semanticOverride
+      ? `curated semantic review: ${semanticOverride.recoveryPath}`
+      : matched
+        ? `matched high-signal ${semanticFamily.toLowerCase()} language`
       : "description is ambiguous under the fail-closed vocabulary",
   };
 }
 
-export async function classifyReferenceCorpus({ manifest, researchDirectory, classifiedAt }) {
+export async function classifyReferenceCorpus({ manifest, researchDirectory, classifiedAt, semanticOverrides = null }) {
   validateManifest(manifest);
+  const overrideIndex = indexSemanticOverrides(semanticOverrides);
+  const usedOverrideKeys = new Set();
   const records = [];
   for (const game of manifest.games) {
     const researchText = await readFile(join(researchDirectory, game.researchFile), "utf8");
@@ -206,12 +241,19 @@ export async function classifyReferenceCorpus({ manifest, researchDirectory, cla
     }
     validateSanitizedResearchPayload({ game, payload });
     for (const achievement of payload.achievements) {
+      const key = semanticOverrideKey(achievement.sourceGameId, achievement.achievementId);
+      const semanticOverride = overrideIndex.get(key) ?? null;
+      if (semanticOverride !== null) usedOverrideKeys.add(key);
       records.push({
         generation: game.generation,
         displayOrder: achievement.displayOrder,
-        ...classifyAchievement(achievement),
+        ...classifyAchievement(achievement, semanticOverride),
       });
     }
+  }
+  const orphaned = [...overrideIndex.keys()].filter((key) => !usedOverrideKeys.has(key));
+  if (orphaned.length > 0) {
+    throw new Error(`orphaned semantic override: ${orphaned.sort()[0]}`);
   }
   records.sort((left, right) =>
     left.generation - right.generation
@@ -231,6 +273,49 @@ export async function classifyReferenceCorpus({ manifest, researchDirectory, cla
   return document;
 }
 
+function indexSemanticOverrides(document) {
+  if (document === null || document === undefined) return new Map();
+  if (!document || document.schema !== 1 || !Array.isArray(document.records)) {
+    throw new TypeError("semantic overrides must use schema 1 and contain records");
+  }
+  const indexed = new Map();
+  for (const record of document.records) {
+    validateSemanticOverrideRecord(record);
+    const key = semanticOverrideKey(record.sourceGameId, record.achievementId);
+    if (indexed.has(key)) throw new Error(`duplicate semantic override: ${key}`);
+    indexed.set(key, record);
+  }
+  return indexed;
+}
+
+function validateSemanticOverrideRecord(record) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    throw new TypeError("semantic override must be an object");
+  }
+  const fields = Object.keys(record);
+  if (fields.length !== SEMANTIC_OVERRIDE_FIELDS.length || fields.some((field) => !SEMANTIC_OVERRIDE_FIELDS.includes(field))) {
+    throw new TypeError("semantic override contains an unsupported field");
+  }
+  requiredInteger(record.sourceGameId, "semantic override sourceGameId");
+  requiredInteger(record.achievementId, "semantic override achievementId");
+  if (typeof record.sourceDescriptionSha256 !== "string" || !/^[a-f0-9]{64}$/.test(record.sourceDescriptionSha256)) {
+    throw new TypeError("semantic override requires a description fingerprint");
+  }
+  if (!Object.hasOwn(FAMILY_SEMANTICS, record.semanticFamily) || record.semanticFamily === "UNCLASSIFIED") {
+    throw new TypeError(`semantic override contains unknown semantic family ${String(record.semanticFamily)}`);
+  }
+  if (!Object.hasOwn(RECOVERY_PATH_TIERS, record.recoveryPath)) {
+    throw new TypeError(`semantic override contains unknown recovery path ${String(record.recoveryPath)}`);
+  }
+  if (record.portabilityTier !== RECOVERY_PATH_TIERS[record.recoveryPath]) {
+    throw new TypeError(`semantic override portability tier does not match recovery path ${record.recoveryPath}`);
+  }
+}
+
+function semanticOverrideKey(sourceGameId, achievementId) {
+  return `${sourceGameId}:${achievementId}`;
+}
+
 export function validateClassificationDocument(document) {
   if (!document || document.schema !== 1 || !Array.isArray(document.records)) {
     throw new TypeError("classification document must use schema 1 and contain records");
@@ -238,6 +323,7 @@ export function validateClassificationDocument(document) {
   if (!document.summary || document.summary.total !== document.records.length) {
     throw new TypeError("classification summary total must match record count");
   }
+  const recoveryCounts = Object.fromEntries(Object.keys(RECOVERY_PATH_TIERS).map((path) => [path, 0]));
   for (const record of document.records) {
     if (!Number.isSafeInteger(record.sourceGameId) || !Number.isSafeInteger(record.achievementId)) {
       throw new TypeError("classification records require integer source IDs");
@@ -262,9 +348,28 @@ export function validateClassificationDocument(document) {
     if (!Number.isInteger(record.portabilityTier) || record.portabilityTier < 1 || record.portabilityTier > 4) {
       throw new TypeError("classification portability tier must be between 1 and 4");
     }
+    if (record.recoveryPath !== null) {
+      if (!Object.hasOwn(RECOVERY_PATH_TIERS, record.recoveryPath)) {
+        throw new TypeError(`classification contains unknown recovery path ${String(record.recoveryPath)}`);
+      }
+      if (record.portabilityTier !== RECOVERY_PATH_TIERS[record.recoveryPath]) {
+        throw new TypeError(`classification recovery path tier mismatch for ${record.recoveryPath}`);
+      }
+      if (record.outcome !== "CLASSIFIED" || record.semanticFamily === "UNCLASSIFIED") {
+        throw new TypeError("recovered classification must have a classified semantic family");
+      }
+      recoveryCounts[record.recoveryPath] += 1;
+    }
     if (!Object.hasOwn(REQUIRED_CAPABILITIES, record.semanticFamily)) {
       throw new TypeError(`unknown semantic family ${String(record.semanticFamily)}`);
     }
+  }
+  if (
+    !document.summary.byRecoveryPath
+    || Object.keys(recoveryCounts).some((path) => document.summary.byRecoveryPath[path] !== recoveryCounts[path])
+    || Object.keys(document.summary.byRecoveryPath).some((path) => !Object.hasOwn(recoveryCounts, path))
+  ) {
+    throw new TypeError("classification recovery summary does not match records");
   }
   return true;
 }
@@ -281,6 +386,9 @@ export function buildClassificationReport(document) {
     .sort(([left], [right]) => Number(left) - Number(right))
     .map(([tier, count]) => `| ${tier} | ${count} | ${percentage(count, summary.total)} |`)
     .join("\n");
+  const recoveryRows = Object.entries(summary.byRecoveryPath ?? {})
+    .map(([path, count]) => `| ${path} | ${count} | ${percentage(count, summary.total)} |`)
+    .join("\n") || "| None | 0 | 0.00% |";
   const exclusionRows = Object.entries(summary.byExclusionReason ?? {})
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([reason, count]) => `| ${reason} | ${count} | ${percentage(count, summary.total)} |`)
@@ -305,6 +413,12 @@ ${familyRows}
 | Tier | Count | Percentage of extracted |
 | ---: | ---: | ---: |
 ${tierRows}
+
+## Curated semantic recovery paths
+
+| Recovery path | Count | Percentage of extracted |
+| --- | ---: | ---: |
+${recoveryRows}
 
 ## Exclusions by reason
 
@@ -358,12 +472,14 @@ function extractConstraints(description) {
 function summarize(records) {
   const byFamily = Object.fromEntries(SEMANTIC_FAMILIES.map((familyName) => [familyName, 0]));
   const byTier = { "1": 0, "2": 0, "3": 0, "4": 0 };
+  const byRecoveryPath = Object.fromEntries(Object.keys(RECOVERY_PATH_TIERS).map((path) => [path, 0]));
   const byExclusionReason = {};
   let classified = 0;
   let expressible = 0;
   for (const record of records) {
     byFamily[record.semanticFamily] = (byFamily[record.semanticFamily] ?? 0) + 1;
     byTier[String(record.portabilityTier)] = (byTier[String(record.portabilityTier)] ?? 0) + 1;
+    if (record.recoveryPath !== null) byRecoveryPath[record.recoveryPath] += 1;
     if (record.outcome === "CLASSIFIED") classified += 1;
     if (record.outcome === "CLASSIFIED" && record.templateKey !== null && record.portabilityTier <= 3) {
       expressible += 1;
@@ -379,6 +495,7 @@ function summarize(records) {
     expressible,
     byFamily,
     byTier,
+    byRecoveryPath,
     byExclusionReason,
   };
 }
@@ -526,10 +643,13 @@ async function runCli() {
     ?? (process.platform === "win32" ? "D:\\Temp\\dualdex-retroachievements\\research" : join(repositoryRoot, "output", "retroachievements", "research"));
   const manifestPath = process.env.DUALDEX_RA_MANIFEST
     ?? join(repositoryRoot, "docs", "research", "retroachievements", "official-gen1-gen3-manifest.json");
+  const semanticOverridesPath = process.env.DUALDEX_RA_SEMANTIC_OVERRIDES
+    ?? join(repositoryRoot, "docs", "research", "retroachievements", "official-gen1-gen3-semantic-overrides.json");
   const outputPath = join(repositoryRoot, "docs", "research", "retroachievements", "official-gen1-gen3-classification.json");
   const reportPath = join(repositoryRoot, "docs", "reports", "passive-insights-progress", "reference-classification.md");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const document = await classifyReferenceCorpus({ manifest, researchDirectory });
+  const semanticOverrides = JSON.parse(await readFile(semanticOverridesPath, "utf8"));
+  const document = await classifyReferenceCorpus({ manifest, researchDirectory, semanticOverrides });
   await writeClassificationArtifacts({ document, outputPath, reportPath });
   process.stdout.write(
     `Classified ${document.summary.classified}/${document.summary.total}; `

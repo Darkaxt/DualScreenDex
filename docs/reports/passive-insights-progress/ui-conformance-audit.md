@@ -47,7 +47,7 @@ The screenshot PNG set remains an external workflow artifact under the paths rep
 | Requirement | Implementation and retained authority | Evidence | Disposition |
 |---|---|---|---|
 | Section 3 — existing contracts | Stage 7 changes shared presentation, accessibility metadata, and browser evidence only. The unified snapshot, live-over-recovery authority, Organic policy, read-only transport, and diagnostic boundary remain intact. | Runtime files are absent from the Stage 7 diff; full feature audits and production-copy scan remain green. | SATISFIED |
-| Section 4 — reference achievement corpus | The immutable 1,003-reference corpus and sanitized schema remain unchanged. | Stage 0 audit: 1,003/1,003 extracted, 883/1,003 classified, zero credentials or trigger expressions committed. | SATISFIED |
+| Section 4 — reference achievement corpus | The immutable 1,003-reference identities remain unchanged; the sanitized derived classification now covers every description. | Stage 0 audit: 1,003/1,003 extracted and semantically classified, zero credentials, source prose, trigger expressions, addresses, or offsets committed. | SATISFIED |
 | Section 5 — shared semantic architecture | The existing fact projector, stable transition evaluator, challenge engine, and exact playthrough journal remain the only semantic/event path. | Progress/Timeline and Challenge audits; current-state, transition, identity, persistence, and performance suites in the repository gate. | SATISFIED |
 | Section 6 — Party Analysis | Header entry, summaries, coverage, defensive comparison, development cues, linked detail navigation, and Organic rules are preserved and normalized. | Party Analysis audit/report plus three Stage 7 route states across 27 controls each. | SATISFIED |
 | Section 7 — Progress, Challenges, Timeline | Trainer destinations use the compact Card/trophy icon group; Progress retains one section row and all metrics/challenge/timeline states. | Progress audit/report plus six Progress route states across 27 controls each. | SATISFIED |
@@ -71,12 +71,13 @@ QA then reached authoritative `fork/master` at `1cd28586`, containing runtime co
 
 ## Remaining research exclusion
 
-The only retained suite research exclusion is the 120 Tier 4 glitch, trade, unavailable-frame-transition, or irreducibly ambiguous RetroAchievements references. They remain absent from runtime generation. Revisiting them is explicitly sequenced after the current plan and does not weaken any implemented feature or Stage 7 visual contract.
+The 120 formerly excluded references now have sanitized semantic recovery paths, but this presentation-only Stage 7 still generates none of them. Exact runtime equivalents remain 0/120 (`NOT_FOUND`) until their persistent facts, normalized live rules, game-specific adapters, or sequence-sensitive observation contracts are implemented. This does not weaken any implemented feature or Stage 7 visual contract.
 
 ## Final classification
 
 - `BLOCKER`: 0
 - `ERROR`: 0
 - Stage 7 deferrals: 0
-- Retained research exclusions: 120 Tier 4 references
+- Semantically recovered references still runtime-gated: 120 / 120
+- Exact runtime equivalents from that recovered set: 0 / 120 (`NOT_FOUND`)
 - Compatibility percentage changes caused by Stage 7: none

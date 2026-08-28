@@ -11,13 +11,13 @@
   },
   "reference": {
     "classified": {
-      "covered": 883,
+      "covered": 1003,
       "total": 1003,
-      "percent": 88.04
+      "percent": 100
     },
     "expressible": {
-      "covered": 883,
-      "total": 883,
+      "covered": 1003,
+      "total": 1003,
       "percent": 100
     }
   },
