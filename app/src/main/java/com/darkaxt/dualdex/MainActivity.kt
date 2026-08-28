@@ -33,6 +33,8 @@ import com.darkaxt.dualdex.rom.RomDocumentPicker
 import com.darkaxt.dualdex.setup.SetupDocumentPicker
 import com.darkaxt.dualdex.setup.SetupPickerRequest
 import com.darkaxt.dualdex.storage.AllFilesSettingsLauncher
+import com.darkaxt.dualdex.storage.AllFilesSettingsDestination
+import com.darkaxt.dualdex.performance.PerformanceLogExport
 import com.darkaxt.dualdex.web.DualDexWebView
 import com.darkaxt.dualdex.web.NativeSetupRoute
 import com.darkaxt.dualdex.display.DisplayCandidate
@@ -191,7 +193,9 @@ class MainActivity : AppCompatActivity() {
     private val performanceExportPicker = registerForActivityResult(ActivityResultContracts.CreateDocument("application/x-ndjson")) { uri ->
         if (uri != null) {
             runCatching {
-                val bytes = (application as DualDexApplication).exportPerformanceLog()
+                val exported = (application as DualDexApplication).exportPerformanceLog()
+                val bytes = (exported as? PerformanceLogExport.Available)?.bytes
+                    ?: error("Performance diagnostics are unavailable")
                 requireNotNull(contentResolver.openOutputStream(uri, "wt")) { "selected export document is not writable" }
                     .use { it.write(bytes) }
             }.onSuccess {
@@ -348,8 +352,15 @@ class MainActivity : AppCompatActivity() {
             picker,
             onNativeSetupRoute = { route ->
                 when (route) {
-                    NativeSetupRoute.GRANT_ALL_FILES -> AllFilesSettingsLauncher.open(this) {
-                        setupPicker.openRomTree()
+                    NativeSetupRoute.GRANT_ALL_FILES -> {
+                        val outcome = AllFilesSettingsLauncher.open(this) { setupPicker.openRomTree() }
+                        if (outcome == AllFilesSettingsDestination.FAILED) {
+                            Toast.makeText(
+                                this,
+                                "All files settings and folder selection could not open. Select a game folder and retry.",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
                     }
                     NativeSetupRoute.GRANT_RETROARCH -> setupPicker.openConfigTree()
                     NativeSetupRoute.GRANT_ROMS -> setupPicker.openRomTree()

@@ -21,9 +21,11 @@ import com.darkaxt.dualdex.performance.BoundedPerformanceWorkDispatcher
 import com.darkaxt.dualdex.performance.PerformanceComponentMetrics
 import com.darkaxt.dualdex.performance.PerformanceEventSink
 import com.darkaxt.dualdex.performance.PerformanceEventKind
+import com.darkaxt.dualdex.performance.PerformanceLogExport
 import com.darkaxt.dualdex.performance.PerformanceRecorder
 import com.darkaxt.dualdex.performance.PreviousProcessExitRecorder
 import com.darkaxt.dualdex.performance.PreviousProcessExitSink
+import com.darkaxt.dualdex.performance.PreviousProcessExitPendingStore
 import com.darkaxt.dualdex.performance.PrivacySafeDiagnostics
 import com.darkaxt.dualdex.performance.SharedPreferencesPreviousProcessExitMarker
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
@@ -70,9 +72,9 @@ open class DualDexApplication : Application() {
 
     fun ballSpritePng(id: Int): ByteArray? = loopbackServer?.ballSpritePng(id)
 
-    fun exportPerformanceLog(): ByteArray {
+    fun exportPerformanceLog(): PerformanceLogExport {
         performanceDispatcher?.flush()
-        return performanceLog?.export() ?: ByteArray(0)
+        return performanceLog?.export() ?: PerformanceLogExport.Unavailable
     }
 
     fun exportCompatibilityReport(): ByteArray =
@@ -161,7 +163,10 @@ open class DualDexApplication : Application() {
         }
         PreviousProcessExitRecorder(
             source = AndroidPreviousProcessExitSource(this),
-            marker = SharedPreferencesPreviousProcessExitMarker(preferences),
+            marker = SharedPreferencesPreviousProcessExitMarker(
+                preferences,
+                PreviousProcessExitPendingStore(File(filesDir, "diagnostics/previous-process-exit.pending")),
+            ),
             sink = PreviousProcessExitSink(profilerLog::append),
         ).recordLatest()
         val profilerDispatcher = performanceDispatcher ?: BoundedPerformanceWorkDispatcher().also {
@@ -212,6 +217,7 @@ open class DualDexApplication : Application() {
                     if (event.kind != PerformanceEventKind.STATE_CHANGED) {
                         Log.i(PERFORMANCE_LOG_TAG, performanceGson.toJson(event))
                     }
+                    true
                 },
             ),
         )

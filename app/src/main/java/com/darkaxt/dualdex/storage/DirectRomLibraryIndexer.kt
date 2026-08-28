@@ -2,9 +2,9 @@ package com.darkaxt.dualdex.storage
 
 import com.darkaxt.dualdex.retroarch.RomIndexEntry
 import java.io.File
-import java.util.ArrayDeque
 
 class DirectRomLibraryIndexer internal constructor(
+    private val traversalQuota: StorageTraversalQuota = StorageTraversalPolicy.DEFAULT,
     private val identityReader: (File) -> StreamingRomSourceIdentity = StreamingRomSourceReader::read,
 ) {
     fun index(
@@ -51,21 +51,14 @@ class DirectRomLibraryIndexer internal constructor(
     }
 
     private fun discoverSources(roots: List<File>): List<File> {
-        val queue = ArrayDeque<File>()
-        roots.forEach(queue::addLast)
-        val visitedDirectories = mutableSetOf<String>()
-        val visitedFiles = mutableSetOf<String>()
         val sources = mutableListOf<File>()
-        while (queue.isNotEmpty()) {
-            val candidate = runCatching { queue.removeFirst().canonicalFile }.getOrNull() ?: continue
-            if (candidate.isDirectory) {
-                if (candidate.isProtectedAndroidDirectory() || !visitedDirectories.add(candidate.path)) continue
-                candidate.listFiles().orEmpty().sortedBy { it.name.lowercase() }.forEach(queue::addLast)
-            } else if (
-                candidate.isFile &&
-                candidate.extension.lowercase() in SUPPORTED_EXTENSIONS &&
-                visitedFiles.add(candidate.path)
-            ) {
+        DirectFileTraversal.visitFiles(
+            roots = roots,
+            quota = traversalQuota,
+            skipDirectory = { directory -> directory.isProtectedAndroidDirectory() },
+        ) { candidate, budget ->
+            if (candidate.extension.lowercase() in SUPPORTED_EXTENSIONS) {
+                budget.retainResult()
                 sources += candidate
             }
         }

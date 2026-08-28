@@ -47,7 +47,7 @@ fun interface PerformanceMetricSampler {
 }
 
 fun interface PerformanceEventSink {
-    fun append(event: PerformanceEvent)
+    fun append(event: PerformanceEvent): Boolean
 }
 
 fun interface PerformanceWorkDispatcher {

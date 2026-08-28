@@ -20,12 +20,14 @@ import android.view.View
 import android.view.WindowManager
 import android.view.WindowInsets
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.darkaxt.dualdex.DualDexApplication
 import com.darkaxt.dualdex.MainActivity
 import com.darkaxt.dualdex.R
 import com.darkaxt.dualdex.setup.SetupPickerRequest
+import com.darkaxt.dualdex.storage.AllFilesSettingsDestination
 import com.darkaxt.dualdex.storage.AllFilesSettingsLauncher
 import com.darkaxt.dualdex.web.DualDexWebView
 import com.darkaxt.dualdex.web.NativeSetupRoute
@@ -274,8 +276,15 @@ class FloatingCompanionService : Service() {
         when (route) {
             NativeSetupRoute.SHOW_OVERLAY -> Unit
             NativeSetupRoute.DOCK_OVERLAY -> returnToDockedActivity()
-            NativeSetupRoute.GRANT_ALL_FILES -> AllFilesSettingsLauncher.open(this) {
-                foregroundSetup(SetupPickerRequest.ROMS)
+            NativeSetupRoute.GRANT_ALL_FILES -> {
+                val outcome = AllFilesSettingsLauncher.open(this) { foregroundSetup(SetupPickerRequest.ROMS) }
+                if (outcome == AllFilesSettingsDestination.FAILED) {
+                    Toast.makeText(
+                        this,
+                        "All files settings and folder selection could not open. Return to DualDex and retry folder selection.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
             }
             NativeSetupRoute.OPEN_RETROARCH -> (application as DualDexApplication).retroArchSetup?.launchRetroArch()
             NativeSetupRoute.RETRY_GUIDE -> (application as DualDexApplication).retroArchSetup?.retryGuideLoad()

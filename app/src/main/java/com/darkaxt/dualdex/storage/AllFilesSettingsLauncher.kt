@@ -10,6 +10,7 @@ enum class AllFilesSettingsDestination {
     PACKAGE_SETTINGS,
     GLOBAL_SETTINGS,
     SAF_FALLBACK,
+    FAILED,
 }
 
 internal class AllFilesSettingsLaunchCoordinator(
@@ -20,8 +21,10 @@ internal class AllFilesSettingsLaunchCoordinator(
     fun open(): AllFilesSettingsDestination {
         if (attempt(openPackageSettings)) return AllFilesSettingsDestination.PACKAGE_SETTINGS
         if (attempt(openGlobalSettings)) return AllFilesSettingsDestination.GLOBAL_SETTINGS
-        runCatching(openSafFallback)
-        return AllFilesSettingsDestination.SAF_FALLBACK
+        return runCatching {
+            openSafFallback()
+            AllFilesSettingsDestination.SAF_FALLBACK
+        }.getOrDefault(AllFilesSettingsDestination.FAILED)
     }
 
     private fun attempt(action: () -> Boolean): Boolean = runCatching(action).getOrDefault(false)

@@ -109,6 +109,10 @@ sealed interface ConfigInstallResult {
 }
 
 object RetroArchConfigInstaller {
+    private const val FAILURE_MESSAGE = "RetroArch configuration could not be updated safely. Retry the setup action."
+    private const val PROVIDER_RECOVERY_MESSAGE =
+        "The selected document provider timed out or has an unfinished write. Reset or reconnect the provider, or fully restart DualDex before trying setup again."
+
     fun install(store: ConfigDocumentStore, port: Int): ConfigInstallResult = try {
         val transaction = store.readTransaction()
         if (transaction == null) {
@@ -116,8 +120,16 @@ object RetroArchConfigInstaller {
         } else {
             resume(store, port, transaction)
         }
+    } catch (_: OutOfMemoryError) {
+        ConfigInstallResult.Failed(FAILURE_MESSAGE)
     } catch (failure: Exception) {
-        ConfigInstallResult.Failed(failure.message ?: failure.javaClass.simpleName)
+        ConfigInstallResult.Failed(
+            if (failure.message?.contains("needs reset or app restart") == true) {
+                PROVIDER_RECOVERY_MESSAGE
+            } else {
+                FAILURE_MESSAGE
+            },
+        )
     }
 
     private fun installFresh(store: ConfigDocumentStore, port: Int): ConfigInstallResult {

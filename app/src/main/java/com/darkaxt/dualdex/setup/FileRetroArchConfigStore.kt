@@ -4,6 +4,8 @@ import com.darkaxt.dualdex.retroarch.ConfigDocumentStore
 import com.darkaxt.dualdex.retroarch.ConfigInstallTransaction
 import com.darkaxt.dualdex.retroarch.RetroArchSaveConfig
 import com.darkaxt.dualdex.retroarch.RetroArchSaveSettings
+import com.darkaxt.dualdex.storage.BoundedStorageReader
+import com.darkaxt.dualdex.storage.ConfigDocumentReadPolicy
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.AtomicMoveNotSupportedException
@@ -16,14 +18,11 @@ class FileRetroArchConfigStore(
     private val recovery = File(requireNotNull(config.parentFile), SafRetroArchConfigStore.RECOVERY_NAME)
     private val transaction = File(config.parentFile, SafRetroArchConfigStore.TRANSACTION_NAME)
 
-    override fun readConfig(): ByteArray {
-        require(config.isFile) { "retroarch.cfg is not a readable file: ${config.path}" }
-        return config.readBytes()
-    }
+    override fun readConfig(): ByteArray = config.readBounded()
 
     override fun writeConfig(bytes: ByteArray) = config.writeAtomicSynced(bytes)
 
-    override fun readRecovery(): ByteArray? = recovery.takeIf(File::isFile)?.readBytes()
+    override fun readRecovery(): ByteArray? = recovery.takeIf(File::isFile)?.readBounded()
 
     override fun writeRecovery(bytes: ByteArray) = recovery.writeAtomicSynced(bytes)
 
@@ -33,7 +32,7 @@ class FileRetroArchConfigStore(
 
     override fun readTransaction(): ConfigInstallTransaction? = transaction
         .takeIf(File::isFile)
-        ?.readBytes()
+        ?.readBounded()
         ?.let(ConfigInstallTransaction::deserialize)
 
     override fun writeTransaction(transaction: ConfigInstallTransaction) {
@@ -45,6 +44,17 @@ class FileRetroArchConfigStore(
     }
 
     fun readSaveSettings(): RetroArchSaveSettings = RetroArchSaveConfig.read(readConfig())
+
+    private fun File.readBounded(): ByteArray {
+        require(isFile) { "RetroArch configuration document is not readable" }
+        return inputStream().use { input ->
+            BoundedStorageReader.read(
+                input = input,
+                maximumBytes = ConfigDocumentReadPolicy.MAXIMUM_BYTES,
+                reportedSize = length(),
+            )
+        }
+    }
 
     private fun File.writeAtomicSynced(bytes: ByteArray) {
         val directory = requireNotNull(parentFile)

@@ -8,7 +8,9 @@ import com.darkaxt.dualdex.retroarch.ConfigRecoveryRecord
 import com.darkaxt.dualdex.retroarch.RetroArchSaveConfig
 import com.darkaxt.dualdex.retroarch.RetroArchSaveSettings
 import com.darkaxt.dualdex.storage.DocumentTreeAccess
+import com.darkaxt.dualdex.storage.ConfigDocumentReadPolicy
 import com.darkaxt.dualdex.storage.LocatedTreeDocument
+import com.darkaxt.dualdex.storage.StorageReadLimitExceeded
 import com.darkaxt.dualdex.storage.TreeDocument
 
 class SafRetroArchConfigStore(
@@ -77,18 +79,26 @@ class SafRetroArchConfigStore(
     private fun validRecoveries(): List<StoredRecovery> =
         listOf(RECOVERY_A_NAME, RECOVERY_B_NAME).mapNotNull { name ->
             val document = sidecar(name) ?: return@mapNotNull null
-            runCatching { ConfigRecoveryRecord.deserialize(access.read(document)) }
-                .getOrNull()
-                ?.let { StoredRecovery(name, it) }
+            optionalRecord {
+                ConfigRecoveryRecord.deserialize(
+                    access.read(document, ConfigDocumentReadPolicy.MAXIMUM_RECOVERY_RECORD_BYTES),
+                )
+            }?.let { StoredRecovery(name, it) }
         }
 
     private fun validTransactions(): List<StoredTransaction> =
         listOf(TRANSACTION_NAME, TRANSACTION_A_NAME, TRANSACTION_B_NAME).mapNotNull { name ->
             val document = sidecar(name) ?: return@mapNotNull null
-            runCatching { ConfigInstallTransaction.deserialize(access.read(document)) }
-                .getOrNull()
+            optionalRecord { ConfigInstallTransaction.deserialize(access.read(document)) }
                 ?.let { StoredTransaction(name, it) }
         }
+
+    private fun <T> optionalRecord(read: () -> T): T? = try {
+        read()
+    } catch (failure: IllegalArgumentException) {
+        if (failure is StorageReadLimitExceeded) throw failure
+        null
+    }
 
     private fun writeSidecar(name: String, bytes: ByteArray) {
         val document = sidecar(name) ?: access.create(config.parent, name)

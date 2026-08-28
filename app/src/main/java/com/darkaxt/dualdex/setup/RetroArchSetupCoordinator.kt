@@ -40,6 +40,12 @@ import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.darkaxt.dualdex.storage.StorageAccessPolicy
 import com.darkaxt.dualdex.storage.StorageIndexAction
 import com.darkaxt.dualdex.storage.StorageSetupStatusPolicy
+import com.darkaxt.dualdex.storage.SafRomIndexCommitResult
+import com.darkaxt.dualdex.storage.SafRomIndexTransaction
+import com.darkaxt.dualdex.storage.SafOperationGenerations
+import com.darkaxt.dualdex.storage.SafProviderOperationTimeout
+import com.darkaxt.dualdex.storage.SafProviderOperationUnavailable
+import com.darkaxt.dualdex.storage.SafProviderRetryDisposition
 import com.darkaxt.dualdex.storage.StoredSafIndexEligibility
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.web.GuideLoadFailure
@@ -105,6 +111,7 @@ class RetroArchSetupCoordinator(
     private val directIndexing = AtomicBoolean(false)
     private val pendingForcedDirectRescan = AtomicBoolean(false)
     private val safRescanning = AtomicBoolean(false)
+    private val safIndexGenerations = SafOperationGenerations()
     private val directRefreshStarted = AtomicBoolean(false)
     private val directConfigAttempt = AtomicReference<String?>(null)
     private val lastStorageAccess = AtomicBoolean(sharedStorage.isGranted())
@@ -138,28 +145,38 @@ class RetroArchSetupCoordinator(
             )
         }
         worker.execute {
-            when (val result = RetroArchConfigInstaller.install(SafRetroArchConfigStore(context.contentResolver, uri), commandPort)) {
-                is ConfigInstallResult.Installed -> update {
-                    restartVerifier.requireRestart(connectionOf(it.connection))
-                    it.copy(
-                        configState = "RESTART_REQUIRED",
-                        restartRequired = true,
-                        message = "Network Commands and 10-second SaveRAM autosave were written and verified. Fully restart RetroArch, then return here.",
-                    )
+            try {
+                when (val result = RetroArchConfigInstaller.install(SafRetroArchConfigStore(context.contentResolver, uri), commandPort)) {
+                    is ConfigInstallResult.Installed -> update {
+                        restartVerifier.requireRestart(connectionOf(it.connection))
+                        it.copy(
+                            configState = "RESTART_REQUIRED",
+                            restartRequired = true,
+                            message = "Network Commands and 10-second SaveRAM autosave were written and verified. Fully restart RetroArch, then return here.",
+                        )
+                    }
+                    ConfigInstallResult.AlreadyConfigured -> update {
+                        restartVerifier.requireRestart(connectionOf(it.connection))
+                        it.copy(
+                            configState = "RESTART_REQUIRED",
+                            restartRequired = true,
+                            message = "The selected config already enables Network Commands and 10-second SaveRAM autosave. Fully restart RetroArch so DualDex can verify it.",
+                        )
+                    }
+                    is ConfigInstallResult.Failed -> update {
+                        it.copy(
+                            configState = "FAILED",
+                            restartRequired = false,
+                            message = result.message,
+                        )
+                    }
                 }
-                ConfigInstallResult.AlreadyConfigured -> update {
-                    restartVerifier.requireRestart(connectionOf(it.connection))
-                    it.copy(
-                        configState = "RESTART_REQUIRED",
-                        restartRequired = true,
-                        message = "The selected config already enables Network Commands and 10-second SaveRAM autosave. Fully restart RetroArch so DualDex can verify it.",
-                    )
-                }
-                is ConfigInstallResult.Failed -> update {
+            } catch (_: Throwable) {
+                update {
                     it.copy(
                         configState = "FAILED",
                         restartRequired = false,
-                        message = result.message,
+                        message = "RetroArch configuration could not be updated safely. Retry the setup action.",
                     )
                 }
             }
@@ -171,30 +188,42 @@ class RetroArchSetupCoordinator(
             update { it.copy(romGrant = "FAILED", message = failure.message ?: failure.javaClass.simpleName) }
             return
         }
-        preferences.edit().putString(ROM_TREE_URI, uri.toString()).apply()
-        lastSafGrant.set(storedSafGrantIsValid())
+        val token = safIndexGenerations.begin()
         update { it.copy(romGrant = "INDEXING", message = "Indexing granted GB, GBC, GBA, and ZIP sources…") }
         worker.execute {
-            val previousEntries = indexStore.read(uri.toString())
-            val result = runCatching { AndroidRomLibraryIndexer(context.contentResolver).index(uri, previousEntries) }
-            result.onSuccess { indexed ->
-                indexStore.write(uri.toString(), indexed.entries)
-                activationGate.clearFailure()
-                if (!sharedStorage.isGranted()) entries.set(indexed.entries)
-                update {
-                    it.copy(
-                        romGrant = if (sharedStorage.isGranted()) it.romGrant else "GRANTED",
-                        indexedRoms = if (sharedStorage.isGranted()) it.indexedRoms else indexed.entries.size,
-                        message = when {
-                            sharedStorage.isGranted() -> "The selected ROM folder is retained as a fallback; All files access remains the active library source."
-                            indexed.entries.isEmpty() -> "No GB, GBC, GBA, or single-ROM ZIP sources were found in the selected folder."
-                            indexed.warnings.isEmpty() -> "Indexed ${indexed.entries.size} ROM sources."
-                            else -> "Indexed ${indexed.entries.size} sources; ${indexed.warnings.size} unreadable sources were skipped."
-                        },
-                    )
+            try {
+                val previousEntries = indexStore.read(uri.toString())
+                val indexed = AndroidRomLibraryIndexer(context.contentResolver).index(uri, previousEntries)
+                if (!hasReadGrant(uri) || sharedStorage.isGranted()) {
+                    refreshStorageAccess()
+                    return@execute
                 }
-            }.onFailure { failure ->
-                update { it.copy(romGrant = "FAILED", message = "The selected game folder could not be indexed.") }
+                var persistenceFailed = false
+                val published = safIndexGenerations.commitIfCurrent(token) {
+                    if (SafRomIndexTransaction { entries -> indexStore.write(uri.toString(), entries) }.commit(indexed.entries) == SafRomIndexCommitResult.Failed) {
+                        persistenceFailed = true
+                    } else {
+                        preferences.edit().putString(ROM_TREE_URI, uri.toString()).commit()
+                        lastSafGrant.set(hasReadGrant(uri))
+                        activationGate.clearFailure()
+                        if (!sharedStorage.isGranted()) entries.set(indexed.entries)
+                        update {
+                            it.copy(
+                                romGrant = if (sharedStorage.isGranted()) it.romGrant else "GRANTED",
+                                indexedRoms = if (sharedStorage.isGranted()) it.indexedRoms else indexed.entries.size,
+                                message = when {
+                                    sharedStorage.isGranted() -> "The selected ROM folder is retained as a fallback; All files access remains the active library source."
+                                    indexed.entries.isEmpty() -> "No GB, GBC, GBA, or single-ROM ZIP sources were found in the selected folder."
+                                    indexed.warnings.isEmpty() -> "Indexed ${indexed.entries.size} ROM sources."
+                                    else -> "Indexed ${indexed.entries.size} sources; ${indexed.warnings.size} unreadable sources were skipped."
+                                },
+                            )
+                        }
+                    }
+                }
+                if (published && persistenceFailed) publishSafIndexFailure()
+            } catch (failure: Throwable) {
+                if (safIndexGenerations.isCurrent(token)) publishSafIndexFailure(failure)
             }
         }
     }
@@ -328,8 +357,27 @@ class RetroArchSetupCoordinator(
         commandMonitor.close()
     }
 
+    private fun providerResetRequired(failure: Throwable): Boolean =
+        (failure as? SafProviderOperationTimeout)?.disposition == SafProviderRetryDisposition.ResetRequired ||
+            (failure as? SafProviderOperationUnavailable)?.disposition == SafProviderRetryDisposition.ResetRequired
+
+    private fun publishSafIndexFailure(failure: Throwable? = null) {
+        update {
+            it.copy(
+                romGrant = "FAILED",
+                indexedRoms = entries.get().size,
+                message = if (failure != null && providerResetRequired(failure)) {
+                    "The selected document provider needs reset or a full app restart before game indexing can continue. The previous game index remains active."
+                } else {
+                    "The selected game folder could not be indexed. The previous game index remains active; retry or select the folder again."
+                },
+            )
+        }
+    }
+
     private fun rescanSafTree(uri: Uri) {
         if (!safRescanning.compareAndSet(false, true)) return
+        val token = safIndexGenerations.begin()
         val retainedEntries = entries.get()
         update {
             it.copy(
@@ -344,21 +392,30 @@ class RetroArchSetupCoordinator(
                     refreshStorageAccess()
                     return@execute
                 }
-                indexStore.write(uri.toString(), indexed.entries)
-                entries.set(indexed.entries)
-                activationGate.clearFailure()
-                update {
-                    it.copy(
-                        romGrant = "GRANTED",
-                        indexedRoms = indexed.entries.size,
-                        message = when {
-                            indexed.entries.isEmpty() -> "No GB, GBC, GBA, or single-ROM ZIP sources were found in the selected folder."
-                            indexed.warnings.isEmpty() -> "Rescan found ${indexed.entries.size} ROM sources."
-                            else -> "Rescan found ${indexed.entries.size} sources; ${indexed.warnings.size} unreadable sources were skipped."
-                        },
-                    )
+                var persistenceFailed = false
+                val published = safIndexGenerations.commitIfCurrent(token) {
+                    if (SafRomIndexTransaction { entries -> indexStore.write(uri.toString(), entries) }.commit(indexed.entries) == SafRomIndexCommitResult.Failed) {
+                        persistenceFailed = true
+                    } else {
+                        preferences.edit().putString(ROM_TREE_URI, uri.toString()).commit()
+                        entries.set(indexed.entries)
+                        activationGate.clearFailure()
+                        update {
+                            it.copy(
+                                romGrant = "GRANTED",
+                                indexedRoms = indexed.entries.size,
+                                message = when {
+                                    indexed.entries.isEmpty() -> "No GB, GBC, GBA, or single-ROM ZIP sources were found in the selected folder."
+                                    indexed.warnings.isEmpty() -> "Rescan found ${indexed.entries.size} ROM sources."
+                                    else -> "Rescan found ${indexed.entries.size} sources; ${indexed.warnings.size} unreadable sources were skipped."
+                                },
+                            )
+                        }
+                    }
                 }
-            } catch (failure: Exception) {
+                if (published && persistenceFailed) publishSafIndexFailure()
+            } catch (failure: Throwable) {
+                if (!safIndexGenerations.isCurrent(token)) return@execute
                 if (sharedStorage.isGranted() || !hasReadGrant(uri)) {
                     refreshStorageAccess()
                     return@execute
@@ -373,7 +430,11 @@ class RetroArchSetupCoordinator(
                         storageGrant = status.storageGrant,
                         romGrant = "FAILED",
                         indexedRoms = retainedEntries.size,
-                        message = "Game rescan could not finish. The previous game index remains active.",
+                        message = if (providerResetRequired(failure)) {
+                            "The selected document provider needs reset or a full app restart before game indexing can continue. The previous game index remains active."
+                        } else {
+                            "Game rescan could not finish. The previous game index remains active."
+                        },
                     )
                 }
             } finally {
@@ -432,7 +493,7 @@ class RetroArchSetupCoordinator(
                     )
                 }
                 configureDirectRetroArch(roots)
-            } catch (failure: Exception) {
+            } catch (failure: Throwable) {
                 directIndexReady.set(retainedDirectIndex)
                 if (!forceRefresh) directRefreshStarted.set(false)
                 val safIndexGranted = storedRomTree()?.let(::hasReadGrant) == true
@@ -991,7 +1052,10 @@ class RetroArchSetupCoordinator(
 
     private fun storedConfigTree(): Uri? = preferences.getString(CONFIG_TREE_URI, null)?.let(Uri::parse)
 
-    private fun storedRomTree(): Uri? = preferences.getString(ROM_TREE_URI, null)?.let(Uri::parse)
+    private fun storedRomTree(): Uri? = indexStore.readActive()
+        ?.rootUri
+        ?.let(Uri::parse)
+        ?: preferences.getString(ROM_TREE_URI, null)?.let(Uri::parse)
 
     private fun hasReadGrant(uri: Uri): Boolean = context.contentResolver.persistedUriPermissions
         .any { permission -> permission.uri == uri && permission.isReadPermission }
@@ -1046,7 +1110,7 @@ class RetroArchSetupCoordinator(
     }
 
     private fun storedSafGrantIsValid(): Boolean {
-        val storedUri = preferences.getString(ROM_TREE_URI, null)
+        val storedUri = storedRomTree()?.toString()
         val readableGrants = context.contentResolver.persistedUriPermissions
             .asSequence()
             .filter { it.isReadPermission }
@@ -1079,7 +1143,7 @@ class RetroArchSetupCoordinator(
     }
 
     private fun loadSafStoredIndex(): List<RomIndexEntry> {
-        val uri = preferences.getString(ROM_TREE_URI, null) ?: return emptyList()
+        val uri = storedRomTree()?.toString() ?: return emptyList()
         if (!storedSafGrantIsValid()) return emptyList()
         return indexStore.read(uri)
     }
@@ -1087,7 +1151,7 @@ class RetroArchSetupCoordinator(
     private fun initialView(): RetroArchView {
         val storageGranted = sharedStorage.isGranted()
         val configUri = preferences.getString(CONFIG_TREE_URI, null)
-        val romUri = preferences.getString(ROM_TREE_URI, null)
+        val romUri = storedRomTree()?.toString()
         val persisted = context.contentResolver.persistedUriPermissions.associateBy { it.uri.toString() }
         val directConfigFound = storageGranted && FileRetroArchConfigStore.findPublic(sharedStorage.roots()) != null
         val configGranted = directConfigFound ||

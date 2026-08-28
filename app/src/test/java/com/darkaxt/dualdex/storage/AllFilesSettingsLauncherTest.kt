@@ -59,4 +59,15 @@ class AllFilesSettingsLauncherTest {
         assertEquals(AllFilesSettingsDestination.SAF_FALLBACK, launcher.open())
         assertTrue(safOpened)
     }
+
+    @Test
+    fun `reports terminal failure when settings and SAF guidance cannot launch`() {
+        val launcher = AllFilesSettingsLaunchCoordinator(
+            openPackageSettings = { false },
+            openGlobalSettings = { false },
+            openSafFallback = { throw IllegalStateException("picker unavailable") },
+        )
+
+        assertEquals(AllFilesSettingsDestination.FAILED, launcher.open())
+    }
 }
