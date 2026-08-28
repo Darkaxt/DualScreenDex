@@ -1,6 +1,9 @@
 package com.darkaxt.dualdex.web
 
+import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
+import com.darkaxt.dualdex.save.SaveSnapshot
 import com.enrpau.dualscreendex.companion.api.RetroArchView
+import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
@@ -678,6 +681,59 @@ class AndroidLoopbackServerTest {
             assertTrue(bootstrap.contains("\"battle\":null"))
         } finally {
             server.close()
+        }
+    }
+
+    @Test
+    fun recoveryOnlySaveRamChangeAdvancesStateDeliveryExactlyOnce() {
+        val hash = "7".repeat(64)
+        val runtime = ProductionCompanionRuntime().apply {
+            loadCatalog("fixture.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
+        }
+        val stateOwner = runtime.transientGameState as UnifiedGameStateDecoder
+        val snapshot = SaveSnapshot(
+            romIdentity = hash,
+            saveIdentity = "8".repeat(64),
+            saveGeneration = 3,
+            saveCounter = 1,
+            currentArea = null,
+            seenDexNumbers = emptySet(),
+            caughtDexNumbers = emptySet(),
+            party = emptyList(),
+            storedIndividuals = emptyList(),
+            capabilities = emptyMap(),
+        )
+        assertTrue(runtime.applySaveSnapshot(snapshot, SaveRamView(status = "MATCHED")))
+        val server = AndroidLoopbackServer(runtime) { null }
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+            val beforeVersion = runtime.stateView().version
+            val changedStatus = SaveRamView(
+                status = "STALE",
+                message = "Checkpoint storage is temporarily unavailable; retrying.",
+            )
+
+            stateOwner.acceptRecoveryStatus(changedStatus)
+
+            val changed = URI("$base/api/state?sinceVersion=$beforeVersion")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(200, changed.responseCode)
+            val changedBody = changed.inputStream.reader().readText()
+            assertTrue(changedBody.contains("\"status\":\"STALE\""))
+            assertTrue(changedBody.contains("Checkpoint storage is temporarily unavailable; retrying."))
+            val changedVersion = runtime.stateView().version
+            assertTrue(changedVersion > beforeVersion)
+
+            stateOwner.acceptRecoveryStatus(changedStatus)
+
+            val unchanged = URI("$base/api/state?sinceVersion=$changedVersion")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(204, unchanged.responseCode)
+            assertTrue(unchanged.inputStream.readBytes().isEmpty())
+        } finally {
+            server.close()
+            runtime.close()
         }
     }
 

@@ -183,6 +183,81 @@ class CoreMemoryReaderTest {
     }
 
     @Test
+    fun missingRepliesExhaustThePerReadBudget() {
+        val sent = mutableListOf<String>()
+        val reader = CoreMemoryReadSession(
+            sender = { sent += it.toString(Charsets.US_ASCII) },
+            poller = { null },
+            maximumMissedReplyHeartbeats = 2,
+        )
+        reader.start(listOf(CoreMemoryRegion("window", 0x02001000, 1)))
+
+        assertTrue(reader.heartbeat() is CoreMemoryReadState.Reading)
+        val failed = reader.heartbeat()
+
+        assertTrue(failed is CoreMemoryReadState.Failed)
+        assertEquals(2, sent.size)
+    }
+
+    @Test
+    fun irrelevantRepliesExhaustTheSamePerReadBudget() {
+        val sent = mutableListOf<String>()
+        val replies = ArrayDeque<ByteArray>()
+        val reader = CoreMemoryReadSession(
+            sender = { sent += it.toString(Charsets.US_ASCII) },
+            poller = { replies.pollFirst() },
+            maximumMissedReplyHeartbeats = 2,
+        )
+        reader.start(listOf(CoreMemoryRegion("window", 0x02001000, 1)))
+
+        replies += "READ_CORE_MEMORY 2005000 00".toByteArray()
+        assertTrue(reader.heartbeat() is CoreMemoryReadState.Reading)
+        replies += "READ_CORE_MEMORY 2005000 01".toByteArray()
+        val failed = reader.heartbeat()
+
+        assertTrue(failed is CoreMemoryReadState.Failed)
+        assertEquals(2, sent.size)
+    }
+
+    @Test
+    fun trickledChunksCannotResetTheWholeReadMissedReplyBudget() {
+        val replies = ArrayDeque<ByteArray>()
+        val reader = CoreMemoryReadSession(
+            sender = {},
+            poller = { replies.pollFirst() },
+            maximumChunkBytes = 1,
+            maximumMissedReplyHeartbeats = 2,
+        )
+        reader.start(listOf(CoreMemoryRegion("window", 0x02001000, 3)))
+
+        assertTrue(reader.heartbeat() is CoreMemoryReadState.Reading)
+        replies += "READ_CORE_MEMORY 2001000 01".toByteArray()
+        assertTrue(reader.heartbeat() is CoreMemoryReadState.Reading)
+
+        assertTrue(reader.heartbeat() is CoreMemoryReadState.Failed)
+    }
+
+    @Test
+    fun successfulTrickleCannotExceedTheWholeReadHeartbeatBudget() {
+        val replies = ArrayDeque<ByteArray>()
+        val reader = CoreMemoryReadSession(
+            sender = {},
+            poller = { replies.pollFirst() },
+            maximumChunkBytes = 1,
+            maximumReadHeartbeats = 2,
+        )
+        reader.start(listOf(CoreMemoryRegion("window", 0x02001000, 4)))
+
+        replies += "READ_CORE_MEMORY 2001000 01".toByteArray()
+        assertTrue(reader.heartbeat() is CoreMemoryReadState.Reading)
+        replies += "READ_CORE_MEMORY 2001001 02".toByteArray()
+        assertTrue(reader.heartbeat() is CoreMemoryReadState.Reading)
+        replies += "READ_CORE_MEMORY 2001002 03".toByteArray()
+
+        assertTrue(reader.heartbeat() is CoreMemoryReadState.Failed)
+    }
+
+    @Test
     fun coalescesOverlappingLogicalRegionsAndScattersOnePhysicalRead() {
         val sent = mutableListOf<String>()
         val replies = ArrayDeque<ByteArray>()

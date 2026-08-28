@@ -43,6 +43,7 @@ class UnifiedGameStateDecoder(
     private var recoveryStatus: SaveRamView? = null
     private var recoverySourceId: String? = null
     private var recoveryApplicationId = 0L
+    private var stateRevision = 0L
     private var recoveryResetKnowledge = false
     private var battleKnowledge = ResolvedBattleKnowledge()
     private var published: ResolvedGameSnapshot? = null
@@ -127,6 +128,7 @@ class UnifiedGameStateDecoder(
         recoveryStatus = null
         recoverySourceId = null
         recoveryApplicationId = 0L
+        stateRevision++
         recoveryResetKnowledge = false
         battleKnowledge = ResolvedBattleKnowledge()
         published = null
@@ -143,6 +145,7 @@ class UnifiedGameStateDecoder(
         if (live != null && snapshot.sampleId < requireNotNull(live).sampleId) return published
         live = snapshot
         liveEstablished = true
+        stateRevision++
         publishResolved(ResolvedStateTraceTrigger.LIVE_SAMPLE)
         return published
     }
@@ -290,12 +293,10 @@ class UnifiedGameStateDecoder(
     }
 
     @Synchronized
-    fun acceptRecovery(projection: RecoveryProjection): RecoveryApplication {
-        val active = context ?: return RecoveryApplication(false)
-        if (!projection.snapshot.romIdentity.equals(active.romIdentity, ignoreCase = true)) {
-            return RecoveryApplication(false)
-        }
-        if (projection.snapshot.saveGeneration != active.generation) return RecoveryApplication(false)
+    fun prepareRecovery(projection: RecoveryProjection): PreparedRecovery? {
+        val active = context ?: return null
+        if (!projection.snapshot.romIdentity.equals(active.romIdentity, ignoreCase = true)) return null
+        if (projection.snapshot.saveGeneration != active.generation) return null
         val safeProjection = projection.copy(
             checkpointLedger = projection.checkpointLedger?.transientCheckpointOnly(),
         )
@@ -305,44 +306,81 @@ class UnifiedGameStateDecoder(
             previous.snapshot.romIdentity.equals(safeProjection.snapshot.romIdentity, ignoreCase = true) &&
             previous.snapshot.saveIdentity.equals(safeProjection.snapshot.saveIdentity, ignoreCase = true) &&
             observation?.source?.id?.let { sourceId -> recoverySourceId == sourceId } != false
-        if (
-            observation?.kind == SaveObservationKind.UNCHANGED &&
+        val unchanged = observation?.kind == SaveObservationKind.UNCHANGED &&
             samePlaythrough &&
             previous.snapshot == safeProjection.snapshot &&
             previous.observation?.fingerprint == observation.fingerprint
-        ) {
-            recovery = safeProjection
-            recoveryStatus = safeProjection.saveRam
-            recoveryResetKnowledge = false
-            publishResolved(ResolvedStateTraceTrigger.RECOVERY_APPLIED)
-            return RecoveryApplication(accepted = true)
-        }
         val frozenLedger = if (observation?.kind == SaveObservationKind.CHANGED && samePlaythrough) {
             knowledgeLedgerSnapshot().transientCheckpointOnly()
         } else {
             null
         }
-        recoveryResetKnowledge = when (observation?.kind) {
+        val resetKnowledge = when (observation?.kind) {
             SaveObservationKind.INITIAL, SaveObservationKind.SWITCHED -> true
             SaveObservationKind.CHANGED, SaveObservationKind.UNCHANGED -> !samePlaythrough
             null -> previous == null
         }
+        return PreparedRecovery(
+            application = RecoveryApplication(accepted = true, checkpointLedger = frozenLedger),
+            stateRevision = stateRevision,
+            projection = safeProjection,
+            samePlaythrough = samePlaythrough,
+            unchanged = unchanged,
+            resetKnowledge = resetKnowledge,
+        )
+    }
+
+    fun commitPreparedRecovery(prepared: PreparedRecovery): RecoveryApplication =
+        commitPreparedRecovery(prepared) { true }
+
+    @Synchronized
+    fun commitPreparedRecovery(
+        prepared: PreparedRecovery,
+        publishAuthority: () -> Boolean,
+    ): RecoveryApplication {
+        if (prepared.stateRevision != stateRevision) return RecoveryApplication(false)
+        val authorityPublished = try {
+            publishAuthority()
+        } catch (_: OutOfMemoryError) {
+            false
+        } catch (_: Exception) {
+            false
+        }
+        if (!authorityPublished) return RecoveryApplication(false)
+        val safeProjection = prepared.projection
+        if (prepared.unchanged) {
+            recovery = safeProjection
+            recoveryStatus = safeProjection.saveRam
+            recoveryResetKnowledge = false
+            stateRevision++
+            publishResolved(ResolvedStateTraceTrigger.RECOVERY_APPLIED)
+            return prepared.application
+        }
+        recoveryResetKnowledge = prepared.resetKnowledge
         if (recoveryResetKnowledge) {
             battleKnowledge = safeProjection.checkpointLedger?.toResolvedBattleKnowledge()
                 ?: ResolvedBattleKnowledge()
         }
         recovery = safeProjection
         recoveryStatus = safeProjection.saveRam
-        observation?.source?.id?.let { recoverySourceId = it }
+        safeProjection.observation?.source?.id?.let { recoverySourceId = it }
         recoveryApplicationId++
+        stateRevision++
         publishResolved(ResolvedStateTraceTrigger.RECOVERY_APPLIED)
-        return RecoveryApplication(accepted = true, checkpointLedger = frozenLedger)
+        return prepared.application
+    }
+
+    @Synchronized
+    fun acceptRecovery(projection: RecoveryProjection): RecoveryApplication {
+        val prepared = prepareRecovery(projection) ?: return RecoveryApplication(false)
+        return commitPreparedRecovery(prepared)
     }
 
     @Synchronized
     fun acceptRecoveryStatus(saveRam: SaveRamView): ResolvedGameSnapshot? {
         if (context == null) return published
         recoveryStatus = saveRam
+        stateRevision++
         publishResolved(ResolvedStateTraceTrigger.RECOVERY_STATUS)
         return published
     }
@@ -356,6 +394,7 @@ class UnifiedGameStateDecoder(
         recovery = null
         recoverySourceId = null
         recoveryResetKnowledge = false
+        stateRevision++
         publishResolved(ResolvedStateTraceTrigger.RECOVERY_CLEARED)
         return published
     }
@@ -365,6 +404,7 @@ class UnifiedGameStateDecoder(
         if (context == null) return published
         translatedSectionCache.clearEntries()
         live = null
+        stateRevision++
         publishResolved(ResolvedStateTraceTrigger.LIVE_SUSPENDED)
         return published
     }
@@ -373,6 +413,7 @@ class UnifiedGameStateDecoder(
     fun acceptBattleTracking(update: BattleTrackingUpdate): ResolvedGameSnapshot? {
         val areaBaseId = (live?.location?.areaBaseId as? LiveValue.Available<Int>)?.value
         mergeBattleTracking(update, areaBaseId)
+        stateRevision++
         publishResolved(ResolvedStateTraceTrigger.BATTLE_TRACKING)
         return published
     }
@@ -389,6 +430,7 @@ class UnifiedGameStateDecoder(
         recoveryStatus = null
         recoverySourceId = null
         recoveryApplicationId = 0L
+        stateRevision++
         recoveryResetKnowledge = false
         battleKnowledge = ResolvedBattleKnowledge()
         published = null

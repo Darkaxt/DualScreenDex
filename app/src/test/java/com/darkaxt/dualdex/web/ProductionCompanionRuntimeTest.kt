@@ -7,6 +7,8 @@ import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.catalog.StoredCatalog
 import com.darkaxt.dualdex.settings.SettingsRepository
+import com.darkaxt.dualdex.setup.SessionEpochGate
+import com.darkaxt.dualdex.setup.VerifiedSessionIdentity
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
@@ -280,7 +282,7 @@ class ProductionCompanionRuntimeTest {
             events.filter { it.kind == PerformanceEventKind.STAGE_FINISHED }.map(PerformanceEvent::stage),
         )
         assertEquals(
-            "OutOfMemoryError",
+            "RESOURCE_EXHAUSTED",
             events.single { it.kind == PerformanceEventKind.LOAD_FAILED }.failureType,
         )
         runtime.close()
@@ -298,7 +300,7 @@ class ProductionCompanionRuntimeTest {
             events.filter { it.kind == PerformanceEventKind.STAGE_FINISHED }.map(PerformanceEvent::stage),
         )
         assertEquals(
-            "OutOfMemoryError",
+            "RESOURCE_EXHAUSTED",
             events.single { it.kind == PerformanceEventKind.LOAD_FAILED }.failureType,
         )
         runtime.close()
@@ -2032,6 +2034,228 @@ class ProductionCompanionRuntimeTest {
         assertEquals(2, attempts)
         assertEquals(catalog.romSha256, runtime.catalogHash())
         runtime.close()
+    }
+
+    @Test
+    fun productionCatalogCoordinatorRejectsACommitAfterSessionSwitchOrClose() {
+        listOf("SWITCH", "CLOSE").forEach { invalidation ->
+            val rom = RomImage(ByteArray(0xC0).also { it[0] = invalidation.length.toByte() })
+            val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+            val parserReady = CountDownLatch(1)
+            val releaseParser = CountDownLatch(1)
+            val completed = CountDownLatch(1)
+            val commits = mutableListOf<String>()
+            val gate = SessionEpochGate()
+            val identity = VerifiedSessionIdentity(rom.sha256, "file:///$invalidation.gba")
+            val token = requireNotNull(gate.observe(identity))
+            val runtime = ProductionCompanionRuntime(
+                onCatalogCommitted = { sha256: String, _: String -> commits += sha256 },
+                parseCatalog = { _, _, _ ->
+                    parserReady.countDown()
+                    releaseParser.await(2, TimeUnit.SECONDS)
+                    parsed
+                },
+            )
+            try {
+                runtime.load(
+                    source = LoadedRom("$invalidation.gba", rom),
+                    commitIfCurrent = { commit -> gate.commitIfCurrent(token, commit) },
+                    onComplete = { completed.countDown() },
+                )
+                assertTrue(parserReady.await(2, TimeUnit.SECONDS))
+
+                if (invalidation == "SWITCH") {
+                    gate.observe(VerifiedSessionIdentity("f".repeat(64), "file:///B.gba"))
+                } else {
+                    gate.close()
+                }
+                releaseParser.countDown()
+
+                assertTrue(completed.await(2, TimeUnit.SECONDS))
+                assertTrue(commits.isEmpty())
+                assertNull(runtime.catalogHash())
+                assertFalse(runtime.gateway.bootstrap().catalogReady)
+            } finally {
+                releaseParser.countDown()
+                runtime.close()
+            }
+        }
+    }
+
+    @Test
+    fun blockedCheckpointRepositoryWriteNeverOccupiesTheSessionOwnerDuringSwitchOrClose() {
+        listOf("SWITCH", "CLOSE").forEach { invalidation ->
+            val rom = RomImage(ByteArray(0xC0).also { it[0] = invalidation.length.toByte() })
+            val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+            val writeEntered = CountDownLatch(1)
+            val releaseWrite = CountDownLatch(1)
+            val completed = CountDownLatch(1)
+            val commits = Collections.synchronizedList(mutableListOf<String>())
+            val repository = object : CatalogRepository {
+                override fun write(
+                    catalog: ParsedCatalog,
+                    source: CatalogSourceMetadata,
+                    progress: CatalogWriteProgress,
+                ) = error("production checkpoint writes must carry cancellation")
+
+                override fun write(
+                    catalog: ParsedCatalog,
+                    source: CatalogSourceMetadata,
+                    progress: CatalogWriteProgress,
+                    cancellation: ParserCancellationToken,
+                ) {
+                    writeEntered.countDown()
+                    while (releaseWrite.count > 0) {
+                        try {
+                            releaseWrite.await(10, TimeUnit.MILLISECONDS)
+                        } catch (_: InterruptedException) {
+                            // A non-cooperative repository must still never occupy the session owner.
+                        }
+                    }
+                }
+
+                override fun readComplete(sha256: String): StoredCatalog? = null
+
+                override fun findCompleted(crc32: String, romSize: Int, romTitle: String?): List<StoredCatalog> = emptyList()
+            }
+            val gate = SessionEpochGate()
+            val identity = VerifiedSessionIdentity(rom.sha256, "file:///$invalidation.gba")
+            val token = requireNotNull(gate.observe(identity))
+            val runtime = ProductionCompanionRuntime(
+                catalogRepository = repository,
+                onCatalogCommitted = { sha256: String, _: String -> commits += sha256 },
+                parseCatalogWithCancellation = {
+                        _: RomImage,
+                        _: ParserCancellationToken,
+                        progress: (CatalogMaterializationProgress) -> Unit,
+                        _: (CatalogWorkProgress) -> Unit,
+                    ->
+                    progress(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 1, 1, parsed))
+                    parsed
+                },
+            )
+            val transition = Executors.newSingleThreadExecutor()
+            try {
+                runtime.load(
+                    LoadedRom("$invalidation.gba", rom),
+                    commitIfCurrent = { commit -> gate.commitIfCurrent(token, commit) },
+                    onComplete = { completed.countDown() },
+                )
+                assertTrue(writeEntered.await(2, TimeUnit.SECONDS))
+
+                val cancellation = requireNotNull(runtime.cancelPendingCatalogLoadForAuthorityTransition())
+                val advanced = transition.submit<Boolean> {
+                    if (invalidation == "SWITCH") {
+                        gate.observe(VerifiedSessionIdentity("f".repeat(64), "file:///B.gba")) != null
+                    } else {
+                        gate.close()
+                        true
+                    }
+                }
+
+                assertTrue("session transition waited for repository I/O", advanced.get(500, TimeUnit.MILLISECONDS))
+                cancellation.complete()
+                releaseWrite.countDown()
+                assertTrue(completed.await(2, TimeUnit.SECONDS))
+                assertTrue(commits.isEmpty())
+                assertNull(runtime.catalogHash())
+            } finally {
+                releaseWrite.countDown()
+                transition.shutdownNow()
+                runtime.close()
+            }
+        }
+    }
+
+    @Test
+    fun authorityTransitionCancellationDefersACompletionUntilItsEpochIsStale() {
+        val rom = RomImage(ByteArray(0xC0))
+        val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val parserEntered = CountDownLatch(1)
+        val releaseParser = CountDownLatch(1)
+        val gate = SessionEpochGate()
+        val identity = VerifiedSessionIdentity(rom.sha256, "file:///A.gba")
+        val token = requireNotNull(gate.observe(identity))
+        var staleCompletionPublications = 0
+        val runtime = ProductionCompanionRuntime(
+            parseCatalog = { _, _, _ ->
+                parserEntered.countDown()
+                releaseParser.await(2, TimeUnit.SECONDS)
+                parsed
+            },
+        )
+        try {
+            runtime.load(
+                LoadedRom("A.gba", rom),
+                commitIfCurrent = { commit -> gate.commitIfCurrent(token, commit) },
+                onComplete = {
+                    gate.commitIfCurrent(token) { staleCompletionPublications++ }
+                },
+            )
+            assertTrue(parserEntered.await(2, TimeUnit.SECONDS))
+
+            val cancellation = requireNotNull(runtime.cancelPendingCatalogLoadForAuthorityTransition())
+            gate.observe(VerifiedSessionIdentity("f".repeat(64), "file:///B.gba"))
+            cancellation.complete()
+
+            assertEquals(0, staleCompletionPublications)
+        } finally {
+            releaseParser.countDown()
+            runtime.close()
+        }
+    }
+
+    @Test
+    fun cancellationCompletionNeverRunsWhileTheRuntimeMonitorIsHeld() {
+        val rom = RomImage(ByteArray(0xC0))
+        val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val parserEntered = CountDownLatch(1)
+        val releaseParser = CountDownLatch(1)
+        val completionEntered = CountDownLatch(1)
+        val epochCommitEntered = CountDownLatch(1)
+        val gate = SessionEpochGate()
+        val token = requireNotNull(
+            gate.observe(VerifiedSessionIdentity(rom.sha256, "file:///lock-order.gba")),
+        )
+        val runtime = ProductionCompanionRuntime(
+            parseCatalog = { _, _, _ ->
+                parserEntered.countDown()
+                releaseParser.await(5, TimeUnit.SECONDS)
+                parsed
+            },
+        )
+        val workers = Executors.newFixedThreadPool(2) { runnable ->
+            Thread(runnable, "lock-inversion-regression").apply { isDaemon = true }
+        }
+        var completed = false
+        try {
+            runtime.load(
+                LoadedRom("lock-order.gba", rom),
+                commitIfCurrent = { commit -> gate.commitIfCurrent(token, commit) },
+                onComplete = {
+                    completionEntered.countDown()
+                    assertTrue(epochCommitEntered.await(2, TimeUnit.SECONDS))
+                    gate.commitIfCurrent(token) {}
+                },
+            )
+            assertTrue(parserEntered.await(2, TimeUnit.SECONDS))
+            val cancellation = workers.submit { runtime.cancelPendingCatalogLoad() }
+            assertTrue(completionEntered.await(2, TimeUnit.SECONDS))
+            val epochCommit = workers.submit {
+                gate.commitIfCurrent(token) {
+                    epochCommitEntered.countDown()
+                    runtime.catalogHash()
+                }
+            }
+
+            cancellation.get(2, TimeUnit.SECONDS)
+            epochCommit.get(2, TimeUnit.SECONDS)
+            completed = true
+        } finally {
+            releaseParser.countDown()
+            workers.shutdownNow()
+            if (completed) runtime.close()
+        }
     }
 
     @Test

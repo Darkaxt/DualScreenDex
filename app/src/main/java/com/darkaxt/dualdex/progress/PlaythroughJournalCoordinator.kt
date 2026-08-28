@@ -3,9 +3,19 @@ package com.darkaxt.dualdex.progress
 import com.enrpau.dualscreendex.companion.semantic.GameEvent
 import com.enrpau.dualscreendex.companion.semantic.PlaythroughKey
 
+class JournalRestoreBaseline internal constructor(
+    internal val revision: Long,
+    internal val journal: PlaythroughJournal,
+    internal val pendingDeltas: Map<String, Long>,
+)
+
 interface PlaythroughJournalSession {
     fun restore(restored: PlaythroughJournal): Boolean
     fun current(playthrough: PlaythroughKey): PlaythroughJournal?
+
+    fun captureForRestore(playthrough: PlaythroughKey): JournalRestoreBaseline? = null
+
+    fun restore(restored: PlaythroughJournal, baseline: JournalRestoreBaseline?): Boolean = restore(restored)
 }
 
 class PlaythroughJournalCoordinator(
@@ -14,18 +24,46 @@ class PlaythroughJournalCoordinator(
 ) : PlaythroughJournalSession {
     private var journal = PlaythroughJournal.empty(playthrough)
     private val pendingDeltas = linkedMapOf<String, Long>()
+    private var revision = 0L
 
     @Synchronized
-    override fun restore(restored: PlaythroughJournal): Boolean {
+    override fun restore(restored: PlaythroughJournal): Boolean = restore(
+        restored,
+        captureForRestore(playthrough),
+    )
+
+    @Synchronized
+    override fun captureForRestore(playthrough: PlaythroughKey): JournalRestoreBaseline? =
+        JournalRestoreBaseline(revision, journal.sanitizedAndCompacted(), pendingDeltas.toMap())
+            .takeIf { playthrough == this.playthrough }
+
+    @Synchronized
+    override fun restore(
+        restored: PlaythroughJournal,
+        baseline: JournalRestoreBaseline?,
+    ): Boolean {
         if (restored.playthrough != playthrough) return false
-        journal = restored.sanitizedAndCompacted()
-        pendingDeltas.clear()
+        val sanitized = restored.sanitizedAndCompacted()
+        if (baseline == null || baseline.journal.playthrough != playthrough) return false
+        if (baseline.revision == revision) {
+            journal = sanitized
+            pendingDeltas.clear()
+        } else {
+            journal = mergeConcurrentChanges(sanitized, baseline.journal, journal)
+            val concurrentPending = pendingDeltas.mapValues { (key, value) ->
+                (value - baseline.pendingDeltas.getOrDefault(key, 0L)).coerceAtLeast(0L)
+            }.filterValues { it > 0L }
+            pendingDeltas.clear()
+            pendingDeltas.putAll(concurrentPending)
+        }
+        revision++
         return true
     }
 
     @Synchronized
     fun accept(events: List<GameEvent>) {
         events.forEach(::accept)
+        if (events.isNotEmpty()) revision++
     }
 
     @Synchronized
@@ -38,6 +76,7 @@ class PlaythroughJournalCoordinator(
     @Synchronized
     fun updatePreferences(changes: Map<String, String>) {
         journal = journal.copy(preferences = journal.preferences + changes).sanitizedAndCompacted()
+        if (changes.isNotEmpty()) revision++
     }
 
     @Synchronized
@@ -47,6 +86,46 @@ class PlaythroughJournalCoordinator(
         }
         repeat(newlyCompleted) { increment("challenges") }
         journal = journal.copy(challengeStates = states).sanitizedAndCompacted()
+        revision++
+    }
+
+    private fun mergeConcurrentChanges(
+        restored: PlaythroughJournal,
+        baseline: PlaythroughJournal,
+        current: PlaythroughJournal,
+    ): PlaythroughJournal {
+        val countKeys = baseline.trackedCounts.keys + current.trackedCounts.keys
+        val counts = restored.trackedCounts.toMutableMap()
+        countKeys.forEach { key ->
+            val delta = current.trackedCounts.getOrDefault(key, 0L) - baseline.trackedCounts.getOrDefault(key, 0L)
+            if (delta > 0L) counts[key] = counts.getOrDefault(key, 0L) + delta
+        }
+        val preferences = restored.preferences.toMutableMap()
+        (baseline.preferences.keys + current.preferences.keys).forEach { key ->
+            if (baseline.preferences[key] != current.preferences[key]) {
+                current.preferences[key]?.let { preferences[key] = it } ?: preferences.remove(key)
+            }
+        }
+        val challenges = restored.challengeStates.toMutableMap()
+        (baseline.challengeStates.keys + current.challengeStates.keys).forEach { key ->
+            if (baseline.challengeStates[key] != current.challengeStates[key]) {
+                current.challengeStates[key]?.let { challenges[key] = it } ?: challenges.remove(key)
+            }
+        }
+        val concurrentTimeline = current.timeline.toMutableList().also { remaining ->
+            baseline.timeline.forEach { entry -> remaining.remove(entry) }
+        }
+        return restored.copy(
+            trackedCounts = counts,
+            capturedDexNumbers = restored.capturedDexNumbers + (current.capturedDexNumbers - baseline.capturedDexNumbers),
+            evolvedIndividualKeys = restored.evolvedIndividualKeys +
+                (current.evolvedIndividualKeys - baseline.evolvedIndividualKeys),
+            visitedAreaIds = restored.visitedAreaIds + (current.visitedAreaIds - baseline.visitedAreaIds),
+            discoveredPoiIds = restored.discoveredPoiIds + (current.discoveredPoiIds - baseline.discoveredPoiIds),
+            challengeStates = challenges,
+            timeline = restored.timeline + concurrentTimeline,
+            preferences = preferences,
+        ).sanitizedAndCompacted()
     }
 
     private fun accept(event: GameEvent) {
@@ -136,6 +215,14 @@ class PlaythroughJournalRegistry(
 
     @Synchronized
     override fun restore(restored: PlaythroughJournal): Boolean = coordinator(restored.playthrough).restore(restored)
+
+    @Synchronized
+    override fun captureForRestore(playthrough: PlaythroughKey): JournalRestoreBaseline =
+        requireNotNull(coordinator(playthrough).captureForRestore(playthrough))
+
+    @Synchronized
+    override fun restore(restored: PlaythroughJournal, baseline: JournalRestoreBaseline?): Boolean =
+        coordinator(restored.playthrough).restore(restored, baseline)
 
     @Synchronized
     override fun current(playthrough: PlaythroughKey): PlaythroughJournal = coordinator(playthrough).current()

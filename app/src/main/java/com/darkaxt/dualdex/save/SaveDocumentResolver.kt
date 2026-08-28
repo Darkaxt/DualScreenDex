@@ -5,6 +5,11 @@ import java.io.InputStream
 
 interface AtomicSiblingTarget {
     fun read(name: String): ByteArray?
+
+    fun read(name: String, maximumBytes: Int): ByteArray? = read(name)?.also { bytes ->
+        require(bytes.size <= maximumBytes) { "sibling document exceeds the byte limit" }
+    }
+
     fun replace(name: String, bytes: ByteArray)
 }
 

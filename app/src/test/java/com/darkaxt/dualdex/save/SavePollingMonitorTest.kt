@@ -2,15 +2,23 @@ package com.darkaxt.dualdex.save
 
 import com.darkaxt.dualdex.catalog.SaveSnapshotRepository
 import com.darkaxt.dualdex.catalog.StoredSaveSnapshot
+import com.darkaxt.dualdex.knowledge.SaveFileFingerprint
+import com.darkaxt.dualdex.setup.SessionEpochGate
+import com.darkaxt.dualdex.setup.VerifiedSessionIdentity
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveParseResult
 import com.darkaxt.dualdex.save.SaveSnapshot
 import com.darkaxt.dualdex.save.SaveSpeciesContext
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.InputStream
 import java.security.MessageDigest
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class SavePollingMonitorTest {
     private val context = SaveParseContext(
@@ -310,6 +318,132 @@ class SavePollingMonitorTest {
     }
 
     @Test
+    fun stagedObservationDoesNotAdvanceAuthorityUntilPersistenceAndAcceptanceComplete() {
+        val repository = FakeSnapshots()
+        val associations = FakeAssociations()
+        val monitor = SavePollingMonitor(
+            associations,
+            repository,
+            parser = { _, parseContext -> SaveParseResult.Parsed(snapshot(parseContext.romIdentity, 7)) },
+        )
+        val candidate = source("save", 100, byteArrayOf(1, 2, 3))
+
+        val first = requireNotNull(
+            monitor.poll(
+                context,
+                listOf(candidate),
+                "VERIFIED",
+                isCurrent = { true },
+                persistAcceptance = false,
+            ),
+        )
+        val repeated = requireNotNull(
+            monitor.poll(
+                context,
+                listOf(candidate),
+                "VERIFIED",
+                isCurrent = { true },
+                persistAcceptance = false,
+            ),
+        )
+
+        assertEquals(SaveObservationKind.INITIAL, first.observation?.kind)
+        assertEquals(SaveObservationKind.INITIAL, repeated.observation?.kind)
+        assertEquals(0, repository.writes)
+        assertTrue(monitor.persistPrepared(first) { true })
+        assertTrue(monitor.acceptPrepared(first))
+        assertEquals(SaveObservationKind.UNCHANGED, monitor.poll(context, listOf(candidate), "VERIFIED").observation?.kind)
+    }
+
+    @Test
+    fun selectionNeverWaitsForTheSessionOwnerWhileHoldingTheSaveMonitor() {
+        val monitor = SavePollingMonitor(FakeAssociations(), FakeSnapshots())
+        val gate = SessionEpochGate()
+        val token = requireNotNull(
+            gate.observe(VerifiedSessionIdentity(context.romIdentity, "file:///game.gba")),
+        )
+        val ownerEntered = CountDownLatch(1)
+        val selectCommitEntered = CountDownLatch(1)
+        val allowOwnerToEnterMonitor = CountDownLatch(1)
+        val workers = Executors.newFixedThreadPool(2)
+        val prepared = SaveMonitorResult(
+            status = SaveMonitorStatus.MATCHED,
+            autosaveStatus = "VERIFIED",
+            source = source("save", 100, byteArrayOf(1)),
+            snapshot = snapshot(context.romIdentity, 1),
+            observation = SaveObservation(
+                SaveObservationKind.INITIAL,
+                source("save", 100, byteArrayOf(1)),
+                SaveFileFingerprint("1".repeat(64), 1, 100),
+            ),
+            acceptanceRevision = 0,
+        )
+        try {
+            val owner = workers.submit<Boolean> {
+                gate.commitIfCurrent(token) {
+                    ownerEntered.countDown()
+                    assertTrue(allowOwnerToEnterMonitor.await(2, TimeUnit.SECONDS))
+                    monitor.canAcceptPrepared(prepared)
+                }
+            }
+            assertTrue(ownerEntered.await(2, TimeUnit.SECONDS))
+            val selection = workers.submit<Boolean> {
+                monitor.select(context.romIdentity, "save") { commit ->
+                    selectCommitEntered.countDown()
+                    allowOwnerToEnterMonitor.countDown()
+                    gate.commitIfCurrent(token, commit)
+                }
+            }
+
+            assertTrue(selectCommitEntered.await(2, TimeUnit.SECONDS))
+            assertTrue(owner.get(2, TimeUnit.SECONDS))
+            assertTrue(selection.get(2, TimeUnit.SECONDS))
+        } finally {
+            allowOwnerToEnterMonitor.countDown()
+            workers.shutdownNow()
+            gate.close()
+        }
+    }
+
+    @Test
+    fun tokenFenceRejectsSelectionPreferenceMutation() {
+        val associations = FakeAssociations()
+        val monitor = SavePollingMonitor(associations, FakeSnapshots())
+
+        val selected = monitor.select(
+            context.romIdentity,
+            "save",
+            commitIfCurrent = { false },
+        )
+
+        assertFalse(selected)
+        assertNull(associations.selectedFor(context.romIdentity))
+    }
+
+    @Test
+    fun tokenFenceRejectsPersistenceAfterPreparationCompletes() {
+        val repository = FakeSnapshots()
+        val associations = FakeAssociations()
+        val monitor = SavePollingMonitor(
+            associations,
+            repository,
+            parser = { _, parseContext -> SaveParseResult.Parsed(snapshot(parseContext.romIdentity, 12)) },
+        )
+
+        val result = monitor.poll(
+            context = context,
+            candidates = listOf(source("save", 100, byteArrayOf(1, 2, 3))),
+            autosaveStatus = "VERIFIED",
+            isCurrent = { true },
+            commitIfCurrent = { false },
+        )
+
+        assertNull(result)
+        assertEquals(0, repository.writes)
+        assertNull(associations.selectedFor(context.romIdentity))
+    }
+
+    @Test
     fun sessionExpiryDuringSaveReadPreventsPersistenceAndPublication() {
         val repository = FakeSnapshots()
         val associations = FakeAssociations()
@@ -321,7 +455,7 @@ class SavePollingMonitorTest {
         )
         val candidate = source("save", 100, byteArrayOf(1, 2, 3)) { current = false }
 
-        val result = monitor.poll(context, listOf(candidate), "VERIFIED") { current }
+        val result = monitor.poll(context, listOf(candidate), "VERIFIED", isCurrent = { current })
 
         assertNull(result)
         assertEquals(0, repository.writes)
@@ -338,6 +472,46 @@ class SavePollingMonitorTest {
 
         assertNull(restored)
         assertEquals(readsBeforeRestore, repository.reads)
+    }
+
+    @Test
+    fun restoreUsesTheCheckpointSelectedImmutableSnapshotVersion() {
+        val legacy = StoredSaveSnapshot(snapshot(context.romIdentity, 10), 100, 200)
+        val accepted = StoredSaveSnapshot(snapshot(context.romIdentity, 11), 300, 400)
+        var legacyReads = 0
+        var versionReads = 0
+        val repository = object : SaveSnapshotRepository {
+            override fun write(snapshot: SaveSnapshot, sourceLastModifiedEpochMs: Long, refreshedAtEpochMs: Long) = Unit
+
+            override fun read(romSha256: String): StoredSaveSnapshot? {
+                legacyReads++
+                return legacy
+            }
+
+            override fun readVersion(
+                romSha256: String,
+                versionId: String,
+                snapshotDigestSha256: String,
+            ): StoredSaveSnapshot? {
+                versionReads++
+                return accepted.takeIf {
+                    versionId == "01234567-89ab-cdef-0123-456789abcdef" && snapshotDigestSha256 == "b".repeat(64)
+                }
+            }
+        }
+        val monitor = SavePollingMonitor(FakeAssociations(), repository)
+
+        val restored = monitor.restore(
+            context,
+            "UNVERIFIED",
+            snapshotVersionId = "01234567-89ab-cdef-0123-456789abcdef",
+            snapshotDigestSha256 = "b".repeat(64),
+            isCurrent = { true },
+        )
+
+        assertEquals(11L, restored?.snapshot?.saveCounter)
+        assertEquals(0, legacyReads)
+        assertEquals(1, versionReads)
     }
 
     @Test

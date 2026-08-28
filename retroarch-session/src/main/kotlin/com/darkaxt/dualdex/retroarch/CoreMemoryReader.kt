@@ -42,15 +42,16 @@ private data class CoreMemoryRequest(
 )
 
 /**
- * Heartbeat-driven, read-only RetroArch core-memory transport. There is deliberately no write operation
- * and absence of a UDP reply retries the same idempotent request on the next heartbeat rather than
- * cancelling it by elapsed time.
+ * Heartbeat-driven, read-only RetroArch core-memory transport. There is deliberately no write operation.
+ * Missing or irrelevant UDP replies retry the same idempotent request within a fixed per-read budget.
  */
 class CoreMemoryReadSession(
     private val sender: (ByteArray) -> Unit,
     private val poller: () -> ByteArray?,
     private val maximumChunkBytes: Int = DEFAULT_CHUNK_BYTES,
     private val maximumPacketsPerHeartbeat: Int = DEFAULT_PACKETS_PER_HEARTBEAT,
+    private val maximumMissedReplyHeartbeats: Int = DEFAULT_MISSED_REPLY_HEARTBEATS,
+    private val maximumReadHeartbeats: Int = DEFAULT_READ_HEARTBEATS,
     private val scratchBufferFactory: (Int) -> ByteArray = ::ByteArray,
     private val regionBufferFactory: (Int) -> ByteArray = ::ByteArray,
 ) {
@@ -69,10 +70,14 @@ class CoreMemoryReadSession(
     private var packetsPolled = 0L
     private var ignoredPackets = 0L
     private var drainQuotaHits = 0L
+    private var missedReplyHeartbeats = 0
+    private var readHeartbeats = 0
 
     init {
         require(maximumChunkBytes in 1..MAX_CHUNK_BYTES) { "core-memory chunk is outside the safe UDP packet limit" }
         require(maximumPacketsPerHeartbeat > 0) { "core-memory packet quota must be positive" }
+        require(maximumMissedReplyHeartbeats > 0) { "core-memory missed-reply budget must be positive" }
+        require(maximumReadHeartbeats > 0) { "core-memory whole-read heartbeat budget must be positive" }
     }
 
     fun start(regions: List<CoreMemoryRegion>): CoreMemoryReadState {
@@ -100,6 +105,9 @@ class CoreMemoryReadSession(
         terminalFailure?.let { return it }
         if (complete) return completion()
         if (requestIndex < 0) return CoreMemoryReadState.Idle
+        if (++readHeartbeats > maximumReadHeartbeats) {
+            return fail("RetroArch memory read exceeded its whole-read deadline")
+        }
         var advanced = false
         var heartbeatPackets = 0
         while (heartbeatPackets < maximumPacketsPerHeartbeat) {
@@ -138,6 +146,10 @@ class CoreMemoryReadSession(
         }
         if (heartbeatPackets == maximumPacketsPerHeartbeat) drainQuotaHits++
         if (!advanced) {
+            missedReplyHeartbeats++
+            if (missedReplyHeartbeats >= maximumMissedReplyHeartbeats) {
+                return fail("RetroArch memory reply timed out")
+            }
             try {
                 sendCurrent()
             } catch (_: Exception) {
@@ -225,6 +237,8 @@ class CoreMemoryReadSession(
         const val DEFAULT_CHUNK_BYTES = 512
         const val MAX_CHUNK_BYTES = 1024
         const val DEFAULT_PACKETS_PER_HEARTBEAT = 512
+        const val DEFAULT_MISSED_REPLY_HEARTBEATS = 8
+        const val DEFAULT_READ_HEARTBEATS = 128
         private const val MAX_TOTAL_BYTES = 4L * 1024 * 1024
     }
 }

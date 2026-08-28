@@ -22,11 +22,16 @@ class KnowledgeLedgerJsonCodec(
     ): ByteArray = gson.toJson(StoredLedger.from(romIdentity, saveIdentity, ledger))
         .toByteArray(Charsets.UTF_8)
 
-    internal fun decodeDocument(bytes: ByteArray): DecodedLedgerDocument? = runCatching {
-        gson.fromJson(bytes.toString(Charsets.UTF_8), StoredLedger::class.java)
-    }.getOrNull()
-        ?.takeIf { it.schema in SUPPORTED_SCHEMAS }
-        ?.let { DecodedLedgerDocument(it.romIdentity, it.saveIdentity, it.toLedger()) }
+    internal fun decodeDocument(bytes: ByteArray): DecodedLedgerDocument? {
+        val stored = try {
+            gson.fromJson(bytes.toString(Charsets.UTF_8), StoredLedger::class.java)
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        return stored
+            .takeIf { it.schema in SUPPORTED_SCHEMAS }
+            ?.let { DecodedLedgerDocument(it.romIdentity, it.saveIdentity, it.toLedger()) }
+    }
 
     internal data class DecodedLedgerDocument(
         val romIdentity: String,

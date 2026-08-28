@@ -16,3 +16,12 @@ data class RecoveryApplication(
     val accepted: Boolean,
     val checkpointLedger: KnowledgeLedger? = null,
 )
+
+class PreparedRecovery internal constructor(
+    val application: RecoveryApplication,
+    internal val stateRevision: Long,
+    internal val projection: RecoveryProjection,
+    internal val samePlaythrough: Boolean,
+    internal val unchanged: Boolean,
+    internal val resetKnowledge: Boolean,
+)

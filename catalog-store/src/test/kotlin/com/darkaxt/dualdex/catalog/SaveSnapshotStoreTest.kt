@@ -11,6 +11,7 @@ import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.file.Files
+import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
@@ -21,6 +22,55 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SaveSnapshotStoreTest {
+    @Test
+    fun stagedSnapshotVersionDoesNotReplaceAcceptedSnapshotAndCanBeDiscarded() {
+        val directory = Files.createTempDirectory("dualdex-save-store-staged").toFile()
+        try {
+            val romHash = "0".repeat(64)
+            val first = fixture(romHash, counter = 3, species = 6)
+            val replacement = fixture(romHash, counter = 4, species = 25)
+            val replacementDigest = MessageDigest.getInstance("SHA-256")
+                .digest(Gson().toJson(replacement).toByteArray(Charsets.UTF_8))
+                .joinToString("") { byte -> "%02x".format(byte) }
+            val store = SaveSnapshotStore(directory, JdbcCatalogDatabaseFactory)
+            store.write(first, sourceLastModifiedEpochMs = 100, refreshedAtEpochMs = 200)
+
+            val staged = store.stage(
+                replacement,
+                sourceLastModifiedEpochMs = 300,
+                refreshedAtEpochMs = 400,
+                snapshotDigestSha256 = replacementDigest,
+            ) as SaveSnapshotStageResult.Staged
+
+            assertEquals(first, store.read(romHash)?.snapshot)
+            assertEquals(
+                replacement,
+                store.readVersion(romHash, staged.snapshot.versionId, replacementDigest)?.snapshot,
+            )
+            store.discard(staged.snapshot)
+            assertNull(store.readVersion(romHash, staged.snapshot.versionId, replacementDigest))
+            assertEquals(first, SaveSnapshotStore(directory, JdbcCatalogDatabaseFactory).read(romHash)?.snapshot)
+
+            val accepted = store.stage(
+                replacement,
+                sourceLastModifiedEpochMs = 300,
+                refreshedAtEpochMs = 400,
+                snapshotDigestSha256 = replacementDigest,
+            ) as SaveSnapshotStageResult.Staged
+            assertTrue(store.prepareForAcceptance(accepted.snapshot))
+            store.accept(accepted.snapshot)
+            store.discard(accepted.snapshot)
+            assertEquals(
+                replacement,
+                SaveSnapshotStore(directory, JdbcCatalogDatabaseFactory)
+                    .readVersion(romHash, accepted.snapshot.versionId, replacementDigest)
+                    ?.snapshot,
+            )
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
     @Test
     fun atomicallyReplacesAndReopensTheLastGoodSnapshotByRomHash() {
         val directory = Files.createTempDirectory("dualdex-save-store").toFile()

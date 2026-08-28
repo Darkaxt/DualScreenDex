@@ -16,7 +16,9 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
+import java.security.MessageDigest
 import java.util.Locale
+import java.util.UUID
 
 data class StoredSaveSnapshot(
     val snapshot: SaveSnapshot,
@@ -28,9 +30,58 @@ data class SaveSnapshotCorruption(
     val reason: String,
 )
 
+interface StagedSaveSnapshot {
+    val snapshot: SaveSnapshot
+    val versionId: String
+    val snapshotDigestSha256: String
+}
+
+sealed interface SaveSnapshotStageResult {
+    data class Staged(val snapshot: StagedSaveSnapshot) : SaveSnapshotStageResult
+    data object Failed : SaveSnapshotStageResult
+}
+
+private data class DeferredSaveSnapshot(
+    override val snapshot: SaveSnapshot,
+    val sourceLastModifiedEpochMs: Long,
+    val refreshedAtEpochMs: Long,
+    override val snapshotDigestSha256: String,
+    override val versionId: String = "legacy",
+) : StagedSaveSnapshot
+
 interface SaveSnapshotRepository {
     fun write(snapshot: SaveSnapshot, sourceLastModifiedEpochMs: Long, refreshedAtEpochMs: Long)
     fun read(romSha256: String): StoredSaveSnapshot?
+
+    fun stage(
+        snapshot: SaveSnapshot,
+        sourceLastModifiedEpochMs: Long,
+        refreshedAtEpochMs: Long,
+        snapshotDigestSha256: String,
+    ): SaveSnapshotStageResult = SaveSnapshotStageResult.Staged(
+        DeferredSaveSnapshot(
+            snapshot,
+            sourceLastModifiedEpochMs,
+            refreshedAtEpochMs,
+            snapshotDigestSha256,
+        ),
+    )
+
+    fun prepareForAcceptance(snapshot: StagedSaveSnapshot): Boolean {
+        val deferred = snapshot as? DeferredSaveSnapshot ?: return false
+        write(deferred.snapshot, deferred.sourceLastModifiedEpochMs, deferred.refreshedAtEpochMs)
+        return true
+    }
+
+    fun accept(snapshot: StagedSaveSnapshot) = Unit
+
+    fun discard(snapshot: StagedSaveSnapshot) = Unit
+
+    fun readVersion(
+        romSha256: String,
+        versionId: String,
+        snapshotDigestSha256: String,
+    ): StoredSaveSnapshot? = read(romSha256)
 }
 
 class SaveSnapshotStore(
@@ -68,6 +119,96 @@ class SaveSnapshotStore(
                 refreshedAtEpochMs = refreshedAtEpochMs,
             ),
         )
+    }
+
+    override fun stage(
+        snapshot: SaveSnapshot,
+        sourceLastModifiedEpochMs: Long,
+        refreshedAtEpochMs: Long,
+        snapshotDigestSha256: String,
+    ): SaveSnapshotStageResult {
+        requireHash(snapshot.romIdentity)
+        require(snapshotDigestSha256.matches(SHA256)) { "SaveRAM snapshot digest is invalid" }
+        return try {
+            SnapshotPayloadPolicy.validateSnapshot(snapshot)
+            val payloadJson = gson.toJson(snapshot)
+            SnapshotPayloadPolicy.validateEncodedPayload(payloadJson)
+            require(snapshotDigest(payloadJson) == snapshotDigestSha256.lowercase()) {
+                "SaveRAM snapshot digest does not match its staged payload"
+            }
+            val versionId = UUID.randomUUID().toString().lowercase()
+            val directory = versionDirectory(snapshot.romIdentity)
+            check(directory.isDirectory || directory.mkdirs()) { "recovery snapshot version directory could not be created" }
+            val destination = File(directory, "$versionId.sqlite")
+            val temporary = File(directory, ".$versionId.tmp")
+            try {
+                writeRecordToFile(
+                    temporary,
+                    SnapshotRecord(
+                        romSha256 = snapshot.romIdentity.lowercase(),
+                        saveIdentity = snapshot.saveIdentity,
+                        saveSchemaId = snapshot.schemaId,
+                        payloadJson = payloadJson,
+                        sourceLastModifiedEpochMs = sourceLastModifiedEpochMs,
+                        refreshedAtEpochMs = refreshedAtEpochMs,
+                    ),
+                )
+                check(destinationSidecars(temporary).none(File::exists)) {
+                    "staged recovery snapshot retained transient database files"
+                }
+                RandomAccessFile(temporary, "rw").use { file -> file.fd.sync() }
+                Files.move(temporary.toPath(), destination.toPath(), StandardCopyOption.ATOMIC_MOVE)
+                SaveSnapshotStageResult.Staged(
+                    FileStagedSaveSnapshot(
+                        snapshot = snapshot,
+                        versionId = versionId,
+                        snapshotDigestSha256 = snapshotDigestSha256.lowercase(),
+                        file = destination,
+                    ),
+                )
+            } finally {
+                deleteTemporaryDatabaseFiles(temporary)
+            }
+        } catch (_: OutOfMemoryError) {
+            SaveSnapshotStageResult.Failed
+        } catch (_: Exception) {
+            SaveSnapshotStageResult.Failed
+        }
+    }
+
+    override fun prepareForAcceptance(snapshot: StagedSaveSnapshot): Boolean {
+        val staged = snapshot as? FileStagedSaveSnapshot ?: return super.prepareForAcceptance(snapshot)
+        return !staged.discarded
+    }
+
+    override fun accept(snapshot: StagedSaveSnapshot) {
+        val staged = snapshot as? FileStagedSaveSnapshot ?: return super.accept(snapshot)
+        staged.retained = true
+    }
+
+    override fun discard(snapshot: StagedSaveSnapshot) {
+        val staged = snapshot as? FileStagedSaveSnapshot ?: return super.discard(snapshot)
+        if (!staged.retained) {
+            staged.discarded = true
+            deleteTemporaryDatabaseFiles(staged.file)
+        }
+    }
+
+    override fun readVersion(
+        romSha256: String,
+        versionId: String,
+        snapshotDigestSha256: String,
+    ): StoredSaveSnapshot? {
+        requireHash(romSha256)
+        require(snapshotDigestSha256.matches(SHA256)) { "SaveRAM snapshot digest is invalid" }
+        if (!versionId.matches(VERSION_ID)) return null
+        val file = File(versionDirectory(romSha256), "$versionId.sqlite")
+        if (!file.isFile) return null
+        return CanonicalDatabaseWriteCoordinator.write(file) {
+            readCoordinated(file, romSha256.lowercase())?.takeIf { stored ->
+                snapshotDigest(gson.toJson(stored.snapshot)) == snapshotDigestSha256.lowercase()
+            }
+        }
     }
 
     override fun read(romSha256: String): StoredSaveSnapshot? {
@@ -503,10 +644,26 @@ class SaveSnapshotStore(
 
     private fun fileFor(sha256: String) = File(snapshotDirectory, "${sha256.lowercase()}.sqlite")
 
+    private fun versionDirectory(sha256: String) = File(snapshotDirectory, "versions/${sha256.lowercase()}")
+
     private fun legacyFileFor(sha256: String) = File(catalogDirectory, "${sha256.lowercase()}.sqlite")
+
+    private fun snapshotDigest(payloadJson: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(payloadJson.toByteArray(Charsets.UTF_8))
+        .joinToString("") { byte -> "%02x".format(byte) }
 
     private fun requireHash(sha256: String) {
         require(sha256.matches(Regex("[0-9a-fA-F]{64}"))) { "catalog SHA-256 is invalid" }
+    }
+
+    private class FileStagedSaveSnapshot(
+        override val snapshot: SaveSnapshot,
+        override val versionId: String,
+        override val snapshotDigestSha256: String,
+        val file: File,
+    ) : StagedSaveSnapshot {
+        @Volatile var retained: Boolean = false
+        @Volatile var discarded: Boolean = false
     }
 
     private data class SnapshotRecord(
@@ -574,6 +731,8 @@ class SaveSnapshotStore(
         const val MAX_FAILURE_CAUSE_DEPTH = 8
         const val DATABASE_BLOB_LIMIT_EXCEEDED = "database blob limit exceeded"
         val FILE_LOCK_RETRY_DELAYS_MS = longArrayOf(10, 25, 50)
+        val SHA256 = Regex("[0-9a-fA-F]{64}")
+        val VERSION_ID = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
         val LEGACY_CATALOG_FILE = Regex("[0-9a-fA-F]{64}\\.sqlite")
     }
 }

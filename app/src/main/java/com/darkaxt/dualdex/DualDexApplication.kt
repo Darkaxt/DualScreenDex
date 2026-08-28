@@ -7,6 +7,7 @@ import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.catalog.CatalogCacheDecision
 import com.darkaxt.dualdex.catalog.SaveSnapshotStore
+import com.darkaxt.dualdex.knowledge.RecoveryPreparation
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointStore
 import com.darkaxt.dualdex.progress.PlaythroughJournalRegistry
@@ -307,8 +308,15 @@ open class DualDexApplication : Application() {
                 transientGameState,
                 SaveKnowledgeCheckpointCoordinator(
                     SaveKnowledgeCheckpointStore(File(filesDir, "knowledge-checkpoints")),
-                    transientGameState::acceptRecovery,
-                    playthroughJournals,
+                    prepareRecovery = { projection ->
+                        transientGameState.prepareRecovery(projection)?.let { prepared ->
+                            RecoveryPreparation(prepared.application) { publishAuthority ->
+                                transientGameState.commitPreparedRecovery(prepared, publishAuthority)
+                            }
+                        }
+                    },
+                    journal = playthroughJournals,
+                    publishRecoveryStatus = { status -> transientGameState.acceptRecoveryStatus(status) },
                 ),
                 saveSnapshotRepository = saveSnapshots,
                 sharedStorage = sharedStorageGateway(),

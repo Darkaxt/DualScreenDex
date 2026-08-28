@@ -37,11 +37,13 @@ class BattleMemoryCoordinatorTest {
         }
         val state = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
         val transport = MemoryTransport(wram, 0xc000)
+        var nowNanos = 0L
         val coordinator = BattleMemoryCoordinator(
             catalogProvider = { gen1Context() },
             transientGameState = state,
             transportFactory = { transport },
             autoStart = false,
+            monotonicNanos = { nowNanos },
         )
         coordinator.updateSession(connected = true, systemId = "game_boy", romIdentity = "rom")
         repeat(2) { coordinator.heartbeat() }
@@ -53,6 +55,7 @@ class BattleMemoryCoordinatorTest {
         assertNull(state.current)
 
         transport.failPolls = false
+        nowNanos += 10_000_000_000L
         repeat(2) { coordinator.heartbeat() }
         assertEquals(0x28, state.current?.location?.areaBaseId?.value)
 
@@ -61,7 +64,46 @@ class BattleMemoryCoordinatorTest {
         assertNull(state.current)
 
         transport.failSends = false
+        nowNanos += 10_000_000_000L
         repeat(2) { coordinator.heartbeat() }
+        assertEquals(0x28, state.current?.location?.areaBaseId?.value)
+        coordinator.close()
+    }
+
+    @Test
+    fun missingMemoryRepliesSuspendLiveAuthorityBackOffAndRecover() {
+        val wram = ByteArray(0x2000).apply {
+            this[0x135d] = 0x28
+            this[0x1360] = 7
+            this[0x1361] = 12
+        }
+        var nowNanos = 0L
+        val state = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val transport = MemoryTransport(wram, 0xc000)
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { gen1Context() },
+            transientGameState = state,
+            transportFactory = { transport },
+            autoStart = false,
+            monotonicNanos = { nowNanos },
+            maximumMissedReplyHeartbeats = 2,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy", romIdentity = "rom")
+        repeat(2) { coordinator.heartbeat() }
+        assertEquals(0x28, state.current?.location?.areaBaseId?.value)
+
+        transport.dropMemoryReplies = true
+        repeat(3) { coordinator.heartbeat() }
+
+        assertNull(state.current)
+        val commandsAfterFailure = transport.commands.size
+        repeat(10) { coordinator.heartbeat() }
+        assertEquals(commandsAfterFailure, transport.commands.size)
+
+        nowNanos = 10_000_000_000L
+        transport.dropMemoryReplies = false
+        repeat(2) { coordinator.heartbeat() }
+
         assertEquals(0x28, state.current?.location?.areaBaseId?.value)
         coordinator.close()
     }
@@ -1169,12 +1211,14 @@ class BattleMemoryCoordinatorTest {
         val commands = mutableListOf<String>()
         var failPolls = false
         var failSends = false
+        var dropMemoryReplies = false
         private val replies = ArrayDeque<ByteArray>()
 
         override fun send(payload: ByteArray) {
             if (failSends) error("injected send failure")
             val command = payload.toString(Charsets.US_ASCII)
             commands += command
+            if (dropMemoryReplies) return
             val parts = command.split(' ')
             val address = parts[1].toLong(16)
             val length = parts[2].toInt()

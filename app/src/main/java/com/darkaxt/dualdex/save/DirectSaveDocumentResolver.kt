@@ -57,6 +57,17 @@ object DirectSaveDocumentResolver {
 
         override fun read(name: String): ByteArray? = resolve(name).takeIf(File::isFile)?.readBytes()
 
+        override fun read(name: String, maximumBytes: Int): ByteArray? {
+            require(maximumBytes > 0) { "sibling byte limit must be positive" }
+            val source = resolve(name).takeIf(File::isFile) ?: return null
+            require(source.length() in 0..maximumBytes.toLong()) { "sibling document exceeds the byte limit" }
+            return source.inputStream().use { input ->
+                input.readNBytes(maximumBytes + 1).also { bytes ->
+                    require(bytes.size <= maximumBytes) { "sibling document exceeds the byte limit" }
+                }
+            }
+        }
+
         override fun replace(name: String, bytes: ByteArray) {
             val destination = resolve(name)
             val temporary = resolve(".$name.dualdex.tmp")

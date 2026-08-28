@@ -559,6 +559,47 @@ class UnifiedGameStateDecoderTest {
     }
 
     @Test
+    fun preparedRecoveryCannotCommitAcrossANewerStateRevision() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM))
+        val prepared = requireNotNull(
+            decoder.prepareRecovery(
+                recovery(ROM).copy(observation = observation(SaveObservationKind.INITIAL, 1)),
+            ),
+        )
+
+        decoder.acceptDecodedLive(
+            liveSnapshot(ROM, sampleId = 2, money = LiveValue.Available(900L)),
+        )
+
+        assertFalse(decoder.commitPreparedRecovery(prepared).accepted)
+        assertNull(decoder.current?.recovery?.applicationId)
+        assertEquals(900L, decoder.current?.trainer?.money?.value)
+    }
+
+    @Test
+    fun failedDurableAuthorityDoesNotCommitPreparedRecovery() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM))
+        val prepared = requireNotNull(
+            decoder.prepareRecovery(
+                recovery(ROM).copy(observation = observation(SaveObservationKind.INITIAL, 1)),
+            ),
+        )
+        var authorityAttempts = 0
+
+        val rejected = decoder.commitPreparedRecovery(prepared) {
+            authorityAttempts++
+            false
+        }
+
+        assertFalse(rejected.accepted)
+        assertEquals(1, authorityAttempts)
+        assertNull(decoder.current?.recovery?.applicationId)
+        assertTrue(decoder.commitPreparedRecovery(prepared) { true }.accepted)
+    }
+
+    @Test
     fun changedRecoveryFreezesPreApplicationKnowledgeInsideTheStateOwner() {
         var currentLedger = KnowledgeLedger(seenSpecies = setOf(25))
         val decoder = UnifiedGameStateDecoder { currentLedger }

@@ -56,6 +56,23 @@ class GuideActivationGateTest {
     }
 
     @Test
+    fun staleAttemptCannotCancelOrCompleteTheReconnectAttempt() {
+        val gate = GuideActivationGate()
+        val identity = VerifiedSessionIdentity("a".repeat(64), "source-a")
+        val beforeLoss = SessionWorkToken(1, identity)
+        val reconnect = SessionWorkToken(3, identity)
+
+        assertTrue(gate.tryBegin("source-a", beforeLoss))
+        assertTrue(gate.tryBegin("source-a", reconnect))
+        gate.cancel("source-a", beforeLoss)
+        gate.finishSuccess("source-a", beforeLoss)
+
+        assertTrue(gate.isLoading("source-a", reconnect))
+        gate.finishSuccess("source-a", reconnect)
+        assertFalse(gate.isLoading("source-a", reconnect))
+    }
+
+    @Test
     fun `only one activation can be in flight`() {
         val gate = GuideActivationGate()
 
