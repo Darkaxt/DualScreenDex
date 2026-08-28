@@ -4,19 +4,16 @@ This is the canonical reviewer entry point for DualDex release readiness.
 
 ## Active marker
 
-- **Latest repository release marker:** `v1.1.0-rc.77`
+- **Latest published repository release marker:** `v1.1.0-rc.77`
 - **Release notes:** [`release/RELEASE_NOTES_1.1.0-rc.77.md`](../release/RELEASE_NOTES_1.1.0-rc.77.md)
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json)
-- **Current QA work:** project-wide hardening Stages 7–8; this work does not create or publish another candidate by itself.
+- **Current state:** blocked while project-wide QA blockers and referrals are remediated and Stages 7–8 remain open.
 
-## Current evidence
+## Required final evidence
 
-- **Source-bound compatibility manifest:** [`release/compatibility-evidence.json`](../release/compatibility-evidence.json)
-- **Fresh corpus summary:** [`docs/reports/qa-hardening/stage-07-corpus-evidence.md`](reports/qa-hardening/stage-07-corpus-evidence.md)
-- **QA closure reports:** [`docs/reports/qa-hardening/`](reports/qa-hardening/)
-- **Release signing certificate and policy:** [`signing/README.md`](../signing/README.md)
+No final corpus or zero-gap closure evidence is currently tracked. The next release remains blocked until one stabilized source commit produces the canonical 334-input execution receipt and summary, every materialized catalog persists and reopens, and machine-readable Stage 7 and Stage 8 closure records both report zero blockers and zero referrals.
 
-A release workflow must validate the compatibility manifest against its exact source revision, audit the active `v1.*` tag ruleset and `release-signing` environment, and complete the protected signing job before publication.
+The release workflow requires the future `release/canonical-corpus.json`, `release/compatibility-evidence.json`, Stage 7 execution/summary, and Stage 7/8 closure records. It validates their source lineage, generator and raw-report digests, canonical denominator/digest, cache decision, exact closure state, protected tag rules, and both protected GitHub environments before signing can begin.
 
 ## Historical records
 

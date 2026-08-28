@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import {
   renderCompatibilityEvidenceMarkdown,
@@ -6,6 +7,7 @@ import {
 } from "./summarize-compatibility-evidence.mjs";
 
 const sourceCommit = "a".repeat(40);
+const generatorDigest = "b".repeat(64);
 
 function row(index, status, dataCompatibility, persisted = status === "SELECTED") {
   return {
@@ -18,43 +20,125 @@ function row(index, status, dataCompatibility, persisted = status === "SELECTED"
     },
     catalog: status === "SELECTED" ? { species: 1 } : null,
     persistence: persisted ? { bytes: 100 } : null,
+    catalogError: null,
     persistenceError: null,
+    error: null,
     dataCompatibility,
   };
 }
 
-test("summarizes schema 12 corpus evidence without private input details", () => {
-  const summary = summarizeCompatibilityEvidence({
-    schemaVersion: 12,
+function evidence(rows) {
+  const report = {
+    schemaVersion: 13,
+    execution: {
+      sourceCommit,
+      generatorSha256: generatorDigest,
+    },
     roots: ["D:/private/roms"],
-    results: [
-      row(1, "SELECTED", "COMPLETE"),
-      row(2, "AMBIGUOUS", "PARTIAL", false),
-      row(3, "NO_FAMILY_MATCH", "UNRESOLVED", false),
-    ],
-  }, sourceCommit);
+    results: rows,
+  };
+  const raw = Buffer.from(JSON.stringify(report));
+  const identities = rows
+    .map(value => `${value.result.sha256}:${value.result.size}`)
+    .sort();
+  const canonical = {
+    schemaVersion: 1,
+    inputCount: rows.length,
+    inputDigestSha256: createHash("sha256").update(identities.join("\n")).digest("hex"),
+  };
+  const receipt = {
+    schemaVersion: 1,
+    sourceCommit,
+    generator: { name: "parser-cli", schemaVersion: 13, sha256: generatorDigest },
+    rawReportSha256: createHash("sha256").update(raw).digest("hex"),
+    inputCount: rows.length,
+  };
+  return { raw, receipt, canonical };
+}
+
+test("summarizes receipt-bound corpus evidence without private input details", () => {
+  const input = evidence([
+    row(1, "SELECTED", "COMPLETE"),
+    row(2, "AMBIGUOUS", "PARTIAL", false),
+    row(3, "NO_FAMILY_MATCH", "UNRESOLVED", false),
+  ]);
+  const summary = summarizeCompatibilityEvidence(input.raw, input.receipt, input.canonical);
   const encoded = JSON.stringify(summary);
   const markdown = renderCompatibilityEvidenceMarkdown(summary);
 
+  assert.equal(summary.schemaVersion, 2);
+  assert.equal(summary.sourceCommit, sourceCommit);
+  assert.equal(summary.generator.sha256, generatorDigest);
+  assert.equal(summary.rawReportSha256, input.receipt.rawReportSha256);
   assert.equal(summary.inputCount, 3);
-  assert.equal(summary.outcomes.selected, 1);
-  assert.equal(summary.outcomes.ambiguous, 1);
-  assert.equal(summary.outcomes.noFamilyMatch, 1);
+  assert.equal(summary.outcomes.total, 3);
+  assert.equal(summary.dataCompatibility.total, 3);
   assert.equal(summary.catalogs.persisted, 1);
-  assert.match(summary.corpusInputDigestSha256, /^[0-9a-f]{64}$/);
   assert.doesNotMatch(encoded, /Private Game|D:\/private|0000000000000001/);
   assert.doesNotMatch(markdown, /Private Game|D:\/private|0000000000000001/);
 });
 
-test("rejects stale generator schemas and missing source identities", () => {
+test("rejects relabeling an older raw report even when its corpus digest matches", () => {
+  const input = evidence([row(1, "SELECTED", "COMPLETE")]);
+  input.receipt.sourceCommit = "c".repeat(40);
+
   assert.throws(
-    () => summarizeCompatibilityEvidence({ schemaVersion: 11, results: [row(1, "SELECTED", "COMPLETE")] }, sourceCommit),
-    /schemaVersion must be 12/,
+    () => summarizeCompatibilityEvidence(input.raw, input.receipt, input.canonical),
+    /source commit/i,
   );
-  const invalid = row(1, "SELECTED", "COMPLETE");
-  invalid.result.sha256 = null;
+});
+
+test("rejects stale schemas and raw-report or generator digest drift", () => {
+  const stale = evidence([row(1, "SELECTED", "COMPLETE")]);
+  stale.receipt.generator.schemaVersion = 12;
   assert.throws(
-    () => summarizeCompatibilityEvidence({ schemaVersion: 12, results: [invalid] }, sourceCommit),
-    /valid SHA-256 identity/,
+    () => summarizeCompatibilityEvidence(stale.raw, stale.receipt, stale.canonical),
+    /schemaVersion must be 13/i,
   );
+
+  const changedRaw = evidence([row(1, "SELECTED", "COMPLETE")]);
+  changedRaw.receipt.rawReportSha256 = "c".repeat(64);
+  assert.throws(
+    () => summarizeCompatibilityEvidence(changedRaw.raw, changedRaw.receipt, changedRaw.canonical),
+    /raw report digest/i,
+  );
+
+  const changedGenerator = evidence([row(1, "SELECTED", "COMPLETE")]);
+  const parsed = JSON.parse(changedGenerator.raw.toString("utf8"));
+  parsed.execution.generatorSha256 = "c".repeat(64);
+  changedGenerator.raw = Buffer.from(JSON.stringify(parsed));
+  changedGenerator.receipt.rawReportSha256 = createHash("sha256")
+    .update(changedGenerator.raw)
+    .digest("hex");
+  assert.throws(
+    () => summarizeCompatibilityEvidence(
+      changedGenerator.raw,
+      changedGenerator.receipt,
+      changedGenerator.canonical,
+    ),
+    /generator digest/i,
+  );
+});
+
+test("rejects missing terminal outcomes and all raw error channels", () => {
+  const missing = evidence([row(1, undefined, "COMPLETE")]);
+  assert.throws(
+    () => summarizeCompatibilityEvidence(missing.raw, missing.receipt, missing.canonical),
+    /terminal parser outcome/i,
+  );
+
+  for (const [field, value, message] of [
+    ["error", "read failed", /source errors/i],
+    ["catalogError", "catalog failed", /catalog errors/i],
+    ["persistenceError", "database failed", /persistence errors/i],
+    ["dataCompatibility", "ERROR", /compatibility errors/i],
+  ]) {
+    const failingRow = row(1, "SELECTED", "COMPLETE");
+    failingRow[field] = value;
+    const input = evidence([failingRow]);
+    assert.throws(
+      () => summarizeCompatibilityEvidence(input.raw, input.receipt, input.canonical),
+      message,
+    );
+  }
 });

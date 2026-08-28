@@ -338,7 +338,7 @@ class ReportWriterTest {
     fun jsonIsDeterministicForSameReport() {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
-        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 12"))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 13"))
         assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
     }
 
@@ -383,7 +383,7 @@ class ReportWriterTest {
         val ruleset = catalogJson.getAsJsonArray("rulesetDetails")[0].asJsonObject
         val selector = ruleset.getAsJsonObject("levelUpSelector")
 
-        assertEquals(12, root.get("schemaVersion").asInt)
+        assertEquals(13, root.get("schemaVersion").asInt)
         assertEquals(1, catalogJson.get("learnsetRulesets").asInt)
         assertEquals(
             setOf("id", "label", "sourceOffset", "confidence", "primary", "levelUpSelector"),
@@ -418,7 +418,7 @@ class ReportWriterTest {
 
         val json = ReportWriter.json(report)
 
-        assertTrue(json.contains("\"schemaVersion\": 12"))
+        assertTrue(json.contains("\"schemaVersion\": 13"))
         assertTrue(json.contains("\"validatorReviewRecommended\": true"))
     }
 

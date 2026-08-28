@@ -16,12 +16,14 @@ import java.util.concurrent.ExecutorCompletionService
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
+import java.util.jar.JarFile
 import kotlin.system.exitProcess
 import kotlin.time.measureTimedValue
 import kotlin.time.measureTime
 
 private const val USAGE =
     "parser-cli <root> [<root> ...] --json <path> --markdown <path> " +
+        "--execution-receipt <path> --source-commit <40-char commit> " +
         "[--cache-dir <path>] [--jobs <1..8>] [--all-roms]"
 internal const val MAX_CLI_JOBS = 8
 private const val QUEUED_TASKS_PER_WORKER = 1
@@ -40,6 +42,16 @@ fun main(arguments: Array<String>) {
         exitProcess(2)
     }
 
+    val generatorArtifact = runningGeneratorArtifact()
+    val generatorArtifacts = runningGeneratorArtifacts(generatorArtifact)
+    val embeddedSourceCommit = embeddedSourceCommit(generatorArtifact)
+    require(options.sourceCommit == embeddedSourceCommit) {
+        "--source-commit does not match the parser CLI build source"
+    }
+    val executionIdentity = CorpusExecutionIdentity(
+        sourceCommit = embeddedSourceCommit,
+        generatorSha256 = runtimeClasspathSha256(generatorArtifacts),
+    )
     val scanner = CorpusScanner(includeAllRomNames = options.includeAllRomNames)
     val inputs = scanner.scan(options.roots)
     val cache = options.cacheDirectory?.let { CatalogCache(it.toFile(), JdbcCatalogDatabaseFactory) }
@@ -92,11 +104,19 @@ fun main(arguments: Array<String>) {
         result
     }
     val report = CorpusReport(
+        execution = executionIdentity,
         roots = options.roots.map { it.toString().replace('\\', '/') },
         results = results,
     )
     writeAtomically(options.json) { ReportWriter.json(report, it) }
     writeAtomically(options.markdown) { ReportWriter.markdown(report, it) }
+    val receipt = CorpusExecutionReceipt.fromFiles(
+        rawReport = options.json,
+        generatorArtifacts = generatorArtifacts,
+        identity = executionIdentity,
+        inputCount = results.size,
+    )
+    writeAtomically(options.executionReceipt) { it.write(ReportWriter.executionReceiptJson(receipt)) }
 
     val selected = results.count { it.result?.status?.name == "SELECTED" }
     val noFamilyMatch = results.count { it.result?.status?.name == "NO_FAMILY_MATCH" }
@@ -105,6 +125,37 @@ fun main(arguments: Array<String>) {
     println("Evaluated ${results.size} inputs: $selected selected, $ambiguous ambiguous, $noFamilyMatch with no mainline-family match, $errors errors")
     println("JSON: ${options.json.toAbsolutePath()}")
     println("Markdown: ${options.markdown.toAbsolutePath()}")
+    println("Execution receipt: ${options.executionReceipt.toAbsolutePath()}")
+}
+
+private fun runningGeneratorArtifact(): Path {
+    val location = Class.forName("com.enrpau.dualscreendex.parser.cli.MainKt")
+        .protectionDomain
+        .codeSource
+        ?.location
+        ?: error("parser CLI generator location is unavailable")
+    val path = Path.of(location.toURI())
+    require(Files.isRegularFile(path)) { "parser CLI must run from a packaged generator artifact" }
+    return path
+}
+
+private fun runningGeneratorArtifacts(generatorArtifact: Path): List<Path> {
+    val directory = requireNotNull(generatorArtifact.parent) { "parser CLI distribution directory is unavailable" }
+    val artifacts = Files.list(directory).use { paths ->
+        paths.filter { path ->
+            Files.isRegularFile(path) && path.fileName.toString().endsWith(".jar", ignoreCase = true)
+        }.toList()
+    }
+    require(generatorArtifact in artifacts) { "parser CLI artifact is absent from its runtime classpath" }
+    return artifacts
+}
+
+private fun embeddedSourceCommit(generatorArtifact: Path): String = JarFile(generatorArtifact.toFile()).use { jar ->
+    val sourceCommit = jar.manifest?.mainAttributes?.getValue("DualDex-Source-Commit")
+    require(sourceCommit?.matches(Regex("[0-9a-f]{40}")) == true) {
+        "parser CLI build has no valid embedded source commit"
+    }
+    sourceCommit
 }
 
 internal fun <T, R> mapConcurrentlyOrdered(
@@ -215,6 +266,8 @@ internal data class CliOptions(
     val roots: List<Path>,
     val json: Path,
     val markdown: Path,
+    val executionReceipt: Path,
+    val sourceCommit: String,
     val cacheDirectory: Path?,
     val includeAllRomNames: Boolean,
     val jobs: Int,
@@ -224,6 +277,8 @@ internal data class CliOptions(
             val roots = mutableListOf<Path>()
             var json: Path? = null
             var markdown: Path? = null
+            var executionReceipt: Path? = null
+            var sourceCommit: String? = null
             var cacheDirectory: Path? = null
             var includeAllRomNames = false
             var jobs = DEFAULT_JOBS
@@ -232,6 +287,8 @@ internal data class CliOptions(
                 when (val argument = arguments[index]) {
                     "--json" -> json = valueAfter(arguments, ++index, argument)
                     "--markdown" -> markdown = valueAfter(arguments, ++index, argument)
+                    "--execution-receipt" -> executionReceipt = valueAfter(arguments, ++index, argument)
+                    "--source-commit" -> sourceCommit = stringAfter(arguments, ++index, argument)
                     "--cache-dir" -> cacheDirectory = valueAfter(arguments, ++index, argument)
                     "--jobs" -> jobs = jobCountAfter(arguments, ++index)
                     "--all-roms" -> includeAllRomNames = true
@@ -247,6 +304,12 @@ internal data class CliOptions(
                 roots = roots,
                 json = requireNotNull(json) { "--json is required" },
                 markdown = requireNotNull(markdown) { "--markdown is required" },
+                executionReceipt = requireNotNull(executionReceipt) { "--execution-receipt is required" },
+                sourceCommit = requireNotNull(sourceCommit) { "--source-commit is required" }.also {
+                    require(it.matches(Regex("[0-9a-f]{40}"))) {
+                        "--source-commit requires a full lowercase commit"
+                    }
+                },
                 cacheDirectory = cacheDirectory,
                 includeAllRomNames = includeAllRomNames,
                 jobs = jobs,
@@ -257,6 +320,11 @@ internal data class CliOptions(
             arguments.getOrNull(index)?.toIntOrNull()?.takeIf { it > 0 }
                 ?.coerceAtMost(MAX_CLI_JOBS)
                 ?: throw IllegalArgumentException("--jobs requires a positive integer")
+
+        private fun stringAfter(arguments: Array<String>, index: Int, option: String): String {
+            require(index < arguments.size) { "$option requires a value" }
+            return arguments[index]
+        }
 
         private fun valueAfter(arguments: Array<String>, index: Int, option: String): Path {
             require(index < arguments.size) { "$option requires a path" }

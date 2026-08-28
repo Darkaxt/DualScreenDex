@@ -21,6 +21,7 @@ jobs:
     environment: release-promotion
     permissions:
       contents: write
+      deployments: read
       actions: read
     steps:
       - name: Check out promotion record from the default branch
@@ -71,28 +72,25 @@ jobs:
           set -euo pipefail
           assets="$RUNNER_TEMP/candidate-assets"
           mkdir -p "$assets"
-          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
-          jq -e '.draft == true and .prerelease == true' <<< "$release_json" >/dev/null
-          release_id="$(jq -r '.id' <<< "$release_json")"
-          apk_name="DualDex-$RELEASE_TAG.apk"
-          initial_apk_asset_id="$(
-            jq -r --arg name "$apk_name" \
-              '.assets | map(select(.name == $name)) | if length == 1 then .[0].id else empty end' \
-              <<< "$release_json"
-          )"
+          release_json_file="$RUNNER_TEMP/initial-release.json"
+          initial_release_assets="$RUNNER_TEMP/initial-release-assets.json"
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$release_json_file"
+          jq -e '.draft == true and .prerelease == true' "$release_json_file" >/dev/null
+          release_id="$(jq -r '.id' "$release_json_file")"
+          jq -e '[.assets[] | {
+            name,
+            id,
+            sha256: (.digest | select(type == "string") | sub("^sha256:"; "") | ascii_upcase)
+          }] | if all(.sha256 | test("^[A-F0-9]{64}$")) then . else error("missing asset digest") end' \
+            "$release_json_file" > "$initial_release_assets"
           test -n "$release_id"
-          test -n "$initial_apk_asset_id"
+          test "$(jq 'length' "$initial_release_assets")" -gt 0
 
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-            --dir "$assets" --pattern "$apk_name"
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-            --dir "$assets" --pattern provenance.json
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-            --dir "$assets" --pattern SHA256SUMS.txt
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir "$assets"
 
           echo "assets=$assets" >> "$GITHUB_OUTPUT"
           echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
-          echo "initial_apk_asset_id=$initial_apk_asset_id" >> "$GITHUB_OUTPUT"
+          echo "initial_release_assets=$initial_release_assets" >> "$GITHUB_OUTPUT"
 
       - name: Validate exact signed artifact and required gates
         shell: bash
@@ -114,7 +112,9 @@ jobs:
             --checksums "$ASSETS/SHA256SUMS.txt" \
             --apk "$apk" \
             --certificate-fingerprint signing/dualdex-release-cert.sha256 \
-            --apk-signer-verification "$verification_log"
+            --apk-signer-verification "$verification_log" \
+            --release-assets "${{ steps.candidate.outputs.initial_release_assets }}" \
+            --assets-directory "$ASSETS"
           source_commit="$(git rev-parse "$RELEASE_TAG^{commit}")"
           jq -e \
             --arg repository "$GITHUB_REPOSITORY" \
@@ -211,29 +211,81 @@ jobs:
               ;;
           esac
 
-      - name: Promote the same immutable release asset
+      - name: Recheck protected environment governance
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          INITIAL_APK_ASSET_ID: ${{ steps.candidate.outputs.initial_apk_asset_id }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          ruleset_list="$RUNNER_TEMP/promotion-rulesets-list.json"
+          rulesets="$RUNNER_TEMP/promotion-rulesets.json"
+          signing_environment="$RUNNER_TEMP/promotion-release-signing-environment.json"
+          signing_policies="$RUNNER_TEMP/promotion-release-signing-policies.json"
+          promotion_environment="$RUNNER_TEMP/promotion-release-promotion-environment.json"
+          promotion_policies="$RUNNER_TEMP/promotion-release-promotion-policies.json"
+          promotion_secrets="$RUNNER_TEMP/promotion-release-promotion-secrets.json"
+          gh api "repos/$GITHUB_REPOSITORY/rulesets?includes_parents=true&targets=tag" > "$ruleset_list"
+          printf '[]\n' > "$rulesets"
+          while read -r ruleset_id; do
+            detail="$RUNNER_TEMP/promotion-ruleset-$ruleset_id.json"
+            combined="$RUNNER_TEMP/promotion-rulesets-next.json"
+            gh api "repos/$GITHUB_REPOSITORY/rulesets/$ruleset_id" > "$detail"
+            jq --slurp '.[0] + [.[1]]' "$rulesets" "$detail" > "$combined"
+            mv "$combined" "$rulesets"
+          done < <(jq -r '.[].id' "$ruleset_list")
+          gh api "repos/$GITHUB_REPOSITORY/environments/release-signing" > "$signing_environment"
+          gh api "repos/$GITHUB_REPOSITORY/environments/release-signing/deployment-branch-policies" > "$signing_policies"
+          gh api "repos/$GITHUB_REPOSITORY/environments/release-promotion" > "$promotion_environment"
+          gh api "repos/$GITHUB_REPOSITORY/environments/release-promotion/deployment-branch-policies" > "$promotion_policies"
+          gh api "repos/$GITHUB_REPOSITORY/environments/release-promotion/secrets" > "$promotion_secrets"
+          promotion_signing_secret_count="$(
+            jq '[.secrets[]? | select(.name | startswith("DUALDEX_RELEASE_"))] | length' "$promotion_secrets"
+          )"
+          node tools/release/verify-repository-policy.mjs \
+            --rulesets "$rulesets" \
+            --signing-environment "$signing_environment" \
+            --signing-environment-policies "$signing_policies" \
+            --promotion-environment "$promotion_environment" \
+            --promotion-environment-policies "$promotion_policies" \
+            --promotion-signing-secret-count "$promotion_signing_secret_count" \
+            --default-branch "${{ github.event.repository.default_branch }}" \
+            --repository "$GITHUB_REPOSITORY" \
+            --tag "$RELEASE_TAG"
+
+      - name: Promote the same immutable release asset
+        shell: bash
+        env:
+          ASSETS: ${{ steps.candidate.outputs.assets }}
+          GH_TOKEN: ${{ github.token }}
+          INITIAL_RELEASE_ASSETS: ${{ steps.candidate.outputs.initial_release_assets }}
+          RECORD: ${{ steps.policy.outputs.record }}
           RELEASE_ID: ${{ steps.candidate.outputs.release_id }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
+          current_release="$RUNNER_TEMP/current-release.json"
+          current_release_assets="$RUNNER_TEMP/current-release-assets.json"
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$current_release"
           jq -e \
             --argjson release_id "$RELEASE_ID" \
             '.id == $release_id and .draft == true and .prerelease == true' \
-            <<< "$release_json" >/dev/null
-          current_apk_asset_id="$(
-            jq -r --arg name "DualDex-$RELEASE_TAG.apk" \
-              '.assets | map(select(.name == $name)) | if length == 1 then .[0].id else empty end' \
-              <<< "$release_json"
-          )"
-          [[ "$current_apk_asset_id" == "$INITIAL_APK_ASSET_ID" ]] || {
-            echo "The signed APK asset changed after validation."
+            "$current_release" >/dev/null
+          jq -e '[.assets[] | {
+            name,
+            id,
+            sha256: (.digest | select(type == "string") | sub("^sha256:"; "") | ascii_upcase)
+          }] | if all(.sha256 | test("^[A-F0-9]{64}$")) then . else error("missing asset digest") end' \
+            "$current_release" > "$current_release_assets"
+          cmp --silent "$INITIAL_RELEASE_ASSETS" "$current_release_assets" || {
+            echo "The public release asset set changed after validation."
             exit 1
           }
+          node tools/release/validate-candidate-promotion.mjs \
+            --record "$RECORD" \
+            --release-assets "$current_release_assets" \
+            --assets-directory "$ASSETS" \
+            --asset-set-only true
 
           gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
             -F draft=false \

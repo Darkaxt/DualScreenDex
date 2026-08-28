@@ -39,7 +39,7 @@ test("keeps candidates draft until protected exact-artifact promotion", () => {
   assert.match(releaseMetadata, /draft:\s*String\(parsedTag\.isCandidate\)/);
   assert.match(workflow, /if \[\[ "\$DRAFT" == "true" \]\]; then flags\+=\(--draft\); fi/);
   assert.match(promotionWorkflow, /environment:\s*release-promotion/);
-  assert.match(promotionWorkflow, /permissions:\s*\n\s*contents:\s*write\s*\n\s*actions:\s*read/);
+  assert.match(promotionWorkflow, /permissions:\s*\n\s*contents:\s*write\s*\n\s*deployments:\s*read\s*\n\s*actions:\s*read/);
   assert.match(promotionWorkflow, /release\/candidate-promotions\/\$RELEASE_TAG\.json/);
   assert.match(promotionWorkflow, /validate-candidate-promotion\.mjs/);
   assert.match(promotionWorkflow, /apksigner verify --verbose --print-certs/);
@@ -47,8 +47,8 @@ test("keeps candidates draft until protected exact-artifact promotion", () => {
   assert.match(promotionWorkflow, /actions\/runs\/\$run_id/);
   assert.match(promotionWorkflow, /\.conclusion == "success"/);
   assert.match(promotionWorkflow, /gh release download/);
-  assert.match(promotionWorkflow, /initial_apk_asset_id/);
-  assert.match(promotionWorkflow, /current_apk_asset_id/);
+  assert.match(promotionWorkflow, /initial-release-assets\.json/);
+  assert.match(promotionWorkflow, /current-release-assets\.json/);
   assert.match(promotionWorkflow, /-F draft=false/);
   assert.match(promotionWorkflow, /-F prerelease=true/);
 });
@@ -106,7 +106,7 @@ test("promotion verifies immutable packaged evidence from the pinned workflow", 
 
 test("promotion never rebuilds, resigns, uploads, or replaces the candidate APK", () => {
   assert.doesNotMatch(promotionWorkflow, /gradlew|assemble|apksigner sign|zipalign/);
-  assert.doesNotMatch(promotionWorkflow, /secrets\.|gh release create|gh release upload/);
+  assert.doesNotMatch(promotionWorkflow, /\$\{\{\s*secrets\.|gh release create|gh release upload/);
   assert.doesNotMatch(promotionWorkflow, /actions\/upload-artifact/);
 });
 
@@ -131,7 +131,7 @@ test("tests and builds the unsigned APK before entering the signing environment"
   assert.doesNotMatch(verifyJob, /^\s*\.\/gradlew/m);
   assert.match(verifyJob, /upload-artifact@[a-f0-9]{40}/);
   assert.match(verifyJob, /app-release-unsigned\.apk/);
-  assert.doesNotMatch(verifyJob, /secrets\./);
+  assert.doesNotMatch(verifyJob, /\$\{\{\s*secrets\./);
 });
 
 test("requires the workflow to run from the exact protected source tag", () => {
@@ -158,9 +158,9 @@ test("audits source-tag and signing-environment policy before unsigned handoff",
   assert.match(verifyJob, /repos\/\$GITHUB_REPOSITORY\/rulesets/);
   assert.match(verifyJob, /repos\/\$GITHUB_REPOSITORY\/environments\/release-signing/);
   assert.match(verifyJob, /release-signing\/deployment-branch-policies/);
-  assert.match(verifyJob, /--environment-policies/);
+  assert.match(verifyJob, /--signing-environment-policies/);
   assert.match(verifyJob, /verify-repository-policy\.mjs/);
-  assert.match(workflow, /permissions:\s*\n\s*contents:\s*read\s*\n\s*deployments:\s*read/);
+  assert.match(workflow, /permissions:\s*\n\s*contents:\s*read\s*\n\s*deployments:\s*read\s*\n\s*actions:\s*read/);
   assert.match(verifyJob, /repository-policy\.json/);
   assert.ok(
     verifyJob.indexOf("verify-repository-policy.mjs") < verifyJob.indexOf("Stage unsigned build handoff"),
@@ -222,8 +222,17 @@ test("derives release versions from protected Gradle properties", () => {
   assert.doesNotMatch(gradleBuild, /DUALDEX_RELEASE_(KEYSTORE|STORE|KEY)/);
 });
 
-test("requires the parser cache revision that rebuilds isolated optional data", () => {
-  assert.match(catalogSchema, /const val parserSchemaVersion = 45\b/);
+test("requires a machine-readable cache decision for parser and catalog changes", () => {
+  const verifyJob = workflow.slice(
+    workflow.indexOf("  verify-and-build:"),
+    workflow.indexOf("  sign-and-publish:"),
+  );
+
+  assert.match(verifyJob, /--canonical-corpus release\/canonical-corpus\.json/);
+  assert.match(verifyJob, /--catalog-schema/);
+  assert.match(verifyJob, /--output "\$RUNNER_TEMP\/release-evidence-validation\.json"/);
+  assert.match(verifyJob, /--release-evidence-validation/);
+  assert.doesNotMatch(workflow, /parserSchemaVersion\s*==\s*45/);
 });
 
 test("runs every included JVM and app unit suite in CI", () => {
@@ -418,6 +427,99 @@ test("builds only the unsigned release APK before protected signing", () => {
   assert.doesNotMatch(workflow, /assembleDebug/);
   assert.doesNotMatch(workflow, /app-debug\.apk/);
   assert.doesNotMatch(readFileSync(join(repositoryRoot, "release", "v1-ready.json"), "utf8"), /debugApkSha256/);
+});
+
+test("binds stable release metadata to candidate provenance and an allowlisted source diff", () => {
+  const metadataStep = workflow.slice(
+    workflow.indexOf("      - name: Derive and validate release identity"),
+    workflow.indexOf("      - name: Refuse an existing release"),
+  );
+
+  assert.match(metadataStep, /sourceCandidateTag/);
+  assert.match(metadataStep, /git rev-parse.*\^\{commit\}/s);
+  assert.match(metadataStep, /git rev-parse.*\^\{tree\}/s);
+  assert.match(metadataStep, /git diff --name-only/);
+  assert.match(metadataStep, /--candidate-promotion/);
+  assert.match(metadataStep, /--candidate-source-commit/);
+  assert.match(metadataStep, /--candidate-source-tree/);
+  assert.match(metadataStep, /releases\/tags\/\$sourceCandidateTag/);
+  assert.match(metadataStep, /releases\/assets\/\$candidate_provenance_asset_id/);
+  assert.match(metadataStep, /candidate_provenance_api_digest/);
+  assert.match(metadataStep, /--candidate-provenance-sha256/);
+  assert.match(metadataStep, /--candidate-apk-sha256/);
+  assert.match(metadataStep, /--changed-paths/);
+});
+
+test("stable validation reuses the candidate comparison range and RCs skip final authorization", () => {
+  const evidenceStep = workflow.slice(
+    workflow.indexOf("      - name: Validate source-bound compatibility evidence"),
+    workflow.indexOf("      - name: Validate published compatibility documentation"),
+  );
+  const metadataStep = workflow.slice(
+    workflow.indexOf("      - name: Derive and validate release identity"),
+    workflow.indexOf("      - name: Refuse an existing release"),
+  );
+
+  assert.match(evidenceStep, /sourceCandidateTag/);
+  assert.match(evidenceStep, /decision_range_end/);
+  assert.match(evidenceStep, /--comparison-ref "\$decision_range_base"/);
+  assert.match(evidenceStep, /git diff --name-only "\$decision_range_base\.\.\$decision_range_end"/);
+  assert.match(metadataStep, /if \[\[ "\$RELEASE_TAG" != \*-rc\.\* \]\]; then/);
+  assert.match(metadataStep, /test -s release\/v1-final-authorization\.json/);
+});
+
+test("audits exact policy for both protected environments without promotion signing secrets", () => {
+  const verifyJob = workflow.slice(
+    workflow.indexOf("  verify-and-build:"),
+    workflow.indexOf("  sign-and-publish:"),
+  );
+
+  assert.match(verifyJob, /environments\/release-promotion/);
+  assert.match(verifyJob, /release-promotion\/deployment-branch-policies/);
+  assert.match(verifyJob, /release-promotion\/secrets/);
+  assert.match(verifyJob, /--promotion-environment/);
+  assert.match(verifyJob, /--promotion-environment-policies/);
+  assert.match(verifyJob, /--promotion-signing-secret-count/);
+  assert.match(verifyJob, /--default-branch/);
+});
+
+test("promotion rechecks protected environment governance immediately before publication", () => {
+  const publication = promotionWorkflow.indexOf("gh api --method PATCH");
+  const policyCheck = promotionWorkflow.indexOf("verify-repository-policy.mjs");
+
+  assert.match(promotionWorkflow, /repos\/\$GITHUB_REPOSITORY\/environments\/release-signing/);
+  assert.match(promotionWorkflow, /repos\/\$GITHUB_REPOSITORY\/environments\/release-promotion/);
+  assert.match(promotionWorkflow, /release-promotion\/deployment-branch-policies/);
+  assert.match(promotionWorkflow, /release-promotion\/secrets/);
+  assert.notEqual(policyCheck, -1);
+  assert.ok(policyCheck < publication, "current environment policy must pass before draft publication");
+});
+
+test("promotion records and rechecks the complete immutable public asset set", () => {
+  assert.match(promotionWorkflow, /initial-release-assets\.json/);
+  assert.match(promotionWorkflow, /current-release-assets\.json/);
+  assert.match(promotionWorkflow, /--release-assets/);
+  assert.match(promotionWorkflow, /--assets-directory/);
+  assert.match(promotionWorkflow, /validate-candidate-promotion\.mjs[\s\S]*--asset-set-only/);
+  assert.doesNotMatch(promotionWorkflow, /initial_apk_asset_id|current_apk_asset_id/);
+});
+
+test("privacy-scans every assembled public asset including Stage 7 and closure evidence", () => {
+  const signingJob = workflow.slice(workflow.indexOf("  sign-and-publish:"));
+  const scanIndex = signingJob.indexOf("validate-public-release-assets.mjs");
+  const publishIndex = signingJob.indexOf("gh release create");
+
+  assert.notEqual(scanIndex, -1);
+  assert.ok(scanIndex < publishIndex, "public asset privacy validation must precede publication");
+  assert.match(signingJob, /--directory "\$ASSETS"/);
+  for (const asset of [
+    "dualdex-stage-07-corpus-execution.json",
+    "dualdex-stage-07-closure.json",
+    "dualdex-stage-08-closure.json",
+    "canonical-corpus.json",
+  ]) {
+    assert.match(signingJob, new RegExp(asset.replaceAll(".", "\\.")));
+  }
 });
 
 test("pins every CI and release action to an immutable commit", () => {

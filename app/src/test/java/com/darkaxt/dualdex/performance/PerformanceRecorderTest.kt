@@ -159,6 +159,31 @@ class PerformanceRecorderTest {
         recorder.runtimeHeartbeat()
     }
 
+    @Test
+    fun `load failure persists only a coarse category without path or implementation class`() {
+        class WorkspaceSpecificParserFailure(message: String) : RuntimeException(message)
+        val events = mutableListOf<PerformanceEvent>()
+        val recorder = PerformanceRecorder(
+            monotonicNanos = { 0L },
+            wallClockMillis = { 0L },
+            sessionIdFactory = { "session-private" },
+            sinks = listOf(PerformanceEventSink(events::add)),
+        )
+        recorder.beginLoad("e".repeat(64), generation = 1)
+
+        recorder.loadFailed(
+            WorkspaceSpecificParserFailure(
+                "workspace=D:/Users/local-user/private deviceId=local-device",
+            ),
+        )
+
+        val encoded = Gson().toJson(events.last())
+        assertEquals("FAILURE", events.last().failureType)
+        assertFalse(encoded.contains("WorkspaceSpecificParserFailure"))
+        assertFalse(encoded.contains("D:/Users"))
+        assertFalse(encoded.contains("local-device"))
+    }
+
     private fun stateTrace() = ResolvedStateTraceEvent(
         revision = 7,
         trigger = ResolvedStateTraceTrigger.LIVE_SAMPLE,

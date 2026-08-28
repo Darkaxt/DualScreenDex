@@ -79,7 +79,7 @@ class PerformanceRecorder(
         emit(
             PerformanceEventKind.LOAD_FAILED,
             now = now,
-            failureType = failure.javaClass.simpleName.takeIf(String::isNotBlank) ?: "Failure",
+            failureType = PrivacySafeDiagnostics.failureCategory(failure),
         )
     }
 

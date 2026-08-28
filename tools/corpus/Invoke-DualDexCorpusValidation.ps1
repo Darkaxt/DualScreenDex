@@ -424,9 +424,17 @@ $uniqueRomCount = @($payloadRows.RomSha256 | Sort-Object -Unique).Count
 Write-Stage "Extracted $($payloadRows.Count) ROM payloads with $uniqueRomCount unique SHA-256 hashes"
 
 $gradle = Join-Path $projectRoot 'gradlew.bat'
+$sourceCommit = (& git -C $projectRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}$') {
+    throw 'Could not resolve the parser source commit.'
+}
+$trackedChanges = @(& git -C $projectRoot status --porcelain --untracked-files=no)
+if ($LASTEXITCODE -ne 0 -or $trackedChanges.Count -ne 0) {
+    throw 'Corpus evidence requires a clean tracked source tree.'
+}
 if (-not $SkipBuild) {
     Write-Stage 'Building parser CLI distribution'
-    & $gradle '--project-dir' $projectRoot ':parser-cli:installDist' '--console=plain'
+    & $gradle '--project-dir' $projectRoot ':parser-cli:installDist' "-PdualdexSourceCommit=$sourceCommit" '--console=plain'
     if ($LASTEXITCODE -ne 0) {
         throw "Gradle parser CLI build failed with exit code $LASTEXITCODE"
     }
@@ -435,6 +443,7 @@ if (-not $SkipBuild) {
 $parserCli = Join-Path $projectRoot 'parser-cli\build\install\parser-cli\bin\parser-cli.bat'
 $reportJson = Join-Path $reportRoot 'compatibility.json'
 $reportMarkdown = Join-Path $reportRoot 'compatibility.md'
+$executionReceipt = Join-Path $reportRoot 'compatibility-execution.json'
 if ($ReviewIncomplete) {
     & (Join-Path $PSScriptRoot 'Invoke-DualDexCorpusReview.ps1') `
         -RomManifest $romJson `
@@ -456,7 +465,9 @@ if ($ReviewIncomplete) {
     return
 }
 Write-Stage "Parsing $($payloadRows.Count) ROM payloads"
-& $parserCli $romRoot '--json' $reportJson '--markdown' $reportMarkdown '--cache-dir' $cacheRoot '--all-roms'
+& $parserCli $romRoot '--json' $reportJson '--markdown' $reportMarkdown `
+    '--execution-receipt' $executionReceipt '--source-commit' $sourceCommit `
+    '--cache-dir' $cacheRoot '--all-roms'
 if ($LASTEXITCODE -ne 0) {
     throw "Parser CLI failed with exit code $LASTEXITCODE"
 }
