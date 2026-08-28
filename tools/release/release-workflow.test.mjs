@@ -149,6 +149,50 @@ test("requires the workflow to run from the exact protected source tag", () => {
   assert.doesNotMatch(workflow, /--target "?\$GITHUB_SHA"?/);
 });
 
+test("audits source-tag and signing-environment policy before unsigned handoff", () => {
+  const verifyJob = workflow.slice(
+    workflow.indexOf("  verify-and-build:"),
+    workflow.indexOf("  sign-and-publish:"),
+  );
+
+  assert.match(verifyJob, /repos\/\$GITHUB_REPOSITORY\/rulesets/);
+  assert.match(verifyJob, /repos\/\$GITHUB_REPOSITORY\/environments\/release-signing/);
+  assert.match(verifyJob, /release-signing\/deployment-branch-policies/);
+  assert.match(verifyJob, /--environment-policies/);
+  assert.match(verifyJob, /verify-repository-policy\.mjs/);
+  assert.match(workflow, /permissions:\s*\n\s*contents:\s*read\s*\n\s*deployments:\s*read/);
+  assert.match(verifyJob, /repository-policy\.json/);
+  assert.ok(
+    verifyJob.indexOf("verify-repository-policy.mjs") < verifyJob.indexOf("Stage unsigned build handoff"),
+    "repository policy must pass before unsigned handoff",
+  );
+});
+
+test("binds compatibility evidence and repository policy into provenance", () => {
+  const verifyJob = workflow.slice(
+    workflow.indexOf("  verify-and-build:"),
+    workflow.indexOf("  sign-and-publish:"),
+  );
+  const signingJob = workflow.slice(workflow.indexOf("  sign-and-publish:"));
+
+  assert.match(verifyJob, /validate-release-evidence\.mjs/);
+  assert.match(verifyJob, /--manifest release\/compatibility-evidence\.json/);
+  assert.match(verifyJob, /--release-commit "\$GITHUB_SHA"/);
+  assert.ok(
+    verifyJob.indexOf("validate-release-evidence.mjs") < verifyJob.indexOf(":app:assembleRelease"),
+    "source-bound evidence must pass before the release build",
+  );
+  assert.match(signingJob, /compatibilityEvidence: \$compatibilityEvidence\[0\]/);
+  assert.match(signingJob, /repositoryPolicy: \$repositoryPolicy\[0\]/);
+  for (const asset of ["compatibility-evidence.json", "repository-policy.json"]) {
+    assert.match(signingJob, new RegExp(asset.replaceAll(".", "\\.")));
+    assert.match(
+      signingJob.slice(signingJob.indexOf("gh release create")),
+      new RegExp(asset.replaceAll(".", "\\.")),
+    );
+  }
+});
+
 test("reconstructs, verifies, signs, independently verifies, and publishes without replacement", () => {
   const signingJob = workflow.slice(workflow.indexOf("  sign-and-publish:"));
 
@@ -245,6 +289,8 @@ test("publishes independently gated compatibility and UI-conformance evidence", 
     "dualdex-qa-hardening-convergence.md",
     "dualdex-storage-guide-load-hardening.md",
     "dualdex-save-synchronized-knowledge-checkpoints.md",
+    "dualdex-stage-07-corpus-evidence.json",
+    "dualdex-stage-07-corpus-evidence.md",
   ];
 
   for (const asset of requiredEvidence) {

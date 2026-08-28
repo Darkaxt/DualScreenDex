@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  deployments: read
 
 concurrency:
   group: dualdex-release-${{ inputs.tag }}
@@ -75,6 +76,44 @@ jobs:
       - name: Test release policy
         run: node --test tools/release/*.test.mjs
 
+      - name: Audit release tag and signing environment policy
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          ruleset_list="$RUNNER_TEMP/repository-rulesets-list.json"
+          rulesets="$RUNNER_TEMP/repository-rulesets.json"
+          environment="$RUNNER_TEMP/release-signing-environment.json"
+          environment_policies="$RUNNER_TEMP/release-signing-policies.json"
+          gh api "repos/$GITHUB_REPOSITORY/rulesets?includes_parents=true&targets=tag" > "$ruleset_list"
+          printf '[]\n' > "$rulesets"
+          while read -r ruleset_id; do
+            detail="$RUNNER_TEMP/repository-ruleset-$ruleset_id.json"
+            combined="$RUNNER_TEMP/repository-rulesets-next.json"
+            gh api "repos/$GITHUB_REPOSITORY/rulesets/$ruleset_id" > "$detail"
+            jq --slurp '.[0] + [.[1]]' "$rulesets" "$detail" > "$combined"
+            mv "$combined" "$rulesets"
+          done < <(jq -r '.[].id' "$ruleset_list")
+          gh api "repos/$GITHUB_REPOSITORY/environments/release-signing" > "$environment"
+          gh api "repos/$GITHUB_REPOSITORY/environments/release-signing/deployment-branch-policies" > "$environment_policies"
+          node tools/release/verify-repository-policy.mjs \
+            --rulesets "$rulesets" \
+            --environment "$environment" \
+            --environment-policies "$environment_policies" \
+            --repository "$GITHUB_REPOSITORY" \
+            --tag "$RELEASE_TAG" \
+            --output "$RUNNER_TEMP/repository-policy.json"
+
+      - name: Validate source-bound compatibility evidence
+        shell: bash
+        run: >-
+          node tools/release/validate-release-evidence.mjs
+          --manifest release/compatibility-evidence.json
+          --release-commit "$GITHUB_SHA"
+          --repository-root .
+
       - name: Validate published compatibility documentation
         shell: bash
         run: |
@@ -127,6 +166,9 @@ jobs:
             docs/reports/passive-insights-progress/qa-hardening-convergence.md \
             docs/reports/2026-08-27-storage-and-guide-load-hardening.md \
             docs/reports/save-synchronized-knowledge-checkpoints.md \
+            docs/reports/qa-hardening/stage-07-corpus-evidence.json \
+            docs/reports/qa-hardening/stage-07-corpus-evidence.md \
+            release/compatibility-evidence.json \
             release/POST_RELEASE_CHECKLIST.md; do
             test -s "$document"
           done
@@ -323,12 +365,16 @@ jobs:
           mkdir -p "$RUNNER_TEMP/dualdex-unsigned"
           cp app/build/outputs/apk/release/app-release-unsigned.apk \
             "$RUNNER_TEMP/dualdex-unsigned/DualDex-$RELEASE_TAG-unsigned.apk"
+          cp "$RUNNER_TEMP/repository-policy.json" \
+            "$RUNNER_TEMP/dualdex-unsigned/repository-policy.json"
+          cp release/compatibility-evidence.json \
+            "$RUNNER_TEMP/dualdex-unsigned/compatibility-evidence.json"
 
       - name: Upload unsigned build handoff
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dualdex-unsigned-${{ steps.metadata.outputs.tag }}
-          path: ${{ runner.temp }}/dualdex-unsigned/DualDex-${{ steps.metadata.outputs.tag }}-unsigned.apk
+          path: ${{ runner.temp }}/dualdex-unsigned
           if-no-files-found: error
           retention-days: 1
 
@@ -466,6 +512,8 @@ jobs:
         run: |
           set -euo pipefail
           cp signing/dualdex-release-cert.pem "$ASSETS/dualdex-release-cert.pem"
+          cp "$RUNNER_TEMP/dualdex-unsigned/repository-policy.json" "$ASSETS/repository-policy.json"
+          cp "$RUNNER_TEMP/dualdex-unsigned/compatibility-evidence.json" "$ASSETS/compatibility-evidence.json"
           cp reports/dualdex-parser-compatibility.json "$ASSETS/dualdex-parser-compatibility.json"
           cp reports/dualdex-parser-compatibility.md "$ASSETS/dualdex-parser-compatibility.md"
           cp reports/dualdex-rom-hacks-compatibility.json "$ASSETS/dualdex-rom-hacks-compatibility.json"
@@ -513,12 +561,16 @@ jobs:
           cp docs/reports/passive-insights-progress/qa-hardening-convergence.md "$ASSETS/dualdex-qa-hardening-convergence.md"
           cp docs/reports/2026-08-27-storage-and-guide-load-hardening.md "$ASSETS/dualdex-storage-guide-load-hardening.md"
           cp docs/reports/save-synchronized-knowledge-checkpoints.md "$ASSETS/dualdex-save-synchronized-knowledge-checkpoints.md"
+          cp docs/reports/qa-hardening/stage-07-corpus-evidence.json "$ASSETS/dualdex-stage-07-corpus-evidence.json"
+          cp docs/reports/qa-hardening/stage-07-corpus-evidence.md "$ASSETS/dualdex-stage-07-corpus-evidence.md"
           release_notes="release/RELEASE_NOTES_${RELEASE_TAG#v}.md"
           test -s "$release_notes"
           cp "$release_notes" "$ASSETS/RELEASE_NOTES.md"
 
           apk_sha256="$(sha256sum "$APK" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')"
           jq -n \
+            --slurpfile compatibilityEvidence "$ASSETS/compatibility-evidence.json" \
+            --slurpfile repositoryPolicy "$ASSETS/repository-policy.json" \
             --arg schema "1" \
             --arg repository "$GITHUB_REPOSITORY" \
             --arg commit "$GITHUB_SHA" \
@@ -542,7 +594,9 @@ jobs:
               applicationId: $applicationId,
               apkSha256: $apkSha256,
               certificateSha256: $certificateSha256,
-              signingAuthority: "GitHub protected environment: release-signing"
+              signingAuthority: "GitHub protected environment: release-signing",
+              compatibilityEvidence: $compatibilityEvidence[0],
+              repositoryPolicy: $repositoryPolicy[0]
             }' > "$ASSETS/provenance.json"
 
           (
@@ -550,6 +604,8 @@ jobs:
             sha256sum \
               "$(basename "$APK")" \
               dualdex-release-cert.pem \
+              compatibility-evidence.json \
+              repository-policy.json \
               dualdex-parser-compatibility.json \
               dualdex-parser-compatibility.md \
               dualdex-rom-hacks-compatibility.json \
@@ -597,6 +653,8 @@ jobs:
               dualdex-qa-hardening-convergence.md \
               dualdex-storage-guide-load-hardening.md \
               dualdex-save-synchronized-knowledge-checkpoints.md \
+              dualdex-stage-07-corpus-evidence.json \
+              dualdex-stage-07-corpus-evidence.md \
               RELEASE_NOTES.md \
               provenance.json > SHA256SUMS.txt
           )
@@ -632,6 +690,8 @@ jobs:
             "$ASSETS/SHA256SUMS.txt" \
             "$ASSETS/provenance.json" \
             "$ASSETS/dualdex-release-cert.pem" \
+            "$ASSETS/compatibility-evidence.json" \
+            "$ASSETS/repository-policy.json" \
             "$ASSETS/dualdex-parser-compatibility.json" \
             "$ASSETS/dualdex-parser-compatibility.md" \
             "$ASSETS/dualdex-rom-hacks-compatibility.json" \
@@ -679,6 +739,8 @@ jobs:
             "$ASSETS/dualdex-qa-hardening-convergence.md" \
             "$ASSETS/dualdex-storage-guide-load-hardening.md" \
             "$ASSETS/dualdex-save-synchronized-knowledge-checkpoints.md" \
+            "$ASSETS/dualdex-stage-07-corpus-evidence.json" \
+            "$ASSETS/dualdex-stage-07-corpus-evidence.md" \
             "$ASSETS/RELEASE_NOTES.md"
 
           echo "GitHub created the non-replacing $RELEASE_KIND release for $RELEASE_TAG." >> "$GITHUB_STEP_SUMMARY"
