@@ -4,7 +4,7 @@ import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PRIVATE_PATH_PATTERNS = [
-  /\b[A-Za-z]:[\\/]/,
+  /\b[A-Za-z]:[\\/][\p{L}\p{N}._ -]{1,128}[\\/]/u,
   /\/(?:home|Users|private|tmp|var\/tmp)\/[A-Za-z0-9._-]+[\\/]/,
   /\/(?:data\/user|storage\/emulated|sdcard)\//,
 ];

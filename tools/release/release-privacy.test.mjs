@@ -72,6 +72,28 @@ test("rejects Windows backslash and forward-slash absolute paths and Unix home p
   }
 });
 
+test("ignores isolated drive-prefix bytes in binary APK payloads", () => {
+  for (const binaryFragment of [
+    Buffer.from([0xff, 0x0a, 0x0a, 0x59, 0x3a, 0x2f, 0x0e, 0x60, 0x0a]),
+    Buffer.from([0xff, 0x6f, 0x3a, 0x2f, 0x44, 0x5b, 0xff, 0x37]),
+    Buffer.from([0x47, 0xff, 0x6b, 0x3a, 0x2f, 0x7a, 0xff, 0x6d]),
+  ]) {
+    validatePublicReleaseAsset({ name: "DualDex-candidate.apk", bytes: binaryFragment });
+  }
+});
+
+test("still rejects a complete private path embedded in a binary payload", () => {
+  const bytes = Buffer.concat([
+    Buffer.from([0xff, 0x00]),
+    Buffer.from("C:\\Users\\local-user\\project"),
+    Buffer.from([0x00, 0xff]),
+  ]);
+  assert.throws(
+    () => validatePublicReleaseAsset({ name: "DualDex-candidate.apk", bytes }),
+    /private path/i,
+  );
+});
+
 test("rejects local device and workspace identifiers without returning their values", () => {
   for (const privateText of [
     "deploymentTarget=local-device",
