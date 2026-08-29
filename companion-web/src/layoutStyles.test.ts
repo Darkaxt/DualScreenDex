@@ -5,6 +5,7 @@ import { join } from 'node:path'
 const styles = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8')
 const areaGuideSource = readFileSync(join(process.cwd(), 'src', 'pages', 'AreaGuideDrawer.tsx'), 'utf8')
 const battleSource = readFileSync(join(process.cwd(), 'src', 'pages', 'BattlePage.tsx'), 'utf8')
+const pokemonAreaSource = readFileSync(join(process.cwd(), 'src', 'pages', 'PokemonAreaMap.tsx'), 'utf8')
 
 describe('screen layout containment', () => {
   it('keeps root titles left aligned when the header also has actions', () => {
@@ -82,6 +83,53 @@ describe('screen layout containment', () => {
     expect(gridRule).toMatch(/grid-template-columns\s*:\s*repeat\(4, minmax\(0, 1fr\)\)/)
     expect(styles).toContain('[data-theme="game"][data-contrast="normal"] .damage-forecast')
     expect(battleSource).not.toMatch(/setInterval|setTimeout|requestAnimationFrame|fetch\s*\(/)
+  })
+
+  it('places Pokédex identity and two rows of detail tabs in one compact header band', () => {
+    const screenRule = styles.match(/\.detail-screen\s*\{([^}]*)\}/)?.[1]
+    const identityRule = styles.match(/\.identity-card\s*\{([^}]*)\}/)?.[1]
+    const tabsRule = styles.match(/\.identity-card > \.segmented\s*\{([^}]*)\}/)?.[1]
+    const firstRowRule = styles.match(/\.identity-card > \.segmented button:nth-child\(-n \+ 3\)\s*\{([^}]*)\}/)?.[1]
+    const secondRowRule = styles.match(/\.identity-card > \.segmented button:nth-child\(n \+ 4\)\s*\{([^}]*)\}/)?.[1]
+
+    expect(screenRule).toMatch(/grid-template-rows\s*:\s*auto 132px minmax\(0, 1fr\)/)
+    expect(identityRule).toMatch(/grid-template-columns\s*:\s*108px minmax\(150px, \.7fr\) minmax\(280px, 2fr\)/)
+    expect(tabsRule).toMatch(/grid-template-columns\s*:\s*repeat\(6, minmax\(0, 1fr\)\)/)
+    expect(tabsRule).toMatch(/grid-template-rows\s*:\s*repeat\(2, minmax\(0, 1fr\)\)/)
+    expect(firstRowRule).toMatch(/grid-column\s*:\s*span 2/)
+    expect(secondRowRule).toMatch(/grid-column\s*:\s*span 3/)
+  })
+
+  it('keeps the Pokédex Area empty state compact instead of inheriting full-page empty-state spacing', () => {
+    const areaRule = styles.match(/\.pokemon-area-empty\s*\{([^}]*)\}/)?.[1]
+
+    expect(pokemonAreaSource).toContain('class="pokemon-area-empty"')
+    expect(pokemonAreaSource).not.toContain('class="pokemon-area-empty empty-state"')
+    expect(areaRule).toMatch(/align-self\s*:\s*start/)
+    expect(areaRule).toMatch(/max-width\s*:\s*none/)
+  })
+
+  it('fits the rarity panel inside the remaining Battle viewport without making it scroll', () => {
+    const contentRule = styles.match(/\.battle-content:has\(> \.rarity-card\)\s*\{([^}]*)\}/)?.[1]
+    const rarityRule = styles.match(/\.rarity-card\s*\{([^}]*)\}/)?.[1]
+
+    expect(contentRule).toMatch(/display\s*:\s*grid/)
+    expect(contentRule).toMatch(/overflow\s*:\s*hidden/)
+    expect(contentRule).toMatch(/padding\s*:\s*10px 12px/)
+    expect(rarityRule).toMatch(/min-height\s*:\s*0/)
+    expect(rarityRule).toMatch(/height\s*:\s*100%/)
+    expect(rarityRule).toMatch(/margin\s*:\s*0/)
+  })
+
+  it('lets a single specimen fill the page and preserves its full labels', () => {
+    const gridRule = styles.match(/\.specimens-grid\s*\{([^}]*)\}/)?.[1]
+    const cardRule = styles.match(/\.specimen-card\s*\{([^}]*)\}/)?.[1]
+    const metaRule = styles.match(/\.specimen-card-meta\s*\{([^}]*)\}/)?.[1]
+
+    expect(gridRule).toMatch(/grid-template-columns\s*:\s*repeat\(auto-fit, minmax\(min\(440px, 100%\), 1fr\)\)/)
+    expect(cardRule).toMatch(/grid-template-areas\s*:\s*"sprite copy" "sprite meta"/)
+    expect(metaRule).toMatch(/display\s*:\s*flex/)
+    expect(metaRule).toMatch(/justify-content\s*:\s*space-between/)
   })
 
   it('keeps Trainer destination switching in compact header controls', () => {

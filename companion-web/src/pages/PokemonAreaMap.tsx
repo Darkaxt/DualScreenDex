@@ -31,7 +31,7 @@ export function PokemonAreaMap({ catalog, state, speciesId, send }: { catalog: C
     if (region && fogRef.current) paintFog(fogRef.current, region, visibleLocations);
   }, [region?.key, visibleLocations]);
 
-  if (!region) return <div class="pokemon-area-empty empty-state"><strong>{organic && habitatBaseIds.size > 0 ? 'NO KNOWN LOCATIONS' : 'NO HABITAT MAP'}</strong><p>{organic && habitatBaseIds.size > 0 ? 'Discover this Pokémon in the wild to reveal its habitat.' : 'No habitat map is available for this game.'}</p></div>;
+  if (!region) return <div class="pokemon-area-empty"><strong>{organic && habitatBaseIds.size > 0 ? 'NO KNOWN LOCATIONS' : 'NO HABITAT MAP'}</strong><p>{organic && habitatBaseIds.size > 0 ? 'Discover this Pokémon in the wild to reveal its habitat.' : 'No habitat map is available for this game.'}</p></div>;
 
   return <section class="pokemon-area-panel" aria-label="Pokémon habitat atlas">
     <header>

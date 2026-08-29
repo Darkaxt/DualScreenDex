@@ -50,8 +50,8 @@ export function PokedexDetail({
     <div class="identity-card">
       <PokedexAvatar speciesId={species.id} name={species.name} available={species.hasSprite} large knowledge={identityKnowledge} state={status} catalog={catalog} />
       <div class="identity-copy"><h1>{species.name}</h1><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
+      <Segmented values={['ENTRY', 'STATS', 'MOVES', 'AREA', 'MORE']} active={displayTab} disabledValues={unlocked ? [] : ['STATS', 'MORE']} onSelect={value => setTab(value as DetailTab)} label="Pokédex detail" />
     </div>
-    <Segmented values={['ENTRY', 'STATS', 'MOVES', 'AREA', 'MORE']} active={displayTab} disabledValues={unlocked ? [] : ['STATS', 'MORE']} onSelect={value => setTab(value as DetailTab)} label="Pokédex detail" />
     <div class="detail-content" data-scroll-region>
       {!unlocked && !observedOnly && displayTab !== 'AREA' && <div class="paper-panel withheld"><strong>{gameplayCopy.dataUnavailable}</strong><p>{gameplayCopy.catchForFullData}</p></div>}
       {unlocked && displayTab === 'ENTRY' && <>
