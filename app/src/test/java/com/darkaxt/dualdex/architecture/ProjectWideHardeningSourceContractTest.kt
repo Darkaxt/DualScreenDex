@@ -26,6 +26,7 @@ class ProjectWideHardeningSourceContractTest {
         assertFalse("Packaged acceptance must not clear a test-only guide failure", packaged.contains("clearGuideFailure()"))
         assertTrue(runner.contains("fun prepareGuideFixture()"))
         assertTrue(runner.contains("fun isGuideFixtureIndexed(): Boolean"))
+        assertTrue(runner.contains("sourceId = rom.canonicalFile.toURI().normalize().toString()"))
         assertTrue(runner.contains("fun armGuideFailure()"))
         assertTrue(runner.contains("AtomicBoolean(false)"))
         assertTrue(runner.contains("if (!armed.get()) return null"))
@@ -72,12 +73,14 @@ class ProjectWideHardeningSourceContractTest {
         assertTrue(instrumentation.contains("OverlaySetupRouteHandler"))
         assertTrue(instrumentation.contains("pickerRegistrationCount()"))
         assertTrue(instrumentation.contains("deliverLatestPickerResult"))
+        assertTrue(instrumentation.contains("callActivityOnNewIntent"))
+        assertTrue(instrumentation.contains("assertForegroundFlags"))
         assertTrue(activity.contains("setupPickerDispatcher.consume(intent)"))
         assertTrue("Both cold create and onNewIntent must dispatch", activity.split("setupPickerDispatcher.consume(intent)").size - 1 == 2)
     }
 
     private fun read(root: Path, relative: String): String =
-        String(Files.readAllBytes(root.resolve(relative)), Charsets.UTF_8)
+        String(Files.readAllBytes(root.resolve(relative)), Charsets.UTF_8).replace("\r\n", "\n")
 
     private fun repositoryRoot(): Path {
         var candidate: Path? = Path.of("").toAbsolutePath().normalize()

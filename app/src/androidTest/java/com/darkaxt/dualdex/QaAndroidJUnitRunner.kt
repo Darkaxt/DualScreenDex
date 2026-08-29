@@ -52,7 +52,7 @@ class QaDualDexApplication : DualDexApplication() {
         })
         val inspected = RomSourceLoader.inspect(rom.toPath())
         guideFixture = GuideFixture(
-            sourceId = rom.toURI().normalize().toString(),
+            sourceId = rom.canonicalFile.toURI().normalize().toString(),
             sourceName = rom.name,
             crc32 = inspected.crc32,
             sha256 = inspected.sha256,

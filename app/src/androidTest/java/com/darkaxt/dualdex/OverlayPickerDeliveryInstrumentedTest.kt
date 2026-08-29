@@ -46,7 +46,8 @@ class OverlayPickerDeliveryInstrumentedTest {
             val coldIntent = captured.single()
             assertEquals(expectation.request.encoded, coldIntent.getStringExtra(SetupPickerRequest.EXTRA))
 
-            ActivityScenario.launch<MainActivity>(coldIntent).use { _ ->
+            ActivityScenario.launch<MainActivity>(coldIntent).use { scenario ->
+                assertForegroundFlags(coldIntent)
                 assertEquals(2, application.pickerRegistrationCount())
                 assertEquals(listOf(expectation.initialUri), application.pickerLaunches())
                 application.deliverLatestPickerResult(Uri.parse("content://qa/cold"))
@@ -54,15 +55,14 @@ class OverlayPickerDeliveryInstrumentedTest {
 
                 assertTrue(handler.handleNativeRoute(route))
                 val newIntent = captured.last()
-                context.startActivity(newIntent)
-                instrumentation.waitForIdleSync()
+                assertForegroundFlags(newIntent)
+                scenario.onActivity { activity -> instrumentation.callActivityOnNewIntent(activity, newIntent) }
                 assertEquals(listOf(expectation.initialUri, expectation.initialUri), application.pickerLaunches())
                 application.deliverLatestPickerResult(Uri.parse("content://qa/new"))
                 assertEquals(listOf(expectation.callback, expectation.callback), application.pickerCallbacks())
 
                 newIntent.removeExtra(SetupPickerRequest.EXTRA)
-                context.startActivity(newIntent)
-                instrumentation.waitForIdleSync()
+                scenario.onActivity { activity -> instrumentation.callActivityOnNewIntent(activity, newIntent) }
                 assertEquals(listOf(expectation.initialUri, expectation.initialUri), application.pickerLaunches())
             }
         }
@@ -75,6 +75,13 @@ class OverlayPickerDeliveryInstrumentedTest {
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
             assertEquals(emptyList<Uri?>(), application.pickerLaunches())
         }
+    }
+
+    private fun assertForegroundFlags(intent: Intent) {
+        val expected = Intent.FLAG_ACTIVITY_NEW_TASK or
+            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+            Intent.FLAG_ACTIVITY_SINGLE_TOP
+        assertEquals(expected, intent.flags and expected)
     }
 
     private data class PickerExpectation(
