@@ -12,7 +12,7 @@
   },
   "scopeDecision": {
     "type": "NONPARSER_REUSE",
-    "attestation": "Fresh raw parser evidence was generated at the named source commit; downstream release packaging, acceptance tests, API-30-compatible Android bounded reads, repository-policy alignment, public nonsecret GitHub policy access, schema-bound comparison selection, binary-safe public-asset privacy validation, and the Area Guide projection correction changed afterward without changing parser, catalog, build, wrapper, or corpus-execution source."
+    "attestation": "Fresh raw parser evidence was generated at the named source commit; downstream release packaging, acceptance tests, API-30-compatible Android bounded reads, repository-policy alignment, public nonsecret GitHub policy access, schema-bound comparison selection, binary-safe public-asset privacy validation, the Area Guide projection correction, and CRC-less RetroArch session activation with evidence-bound epochs changed afterward without changing parser, catalog, build, wrapper, or corpus-execution source."
   },
   "cacheDecision": {
     "type": "BUMP_REQUIRED",
