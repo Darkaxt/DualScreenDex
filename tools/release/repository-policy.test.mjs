@@ -47,7 +47,7 @@ function fixture(overrides = {}) {
     promotionEnvironmentPolicies: {
       branch_policies: [{ id: 9, name: "main", type: "branch" }],
     },
-    promotionSigningSecretCount: 0,
+    promotionSigningSecretReferenceCount: 0,
     tag: "v1.1.0-rc.78",
     repository: "example/DualDex",
     defaultBranch: "main",
@@ -64,7 +64,7 @@ test("records exact protected signing and promotion environment policy", () => {
   assert.equal(result.promotionEnvironment.requiredReviewerCount, 1);
   assert.equal(result.promotionEnvironment.preventSelfReview, false);
   assert.equal(result.promotionEnvironment.deploymentBranchPolicy, "main");
-  assert.equal(result.promotionEnvironment.signingSecretCount, 0);
+  assert.equal(result.promotionEnvironment.signingSecretReferenceCount, 0);
   assert.doesNotMatch(JSON.stringify(result), /reviewer.*id/i);
 });
 
@@ -96,7 +96,7 @@ test("requires an eligible promotion reviewer while signing remains tag-gated", 
   );
 });
 
-test("rejects wrong branch policy, extra rules, and promotion signing secrets", () => {
+test("rejects wrong branch policy, extra rules, and promotion signing-secret references", () => {
   const extraSigningRule = signingEnvironment();
   extraSigningRule.protection_rules.unshift({
     type: "required_reviewers",
@@ -132,7 +132,7 @@ test("rejects wrong branch policy, extra rules, and promotion signing secrets", 
   );
 
   assert.throws(
-    () => verifyRepositoryPolicy(fixture({ promotionSigningSecretCount: 1 })),
+    () => verifyRepositoryPolicy(fixture({ promotionSigningSecretReferenceCount: 1 })),
     /promotion.*signing secrets/i,
   );
 });

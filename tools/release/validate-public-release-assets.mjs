@@ -146,7 +146,7 @@ function validateEnvironmentPolicy(environment, promotion) {
     "name", "deploymentBranchPolicy", "requiredReviewerCount", "preventSelfReview",
     "protectionRuleTypes",
   ];
-  if (promotion) keys.push("signingSecretCount");
+  if (promotion) keys.push("signingSecretReferenceCount");
   assertExactKeys(environment, keys);
 }
 

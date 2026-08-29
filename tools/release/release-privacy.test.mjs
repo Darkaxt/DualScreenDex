@@ -189,7 +189,7 @@ function validPublicEvidence() {
       requiredRuleTypes: ["deletion", "update"],
     },
     signingEnvironment: environment,
-    promotionEnvironment: { ...environment, name: "release-promotion", signingSecretCount: 0 },
+    promotionEnvironment: { ...environment, name: "release-promotion", signingSecretReferenceCount: 0 },
   };
   const provenance = {
     schema: 1,
