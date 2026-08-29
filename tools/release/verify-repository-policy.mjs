@@ -2,7 +2,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const EXPECTED_PROTECTION_RULES = ["branch_policy", "required_reviewers"];
+const SIGNING_PROTECTION_RULES = ["branch_policy"];
+const PROMOTION_PROTECTION_RULES = ["branch_policy", "required_reviewers"];
 
 export function verifyRepositoryPolicy({
   rulesets,
@@ -29,6 +30,8 @@ export function verifyRepositoryPolicy({
     expectedPolicyType: "tag",
     expectedPolicyValue: tag,
     expectedPolicyDescription: `release tag ${tag}`,
+    expectedProtectionRules: SIGNING_PROTECTION_RULES,
+    requireReviewer: false,
   });
   const promotion = validateEnvironment({
     environment: promotionEnvironment,
@@ -37,6 +40,8 @@ export function verifyRepositoryPolicy({
     expectedPolicyType: "branch",
     expectedPolicyValue: defaultBranch,
     expectedPolicyDescription: `default branch ${defaultBranch}`,
+    expectedProtectionRules: PROMOTION_PROTECTION_RULES,
+    requireReviewer: true,
   });
   assert(promotionSigningSecretCount === 0, "release-promotion must contain zero promotion signing secrets");
 
@@ -66,6 +71,8 @@ function validateEnvironment({
   expectedPolicyType,
   expectedPolicyValue,
   expectedPolicyDescription,
+  expectedProtectionRules,
+  requireReviewer,
 }) {
   assert(environment?.name === expectedName, `${expectedName} environment is missing or mismatched`);
   assert(environment.deployment_branch_policy?.protected_branches === false &&
@@ -84,20 +91,22 @@ function validateEnvironment({
         ["User", "Team"].includes(entry?.type) &&
         Number.isInteger(entry?.reviewer?.id) && entry.reviewer.id > 0)
     : [];
-  assert(eligibleReviewers.length > 0,
-    `${expectedName} requires at least one eligible reviewer`);
-  assert(reviewerRule.prevent_self_review === true || environment.prevent_self_review === true,
-    `${expectedName} requires self-review prevention`);
+  if (requireReviewer) {
+    assert(eligibleReviewers.length > 0,
+      `${expectedName} requires at least one eligible reviewer`);
+  }
+  const preventSelfReview = reviewerRule?.prevent_self_review === true ||
+    environment.prevent_self_review === true;
   const ruleTypes = [...new Set(protectionRules.map(rule => rule?.type))].sort();
-  assert(protectionRules.length === EXPECTED_PROTECTION_RULES.length &&
-    JSON.stringify(ruleTypes) === JSON.stringify(EXPECTED_PROTECTION_RULES),
+  assert(protectionRules.length === expectedProtectionRules.length &&
+    JSON.stringify(ruleTypes) === JSON.stringify(expectedProtectionRules),
   `${expectedName} must have the exact protection rules`);
 
   return {
     name: environment.name,
     deploymentBranchPolicy: matchingPolicies[0].name,
     requiredReviewerCount: eligibleReviewers.length,
-    preventSelfReview: true,
+    preventSelfReview,
     protectionRuleTypes: ruleTypes,
   };
 }
