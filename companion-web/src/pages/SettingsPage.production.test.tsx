@@ -142,10 +142,22 @@ describe('production settings copy', () => {
     expect(document.querySelector('.mapper-setting')?.textContent).toMatch(/AMBIGUOUS|UNVERIFIED|RetroArch\/saves\/game.srm/i);
   });
 
+  it('hides memory capture when bootstrap does not declare mapper support', () => {
+    render(<SettingsPage
+      catalog={catalog}
+      state={{ ...state, mapperAvailable: false } as State}
+      send={vi.fn()}
+      onUpload={vi.fn()}
+      onOpenMapper={vi.fn()}
+    />);
+
+    expect(screen.queryByRole('button', { name: 'CAPTURE MEMORY REPORT' })).toBeNull();
+  });
+
   it('opens the isolated mapper and clears only inactive catalog caches', () => {
     const send = vi.fn();
     const onOpenMapper = vi.fn();
-    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} onOpenMapper={onOpenMapper} />);
+    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} mapperAvailable onOpenMapper={onOpenMapper} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'CAPTURE MEMORY REPORT' }));
     fireEvent.click(screen.getByRole('button', { name: 'REMOVE UNUSED GAME DATA' }));
@@ -158,7 +170,7 @@ describe('production settings copy', () => {
   it('keeps the capability report beside but independent from memory capture', () => {
     const onOpenCapabilities = vi.fn();
     const onOpenMapper = vi.fn();
-    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} onOpenCapabilities={onOpenCapabilities} onOpenMapper={onOpenMapper} />);
+    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} onOpenCapabilities={onOpenCapabilities} mapperAvailable onOpenMapper={onOpenMapper} />);
 
     expect(screen.getByText('DEBUG')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'COMPATIBILITY REPORT' }));

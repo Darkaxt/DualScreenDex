@@ -102,7 +102,7 @@ export function events(
   };
 }
 
-async function requestJson<T>(response: Response, operation: string): Promise<T> {
+export async function requestJson<T>(response: Response, operation: string): Promise<T> {
   const contentType = response.headers.get('Content-Type')?.toLowerCase() ?? '';
   if (!contentType.includes('application/json')) {
     if (!response.ok) throw new Error(`${operation} failed (${response.status})`);

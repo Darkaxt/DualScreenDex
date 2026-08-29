@@ -1,3 +1,5 @@
+import { requestJson } from './gateway';
+
 export interface MapperState {
   enabled: boolean;
   privacyAcknowledged: boolean;
@@ -12,29 +14,26 @@ export interface MapperState {
   error: string | null;
 }
 
-export async function mapperState(): Promise<MapperState> {
-  const response = await fetch('/api/mapper/state');
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? `Mapper state failed (${response.status})`);
-  return payload;
+export async function mapperState(signal?: AbortSignal): Promise<MapperState> {
+  const response = await fetch('/api/mapper/state', { signal });
+  return requestJson(response, 'Mapper state');
 }
 
-export async function mapperAction(type: string, values: Record<string, string | boolean | null> = {}): Promise<MapperState> {
+export async function mapperAction(
+  type: string,
+  values: Record<string, string | boolean | null> = {},
+  signal?: AbortSignal,
+): Promise<MapperState> {
   const response = await fetch('/api/mapper/actions', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, ...values }),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, ...values }), signal,
   });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error ?? `Mapper action failed (${response.status})`);
-  return payload;
+  return requestJson(response, 'Mapper action');
 }
 
-export async function mapperExport(): Promise<Blob> {
+export async function mapperExport(signal?: AbortSignal): Promise<Blob> {
   const response = await fetch('/api/mapper/export', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', signal,
   });
-  if (!response.ok) {
-    const payload = await response.json();
-    throw new Error(payload.error ?? `Mapper export failed (${response.status})`);
-  }
+  if (!response.ok) return requestJson<never>(response, 'Mapper export');
   return response.blob();
 }

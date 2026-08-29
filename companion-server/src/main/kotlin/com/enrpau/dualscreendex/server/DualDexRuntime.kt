@@ -19,6 +19,7 @@ import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
 import com.enrpau.dualscreendex.companion.model.BattleState
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationSource
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
@@ -32,6 +33,8 @@ import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.simulator.EncounterSimulator
 import com.enrpau.dualscreendex.simulator.SimulationRequest
+import java.io.InputStream
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
@@ -43,6 +46,23 @@ class DualDexRuntime(
     private val parserWorker: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "dualdex-parser").apply { isDaemon = true }
     },
+    private val catalogParser: (
+        RomImage,
+        ParserCancellationToken,
+        (CatalogMaterializationProgress) -> Unit,
+    ) -> ParsedCatalog? = { rom, cancellation, onProgress ->
+        CatalogParser.parse(rom, cancellation, onProgress).catalog
+    },
+    private val romSourceLoader: (String, InputStream) -> LoadedRom = RomSourceLoader::load,
+    private val mapAssetRenderer: (ParsedCatalog, String, MapLighting, MapTimeOfDay?) -> RenderedMapAsset? = {
+            current,
+            key,
+            requestedLighting,
+            time,
+        ->
+        LocalMapAssetRenderer.render(current.localMaps, key, requestedLighting, time)
+            ?: current.worldMaps.assets[key]?.let { RenderedMapAsset(PngEncoder.encode(it), null) }
+    },
 ) : AutoCloseable {
     private var catalog: ParsedCatalog? = null
     private var simulator: EncounterSimulator? = null
@@ -52,7 +72,29 @@ class DualDexRuntime(
     private var parserFuture: Future<*>? = null
     val gateway = CompanionGateway()
 
-    fun load(path: Path) = load(RomSourceLoader.load(path))
+    fun load(path: Path) {
+        val name = path.fileName?.toString().orEmpty().ifBlank { "ROM" }
+        loadMaterialized(name) {
+            Files.newInputStream(path).use { source -> romSourceLoader(name, source) }
+        }
+    }
+
+    fun load(name: String, source: InputStream) {
+        loadMaterialized(name) { romSourceLoader(name, source) }
+    }
+
+    private fun loadMaterialized(name: String, materialize: () -> LoadedRom) {
+        val loaded = try {
+            materialize()
+        } catch (failure: OutOfMemoryError) {
+            recordLoadFailure(name)
+            return
+        } catch (failure: Exception) {
+            recordLoadFailure(name)
+            return
+        }
+        load(loaded)
+    }
 
     fun load(source: LoadedRom) {
         load(source.displayName, source.rom)
@@ -76,12 +118,11 @@ class DualDexRuntime(
         }
         val future = parserWorker.submit {
             try {
-                val parsed = CatalogParser.parse(
-                    rom = rom,
-                    cancellation = cancellation.token,
-                    onProgress = { progress -> publishProgress(generation, cancellation, progress) },
-                ).catalog
-                    ?: error("ROM did not produce a selected mainline-family catalog")
+                val parsed = catalogParser(
+                    rom,
+                    cancellation.token,
+                    { progress -> publishProgress(generation, cancellation, progress) },
+                ) ?: error("ROM did not produce a selected mainline-family catalog")
                 cancellation.token.throwIfCancellationRequested()
                 synchronized(this) {
                     cancellation.token.throwIfCancellationRequested()
@@ -97,9 +138,11 @@ class DualDexRuntime(
                     )
                 }
             } catch (failure: CancellationException) {
-                publishLoadFailure(generation, cancellation, name, failure)
+                publishLoadFailure(generation, cancellation, name)
+            } catch (failure: OutOfMemoryError) {
+                publishLoadFailure(generation, cancellation, name)
             } catch (failure: Exception) {
-                publishLoadFailure(generation, cancellation, name, failure)
+                publishLoadFailure(generation, cancellation, name)
             } finally {
                 synchronized(this) {
                     if (parserCancellation === cancellation) {
@@ -146,7 +189,14 @@ class DualDexRuntime(
             if (target != null && move != null) simulator?.effectiveness(move, target.speciesId) else null
         } else null
         val resolved = resolveRuleset(snapshot.settings.ruleset)
-        return ApiViewBuilder.state(snapshot, catalog, truth, resolved?.id, snapshot.settings.ruleset == "AUTO")
+        return ApiViewBuilder.state(
+            snapshot,
+            catalog,
+            truth,
+            resolved?.id,
+            snapshot.settings.ruleset == "AUTO",
+            mapperAvailable = false,
+        )
     }
 
     @Synchronized
@@ -201,9 +251,17 @@ class DualDexRuntime(
         key: String,
         requestedLighting: MapLighting,
         time: MapTimeOfDay? = null,
-    ): RenderedMapAsset? = catalog?.let { current ->
-        LocalMapAssetRenderer.render(current.localMaps, key, requestedLighting, time)
-            ?: current.worldMaps.assets[key]?.let { RenderedMapAsset(PngEncoder.encode(it), null) }
+    ): MapAssetOutcome {
+        val current = catalog ?: return MapAssetOutcome.Missing
+        return try {
+            mapAssetRenderer(current, key, requestedLighting, time)
+                ?.let(MapAssetOutcome::Found)
+                ?: MapAssetOutcome.Missing
+        } catch (failure: OutOfMemoryError) {
+            MapAssetOutcome.Unavailable(mapFailureCategory(failure))
+        } catch (failure: Exception) {
+            MapAssetOutcome.Unavailable(mapFailureCategory(failure))
+        }
     }
 
     @Synchronized
@@ -318,13 +376,28 @@ class DualDexRuntime(
         generation: Long,
         cancellation: ParserCancellationSource,
         name: String,
-        failure: Throwable,
     ) {
         synchronized(this) {
             if (cancellation.isCancellationRequested || generation != loadGeneration.get()) return
             catalog = null
             simulator = null
-            gateway.dispatch(CompanionAction.Failure(failure.message ?: failure.javaClass.simpleName))
+            gateway.dispatch(CompanionAction.Failure(LOAD_FAILURE_MESSAGE))
+            gateway.dispatch(
+                CompanionAction.CatalogLoadingChanged(
+                    CatalogLoadingState(false, "FAILED", 0, 5),
+                    name,
+                ),
+            )
+        }
+    }
+
+    private fun recordLoadFailure(name: String) {
+        synchronized(this) {
+            cancelParserWork()
+            loadGeneration.incrementAndGet()
+            catalog = null
+            simulator = null
+            gateway.dispatch(CompanionAction.Failure(LOAD_FAILURE_MESSAGE))
             gateway.dispatch(
                 CompanionAction.CatalogLoadingChanged(
                     CatalogLoadingState(false, "FAILED", 0, 5),
@@ -343,8 +416,6 @@ class DualDexRuntime(
         synchronized(this) {
             cancellation.token.throwIfCancellationRequested()
             if (generation != loadGeneration.get()) return@synchronized
-            catalog = progress.catalog
-            simulator = EncounterSimulator(progress.catalog)
             gateway.dispatch(
                 CompanionAction.CatalogLoadingChanged(
                     CatalogLoadingState(
@@ -367,4 +438,20 @@ class DualDexRuntime(
 
     private fun requireInt(values: Map<String, String?>, key: String): Int =
         requireNotNull(values[key]?.toIntOrNull()) { "$key is required" }
+
+    private fun mapFailureCategory(failure: Throwable): String = failure.javaClass.simpleName
+        .filter { it.isLetterOrDigit() || it == '-' || it == '_' || it == '.' }
+        .take(MAP_FAILURE_DIAGNOSTIC_MAX_LENGTH)
+        .ifBlank { "Exception" }
+
+    private companion object {
+        const val LOAD_FAILURE_MESSAGE = "This game guide could not be opened. You can try again."
+        const val MAP_FAILURE_DIAGNOSTIC_MAX_LENGTH = 64
+    }
+}
+
+sealed interface MapAssetOutcome {
+    data class Found(val asset: RenderedMapAsset) : MapAssetOutcome
+    data object Missing : MapAssetOutcome
+    data class Unavailable(val diagnostic: String) : MapAssetOutcome
 }

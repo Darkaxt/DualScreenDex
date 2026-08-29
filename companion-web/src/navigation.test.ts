@@ -45,6 +45,36 @@ describe('client navigation stack', () => {
     expect(decodeRouteHash(hash, catalog)).toEqual(routes);
   });
 
+  it('round trips fixed-size Gen I and II fallback specimen keys at the maximum history stack', () => {
+    const fallbackKey = `fallback:${'a'.repeat(64)}`;
+    const routes = Array.from({ length: 16 }, () => ({
+      kind: 'SPECIMEN' as const,
+      speciesId: 1,
+      specimenKey: fallbackKey,
+      catalogHash: catalog.hash,
+    }));
+    const hash = encodeRouteHash(routes, catalog.hash);
+
+    expect(fallbackKey).toHaveLength(73);
+    expect(hash.length).toBeLessThanOrEqual(8192);
+    expect(decodeRouteHash(hash, catalog)).toEqual(routes);
+  });
+
+  it('discards a restored mapper route unless the bootstrap declares mapper support', () => {
+    const mapper = encodeRouteHash([{ kind: 'MAPPER' }], catalog.hash);
+
+    expect(decodeRouteHash(mapper, catalog)).toEqual([]);
+    expect(decodeRouteHash(mapper, catalog, { mapperAvailable: true })).toEqual([{ kind: 'MAPPER' }]);
+  });
+
+  it('discards a restored map route unless the bootstrap declares world-map support', () => {
+    const map: UiRoute[] = [{ kind: 'MAP', originScreen: 'POKEDEX' }];
+    const hash = encodeRouteHash(map, catalog.hash);
+
+    expect(decodeRouteHash(hash, catalog)).toEqual([]);
+    expect(decodeRouteHash(hash, catalog, { worldMapsAvailable: true })).toEqual(map);
+  });
+
   it('rejects invalid entity references and party slots', () => {
     const invalidRoutes: UiRoute[][] = [
       [{ kind: 'MOVE', id: 999 }],

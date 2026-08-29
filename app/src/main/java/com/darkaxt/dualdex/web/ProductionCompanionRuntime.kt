@@ -148,6 +148,12 @@ data class ResolvedStateDispatchMetrics(
     val battleSections: Long,
 )
 
+sealed interface MapAssetResult {
+    data class Found(val asset: RenderedMapAsset) : MapAssetResult
+    data object Missing : MapAssetResult
+    data class Unavailable(val category: String) : MapAssetResult
+}
+
 private fun AreaGuideProjection.retainedItemCount(): Int = guide.areas.sumOf { area ->
     area.overview.exits.size +
         area.encounters.sumOf { it.species.size } +
@@ -864,6 +870,7 @@ class ProductionCompanionRuntime(
             partyAnalysis = partyAnalysis,
             areaGuideProjection = areaGuideProjection,
             trainerProgress = trainerProgress,
+            mapperAvailable = true,
             version = deliveryVersion,
         ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
     }
@@ -1380,16 +1387,23 @@ class ProductionCompanionRuntime(
         key: String,
         requestedLighting: MapLighting,
         time: MapTimeOfDay? = null,
-    ): RenderedMapAsset? {
-        val current = synchronized(this) { catalog } ?: return null
+    ): MapAssetResult {
+        val current = synchronized(this) { catalog } ?: return MapAssetResult.Missing
         val variant = when {
             key in current.localMaps.timedAssets -> "TIME-${(time ?: MapTimeOfDay(12, 0)).minuteOfDay}"
             key in current.localMaps.indexedAssets -> "LIGHTING-${requestedLighting.name}"
             else -> "STATIC"
         }
-        return mapAssetRenderCache.getOrRender(MapAssetRenderKey(current.romSha256, key, variant)) {
-            mapAssetRenderer(current, key, requestedLighting, time)
+        val rendered = try {
+            mapAssetRenderCache.getOrRender(MapAssetRenderKey(current.romSha256, key, variant)) {
+                mapAssetRenderer(current, key, requestedLighting, time)
+            }
+        } catch (failure: OutOfMemoryError) {
+            return MapAssetResult.Unavailable(boundedDiagnosticCategory(failure.javaClass.simpleName, "OutOfMemoryError"))
+        } catch (failure: Exception) {
+            return MapAssetResult.Unavailable(boundedDiagnosticCategory(failure.javaClass.simpleName, "Exception"))
         }
+        return rendered?.let(MapAssetResult::Found) ?: MapAssetResult.Missing
     }
 
     fun mapAssetCacheStats(): MapAssetRenderCacheStats = mapAssetRenderCache.stats()
@@ -1887,17 +1901,17 @@ class ProductionCompanionRuntime(
     }
 
     private fun unavailableAreaGuideProjection(failure: Throwable) = AreaGuideProjectionOutcome.Unavailable(
-        stage = boundedAreaGuideDiagnostic(
+        stage = boundedDiagnosticCategory(
             (failure as? AreaGuideProjectionLimitException)?.stage ?: "projection",
             "projection",
         ),
-        failureClass = boundedAreaGuideDiagnostic(
+        failureClass = boundedDiagnosticCategory(
             failure.javaClass.simpleName,
             if (failure is OutOfMemoryError) "OutOfMemoryError" else "Exception",
         ),
     )
 
-    private fun boundedAreaGuideDiagnostic(value: String, fallback: String): String = value
+    private fun boundedDiagnosticCategory(value: String, fallback: String): String = value
         .filter { it.isLetterOrDigit() || it == '-' || it == '_' || it == '.' }
         .take(64)
         .ifBlank { fallback }

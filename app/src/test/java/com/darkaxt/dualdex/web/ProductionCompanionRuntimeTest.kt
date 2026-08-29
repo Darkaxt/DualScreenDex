@@ -48,6 +48,7 @@ import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.RenderedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogWorkModule
@@ -424,6 +425,69 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun stateAndBootstrapDeclareAndroidMapperAndTheCurrentCatalogIdentity() {
+        val runtime = ProductionCompanionRuntime()
+        try {
+            val absent = runtime.bootstrap()
+            assertTrue(absent.state.mapperAvailable)
+            assertNull(absent.state.catalogHash)
+
+            runtime.loadCatalog("first.gba", ParsedCatalog("first-catalog", EngineFamily.EMERALD, Platform.GBA))
+            val firstState = runtime.stateView()
+            assertTrue(firstState.mapperAvailable)
+            assertEquals("first-catalog", firstState.catalogHash)
+            assertEquals("first-catalog", runtime.bootstrap().state.catalogHash)
+
+            runtime.loadCatalog("second.gba", ParsedCatalog("second-catalog", EngineFamily.EMERALD, Platform.GBA))
+            assertEquals("first-catalog", firstState.catalogHash)
+            assertEquals("second-catalog", runtime.stateView().catalogHash)
+            assertEquals("second-catalog", runtime.bootstrap().state.catalogHash)
+        } finally {
+            runtime.close()
+        }
+    }
+
+    @Test
+    fun classifiesMissingAndRecoverableMapRendererFailures() {
+        var recover = false
+        val runtime = ProductionCompanionRuntime(
+            mapAssetRenderer = { _, key, _, _ ->
+                when (key) {
+                    "missing" -> null
+                    "exception" -> throw IllegalStateException("private renderer implementation detail")
+                    "memory" -> throw OutOfMemoryError("private allocator implementation detail")
+                    "recover" -> if (recover) {
+                        RenderedMapAsset(byteArrayOf(1), null)
+                    } else {
+                        throw IllegalStateException("private transient renderer detail")
+                    }
+                    else -> error("unexpected map key")
+                }
+            },
+        )
+        try {
+            runtime.loadCatalog("maps.gba", ParsedCatalog("map-catalog", EngineFamily.EMERALD, Platform.GBA))
+
+            assertEquals(MapAssetResult.Missing, runtime.mapAsset("missing", MapLighting.DAY))
+            val exception = runtime.mapAsset("exception", MapLighting.DAY) as MapAssetResult.Unavailable
+            assertEquals("IllegalStateException", exception.category)
+            assertTrue(exception.category.length <= 64)
+            assertFalse(exception.category.contains("private"))
+            val memory = runtime.mapAsset("memory", MapLighting.DAY) as MapAssetResult.Unavailable
+            assertEquals("OutOfMemoryError", memory.category)
+            assertTrue(memory.category.length <= 64)
+            assertFalse(memory.category.contains("private"))
+
+            assertTrue(runtime.mapAsset("recover", MapLighting.DAY) is MapAssetResult.Unavailable)
+            recover = true
+            val recovered = runtime.mapAsset("recover", MapLighting.DAY) as MapAssetResult.Found
+            assertEquals(listOf(1.toByte()), recovered.asset.bytes.toList())
+        } finally {
+            runtime.close()
+        }
+    }
+
+    @Test
     fun rendersMapAssetsOutsideTheRuntimeStateLock() {
         var heldRuntimeLock = true
         lateinit var runtime: ProductionCompanionRuntime
@@ -435,7 +499,8 @@ class ProductionCompanionRuntimeTest {
         )
         runtime.loadCatalog("map.gba", ParsedCatalog("sha", EngineFamily.EMERALD, Platform.GBA))
 
-        assertEquals(1, runtime.mapAsset("map", MapLighting.DAY)?.bytes?.size)
+        val result = runtime.mapAsset("map", MapLighting.DAY) as MapAssetResult.Found
+        assertEquals(1, result.asset.bytes.size)
         assertFalse(heldRuntimeLock)
         runtime.close()
     }

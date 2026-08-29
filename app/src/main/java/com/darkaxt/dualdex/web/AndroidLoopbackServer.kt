@@ -407,8 +407,11 @@ class AndroidLoopbackServer(
         if (key.split('/').any { it == ".." }) return apiNotFoundResponse()
         val requestedLighting = requestedLighting(request.query["lighting"])
         val time = requestedTime(request.query["hour"], request.query["minute"])
-        val rendered = runCatching { runtime.mapAsset(key, requestedLighting, time) }.getOrNull()
-            ?: return apiNotFoundResponse()
+        val rendered = when (val outcome = runtime.mapAsset(key, requestedLighting, time)) {
+            is MapAssetResult.Found -> outcome.asset
+            MapAssetResult.Missing -> return apiNotFoundResponse()
+            is MapAssetResult.Unavailable -> return mapUnavailableResponse(outcome.category)
+        }
         val variant = rendered.cacheVariant
         return Response(
             200,
@@ -532,6 +535,18 @@ class AndroidLoopbackServer(
         status,
     )
 
+    private fun mapUnavailableResponse(diagnostic: String): Response = jsonResponse(
+        mapOf(
+            "error" to ApiErrorDetailView(
+                code = "MAP_UNAVAILABLE",
+                message = "The map is temporarily unavailable. Try again.",
+                retryable = true,
+            ),
+            "diagnostic" to diagnostic,
+        ),
+        status = 503,
+    )
+
     private fun jsonResponse(
         value: Any,
         status: Int = 200,
@@ -598,13 +613,15 @@ class AndroidLoopbackServer(
         maximumBytes: Long,
         headerBudget: HeaderBudget,
     ): RequestBody = spoolBody { output ->
+        require(maximumBytes >= 0) { "request body limit is invalid" }
         var total = 0L
         val buffer = ByteArray(STREAM_COPY_BUFFER_BYTES)
         var complete = false
         while (!complete) {
             val sizeLine = readLine(input) ?: throw EOFException("missing chunk size")
             val size = sizeLine.substringBefore(';').trim().toLong(16)
-            require(size >= 0) { "invalid chunk size" }
+            require(total in 0..maximumBytes) { "request body is too large" }
+            require(size in 0..maximumBytes) { "request body is too large" }
             if (size == 0L) {
                 while (true) {
                     val trailer = readLine(input) ?: throw EOFException("incomplete chunk trailers")
@@ -614,7 +631,7 @@ class AndroidLoopbackServer(
                 }
                 complete = true
             } else {
-                require(total + size <= maximumBytes) { "request body is too large" }
+                require(size <= maximumBytes - total) { "request body is too large" }
                 copyExactly(input, output, size, buffer)
                 total += size
                 require(readLine(input).orEmpty().isEmpty()) { "invalid chunk terminator" }
@@ -625,16 +642,22 @@ class AndroidLoopbackServer(
 
     private fun spoolBody(writer: (OutputStream) -> Long): RequestBody {
         val path = requestBodySpoolFactory()
-        return try {
+        var returned = false
+        try {
             val length = Files.newOutputStream(
                 path,
                 StandardOpenOption.WRITE,
                 StandardOpenOption.TRUNCATE_EXISTING,
             ).buffered().use(writer)
-            SpoolRequestBody(path, length)
-        } catch (failure: Exception) {
-            Files.deleteIfExists(path)
-            throw failure
+            return SpoolRequestBody(path, length).also { returned = true }
+        } finally {
+            if (!returned) {
+                try {
+                    Files.deleteIfExists(path)
+                } catch (_: Throwable) {
+                    // Best effort: preserve the original body-processing failure.
+                }
+            }
         }
     }
 
@@ -798,7 +821,8 @@ class AndroidLoopbackServer(
     private fun emptyResponse(status: Int): Response = Response(
         status = status,
         contentType = null,
-        contentLength = 0,
+        contentLength = null,
+        headers = mapOf("Cache-Control" to "no-store"),
         writeBody = {},
     )
 

@@ -56,7 +56,7 @@ vi.mock('./gateway', () => ({
   }))
 }));
 
-import { action, bootstrap, events } from './gateway';
+import { action, bootstrap, events, uploadRom } from './gateway';
 import type { ConnectionStatus } from './gateway';
 import { App, catalogRefreshMarker, loadingModuleLabel, loadingOriginClass } from './App';
 
@@ -528,7 +528,7 @@ describe('production application shell', () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
 
-    expect(decodeRouteHash(window.location.hash, fixture.catalog!)).toEqual([
+    expect(decodeRouteHash(window.location.hash, fixture.catalog!, { worldMapsAvailable: true })).toEqual([
       { kind: 'MAP', originScreen: 'POKEDEX' },
     ]);
 
@@ -549,6 +549,16 @@ describe('production application shell', () => {
     await screen.findByText('POKÉDEX');
     expect(window.location.hash).toBe('');
     expect(screen.queryByRole('region', { name: 'Interactive world map' })).toBeNull();
+  });
+
+  it('discards an unsupported restored mapper route before it can poll', async () => {
+    window.history.replaceState(null, '', encodeRouteHash([{ kind: 'MAPPER' }], fixture.catalog!.hash));
+
+    render(<App />);
+
+    expect(await screen.findByText('POKÉDEX')).toBeTruthy();
+    expect(window.location.hash).toBe('');
+    expect(screen.queryByText('MEMORY MAPPER')).toBeNull();
   });
 
   it('consumes companion Back locally and never leaves the root Pokédex', async () => {
@@ -652,7 +662,123 @@ describe('production application shell', () => {
   });
 });
 
+describe('bootstrap authority fencing', () => {
+  it('does not surface a stale catalog-refresh failure after a newer reconnect bootstrap completes', async () => {
+    let publishState!: (state: Bootstrap['state']) => void;
+    let refreshAfterReconnect!: () => void | Promise<void>;
+    let rejectRefresh!: (reason?: unknown) => void;
+    const staleRefresh = new Promise<Bootstrap>((_resolve, reject) => { rejectRefresh = reject; });
+    vi.mocked(bootstrap)
+      .mockResolvedValueOnce(fixture)
+      .mockImplementationOnce(() => staleRefresh)
+      .mockResolvedValueOnce(fixture);
+    vi.mocked(events).mockImplementationOnce((_currentVersion, onState, _onConnection, onRefreshRequired) => {
+      publishState = onState;
+      refreshAfterReconnect = onRefreshRequired ?? (() => undefined);
+      return () => undefined;
+    });
+
+    render(<App />);
+    await screen.findByText('POKÉDEX');
+    publishState({ ...fixture.state, version: 2, catalogHash: fixture.catalog!.hash });
+    await act(async () => { await Promise.resolve(); });
+    await expect(refreshAfterReconnect() as Promise<void>).resolves.toBeUndefined();
+
+    await act(async () => {
+      rejectRefresh(new Error('stale catalog refresh'));
+      await Promise.resolve();
+    });
+    expect(screen.queryByText('Your game guide could not be refreshed. Please try again.')).toBeNull();
+  });
+
+  it('does not rethrow a stale reconnect failure after a newer reconnect completes', async () => {
+    let refreshAfterReconnect!: () => void | Promise<void>;
+    let rejectStaleReconnect!: (reason?: unknown) => void;
+    const staleReconnect = new Promise<Bootstrap>((_resolve, reject) => { rejectStaleReconnect = reject; });
+    vi.mocked(bootstrap)
+      .mockResolvedValueOnce(fixture)
+      .mockImplementationOnce(() => staleReconnect)
+      .mockResolvedValueOnce(fixture);
+    vi.mocked(events).mockImplementationOnce((_currentVersion, _onState, _onConnection, onRefreshRequired) => {
+      refreshAfterReconnect = onRefreshRequired ?? (() => undefined);
+      return () => undefined;
+    });
+
+    render(<App />);
+    await screen.findByText('POKÉDEX');
+    const stale = refreshAfterReconnect() as Promise<void>;
+    await expect(refreshAfterReconnect() as Promise<void>).resolves.toBeUndefined();
+    rejectStaleReconnect(new Error('stale reconnect'));
+
+    await expect(stale).resolves.toBeUndefined();
+    expect(screen.queryByText('The companion could not reconnect. It will keep trying.')).toBeNull();
+  });
+
+  it('accepts a lower state version when an uploaded catalog has a new SHA', async () => {
+    const catalogA = { ...fixture.catalog!, hash: 'catalog-a' };
+    const catalogB = { ...fixture.catalog!, hash: 'catalog-b' };
+    vi.mocked(bootstrap).mockResolvedValueOnce({
+      ...fixture,
+      catalog: catalogA,
+      state: { ...fixture.state, version: 10, screen: 'SETTINGS', catalogHash: catalogA.hash },
+    });
+    vi.mocked(uploadRom).mockResolvedValueOnce({
+      ...fixture,
+      catalog: catalogB,
+      state: { ...fixture.state, version: 1, screen: 'POKEDEX', catalogHash: catalogB.hash },
+    });
+
+    render(<App />);
+    await screen.findByText('SETTINGS');
+    const rom = new File([new Uint8Array([1])], 'catalog-b.gba');
+    fireEvent.change(screen.getByLabelText('Change ROM or ZIP'), { target: { files: [rom] } });
+
+    expect(await screen.findByText('POKÉDEX')).toBeTruthy();
+  });
+
+  it('uses the catalog SHA in the refresh identity and keeps a newer same-name catalog route when an older bootstrap finishes last', async () => {
+    let publishState!: (state: Bootstrap['state']) => void;
+    let resolveInitial!: (value: Bootstrap) => void;
+    let resolveRefresh!: (value: Bootstrap) => void;
+    const initial = new Promise<Bootstrap>(resolve => { resolveInitial = resolve; });
+    const refresh = new Promise<Bootstrap>(resolve => { resolveRefresh = resolve; });
+    const catalogA = { ...fixture.catalog!, hash: 'catalog-a' };
+    const catalogB = { ...fixture.catalog!, hash: 'catalog-b' };
+    const route = [{ kind: 'MAP', originScreen: 'POKEDEX' } as const];
+    window.history.replaceState({ dualdexRouteIndex: 1 }, '', encodeRouteHash(route, catalogB.hash));
+    vi.mocked(bootstrap).mockImplementationOnce(() => initial).mockImplementationOnce(() => refresh);
+    vi.mocked(events).mockImplementationOnce((_currentVersion, onState) => {
+      publishState = onState;
+      return () => undefined;
+    });
+
+    render(<App />);
+    await waitFor(() => expect(publishState).toBeTypeOf('function'));
+    const finalEvent = {
+      ...fixture.state,
+      version: 2,
+      catalogName: 'same-name.gba',
+      catalogHash: catalogB.hash,
+    } as Bootstrap['state'];
+    publishState(finalEvent);
+    resolveRefresh({ ...fixture, catalog: catalogB, state: finalEvent });
+
+    expect(await screen.findByRole('region', { name: 'Interactive world map' })).toBeTruthy();
+    resolveInitial({ ...fixture, catalog: catalogA, state: { ...fixture.state, catalogName: 'same-name.gba', catalogHash: catalogA.hash } as Bootstrap['state'] });
+
+    await Promise.resolve();
+    expect(window.location.hash).toBe(encodeRouteHash(route, catalogB.hash));
+    expect(screen.getByRole('region', { name: 'Interactive world map' })).toBeTruthy();
+  });
+});
+
 describe('catalog refresh marker', () => {
+  it('changes for a new catalog SHA even when the filename and terminal loading event match', () => {
+    const loading = { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 };
+    expect(catalogRefreshMarker({ catalogName: 'same-name.gba', catalogHash: 'catalog-a', loading } as typeof fixture.state))
+      .not.toBe(catalogRefreshMarker({ catalogName: 'same-name.gba', catalogHash: 'catalog-b', loading } as typeof fixture.state));
+  });
+
   it('remains stable across ordinary state versions after one catalog phase', () => {
     const loading = { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 };
     expect(catalogRefreshMarker({ catalogName: 'game.gba', loading })).toBe(

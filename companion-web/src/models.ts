@@ -372,6 +372,8 @@ export interface State {
   };
   catalogReady: boolean;
   catalogName: string | null;
+  catalogHash?: string | null;
+  mapperAvailable?: boolean;
   error: string | null;
   activeRulesetId: string | null;
   rulesetAssumed: boolean;

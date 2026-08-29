@@ -15,6 +15,11 @@ import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
 import com.enrpau.dualscreendex.companion.model.TrainerCardState
 import com.enrpau.dualscreendex.companion.battle.DamageForecast
+import com.enrpau.dualscreendex.companion.map.AreaGuide
+import com.enrpau.dualscreendex.companion.map.AreaGuideArea
+import com.enrpau.dualscreendex.companion.map.AreaGuideOverview
+import com.enrpau.dualscreendex.companion.map.AreaGuideProjection
+import com.enrpau.dualscreendex.companion.map.AreaGuideProjectionOutcome
 import com.enrpau.dualscreendex.companion.battle.DamageForecastConfidence
 import com.enrpau.dualscreendex.companion.battle.DecimalRange
 import com.enrpau.dualscreendex.companion.battle.InclusiveRange
@@ -1280,6 +1285,63 @@ class ApiViewBuilderTest {
         val state = ApiViewBuilder.state(snapshot, catalog)
 
         assertEquals(listOf(1, 2, 4), state.currentAreaSpeciesIds)
+    }
+
+    @Test
+    fun unavailableAreaGuideLeavesTheRestOfTheStatePublishedAndAValidProjectionCanRecover() {
+        val snapshot = AppSnapshot(version = 7)
+        val unavailable = ApiViewBuilder.state(
+            snapshot,
+            catalog = null,
+            areaGuideProjection = AreaGuideProjectionOutcome.Unavailable("retained-output", "AreaGuideProjectionLimitException"),
+        )
+        val recovered = ApiViewBuilder.state(
+            snapshot,
+            catalog = null,
+            areaGuideProjection = AreaGuideProjectionOutcome.Available(
+                AreaGuideProjection(
+                    points = emptyList(),
+                    guide = AreaGuide(
+                        trackedAreaBaseId = 1,
+                        areas = listOf(
+                            AreaGuideArea(
+                                baseAreaId = 1,
+                                name = "Recovered area",
+                                overview = AreaGuideOverview(0, null, 0, emptyList()),
+                                encounters = emptyList(),
+                                placesAndServices = emptyList(),
+                                trainersAndPeople = emptyList(),
+                                items = emptyList(),
+                                objectives = emptyList(),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(7L, unavailable.version)
+        assertNull(unavailable.areaGuide)
+        assertEquals("UNAVAILABLE", unavailable.areaGuideAvailability.status)
+        assertEquals("retained-output", unavailable.areaGuideAvailability.stage)
+        assertEquals("AVAILABLE", recovered.areaGuideAvailability.status)
+        assertEquals("Recovered area", recovered.areaGuide?.areas?.single()?.name)
+    }
+
+    @Test
+    fun stateCarriesTheImmutableCatalogHashAndExplicitMapperAvailability() {
+        val catalog = ParsedCatalog(
+            romSha256 = "b".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+        )
+
+        val androidState = ApiViewBuilder.state(AppSnapshot(), catalog, mapperAvailable = true)
+        val desktopState = ApiViewBuilder.state(AppSnapshot(), catalog)
+
+        assertEquals(catalog.romSha256, androidState.catalogHash)
+        assertTrue(androidState.mapperAvailable)
+        assertFalse(desktopState.mapperAvailable)
     }
 
     private fun identityOnlyTrainerCard(name: String, gender: Int) = TrainerCardState(

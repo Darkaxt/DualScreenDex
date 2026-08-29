@@ -8,7 +8,6 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
-import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 
 object AreaGuideBuilder {
@@ -18,11 +17,11 @@ object AreaGuideBuilder {
         objectivesByArea: Map<Int, List<AreaGuideObjective>> = emptyMap(),
     ): AreaGuideProjection {
         requireBoundedInput(catalog, objectivesByArea)
+        val outputBudget = OutputBudget()
         val names = areaNames(catalog)
         requireAtMost("area-count", names.size.toLong(), MAX_AREA_COUNT)
-        val projectedPoints = projectPoints(catalog, snapshot, names)
-        val guide = build(catalog, snapshot, names, projectedPoints, objectivesByArea)
-        requireAtMost("retained-output", retainedItemCount(projectedPoints, guide), MAX_RETAINED_ITEMS)
+        val projectedPoints = projectPoints(catalog, snapshot, names, outputBudget)
+        val guide = build(catalog, snapshot, names, projectedPoints, objectivesByArea, outputBudget)
         return AreaGuideProjection(
             points = projectedPoints,
             guide = guide,
@@ -37,6 +36,7 @@ object AreaGuideBuilder {
         names: Map<Int, String>,
         projectedPoints: List<AreaGuidePoint>,
         objectivesByArea: Map<Int, List<AreaGuideObjective>>,
+        outputBudget: OutputBudget,
     ): AreaGuide {
         val allAreaIds = buildSet {
             addAll(names.keys)
@@ -54,51 +54,71 @@ object AreaGuideBuilder {
             KnowledgeMode.HIDDEN -> setOfNotNull(snapshot.liveAreaBaseId).intersect(allAreaIds)
         }
         val mapsByKey = catalog.localMaps.maps.associateBy(LocalMap::key)
-        val areas = visibleAreaIds.sorted().mapNotNull { baseAreaId ->
-            val name = names[baseAreaId] ?: return@mapNotNull null
-            val knownPoints = projectedPoints.filter { it.baseAreaId == baseAreaId }
-            val visiblePoints = knownPoints.filter { pointEnabled(it, snapshot.ledger.localMapPoiPreferences) }
-            val staticPointCount = catalog.localMaps.pois.count { it.baseAreaId == baseAreaId }
-            AreaGuideArea(
+        val pointsByArea = projectedPoints.groupBy(AreaGuidePoint::baseAreaId)
+        val staticPointCounts = catalog.localMaps.pois.groupingBy(LocalMapPoi::baseAreaId).eachCount()
+        val sceneAdjacency = sceneAdjacency(catalog, mapsByKey)
+        val areas = ArrayList<AreaGuideArea>(visibleAreaIds.size)
+        visibleAreaIds.sorted().forEach { baseAreaId ->
+            val name = names[baseAreaId] ?: return@forEach
+            val knownPoints = pointsByArea[baseAreaId].orEmpty()
+            val placesAndServices = ArrayList<AreaGuidePoint>()
+            val items = ArrayList<AreaGuidePoint>()
+            knownPoints.forEach { point ->
+                if (!pointEnabled(point, snapshot.ledger.localMapPoiPreferences)) return@forEach
+                when (point.category) {
+                    AreaGuidePointCategory.PLACE,
+                    AreaGuidePointCategory.SERVICE,
+                    AreaGuidePointCategory.UNKNOWN -> {
+                        outputBudget.retain()
+                        placesAndServices += point
+                    }
+                    AreaGuidePointCategory.AVAILABLE_ITEM,
+                    AreaGuidePointCategory.COLLECTED_ITEM -> {
+                        outputBudget.retain()
+                        items += point
+                    }
+                }
+            }
+            val objectives = objectivesByArea[baseAreaId].orEmpty()
+            outputBudget.retain(objectives.size)
+            val overview = AreaGuideOverview(
+                knownPointCount = knownPoints.size,
+                totalPointCount = staticPointCounts[baseAreaId]?.takeIf {
+                    snapshot.settings.knowledgeMode == KnowledgeMode.DISCOVERED
+                },
+                collectedItemCount = knownPoints.count { it.state == AreaGuidePointState.COLLECTED },
+                exits = exits(
+                    baseAreaId = baseAreaId,
+                    names = names,
+                    visibleAreaIds = visibleAreaIds,
+                    points = knownPoints,
+                    sceneAdjacency = sceneAdjacency,
+                    outputBudget = outputBudget,
+                ),
+            )
+            val encounters = encounterGroups(catalog, snapshot, baseAreaId, name, outputBudget)
+            outputBudget.retain()
+            areas += AreaGuideArea(
                 baseAreaId = baseAreaId,
                 name = name,
-                overview = AreaGuideOverview(
-                    knownPointCount = knownPoints.size,
-                    totalPointCount = staticPointCount.takeIf {
-                        snapshot.settings.knowledgeMode == KnowledgeMode.DISCOVERED
-                    },
-                    collectedItemCount = knownPoints.count { it.state == AreaGuidePointState.COLLECTED },
-                    exits = exits(
-                        catalog = catalog,
-                        baseAreaId = baseAreaId,
-                        names = names,
-                        visibleAreaIds = visibleAreaIds,
-                        points = knownPoints,
-                        mapsByKey = mapsByKey,
-                    ),
-                ),
-                encounters = encounterGroups(catalog, snapshot, baseAreaId, name),
-                placesAndServices = visiblePoints.filter {
-                    it.category == AreaGuidePointCategory.PLACE ||
-                        it.category == AreaGuidePointCategory.SERVICE ||
-                        it.category == AreaGuidePointCategory.UNKNOWN
-                },
+                overview = overview,
+                encounters = encounters,
+                placesAndServices = placesAndServices,
                 trainersAndPeople = emptyList(),
-                items = visiblePoints.filter {
-                    it.category == AreaGuidePointCategory.AVAILABLE_ITEM ||
-                        it.category == AreaGuidePointCategory.COLLECTED_ITEM
-                },
-                objectives = objectivesByArea[baseAreaId].orEmpty(),
+                items = items,
+                objectives = objectives,
             )
         }
         return AreaGuide(snapshot.liveAreaBaseId, areas)
     }
 
-    fun projectPoints(
+    private fun projectPoints(
         catalog: ParsedCatalog,
         snapshot: AppSnapshot,
         names: Map<Int, String> = areaNames(catalog),
-    ): List<AreaGuidePoint> = catalog.localMaps.pois.mapNotNull { poi ->
+        outputBudget: OutputBudget? = null,
+    ): List<AreaGuidePoint> = buildList {
+        catalog.localMaps.pois.forEach { poi ->
         val resolvedCollected = poi.item?.collectionFlagId in snapshot.resolvedEventFlags.orEmpty()
         val collected = resolvedCollected || poi.key in snapshot.ledger.collectedPoiKeys
         val explicitlyIdentified = resolvedCollected ||
@@ -112,7 +132,7 @@ object AreaGuideBuilder {
             KnowledgeMode.DISCOVERED -> true
             KnowledgeMode.ORGANIC -> visibleWithoutDiscovery || proximityRevealed || identified
         }
-        if (!included) return@mapNotNull null
+        if (!included) return@forEach
         val state = when {
             collected -> AreaGuidePointState.COLLECTED
             identified -> AreaGuidePointState.IDENTIFIED
@@ -133,7 +153,8 @@ object AreaGuideBuilder {
                 normalizeText(poi.item?.displayName, trainer?.name, names[poi.baseAreaId])
             else -> normalizeText(poiName(poi, trainer?.gender), trainer?.name, names[poi.baseAreaId])
         }
-        AreaGuidePoint(
+        outputBudget?.retain()
+        add(AreaGuidePoint(
             key = poi.key,
             localMapKey = poi.localMapKey,
             baseAreaId = poi.baseAreaId,
@@ -145,7 +166,8 @@ object AreaGuideBuilder {
             service = poi.service?.name,
             itemId = poi.item?.itemId.takeIf { identified },
             destinationBaseAreaId = poi.destinationBaseAreaId.takeIf { identified },
-        )
+        ))
+        }
     }
 
     private fun encounterGroups(
@@ -153,6 +175,7 @@ object AreaGuideBuilder {
         snapshot: AppSnapshot,
         baseAreaId: Int,
         areaName: String,
+        outputBudget: OutputBudget,
     ): List<AreaGuideEncounterGroup> {
         val permittedSpecies = when (snapshot.settings.knowledgeMode) {
             KnowledgeMode.DISCOVERED -> null
@@ -170,6 +193,7 @@ object AreaGuideBuilder {
                         val speciesName = catalog.speciesById[speciesId]?.name?.value
                             ?.let { normalizeText(it, null, null) }
                             ?: return@mapNotNull null
+                        outputBudget.retain()
                         AreaGuideEncounterSpecies(
                             speciesId = speciesId,
                             name = speciesName,
@@ -187,6 +211,7 @@ object AreaGuideBuilder {
                     ?.removePrefix(areaName)
                     ?.trim(' ', '-', ':')
                     ?.takeIf(String::isNotBlank)
+                outputBudget.retain()
                 AreaGuideEncounterGroup(
                     name = qualifier,
                     windows = encounterArea.windows.map { it.name }.sorted(),
@@ -196,49 +221,95 @@ object AreaGuideBuilder {
     }
 
     private fun exits(
-        catalog: ParsedCatalog,
         baseAreaId: Int,
         names: Map<Int, String>,
         visibleAreaIds: Set<Int>,
         points: List<AreaGuidePoint>,
-        mapsByKey: Map<String, LocalMap>,
+        sceneAdjacency: Map<Int, Set<Int>>,
+        outputBudget: OutputBudget,
     ): List<AreaGuideExit> {
         val destinationIds = buildSet {
             addAll(points.mapNotNull(AreaGuidePoint::destinationBaseAreaId))
-            catalog.localMaps.scenes.forEach { scene ->
-                val anchors = scene.placements.filter { it.baseAreaId == baseAreaId }
-                anchors.forEach { anchor ->
-                    scene.placements
-                        .filter { it !== anchor && shareEdge(anchor, it, mapsByKey) }
-                        .mapTo(this) { it.baseAreaId }
-                }
-            }
+            addAll(sceneAdjacency[baseAreaId].orEmpty())
         }
         return destinationIds
             .asSequence()
             .filter { it != baseAreaId && it in visibleAreaIds }
-            .mapNotNull { destination -> names[destination]?.let { AreaGuideExit(destination, it) } }
-            .distinctBy(AreaGuideExit::baseAreaId)
-            .sortedWith(compareBy(AreaGuideExit::name, AreaGuideExit::baseAreaId))
+            .mapNotNull { destination -> names[destination]?.let { destination to it } }
+            .distinctBy { it.first }
+            .sortedWith(compareBy({ it.second }, { it.first }))
+            .map { (destination, name) ->
+                outputBudget.retain()
+                AreaGuideExit(destination, name)
+            }
             .toList()
     }
 
-    private fun shareEdge(
-        left: LocalMapScenePlacement,
-        right: LocalMapScenePlacement,
+    private data class SceneEdge(
+        val baseAreaId: Int,
+        val start: Int,
+        val end: Int,
+    )
+
+    private fun sceneAdjacency(
+        catalog: ParsedCatalog,
         mapsByKey: Map<String, LocalMap>,
-    ): Boolean {
-        val leftMap = mapsByKey[left.localMapKey] ?: return false
-        val rightMap = mapsByKey[right.localMapKey] ?: return false
-        val horizontalEdge = left.gridX + leftMap.gridWidth == right.gridX ||
-            right.gridX + rightMap.gridWidth == left.gridX
-        val verticalOverlap = minOf(left.gridY + leftMap.gridHeight, right.gridY + rightMap.gridHeight) -
-            maxOf(left.gridY, right.gridY)
-        val verticalEdge = left.gridY + leftMap.gridHeight == right.gridY ||
-            right.gridY + rightMap.gridHeight == left.gridY
-        val horizontalOverlap = minOf(left.gridX + leftMap.gridWidth, right.gridX + rightMap.gridWidth) -
-            maxOf(left.gridX, right.gridX)
-        return horizontalEdge && verticalOverlap > 0 || verticalEdge && horizontalOverlap > 0
+    ): Map<Int, Set<Int>> {
+        val leftEdges = mutableMapOf<Int, MutableList<SceneEdge>>()
+        val rightEdges = mutableMapOf<Int, MutableList<SceneEdge>>()
+        val topEdges = mutableMapOf<Int, MutableList<SceneEdge>>()
+        val bottomEdges = mutableMapOf<Int, MutableList<SceneEdge>>()
+        catalog.localMaps.scenes.forEach { scene ->
+            scene.placements.forEach { placement ->
+                val map = mapsByKey[placement.localMapKey] ?: return@forEach
+                val horizontal = SceneEdge(placement.baseAreaId, placement.gridY, placement.gridY + map.gridHeight)
+                val vertical = SceneEdge(placement.baseAreaId, placement.gridX, placement.gridX + map.gridWidth)
+                leftEdges.getOrPut(placement.gridX, ::mutableListOf).add(horizontal)
+                rightEdges.getOrPut(placement.gridX + map.gridWidth, ::mutableListOf).add(horizontal)
+                topEdges.getOrPut(placement.gridY, ::mutableListOf).add(vertical)
+                bottomEdges.getOrPut(placement.gridY + map.gridHeight, ::mutableListOf).add(vertical)
+            }
+        }
+        val adjacency = mutableMapOf<Int, MutableSet<Int>>()
+        var relationships = 0L
+        rightEdges.forEach { (coordinate, right) ->
+            relationships = connectAdjacentEdges(right, leftEdges[coordinate].orEmpty(), adjacency, relationships)
+        }
+        bottomEdges.forEach { (coordinate, bottom) ->
+            relationships = connectAdjacentEdges(bottom, topEdges[coordinate].orEmpty(), adjacency, relationships)
+        }
+        return adjacency.mapValues { (_, destinations) -> destinations.toSet() }
+    }
+
+    private fun connectAdjacentEdges(
+        first: List<SceneEdge>,
+        second: List<SceneEdge>,
+        adjacency: MutableMap<Int, MutableSet<Int>>,
+        relationships: Long,
+    ): Long {
+        if (first.isEmpty() || second.isEmpty()) return relationships
+        val active = ArrayList<SceneEdge>()
+        val orderedFirst = first.sortedBy(SceneEdge::start)
+        val orderedSecond = second.sortedBy(SceneEdge::start)
+        var nextSecond = 0
+        var retainedRelationships = relationships
+        orderedFirst.forEach { source ->
+            while (nextSecond < orderedSecond.size && orderedSecond[nextSecond].start < source.end) {
+                active += orderedSecond[nextSecond]
+                nextSecond += 1
+            }
+            active.removeAll { candidate -> candidate.end <= source.start }
+            active.forEach { candidate ->
+                if (source.baseAreaId == candidate.baseAreaId || candidate.baseAreaId in adjacency[source.baseAreaId].orEmpty()) {
+                    return@forEach
+                }
+                requireAtMost("scene-adjacency", retainedRelationships + 1, MAX_SCENE_ADJACENCIES)
+                adjacency.getOrPut(source.baseAreaId, ::linkedSetOf).add(candidate.baseAreaId)
+                adjacency.getOrPut(candidate.baseAreaId, ::linkedSetOf).add(source.baseAreaId)
+                retainedRelationships += 1
+            }
+        }
+        return retainedRelationships
     }
 
     private fun pointEnabled(point: AreaGuidePoint, preferences: LocalMapPoiPreferences): Boolean = when (point.category) {
@@ -294,12 +365,15 @@ object AreaGuideBuilder {
         )
     }
 
-    private fun retainedItemCount(points: List<AreaGuidePoint>, guide: AreaGuide): Long =
-        points.size.toLong() + guide.areas.sumOf { area ->
-            1L + area.overview.exits.size +
-                area.encounters.size + area.encounters.sumOf { it.species.size.toLong() } +
-                area.placesAndServices.size + area.trainersAndPeople.size + area.items.size + area.objectives.size
+    private class OutputBudget {
+        private var retained = 0L
+
+        fun retain(count: Int = 1) {
+            val additional = count.toLong()
+            requireAtMost("retained-output", retained + additional, MAX_RETAINED_ITEMS)
+            retained += additional
         }
+    }
 
     private fun requireAtMost(stage: String, observed: Long, limit: Long) {
         if (observed > limit) throw AreaGuideProjectionLimitException(stage, observed, limit)
@@ -332,6 +406,7 @@ object AreaGuideBuilder {
     private const val MAX_ENCOUNTER_AREA_COUNT = 8_192L
     private const val MAX_ENCOUNTER_SLOT_COUNT = 32_768L
     private const val MAX_SCENE_PLACEMENT_COUNT = 16_384L
+    private const val MAX_SCENE_ADJACENCIES = 65_536L
     private const val MAX_OBJECTIVE_COUNT = 8_192L
     private const val MAX_RETAINED_ITEMS = 65_536L
 }
