@@ -1,10 +1,13 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+
 
 data class MoveDescriptionResult(
     val sourceOffset: Int,
@@ -17,8 +20,28 @@ object MoveDescriptionMaterializer {
         rom: RomImage,
         layout: ResolvedRomLayout,
         gbaReferenceIndex: GbaReferenceIndex? = null,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+        limits: ResolutionLimits = ResolutionLimits(),
     ): MoveDescriptionResult? {
-        if (layout.generation == 2) return materializeGen2(rom, layout.moveCount ?: return null)
+        cancellation.throwIfCancellationRequested()
+        val budget = MoveDescriptionBudget(limits)
+        return try {
+            materializeBounded(rom, layout, gbaReferenceIndex, cancellation, budget)
+        } catch (_: MoveDescriptionBudgetExceededException) {
+            null
+        }
+    }
+
+    private fun materializeBounded(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        gbaReferenceIndex: GbaReferenceIndex?,
+        cancellation: ParserCancellationToken,
+        budget: MoveDescriptionBudget,
+    ): MoveDescriptionResult? {
+        if (layout.generation == 2) {
+            return materializeGen2(rom, layout.moveCount ?: return null, cancellation, budget)
+        }
         if (layout.generation != 3) return null
         val table = layout.tables.moveData
         val embeddedDescriptionStride = when {
@@ -31,6 +54,8 @@ object MoveDescriptionMaterializer {
             val count = layout.moveCount ?: return null
             val descriptions = buildMap {
                 repeat(count - 1) { index ->
+                    checkCancellation(index, cancellation)
+                    budget.recordWork()
                     val id = index + 1
                     val record = embeddedTable.offset + id * embeddedDescriptionStride
                     val text = rom.gbaPointer(record + 4)?.let { decodeText(rom, it) } ?: return@repeat
@@ -46,71 +71,104 @@ object MoveDescriptionMaterializer {
         val moveCount = layout.moveCount ?: return null
         if (moveCount < 4) return null
         val pointerCount = moveCount - 1
-        referencedPointerTable(rom, pointerCount, gbaReferenceIndex)?.let { return it }
-        return candidateOffsets(rom, pointerCount)
-            .mapNotNull { offset -> decodeCandidate(rom, offset, pointerCount) }
-            .maxWithOrNull(compareBy<MoveDescriptionResult> { it.confidence }.thenBy { it.descriptions.size })
+        referencedPointerTable(rom, pointerCount, gbaReferenceIndex, cancellation, budget)?.let { return it }
+        return fallbackPointerTable(rom, pointerCount, cancellation, budget)
     }
 
     private fun referencedPointerTable(
         rom: RomImage,
         pointerCount: Int,
         references: GbaReferenceIndex?,
+        cancellation: ParserCancellationToken,
+        budget: MoveDescriptionBudget,
     ): MoveDescriptionResult? {
         if (references == null || references.overflowed) return null
         val tableBytes = pointerCount.toLong() * 4L
-        val candidates = references.targets.asSequence()
-            .filter { (_, evidence) -> evidence.count > 0 }
-            .map { (offset, _) -> offset }
-            .filter { offset ->
-                offset % 4 == 0 && offset >= 0 && offset.toLong() + tableBytes <= rom.size.toLong()
+        var selected: MoveDescriptionResult? = null
+        var inspected = 0
+        for ((offset, evidence) in references.targets) {
+            checkCancellation(inspected++, cancellation)
+            if (evidence.count <= 0 || offset % 4 != 0 || offset < 0 ||
+                offset.toLong() + tableBytes > rom.size.toLong()
+            ) continue
+            budget.recordRoot(offset)
+            var pointersValid = true
+            for (index in 0 until pointerCount) {
+                checkCancellation(index, cancellation)
+                budget.recordWork()
+                if (rom.gbaPointer(offset + index * 4) == null) {
+                    pointersValid = false
+                    break
+                }
             }
-            .filter { offset ->
-                (0 until pointerCount).all { index -> rom.gbaPointer(offset + index * 4) != null }
-            }
-            .mapNotNull { offset -> decodeCandidate(rom, offset, pointerCount, allowExplicitPlaceholders = true) }
-            .filter { candidate -> candidate.descriptions.size == pointerCount }
-            .toList()
-        return candidates.singleOrNull()
+            if (!pointersValid) continue
+            budget.recordCandidate()
+            val candidate = decodeCandidate(
+                rom,
+                offset,
+                pointerCount,
+                cancellation,
+                budget,
+                allowExplicitPlaceholders = true,
+            )?.takeIf { it.descriptions.size == pointerCount } ?: continue
+            if (selected != null) return null
+            selected = candidate
+        }
+        return selected
     }
 
-    private fun materializeGen2(rom: RomImage, moveCount: Int): MoveDescriptionResult? {
+    private fun materializeGen2(
+        rom: RomImage,
+        moveCount: Int,
+        cancellation: ParserCancellationToken,
+        budget: MoveDescriptionBudget,
+    ): MoveDescriptionResult? {
         if (moveCount < 4) return null
         val tableBytesLong = moveCount.toLong() * 2L
         if (tableBytesLong > GEN2_BANK_SIZE || tableBytesLong > rom.size.toLong()) return null
         val tableBytes = tableBytesLong.toInt()
-        val referencedTables = gen2DescriptionTableConsumers(rom)
-        val candidates = buildList {
-            val bankCount = rom.size / GEN2_BANK_SIZE
-            for (bank in 1 until bankCount) {
-                val bankStart = bank * GEN2_BANK_SIZE
-                val bankEnd = minOf(rom.size, bankStart + GEN2_BANK_SIZE)
-                var offset = bankStart
-                while (offset + tableBytes <= bankEnd) {
-                    val address = 0x4000 + offset - bankStart
-                    if (validGen2Pointer(rom.u16le(offset)) &&
-                        validGen2Pointer(rom.u16le(offset + tableBytes - 2)) &&
-                        (0 until moveCount).all { index -> validGen2Pointer(rom.u16le(offset + index * 2)) } &&
-                        Gen2TableReference(bank, address) in referencedTables
-                    ) {
-                        decodeGen2Candidate(rom, offset, bank, moveCount)?.let(::add)
-                    }
-                    offset++
+        val referencedTables = gen2DescriptionTableConsumers(rom, cancellation, budget)
+        if (referencedTables.isEmpty()) return null
+        var selected: MoveDescriptionResult? = null
+        for (reference in referencedTables) {
+            cancellation.throwIfCancellationRequested()
+            val offset = rom.gbBankAddress(reference.bank, reference.address) ?: continue
+            val bankEnd = minOf(rom.size, (reference.bank + 1) * GEN2_BANK_SIZE)
+            if (offset.toLong() + tableBytes > bankEnd.toLong()) continue
+            var pointersValid = true
+            for (index in 0 until moveCount) {
+                checkCancellation(index, cancellation)
+                budget.recordWork()
+                if (!validGen2Pointer(rom.u16le(offset + index * 2))) {
+                    pointersValid = false
+                    break
                 }
             }
+            if (!pointersValid) continue
+            budget.recordCandidate()
+            val candidate = decodeGen2Candidate(rom, offset, reference.bank, moveCount, cancellation, budget)
+                ?: continue
+            if (selected != null) return null
+            selected = candidate
         }
-        return candidates.singleOrNull()
+        return selected
     }
 
-    /**
-     * Finds the source-defined `MoveDescriptions[(moveId - 1)]` consumer.
-     * Gold/Silver fetch the word through an explicit far bank; Crystal reads it
-     * directly because the routine and pointer table share a bank.
-     */
-    private fun gen2DescriptionTableConsumers(rom: RomImage): Set<Gen2TableReference> = buildSet {
+    /** Finds source-defined `MoveDescriptions[(moveId - 1)]` consumers. */
+    private fun gen2DescriptionTableConsumers(
+        rom: RomImage,
+        cancellation: ParserCancellationToken,
+        budget: MoveDescriptionBudget,
+    ): Set<Gen2TableReference> {
+        val references = linkedSetOf<Gen2TableReference>()
         for (offset in 0..rom.size - GEN2_CONSUMER_BYTES) {
-            if (rom.u8(offset) != 0x21 ||
-                rom.u8(offset + 3) != 0xFA ||
+            if (offset % RomImage.DEFAULT_SCAN_CHECK_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
+            budget.recordScanBytes(1)
+            if (rom.u8(offset) != 0x21) continue
+            budget.recordMatch()
+            if (rom.u8(offset + 3) != 0xFA ||
                 rom.u8(offset + 6) != 0x3D ||
                 rom.u8(offset + 7) != 0x4F ||
                 rom.u8(offset + 8) != 0x06 || rom.u8(offset + 9) != 0 ||
@@ -118,17 +176,22 @@ object MoveDescriptionMaterializer {
             ) continue
 
             val address = rom.u16le(offset + 1)
-            when {
+            val reference = when {
                 rom.u8(offset + 12) == 0x3E && rom.u8(offset + 14) == 0xCD -> {
-                    add(Gen2TableReference(rom.u8(offset + 13), address))
+                    Gen2TableReference(rom.u8(offset + 13), address)
                 }
                 rom.u8(offset + 12) == 0x2A &&
                     rom.u8(offset + 13) == 0x5F &&
                     rom.u8(offset + 14) == 0x56 -> {
-                    add(Gen2TableReference(offset / GEN2_BANK_SIZE, address))
+                    Gen2TableReference(offset / GEN2_BANK_SIZE, address)
                 }
-            }
+                else -> null
+            } ?: continue
+            val root = rom.gbBankAddress(reference.bank, reference.address) ?: continue
+            budget.recordRoot(root)
+            references += reference
         }
+        return references
     }
 
     private fun decodeGen2Candidate(
@@ -136,10 +199,14 @@ object MoveDescriptionMaterializer {
         offset: Int,
         bank: Int,
         moveCount: Int,
+        cancellation: ParserCancellationToken,
+        budget: MoveDescriptionBudget,
     ): MoveDescriptionResult? {
         val codec = PokemonTextCodec.gbEnglish
         val descriptions = linkedMapOf<Int, String>()
         repeat(moveCount) { index ->
+            checkCancellation(index, cancellation)
+            budget.recordWork()
             val target = rom.gbBankAddress(bank, rom.u16le(offset + index * 2)) ?: return@repeat
             val bankEnd = minOf(rom.size, (bank + 1) * GEN2_BANK_SIZE)
             val length = minOf(MAX_GEN2_DESCRIPTION_BYTES, bankEnd - target)
@@ -161,63 +228,68 @@ object MoveDescriptionMaterializer {
 
     private fun validGen2Pointer(value: Int): Boolean = value in 0x4000..0x7FFF
 
-    private fun candidateOffsets(rom: RomImage, pointerCount: Int): Sequence<Int> {
+    private fun fallbackPointerTable(
+        rom: RomImage,
+        pointerCount: Int,
+        cancellation: ParserCancellationToken,
+        budget: MoveDescriptionBudget,
+    ): MoveDescriptionResult? {
         val tableBytesLong = pointerCount.toLong() * 4L
-        if (tableBytesLong > rom.size.toLong()) return emptySequence()
-        val minimumPrefixBytesLong = ((pointerCount.toLong() + 1L) / 2L) * 4L
+        if (tableBytesLong > rom.size.toLong()) return null
+        val minimumPrefixBytes = (((pointerCount.toLong() + 1L) / 2L) * 4L).toInt()
         val tableBytes = tableBytesLong.toInt()
-        val minimumPrefixBytes = minimumPrefixBytesLong.toInt()
-        return pointerRuns(rom)
-            .asSequence()
-            .filter { run ->
-                run.length >= minimumPrefixBytes && run.offset.toLong() + tableBytesLong <= rom.size.toLong()
-            }
-            .flatMap { run ->
-                if (run.length >= tableBytes) {
-                    windows(run, tableBytes).asSequence()
-                } else {
-                    sequenceOf(run.offset)
-                }
-            }
-            .distinct()
-    }
-
-    private fun pointerRuns(rom: RomImage): List<PointerRun> {
-        val output = mutableListOf<PointerRun>()
+        var best: MoveDescriptionResult? = null
         var cursor = 0
+
+        fun inspectCandidate(offset: Int) {
+            budget.recordRoot(offset)
+            budget.recordCandidate()
+            val candidate = decodeCandidate(rom, offset, pointerCount, cancellation, budget) ?: return
+            val current = best
+            if (current == null || MOVE_DESCRIPTION_ORDER.compare(candidate, current) > 0) best = candidate
+        }
+
         while (cursor + 4 <= rom.size) {
+            if (cursor % RomImage.DEFAULT_SCAN_CHECK_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
+            budget.recordScanBytes(4)
             if (rom.gbaPointer(cursor) == null) {
                 cursor += 4
                 continue
             }
-            val start = cursor
-            while (cursor + 4 <= rom.size && rom.gbaPointer(cursor) != null) cursor += 4
-            output += PointerRun(start, cursor - start)
+            val runStart = cursor
+            var runLength = 0
+            while (cursor + 4 <= rom.size && rom.gbaPointer(cursor) != null) {
+                if (cursor % RomImage.DEFAULT_SCAN_CHECK_INTERVAL_BYTES == 0) {
+                    cancellation.throwIfCancellationRequested()
+                }
+                budget.recordScanBytes(4)
+                cursor += 4
+                runLength += 4
+                if (runLength >= tableBytes && runLength % tableBytes == 0) {
+                    inspectCandidate(runStart + runLength - tableBytes)
+                }
+            }
+            if (runLength in minimumPrefixBytes until tableBytes) inspectCandidate(runStart)
         }
-        return output
-    }
-
-    private fun windows(run: PointerRun, bytes: Int): List<Int> {
-        if (run.length == bytes) return listOf(run.offset)
-        val output = mutableListOf<Int>()
-        var cursor = run.offset
-        val end = run.offset + run.length
-        while (cursor + bytes <= end) {
-            output += cursor
-            cursor += bytes
-        }
-        return output
+        cancellation.throwIfCancellationRequested()
+        return best
     }
 
     private fun decodeCandidate(
         rom: RomImage,
         offset: Int,
         pointerCount: Int,
+        cancellation: ParserCancellationToken,
+        budget: MoveDescriptionBudget,
         allowExplicitPlaceholders: Boolean = false,
     ): MoveDescriptionResult? {
         val codec = PokemonTextCodec.gbaEnglish
         val descriptions = linkedMapOf<Int, String>()
         repeat(pointerCount) { index ->
+            checkCancellation(index, cancellation)
+            budget.recordWork()
             val textOffset = runCatching { rom.gbaPointer(offset + index * 4) }.getOrNull() ?: return@repeat
             val length = minOf(192, rom.size - textOffset)
             val decoded = runCatching { codec.decodeDetailed(rom.slice(textOffset, length)) }.getOrNull() ?: return@repeat
@@ -256,10 +328,52 @@ object MoveDescriptionMaterializer {
         return normalized.takeIf { decoded.terminated && decoded.validRatio >= 0.85 && looksLikeNaturalDescription(it) }
     }
 
-    private data class PointerRun(val offset: Int, val length: Int)
+    private fun checkCancellation(index: Int, cancellation: ParserCancellationToken) {
+        if (index % CANCELLATION_CHECK_RECORD_INTERVAL == 0) cancellation.throwIfCancellationRequested()
+    }
+
+    private class MoveDescriptionBudget(private val limits: ResolutionLimits) {
+        private val roots = linkedSetOf<Int>()
+        private var matches = 0
+        private var candidates = 0
+        private var work = 0L
+        private var scanBytes = 0L
+
+        fun recordRoot(root: Int) {
+            if (root in roots) return
+            if (roots.size == limits.maxProbeRootsPerDataset) throw MoveDescriptionBudgetExceededException()
+            roots += root
+        }
+
+        fun recordMatch() {
+            if (matches == limits.maxProbeWorkPerDataset) throw MoveDescriptionBudgetExceededException()
+            matches++
+        }
+
+        fun recordCandidate() {
+            if (candidates == limits.maxCandidatesPerDataset) throw MoveDescriptionBudgetExceededException()
+            candidates++
+        }
+
+        fun recordWork() {
+            if (work == limits.maxProbeWorkPerDataset.toLong()) throw MoveDescriptionBudgetExceededException()
+            work++
+        }
+
+        fun recordScanBytes(bytes: Int) {
+            if (scanBytes > limits.maxDatasetExtentBytes - bytes) throw MoveDescriptionBudgetExceededException()
+            scanBytes += bytes
+        }
+    }
+
+    private class MoveDescriptionBudgetExceededException : RuntimeException()
+
     private data class Gen2TableReference(val bank: Int, val address: Int)
 
     private const val GEN2_BANK_SIZE = 0x4000
     private const val GEN2_CONSUMER_BYTES = 15
     private const val MAX_GEN2_DESCRIPTION_BYTES = 192
+    private const val CANCELLATION_CHECK_RECORD_INTERVAL = 64
+    private val MOVE_DESCRIPTION_ORDER =
+        compareBy<MoveDescriptionResult> { it.confidence }.thenBy { it.descriptions.size }
 }

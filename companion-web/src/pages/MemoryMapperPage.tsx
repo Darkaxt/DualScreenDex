@@ -1,20 +1,104 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { Header } from '../components';
 import { mapperAction, mapperExport, mapperState, type MapperState } from '../mapperGateway';
 
 const labels = ['OVERWORLD', 'BATTLE_START', 'MOVE_SELECTED', 'MOVE_EXECUTED', 'TARGET_CHANGED', 'OPPONENT_SWITCHED', 'BATTLE_END'];
+const POLL_INTERVAL_MILLIS = 500;
+const MAX_RETRY_MILLIS = 8_000;
+const POLL_TIMEOUT_MILLIS = 10_000;
+
+function safeErrorMessage(failure: unknown): string {
+  return failure instanceof Error && failure.message.length > 0 && failure.message.length <= 256
+    ? failure.message
+    : 'Memory mapper request failed.';
+}
 
 export function MemoryMapperPage({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<MapperState | null>(null);
   const [customLabel, setCustomLabel] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const pollControllerRef = useRef<AbortController | null>(null);
+  const pollTimerRef = useRef<number | null>(null);
+  const pollGenerationRef = useRef(0);
+  const activeActionCountRef = useRef(0);
+  const schedulePollRef = useRef<(delay: number) => void>(() => undefined);
 
-  const refresh = () => mapperState().then(setState).catch(failure => setError(failure.message));
-  const act = (type: string, values: Record<string, string | boolean | null> = {}) => mapperAction(type, values).then(value => { setState(value); setError(null); }).catch(failure => setError(failure.message));
+  const act = (type: string, values: Record<string, string | boolean | null> = {}) => {
+    const generation = ++pollGenerationRef.current;
+    activeActionCountRef.current += 1;
+    if (pollTimerRef.current != null) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    pollControllerRef.current?.abort();
+    return mapperAction(type, values)
+      .then(value => {
+        if (!mountedRef.current || generation !== pollGenerationRef.current) return;
+        setState(value);
+        setError(null);
+      })
+      .catch(failure => {
+        if (mountedRef.current && generation === pollGenerationRef.current) setError(safeErrorMessage(failure));
+      })
+      .finally(() => {
+        activeActionCountRef.current -= 1;
+        if (mountedRef.current && generation === pollGenerationRef.current && activeActionCountRef.current === 0) {
+          schedulePollRef.current(POLL_INTERVAL_MILLIS);
+        }
+      });
+  };
   useEffect(() => {
-    void refresh();
-    const interval = window.setInterval(refresh, 500);
-    return () => window.clearInterval(interval);
+    let stopped = false;
+    let failures = 0;
+    let poll: () => Promise<void>;
+    mountedRef.current = true;
+
+    const schedule = (delay: number) => {
+      if (stopped) return;
+      if (pollTimerRef.current != null) window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = window.setTimeout(() => {
+        pollTimerRef.current = null;
+        void poll();
+      }, delay);
+    };
+    schedulePollRef.current = schedule;
+    poll = async () => {
+      if (stopped || activeActionCountRef.current > 0) return;
+      const generation = pollGenerationRef.current;
+      const controller = new AbortController();
+      pollControllerRef.current = controller;
+      const timeout = window.setTimeout(() => controller.abort(), POLL_TIMEOUT_MILLIS);
+      try {
+        const value = await mapperState(controller.signal);
+        if (stopped || generation !== pollGenerationRef.current || activeActionCountRef.current > 0) return;
+        failures = 0;
+        setState(value);
+        setError(null);
+        schedule(POLL_INTERVAL_MILLIS);
+      } catch (failure) {
+        if (stopped || generation !== pollGenerationRef.current || activeActionCountRef.current > 0) return;
+        failures += 1;
+        setError(safeErrorMessage(failure));
+        schedule(Math.min(MAX_RETRY_MILLIS, POLL_INTERVAL_MILLIS * 2 ** failures));
+      } finally {
+        window.clearTimeout(timeout);
+        if (pollControllerRef.current === controller) pollControllerRef.current = null;
+      }
+    };
+
+    void poll();
+    return () => {
+      stopped = true;
+      mountedRef.current = false;
+      schedulePollRef.current = () => undefined;
+      if (pollTimerRef.current != null) {
+        window.clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+      pollControllerRef.current?.abort();
+      pollControllerRef.current = null;
+    };
   }, []);
 
   const download = async () => {
@@ -29,7 +113,7 @@ export function MemoryMapperPage({ onBack }: { onBack: () => void }) {
       anchor.href = url; anchor.download = 'dualdex-memory-session.json'; anchor.click();
       URL.revokeObjectURL(url);
       setError(null);
-    } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
+    } catch (failure) { setError(safeErrorMessage(failure)); }
   };
 
   const enable = () => {

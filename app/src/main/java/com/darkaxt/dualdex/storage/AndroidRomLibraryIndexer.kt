@@ -19,30 +19,27 @@ class AndroidRomLibraryIndexer(
         val entries = mutableListOf<RomIndexEntry>()
         val warnings = mutableListOf<String>()
         val previousBySource = previousEntries.associateBy(RomIndexEntry::sourceId)
-        DocumentTreeAccess(resolver, treeUri).filesRecursively()
-            .filter { it.name.substringAfterLast('.', "").lowercase() in SUPPORTED_EXTENSIONS }
-            .forEach { document ->
-                runCatching {
-                    val sourceId = document.uri.toString()
-                    val previous = previousBySource[sourceId]
-                        ?.takeIf {
-                            it.sourceSize == document.size &&
-                                it.sourceLastModifiedEpochMs == document.lastModifiedEpochMs
-                        }
-                    if (previous != null) {
-                        entries += previous
-                        return@runCatching
+        DocumentTreeAccess(resolver, treeUri).visitFilesRecursively { document, operation ->
+            if (document.name.substringAfterLast('.', "").lowercase() !in SUPPORTED_EXTENSIONS) return@visitFilesRecursively
+            val entry = try {
+                val sourceId = document.uri.toString()
+                val previous = previousBySource[sourceId]
+                    ?.takeIf {
+                        it.sourceSize == document.size &&
+                            it.sourceLastModifiedEpochMs == document.lastModifiedEpochMs
                     }
+                previous ?: run {
                     val loaded = AndroidRomSourceLoader.load(resolver, document.uri, document.name)
                     val header = RomHeaderReader.read(loaded.rom)
+                    require(header.platform != Platform.UNKNOWN) { "ROM header platform was not recognized" }
                     val platform = when (header.platform) {
                         Platform.GB -> RomPlatform.GB
                         Platform.GBC -> RomPlatform.GBC
                         Platform.GBA -> RomPlatform.GBA
-                        Platform.UNKNOWN -> error("ROM header platform was not recognized")
+                        Platform.UNKNOWN -> error("unreachable")
                     }
                     val entryName = loaded.displayName.substringAfter('!', loaded.displayName)
-                    entries += RomIndexEntry(
+                    RomIndexEntry(
                         sourceId = sourceId,
                         sourceName = loaded.displayName,
                         archiveEntry = loaded.displayName.substringAfter('!', "").ifBlank { null },
@@ -53,8 +50,13 @@ class AndroidRomLibraryIndexer(
                         sourceSize = document.size,
                         sourceLastModifiedEpochMs = document.lastModifiedEpochMs,
                     )
-                }.onFailure { warnings += "${document.name}: ${it.message ?: it.javaClass.simpleName}" }
+                }
+            } catch (failure: IllegalArgumentException) {
+                warnings += "${document.name}: ${failure.message ?: failure.javaClass.simpleName}"
+                return@visitFilesRecursively
             }
+            SafRomIndexRetention.retain(operation, entries, entry)
+        }
         return RomLibraryIndexResult(entries.sortedBy { it.sourceName.lowercase() }, warnings)
     }
 

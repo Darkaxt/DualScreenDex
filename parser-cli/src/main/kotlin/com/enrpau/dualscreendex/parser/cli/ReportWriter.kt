@@ -19,10 +19,105 @@ import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.GsonBuilder
 import java.io.StringWriter
 import java.io.Writer
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
 import kotlin.math.round
 
+private const val CORPUS_REPORT_SCHEMA_VERSION = 13
+
+data class CorpusExecutionIdentity(
+    val sourceCommit: String,
+    val generatorSha256: String,
+) {
+    init {
+        require(sourceCommit.matches(Regex("[0-9a-f]{40}"))) { "source commit must be a full lowercase commit" }
+        require(generatorSha256.matches(Regex("[0-9a-f]{64}"))) { "generator digest must be a lowercase SHA-256" }
+    }
+}
+
+data class CorpusGeneratorIdentity(
+    val name: String = "parser-cli",
+    val schemaVersion: Int = CORPUS_REPORT_SCHEMA_VERSION,
+    val sha256: String,
+)
+
+data class CorpusExecutionReceipt(
+    val schemaVersion: Int = 1,
+    val sourceCommit: String,
+    val generator: CorpusGeneratorIdentity,
+    val rawReportSha256: String,
+    val inputCount: Int,
+) {
+    companion object {
+        fun fromFiles(
+            rawReport: Path,
+            generatorArtifacts: List<Path>,
+            identity: CorpusExecutionIdentity,
+            inputCount: Int,
+        ): CorpusExecutionReceipt {
+            require(inputCount > 0) { "input count must be positive" }
+            val generatorSha256 = runtimeClasspathSha256(generatorArtifacts)
+            require(generatorSha256 == identity.generatorSha256) {
+                "generator runtime classpath digest does not match report identity"
+            }
+            return CorpusExecutionReceipt(
+                sourceCommit = identity.sourceCommit,
+                generator = CorpusGeneratorIdentity(sha256 = generatorSha256),
+                rawReportSha256 = sha256(rawReport),
+                inputCount = inputCount,
+            )
+        }
+    }
+}
+
+internal fun runtimeClasspathSha256(artifacts: List<Path>): String {
+    require(artifacts.isNotEmpty()) { "generator runtime classpath is empty" }
+    val entries = artifacts.map { artifact ->
+        require(Files.isRegularFile(artifact)) { "generator runtime artifact is missing" }
+        require(artifact.fileName.toString().endsWith(".jar", ignoreCase = true)) {
+            "generator runtime artifacts must be JAR files"
+        }
+        RuntimeClasspathEntry(
+            name = artifact.fileName.toString(),
+            bytes = Files.size(artifact),
+            sha256 = sha256(artifact),
+        )
+    }.sortedBy { it.name }
+    require(entries.map { it.name }.distinct().size == entries.size) {
+        "generator runtime artifact names must be unique"
+    }
+    val manifest = entries.joinToString(separator = "") { entry ->
+        "${entry.name}\t${entry.bytes}\t${entry.sha256}\n"
+    }
+    return sha256(manifest.toByteArray(Charsets.UTF_8))
+}
+
+private data class RuntimeClasspathEntry(
+    val name: String,
+    val bytes: Long,
+    val sha256: String,
+)
+
+private fun sha256(path: Path): String = Files.newInputStream(path).use(::sha256)
+
+private fun sha256(bytes: ByteArray): String = sha256(bytes.inputStream())
+
+private fun sha256(input: java.io.InputStream): String = MessageDigest.getInstance("SHA-256").let { digest ->
+    input.use {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val count = it.read(buffer)
+            if (count < 0) break
+            digest.update(buffer, 0, count)
+        }
+    }
+    digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+}
+
 data class CorpusReport(
-    val schemaVersion: Int = 12,
+    val schemaVersion: Int = CORPUS_REPORT_SCHEMA_VERSION,
+    val execution: CorpusExecutionIdentity? = null,
     val minimumParserScore: Int = ParserOrchestrator.minimumScore,
     val minimumRunnerUpMargin: Int = ParserOrchestrator.minimumMargin,
     val roots: List<String>,
@@ -541,6 +636,9 @@ object ReportWriter {
     private val coreCapabilities = RomCapability.entries.filterNot(extendedCapabilities::contains)
 
     fun json(report: CorpusReport): String = StringWriter().also { json(report, it) }.toString()
+
+    fun executionReceiptJson(receipt: CorpusExecutionReceipt): String =
+        "${gson.toJson(receipt)}\n"
 
     fun json(report: CorpusReport, writer: Writer) {
         gson.toJson(

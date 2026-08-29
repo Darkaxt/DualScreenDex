@@ -7,6 +7,8 @@ import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.darkaxt.dualdex.catalog.StoredCatalog
 import com.darkaxt.dualdex.settings.SettingsRepository
+import com.darkaxt.dualdex.setup.SessionEpochGate
+import com.darkaxt.dualdex.setup.VerifiedSessionIdentity
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
@@ -46,6 +48,7 @@ import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.RenderedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogWorkModule
@@ -86,6 +89,7 @@ import org.junit.Test
 import java.util.Collections
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import com.darkaxt.dualdex.battle.BattleMemorySample
 import com.darkaxt.dualdex.battle.BattleMatchupObservation
@@ -279,7 +283,7 @@ class ProductionCompanionRuntimeTest {
             events.filter { it.kind == PerformanceEventKind.STAGE_FINISHED }.map(PerformanceEvent::stage),
         )
         assertEquals(
-            "OutOfMemoryError",
+            "RESOURCE_EXHAUSTED",
             events.single { it.kind == PerformanceEventKind.LOAD_FAILED }.failureType,
         )
         runtime.close()
@@ -297,7 +301,7 @@ class ProductionCompanionRuntimeTest {
             events.filter { it.kind == PerformanceEventKind.STAGE_FINISHED }.map(PerformanceEvent::stage),
         )
         assertEquals(
-            "OutOfMemoryError",
+            "RESOURCE_EXHAUSTED",
             events.single { it.kind == PerformanceEventKind.LOAD_FAILED }.failureType,
         )
         runtime.close()
@@ -421,6 +425,69 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun stateAndBootstrapDeclareAndroidMapperAndTheCurrentCatalogIdentity() {
+        val runtime = ProductionCompanionRuntime()
+        try {
+            val absent = runtime.bootstrap()
+            assertTrue(absent.state.mapperAvailable)
+            assertNull(absent.state.catalogHash)
+
+            runtime.loadCatalog("first.gba", ParsedCatalog("first-catalog", EngineFamily.EMERALD, Platform.GBA))
+            val firstState = runtime.stateView()
+            assertTrue(firstState.mapperAvailable)
+            assertEquals("first-catalog", firstState.catalogHash)
+            assertEquals("first-catalog", runtime.bootstrap().state.catalogHash)
+
+            runtime.loadCatalog("second.gba", ParsedCatalog("second-catalog", EngineFamily.EMERALD, Platform.GBA))
+            assertEquals("first-catalog", firstState.catalogHash)
+            assertEquals("second-catalog", runtime.stateView().catalogHash)
+            assertEquals("second-catalog", runtime.bootstrap().state.catalogHash)
+        } finally {
+            runtime.close()
+        }
+    }
+
+    @Test
+    fun classifiesMissingAndRecoverableMapRendererFailures() {
+        var recover = false
+        val runtime = ProductionCompanionRuntime(
+            mapAssetRenderer = { _, key, _, _ ->
+                when (key) {
+                    "missing" -> null
+                    "exception" -> throw IllegalStateException("private renderer implementation detail")
+                    "memory" -> throw OutOfMemoryError("private allocator implementation detail")
+                    "recover" -> if (recover) {
+                        RenderedMapAsset(byteArrayOf(1), null)
+                    } else {
+                        throw IllegalStateException("private transient renderer detail")
+                    }
+                    else -> error("unexpected map key")
+                }
+            },
+        )
+        try {
+            runtime.loadCatalog("maps.gba", ParsedCatalog("map-catalog", EngineFamily.EMERALD, Platform.GBA))
+
+            assertEquals(MapAssetResult.Missing, runtime.mapAsset("missing", MapLighting.DAY))
+            val exception = runtime.mapAsset("exception", MapLighting.DAY) as MapAssetResult.Unavailable
+            assertEquals("IllegalStateException", exception.category)
+            assertTrue(exception.category.length <= 64)
+            assertFalse(exception.category.contains("private"))
+            val memory = runtime.mapAsset("memory", MapLighting.DAY) as MapAssetResult.Unavailable
+            assertEquals("OutOfMemoryError", memory.category)
+            assertTrue(memory.category.length <= 64)
+            assertFalse(memory.category.contains("private"))
+
+            assertTrue(runtime.mapAsset("recover", MapLighting.DAY) is MapAssetResult.Unavailable)
+            recover = true
+            val recovered = runtime.mapAsset("recover", MapLighting.DAY) as MapAssetResult.Found
+            assertEquals(listOf(1.toByte()), recovered.asset.bytes.toList())
+        } finally {
+            runtime.close()
+        }
+    }
+
+    @Test
     fun rendersMapAssetsOutsideTheRuntimeStateLock() {
         var heldRuntimeLock = true
         lateinit var runtime: ProductionCompanionRuntime
@@ -432,7 +499,8 @@ class ProductionCompanionRuntimeTest {
         )
         runtime.loadCatalog("map.gba", ParsedCatalog("sha", EngineFamily.EMERALD, Platform.GBA))
 
-        assertEquals(1, runtime.mapAsset("map", MapLighting.DAY)?.bytes?.size)
+        val result = runtime.mapAsset("map", MapLighting.DAY) as MapAssetResult.Found
+        assertEquals(1, result.asset.bytes.size)
         assertFalse(heldRuntimeLock)
         runtime.close()
     }
@@ -2034,6 +2102,317 @@ class ProductionCompanionRuntimeTest {
     }
 
     @Test
+    fun productionCatalogCoordinatorRejectsACommitAfterSessionSwitchOrClose() {
+        listOf("SWITCH", "CLOSE").forEach { invalidation ->
+            val rom = RomImage(ByteArray(0xC0).also { it[0] = invalidation.length.toByte() })
+            val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+            val parserReady = CountDownLatch(1)
+            val releaseParser = CountDownLatch(1)
+            val completed = CountDownLatch(1)
+            val commits = mutableListOf<String>()
+            val gate = SessionEpochGate()
+            val identity = VerifiedSessionIdentity(rom.sha256, "file:///$invalidation.gba")
+            val token = requireNotNull(gate.observe(identity))
+            val runtime = ProductionCompanionRuntime(
+                onCatalogCommitted = { sha256: String, _: String -> commits += sha256 },
+                parseCatalog = { _, _, _ ->
+                    parserReady.countDown()
+                    releaseParser.await(2, TimeUnit.SECONDS)
+                    parsed
+                },
+            )
+            try {
+                runtime.load(
+                    source = LoadedRom("$invalidation.gba", rom),
+                    commitIfCurrent = { commit -> gate.commitIfCurrent(token, commit) },
+                    onComplete = { completed.countDown() },
+                )
+                assertTrue(parserReady.await(2, TimeUnit.SECONDS))
+
+                if (invalidation == "SWITCH") {
+                    gate.observe(VerifiedSessionIdentity("f".repeat(64), "file:///B.gba"))
+                } else {
+                    gate.close()
+                }
+                releaseParser.countDown()
+
+                assertTrue(completed.await(2, TimeUnit.SECONDS))
+                assertTrue(commits.isEmpty())
+                assertNull(runtime.catalogHash())
+                assertFalse(runtime.gateway.bootstrap().catalogReady)
+            } finally {
+                releaseParser.countDown()
+                runtime.close()
+            }
+        }
+    }
+
+    @Test
+    fun blockedCheckpointRepositoryWriteNeverOccupiesTheSessionOwnerDuringSwitchOrClose() {
+        listOf("SWITCH", "CLOSE").forEach { invalidation ->
+            val rom = RomImage(ByteArray(0xC0).also { it[0] = invalidation.length.toByte() })
+            val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+            val writeEntered = CountDownLatch(1)
+            val releaseWrite = CountDownLatch(1)
+            val completed = CountDownLatch(1)
+            val commits = Collections.synchronizedList(mutableListOf<String>())
+            val repository = object : CatalogRepository {
+                override fun write(
+                    catalog: ParsedCatalog,
+                    source: CatalogSourceMetadata,
+                    progress: CatalogWriteProgress,
+                ) = error("production checkpoint writes must carry cancellation")
+
+                override fun write(
+                    catalog: ParsedCatalog,
+                    source: CatalogSourceMetadata,
+                    progress: CatalogWriteProgress,
+                    cancellation: ParserCancellationToken,
+                ) {
+                    writeEntered.countDown()
+                    while (releaseWrite.count > 0) {
+                        try {
+                            releaseWrite.await(10, TimeUnit.MILLISECONDS)
+                        } catch (_: InterruptedException) {
+                            // A non-cooperative repository must still never occupy the session owner.
+                        }
+                    }
+                }
+
+                override fun readComplete(sha256: String): StoredCatalog? = null
+
+                override fun findCompleted(crc32: String, romSize: Int, romTitle: String?): List<StoredCatalog> = emptyList()
+            }
+            val gate = SessionEpochGate()
+            val identity = VerifiedSessionIdentity(rom.sha256, "file:///$invalidation.gba")
+            val token = requireNotNull(gate.observe(identity))
+            val runtime = ProductionCompanionRuntime(
+                catalogRepository = repository,
+                onCatalogCommitted = { sha256: String, _: String -> commits += sha256 },
+                parseCatalogWithCancellation = {
+                        _: RomImage,
+                        _: ParserCancellationToken,
+                        progress: (CatalogMaterializationProgress) -> Unit,
+                        _: (CatalogWorkProgress) -> Unit,
+                    ->
+                    progress(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 1, 1, parsed))
+                    parsed
+                },
+            )
+            val transition = Executors.newSingleThreadExecutor()
+            try {
+                runtime.load(
+                    LoadedRom("$invalidation.gba", rom),
+                    commitIfCurrent = { commit -> gate.commitIfCurrent(token, commit) },
+                    onComplete = { completed.countDown() },
+                )
+                assertTrue(writeEntered.await(2, TimeUnit.SECONDS))
+
+                val cancellation = requireNotNull(runtime.cancelPendingCatalogLoadForAuthorityTransition())
+                val advanced = transition.submit<Boolean> {
+                    if (invalidation == "SWITCH") {
+                        gate.observe(VerifiedSessionIdentity("f".repeat(64), "file:///B.gba")) != null
+                    } else {
+                        gate.close()
+                        true
+                    }
+                }
+
+                assertTrue("session transition waited for repository I/O", advanced.get(500, TimeUnit.MILLISECONDS))
+                cancellation.complete()
+                releaseWrite.countDown()
+                assertTrue(completed.await(2, TimeUnit.SECONDS))
+                assertTrue(commits.isEmpty())
+                assertNull(runtime.catalogHash())
+            } finally {
+                releaseWrite.countDown()
+                transition.shutdownNow()
+                runtime.close()
+            }
+        }
+    }
+
+    @Test
+    fun authorityTransitionCancellationDefersACompletionUntilItsEpochIsStale() {
+        val rom = RomImage(ByteArray(0xC0))
+        val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val parserEntered = CountDownLatch(1)
+        val releaseParser = CountDownLatch(1)
+        val gate = SessionEpochGate()
+        val identity = VerifiedSessionIdentity(rom.sha256, "file:///A.gba")
+        val token = requireNotNull(gate.observe(identity))
+        var staleCompletionPublications = 0
+        val runtime = ProductionCompanionRuntime(
+            parseCatalog = { _, _, _ ->
+                parserEntered.countDown()
+                releaseParser.await(2, TimeUnit.SECONDS)
+                parsed
+            },
+        )
+        try {
+            runtime.load(
+                LoadedRom("A.gba", rom),
+                commitIfCurrent = { commit -> gate.commitIfCurrent(token, commit) },
+                onComplete = {
+                    gate.commitIfCurrent(token) { staleCompletionPublications++ }
+                },
+            )
+            assertTrue(parserEntered.await(2, TimeUnit.SECONDS))
+
+            val cancellation = requireNotNull(runtime.cancelPendingCatalogLoadForAuthorityTransition())
+            gate.observe(VerifiedSessionIdentity("f".repeat(64), "file:///B.gba"))
+            cancellation.complete()
+
+            assertEquals(0, staleCompletionPublications)
+        } finally {
+            releaseParser.countDown()
+            runtime.close()
+        }
+    }
+
+    @Test
+    fun cancellationCompletionNeverRunsWhileTheRuntimeMonitorIsHeld() {
+        val rom = RomImage(ByteArray(0xC0))
+        val parsed = ParsedCatalog(rom.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val parserEntered = CountDownLatch(1)
+        val releaseParser = CountDownLatch(1)
+        val completionEntered = CountDownLatch(1)
+        val epochCommitEntered = CountDownLatch(1)
+        val gate = SessionEpochGate()
+        val token = requireNotNull(
+            gate.observe(VerifiedSessionIdentity(rom.sha256, "file:///lock-order.gba")),
+        )
+        val runtime = ProductionCompanionRuntime(
+            parseCatalog = { _, _, _ ->
+                parserEntered.countDown()
+                releaseParser.await(5, TimeUnit.SECONDS)
+                parsed
+            },
+        )
+        val workers = Executors.newFixedThreadPool(2) { runnable ->
+            Thread(runnable, "lock-inversion-regression").apply { isDaemon = true }
+        }
+        var completed = false
+        try {
+            runtime.load(
+                LoadedRom("lock-order.gba", rom),
+                commitIfCurrent = { commit -> gate.commitIfCurrent(token, commit) },
+                onComplete = {
+                    completionEntered.countDown()
+                    assertTrue(epochCommitEntered.await(2, TimeUnit.SECONDS))
+                    gate.commitIfCurrent(token) {}
+                },
+            )
+            assertTrue(parserEntered.await(2, TimeUnit.SECONDS))
+            val cancellation = workers.submit { runtime.cancelPendingCatalogLoad() }
+            assertTrue(completionEntered.await(2, TimeUnit.SECONDS))
+            val epochCommit = workers.submit {
+                gate.commitIfCurrent(token) {
+                    epochCommitEntered.countDown()
+                    runtime.catalogHash()
+                }
+            }
+
+            cancellation.get(2, TimeUnit.SECONDS)
+            epochCommit.get(2, TimeUnit.SECONDS)
+            completed = true
+        } finally {
+            releaseParser.countDown()
+            workers.shutdownNow()
+            if (completed) runtime.close()
+        }
+    }
+
+    @Test
+    fun supersedingLoadCancelsCheckpointEncodingWithoutWaitingForItsRuntimeMonitor() {
+        val romA = RomImage(ByteArray(0xC0))
+        val romB = RomImage(ByteArray(0xC0).also { it[0] = 1 })
+        val parsedA = ParsedCatalog(romA.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val parsedB = ParsedCatalog(romB.sha256, EngineFamily.EMERALD, Platform.GBA)
+        val aWriteEntered = CountDownLatch(1)
+        val aWriteCancelled = CountDownLatch(1)
+        val releaseAWrite = CountDownLatch(1)
+        val bCompleted = CountDownLatch(1)
+        val repository = object : CatalogRepository {
+            override fun write(
+                catalog: ParsedCatalog,
+                source: CatalogSourceMetadata,
+                progress: CatalogWriteProgress,
+            ) {
+                error("checkpoint writes must retain the production cancellation token")
+            }
+
+            override fun write(
+                catalog: ParsedCatalog,
+                source: CatalogSourceMetadata,
+                progress: CatalogWriteProgress,
+                cancellation: ParserCancellationToken,
+            ) {
+                if (catalog.romSha256 != romA.sha256) return
+                aWriteEntered.countDown()
+                while (true) {
+                    try {
+                        if (releaseAWrite.await(10, TimeUnit.MILLISECONDS)) return
+                    } catch (_: InterruptedException) {
+                        // The production cancellation token remains authoritative after worker interruption.
+                    }
+                    try {
+                        cancellation.throwIfCancellationRequested()
+                    } catch (failure: ParserCancellationException) {
+                        aWriteCancelled.countDown()
+                        throw failure
+                    }
+                }
+            }
+
+            override fun readComplete(sha256: String): StoredCatalog? = null
+
+            override fun findCompleted(crc32: String, romSize: Int, romTitle: String?): List<StoredCatalog> = emptyList()
+        }
+        val runtime = ProductionCompanionRuntime(
+            catalogRepository = repository,
+            parseCatalogWithCancellation = {
+                    rom: RomImage,
+                    _: ParserCancellationToken,
+                    progress: (CatalogMaterializationProgress) -> Unit,
+                    _: (CatalogWorkProgress) -> Unit,
+                ->
+                val catalog = if (rom.sha256 == romA.sha256) parsedA else parsedB
+                progress(
+                    CatalogMaterializationProgress(
+                        CatalogMaterializationPhase.COMPLETE,
+                        5,
+                        5,
+                        catalog,
+                    ),
+                )
+                catalog
+            },
+        )
+        val loadExecutor = Executors.newSingleThreadExecutor()
+        try {
+            runtime.load(LoadedRom("a.gba", romA)) {}
+            assertTrue(aWriteEntered.await(2, TimeUnit.SECONDS))
+
+            val bLoad = loadExecutor.submit {
+                runtime.load(LoadedRom("b.gba", romB)) { bCompleted.countDown() }
+            }
+
+            assertTrue(
+                "superseding load could not cancel checkpoint encoding while it held the runtime monitor",
+                aWriteCancelled.await(500, TimeUnit.MILLISECONDS),
+            )
+            bLoad.get(2, TimeUnit.SECONDS)
+            assertTrue(bCompleted.await(2, TimeUnit.SECONDS))
+            assertEquals(parsedB.romSha256, runtime.catalogHash())
+        } finally {
+            releaseAWrite.countDown()
+            runtime.close()
+            loadExecutor.shutdownNow()
+        }
+    }
+
+    @Test
     fun supersededParserStopsBeforeTheWinningParserStartsAndCannotPublishAgain() {
         val romA = RomImage(ByteArray(0xC0))
         val romB = RomImage(ByteArray(0xC0).also { it[0] = 1 })
@@ -2041,6 +2420,7 @@ class ProductionCompanionRuntimeTest {
         val parsedB = ParsedCatalog(romB.sha256, EngineFamily.EMERALD, Platform.GBA)
         val aStarted = CountDownLatch(1)
         val aCancelled = CountDownLatch(1)
+        lateinit var productionAdapterToken: ParserCancellationToken
         val releaseA = CountDownLatch(1)
         val bStarted = CountDownLatch(1)
         val bCompleted = CountDownLatch(1)
@@ -2057,6 +2437,7 @@ class ProductionCompanionRuntimeTest {
                     _: (CatalogWorkProgress) -> Unit,
                 ->
                 if (rom.sha256 == romA.sha256) {
+                    productionAdapterToken = cancellation
                     aStarted.countDown()
                     try {
                         releaseA.await(5, TimeUnit.SECONDS)
@@ -2091,6 +2472,9 @@ class ProductionCompanionRuntimeTest {
             bCompleted.countDown()
         }
 
+        assertThrows(ParserCancellationException::class.java) {
+            productionAdapterToken.throwIfCancellationRequested()
+        }
         assertTrue(bStarted.await(2, TimeUnit.SECONDS))
         assertEquals(1L, releaseA.count)
         assertTrue(aCancelled.await(2, TimeUnit.SECONDS))

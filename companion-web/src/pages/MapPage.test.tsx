@@ -910,6 +910,40 @@ describe('optional local map presentation', () => {
     expect(stage.dataset.scale).toBe(zoomedScale);
   });
 
+  it('preserves the catalog query while appending timed lighting to every dynamic Local raster', () => {
+    const dynamicCatalog: Catalog = {
+      ...connectedCatalog,
+      localMaps: connectedCatalog.localMaps!.map(map => ({
+        ...map,
+        imageUrl: `${map.imageUrl}?catalog=fixture-sha`,
+        dynamicLighting: true,
+      })),
+      mapScenes: connectedCatalog.mapScenes!.map(scene => ({
+        ...scene,
+        placements: scene.placements.map(placement => ({
+          ...placement,
+          imageUrl: `${placement.imageUrl}?catalog=fixture-sha`,
+          dynamicLighting: true,
+        })),
+      })),
+    };
+    const { container } = render(<MapPage
+      catalog={dynamicCatalog}
+      state={{ ...state, gameTime: { hours: 18, minutes: 37, phase: 'DAY', phaseProgress: 0.8 } }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    const sources = [...container.querySelectorAll<HTMLImageElement>('.map-scene-tile')].map(image => image.src);
+    expect(sources).toHaveLength(2);
+    for (const source of sources) {
+      const query = new URL(source).searchParams;
+      expect(query.get('catalog')).toBe('fixture-sha');
+      expect(query.get('hour')).toBe('18');
+      expect(query.get('minute')).toBe('37');
+    }
+  });
+
   it('uses numeric game time for a dynamic Gen III Local image', () => {
     const dynamicCatalog: Catalog = {
       ...localCatalog,

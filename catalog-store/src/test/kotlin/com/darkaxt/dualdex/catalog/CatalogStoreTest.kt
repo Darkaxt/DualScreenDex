@@ -1,5 +1,8 @@
 package com.darkaxt.dualdex.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationSource
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicCondition
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
@@ -82,6 +85,11 @@ import java.nio.file.Path
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.Random
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import kotlin.io.path.listDirectoryEntries
@@ -174,6 +182,307 @@ class CatalogStoreTest {
                 stringType,
                 sectionName = "inflate-limit",
                 maximumInflatedBytes = 64,
+            )
+        }
+    }
+
+    @Test
+    fun `bounded blob adapter rejects before materializing beyond its limit`() {
+        val root = newRoot()
+        val file = root.resolve("bounded-blob.sqlite").toFile()
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            database.execute("CREATE TABLE blobs(id INTEGER PRIMARY KEY, payload BLOB NOT NULL)")
+            database.execute("INSERT INTO blobs(id, payload) VALUES (1, zeroblob(1024))")
+
+            assertThrows(IllegalArgumentException::class.java) {
+                database.readBlob(
+                    "SELECT payload AS payload FROM blobs WHERE id = 1",
+                    maximumBytes = 32,
+                )
+            }
+            database.execute("UPDATE blobs SET payload = zeroblob(32) WHERE id = 1")
+            assertEquals(
+                32,
+                database.readBlob(
+                    "SELECT payload AS payload FROM blobs WHERE id = 1",
+                    maximumBytes = 32,
+                )?.size,
+            )
+        }
+    }
+
+    @Test
+    fun `catalog reader keeps blobs out of cursor-backed row queries`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("5".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Cursor contract.gba", 16_777_216, "CONTROL"),
+            CatalogWriteProgress.complete(),
+        )
+
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { delegate ->
+            val guarded = PayloadProjectionRejectingDatabase(delegate)
+
+            assertEquals(catalog, CatalogReader(guarded).readComplete()?.catalog)
+            assertEquals(0, guarded.cursorPayloadProjections)
+        }
+    }
+
+    @Test
+    fun `catalog reader rejects an oversized digest before retrieving its blob`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("d".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Digest control.gba", 16_777_216, "CONTROL"),
+            CatalogWriteProgress.complete(),
+        )
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_sections SET payload = zeroblob(33) WHERE name = 'species'")
+        }
+
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { delegate ->
+            val guarded = GuardedBlobCatalogDatabase(delegate) { sql, row, column ->
+                column == "payload" &&
+                    sql.contains("FROM catalog_sections") &&
+                    row.string("name") == "species"
+            }
+
+            assertThrows(IllegalArgumentException::class.java) {
+                CatalogReader(guarded).readComplete()
+            }
+            assertEquals(0, guarded.forbiddenBlobReads)
+        }
+    }
+
+    @Test
+    fun `catalog reader rejects an oversized chunk before retrieving its blob`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("e".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Chunk control.gba", 16_777_216, "CONTROL"),
+            CatalogWriteProgress.complete(),
+        )
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute(
+                "UPDATE catalog_section_chunks SET payload = zeroblob(?) " +
+                    "WHERE section_name = 'species' AND chunk_index = 0",
+                listOf(CatalogSchema.sectionChunkBytes + 1),
+            )
+        }
+
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { delegate ->
+            val guarded = GuardedBlobCatalogDatabase(delegate) { sql, _, column ->
+                column == "payload" && sql.contains("FROM catalog_section_chunks")
+            }
+
+            assertThrows(IllegalArgumentException::class.java) {
+                CatalogReader(guarded).readComplete()
+            }
+            assertEquals(0, guarded.forbiddenBlobReads)
+        }
+    }
+
+    @Test
+    fun `catalog reader rejects aggregate chunk bytes before streaming rows`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("f".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Aggregate control.gba", 16_777_216, "CONTROL"),
+            CatalogWriteProgress.complete(),
+        )
+
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { delegate ->
+            val guarded = OversizedAggregateCatalogDatabase(delegate)
+
+            val failure = assertThrows(IllegalArgumentException::class.java) {
+                CatalogReader(guarded).readComplete()
+            }
+            assertTrue(failure.message.orEmpty().contains("encoded-byte limit"))
+            assertEquals(0, guarded.streamQueries)
+        }
+    }
+
+    @Test
+    fun `blocked SHA A does not prevent SHA B persistence and reopen`() {
+        val root = newRoot()
+        val shaA = "1".repeat(64)
+        val shaB = "2".repeat(64)
+        val aEntered = CountDownLatch(1)
+        val releaseA = CountDownLatch(1)
+        val bStarted = CountDownLatch(1)
+        val bFinished = CountDownLatch(1)
+        val blockAOnce = AtomicBoolean(true)
+        val factory = CatalogDatabaseFactory { file ->
+            if (file.name == "$shaA.sqlite" && blockAOnce.compareAndSet(true, false)) {
+                aEntered.countDown()
+                check(releaseA.await(5, TimeUnit.SECONDS)) { "timed out releasing SHA A" }
+            }
+            JdbcCatalogDatabaseFactory.open(file)
+        }
+        val cache = CatalogCache(root.toFile(), factory)
+        val source = CatalogSourceMetadata.direct("Coordination control.gba", 16_777_216, "CONTROL")
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val a = executor.submit {
+                cache.write(completeCatalog(shaA), source, CatalogWriteProgress.complete())
+            }
+            assertTrue(aEntered.await(2, TimeUnit.SECONDS))
+            val b = executor.submit {
+                bStarted.countDown()
+                cache.write(completeCatalog(shaB), source, CatalogWriteProgress.complete())
+                requireNotNull(cache.readComplete(shaB))
+                bFinished.countDown()
+            }
+            assertTrue(bStarted.await(2, TimeUnit.SECONDS))
+
+            assertTrue("SHA B remained blocked behind SHA A", bFinished.await(500, TimeUnit.MILLISECONDS))
+            b.get(2, TimeUnit.SECONDS)
+            releaseA.countDown()
+            a.get(2, TimeUnit.SECONDS)
+        } finally {
+            releaseA.countDown()
+            executor.shutdown()
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS))
+        }
+    }
+
+    @Test
+    fun `same SHA writers serialize across canonical directory aliases`() {
+        val root = newRoot()
+        Files.createDirectory(root.resolve("nested"))
+        val canonicalCache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val aliasCache = CatalogCache(root.resolve("nested/..").toFile(), JdbcCatalogDatabaseFactory)
+        val sha = "3".repeat(64)
+        val firstEntered = CountDownLatch(1)
+        val releaseFirst = CountDownLatch(1)
+        val secondEntered = CountDownLatch(1)
+        val opens = AtomicInteger()
+        val factory = CatalogDatabaseFactory { file ->
+            if (file.name == "$sha.sqlite") {
+                when (opens.incrementAndGet()) {
+                    1 -> {
+                        firstEntered.countDown()
+                        check(releaseFirst.await(5, TimeUnit.SECONDS)) { "timed out releasing first writer" }
+                    }
+                    2 -> secondEntered.countDown()
+                }
+            }
+            JdbcCatalogDatabaseFactory.open(file)
+        }
+        val firstCache = CatalogCache(canonicalCache.fileFor(sha).parentFile, factory)
+        val secondCache = CatalogCache(aliasCache.fileFor(sha).parentFile, factory)
+        val source = CatalogSourceMetadata.direct("Alias control.gba", 16_777_216, "CONTROL")
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val first = executor.submit {
+                firstCache.write(completeCatalog(sha), source, CatalogWriteProgress.complete())
+            }
+            assertTrue(firstEntered.await(2, TimeUnit.SECONDS))
+            val second = executor.submit {
+                secondCache.write(completeCatalog(sha), source, CatalogWriteProgress.complete())
+            }
+
+            assertFalse(secondEntered.await(150, TimeUnit.MILLISECONDS))
+            releaseFirst.countDown()
+            first.get(2, TimeUnit.SECONDS)
+            second.get(2, TimeUnit.SECONDS)
+            assertTrue(secondEntered.await(0, TimeUnit.MILLISECONDS))
+        } finally {
+            releaseFirst.countDown()
+            executor.shutdown()
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS))
+        }
+    }
+
+    @Test
+    fun `cancellation transition fenced before JDBC commit rolls back publication`() {
+        val root = newRoot()
+        val file = root.resolve("publication-fence.sqlite").toFile()
+        val token = PausingPublicationToken()
+        val executor = Executors.newSingleThreadExecutor()
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            database.execute("CREATE TABLE publication(value INTEGER NOT NULL)")
+            try {
+                val write = executor.submit {
+                    database.transaction(token) {
+                        database.execute("INSERT INTO publication(value) VALUES (1)")
+                        token.throwIfCancellationRequested()
+                    }
+                }
+                assertTrue(token.publicationEntered.await(2, TimeUnit.SECONDS))
+                token.cancel()
+                token.releasePublication.countDown()
+
+                val failure = assertThrows(java.util.concurrent.ExecutionException::class.java) {
+                    write.get(2, TimeUnit.SECONDS)
+                }
+                assertTrue(failure.cause is ParserCancellationException)
+                assertEquals(
+                    listOf(0L),
+                    database.query("SELECT COUNT(*) AS count FROM publication") { row -> row.long("count") },
+                )
+            } finally {
+                token.releasePublication.countDown()
+                executor.shutdown()
+                assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS))
+            }
+        }
+    }
+
+    @Test
+    fun `cancelling catalog encoding emits no later chunks or publication`() {
+        val root = newRoot()
+        val sha = "4".repeat(64)
+        val firstChunkEntered = CountDownLatch(1)
+        val releaseFirstChunk = CountDownLatch(1)
+        lateinit var recordingDatabase: BlockingFirstChunkCatalogDatabase
+        val factory = CatalogDatabaseFactory { file ->
+            BlockingFirstChunkCatalogDatabase(
+                JdbcCatalogDatabaseFactory.open(file),
+                firstChunkEntered,
+                releaseFirstChunk,
+            ).also { recordingDatabase = it }
+        }
+        val cache = CatalogCache(root.toFile(), factory)
+        val cancellation = ParserCancellationSource()
+        val catalog = completeCatalog(sha).copy(diagnostics = listOf("x".repeat(CatalogSchema.sectionChunkBytes * 2)))
+        val source = CatalogSourceMetadata.direct("Cancellation control.gba", 16_777_216, "CONTROL")
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            val write = executor.submit {
+                cache.write(catalog, source, CatalogWriteProgress.complete(), cancellation.token)
+            }
+            assertTrue(firstChunkEntered.await(2, TimeUnit.SECONDS))
+            cancellation.cancel()
+            releaseFirstChunk.countDown()
+
+            val failure = assertThrows(java.util.concurrent.ExecutionException::class.java) {
+                write.get(2, TimeUnit.SECONDS)
+            }
+            assertTrue(failure.cause is java.util.concurrent.CancellationException)
+            assertEquals(1, recordingDatabase.attemptedChunks)
+        } finally {
+            releaseFirstChunk.countDown()
+            executor.shutdown()
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS))
+        }
+
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(sha)).use { database ->
+            assertEquals(
+                listOf(0L),
+                database.query("SELECT COUNT(*) AS count FROM catalog_metadata") { row -> row.long("count") },
+            )
+            assertEquals(
+                listOf(0L),
+                database.query("SELECT COUNT(*) AS count FROM catalog_section_chunks") { row -> row.long("count") },
             )
         }
     }
@@ -512,7 +821,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(44, CatalogSchema.parserSchemaVersion)
+        assertEquals(46, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -818,7 +1127,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(44, CatalogSchema.parserSchemaVersion)
+        assertEquals(46, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -960,7 +1269,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 42 caches are invalidated so hybrid move details are rebuilt`() {
-        assertEquals(44, CatalogSchema.parserSchemaVersion)
+        assertEquals(46, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("4".repeat(64)).copy(diagnostics = listOf("pre-hybrid move output"))
@@ -982,7 +1291,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 43 caches are invalidated so optional relationship evidence is rebuilt`() {
-        assertEquals(44, CatalogSchema.parserSchemaVersion)
+        assertEquals(46, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("5".repeat(64)).copy(diagnostics = listOf("pre-isolation relationship output"))
@@ -998,6 +1307,52 @@ class CatalogStoreTest {
         assertNull(cache.readComplete(catalog.romSha256))
 
         val reparsed = catalog.copy(diagnostics = listOf("relationship evidence rebuilt"))
+        cache.write(reparsed, source, CatalogWriteProgress.complete())
+        assertEquals(reparsed, cache.readComplete(catalog.romSha256)?.catalog)
+    }
+
+    @Test
+    fun `revision 44 caches are invalidated so bounded detached Gen I evidence is rebuilt`() {
+        assertEquals(46, CatalogSchema.parserSchemaVersion)
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("6".repeat(64)).copy(diagnostics = listOf("pre-bounded detached Gen I output"))
+        val source = CatalogSourceMetadata.direct("Gen I Control.gb", 1 * 1024 * 1024, "POKEMON RED")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute(
+                "UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1",
+                listOf(44),
+            )
+        }
+
+        assertNull(cache.readComplete(catalog.romSha256))
+
+        val reparsed = catalog.copy(diagnostics = listOf("bounded detached Gen I output rebuilt"))
+        cache.write(reparsed, source, CatalogWriteProgress.complete())
+        assertEquals(reparsed, cache.readComplete(catalog.romSha256)?.catalog)
+    }
+
+    @Test
+    fun `revision 45 caches are invalidated so Gen I applicability and bounded fallbacks are rebuilt`() {
+        assertEquals(46, CatalogSchema.parserSchemaVersion)
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("7".repeat(64)).copy(
+            diagnostics = listOf("pre-Gen I applicability and fallback bounds output"),
+        )
+        val source = CatalogSourceMetadata.direct("Gen I Applicability Control.gb", 1 * 1024 * 1024, "POKEMON RED")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute(
+                "UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1",
+                listOf(45),
+            )
+        }
+
+        assertNull(cache.readComplete(catalog.romSha256))
+
+        val reparsed = catalog.copy(diagnostics = listOf("Gen I applicability and bounded fallbacks rebuilt"))
         cache.write(reparsed, source, CatalogWriteProgress.complete())
         assertEquals(reparsed, cache.readComplete(catalog.romSha256)?.catalog)
     }
@@ -1108,6 +1463,158 @@ class CatalogStoreTest {
         assertEquals(corruptHash, events.last().sha256)
         assertTrue(events.last().failure is Exception)
         assertFalse(cache.fileFor(corruptHash).exists())
+    }
+
+    private class PayloadProjectionRejectingDatabase(
+        private val delegate: CatalogDatabase,
+    ) : CatalogDatabase by delegate {
+        var cursorPayloadProjections = 0
+            private set
+
+        override fun <T> query(
+            sql: String,
+            arguments: List<Any?>,
+            map: (CatalogRow) -> T,
+        ): List<T> {
+            rejectCursorPayload(sql)
+            return delegate.query(sql, arguments, map)
+        }
+
+        override fun <T> streamQuery(
+            sql: String,
+            arguments: List<Any?>,
+            consume: (CatalogRows) -> T,
+        ): T {
+            rejectCursorPayload(sql)
+            return delegate.streamQuery(sql, arguments, consume)
+        }
+
+        private fun rejectCursorPayload(sql: String) {
+            val projection = sql.substringBefore("FROM", missingDelimiterValue = sql)
+                .replace(Regex("length\\s*\\(\\s*payload\\s*\\)", RegexOption.IGNORE_CASE), "")
+            if (Regex("\\bpayload\\b", RegexOption.IGNORE_CASE).containsMatchIn(projection)) {
+                cursorPayloadProjections++
+                throw AssertionError("cursor-backed query projected a catalog blob")
+            }
+        }
+    }
+
+    private class GuardedBlobCatalogDatabase(
+        private val delegate: CatalogDatabase,
+        private val forbidden: (String, CatalogRow, String) -> Boolean,
+    ) : CatalogDatabase by delegate {
+        var forbiddenBlobReads = 0
+            private set
+
+        override fun <T> query(
+            sql: String,
+            arguments: List<Any?>,
+            map: (CatalogRow) -> T,
+        ): List<T> = delegate.query(sql, arguments) { row -> map(guardedRow(sql, row)) }
+
+        override fun <T> streamQuery(
+            sql: String,
+            arguments: List<Any?>,
+            consume: (CatalogRows) -> T,
+        ): T = delegate.streamQuery(sql, arguments) { rows ->
+            consume(CatalogRows { rows.next()?.let { guardedRow(sql, it) } })
+        }
+
+        private fun guardedRow(sql: String, row: CatalogRow): CatalogRow = object : CatalogRow by row {
+            override fun bytes(column: String): ByteArray? {
+                if (forbidden(sql, row, column)) {
+                    forbiddenBlobReads++
+                    throw AssertionError("oversized blob was retrieved before its projected length was validated")
+                }
+                return row.bytes(column)
+            }
+        }
+    }
+
+    private class OversizedAggregateCatalogDatabase(
+        private val delegate: CatalogDatabase,
+    ) : CatalogDatabase by delegate {
+        var streamQueries = 0
+            private set
+
+        override fun <T> query(
+            sql: String,
+            arguments: List<Any?>,
+            map: (CatalogRow) -> T,
+        ): List<T> {
+            if (sql.contains("GROUP BY section_name")) {
+                return listOf(
+                    map(
+                        object : CatalogRow {
+                            override fun string(column: String): String? = when (column) {
+                                "section_name" -> "species"
+                                else -> null
+                            }
+
+                            override fun long(column: String): Long? = when (column) {
+                                "chunk_count" -> 1L
+                                "payload_bytes" -> CatalogSchema.maximumSectionEncodedBytes.toLong() + 1L
+                                "maximum_payload_bytes" -> 1L
+                                else -> null
+                            }
+
+                            override fun bytes(column: String): ByteArray? = null
+                        },
+                    ),
+                )
+            }
+            return delegate.query(sql, arguments, map)
+        }
+
+        override fun <T> streamQuery(
+            sql: String,
+            arguments: List<Any?>,
+            consume: (CatalogRows) -> T,
+        ): T {
+            streamQueries++
+            return delegate.streamQuery(sql, arguments, consume)
+        }
+    }
+
+    private class PausingPublicationToken : ParserCancellationToken {
+        private val cancelled = AtomicBoolean()
+        val publicationEntered = CountDownLatch(1)
+        val releasePublication = CountDownLatch(1)
+
+        override fun throwIfCancellationRequested() {
+            if (cancelled.get()) throw ParserCancellationException()
+        }
+
+        override fun <T> publish(block: () -> T): T {
+            publicationEntered.countDown()
+            check(releasePublication.await(5, TimeUnit.SECONDS)) { "timed out releasing publication fence" }
+            throwIfCancellationRequested()
+            return block()
+        }
+
+        fun cancel() {
+            cancelled.set(true)
+        }
+    }
+
+    private class BlockingFirstChunkCatalogDatabase(
+        private val delegate: CatalogDatabase,
+        private val firstChunkEntered: CountDownLatch,
+        private val releaseFirstChunk: CountDownLatch,
+    ) : CatalogDatabase by delegate {
+        var attemptedChunks = 0
+            private set
+
+        override fun execute(sql: String, arguments: List<Any?>) {
+            if (sql.contains("INSERT INTO catalog_section_chunks")) {
+                attemptedChunks++
+                if (attemptedChunks == 1) {
+                    firstChunkEntered.countDown()
+                    check(releaseFirstChunk.await(5, TimeUnit.SECONDS)) { "timed out releasing first catalog chunk" }
+                }
+            }
+            delegate.execute(sql, arguments)
+        }
     }
 
     private class RecordingCatalogDatabase(

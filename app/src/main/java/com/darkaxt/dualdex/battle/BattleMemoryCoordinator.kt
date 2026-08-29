@@ -85,6 +85,8 @@ class BattleMemoryCoordinator(
         Thread(runnable, "dualdex-battle-memory").apply { isDaemon = true }
     },
     private val autoStart: Boolean = true,
+    private val monotonicNanos: () -> Long = System::nanoTime,
+    private val maximumMissedReplyHeartbeats: Int = CoreMemoryReadSession.DEFAULT_MISSED_REPLY_HEARTBEATS,
 ) : AutoCloseable {
     private val gen1Resolver = Gen1BattleLayoutResolver()
     private val gen2Resolver = Gen2BattleLayoutResolver()
@@ -111,6 +113,8 @@ class BattleMemoryCoordinator(
     private var awaitingOverworldAfterOutcome = false
     private var pendingLivePointers: Gen3LivePointers? = null
     private var unifiedSampleId = 0L
+    private var consecutiveReadFailures = 0
+    private var retryNotBeforeNanos = 0L
     private var heartbeatTask: ScheduledFuture<*>? = null
     @Volatile private var closed = false
 
@@ -131,6 +135,7 @@ class BattleMemoryCoordinator(
             if (!nextEligible) transientGameState.suspendLive() else transientGameState.endSession()
         }
         resetReader()
+        resetRecoveryBackoff()
         tracker.reset(nextIdentity)
         eligible = nextEligible
         sessionIdentity = nextIdentity
@@ -168,6 +173,7 @@ class BattleMemoryCoordinator(
         }
         val current = reader
         if (current == null) {
+            if (recoveryBackoffRemainingNanos() > 0) return
             startRead()
             return
         }
@@ -175,6 +181,7 @@ class BattleMemoryCoordinator(
             CoreMemoryReadState.Idle,
             is CoreMemoryReadState.Reading -> Unit
             is CoreMemoryReadState.Complete -> {
+                resetRecoveryBackoff()
                 val metrics = current.metrics()
                 transientGameState.recordLiveMemoryRead(
                     packets = metrics.matchedPackets,
@@ -220,6 +227,7 @@ class BattleMemoryCoordinator(
             ignoredPackets = metrics.ignoredPackets,
             drainQuotaHits = metrics.drainQuotaHits,
         )
+        recordRecoveryFailure()
         reader = null
         closeTransport()
         tracker.missed().takeIf(BattleTrackingUpdate::active)?.let { update ->
@@ -228,9 +236,29 @@ class BattleMemoryCoordinator(
         transientGameState.suspendLive()
     }
 
+    private fun recordRecoveryFailure() {
+        consecutiveReadFailures = (consecutiveReadFailures + 1).coerceAtMost(MAX_BACKOFF_EXPONENT + 1)
+        val exponent = (consecutiveReadFailures - 1).coerceAtMost(MAX_BACKOFF_EXPONENT)
+        val delay = minOf(MAX_RECOVERY_BACKOFF_NANOS, BASE_RECOVERY_BACKOFF_NANOS * (1L shl exponent))
+        retryNotBeforeNanos = monotonicNanos() + delay
+    }
+
+    private fun resetRecoveryBackoff() {
+        consecutiveReadFailures = 0
+        retryNotBeforeNanos = 0L
+    }
+
+    private fun recoveryBackoffRemainingNanos(): Long =
+        (retryNotBeforeNanos - monotonicNanos()).coerceAtLeast(0L)
+
     private fun startRead() {
         val connection = transport ?: transportFactory().also { transport = it }
-        val session = CoreMemoryReadSession(connection::send, connection::poll, PRODUCTION_CHUNK_BYTES)
+        val session = CoreMemoryReadSession(
+            sender = connection::send,
+            poller = connection::poll,
+            maximumChunkBytes = PRODUCTION_CHUNK_BYTES,
+            maximumMissedReplyHeartbeats = maximumMissedReplyHeartbeats,
+        )
         if (sessionGeneration == 1) {
             val layout = cachedLayout
             val regions = if (layout == null) {
@@ -984,6 +1012,7 @@ class BattleMemoryCoordinator(
     private fun safeHeartbeat() {
         runCatching(::heartbeat).onFailure {
             synchronized(this) {
+                recordRecoveryFailure()
                 resetReader()
                 transientGameState.suspendLive()
             }
@@ -1012,11 +1041,18 @@ class BattleMemoryCoordinator(
     }
 
     @Synchronized
-    private fun nextHeartbeatDelay(): Long = battleHeartbeatDelayMillis(
-        eligible = eligible,
-        discovering = cachedLayout == null || readMode == ReadMode.DISCOVERY,
-        pollingIntervalMs = pollingIntervalProvider(),
-    )
+    private fun nextHeartbeatDelay(): Long {
+        val regularDelay = battleHeartbeatDelayMillis(
+            eligible = eligible,
+            discovering = cachedLayout == null || readMode == ReadMode.DISCOVERY,
+            pollingIntervalMs = pollingIntervalProvider(),
+        )
+        val remainingNanos = recoveryBackoffRemainingNanos()
+        if (remainingNanos == 0L) return regularDelay
+        val remainingMillis = remainingNanos / NANOS_PER_MILLISECOND +
+            if (remainingNanos % NANOS_PER_MILLISECOND == 0L) 0 else 1
+        return maxOf(regularDelay, remainingMillis)
+    }
 
     @Synchronized
     private fun resetReader() {
@@ -1081,6 +1117,10 @@ class BattleMemoryCoordinator(
         private const val CACHED_WINDOW_BYTES = 0x45C
         private const val PRODUCTION_CHUNK_BYTES = 1024
         private const val REQUIRED_STABLE_OVERWORLD_OBSERVATIONS = 2
+        private const val NANOS_PER_MILLISECOND = 1_000_000L
+        private const val BASE_RECOVERY_BACKOFF_NANOS = 100L * NANOS_PER_MILLISECOND
+        private const val MAX_RECOVERY_BACKOFF_NANOS = 5_000L * NANOS_PER_MILLISECOND
+        private const val MAX_BACKOFF_EXPONENT = 6
     }
 
     private fun supports(generation: Int, systemId: String?): Boolean = when (generation) {

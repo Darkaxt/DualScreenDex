@@ -16,11 +16,10 @@ class PerformanceRecorder(
     private var session: ActiveSession? = null
 
     @Synchronized
-    fun beginLoad(romSha256: String, generation: Int?) {
+    fun beginLoad(@Suppress("UNUSED_PARAMETER") romSha256: String, generation: Int?) {
         val now = monotonicNanos()
         session = ActiveSession(
             id = sessionIdFactory(),
-            romSha256Prefix = minimizedShaPrefix(romSha256),
             generation = generation,
             startedAtNanos = now,
             lastRuntimeMinute = 0L,
@@ -80,7 +79,7 @@ class PerformanceRecorder(
         emit(
             PerformanceEventKind.LOAD_FAILED,
             now = now,
-            failureType = failure.javaClass.simpleName.takeIf(String::isNotBlank) ?: "Failure",
+            failureType = PrivacySafeDiagnostics.failureCategory(failure),
         )
     }
 
@@ -103,7 +102,6 @@ class PerformanceRecorder(
             wallClockEpochMillis = wallClockMillis(),
             elapsedMillis = TimeUnit.NANOSECONDS.toMillis((now - active.startedAtNanos).coerceAtLeast(0L)),
             kind = PerformanceEventKind.STATE_CHANGED,
-            romSha256Prefix = active.romSha256Prefix,
             generation = active.generation,
             stateChange = stateChange,
         )
@@ -140,7 +138,6 @@ class PerformanceRecorder(
         val sessionId = active.id
         val wallClockEpochMillis = wallClockMillis()
         val elapsedMillis = TimeUnit.NANOSECONDS.toMillis((now - active.startedAtNanos).coerceAtLeast(0L))
-        val romSha256Prefix = active.romSha256Prefix
         val generation = active.generation
         runCatching {
             workDispatcher.dispatch {
@@ -151,7 +148,6 @@ class PerformanceRecorder(
                     wallClockEpochMillis = wallClockEpochMillis,
                     elapsedMillis = elapsedMillis,
                     kind = kind,
-                    romSha256Prefix = romSha256Prefix,
                     generation = generation,
                     stage = stage,
                     stageElapsedMillis = stageElapsedMillis,
@@ -165,14 +161,8 @@ class PerformanceRecorder(
         }
     }
 
-    private fun minimizedShaPrefix(value: String): String? = value
-        .lowercase()
-        .takeIf { it.length == 64 && it.all { character -> character in '0'..'9' || character in 'a'..'f' } }
-        ?.take(SHA_PREFIX_LENGTH)
-
     private data class ActiveSession(
         val id: String,
-        val romSha256Prefix: String?,
         val generation: Int?,
         val startedAtNanos: Long,
         var stage: String? = null,
@@ -183,8 +173,4 @@ class PerformanceRecorder(
         var gameAccessReady: Boolean = false,
         var failed: Boolean = false,
     )
-
-    private companion object {
-        const val SHA_PREFIX_LENGTH = 12
-    }
 }

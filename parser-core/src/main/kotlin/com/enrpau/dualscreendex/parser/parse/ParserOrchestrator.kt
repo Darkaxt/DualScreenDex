@@ -72,7 +72,13 @@ object ParserOrchestrator {
             analysis = analysis,
             resolveMoveDescriptions = { layout ->
                 sharedSession.cancellation.throwIfCancellationRequested()
-                MoveDescriptionMaterializer.materialize(sharedSession.rom, layout, sharedSession.gbaReferenceIndex)
+                MoveDescriptionMaterializer.materialize(
+                    sharedSession.rom,
+                    layout,
+                    sharedSession.gbaReferenceIndex,
+                    sharedSession.cancellation,
+                    sharedSession.limits,
+                )
             },
             resolveAbilityMechanics = { layout, abilities, types, descriptions ->
                 sharedSession.cancellation.throwIfCancellationRequested()

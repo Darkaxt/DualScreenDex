@@ -50,6 +50,66 @@ class AreaGuideBuilderTest {
     }
 
     @Test
+    fun retainedOutputStopsAtTheBudgetAndAValidLaterProjectionStillSucceeds() {
+        val baseAreaId = 1
+        val destinationCount = 384
+        val pointCount = 8_192
+        val encounterCount = 8_192
+        val objectives = List(8_192) { index -> AreaGuideObjective("objective-$index", "Objective $index") }
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = (1..(encounterCount * 4)).associateWith { speciesId -> species(speciesId, "Species $speciesId") },
+            encounterAreas = List(encounterCount) { groupIndex ->
+                EncounterArea(
+                    id = baseAreaId * 10 + 1,
+                    name = CatalogField.available("Budget Area"),
+                    methodId = groupIndex,
+                    slots = (0 until 4).map { slot ->
+                        EncounterSlot(groupIndex * 4 + slot + 1, 2, 3, 25)
+                    },
+                )
+            },
+            runtimeMetadata = CatalogRuntimeMetadata(
+                areaNamesByBaseId = buildMap {
+                    put(baseAreaId, "Budget Area")
+                    (1..destinationCount).forEach { destination -> put(destination + baseAreaId, "Destination $destination") }
+                },
+            ),
+            localMaps = LocalMapCatalog(
+                maps = listOf(LocalMap("budget", "Budget Area", baseAreaId, pointCount * 16, 16, pointCount, 1, "budget.png")),
+                assets = mapOf("budget.png" to PNG),
+                pois = List(pointCount) { pointIndex ->
+                    LocalMapPoi(
+                        key = "point-$pointIndex",
+                        localMapKey = "budget",
+                        baseAreaId = baseAreaId,
+                        tileX = pointIndex,
+                        tileY = 0,
+                        kind = LocalMapPoiKind.SERVICE,
+                        service = LocalMapPoiService.BUILDING,
+                        destinationBaseAreaId = (pointIndex % destinationCount) + baseAreaId + 1,
+                    )
+                },
+            ),
+        )
+        val snapshot = AppSnapshot(
+            liveAreaBaseId = baseAreaId,
+            settings = CompanionSettings(knowledgeMode = KnowledgeMode.DISCOVERED),
+        )
+
+        val failure = assertThrows(AreaGuideProjectionLimitException::class.java) {
+            AreaGuideBuilder.project(catalog, snapshot, mapOf(baseAreaId to objectives))
+        }
+
+        assertEquals("retained-output", failure.stage)
+        assertEquals(65_537L, failure.observed)
+        assertEquals(65_536L, failure.limit)
+        assertEquals(ROUTE, AreaGuideBuilder.project(catalog(), AppSnapshot(liveAreaBaseId = ROUTE)).guide.trackedAreaBaseId)
+    }
+
+    @Test
     fun trackedAndManuallySelectableAreasShareOneImmutableProjection() {
         val guide = AreaGuideBuilder.build(
             catalog(),

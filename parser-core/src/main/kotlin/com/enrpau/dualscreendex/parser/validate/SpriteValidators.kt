@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.validate
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomBoundsException
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
@@ -42,19 +43,42 @@ object SpriteValidators {
         speciesCount: Int,
         bankAdjustment: Int,
         bankRemap: Map<Int, Int> = emptyMap(),
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+        consumeWork: () -> Unit = {},
     ): ValidationEvidence = safely(pointerTableOffset, GEN2_POINTER_RECORD_SIZE, speciesCount) {
         var validPointers = 0
         repeat(speciesCount) { index ->
+            chargeGen2Work(cancellation, consumeWork)
             val base = pointerTableOffset + index * GEN2_POINTER_RECORD_SIZE
-            if (gen2Pointers(rom, pointerTableOffset, base, index, bankAdjustment, bankRemap).all { it != null }) {
+            if (gen2Pointers(
+                    rom,
+                    pointerTableOffset,
+                    base,
+                    index,
+                    bankAdjustment,
+                    bankRemap,
+                    cancellation,
+                    consumeWork,
+                ).all { it != null }
+            ) {
                 validPointers++
             }
         }
         val samples = sampleIndices(speciesCount)
         val validSamples = samples.count { index ->
+            chargeGen2Work(cancellation, consumeWork)
             val base = pointerTableOffset + index * GEN2_POINTER_RECORD_SIZE
-            gen2Pointers(rom, pointerTableOffset, base, index, bankAdjustment, bankRemap).all { offset ->
-                offset != null && validLz3Stream(rom, offset)
+            gen2Pointers(
+                rom,
+                pointerTableOffset,
+                base,
+                index,
+                bankAdjustment,
+                bankRemap,
+                cancellation,
+                consumeWork,
+            ).all { offset ->
+                offset != null && validLz3Stream(rom, offset, cancellation, consumeWork)
             }
         }
         result(
@@ -119,10 +143,19 @@ object SpriteValidators {
         index: Int,
         bankAdjustment: Int,
         bankRemap: Map<Int, Int>,
+        cancellation: ParserCancellationToken,
+        consumeWork: () -> Unit,
     ): List<Int?> {
         val direct = directGen2Pointers(rom, base, bankAdjustment, bankRemap)
         if (direct.all { it != null } || index != GEN2_UNOWN_INDEX || !isEmptyGen2PicRow(rom, base)) return direct
-        return locateGen2UnownPointers(rom, pointerTableOffset, bankAdjustment, bankRemap) ?: direct
+        return locateGen2UnownPointers(
+            rom,
+            pointerTableOffset,
+            bankAdjustment,
+            bankRemap,
+            cancellation,
+            consumeWork,
+        ) ?: direct
     }
 
     private fun directGen2Pointers(
@@ -140,10 +173,13 @@ object SpriteValidators {
         pointerTableOffset: Int,
         bankAdjustment: Int,
         bankRemap: Map<Int, Int>,
+        cancellation: ParserCancellationToken,
+        consumeWork: () -> Unit,
     ): List<Int?>? {
         val bankLocalOffset = pointerTableOffset % GB_BANK_SIZE
         var bank = 0
         while (bank * GB_BANK_SIZE + bankLocalOffset + GEN2_UNOWN_FORMS * GEN2_POINTER_RECORD_SIZE <= rom.size) {
+            cancellation.throwIfCancellationRequested()
             val candidate = bank * GB_BANK_SIZE + bankLocalOffset
             if (candidate != pointerTableOffset && (0 until GEN2_UNOWN_FORMS).all { form ->
                     validGen2PicRow(
@@ -151,6 +187,8 @@ object SpriteValidators {
                         candidate + form * GEN2_POINTER_RECORD_SIZE,
                         bankAdjustment,
                         bankRemap,
+                        cancellation,
+                        consumeWork,
                     )
                 }
             ) {
@@ -166,10 +204,13 @@ object SpriteValidators {
         base: Int,
         bankAdjustment: Int,
         bankRemap: Map<Int, Int>,
+        cancellation: ParserCancellationToken,
+        consumeWork: () -> Unit,
     ): Boolean {
+        chargeGen2Work(cancellation, consumeWork)
         if (rom.u16le(base + 1) !in 0x4000..0x7FFF || rom.u16le(base + 4) !in 0x4000..0x7FFF) return false
         return directGen2Pointers(rom, base, bankAdjustment, bankRemap).all { offset ->
-            offset != null && validLz3Stream(rom, offset)
+            offset != null && validLz3Stream(rom, offset, cancellation, consumeWork)
         }
     }
 
@@ -214,12 +255,18 @@ object SpriteValidators {
         return groups == expectedGroups
     }
 
-    private fun validLz3Stream(rom: RomImage, offset: Int): Boolean = try {
+    private fun validLz3Stream(
+        rom: RomImage,
+        offset: Int,
+        cancellation: ParserCancellationToken,
+        consumeWork: () -> Unit,
+    ): Boolean = try {
         val bankEnd = minOf(rom.size, ((offset / GB_BANK_SIZE) + 1) * GB_BANK_SIZE)
         var cursor = offset
         var output = 0
         var commands = 0
         while (cursor < bankEnd && commands++ < MAX_LZ_COMMANDS) {
+            chargeGen2Work(cancellation, consumeWork)
             val control = rom.u8(cursor++)
             if (control == LZ3_END) return output > 0
             var command = control ushr 5
@@ -256,6 +303,14 @@ object SpriteValidators {
         false
     } catch (_: RomBoundsException) {
         false
+    }
+
+    private fun chargeGen2Work(
+        cancellation: ParserCancellationToken,
+        consumeWork: () -> Unit,
+    ) {
+        cancellation.throwIfCancellationRequested()
+        consumeWork()
     }
 
     private fun validGbaLz77Stream(rom: RomImage, offset: Int, expectedSize: Int): Boolean = try {

@@ -70,7 +70,14 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
                 SpriteValidators.gen1(rom, it.offset, it.count, it.recordSize, it.banks.toIntArray())
             } ?: missingEvidence("Gen 1 sprite references not resolved")
             2 -> tables.sprites?.let {
-                SpriteValidators.gen2(rom, it.offset, it.count, it.bankAdjustment, it.bankRemap)
+                SpriteValidators.gen2(
+                    rom,
+                    it.offset,
+                    it.count,
+                    it.bankAdjustment,
+                    it.bankRemap,
+                    session.cancellation,
+                )
             } ?: missingEvidence("Gen 2 sprite pointer table not resolved")
             else -> when {
                 expansion != null -> PokeemeraldExpansionResolver.validateSprites(rom, expansion)
@@ -83,7 +90,7 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
         if (generation == 1 && tables.sprites != null) {
             sprites = Gen1DetachedSpeciesResolver.completeEvidence(
                 sprites,
-                Gen1DetachedSpeciesResolver.resolve(rom, tables.sprites),
+                Gen1DetachedSpeciesResolver.resolve(rom, tables.sprites, session.cancellation),
                 "sprite record",
             )
         }

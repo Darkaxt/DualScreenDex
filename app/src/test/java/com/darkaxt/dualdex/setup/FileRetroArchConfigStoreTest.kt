@@ -2,6 +2,7 @@ package com.darkaxt.dualdex.setup
 
 import com.darkaxt.dualdex.retroarch.ConfigInstallTransaction
 import com.darkaxt.dualdex.retroarch.ConfigInstallTransactionState
+import com.darkaxt.dualdex.storage.ConfigDocumentReadPolicy
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -74,6 +75,20 @@ class FileRetroArchConfigStoreTest {
         assertEquals(publicConfig.canonicalFile, FileRetroArchConfigStore.findPublic(listOf(root)))
         assertTrue(publicConfig.isFile)
         assertFalse(File(root, "RetroArch/retroarch.cfg.dualdex-recovery").exists())
+    }
+
+    @Test
+    fun `rejects oversized direct config and recovery documents before materializing bytes`() {
+        val config = File(temporaryRoot(), "RetroArch/retroarch.cfg").apply {
+            requireNotNull(parentFile).mkdirs()
+            writeBytes(ByteArray(ConfigDocumentReadPolicy.MAXIMUM_BYTES + 1))
+        }
+        File(requireNotNull(config.parentFile), SafRetroArchConfigStore.RECOVERY_NAME)
+            .writeBytes(ByteArray(ConfigDocumentReadPolicy.MAXIMUM_BYTES + 1))
+        val store = FileRetroArchConfigStore(config)
+
+        assertTrue(runCatching(store::readConfig).isFailure)
+        assertTrue(runCatching(store::readRecovery).isFailure)
     }
 
     private fun temporaryRoot(): File = Files.createTempDirectory("dualdex-config-").toFile().also(roots::add)

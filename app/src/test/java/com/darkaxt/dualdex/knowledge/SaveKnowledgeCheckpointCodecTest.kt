@@ -45,6 +45,17 @@ class SaveKnowledgeCheckpointCodecTest {
     }
 
     @Test
+    fun preservesTheImmutableSnapshotVersionReference() {
+        val checkpoint = checkpointFixture().copy(
+            sourceId = "file:///Game.srm",
+            snapshotDigestSha256 = "d".repeat(64),
+            snapshotVersionId = "01234567-89ab-cdef-0123-456789abcdef",
+        )
+
+        assertEquals(checkpoint, codec.decode(codec.encode(checkpoint)))
+    }
+
+    @Test
     fun legacyLedgerIsNotACheckpoint() {
         val legacy = KnowledgeLedgerJsonCodec().encode(KnowledgeLedger(seenSpecies = setOf(25)))
 

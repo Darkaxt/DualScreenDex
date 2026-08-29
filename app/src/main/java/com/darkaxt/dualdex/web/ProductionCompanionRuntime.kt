@@ -134,6 +134,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.system.measureNanoTime
 
+private val IMMEDIATE_COMMIT: ((() -> Unit) -> Boolean) = { commit ->
+    commit()
+    true
+}
+
 data class ResolvedStateDispatchMetrics(
     val publications: Long,
     val recoverySections: Long,
@@ -142,6 +147,12 @@ data class ResolvedStateDispatchMetrics(
     val overworldSections: Long,
     val battleSections: Long,
 )
+
+sealed interface MapAssetResult {
+    data class Found(val asset: RenderedMapAsset) : MapAssetResult
+    data object Missing : MapAssetResult
+    data class Unavailable(val category: String) : MapAssetResult
+}
 
 private fun AreaGuideProjection.retainedItemCount(): Int = guide.areas.sumOf { area ->
     area.overview.exits.size +
@@ -153,6 +164,16 @@ private fun AreaGuideProjection.retainedItemCount(): Int = guide.areas.sumOf { a
 }
 
 private const val CHECKPOINT_WRITE_FAILED = "CHECKPOINT_WRITE_FAILED"
+
+internal class PendingCatalogCancellation(
+    private val completion: () -> Unit,
+) {
+    private val completed = AtomicBoolean()
+
+    fun complete() {
+        if (completed.compareAndSet(false, true)) completion()
+    }
+}
 
 /** Production ROM catalog runtime. It deliberately has no simulator dependency or battle generator. */
 class ProductionCompanionRuntime(
@@ -337,12 +358,7 @@ class ProductionCompanionRuntime(
         currentLedger: KnowledgeLedger,
     ): KnowledgeLedger {
         matching ?: return currentLedger
-        matching.recovery.saveRam?.let { state ->
-            if (saveRam != state) {
-                saveRam = state
-                cachedState = null
-            }
-        }
+        matching.recovery.saveRam?.let(::updateSaveRam)
         val applicationId = matching.recovery.applicationId ?: return currentLedger
         if (applicationId == lastRecoveryApplicationId) return currentLedger
         val seed = if (matching.recovery.resetKnowledge) {
@@ -535,11 +551,19 @@ class ProductionCompanionRuntime(
     }
 
     fun load(source: LoadedRom, onComplete: (Result<Unit>) -> Unit) {
-        loadInternal(source.displayName, source.rom, onComplete)
+        loadInternal(source.displayName, source.rom, IMMEDIATE_COMMIT, onComplete)
+    }
+
+    fun load(
+        source: LoadedRom,
+        commitIfCurrent: ((() -> Unit) -> Boolean),
+        onComplete: (Result<Unit>) -> Unit,
+    ) {
+        loadInternal(source.displayName, source.rom, commitIfCurrent, onComplete)
     }
 
     fun load(name: String, rom: RomImage) {
-        loadInternal(name, rom, null)
+        loadInternal(name, rom, IMMEDIATE_COMMIT, null)
     }
 
     fun recordRomSourceLoadFailure(romSha256: String, failure: Throwable) {
@@ -548,23 +572,44 @@ class ProductionCompanionRuntime(
         performanceRecorder.loadFailed(failure)
     }
 
-    @Synchronized
     fun cancelPendingCatalogLoad() {
-        if (!gateway.bootstrap().catalogLoading.active) return
-        cancelActiveCatalogLoad()
-        val generation = loadGeneration.incrementAndGet()
-        publishTransitionFailure(generation, "IDLE")
+        cancelPendingCatalogLoadForAuthorityTransition()?.complete()
     }
 
-    private fun loadInternal(name: String, rom: RomImage, onComplete: ((Result<Unit>) -> Unit)?) {
-        if (activeCatalogMatches(rom.sha256)) {
+    internal fun cancelPendingCatalogLoadForAuthorityTransition(): PendingCatalogCancellation? {
+        val cancelled = synchronized(this) {
+            if (!gateway.bootstrap().catalogLoading.active) return@synchronized null
+            val active = detachActiveCatalogLoad() ?: return@synchronized null
+            val generation = loadGeneration.incrementAndGet()
+            publishTransitionFailure(generation, "IDLE")
+            active
+        }
+        return cancelled?.let { task -> PendingCatalogCancellation(task::completeSuperseded) }
+    }
+
+    private fun loadInternal(
+        name: String,
+        rom: RomImage,
+        commitIfCurrent: ((() -> Unit) -> Boolean),
+        onComplete: ((Result<Unit>) -> Unit)?,
+    ) {
+        var matchingCatalog = false
+        if (!commitIfCurrent { matchingCatalog = activeCatalogMatches(rom.sha256) }) {
+            notifyCompletion(onComplete, Result.failure(IllegalStateException("catalog load was superseded")))
+            return
+        }
+        if (matchingCatalog) {
             notifyCompletion(onComplete, Result.success(Unit))
             return
         }
         val header = RomHeaderReader.read(rom)
         val source = CatalogSourceMetadata.fromDisplayName(name, rom.size, header.title)
         performanceRecorder.beginLoad(rom.sha256, generationFor(header.platform))
-        val task = beginCatalogTask(rom.sha256, name, "CACHE_REOPEN", onComplete)
+        val task = beginCatalogTask(rom.sha256, name, "CACHE_REOPEN", onComplete, commitIfCurrent)
+        if (task == null) {
+            notifyCompletion(onComplete, Result.failure(IllegalStateException("catalog load was superseded")))
+            return
+        }
         val future = parserWorker.submit {
             try {
                 requireActive(task)
@@ -585,18 +630,18 @@ class ProductionCompanionRuntime(
                     return@submit
                 }
                 setCatalogLoadingMessage(
-                    task.generation,
+                    task,
                     cacheRefreshMessage(cacheDecision),
                 )
                 requireActive(task)
-                publishWork(task.generation, CatalogWorkProgress(CatalogWorkModule.ROM_IDENTITY), source.displayName)
+                publishWork(task, CatalogWorkProgress(CatalogWorkModule.ROM_IDENTITY), source.displayName)
                 val parsed = parseCatalogForTask(
                     task,
                     rom,
                     { progress -> publishCheckpoint(task, progress, source) },
                     { work ->
                         requireActive(task)
-                        publishWork(task.generation, work, source.displayName)
+                        publishWork(task, work, source.displayName)
                     },
                 ) ?: error("ROM did not produce a supported mainline-family catalog")
                 requireActive(task)
@@ -641,47 +686,53 @@ class ProductionCompanionRuntime(
     ) {
         val publicFailure = GuideLoadFailure.from(failure)
         runCatching { performanceRecorder.loadFailed(failure) }
-        publishTransitionFailure(task.generation, "FAILED", publicFailure.message)
-        task.complete(Result.failure(publicFailure))
+        if (task.commitIfCurrent { publishTransitionFailure(task.generation, "FAILED", publicFailure.message) }) {
+            task.complete(Result.failure(publicFailure))
+        } else {
+            task.completeSuperseded()
+        }
     }
 
     /** Test and cache-reopen seam; Stage 2 will use this for persisted catalogs. */
-    @Synchronized
     fun loadCatalog(name: String, parsed: ParsedCatalog) {
-        performanceRecorder.beginLoad(parsed.romSha256, generationFor(parsed.family))
-        performanceRecorder.cacheDecision(CatalogCacheDecision.HIT.name)
-        beginCatalogTransition(parsed.romSha256, name, "CACHE_REOPEN")
-        applyWinningCatalogSettings(parsed.romSha256)
-        catalog = parsed
-        activateChallengeCatalog(parsed)
-        settingsWritesEnabled = true
-        gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
-        gateway.dispatch(
-            CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 1, totalUnits = 1),
-                name,
-            ),
-        )
-        gateway.dispatch(CompanionAction.CatalogLoaded(name))
-        performanceRecorder.catalogReady()
-        performanceRecorder.waitingForGameAccess()
+        val superseded = synchronized(this) {
+            performanceRecorder.beginLoad(parsed.romSha256, generationFor(parsed.family))
+            performanceRecorder.cacheDecision(CatalogCacheDecision.HIT.name)
+            val transition = beginCatalogTransition(parsed.romSha256, name, "CACHE_REOPEN")
+            applyWinningCatalogSettings(parsed.romSha256)
+            catalog = parsed
+            activateChallengeCatalog(parsed)
+            settingsWritesEnabled = true
+            gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
+            gateway.dispatch(
+                CompanionAction.CatalogLoadingChanged(
+                    CatalogLoadingState(active = false, phase = "CACHE_REOPEN", completedUnits = 1, totalUnits = 1),
+                    name,
+                ),
+            )
+            gateway.dispatch(CompanionAction.CatalogLoaded(name))
+            performanceRecorder.catalogReady()
+            performanceRecorder.waitingForGameAccess()
+            transition.superseded
+        }
+        superseded?.completeSuperseded()
     }
 
-    @Synchronized
     fun restoreCatalog(sha256: String): Boolean {
         performanceRecorder.beginLoad(sha256, null)
-        val generation = beginCatalogTransition(sha256, phase = "CACHE_REOPEN")
+        val transition = synchronized(this) { beginCatalogTransition(sha256, phase = "CACHE_REOPEN") }
+        transition.superseded?.completeSuperseded()
         val stored = catalogRepository?.readComplete(sha256)?.takeIf { candidate ->
             candidate.catalog.matchesIdentity(sha256)
         }
         if (stored == null) {
             performanceRecorder.cacheDecision(CatalogCacheDecision.MISS_FILE_ABSENT.name)
             performanceRecorder.loadFailed(IllegalStateException("stored catalog was unavailable"))
-            publishTransitionFailure(generation, "IDLE")
+            publishTransitionFailure(transition.generation, "IDLE")
             return false
         }
         performanceRecorder.cacheDecision(CatalogCacheDecision.HIT.name)
-        publishReopened(generation, stored.source.displayName, stored.catalog)
+        publishReopened(transition.generation, stored.source.displayName, stored.catalog)
         return true
     }
 
@@ -729,8 +780,11 @@ class ProductionCompanionRuntime(
     private fun failCatalogRestore(task: CatalogLoadTask, failure: Throwable) {
         val publicFailure = GuideLoadFailure.from(failure)
         runCatching { performanceRecorder.loadFailed(failure) }
-        publishTransitionFailure(task.generation, "FAILED", publicFailure.message)
-        task.complete(Result.failure(publicFailure))
+        if (task.commitIfCurrent { publishTransitionFailure(task.generation, "FAILED", publicFailure.message) }) {
+            task.complete(Result.failure(publicFailure))
+        } else {
+            task.completeSuperseded()
+        }
     }
 
     @Synchronized
@@ -816,6 +870,7 @@ class ProductionCompanionRuntime(
             partyAnalysis = partyAnalysis,
             areaGuideProjection = areaGuideProjection,
             trainerProgress = trainerProgress,
+            mapperAvailable = true,
             version = deliveryVersion,
         ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
     }
@@ -1332,16 +1387,23 @@ class ProductionCompanionRuntime(
         key: String,
         requestedLighting: MapLighting,
         time: MapTimeOfDay? = null,
-    ): RenderedMapAsset? {
-        val current = synchronized(this) { catalog } ?: return null
+    ): MapAssetResult {
+        val current = synchronized(this) { catalog } ?: return MapAssetResult.Missing
         val variant = when {
             key in current.localMaps.timedAssets -> "TIME-${(time ?: MapTimeOfDay(12, 0)).minuteOfDay}"
             key in current.localMaps.indexedAssets -> "LIGHTING-${requestedLighting.name}"
             else -> "STATIC"
         }
-        return mapAssetRenderCache.getOrRender(MapAssetRenderKey(current.romSha256, key, variant)) {
-            mapAssetRenderer(current, key, requestedLighting, time)
+        val rendered = try {
+            mapAssetRenderCache.getOrRender(MapAssetRenderKey(current.romSha256, key, variant)) {
+                mapAssetRenderer(current, key, requestedLighting, time)
+            }
+        } catch (failure: OutOfMemoryError) {
+            return MapAssetResult.Unavailable(boundedDiagnosticCategory(failure.javaClass.simpleName, "OutOfMemoryError"))
+        } catch (failure: Exception) {
+            return MapAssetResult.Unavailable(boundedDiagnosticCategory(failure.javaClass.simpleName, "Exception"))
         }
+        return rendered?.let(MapAssetResult::Found) ?: MapAssetResult.Missing
     }
 
     fun mapAssetCacheStats(): MapAssetRenderCacheStats = mapAssetRenderCache.stats()
@@ -1429,11 +1491,13 @@ class ProductionCompanionRuntime(
 
     override fun close() {
         transientGameStateSubscription.close()
-        synchronized(this) {
-            cancelActiveCatalogLoad()
+        val cancelled = synchronized(this) {
+            val active = detachActiveCatalogLoad()
             loadGeneration.incrementAndGet()
             clearCatalogProjectionCaches()
+            active
         }
+        cancelled?.completeSuperseded()
         mapAssetRenderCache.clear()
         parserWorker.shutdownNow()
     }
@@ -1508,21 +1572,27 @@ class ProductionCompanionRuntime(
         } else rulesets.firstOrNull { it.id == selection }
     }
 
-    @Synchronized
     private fun publishCheckpoint(
         task: CatalogLoadTask,
         progress: CatalogMaterializationProgress,
         source: CatalogSourceMetadata,
     ) {
-        requireActive(task)
-        if (!checkpointWritesEnabled) return
+        synchronized(this) {
+            requireActive(task)
+            if (!checkpointWritesEnabled) return
+        }
         try {
             requireActive(task)
             catalogRepository?.write(
                 progress.catalog,
                 source,
                 catalogWriteProgress(progress),
+                task.cancellation.token,
             )
+            requireActive(task)
+            commitTask(task) {
+                synchronized(this) { requireActive(task) }
+            }
         } catch (failure: ParserCancellationException) {
             throw failure
         } catch (failure: CancellationException) {
@@ -1535,6 +1605,7 @@ class ProductionCompanionRuntime(
         requireActive(task)
     }
 
+    @Synchronized
     private fun disableCheckpointWrites() {
         checkpointWritesEnabled = false
         runCatching {
@@ -1542,27 +1613,32 @@ class ProductionCompanionRuntime(
         }
     }
 
-    @Synchronized
-    private fun publishWork(generation: Long, work: CatalogWorkProgress, name: String) {
-        if (generation != loadGeneration.get()) return
-        performanceRecorder.transitionStage(work.module.name)
-        gateway.dispatch(
-            CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(
-                    active = true,
-                    phase = work.module.name,
-                    completedUnits = work.completedUnits,
-                    totalUnits = work.totalUnits,
-                    message = catalogLoadingMessage,
-                ),
-                name,
-            ),
-        )
+    private fun publishWork(task: CatalogLoadTask, work: CatalogWorkProgress, name: String) {
+        commitTask(task) {
+            synchronized(this) {
+                requireActive(task)
+                performanceRecorder.transitionStage(work.module.name)
+                gateway.dispatch(
+                    CompanionAction.CatalogLoadingChanged(
+                        CatalogLoadingState(
+                            active = true,
+                            phase = work.module.name,
+                            completedUnits = work.completedUnits,
+                            totalUnits = work.totalUnits,
+                            message = catalogLoadingMessage,
+                        ),
+                        name,
+                    ),
+                )
+            }
+        }
     }
 
     private fun publishReopened(task: CatalogLoadTask, name: String, reopened: ParsedCatalog) {
         requireActive(task)
-        publishReopened(task.generation, name, reopened, task.cancellation.token)
+        commitTask(task) {
+            publishReopened(task.generation, name, reopened, task.cancellation.token)
+        }
         requireActive(task)
     }
 
@@ -1577,7 +1653,7 @@ class ProductionCompanionRuntime(
         if (generation != loadGeneration.get()) throw ParserCancellationException()
         catalogPublicationInProgress = true
         try {
-            saveRam = SaveRamView()
+            updateSaveRam(SaveRamView())
             clearLevelUpRulesetDetection()
             applyWinningCatalogSettings(reopened.romSha256)
             gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
@@ -1625,20 +1701,48 @@ class ProductionCompanionRuntime(
         CatalogCacheDecision.HIT -> null
     }
 
-    @Synchronized
-    private fun setCatalogLoadingMessage(generation: Long, message: String?) {
-        if (generation == loadGeneration.get()) catalogLoadingMessage = message
+    private fun setCatalogLoadingMessage(task: CatalogLoadTask, message: String?) {
+        commitTask(task) {
+            synchronized(this) {
+                requireActive(task)
+                catalogLoadingMessage = message
+            }
+        }
     }
 
-    @Synchronized
     private fun beginCatalogTask(
         romSha256: String?,
         name: String?,
         phase: String,
         onComplete: ((Result<Unit>) -> Unit)?,
-    ): CatalogLoadTask {
-        val generation = beginCatalogTransition(romSha256, name, phase)
-        return CatalogLoadTask(generation, onComplete).also { activeCatalogLoad = it }
+    ): CatalogLoadTask = requireNotNull(
+        beginCatalogTask(romSha256, name, phase, onComplete, IMMEDIATE_COMMIT),
+    )
+
+    private fun beginCatalogTask(
+        romSha256: String?,
+        name: String?,
+        phase: String,
+        onComplete: ((Result<Unit>) -> Unit)?,
+        commitIfCurrent: ((() -> Unit) -> Boolean),
+    ): CatalogLoadTask? {
+        var task: CatalogLoadTask? = null
+        var superseded: CatalogLoadTask? = null
+        val committed = commitIfCurrent {
+            synchronized(this) {
+                val transition = beginCatalogTransition(romSha256, name, phase)
+                superseded = transition.superseded
+                task = CatalogLoadTask(transition.generation, onComplete, commitIfCurrent).also {
+                    activeCatalogLoad = it
+                }
+            }
+        }
+        superseded?.completeSuperseded()
+        return task.takeIf { committed }
+    }
+
+    private fun commitTask(task: CatalogLoadTask, commit: () -> Unit) {
+        if (!task.commitIfCurrent(commit)) throw ParserCancellationException()
     }
 
     private fun isSuperseded(task: CatalogLoadTask): Boolean =
@@ -1654,14 +1758,15 @@ class ProductionCompanionRuntime(
         if (activeCatalogLoad === task) activeCatalogLoad = null
     }
 
-    private fun cancelActiveCatalogLoad() {
-        activeCatalogLoad?.cancel()
+    private fun detachActiveCatalogLoad(): CatalogLoadTask? {
+        val task = activeCatalogLoad ?: return null
         activeCatalogLoad = null
+        task.requestCancellation()
+        return task
     }
 
-    @Synchronized
-    private fun beginCatalogTransition(romSha256: String?, name: String? = null, phase: String): Long {
-        cancelActiveCatalogLoad()
+    private fun beginCatalogTransition(romSha256: String?, name: String? = null, phase: String): CatalogTransition {
+        val superseded = detachActiveCatalogLoad()
         val generation = loadGeneration.incrementAndGet()
         catalogLoadingMessage = null
         catalog = null
@@ -1687,10 +1792,10 @@ class ProductionCompanionRuntime(
                 name,
             ),
         )
-        saveRam = SaveRamView()
+        updateSaveRam(SaveRamView())
         gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
         gateway.dispatch(CompanionAction.SetScreen(AppScreen.POKEDEX))
-        return generation
+        return CatalogTransition(generation, superseded)
     }
 
     private fun restoreGlobalSettings() {
@@ -1717,31 +1822,34 @@ class ProductionCompanionRuntime(
         )
     }
 
-    @Synchronized
     private fun publishParsed(task: CatalogLoadTask, name: String, parsed: ParsedCatalog) {
-        requireActive(task)
-        applyWinningCatalogSettings(parsed.romSha256)
-        task.cancellation.token.throwIfCancellationRequested()
-        catalog = parsed
-        activateChallengeCatalog(parsed)
-        settingsWritesEnabled = true
-        gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
-        task.cancellation.token.throwIfCancellationRequested()
-        onCatalogCommitted(parsed.romSha256, name)
-        gateway.dispatch(
-            CompanionAction.CatalogLoadingChanged(
-                CatalogLoadingState(
-                    active = false,
-                    phase = "COMPLETE",
-                    completedUnits = CatalogWorkModule.entries.size,
-                    totalUnits = CatalogWorkModule.entries.size,
-                ),
-                name,
-            ),
-        )
-        gateway.dispatch(CompanionAction.CatalogLoaded(name))
-        performanceRecorder.catalogReady()
-        performanceRecorder.waitingForGameAccess()
+        commitTask(task) {
+            synchronized(this) {
+                requireActive(task)
+                applyWinningCatalogSettings(parsed.romSha256)
+                task.cancellation.token.throwIfCancellationRequested()
+                catalog = parsed
+                activateChallengeCatalog(parsed)
+                settingsWritesEnabled = true
+                gateway.dispatch(CompanionAction.ReplaceLedger(KnowledgeLedger()))
+                task.cancellation.token.throwIfCancellationRequested()
+                onCatalogCommitted(parsed.romSha256, name)
+                gateway.dispatch(
+                    CompanionAction.CatalogLoadingChanged(
+                        CatalogLoadingState(
+                            active = false,
+                            phase = "COMPLETE",
+                            completedUnits = CatalogWorkModule.entries.size,
+                            totalUnits = CatalogWorkModule.entries.size,
+                        ),
+                        name,
+                    ),
+                )
+                gateway.dispatch(CompanionAction.CatalogLoaded(name))
+                performanceRecorder.catalogReady()
+                performanceRecorder.waitingForGameAccess()
+            }
+        }
     }
 
     private fun generationFor(platform: Platform): Int? = when (platform) {
@@ -1793,17 +1901,17 @@ class ProductionCompanionRuntime(
     }
 
     private fun unavailableAreaGuideProjection(failure: Throwable) = AreaGuideProjectionOutcome.Unavailable(
-        stage = boundedAreaGuideDiagnostic(
+        stage = boundedDiagnosticCategory(
             (failure as? AreaGuideProjectionLimitException)?.stage ?: "projection",
             "projection",
         ),
-        failureClass = boundedAreaGuideDiagnostic(
+        failureClass = boundedDiagnosticCategory(
             failure.javaClass.simpleName,
             if (failure is OutOfMemoryError) "OutOfMemoryError" else "Exception",
         ),
     )
 
-    private fun boundedAreaGuideDiagnostic(value: String, fallback: String): String = value
+    private fun boundedDiagnosticCategory(value: String, fallback: String): String = value
         .filter { it.isLetterOrDigit() || it == '-' || it == '_' || it == '.' }
         .take(64)
         .ifBlank { fallback }
@@ -1825,9 +1933,15 @@ class ProductionCompanionRuntime(
             objectives == candidateObjectives
     }
 
+    private data class CatalogTransition(
+        val generation: Long,
+        val superseded: CatalogLoadTask?,
+    )
+
     private class CatalogLoadTask(
         val generation: Long,
         private val onComplete: ((Result<Unit>) -> Unit)?,
+        private val commitFence: ((() -> Unit) -> Boolean),
     ) {
         val cancellation = ParserCancellationSource()
         private val completed = AtomicBoolean()
@@ -1836,16 +1950,25 @@ class ProductionCompanionRuntime(
         val isCancellationRequested: Boolean
             get() = cancellation.isCancellationRequested
 
+        fun commitIfCurrent(commit: () -> Unit): Boolean {
+            if (isCancellationRequested) return false
+            val committed = commitFence {
+                cancellation.token.throwIfCancellationRequested()
+                commit()
+            }
+            if (!committed) cancellation.cancel()
+            return committed
+        }
+
         @Synchronized
         fun attach(submitted: Future<*>) {
             future = submitted
             if (isCancellationRequested) submitted.cancel(true)
         }
 
-        fun cancel() {
+        fun requestCancellation() {
             cancellation.cancel()
             future?.cancel(true)
-            completeSuperseded()
         }
 
         fun completeSuperseded() {

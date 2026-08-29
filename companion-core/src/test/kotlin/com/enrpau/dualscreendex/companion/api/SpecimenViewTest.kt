@@ -118,6 +118,37 @@ class SpecimenViewTest {
         assertEquals("Party · Slot 2", backInParty.specimens.single().location.label)
     }
 
+    @Test
+    fun gen1AndGen2FallbackSpecimenKeysAreFixedOpaqueAndIdentityBound() {
+        val resolved = ResolvedOwnedIndividual(
+            specimen("box-31", 25, "5555555555555555", "SPARK").copy(individualIdentity = null),
+            OwnedIndividualLocation(OwnedIndividualLocationKind.BOX, boxIndex = 13, slotIndex = 29),
+        )
+        val snapshot = AppSnapshot(
+            resolvedSaveIdentity = "save-identity-" + "x".repeat(256),
+            resolvedOwnedIndividuals = listOf(resolved),
+        )
+        val platforms = listOf(
+            EngineFamily.RED_BLUE to Platform.GB,
+            EngineFamily.GOLD_SILVER to Platform.GBC,
+        )
+
+        platforms.forEach { (family, platform) ->
+            val first = ApiViewBuilder.specimens(snapshot, catalog(family, platform), 25).specimens.single().key
+            val repeated = ApiViewBuilder.specimens(snapshot, catalog(family, platform), 25).specimens.single().key
+            val changedSave = ApiViewBuilder.specimens(
+                snapshot.copy(resolvedSaveIdentity = "another-save"),
+                catalog(family, platform),
+                25,
+            ).specimens.single().key
+
+            assertTrue(first.startsWith("fallback:"))
+            assertEquals(73, first.length)
+            assertEquals(first, repeated)
+            assertTrue(first != changedSave)
+        }
+    }
+
     private fun specimen(
         location: String,
         speciesId: Int,
@@ -145,10 +176,13 @@ class SpecimenViewTest {
         ),
     )
 
-    private fun catalog() = ParsedCatalog(
+    private fun catalog(
+        family: EngineFamily = EngineFamily.EMERALD,
+        platform: Platform = Platform.GBA,
+    ) = ParsedCatalog(
         romSha256 = "a".repeat(64),
-        family = EngineFamily.EMERALD,
-        platform = Platform.GBA,
+        family = family,
+        platform = platform,
         speciesById = mapOf(
             25 to species(25, 25, "PIKACHU"),
             26 to species(26, 25, "PIKACHU FORM"),

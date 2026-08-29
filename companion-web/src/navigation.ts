@@ -35,7 +35,16 @@ export function encodeRouteHash(routes: UiRoute[], catalogHash: string): string 
   return `${ROUTE_HASH_PREFIX}${encodeURIComponent(JSON.stringify(payload))}`;
 }
 
-export function decodeRouteHash(hash: string, catalog: Catalog): UiRoute[] {
+interface RouteCapabilities {
+  mapperAvailable?: boolean;
+  worldMapsAvailable?: boolean;
+}
+
+export function decodeRouteHash(
+  hash: string,
+  catalog: Catalog,
+  capabilities: RouteCapabilities = {},
+): UiRoute[] {
   if (!hash.startsWith(ROUTE_HASH_PREFIX) || hash.length > MAX_ROUTE_HASH_LENGTH) return [];
   try {
     const payload: unknown = JSON.parse(decodeURIComponent(hash.slice(ROUTE_HASH_PREFIX.length)));
@@ -46,22 +55,23 @@ export function decodeRouteHash(hash: string, catalog: Catalog): UiRoute[] {
       payload.routes.length > MAX_CLIENT_ROUTES
     ) return [];
 
-    const routes = payload.routes.map(route => validRoute(route, catalog));
+    const routes = payload.routes.map(route => validRoute(route, catalog, capabilities));
     return routes.every((route): route is UiRoute => route != null) ? routes : [];
   } catch {
     return [];
   }
 }
 
-function validRoute(value: unknown, catalog: Catalog): UiRoute | null {
+function validRoute(value: unknown, catalog: Catalog, capabilities: RouteCapabilities): UiRoute | null {
   if (!isRecord(value) || typeof value.kind !== 'string') return null;
   switch (value.kind) {
     case 'MAP':
-      return typeof value.originScreen === 'string' && SCREENS.has(value.originScreen as Screen)
+      return capabilities.worldMapsAvailable === true &&
+        typeof value.originScreen === 'string' && SCREENS.has(value.originScreen as Screen)
         ? { kind: 'MAP', originScreen: value.originScreen as Screen }
         : null;
     case 'MAPPER':
-      return { kind: 'MAPPER' };
+      return capabilities.mapperAvailable === true ? { kind: 'MAPPER' } : null;
     case 'CAPABILITIES':
       return { kind: 'CAPABILITIES' };
     case 'PARTY_ANALYSIS':

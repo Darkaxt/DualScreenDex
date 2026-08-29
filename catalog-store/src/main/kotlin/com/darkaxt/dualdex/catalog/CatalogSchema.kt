@@ -2,7 +2,7 @@ package com.darkaxt.dualdex.catalog
 
 object CatalogSchema {
     const val version = 1
-    const val parserSchemaVersion = 44
+    const val parserSchemaVersion = 46
     const val sectionChunkBytes = 256 * 1024
 
     // The largest retained corpus database is 6.9 MiB; keep broad map-heavy headroom without unbounded decode.

@@ -1853,3 +1853,16 @@ $global:LASTEXITCODE = 0
         }
     }
 }
+
+Describe 'DualDex corpus evidence lineage' -Tags 'EvidenceLineage' {
+    It 'binds parser CLI builds and reports to source and execution receipts' {
+        foreach ($scriptAst in @($reviewScriptAst, $validationScriptAst)) {
+            $source = $scriptAst.Extent.Text
+            $source | Should Match 'git\s+-C\s+\$projectRoot\s+rev-parse\s+HEAD'
+            $source | Should Match '-PdualdexSourceCommit=\$sourceCommit'
+            $source | Should Match "'--execution-receipt'"
+            $source | Should Match '''--source-commit''\s+\$sourceCommit'
+        }
+        $validationScriptAst.Extent.Text | Should Match 'status\s+--porcelain\s+--untracked-files=no'
+    }
+}

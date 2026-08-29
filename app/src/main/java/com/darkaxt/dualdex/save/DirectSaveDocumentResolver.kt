@@ -1,10 +1,13 @@
 package com.darkaxt.dualdex.save
 
 import com.darkaxt.dualdex.retroarch.RomIndexEntry
+import com.darkaxt.dualdex.storage.BoundedStorageReader
+import com.darkaxt.dualdex.storage.DirectFileTraversal
+import com.darkaxt.dualdex.storage.StorageTraversalPolicy
+import com.darkaxt.dualdex.storage.StorageTraversalQuota
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URI
-import java.util.ArrayDeque
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
@@ -13,18 +16,13 @@ object DirectSaveDocumentResolver {
         entry: RomIndexEntry,
         directories: List<File>,
         activeGameBasename: String? = null,
+        traversalQuota: StorageTraversalQuota = StorageTraversalPolicy.DEFAULT,
     ): List<SaveDocumentSource> {
         val documents = mutableListOf<SaveDocumentSource>()
-        val queue = ArrayDeque<File>().apply { directories.forEach(::addLast) }
-        val visitedDirectories = mutableSetOf<String>()
-        val visitedFiles = mutableSetOf<String>()
-        while (queue.isNotEmpty()) {
-            val candidate = runCatching { queue.removeFirst().canonicalFile }.getOrNull() ?: continue
-            when {
-                candidate.isDirectory && visitedDirectories.add(candidate.path) ->
-                    candidate.listFiles().orEmpty().forEach(queue::addLast)
-                candidate.isFile && candidate.extension.lowercase() in EXTENSIONS && visitedFiles.add(candidate.path) ->
-                    documents += candidate.toSource()
+        DirectFileTraversal.visitFiles(directories, traversalQuota) { candidate, budget ->
+            if (candidate.extension.lowercase() in EXTENSIONS) {
+                budget.retainResult()
+                documents += candidate.toSource()
             }
         }
         return SaveDocumentResolver.matching(entry, documents, activeGameBasename)
@@ -56,6 +54,15 @@ object DirectSaveDocumentResolver {
         private val directory = parent.canonicalFile
 
         override fun read(name: String): ByteArray? = resolve(name).takeIf(File::isFile)?.readBytes()
+
+        override fun read(name: String, maximumBytes: Int): ByteArray? {
+            require(maximumBytes > 0) { "sibling byte limit must be positive" }
+            val source = resolve(name).takeIf(File::isFile) ?: return null
+            require(source.length() in 0..maximumBytes.toLong()) { "sibling document exceeds the byte limit" }
+            return source.inputStream().use { input ->
+                BoundedStorageReader.read(input, maximumBytes, source.length())
+            }
+        }
 
         override fun replace(name: String, bytes: ByteArray) {
             val destination = resolve(name)

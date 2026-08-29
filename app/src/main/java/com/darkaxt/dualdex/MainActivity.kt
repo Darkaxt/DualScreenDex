@@ -31,6 +31,11 @@ import com.darkaxt.dualdex.overlay.OverlayStartupAction
 import com.darkaxt.dualdex.overlay.OverlayStartupPolicy
 import com.darkaxt.dualdex.rom.RomDocumentPicker
 import com.darkaxt.dualdex.setup.SetupDocumentPicker
+import com.darkaxt.dualdex.setup.SetupPickerDispatch
+import com.darkaxt.dualdex.setup.SetupPickerRequestDispatcher
+import com.darkaxt.dualdex.storage.AllFilesSettingsLauncher
+import com.darkaxt.dualdex.storage.AllFilesSettingsDestination
+import com.darkaxt.dualdex.performance.PerformanceLogExport
 import com.darkaxt.dualdex.web.DualDexWebView
 import com.darkaxt.dualdex.web.NativeSetupRoute
 import com.darkaxt.dualdex.display.DisplayCandidate
@@ -154,7 +159,8 @@ internal class MainActivityDisplayContinuity(
 
 class MainActivity : AppCompatActivity() {
     private lateinit var picker: RomDocumentPicker
-    private lateinit var setupPicker: SetupDocumentPicker
+    private lateinit var setupPicker: SetupPickerDispatch
+    private lateinit var setupPickerDispatcher: SetupPickerRequestDispatcher
     private lateinit var displayManager: DisplayManager
     private lateinit var displayContinuity: MainActivityDisplayContinuity
     private var companionWebView: DualDexWebView? = null
@@ -189,7 +195,9 @@ class MainActivity : AppCompatActivity() {
     private val performanceExportPicker = registerForActivityResult(ActivityResultContracts.CreateDocument("application/x-ndjson")) { uri ->
         if (uri != null) {
             runCatching {
-                val bytes = (application as DualDexApplication).exportPerformanceLog()
+                val exported = (application as DualDexApplication).exportPerformanceLog()
+                val bytes = (exported as? PerformanceLogExport.Available)?.bytes
+                    ?: error("Performance diagnostics are unavailable")
                 requireNotNull(contentResolver.openOutputStream(uri, "wt")) { "selected export document is not writable" }
                     .use { it.write(bytes) }
             }.onSuccess {
@@ -246,11 +254,14 @@ class MainActivity : AppCompatActivity() {
         )
         WebView.setWebContentsDebuggingEnabled((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0)
         picker = RomDocumentPicker(this)
+        val dualDexApplication = application as DualDexApplication
         setupPicker = SetupDocumentPicker(
-            this,
-            onConfigTree = { uri -> (application as DualDexApplication).retroArchSetup?.applyConfigTree(uri) },
-            onRomTree = { uri -> (application as DualDexApplication).retroArchSetup?.applyRomTree(uri) },
+            dualDexApplication.setupPickerActivityResultRegistry(this),
+            onConfigTree = dualDexApplication::applyConfigTree,
+            onRomTree = dualDexApplication::applyRomTree,
         )
+        setupPickerDispatcher = SetupPickerRequestDispatcher(setupPicker)
+        setupPickerDispatcher.consume(intent)
         showCompanionOrRecovery()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -316,6 +327,7 @@ class MainActivity : AppCompatActivity() {
         if (intent.getBooleanExtra(EXTRA_EXPORT_MAPPER, false)) exportMapper()
         if (intent.getBooleanExtra(EXTRA_EXPORT_PERFORMANCE, false)) exportPerformanceLog()
         if (intent.getBooleanExtra(EXTRA_EXPORT_COMPATIBILITY, false)) exportCompatibilityReport()
+        setupPickerDispatcher.consume(intent)
     }
 
     private fun showCompanionOrRecovery() {
@@ -333,14 +345,19 @@ class MainActivity : AppCompatActivity() {
             picker,
             onNativeSetupRoute = { route ->
                 when (route) {
-                    NativeSetupRoute.GRANT_ALL_FILES -> startActivity(
-                        Intent(
-                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                            Uri.parse("package:$packageName"),
-                        ),
-                    )
+                    NativeSetupRoute.GRANT_ALL_FILES -> {
+                        val outcome = AllFilesSettingsLauncher.open(this) { setupPicker.openRomTree() }
+                        if (outcome == AllFilesSettingsDestination.FAILED) {
+                            Toast.makeText(
+                                this,
+                                "All files settings and folder selection could not open. Select a game folder and retry.",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                    }
                     NativeSetupRoute.GRANT_RETROARCH -> setupPicker.openConfigTree()
                     NativeSetupRoute.GRANT_ROMS -> setupPicker.openRomTree()
+                    NativeSetupRoute.RESCAN_ROMS -> application.retroArchSetup?.rescanGameLibrary()
                     NativeSetupRoute.OPEN_RETROARCH -> application.retroArchSetup?.launchRetroArch()
                     NativeSetupRoute.EXPORT_MAPPER -> exportMapper()
                     NativeSetupRoute.EXPORT_PERFORMANCE -> exportPerformanceLog()

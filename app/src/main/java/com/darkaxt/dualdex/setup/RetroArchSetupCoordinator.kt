@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import com.darkaxt.dualdex.performance.PrivacySafeDiagnostics
 import com.darkaxt.dualdex.retroarch.ConfigInstallResult
 import com.darkaxt.dualdex.retroarch.NetworkCommandClient
 import com.darkaxt.dualdex.retroarch.RetroArchConfigInstaller
@@ -19,6 +20,7 @@ import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.SaveSnapshotRepository
 import com.darkaxt.dualdex.catalog.SaveSnapshotStore
+import com.darkaxt.dualdex.knowledge.CheckpointReadResult
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import com.darkaxt.dualdex.live.RecoveryProjection
@@ -38,6 +40,12 @@ import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.darkaxt.dualdex.storage.StorageAccessPolicy
 import com.darkaxt.dualdex.storage.StorageIndexAction
 import com.darkaxt.dualdex.storage.StorageSetupStatusPolicy
+import com.darkaxt.dualdex.storage.SafRomIndexCommitResult
+import com.darkaxt.dualdex.storage.SafRomIndexTransaction
+import com.darkaxt.dualdex.storage.SafOperationGenerations
+import com.darkaxt.dualdex.storage.SafProviderOperationTimeout
+import com.darkaxt.dualdex.storage.SafProviderOperationUnavailable
+import com.darkaxt.dualdex.storage.SafProviderRetryDisposition
 import com.darkaxt.dualdex.storage.StoredSafIndexEligibility
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.web.GuideLoadFailure
@@ -65,6 +73,8 @@ class RetroArchSetupCoordinator(
         AndroidCatalogDatabaseFactory,
     ),
     private val sharedStorage: SharedStorageGateway = SharedStorageGateway.android(context),
+    private val guideLoadFault: GuideLoadFault = NoGuideLoadFault,
+    private val sessionMonitorFactory: (() -> SessionMonitor)? = null,
 ) : AutoCloseable {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val indexStore = RomIndexStore(File(context.filesDir, "retroarch/rom-index.json"))
@@ -82,9 +92,9 @@ class RetroArchSetupCoordinator(
     private val heartbeat: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "dualdex-retroarch-heartbeat").apply { isDaemon = true }
     }
-    private val commandMonitor = CommandMonitorLifecycle {
-        SessionMonitor(NetworkCommandClient(UdpNetworkCommandTransport(commandPort)))
-    }
+    private val commandMonitor = CommandMonitorLifecycle(
+        sessionMonitorFactory ?: { SessionMonitor(NetworkCommandClient(UdpNetworkCommandTransport(commandPort))) },
+    )
     private var heartbeatTask: ScheduledFuture<*>? = null
     @Volatile private var closed = false
     private val battleMemory = BattleMemoryCoordinator(
@@ -101,17 +111,20 @@ class RetroArchSetupCoordinator(
     private val activationGate = GuideActivationGate()
     private val pollingSave = AtomicBoolean(false)
     private val directIndexing = AtomicBoolean(false)
+    private val pendingForcedDirectRescan = AtomicBoolean(false)
+    private val safRescanning = AtomicBoolean(false)
+    private val safIndexGenerations = SafOperationGenerations()
     private val directRefreshStarted = AtomicBoolean(false)
     private val directConfigAttempt = AtomicReference<String?>(null)
     private val lastStorageAccess = AtomicBoolean(sharedStorage.isGranted())
     private val lastSafGrant = AtomicBoolean(storedSafGrantIsValid())
     private val sessionEpoch = SessionEpochGate()
+    private val activationCoordinator = SessionActivationCoordinator(sessionEpoch, activationGate)
     private val activeEntry = AtomicReference<RomIndexEntry?>(null)
     private val lastSaveCandidates = AtomicReference<List<SaveDocumentSource>>(emptyList())
     private val discoveredSaveRom = AtomicReference<String?>(null)
     private val discoveredSaveBasename = AtomicReference<String?>(null)
     private val restoredSaveRom = AtomicReference<String?>(null)
-    @Volatile private var lastActivatedSha: String? = null
 
     init {
         publish(view.get())
@@ -134,28 +147,38 @@ class RetroArchSetupCoordinator(
             )
         }
         worker.execute {
-            when (val result = RetroArchConfigInstaller.install(SafRetroArchConfigStore(context.contentResolver, uri), commandPort)) {
-                is ConfigInstallResult.Installed -> update {
-                    restartVerifier.requireRestart(connectionOf(it.connection))
-                    it.copy(
-                        configState = "RESTART_REQUIRED",
-                        restartRequired = true,
-                        message = "Network Commands and 10-second SaveRAM autosave were written and verified. Fully restart RetroArch, then return here.",
-                    )
+            try {
+                when (val result = RetroArchConfigInstaller.install(SafRetroArchConfigStore(context.contentResolver, uri), commandPort)) {
+                    is ConfigInstallResult.Installed -> update {
+                        restartVerifier.requireRestart(connectionOf(it.connection))
+                        it.copy(
+                            configState = "RESTART_REQUIRED",
+                            restartRequired = true,
+                            message = "Network Commands and 10-second SaveRAM autosave were written and verified. Fully restart RetroArch, then return here.",
+                        )
+                    }
+                    ConfigInstallResult.AlreadyConfigured -> update {
+                        restartVerifier.requireRestart(connectionOf(it.connection))
+                        it.copy(
+                            configState = "RESTART_REQUIRED",
+                            restartRequired = true,
+                            message = "The selected config already enables Network Commands and 10-second SaveRAM autosave. Fully restart RetroArch so DualDex can verify it.",
+                        )
+                    }
+                    is ConfigInstallResult.Failed -> update {
+                        it.copy(
+                            configState = "FAILED",
+                            restartRequired = false,
+                            message = result.message,
+                        )
+                    }
                 }
-                ConfigInstallResult.AlreadyConfigured -> update {
-                    restartVerifier.requireRestart(connectionOf(it.connection))
-                    it.copy(
-                        configState = "RESTART_REQUIRED",
-                        restartRequired = true,
-                        message = "The selected config already enables Network Commands and 10-second SaveRAM autosave. Fully restart RetroArch so DualDex can verify it.",
-                    )
-                }
-                is ConfigInstallResult.Failed -> update {
+            } catch (_: Throwable) {
+                update {
                     it.copy(
                         configState = "FAILED",
                         restartRequired = false,
-                        message = result.message,
+                        message = "RetroArch configuration could not be updated safely. Retry the setup action.",
                     )
                 }
             }
@@ -167,30 +190,42 @@ class RetroArchSetupCoordinator(
             update { it.copy(romGrant = "FAILED", message = failure.message ?: failure.javaClass.simpleName) }
             return
         }
-        preferences.edit().putString(ROM_TREE_URI, uri.toString()).apply()
-        lastSafGrant.set(storedSafGrantIsValid())
+        val token = safIndexGenerations.begin()
         update { it.copy(romGrant = "INDEXING", message = "Indexing granted GB, GBC, GBA, and ZIP sources…") }
         worker.execute {
-            val previousEntries = indexStore.read(uri.toString())
-            val result = runCatching { AndroidRomLibraryIndexer(context.contentResolver).index(uri, previousEntries) }
-            result.onSuccess { indexed ->
-                indexStore.write(uri.toString(), indexed.entries)
-                activationGate.clearFailure()
-                if (!sharedStorage.isGranted()) entries.set(indexed.entries)
-                update {
-                    it.copy(
-                        romGrant = if (sharedStorage.isGranted()) it.romGrant else "GRANTED",
-                        indexedRoms = if (sharedStorage.isGranted()) it.indexedRoms else indexed.entries.size,
-                        message = when {
-                            sharedStorage.isGranted() -> "The selected ROM folder is retained as a fallback; All files access remains the active library source."
-                            indexed.entries.isEmpty() -> "No GB, GBC, GBA, or single-ROM ZIP sources were found in the selected folder."
-                            indexed.warnings.isEmpty() -> "Indexed ${indexed.entries.size} ROM sources."
-                            else -> "Indexed ${indexed.entries.size} sources; ${indexed.warnings.size} unreadable sources were skipped."
-                        },
-                    )
+            try {
+                val previousEntries = indexStore.read(uri.toString())
+                val indexed = AndroidRomLibraryIndexer(context.contentResolver).index(uri, previousEntries)
+                if (!hasReadGrant(uri) || sharedStorage.isGranted()) {
+                    refreshStorageAccess()
+                    return@execute
                 }
-            }.onFailure { failure ->
-                update { it.copy(romGrant = "FAILED", message = "The selected game folder could not be indexed.") }
+                var persistenceFailed = false
+                val published = safIndexGenerations.commitIfCurrent(token) {
+                    if (SafRomIndexTransaction { entries -> indexStore.write(uri.toString(), entries) }.commit(indexed.entries) == SafRomIndexCommitResult.Failed) {
+                        persistenceFailed = true
+                    } else {
+                        preferences.edit().putString(ROM_TREE_URI, uri.toString()).commit()
+                        lastSafGrant.set(hasReadGrant(uri))
+                        activationGate.clearFailure()
+                        if (!sharedStorage.isGranted()) entries.set(indexed.entries)
+                        update {
+                            it.copy(
+                                romGrant = if (sharedStorage.isGranted()) it.romGrant else "GRANTED",
+                                indexedRoms = if (sharedStorage.isGranted()) it.indexedRoms else indexed.entries.size,
+                                message = when {
+                                    sharedStorage.isGranted() -> "The selected ROM folder is retained as a fallback; All files access remains the active library source."
+                                    indexed.entries.isEmpty() -> "No GB, GBC, GBA, or single-ROM ZIP sources were found in the selected folder."
+                                    indexed.warnings.isEmpty() -> "Indexed ${indexed.entries.size} ROM sources."
+                                    else -> "Indexed ${indexed.entries.size} sources; ${indexed.warnings.size} unreadable sources were skipped."
+                                },
+                            )
+                        }
+                    }
+                }
+                if (published && persistenceFailed) publishSafIndexFailure()
+            } catch (failure: Throwable) {
+                if (safIndexGenerations.isCurrent(token)) publishSafIndexFailure(failure)
             }
         }
     }
@@ -249,6 +284,19 @@ class RetroArchSetupCoordinator(
         }
     }
 
+    fun rescanGameLibrary() {
+        if (sharedStorage.isGranted()) {
+            indexSharedStorage(forceRefresh = true)
+            return
+        }
+        val uri = storedRomTree()
+        if (uri == null || !hasReadGrant(uri)) {
+            quarantineSafEntries()
+            return
+        }
+        rescanSafTree(uri)
+    }
+
     fun snapshot(): RetroArchView = view.get()
 
     fun commitMapperIfCurrent(expectedEpoch: Long, commit: () -> Unit): Boolean =
@@ -270,17 +318,20 @@ class RetroArchSetupCoordinator(
         val entry = activeEntry.get() ?: return false
         val token = sessionEpoch.capture(entry.sessionIdentity()) ?: return false
         if (lastSaveCandidates.get().none { it.id == documentId }) return false
-        if (!sessionEpoch.isCurrent(token)) return false
-        saveMonitor.select(entry.sha256, documentId)
-        if (!sessionEpoch.isCurrent(token)) return false
-        transientGameState.acceptRecoveryStatus(
-            SaveRamView(
-                status = "LOCATING",
-                autosaveStatus = readAutosaveStatus(),
-                message = "Validating the selected SaveRAM…",
-            ),
-        )
-        return true
+        val selected = saveMonitor.select(entry.sha256, documentId) { commit ->
+            sessionEpoch.commitIfCurrent(token, commit)
+        }
+        if (!selected) return false
+        val autosaveStatus = readAutosaveStatus()
+        return sessionEpoch.commitIfCurrent(token) {
+            transientGameState.acceptRecoveryStatus(
+                SaveRamView(
+                    status = "LOCATING",
+                    autosaveStatus = autosaveStatus,
+                    message = "Validating the selected SaveRAM…",
+                ),
+            )
+        }
     }
 
     fun launchRetroArch(): Boolean {
@@ -297,9 +348,10 @@ class RetroArchSetupCoordinator(
         closed = true
         heartbeatTask?.cancel(false)
         heartbeatTask = null
+        val catalogCancellation = runtime.cancelPendingCatalogLoadForAuthorityTransition()
         sessionEpoch.close()
+        catalogCancellation?.complete()
         activeEntry.getAndSet(null)?.let { activationGate.cancel(it.sourceId) }
-        runtime.cancelPendingCatalogLoad()
         heartbeat.shutdownNow()
         battleMemory.close()
         worker.shutdown()
@@ -307,15 +359,108 @@ class RetroArchSetupCoordinator(
         commandMonitor.close()
     }
 
-    private fun indexSharedStorage() {
-        if (!directIndexing.compareAndSet(false, true)) return
+    private fun providerResetRequired(failure: Throwable): Boolean =
+        (failure as? SafProviderOperationTimeout)?.disposition == SafProviderRetryDisposition.ResetRequired ||
+            (failure as? SafProviderOperationUnavailable)?.disposition == SafProviderRetryDisposition.ResetRequired
+
+    private fun publishSafIndexFailure(failure: Throwable? = null) {
+        update {
+            it.copy(
+                romGrant = "FAILED",
+                indexedRoms = entries.get().size,
+                message = if (failure != null && providerResetRequired(failure)) {
+                    "The selected document provider needs reset or a full app restart before game indexing can continue. The previous game index remains active."
+                } else {
+                    "The selected game folder could not be indexed. The previous game index remains active; retry or select the folder again."
+                },
+            )
+        }
+    }
+
+    private fun rescanSafTree(uri: Uri) {
+        if (!safRescanning.compareAndSet(false, true)) return
+        val token = safIndexGenerations.begin()
+        val retainedEntries = entries.get()
+        update {
+            it.copy(
+                romGrant = "INDEXING",
+                message = "Rescanning the selected game folder…",
+            )
+        }
+        worker.execute {
+            try {
+                val indexed = AndroidRomLibraryIndexer(context.contentResolver).index(uri, emptyList())
+                if (!hasReadGrant(uri) || sharedStorage.isGranted()) {
+                    refreshStorageAccess()
+                    return@execute
+                }
+                var persistenceFailed = false
+                val published = safIndexGenerations.commitIfCurrent(token) {
+                    if (SafRomIndexTransaction { entries -> indexStore.write(uri.toString(), entries) }.commit(indexed.entries) == SafRomIndexCommitResult.Failed) {
+                        persistenceFailed = true
+                    } else {
+                        preferences.edit().putString(ROM_TREE_URI, uri.toString()).commit()
+                        entries.set(indexed.entries)
+                        activationGate.clearFailure()
+                        update {
+                            it.copy(
+                                romGrant = "GRANTED",
+                                indexedRoms = indexed.entries.size,
+                                message = when {
+                                    indexed.entries.isEmpty() -> "No GB, GBC, GBA, or single-ROM ZIP sources were found in the selected folder."
+                                    indexed.warnings.isEmpty() -> "Rescan found ${indexed.entries.size} ROM sources."
+                                    else -> "Rescan found ${indexed.entries.size} sources; ${indexed.warnings.size} unreadable sources were skipped."
+                                },
+                            )
+                        }
+                    }
+                }
+                if (published && persistenceFailed) publishSafIndexFailure()
+            } catch (failure: Throwable) {
+                if (!safIndexGenerations.isCurrent(token)) return@execute
+                if (sharedStorage.isGranted() || !hasReadGrant(uri)) {
+                    refreshStorageAccess()
+                    return@execute
+                }
+                val status = StorageSetupStatusPolicy.failed(
+                    allFilesGranted = false,
+                    retainedDirectIndex = false,
+                    safIndexGranted = hasReadGrant(uri),
+                )
+                update {
+                    it.copy(
+                        storageGrant = status.storageGrant,
+                        romGrant = "FAILED",
+                        indexedRoms = retainedEntries.size,
+                        message = if (providerResetRequired(failure)) {
+                            "The selected document provider needs reset or a full app restart before game indexing can continue. The previous game index remains active."
+                        } else {
+                            "Game rescan could not finish. The previous game index remains active."
+                        },
+                    )
+                }
+            } finally {
+                safRescanning.set(false)
+            }
+        }
+    }
+
+    private fun indexSharedStorage(forceRefresh: Boolean = false) {
+        if (!directIndexing.compareAndSet(false, true)) {
+            if (forceRefresh) pendingForcedDirectRescan.set(true)
+            return
+        }
         val retainedDirectIndex = directIndexReady.get()
         val indexingStatus = StorageSetupStatusPolicy.indexing(allFilesGranted = sharedStorage.isGranted())
         update {
             it.copy(
                 storageGrant = indexingStatus.storageGrant,
                 romGrant = indexingStatus.romGrant,
-                message = "Indexing GB, GBC, GBA, and ZIP sources across shared storage…",
+                message = if (forceRefresh) {
+                    "Rescanning GB, GBC, GBA, and ZIP sources across shared storage…"
+                } else {
+                    "Indexing GB, GBC, GBA, and ZIP sources across shared storage…"
+                },
             )
         }
         indexWorker.execute {
@@ -325,10 +470,11 @@ class RetroArchSetupCoordinator(
                 val indexed = DirectRomLibraryIndexer().index(
                     roots,
                     directIndexStore.read(ALL_FILES_INDEX_KEY),
+                    forceRefresh = forceRefresh,
                 )
                 if (!sharedStorage.isGranted()) return@execute
-                entries.set(indexed.entries)
                 directIndexStore.write(ALL_FILES_INDEX_KEY, indexed.entries)
+                entries.set(indexed.entries)
                 directIndexReady.set(true)
                 activationGate.clearFailure()
                 val readyStatus = StorageSetupStatusPolicy.available(
@@ -349,9 +495,9 @@ class RetroArchSetupCoordinator(
                     )
                 }
                 configureDirectRetroArch(roots)
-            } catch (failure: Exception) {
+            } catch (failure: Throwable) {
                 directIndexReady.set(retainedDirectIndex)
-                directRefreshStarted.set(false)
+                if (!forceRefresh) directRefreshStarted.set(false)
                 val safIndexGranted = storedRomTree()?.let(::hasReadGrant) == true
                 if (!retainedDirectIndex && safIndexGranted) entries.set(loadSafStoredIndex())
                 val failedStatus = StorageSetupStatusPolicy.failed(
@@ -362,13 +508,20 @@ class RetroArchSetupCoordinator(
                 update {
                     it.copy(
                         storageGrant = failedStatus.storageGrant,
-                        romGrant = failedStatus.romGrant,
+                        romGrant = if (forceRefresh) "FAILED" else failedStatus.romGrant,
                         indexedRoms = entries.get().size,
-                        message = "Game discovery could not finish. The folder fallback remains available.",
+                        message = if (forceRefresh && retainedDirectIndex) {
+                            "Game rescan could not finish. The previous game index remains active."
+                        } else {
+                            "Game discovery could not finish. The folder fallback remains available."
+                        },
                     )
                 }
             } finally {
                 directIndexing.set(false)
+                if (pendingForcedDirectRescan.getAndSet(false) && sharedStorage.isGranted()) {
+                    indexSharedStorage(forceRefresh = true)
+                }
             }
         }
     }
@@ -447,10 +600,17 @@ class RetroArchSetupCoordinator(
                 val connected = session.connection != RetroArchConnection.DISCONNECTED
                 val restartVerified = restartVerifier.observe(session.connection)
                 val resolvedEntry = (resolution as? SessionResolution.Resolved)?.entry
+                val nextAuthorizedEntry = resolvedEntry?.takeIf { connected }
+                val catalogCancellation = if (activeEntry.get() != nextAuthorizedEntry) {
+                    runtime.cancelPendingCatalogLoadForAuthorityTransition()
+                } else {
+                    null
+                }
                 val token = sessionEpoch.observe(
-                    resolvedEntry?.takeIf { connected }?.sessionIdentity(),
+                    nextAuthorizedEntry?.sessionIdentity(),
                 )
-                val authorizedEntry = resolvedEntry?.takeIf { token != null }
+                catalogCancellation?.complete()
+                val authorizedEntry = nextAuthorizedEntry?.takeIf { token != null }
                 val previousEntry = activeEntry.getAndSet(authorizedEntry)
                 if (previousEntry != authorizedEntry) {
                     previousEntry?.let { activationGate.cancel(it.sourceId) }
@@ -458,55 +618,71 @@ class RetroArchSetupCoordinator(
                     lastSaveCandidates.set(emptyList())
                     discoveredSaveRom.set(null)
                     discoveredSaveBasename.set(null)
-                    if (previousEntry != null) runtime.cancelPendingCatalogLoad()
                 }
                 val active = authorizedEntry != null &&
-                    authorizedEntry.sha256 == lastActivatedSha &&
+                    token != null &&
+                    activationCoordinator.isVerified(token) &&
                     runtime.catalogHash() == authorizedEntry.sha256
-                val loading = authorizedEntry?.sourceId?.let(activationGate::isLoading) == true
-                val failed = authorizedEntry?.sourceId?.let(activationGate::isFailed) == true
-                battleMemory.updateSession(
-                    connected = connected && active,
-                    systemId = status?.systemId,
-                    romIdentity = authorizedEntry?.sha256,
-                )
-                update { current ->
-                    current.copy(
-                        configState = if (connected && restartVerified) "VERIFIED" else current.configState,
-                        restartRequired = if (restartVerifier.restartRequired) true else if (restartVerified) false else current.restartRequired,
-                        connection = session.connection.name,
+                val loading = authorizedEntry != null && token != null &&
+                    activationCoordinator.isLoading(authorizedEntry.sourceId, token)
+                val failed = authorizedEntry != null && token != null &&
+                    activationCoordinator.isFailed(authorizedEntry.sourceId, token)
+                val publishBattleSession = {
+                    battleMemory.updateSession(
+                        connected = connected && active,
                         systemId = status?.systemId,
-                        gameBasename = status?.gameBasename,
-                        contentCrc32 = status?.crc32,
-                        contentSha256 = authorizedEntry?.sha256?.takeIf { active },
-                        sessionEpoch = token?.epoch?.takeIf { active },
-                        activeSource = authorizedEntry?.sourceName?.takeIf { active },
-                        savefileDirectory = session.savefileDirectory,
-                        resolution = when (resolution) {
-                            SessionResolution.NoContent -> "NO_CONTENT"
-                            is SessionResolution.Resolved -> when {
-                                active -> "ACTIVE"
-                                loading -> "LOADING"
-                                failed -> "FAILED"
-                                else -> "RESOLVED"
-                            }
-                            is SessionResolution.Unverified -> "UNVERIFIED"
-                            is SessionResolution.Ambiguous -> "AMBIGUOUS"
-                            is SessionResolution.NotFound -> "NOT_FOUND"
-                        },
-                        message = session.error ?: when {
-                            connected && active -> "Opened ${resolvedEntry.sourceName}."
-                            connected && loading -> "Opening the SHA-256-verified active catalog…"
-                            connected && failed -> current.message
-                            connected && resolution is SessionResolution.Resolved -> "Active content matched; verifying its SHA-256."
-                            connected && resolution is SessionResolution.Unverified ->
-                                "A matching filename was found, but RetroArch did not provide content identity. Live features are paused."
-                            connected && resolution is SessionResolution.Ambiguous -> "Multiple granted sources match the active content. Select the ROM manually."
-                            connected && resolution is SessionResolution.NotFound -> resolution.reason
-                            connected -> "RetroArch Network Commands verified."
-                            else -> current.message
-                        },
+                        romIdentity = authorizedEntry?.sha256,
                     )
+                }
+                if (token != null) {
+                    sessionEpoch.commitIfCurrent(token, publishBattleSession)
+                } else {
+                    publishBattleSession()
+                }
+                val publishSessionView = {
+                    update { current ->
+                        current.copy(
+                            configState = if (connected && restartVerified) "VERIFIED" else current.configState,
+                            restartRequired = if (restartVerifier.restartRequired) true else if (restartVerified) false else current.restartRequired,
+                            connection = session.connection.name,
+                            systemId = status?.systemId,
+                            gameBasename = status?.gameBasename,
+                            contentCrc32 = status?.crc32,
+                            contentSha256 = authorizedEntry?.sha256?.takeIf { active },
+                            sessionEpoch = token?.epoch?.takeIf { active },
+                            activeSource = authorizedEntry?.sourceName?.takeIf { active },
+                            savefileDirectory = session.savefileDirectory,
+                            resolution = when (resolution) {
+                                SessionResolution.NoContent -> "NO_CONTENT"
+                                is SessionResolution.Resolved -> when {
+                                    active -> "ACTIVE"
+                                    loading -> "LOADING"
+                                    failed -> "FAILED"
+                                    else -> "RESOLVED"
+                                }
+                                is SessionResolution.Unverified -> "UNVERIFIED"
+                                is SessionResolution.Ambiguous -> "AMBIGUOUS"
+                                is SessionResolution.NotFound -> "NOT_FOUND"
+                            },
+                            message = session.error ?: when {
+                                connected && active -> "Opened ${resolvedEntry.sourceName}."
+                                connected && loading -> "Opening the SHA-256-verified active catalog…"
+                                connected && failed -> current.message
+                                connected && resolution is SessionResolution.Resolved -> "Active content matched; verifying its SHA-256."
+                                connected && resolution is SessionResolution.Unverified ->
+                                    "A matching filename was found, but RetroArch did not provide content identity. Live features are paused."
+                                connected && resolution is SessionResolution.Ambiguous -> "Multiple granted sources match the active content. Select the ROM manually."
+                                connected && resolution is SessionResolution.NotFound -> resolution.reason
+                                connected -> "RetroArch Network Commands verified."
+                                else -> current.message
+                            },
+                        )
+                    }
+                }
+                if (token != null) {
+                    sessionEpoch.commitIfCurrent(token, publishSessionView)
+                } else if (!closed) {
+                    publishSessionView()
                 }
                 if (authorizedEntry != null && token != null) {
                     activate(authorizedEntry, token)
@@ -523,9 +699,10 @@ class RetroArchSetupCoordinator(
     }
 
     private fun suspendCommandAuthority(message: String) {
+        val catalogCancellation = runtime.cancelPendingCatalogLoadForAuthorityTransition()
         sessionEpoch.observe(null)
+        catalogCancellation?.complete()
         activeEntry.getAndSet(null)?.let { activationGate.cancel(it.sourceId) }
-        runtime.cancelPendingCatalogLoad()
         battleMemory.updateSession(false, null, null)
         update {
             it.copy(
@@ -544,20 +721,20 @@ class RetroArchSetupCoordinator(
     }
 
     private fun activate(entry: RomIndexEntry, token: SessionWorkToken) {
-        if (!sessionEpoch.isCurrent(token)) return
-        if (entry.sha256 == lastActivatedSha && runtime.catalogHash() == entry.sha256) return
-        if (!activationGate.tryBegin(entry.sourceId)) return
-        if (!sessionEpoch.isCurrent(token)) {
-            activationGate.cancel(entry.sourceId)
-            return
-        }
-        update { it.copy(resolution = "LOADING", message = "Verifying the active ROM before opening its catalog…") }
-        worker.execute {
-            if (!sessionEpoch.isCurrent(token)) {
-                activationGate.cancel(entry.sourceId)
-                return@execute
+        if (!activationCoordinator.requiresSourceVerification(token, runtime.catalogHash(), entry.sha256)) return
+        if (!activationCoordinator.begin(token, entry.sourceId) {
+                update {
+                    it.copy(
+                        resolution = "LOADING",
+                        message = "Verifying the active ROM before opening its catalog…",
+                    )
+                }
             }
+        ) return
+        worker.execute {
+            if (!sessionEpoch.isCurrent(token)) return@execute
             try {
+                guideLoadFault.beforeLoad(entry)?.let { throw it }
                 val sourceUri = URI(entry.sourceId)
                 val loaded = if (sourceUri.scheme.equals("file", ignoreCase = true)) {
                     RomSourceLoader.load(File(sourceUri).toPath())
@@ -568,59 +745,57 @@ class RetroArchSetupCoordinator(
                         entry.sourceName.substringBefore('!'),
                     )
                 }
-                if (!sessionEpoch.isCurrent(token)) {
-                    activationGate.cancel(entry.sourceId)
-                    return@execute
-                }
+                if (!sessionEpoch.isCurrent(token)) return@execute
                 require(RomSessionResolver.verifySha(entry, loaded.rom.sha256)) {
                     "the matched ROM changed after indexing; reselect the ROM library"
                 }
-                if (!sessionEpoch.isCurrent(token)) {
-                    activationGate.cancel(entry.sourceId)
-                    return@execute
-                }
-                update { it.copy(resolution = "LOADING", message = "Opening the SHA-256-verified active catalog…") }
-                runtime.load(loaded) completion@{ result ->
-                    if (!sessionEpoch.isCurrent(token)) {
-                        activationGate.cancel(entry.sourceId)
-                        return@completion
-                    }
-                    result.onSuccess {
-                        activationGate.finishSuccess(entry.sourceId)
-                        lastActivatedSha = entry.sha256
+                if (!sessionEpoch.commitIfCurrent(token) {
                         update {
                             it.copy(
-                                activeSource = entry.sourceName,
-                                contentSha256 = entry.sha256,
-                                sessionEpoch = token.epoch,
-                                resolution = "ACTIVE",
-                                message = "Opened ${entry.sourceName}.",
+                                resolution = "LOADING",
+                                message = "Opening the SHA-256-verified active catalog…",
                             )
                         }
-                    }.onFailure { failure -> failActivation(entry, failure) }
-                }
+                    }
+                ) return@execute
+                runtime.load(
+                    source = loaded,
+                    commitIfCurrent = { commit -> sessionEpoch.commitIfCurrent(token, commit) },
+                    onComplete = completion@{ result ->
+                        result.onSuccess {
+                            activationCoordinator.finish(token, entry.sourceId) {
+                                update {
+                                    it.copy(
+                                        activeSource = entry.sourceName,
+                                        contentSha256 = entry.sha256,
+                                        sessionEpoch = token.epoch,
+                                        resolution = "ACTIVE",
+                                        message = "Opened ${entry.sourceName}.",
+                                    )
+                                }
+                            }
+                        }.onFailure { failure -> failActivation(entry, token, failure) }
+                    },
+                )
             } catch (failure: OutOfMemoryError) {
-                if (sessionEpoch.isCurrent(token)) {
-                    runCatching { runtime.recordRomSourceLoadFailure(entry.sha256, failure) }
-                    failActivation(entry, failure)
-                } else {
-                    activationGate.cancel(entry.sourceId)
-                }
+                failActivation(entry, token, failure, recordSourceFailure = true)
             } catch (failure: Exception) {
-                if (sessionEpoch.isCurrent(token)) {
-                    runCatching { runtime.recordRomSourceLoadFailure(entry.sha256, failure) }
-                    failActivation(entry, failure)
-                } else {
-                    activationGate.cancel(entry.sourceId)
-                }
+                failActivation(entry, token, failure, recordSourceFailure = true)
             }
         }
     }
 
-    private fun failActivation(entry: RomIndexEntry, failure: Throwable) {
+    private fun failActivation(
+        entry: RomIndexEntry,
+        token: SessionWorkToken,
+        failure: Throwable,
+        recordSourceFailure: Boolean = false,
+    ) {
         val publicFailure = GuideLoadFailure.from(failure)
-        activationGate.finishFailure(entry.sourceId)
-        update { it.copy(resolution = "FAILED", message = publicFailure.message) }
+        if (recordSourceFailure) runCatching { runtime.recordRomSourceLoadFailure(entry.sha256, failure) }
+        activationCoordinator.fail(token, entry.sourceId) {
+            update { it.copy(resolution = "FAILED", message = publicFailure.message) }
+        }
     }
 
     private fun pollSave(entry: RomIndexEntry, token: SessionWorkToken) {
@@ -643,37 +818,60 @@ class RetroArchSetupCoordinator(
                 if (!sessionEpoch.isCurrent(token)) return@execute
                 val candidates = cachedCandidates?.let { refreshSaveCandidates(it, resolver) }
                     ?: discoverSaveCandidates(entry, resolver, activeGameBasename)
-                if (!sessionEpoch.isCurrent(token)) return@execute
-                if (cachedCandidates == null) {
-                    discoveredSaveRom.set(entry.sha256)
-                    discoveredSaveBasename.set(activeGameBasename)
-                }
-                lastSaveCandidates.set(candidates)
+                if (!sessionEpoch.commitIfCurrent(token) {
+                        if (cachedCandidates == null) {
+                            discoveredSaveRom.set(entry.sha256)
+                            discoveredSaveBasename.set(activeGameBasename)
+                        }
+                        lastSaveCandidates.set(candidates)
+                    }
+                ) return@execute
                 val autosaveStatus = readAutosaveStatus()
                 if (!sessionEpoch.isCurrent(token)) return@execute
-                val result = saveMonitor.poll(parseContext, candidates, autosaveStatus) {
-                    sessionEpoch.isCurrent(token)
-                } ?: return@execute
-                if (!sessionEpoch.isCurrent(token)) return@execute
+                val commitIfCurrent: ((() -> Unit) -> Boolean) = { commit ->
+                    sessionEpoch.commitIfCurrent(token, commit)
+                }
+                val result = saveMonitor.poll(
+                    context = parseContext,
+                    candidates = candidates,
+                    autosaveStatus = autosaveStatus,
+                    isCurrent = { sessionEpoch.isCurrent(token) },
+                    commitIfCurrent = commitIfCurrent,
+                    persistAcceptance = false,
+                ) ?: return@execute
                 val saveView = result.toView()
                 if ((result.snapshot != null || result.retained?.snapshot != null) && result.observation != null) {
-                    checkpointCoordinator.apply(result, saveView)
-                } else if (result.snapshot != null) {
-                    transientGameState.acceptRecovery(
-                        RecoveryProjection(
-                            snapshot = result.snapshot,
-                            saveRam = saveView,
-                        ),
+                    checkpointCoordinator.apply(
+                        result = result,
+                        saveView = saveView,
+                        commitIfCurrent = commitIfCurrent,
+                        stagePrepared = { digest ->
+                            saveMonitor.stagePrepared(result, digest) { sessionEpoch.isCurrent(token) }
+                        },
+                        commitPrepared = { persistence, publishAuthority ->
+                            saveMonitor.commitPrepared(result, persistence, publishAuthority)
+                        },
+                        completePrepared = saveMonitor::completePrepared,
                     )
+                } else if (result.snapshot != null) {
+                    commitIfCurrent {
+                        transientGameState.acceptRecovery(
+                            RecoveryProjection(
+                                snapshot = result.snapshot,
+                                saveRam = saveView,
+                            ),
+                        )
+                    }
                 } else {
-                    transientGameState.acceptRecoveryStatus(saveView)
+                    commitIfCurrent { transientGameState.acceptRecoveryStatus(saveView) }
                 }
             } catch (failure: Exception) {
-                if (sessionEpoch.isCurrent(token)) {
+                val autosaveStatus = readAutosaveStatus()
+                sessionEpoch.commitIfCurrent(token) {
                     transientGameState.acceptRecoveryStatus(
                         SaveRamView(
                             status = "UNAVAILABLE",
-                            autosaveStatus = readAutosaveStatus(),
+                            autosaveStatus = autosaveStatus,
                             message = failure.message ?: failure.javaClass.simpleName,
                         ),
                     )
@@ -750,31 +948,80 @@ class RetroArchSetupCoordinator(
         if (restoredSaveRom.get().equals(parseContext.romIdentity, ignoreCase = true)) return
         val autosaveStatus = readAutosaveStatus()
         if (!sessionEpoch.isCurrent(token)) return
-        val restored = try {
-            saveMonitor.restore(parseContext, autosaveStatus) { sessionEpoch.isCurrent(token) }
-        } catch (failure: Exception) {
-            if (!sessionEpoch.isCurrent(token)) return
-            Log.e(LOG_TAG, "Could not restore the cached SaveRAM snapshot", failure)
-            transientGameState.acceptRecoveryStatus(
-                SaveRamView(
-                    status = "STALE",
-                    autosaveStatus = autosaveStatus,
-                    message = "The cached SaveRAM snapshot could not be reopened; live monitoring will retry.",
-                ),
-            )
+        val acceptedCheckpoint = when (val read = checkpointCoordinator.readLatest(parseContext.romIdentity)) {
+            is CheckpointReadResult.Present -> read.checkpoint
+            CheckpointReadResult.Absent -> return
+            is CheckpointReadResult.Corrupt, is CheckpointReadResult.Unavailable -> {
+                sessionEpoch.commitIfCurrent(token) {
+                    transientGameState.acceptRecoveryStatus(
+                        SaveRamView(
+                            status = "STALE",
+                            autosaveStatus = autosaveStatus,
+                            message = "The accepted SaveRAM recovery pair could not be verified; live monitoring will retry.",
+                        ),
+                    )
+                }
+                return
+            }
+        }
+        val snapshotDigest = acceptedCheckpoint.snapshotDigestSha256
+        if (snapshotDigest == null) {
+            sessionEpoch.commitIfCurrent(token) {
+                transientGameState.acceptRecoveryStatus(
+                    SaveRamView(
+                        status = "STALE",
+                        autosaveStatus = autosaveStatus,
+                        message = "The accepted SaveRAM recovery pair is incomplete; live monitoring will retry.",
+                    ),
+                )
+            }
             return
         }
-        val snapshot = restored?.snapshot ?: return
-        if (!sessionEpoch.isCurrent(token)) return
-        val application = transientGameState.acceptRecovery(
-            RecoveryProjection(
-                snapshot = snapshot,
-                saveRam = restored.toView(),
-            ),
-        )
-        if (application.accepted && sessionEpoch.isCurrent(token)) {
-            restoredSaveRom.set(parseContext.romIdentity)
+        val restored = try {
+            val snapshotVersionId = acceptedCheckpoint.snapshotVersionId
+            if (snapshotVersionId != null) {
+                saveMonitor.restore(
+                    parseContext,
+                    autosaveStatus,
+                    snapshotVersionId = snapshotVersionId,
+                    snapshotDigestSha256 = snapshotDigest,
+                    isCurrent = { sessionEpoch.isCurrent(token) },
+                )
+            } else {
+                saveMonitor.restore(parseContext, autosaveStatus) { sessionEpoch.isCurrent(token) }
+            }
+        } catch (failure: Exception) {
+            Log.e(
+                LOG_TAG,
+                PrivacySafeDiagnostics.message(
+                    category = "SAVE_RAM",
+                    outcome = "RESTORE_FAILED",
+                    failure = failure,
+                ),
+            )
+            sessionEpoch.commitIfCurrent(token) {
+                transientGameState.acceptRecoveryStatus(
+                    SaveRamView(
+                        status = "STALE",
+                        autosaveStatus = autosaveStatus,
+                        message = "The cached SaveRAM snapshot could not be reopened; live monitoring will retry.",
+                    ),
+                )
+            }
+            return
         }
+        if (restored?.snapshot == null) return
+        checkpointCoordinator.applyPersisted(
+            result = restored,
+            saveView = restored.toView(),
+            commitIfCurrent = { commit -> sessionEpoch.commitIfCurrent(token, commit) },
+            acceptPrepared = { prepared ->
+                saveMonitor.restoreAccepted(prepared).also { accepted ->
+                    if (accepted) restoredSaveRom.set(parseContext.romIdentity)
+                }
+            },
+            preloadedCheckpoint = acceptedCheckpoint,
+        )
     }
 
     private fun SaveMonitorResult.toView(): SaveRamView {
@@ -808,7 +1055,10 @@ class RetroArchSetupCoordinator(
 
     private fun storedConfigTree(): Uri? = preferences.getString(CONFIG_TREE_URI, null)?.let(Uri::parse)
 
-    private fun storedRomTree(): Uri? = preferences.getString(ROM_TREE_URI, null)?.let(Uri::parse)
+    private fun storedRomTree(): Uri? = indexStore.readActive()
+        ?.rootUri
+        ?.let(Uri::parse)
+        ?: preferences.getString(ROM_TREE_URI, null)?.let(Uri::parse)
 
     private fun hasReadGrant(uri: Uri): Boolean = context.contentResolver.persistedUriPermissions
         .any { permission -> permission.uri == uri && permission.isReadPermission }
@@ -863,7 +1113,7 @@ class RetroArchSetupCoordinator(
     }
 
     private fun storedSafGrantIsValid(): Boolean {
-        val storedUri = preferences.getString(ROM_TREE_URI, null)
+        val storedUri = storedRomTree()?.toString()
         val readableGrants = context.contentResolver.persistedUriPermissions
             .asSequence()
             .filter { it.isReadPermission }
@@ -876,9 +1126,10 @@ class RetroArchSetupCoordinator(
         val hadEntries = entries.getAndSet(emptyList()).isNotEmpty()
         val previousEntry = activeEntry.getAndSet(null)
         if (!hadEntries && previousEntry == null) return
+        val catalogCancellation = runtime.cancelPendingCatalogLoadForAuthorityTransition()
         sessionEpoch.observe(null)
+        catalogCancellation?.complete()
         previousEntry?.let { activationGate.cancel(it.sourceId) }
-        runtime.cancelPendingCatalogLoad()
         battleMemory.updateSession(false, null, null)
         lastSaveCandidates.set(emptyList())
         update {
@@ -895,7 +1146,7 @@ class RetroArchSetupCoordinator(
     }
 
     private fun loadSafStoredIndex(): List<RomIndexEntry> {
-        val uri = preferences.getString(ROM_TREE_URI, null) ?: return emptyList()
+        val uri = storedRomTree()?.toString() ?: return emptyList()
         if (!storedSafGrantIsValid()) return emptyList()
         return indexStore.read(uri)
     }
@@ -903,7 +1154,7 @@ class RetroArchSetupCoordinator(
     private fun initialView(): RetroArchView {
         val storageGranted = sharedStorage.isGranted()
         val configUri = preferences.getString(CONFIG_TREE_URI, null)
-        val romUri = preferences.getString(ROM_TREE_URI, null)
+        val romUri = storedRomTree()?.toString()
         val persisted = context.contentResolver.persistedUriPermissions.associateBy { it.uri.toString() }
         val directConfigFound = storageGranted && FileRetroArchConfigStore.findPublic(sharedStorage.roots()) != null
         val configGranted = directConfigFound ||

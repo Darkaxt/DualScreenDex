@@ -29,7 +29,9 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureStat
 import java.net.URLEncoder
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 
 data class BootstrapView(val catalog: CatalogView?, val state: StateView)
 
@@ -443,6 +445,8 @@ data class StateView(
     val areaGuide: AreaGuideView? = null,
     val areaGuideAvailability: AreaGuideAvailabilityView = AreaGuideAvailabilityView("NOT_APPLICABLE"),
     val trainerProgress: TrainerProgressView? = null,
+    val catalogHash: String? = null,
+    val mapperAvailable: Boolean = false,
 )
 data class GameClockView(
     val hours: Int?,
@@ -910,6 +914,7 @@ object ApiViewBuilder {
         partyAnalysis: PartyAnalysis? = null,
         areaGuideProjection: AreaGuideProjectionOutcome? = null,
         trainerProgress: TrainerProgressView? = null,
+        mapperAvailable: Boolean = false,
         version: Long = snapshot.version,
     ): StateView {
         val effectiveAreaBaseId = snapshot.liveAreaBaseId
@@ -1144,6 +1149,8 @@ object ApiViewBuilder {
             areaGuide,
             areaGuideAvailability,
             trainerProgress,
+            catalog?.romSha256,
+            mapperAvailable,
         )
     }
 
@@ -1235,18 +1242,28 @@ object ApiViewBuilder {
         snapshot: AppSnapshot,
         catalog: ParsedCatalog,
         resolved: ResolvedOwnedIndividual,
-    ): String = resolved.individual.individualIdentity?.let { "individual:$it" } ?: buildString {
-        append(catalog.romSha256.lowercase())
-        append(':')
-        append(snapshot.resolvedSaveIdentity ?: "current-session")
-        append(':')
-        append(resolved.location.kind.name)
-        append(':')
-        append(resolved.location.boxIndex ?: -1)
-        append(':')
-        append(resolved.location.slotIndex)
-        append(':')
-        append(resolved.individual.validatedRecordDigest())
+    ): String = resolved.individual.individualIdentity?.let { "individual:$it" }
+        ?: stableFallbackSpecimenKey(snapshot, catalog, resolved)
+
+    private fun stableFallbackSpecimenKey(
+        snapshot: AppSnapshot,
+        catalog: ParsedCatalog,
+        resolved: ResolvedOwnedIndividual,
+    ): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        listOf(
+            catalog.romSha256.lowercase(),
+            snapshot.resolvedSaveIdentity ?: "current-session",
+            resolved.location.kind.name,
+            resolved.location.boxIndex?.toString() ?: "-1",
+            resolved.location.slotIndex.toString(),
+            resolved.individual.validatedRecordDigest(),
+        ).forEach { value ->
+            val bytes = value.toByteArray(StandardCharsets.UTF_8)
+            digest.update(ByteBuffer.allocate(Int.SIZE_BYTES).putInt(bytes.size).array())
+            digest.update(bytes)
+        }
+        return "fallback:" + digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     private fun canonicalSpeciesKey(catalog: ParsedCatalog, speciesId: Int): String =

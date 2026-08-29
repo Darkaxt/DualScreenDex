@@ -135,6 +135,55 @@ class RetroArchConfigInstallerTest {
         assertFalse(store.events.contains("delete-recovery"))
     }
 
+    @Test
+    fun `allocation failure becomes a terminal recoverable result`() {
+        val store = object : ConfigDocumentStore by FakeStore(byteArrayOf()) {
+            override fun readConfig(): ByteArray = throw OutOfMemoryError("injected")
+        }
+
+        assertTrue(RetroArchConfigInstaller.install(store, 55355) is ConfigInstallResult.Failed)
+    }
+
+    @Test
+    fun `first provider timeout retains ordinary retry guidance`() {
+        val store = object : ConfigDocumentStore by FakeStore(byteArrayOf()) {
+            override fun readConfig(): ByteArray =
+                throw IllegalStateException("SAF provider operation timed out; retry is available")
+        }
+
+        assertEquals(
+            ConfigInstallResult.Failed("RetroArch configuration could not be updated safely. Retry the setup action."),
+            RetroArchConfigInstaller.install(store, 55355),
+        )
+    }
+
+    @Test
+    fun `provider reset requirement is terminal guidance rather than a generic retry`() {
+        val store = object : ConfigDocumentStore by FakeStore(byteArrayOf()) {
+            override fun readConfig(): ByteArray =
+                throw IllegalStateException("SAF provider needs reset or app restart after repeated timed-out operations")
+        }
+
+        assertEquals(
+            ConfigInstallResult.Failed(
+                "The selected document provider timed out or has an unfinished write. Reset or reconnect the provider, or fully restart DualDex before trying setup again.",
+            ),
+            RetroArchConfigInstaller.install(store, 55355),
+        )
+    }
+
+    @Test
+    fun `sanitizes storage failure detail`() {
+        val store = object : ConfigDocumentStore by FakeStore(byteArrayOf()) {
+            override fun readConfig(): ByteArray = throw IllegalStateException("/private/RetroArch/retroarch.cfg")
+        }
+
+        assertEquals(
+            ConfigInstallResult.Failed("RetroArch configuration could not be updated safely. Retry the setup action."),
+            RetroArchConfigInstaller.install(store, 55355),
+        )
+    }
+
     private class FakeStore(initial: ByteArray) : ConfigDocumentStore {
         var config = initial
         var recovery = byteArrayOf()

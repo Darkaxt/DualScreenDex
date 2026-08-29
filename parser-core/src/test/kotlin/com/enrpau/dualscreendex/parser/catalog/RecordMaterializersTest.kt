@@ -911,6 +911,43 @@ class RecordMaterializersTest {
     }
 
     @Test
+    fun officialGenOneInternalSlotsUseOnlyTheActual151SpeciesPokedexDomain() {
+        val internalCount = 190
+        val dexCount = 151
+        val dexMapOffset = 64
+        val namesOffset = 512
+        val statsOffset = 3_000
+        val bytes = ByteArray(8_192)
+        repeat(internalCount) { index ->
+            bytes[dexMapOffset + index] = if (index < dexCount) (index + 1).toByte() else 0
+            encodeGbFixedName(bytes, namesOffset + index * 10, "MON")
+        }
+        repeat(dexCount) { dexIndex ->
+            val base = statsOffset + dexIndex * 28
+            repeat(6) { stat -> bytes[base + 1 + stat] = (40 + stat).toByte() }
+        }
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.RED_BLUE,
+            generation = 1,
+            platform = Platform.GB,
+            speciesCount = internalCount,
+            moveCount = 165,
+            tables = ProfileTables(
+                speciesNames = TableLayout(namesOffset, internalCount, 10),
+                baseStats = TableLayout(statsOffset, dexCount, 28),
+            ),
+        )
+
+        val records = RecordMaterializers.species(RomImage(bytes), layout)
+
+        assertEquals(internalCount, records.size)
+        assertEquals(dexCount, records.values.count { it.dexNumber.status == CapabilityStatus.AVAILABLE })
+        assertEquals(internalCount - dexCount, records.values.count {
+            it.dexNumber.status == CapabilityStatus.NOT_APPLICABLE
+        })
+    }
+
+    @Test
     fun joinsGenOneInternalNamesToDexOrderedStats() {
         val bytes = ByteArray(512)
         byteArrayOf(1, 0, 3, 2).copyInto(bytes, 50)
@@ -945,7 +982,8 @@ class RecordMaterializersTest {
         assertEquals("IVY", records.getValue(4).name.value)
         assertEquals(2, records.getValue(4).dexNumber.value)
         assertEquals(20, records.getValue(4).baseStats.value?.hp)
-        assertEquals(0, records.getValue(2).dexNumber.value)
+        assertEquals(CapabilityStatus.NOT_APPLICABLE, records.getValue(2).dexNumber.status)
+        assertEquals(null, records.getValue(2).dexNumber.value)
         assertEquals(null, records.getValue(2).baseStats.value)
     }
 

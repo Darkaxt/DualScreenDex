@@ -4,14 +4,17 @@ import com.enrpau.dualscreendex.companion.api.ApiErrorDetailView
 import com.enrpau.dualscreendex.companion.api.ApiErrorView
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
-import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.google.gson.GsonBuilder
-import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
+import java.io.FilterInputStream
 import java.io.IOException
+import java.io.InputStream
+import java.io.InputStreamReader
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.URLDecoder
@@ -20,11 +23,13 @@ import java.nio.file.Path
 import java.util.Locale
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import java.util.concurrent.Executor
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.Semaphore
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -32,20 +37,49 @@ class DualDexServer(
     private val runtime: DualDexRuntime,
     private val webRoot: Path,
     port: Int = 47831,
+    private val requestReadTimeoutMillis: Long = REQUEST_READ_TIMEOUT_MILLIS,
+    private val requestLifetimeMillis: Long = REQUEST_LIFETIME_MILLIS,
+    private val apiCapacity: Int = API_CAPACITY,
 ) : AutoCloseable {
     private val gson = GsonBuilder().serializeNulls().create()
     private val server = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0)
-    private val eventDeadlineExecutor = ScheduledThreadPoolExecutor(1) { runnable ->
-        Thread(runnable, "dualdex-sse-deadline").apply { isDaemon = true }
+    private val requestExecutor = ThreadPoolExecutor(
+        HTTP_WORKERS,
+        HTTP_WORKERS,
+        0L,
+        TimeUnit.MILLISECONDS,
+        ArrayBlockingQueue(HTTP_QUEUE_CAPACITY),
+        { runnable -> Thread(runnable, "dualdex-http").apply { isDaemon = true } },
+        ThreadPoolExecutor.AbortPolicy(),
+    )
+    private val saturatedAdmission = ThreadLocal<Boolean>()
+    private val admissionExecutor = Executor { command ->
+        try {
+            requestExecutor.execute(command)
+        } catch (_: RejectedExecutionException) {
+            saturatedAdmission.set(true)
+            try {
+                command.run()
+            } finally {
+                saturatedAdmission.remove()
+            }
+        }
+    }
+    private val apiPermits = Semaphore(apiCapacity)
+    private val deadlineExecutor = ScheduledThreadPoolExecutor(1) { runnable ->
+        Thread(runnable, "dualdex-http-deadline").apply { isDaemon = true }
     }.apply {
         removeOnCancelPolicy = true
     }
-    private val eventWriteDeadline = WriteDeadline(eventDeadlineExecutor, EVENT_WRITE_TIMEOUT_MILLIS)
+    private val eventWriteDeadline = WriteDeadline(deadlineExecutor, EVENT_WRITE_TIMEOUT_MILLIS)
     private val eventClients = ConcurrentHashMap.newKeySet<EventClient>()
     val address: InetSocketAddress get() = server.address
 
     init {
-        server.executor = Executors.newCachedThreadPool()
+        require(requestReadTimeoutMillis > 0)
+        require(requestLifetimeMillis > 0)
+        require(apiCapacity > 0)
+        server.executor = admissionExecutor
         createApiContext("/api/health", "GET") { exchange -> json(exchange, mapOf("ok" to true)) }
         createApiContext("/api/bootstrap", "GET") { exchange -> json(exchange, runtime.bootstrap()) }
         createApiContext("/api/state", "GET", ::handleState)
@@ -71,8 +105,8 @@ class DualDexServer(
         eventClients.toList().forEach(EventClient::close)
         eventClients.clear()
         server.stop(0)
-        eventDeadlineExecutor.shutdownNow()
-        (server.executor as? ExecutorService)?.shutdownNow()
+        deadlineExecutor.shutdownNow()
+        requestExecutor.shutdownNow()
         runtime.close()
     }
 
@@ -105,18 +139,13 @@ class DualDexServer(
     }
 
     private fun handleAction(exchange: HttpExchange) {
-        val request = exchange.requestBody.reader().use { gson.fromJson(it, JsonObject::class.java) }
-            ?: throw IllegalArgumentException("action body is required")
-        val type = requireNotNull(request.get("type")?.asString) { "action type is required" }
-        val values = request.entrySet().filter { it.key != "type" }.associate { entry ->
-            entry.key to if (entry.value.isJsonNull) null else entry.value.asString
-        }
+        val (type, values) = withRequestReadDeadline(exchange) { body -> parseAction(body) }
         json(exchange, runtime.action(type, values))
     }
 
     private fun handleLoad(exchange: HttpExchange) {
         val name = requireNotNull(query(exchange.requestURI.rawQuery)["name"]) { "upload name is required" }
-        runtime.load(RomSourceLoader.load(name, exchange.requestBody))
+        withRequestReadDeadline(exchange) { body -> runtime.load(name, body) }
         json(exchange, runtime.bootstrap())
     }
 
@@ -182,8 +211,11 @@ class DualDexServer(
         val parameters = query(exchange.requestURI.rawQuery)
         val requestedLighting = requestedLighting(parameters["lighting"])
         val time = requestedTime(parameters["hour"], parameters["minute"])
-        val rendered = runCatching { runtime.mapAsset(key, requestedLighting, time) }.getOrNull()
-            ?: return apiNotFound(exchange)
+        val rendered = when (val outcome = runtime.mapAsset(key, requestedLighting, time)) {
+            is MapAssetOutcome.Found -> outcome.asset
+            MapAssetOutcome.Missing -> return apiNotFound(exchange)
+            is MapAssetOutcome.Unavailable -> return apiMapUnavailable(exchange, outcome.diagnostic)
+        }
         val variant = rendered.cacheVariant
         exchange.responseHeaders.add("Content-Type", "image/png")
         exchange.responseHeaders.add("Cache-Control", "no-cache")
@@ -211,7 +243,67 @@ class DualDexServer(
         )
     }
 
+    private fun <T> withRequestReadDeadline(exchange: HttpExchange, action: (InputStream) -> T): T {
+        val deadline = RequestReadDeadline(
+            exchange,
+            deadlineExecutor,
+            requestReadTimeoutMillis,
+            requestLifetimeMillis,
+        )
+        return try {
+            action(DeadlineInputStream(exchange.requestBody, deadline))
+        } catch (failure: IOException) {
+            if (deadline.expired) throw RequestTimeoutException() else throw failure
+        } finally {
+            deadline.close()
+        }
+    }
+
+    private fun parseAction(input: InputStream): Pair<String, Map<String, String?>> {
+        val reader = JsonReader(InputStreamReader(BoundedInputStream(input, MAX_ACTION_BODY_BYTES), Charsets.UTF_8))
+        reader.use {
+            require(it.peek() == JsonToken.BEGIN_OBJECT) { "action body must be an object" }
+            it.beginObject()
+            var fields = 0
+            var type: String? = null
+            val values = linkedMapOf<String, String?>()
+            while (it.hasNext()) {
+                require(++fields <= MAX_ACTION_FIELDS) { "action contains too many fields" }
+                val name = it.nextName()
+                require(name.length <= MAX_ACTION_FIELD_NAME_LENGTH) { "action field name is too long" }
+                if (name == "type") {
+                    require(it.peek() == JsonToken.STRING) { "action type is required" }
+                    type = it.nextString()
+                } else {
+                    values[name] = readActionValue(it)
+                }
+            }
+            it.endObject()
+            require(it.peek() == JsonToken.END_DOCUMENT) { "action body must contain one object" }
+            return requireNotNull(type?.takeIf(String::isNotBlank)) { "action type is required" } to values
+        }
+    }
+
+    private fun readActionValue(reader: JsonReader): String? = when (reader.peek()) {
+        JsonToken.NULL -> {
+            reader.nextNull()
+            null
+        }
+        JsonToken.STRING, JsonToken.NUMBER -> reader.nextString()
+        JsonToken.BOOLEAN -> reader.nextBoolean().toString()
+        JsonToken.BEGIN_ARRAY, JsonToken.BEGIN_OBJECT -> throw IllegalArgumentException("action values must be scalar")
+        else -> throw IllegalArgumentException("action value is invalid")
+    }
+
     private fun handleStaticSafely(exchange: HttpExchange) {
+        if (saturatedAdmission.get() == true) {
+            if (exchange.requestURI.path == "/api" || exchange.requestURI.path.startsWith("/api/")) {
+                apiServerBusy(exchange)
+            } else {
+                text(exchange, 503, "server busy")
+            }
+            return
+        }
         try {
             handleStatic(exchange)
         } catch (_: Exception) {
@@ -250,11 +342,21 @@ class DualDexServer(
         }
 
     private fun safelyApi(exchange: HttpExchange, action: () -> Unit) {
+        if (saturatedAdmission.get() == true || !apiPermits.tryAcquire()) {
+            apiServerBusy(exchange)
+            return
+        }
         try {
             action()
         } catch (failure: Exception) {
             if (exchange.responseCode < 0) {
                 val error = when (failure) {
+                    is RequestTimeoutException -> ApiFailure(
+                        400,
+                        "REQUEST_TIMEOUT",
+                        "The request timed out.",
+                        retryable = true,
+                    )
                     is RejectedExecutionException -> ApiFailure(
                         503,
                         "SERVER_BUSY",
@@ -276,12 +378,28 @@ class DualDexServer(
                 }
                 apiError(exchange, error)
             }
+        } finally {
+            apiPermits.release()
         }
     }
+
+    private fun apiServerBusy(exchange: HttpExchange) = apiError(
+        exchange,
+        ApiFailure(503, "SERVER_BUSY", "The server is busy. Try again.", retryable = true),
+    )
 
     private fun apiNotFound(exchange: HttpExchange) = apiError(
         exchange,
         ApiFailure(404, "NOT_FOUND", "The requested resource was not found.", retryable = false),
+    )
+
+    private fun apiMapUnavailable(exchange: HttpExchange, diagnostic: String) = json(
+        exchange,
+        ApiUnavailableErrorView(
+            error = ApiErrorDetailView("MAP_UNAVAILABLE", "The map is temporarily unavailable. Try again.", retryable = true),
+            diagnostic = diagnostic,
+        ),
+        503,
     )
 
     private fun methodNotAllowed(exchange: HttpExchange) = apiError(
@@ -334,6 +452,11 @@ class DualDexServer(
         else -> "application/octet-stream"
     }
 
+    private data class ApiUnavailableErrorView(
+        val error: ApiErrorDetailView,
+        val diagnostic: String,
+    )
+
     private data class ApiFailure(
         val status: Int,
         val code: String,
@@ -354,6 +477,91 @@ class DualDexServer(
 
     private companion object {
         const val EVENT_WRITE_TIMEOUT_MILLIS = 5_000L
+        const val REQUEST_READ_TIMEOUT_MILLIS = 5_000L
+        const val REQUEST_LIFETIME_MILLIS = 30_000L
+        const val MAX_ACTION_BODY_BYTES = 1_024L * 1_024L
+        const val MAX_ACTION_FIELDS = 64
+        const val MAX_ACTION_FIELD_NAME_LENGTH = 128
+        const val HTTP_WORKERS = 8
+        const val HTTP_QUEUE_CAPACITY = 8
+        const val API_CAPACITY = 4
+    }
+}
+
+private class RequestTimeoutException : IOException()
+
+private class RequestReadDeadline(
+    private val exchange: HttpExchange,
+    private val scheduler: ScheduledExecutorService,
+    private val progressTimeoutMillis: Long,
+    absoluteTimeoutMillis: Long,
+) : AutoCloseable {
+    private val expiredFlag = AtomicBoolean()
+    private var progressDeadline: ScheduledFuture<*>? = null
+    private val absoluteDeadline = scheduler.schedule(::expire, absoluteTimeoutMillis, TimeUnit.MILLISECONDS)
+
+    init {
+        progress()
+    }
+
+    val expired: Boolean
+        get() = expiredFlag.get()
+
+    @Synchronized
+    fun progress() {
+        if (expired) return
+        progressDeadline?.cancel(false)
+        progressDeadline = scheduler.schedule(::expire, progressTimeoutMillis, TimeUnit.MILLISECONDS)
+    }
+
+    override fun close() {
+        absoluteDeadline.cancel(false)
+        synchronized(this) {
+            progressDeadline?.cancel(false)
+            progressDeadline = null
+        }
+    }
+
+    private fun expire() {
+        if (expiredFlag.compareAndSet(false, true)) exchange.close()
+    }
+}
+
+private class DeadlineInputStream(
+    source: InputStream,
+    private val deadline: RequestReadDeadline,
+) : FilterInputStream(source) {
+    override fun read(): Int = readWithDeadline { super.read() }
+
+    override fun read(bytes: ByteArray, offset: Int, length: Int): Int =
+        readWithDeadline { super.read(bytes, offset, length) }
+
+    private fun readWithDeadline(read: () -> Int): Int = try {
+        read().also { if (it > 0) deadline.progress() }
+    } catch (failure: IOException) {
+        if (deadline.expired) throw RequestTimeoutException()
+        throw failure
+    }
+}
+
+private class BoundedInputStream(
+    source: InputStream,
+    private val maximumBytes: Long,
+) : FilterInputStream(source) {
+    private var consumed = 0L
+
+    override fun read(): Int {
+        require(consumed < maximumBytes) { "request body is too large" }
+        return super.read().also { if (it >= 0) consumed++ }
+    }
+
+    override fun read(bytes: ByteArray, offset: Int, length: Int): Int {
+        if (length == 0) return 0
+        require(consumed < maximumBytes) { "request body is too large" }
+        val permitted = minOf(length.toLong(), maximumBytes - consumed).toInt()
+        return super.read(bytes, offset, permitted).also { count ->
+            if (count > 0) consumed += count
+        }
     }
 }
 

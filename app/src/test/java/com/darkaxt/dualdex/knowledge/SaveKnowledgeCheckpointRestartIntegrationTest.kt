@@ -51,7 +51,7 @@ class SaveKnowledgeCheckpointRestartIntegrationTest {
         val firstState = UnifiedGameStateDecoder { firstRuntime.gateway.bootstrap().ledger }
         firstRuntime = ProductionCompanionRuntime(transientGameState = firstState).apply { loadCatalog("Game.gba", catalog) }
         firstState.beginSession(TransientGameStateContext(romSha, 3, BattleCatalogView(emptyMap(), emptyMap(), emptySet())))
-        val firstCoordinator = SaveKnowledgeCheckpointCoordinator(store, firstState::acceptRecovery)
+        val firstCoordinator = coordinator(store, firstState)
         val firstSource = DirectSaveDocumentResolver.discover(rom, listOf(root)).single()
         val firstSnapshot = snapshot(romSha, saveIdentity, 1)
 
@@ -75,7 +75,7 @@ class SaveKnowledgeCheckpointRestartIntegrationTest {
         val reopenedState = UnifiedGameStateDecoder { reopenedRuntime.gateway.bootstrap().ledger }
         reopenedRuntime = ProductionCompanionRuntime(transientGameState = reopenedState).apply { loadCatalog("Game.gba", catalog) }
         reopenedState.beginSession(TransientGameStateContext(romSha, 3, BattleCatalogView(emptyMap(), emptyMap(), emptySet())))
-        val reopenedCoordinator = SaveKnowledgeCheckpointCoordinator(store, reopenedState::acceptRecovery)
+        val reopenedCoordinator = coordinator(store, reopenedState)
         reopenedCoordinator.apply(
             result(changedSource, changedSnapshot, SaveObservationKind.INITIAL),
             SaveRamView(status = "MATCHED"),
@@ -92,6 +92,20 @@ class SaveKnowledgeCheckpointRestartIntegrationTest {
         assertFalse(reopenedRuntime.stateView().localMapPoiPreferences.showPlaces)
         reopenedRuntime.close()
     }
+
+    private fun coordinator(
+        store: KnowledgeCheckpointStore,
+        state: UnifiedGameStateDecoder,
+    ) = SaveKnowledgeCheckpointCoordinator(
+        checkpoints = store,
+        prepareRecovery = { projection ->
+            state.prepareRecovery(projection)?.let { prepared ->
+                RecoveryPreparation(prepared.application) { publishAuthority ->
+                    state.commitPreparedRecovery(prepared, publishAuthority)
+                }
+            }
+        },
+    )
 
     private fun result(
         source: com.darkaxt.dualdex.save.SaveDocumentSource,

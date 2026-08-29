@@ -15,6 +15,9 @@ import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
+import com.enrpau.dualscreendex.parser.catalog.RenderedMapAsset
+import com.enrpau.dualscreendex.parser.io.LoadedRom
+import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.google.gson.JsonParser
@@ -27,6 +30,8 @@ import java.io.ByteArrayInputStream
 import java.net.HttpURLConnection
 import java.net.URI
 import java.nio.file.Files
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.imageio.ImageIO
 
 class ServerContractTest {
@@ -67,6 +72,7 @@ class ServerContractTest {
 
             assertEquals(204, unchanged.responseCode)
             assertNull(unchanged.contentType)
+            assertEquals("no-store", unchanged.getHeaderField("Cache-Control"))
             assertTrue(unchanged.inputStream.readBytes().isEmpty())
         } finally {
             server.close()
@@ -180,6 +186,46 @@ class ServerContractTest {
     }
 
     @Test
+    fun returnsStructuredBusyWhenTheDesktopExecutorQueueIsSaturatedAndLaterBootstraps() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val server = DualDexServer(DualDexRuntime(), root, 0)
+        val executorField = DualDexServer::class.java.getDeclaredField("requestExecutor")
+        executorField.isAccessible = true
+        val executor = executorField.get(server) as java.util.concurrent.ThreadPoolExecutor
+        val workersStarted = java.util.concurrent.CountDownLatch(executor.corePoolSize)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val blockers = buildList {
+            repeat(executor.corePoolSize) {
+                add(executor.submit {
+                    workersStarted.countDown()
+                    assertTrue(release.await(1, java.util.concurrent.TimeUnit.SECONDS))
+                })
+            }
+            assertTrue(workersStarted.await(1, java.util.concurrent.TimeUnit.SECONDS))
+            repeat(executor.queue.remainingCapacity()) {
+                add(executor.submit {
+                    assertTrue(release.await(1, java.util.concurrent.TimeUnit.SECONDS))
+                })
+            }
+        }
+        try {
+            assertEquals(0, executor.queue.remainingCapacity())
+            server.start()
+
+            assertApiError(get(server, "/api/bootstrap"), 503, "SERVER_BUSY", retryable = true)
+            assertEquals(503, get(server, "/index.html").responseCode)
+
+            release.countDown()
+            blockers.forEach { it.get(1, java.util.concurrent.TimeUnit.SECONDS) }
+            assertEquals(200, get(server, "/api/bootstrap").responseCode)
+        } finally {
+            release.countDown()
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
     fun fallsBackToTheSpaOnlyForExtensionlessHtmlNavigation() {
         val root = Files.createTempDirectory("dualdex-web-test")
         Files.writeString(root.resolve("index.html"), "<!doctype html><title>DualDex</title>")
@@ -237,6 +283,96 @@ class ServerContractTest {
             assertEquals(200, map.responseCode)
             assertEquals("no-cache", map.getHeaderField("Cache-Control"))
             assertFalse(map.getHeaderField("Cache-Control").contains("immutable"))
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun rejectsOversizedActionBodiesAndKeepsTheDesktopBootstrapReachable() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val server = DualDexServer(DualDexRuntime(), root, 0)
+        try {
+            server.start()
+            val oversized = post(
+                server,
+                "/api/actions",
+                "{\"type\":\"END_BATTLE\",\"padding\":\"${"x".repeat(1_048_576)}\"}",
+            )
+
+            assertApiError(oversized, 400, "INVALID_REQUEST", retryable = false)
+            val bootstrap = get(server, "/api/bootstrap")
+            assertEquals(200, bootstrap.responseCode)
+            assertTrue(bootstrap.inputStream.reader().readText().contains("\"mapperAvailable\":false"))
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun materializationFailuresFromDesktopUploadsAreSanitizedAndRetryableThroughLoad() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val attempts = AtomicInteger()
+        val runtime = DualDexRuntime(
+            catalogParser = { _, _, _ -> ParsedCatalog("recovered", EngineFamily.EMERALD, Platform.GBA) },
+            romSourceLoader = { name, _ ->
+                if (attempts.getAndIncrement() == 0) throw OutOfMemoryError("uploaded source detail")
+                LoadedRom(name, RomImage(byteArrayOf()))
+            },
+        )
+        val server = DualDexServer(runtime, root, 0)
+        try {
+            server.start()
+            val failed = post(server, "/api/load?name=untrusted.gba", "x")
+
+            assertEquals(200, failed.responseCode)
+            val failedBody = failed.inputStream.reader().readText()
+            assertTrue(failedBody.contains("\"phase\":\"FAILED\""))
+            assertTrue(failedBody.contains("This game guide could not be opened. You can try again."))
+            assertFalse(failedBody.contains("uploaded source detail"))
+
+            val retry = post(server, "/api/load?name=valid.gba", "x")
+            assertEquals(200, retry.responseCode)
+            assertTrue(retry.inputStream.reader().readText().contains("\"mapperAvailable\":false"))
+            assertEquals(200, get(server, "/api/bootstrap").responseCode)
+        } finally {
+            server.close()
+            Files.deleteIfExists(root)
+        }
+    }
+
+    @Test
+    fun distinguishesMissingMapsFromRetryableRendererFailuresAndRecovers() {
+        val root = Files.createTempDirectory("dualdex-web-test")
+        val rendererFails = AtomicBoolean(true)
+        val runtime = DualDexRuntime(
+            mapAssetRenderer = { _, key, _, _ ->
+                when (key) {
+                    "missing" -> null
+                    else -> {
+                        if (rendererFails.get()) throw OutOfMemoryError("renderer allocator detail")
+                        RenderedMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10), null)
+                    }
+                }
+            },
+        ).apply {
+            loadCatalog("fixture.gba", ParsedCatalog("map-catalog", EngineFamily.EMERALD, Platform.GBA))
+        }
+        val server = DualDexServer(runtime, root, 0)
+        try {
+            server.start()
+
+            assertApiError(get(server, "/api/maps/missing.png"), 404, "NOT_FOUND", retryable = false)
+            val unavailable = get(server, "/api/maps/rendered.png")
+            assertMapUnavailable(unavailable, "OutOfMemoryError")
+            assertEquals(200, get(server, "/api/bootstrap").responseCode)
+
+            rendererFails.set(false)
+            val recovered = get(server, "/api/maps/rendered.png")
+            assertEquals(200, recovered.responseCode)
+            assertEquals("image/png", recovered.contentType)
         } finally {
             server.close()
             Files.deleteIfExists(root)
@@ -378,7 +514,7 @@ class ServerContractTest {
             assertEquals(400, invalid.responseCode)
             val corrupt = URI("$base/api/maps/local%2F0012%2Fmap.png?lighting=DAY")
                 .toURL().openConnection() as HttpURLConnection
-            assertEquals(404, corrupt.responseCode)
+            assertMapUnavailable(corrupt, "IllegalArgumentException")
 
             val noon = URI("$base/api/maps/local%2F0013%2Fmap.png?hour=12&minute=0")
                 .toURL().openConnection() as HttpURLConnection
@@ -420,13 +556,28 @@ class ServerContractTest {
         }
     }
 
+    private val networkTimeoutMillis = 1_000
+
     private fun get(
         server: DualDexServer,
         path: String,
         accept: String? = null,
     ): HttpURLConnection = URI("http://127.0.0.1:${server.address.port}$path")
         .toURL().openConnection().let { it as HttpURLConnection }
-        .apply { accept?.let { setRequestProperty("Accept", it) } }
+        .apply {
+            connectTimeout = networkTimeoutMillis
+            readTimeout = networkTimeoutMillis
+            accept?.let { setRequestProperty("Accept", it) }
+        }
+
+    private fun post(server: DualDexServer, path: String, body: String): HttpURLConnection = get(server, path).apply {
+        requestMethod = "POST"
+        doOutput = true
+        setRequestProperty("Content-Type", "application/json")
+        val bytes = body.toByteArray(Charsets.UTF_8)
+        setFixedLengthStreamingMode(bytes.size)
+        outputStream.use { it.write(bytes) }
+    }
 
     private fun assertApiError(
         connection: HttpURLConnection,
@@ -456,6 +607,21 @@ class ServerContractTest {
         )
         assertEquals(retryable, error.get("retryable").asBoolean)
         assertFalse(body.contains("Exception", ignoreCase = true))
+    }
+
+    private fun assertMapUnavailable(connection: HttpURLConnection, diagnostic: String) {
+        assertEquals(503, connection.responseCode)
+        assertEquals("application/json; charset=utf-8", connection.contentType)
+        assertEquals("no-store", connection.getHeaderField("Cache-Control"))
+        val body = connection.errorStream.reader().readText()
+        val root = JsonParser.parseString(body).asJsonObject
+        val error = root.getAsJsonObject("error")
+        assertEquals("MAP_UNAVAILABLE", error.get("code").asString)
+        assertEquals("The map is temporarily unavailable. Try again.", error.get("message").asString)
+        assertTrue(error.get("retryable").asBoolean)
+        assertEquals(diagnostic, root.get("diagnostic").asString)
+        assertTrue(root.get("diagnostic").asString.length <= 64)
+        assertFalse(body.contains("allocator detail"))
     }
 
     private fun mediaCatalog(): ParsedCatalog {

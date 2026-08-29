@@ -134,6 +134,47 @@ class DirectRomLibraryIndexerTest {
         assertEquals(first.entries, second.entries)
     }
 
+    @Test
+    fun `forced rescan rehashes a same-metadata replacement`() {
+        val root = temporaryRoot()
+        val source = File(root, "Pokemon Emerald.gba").apply { writeBytes(gameBoyAdvanceRom()) }
+        val retainedModified = source.lastModified()
+        var identityReads = 0
+        val indexer = DirectRomLibraryIndexer { candidate ->
+            identityReads++
+            StreamingRomSourceReader.read(candidate)
+        }
+        val first = indexer.index(listOf(root))
+        val replacement = gameBoyAdvanceRom().also { bytes -> bytes[0xBF] = 1 }
+        source.writeBytes(replacement)
+        assertTrue(source.setLastModified(retainedModified))
+
+        val rescanned = indexer.index(listOf(root), first.entries, forceRefresh = true)
+
+        assertEquals(2, identityReads)
+        assertEquals(1, rescanned.entries.size)
+        assertTrue(first.entries.single().sha256 != rescanned.entries.single().sha256)
+    }
+
+    @Test
+    fun `fails traversal before retaining more sources than the result quota`() {
+        val root = temporaryRoot()
+        File(root, "Pokemon Red.gb").writeBytes(gameBoyRom("POKEMON RED", color = false))
+        File(root, "Pokemon Blue.gb").writeBytes(gameBoyRom("POKEMON BLUE", color = false))
+        val indexer = DirectRomLibraryIndexer(
+            traversalQuota = StorageTraversalQuota(
+                maximumNodes = 8,
+                maximumDirectories = 2,
+                maximumFiles = 4,
+                maximumResults = 1,
+            ),
+        )
+
+        val result = runCatching { indexer.index(listOf(root)) }
+
+        assertTrue(result.exceptionOrNull() is StorageTraversalLimitExceeded)
+    }
+
     private fun configuredFile(name: String): File {
         val configured = System.getenv(name)
         assumeTrue("set $name to run this real-ROM control", !configured.isNullOrBlank())

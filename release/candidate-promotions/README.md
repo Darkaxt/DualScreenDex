@@ -2,7 +2,9 @@
 
 Signed release candidates are created as draft prereleases. A candidate becomes public only through `.github/workflows/promote-candidate.yml`, which runs from the default branch inside the dedicated protected `release-promotion` environment.
 
-For candidate tag `v1.1.0-rc.73`, commit the authorization record as `release/candidate-promotions/v1.1.0-rc.73.json`. The workflow downloads the existing draft APK, provenance, and checksum manifest. It verifies their exact APK SHA-256 and pinned signer, checks the required validation fields, confirms that the release asset ID did not change, and changes only the existing release's draft flag. It does not build, sign, upload, or replace an asset.
+For a candidate tag, commit the authorization record under `release/candidate-promotions/<tag>.json`. The workflow downloads every existing draft asset and verifies the exact recorded name, GitHub asset ID, and SHA-256 set before and immediately before promotion. It also binds the provenance digest and source commit, verifies the signed APK and required gates, and changes only the existing release's draft flag. It does not build, sign, upload, delete, add, or replace an asset.
+
+Every record must include `sourceCommit`, `candidateProvenanceSha256`, and `releaseAssets`. `releaseAssets` is the complete array of `{ "name", "id", "sha256" }` entries copied from the draft release after upload; it must cover the APK, provenance, checksum manifest, compatibility manifest, repository-policy evidence, and every other public evidence asset. Any replacement, reupload, addition, or deletion invalidates the record.
 
 The `release-promotion` environment must allow only the default branch, require an authorized reviewer, and contain no secrets. Dispatch the workflow from the repository default branch and provide the existing candidate tag. Keep the tag-only `release-signing` environment and its production secrets unchanged.
 

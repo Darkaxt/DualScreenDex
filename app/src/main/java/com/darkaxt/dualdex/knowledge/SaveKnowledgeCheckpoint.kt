@@ -24,4 +24,7 @@ data class SaveKnowledgeCheckpoint(
     val capturedAtEpochMs: Long,
     val ledger: KnowledgeLedger,
     val journal: PlaythroughJournal? = null,
+    val sourceId: String? = null,
+    val snapshotDigestSha256: String? = null,
+    val snapshotVersionId: String? = null,
 )

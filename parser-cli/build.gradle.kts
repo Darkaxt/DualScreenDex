@@ -7,6 +7,24 @@ kotlin {
     jvmToolchain(17)
 }
 
+val dualDexSourceCommit = providers.gradleProperty("dualdexSourceCommit")
+    .orElse(providers.environmentVariable("GITHUB_SHA"))
+    .orElse(providers.provider {
+        val process = ProcessBuilder("git", "rev-parse", "HEAD")
+            .directory(rootDir)
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
+        check(process.waitFor() == 0 && output.matches(Regex("[0-9a-f]{40}"))) {
+            "Unable to derive parser CLI source commit"
+        }
+        output
+    })
+
+tasks.jar {
+    manifest.attributes["DualDex-Source-Commit"] = dualDexSourceCommit.get()
+}
+
 dependencies {
     implementation(project(":catalog-store"))
     implementation(project(":parser-core"))

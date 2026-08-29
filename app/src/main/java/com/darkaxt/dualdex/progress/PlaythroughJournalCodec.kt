@@ -13,10 +13,12 @@ class PlaythroughJournalCodec(private val gson: Gson = Gson()) {
 
     fun decodeExact(bytes: ByteArray, expected: PlaythroughKey): PlaythroughJournal? {
         if (!validKey(expected)) return null
-        val decoded = runCatching {
+        val decoded = try {
             gson.fromJson(bytes.toString(Charsets.UTF_8), PlaythroughJournal::class.java)
                 .sanitizedAndCompacted()
-        }.getOrNull() ?: return null
+        } catch (_: Exception) {
+            null
+        } ?: return null
         if (decoded.schema != PlaythroughJournal.SCHEMA || decoded.playthrough != expected) return null
         return decoded
     }

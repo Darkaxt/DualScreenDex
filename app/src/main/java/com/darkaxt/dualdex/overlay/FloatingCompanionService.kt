@@ -11,7 +11,6 @@ import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -21,11 +20,15 @@ import android.view.View
 import android.view.WindowManager
 import android.view.WindowInsets
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.darkaxt.dualdex.DualDexApplication
 import com.darkaxt.dualdex.MainActivity
 import com.darkaxt.dualdex.R
+import com.darkaxt.dualdex.setup.SetupPickerRequest
+import com.darkaxt.dualdex.storage.AllFilesSettingsDestination
+import com.darkaxt.dualdex.storage.AllFilesSettingsLauncher
 import com.darkaxt.dualdex.web.DualDexWebView
 import com.darkaxt.dualdex.web.NativeSetupRoute
 import kotlin.math.abs
@@ -37,6 +40,9 @@ class FloatingCompanionService : Service() {
     private var panelWebView: DualDexWebView? = null
     private var panelLayout: WindowManager.LayoutParams? = null
     private var panelVisible = false
+    private val setupRouteHandler by lazy {
+        OverlaySetupRouteHandler(this, OverlayActivityStarter(::startActivity))
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -270,15 +276,20 @@ class FloatingCompanionService : Service() {
     }
 
     private fun handleNativeRoute(route: NativeSetupRoute) {
+        if (setupRouteHandler.handleNativeRoute(route)) return
         when (route) {
             NativeSetupRoute.SHOW_OVERLAY -> Unit
             NativeSetupRoute.DOCK_OVERLAY -> returnToDockedActivity()
-            NativeSetupRoute.GRANT_ALL_FILES -> startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                    Uri.parse("package:$packageName"),
-                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
+            NativeSetupRoute.GRANT_ALL_FILES -> {
+                val outcome = AllFilesSettingsLauncher.open(this) { setupRouteHandler.foregroundSetup(SetupPickerRequest.ROMS) }
+                if (outcome == AllFilesSettingsDestination.FAILED) {
+                    Toast.makeText(
+                        this,
+                        "All files settings and folder selection could not open. Return to DualDex and retry folder selection.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
             NativeSetupRoute.OPEN_RETROARCH -> (application as DualDexApplication).retroArchSetup?.launchRetroArch()
             NativeSetupRoute.RETRY_GUIDE -> (application as DualDexApplication).retroArchSetup?.retryGuideLoad()
             NativeSetupRoute.EXPORT_MAPPER -> startActivity(
@@ -297,10 +308,9 @@ class FloatingCompanionService : Service() {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             )
             NativeSetupRoute.GRANT_RETROARCH,
-            NativeSetupRoute.GRANT_ROMS -> startActivity(
-                Intent(this, MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-            )
+            NativeSetupRoute.GRANT_ROMS,
+            -> error("setup route must be handled before the service route switch")
+            NativeSetupRoute.RESCAN_ROMS -> (application as DualDexApplication).retroArchSetup?.rescanGameLibrary()
         }
     }
 

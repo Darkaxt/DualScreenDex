@@ -55,6 +55,7 @@ $statePath = Join-Path $reviewRoot 'review-state.json'
 $pendingPath = Join-Path $reviewRoot 'pending-review.json'
 $pendingReportJson = Join-Path $reviewRoot 'pending-parser-report.json'
 $pendingReportMarkdown = Join-Path $reviewRoot 'pending-parser-report.md'
+$pendingExecutionReceipt = Join-Path $reviewRoot 'pending-parser-execution.json'
 $completePath = Join-Path $reviewRoot 'review-complete.json'
 $resultsPath = Join-Path $reviewRoot 'review-results.json'
 $baselinePath = Join-Path $reviewRoot 'review-baseline.json'
@@ -398,8 +399,12 @@ function ConvertTo-DualDexValidatedBaselineEntry {
     }
 }
 
+$sourceCommit = (& git -C $projectRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}$') {
+    throw 'Could not resolve the parser source commit.'
+}
 if (-not $SkipBuild) {
-    & (Join-Path $projectRoot 'gradlew.bat') '--project-dir' $projectRoot ':parser-cli:installDist' '--console=plain'
+    & (Join-Path $projectRoot 'gradlew.bat') '--project-dir' $projectRoot ':parser-cli:installDist' "-PdualdexSourceCommit=$sourceCommit" '--console=plain'
     if ($LASTEXITCODE -ne 0) {
         throw "Gradle parser CLI build failed with exit code $LASTEXITCODE"
     }
@@ -639,7 +644,7 @@ function Commit-DualDexBaseline {
 
 # All current inputs are now validated. Stale markers and parser reports can be
 # retired safely; a fresh parser report remains only when this run pauses.
-foreach ($stalePath in @($pendingPath, $completePath, $pendingReportJson, $pendingReportMarkdown)) {
+foreach ($stalePath in @($pendingPath, $completePath, $pendingReportJson, $pendingReportMarkdown, $pendingExecutionReceipt)) {
     if (Test-Path -LiteralPath $stalePath -PathType Leaf) {
         Remove-Item -LiteralPath $stalePath -Force
     }
@@ -837,7 +842,9 @@ for ($index = 0; $index -lt $unique.Count; $index++) {
     $romPath = [string] $item.ExtractedPath
 
     Write-Output "[$($index + 1)/$($unique.Count)] Reviewing $($item.EntryPath)"
-    & $parserCli $romPath '--json' $pendingReportJson '--markdown' $pendingReportMarkdown '--cache-dir' $cacheRoot '--all-roms'
+    & $parserCli $romPath '--json' $pendingReportJson '--markdown' $pendingReportMarkdown `
+        '--execution-receipt' $pendingExecutionReceipt '--source-commit' $sourceCommit `
+        '--cache-dir' $cacheRoot '--all-roms'
     if ($LASTEXITCODE -ne 0) {
         throw "Parser CLI failed with exit code $LASTEXITCODE for $romPath"
     }
@@ -1016,6 +1023,7 @@ for ($index = 0; $index -lt $unique.Count; $index++) {
         persistenceError = $persistenceError
         parserReportJson = $pendingReportJson
         parserReportMarkdown = $pendingReportMarkdown
+        parserExecutionReceipt = $pendingExecutionReceipt
         decisionsFile = $decisionsFullPath
         requiredDecisionBinding = [ordered]@{
             romSha256 = $sha
@@ -1043,7 +1051,7 @@ for ($index = 0; $index -lt $unique.Count; $index++) {
     return
 }
 
-foreach ($stalePath in @($pendingPath, $pendingReportJson, $pendingReportMarkdown)) {
+foreach ($stalePath in @($pendingPath, $pendingReportJson, $pendingReportMarkdown, $pendingExecutionReceipt)) {
     if (Test-Path -LiteralPath $stalePath -PathType Leaf) {
         Remove-Item -LiteralPath $stalePath -Force
     }

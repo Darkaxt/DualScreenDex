@@ -13,6 +13,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.view.ViewGroup
+import com.darkaxt.dualdex.performance.PrivacySafeDiagnostics
 import com.darkaxt.dualdex.rom.RomDocumentPicker
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -47,7 +48,10 @@ class DualDexWebView(
             }
 
             override fun onConsoleMessage(message: ConsoleMessage): Boolean {
-                val rendered = "${message.sourceId()}:${message.lineNumber()} ${message.message()}"
+                val rendered = PrivacySafeDiagnostics.message(
+                    category = "WEB_CONSOLE",
+                    outcome = message.messageLevel().name,
+                )
                 when (message.messageLevel()) {
                     ConsoleMessage.MessageLevel.ERROR -> Log.e(CONSOLE_TAG, rendered)
                     ConsoleMessage.MessageLevel.WARNING -> Log.w(CONSOLE_TAG, rendered)

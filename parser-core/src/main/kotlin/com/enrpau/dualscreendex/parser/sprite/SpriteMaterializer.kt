@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.sprite
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.Gen1DetachedSpeciesResolver
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -11,8 +12,9 @@ object SpriteMaterializer {
         rom: RomImage,
         layout: ResolvedRomLayout,
         gbaPaletteTableOffset: Int? = null,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Map<Int, RgbaSprite> = when (layout.generation) {
-        1 -> gen1(rom, layout)
+        1 -> gen1(rom, layout, cancellation)
         2 -> gen2(rom, layout)
         3 -> gen3(rom, layout, gbaPaletteTableOffset)
         else -> emptyMap()
@@ -168,7 +170,11 @@ object SpriteMaterializer {
         return width.takeIf { it == height && it in 1..15 }
     }
 
-    private fun gen1(rom: RomImage, layout: ResolvedRomLayout): Map<Int, RgbaSprite> {
+    private fun gen1(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        cancellation: ParserCancellationToken,
+    ): Map<Int, RgbaSprite> {
         val table = layout.tables.sprites ?: return emptyMap()
         return buildMap {
             repeat(table.count) { index ->
@@ -192,7 +198,7 @@ object SpriteMaterializer {
                 }
                 if (indexed != null) put(index + 1, TileRenderer.applyArgbPalette(indexed, GB_GRAYSCALE))
             }
-            Gen1DetachedSpeciesResolver.resolve(rom, table).forEach { (dexNumber, record) ->
+            Gen1DetachedSpeciesResolver.resolve(rom, table, cancellation).forEach { (dexNumber, record) ->
                 Gen1DetachedSpeciesResolver.decodeFrontSprite(rom, record)?.let { indexed ->
                     put(dexNumber, TileRenderer.applyArgbPalette(indexed, GB_GRAYSCALE))
                 }

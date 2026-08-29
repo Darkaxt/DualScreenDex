@@ -74,6 +74,12 @@ class OfficialGen12CompletionLiveRomTest {
         ))
         assertNotNull(mew.sprite.value)
         assertEquals(151, catalog.navigableSpecies().size)
+        assertEquals(151, catalog.speciesById.values.count {
+            it.dexNumber.status == CapabilityStatus.AVAILABLE
+        })
+        assertEquals(39, catalog.speciesById.values.count {
+            it.dexNumber.status == CapabilityStatus.NOT_APPLICABLE
+        })
         assertCapability(catalog.capabilities.getValue(RomCapability.SPECIES_CATALOG), 151)
         assertCapability(catalog.capabilities.getValue(RomCapability.BASE_STATS), 151)
         assertCapability(catalog.capabilities.getValue(RomCapability.SPRITES), 151)

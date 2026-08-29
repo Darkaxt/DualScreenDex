@@ -101,6 +101,13 @@ $romRoot = Join-Path $workPath 'roms'
 $cacheRoot = Join-Path $workPath 'catalog-cache'
 $reportRoot = Join-Path $workPath 'report'
 
+$maximumArchiveEntries = 1024
+$maximumArchiveMemberBytes = 32L * 1024 * 1024
+$maximumArchiveAggregateBytes = 16L * 1024 * 1024 * 1024
+$maximumExtractionStagingBytes = $maximumArchiveAggregateBytes
+$maximumSevenZipOutputBytes = 1L * 1024 * 1024
+$sevenZipTimeoutSeconds = 120
+
 if ($Reset -and (Test-Path -LiteralPath $workPath)) {
     $resolvedWork = (Resolve-Path -LiteralPath $workPath).Path
     if ($resolvedWork -eq [System.IO.Path]::GetPathRoot($resolvedWork)) {
@@ -119,31 +126,715 @@ function Write-Stage([string] $message) {
     Write-Output "[$stamp] $message"
 }
 
-function Invoke-SevenZip([string[]] $Arguments) {
-    $output = & $sevenZipPath @Arguments 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "7-Zip failed with exit code $LASTEXITCODE`n$($output -join [Environment]::NewLine)"
+function Initialize-DualDexBoundedProcessType {
+    if ('DualDexBoundedProcessRunner' -as [type]) {
+        return
     }
-    return @($output)
+
+    Add-Type -TypeDefinition @'
+using System;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+
+public sealed class DualDexBoundedProcessResult
+{
+    public int ExitCode { get; set; }
+    public string[] Output { get; set; }
+    public bool TimedOut { get; set; }
+    public bool OutputLimitExceeded { get; set; }
+    public bool StagingLimitExceeded { get; set; }
 }
 
-function Read-ArchiveEntries([string] $archivePath) {
-    $listing = Invoke-SevenZip @('l', '-slt', '-sccUTF-8', '--', $archivePath)
-    $separator = [Array]::IndexOf($listing, '----------')
+internal sealed class DualDexBoundedOutputCapture
+{
+    private readonly object gate = new object();
+    private readonly long maximumBytes;
+    private readonly MemoryStream retained = new MemoryStream();
+    private bool limitExceeded;
+
+    public DualDexBoundedOutputCapture(long maximumBytes)
+    {
+        this.maximumBytes = maximumBytes;
+    }
+
+    public bool LimitExceeded
+    {
+        get
+        {
+            lock (gate) return limitExceeded;
+        }
+    }
+
+    public void Drain(Stream stream)
+    {
+        var chunk = new byte[4096];
+        try
+        {
+            while (true)
+            {
+                var count = stream.Read(chunk, 0, chunk.Length);
+                if (count <= 0) return;
+                lock (gate)
+                {
+                    var remaining = maximumBytes - retained.Length;
+                    if (count > remaining)
+                    {
+                        if (remaining > 0) retained.Write(chunk, 0, (int)remaining);
+                        limitExceeded = true;
+                        return;
+                    }
+                    retained.Write(chunk, 0, count);
+                }
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    public string[] GetLines()
+    {
+        lock (gate)
+        {
+            if (retained.Length == 0) return new string[0];
+            var text = Encoding.UTF8.GetString(retained.ToArray());
+            return text.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+        }
+    }
+}
+
+internal sealed class DualDexProcessJob : IDisposable
+{
+    private const uint BasicAccountingInformationClass = 1;
+    private const uint ExtendedLimitInformationClass = 9;
+    private const uint JobObjectLimitKillOnJobClose = 0x00002000;
+    private IntPtr handle;
+
+    public DualDexProcessJob()
+    {
+        handle = CreateJobObject(IntPtr.Zero, null);
+        if (handle == IntPtr.Zero)
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "could not create process job");
+        }
+
+        var limits = new JobObjectExtendedLimitInformation();
+        limits.BasicLimitInformation.LimitFlags = JobObjectLimitKillOnJobClose;
+        var size = Marshal.SizeOf(typeof(JobObjectExtendedLimitInformation));
+        var buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            Marshal.StructureToPtr(limits, buffer, false);
+            if (!SetInformationJobObject(handle, ExtendedLimitInformationClass, buffer, (uint)size))
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "could not configure kill-on-close process job");
+            }
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    public void Assign(Process process)
+    {
+        if (process == null) throw new ArgumentNullException("process");
+        if (handle == IntPtr.Zero) throw new ObjectDisposedException("DualDexProcessJob");
+        if (!AssignProcessToJobObject(handle, process.Handle))
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "could not assign extractor to owned process job");
+        }
+    }
+
+    public void Terminate()
+    {
+        if (handle == IntPtr.Zero) return;
+        if (!TerminateJobObject(handle, 1))
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "could not terminate owned process job");
+        }
+    }
+
+    public void WaitForEmptyOrThrow(int graceMilliseconds)
+    {
+        if (graceMilliseconds < 1) throw new ArgumentOutOfRangeException("graceMilliseconds");
+        if (handle == IntPtr.Zero) throw new ObjectDisposedException("DualDexProcessJob");
+
+        var size = Marshal.SizeOf(typeof(JobObjectBasicAccountingInformation));
+        var buffer = Marshal.AllocHGlobal(size);
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            while (true)
+            {
+                uint returnedLength;
+                if (!QueryInformationJobObject(
+                    handle,
+                    BasicAccountingInformationClass,
+                    buffer,
+                    (uint)size,
+                    out returnedLength))
+                {
+                    throw new Win32Exception(
+                        Marshal.GetLastWin32Error(),
+                        "could not query owned process job accounting");
+                }
+                var accounting = (JobObjectBasicAccountingInformation)Marshal.PtrToStructure(
+                    buffer,
+                    typeof(JobObjectBasicAccountingInformation));
+                if (accounting.ActiveProcesses == 0) return;
+
+                var remainingMilliseconds = graceMilliseconds - stopwatch.ElapsedMilliseconds;
+                if (remainingMilliseconds <= 0)
+                {
+                    throw new InvalidOperationException(
+                        "owned process job did not reach zero active processes within " +
+                        graceMilliseconds + " ms");
+                }
+                Thread.Sleep((int)Math.Min(10, remainingMilliseconds));
+            }
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    public void Dispose()
+    {
+        var ownedHandle = Interlocked.Exchange(ref handle, IntPtr.Zero);
+        if (ownedHandle != IntPtr.Zero && !CloseHandle(ownedHandle))
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "could not close owned process job");
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct JobObjectBasicAccountingInformation
+    {
+        public long TotalUserTime;
+        public long TotalKernelTime;
+        public long ThisPeriodTotalUserTime;
+        public long ThisPeriodTotalKernelTime;
+        public uint TotalPageFaultCount;
+        public uint TotalProcesses;
+        public uint ActiveProcesses;
+        public uint TotalTerminatedProcesses;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct IoCounters
+    {
+        public ulong ReadOperationCount;
+        public ulong WriteOperationCount;
+        public ulong OtherOperationCount;
+        public ulong ReadTransferCount;
+        public ulong WriteTransferCount;
+        public ulong OtherTransferCount;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct JobObjectBasicLimitInformation
+    {
+        public long PerProcessUserTimeLimit;
+        public long PerJobUserTimeLimit;
+        public uint LimitFlags;
+        public UIntPtr MinimumWorkingSetSize;
+        public UIntPtr MaximumWorkingSetSize;
+        public uint ActiveProcessLimit;
+        public UIntPtr Affinity;
+        public uint PriorityClass;
+        public uint SchedulingClass;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct JobObjectExtendedLimitInformation
+    {
+        public JobObjectBasicLimitInformation BasicLimitInformation;
+        public IoCounters IoInfo;
+        public UIntPtr ProcessMemoryLimit;
+        public UIntPtr JobMemoryLimit;
+        public UIntPtr PeakProcessMemoryUsed;
+        public UIntPtr PeakJobMemoryUsed;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr CreateJobObject(IntPtr securityAttributes, string name);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetInformationJobObject(
+        IntPtr job,
+        uint informationClass,
+        IntPtr information,
+        uint informationLength);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool QueryInformationJobObject(
+        IntPtr job,
+        uint informationClass,
+        IntPtr information,
+        uint informationLength,
+        out uint returnLength);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool AssignProcessToJobObject(IntPtr job, IntPtr process);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool TerminateJobObject(IntPtr job, uint exitCode);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(IntPtr handle);
+}
+
+public static class DualDexBoundedProcessRunner
+{
+    private const int TerminationGraceMilliseconds = 5000;
+    private const int StreamCloseGraceMilliseconds = 5000;
+
+    public static DualDexBoundedProcessResult Run(
+        string filePath,
+        string[] arguments,
+        int timeoutSeconds,
+        long maximumOutputBytes,
+        string stagingRoot,
+        long maximumStagingBytes)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = filePath,
+            Arguments = BuildArguments(arguments),
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+        var process = new Process { StartInfo = startInfo };
+        var job = new DualDexProcessJob();
+        var output = new DualDexBoundedOutputCapture(maximumOutputBytes);
+        Thread outputThread = null;
+        Thread errorThread = null;
+        var timedOut = false;
+        var stagingExceeded = false;
+        var started = false;
+        var jobClosed = false;
+        var jobTerminationRequested = false;
+        try
+        {
+            if (!process.Start()) throw new InvalidOperationException("process did not start");
+            started = true;
+            job.Assign(process);
+            outputThread = new Thread(delegate() { output.Drain(process.StandardOutput.BaseStream); });
+            errorThread = new Thread(delegate() { output.Drain(process.StandardError.BaseStream); });
+            outputThread.IsBackground = true;
+            errorThread.IsBackground = true;
+            outputThread.Start();
+            errorThread.Start();
+
+            var deadline = Stopwatch.StartNew();
+            while (!process.WaitForExit(50))
+            {
+                if (output.LimitExceeded) break;
+                if (deadline.Elapsed >= TimeSpan.FromSeconds(timeoutSeconds))
+                {
+                    timedOut = true;
+                    break;
+                }
+                if (!string.IsNullOrEmpty(stagingRoot) && Directory.Exists(stagingRoot))
+                {
+                    long stagedBytes = 0;
+                    foreach (var path in Directory.EnumerateFiles(stagingRoot, "*", SearchOption.AllDirectories))
+                    {
+                        var length = new FileInfo(path).Length;
+                        if (length > maximumStagingBytes - stagedBytes)
+                        {
+                            stagingExceeded = true;
+                            break;
+                        }
+                        stagedBytes += length;
+                    }
+                    if (stagingExceeded) break;
+                }
+            }
+
+            if (output.LimitExceeded || timedOut || stagingExceeded)
+            {
+                job.Terminate();
+                jobTerminationRequested = true;
+            }
+            WaitForExitOrThrow(process, TerminationGraceMilliseconds);
+            var exitCode = process.ExitCode;
+
+            if (!jobTerminationRequested)
+            {
+                job.Terminate();
+                jobTerminationRequested = true;
+            }
+            job.WaitForEmptyOrThrow(TerminationGraceMilliseconds);
+            job.Dispose();
+            jobClosed = true;
+            JoinThreadOrThrow(outputThread, StreamCloseGraceMilliseconds, "standard output");
+            JoinThreadOrThrow(errorThread, StreamCloseGraceMilliseconds, "standard error");
+
+            return new DualDexBoundedProcessResult
+            {
+                ExitCode = exitCode,
+                Output = output.GetLines(),
+                TimedOut = timedOut,
+                OutputLimitExceeded = output.LimitExceeded,
+                StagingLimitExceeded = stagingExceeded
+            };
+        }
+        finally
+        {
+            Exception cleanupFailure = null;
+            if (!jobClosed)
+            {
+                if (started && !jobTerminationRequested)
+                {
+                    try
+                    {
+                        job.Terminate();
+                        jobTerminationRequested = true;
+                    }
+                    catch (Exception error)
+                    {
+                        cleanupFailure = error;
+                    }
+                }
+                if (started)
+                {
+                    try
+                    {
+                        job.WaitForEmptyOrThrow(TerminationGraceMilliseconds);
+                    }
+                    catch (Exception error)
+                    {
+                        if (cleanupFailure == null) cleanupFailure = error;
+                    }
+                }
+                try
+                {
+                    job.Dispose();
+                    jobClosed = true;
+                }
+                catch (Exception error)
+                {
+                    if (cleanupFailure == null) cleanupFailure = error;
+                }
+            }
+            if (started && !process.HasExited)
+            {
+                try
+                {
+                    WaitForExitOrThrow(process, TerminationGraceMilliseconds);
+                }
+                catch (Exception error)
+                {
+                    if (cleanupFailure == null) cleanupFailure = error;
+                }
+            }
+            try
+            {
+                JoinThreadOrThrow(outputThread, StreamCloseGraceMilliseconds, "standard output");
+                JoinThreadOrThrow(errorThread, StreamCloseGraceMilliseconds, "standard error");
+            }
+            catch (Exception error)
+            {
+                if (cleanupFailure == null) cleanupFailure = error;
+            }
+            process.Dispose();
+            if (cleanupFailure != null)
+            {
+                throw new InvalidOperationException("bounded process cleanup failed", cleanupFailure);
+            }
+        }
+    }
+
+    public static void WaitForExitOrThrow(Process process, int graceMilliseconds)
+    {
+        if (process == null) throw new ArgumentNullException("process");
+        if (graceMilliseconds < 1) throw new ArgumentOutOfRangeException("graceMilliseconds");
+        if (!process.WaitForExit(graceMilliseconds))
+        {
+            throw new InvalidOperationException(
+                "process did not terminate within " + graceMilliseconds + " ms");
+        }
+    }
+
+    private static void JoinThreadOrThrow(Thread thread, int graceMilliseconds, string streamName)
+    {
+        if (thread != null && thread.IsAlive && !thread.Join(graceMilliseconds))
+        {
+            throw new InvalidOperationException(
+                "process " + streamName + " stream did not close within " + graceMilliseconds + " ms");
+        }
+    }
+
+    private static string BuildArguments(string[] arguments)
+    {
+        var commandLine = new StringBuilder();
+        foreach (var argument in arguments)
+        {
+            if (commandLine.Length > 0) commandLine.Append(' ');
+            commandLine.Append(QuoteArgument(argument ?? string.Empty));
+        }
+        return commandLine.ToString();
+    }
+
+    private static string QuoteArgument(string argument)
+    {
+        var requiresQuotes = argument.Length == 0;
+        for (var index = 0; index < argument.Length && !requiresQuotes; index++)
+        {
+            requiresQuotes = char.IsWhiteSpace(argument[index]) || argument[index] == '"';
+        }
+        if (!requiresQuotes) return argument;
+
+        var quoted = new StringBuilder();
+        quoted.Append('"');
+        var backslashes = 0;
+        foreach (var character in argument)
+        {
+            if (character == '\\')
+            {
+                backslashes++;
+            }
+            else if (character == '"')
+            {
+                quoted.Append('\\', backslashes * 2 + 1);
+                quoted.Append('"');
+                backslashes = 0;
+            }
+            else
+            {
+                quoted.Append('\\', backslashes);
+                quoted.Append(character);
+                backslashes = 0;
+            }
+        }
+        quoted.Append('\\', backslashes * 2);
+        quoted.Append('"');
+        return quoted.ToString();
+    }
+}
+'@
+}
+
+function Remove-DualDexDirectoryBounded {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+
+        [ValidateRange(1, 2147483647)]
+        [int] $TimeoutMilliseconds = 5000,
+
+        [ValidateRange(1, 2147483647)]
+        [int] $RetryDelayMilliseconds = 25
+    )
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $lastFailure = $null
+    while ([System.IO.Directory]::Exists($fullPath)) {
+        try {
+            [System.IO.Directory]::Delete($fullPath, $true)
+            return
+        } catch [System.IO.IOException] {
+            $lastFailure = $_.Exception
+        } catch [System.UnauthorizedAccessException] {
+            $lastFailure = $_.Exception
+        }
+
+        $remainingMilliseconds = $TimeoutMilliseconds - $stopwatch.ElapsedMilliseconds
+        if ($remainingMilliseconds -le 0) {
+            $message = "7-Zip staging cleanup did not complete within $TimeoutMilliseconds ms: $fullPath"
+            throw [System.InvalidOperationException]::new($message, $lastFailure)
+        }
+        Start-Sleep -Milliseconds ([Math]::Min($RetryDelayMilliseconds, $remainingMilliseconds))
+    }
+}
+
+function Get-DualDexDirectoryUsage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+
+        [Parameter(Mandatory = $true)]
+        [long] $MaximumBytes
+    )
+
+    $bytes = 0L
+    $files = 0
+    if (Test-Path -LiteralPath $Path -PathType Container) {
+        foreach ($file in [System.IO.Directory]::EnumerateFiles($Path, '*', [System.IO.SearchOption]::AllDirectories)) {
+            $length = (Get-Item -LiteralPath $file).Length
+            if ($bytes -gt $MaximumBytes - $length) {
+                throw "7-Zip staging limit exceeded ($($bytes + $length) > $MaximumBytes bytes)"
+            }
+            $bytes += $length
+            $files++
+        }
+    }
+    return [pscustomobject]@{ Bytes = $bytes; Files = $files }
+}
+
+function Invoke-DualDexBoundedProcess {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $FilePath,
+
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [string[]] $Arguments,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 2147483647)]
+        [int] $TimeoutSeconds,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 9223372036854775807)]
+        [long] $MaximumOutputBytes,
+
+        [string] $StagingRoot,
+
+        [ValidateRange(1, 9223372036854775807)]
+        [long] $MaximumStagingBytes = 1
+    )
+
+    Initialize-DualDexBoundedProcessType
+    $effectivePath = [System.IO.Path]::GetFullPath($FilePath)
+    $effectiveArguments = [System.Collections.Generic.List[string]]::new()
+    if ([System.IO.Path]::GetExtension($effectivePath) -eq '.ps1') {
+        $quotedScriptPath = "'" + $effectivePath.Replace("'", "''") + "'"
+        $scriptInvocation = "& $quotedScriptPath"
+        foreach ($argument in $Arguments) {
+            $quotedArgument = "'" + ([string] $argument).Replace("'", "''") + "'"
+            $scriptInvocation += " $quotedArgument"
+        }
+        $hostPath = (Get-Process -Id $PID).Path
+        $effectiveArguments.Add('-NoProfile')
+        $effectiveArguments.Add('-NonInteractive')
+        $effectiveArguments.Add('-Command')
+        $effectiveArguments.Add($scriptInvocation)
+        $effectivePath = $hostPath
+    } else {
+        foreach ($argument in $Arguments) {
+            $effectiveArguments.Add([string] $argument)
+        }
+    }
+
+    $result = [DualDexBoundedProcessRunner]::Run(
+        $effectivePath,
+        @($effectiveArguments),
+        $TimeoutSeconds,
+        $MaximumOutputBytes,
+        $StagingRoot,
+        $MaximumStagingBytes
+    )
+    if ($result.OutputLimitExceeded) {
+        throw "7-Zip output limit exceeded ($MaximumOutputBytes bytes)"
+    }
+    if ($result.StagingLimitExceeded) {
+        throw "7-Zip staging limit exceeded ($MaximumStagingBytes bytes)"
+    }
+    if ($result.TimedOut) {
+        throw "7-Zip timed out after $TimeoutSeconds seconds"
+    }
+    return $result
+}
+
+function Invoke-SevenZip {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]] $Arguments,
+
+        [int] $TimeoutSeconds = $sevenZipTimeoutSeconds,
+
+        [long] $MaximumOutputBytes = $maximumSevenZipOutputBytes,
+
+        [string] $StagingRoot,
+
+        [long] $MaximumStagingBytes = $maximumExtractionStagingBytes
+    )
+
+    $result = Invoke-DualDexBoundedProcess `
+        -FilePath $sevenZipPath `
+        -Arguments $Arguments `
+        -TimeoutSeconds $TimeoutSeconds `
+        -MaximumOutputBytes $MaximumOutputBytes `
+        -StagingRoot $StagingRoot `
+        -MaximumStagingBytes $MaximumStagingBytes
+    if ($result.ExitCode -ne 0) {
+        throw "7-Zip failed with exit code $($result.ExitCode)`n$($result.Output -join [Environment]::NewLine)"
+    }
+    return @($result.Output)
+}
+
+function ConvertFrom-DualDexSevenZipListing {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string[]] $Listing,
+
+        [Parameter(Mandatory = $true)]
+        [string] $ArchivePath,
+
+        [Parameter(Mandatory = $true)]
+        [int] $MaximumEntries,
+
+        [Parameter(Mandatory = $true)]
+        [long] $MaximumMemberBytes,
+
+        [Parameter(Mandatory = $true)]
+        [long] $MaximumAggregateBytes
+    )
+
+    if (@($Listing | Where-Object { $_ -eq 'Solid = +' }).Count -gt 0) {
+        throw "7-Zip solid archive is not supported by the bounded corpus policy: $ArchivePath"
+    }
+    $separator = [Array]::IndexOf($Listing, '----------')
     if ($separator -lt 0) {
-        throw "7-Zip listing has no entry separator: $archivePath"
+        throw "7-Zip listing has no entry separator: $ArchivePath"
     }
 
     $entries = [System.Collections.Generic.List[object]]::new()
+    $aggregateBytes = 0L
     $fields = @{}
-    foreach ($line in @($listing | Select-Object -Skip ($separator + 1)) + '') {
+    foreach ($line in @($Listing | Select-Object -Skip ($separator + 1)) + '') {
         if ([string]::IsNullOrWhiteSpace($line)) {
             if ($fields.Count -gt 0) {
                 $entryPath = [string] $fields['Path']
                 if ($entryPath) {
+                    if ($entries.Count -eq $MaximumEntries) {
+                        throw "7-Zip archive entry limit exceeded ($($entries.Count + 1) > $MaximumEntries): $ArchivePath"
+                    }
+                    $size = 0L
+                    if ($fields.ContainsKey('Size') -and
+                        -not [long]::TryParse([string] $fields['Size'], [ref] $size)) {
+                        throw "7-Zip archive member has an invalid size: $ArchivePath :: $entryPath"
+                    }
+                    if ($size -lt 0 -or $size -gt $MaximumMemberBytes) {
+                        throw "7-Zip archive member exceeds $MaximumMemberBytes bytes: $ArchivePath :: $entryPath"
+                    }
+                    if ($aggregateBytes -gt $MaximumAggregateBytes - $size) {
+                        throw "7-Zip archive aggregate exceeds $MaximumAggregateBytes bytes: $ArchivePath"
+                    }
+                    $aggregateBytes += $size
                     $entries.Add([pscustomobject]@{
                         Path = $entryPath
-                        Size = if ($fields.ContainsKey('Size')) { [long] $fields['Size'] } else { 0L }
+                        Size = $size
                         Attributes = if ($fields.ContainsKey('Attributes')) { [string] $fields['Attributes'] } else { '' }
                     })
                 }
@@ -157,7 +848,20 @@ function Read-ArchiveEntries([string] $archivePath) {
             $fields[$line.Substring(0, $split)] = $line.Substring($split + 3)
         }
     }
-    return $entries
+    return [pscustomobject]@{
+        Entries = @($entries)
+        AggregateBytes = $aggregateBytes
+    }
+}
+
+function Read-ArchiveEntries([string] $archivePath) {
+    $listing = Invoke-SevenZip -Arguments @('l', '-slt', '-sccUTF-8', '--', $archivePath)
+    return ConvertFrom-DualDexSevenZipListing `
+        -Listing $listing `
+        -ArchivePath $archivePath `
+        -MaximumEntries $maximumArchiveEntries `
+        -MaximumMemberBytes $maximumArchiveMemberBytes `
+        -MaximumAggregateBytes $maximumArchiveAggregateBytes
 }
 
 function Assert-SafeEntryPath([string] $entryPath, [string] $archivePath) {
@@ -267,7 +971,13 @@ function Install-DualDexArchivePayloads {
         [string] $ArchiveOutput,
 
         [Parameter(Mandatory = $true)]
-        [object[]] $RomEntries
+        [object[]] $RomEntries,
+
+        [long] $MaximumStagingBytes = $maximumExtractionStagingBytes,
+
+        [long] $MaximumSevenZipOutputBytes = $maximumSevenZipOutputBytes,
+
+        [int] $SevenZipTimeoutSeconds = $sevenZipTimeoutSeconds
     )
 
     $stagingParent = Join-Path $workPath 'extraction-staging'
@@ -276,7 +986,16 @@ function Install-DualDexArchivePayloads {
     [System.IO.Directory]::CreateDirectory($stagingRoot) | Out-Null
     try {
         $extractArguments = @('x', '-y', '-sccUTF-8', ('-o' + $stagingRoot), '--', $ArchivePath) + @($RomEntries.Path)
-        Invoke-SevenZip $extractArguments | Out-Null
+        Invoke-SevenZip `
+            -Arguments $extractArguments `
+            -TimeoutSeconds $SevenZipTimeoutSeconds `
+            -MaximumOutputBytes $MaximumSevenZipOutputBytes `
+            -StagingRoot $stagingRoot `
+            -MaximumStagingBytes $MaximumStagingBytes | Out-Null
+        $stagingUsage = Get-DualDexDirectoryUsage -Path $stagingRoot -MaximumBytes $MaximumStagingBytes
+        if ($stagingUsage.Files -gt $RomEntries.Count) {
+            throw "7-Zip staged unexpected files ($($stagingUsage.Files) > $($RomEntries.Count))"
+        }
         $stagingPrefix = [System.IO.Path]::GetFullPath($stagingRoot + [System.IO.Path]::DirectorySeparatorChar)
         $outputPrefix = [System.IO.Path]::GetFullPath($ArchiveOutput + [System.IO.Path]::DirectorySeparatorChar)
         $provenanceEntries = [System.Collections.Generic.List[object]]::new()
@@ -330,9 +1049,7 @@ function Install-DualDexArchivePayloads {
                 entries = @($provenanceEntries)
             })
     } finally {
-        if (Test-Path -LiteralPath $stagingRoot -PathType Container) {
-            [System.IO.Directory]::Delete($stagingRoot, $true)
-        }
+        Remove-DualDexDirectoryBounded -Path $stagingRoot
     }
 }
 
@@ -349,14 +1066,15 @@ for ($archiveIndex = 0; $archiveIndex -lt $archives.Count; $archiveIndex++) {
     $archive = $archives[$archiveIndex]
     $relativeArchive = [System.IO.Path]::GetRelativePath($sourcePath, $archive.FullName)
     Write-Stage "Archive $($archiveIndex + 1)/$($archives.Count): $relativeArchive"
-    Invoke-SevenZip @('t', '-sccUTF-8', '--', $archive.FullName) | Out-Null
 
     $archiveSha = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-    $entries = @(Read-ArchiveEntries $archive.FullName)
+    $archiveListing = Read-ArchiveEntries $archive.FullName
+    $entries = @($archiveListing.Entries)
     $romEntries = @($entries | Where-Object { [System.IO.Path]::GetExtension($_.Path).ToLowerInvariant() -in '.gb', '.gbc', '.gba' })
     foreach ($entry in $entries) {
         Assert-SafeEntryPath $entry.Path $archive.FullName
     }
+    Invoke-SevenZip -Arguments @('t', '-sccUTF-8', '--', $archive.FullName) | Out-Null
 
     $archiveRows.Add([pscustomobject]@{
         RelativePath = $relativeArchive
@@ -424,9 +1142,17 @@ $uniqueRomCount = @($payloadRows.RomSha256 | Sort-Object -Unique).Count
 Write-Stage "Extracted $($payloadRows.Count) ROM payloads with $uniqueRomCount unique SHA-256 hashes"
 
 $gradle = Join-Path $projectRoot 'gradlew.bat'
+$sourceCommit = (& git -C $projectRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}$') {
+    throw 'Could not resolve the parser source commit.'
+}
+$trackedChanges = @(& git -C $projectRoot status --porcelain --untracked-files=no)
+if ($LASTEXITCODE -ne 0 -or $trackedChanges.Count -ne 0) {
+    throw 'Corpus evidence requires a clean tracked source tree.'
+}
 if (-not $SkipBuild) {
     Write-Stage 'Building parser CLI distribution'
-    & $gradle '--project-dir' $projectRoot ':parser-cli:installDist' '--console=plain'
+    & $gradle '--project-dir' $projectRoot ':parser-cli:installDist' "-PdualdexSourceCommit=$sourceCommit" '--console=plain'
     if ($LASTEXITCODE -ne 0) {
         throw "Gradle parser CLI build failed with exit code $LASTEXITCODE"
     }
@@ -435,6 +1161,7 @@ if (-not $SkipBuild) {
 $parserCli = Join-Path $projectRoot 'parser-cli\build\install\parser-cli\bin\parser-cli.bat'
 $reportJson = Join-Path $reportRoot 'compatibility.json'
 $reportMarkdown = Join-Path $reportRoot 'compatibility.md'
+$executionReceipt = Join-Path $reportRoot 'compatibility-execution.json'
 if ($ReviewIncomplete) {
     & (Join-Path $PSScriptRoot 'Invoke-DualDexCorpusReview.ps1') `
         -RomManifest $romJson `
@@ -456,7 +1183,9 @@ if ($ReviewIncomplete) {
     return
 }
 Write-Stage "Parsing $($payloadRows.Count) ROM payloads"
-& $parserCli $romRoot '--json' $reportJson '--markdown' $reportMarkdown '--cache-dir' $cacheRoot '--all-roms'
+& $parserCli $romRoot '--json' $reportJson '--markdown' $reportMarkdown `
+    '--execution-receipt' $executionReceipt '--source-commit' $sourceCommit `
+    '--cache-dir' $cacheRoot '--all-roms'
 if ($LASTEXITCODE -ne 0) {
     throw "Parser CLI failed with exit code $LASTEXITCODE"
 }

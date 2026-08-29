@@ -1,6 +1,9 @@
 package com.darkaxt.dualdex.web
 
+import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
+import com.darkaxt.dualdex.save.SaveSnapshot
 import com.enrpau.dualscreendex.companion.api.RetroArchView
+import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
@@ -18,6 +21,7 @@ import com.enrpau.dualscreendex.parser.catalog.MapTimePaletteModel
 import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.RenderedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TrainerAssetCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
@@ -30,9 +34,12 @@ import com.google.gson.JsonParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
+import java.io.OutputStream
+import java.lang.reflect.InvocationTargetException
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -436,6 +443,98 @@ class AndroidLoopbackServerTest {
     }
 
     @Test
+    fun deletesSpoolWhenBodyWritingFailsWithOutOfMemory() {
+        Files.createDirectories(Path.of("build"))
+        val spoolDirectory = Files.createTempDirectory(Path.of("build"), "loopback-oom-spool-")
+        val createdBodies = mutableListOf<Path>()
+        val server = AndroidLoopbackServer(
+            ProductionCompanionRuntime(),
+            requestBodySpoolFactory = {
+                Files.createTempFile(spoolDirectory, "request-", ".body").also(createdBodies::add)
+            },
+            assetLoader = { null },
+        )
+        try {
+            val writer: (OutputStream) -> Long = {
+                throw OutOfMemoryError("synthetic request body writer failure")
+            }
+            val spoolBody = AndroidLoopbackServer::class.java.getDeclaredMethod("spoolBody", Function1::class.java)
+            spoolBody.isAccessible = true
+
+            val failure = assertThrows(InvocationTargetException::class.java) {
+                spoolBody.invoke(server, writer)
+            }
+
+            assertTrue(failure.cause is OutOfMemoryError)
+            assertEquals(1, createdBodies.size)
+            assertTrue(createdBodies.all(Files::notExists))
+            assertFalse(Files.list(spoolDirectory).use { it.findAny().isPresent })
+        } finally {
+            server.close()
+            createdBodies.forEach(Files::deleteIfExists)
+            Files.deleteIfExists(spoolDirectory)
+        }
+    }
+
+    @Test
+    fun rejectsChunkedQuotaOverflowBeforeWritingItAndKeepsTheServerUsable() {
+        Files.createDirectories(Path.of("build"))
+        val spoolDirectory = Files.createTempDirectory(Path.of("build"), "loopback-chunked-quota-")
+        val createdBodies = mutableListOf<Path>()
+        val server = AndroidLoopbackServer(
+            ProductionCompanionRuntime(),
+            requestBodySpoolFactory = {
+                Files.createTempFile(spoolDirectory, "request-", ".body").also(createdBodies::add)
+            },
+            requestReadTimeoutMillis = 250,
+            assetLoader = { null },
+        )
+        try {
+            server.start()
+            val boundaryPrefix = "{\"type\":\"SETTINGS\",\"padding\":\""
+            val boundarySuffix = "\"}"
+            val boundary = boundaryPrefix + "x".repeat(1024 * 1024 - boundaryPrefix.length - boundarySuffix.length) + boundarySuffix
+            assertEquals(1024 * 1024, boundary.toByteArray().size)
+            val boundaryResponse = rawRequest(
+                server.address.port,
+                "POST /api/actions HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" +
+                    "${boundary.length.toString(16)}\r\n$boundary\r\n0\r\n\r\n",
+            )
+            assertTrue(boundaryResponse.startsWith("HTTP/1.1 200 "))
+            assertTrue(boundaryResponse.substringAfter("\r\n\r\n").contains("\"version\":"))
+
+            Socket(AndroidLoopbackServer.LOOPBACK_HOST, server.address.port).use { client ->
+                client.soTimeout = 2_000
+                client.getOutputStream().write(
+                    (
+                        "POST /api/actions HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n" +
+                            "1\r\nx\r\n7fffffffffffffff\r\n"
+                        ).toByteArray(Charsets.US_ASCII),
+                )
+                client.getOutputStream().flush()
+                assertRawApiError(
+                    client.getInputStream().readBytes().toString(Charsets.UTF_8),
+                    status = 400,
+                    code = "INVALID_REQUEST",
+                    retryable = false,
+                )
+            }
+
+            assertEquals(2, createdBodies.size)
+            assertTrue(createdBodies.all(Files::notExists))
+            assertFalse(Files.list(spoolDirectory).use { it.findAny().isPresent })
+            val bootstrap = URI("http://127.0.0.1:${server.address.port}/api/bootstrap")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(200, bootstrap.responseCode)
+            assertTrue(bootstrap.inputStream.reader().readText().contains("\"state\""))
+        } finally {
+            server.close()
+            createdBodies.forEach(Files::deleteIfExists)
+            Files.deleteIfExists(spoolDirectory)
+        }
+    }
+
+    @Test
     fun containsManualSourceFailuresAndKeepsServingRequests() {
         val runtime = ProductionCompanionRuntime()
         val server = AndroidLoopbackServer(
@@ -630,7 +729,7 @@ class AndroidLoopbackServerTest {
             assertEquals(400, invalid.responseCode)
             val corrupt = URI("$base/api/maps/local%2F0003%2Fmap.png?lighting=DAY")
                 .toURL().openConnection() as HttpURLConnection
-            assertEquals(404, corrupt.responseCode)
+            assertMapUnavailable(corrupt, "IllegalArgumentException")
 
             val noon = URI("$base/api/maps/local%2F0004%2Fmap.png?hour=12&minute=0")
                 .toURL().openConnection() as HttpURLConnection
@@ -646,6 +745,58 @@ class AndroidLoopbackServerTest {
             assertEquals(404, missing.responseCode)
             val traversal = URI("$base/api/maps/..%2Fsecret.png").toURL().openConnection() as HttpURLConnection
             assertEquals(404, traversal.responseCode)
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun distinguishesMissingMapsFromRecoverableRendererFailuresWithoutLeakingDetails() {
+        var recover = false
+        val runtime = ProductionCompanionRuntime(
+            mapAssetRenderer = { _, key, _, _ ->
+                when (key) {
+                    "missing" -> null
+                    "exception", "recover" -> {
+                        if (!recover) throw IllegalStateException("private renderer detail")
+                        RenderedMapAsset(byteArrayOf(1), null)
+                    }
+                    "memory" -> throw OutOfMemoryError("private allocator detail")
+                    else -> error("unexpected map key")
+                }
+            },
+        ).apply {
+            loadCatalog("maps.gba", ParsedCatalog("map-catalog", EngineFamily.EMERALD, Platform.GBA))
+        }
+        val server = AndroidLoopbackServer(runtime) { null }
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+
+            assertApiError(
+                URI("$base/api/maps/missing.png").toURL().openConnection() as HttpURLConnection,
+                status = 404,
+                code = "NOT_FOUND",
+                retryable = false,
+            )
+            val exception = assertMapUnavailable(
+                URI("$base/api/maps/exception.png").toURL().openConnection() as HttpURLConnection,
+                diagnostic = "IllegalStateException",
+            )
+            assertFalse(exception.contains("private renderer detail"))
+            val memory = assertMapUnavailable(
+                URI("$base/api/maps/memory.png").toURL().openConnection() as HttpURLConnection,
+                diagnostic = "OutOfMemoryError",
+            )
+            assertFalse(memory.contains("private allocator detail"))
+            val bootstrap = URI("$base/api/bootstrap").toURL().openConnection() as HttpURLConnection
+            assertEquals(200, bootstrap.responseCode)
+            bootstrap.inputStream.use { it.readBytes() }
+
+            recover = true
+            val recovered = URI("$base/api/maps/recover.png").toURL().openConnection() as HttpURLConnection
+            assertEquals(200, recovered.responseCode)
+            assertEquals(listOf(1.toByte()), recovered.inputStream.readBytes().toList())
         } finally {
             server.close()
         }
@@ -675,9 +826,69 @@ class AndroidLoopbackServerTest {
             assertEquals(-1L, bootstrapConnection.contentLengthLong)
             val bootstrap = bootstrapConnection.inputStream.reader().readText()
             assertTrue(bootstrap.contains("\"crc32\":\"89ABCDEF\""))
+            assertTrue(bootstrap.contains("\"catalogHash\":\"sha\""))
+            assertTrue(bootstrap.contains("\"mapperAvailable\":true"))
             assertTrue(bootstrap.contains("\"battle\":null"))
+
+            val state = URI("http://127.0.0.1:${server.address.port}/api/state")
+                .toURL().readText()
+            assertTrue(state.contains("\"catalogHash\":\"sha\""))
+            assertTrue(state.contains("\"mapperAvailable\":true"))
         } finally {
             server.close()
+        }
+    }
+
+    @Test
+    fun recoveryOnlySaveRamChangeAdvancesStateDeliveryExactlyOnce() {
+        val hash = "7".repeat(64)
+        val runtime = ProductionCompanionRuntime().apply {
+            loadCatalog("fixture.gba", ParsedCatalog(hash, EngineFamily.EMERALD, Platform.GBA))
+        }
+        val stateOwner = runtime.transientGameState as UnifiedGameStateDecoder
+        val snapshot = SaveSnapshot(
+            romIdentity = hash,
+            saveIdentity = "8".repeat(64),
+            saveGeneration = 3,
+            saveCounter = 1,
+            currentArea = null,
+            seenDexNumbers = emptySet(),
+            caughtDexNumbers = emptySet(),
+            party = emptyList(),
+            storedIndividuals = emptyList(),
+            capabilities = emptyMap(),
+        )
+        assertTrue(runtime.applySaveSnapshot(snapshot, SaveRamView(status = "MATCHED")))
+        val server = AndroidLoopbackServer(runtime) { null }
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+            val beforeVersion = runtime.stateView().version
+            val changedStatus = SaveRamView(
+                status = "STALE",
+                message = "Checkpoint storage is temporarily unavailable; retrying.",
+            )
+
+            stateOwner.acceptRecoveryStatus(changedStatus)
+
+            val changed = URI("$base/api/state?sinceVersion=$beforeVersion")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(200, changed.responseCode)
+            val changedBody = changed.inputStream.reader().readText()
+            assertTrue(changedBody.contains("\"status\":\"STALE\""))
+            assertTrue(changedBody.contains("Checkpoint storage is temporarily unavailable; retrying."))
+            val changedVersion = runtime.stateView().version
+            assertTrue(changedVersion > beforeVersion)
+
+            stateOwner.acceptRecoveryStatus(changedStatus)
+
+            val unchanged = URI("$base/api/state?sinceVersion=$changedVersion")
+                .toURL().openConnection() as HttpURLConnection
+            assertEquals(204, unchanged.responseCode)
+            assertTrue(unchanged.inputStream.readBytes().isEmpty())
+        } finally {
+            server.close()
+            runtime.close()
         }
     }
 
@@ -719,8 +930,9 @@ class AndroidLoopbackServerTest {
             val unchanged = URI("$base/api/state?sinceVersion=$currentVersion")
                 .toURL().openConnection() as HttpURLConnection
             assertEquals(204, unchanged.responseCode)
-            assertEquals(0L, unchanged.contentLengthLong)
+            assertEquals(-1L, unchanged.contentLengthLong)
             assertNull(unchanged.contentType)
+            assertEquals("no-store", unchanged.getHeaderField("Cache-Control"))
             assertTrue(unchanged.inputStream.readBytes().isEmpty())
 
             val changed = URI("$base/api/state?sinceVersion=${(currentVersion - 1).coerceAtLeast(0)}")
@@ -859,6 +1071,23 @@ class AndroidLoopbackServerTest {
         assertEquals("no-store", connection.getHeaderField("Cache-Control"))
         val body = requireNotNull(connection.errorStream).reader().readText()
         return assertApiErrorBody(body, code, retryable)
+    }
+
+    private fun assertMapUnavailable(connection: HttpURLConnection, diagnostic: String): String {
+        assertEquals(503, connection.responseCode)
+        assertEquals("application/json; charset=utf-8", connection.contentType)
+        assertEquals("no-store", connection.getHeaderField("Cache-Control"))
+        val body = requireNotNull(connection.errorStream).reader().readText()
+        val envelope = JsonParser.parseString(body).asJsonObject
+        assertEquals(setOf("error", "diagnostic"), envelope.keySet())
+        assertEquals(diagnostic, envelope.get("diagnostic").asString)
+        assertTrue(envelope.get("diagnostic").asString.length <= 64)
+        val error = envelope.getAsJsonObject("error")
+        assertEquals(setOf("code", "message", "retryable"), error.keySet())
+        assertEquals("MAP_UNAVAILABLE", error.get("code").asString)
+        assertTrue(error.get("retryable").asBoolean)
+        assertEquals("The map is temporarily unavailable. Try again.", error.get("message").asString)
+        return body
     }
 
     private fun assertRawApiError(

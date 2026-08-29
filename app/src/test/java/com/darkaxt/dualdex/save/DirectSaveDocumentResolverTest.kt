@@ -2,6 +2,8 @@ package com.darkaxt.dualdex.save
 
 import com.darkaxt.dualdex.retroarch.RomIndexEntry
 import com.darkaxt.dualdex.retroarch.RomPlatform
+import com.darkaxt.dualdex.storage.StorageTraversalLimitExceeded
+import com.darkaxt.dualdex.storage.StorageTraversalQuota
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -87,6 +89,72 @@ class DirectSaveDocumentResolverTest {
         assertEquals("second", target.read("Modern Emerald.srm.dualdex.json")?.toString(Charsets.UTF_8))
         assertThrows(IllegalArgumentException::class.java) { target.replace("../escape.json", byteArrayOf()) }
         assertTrue(root.listFiles().orEmpty().none { it.name.contains("dualdex.tmp") })
+    }
+
+    @Test
+    fun `fails before retaining more save candidates than the traversal result quota`() {
+        val root = temporaryRoot()
+        File(root, "Modern Emerald.srm").writeBytes(byteArrayOf(1))
+        File(root, "Modern Emerald.sav").writeBytes(byteArrayOf(2))
+
+        val result = runCatching {
+            DirectSaveDocumentResolver.discover(
+                entry = rom,
+                directories = listOf(root),
+                traversalQuota = StorageTraversalQuota(
+                    maximumNodes = 8,
+                    maximumDirectories = 2,
+                    maximumFiles = 4,
+                    maximumResults = 1,
+                ),
+            )
+        }
+
+        assertTrue(result.exceptionOrNull() is StorageTraversalLimitExceeded)
+    }
+
+    @Test
+    fun `shares one result quota across supplied save roots`() {
+        val first = temporaryRoot()
+        val second = temporaryRoot()
+        File(first, "Modern Emerald.srm").writeBytes(byteArrayOf(1))
+        File(second, "Modern Emerald.sav").writeBytes(byteArrayOf(2))
+
+        val result = runCatching {
+            DirectSaveDocumentResolver.discover(
+                entry = rom,
+                directories = listOf(first, second),
+                traversalQuota = StorageTraversalQuota(
+                    maximumNodes = 8,
+                    maximumDirectories = 4,
+                    maximumFiles = 4,
+                    maximumResults = 1,
+                ),
+            )
+        }
+
+        assertTrue(result.exceptionOrNull() is StorageTraversalLimitExceeded)
+    }
+
+    @Test
+    fun `does not spend SaveRAM result quota on 4097 unrelated files`() {
+        val root = temporaryRoot()
+        File(root, "Modern Emerald.srm").writeBytes(byteArrayOf(1))
+        repeat(4_097) { index -> File(root, "unrelated-$index.state").writeBytes(byteArrayOf()) }
+
+        val sources = DirectSaveDocumentResolver.discover(
+            entry = rom,
+            directories = listOf(root),
+            traversalQuota = StorageTraversalQuota(
+                maximumNodes = 4_100,
+                maximumDirectories = 2,
+                maximumFiles = 4_100,
+                maximumResults = 1,
+            ),
+        )
+
+        assertEquals(1, sources.size)
+        assertEquals("Modern Emerald.srm", sources.single().name)
     }
 
     private fun temporaryRoot(): File = Files.createTempDirectory("dualdex-direct-save-").toFile().also(roots::add)

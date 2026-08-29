@@ -31,10 +31,14 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
 
       <SetupStep number="1" title="SHARED STORAGE" status={retroArch.storageGrant}>
         <p>All Files Access automatically finds supported games and their save files, even when they use separate folders.</p>
+        <p class="warning-note">Android/data and Android/obb remain protected. Keep games and saves in public shared storage or use the folder fallback.</p>
         {retroArch.storageGrant === 'MISSING' && <a class="setup-action setup-action-primary" href="dualdex://grant/files">GRANT ALL FILES ACCESS</a>}
         <small>{retroArch.indexedRoms} games found.</small>
+        {retroArch.romGrant !== 'INDEXING' && <a class="setup-action" href="dualdex://games/rescan">RESCAN GAMES</a>}
         {retroArch.romGrant === 'INDEXING' && <p class="setup-message" role="status">Finding your games…</p>}
-        {retroArch.romGrant === 'FAILED' && <p class="warning-note">Games could not be indexed. Select the game folder below or try again.</p>}
+        {retroArch.romGrant === 'FAILED' && <p class="warning-note">{retroArch.indexedRoms > 0
+          ? 'Rescan failed. The previous game index remains active; try the rescan again or select a folder.'
+          : 'Games could not be indexed. Select the game folder below or try again.'}</p>}
         {retroArch.storageGrant === 'MISSING' && <p class="warning-note">Save files in separate folders cannot be found until storage access is granted.</p>}
         <div class="setup-manual-path">
           <strong>FOLDER FALLBACK</strong>

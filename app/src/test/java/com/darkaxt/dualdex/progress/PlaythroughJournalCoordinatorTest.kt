@@ -64,6 +64,25 @@ class PlaythroughJournalCoordinatorTest {
     }
 
     @Test
+    fun `revision-aware restore preserves events accepted after recovery preparation`() {
+        val coordinator = PlaythroughJournalCoordinator(key)
+        coordinator.accept(listOf(GameEvent.Captured(25)))
+        val baseline = coordinator.captureForRestore(key)
+        coordinator.accept(listOf(GameEvent.Captured(133)))
+        val persisted = PlaythroughJournal.empty(key).copy(
+            capturedDexNumbers = setOf(25),
+            trackedCounts = mapOf("captures" to 1),
+            preferences = mapOf("section" to "persisted"),
+        )
+
+        assertTrue(coordinator.restore(persisted, baseline))
+
+        assertEquals(setOf(25, 133), coordinator.current().capturedDexNumbers)
+        assertEquals(2L, coordinator.current().trackedCounts["captures"])
+        assertEquals("persisted", coordinator.current().preferences["section"])
+    }
+
+    @Test
     fun `timeline compaction is deterministic bounded and milestone preserving`() {
         val entries = (0..599).map { index ->
             TimelineEntry(

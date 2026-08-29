@@ -4,6 +4,7 @@ import { AreaGuideIcon, DexIcon, FilterIcon, MapIcon, SettingsIcon } from '../co
 import { GameClockIndicator } from '../GameClockIndicator';
 import { AcceleratedMapFollower, anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, shouldGlideCamera, type MapViewport } from '../mapEngine';
 import type { Catalog, LocalMapPoiPreferences, LocalMapPoiView, LocalMapScenePlacementView, LocalMapSceneView, State, WorldMapLocation, WorldMapRegion } from '../models';
+import { appendQueryParameters } from '../url';
 import { AreaGuideDrawer } from './AreaGuideDrawer';
 
 interface MapPageProps {
@@ -422,10 +423,10 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const displayName = activeMode === 'LOCAL'
     ? localMap?.displayName ?? state.currentAreaName ?? 'LOCAL MAP'
     : region?.displayName ?? 'WORLD MAP';
-  const localLightingQuery = state.gameTime?.hours != null && state.gameTime.minutes != null
-    ? `hour=${state.gameTime.hours}&minute=${state.gameTime.minutes}`
-    : `lighting=${state.gameTime?.phase ?? 'DAY'}`;
-  const localImageUrl = localMap ? mapImageUrl(localMap.imageUrl, localMap.dynamicLighting, localLightingQuery) : undefined;
+  const localLightingParameters = state.gameTime?.hours != null && state.gameTime.minutes != null
+    ? { hour: state.gameTime.hours, minute: state.gameTime.minutes }
+    : { lighting: state.gameTime?.phase ?? 'DAY' };
+  const localImageUrl = localMap ? mapImageUrl(localMap.imageUrl, localMap.dynamicLighting, localLightingParameters) : undefined;
   const activeImageUrl = activeMode === 'LOCAL' ? localImageUrl : region?.imageUrl;
   const poiZoomPercent = normalizedPoiZoom(viewport.scale, minimumScaleRef.current, maximumScaleRef.current);
   const atOrAboveStartingLocalZoom = viewport.scale + 0.0001 >= minimumScaleRef.current;
@@ -539,7 +540,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
             key={placement.localMapKey}
             class="map-scene-tile"
             data-local-map-key={placement.localMapKey}
-            src={mapImageUrl(placement.imageUrl, placement.dynamicLighting, localLightingQuery)}
+            src={mapImageUrl(placement.imageUrl, placement.dynamicLighting, localLightingParameters)}
             alt=""
             aria-hidden="true"
             draggable={false}
@@ -796,8 +797,12 @@ function poiSymbol(poi: LocalMapPoiView) {
   }
 }
 
-function mapImageUrl(imageUrl: string, dynamicLighting: boolean, lightingQuery: string) {
-  return dynamicLighting ? `${imageUrl}?${lightingQuery}` : imageUrl;
+function mapImageUrl(
+  imageUrl: string,
+  dynamicLighting: boolean,
+  lightingParameters: Record<string, string | number | boolean | null | undefined>,
+) {
+  return dynamicLighting ? appendQueryParameters(imageUrl, lightingParameters) : imageUrl;
 }
 
 export function selectMountedScenePlacements(

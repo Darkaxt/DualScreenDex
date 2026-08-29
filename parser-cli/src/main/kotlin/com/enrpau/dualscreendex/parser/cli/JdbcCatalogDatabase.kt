@@ -4,6 +4,8 @@ import com.darkaxt.dualdex.catalog.CatalogDatabase
 import com.darkaxt.dualdex.catalog.CatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogRow
 import com.darkaxt.dualdex.catalog.CatalogRows
+import com.darkaxt.dualdex.catalog.readBoundedBytes
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
@@ -16,11 +18,21 @@ object JdbcCatalogDatabaseFactory : CatalogDatabaseFactory {
 }
 
 private class JdbcCatalogDatabase(private val connection: Connection) : CatalogDatabase {
-    override fun <T> transaction(block: () -> T): T {
+    override fun <T> transaction(block: () -> T): T =
+        transaction(ParserCancellationToken.NONE, block)
+
+    override fun <T> transaction(
+        cancellation: ParserCancellationToken,
+        block: () -> T,
+    ): T {
         val original = connection.autoCommit
         connection.autoCommit = false
         return try {
-            block().also { connection.commit() }
+            val result = block()
+            cancellation.publish {
+                connection.commit()
+            }
+            result
         } catch (failure: Throwable) {
             connection.rollback()
             throw failure
@@ -49,6 +61,17 @@ private class JdbcCatalogDatabase(private val connection: Connection) : CatalogD
                         }))
                     }
                 }
+            }
+        }
+
+    override fun readBlob(sql: String, arguments: List<Any?>, maximumBytes: Int): ByteArray? =
+        connection.prepareStatement(sql).use { statement ->
+            arguments.forEachIndexed { index, value -> statement.setObject(index + 1, value) }
+            statement.executeQuery().use { result ->
+                if (!result.next()) return@use null
+                val payload = result.getBinaryStream(1)?.use { input -> readBoundedBytes(input, maximumBytes) }
+                require(!result.next()) { "bounded blob query returned multiple rows" }
+                payload
             }
         }
 

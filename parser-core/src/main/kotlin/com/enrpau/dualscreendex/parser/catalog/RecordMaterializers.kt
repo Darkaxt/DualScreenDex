@@ -141,7 +141,10 @@ object RecordMaterializers {
             }
             id to SpeciesRecord(
                 id = id,
-                dexNumber = if (id in nonPokedexSpeciesIds) {
+                dexNumber = if (
+                    id in nonPokedexSpeciesIds ||
+                    layout.generation == 1 && dexNumber == 0
+                ) {
                     CatalogField.notApplicable(
                         "compiled species record is outside the ROM's complete Pokédex-entry domain",
                     )

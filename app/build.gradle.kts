@@ -86,6 +86,8 @@ tasks.named("preBuild").configure { dependsOn(packageCompanionWeb) }
 dependencies {
     implementation(project(":catalog-store"))
     implementation(project(":companion-core"))
+    implementation(project(":parser-core"))
+    implementation(project(":save-core"))
     implementation(project(":retroarch-session"))
     implementation(project(":memory-mapper-lab"))
     implementation(project(":battle-memory"))

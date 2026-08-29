@@ -4,7 +4,7 @@
   "applicationId": "com.darkaxt.dualdex",
   "stage": 8,
   "status": "ready-for-github-signing",
-  "verifiedDate": "2026-08-26",
+  "verifiedDate": "2026-08-29",
   "openV1LedgerItems": 0,
   "baseFirst50Selected": 50,
   "mapFirst50Available": 26,
@@ -169,5 +169,13 @@
   "gen1Gen3CoverageUniqueRoms": 331,
   "gen1Gen3CoverageTables": 23,
   "gen1Gen3CoverageParserErrors": 0,
+  "qaClosure": {
+    "schemaVersion": 1,
+    "evidenceSourceCommit": "66bd216d9c370735666d5eb7438e83796a87eec7",
+    "stage7Closed": true,
+    "stage8Closed": true,
+    "openBlockers": 0,
+    "openReferrals": 0
+  },
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA"
 }

@@ -1,12 +1,15 @@
 package com.darkaxt.dualdex
 
 import android.app.Application
+import android.net.Uri
 import android.provider.Settings
 import android.util.Log
+import androidx.activity.ComponentActivity
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.catalog.CatalogCacheDecision
 import com.darkaxt.dualdex.catalog.SaveSnapshotStore
+import com.darkaxt.dualdex.knowledge.RecoveryPreparation
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointCoordinator
 import com.darkaxt.dualdex.knowledge.SaveKnowledgeCheckpointStore
 import com.darkaxt.dualdex.progress.PlaythroughJournalRegistry
@@ -15,14 +18,26 @@ import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import com.darkaxt.dualdex.live.ResolvedStateTraceSink
 import com.darkaxt.dualdex.performance.AndroidPerformanceLog
 import com.darkaxt.dualdex.performance.AndroidPerformanceSampler
+import com.darkaxt.dualdex.performance.AndroidPreviousProcessExitSource
 import com.darkaxt.dualdex.performance.BoundedPerformanceWorkDispatcher
 import com.darkaxt.dualdex.performance.PerformanceComponentMetrics
 import com.darkaxt.dualdex.performance.PerformanceEventSink
 import com.darkaxt.dualdex.performance.PerformanceEventKind
+import com.darkaxt.dualdex.performance.PerformanceLogExport
 import com.darkaxt.dualdex.performance.PerformanceRecorder
+import com.darkaxt.dualdex.performance.PreviousProcessExitRecorder
+import com.darkaxt.dualdex.performance.PreviousProcessExitSink
+import com.darkaxt.dualdex.performance.PreviousProcessExitPendingStore
+import com.darkaxt.dualdex.performance.PrivacySafeDiagnostics
+import com.darkaxt.dualdex.performance.SharedPreferencesPreviousProcessExitMarker
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
+import com.darkaxt.dualdex.setup.GuideLoadFault
+import com.darkaxt.dualdex.setup.NoGuideLoadFault
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
+import com.darkaxt.dualdex.setup.AndroidSetupPickerActivityResultRegistry
+import com.darkaxt.dualdex.setup.SetupPickerActivityResultRegistry
+import com.darkaxt.dualdex.retroarch.SessionMonitor
 import com.darkaxt.dualdex.settings.SettingsRepository
 import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.darkaxt.dualdex.mapper.MapperSessionStore
@@ -64,9 +79,9 @@ open class DualDexApplication : Application() {
 
     fun ballSpritePng(id: Int): ByteArray? = loopbackServer?.ballSpritePng(id)
 
-    fun exportPerformanceLog(): ByteArray {
+    fun exportPerformanceLog(): PerformanceLogExport {
         performanceDispatcher?.flush()
-        return performanceLog?.export() ?: ByteArray(0)
+        return performanceLog?.export() ?: PerformanceLogExport.Unavailable
     }
 
     fun exportCompatibilityReport(): ByteArray =
@@ -138,6 +153,21 @@ open class DualDexApplication : Application() {
 
     protected open fun sharedStorageGateway(): SharedStorageGateway = SharedStorageGateway.android(this)
 
+    protected open fun guideLoadFault(): GuideLoadFault = NoGuideLoadFault
+
+    protected open fun sessionMonitorFactory(): (() -> SessionMonitor)? = null
+
+    internal open fun setupPickerActivityResultRegistry(activity: ComponentActivity): SetupPickerActivityResultRegistry =
+        AndroidSetupPickerActivityResultRegistry(activity)
+
+    internal open fun applyConfigTree(uri: Uri) {
+        retroArchSetup?.applyConfigTree(uri)
+    }
+
+    internal open fun applyRomTree(uri: Uri) {
+        retroArchSetup?.applyRomTree(uri)
+    }
+
     protected open fun onCompanionRuntimeCreated(runtime: ProductionCompanionRuntime) = Unit
 
     @Synchronized
@@ -153,6 +183,14 @@ open class DualDexApplication : Application() {
         val profilerLog = performanceLog ?: AndroidPerformanceLog(File(filesDir, "diagnostics")).also {
             performanceLog = it
         }
+        PreviousProcessExitRecorder(
+            source = AndroidPreviousProcessExitSource(this),
+            marker = SharedPreferencesPreviousProcessExitMarker(
+                preferences,
+                PreviousProcessExitPendingStore(File(filesDir, "diagnostics/previous-process-exit.pending")),
+            ),
+            sink = PreviousProcessExitSink(profilerLog::append),
+        ).recordLatest()
         val profilerDispatcher = performanceDispatcher ?: BoundedPerformanceWorkDispatcher().also {
             performanceDispatcher = it
         }
@@ -201,6 +239,7 @@ open class DualDexApplication : Application() {
                     if (event.kind != PerformanceEventKind.STATE_CHANGED) {
                         Log.i(PERFORMANCE_LOG_TAG, performanceGson.toJson(event))
                     }
+                    true
                 },
             ),
         )
@@ -208,26 +247,24 @@ open class DualDexApplication : Application() {
         val saveSnapshots = SaveSnapshotStore(
             catalogDirectory,
             AndroidCatalogDatabaseFactory,
-            onCorruptSnapshot = { event ->
+            onCorruptSnapshot = {
                 Log.w(
                     SAVE_SNAPSHOT_LOG_TAG,
-                    "quarantined sha256Prefix=${event.romSha256Prefix} reason=${event.reason}",
+                    PrivacySafeDiagnostics.message(
+                        category = "SAVE_SNAPSHOT",
+                        outcome = "QUARANTINED",
+                    ),
                 )
             },
         )
         val cache = CatalogCache(catalogDirectory, AndroidCatalogDatabaseFactory) { event ->
-            val message = buildString {
-                append(event.decision.name)
-                append(" sha256=")
-                append(event.sha256)
-                event.failure?.let { failure ->
-                    append(" failure=")
-                    append(failure.javaClass.simpleName)
-                    failure.message?.takeIf(String::isNotBlank)?.let { append(": ").append(it) }
-                }
-            }
+            val message = PrivacySafeDiagnostics.message(
+                category = "CATALOG_CACHE",
+                outcome = event.decision.name,
+                failure = event.failure,
+            )
             if (event.decision == CatalogCacheDecision.REJECTED_EXCEPTION) {
-                Log.w(CACHE_LOG_TAG, message, event.failure)
+                Log.w(CACHE_LOG_TAG, message)
             } else {
                 Log.i(CACHE_LOG_TAG, message)
             }
@@ -299,11 +336,20 @@ open class DualDexApplication : Application() {
                 transientGameState,
                 SaveKnowledgeCheckpointCoordinator(
                     SaveKnowledgeCheckpointStore(File(filesDir, "knowledge-checkpoints")),
-                    transientGameState::acceptRecovery,
-                    playthroughJournals,
+                    prepareRecovery = { projection ->
+                        transientGameState.prepareRecovery(projection)?.let { prepared ->
+                            RecoveryPreparation(prepared.application) { publishAuthority ->
+                                transientGameState.commitPreparedRecovery(prepared, publishAuthority)
+                            }
+                        }
+                    },
+                    journal = playthroughJournals,
+                    publishRecoveryStatus = { status -> transientGameState.acceptRecoveryStatus(status) },
                 ),
                 saveSnapshotRepository = saveSnapshots,
                 sharedStorage = sharedStorageGateway(),
+                guideLoadFault = guideLoadFault(),
+                sessionMonitorFactory = sessionMonitorFactory(),
             )
             mapperCandidate = MemoryMapperCoordinator(
                 MapperSessionStore(File(filesDir, "memory-mapper")),

@@ -55,6 +55,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [partyScroll, setPartyScroll] = useState<{ catalogHash: string; top: number }>({ catalogHash: '', top: 0 });
   const [specimenScroll, setSpecimenScroll] = useState<{ key: string; top: number }>({ key: '', top: 0 });
   const lastCatalogRefresh = useRef('');
+  const bootstrapRequestRef = useRef(0);
   const battleWasForegroundRef = useRef(false);
   const activeRoute = routes.at(-1);
   const routesRef = useRef(routes);
@@ -63,10 +64,12 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const routeHistoryIndexRef = useRef(0);
   const screenRef = useRef(state.screen);
   const stateVersionRef = useRef(state.version);
+  const stateRef = useRef(state);
   routesRef.current = routes;
   catalogRef.current = catalog;
   screenRef.current = state.screen;
   stateVersionRef.current = state.version;
+  stateRef.current = state;
 
   const reportFailure = (failure: unknown, message: string) => {
     console.error(failure);
@@ -128,7 +131,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       const activeCatalog = catalogRef.current;
       if (!activeCatalog) return;
       const routeIndex = currentRouteHistoryIndex();
-      const restored = decodeRouteHash(window.location.hash, activeCatalog);
+      const restored = decodeRouteHash(window.location.hash, activeCatalog, {
+        mapperAvailable: stateRef.current.mapperAvailable === true,
+        worldMapsAvailable: (activeCatalog.worldMaps?.length ?? 0) > 0,
+      });
       routeHistoryIndexRef.current = routeIndex;
       setClientRoutes(restored);
       if (restored.length === 0 && window.location.hash.startsWith('#dualdex=')) {
@@ -139,34 +145,19 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  useEffect(() => {
-    bootstrap().then(applyBootstrap).catch(failure => reportFailure(failure, 'The companion could not start. Please try again.')).finally(() => setBusy(false));
-    return events(() => stateVersionRef.current, incoming => {
-      setState(current => incoming.version > current.version ? incoming : current);
-      const marker = catalogRefreshMarker(incoming);
-      if (marker && marker !== lastCatalogRefresh.current) {
-        bootstrap().then(value => {
-          applyBootstrap(value);
-          lastCatalogRefresh.current = marker;
-        }).catch(failure => reportFailure(failure, 'Your game guide could not be refreshed. Please try again.'));
-      }
-    }, setConnectionStatus, () => bootstrap()
-      .then(value => applyBootstrap(value, true))
-      .catch(failure => {
-        reportFailure(failure, 'The companion could not reconnect. It will keep trying.');
-        throw failure;
-      }));
-  }, []);
-
-  const applyBootstrap = (value: Bootstrap, resetStateVersion = false) => {
+  function applyBootstrap(value: Bootstrap, resetStateVersion = false) {
     const previousCatalogHash = catalogRef.current?.hash ?? null;
     const nextCatalogHash = value.catalog?.hash ?? null;
+    const catalogChanged = previousCatalogHash !== nextCatalogHash;
     catalogRef.current = value.catalog;
     setCatalog(value.catalog);
-    if (!routeCatalogInitializedRef.current || previousCatalogHash !== nextCatalogHash) {
+    if (!routeCatalogInitializedRef.current || catalogChanged) {
       routeCatalogInitializedRef.current = true;
       if (value.catalog) {
-        const restored = decodeRouteHash(window.location.hash, value.catalog);
+        const restored = decodeRouteHash(window.location.hash, value.catalog, {
+          mapperAvailable: value.state.mapperAvailable === true,
+          worldMapsAvailable: (value.catalog.worldMaps?.length ?? 0) > 0,
+        });
         replaceRoutes(
           restored,
           value.catalog.hash,
@@ -180,9 +171,69 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         }
       }
     }
-    setState(current => (resetStateVersion || value.state.version >= current.version) ? value.state : current);
+    setState(current => {
+      const next = (resetStateVersion || catalogChanged || value.state.version >= current.version) ? value.state : current;
+      stateRef.current = next;
+      return next;
+    });
+    const refreshMarker = catalogRefreshMarker(value.state);
+    if (refreshMarker) lastCatalogRefresh.current = refreshMarker;
     setError(null);
-  };
+  }
+
+  function requestLatestBootstrap(
+    request: () => Promise<Bootstrap>,
+    resetStateVersion = false,
+  ): { id: number; promise: Promise<boolean> } {
+    const id = ++bootstrapRequestRef.current;
+    return {
+      id,
+      promise: request().then(value => {
+        if (id !== bootstrapRequestRef.current) return false;
+        applyBootstrap(value, resetStateVersion);
+        return true;
+      }),
+    };
+  }
+
+  useEffect(() => {
+    const initial = requestLatestBootstrap(bootstrap);
+    void initial.promise.then(
+      committed => { if (committed) setBusy(false); },
+      failure => {
+        if (initial.id !== bootstrapRequestRef.current) return;
+        reportFailure(failure, 'The companion could not start. Please try again.');
+        setBusy(false);
+      },
+    );
+    return events(() => stateVersionRef.current, incoming => {
+      setState(current => {
+        const next = incoming.version > current.version ? incoming : current;
+        stateRef.current = next;
+        return next;
+      });
+      const marker = catalogRefreshMarker(incoming);
+      if (marker && marker !== lastCatalogRefresh.current) {
+        lastCatalogRefresh.current = marker;
+        const refresh = requestLatestBootstrap(bootstrap);
+        void refresh.promise.catch(failure => {
+          if (refresh.id === bootstrapRequestRef.current) {
+            reportFailure(failure, 'Your game guide could not be refreshed. Please try again.');
+          }
+        });
+      }
+    }, setConnectionStatus, () => {
+      const reconnect = requestLatestBootstrap(bootstrap, true);
+      return reconnect.promise.then(
+        () => undefined,
+        failure => {
+          if (reconnect.id !== bootstrapRequestRef.current) return;
+          reportFailure(failure, 'The companion could not reconnect. It will keep trying.');
+          throw failure;
+        },
+      );
+    });
+  }, []);
 
   const send = async (type: string, values: Record<string, string | number | boolean | null> = {}) => {
     try {
@@ -195,9 +246,16 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 
   const onUpload = async (file: File) => {
     setBusy(true);
-    try { applyBootstrap(await uploadRom(file)); }
-    catch (failure) { reportFailure(failure, 'This game could not be opened. Try another file or retry.'); }
-    finally { setBusy(false); }
+    const request = requestLatestBootstrap(() => uploadRom(file));
+    try {
+      await request.promise;
+    } catch (failure) {
+      if (request.id === bootstrapRequestRef.current) {
+        reportFailure(failure, 'This game could not be opened. Try another file or retry.');
+      }
+    } finally {
+      if (request.id === bootstrapRequestRef.current) setBusy(false);
+    }
   };
 
   const loadingLabel = loadingModuleLabel(state.loading.phase);
@@ -257,7 +315,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 
   const screen = useMemo(() => {
     if (catalog && waitingForGame && state.screen !== 'SETUP') return <GameAccessWaiting />;
-    if (activeRoute?.kind === 'MAPPER') return <MemoryMapperPage onBack={closeRoute} />;
+    if (activeRoute?.kind === 'MAPPER' && state.mapperAvailable === true) return <MemoryMapperPage onBack={closeRoute} />;
     if (activeRoute?.kind === 'CAPABILITIES' && catalog) return <CapabilityReportPage romHash={catalog.hash} refreshMarker={catalogRefreshMarker(state)} onBack={closeRoute} />;
     if (state.screen === 'SETUP') return <SetupPage state={state} send={send} />;
     if (!catalog) return <Welcome
@@ -375,7 +433,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
           }}
         />;
       }
-      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })} onOpenMapper={() => openRoute({ kind: 'MAPPER' })} />;
+      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })} mapperAvailable={state.mapperAvailable === true} onOpenMapper={() => openRoute({ kind: 'MAPPER' })} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={openMap} />;
     }
   }, [catalog, state, busy, error, detailTab, routes, partySelection, partyScroll, specimenScroll, waitingForGame]);
@@ -416,9 +474,9 @@ export function applicationThemeStyle(catalog: Catalog | null, settings: State['
   return style;
 }
 
-export function catalogRefreshMarker(state: Pick<State, 'catalogName' | 'loading'>): string {
-  if (state.loading.completedUnits <= 0) return '';
-  return `${state.catalogName ?? ''}:${state.loading.phase}:${state.loading.completedUnits}:${state.loading.totalUnits}`;
+export function catalogRefreshMarker(state: Pick<State, 'catalogName' | 'catalogHash' | 'loading'>): string {
+  if (state.loading.completedUnits <= 0 || !state.catalogHash) return '';
+  return `${state.catalogHash}:${state.catalogName ?? ''}:${state.loading.phase}:${state.loading.completedUnits}:${state.loading.totalUnits}`;
 }
 
 export function loadingModuleLabel(phase: string): string {

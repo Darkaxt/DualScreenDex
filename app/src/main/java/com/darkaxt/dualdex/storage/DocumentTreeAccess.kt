@@ -2,7 +2,9 @@ package com.darkaxt.dualdex.storage
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.os.CancellationSignal
 import android.provider.DocumentsContract
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.ArrayDeque
 
@@ -25,6 +27,8 @@ class DocumentTreeAccess(
     private val resolver: ContentResolver,
     private val treeUri: Uri,
 ) {
+    private val provider by lazy { SafProviderOperations.shared.forUri(treeUri) }
+
     val root: TreeDocument by lazy {
         val id = DocumentsContract.getTreeDocumentId(treeUri)
         readDocument(DocumentsContract.buildDocumentUriUsingTree(treeUri, id))
@@ -45,25 +49,107 @@ class DocumentTreeAccess(
         return matches
     }
 
-    fun filesRecursively(parent: TreeDocument = root): Sequence<TreeDocument> = sequence {
-        val queue = ArrayDeque<TreeDocument>().apply { add(parent) }
-        val visited = mutableSetOf<String>()
+    fun filesRecursively(parent: TreeDocument = root): Sequence<TreeDocument> {
+        val files = mutableListOf<TreeDocument>()
+        visitFilesRecursively(parent) { document, operation ->
+            operation.budget.retainResult()
+            files += document
+        }
+        return files.asSequence()
+    }
+
+    fun visitFilesRecursively(
+        parent: TreeDocument = root,
+        operation: StorageTraversalOperation = StorageTraversalOperation(),
+        visitor: (TreeDocument, StorageTraversalOperation) -> Unit,
+    ) {
+        val queue = ArrayDeque<TreeDocument>()
+        operation.budget.enqueueNode()
+        queue.add(parent)
         while (queue.isNotEmpty()) {
-            val parent = queue.removeFirst()
-            if (!visited.add(parent.documentId)) continue
-            for (child in children(parent)) {
-                if (child.mimeType == DocumentsContract.Document.MIME_TYPE_DIR) queue += child else yield(child)
+            val directory = queue.removeFirst()
+            if (!operation.claimDirectory(directory.uri.toString())) continue
+            operation.budget.visitDirectory()
+            forEachChild(directory) { child ->
+                if (child.mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
+                    operation.budget.enqueueNode()
+                    queue.addLast(child)
+                } else {
+                    operation.budget.visitFile()
+                    visitor(child, operation)
+                }
             }
         }
     }
 
-    fun children(parent: TreeDocument): List<TreeDocument> {
+    fun children(
+        parent: TreeDocument,
+        operation: StorageTraversalOperation = StorageTraversalOperation(),
+    ): List<TreeDocument> = buildList {
+        forEachChild(parent) { child ->
+            if (child.mimeType == DocumentsContract.Document.MIME_TYPE_DIR) operation.budget.enqueueNode()
+            else operation.budget.visitFile()
+            add(child)
+        }
+    }
+
+    fun read(
+        document: TreeDocument,
+        maximumBytes: Int = ConfigDocumentReadPolicy.MAXIMUM_BYTES,
+    ): ByteArray = providerOperation { cancellation ->
+        SafProviderResults.requireValue(
+            resolver.openFileDescriptor(document.uri, "r", cancellation),
+            "SAF provider did not open a document for reading",
+        ).use { descriptor ->
+            FileInputStream(descriptor.fileDescriptor).use { input ->
+                BoundedStorageReader.read(input, maximumBytes, document.size.takeIf { it >= 0 })
+            }
+        }
+    }
+
+    fun write(document: TreeDocument, bytes: ByteArray) {
+        providerOperation(SafProviderOperationKind.MUTATION) { cancellation ->
+            SafProviderResults.requireValue(
+                resolver.openFileDescriptor(document.uri, "rwt", cancellation),
+                "SAF provider did not open a document for writing",
+            ).use { descriptor ->
+                FileOutputStream(descriptor.fileDescriptor).use { output ->
+                    output.write(bytes)
+                    output.flush()
+                    descriptor.fileDescriptor.sync()
+                }
+            }
+        }
+    }
+
+    fun create(parent: TreeDocument, name: String, mimeType: String = "application/octet-stream"): TreeDocument {
+        val uri = providerOperation(SafProviderOperationKind.MUTATION) {
+            SafProviderResults.requireValue(
+                DocumentsContract.createDocument(resolver, parent.uri, mimeType, name),
+                "SAF provider did not create a document",
+            )
+        }
+        return readDocument(uri)
+    }
+
+    fun delete(document: TreeDocument) {
+        providerOperation(SafProviderOperationKind.MUTATION) {
+            check(DocumentsContract.deleteDocument(resolver, document.uri)) {
+                "SAF provider did not delete a document"
+            }
+        }
+    }
+
+    private fun forEachChild(parent: TreeDocument, visitor: (TreeDocument) -> Unit) {
         val uri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parent.documentId)
-        return resolver.query(uri, PROJECTION, null, null, null)?.use { cursor ->
-            buildList {
+        providerOperation { cancellation ->
+            SafProviderResults.requireValue(
+                resolver.query(uri, PROJECTION, null, null, null, cancellation),
+                "SAF provider did not return child documents",
+            ).use { cursor ->
                 while (cursor.moveToNext()) {
                     val id = cursor.getString(0)
-                    add(
+                    visitor(
                         TreeDocument(
                             DocumentsContract.buildDocumentUriUsingTree(treeUri, id),
                             id,
@@ -76,47 +162,39 @@ class DocumentTreeAccess(
                     )
                 }
             }
-        }.orEmpty()
-    }
-
-    fun read(document: TreeDocument): ByteArray = resolver.openInputStream(document.uri)?.use { it.readBytes() }
-        ?: error("document provider did not open ${document.name} for reading")
-
-    fun write(document: TreeDocument, bytes: ByteArray) {
-        resolver.openFileDescriptor(document.uri, "rwt")?.use { descriptor ->
-            FileOutputStream(descriptor.fileDescriptor).use { output ->
-                output.write(bytes)
-                output.flush()
-                descriptor.fileDescriptor.sync()
-            }
-        } ?: error("document provider did not open ${document.name} for writing")
-    }
-
-    fun create(parent: TreeDocument, name: String, mimeType: String = "application/octet-stream"): TreeDocument {
-        val uri = requireNotNull(DocumentsContract.createDocument(resolver, parent.uri, mimeType, name)) {
-            "document provider did not create $name"
-        }
-        return readDocument(uri)
-    }
-
-    fun delete(document: TreeDocument) {
-        check(DocumentsContract.deleteDocument(resolver, document.uri)) {
-            "document provider did not delete ${document.name}"
         }
     }
 
-    private fun readDocument(uri: Uri): TreeDocument = resolver.query(uri, PROJECTION, null, null, null)?.use { cursor ->
-        require(cursor.moveToFirst()) { "document provider returned no metadata for $uri" }
-        TreeDocument(
-            uri,
-            cursor.getString(0),
-            cursor.getString(1),
-            cursor.getString(2),
-            cursor.getInt(3),
-            cursor.getLong(4),
-            cursor.getLong(5),
-        )
-    } ?: error("document provider did not return metadata for $uri")
+    private fun readDocument(uri: Uri): TreeDocument = providerOperation { cancellation ->
+        SafProviderResults.requireValue(
+            resolver.query(uri, PROJECTION, null, null, null, cancellation),
+            "SAF provider did not return document metadata",
+        ).use { cursor ->
+            require(cursor.moveToFirst()) { "SAF provider returned no document metadata" }
+            TreeDocument(
+                uri,
+                cursor.getString(0),
+                cursor.getString(1),
+                cursor.getString(2),
+                cursor.getInt(3),
+                cursor.getLong(4),
+                cursor.getLong(5),
+            )
+        }
+    }
+
+    private fun <T> providerOperation(
+        kind: SafProviderOperationKind = SafProviderOperationKind.READ_ONLY,
+        operation: (CancellationSignal) -> T,
+    ): T {
+        val cancellation = CancellationSignal()
+        return provider.await(
+            kind = kind,
+            onTimeout = cancellation::cancel,
+        ) {
+            operation(cancellation)
+        }
+    }
 
     private companion object {
         val PROJECTION = arrayOf(

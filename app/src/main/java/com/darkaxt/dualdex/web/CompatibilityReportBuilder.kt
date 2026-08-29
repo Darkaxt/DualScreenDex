@@ -71,7 +71,7 @@ object CompatibilityReportBuilder {
             parserDiagnostics = base.parserDiagnostics.map(::sanitize),
         )
         return sanitized.copy(
-            reportSchemaVersion = 1,
+            reportSchemaVersion = 2,
             environment = DiagnosticEnvironmentView(appVersion, catalogSchemaVersion, parserSchemaVersion),
             runtime = DiagnosticRuntimeView(
                 retroArchConnection = state.retroArch.connection,
@@ -132,7 +132,34 @@ object CompatibilityReportBuilder {
 object CompatibilityReportSerializer {
     private val gson = GsonBuilder().serializeNulls().setPrettyPrinting().create()
 
-    fun toBytes(report: DiagnosticView): ByteArray = gson.toJson(
-        report.copy(species = null, move = null),
-    ).toByteArray(Charsets.UTF_8)
+    fun toBytes(report: DiagnosticView): ByteArray {
+        val export = linkedMapOf<String, Any?>(
+            "reportSchemaVersion" to report.reportSchemaVersion,
+            "family" to report.family,
+            "platform" to report.platform,
+            "activeRulesetId" to report.activeRulesetId,
+            "rulesetAssumed" to report.rulesetAssumed,
+            "rulesets" to report.rulesets,
+            "capabilities" to report.capabilities,
+            "parserDiagnostics" to report.parserDiagnostics,
+            "environment" to report.environment,
+            "runtime" to report.runtime,
+            "map" to report.map?.let { map ->
+                linkedMapOf(
+                    "presentation" to map.presentation,
+                    "playerPositionStatus" to map.playerPositionStatus,
+                    "lighting" to map.lighting,
+                    "totalPois" to map.totalPois,
+                    "visiblePois" to map.visiblePois,
+                    "collectedPois" to map.collectedPois,
+                    "localMapStatus" to map.localMapStatus,
+                    "worldMapStatus" to map.worldMapStatus,
+                    "fallbackReason" to map.fallbackReason,
+                )
+            },
+            "cache" to report.cache,
+            "privacy" to report.privacy,
+        )
+        return gson.toJson(export).toByteArray(Charsets.UTF_8)
+    }
 }
