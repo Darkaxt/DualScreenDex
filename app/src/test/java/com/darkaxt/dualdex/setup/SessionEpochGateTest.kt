@@ -91,6 +91,28 @@ class SessionEpochGateTest {
     }
 
     @Test
+    fun losingCrcEvidenceForTheSameSourceRequiresFreshVerification() {
+        val gate = SessionEpochGate()
+        val activation = SessionActivationCoordinator(gate)
+        val crcBacked = requireNotNull(gate.observe(first))
+        assertTrue(activation.begin(crcBacked, first.sourceId) {})
+        assertTrue(activation.finish(crcBacked, first.sourceId) {})
+
+        val discovered = first.copy(evidence = SessionIdentityEvidence.BASENAME_DISCOVERY)
+        val crcLess = requireNotNull(gate.observe(discovered))
+
+        assertNotEquals(crcBacked, crcLess)
+        assertFalse(activation.isVerified(crcLess))
+        assertTrue(
+            activation.requiresSourceVerification(
+                crcLess,
+                activeCatalogSha256 = first.romSha256,
+                expectedSha256 = first.romSha256,
+            ),
+        )
+    }
+
+    @Test
     fun reconnectingTheSameIdentityRequiresANewVerificationToken() {
         val gate = SessionEpochGate()
         val verifiedBeforeLoss = requireNotNull(gate.observe(first))

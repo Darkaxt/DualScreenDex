@@ -308,7 +308,7 @@ class RetroArchSetupCoordinator(
             return false
         }
         val entry = activeEntry.get() ?: return false
-        val token = sessionEpoch.capture(entry.sessionIdentity()) ?: return false
+        val token = sessionEpoch.capture(entry.currentSessionIdentity()) ?: return false
         if (!activationGate.retry(entry.sourceId)) return false
         activate(entry, token)
         return true
@@ -316,7 +316,7 @@ class RetroArchSetupCoordinator(
 
     fun selectSave(documentId: String): Boolean {
         val entry = activeEntry.get() ?: return false
-        val token = sessionEpoch.capture(entry.sessionIdentity()) ?: return false
+        val token = sessionEpoch.capture(entry.currentSessionIdentity()) ?: return false
         if (lastSaveCandidates.get().none { it.id == documentId }) return false
         val selected = saveMonitor.select(entry.sha256, documentId) { commit ->
             sessionEpoch.commitIfCurrent(token, commit)
@@ -599,39 +599,39 @@ class RetroArchSetupCoordinator(
                     ?: SessionResolution.NoContent
                 val connected = session.connection != RetroArchConnection.DISCONNECTED
                 val restartVerified = restartVerifier.observe(session.connection)
-                val resolvedEntry = (resolution as? SessionResolution.Resolved)?.entry
-                val nextAuthorizedEntry = resolvedEntry?.takeIf { connected }
-                val catalogCancellation = if (activeEntry.get() != nextAuthorizedEntry) {
+                val sourceVerificationEntry = RomSessionResolver.sourceVerificationCandidate(resolution)
+                    ?.takeIf { connected }
+                val catalogCancellation = if (activeEntry.get() != sourceVerificationEntry) {
                     runtime.cancelPendingCatalogLoadForAuthorityTransition()
                 } else {
                     null
                 }
                 val token = sessionEpoch.observe(
-                    nextAuthorizedEntry?.sessionIdentity(),
+                    sourceVerificationEntry?.sessionIdentity(resolution),
                 )
                 catalogCancellation?.complete()
-                val authorizedEntry = nextAuthorizedEntry?.takeIf { token != null }
-                val previousEntry = activeEntry.getAndSet(authorizedEntry)
-                if (previousEntry != authorizedEntry) {
+                val candidateEntry = sourceVerificationEntry?.takeIf { token != null }
+                val previousEntry = activeEntry.getAndSet(candidateEntry)
+                if (previousEntry != candidateEntry) {
                     previousEntry?.let { activationGate.cancel(it.sourceId) }
                     restoredSaveRom.set(null)
                     lastSaveCandidates.set(emptyList())
                     discoveredSaveRom.set(null)
                     discoveredSaveBasename.set(null)
                 }
-                val active = authorizedEntry != null &&
+                val active = candidateEntry != null &&
                     token != null &&
                     activationCoordinator.isVerified(token) &&
-                    runtime.catalogHash() == authorizedEntry.sha256
-                val loading = authorizedEntry != null && token != null &&
-                    activationCoordinator.isLoading(authorizedEntry.sourceId, token)
-                val failed = authorizedEntry != null && token != null &&
-                    activationCoordinator.isFailed(authorizedEntry.sourceId, token)
+                    runtime.catalogHash() == candidateEntry.sha256
+                val loading = candidateEntry != null && token != null &&
+                    activationCoordinator.isLoading(candidateEntry.sourceId, token)
+                val failed = candidateEntry != null && token != null &&
+                    activationCoordinator.isFailed(candidateEntry.sourceId, token)
                 val publishBattleSession = {
                     battleMemory.updateSession(
                         connected = connected && active,
                         systemId = status?.systemId,
-                        romIdentity = authorizedEntry?.sha256,
+                        romIdentity = candidateEntry?.sha256,
                     )
                 }
                 if (token != null) {
@@ -648,9 +648,9 @@ class RetroArchSetupCoordinator(
                             systemId = status?.systemId,
                             gameBasename = status?.gameBasename,
                             contentCrc32 = status?.crc32,
-                            contentSha256 = authorizedEntry?.sha256?.takeIf { active },
+                            contentSha256 = candidateEntry?.sha256?.takeIf { active },
                             sessionEpoch = token?.epoch?.takeIf { active },
-                            activeSource = authorizedEntry?.sourceName?.takeIf { active },
+                            activeSource = candidateEntry?.sourceName?.takeIf { active },
                             savefileDirectory = session.savefileDirectory,
                             resolution = when (resolution) {
                                 SessionResolution.NoContent -> "NO_CONTENT"
@@ -660,17 +660,22 @@ class RetroArchSetupCoordinator(
                                     failed -> "FAILED"
                                     else -> "RESOLVED"
                                 }
-                                is SessionResolution.Unverified -> "UNVERIFIED"
+                                is SessionResolution.Unverified -> when {
+                                    active -> "ACTIVE"
+                                    loading -> "LOADING"
+                                    failed -> "FAILED"
+                                    else -> "UNVERIFIED"
+                                }
                                 is SessionResolution.Ambiguous -> "AMBIGUOUS"
                                 is SessionResolution.NotFound -> "NOT_FOUND"
                             },
                             message = session.error ?: when {
-                                connected && active -> "Opened ${resolvedEntry.sourceName}."
+                                connected && active -> "Opened ${sourceVerificationEntry.sourceName}."
                                 connected && loading -> "Opening the SHA-256-verified active catalog…"
                                 connected && failed -> current.message
                                 connected && resolution is SessionResolution.Resolved -> "Active content matched; verifying its SHA-256."
                                 connected && resolution is SessionResolution.Unverified ->
-                                    "A matching filename was found, but RetroArch did not provide content identity. Live features are paused."
+                                    "Active filename matched; opening and hashing the exact granted ROM source."
                                 connected && resolution is SessionResolution.Ambiguous -> "Multiple granted sources match the active content. Select the ROM manually."
                                 connected && resolution is SessionResolution.NotFound -> resolution.reason
                                 connected -> "RetroArch Network Commands verified."
@@ -684,11 +689,11 @@ class RetroArchSetupCoordinator(
                 } else if (!closed) {
                     publishSessionView()
                 }
-                if (authorizedEntry != null && token != null) {
-                    activate(authorizedEntry, token)
+                if (candidateEntry != null && token != null) {
+                    activate(candidateEntry, token)
                     if (active) {
-                        restorePersistedSave(authorizedEntry, token)
-                        pollSave(authorizedEntry, token)
+                        restorePersistedSave(candidateEntry, token)
+                        pollSave(candidateEntry, token)
                     }
                 }
             }
@@ -1072,9 +1077,24 @@ class RetroArchSetupCoordinator(
         context.contentResolver.takePersistableUriPermission(uri, flags)
     }
 
-    private fun RomIndexEntry.sessionIdentity() = VerifiedSessionIdentity(
+    private fun RomIndexEntry.currentSessionIdentity() = VerifiedSessionIdentity(
         romSha256 = sha256.lowercase(),
         sourceId = sourceId,
+        evidence = if (view.get().contentCrc32 == null) {
+            SessionIdentityEvidence.BASENAME_DISCOVERY
+        } else {
+            SessionIdentityEvidence.RETROARCH_CRC
+        },
+    )
+
+    private fun RomIndexEntry.sessionIdentity(resolution: SessionResolution) = VerifiedSessionIdentity(
+        romSha256 = sha256.lowercase(),
+        sourceId = sourceId,
+        evidence = when (resolution) {
+            is SessionResolution.Resolved -> SessionIdentityEvidence.RETROARCH_CRC
+            is SessionResolution.Unverified -> SessionIdentityEvidence.BASENAME_DISCOVERY
+            else -> error("non-candidate session resolution")
+        },
     )
 
     private fun connectionOf(value: String): RetroArchConnection =

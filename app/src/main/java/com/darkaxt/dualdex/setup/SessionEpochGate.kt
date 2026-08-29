@@ -5,9 +5,15 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.FutureTask
 
+internal enum class SessionIdentityEvidence {
+    RETROARCH_CRC,
+    BASENAME_DISCOVERY,
+}
+
 internal data class VerifiedSessionIdentity(
     val romSha256: String,
     val sourceId: String,
+    val evidence: SessionIdentityEvidence = SessionIdentityEvidence.RETROARCH_CRC,
 )
 
 internal data class SessionWorkToken(
