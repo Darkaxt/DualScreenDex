@@ -83,6 +83,29 @@ class RomSessionResolverTest {
     }
 
     @Test
+    fun crcLessUniqueMatchCanOnlyProceedToFreshSourceVerification() {
+        val resolution = RomSessionResolver.resolve(
+            RetroArchStatus.Running(false, "game_boy_advance", emerald.gameBasename, null),
+            listOf(emerald),
+        )
+
+        assertEquals(SessionResolution.Unverified(emerald), resolution)
+        assertEquals(emerald, RomSessionResolver.sourceVerificationCandidate(resolution))
+    }
+
+    @Test
+    fun ambiguousCrcLessMatchCannotProceedToSourceVerification() {
+        val second = emerald.copy(sourceId = "different", sha256 = "b".repeat(64))
+        val resolution = RomSessionResolver.resolve(
+            RetroArchStatus.Running(false, "game_boy_advance", emerald.gameBasename, null),
+            listOf(emerald, second),
+        )
+
+        assertTrue(resolution is SessionResolution.Ambiguous)
+        assertEquals(null, RomSessionResolver.sourceVerificationCandidate(resolution))
+    }
+
+    @Test
     fun aReportedCrcMismatchNeverFallsBackToBasename() {
         val result = RomSessionResolver.resolve(
             RetroArchStatus.Running(

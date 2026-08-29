@@ -32,6 +32,15 @@ object RomSessionResolver {
     fun verifySha(entry: RomIndexEntry, actualSha256: String): Boolean =
         entry.sha256.matches(Regex("[0-9a-fA-F]{64}")) && entry.sha256.equals(actualSha256, ignoreCase = true)
 
+    fun sourceVerificationCandidate(resolution: SessionResolution): RomIndexEntry? = when (resolution) {
+        is SessionResolution.Resolved -> resolution.entry
+        is SessionResolution.Unverified -> resolution.entry
+        is SessionResolution.Ambiguous,
+        is SessionResolution.NotFound,
+        SessionResolution.NoContent,
+        -> null
+    }
+
     private fun resolveRunning(status: RetroArchStatus.Running, entries: List<RomIndexEntry>): SessionResolution {
         val platforms = compatiblePlatforms(status.systemId)
         if (platforms.isEmpty()) return SessionResolution.NotFound("unsupported RetroArch system: ${status.systemId}")
