@@ -77,6 +77,7 @@ None. Every Stage 1 requirement is implemented with an owning regression, and th
 - **Modules:** `catalog-store`, `retroarch-session`, app save/live/setup paths, `save-cli`
 - **Reason:** Explicitly assigned to Stage 2 and dependent on the now-versioned runtime state.
 - **Target:** Stage 2
+- **Dependency:** Completed Stage 1 runtime-state delivery.
 - **Acceptance:** Snapshot recovery survives catalog invalidation/migration; basename-only identity never becomes active; queued work cannot cross session epoch or close; every normalized or filesystem-equivalent CLI output/input collision is rejected without changing input hashes.
 
 #### S1-REF-02 — Truthful release and packaged acceptance
@@ -85,6 +86,7 @@ None. Every Stage 1 requirement is implemented with an owning regression, and th
 - **Modules:** release workflow/tools and reusable Android managed-device bench
 - **Reason:** Explicitly assigned to Stage 3 after trust and identity blockers.
 - **Target:** Stage 3
+- **Dependency:** Completed Stage 1 trust delivery and Stage 2 verified identity/epoch fencing.
 - **Acceptance:** Candidates remain nonpublic until exact-artifact promotion, and the installed APK/WebView/loopback recovery matrix produces passing reusable evidence.
 
 #### S1-REF-03 — Catalog and untrusted-input resilience
@@ -93,6 +95,7 @@ None. Every Stage 1 requirement is implemented with an owning regression, and th
 - **Modules:** parser, catalog, archive, app guide/save, and parser CLI
 - **Reason:** Explicitly assigned to Stage 4; these bounded hardening items do not invalidate Stage 1 delivery or cache revision.
 - **Target:** Stage 4
+- **Dependency:** Stage 2 durable snapshot isolation.
 - **Acceptance:** Every acceptance fixture in the named specification sections fails closed within its bound while valid catalog and recovery state remain available.
 
 #### S1-REF-04 — Runtime recovery and freshness
@@ -101,6 +104,7 @@ None. Every Stage 1 requirement is implemented with an owning regression, and th
 - **Modules:** Android storage/save/live/battle/mapper, RetroArch session, battle memory, memory mapper
 - **Reason:** Explicitly assigned to Stage 5 and dependent on Stage 2 identity fencing.
 - **Target:** Stage 5
+- **Dependency:** Stage 2 verified identity/epoch fencing and Stage 4 untrusted-input bounds.
 - **Acceptance:** Revoked grants and stale status cannot authorize work; save/config/live/mapper paths recover without crossing identity; idle polling and UDP work stay within deterministic quotas; public arrays cannot mutate retained state.
 
 #### S1-REF-05 — Companion transport and browser behavior
@@ -109,6 +113,7 @@ None. Every Stage 1 requirement is implemented with an owning regression, and th
 - **Modules:** Android/desktop servers, simulator, companion web, CI
 - **Reason:** Explicitly assigned to Stage 6 after runtime identity and input bounds.
 - **Target:** Stage 6
+- **Dependency:** Stable Stage 5 runtime authority and state-revision contracts.
 - **Acceptance:** Shared API parity, bounded transport/SSE, recoverable polling, persistent routes, catalog-versioned media, correct asset 404s, unique encounter keys, and portable public Chromium coverage all pass their specification fixtures.
 
 #### S1-REF-06 — UX, privacy, evidence, and governance
@@ -117,6 +122,7 @@ None. Every Stage 1 requirement is implemented with an owning regression, and th
 - **Modules:** Android activity/overlay/setup, diagnostics, Gradle dependencies, release evidence, readiness docs
 - **Reason:** Explicitly assigned to Stage 7 and bounded away from Stage 1 trust blockers.
 - **Target:** Stage 7
+- **Dependency:** Completed Stages 2–6 correctness, resilience, runtime, and companion closures.
 - **Acceptance:** Every named specification acceptance condition passes, including one-shot picker dispatch, safe rescan/settings fallback, nonreversible diagnostics, source-bound evidence, auditable protection, and one consistent current-readiness index.
 
 #### S1-REF-07 — Integrated invariant closure
@@ -125,6 +131,7 @@ None. Every Stage 1 requirement is implemented with an owning regression, and th
 - **Modules:** project-wide
 - **Reason:** Cross-stage invariants require final revalidation after all implementation stages.
 - **Target:** Stage 8
+- **Dependency:** Completed Stages 2–7 and their focused owning regressions.
 - **Acceptance:** All referrals are closed, every requirement verdict is current on synchronized HEAD, and the complete integrated gate passes once without retained blockers or referrals.
 
 ## Final decision
