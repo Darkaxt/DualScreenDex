@@ -204,6 +204,35 @@ class AreaGuideBuilderTest {
     }
 
     @Test
+    fun areaTitleSignRemainsLabeledOnMapWithoutAddingDuplicateGuideText() {
+        val catalog = catalog().let { original ->
+            val areaTitleSign = original.localMaps.pois.single { it.key == GENERIC }
+                .copy(displayName = "Quiet Corner\nA longer description")
+            original.copy(
+                localMaps = original.localMaps.copy(
+                    pois = original.localMaps.pois.map { poi ->
+                        if (poi.key == GENERIC) areaTitleSign else poi
+                    },
+                ),
+            )
+        }
+
+        val projection = AreaGuideBuilder.project(
+            catalog,
+            AppSnapshot(
+                liveAreaBaseId = EMPTY,
+                settings = CompanionSettings(knowledgeMode = KnowledgeMode.DISCOVERED),
+            ),
+        )
+
+        assertEquals("Quiet Corner", projection.points.single { it.key == GENERIC }.label)
+        assertNull(
+            projection.guide.areas.single { it.baseAreaId == EMPTY }
+                .placesAndServices.single { it.key == GENERIC }.label,
+        )
+    }
+
+    @Test
     fun objectivesAreAttachedOnlyToTheirKnowledgeVisibleArea() {
         val objective = AreaGuideObjective("open-road", "Open Road")
         val guide = AreaGuideBuilder.project(

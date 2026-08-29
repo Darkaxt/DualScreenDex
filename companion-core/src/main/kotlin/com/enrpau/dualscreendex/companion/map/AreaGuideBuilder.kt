@@ -70,7 +70,9 @@ object AreaGuideBuilder {
                     AreaGuidePointCategory.SERVICE,
                     AreaGuidePointCategory.UNKNOWN -> {
                         outputBudget.retain()
-                        placesAndServices += point
+                        placesAndServices += point.copy(
+                            label = point.label?.takeUnless { it.equals(name, ignoreCase = true) },
+                        )
                     }
                     AreaGuidePointCategory.AVAILABLE_ITEM,
                     AreaGuidePointCategory.COLLECTED_ITEM -> {
@@ -150,8 +152,8 @@ object AreaGuideBuilder {
         val label = when {
             !identified -> null
             category == AreaGuidePointCategory.AVAILABLE_ITEM || category == AreaGuidePointCategory.COLLECTED_ITEM ->
-                normalizeText(poi.item?.displayName, trainer?.name, names[poi.baseAreaId])
-            else -> normalizeText(poiName(poi, trainer?.gender), trainer?.name, names[poi.baseAreaId])
+                normalizeText(poi.item?.displayName, trainer?.name, null)
+            else -> normalizeText(poiName(poi, trainer?.gender), trainer?.name, null)
         }
         outputBudget?.retain()
         add(AreaGuidePoint(
