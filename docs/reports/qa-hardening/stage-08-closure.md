@@ -46,7 +46,7 @@ The denominator correction does not waive an input. The audited physical invento
 | Gate | Evidence | Verdict |
 | --- | --- | --- |
 | Post-remediation Gradle matrix | Parser core/CLI, catalog, RetroArch, mapper, battle, companion core/server/simulator, and app unit tests: `BUILD SUCCESSFUL` in 40m36s, 65 tasks | `PASS` |
-| Release/governance matrix after closure packaging | 83 Node tests | `PASS` |
+| Release/governance matrix after closure packaging and APK privacy correction | 85 Node tests | `PASS` |
 | Companion browser unit/build matrix | 32 Vitest files / 268 tests; TypeScript/Vite build | `PASS` |
 | Portable browser E2E after closure packaging | `npm run test:e2e:ci`: 3 tests in 15.4s | `PASS` |
 | Packaged Android/WebView | Stage 3 source-bound GitHub managed-device run: 4/4 tests with immutable JUnit/screenshot evidence | `PASS` |
@@ -54,7 +54,7 @@ The denominator correction does not waive an input. The audited physical invento
 | Final corpus | 333/333 eligible inputs terminal; 0 parser/catalog/compatibility/persistence errors; 278/278 selected catalogs persisted and reopened | `PASS` |
 | Downstream evidence hardening | Bounded 1.63 GB streaming summary, corrected denominator, duplicate-aware canonical contract, promotion/readiness/privacy regressions | `PASS` |
 
-The consolidated Gradle and hours-long parser gates ran once after parser/catalog product-source stabilization. They were not repeated for downstream release packaging, deterministic acceptance-test corrections, the replacement of two Android API-33-only read calls with the already-tested API-30-compatible bounded reader, repository-policy alignment with the established single-maintainer signing process, correction of GitHub policy reads to public nonsecret endpoints, or binding the release comparison range to the cache decision's prior parser schema. Focused checkpoint/save tests, source contracts, Android test compilation, app lint, the 7/7 PR managed-device suite, and the complete release-governance suite passed afterward. The evidence validator rejects reuse if parser/catalog sources, build logic, wrapper, or corpus-execution tooling changes.
+The consolidated Gradle and hours-long parser gates ran once after parser/catalog product-source stabilization. They were not repeated for downstream release packaging, deterministic acceptance-test corrections, the replacement of two Android API-33-only read calls with the already-tested API-30-compatible bounded reader, repository-policy alignment with the established single-maintainer signing process, correction of GitHub policy reads to public nonsecret endpoints, binding the release comparison range to the cache decision's prior parser schema, or tightening the Windows-path detector so arbitrary compressed APK bytes cannot be misclassified as a private path. Focused checkpoint/save tests, source contracts, Android test compilation, app lint, the 7/7 PR managed-device suite, the failed candidate's complete unsigned build and packaged Android gates, the reproduced APK privacy regression, and the release-governance suite passed afterward. The evidence validator rejects reuse if parser/catalog sources, build logic, wrapper, or corpus-execution tooling changes.
 
 No ad hoc emulator, ADB gesture, physical-device action, credential inspection, signing-material inspection, signing, tagging, or publication was performed for this closure.
 
