@@ -80,41 +80,44 @@ jobs:
       - name: Audit release tag and signing environment policy
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
+          public_api="https://api.github.com/repos/$GITHUB_REPOSITORY"
+          fetch_public_policy() {
+            curl --fail --silent --show-error --location \
+              --header "Accept: application/vnd.github+json" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "$public_api/$1"
+          }
           ruleset_list="$RUNNER_TEMP/repository-rulesets-list.json"
           rulesets="$RUNNER_TEMP/repository-rulesets.json"
           signing_environment="$RUNNER_TEMP/release-signing-environment.json"
           signing_policies="$RUNNER_TEMP/release-signing-policies.json"
           promotion_environment="$RUNNER_TEMP/release-promotion-environment.json"
           promotion_policies="$RUNNER_TEMP/release-promotion-policies.json"
-          promotion_secrets="$RUNNER_TEMP/release-promotion-secrets.json"
-          gh api "repos/$GITHUB_REPOSITORY/rulesets?includes_parents=true&targets=tag" > "$ruleset_list"
+          fetch_public_policy "rulesets?includes_parents=true&targets=tag" > "$ruleset_list"
           printf '[]\n' > "$rulesets"
           while read -r ruleset_id; do
+            [[ "$ruleset_id" =~ ^[0-9]+$ ]]
             detail="$RUNNER_TEMP/repository-ruleset-$ruleset_id.json"
             combined="$RUNNER_TEMP/repository-rulesets-next.json"
-            gh api "repos/$GITHUB_REPOSITORY/rulesets/$ruleset_id" > "$detail"
+            fetch_public_policy "rulesets/$ruleset_id" > "$detail"
             jq --slurp '.[0] + [.[1]]' "$rulesets" "$detail" > "$combined"
             mv "$combined" "$rulesets"
           done < <(jq -r '.[].id' "$ruleset_list")
-          gh api "repos/$GITHUB_REPOSITORY/environments/release-signing" > "$signing_environment"
-          gh api "repos/$GITHUB_REPOSITORY/environments/release-signing/deployment-branch-policies" > "$signing_policies"
-          gh api "repos/$GITHUB_REPOSITORY/environments/release-promotion" > "$promotion_environment"
-          gh api "repos/$GITHUB_REPOSITORY/environments/release-promotion/deployment-branch-policies" > "$promotion_policies"
-          gh api "repos/$GITHUB_REPOSITORY/environments/release-promotion/secrets" > "$promotion_secrets"
-          promotion_signing_secret_count="$(
-            jq '[.secrets[]? | select(.name | startswith("DUALDEX_RELEASE_"))] | length' "$promotion_secrets"
-          )"
+          fetch_public_policy "environments/release-signing" > "$signing_environment"
+          fetch_public_policy "environments/release-signing/deployment-branch-policies" > "$signing_policies"
+          fetch_public_policy "environments/release-promotion" > "$promotion_environment"
+          fetch_public_policy "environments/release-promotion/deployment-branch-policies" > "$promotion_policies"
+          promotion_signing_secret_reference_count=0
           node tools/release/verify-repository-policy.mjs \
             --rulesets "$rulesets" \
             --signing-environment "$signing_environment" \
             --signing-environment-policies "$signing_policies" \
             --promotion-environment "$promotion_environment" \
             --promotion-environment-policies "$promotion_policies" \
-            --promotion-signing-secret-count "$promotion_signing_secret_count" \
+            --promotion-signing-secret-reference-count "$promotion_signing_secret_reference_count" \
             --default-branch "${{ github.event.repository.default_branch }}" \
             --repository "$GITHUB_REPOSITORY" \
             --tag "$RELEASE_TAG" \
@@ -123,6 +126,7 @@ jobs:
       - name: Validate source-bound compatibility evidence
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
@@ -136,7 +140,8 @@ jobs:
           fi
           decision_range_base_tag=""
           while IFS= read -r candidate; do
-            if [[ "$candidate" != "$RELEASE_TAG" && "$candidate" != "$sourceCandidateTag" ]]; then
+            if [[ "$candidate" != "$RELEASE_TAG" && "$candidate" != "$sourceCandidateTag" ]] &&
+              gh release view "$candidate" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
               decision_range_base_tag="$candidate"
               break
             fi

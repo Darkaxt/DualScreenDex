@@ -11,7 +11,7 @@ export function verifyRepositoryPolicy({
   signingEnvironmentPolicies,
   promotionEnvironment,
   promotionEnvironmentPolicies,
-  promotionSigningSecretCount,
+  promotionSigningSecretReferenceCount,
   tag,
   repository,
   defaultBranch,
@@ -43,7 +43,8 @@ export function verifyRepositoryPolicy({
     expectedProtectionRules: PROMOTION_PROTECTION_RULES,
     requireReviewer: true,
   });
-  assert(promotionSigningSecretCount === 0, "release-promotion must contain zero promotion signing secrets");
+  assert(promotionSigningSecretReferenceCount === 0,
+    "promotion workflow must reference zero production signing secrets");
 
   return {
     schemaVersion: 2,
@@ -59,7 +60,7 @@ export function verifyRepositoryPolicy({
     signingEnvironment: signing,
     promotionEnvironment: {
       ...promotion,
-      signingSecretCount: promotionSigningSecretCount,
+      signingSecretReferenceCount: promotionSigningSecretReferenceCount,
     },
   };
 }
@@ -162,7 +163,7 @@ function main(arguments_) {
     signingEnvironmentPolicies: readJson(options["signing-environment-policies"]),
     promotionEnvironment: readJson(options["promotion-environment"]),
     promotionEnvironmentPolicies: readJson(options["promotion-environment-policies"]),
-    promotionSigningSecretCount: Number(options["promotion-signing-secret-count"]),
+    promotionSigningSecretReferenceCount: Number(options["promotion-signing-secret-reference-count"]),
     tag: options.tag,
     repository: options.repository,
     defaultBranch: options["default-branch"],

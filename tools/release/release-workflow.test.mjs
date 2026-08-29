@@ -155,8 +155,10 @@ test("audits source-tag and signing-environment policy before unsigned handoff",
     workflow.indexOf("  sign-and-publish:"),
   );
 
-  assert.match(verifyJob, /repos\/\$GITHUB_REPOSITORY\/rulesets/);
-  assert.match(verifyJob, /repos\/\$GITHUB_REPOSITORY\/environments\/release-signing/);
+  assert.match(verifyJob, /curl --fail --silent --show-error --location/);
+  assert.match(verifyJob, /https:\/\/api\.github\.com\/repos\/\$GITHUB_REPOSITORY/);
+  assert.match(verifyJob, /fetch_public_policy "rulesets\?/);
+  assert.match(verifyJob, /fetch_public_policy "environments\/release-signing"/);
   assert.match(verifyJob, /release-signing\/deployment-branch-policies/);
   assert.match(verifyJob, /--signing-environment-policies/);
   assert.match(verifyJob, /verify-repository-policy\.mjs/);
@@ -464,11 +466,12 @@ test("stable validation reuses the candidate comparison range and RCs skip final
   assert.match(evidenceStep, /decision_range_end/);
   assert.match(evidenceStep, /--comparison-ref "\$decision_range_base"/);
   assert.match(evidenceStep, /git diff --name-only "\$decision_range_base\.\.\$decision_range_end"/);
+  assert.match(evidenceStep, /gh release view "\$candidate"/);
   assert.match(metadataStep, /if \[\[ "\$RELEASE_TAG" != \*-rc\.\* \]\]; then/);
   assert.match(metadataStep, /test -s release\/v1-final-authorization\.json/);
 });
 
-test("audits exact policy for both protected environments without promotion signing secrets", () => {
+test("audits both protected environments without privileged secret enumeration", () => {
   const verifyJob = workflow.slice(
     workflow.indexOf("  verify-and-build:"),
     workflow.indexOf("  sign-and-publish:"),
@@ -476,10 +479,10 @@ test("audits exact policy for both protected environments without promotion sign
 
   assert.match(verifyJob, /environments\/release-promotion/);
   assert.match(verifyJob, /release-promotion\/deployment-branch-policies/);
-  assert.match(verifyJob, /release-promotion\/secrets/);
+  assert.doesNotMatch(verifyJob, /release-promotion\/secrets/);
   assert.match(verifyJob, /--promotion-environment/);
   assert.match(verifyJob, /--promotion-environment-policies/);
-  assert.match(verifyJob, /--promotion-signing-secret-count/);
+  assert.match(verifyJob, /--promotion-signing-secret-reference-count/);
   assert.match(verifyJob, /--default-branch/);
 });
 
@@ -487,10 +490,11 @@ test("promotion rechecks protected environment governance immediately before pub
   const publication = promotionWorkflow.indexOf("gh api --method PATCH");
   const policyCheck = promotionWorkflow.indexOf("verify-repository-policy.mjs");
 
-  assert.match(promotionWorkflow, /repos\/\$GITHUB_REPOSITORY\/environments\/release-signing/);
-  assert.match(promotionWorkflow, /repos\/\$GITHUB_REPOSITORY\/environments\/release-promotion/);
+  assert.match(promotionWorkflow, /fetch_public_policy "environments\/release-signing"/);
+  assert.match(promotionWorkflow, /fetch_public_policy "environments\/release-promotion"/);
   assert.match(promotionWorkflow, /release-promotion\/deployment-branch-policies/);
-  assert.match(promotionWorkflow, /release-promotion\/secrets/);
+  assert.doesNotMatch(promotionWorkflow, /release-promotion\/secrets/);
+  assert.match(promotionWorkflow, /curl --fail --silent --show-error --location/);
   assert.notEqual(policyCheck, -1);
   assert.ok(policyCheck < publication, "current environment policy must pass before draft publication");
 });
