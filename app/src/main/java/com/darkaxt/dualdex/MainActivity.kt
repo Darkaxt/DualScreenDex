@@ -31,7 +31,8 @@ import com.darkaxt.dualdex.overlay.OverlayStartupAction
 import com.darkaxt.dualdex.overlay.OverlayStartupPolicy
 import com.darkaxt.dualdex.rom.RomDocumentPicker
 import com.darkaxt.dualdex.setup.SetupDocumentPicker
-import com.darkaxt.dualdex.setup.SetupPickerRequest
+import com.darkaxt.dualdex.setup.SetupPickerDispatch
+import com.darkaxt.dualdex.setup.SetupPickerRequestDispatcher
 import com.darkaxt.dualdex.storage.AllFilesSettingsLauncher
 import com.darkaxt.dualdex.storage.AllFilesSettingsDestination
 import com.darkaxt.dualdex.performance.PerformanceLogExport
@@ -158,7 +159,8 @@ internal class MainActivityDisplayContinuity(
 
 class MainActivity : AppCompatActivity() {
     private lateinit var picker: RomDocumentPicker
-    private lateinit var setupPicker: SetupDocumentPicker
+    private lateinit var setupPicker: SetupPickerDispatch
+    private lateinit var setupPickerDispatcher: SetupPickerRequestDispatcher
     private lateinit var displayManager: DisplayManager
     private lateinit var displayContinuity: MainActivityDisplayContinuity
     private var companionWebView: DualDexWebView? = null
@@ -252,12 +254,14 @@ class MainActivity : AppCompatActivity() {
         )
         WebView.setWebContentsDebuggingEnabled((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0)
         picker = RomDocumentPicker(this)
+        val dualDexApplication = application as DualDexApplication
         setupPicker = SetupDocumentPicker(
-            this,
-            onConfigTree = { uri -> (application as DualDexApplication).retroArchSetup?.applyConfigTree(uri) },
-            onRomTree = { uri -> (application as DualDexApplication).retroArchSetup?.applyRomTree(uri) },
+            dualDexApplication.setupPickerActivityResultRegistry(this),
+            onConfigTree = dualDexApplication::applyConfigTree,
+            onRomTree = dualDexApplication::applyRomTree,
         )
-        consumeSetupPickerRequest(intent)
+        setupPickerDispatcher = SetupPickerRequestDispatcher(setupPicker)
+        setupPickerDispatcher.consume(intent)
         showCompanionOrRecovery()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -323,18 +327,7 @@ class MainActivity : AppCompatActivity() {
         if (intent.getBooleanExtra(EXTRA_EXPORT_MAPPER, false)) exportMapper()
         if (intent.getBooleanExtra(EXTRA_EXPORT_PERFORMANCE, false)) exportPerformanceLog()
         if (intent.getBooleanExtra(EXTRA_EXPORT_COMPATIBILITY, false)) exportCompatibilityReport()
-        consumeSetupPickerRequest(intent)
-    }
-
-    private fun consumeSetupPickerRequest(intent: Intent) {
-        when (SetupPickerRequest.consume(
-            read = { intent.getStringExtra(SetupPickerRequest.EXTRA) },
-            clear = { intent.removeExtra(SetupPickerRequest.EXTRA) },
-        )) {
-            SetupPickerRequest.RETROARCH -> setupPicker.openConfigTree()
-            SetupPickerRequest.ROMS -> setupPicker.openRomTree()
-            null -> Unit
-        }
+        setupPickerDispatcher.consume(intent)
     }
 
     private fun showCompanionOrRecovery() {

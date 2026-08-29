@@ -73,6 +73,8 @@ class RetroArchSetupCoordinator(
         AndroidCatalogDatabaseFactory,
     ),
     private val sharedStorage: SharedStorageGateway = SharedStorageGateway.android(context),
+    private val guideLoadFault: GuideLoadFault = NoGuideLoadFault,
+    private val sessionMonitorFactory: (() -> SessionMonitor)? = null,
 ) : AutoCloseable {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val indexStore = RomIndexStore(File(context.filesDir, "retroarch/rom-index.json"))
@@ -90,9 +92,9 @@ class RetroArchSetupCoordinator(
     private val heartbeat: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "dualdex-retroarch-heartbeat").apply { isDaemon = true }
     }
-    private val commandMonitor = CommandMonitorLifecycle {
-        SessionMonitor(NetworkCommandClient(UdpNetworkCommandTransport(commandPort)))
-    }
+    private val commandMonitor = CommandMonitorLifecycle(
+        sessionMonitorFactory ?: { SessionMonitor(NetworkCommandClient(UdpNetworkCommandTransport(commandPort))) },
+    )
     private var heartbeatTask: ScheduledFuture<*>? = null
     @Volatile private var closed = false
     private val battleMemory = BattleMemoryCoordinator(
@@ -732,6 +734,7 @@ class RetroArchSetupCoordinator(
         worker.execute {
             if (!sessionEpoch.isCurrent(token)) return@execute
             try {
+                guideLoadFault.beforeLoad(entry)?.let { throw it }
                 val sourceUri = URI(entry.sourceId)
                 val loaded = if (sourceUri.scheme.equals("file", ignoreCase = true)) {
                     RomSourceLoader.load(File(sourceUri).toPath())

@@ -1,8 +1,10 @@
 package com.darkaxt.dualdex
 
 import android.app.Application
+import android.net.Uri
 import android.provider.Settings
 import android.util.Log
+import androidx.activity.ComponentActivity
 import com.darkaxt.dualdex.catalog.AndroidCatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.catalog.CatalogCacheDecision
@@ -30,7 +32,12 @@ import com.darkaxt.dualdex.performance.PrivacySafeDiagnostics
 import com.darkaxt.dualdex.performance.SharedPreferencesPreviousProcessExitMarker
 import com.darkaxt.dualdex.web.AndroidLoopbackServer
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
+import com.darkaxt.dualdex.setup.GuideLoadFault
+import com.darkaxt.dualdex.setup.NoGuideLoadFault
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
+import com.darkaxt.dualdex.setup.AndroidSetupPickerActivityResultRegistry
+import com.darkaxt.dualdex.setup.SetupPickerActivityResultRegistry
+import com.darkaxt.dualdex.retroarch.SessionMonitor
 import com.darkaxt.dualdex.settings.SettingsRepository
 import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.darkaxt.dualdex.mapper.MapperSessionStore
@@ -145,6 +152,21 @@ open class DualDexApplication : Application() {
     }
 
     protected open fun sharedStorageGateway(): SharedStorageGateway = SharedStorageGateway.android(this)
+
+    protected open fun guideLoadFault(): GuideLoadFault = NoGuideLoadFault
+
+    protected open fun sessionMonitorFactory(): (() -> SessionMonitor)? = null
+
+    internal open fun setupPickerActivityResultRegistry(activity: ComponentActivity): SetupPickerActivityResultRegistry =
+        AndroidSetupPickerActivityResultRegistry(activity)
+
+    internal open fun applyConfigTree(uri: Uri) {
+        retroArchSetup?.applyConfigTree(uri)
+    }
+
+    internal open fun applyRomTree(uri: Uri) {
+        retroArchSetup?.applyRomTree(uri)
+    }
 
     protected open fun onCompanionRuntimeCreated(runtime: ProductionCompanionRuntime) = Unit
 
@@ -326,6 +348,8 @@ open class DualDexApplication : Application() {
                 ),
                 saveSnapshotRepository = saveSnapshots,
                 sharedStorage = sharedStorageGateway(),
+                guideLoadFault = guideLoadFault(),
+                sessionMonitorFactory = sessionMonitorFactory(),
             )
             mapperCandidate = MemoryMapperCoordinator(
                 MapperSessionStore(File(filesDir, "memory-mapper")),

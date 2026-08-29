@@ -101,38 +101,57 @@ class PackagedAcceptanceInstrumentedTest {
                 body = "not-a-zip".toByteArray(),
             )
             assertEquals(400, brokenLoad.status)
-            application.publishGuideFailure()
-            waitFor("sanitized guide failure") {
-                state(origin).getAsJsonObject("retroArch").let { retroArch ->
-                    retroArch["resolution"].asString == "FAILED" &&
-                        retroArch["message"].asString ==
-                        "This game guide could not be opened. You can try again."
+            assertFalse(application.guideFailureArmed())
+            application.prepareGuideFixture()
+            waitFor("exact guide fixture indexed") { application.isGuideFixtureIndexed() }
+            assertFalse(application.guideFailureArmed())
+            application.armGuideFailure()
+            try {
+                waitFor("sanitized guide failure") {
+                    state(origin).getAsJsonObject("retroArch").let { retroArch ->
+                        retroArch["resolution"].asString == "FAILED" &&
+                            retroArch["message"].asString ==
+                            "This game guide could not be opened. You can try again."
+                    }
                 }
-            }
-            waitForJavascript(
-                webView,
-                "document.querySelector('[role=alert]')?.textContent.includes('could not be opened') === true && " +
-                    "document.querySelector('a[href=\"dualdex://guide/retry\"]') !== null",
-            )
-            screenshot("03-guide-failure.png")
+                waitForJavascript(
+                    webView,
+                    "document.querySelector('[role=alert]')?.textContent.includes('could not be opened') === true && " +
+                        "document.querySelector('a[href=\"dualdex://guide/retry\"]') !== null",
+                )
+                screenshot("03-guide-failure.png")
 
-            val retryHref = javascriptString(
-                evaluateJavascript(
-                    webView,
-                    "document.querySelector('a[href=\"dualdex://guide/retry\"]')?.getAttribute('href') ?? null",
-                ),
-            )
-            assertEquals(NativeSetupRoute.RETRY_GUIDE, NativeSetupRoute.parse(retryHref))
-            assertEquals(
-                "true",
-                evaluateJavascript(
-                    webView,
-                    "document.querySelector('a[href=\"dualdex://guide/retry\"]')?.click(); true",
-                ),
-            )
-            assertTrue(webViewUrl(webView)?.startsWith(origin) == true)
-            application.clearGuideFailure()
-            waitForJavascript(webView, "document.querySelector('[role=alert]') === null")
+                val retryHref = javascriptString(
+                    evaluateJavascript(
+                        webView,
+                        "document.querySelector('a[href=\"dualdex://guide/retry\"]')?.getAttribute('href') ?? null",
+                    ),
+                )
+                assertEquals(NativeSetupRoute.RETRY_GUIDE, NativeSetupRoute.parse(retryHref))
+                assertEquals(
+                    "true",
+                    evaluateJavascript(
+                        webView,
+                        "document.querySelector('a[href=\"dualdex://guide/retry\"]')?.click(); true",
+                    ),
+                )
+                assertTrue(webViewUrl(webView)?.startsWith(origin) == true)
+                val retryTransition = mutableListOf("FAILED")
+                waitFor("production retry loading") {
+                    state(origin).getAsJsonObject("retroArch")["resolution"].asString == "LOADING"
+                }
+                retryTransition += "LOADING"
+                application.releaseGuideRetryTerminal()
+                waitFor("production retry terminal") {
+                    state(origin).getAsJsonObject("retroArch")["resolution"].asString == "FAILED"
+                }
+                retryTransition += "FAILED"
+                assertEquals(listOf("FAILED", "LOADING", "FAILED"), retryTransition) // FAILED → LOADING → terminal
+                assertEquals(2, application.guideLoadAttempts())
+            } finally {
+                application.resetGuideFailure()
+            }
+            assertFalse(application.guideFailureArmed())
 
             val cachedRom = byteArrayOf(1, 3, 3, 7, 9, 2, 6, 5)
             val loaded = RomSourceLoader.load("qa-cache.gba", cachedRom)

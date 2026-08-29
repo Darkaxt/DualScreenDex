@@ -40,6 +40,9 @@ class FloatingCompanionService : Service() {
     private var panelWebView: DualDexWebView? = null
     private var panelLayout: WindowManager.LayoutParams? = null
     private var panelVisible = false
+    private val setupRouteHandler by lazy {
+        OverlaySetupRouteHandler(this, OverlayActivityStarter(::startActivity))
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -273,11 +276,12 @@ class FloatingCompanionService : Service() {
     }
 
     private fun handleNativeRoute(route: NativeSetupRoute) {
+        if (setupRouteHandler.handleNativeRoute(route)) return
         when (route) {
             NativeSetupRoute.SHOW_OVERLAY -> Unit
             NativeSetupRoute.DOCK_OVERLAY -> returnToDockedActivity()
             NativeSetupRoute.GRANT_ALL_FILES -> {
-                val outcome = AllFilesSettingsLauncher.open(this) { foregroundSetup(SetupPickerRequest.ROMS) }
+                val outcome = AllFilesSettingsLauncher.open(this) { setupRouteHandler.foregroundSetup(SetupPickerRequest.ROMS) }
                 if (outcome == AllFilesSettingsDestination.FAILED) {
                     Toast.makeText(
                         this,
@@ -303,22 +307,11 @@ class FloatingCompanionService : Service() {
                     .putExtra(MainActivity.EXTRA_EXPORT_COMPATIBILITY, true)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             )
-            NativeSetupRoute.GRANT_RETROARCH -> foregroundSetup(SetupPickerRequest.RETROARCH)
-            NativeSetupRoute.GRANT_ROMS -> foregroundSetup(SetupPickerRequest.ROMS)
+            NativeSetupRoute.GRANT_RETROARCH,
+            NativeSetupRoute.GRANT_ROMS,
+            -> error("setup route must be handled before the service route switch")
             NativeSetupRoute.RESCAN_ROMS -> (application as DualDexApplication).retroArchSetup?.rescanGameLibrary()
         }
-    }
-
-    private fun foregroundSetup(request: SetupPickerRequest) {
-        startActivity(
-            Intent(this, MainActivity::class.java)
-                .putExtra(SetupPickerRequest.EXTRA, request.encoded)
-                .addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
-                ),
-        )
     }
 
     private inner class BubbleDragListener(
