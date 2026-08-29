@@ -56,7 +56,7 @@ A post-run inventory comparison found the same 333 eligible names and one intent
 | Current release/governance gate after closure packaging | 83 Node tests passed. |
 | Fresh corpus summarization | Streaming raw-report hash, source/generator lineage, canonical multiset, terminal outcomes, and persistence/reopen checks passed. |
 
-The expensive parser and consolidated Gradle gates were not repeated after downstream evidence-policy/documentation changes because parser, catalog, app, and web product source did not change. `NONPARSER_REUSE` is explicit and does not permit parser, catalog, build, wrapper, or corpus-execution changes.
+The expensive parser and consolidated Gradle gates ran once after parser/catalog product-source stabilization. They were not repeated for downstream release packaging, acceptance-test stabilization, or the later replacement of two Android API-33-only bounded reads with the shared API-30-compatible reader. Focused checkpoint/save tests, the source-contract regression, Android test compilation, app lint, and the PR managed-device suite passed after those corrections. `NONPARSER_REUSE` is explicit and does not permit parser, catalog, build, wrapper, or corpus-execution changes.
 
 ## Missing-feature classification
 

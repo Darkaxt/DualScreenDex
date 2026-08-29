@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.knowledge
 
 import com.darkaxt.dualdex.save.SaveDocumentSource
+import com.darkaxt.dualdex.storage.BoundedStorageReader
 import com.google.gson.Gson
 import java.io.File
 import java.io.FileOutputStream
@@ -305,8 +306,10 @@ class SaveKnowledgeCheckpointStore(
         if (!file.isFile) return BoundedRead.Absent
         if (file.length() !in 0..maximumBytes.toLong()) return BoundedRead.Unavailable
         return try {
-            val bytes = file.inputStream().use { input -> input.readNBytes(maximumBytes + 1) }
-            if (bytes.size > maximumBytes) BoundedRead.Unavailable else BoundedRead.Present(bytes)
+            val bytes = file.inputStream().use { input ->
+                BoundedStorageReader.read(input, maximumBytes, file.length())
+            }
+            BoundedRead.Present(bytes)
         } catch (_: OutOfMemoryError) {
             BoundedRead.Unavailable
         } catch (_: Exception) {

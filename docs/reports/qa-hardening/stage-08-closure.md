@@ -50,11 +50,11 @@ The denominator correction does not waive an input. The audited physical invento
 | Companion browser unit/build matrix | 32 Vitest files / 268 tests; TypeScript/Vite build | `PASS` |
 | Portable browser E2E after closure packaging | `npm run test:e2e:ci`: 3 tests in 15.4s | `PASS` |
 | Packaged Android/WebView | Stage 3 source-bound GitHub managed-device run: 4/4 tests with immutable JUnit/screenshot evidence | `PASS` |
-| Android acceptance changes after that run | `0c8f434e` focused instrumentation/source contracts compile ownership and correct the guide teardown/declaration gaps found by review | `PASS` |
+| PR packaged Android acceptance after final test stabilization | 7/7 managed-device tests passed, including canonical overlay picker delivery and production guide retry | `PASS` |
 | Final corpus | 333/333 eligible inputs terminal; 0 parser/catalog/compatibility/persistence errors; 278/278 selected catalogs persisted and reopened | `PASS` |
 | Downstream evidence hardening | Bounded 1.63 GB streaming summary, corrected denominator, duplicate-aware canonical contract, promotion/readiness/privacy regressions | `PASS` |
 
-The consolidated Gradle and hours-long parser gates ran once after product-source stabilization. They were not repeated after release-policy and documentation packaging because no parser, catalog, Android, companion, or web product source changed. The evidence validator rejects reuse if those sources, build logic, wrapper, or corpus-execution tooling changes.
+The consolidated Gradle and hours-long parser gates ran once after parser/catalog product-source stabilization. They were not repeated for downstream release packaging, deterministic acceptance-test corrections, or the replacement of two Android API-33-only read calls with the already-tested API-30-compatible bounded reader. Focused checkpoint/save tests, source contracts, Android test compilation, app lint, and the 7/7 PR managed-device suite passed afterward. The evidence validator rejects reuse if parser/catalog sources, build logic, wrapper, or corpus-execution tooling changes.
 
 No ad hoc emulator, ADB gesture, physical-device action, credential inspection, signing-material inspection, signing, tagging, or publication was performed for this closure.
 

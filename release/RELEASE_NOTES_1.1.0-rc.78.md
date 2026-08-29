@@ -40,7 +40,8 @@ RC78 is the release candidate for the completed project-wide QA hardening progra
 - Portable Chromium acceptance: 3/3 Playwright tests passed.
 - Release and governance gate: 83/83 Node tests passed.
 - Public QA evidence: 7/7 assets passed structural privacy validation.
-- Protected GitHub managed-device acceptance, signing, and Thor validation remain mandatory before candidate promotion.
+- PR Android acceptance: 7/7 managed-device tests passed; min-SDK-30 app lint and focused bounded-read tests passed after the final compatibility correction.
+- Protected release managed-device acceptance, signing, and Thor validation remain mandatory before candidate promotion.
 
 ## Delivery
 

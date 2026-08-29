@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.save
 
 import com.darkaxt.dualdex.retroarch.RomIndexEntry
+import com.darkaxt.dualdex.storage.BoundedStorageReader
 import com.darkaxt.dualdex.storage.DirectFileTraversal
 import com.darkaxt.dualdex.storage.StorageTraversalPolicy
 import com.darkaxt.dualdex.storage.StorageTraversalQuota
@@ -59,9 +60,7 @@ object DirectSaveDocumentResolver {
             val source = resolve(name).takeIf(File::isFile) ?: return null
             require(source.length() in 0..maximumBytes.toLong()) { "sibling document exceeds the byte limit" }
             return source.inputStream().use { input ->
-                input.readNBytes(maximumBytes + 1).also { bytes ->
-                    require(bytes.size <= maximumBytes) { "sibling document exceeds the byte limit" }
-                }
+                BoundedStorageReader.read(input, maximumBytes, source.length())
             }
         }
 
