@@ -12,7 +12,7 @@
   },
   "scopeDecision": {
     "type": "NONPARSER_REUSE",
-    "attestation": "Fresh raw parser evidence was generated at the named source commit; downstream release packaging, acceptance tests, and API-30-compatible Android bounded reads changed afterward without changing parser, catalog, build, wrapper, or corpus-execution source."
+    "attestation": "Fresh raw parser evidence was generated at the named source commit; downstream release packaging, acceptance tests, API-30-compatible Android bounded reads, and repository-policy alignment with the established protected signing process changed afterward without changing parser, catalog, build, wrapper, or corpus-execution source."
   },
   "cacheDecision": {
     "type": "BUMP_REQUIRED",
