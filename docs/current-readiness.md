@@ -7,13 +7,19 @@ This is the canonical reviewer entry point for DualDex release readiness.
 - **Latest published repository release marker:** `v1.1.0-rc.77`
 - **Release notes:** [`release/RELEASE_NOTES_1.1.0-rc.77.md`](../release/RELEASE_NOTES_1.1.0-rc.77.md)
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json)
-- **Current state:** blocked while project-wide QA blockers and referrals are remediated and Stages 7–8 remain open.
+- **Current state:** project-wide QA Stages 7–8 are closed with zero blockers and zero referrals; source-bound compatibility evidence is tracked and the repository is ready for protected stable-release preparation.
 
-## Required final evidence
+## Final QA evidence
 
-No final corpus or zero-gap closure evidence is currently tracked. The next release remains blocked until one stabilized source commit produces the canonical 334-input execution receipt and summary, every materialized catalog persists and reopens, and machine-readable Stage 7 and Stage 8 closure records both report zero blockers and zero referrals.
+The final corpus evaluated all 333 scanner-eligible mainline/hack inputs in the audited 334-file physical inventory; one known spin-off is intentionally outside scanner scope. The canonical schema-2 contract binds the 333-entry multiset, 331 unique byte identities, duplicate entries, and aggregate digest. All 278 selected catalogs persisted and reopened, and parser, compatibility, catalog, and persistence error counts are zero.
 
-The release workflow requires the future `release/canonical-corpus.json`, `release/compatibility-evidence.json`, Stage 7 execution/summary, and Stage 7/8 closure records. It validates their source lineage, generator and raw-report digests, canonical denominator/digest, cache decision, exact closure state, protected tag rules, and both protected GitHub environments before signing can begin.
+- [Canonical corpus contract](../release/canonical-corpus.json)
+- [Release evidence manifest](../release/compatibility-evidence.json)
+- [Stage 7 corpus summary](reports/qa-hardening/stage-07-corpus-evidence.md)
+- [Stage 7 closure](reports/qa-hardening/stage-07-closure.md)
+- [Stage 8 integrated closure](reports/qa-hardening/stage-08-closure.md)
+
+The release workflow validates source lineage, generator and raw-report digests, the canonical denominator/multiset digest, cache decision, exact closure state, protected tag rules, and both protected GitHub environments before signing can begin. No stable tag or signed artifact has been created by QA closure.
 
 ## Historical records
 

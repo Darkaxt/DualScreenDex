@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 2,
+  "sourceCommit": "66bd216d9c370735666d5eb7438e83796a87eec7",
+  "generator": {
+    "name": "parser-cli",
+    "schemaVersion": 13,
+    "sha256": "5a19f4866925c4310e7c1938acea127c937118c4d0186a354a4da90b94585879"
+  },
+  "corpus": {
+    "inputDigestSha256": "974500a1b568bab72954e253c0a1efae25ea4208657804ed5f81ff3409e79d57",
+    "inputCount": 333
+  },
+  "scopeDecision": {
+    "type": "NONPARSER_REUSE",
+    "attestation": "Fresh raw parser evidence was generated at the named source commit; only downstream evidence policy and closure packaging changed afterward."
+  },
+  "cacheDecision": {
+    "type": "BUMP_REQUIRED",
+    "previousRevision": 44,
+    "revision": 46,
+    "rationale": "Parser output and bounded detached-species behavior changed after RC77, so prior revision-44 catalogs must rebuild before activation.",
+    "seededRegressionTest": "catalog-store/src/test/kotlin/com/darkaxt/dualdex/catalog/CatalogStoreTest.kt"
+  },
+  "artifacts": [
+    {
+      "role": "CORPUS_SUMMARY",
+      "path": "docs/reports/qa-hardening/stage-07-corpus-evidence.json",
+      "sha256": "679c9ee26f8065b0e5aa1e90313f0dbebbd66184649f8b5ba704f3acb403a5d3"
+    },
+    {
+      "role": "CORPUS_EXECUTION_RECEIPT",
+      "path": "docs/reports/qa-hardening/stage-07-corpus-execution.json",
+      "sha256": "4ce0d643e27c6e7d9c5f381e56725aa5c80ad52649e7c4953d0f27393fa8f33c"
+    },
+    {
+      "role": "STAGE_7_CLOSURE",
+      "path": "docs/reports/qa-hardening/stage-07-closure.json",
+      "sha256": "9a237c0f28638a17c9ec99aa78acd0a0084d5590db6a32591764017c0f3c98b5"
+    },
+    {
+      "role": "STAGE_8_CLOSURE",
+      "path": "docs/reports/qa-hardening/stage-08-closure.json",
+      "sha256": "18456a8fc27eb1442786ccd311acc4081633d4c3d2c6b4a28164f2d17d431c78"
+    }
+  ]
+}

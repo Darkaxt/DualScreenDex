@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import {
   renderCompatibilityEvidenceMarkdown,
   summarizeCompatibilityEvidence,
+  summarizeCompatibilityEvidenceFile,
 } from "./summarize-compatibility-evidence.mjs";
 
 const sourceCommit = "a".repeat(40);
@@ -42,8 +46,9 @@ function evidence(rows) {
     .map(value => `${value.result.sha256}:${value.result.size}`)
     .sort();
   const canonical = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     inputCount: rows.length,
+    uniqueRomIdentityCount: new Set(rows.map(value => value.result.sha256)).size,
     inputDigestSha256: createHash("sha256").update(identities.join("\n")).digest("hex"),
   };
   const receipt = {
@@ -74,8 +79,65 @@ test("summarizes receipt-bound corpus evidence without private input details", (
   assert.equal(summary.outcomes.total, 3);
   assert.equal(summary.dataCompatibility.total, 3);
   assert.equal(summary.catalogs.persisted, 1);
+  assert.match(markdown, /Data compatibility: 1 complete, 1 partial, 1 unresolved, 0 errors/);
   assert.doesNotMatch(encoded, /Private Game|D:\/private|0000000000000001/);
   assert.doesNotMatch(markdown, /Private Game|D:\/private|0000000000000001/);
+});
+
+test("streams reports whose retained catalog payload crosses read boundaries", async () => {
+  const rows = [
+    { ...row(1, "SELECTED", "COMPLETE"), catalog: { padding: "x".repeat(2_000_000) } },
+    row(2, "NO_FAMILY_MATCH", "UNRESOLVED", false),
+  ];
+  const input = evidence(rows);
+  const directory = mkdtempSync(join(tmpdir(), "dualdex-summary-test-"));
+  const rawPath = join(directory, "corpus-raw.json");
+
+  try {
+    writeFileSync(rawPath, input.raw);
+    const summary = await summarizeCompatibilityEvidenceFile(rawPath, input.receipt, input.canonical);
+
+    assert.equal(summary.inputCount, 2);
+    assert.equal(summary.outcomes.selected, 1);
+    assert.equal(summary.catalogs.persisted, 1);
+    assert.equal(summary.rawReportSha256, input.receipt.rawReportSha256);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects malformed streaming array separators and root termination", async () => {
+  const rows = [row(1, "SELECTED", "COMPLETE")];
+  const input = evidence(rows);
+  const header = JSON.stringify({
+    schemaVersion: 13,
+    execution: { sourceCommit, generatorSha256: generatorDigest },
+    roots: ["private-root"],
+  }).slice(0, -1);
+  const encodedRow = JSON.stringify(rows[0]);
+  const malformedReports = [
+    `${header},"results":[,${encodedRow}]}`,
+    `${header},"results":[${encodedRow},]}`,
+    `${header},"results":[${encodedRow}${encodedRow}]}`,
+    `${header},"results":[${encodedRow}]`,
+    `${header},"results":[${encodedRow}]}}`,
+  ];
+  const directory = mkdtempSync(join(tmpdir(), "dualdex-summary-malformed-"));
+  const rawPath = join(directory, "corpus-raw.json");
+
+  try {
+    for (const malformed of malformedReports) {
+      const raw = Buffer.from(malformed);
+      input.receipt.rawReportSha256 = createHash("sha256").update(raw).digest("hex");
+      writeFileSync(rawPath, raw);
+      await assert.rejects(
+        () => summarizeCompatibilityEvidenceFile(rawPath, input.receipt, input.canonical),
+        /separator|trailing comma|terminator|trailing content/i,
+      );
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("rejects relabeling an older raw report even when its corpus digest matches", () => {

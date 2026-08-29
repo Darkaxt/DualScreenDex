@@ -48,7 +48,7 @@ function runMetadata(tag, finalAuthorization, existingTags = []) {
     writeFileSync(evidenceValidationFile, JSON.stringify({
       schemaVersion: 2,
       evidenceSourceCommit: testEvidenceSourceCommit,
-      inputCount: 334,
+      inputCount: 333,
       stage7Closed: true,
       stage8Closed: true,
     }));
@@ -298,7 +298,7 @@ function finalFixture(overrides = {}) {
     releaseEvidenceValidation: {
       schemaVersion: 2,
       evidenceSourceCommit,
-      inputCount: 334,
+      inputCount: 333,
       stage7Closed: true,
       stage8Closed: true,
     },

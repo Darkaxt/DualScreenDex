@@ -1,10 +1,10 @@
 # Post-Hardening Remediation Closure Record
 
-**State:** Source/governance remediation record only; this is not a Stage 7 or Stage 8 closure.
+**State:** Source/governance remediation record, subsequently completed by the linked Stage 7 and Stage 8 closure evidence.
 
 **Audited detection specification:** `docs/superpowers/specs/2026-08-28-post-hardening-project-wide-qa-detections.md` at `f71f5bf4`.
 
-**Source checkpoint:** `6b99a53faaf261f55fff0e7646deec87557b2cb9` on `qa/project-wide-hardening`, with the first documentation checkpoint at `6a60d595`. Both matched their `fork/qa/project-wide-hardening` tracking ref before the bounded gates below. The final gate-evidence documentation commit is pending.
+**Source checkpoint:** `6b99a53faaf261f55fff0e7646deec87557b2cb9` on `qa/project-wide-hardening`, with documentation checkpoints `6a60d595` and `66bd216d`. All matched their `fork/qa/project-wide-hardening` tracking ref when pushed.
 
 **Review inputs:** the complete detection specification, the project-wide staged plan, Stage 1 through Stage 6 closure reports (including the Stage 6 parity matrix), and commits `f71f5bf4`, `8bfaedd2`, `9d825e13`, `b5bfd81f`, `6c17322a`, `41d25d1d`, `0c8f434e`, and `6b99a53f`.
 
@@ -14,13 +14,13 @@ This record closes the 39 source/governance remediation records against the name
 
 The matrix records implementation/test ownership from the listed commits and existing staged reports. A test path means the regression was added or updated by the owning remediation; it does **not** claim that this report re-executed that suite. Only the local documentation-lint check and diff integrity check are executed by this documentation task. Main-loop gates remain explicitly pending below.
 
-The fresh canonical 334-input corpus is intentionally outside this report. The first matrix row has a remediated validator/governance contract, but its fresh execution evidence remains `PENDING_FINAL_CORPUS`; this report does not claim 334/334 evidence, catalog persistence/reopen evidence, or a final release-evidence receipt.
+The fresh canonical corpus was intentionally outside the original scope of this report. It has since completed over all 333 scanner-eligible inputs in the audited 334-file inventory; `stage-07-corpus-evidence.*`, `stage-07-closure.*`, and `stage-08-closure.*` are the authoritative downstream evidence.
 
 ## Terminal remediation matrix
 
 | Source record | Source class | Owning commit(s) | Primary files | Regression ownership | Evidence basis | Current status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `S7-BLK-01` | `BLOCKER` | `8bfaedd2` | `parser-cli/.../ReportWriter.kt`; `tools/release/{summarize-compatibility-evidence,validate-release-evidence,derive-release-metadata}.mjs`; release workflows | `ExecutionReceiptTest.kt`; `compatibility-evidence-summary.test.mjs`; `release-evidence.test.mjs`; `release-metadata.test.mjs` | Source-bound receipt, canonical-denominator/digest, error/terminal-outcome, and closure validation were added in the cited commit. | `REMEDIATED_SOURCE`; fresh execution evidence is `PENDING_FINAL_CORPUS`. |
+| `S7-BLK-01` | `BLOCKER` | `8bfaedd2`, Stage 7 evidence closure | `parser-cli/.../ReportWriter.kt`; `tools/release/{summarize-compatibility-evidence,validate-release-evidence,derive-release-metadata}.mjs`; release workflows | `ExecutionReceiptTest.kt`; `compatibility-evidence-summary.test.mjs`; `release-evidence.test.mjs`; `release-metadata.test.mjs` | Source-bound receipt, canonical eligible-input multiset/digest, zero-error terminal outcomes, persistence/reopen, and zero-gap closure are recorded in `stage-07-corpus-evidence.*` and `stage-07-closure.*`. | `CLOSED` |
 | `QA-BLK-EVID-02` | `BLOCKER` | `8bfaedd2` | `parser-cli/.../{Main,ReportWriter}.kt`; `tools/release/{summarize-compatibility-evidence,validate-release-evidence}.mjs` | `ExecutionReceiptTest.kt`; `ReportWriterTest.kt`; `compatibility-evidence-summary.test.mjs`; `release-evidence.test.mjs` | Parser-produced execution receipt and summarizer/validator lineage checks landed in the cited commit. | `REMEDIATED_SOURCE` |
 | `QA-BLK-EVID-03` | `BLOCKER` | `8bfaedd2` | `parser-cli/build.gradle.kts`; `tools/release/validate-release-evidence.mjs` | `release-evidence.test.mjs` | Evidence-affecting parser/build/tool scope is covered by the release-evidence policy tests added in the cited commit. | `REMEDIATED_SOURCE` |
 | `QA-BLK-SCHEMA-01` | `BLOCKER` | `8bfaedd2` | `tools/release/{derive-release-metadata,validate-release-evidence}.mjs`; `release/v1-ready.json` | `release-metadata.test.mjs`; `release-evidence.test.mjs` | Machine-readable cache-decision policy and its release validation landed in the cited commit. | `REMEDIATED_SOURCE` |
@@ -77,8 +77,8 @@ Local documentation verification:
 | Stage 1 referral-lint plus mutation fixture | `node --test tools/release/referral-ledger.test.mjs` | `PASS` — 2 tests, 0 failures. |
 | Working-tree whitespace integrity | `git diff --check` | `PASS` |
 
-## Explicitly pending, outside this report
+## Downstream closure
 
-The final fresh 334-input corpus, the Stage 7 and Stage 8 zero-gap closure documents/records, managed-device Android acceptance, browser E2E, and stable-release decision are outside this source/governance record and remain pending. The source checkpoint is not an RC authorization: no RC is authorized by this report.
+The fresh 333-eligible-input corpus over the 334-file physical inventory and the Stage 7/8 zero-gap records are now tracked in `stage-07-corpus-evidence.*`, `stage-07-closure.*`, and `stage-08-closure.*`. No RC was authorized by this remediation record.
 
-The canonical current-readiness entry point remains `docs/current-readiness.md`. Its release blockers cannot be cleared by this document; they require the final corpus and formal zero-gap closures on the final stabilized source.
+The canonical current-readiness entry point remains `docs/current-readiness.md`; it links the source-bound evidence and machine-readable zero-gap closure used by release policy.

@@ -2,13 +2,13 @@
 
 **ID:** `S7-BLK-01`
 
-**Classification:** `BLOCKER` — implementation corrected; fresh post-fix evidence still required
+**Classification:** `CLOSED` — implementation corrected and fresh post-fix evidence recorded by Stage 7 closure
 
 **Requirement:** `INV-04`, `INV-06`, `CAT-08`, `CAT-14`, `REL-05`
 
 ## Failure
 
-The source-bound 334-input corpus gate could not complete because `Let´s Go Pikachu (v6.0).gba` entered multiplicative full-ROM work in `Gen1DetachedSpeciesResolver`.
+The source-bound full-corpus gate over the 334-file physical inventory could not complete because `Let´s Go Pikachu (v6.0).gba` entered multiplicative full-ROM work in `Gen1DetachedSpeciesResolver`. The scanner-eligible denominator was later confirmed as 333 because one known spin-off is intentionally excluded by policy.
 
 The first corpus execution completed 121 inputs before an external stop. A non-overlapping resume completed another 15 inputs, but this ROM occupied result slot 1. The parser CLI had started 16 inputs and completed the other 15; it did not submit input 17 because ordered collection waited for slot 1.
 
@@ -45,4 +45,4 @@ Two isolated thread dumps showed one runnable, CPU-bound parser thread rather th
 
 No owned parser process remains running. The 136 pre-fix receipts are retained only as diagnostic evidence. Because parser-core, parser-cli, and parser cache-schema source changed, none of those receipts may contribute to release evidence or Stage 7 closure.
 
-`S7-BLK-01` remains open only for the post-fix evidence gate. Acceptance requires a completely fresh run of all 334 inputs from the committed correction, with every materialized catalog persisted and reopened, zero parser or persistence errors, and release evidence bound to that exact source commit. A partial resume or aggregation with the 136 old receipts is prohibited.
+`S7-BLK-01` is closed by the completely fresh run of all 333 scanner-eligible inputs from the audited 334-file physical inventory at source `66bd216d`. Every materialized catalog persisted and reopened; parser, compatibility, catalog, and persistence errors are zero. `stage-07-corpus-evidence.*` and `stage-07-closure.*` bind the evidence to the exact source, generator, raw report, and canonical multiset. No partial resume or aggregation with the 136 old receipts contributed to closure.

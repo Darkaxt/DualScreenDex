@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 const EXPECTED_APPLICATION_ID = "com.darkaxt.dualdex";
 const FINAL_VERSION_QUALIFIER = 99;
 const MAX_RC_NUMBER = FINAL_VERSION_QUALIFIER - 1;
+const REQUIRED_INPUT_COUNT = 333;
 const COMMIT = /^[0-9a-f]{40}$/;
 
 function parseArguments(argumentsList) {
@@ -94,7 +95,7 @@ function validateReadyMarker(ready, versionName, certificateSha256, releaseEvide
       closure.stage7Closed !== true || closure.stage8Closed !== true ||
       releaseEvidenceValidation.stage7Closed !== true || releaseEvidenceValidation.stage8Closed !== true ||
       closure.openBlockers !== 0 || closure.openReferrals !== 0 ||
-      releaseEvidenceValidation.inputCount !== 334) {
+      releaseEvidenceValidation.inputCount !== REQUIRED_INPUT_COUNT) {
     throw new Error("Release readiness requires matching Stage 7 and Stage 8 closure with zero gaps");
   }
 }

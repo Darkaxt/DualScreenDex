@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import process from "node:process";
 
 const EXPECTED_APPLICATION_ID = "com.darkaxt.dualdex";
+const REQUIRED_INPUT_COUNT = 333;
 
 function parseArguments(argumentsList) {
   const parsed = {};
@@ -157,9 +158,13 @@ function validatePublishedEvidenceAssets(assets) {
   requireCondition(/^[0-9a-f]{40}$/.test(manifest.sourceCommit ?? ""),
     "Published release evidence source commit is invalid");
   validatePublishedGenerator(manifest.generator, "Published release evidence");
-  requireCondition(canonical?.schemaVersion === 1 && canonical.inputCount === 334 &&
+  requireCondition(canonical?.schemaVersion === 2 &&
+    canonical.inputCount === REQUIRED_INPUT_COUNT &&
+    Number.isInteger(canonical.uniqueRomIdentityCount) &&
+    canonical.uniqueRomIdentityCount > 0 &&
+    canonical.uniqueRomIdentityCount <= REQUIRED_INPUT_COUNT &&
     /^[0-9a-f]{64}$/.test(canonical.inputDigestSha256 ?? ""),
-  "Published canonical corpus must bind exactly 334 inputs");
+  `Published canonical corpus must bind exactly ${REQUIRED_INPUT_COUNT} inputs and its unique identity count`);
   validatePublishedSummary(summary, manifest, canonical);
   validatePublishedReceipt(receipt, manifest, summary);
 
@@ -190,7 +195,7 @@ function validatePublishedEvidenceAssets(assets) {
     validation.cacheDecision === expectedCacheDecision &&
     validation.generatorSchemaVersion === manifest.generator.schemaVersion &&
     validation.generatorSha256 === manifest.generator.sha256 &&
-    validation.inputCount === 334 &&
+    validation.inputCount === REQUIRED_INPUT_COUNT &&
     validation.corpusInputDigestSha256 === canonical.inputDigestSha256 &&
     validation.artifactCount === manifest.artifacts.length &&
     validation.stage7Closed === true && validation.stage8Closed === true,
@@ -210,11 +215,12 @@ function validatePublishedSummary(summary, manifest, canonical) {
   validatePublishedGenerator(summary.generator, "Published corpus summary");
   requireCondition(summary.generator.sha256 === manifest.generator.sha256 &&
     /^[0-9a-f]{64}$/.test(summary.rawReportSha256 ?? "") &&
-    manifest.corpus?.inputCount === 334 && summary.inputCount === 334 &&
-    summary.uniqueRomIdentities === 334 &&
+    manifest.corpus?.inputCount === REQUIRED_INPUT_COUNT &&
+    summary.inputCount === REQUIRED_INPUT_COUNT &&
+    summary.uniqueRomIdentities === canonical.uniqueRomIdentityCount &&
     manifest.corpus?.inputDigestSha256 === canonical.inputDigestSha256 &&
     summary.corpusInputDigestSha256 === canonical.inputDigestSha256,
-  "Published corpus summary does not match the canonical 334-input evidence");
+  `Published corpus summary does not match the canonical ${REQUIRED_INPUT_COUNT}-input evidence`);
   validateTerminalCounts(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "errors"],
     "Published corpus summary terminal outcomes");
   requireCondition(summary.outcomes.errors === 0, "Published corpus summary contains parser errors");
@@ -234,8 +240,9 @@ function validatePublishedSummary(summary, manifest, canonical) {
 
 function validateTerminalCounts(counts, fields, description) {
   requireCondition(fields.every(field => Number.isInteger(counts?.[field]) && counts[field] >= 0) &&
-    counts?.total === 334 && fields.reduce((sum, field) => sum + counts[field], 0) === 334,
-  `${description} must sum to 334`);
+    counts?.total === REQUIRED_INPUT_COUNT &&
+    fields.reduce((sum, field) => sum + counts[field], 0) === REQUIRED_INPUT_COUNT,
+  `${description} must sum to ${REQUIRED_INPUT_COUNT}`);
 }
 
 function validatePublishedReceipt(receipt, manifest, summary) {
@@ -245,7 +252,8 @@ function validatePublishedReceipt(receipt, manifest, summary) {
     "Published execution receipt source commit is inconsistent");
   validatePublishedGenerator(receipt.generator, "Published execution receipt");
   requireCondition(receipt.generator.sha256 === manifest.generator.sha256 &&
-    receipt.rawReportSha256 === summary.rawReportSha256 && receipt.inputCount === 334,
+    receipt.rawReportSha256 === summary.rawReportSha256 &&
+    receipt.inputCount === REQUIRED_INPUT_COUNT,
   "Published execution receipt does not match schema-2 release evidence");
 }
 

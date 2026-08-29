@@ -19,13 +19,13 @@ function fixture(overrides = {}) {
     generator: { name: "parser-cli", schemaVersion: 13, sha256: generatorDigest },
     rawReportSha256: rawReportDigest,
     corpusInputDigestSha256: corpusDigest,
-    inputCount: 334,
-    uniqueRomIdentities: 334,
-    outcomes: { selected: 330, ambiguous: 2, noFamilyMatch: 2, total: 334, errors: 0 },
-    dataCompatibility: { complete: 300, partial: 30, unresolved: 4, total: 334, errors: 0 },
+    inputCount: 333,
+    uniqueRomIdentities: 333,
+    outcomes: { selected: 329, ambiguous: 2, noFamilyMatch: 2, total: 333, errors: 0 },
+    dataCompatibility: { complete: 299, partial: 30, unresolved: 4, total: 333, errors: 0 },
     catalogs: {
-      materialized: 330,
-      persisted: 330,
+      materialized: 329,
+      persisted: 329,
       catalogErrors: 0,
       persistenceErrors: 0,
     },
@@ -41,7 +41,7 @@ function fixture(overrides = {}) {
     sourceCommit,
     generator: { name: "parser-cli", schemaVersion: 13, sha256: generatorDigest },
     rawReportSha256: rawReportDigest,
-    inputCount: 334,
+    inputCount: 333,
   });
   const stage7 = jsonBytes({
     schemaVersion: 1,
@@ -69,7 +69,7 @@ function fixture(overrides = {}) {
     schemaVersion: 2,
     sourceCommit,
     generator: { name: "parser-cli", schemaVersion: 13, sha256: generatorDigest },
-    corpus: { inputDigestSha256: corpusDigest, inputCount: 334 },
+    corpus: { inputDigestSha256: corpusDigest, inputCount: 333 },
     scopeDecision: {
       type: "FRESH_EVIDENCE",
       attestation: "Fresh corpus evidence was generated from this exact source commit.",
@@ -84,7 +84,12 @@ function fixture(overrides = {}) {
   };
   return {
     manifest,
-    canonicalCorpus: { schemaVersion: 1, inputCount: 334, inputDigestSha256: corpusDigest },
+    canonicalCorpus: {
+      schemaVersion: 2,
+      inputCount: 333,
+      uniqueRomIdentityCount: 333,
+      inputDigestSha256: corpusDigest,
+    },
     catalogSchemaRevision: 45,
     priorCatalogSchemaRevision: 45,
     artifacts,
@@ -132,15 +137,16 @@ test("accepts exactly complete source-bound fresh evidence and zero-gap closures
   ]);
 
   assert.equal(result.scopeDecision, "FRESH_EVIDENCE");
-  assert.equal(result.inputCount, 334);
+  assert.equal(result.inputCount, 333);
   assert.equal(result.stage7Closed, true);
   assert.equal(result.stage8Closed, true);
 });
 
 test("rejects a noncanonical denominator, digest, or unique input set", () => {
   const wrongCount = fixture();
-  wrongCount.canonicalCorpus.inputCount = 333;
-  assert.throws(() => validate(wrongCount), /canonical corpus.*334/i);
+  wrongCount.canonicalCorpus.inputCount = 334;
+  wrongCount.manifest.corpus.inputCount = 334;
+  assert.throws(() => validate(wrongCount), /canonical corpus.*333/i);
 
   const wrongDigest = fixture();
   wrongDigest.canonicalCorpus.inputDigestSha256 = "f".repeat(64);
@@ -148,9 +154,9 @@ test("rejects a noncanonical denominator, digest, or unique input set", () => {
 
   const duplicate = fixture();
   const summary = artifactValue(duplicate, "CORPUS_SUMMARY");
-  summary.uniqueRomIdentities = 333;
+  summary.uniqueRomIdentities = 332;
   replaceArtifact(duplicate, "CORPUS_SUMMARY", summary);
-  assert.throws(() => validate(duplicate), /334.*unique|unique.*334/i);
+  assert.throws(() => validate(duplicate), /unique ROM identity count.*canonical/i);
 });
 
 test("rejects missing terminal outcomes and every error category", () => {
@@ -164,7 +170,7 @@ test("rejects missing terminal outcomes and every error category", () => {
     const evidence = fixture();
     const summary = artifactValue(evidence, "CORPUS_SUMMARY");
     const [group, field] = path.split(".");
-    summary[group][field] = field === "total" ? 333 : 1;
+    summary[group][field] = field === "total" ? 332 : 1;
     if (path === "outcomes.errors") summary.outcomes.selected -= 1;
     if (path === "dataCompatibility.errors") summary.dataCompatibility.complete -= 1;
     replaceArtifact(evidence, "CORPUS_SUMMARY", summary);
@@ -176,21 +182,21 @@ test("rejects negative terminal counts or catalogs outside selected outcomes", (
   const negativeParser = fixture();
   const parserSummary = artifactValue(negativeParser, "CORPUS_SUMMARY");
   parserSummary.outcomes.selected = -1;
-  parserSummary.outcomes.ambiguous = 333;
+  parserSummary.outcomes.ambiguous = 332;
   replaceArtifact(negativeParser, "CORPUS_SUMMARY", parserSummary);
   assert.throws(() => validate(negativeParser), /nonnegative parser outcome counts/i);
 
   const negativeCompatibility = fixture();
   const compatibilitySummary = artifactValue(negativeCompatibility, "CORPUS_SUMMARY");
   compatibilitySummary.dataCompatibility.complete = -1;
-  compatibilitySummary.dataCompatibility.partial = 331;
+  compatibilitySummary.dataCompatibility.partial = 330;
   replaceArtifact(negativeCompatibility, "CORPUS_SUMMARY", compatibilitySummary);
   assert.throws(() => validate(negativeCompatibility), /nonnegative compatibility counts/i);
 
   const extraCatalog = fixture();
   const catalogSummary = artifactValue(extraCatalog, "CORPUS_SUMMARY");
-  catalogSummary.catalogs.materialized = 331;
-  catalogSummary.catalogs.persisted = 331;
+  catalogSummary.catalogs.materialized = 330;
+  catalogSummary.catalogs.persisted = 330;
   replaceArtifact(extraCatalog, "CORPUS_SUMMARY", catalogSummary);
   assert.throws(() => validate(extraCatalog), /selected outcome.*materialized catalog/i);
 });
@@ -227,7 +233,7 @@ test("rejects missing or nonzero Stage 7 and Stage 8 closure", () => {
   assert.throws(() => validate(open), /Stage 7.*zero blockers/i);
 });
 
-test("rejects reuse for every generator, build, wrapper, and evidence-tool category", () => {
+test("rejects reuse for every generator, build, wrapper, and evidence-generator category", () => {
   const changedCategories = [
     "parser-cli/src/main/kotlin/Main.kt",
     "parser-cli/build.gradle.kts",
@@ -239,8 +245,6 @@ test("rejects reuse for every generator, build, wrapper, and evidence-tool categ
     "gradle.properties",
     "gradle/wrapper/gradle-wrapper.properties",
     "gradlew",
-    "tools/release/summarize-compatibility-evidence.mjs",
-    "tools/release/validate-release-evidence.mjs",
     "tools/corpus/Invoke-DualDexCorpusValidation.ps1",
   ];
 
@@ -257,6 +261,25 @@ test("rejects reuse for every generator, build, wrapper, and evidence-tool categ
       changedPath,
     );
   }
+});
+
+test("allows downstream evidence-policy corrections with nonparser reuse", () => {
+  const evidence = fixture({
+    scopeDecision: {
+      type: "NONPARSER_REUSE",
+      attestation: "Only downstream evidence policy changed; parser output and generated evidence remain invariant.",
+    },
+  });
+
+  const result = validate(evidence, [
+    "tools/release/validate-release-evidence.mjs",
+    "tools/release/validate-candidate-promotion.mjs",
+    "tools/release/derive-release-metadata.mjs",
+    "tools/release/summarize-compatibility-evidence.mjs",
+  ]);
+
+  assert.equal(result.scopeDecision, "NONPARSER_REUSE");
+  assert.equal(result.inputCount, 333);
 });
 
 test("requires a matching cache decision for parser or catalog changes", () => {

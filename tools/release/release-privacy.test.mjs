@@ -34,11 +34,11 @@ const validSummary = {
   generator: { name: "parser-cli", schemaVersion: 13, sha256: "b".repeat(64) },
   rawReportSha256: "c".repeat(64),
   corpusInputDigestSha256: "d".repeat(64),
-  inputCount: 334,
-  uniqueRomIdentities: 334,
-  outcomes: { selected: 334, ambiguous: 0, noFamilyMatch: 0, total: 334, errors: 0 },
-  dataCompatibility: { complete: 334, partial: 0, unresolved: 0, total: 334, errors: 0 },
-  catalogs: { materialized: 334, persisted: 334, catalogErrors: 0, persistenceErrors: 0 },
+  inputCount: 333,
+  uniqueRomIdentities: 333,
+  outcomes: { selected: 333, ambiguous: 0, noFamilyMatch: 0, total: 333, errors: 0 },
+  dataCompatibility: { complete: 333, partial: 0, unresolved: 0, total: 333, errors: 0 },
+  catalogs: { materialized: 333, persisted: 333, catalogErrors: 0, persistenceErrors: 0 },
   privacy: {
     containsRomIdentity: false,
     containsRomName: false,
@@ -93,7 +93,7 @@ test("rejects unknown fields from every machine-readable Stage 7 or 8 asset", ()
     sourceCommit: "a".repeat(40),
     generator: { name: "parser-cli", schemaVersion: 13, sha256: "b".repeat(64) },
     rawReportSha256: "c".repeat(64),
-    inputCount: 334,
+    inputCount: 333,
     localWorkspace: "redacted",
   };
   const closure = {
@@ -146,13 +146,14 @@ function validPublicEvidence() {
     schemaVersion: 2,
     sourceCommit,
     generator: { name: "parser-cli", schemaVersion: 13, sha256: "b".repeat(64) },
-    corpus: { inputDigestSha256: "d".repeat(64), inputCount: 334 },
+    corpus: { inputDigestSha256: "d".repeat(64), inputCount: 333 },
     scopeDecision: { type: "NONPARSER_REUSE", attestation: "Release-only changes reuse source-bound evidence." },
     artifacts: [{ role: "CORPUS_SUMMARY", path: "docs/summary.json", sha256: "e".repeat(64) }],
   };
   const canonicalCorpus = {
-    schemaVersion: 1,
-    inputCount: 334,
+    schemaVersion: 2,
+    inputCount: 333,
+    uniqueRomIdentityCount: 333,
     inputDigestSha256: "d".repeat(64),
   };
   const releaseEvidenceValidation = {
@@ -164,7 +165,7 @@ function validPublicEvidence() {
     generatorSchemaVersion: 13,
     generatorSha256: "b".repeat(64),
     corpusInputDigestSha256: "d".repeat(64),
-    inputCount: 334,
+    inputCount: 333,
     artifactCount: 1,
     stage7Closed: true,
     stage8Closed: true,

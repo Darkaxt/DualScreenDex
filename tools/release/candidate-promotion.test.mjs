@@ -34,11 +34,11 @@ function publishedEvidenceFiles() {
     generator: { name: "parser-cli", schemaVersion: 13, sha256: generatorSha256 },
     rawReportSha256,
     corpusInputDigestSha256: corpusDigest,
-    inputCount: 334,
-    uniqueRomIdentities: 334,
-    outcomes: { selected: 330, ambiguous: 2, noFamilyMatch: 2, total: 334, errors: 0 },
-    dataCompatibility: { complete: 300, partial: 30, unresolved: 4, total: 334, errors: 0 },
-    catalogs: { materialized: 330, persisted: 330, catalogErrors: 0, persistenceErrors: 0 },
+    inputCount: 333,
+    uniqueRomIdentities: 333,
+    outcomes: { selected: 329, ambiguous: 2, noFamilyMatch: 2, total: 333, errors: 0 },
+    dataCompatibility: { complete: 299, partial: 30, unresolved: 4, total: 333, errors: 0 },
+    catalogs: { materialized: 329, persisted: 329, catalogErrors: 0, persistenceErrors: 0 },
     privacy: {
       containsRomIdentity: false,
       containsRomName: false,
@@ -51,7 +51,7 @@ function publishedEvidenceFiles() {
     sourceCommit,
     generator: { name: "parser-cli", schemaVersion: 13, sha256: generatorSha256 },
     rawReportSha256,
-    inputCount: 334,
+    inputCount: 333,
   });
   const stage7 = jsonBytes({
     schemaVersion: 1,
@@ -79,14 +79,19 @@ function publishedEvidenceFiles() {
     schemaVersion: 2,
     sourceCommit,
     generator: { name: "parser-cli", schemaVersion: 13, sha256: generatorSha256 },
-    corpus: { inputDigestSha256: corpusDigest, inputCount: 334 },
+    corpus: { inputDigestSha256: corpusDigest, inputCount: 333 },
     scopeDecision: {
       type: "NONPARSER_REUSE",
       attestation: "Only release metadata changed after this source-bound evidence was generated.",
     },
     artifacts,
   });
-  const canonical = jsonBytes({ schemaVersion: 1, inputCount: 334, inputDigestSha256: corpusDigest });
+  const canonical = jsonBytes({
+    schemaVersion: 2,
+    inputCount: 333,
+    uniqueRomIdentityCount: 333,
+    inputDigestSha256: corpusDigest,
+  });
   const validation = jsonBytes({
     schemaVersion: 2,
     releaseCommit,
@@ -96,7 +101,7 @@ function publishedEvidenceFiles() {
     generatorSchemaVersion: 13,
     generatorSha256,
     corpusInputDigestSha256: corpusDigest,
-    inputCount: 334,
+    inputCount: 333,
     artifactCount: 4,
     stage7Closed: true,
     stage8Closed: true,
@@ -491,7 +496,7 @@ test("rejects malformed published execution and validation lineage", () => {
 
   const parserErrors = immutableAssetFixture();
   const summary = JSON.parse(parserErrors.files.get("dualdex-stage-07-corpus-evidence.json"));
-  summary.outcomes = { selected: 329, ambiguous: 2, noFamilyMatch: 2, total: 334, errors: 1 };
+  summary.outcomes = { selected: 328, ambiguous: 2, noFamilyMatch: 2, total: 333, errors: 1 };
   replacePublishedArtifact(
     parserErrors,
     "dualdex-stage-07-corpus-evidence.json",

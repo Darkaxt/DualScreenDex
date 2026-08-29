@@ -116,7 +116,9 @@ function validateCompatibilityEvidence(manifest) {
 }
 
 function validateCanonicalCorpus(corpus) {
-  assertExactKeys(corpus, ["schemaVersion", "inputCount", "inputDigestSha256"]);
+  assertExactKeys(corpus, [
+    "schemaVersion", "inputCount", "uniqueRomIdentityCount", "inputDigestSha256",
+  ]);
 }
 
 function validateReleaseEvidenceValidation(validation) {

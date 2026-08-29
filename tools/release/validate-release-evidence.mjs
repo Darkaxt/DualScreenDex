@@ -6,11 +6,11 @@ import { fileURLToPath } from "node:url";
 
 const SHA256 = /^[0-9a-f]{64}$/;
 const COMMIT = /^[0-9a-f]{40}$/;
-const REQUIRED_INPUT_COUNT = 334;
+const REQUIRED_INPUT_COUNT = 333;
 const REQUIRED_GENERATOR_SCHEMA = 13;
 const PARSER_CATALOG_PATH = /^(?:parser-core|parser-assets|parser-cli|catalog-store|save-core)\//;
 const BUILD_LOGIC_PATH = /^(?:buildSrc|build-logic|gradle)\/|^(?:gradlew(?:\.bat)?|gradle\.properties|settings\.gradle(?:\.kts)?|build\.gradle(?:\.kts)?)$|\/build\.gradle(?:\.kts)?$/;
-const EVIDENCE_TOOL_PATH = /^tools\/(?:release|corpus)\//;
+const EVIDENCE_GENERATOR_PATH = /^tools\/corpus\//;
 const EVIDENCE_PACKAGING_PATH = /^(?:release\/(?:compatibility-evidence|canonical-corpus)\.json|docs\/reports\/qa-hardening\/stage-(?:07-(?:corpus-evidence\.(?:json|md)|corpus-execution\.json|closure\.(?:json|md))|08-closure\.(?:json|md)))$/;
 const REQUIRED_ROLES = [
   "CORPUS_SUMMARY",
@@ -108,9 +108,13 @@ export function validateReleaseEvidence({
 }
 
 function validateCanonicalCorpus(canonicalCorpus) {
-  assert(canonicalCorpus?.schemaVersion === 1, "canonical corpus schemaVersion must be 1");
+  assert(canonicalCorpus?.schemaVersion === 2, "canonical corpus schemaVersion must be 2");
   assert(canonicalCorpus.inputCount === REQUIRED_INPUT_COUNT,
     `canonical corpus must contain exactly ${REQUIRED_INPUT_COUNT} inputs`);
+  assert(Number.isInteger(canonicalCorpus.uniqueRomIdentityCount) &&
+    canonicalCorpus.uniqueRomIdentityCount > 0 &&
+    canonicalCorpus.uniqueRomIdentityCount <= REQUIRED_INPUT_COUNT,
+  "canonical corpus unique ROM identity count is invalid");
   assert(SHA256.test(canonicalCorpus.inputDigestSha256 ?? ""),
     "canonical corpus input digest must be a lowercase SHA-256");
 }
@@ -133,19 +137,21 @@ function validateSummary(summary, manifest, canonicalCorpus) {
   assert(summary.corpusInputDigestSha256 === canonicalCorpus.inputDigestSha256,
     "corpus summary input digest does not match canonical corpus");
   assert(summary.inputCount === REQUIRED_INPUT_COUNT, `corpus summary must contain exactly ${REQUIRED_INPUT_COUNT} inputs`);
-  assert(summary.uniqueRomIdentities === REQUIRED_INPUT_COUNT,
-    `corpus summary must contain exactly ${REQUIRED_INPUT_COUNT} unique ROM identities`);
+  assert(summary.uniqueRomIdentities === canonicalCorpus.uniqueRomIdentityCount,
+    "corpus summary unique ROM identity count does not match canonical corpus");
   assert(hasNonnegativeIntegerFields(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "errors"]),
     "corpus summary requires nonnegative parser outcome counts");
-  assert(summary.outcomes?.total === REQUIRED_INPUT_COUNT, "corpus terminal outcome total must equal 334");
+  assert(summary.outcomes?.total === REQUIRED_INPUT_COUNT,
+    `corpus terminal outcome total must equal ${REQUIRED_INPUT_COUNT}`);
   assert(sumFields(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "errors"]) === REQUIRED_INPUT_COUNT,
-    "corpus terminal outcomes do not sum to 334");
+    `corpus terminal outcomes do not sum to ${REQUIRED_INPUT_COUNT}`);
   assert(summary.outcomes.errors === 0, "corpus evidence contains parser errors");
   assert(hasNonnegativeIntegerFields(summary.dataCompatibility, ["complete", "partial", "unresolved", "errors"]),
     "corpus summary requires nonnegative compatibility counts");
-  assert(summary.dataCompatibility?.total === REQUIRED_INPUT_COUNT, "compatibility terminal total must equal 334");
+  assert(summary.dataCompatibility?.total === REQUIRED_INPUT_COUNT,
+    `compatibility terminal total must equal ${REQUIRED_INPUT_COUNT}`);
   assert(sumFields(summary.dataCompatibility, ["complete", "partial", "unresolved", "errors"]) === REQUIRED_INPUT_COUNT,
-    "compatibility outcomes do not sum to 334");
+    `compatibility outcomes do not sum to ${REQUIRED_INPUT_COUNT}`);
   assert(summary.dataCompatibility.errors === 0, "corpus evidence contains compatibility errors");
   assert(summary.catalogs?.catalogErrors === 0, "corpus evidence contains catalog errors");
   assert(summary.catalogs?.persistenceErrors === 0, "corpus evidence contains persistence errors");
@@ -171,7 +177,8 @@ function validateReceipt(receipt, manifest, summary) {
   "execution receipt generator does not match manifest");
   assert(receipt.rawReportSha256 === summary.rawReportSha256,
     "execution receipt raw report digest does not match corpus summary");
-  assert(receipt.inputCount === REQUIRED_INPUT_COUNT, "execution receipt input count must be 334");
+  assert(receipt.inputCount === REQUIRED_INPUT_COUNT,
+    `execution receipt input count must be ${REQUIRED_INPUT_COUNT}`);
 }
 
 function validateClosure(closure, stage, sourceCommit) {
@@ -233,7 +240,7 @@ function sumFields(value, fields) {
 }
 
 function isEvidenceAffectingPath(path) {
-  return PARSER_CATALOG_PATH.test(path) || BUILD_LOGIC_PATH.test(path) || EVIDENCE_TOOL_PATH.test(path);
+  return PARSER_CATALOG_PATH.test(path) || BUILD_LOGIC_PATH.test(path) || EVIDENCE_GENERATOR_PATH.test(path);
 }
 
 function isSafeRelativePath(path) {

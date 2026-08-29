@@ -16,7 +16,7 @@ Per the selected delivery order:
 
 1. Fix every blocker and close every tracked referral.
 2. Stabilize and smart-sync the resulting source.
-3. Run one completely fresh 334-input corpus from that final source.
+3. Run one completely fresh corpus from that final source across the 333 scanner-eligible inputs in the 334-file physical inventory.
 4. Complete Stage 7 and Stage 8 closure with zero blockers and zero referrals.
 5. Publish one official stable `1.1` or `1.2` release through protected GitHub signing.
 
@@ -87,7 +87,7 @@ Every remediation must preserve the global rule that a failed optional module di
 
 ### S7-BLK-01 — Fresh evidence and completeness validation
 
-**Failure:** Final evidence is absent, as expected before the deferred corpus, but the validator would also accept a self-attested subset. It ignores `catalogError`, compatibility errors, missing terminal outcomes, and the canonical 334-input denominator/digest. Readiness metadata can become signable after minimally shaped evidence appears without machine-checking Stage 7/8 closure.
+**Failure:** Final evidence is absent, as expected before the deferred corpus, but the validator would also accept a self-attested subset. It ignores `catalogError`, compatibility errors, missing terminal outcomes, and the canonical eligible-input denominator/digest. Readiness metadata can become signable after minimally shaped evidence appears without machine-checking Stage 7/8 closure.
 
 **Evidence:**
 
@@ -99,7 +99,7 @@ Every remediation must preserve the global rule that a failed optional module di
 
 **Correction boundary and dependency:** Canonical source-bound corpus inventory, corrected validator, all source remediation complete.
 
-**Acceptance:** Reject any count other than exactly 334, terminal totals not equal to 334, any source/parser/catalog/compatibility/persistence error, extra or missing input, digest drift, pre-fix receipt, or missing Stage 7/8 zero-gap closure. Then generate 334/334 evidence from one exact stabilized commit with every materialized catalog persisted and reopened.
+**Acceptance (corrected during evidence closure):** The physical inventory contains 334 supported-extension files, of which 333 are eligible under the already-tested mainline/hack scanner policy; one known spin-off is intentionally excluded. Reject any eligible count other than exactly 333, terminal totals not equal to 333, a unique-identity count inconsistent with the canonical multiset, any source/parser/catalog/compatibility/persistence error, extra or missing eligible input, digest drift, pre-fix receipt, or missing Stage 7/8 zero-gap closure. Generate evidence from one exact stabilized commit with every materialized catalog persisted and reopened. The canonical digest includes duplicate identities as separate inputs rather than falsely requiring every named input to have unique bytes.
 
 ### QA-BLK-EVID-02 — Raw corpus output has no trustworthy source lineage
 
@@ -117,13 +117,13 @@ Every remediation must preserve the global rule that a failed optional module di
 
 ### QA-BLK-EVID-03 — NONPARSER_REUSE omits generator-affecting changes
 
-**Failure:** Reuse classification excludes `parser-cli/build.gradle.kts` and evidence-generation/validation tooling. Generator dependency or build changes can therefore pass as nonparser reuse.
+**Failure:** Reuse classification excludes `parser-cli/build.gradle.kts` and evidence-producing corpus tooling. Generator dependency, build, or input-selection changes can therefore pass as nonparser reuse.
 
 **Evidence:** `tools/release/validate-release-evidence.mjs:9-11,40-46` and `parser-cli/build.gradle.kts:10-15`.
 
 **Correction boundary and dependency:** Repository change-scope policy.
 
-**Acceptance:** Prefer a strict nonparser allowlist. At minimum, classify all `parser-cli/**`, build logic/dependencies, Gradle wrapper/properties, and evidence generation/validation tooling as evidence-affecting. Mutation tests for each category must reject reuse.
+**Acceptance (corrected during evidence closure):** Classify all `parser-cli/**`, parser/catalog modules, build logic/dependencies, Gradle wrapper/properties, and corpus input-selection/execution tooling as evidence-affecting. Downstream summarization and validation tools may process an immutable source-bound raw report under explicit `NONPARSER_REUSE`; they do not alter parser output, and requiring another hours-long parse after correcting a downstream denominator or bounded reader provides no additional scientific evidence. Mutation tests must reject reuse for every actual generator category and require explicit reuse scope for downstream policy changes.
 
 ### QA-BLK-SCHEMA-01 — Cache policy pins a number instead of requiring a decision
 
@@ -636,6 +636,6 @@ Every remediation must preserve the global rule that a failed optional module di
 2. Any parser/catalog output correction must make and test a cache-schema decision before corpus evidence is generated.
 3. Smart-sync each remediation checkpoint with `fork/master`; do not discard other-thread work.
 4. Prefer focused tests during remediation. Run the broad integrated exit gate once after source stabilization.
-5. The final corpus must be one fresh 334-input run from the exact stabilized source and must satisfy the corrected evidence contract.
+5. The final corpus must be one fresh 333-eligible-input run over the audited 334-file physical inventory from the exact stabilized source and must satisfy the corrected evidence contract.
 6. Stage 7 and Stage 8 closure documents must reread the complete specification and end with exactly zero blockers and zero referrals.
 7. Do not publish another RC. The next publication is the authorized official stable `1.1` or `1.2`, after protected signing, exact artifact/evidence validation, and zero-gap closure.
