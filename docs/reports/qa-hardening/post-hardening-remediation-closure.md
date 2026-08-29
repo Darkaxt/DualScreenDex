@@ -4,7 +4,7 @@
 
 **Audited detection specification:** `docs/superpowers/specs/2026-08-28-post-hardening-project-wide-qa-detections.md` at `f71f5bf4`.
 
-**Source checkpoint:** `6b99a53faaf261f55fff0e7646deec87557b2cb9` on `qa/project-wide-hardening`, matching its `fork/qa/project-wide-hardening` tracking ref before this documentation change. The final documentation commit is pending.
+**Source checkpoint:** `6b99a53faaf261f55fff0e7646deec87557b2cb9` on `qa/project-wide-hardening`, with the first documentation checkpoint at `6a60d595`. Both matched their `fork/qa/project-wide-hardening` tracking ref before the bounded gates below. The final gate-evidence documentation commit is pending.
 
 **Review inputs:** the complete detection specification, the project-wide staged plan, Stage 1 through Stage 6 closure reports (including the Stage 6 parity matrix), and commits `f71f5bf4`, `8bfaedd2`, `9d825e13`, `b5bfd81f`, `6c17322a`, `41d25d1d`, `0c8f434e`, and `6b99a53f`.
 
@@ -58,25 +58,23 @@ The fresh canonical 334-input corpus is intentionally outside this report. The f
 | `QA-REF-SNAPSHOT-RACE-01` | `TRACKED_REFERRAL` | `b5bfd81f`, `6c17322a` | `catalog-store/.../SaveSnapshotStore.kt` | `SaveSnapshotStoreTest.kt` | Canonical coordination and replacement-preserving quarantine coverage were added across the cited persistence commits. | `CLOSED` |
 | `QA-REF-MAP-ERROR-01` | `TRACKED_REFERRAL` | `6b99a53f` | `app/.../AndroidLoopbackServer.kt`; `companion-server/.../DualDexServer.kt` | `AndroidLoopbackServerTest.kt`; `ServerContractTest.kt` | Typed unavailable handling and structured cross-server error parity are owned by the cited tests. | `CLOSED` |
 | `QA-REF-SETTINGS-01` | `TRACKED_REFERRAL` | `41d25d1d` | `app/.../storage/AllFilesSettingsLauncher.kt`; `app/.../MainActivity.kt` | `AllFilesSettingsLauncherTest.kt` | Honest terminal launcher outcomes and caller-visible recovery behavior landed in the cited commit. | `CLOSED` |
-| `QA-REF-LEDGER-01` | `TRACKED_REFERRAL` | Pending final documentation commit | `docs/reports/qa-hardening/stage-01-closure.md`; `tools/release/referral-ledger.test.mjs` | `referral-ledger.test.mjs` | All seven Stage 1 referrals now declare `Dependency`; lint parses the real ledger and a Dependency-omission mutation fixture. | `CLOSED` |
+| `QA-REF-LEDGER-01` | `TRACKED_REFERRAL` | `6a60d595` | `docs/reports/qa-hardening/stage-01-closure.md`; `tools/release/referral-ledger.test.mjs` | `referral-ledger.test.mjs` | All seven Stage 1 referrals now declare `Dependency`; lint parses the real ledger and a Dependency-omission mutation fixture. | `CLOSED` |
 
 ## Main-loop bounded gates
 
-The following are the planned bounded source-remediation gates for the main loop. They are deliberately not executed by this documentation task, and their result fields must be updated only by the main loop after execution on the final committed checkpoint.
+The bounded source-remediation gates ran once on the synchronized documentation checkpoint `6a60d595`. The Gradle scopes were consolidated into one invocation so `:app:testDebugUnitTest` and shared dependency work were not repeated.
 
 | Scope | Exact command | Result |
 | --- | --- | --- |
-| Release evidence, policy, privacy, and governance | `node --test tools/release/*.test.mjs` | `PENDING_MAIN_LOOP` |
-| Parser/catalog/CLI source hardening | `JAVA_HOME='C:/Program Files/Zulu/zulu-21' ./gradlew :parser-core:test :parser-cli:test :catalog-store:test --stacktrace` | `PENDING_MAIN_LOOP` |
-| Runtime/setup/storage/knowledge source hardening | `JAVA_HOME='C:/Program Files/Zulu/zulu-21' ./gradlew :retroarch-session:test :memory-mapper-lab:test :battle-memory:test :app:testDebugUnitTest --stacktrace` | `PENDING_MAIN_LOOP` |
-| Companion server/core/web source hardening | `JAVA_HOME='C:/Program Files/Zulu/zulu-21' ./gradlew :companion-core:test :companion-server:test :companion-simulator:test :app:testDebugUnitTest --stacktrace` | `PENDING_MAIN_LOOP` |
-| Companion web unit/build gate | `cd companion-web && npm test -- --run && npm run build` | `PENDING_MAIN_LOOP` |
+| Consolidated parser/catalog/CLI/runtime/setup/storage/knowledge/companion gate | `JAVA_HOME='C:/Program Files/Zulu/zulu-21' ./gradlew :parser-core:test :parser-cli:test :catalog-store:test :retroarch-session:test :memory-mapper-lab:test :battle-memory:test :companion-core:test :companion-server:test :companion-simulator:test :app:testDebugUnitTest --stacktrace` | `PASS` — `BUILD SUCCESSFUL` in 40m36s; 65 actionable tasks (20 executed, 45 up-to-date). |
+| Release evidence, policy, privacy, and governance | `node --test tools/release/*.test.mjs` | `PASS` — 80 tests, 0 failures. |
+| Companion web unit/build gate | `cd companion-web && npm test -- --run && npm run build` | `PASS` — 32 files and 268 tests passed; TypeScript/Vite production build succeeded. |
 
-Local documentation-only verification is separate from those main-loop gates:
+Local documentation verification:
 
 | Scope | Exact command | Result |
 | --- | --- | --- |
-| Stage 1 referral-lint plus mutation fixture | `node --test tools/release/referral-ledger.test.mjs` | `PASS` |
+| Stage 1 referral-lint plus mutation fixture | `node --test tools/release/referral-ledger.test.mjs` | `PASS` — 2 tests, 0 failures. |
 | Working-tree whitespace integrity | `git diff --check` | `PASS` |
 
 ## Explicitly pending, outside this report
