@@ -466,7 +466,8 @@ test("stable validation reuses the candidate comparison range and RCs skip final
   assert.match(evidenceStep, /decision_range_end/);
   assert.match(evidenceStep, /--comparison-ref "\$decision_range_base"/);
   assert.match(evidenceStep, /git diff --name-only "\$decision_range_base\.\.\$decision_range_end"/);
-  assert.match(evidenceStep, /gh release view "\$candidate"/);
+  assert.match(evidenceStep, /expected_comparison_revision/);
+  assert.match(evidenceStep, /git show "\$candidate:\$catalog_schema_path"/);
   assert.match(metadataStep, /if \[\[ "\$RELEASE_TAG" != \*-rc\.\* \]\]; then/);
   assert.match(metadataStep, /test -s release\/v1-final-authorization\.json/);
 });

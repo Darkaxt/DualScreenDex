@@ -126,7 +126,6 @@ jobs:
       - name: Validate source-bound compatibility evidence
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
@@ -138,13 +137,29 @@ jobs:
             [[ "$sourceCandidateTag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[1-9][0-9]*(-hotfix\.[1-9][0-9]*)?$ ]]
             decision_range_end="$(git rev-parse "$sourceCandidateTag^{commit}")"
           fi
+          catalog_schema_path="catalog-store/src/main/kotlin/com/darkaxt/dualdex/catalog/CatalogSchema.kt"
+          expected_comparison_revision="$(
+            jq -r '
+              if .cacheDecision.type == "BUMP_REQUIRED" then .cacheDecision.previousRevision
+              elif .cacheDecision.type == "OUTPUT_INVARIANT" then .cacheDecision.revision
+              else empty
+              end
+            ' release/compatibility-evidence.json
+          )"
+          [[ -z "$expected_comparison_revision" || "$expected_comparison_revision" =~ ^[1-9][0-9]*$ ]]
           decision_range_base_tag=""
           while IFS= read -r candidate; do
-            if [[ "$candidate" != "$RELEASE_TAG" && "$candidate" != "$sourceCandidateTag" ]] &&
-              gh release view "$candidate" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-              decision_range_base_tag="$candidate"
-              break
+            [[ "$candidate" == "$RELEASE_TAG" || "$candidate" == "$sourceCandidateTag" ]] && continue
+            if [[ -n "$expected_comparison_revision" ]]; then
+              schema_source="$(git show "$candidate:$catalog_schema_path" 2>/dev/null || true)"
+              candidate_revision="$(
+                printf '%s\n' "$schema_source" |
+                  sed -nE 's/^[[:space:]]*const val parserSchemaVersion[[:space:]]*=[[:space:]]*([0-9]+).*$/\1/p'
+              )"
+              [[ "$candidate_revision" == "$expected_comparison_revision" ]] || continue
             fi
+            decision_range_base_tag="$candidate"
+            break
           done < <(git tag --list 'v1.*' --sort=-version:refname)
           test -n "$decision_range_base_tag"
           decision_range_base="$(git rev-parse "$decision_range_base_tag^{commit}")"
