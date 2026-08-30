@@ -31,6 +31,8 @@ test('Pokédex identity, two-row tabs, and compact Area state share the viewport
     tabRows.add(Math.round(bounds!.y));
   }
   expect(tabRows.size).toBe(2);
+  await expect(page.locator('.detail-scroll')).toHaveCSS('display', 'contents');
+  await expect(content).toHaveCSS('overflow-y', 'auto');
 
   await page.getByRole('tab', { name: 'AREA' }).click();
   const empty = page.locator('.pokemon-area-empty');
@@ -43,6 +45,64 @@ test('Pokédex identity, two-row tabs, and compact Area state share the viewport
 
   mkdirSync(artifactDir, { recursive: true });
   await page.screenshot({ path: join(artifactDir, 'pokedex-area-empty.png') });
+});
+
+test('Pokédex detail fits and shares compact scrolling at the Thor viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 538, height: 445 });
+  const state = { ...baseState, screen: 'DETAIL', selectedSpeciesId: 25 };
+  await installHarness(page, catalog, state);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+
+  const screen = page.locator('.detail-screen');
+  const header = page.locator('.detail-screen > .app-header');
+  const scroller = page.locator('.detail-scroll');
+  const identity = page.locator('.identity-card');
+  const content = page.locator('.detail-content');
+  const tabs = page.getByRole('tablist', { name: 'Pokédex detail' }).getByRole('tab');
+
+  for (const locator of [screen, scroller, identity, content]) {
+    const horizontalFit = await locator.evaluate(element => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    expect(horizontalFit.scrollWidth).toBeLessThanOrEqual(horizontalFit.clientWidth + 1);
+  }
+
+  const screenBounds = await screen.boundingBox();
+  expect(screenBounds).not.toBeNull();
+  for (const tab of await tabs.all()) {
+    const bounds = await tab.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeGreaterThanOrEqual(screenBounds!.x);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(screenBounds!.x + screenBounds!.width + 1);
+  }
+
+  await expect(scroller).toHaveCSS('overflow-y', 'auto');
+  await expect(content).toHaveCSS('overflow-y', 'visible');
+  const scrollExtent = await scroller.evaluate(element => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+  }));
+  expect(scrollExtent.scrollHeight).toBeGreaterThan(scrollExtent.clientHeight);
+
+  const before = {
+    header: (await header.boundingBox())!,
+    identity: (await identity.boundingBox())!,
+    content: (await content.boundingBox())!,
+  };
+  mkdirSync(artifactDir, { recursive: true });
+  await page.screenshot({ path: join(artifactDir, 'pokedex-detail-thor.png') });
+  await scroller.evaluate(element => { element.scrollTop = 100; });
+  await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  const after = {
+    header: (await header.boundingBox())!,
+    identity: (await identity.boundingBox())!,
+    content: (await content.boundingBox())!,
+  };
+  expect(after.header.y).toBeCloseTo(before.header.y, 0);
+  expect(after.identity.y).toBeLessThan(before.identity.y);
+  expect(after.content.y).toBeLessThan(before.content.y);
 });
 
 test('Battle rarity fills only the available content region without scrolling', async ({ page }) => {

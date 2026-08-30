@@ -138,3 +138,7 @@ The compact-layout implementation should be limited to the two surviving Pokéde
 2. The compact detail view must provide one coherent vertical content scroll path so the identity block does not permanently consume `194px` while only the lower `251px` region scrolls.
 3. Preserve the verified one-column browse and Specimens layouts and the non-scrolling Rarity layout.
 4. Re-run these four APK captures against exact Modern Emerald authority after the fix; browser-only evidence is insufficient.
+
+## Task #287 follow-up
+
+The compact Pokédex-detail fix and all four required APK recaptures passed at the same authority and geometry. See [Thor compact layout fix validation](thor-compact-layout-fix-validation-2026-08-30.md).
