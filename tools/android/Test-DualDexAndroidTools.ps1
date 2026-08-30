@@ -46,13 +46,22 @@ try {
 }
 
 $installText = Get-Content -Raw (Join-Path $toolRoot 'install-debug.ps1')
+if ($installText -notmatch '\.\s+\(Join-Path\s+\$PSScriptRoot\s+''resolve-dualdex-device\.ps1''\)\s+-AvdName\s+\$AvdName\s+-AdbPath\s+\$adb') {
+    throw 'install-debug.ps1 must preserve caller-selected AVD parameters while dot-sourcing the resolver'
+}
 if ($installText -match '(?m)^\s*&\s*\$adb\s+(?!-s\b)') {
     throw 'install-debug.ps1 contains an adb invocation without -s'
 }
 
 $startText = Get-Content -Raw (Join-Path $toolRoot 'start-dualdex-avd.ps1')
+if ($startText -notmatch '\.\s+\$resolver\s+-AvdName\s+\$AvdName\s+-AdbPath\s+\$adb') {
+    throw 'start-dualdex-avd.ps1 must preserve caller-selected AVD parameters while dot-sourcing the resolver'
+}
 if ($startText -match 'emulator-5554') {
     throw 'start-dualdex-avd.ps1 must not target the existing emulator serial'
+}
+if ($startText -match '\bget-state\b' -or $startText -notmatch '&\s+\$adb\s+devices') {
+    throw 'start-dualdex-avd.ps1 must enumerate adb devices without failing while its serial is still offline'
 }
 if ($startText -notmatch 'sys\.boot_completed') {
     throw 'start-dualdex-avd.ps1 must wait for Android boot completion'
@@ -72,6 +81,9 @@ foreach ($requiredCandidatePattern in @(
     if ($candidateText -notmatch $requiredCandidatePattern) {
         throw "validate-signed-candidate.ps1 is missing policy pattern: $requiredCandidatePattern"
     }
+}
+if ($candidateText -notmatch '\.\s+\(Join-Path\s+\$PSScriptRoot\s+''resolve-dualdex-device\.ps1''\)\s+-AvdName\s+\$AvdName\s+-AdbPath\s+\$adb') {
+    throw 'validate-signed-candidate.ps1 must preserve caller-selected AVD parameters while dot-sourcing the resolver'
 }
 if ($candidateText -match 'com\.darkaxt\.dualdex\.debug') {
     throw 'Signed candidate validation must never target the debug package'

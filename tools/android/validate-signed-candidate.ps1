@@ -103,7 +103,7 @@ if ($Install.IsPresent) {
     }
 
     if ($Target -eq 'DedicatedAvd') {
-        . (Join-Path $PSScriptRoot 'resolve-dualdex-device.ps1')
+        . (Join-Path $PSScriptRoot 'resolve-dualdex-device.ps1') -AvdName $AvdName -AdbPath $adb
         $serial = Resolve-DualDexDevice -AvdName $AvdName -AdbPath $adb
     } else {
         $deviceState = (& $adb -s $ThorSerial get-state 2>$null).Trim()

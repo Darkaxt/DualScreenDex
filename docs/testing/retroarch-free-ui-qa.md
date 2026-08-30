@@ -105,7 +105,7 @@ $hostOrigin
 
 ## Index exact Modern Emerald through the production path
 
-Choose the externally held Modern Emerald v3.5 ROM used for the sanitized capture. It must remain outside the repository and APK. Verify the file before uploading it:
+Choose the externally held Modern Emerald v3.5 ROM used for the sanitized capture. It must remain outside the repository and APK. Verify the file before making it available to the emulator:
 
 ```powershell
 $rom = Get-Item 'D:\path\Modern Emerald (v3.5).gba'
@@ -113,14 +113,19 @@ $expectedSha256 = '21A0306C4E5B5DC15CA70B74E713E3140612C1045AA298072993A6C5DD8D6
 if ((Get-FileHash -Algorithm SHA256 $rom.FullName).Hash -ne $expectedSha256) {
     throw 'Modern Emerald ROM SHA-256 does not match the QA scenario authority'
 }
-$uploadName = [Uri]::EscapeDataString($rom.Name)
-curl.exe --fail-with-body --request POST `
-  --header 'Content-Type: application/octet-stream' `
-  --data-binary "@$($rom.FullName)" `
-  "$hostOrigin/api/load?name=$uploadName"
+
+$deviceRom = '/sdcard/ROMs/Modern Emerald (v3.5).gba'
+adb -s $serial shell mkdir -p /sdcard/ROMs
+adb -s $serial push $rom.FullName $deviceRom
+adb -s $serial shell appops set $package MANAGE_EXTERNAL_STORAGE allow
+adb -s $serial shell am force-stop $package
+adb -s $serial shell am start --display $displayId -n `
+  'com.darkaxt.dualdex.debug/com.darkaxt.dualdex.MainActivity'
 ```
 
-The expected ROM CRC32 is `8C7DBECA`. The request enters the existing `POST /api/load` handler, spools the request body, invokes `RomSourceLoader`, and loads the result through the production companion runtime and `CatalogParser`. The simulator publishes the same basename and CRC32 through `GET_STATUS`; the production session authority must perform the activation. No ROM is bundled, copied into source, or encoded in the debug application.
+Repeat **Discover the dynamic WebView origin** because the process restart changes the loopback port. The all-files grant is an emulator-only equivalent of the production storage grant; `RetroArchSetupCoordinator` must discover the external ROM, index it by CRC32/SHA-256, and activate it through the production session authority. `POST /api/load` alone loads a catalog but does not grant or index a ROM for session authority, so it is not sufficient for this checkpoint.
+
+The expected ROM CRC32 is `8C7DBECA`. Accept the checkpoint only when `GET /api/state` reports `catalogReady=true`, `gameAccessReady=true`, `retroArch.resolution=ACTIVE`, `retroArch.activeSource="Modern Emerald (v3.5).gba"`, and the exact SHA-256 above. No ROM is bundled, copied into source, or encoded in the debug application. Remove the staged emulator ROM before saving the final AVD snapshot.
 
 ## Control the raw-memory timeline
 
