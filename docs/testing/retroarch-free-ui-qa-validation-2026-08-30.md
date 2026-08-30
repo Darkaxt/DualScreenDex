@@ -67,4 +67,10 @@ The debug-native control Activity rendered at the full `1240×1025` app area.
 
 ## Cleanup
 
-The external emulator ROM, debug package, temporary device XML, and ADB forwards were removed. The cleaned AVD was saved as snapshot `DualDexRawMemoryQaClean-4efbd188` and stopped. The usable QA gate is closed; emulator-rendered Thor usability analysis can proceed without RetroArch.
+The external emulator ROM, debug package, temporary device XML, and ADB forwards were removed. The cleaned AVD was saved as snapshot `DualDexRawMemoryQaClean-4efbd188` and stopped. The warm-cache usable QA gate was closed; emulator-rendered Thor usability analysis could proceed without RetroArch.
+
+## Subsequent cold-start correction
+
+Task #288 repeated setup from a clean application install and found that the AVD's stock `192m` app growth limit reproducibly terminates first-time Modern Emerald catalog preparation around `TRAINER_AND_THEME`. The successful validation above had retained a prepared catalog, so it did not establish a repeatable cold-start gate.
+
+The usability analysis completed with an emulator-only `512m` growth-limit override and the same tested APK; the override was reverted before the clean snapshot. No production or debug manifest behavior changed. Task #294 tracks a repeatable QA-only cold-start solution with unchanged release isolation. See [the measured Thor usability analysis](thor-emulator-usability-analysis-2026-08-30.md).

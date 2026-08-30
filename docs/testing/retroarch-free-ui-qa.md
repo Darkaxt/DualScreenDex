@@ -127,6 +127,8 @@ Repeat **Discover the dynamic WebView origin** because the process restart chang
 
 The expected ROM CRC32 is `8C7DBECA`. Accept the checkpoint only when `GET /api/state` reports `catalogReady=true`, `gameAccessReady=true`, `retroArch.resolution=ACTIVE`, `retroArch.activeSource="Modern Emerald (v3.5).gba"`, and the exact SHA-256 above. No ROM is bundled, copied into source, or encoded in the debug application. Remove the staged emulator ROM before saving the final AVD snapshot.
 
+A clean Task #288 reinstall exposed a QA provisioning limit that the earlier warm catalog cache had masked: the stock AVD `dalvik.vm.heapgrowthlimit=192m` reproducibly terminates first-time Modern Emerald catalog preparation. Task #294 tracks a debug-only repeatable solution that must leave release behavior unchanged. The measured usability run temporarily used `512m`, restarted the owned Android runtime, completed the catalog once, and restored `192m` before snapshotting. Do not treat a warm-cache success as cold-start acceptance; see [the Thor usability analysis](thor-emulator-usability-analysis-2026-08-30.md).
+
 ## Control the raw-memory timeline
 
 The simulator starts paused on `overworld-1`. Open the debug-native control activity on the exact app-area display:

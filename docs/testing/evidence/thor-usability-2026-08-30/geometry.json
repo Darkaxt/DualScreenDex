@@ -1,0 +1,128 @@
+{
+  "checkpoint": {
+    "branchHead": "928fee8e",
+    "apkSourceCheckpoint": "4efbd188",
+    "apk": "D:/Temp/dualdex-qa-4efbd188-debug.apk",
+    "package": "com.darkaxt.dualdex.debug"
+  },
+  "authority": {
+    "catalogReady": true,
+    "gameAccessReady": true,
+    "knowledgeMode": "DISCOVERED",
+    "resolution": "ACTIVE",
+    "activeSource": "Modern Emerald (v3.5).gba",
+    "contentSha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+    "contentCrc32": "8C7DBECA",
+    "indexedRoms": 1
+  },
+  "android": {
+    "avd": "DualDexThorQaApi35",
+    "serial": "emulator-5556",
+    "appAreaDisplayIdDuringCapture": 2,
+    "physicalRaster": [1240, 1080],
+    "appAreaRaster": [1240, 1025],
+    "densityDpi": 369,
+    "fontScale": 0.95
+  },
+  "webView": {
+    "innerWidth": 538,
+    "innerHeight": 445,
+    "devicePixelRatio": 2.3062500953674316,
+    "visualViewportWidth": 538.1029663085938,
+    "visualViewportHeight": 445.3116455078125,
+    "orientation": "landscape-primary",
+    "maxWidth680": true,
+    "captureScreenshotRaster": [1241, 1027],
+    "captureRoundingNote": "Chrome DevTools rounds the fractional visual viewport multiplied by DPR; Android display authority remains 1240x1025."
+  },
+  "views": {
+    "pokedexBrowse": {
+      "screenClient": [538, 445],
+      "screenScroll": [538, 445],
+      "speciesList": {
+        "rect": [0.0, 126.86, 538.1, 253.58],
+        "client": [538, 254],
+        "scroll": [538, 40232],
+        "overflow": "auto"
+      },
+      "rowHeight": 94.0,
+      "searchDock": {
+        "rect": [0.0, 380.45, 538.1, 64.86]
+      },
+      "semanticHorizontalOverflow": false
+    },
+    "pokedexDetail": {
+      "screenClient": [538, 445],
+      "screenScroll": [598, 445],
+      "screenOverflow": "hidden",
+      "identityCard": {
+        "rect": [0.0, 62.0, 597.98, 132.0]
+      },
+      "tabs": {
+        "rect": [301.99, 74.0, 280.0, 108.0],
+        "movesRight": 581.99,
+        "moreRight": 581.99
+      },
+      "detailContent": {
+        "rect": [0.0, 194.0, 597.98, 251.31],
+        "client": [598, 251],
+        "scroll": [598, 491],
+        "overflow": "auto"
+      },
+      "documentScrollTopAfterAttempted100": 0,
+      "detailScrollTopAfterAttempted200": 199.89158630371094,
+      "horizontalClipCssPx": 59.88
+    },
+    "battleRarity": {
+      "screenClient": [538, 445],
+      "screenScroll": [538, 445],
+      "battleIdentity": {
+        "rect": [0.0, 62.0, 538.1, 124.0]
+      },
+      "tabs": {
+        "rect": [0.0, 186.0, 538.1, 55.99]
+      },
+      "battleContent": {
+        "rect": [0.0, 241.99, 538.1, 203.33],
+        "client": [538, 203],
+        "scroll": [538, 203],
+        "overflow": "hidden"
+      },
+      "rarityCard": {
+        "rect": [12.0, 251.99, 514.11, 183.33],
+        "clientHeight": 182,
+        "scrollHeight": 182
+      },
+      "semanticClipping": false
+    },
+    "specimens": {
+      "species": "Poochyena",
+      "nickname": "QA MON",
+      "source": "Party · Slot 2",
+      "screenClient": [538, 445],
+      "screenScroll": [538, 445],
+      "contentClient": [538, 383],
+      "contentScroll": [538, 383],
+      "card": {
+        "rect": [16.0, 76.7, 506.11, 104.37],
+        "client": [503, 101],
+        "scroll": [503, 101]
+      },
+      "copy": {
+        "client": [393, 53],
+        "scroll": [393, 53]
+      },
+      "meta": {
+        "client": [393, 19],
+        "scroll": [393, 19]
+      },
+      "semanticClipping": false
+    }
+  },
+  "screenshots": {
+    "pokedex-browse.png": "3cd5c64401b2d6cb96011f55b911a51701c36dab4de5879cf4a117c1c4d789b4",
+    "pokedex-detail.png": "c74d99d380c687b27f32f79381dbb7bf25af40dd18502b5ddca0ef2d816c4b59",
+    "battle-rarity.png": "e7aa7e8ac8e665c5bee84cad6973fa0beec6036fa3f816165a1cb3ea4288003a",
+    "specimens.png": "ccb44c7a166d795927c1396c1d7780f98a7ee07d14da3e0ca175bda8d24d663f"
+  }
+}
