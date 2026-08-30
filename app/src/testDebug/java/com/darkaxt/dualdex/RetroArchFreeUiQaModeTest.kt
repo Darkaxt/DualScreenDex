@@ -9,6 +9,7 @@ import com.darkaxt.dualdex.retroarch.RetroArchStatus
 import com.darkaxt.dualdex.retroarch.SessionMonitor
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -19,6 +20,22 @@ import org.junit.rules.TemporaryFolder
 class RetroArchFreeUiQaModeTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
+
+    @Test
+    fun `marker loads the packaged controller and malformed assets fail closed`() {
+        val marker = File(temporaryFolder.root, RetroArchFreeUiQaMode.MARKER_FILE_NAME)
+        marker.createNewFile()
+        val asset = File("src/debug/assets/${RetroArchFreeUiQaMode.SCENARIO_ASSET_PATH}").readBytes()
+
+        val controller = RetroArchFreeUiQaMode.loadController(temporaryFolder.root) { asset }
+        assertNotNull(controller)
+        assertEquals("modern-normal", controller!!.snapshot().scenarioId)
+        controller.close()
+
+        assertNull(RetroArchFreeUiQaMode.loadController(temporaryFolder.root) { byteArrayOf(1, 2, 3) })
+        val fallback = RetroArchFreeUiQaMode.transportFactory(temporaryFolder.root)
+        assertNotNull(fallback)
+    }
 
     @Test
     fun `missing marker preserves the production transport factory`() {

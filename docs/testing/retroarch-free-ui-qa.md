@@ -1,8 +1,14 @@
 # RetroArch-free UI QA checkpoint
 
-This debug-only checkpoint launches the production `MainActivity`, `DualDexApplication` runtime, `AndroidLoopbackServer`, `DualDexWebView`, parser, and bundled production web UI without requiring RetroArch. It does not provide raw live-memory scenarios; the inert status source remains `CONTENTLESS` until that follow-up work lands.
+This debug-only checkpoint launches the production `MainActivity`, `DualDexApplication` runtime, `AndroidLoopbackServer`, `DualDexWebView`, parser, catalog, session authority, decoder, and bundled production web UI without requiring RetroArch. When the internal marker exists, a debug-only transport supplies sanitized raw EWRAM/IWRAM frames through the production command, memory-read, decode, and publication path. The APK never contains a ROM.
 
-The package remains `com.darkaxt.dualdex.debug`. With no marker file, the APK keeps ordinary debug behavior and uses the production RetroArch UDP session monitor.
+The package remains `com.darkaxt.dualdex.debug`. With no marker file, the APK keeps ordinary debug behavior and uses the production RetroArch UDP transport. If the marked simulator asset cannot be loaded, the simulator fails closed to `CONTENTLESS` rather than crashing the application or falling through to UDP.
+
+## Debug-only asset provenance
+
+`app/src/debug/assets/retroarch-free-ui-qa/raw-live-memory-scenarios.json` contains six full EWRAM/IWRAM frame pairs, not decoded or semantic UI state. `tools/android/sanitize-modern-emerald-qa-memory.py` reproduces the asset only from the reviewed source dump with SHA-256 `40958796e0acd76bac20aef3c484d451685fffa255c45a5eec57df6a0511f5a5`. The script removes capture IDs and timestamps, replaces player/Pokémon/OT/box display names with fixed QA values, replaces the trainer ID, clears known social/free-text save regions, and verifies that collected original fixed-width sensitive fields do not remain outside protected encrypted Pokémon records. The EWRAM/IWRAM geometry, pointers, encrypted Pokémon payloads/checksums, and runtime map, clock, battle, party, and specimen numeric state remain raw.
+
+The asset belongs only to `src/debug`; release-source and built-APK isolation tests reject it from release artifacts. The generation input remains external and must never be committed.
 
 ## Match the Thor lower-screen app area
 
@@ -97,12 +103,16 @@ $hostOrigin
 
 `$deviceOrigin` is the exact origin loaded by the production `DualDexWebView`. `$hostOrigin` is the host-side ADB forwarding endpoint for HTTP requests.
 
-## Upload a real ROM through the production path
+## Index exact Modern Emerald through the production path
 
-Choose a ROM outside the repository and APK. The file path and upload name are supplied only at execution time:
+Choose the externally held Modern Emerald v3.5 ROM used for the sanitized capture. It must remain outside the repository and APK. Verify the file before uploading it:
 
 ```powershell
-$rom = Get-Item 'D:\path\chosen-game.gba'
+$rom = Get-Item 'D:\path\Modern Emerald (v3.5).gba'
+$expectedSha256 = '21A0306C4E5B5DC15CA70B74E713E3140612C1045AA298072993A6C5DD8D6895'
+if ((Get-FileHash -Algorithm SHA256 $rom.FullName).Hash -ne $expectedSha256) {
+    throw 'Modern Emerald ROM SHA-256 does not match the QA scenario authority'
+}
 $uploadName = [Uri]::EscapeDataString($rom.Name)
 curl.exe --fail-with-body --request POST `
   --header 'Content-Type: application/octet-stream' `
@@ -110,7 +120,28 @@ curl.exe --fail-with-body --request POST `
   "$hostOrigin/api/load?name=$uploadName"
 ```
 
-This request enters the existing `POST /api/load` handler, spools the request body, invokes `RomSourceLoader`, and loads the result through the production companion runtime and `CatalogParser`. No ROM is bundled, copied into source, or encoded in the debug application.
+The expected ROM CRC32 is `8C7DBECA`. The request enters the existing `POST /api/load` handler, spools the request body, invokes `RomSourceLoader`, and loads the result through the production companion runtime and `CatalogParser`. The simulator publishes the same basename and CRC32 through `GET_STATUS`; the production session authority must perform the activation. No ROM is bundled, copied into source, or encoded in the debug application.
+
+## Control the raw-memory timeline
+
+The simulator starts paused on `overworld-1`. Open the debug-native control activity on the exact app-area display:
+
+```powershell
+adb -s $serial shell am start --display $displayId -n `
+  'com.darkaxt.dualdex.debug/com.darkaxt.dualdex.RawLiveMemoryControlActivity'
+```
+
+The controller is owned by `RetroArchFreeUiQaApplication`, so pause/play/step/scenario state survives control-activity recreation. **Pause** freezes the current raw frame, **Play** advances one frame per second, and **Step** advances exactly one frame and pauses. **Open companion** returns to the production `MainActivity`; Back returns to the controls.
+
+Available scenarios are:
+
+- `modern-normal`: six sanitized full EWRAM/IWRAM frames from overworld through battle and back to overworld.
+- `modern-unreadable`: every EWRAM read is rejected.
+- `modern-partial`: matching EWRAM reads return one byte short.
+- `modern-malformed`: matching EWRAM reads return malformed wire data.
+- `stale-identity`: raw memory remains available, but the advertised basename and CRC no longer match the indexed ROM.
+
+Scenario changes reset to frame zero and pause playback. Existing command endpoints receive one `CONTENTLESS` boundary; existing memory endpoints permanently reject reads so old and new scenario chunks cannot mix. Newly opened endpoints read the selected scenario. Faulted runtime modules must disable themselves without crashing the app. Select `modern-normal` to return to the valid identity and raw timeline.
 
 When the device session is complete, remove the forwards:
 

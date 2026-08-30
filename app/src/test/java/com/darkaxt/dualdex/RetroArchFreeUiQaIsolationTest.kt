@@ -16,13 +16,17 @@ class RetroArchFreeUiQaIsolationTest {
         val strings = File("src/debug/res/values/strings.xml")
 
         val application = File("src/debug/java/com/darkaxt/dualdex/RetroArchFreeUiQaApplication.kt").readText()
+        val controls = File("src/debug/java/com/darkaxt/dualdex/RawLiveMemoryControlActivity.kt")
 
         assertTrue("debug manifest overlay must exist", manifest.isFile)
         assertTrue("debug application class must be selected", manifest.readText().contains("android:name=\".RetroArchFreeUiQaApplication\""))
+        assertTrue("debug raw-memory controls must be registered", manifest.readText().contains("android:name=\".RawLiveMemoryControlActivity\""))
         assertTrue("debug string overlay must exist", strings.isFile)
         assertTrue(strings.readText().contains(">DualDex RetroArch-Free UI QA<"))
+        assertTrue("debug raw-memory controls must exist", controls.isFile)
         assertFalse(application.contains("UdpNetworkCommandTransport"))
         assertTrue(application.contains("override fun networkCommandTransportFactory()"))
+        assertTrue(application.contains("RawLiveMemoryScenarioLoader"))
         assertFalse(application.contains("sessionMonitorFactory"))
         assertFalse(application.contains("BuildConfig"))
     }
@@ -52,6 +56,8 @@ class RetroArchFreeUiQaIsolationTest {
         val forbidden = listOf(
             "RetroArchFreeUiQaApplication",
             "RawLiveMemorySimulator",
+            "RawLiveMemoryControlActivity",
+            "raw-live-memory-scenarios",
             "retroarch-free-ui-qa",
         )
 
@@ -84,6 +90,8 @@ class RetroArchFreeUiQaIsolationTest {
         val releaseApk = singleApk("release")
         assertApkContains(debugApk, "RetroArchFreeUiQaApplication")
         assertApkContains(debugApk, "RawLiveMemorySimulator")
+        assertApkContains(debugApk, "RawLiveMemoryControlActivity")
+        assertApkHasEntry(debugApk, "assets/retroarch-free-ui-qa/raw-live-memory-scenarios.json")
         assertApkContains(debugApk, "retroarch-free-ui-qa")
         assertApkHasNoRomAssets(debugApk)
         assertReleaseApkIsolated(releaseApk)
@@ -118,6 +126,8 @@ class RetroArchFreeUiQaIsolationTest {
         val forbidden = listOf(
             "RetroArchFreeUiQaApplication",
             "RawLiveMemorySimulator",
+            "RawLiveMemoryControlActivity",
+            "raw-live-memory-scenarios",
             "retroarch-free-ui-qa",
             "DualDex RetroArch-Free UI QA",
         )
@@ -141,6 +151,12 @@ class RetroArchFreeUiQaIsolationTest {
             zip.entries().asSequence().forEach { entry ->
                 assertFalse("${apk.name} contains a ROM-like asset ${entry.name}", ROM_ASSET.matches(entry.name))
             }
+        }
+    }
+
+    private fun assertApkHasEntry(apk: File, path: String) {
+        ZipFile(apk).use { zip ->
+            assertTrue("${apk.name} does not contain $path", zip.getEntry(path) != null)
         }
     }
 

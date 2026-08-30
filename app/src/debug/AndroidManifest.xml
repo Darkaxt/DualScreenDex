@@ -4,6 +4,11 @@
 
     <application
         android:name=".RetroArchFreeUiQaApplication"
-        tools:replace="android:name" />
+        tools:replace="android:name">
+        <activity
+            android:name=".RawLiveMemoryControlActivity"
+            android:exported="true"
+            android:label="@string/raw_memory_control_name" />
+    </application>
 
 </manifest>

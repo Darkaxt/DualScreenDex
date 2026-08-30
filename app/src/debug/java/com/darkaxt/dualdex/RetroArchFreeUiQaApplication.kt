@@ -5,12 +5,41 @@ import java.io.File
 import java.util.ArrayDeque
 
 class RetroArchFreeUiQaApplication : DualDexApplication() {
+    private var rawMemoryController: RawLiveMemoryQaController? = null
+
+    override fun onCreate() {
+        rawMemoryController = RetroArchFreeUiQaMode.loadController(filesDir) {
+            assets.open(RetroArchFreeUiQaMode.SCENARIO_ASSET_PATH).use { it.readBytes() }
+        }
+        super.onCreate()
+    }
+
     override fun networkCommandTransportFactory(): () -> NetworkCommandTransport =
-        RetroArchFreeUiQaMode.transportFactory(filesDir) ?: super.networkCommandTransportFactory()
+        rawMemoryController?.transportFactory()
+            ?: RetroArchFreeUiQaMode.transportFactory(filesDir)
+            ?: super.networkCommandTransportFactory()
+
+    internal fun rawMemoryQaController(): RawLiveMemoryQaController? = rawMemoryController
+
+    override fun onTerminate() {
+        rawMemoryController?.close()
+        rawMemoryController = null
+        super.onTerminate()
+    }
 }
 
 internal object RetroArchFreeUiQaMode {
     const val MARKER_FILE_NAME = "retroarch-free-ui-qa"
+    const val SCENARIO_ASSET_PATH = "retroarch-free-ui-qa/raw-live-memory-scenarios.json"
+
+    fun loadController(filesDirectory: File, readAsset: () -> ByteArray): RawLiveMemoryQaController? {
+        if (!File(filesDirectory, MARKER_FILE_NAME).isFile) return null
+        return try {
+            RawLiveMemoryQaController(RawLiveMemoryScenarioLoader.decode(readAsset()))
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     fun transportFactory(filesDirectory: File): (() -> NetworkCommandTransport)? {
         if (!File(filesDirectory, MARKER_FILE_NAME).isFile) return null

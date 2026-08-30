@@ -138,7 +138,7 @@ internal class RawLiveMemoryScenario(
         require(systemId.isNotBlank() && systemId.isWireSafe(MAX_SYSTEM_ID_CHARS) && ',' !in systemId) {
             "raw memory system id is invalid"
         }
-        require(gameBasename.isNotBlank() && gameBasename.isWireSafe(MAX_GAME_BASENAME_CHARS)) {
+        require(gameBasename.isNotBlank() && gameBasename.isWireSafe(MAX_GAME_BASENAME_CHARS) && ',' !in gameBasename) {
             "raw memory game basename is invalid"
         }
         require(savefileDirectory.isWireSafe(MAX_DIRECTORY_CHARS, allowEmpty = true)) {

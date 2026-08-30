@@ -247,6 +247,15 @@ class RawLiveMemorySimulatorTest {
                 frames = listOf(RawLiveMemoryFrame("frame", emptyList())),
             )
         }
+        assertThrows(IllegalArgumentException::class.java) {
+            RawLiveMemoryScenario(
+                id = "delimiter-in-basename",
+                systemId = "game_boy_advance",
+                gameBasename = "unsafe,name.gba",
+                crc32 = "8C7DBECA",
+                frames = listOf(RawLiveMemoryFrame("frame", emptyList())),
+            )
+        }
 
         val simulator = simulator()
         val endpoint = simulator.openTransport()
