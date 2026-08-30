@@ -8,6 +8,7 @@ import {
   assertSelectorMatchBudget,
   assertThorGeometry,
   assertTouchTargetBounds,
+  assertTouchTargetLayout,
   effectiveContrastRatio,
   inspectPrivacySummary,
   isVisualStateStable,
@@ -245,12 +246,30 @@ test('requires capture geometry to settle after ancestor animation', () => {
   assert.equal(isVisualStateStable(null, settled), false);
 });
 
+test('rejects undersized, clipped, or overlapping captured actions', () => {
+  const viewport = { x: 0, y: 0, width: 538.103, height: 445.312 };
+  const targets = [
+    { selector: '.card', index: 0, bounds: { x: 442.107, y: 0, width: 47.995, height: 59.397 } },
+    { selector: '.progress', index: 0, bounds: { x: 490.102, y: 0, width: 47.995, height: 59.397 } },
+  ];
+  assert.deepEqual(assertTouchTargetLayout(targets, viewport), targets);
+  assert.throws(
+    () => assertTouchTargetLayout([{ ...targets[0], bounds: { ...targets[0].bounds, height: 43.98 } }], viewport),
+    /smaller than 44x44/,
+  );
+  assert.throws(
+    () => assertTouchTargetLayout([targets[0], { ...targets[1], bounds: { ...targets[1].bounds, x: 489 } }], viewport),
+    /overlap/,
+  );
+});
+
 test('uses the fractional visual viewport for touch containment', () => {
   const bounds = { x: 490.102, y: 0, width: 47.995, height: 59.397 };
   const viewport = { x: 0, y: 0, width: 538.103, height: 445.312 };
   assert.deepEqual(assertTouchTargetBounds(bounds, viewport), bounds);
   assert.throws(() => assertTouchTargetBounds(bounds, { ...viewport, width: 538 }), /leaves the viewport/);
-  assert.throws(() => assertTouchTargetBounds({ ...bounds, width: 43.999 }, viewport), /smaller than 44x44/);
+  assert.doesNotThrow(() => assertTouchTargetBounds({ ...bounds, width: 43.997 }, viewport));
+  assert.throws(() => assertTouchTargetBounds({ ...bounds, width: 43.98 }, viewport), /smaller than 44x44/);
 });
 
 test('accepts only exact Thor WebView geometry within fractional viewport tolerance', () => {

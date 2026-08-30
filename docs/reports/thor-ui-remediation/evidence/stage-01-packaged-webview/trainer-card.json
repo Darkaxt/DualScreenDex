@@ -159,6 +159,69 @@
       ]
     },
     {
+      "selector": ".back-action",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 53.997,
+            "height": 59.397
+          },
+          "client": {
+            "width": 54,
+            "height": 59
+          },
+          "scroll": {
+            "width": 54,
+            "height": 59
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(165, 62, 47)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(49, 91, 67)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(165, 62, 47)",
+            "effectiveBackground": "rgba(49, 91, 67, 1)",
+            "textContrast": 1.23,
+            "borderContrast": 1.23
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
       "selector": ".trainer-destination-switcher",
       "matchCount": 1,
       "elements": [
@@ -419,17 +482,17 @@
           "visible": true,
           "bounds": {
             "x": 7.995,
-            "y": 79.553,
+            "y": 71.748,
             "width": 522.114,
-            "height": 348.198
+            "height": 363.808
           },
           "client": {
             "width": 519,
-            "height": 345
+            "height": 360
           },
           "scroll": {
             "width": 519,
-            "height": 345
+            "height": 360
           },
           "overflow": {
             "x": "hidden",
@@ -472,6 +535,38 @@
       ]
     }
   ],
+  "touchTargets": [
+    {
+      "selector": ".back-action",
+      "index": 0,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 53.997,
+        "height": 59.397
+      }
+    },
+    {
+      "selector": ".trainer-destination-action",
+      "index": 0,
+      "bounds": {
+        "x": 442.107,
+        "y": 0,
+        "width": 47.995,
+        "height": 59.397
+      }
+    },
+    {
+      "selector": ".trainer-destination-action",
+      "index": 1,
+      "bounds": {
+        "x": 490.102,
+        "y": 0,
+        "width": 47.995,
+        "height": 59.397
+      }
+    }
+  ],
   "active": [
     {
       "selector": ".trainer-destination-action[aria-label=\"Card\"]",
@@ -488,5 +583,5 @@
       "effectiveBackground": "rgba(165, 62, 47, 1)"
     }
   ],
-  "screenshotBytes": 85968
+  "screenshotBytes": 86064
 }

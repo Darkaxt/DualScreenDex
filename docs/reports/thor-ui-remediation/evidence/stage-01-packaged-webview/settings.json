@@ -34,7 +34,7 @@
           },
           "scroll": {
             "width": 538,
-            "height": 1715
+            "height": 1923
           },
           "overflow": {
             "x": "hidden",
@@ -137,6 +137,69 @@
       ]
     },
     {
+      "selector": ".back-action",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 53.997,
+            "height": 59.397
+          },
+          "client": {
+            "width": 54,
+            "height": 59
+          },
+          "scroll": {
+            "width": 54,
+            "height": 59
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(165, 62, 47)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(49, 91, 67)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(165, 62, 47)",
+            "effectiveBackground": "rgba(49, 91, 67, 1)",
+            "textContrast": 1.23,
+            "borderContrast": 1.23
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
       "selector": ".settings-content",
       "matchCount": 1,
       "elements": [
@@ -157,7 +220,7 @@
           },
           "scroll": {
             "width": 538,
-            "height": 2085
+            "height": 2353
           },
           "overflow": {
             "x": "auto",
@@ -208,18 +271,18 @@
           "role": null,
           "visible": true,
           "bounds": {
-            "x": 375.711,
-            "y": 79.973,
-            "width": 150.393,
-            "height": 40
+            "x": 363.259,
+            "y": 79.688,
+            "width": 162.846,
+            "height": 43.997
           },
           "client": {
-            "width": 149,
-            "height": 38
+            "width": 161,
+            "height": 42
           },
           "scroll": {
-            "width": 149,
-            "height": 38
+            "width": 161,
+            "height": 42
           },
           "overflow": {
             "x": "visible",
@@ -272,18 +335,18 @@
           "role": null,
           "visible": true,
           "bounds": {
-            "x": 383.95,
-            "y": 216.619,
-            "width": 142.154,
-            "height": 37.995
+            "x": 372.317,
+            "y": 222.493,
+            "width": 153.787,
+            "height": 43.997
           },
           "client": {
-            "width": 140,
-            "height": 36
+            "width": 152,
+            "height": 42
           },
           "scroll": {
-            "width": 140,
-            "height": 36
+            "width": 152,
+            "height": 42
           },
           "overflow": {
             "x": "visible",
@@ -325,6 +388,182 @@
           }
         }
       ]
+    },
+    {
+      "selector": ".display-mode > a",
+      "matchCount": 2,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "a",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 316.104,
+            "y": 391.274,
+            "width": 105,
+            "height": 43.997
+          },
+          "client": {
+            "width": 103,
+            "height": 42
+          },
+          "scroll": {
+            "width": 103,
+            "height": 42
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgb(165, 62, 47)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(226, 215, 172)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(165, 62, 47)"
+            ],
+            "borderTop": "rgb(255, 253, 232)",
+            "effectiveBackground": "rgba(165, 62, 47, 1)",
+            "textContrast": 6.306,
+            "borderContrast": 6.146
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": "true"
+          }
+        },
+        {
+          "index": 1,
+          "tag": "a",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 421.104,
+            "y": 391.274,
+            "width": 105,
+            "height": 43.997
+          },
+          "client": {
+            "width": 104,
+            "height": 42
+          },
+          "scroll": {
+            "width": 104,
+            "height": 42
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(226, 215, 172)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "touchTargets": [
+    {
+      "selector": ".back-action",
+      "index": 0,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 53.997,
+        "height": 59.397
+      }
+    },
+    {
+      "selector": ".settings-upload",
+      "index": 0,
+      "bounds": {
+        "x": 363.259,
+        "y": 79.688,
+        "width": 162.846,
+        "height": 43.997
+      }
+    },
+    {
+      "selector": ".retroarch-setting button",
+      "index": 0,
+      "bounds": {
+        "x": 372.317,
+        "y": 222.493,
+        "width": 153.787,
+        "height": 43.997
+      }
+    },
+    {
+      "selector": ".display-mode > a",
+      "index": 0,
+      "bounds": {
+        "x": 316.104,
+        "y": 391.274,
+        "width": 105,
+        "height": 43.997
+      }
+    },
+    {
+      "selector": ".display-mode > a",
+      "index": 1,
+      "bounds": {
+        "x": 421.104,
+        "y": 391.274,
+        "width": 105,
+        "height": 43.997
+      }
     }
   ],
   "active": [],
@@ -342,5 +581,5 @@
       "effectiveBackground": "rgba(49, 91, 67, 1)"
     }
   ],
-  "screenshotBytes": 107600
+  "screenshotBytes": 113171
 }

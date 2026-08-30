@@ -29,10 +29,15 @@
       "measurements": [
         ".trainer-screen",
         ".trainer-screen > .app-header",
+        ".back-action",
         ".trainer-destination-switcher",
         ".trainer-destination-action",
         ".trainer-card-content",
         ".trainer-card-shell"
+      ],
+      "touchTargets": [
+        ".back-action",
+        ".trainer-destination-action"
       ],
       "active": [
         {
@@ -61,10 +66,17 @@
       "measurements": [
         ".trainer-screen",
         ".trainer-screen > .app-header",
+        ".back-action",
         ".trainer-destination-switcher",
         ".trainer-destination-action",
         ".trainer-progress-content",
-        ".trainer-progress-tabs"
+        ".trainer-progress-tabs",
+        ".trainer-progress-tabs button"
+      ],
+      "touchTargets": [
+        ".back-action",
+        ".trainer-destination-action",
+        ".trainer-progress-tabs button"
       ],
       "active": [
         {
@@ -93,9 +105,17 @@
       "measurements": [
         ".settings-screen",
         ".settings-screen > .app-header",
+        ".back-action",
         ".settings-content",
         ".settings-upload",
-        ".retroarch-setting button"
+        ".retroarch-setting button",
+        ".display-mode > a"
+      ],
+      "touchTargets": [
+        ".back-action",
+        ".settings-upload",
+        ".retroarch-setting button",
+        ".display-mode > a"
       ],
       "contrasts": [
         { "selector": ".settings-upload", "minimum": 4.5 },
@@ -117,8 +137,13 @@
       "measurements": [
         ".settings-screen",
         ".settings-screen > .app-header",
+        ".back-action",
         ".settings-content",
-        ".debug-actions .danger-action"
+        ".debug-actions :is(button, a[href])"
+      ],
+      "touchTargets": [
+        ".back-action",
+        ".debug-actions :is(button, a[href])"
       ],
       "contrasts": [
         { "selector": ".debug-actions .danger-action", "minimum": 4.5 }
@@ -137,8 +162,17 @@
       "measurements": [
         ".setup-screen",
         ".setup-screen > .app-header",
+        ".back-action",
         ".setup-content",
-        ".setup-action[href=\"dualdex://games/rescan\"]"
+        ".setup-action[href=\"dualdex://games/rescan\"]",
+        ".setup-action[href=\"dualdex://grant/retroarch\"]",
+        ".setup-action[href=\"dualdex://grant/roms\"]"
+      ],
+      "touchTargets": [
+        ".back-action",
+        ".setup-action[href=\"dualdex://games/rescan\"]",
+        ".setup-action[href=\"dualdex://grant/retroarch\"]",
+        ".setup-action[href=\"dualdex://grant/roms\"]"
       ],
       "contrasts": [
         { "selector": ".setup-action[href=\"dualdex://games/rescan\"]", "minimum": 4.5 }

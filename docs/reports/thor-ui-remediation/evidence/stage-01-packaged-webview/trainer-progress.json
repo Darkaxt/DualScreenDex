@@ -154,6 +154,69 @@
       ]
     },
     {
+      "selector": ".back-action",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 53.997,
+            "height": 59.397
+          },
+          "client": {
+            "width": 54,
+            "height": 59
+          },
+          "scroll": {
+            "width": 54,
+            "height": 59
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(165, 62, 47)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(49, 91, 67)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(165, 62, 47)",
+            "effectiveBackground": "rgba(49, 91, 67, 1)",
+            "textContrast": 1.23,
+            "borderContrast": 1.23
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
       "selector": ".trainer-destination-switcher",
       "matchCount": 1,
       "elements": [
@@ -465,6 +528,248 @@
           }
         }
       ]
+    },
+    {
+      "selector": ".trainer-progress-tabs button",
+      "matchCount": 3,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 61.999,
+            "width": 179.363,
+            "height": 43.997
+          },
+          "client": {
+            "width": 178,
+            "height": 44
+          },
+          "scroll": {
+            "width": 178,
+            "height": 44
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgb(165, 62, 47)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(226, 215, 172)",
+              "rgb(165, 62, 47)"
+            ],
+            "borderTop": "rgb(255, 253, 232)",
+            "effectiveBackground": "rgba(165, 62, 47, 1)",
+            "textContrast": 6.306,
+            "borderContrast": 6.146
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": "true",
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        },
+        {
+          "index": 1,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 179.363,
+            "y": 61.999,
+            "width": 179.37,
+            "height": 43.997
+          },
+          "client": {
+            "width": 179,
+            "height": 44
+          },
+          "scroll": {
+            "width": 179,
+            "height": 44
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(226, 215, 172)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": "false",
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        },
+        {
+          "index": 2,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 358.733,
+            "y": 61.999,
+            "width": 179.363,
+            "height": 43.997
+          },
+          "client": {
+            "width": 179,
+            "height": 44
+          },
+          "scroll": {
+            "width": 179,
+            "height": 44
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(226, 215, 172)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": "false",
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    }
+  ],
+  "touchTargets": [
+    {
+      "selector": ".back-action",
+      "index": 0,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 53.997,
+        "height": 59.397
+      }
+    },
+    {
+      "selector": ".trainer-destination-action",
+      "index": 0,
+      "bounds": {
+        "x": 442.107,
+        "y": 0,
+        "width": 47.995,
+        "height": 59.397
+      }
+    },
+    {
+      "selector": ".trainer-destination-action",
+      "index": 1,
+      "bounds": {
+        "x": 490.102,
+        "y": 0,
+        "width": 47.995,
+        "height": 59.397
+      }
+    },
+    {
+      "selector": ".trainer-progress-tabs button",
+      "index": 0,
+      "bounds": {
+        "x": 0,
+        "y": 61.999,
+        "width": 179.363,
+        "height": 43.997
+      }
+    },
+    {
+      "selector": ".trainer-progress-tabs button",
+      "index": 1,
+      "bounds": {
+        "x": 179.363,
+        "y": 61.999,
+        "width": 179.37,
+        "height": 43.997
+      }
+    },
+    {
+      "selector": ".trainer-progress-tabs button",
+      "index": 2,
+      "bounds": {
+        "x": 358.733,
+        "y": 61.999,
+        "width": 179.363,
+        "height": 43.997
+      }
     }
   ],
   "active": [
@@ -483,5 +788,5 @@
       "effectiveBackground": "rgba(165, 62, 47, 1)"
     }
   ],
-  "screenshotBytes": 77855
+  "screenshotBytes": 78001
 }

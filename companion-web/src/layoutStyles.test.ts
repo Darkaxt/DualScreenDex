@@ -169,6 +169,20 @@ describe('screen layout containment', () => {
     expect(specimenRule).toMatch(/box-shadow\s*:.*var\(--ui-raised-shadow\)/)
   })
 
+  it('keeps Stage 1 Settings and Setup actions at the touch floor', () => {
+    const settingsUpload = styles.match(/\.settings-upload\s*\{([^}]*)\}/)?.[1]
+    const retroArchAction = styles.match(/\.retroarch-setting button\s*\{([^}]*)\}/)?.[1]
+    const setupAction = styles.match(/\.setup-action\s*\{([^}]*)\}/)?.[1]
+    const displayModeAction = styles.match(/\.display-mode > a\s*\{([^}]*)\}/)?.[1]
+    const capabilityAction = styles.match(/\.capability-actions button, \.capability-error button\s*\{([^}]*)\}/)?.[1]
+
+    expect(settingsUpload).toMatch(/min-height\s*:\s*44px/)
+    expect(retroArchAction).toMatch(/min-height\s*:\s*44px/)
+    expect(setupAction).toMatch(/min-height\s*:\s*44px/)
+    expect(displayModeAction).toMatch(/min-height\s*:\s*44px/)
+    expect(capabilityAction).toMatch(/min-height\s*:\s*44px/)
+  })
+
   it('routes semantic controls through contrast-safe pairs instead of raw ROM roles', () => {
     const rootRule = styles.match(/:root\s*\{([^}]*)\}/)?.[1]
     const focusRule = styles.match(/:where\(button, a\[href\], input, select, textarea\):focus-visible\s*\{([^}]*)\}/)?.[1]

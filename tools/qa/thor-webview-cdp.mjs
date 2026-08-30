@@ -15,6 +15,7 @@ const MAX_TOTAL_MEASURED_ELEMENTS = 1024;
 const MAX_CAPTURE_REPORT_BYTES = 1024 * 1024;
 const MAX_FINAL_REPORT_BYTES = 4 * 1024 * 1024;
 const VISUAL_STABILITY_TOLERANCE = 0.01;
+const TOUCH_TARGET_TOLERANCE = 0.01;
 const THOR_GEOMETRY = Object.freeze({
   innerWidth: 538,
   innerHeight: 445,
@@ -107,6 +108,17 @@ export function validateScenario(scenario) {
     }
     totalMeasurements += capture.measurements.length;
     capture.measurements.forEach((selector, index) => requireSelector(selector, `${capture.name}.measurements[${index}]`));
+    if (capture.touchTargets !== undefined) {
+      if (!Array.isArray(capture.touchTargets) || capture.touchTargets.length === 0 || capture.touchTargets.length > 32) {
+        throw new TypeError(`${capture.name}.touchTargets must contain between 1 and 32 selectors`);
+      }
+      capture.touchTargets.forEach((selector, index) => {
+        requireSelector(selector, `${capture.name}.touchTargets[${index}]`);
+        if (!capture.measurements.includes(selector)) {
+          throw new TypeError(`${capture.name}.touchTargets[${index}] must also be measured`);
+        }
+      });
+    }
     validateSteps(capture.steps ?? [], capture.name);
     validateActiveAssertions(capture.active ?? [], capture.name);
     validateContrastAssertions(capture.contrasts ?? [], capture.name);
@@ -185,13 +197,42 @@ export function assertTouchTargetBounds(bounds, viewport) {
   for (const [label, value] of Object.entries({ ...bounds, ...Object.fromEntries(Object.entries(viewport).map(([key, entry]) => [`viewport.${key}`, entry])) })) {
     if (typeof value !== 'number' || !Number.isFinite(value)) throw new TypeError(`${label} must be finite`);
   }
-  if (bounds.width < 44 || bounds.height < 44) throw new Error('Touch target is smaller than 44x44');
+  if (bounds.width + TOUCH_TARGET_TOLERANCE < 44 || bounds.height + TOUCH_TARGET_TOLERANCE < 44) throw new Error('Touch target is smaller than 44x44');
   if (bounds.x < viewport.x || bounds.y < viewport.y
     || bounds.x + bounds.width > viewport.x + viewport.width
     || bounds.y + bounds.height > viewport.y + viewport.height) {
     throw new Error('Touch target leaves the viewport');
   }
   return bounds;
+}
+
+export function assertTouchTargetLayout(targets, viewport) {
+  if (!Array.isArray(targets) || targets.length === 0) throw new TypeError('touch target layout must contain at least one target');
+  for (const target of targets) {
+    requireRecord(target, 'touch target');
+    if (typeof target.selector !== 'string' || !Number.isSafeInteger(target.index) || target.index < 0) {
+      throw new TypeError('touch target identity is invalid');
+    }
+    try {
+      assertTouchTargetBounds(target.bounds, viewport);
+    } catch (error) {
+      throw new Error(`${target.selector}[${target.index}] ${JSON.stringify(target.bounds)}: ${error.message}`);
+    }
+  }
+  for (let firstIndex = 0; firstIndex < targets.length; firstIndex += 1) {
+    const first = targets[firstIndex];
+    for (let secondIndex = firstIndex + 1; secondIndex < targets.length; secondIndex += 1) {
+      const second = targets[secondIndex];
+      const overlapWidth = Math.min(first.bounds.x + first.bounds.width, second.bounds.x + second.bounds.width)
+        - Math.max(first.bounds.x, second.bounds.x);
+      const overlapHeight = Math.min(first.bounds.y + first.bounds.height, second.bounds.y + second.bounds.height)
+        - Math.max(first.bounds.y, second.bounds.y);
+      if (overlapWidth > VISUAL_STABILITY_TOLERANCE && overlapHeight > VISUAL_STABILITY_TOLERANCE) {
+        throw new Error(`Touch targets overlap: ${first.selector}[${first.index}] and ${second.selector}[${second.index}]`);
+      }
+    }
+  }
+  return targets;
 }
 
 export function isVisualStateStable(previous, current) {
@@ -263,7 +304,7 @@ async function run() {
     for (const capture of scenario.captures) {
       const steps = await runSteps(session, capture.steps ?? [], identity.origin);
       await waitForCapture(session, capture);
-      assertThorGeometry(await readGeometry(session));
+      const captureGeometry = assertThorGeometry(await readGeometry(session));
       assertQaRuntimeIdentity(await readQaRuntimeIdentity(session), scenario);
       assertRuntimeAuthority(await readRuntimeState(session), scenario.authority, sessionEpoch);
 
@@ -277,6 +318,7 @@ async function run() {
       );
       assertEvidenceBudget({ totalMeasuredElements });
       assertMeasuredContainment(capture, measurements);
+      const touchTargets = assertMeasuredTouchTargets(capture, measurements, captureGeometry);
       const active = await assertActiveState(session, capture.active ?? []);
       const contrasts = await assertContrasts(session, capture.contrasts ?? []);
       const screenshot = await session.send('Page.captureScreenshot', {
@@ -298,6 +340,7 @@ async function run() {
         privacy,
         steps,
         measurements,
+        touchTargets,
         active,
         contrasts,
         screenshotBytes: screenshotBytes.length,
@@ -867,6 +910,27 @@ function assertMeasuredContainment(capture, measurements) {
       }
     }
   }
+}
+
+function assertMeasuredTouchTargets(capture, measurements, geometry) {
+  const selectors = capture.touchTargets ?? [];
+  if (selectors.length === 0) return [];
+  const bySelector = new Map(measurements.map(measurement => [measurement.selector, measurement]));
+  const targets = selectors.flatMap(selector => {
+    const measurement = bySelector.get(selector);
+    if (!measurement) throw new Error(`touch target selector was not measured: ${selector}`);
+    return measurement.elements.map(element => ({
+      selector,
+      index: element.index,
+      bounds: element.bounds,
+    }));
+  });
+  return assertTouchTargetLayout(targets, {
+    x: 0,
+    y: 0,
+    width: geometry.visualViewportWidth,
+    height: geometry.visualViewportHeight,
+  });
 }
 
 async function assertActiveState(session, assertions) {
