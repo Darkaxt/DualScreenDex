@@ -28,11 +28,32 @@ class RetroArchFreeUiQaIsolationTest {
     }
 
     @Test
+    fun `raw simulator substitutes transport without semantic state injection`() {
+        val simulator = File("src/debug/java/com/darkaxt/dualdex/RawLiveMemorySimulator.kt").readText()
+
+        assertTrue(simulator.contains("NetworkCommandTransport"))
+        listOf(
+            "UnifiedGameStateDecoder",
+            "CompanionAction",
+            "BattleCatalogContext",
+            "Gen3RuntimeMemoryLayout",
+            "parser.catalog",
+            "parser.model",
+        ).forEach { forbidden ->
+            assertFalse("raw simulator imports semantic dependency $forbidden", simulator.contains(forbidden))
+        }
+    }
+
+    @Test
     fun `production sources remain isolated and instrumentation substitution remains compatible`() {
         val productionRoot = File("src/main")
         val productionManifest = File(productionRoot, "AndroidManifest.xml").readText()
         val runner = File("src/androidTest/java/com/darkaxt/dualdex/QaAndroidJUnitRunner.kt").readText()
-        val forbidden = listOf("RetroArchFreeUiQaApplication", "retroarch-free-ui-qa")
+        val forbidden = listOf(
+            "RetroArchFreeUiQaApplication",
+            "RawLiveMemorySimulator",
+            "retroarch-free-ui-qa",
+        )
 
         assertTrue(productionManifest.contains("android:name=\".DualDexApplication\""))
         productionRoot.walkTopDown().filter(File::isFile).forEach { file ->
@@ -62,6 +83,7 @@ class RetroArchFreeUiQaIsolationTest {
         val debugApk = singleApk("debug")
         val releaseApk = singleApk("release")
         assertApkContains(debugApk, "RetroArchFreeUiQaApplication")
+        assertApkContains(debugApk, "RawLiveMemorySimulator")
         assertApkContains(debugApk, "retroarch-free-ui-qa")
         assertApkHasNoRomAssets(debugApk)
         assertReleaseApkIsolated(releaseApk)
@@ -95,6 +117,7 @@ class RetroArchFreeUiQaIsolationTest {
         assertApkHasNoRomAssets(apk)
         val forbidden = listOf(
             "RetroArchFreeUiQaApplication",
+            "RawLiveMemorySimulator",
             "retroarch-free-ui-qa",
             "DualDex RetroArch-Free UI QA",
         )
