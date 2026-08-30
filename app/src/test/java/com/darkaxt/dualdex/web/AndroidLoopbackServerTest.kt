@@ -296,6 +296,58 @@ class AndroidLoopbackServerTest {
     }
 
     @Test
+    fun exposesAdditionalGetRouteOnlyWhenConfigured() {
+        val productionServer = AndroidLoopbackServer(ProductionCompanionRuntime()) { null }
+        val extendedServer = AndroidLoopbackServer(
+            ProductionCompanionRuntime(),
+            additionalGetRoutes = mapOf(
+                "/api/test/runtime-identity" to {
+                    mapOf(
+                        "applicationId" to "test.application",
+                        "transport" to "TEST_TRANSPORT",
+                        "scenarioId" to "test-scenario",
+                    )
+                },
+            ),
+            assetLoader = { null },
+        )
+        try {
+            productionServer.start()
+            extendedServer.start()
+
+            assertApiError(
+                URI("http://127.0.0.1:${productionServer.address.port}/api/test/runtime-identity")
+                    .toURL().openConnection() as HttpURLConnection,
+                status = 404,
+                code = "NOT_FOUND",
+                retryable = false,
+            )
+
+            val identityConnection = URI(
+                "http://127.0.0.1:${extendedServer.address.port}/api/test/runtime-identity",
+            ).toURL().openConnection() as HttpURLConnection
+            assertEquals(200, identityConnection.responseCode)
+            assertEquals("no-store", identityConnection.getHeaderField("Cache-Control"))
+            val identity = JsonParser.parseString(identityConnection.inputStream.reader().readText()).asJsonObject
+            assertEquals(setOf("applicationId", "transport", "scenarioId"), identity.keySet())
+            assertEquals("test.application", identity.get("applicationId").asString)
+            assertEquals("TEST_TRANSPORT", identity.get("transport").asString)
+            assertEquals("test-scenario", identity.get("scenarioId").asString)
+
+            assertApiError(
+                (URI("http://127.0.0.1:${extendedServer.address.port}/api/test/runtime-identity")
+                    .toURL().openConnection() as HttpURLConnection).apply { requestMethod = "POST" },
+                status = 405,
+                code = "METHOD_NOT_ALLOWED",
+                retryable = false,
+            )
+        } finally {
+            productionServer.close()
+            extendedServer.close()
+        }
+    }
+
+    @Test
     fun fallsBackToTheSpaOnlyForExtensionlessHtmlNavigation() {
         val index = "<html>DualDex SPA</html>".toByteArray()
         val script = "export const ready = true".toByteArray()

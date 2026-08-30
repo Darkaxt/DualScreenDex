@@ -159,6 +159,8 @@ open class DualDexApplication : Application() {
     protected open fun networkCommandTransportFactory(): () -> NetworkCommandTransport =
         { UdpNetworkCommandTransport() }
 
+    protected open fun additionalLoopbackGetRoutes(): Map<String, () -> Any> = emptyMap()
+
     internal open fun setupPickerActivityResultRegistry(activity: ComponentActivity): SetupPickerActivityResultRegistry =
         AndroidSetupPickerActivityResultRegistry(activity)
 
@@ -325,6 +327,7 @@ open class DualDexApplication : Application() {
                 val directory = File(cacheDir, "request-bodies").apply { mkdirs() }
                 File.createTempFile("request-", ".body", directory).toPath()
             },
+            additionalGetRoutes = additionalLoopbackGetRoutes(),
             assetLoader = ::loadWebAsset,
         )
         val networkCommandTransports = networkCommandTransportFactory()

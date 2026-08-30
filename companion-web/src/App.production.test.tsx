@@ -116,6 +116,12 @@ describe('production application shell', () => {
     expect(gameShell.dataset.theme).toBe('game');
     expect(gameShell.style.getPropertyValue('--theme-field')).toBe('#123456');
     expect(gameShell.style.getPropertyValue('--theme-accent-text')).toBe('#ffffff');
+    expect(gameShell.style.getPropertyValue('--semantic-primary-bg')).toBe('#9d302a');
+    expect(gameShell.style.getPropertyValue('--semantic-primary-fg')).toBe('#ffffff');
+    expect(gameShell.style.getPropertyValue('--semantic-secondary-bg')).toBe('#345678');
+    expect(gameShell.style.getPropertyValue('--semantic-secondary-fg')).toBe('#ffffff');
+    expect(gameShell.style.getPropertyValue('--semantic-surface-bg')).toBe('#fff7db');
+    expect(gameShell.style.getPropertyValue('--semantic-surface-fg')).toBe('#1c201d');
     first.unmount();
 
     vi.mocked(bootstrap).mockResolvedValueOnce({

@@ -19,6 +19,10 @@ class RetroArchFreeUiQaApplication : DualDexApplication() {
             ?: RetroArchFreeUiQaMode.transportFactory(filesDir)
             ?: super.networkCommandTransportFactory()
 
+    override fun additionalLoopbackGetRoutes(): Map<String, () -> Any> = rawMemoryController?.let { controller ->
+        mapOf(RetroArchFreeUiQaMode.RUNTIME_IDENTITY_PATH to { RetroArchFreeUiQaMode.runtimeIdentity(packageName, controller) })
+    }.orEmpty()
+
     internal fun rawMemoryQaController(): RawLiveMemoryQaController? = rawMemoryController
 
     override fun onTerminate() {
@@ -28,9 +32,16 @@ class RetroArchFreeUiQaApplication : DualDexApplication() {
     }
 }
 
+internal data class QaRuntimeIdentityView(
+    val applicationId: String,
+    val transport: String,
+    val scenarioId: String,
+)
+
 internal object RetroArchFreeUiQaMode {
     const val MARKER_FILE_NAME = "retroarch-free-ui-qa"
     const val SCENARIO_ASSET_PATH = "retroarch-free-ui-qa/raw-live-memory-scenarios.json"
+    const val RUNTIME_IDENTITY_PATH = "/api/qa/runtime-identity"
 
     fun loadController(filesDirectory: File, readAsset: () -> ByteArray): RawLiveMemoryQaController? {
         if (!File(filesDirectory, MARKER_FILE_NAME).isFile) return null
@@ -40,6 +51,15 @@ internal object RetroArchFreeUiQaMode {
             null
         }
     }
+
+    fun runtimeIdentity(
+        applicationId: String,
+        controller: RawLiveMemoryQaController,
+    ): QaRuntimeIdentityView = QaRuntimeIdentityView(
+        applicationId = applicationId,
+        transport = "SANITIZED_RAW_MEMORY",
+        scenarioId = controller.snapshot().scenarioId,
+    )
 
     fun transportFactory(filesDirectory: File): (() -> NetworkCommandTransport)? {
         if (!File(filesDirectory, MARKER_FILE_NAME).isFile) return null

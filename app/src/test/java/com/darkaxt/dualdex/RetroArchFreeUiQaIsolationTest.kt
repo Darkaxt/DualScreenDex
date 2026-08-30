@@ -59,6 +59,9 @@ class RetroArchFreeUiQaIsolationTest {
             "RawLiveMemoryControlActivity",
             "raw-live-memory-scenarios",
             "retroarch-free-ui-qa",
+            "QaRuntimeIdentityView",
+            "/api/qa/runtime-identity",
+            "SANITIZED_RAW_MEMORY",
         )
 
         assertTrue(productionManifest.contains("android:name=\".DualDexApplication\""))
@@ -129,6 +132,9 @@ class RetroArchFreeUiQaIsolationTest {
             "RawLiveMemoryControlActivity",
             "raw-live-memory-scenarios",
             "retroarch-free-ui-qa",
+            "QaRuntimeIdentityView",
+            "/api/qa/runtime-identity",
+            "SANITIZED_RAW_MEMORY",
             "DualDex RetroArch-Free UI QA",
         )
         ZipFile(apk).use { zip ->

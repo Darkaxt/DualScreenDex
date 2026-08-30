@@ -1,0 +1,148 @@
+{
+  "name": "thor-ui-stage-1",
+  "debugPackage": "com.darkaxt.dualdex.debug",
+  "qaScenarioId": "modern-normal",
+  "authority": {
+    "source": "Modern Emerald (v3.5).gba",
+    "sha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+    "crc32": "8C7DBECA",
+    "knowledgeMode": "DISCOVERED",
+    "resolution": "ACTIVE",
+    "indexedRoms": 1
+  },
+  "captures": [
+    {
+      "name": "trainer-card",
+      "steps": [
+        {
+          "kind": "action",
+          "value": { "type": "SCREEN", "screen": "TRAINER" },
+          "waitFor": ".trainer-screen"
+        },
+        {
+          "kind": "touch",
+          "selector": ".trainer-destination-action[aria-label=\"Card\"]",
+          "waitFor": ".trainer-card-shell"
+        }
+      ],
+      "waitFor": ".trainer-card-shell",
+      "measurements": [
+        ".trainer-screen",
+        ".trainer-screen > .app-header",
+        ".trainer-destination-switcher",
+        ".trainer-destination-action",
+        ".trainer-card-content",
+        ".trainer-card-shell"
+      ],
+      "active": [
+        {
+          "selector": ".trainer-destination-action[aria-label=\"Card\"]",
+          "attribute": "aria-pressed",
+          "equals": "true"
+        }
+      ],
+      "contrasts": [
+        {
+          "selector": ".trainer-destination-action[aria-label=\"Card\"]",
+          "minimum": 4.5
+        }
+      ]
+    },
+    {
+      "name": "trainer-progress",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".trainer-destination-action[aria-label=\"Progress\"]",
+          "waitFor": ".trainer-progress-content"
+        }
+      ],
+      "waitFor": ".trainer-progress-content",
+      "measurements": [
+        ".trainer-screen",
+        ".trainer-screen > .app-header",
+        ".trainer-destination-switcher",
+        ".trainer-destination-action",
+        ".trainer-progress-content",
+        ".trainer-progress-tabs"
+      ],
+      "active": [
+        {
+          "selector": ".trainer-destination-action[aria-label=\"Progress\"]",
+          "attribute": "aria-pressed",
+          "equals": "true"
+        }
+      ],
+      "contrasts": [
+        {
+          "selector": ".trainer-destination-action[aria-label=\"Progress\"]",
+          "minimum": 4.5
+        }
+      ]
+    },
+    {
+      "name": "settings",
+      "steps": [
+        {
+          "kind": "action",
+          "value": { "type": "SCREEN", "screen": "SETTINGS" },
+          "waitFor": ".settings-screen"
+        }
+      ],
+      "waitFor": ".settings-screen",
+      "measurements": [
+        ".settings-screen",
+        ".settings-screen > .app-header",
+        ".settings-content",
+        ".settings-upload",
+        ".retroarch-setting button"
+      ],
+      "contrasts": [
+        { "selector": ".settings-upload", "minimum": 4.5 },
+        { "selector": ".retroarch-setting button", "minimum": 4.5 }
+      ]
+    },
+    {
+      "name": "settings-danger",
+      "steps": [
+        {
+          "kind": "swipe",
+          "selector": ".settings-content",
+          "direction": "up",
+          "repeat": 8,
+          "waitFor": ".debug-actions .danger-action"
+        }
+      ],
+      "waitFor": ".debug-actions .danger-action",
+      "measurements": [
+        ".settings-screen",
+        ".settings-screen > .app-header",
+        ".settings-content",
+        ".debug-actions .danger-action"
+      ],
+      "contrasts": [
+        { "selector": ".debug-actions .danger-action", "minimum": 4.5 }
+      ]
+    },
+    {
+      "name": "setup",
+      "steps": [
+        {
+          "kind": "action",
+          "value": { "type": "SCREEN", "screen": "SETUP" },
+          "waitFor": ".setup-screen"
+        }
+      ],
+      "waitFor": ".setup-screen",
+      "measurements": [
+        ".setup-screen",
+        ".setup-screen > .app-header",
+        ".setup-content",
+        ".setup-action[href=\"dualdex://games/rescan\"]"
+      ],
+      "contrasts": [
+        { "selector": ".setup-action[href=\"dualdex://games/rescan\"]", "minimum": 4.5 }
+      ]
+    }
+  ]
+}

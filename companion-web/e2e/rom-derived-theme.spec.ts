@@ -70,7 +70,7 @@ const baseState = {
   currentAreaName: 'Route 101', currentAreaSpeciesIds: [1], revealedAreaBaseIds: [16], observedAreaBaseIdsBySpecies: { 1: [16] },
   battleTab: 'ENTRY', settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', theme: 'GAME', displayTarget: 'AUTO' },
   speciesState: { 1: { seen: true, caught: true, team: true, ballId: null }, 2: { seen: true, caught: false, team: false, ballId: null } },
-  observedMoves: {}, catalogReady: true, catalogName: 'Pokemon Emerald.gba', error: null, activeRulesetId: 'default', rulesetAssumed: false,
+  observedMoves: {}, catalogReady: true, catalogName: 'Pokemon Emerald.gba', mapperAvailable: true, error: null, activeRulesetId: 'default', rulesetAssumed: false,
   loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
   trainer: { name: 'MAY', gender: 'FEMALE', publicTrainerId: 12345, money: 98765, playTimeHours: 12, playTimeMinutes: 34, dexSeen: 2, dexCaught: 1, stars: 2, avatarUrl: '/api/trainer-assets/trainer%2Favatar%2Ffemale.png', badges: Array.from({ length: 8 }, (_, index) => ({ index, earned: index < 2, imageUrl: null })) },
   party: [{ slot: 0, occupied: true, speciesId: 1, speciesName: 'BULBASAUR', spriteUrl: null, typeIds: [12], nickname: 'BULBASAUR', level: 8, isEgg: false, gender: 'MALE', natureId: 3, nature: 'Hardy', abilityId: 65, abilityName: 'OVERGROW', heldItemId: null, heldItemName: null, currentHp: 21, maximumHp: 25, status: null, experienceProgress: .5, stats: { HP: 25, ATTACK: 13, DEFENSE: 13, SPEED: 12, 'SP. ATK': 16, 'SP. DEF': 16 }, moves: [{ slot: 0, moveId: 22, name: 'VINE WHIP', currentPp: 24, maximumPp: 25 }] }],
@@ -136,6 +136,24 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
     border: 'rgb(1, 1, 1)', text: 'rgb(3, 3, 3)', accent: 'rgb(53, 111, 251)', accentText: 'rgb(0, 0, 0)',
   };
   const fontMetrics: Array<{ view: string; elements: number; minimumPx: number; maximumPx: number; averagePx: number; smallestElements: string[] }> = [];
+  const expectContrast = async (selector: string, minimum = 4.5) => {
+    const element = page.locator(selector).first();
+    await expect(element).toBeVisible();
+    await expect.poll(() => element.evaluate(node => {
+      const parse = (value: string) => value.match(/[\d.]+/g)?.slice(0, 3).map(Number) ?? [];
+      const luminance = (value: string) => {
+        const channels = parse(value).map(channel => {
+          const normalized = channel / 255;
+          return normalized <= .04045 ? normalized / 12.92 : ((normalized + .055) / 1.055) ** 2.4;
+        });
+        return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2];
+      };
+      const style = getComputedStyle(node);
+      const foreground = luminance(style.color);
+      const background = luminance(style.backgroundColor);
+      return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+    })).toBeGreaterThanOrEqual(minimum);
+  };
   const capture = async (name: string) => {
     const metrics = await page.locator('.screen').first().evaluate(root => {
       const textElements = new Set<HTMLElement>();
@@ -420,6 +438,8 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await expectSurface('.settings-content .segmented button:not(.active)', { backgroundColor: colors.panel, borderTopColor: colors.border });
   await expectTypography('.setting-note', 12.8);
   await expectTypography('.settings-upload', 12);
+  await expectContrast('.settings-upload');
+  await expectContrast('.retroarch-setting button');
   await page.getByRole('button', { name: 'COMPATIBILITY REPORT' }).click();
   await expect(page.locator('.capability-screen')).toBeVisible();
   await assertGameTheme();
@@ -441,6 +461,8 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await expectTypography('.setup-step p', 12.3);
   await expectTypography('.setup-step small', 11.3);
   await expectTypography('.setup-action', 12);
+  await expectContrast('.setup-action:not(.setup-action-primary)');
+  await expectContrast('.setup-action-primary');
   await show('loading', { screen: 'POKEDEX', loading: { active: true, phase: 'ABILITY_DATA', completedUnits: 8, totalUnits: 12 } });
   await expectTypography('.loading-indicator', 11.3);
 
@@ -452,7 +474,6 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await capture('local-map');
   serverCatalog = { ...catalog, localMaps: [], mapScenes: [] };
   await page.reload();
-  await page.getByRole('button', { name: 'Open Map' }).click();
   await expect(page.getByRole('region', { name: 'Interactive world map' })).toBeVisible();
   await expect(page.locator('.map-fog')).toHaveCount(1);
   const fogState = await page.locator('.map-fog').evaluate(canvas => {
@@ -471,7 +492,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await assertGameTheme();
   await expectSurface('.map-page-header', {
     backgroundColor: colors.header,
-    borderBottomColor: colors.accent,
+    borderBottomColor: colors.border,
     boxShadow: 'rgb(0, 0, 0) 0px 4px 0px 0px',
     color: colors.accentText,
   });
@@ -482,7 +503,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
     fill: getComputedStyle(node).fill,
     stroke: getComputedStyle(node).stroke,
   }))).toEqual({ fill: 'none', stroke: colors.accentText });
-  await expectSurface('.map-zoom-rail .map-control', { backgroundColor: colors.menu, borderTopColor: colors.border, color: colors.text });
+  await expectSurface('.map-zoom-rail .map-control', { backgroundColor: colors.panel, borderTopColor: colors.border, color: colors.text });
   const browserRasterHash = await page.evaluate(async () => {
     const payload = await fetch('/api/maps/world%2Fgen3-region-0.png').then(response => response.arrayBuffer());
     const digest = await crypto.subtle.digest('SHA-256', payload);

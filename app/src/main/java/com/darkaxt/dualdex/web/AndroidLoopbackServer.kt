@@ -74,6 +74,7 @@ class AndroidLoopbackServer(
     private val requestReadTimeoutMillis: Int = DEFAULT_REQUEST_READ_TIMEOUT_MILLIS,
     private val requestLifetimeMillis: Long = DEFAULT_REQUEST_LIFETIME_MILLIS,
     private val responseWriteTimeoutMillis: Long = DEFAULT_RESPONSE_WRITE_TIMEOUT_MILLIS,
+    private val additionalGetRoutes: Map<String, () -> Any> = emptyMap(),
     private val assetLoader: (String) -> ByteArray?,
 ) : AutoCloseable {
     private val gson: Gson = GsonBuilder().serializeNulls().create()
@@ -109,6 +110,9 @@ class AndroidLoopbackServer(
         require(requestReadTimeoutMillis > 0)
         require(requestLifetimeMillis > 0)
         require(responseWriteTimeoutMillis > 0)
+        require(additionalGetRoutes.keys.all { path ->
+            path.startsWith("/api/") && path.length <= 160 && '?' !in path && '#' !in path
+        }) { "additional GET route path is invalid" }
     }
 
     val address: InetSocketAddress
@@ -277,6 +281,8 @@ class AndroidLoopbackServer(
 
     private fun route(request: Request): Response = when {
         request.method == "GET" && request.path == "/api/health" -> jsonResponse(mapOf("ok" to true))
+        request.method == "GET" && request.path in additionalGetRoutes ->
+            jsonResponse(requireNotNull(additionalGetRoutes[request.path]).invoke())
         request.method == "GET" && request.path == "/api/bootstrap" -> jsonResponse(runtime.bootstrap())
         request.method == "GET" && request.path == "/api/state" -> stateResponse(request)
         request.method == "GET" && request.path == "/api/specimens" -> jsonResponse(
@@ -308,7 +314,8 @@ class AndroidLoopbackServer(
         else -> textResponse("method not allowed", 405)
     }
 
-    private fun isApiEndpoint(path: String): Boolean = path in API_ENDPOINTS || API_PREFIXES.any(path::startsWith)
+    private fun isApiEndpoint(path: String): Boolean =
+        path in API_ENDPOINTS || path in additionalGetRoutes || API_PREFIXES.any(path::startsWith)
 
     private fun handleAction(request: Request): Response {
         val (type, values) = parseAction(request)

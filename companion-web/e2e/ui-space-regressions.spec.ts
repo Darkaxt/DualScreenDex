@@ -105,6 +105,43 @@ test('Pokédex detail fits and shares compact scrolling at the Thor viewport', a
   expect(after.content.y).toBeLessThan(before.content.y);
 });
 
+test('Trainer Card and Progress remain touch-reachable at the Thor viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 538, height: 445 });
+  await installHarness(page, catalog, { ...baseState, screen: 'TRAINER' });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+
+  const screen = page.locator('.trainer-screen');
+  const card = page.getByRole('button', { name: 'Card' });
+  const progress = page.getByRole('button', { name: 'Progress' });
+  const screenBounds = await screen.boundingBox();
+  expect(screenBounds).not.toBeNull();
+
+  for (const destination of [card, progress]) {
+    const bounds = await destination.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.width).toBeGreaterThanOrEqual(44);
+    expect(bounds!.height).toBeGreaterThanOrEqual(44);
+    expect(bounds!.x).toBeGreaterThanOrEqual(screenBounds!.x);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(screenBounds!.x + screenBounds!.width + 1);
+  }
+
+  for (const selector of ['.trainer-screen', '.app-header', '.header-actions', '.trainer-destination-switcher']) {
+    const fit = await page.locator(selector).evaluate(element => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+    expect(fit.scrollWidth, selector).toBeLessThanOrEqual(fit.clientWidth + 1);
+  }
+
+  await progress.click();
+  await expect(progress).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('GAME TOTALS')).toBeVisible();
+  await card.click();
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.trainer-card-shell')).toBeVisible();
+
+  mkdirSync(artifactDir, { recursive: true });
+  await page.screenshot({ path: join(artifactDir, 'trainer-destinations-thor.png') });
+});
+
 test('Battle rarity fills only the available content region without scrolling', async ({ page }) => {
   const state = { ...baseState, screen: 'BATTLE', battle, battleTab: 'RARITY' };
   await installHarness(page, catalog, state);
@@ -132,11 +169,25 @@ test('Battle rarity fills only the available content region without scrolling', 
 });
 
 async function installHarness(page: Page, activeCatalog: unknown, activeState: unknown) {
-  await page.route('**/api/bootstrap', route => json(route, { catalog: activeCatalog, state: activeState }));
-  await page.route('**/api/state?*', route => json(route, activeState));
+  let currentState = activeState as Record<string, unknown>;
+  await page.route('**/api/bootstrap', route => json(route, { catalog: activeCatalog, state: currentState }));
+  await page.route('**/api/state?*', route => json(route, currentState));
   await page.route('**/api/sprites/**', route => route.fulfill({ contentType: 'image/png', body: placeholder }));
   await page.route('**/api/maps/**', route => route.fulfill({ contentType: 'image/png', body: placeholder }));
-  await page.route('**/api/actions', route => json(route, activeState));
+  await page.route('**/api/actions', route => {
+    const action = route.request().postDataJSON() as Record<string, unknown>;
+    if (action.type === 'TRAINER_DESTINATION') {
+      currentState = {
+        ...currentState,
+        version: Number(currentState.version ?? 0) + 1,
+        trainerProgress: {
+          ...(currentState.trainerProgress as Record<string, unknown>),
+          selectedDestination: action.value,
+        },
+      };
+    }
+    return json(route, currentState);
+  });
 }
 
 async function json(route: Route, body: unknown) {

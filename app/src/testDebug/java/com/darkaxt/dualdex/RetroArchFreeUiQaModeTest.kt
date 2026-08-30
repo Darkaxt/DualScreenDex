@@ -38,6 +38,25 @@ class RetroArchFreeUiQaModeTest {
     }
 
     @Test
+    fun `runtime identity attests the debug package sanitized transport and active scenario`() {
+        File(temporaryFolder.root, RetroArchFreeUiQaMode.MARKER_FILE_NAME).createNewFile()
+        val asset = File("src/debug/assets/${RetroArchFreeUiQaMode.SCENARIO_ASSET_PATH}").readBytes()
+        val controller = requireNotNull(RetroArchFreeUiQaMode.loadController(temporaryFolder.root) { asset })
+        try {
+            assertEquals(
+                QaRuntimeIdentityView(
+                    applicationId = "com.darkaxt.dualdex.debug",
+                    transport = "SANITIZED_RAW_MEMORY",
+                    scenarioId = "modern-normal",
+                ),
+                RetroArchFreeUiQaMode.runtimeIdentity("com.darkaxt.dualdex.debug", controller),
+            )
+        } finally {
+            controller.close()
+        }
+    }
+
+    @Test
     fun `missing marker preserves the production transport factory`() {
         assertNull(RetroArchFreeUiQaMode.transportFactory(temporaryFolder.root))
     }

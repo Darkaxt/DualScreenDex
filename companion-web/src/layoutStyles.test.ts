@@ -6,6 +6,7 @@ const styles = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8')
 const areaGuideSource = readFileSync(join(process.cwd(), 'src', 'pages', 'AreaGuideDrawer.tsx'), 'utf8')
 const battleSource = readFileSync(join(process.cwd(), 'src', 'pages', 'BattlePage.tsx'), 'utf8')
 const pokemonAreaSource = readFileSync(join(process.cwd(), 'src', 'pages', 'PokemonAreaMap.tsx'), 'utf8')
+const settingsSource = readFileSync(join(process.cwd(), 'src', 'pages', 'SettingsPage.tsx'), 'utf8')
 
 describe('screen layout containment', () => {
   it('keeps root titles left aligned when the header also has actions', () => {
@@ -132,12 +133,15 @@ describe('screen layout containment', () => {
     expect(metaRule).toMatch(/justify-content\s*:\s*space-between/)
   })
 
-  it('keeps Trainer destination switching in compact header controls', () => {
+  it('allocates the complete Trainer destination switcher inside the compact header', () => {
     const trainerRule = styles.match(/\.trainer-screen\s*\{([^}]*)\}/)?.[1]
+    const hostRule = styles.match(/\.header-actions:has\(> \.trainer-destination-switcher\)\s*\{([^}]*)\}/)?.[1]
     const switcherRule = styles.match(/\.trainer-destination-switcher\s*\{([^}]*)\}/)?.[1]
     const actionRule = styles.match(/\.trainer-destination-action\s*\{([^}]*)\}/)?.[1]
 
     expect(trainerRule).toMatch(/grid-template-rows\s*:\s*auto minmax\(0, 1fr\)/)
+    expect(hostRule).toMatch(/grid-auto-columns\s*:\s*auto/)
+    expect(switcherRule).toMatch(/width\s*:\s*96px/)
     expect(switcherRule).toMatch(/grid-auto-columns\s*:\s*48px/)
     expect(actionRule).toMatch(/min-width\s*:\s*48px/)
     expect(actionRule).toMatch(/min-height\s*:\s*48px/)
@@ -163,6 +167,34 @@ describe('screen layout containment', () => {
     expect(damageRule).toMatch(/background\s*:\s*var\(--paper-deep\)/)
     expect(damageRule).not.toMatch(/#[0-9a-f]{3,8}/i)
     expect(specimenRule).toMatch(/box-shadow\s*:.*var\(--ui-raised-shadow\)/)
+  })
+
+  it('routes semantic controls through contrast-safe pairs instead of raw ROM roles', () => {
+    const rootRule = styles.match(/:root\s*\{([^}]*)\}/)?.[1]
+    const focusRule = styles.match(/:where\(button, a\[href\], input, select, textarea\):focus-visible\s*\{([^}]*)\}/)?.[1]
+    const trainerSelection = styles.match(/\.trainer-destination-action\[aria-pressed="true"\]\s*\{([^}]*)\}/)?.[1]
+    const settingsUpload = styles.match(/\.settings-upload\s*\{([^}]*)\}/)?.[1]
+    const setupAction = styles.match(/\.setup-action\s*\{([^}]*)\}/)?.[1]
+    const setupPrimary = styles.match(/\.setup-action-primary\s*\{([^}]*)\}/)?.[1]
+
+    expect(rootRule).toMatch(/--semantic-primary-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-secondary-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-selected-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-surface-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-danger-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-status-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-focus\s*:/)
+    expect(focusRule).toMatch(/var\(--semantic-focus\)/)
+    expect(trainerSelection).toMatch(/color\s*:\s*var\(--semantic-selected-fg\)/)
+    expect(trainerSelection).toMatch(/background\s*:\s*var\(--semantic-selected-bg\)/)
+    expect(settingsUpload).toMatch(/color\s*:\s*var\(--semantic-secondary-fg\)/)
+    expect(settingsUpload).toMatch(/background\s*:\s*var\(--semantic-secondary-bg\)/)
+    expect(setupAction).toMatch(/color\s*:\s*var\(--semantic-secondary-fg\)/)
+    expect(setupPrimary).toMatch(/color\s*:\s*var\(--semantic-primary-fg\)/)
+    expect(styles).toMatch(/\.capability-actions button[^{}]*\{[^}]*color\s*:\s*var\(--semantic-primary-fg\)/)
+    expect(styles).toMatch(/\.debug-actions \.danger-action[^{}]*\{[^}]*background\s*:\s*var\(--semantic-danger-bg\)/)
+    expect(settingsSource).toContain('class="danger-action"')
+    expect(settingsSource).toContain('REMOVE UNUSED GAME DATA')
   })
 
   it('enforces the physical text floor on the smallest new-route labels', () => {

@@ -2,6 +2,7 @@ import type { ComponentType, JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { action, bootstrap, events, uploadRom, type ConnectionStatus } from './gateway';
 import type { Bootstrap, Catalog, State } from './models';
+import { deriveSemanticTheme, semanticThemeCssVariables } from './themeContrast';
 import { decodeRouteHash, encodeRouteHash, popRoute, pushRoute, type UiRoute } from './navigation';
 import { PokedexBrowse } from './pages/PokedexBrowse';
 import { PokedexDetail } from './pages/PokedexDetail';
@@ -470,7 +471,7 @@ export function applicationThemeStyle(catalog: Catalog | null, settings: State['
     '--theme-text-shadow': tokens.textShadow,
     '--theme-accent': tokens.accent,
     '--theme-accent-text': tokens.accentText,
-  });
+  }, semanticThemeCssVariables(deriveSemanticTheme(tokens)));
   return style;
 }
 
