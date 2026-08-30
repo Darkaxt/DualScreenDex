@@ -1,9 +1,15 @@
 package com.darkaxt.dualdex
 
+import com.darkaxt.dualdex.retroarch.CoreMemoryReadSession
+import com.darkaxt.dualdex.retroarch.CoreMemoryReadState
+import com.darkaxt.dualdex.retroarch.CoreMemoryRegion
+import com.darkaxt.dualdex.retroarch.NetworkCommandClient
 import com.darkaxt.dualdex.retroarch.RetroArchConnection
 import com.darkaxt.dualdex.retroarch.RetroArchStatus
+import com.darkaxt.dualdex.retroarch.SessionMonitor
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -15,24 +21,59 @@ class RetroArchFreeUiQaModeTest {
     val temporaryFolder = TemporaryFolder()
 
     @Test
-    fun `missing marker preserves the production session monitor factory`() {
-        assertNull(RetroArchFreeUiQaMode.sessionMonitorFactory(temporaryFolder.root))
+    fun `missing marker preserves the production transport factory`() {
+        assertNull(RetroArchFreeUiQaMode.transportFactory(temporaryFolder.root))
     }
 
     @Test
     fun `marker directory does not enable QA mode`() {
         File(temporaryFolder.root, RetroArchFreeUiQaMode.MARKER_FILE_NAME).mkdir()
 
-        assertNull(RetroArchFreeUiQaMode.sessionMonitorFactory(temporaryFolder.root))
+        assertNull(RetroArchFreeUiQaMode.transportFactory(temporaryFolder.root))
     }
 
     @Test
-    fun `marker file enables an inert contentless session monitor`() {
+    fun `marker transport factory creates independent command endpoints`() {
         File(temporaryFolder.root, RetroArchFreeUiQaMode.MARKER_FILE_NAME).createNewFile()
 
-        val factory = RetroArchFreeUiQaMode.sessionMonitorFactory(temporaryFolder.root)
+        val factory = RetroArchFreeUiQaMode.transportFactory(temporaryFolder.root)!!
+        val first = factory()
+        val second = factory()
+        try {
+            assertNotSame(first, second)
+            first.send("GET_STATUS".toByteArray(Charsets.US_ASCII))
+            assertEquals("GET_STATUS CONTENTLESS", first.poll()!!.toString(Charsets.US_ASCII))
+            assertNull(second.poll())
+        } finally {
+            first.close()
+            second.close()
+        }
+    }
+
+    @Test
+    fun `missing raw memory range is rejected with the production wire grammar`() {
+        File(temporaryFolder.root, RetroArchFreeUiQaMode.MARKER_FILE_NAME).createNewFile()
+
+        val transport = RetroArchFreeUiQaMode.transportFactory(temporaryFolder.root)!!()
+        transport.use {
+            val reader = CoreMemoryReadSession(transport::send, transport::poll)
+            reader.start(listOf(CoreMemoryRegion("probe", 0x02000000, 4)))
+
+            assertEquals(
+                CoreMemoryReadState.Failed("RetroArch rejected the memory read"),
+                reader.heartbeat(),
+            )
+        }
+    }
+
+    @Test
+    fun `marker file enables a contentless raw command transport`() {
+        File(temporaryFolder.root, RetroArchFreeUiQaMode.MARKER_FILE_NAME).createNewFile()
+
+        val factory = RetroArchFreeUiQaMode.transportFactory(temporaryFolder.root)
         assertTrue(factory != null)
-        factory!!().use { monitor ->
+        SessionMonitor(NetworkCommandClient(factory!!())).use { monitor ->
+            assertEquals(RetroArchConnection.DISCONNECTED, monitor.heartbeat().connection)
             val state = monitor.heartbeat()
             assertEquals(RetroArchConnection.CONTENTLESS, state.connection)
             assertEquals(RetroArchStatus.Contentless, state.lastStatus)

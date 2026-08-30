@@ -37,7 +37,8 @@ import com.darkaxt.dualdex.setup.NoGuideLoadFault
 import com.darkaxt.dualdex.setup.RetroArchSetupCoordinator
 import com.darkaxt.dualdex.setup.AndroidSetupPickerActivityResultRegistry
 import com.darkaxt.dualdex.setup.SetupPickerActivityResultRegistry
-import com.darkaxt.dualdex.retroarch.SessionMonitor
+import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
+import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
 import com.darkaxt.dualdex.settings.SettingsRepository
 import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.darkaxt.dualdex.mapper.MapperSessionStore
@@ -155,7 +156,8 @@ open class DualDexApplication : Application() {
 
     protected open fun guideLoadFault(): GuideLoadFault = NoGuideLoadFault
 
-    protected open fun sessionMonitorFactory(): (() -> SessionMonitor)? = null
+    protected open fun networkCommandTransportFactory(): () -> NetworkCommandTransport =
+        { UdpNetworkCommandTransport() }
 
     internal open fun setupPickerActivityResultRegistry(activity: ComponentActivity): SetupPickerActivityResultRegistry =
         AndroidSetupPickerActivityResultRegistry(activity)
@@ -325,6 +327,7 @@ open class DualDexApplication : Application() {
             },
             assetLoader = ::loadWebAsset,
         )
+        val networkCommandTransports = networkCommandTransportFactory()
         var setupCandidate: RetroArchSetupCoordinator? = null
         var mapperCandidate: MemoryMapperCoordinator? = null
         return try {
@@ -349,12 +352,13 @@ open class DualDexApplication : Application() {
                 saveSnapshotRepository = saveSnapshots,
                 sharedStorage = sharedStorageGateway(),
                 guideLoadFault = guideLoadFault(),
-                sessionMonitorFactory = sessionMonitorFactory(),
+                networkCommandTransportFactory = networkCommandTransports,
             )
             mapperCandidate = MemoryMapperCoordinator(
                 MapperSessionStore(File(filesDir, "memory-mapper")),
                 runtime::retroArchState,
                 requireNotNull(setupCandidate)::commitMapperIfCurrent,
+                transportFactory = networkCommandTransports,
             )
             metricsMapper = mapperCandidate
             candidate.setMapperHandler(object : MapperHttpHandler {

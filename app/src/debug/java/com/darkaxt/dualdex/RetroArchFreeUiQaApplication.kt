@@ -1,35 +1,51 @@
 package com.darkaxt.dualdex
 
-import com.darkaxt.dualdex.retroarch.ConfigParameter
-import com.darkaxt.dualdex.retroarch.NetworkResponse
-import com.darkaxt.dualdex.retroarch.RetroArchCommandPort
-import com.darkaxt.dualdex.retroarch.RetroArchStatus
-import com.darkaxt.dualdex.retroarch.SessionMonitor
+import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import java.io.File
+import java.util.ArrayDeque
 
 class RetroArchFreeUiQaApplication : DualDexApplication() {
-    override fun sessionMonitorFactory(): (() -> SessionMonitor)? =
-        RetroArchFreeUiQaMode.sessionMonitorFactory(filesDir)
+    override fun networkCommandTransportFactory(): () -> NetworkCommandTransport =
+        RetroArchFreeUiQaMode.transportFactory(filesDir) ?: super.networkCommandTransportFactory()
 }
 
 internal object RetroArchFreeUiQaMode {
     const val MARKER_FILE_NAME = "retroarch-free-ui-qa"
 
-    fun sessionMonitorFactory(filesDirectory: File): (() -> SessionMonitor)? {
+    fun transportFactory(filesDirectory: File): (() -> NetworkCommandTransport)? {
         if (!File(filesDirectory, MARKER_FILE_NAME).isFile) return null
-        return { SessionMonitor(ContentlessCommandPort) }
+        return { ContentlessNetworkCommandTransport() }
     }
 
-    private object ContentlessCommandPort : RetroArchCommandPort {
-        override fun requestStatus() = Unit
+    private class ContentlessNetworkCommandTransport : NetworkCommandTransport {
+        private val replies = ArrayDeque<ByteArray>()
+        private var closed = false
 
-        override fun requestVersion() = Unit
+        @Synchronized
+        override fun send(payload: ByteArray) {
+            check(!closed) { "network command transport is closed" }
+            val command = payload.toString(Charsets.US_ASCII).trim()
+            val response = when {
+                command == "GET_STATUS" -> "GET_STATUS CONTENTLESS"
+                command == "VERSION" -> "1.0.0-dualdex-qa"
+                command.startsWith("GET_CONFIG_PARAM ") -> command
+                command.startsWith("READ_CORE_MEMORY ") ->
+                    "READ_CORE_MEMORY ${command.substringAfter("READ_CORE_MEMORY ").substringBefore(' ')} ERROR"
+                else -> return
+            }
+            replies.add(response.toByteArray(Charsets.US_ASCII))
+        }
 
-        override fun requestConfig(parameter: ConfigParameter) = Unit
+        @Synchronized
+        override fun poll(): ByteArray? {
+            check(!closed) { "network command transport is closed" }
+            return replies.pollFirst()
+        }
 
-        override fun poll(): List<NetworkResponse> =
-            listOf(NetworkResponse.Status(RetroArchStatus.Contentless))
-
-        override fun close() = Unit
+        @Synchronized
+        override fun close() {
+            closed = true
+            replies.clear()
+        }
     }
 }

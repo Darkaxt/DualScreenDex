@@ -22,7 +22,8 @@ class RetroArchFreeUiQaIsolationTest {
         assertTrue("debug string overlay must exist", strings.isFile)
         assertTrue(strings.readText().contains(">DualDex RetroArch-Free UI QA<"))
         assertFalse(application.contains("UdpNetworkCommandTransport"))
-        assertFalse(application.contains("NetworkCommandClient"))
+        assertTrue(application.contains("override fun networkCommandTransportFactory()"))
+        assertFalse(application.contains("sessionMonitorFactory"))
         assertFalse(application.contains("BuildConfig"))
     }
 
@@ -42,6 +43,8 @@ class RetroArchFreeUiQaIsolationTest {
         }
         assertTrue(runner.contains("QaDualDexApplication::class.java.name"))
         assertTrue(runner.contains("class QaDualDexApplication : DualDexApplication()"))
+        assertTrue(runner.contains("override fun networkCommandTransportFactory()"))
+        assertFalse(runner.contains("sessionMonitorFactory"))
     }
 
     @Test
