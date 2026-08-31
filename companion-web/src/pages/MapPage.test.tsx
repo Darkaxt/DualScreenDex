@@ -285,10 +285,10 @@ describe('optional local map presentation', () => {
       currentMapPosition: { x: 12, y: 7 },
       localMapPois: [
         { key: 'place', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 1, tileY: 1, category: 'PLACE', state: 'IDENTIFIED', displayName: 'Route gate', service: null, itemId: null, itemName: null, destinationBaseAreaId: 0x11 },
-        { key: 'service', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 2, tileY: 2, category: 'SERVICE', state: 'IDENTIFIED', displayName: 'Pokémon Center', service: 'POKEMON_CENTER', itemId: null, itemName: null, destinationBaseAreaId: null },
-        { key: 'item', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 3, tileY: 3, category: 'AVAILABLE_ITEM', state: 'SILHOUETTE', displayName: null, service: null, itemId: null, itemName: null, destinationBaseAreaId: null },
-        { key: 'collected', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 4, tileY: 4, category: 'COLLECTED_ITEM', state: 'COLLECTED', displayName: null, service: null, itemId: 13, itemName: 'Potion', destinationBaseAreaId: null },
-        { key: 'unknown', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 5, tileY: 5, category: 'UNKNOWN', state: 'SILHOUETTE', displayName: null, service: null, itemId: null, itemName: null, destinationBaseAreaId: null },
+        { key: 'service', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 4, tileY: 1, category: 'SERVICE', state: 'IDENTIFIED', displayName: 'Pokémon Center', service: 'POKEMON_CENTER', itemId: null, itemName: null, destinationBaseAreaId: null },
+        { key: 'item', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 7, tileY: 1, category: 'AVAILABLE_ITEM', state: 'SILHOUETTE', displayName: null, service: null, itemId: null, itemName: null, destinationBaseAreaId: null },
+        { key: 'collected', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 10, tileY: 1, category: 'COLLECTED_ITEM', state: 'COLLECTED', displayName: null, service: null, itemId: 13, itemName: 'Potion', destinationBaseAreaId: null },
+        { key: 'unknown', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 13, tileY: 1, category: 'UNKNOWN', state: 'SILHOUETTE', displayName: null, service: null, itemId: null, itemName: null, destinationBaseAreaId: null },
       ],
       localMapPoiPreferences: {
         showPlaces: true,
@@ -406,20 +406,31 @@ describe('optional local map presentation', () => {
     expect(filter.querySelector('svg')?.dataset.semanticIcon).toBe('filter');
   });
 
-  it('declutters colliding labels while keeping both POI icons available', () => {
+  it('clusters nine overlapping Oldale-scale POIs and keeps every member individually selectable', () => {
     const bounds = {
-      x: 0, y: 0, top: 0, right: 1240, bottom: 825, left: 0,
-      width: 1240, height: 825,
+      x: 0, y: 0, top: 0, right: 538, bottom: 383, left: 0,
+      width: 538, height: 383,
       toJSON: () => ({}),
     } as DOMRect;
     const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(bounds);
+    const localMapPois = Array.from({ length: 9 }, (_, index) => ({
+      key: `point-${index + 1}`,
+      localMapKey: 'local/0010',
+      baseAreaId: 0x10,
+      tileX: 7 + index % 3,
+      tileY: 7 + Math.floor(index / 3),
+      category: 'PLACE' as const,
+      state: 'IDENTIFIED' as const,
+      displayName: `Point ${index + 1}`,
+      service: null,
+      itemId: null,
+      itemName: null,
+      destinationBaseAreaId: 0x100 + index,
+    }));
     const poiState = {
       ...state,
       currentMapPosition: { x: 7, y: 9 },
-      localMapPois: [
-        { key: 'house-a', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 7, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "BRENDAN's HOUSE", service: null, itemId: null, itemName: null, destinationBaseAreaId: 0x100 },
-        { key: 'house-b', localMapKey: 'local/0010', baseAreaId: 0x10, tileX: 7, tileY: 8, category: 'PLACE', state: 'IDENTIFIED', displayName: "PROF. BIRCH'S HOUSE", service: null, itemId: null, itemName: null, destinationBaseAreaId: 0x102 },
-      ],
+      localMapPois,
       localMapPoiPreferences: {
         showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
         iconZoomThresholdPercent: 0, labelZoomThresholdPercent: 0,
@@ -427,8 +438,24 @@ describe('optional local map presentation', () => {
     } as State;
     const { container } = render(<MapPage catalog={localCatalog} state={poiState} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
 
-    expect(container.querySelectorAll('.map-poi-marker')).toHaveLength(2);
-    expect(container.querySelectorAll('.map-poi-label')).toHaveLength(1);
+    expect(container.querySelectorAll('.map-poi-marker')).toHaveLength(1);
+    const cluster = screen.getByRole('button', { name: '9 map points' });
+    expect(cluster.getAttribute('data-poi-cluster-key')).toBe('cluster/point-1/9');
+    fireEvent.click(cluster);
+    expect(screen.getByRole('region', { name: 'Map point chooser' })).toBeTruthy();
+    expect(container.querySelectorAll('.map-poi-cluster-list > button')).toHaveLength(9);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Point 9, point 9 of 9' }));
+    expect(screen.queryByRole('region', { name: 'Map point chooser' })).toBeNull();
+    expect(screen.getByRole('complementary', { name: 'Map point details' }).textContent).toContain('Point 9');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close map point details' }));
+    fireEvent.click(screen.getByRole('button', { name: '9 map points' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close map point chooser' }));
+    expect(screen.queryByRole('region', { name: 'Map point chooser' })).toBeNull();
+
+    for (let index = 0; index < 4; index += 1) fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(container.querySelectorAll('.map-poi-cluster')).toHaveLength(0);
+    expect(container.querySelectorAll('.map-poi-marker')).toHaveLength(9);
     rect.mockRestore();
   });
 

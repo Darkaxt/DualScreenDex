@@ -2,6 +2,7 @@ import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { AreaGuideIcon, DexIcon, FilterIcon, MapIcon, SettingsIcon } from '../components';
 import { GameClockIndicator } from '../GameClockIndicator';
+import { clusterMapTargets } from '../mapClustering';
 import { AcceleratedMapFollower, anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, shouldGlideCamera, type MapViewport } from '../mapEngine';
 import type { Catalog, LocalMapPoiPreferences, LocalMapPoiView, LocalMapScenePlacementView, LocalMapSceneView, State, WorldMapLocation, WorldMapRegion } from '../models';
 import { appendQueryParameters } from '../url';
@@ -21,6 +22,13 @@ interface LocalPoiMarker {
   poi: LocalMapPoiView;
   x: number;
   y: number;
+}
+
+interface LocalPoiTarget {
+  key: string;
+  x: number;
+  y: number;
+  marker: LocalPoiMarker;
 }
 
 type PoiLabelPlacement = 'below' | 'above';
@@ -69,6 +77,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const [areaGuideOpen, setAreaGuideOpen] = useState(false);
   const [selectedGuideAreaBaseId, setSelectedGuideAreaBaseId] = useState<number | null>(null);
   const [selectedPoiKey, setSelectedPoiKey] = useState<string | null>(null);
+  const [selectedPoiClusterKey, setSelectedPoiClusterKey] = useState<string | null>(null);
   const [followingPlayer, setFollowingPlayer] = useState(false);
   const stageRef = useRef<HTMLElement>(null);
   const fogRef = useRef<HTMLCanvasElement>(null);
@@ -223,6 +232,10 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   useEffect(() => () => cancelCameraAnimation(), []);
 
   useEffect(() => {
+    setSelectedPoiClusterKey(null);
+  }, [activeMap?.key, viewport.scale, viewport.panX, viewport.panY]);
+
+  useEffect(() => {
     if (!areaGuideOpen) return;
     const closeOnCompanionBack = (event: Event) => {
       (event as Event & { dualdexHandled?: boolean }).dualdexHandled = true;
@@ -323,12 +336,14 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   }
 
   function zoom(multiplier: number, anchor?: { x: number; y: number }) {
+    setSelectedPoiClusterKey(null);
     const bounds = stageRef.current?.getBoundingClientRect();
     const center = { x: (bounds?.width ?? activeMap!.pixelWidth) / 2, y: (bounds?.height ?? activeMap!.pixelHeight) / 2 };
     setViewport(anchoredZoom(viewport, viewport.scale * multiplier, anchor ?? center, center, maximumScaleRef.current));
   }
 
   function recenter() {
+    setSelectedPoiClusterKey(null);
     setSelectedGuideAreaBaseId(null);
     if (activeMode === 'ATLAS' && currentLocation) setSelectedKey(currentLocation.key);
     if (activeMode === 'LOCAL' && playerPosition) {
@@ -372,7 +387,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
 
   function onPointerDown(event: JSX.TargetedPointerEvent<HTMLElement>) {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
-    if ((event.target as Element).closest('.map-control, .map-legend-panel, .area-guide-drawer, .map-local-poi-label')) return;
+    if ((event.target as Element).closest('.map-control, .map-legend-panel, .area-guide-drawer, .map-local-poi-label, .map-poi-marker, .map-poi-cluster-popover')) return;
+    setSelectedPoiClusterKey(null);
     const point = pointerPoint(event);
     const markerKey = (event.target as Element).closest<HTMLElement>('.map-marker')?.dataset.markerKey;
     if (markerKey) pressedMarkerRef.current.set(event.pointerId, markerKey);
@@ -462,18 +478,31 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       stageRef.current?.clientHeight ?? 0,
     )) as LocalPoiMarker[];
   const stageBounds = stageRef.current?.getBoundingClientRect();
+  const stageWidth = stageBounds?.width ?? 0;
+  const stageHeight = stageBounds?.height ?? 0;
+  const localPoiTargets: LocalPoiTarget[] = localPoiMarkers.map(marker => ({
+    key: marker.poi.key,
+    x: stageWidth / 2 + viewport.panX + (marker.x / 100 - 0.5) * renderedWidth,
+    y: stageHeight / 2 + viewport.panY + (marker.y / 100 - 0.5) * renderedHeight,
+    marker,
+  }));
+  const localPoiClusters = clusterMapTargets(localPoiTargets, 44);
+  const standalonePoiMarkers = localPoiClusters
+    .filter(cluster => cluster.members.length === 1)
+    .map(cluster => cluster.members[0].marker);
   const visiblePoiLabelPlacements = poiLabelsVisible
     ? declutterPoiLabels(
-      localPoiMarkers,
+      standalonePoiMarkers,
       renderedWidth,
       renderedHeight,
       viewport,
-      stageBounds?.width ?? 0,
-      stageBounds?.height ?? 0,
+      stageWidth,
+      stageHeight,
       selectedPoiKey,
     )
     : new Map<string, PoiLabelPlacement>();
   const selectedPoi = localPoiMarkers.find(marker => marker.poi.key === selectedPoiKey)?.poi;
+  const selectedPoiCluster = localPoiClusters.find(cluster => cluster.key === selectedPoiClusterKey);
   const selectableGuidePointKeys = new Set(poiIconsVisible ? localPoiMarkers.map(marker => marker.poi.key) : []);
 
   function selectAtlasLocation(key: string) {
@@ -578,6 +607,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
             }}
             onPointerDown={event => event.stopPropagation()}
             onClick={() => {
+              setSelectedPoiClusterKey(null);
               selectGuideArea(placement.baseAreaId);
               setAreaGuideOpen(true);
             }}
@@ -624,17 +654,32 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
         >{playerMapSpriteUrl
             ? <img src={playerMapSpriteUrl} alt={state.trainer?.name ?? 'Player'} draggable={false} />
             : <span class="map-player-dot" />}</span>}
-        {poiIconsVisible && localPoiMarkers.map(({ poi, x, y }) => <button
-          key={poi.key}
-          class={`map-poi-marker map-poi-${poi.category.toLowerCase().replaceAll('_', '-')} ${poi.state === 'SILHOUETTE' ? 'is-silhouette' : ''} ${poi.key === selectedPoiKey ? 'is-selected' : ''}`}
-          data-poi-key={poi.key}
-          style={{ left: `${x}%`, top: `${y}%` }}
-          aria-label={poiAriaLabel(poi)}
-          onClick={() => setSelectedPoiKey(current => current === poi.key ? null : poi.key)}
-        >
-          <span class="map-poi-symbol" aria-hidden="true">{poiSymbol(poi)}</span>
-          {visiblePoiLabelPlacements.has(poi.key) && <span class={`map-poi-label is-${visiblePoiLabelPlacements.get(poi.key)}`}>{poiDisplayLabel(poi)}</span>}
-        </button>)}
+        {poiIconsVisible && localPoiClusters.map(cluster => {
+          const marker = cluster.members[0].marker;
+          const clustered = cluster.members.length > 1;
+          const selected = cluster.members.some(member => member.marker.poi.key === selectedPoiKey);
+          return <button
+            key={cluster.key}
+            class={`map-poi-marker ${clustered ? 'map-poi-cluster' : `map-poi-${marker.poi.category.toLowerCase().replaceAll('_', '-')}`} ${!clustered && marker.poi.state === 'SILHOUETTE' ? 'is-silhouette' : ''} ${selected ? 'is-selected' : ''}`}
+            data-poi-key={clustered ? undefined : marker.poi.key}
+            data-poi-cluster-key={clustered ? cluster.key : undefined}
+            style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
+            aria-label={clustered ? `${cluster.members.length} map points` : poiAriaLabel(marker.poi)}
+            aria-expanded={clustered ? selectedPoiCluster?.key === cluster.key : undefined}
+            onClick={() => {
+              if (clustered) {
+                setSelectedPoiKey(null);
+                setSelectedPoiClusterKey(current => current === cluster.key ? null : cluster.key);
+              } else {
+                setSelectedPoiClusterKey(null);
+                setSelectedPoiKey(current => current === marker.poi.key ? null : marker.poi.key);
+              }
+            }}
+          >
+            <span class="map-poi-symbol" aria-hidden="true">{clustered ? cluster.members.length : poiSymbol(marker.poi)}</span>
+            {!clustered && visiblePoiLabelPlacements.has(marker.poi.key) && <span class={`map-poi-label is-${visiblePoiLabelPlacements.get(marker.poi.key)}`}>{poiDisplayLabel(marker.poi)}</span>}
+          </button>;
+        })}
       </div>
 
       <nav class="map-utility-rail" aria-label="Map utilities">
@@ -645,6 +690,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           onClick={() => {
             setLegendOpen(false);
             setPoiFiltersOpen(false);
+            setSelectedPoiClusterKey(null);
             setAreaGuideOpen(value => !value);
           }}
         ><AreaGuideIcon /></button>}
@@ -665,12 +711,44 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
         </div>}
       </nav>
 
+      {poiIconsVisible && selectedPoiCluster && <section
+        class="map-poi-cluster-popover"
+        role="region"
+        aria-label="Map point chooser"
+      >
+        <header>
+          <strong>{selectedPoiCluster.members.length} MAP POINTS</strong>
+          <button
+            type="button"
+            aria-label="Close map point chooser"
+            onClick={() => setSelectedPoiClusterKey(null)}
+          >×</button>
+        </header>
+        <div class="map-poi-cluster-list">
+          {selectedPoiCluster.members.map((member, index) => <button
+            key={member.key}
+            type="button"
+            aria-label={`Select ${poiDisplayLabel(member.marker.poi)}, point ${index + 1} of ${selectedPoiCluster.members.length}`}
+            onClick={() => {
+              setSelectedPoiKey(member.marker.poi.key);
+              setSelectedPoiClusterKey(null);
+            }}
+          >
+            <span class="map-poi-symbol" aria-hidden="true">{poiSymbol(member.marker.poi)}</span>
+            <span>{poiDisplayLabel(member.marker.poi)}</span>
+          </button>)}
+        </div>
+      </section>}
+
       {areaGuideOpen && activeGuideArea && <AreaGuideDrawer
         area={activeGuideArea}
         catalogHash={catalog.hash}
         onClose={() => setAreaGuideOpen(false)}
         onSelectArea={selectGuideArea}
-        onSelectPoint={key => setSelectedPoiKey(key)}
+        onSelectPoint={key => {
+          setSelectedPoiClusterKey(null);
+          setSelectedPoiKey(key);
+        }}
         selectablePointKeys={selectableGuidePointKeys}
       />}
 
