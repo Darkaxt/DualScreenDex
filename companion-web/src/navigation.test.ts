@@ -75,6 +75,27 @@ describe('client navigation stack', () => {
     expect(decodeRouteHash(hash, catalog, { worldMapsAvailable: true })).toEqual(map);
   });
 
+  it('round trips only the catalog-bound Move List Settings target', () => {
+    const settingsRoute: Extract<UiRoute, { kind: 'SETTINGS' }> = {
+      kind: 'SETTINGS',
+      category: 'INFORMATION',
+      control: 'MOVE_LIST',
+      catalogHash: catalog.hash,
+    };
+    const settings: UiRoute[] = [settingsRoute];
+
+    expect(decodeRouteHash(encodeRouteHash(settings, catalog.hash), catalog)).toEqual(settings);
+    expect(decodeRouteHash(encodeRouteHash([{
+      ...settingsRoute,
+      catalogHash: 'old-sha',
+    }], catalog.hash), catalog)).toEqual([]);
+    expect(decodeRouteHash(routeHash({
+      version: 1,
+      catalogHash: catalog.hash,
+      routes: [{ ...settingsRoute, category: 'DISPLAY' }],
+    }), catalog)).toEqual([]);
+  });
+
   it('rejects invalid entity references and party slots', () => {
     const invalidRoutes: UiRoute[][] = [
       [{ kind: 'MOVE', id: 999 }],

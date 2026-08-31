@@ -530,6 +530,27 @@ describe('production application shell', () => {
     expect(window.history.state).toEqual({ dualdexRouteIndex: 2 });
   });
 
+  it('unwinds a restored Move List recovery route through the Settings index', async () => {
+    window.history.replaceState({ dualdexRouteIndex: 0 }, '', encodeRouteHash([{
+      kind: 'SETTINGS',
+      category: 'INFORMATION',
+      control: 'MOVE_LIST',
+      catalogHash: fixture.catalog!.hash,
+    }], fixture.catalog!.hash));
+    render(<App />);
+
+    const moveList = await screen.findByRole('combobox', { name: 'Move list' });
+    expect(document.activeElement).toBe(moveList);
+
+    window.dispatchEvent(new Event('dualdexback', { cancelable: true }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Information' })).toBeTruthy());
+    expect(window.location.hash).toContain('dualdex=');
+
+    window.dispatchEvent(new Event('dualdexback', { cancelable: true }));
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
+    expect(window.location.hash).toBe('');
+  });
+
   it('publishes opened routes and follows browser history', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
@@ -588,6 +609,28 @@ describe('production application shell', () => {
     expect(screen.getByText('POKÉDEX')).toBeTruthy();
   });
 
+  it('uses system Back to unwind a Settings category before exiting Settings', async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Advanced' }));
+    expect(screen.getByText('DEBUG')).toBeTruthy();
+    vi.mocked(action).mockClear();
+
+    const categoryBack = new Event('dualdexback', { cancelable: true });
+    window.dispatchEvent(categoryBack);
+    await waitFor(() => expect(screen.queryByText('DEBUG')).toBeNull());
+    expect(screen.getByRole('button', { name: 'Advanced' })).toBeTruthy();
+    expect(categoryBack.defaultPrevented).toBe(true);
+    expect(action).not.toHaveBeenCalledWith('BACK', {});
+
+    const settingsBack = new Event('dualdexback', { cancelable: true });
+    window.dispatchEvent(settingsBack);
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
+    expect(settingsBack.defaultPrevented).toBe(true);
+    expect(action).toHaveBeenCalledWith('BACK', {});
+  });
+
   it('lets an auto-opened battle replace an already open map', async () => {
     let publishState: ((state: Bootstrap['state']) => void) | undefined;
     vi.mocked(events).mockImplementationOnce((_currentVersion, listener) => {
@@ -640,10 +683,14 @@ describe('production application shell', () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Advanced' }));
     fireEvent.click(await screen.findByRole('button', { name: 'COMPATIBILITY REPORT' }));
 
     expect(await screen.findByText('LOADED ROM · READ ONLY')).toBeTruthy();
     expect(screen.queryByText('ISSUE REPORT MEMORY CAPTURE')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('DEBUG')).toBeTruthy();
   });
 
   it('opens the normalized Map locally and returns to the retained Pokédex view', async () => {
@@ -736,6 +783,7 @@ describe('bootstrap authority fencing', () => {
 
     render(<App />);
     await screen.findByText('SETTINGS');
+    fireEvent.click(screen.getByRole('button', { name: 'General' }));
     const rom = new File([new Uint8Array([1])], 'catalog-b.gba');
     fireEvent.change(screen.getByLabelText('Change ROM or ZIP'), { target: { files: [rom] } });
 

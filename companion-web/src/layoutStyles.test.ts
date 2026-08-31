@@ -212,6 +212,20 @@ describe('screen layout containment', () => {
     expect(capabilityAction).toMatch(/min-height\s*:\s*44px/)
   })
 
+  it('keeps Settings categories, save choices, and toggles touch and keyboard visible', () => {
+    const categoryRule = styles.match(/\.settings-category-row\s*\{([^}]*)\}/)?.[1]
+    const saveRule = styles.match(/\.save-candidates button\s*\{([^}]*)\}/)?.[1]
+    const toggleFocusRule = styles.match(/\.toggle-row input:focus-visible \+ i\s*\{([^}]*)\}/)?.[1]
+
+    expect(categoryRule).toMatch(/min-height\s*:\s*52px/)
+    expect(styles).toMatch(/\.settings-category-row small\s*\{[^}]*color\s*:\s*var\(--semantic-surface-fg\)/)
+    expect(saveRule).toMatch(/min-height\s*:\s*44px/)
+    expect(toggleFocusRule).toMatch(/outline\s*:\s*3px solid var\(--semantic-selected-border\)/)
+    expect(settingsSource).toContain('class="primary-action"')
+    expect(settingsSource).toContain('class="diagnostic-action"')
+    expect(settingsSource).toContain('class="danger-action"')
+  })
+
   it('routes semantic controls through contrast-safe pairs instead of raw ROM roles', () => {
     const rootRule = styles.match(/:root\s*\{([^}]*)\}/)?.[1]
     const focusRule = styles.match(/:where\(button, a\[href\], input, select, textarea\):focus-visible\s*\{([^}]*)\}/)?.[1]

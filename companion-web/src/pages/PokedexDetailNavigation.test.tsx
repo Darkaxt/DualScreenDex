@@ -196,6 +196,30 @@ describe('Pokédex evolution navigation', () => {
     expect(send).toHaveBeenCalledWith('MAP_AREA', { regionKey: 'hoenn', locationKey: 'oldale' });
   });
 
+  it('routes unresolved level-up moves directly to the Move List setting', () => {
+    const openMoveListSettings = vi.fn();
+    render(<PokedexDetail
+      catalog={{
+        ...catalog,
+        rulesets: [
+          { id: 'default', label: 'Default', sourceOffset: 0, confidence: 1, primary: true },
+          { id: 'modern', label: 'Modern', sourceOffset: 1, confidence: 0.9, primary: false },
+        ],
+      }}
+      state={state}
+      send={vi.fn()}
+      tab="MOVES"
+      setTab={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+      openMoveListSettings={openMoveListSettings}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'CHOOSE MOVE LIST' }));
+
+    expect(openMoveListSettings).toHaveBeenCalledOnce();
+  });
+
   it('keeps AREA safe when the catalog has no normalized map', () => {
     render(<PokedexDetail
       catalog={{ ...catalog, worldMaps: [] }}

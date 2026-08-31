@@ -1,7 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
-import { PokedexBrowse } from './PokedexBrowse';
+import {
+  PokedexBrowse,
+  pokedexRowHeight,
+  pokedexVirtualWindow,
+  rebasePokedexScrollTop,
+} from './PokedexBrowse';
 
 afterEach(cleanup);
 
@@ -399,6 +404,30 @@ describe('Pokédex knowledge modes', () => {
     expect(send).toHaveBeenNthCalledWith(1, 'OPEN_SPECIES', { speciesId: 1 });
     expect(send).toHaveBeenNthCalledWith(2, 'OPEN_SPECIES', { speciesId: 7 });
     expect((container.querySelector('.identity-hidden') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('shares density row geometry across virtualization and scroll rebasing', () => {
+    expect(pokedexRowHeight('AUTO')).toBe(94);
+    expect(pokedexRowHeight('COMFORTABLE')).toBe(94);
+    expect(pokedexRowHeight('COMPACT')).toBe(68);
+    expect(pokedexRowHeight('COMPACT', 1.35)).toBe(92);
+    expect(pokedexRowHeight('COMFORTABLE', 1.35)).toBe(127);
+    expect(pokedexRowHeight('COMPACT', 0.85)).toBe(68);
+    expect(() => pokedexRowHeight('COMPACT', 0)).toThrow(/font scale/i);
+
+    for (const rowHeight of [94, 68]) {
+      for (const scrollTop of [0, rowHeight * 400, Number.MAX_SAFE_INTEGER]) {
+        const window = pokedexVirtualWindow(900, 1, scrollTop, 254, rowHeight);
+        const mountedRows = window.endIndex - window.startIndex;
+        expect(window.paddingTop + mountedRows * rowHeight + window.paddingBottom).toBe(900 * rowHeight);
+      }
+      const end = pokedexVirtualWindow(900, 1, Number.MAX_SAFE_INTEGER, 254, rowHeight);
+      expect(end.endIndex).toBe(900);
+      expect(end.paddingBottom).toBe(0);
+    }
+
+    expect(rebasePokedexScrollTop(94 * 123 + 47, 94, 68, 900 * 68 - 254)).toBe(68 * 123 + 34);
+    expect(rebasePokedexScrollTop(94 * 899, 94, 68, 900 * 68 - 254)).toBe(900 * 68 - 254);
   });
 
   it('keeps a nine-hundred-entry catalog within sixty mounted rows while preserving counts and search', () => {

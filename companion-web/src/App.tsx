@@ -7,7 +7,7 @@ import { decodeRouteHash, encodeRouteHash, popRoute, pushRoute, type UiRoute } f
 import { PokedexBrowse } from './pages/PokedexBrowse';
 import { PokedexDetail } from './pages/PokedexDetail';
 import { BattlePage } from './pages/BattlePage';
-import { SettingsPage } from './pages/SettingsPage';
+import { SettingsPage, type SettingsCategory } from './pages/SettingsPage';
 import { MoveDetail } from './pages/MoveDetail';
 import { AbilityDetail } from './pages/AbilityDetail';
 import { NatureDetail } from './pages/NatureDetail';
@@ -51,6 +51,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('CONNECTED');
   const [busy, setBusy] = useState(true);
   const [routes, setRoutes] = useState<UiRoute[]>([]);
+  const [settingsNavigation, setSettingsNavigation] = useState<{
+    ownerKey: string;
+    category: SettingsCategory | null;
+  }>({ ownerKey: '', category: null });
   const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'AREA' | 'MORE'>('ENTRY');
   const [partySelection, setPartySelection] = useState<{ catalogHash: string; slot: number | null }>({ catalogHash: '', slot: null });
   const [partyScroll, setPartyScroll] = useState<{ catalogHash: string; top: number }>({ catalogHash: '', top: 0 });
@@ -66,16 +70,40 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const screenRef = useRef(state.screen);
   const stateVersionRef = useRef(state.version);
   const stateRef = useRef(state);
+  const settingsNavigationRef = useRef<{
+    ownerKey: string | null;
+    category: SettingsCategory | null;
+  }>({ ownerKey: null, category: null });
   routesRef.current = routes;
   catalogRef.current = catalog;
   screenRef.current = state.screen;
   stateVersionRef.current = state.version;
   stateRef.current = state;
+  const settingsOwnerKey = activeRoute?.kind === 'SETTINGS'
+    ? `route:${activeRoute.catalogHash}:${activeRoute.category}:${activeRoute.control}`
+    : activeRoute == null && catalog && state.screen === 'SETTINGS'
+      ? `screen:${catalog.hash}`
+      : null;
+  const defaultSettingsCategory = activeRoute?.kind === 'SETTINGS'
+    ? activeRoute.category
+    : null;
+  const displayedSettingsCategory = settingsOwnerKey != null && settingsNavigation.ownerKey === settingsOwnerKey
+    ? settingsNavigation.category
+    : defaultSettingsCategory;
+  settingsNavigationRef.current = {
+    ownerKey: settingsOwnerKey,
+    category: displayedSettingsCategory,
+  };
 
   const reportFailure = (failure: unknown, message: string) => {
     console.error(failure);
     setError(message);
   };
+
+  function setDisplayedSettingsCategory(category: SettingsCategory | null) {
+    const ownerKey = settingsNavigationRef.current.ownerKey;
+    if (ownerKey) setSettingsNavigation({ ownerKey, category });
+  }
 
   function setClientRoutes(next: UiRoute[]) {
     routesRef.current = next;
@@ -237,6 +265,12 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   }, []);
 
   const send = async (type: string, values: Record<string, string | number | boolean | null> = {}) => {
+    if (type === 'SCREEN' && values.screen === 'SETTINGS' && catalogRef.current) {
+      setSettingsNavigation({
+        ownerKey: `screen:${catalogRef.current.hash}`,
+        category: null,
+      });
+    }
     try {
       setState(await action(type, values));
       setError(null);
@@ -279,7 +313,13 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         const currentRoutes = routesRef.current;
         const currentRoute = currentRoutes.at(-1);
         const currentScreen = screenRef.current;
-        if (currentRoutes.length > 0) {
+        const currentSettingsNavigation = settingsNavigationRef.current;
+        if (currentSettingsNavigation.ownerKey && currentSettingsNavigation.category) {
+          setSettingsNavigation({
+            ownerKey: currentSettingsNavigation.ownerKey,
+            category: null,
+          });
+        } else if (currentRoutes.length > 0) {
           if (currentRoute?.kind === 'PARTY_MEMBER' && currentScreen !== 'PARTY') void send('BACK');
           else closeClientRoute();
         }
@@ -307,6 +347,22 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   }
 
   function openRoute(route: UiRoute) {
+    pushClientRoute(route);
+  }
+
+  function openMoveListSettings() {
+    const activeCatalog = catalogRef.current;
+    if (!activeCatalog) return;
+    const route = {
+      kind: 'SETTINGS',
+      category: 'INFORMATION',
+      control: 'MOVE_LIST',
+      catalogHash: activeCatalog.hash,
+    } satisfies UiRoute;
+    setSettingsNavigation({
+      ownerKey: `route:${route.catalogHash}:${route.category}:${route.control}`,
+      category: route.category,
+    });
     pushClientRoute(route);
   }
 
@@ -340,6 +396,19 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         void send('SCREEN', { screen: 'SETTINGS' });
       }}
       onUpdatePoiPreferences={values => void send('MAP_POI_SETTINGS', values)}
+    />;
+    if (activeRoute?.kind === 'SETTINGS' && activeRoute.catalogHash === catalog.hash) return <SettingsPage
+      catalog={catalog}
+      state={state}
+      send={send}
+      onUpload={onUpload}
+      initialControl={activeRoute.control}
+      category={displayedSettingsCategory}
+      onCategoryChange={setDisplayedSettingsCategory}
+      onBack={closeRoute}
+      onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })}
+      mapperAvailable={state.mapperAvailable === true}
+      onOpenMapper={() => openRoute({ kind: 'MAPPER' })}
     />;
     if (activeRoute?.kind === 'MOVE') return <MoveDetail catalog={catalog} state={state} moveId={activeRoute.id} onBack={closeRoute} />;
     if (activeRoute?.kind === 'ABILITY') return <AbilityDetail catalog={catalog} state={state} abilityId={activeRoute.id} onBack={closeRoute} />;
@@ -385,6 +454,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       openMove={id => openRoute({ kind: 'MOVE', id })}
       openAbility={id => openRoute({ kind: 'ABILITY', id })}
       openSpecimens={speciesId => openRoute({ kind: 'SPECIMENS', speciesId, catalogHash: catalog.hash })}
+      openMoveListSettings={openMoveListSettings}
     />;
     if (activeRoute?.kind === 'PARTY_ANALYSIS' && activeRoute.catalogHash === catalog.hash && state.partyAnalysis) return <PartyAnalysisPage
       catalog={catalog}
@@ -400,7 +470,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       }}
     />;
     switch (state.screen) {
-      case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={id => openRoute({ kind: 'MOVE', id })} openAbility={id => openRoute({ kind: 'ABILITY', id })} openSpecimens={speciesId => openRoute({ kind: 'SPECIMENS', speciesId, catalogHash: catalog.hash })} />;
+      case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={id => openRoute({ kind: 'MOVE', id })} openAbility={id => openRoute({ kind: 'ABILITY', id })} openSpecimens={speciesId => openRoute({ kind: 'SPECIMENS', speciesId, catalogHash: catalog.hash })} openMoveListSettings={openMoveListSettings} />;
       case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={id => openRoute({ kind: 'MOVE', id })} openSpecies={speciesId => {
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
@@ -434,10 +504,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
           }}
         />;
       }
-      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })} mapperAvailable={state.mapperAvailable === true} onOpenMapper={() => openRoute({ kind: 'MAPPER' })} />;
+      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} category={displayedSettingsCategory} onCategoryChange={setDisplayedSettingsCategory} onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })} mapperAvailable={state.mapperAvailable === true} onOpenMapper={() => openRoute({ kind: 'MAPPER' })} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={openMap} />;
     }
-  }, [catalog, state, busy, error, detailTab, routes, partySelection, partyScroll, specimenScroll, waitingForGame]);
+  }, [catalog, state, busy, error, detailTab, routes, partySelection, partyScroll, specimenScroll, settingsNavigation, waitingForGame]);
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
     <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={applicationThemeStyle(catalog, state.settings)} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>

@@ -17,6 +17,7 @@ export function PokedexDetail({
   openMove,
   openAbility: _openAbility,
   openSpecimens,
+  openMoveListSettings,
 }: {
   catalog: Catalog;
   state: State;
@@ -26,6 +27,7 @@ export function PokedexDetail({
   openMove: (moveId: number) => void;
   openAbility: (abilityId: number) => void;
   openSpecimens?: (speciesId: number) => void;
+  openMoveListSettings?: () => void;
 }) {
   const species = catalog.species.find(item => item.id === state.selectedSpeciesId) ?? catalog.species[0];
   if (!species) return null;
@@ -83,7 +85,7 @@ export function PokedexDetail({
       {unlocked && displayTab === 'MOVES' && <div class="paper-panel move-sections">
         <div class="section-heading"><div><p class="eyebrow">LEVEL-UP MOVES</p><p>{activeRuleset == null ? 'Move list not selected' : `${activeRuleset.label} list`}</p></div></div>
         {activeRuleset == null && catalog.rulesets.length > 1
-          ? <div class="empty-state"><strong>{gameplayCopy.moveDataUnavailable}</strong><p>{gameplayCopy.chooseMoveList}</p></div>
+          ? <div class="empty-state"><strong>{gameplayCopy.moveDataUnavailable}</strong><p>{gameplayCopy.chooseMoveList}</p>{openMoveListSettings && <button type="button" class="primary-button" onClick={openMoveListSettings}>CHOOSE MOVE LIST</button>}</div>
           : <div class="move-table">{moves.map(item => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
           return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>{item.label}</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
