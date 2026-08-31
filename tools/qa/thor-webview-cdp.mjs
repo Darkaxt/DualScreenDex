@@ -16,6 +16,7 @@ const MAX_CAPTURE_REPORT_BYTES = 1024 * 1024;
 const MAX_FINAL_REPORT_BYTES = 4 * 1024 * 1024;
 const VISUAL_STABILITY_TOLERANCE = 0.01;
 const TOUCH_TARGET_TOLERANCE = 0.01;
+const EVIDENCE_ROUNDING_TOLERANCE = 0.001;
 const THOR_GEOMETRY = Object.freeze({
   innerWidth: 538,
   innerHeight: 445,
@@ -198,9 +199,10 @@ export function assertTouchTargetBounds(bounds, viewport) {
     if (typeof value !== 'number' || !Number.isFinite(value)) throw new TypeError(`${label} must be finite`);
   }
   if (bounds.width + TOUCH_TARGET_TOLERANCE < 44 || bounds.height + TOUCH_TARGET_TOLERANCE < 44) throw new Error('Touch target is smaller than 44x44');
-  if (bounds.x < viewport.x || bounds.y < viewport.y
-    || bounds.x + bounds.width > viewport.x + viewport.width
-    || bounds.y + bounds.height > viewport.y + viewport.height) {
+  if (bounds.x + EVIDENCE_ROUNDING_TOLERANCE < viewport.x
+    || bounds.y + EVIDENCE_ROUNDING_TOLERANCE < viewport.y
+    || bounds.x + bounds.width > viewport.x + viewport.width + EVIDENCE_ROUNDING_TOLERANCE
+    || bounds.y + bounds.height > viewport.y + viewport.height + EVIDENCE_ROUNDING_TOLERANCE) {
     throw new Error('Touch target leaves the viewport');
   }
   return bounds;

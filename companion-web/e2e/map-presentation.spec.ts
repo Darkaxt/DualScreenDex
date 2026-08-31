@@ -15,7 +15,7 @@ const artifactDir = join(process.cwd(), '..', 'output', 'map-presentation');
 
 const state = {
   version: 1, screen: 'POKEDEX', priorScreen: 'POKEDEX', settingsReturnScreen: 'POKEDEX', selectedSpeciesId: null,
-  filter: 'AREA', selectedAreaId: null, selectedAreaIds: [] as number[], currentAreaBaseId: 16, currentAreaName: 'Route 101', battleTab: 'ENTRY',
+  filter: 'ALL', selectedAreaId: null, selectedAreaIds: [] as number[], currentAreaBaseId: 16, currentAreaName: 'Route 101', battleTab: 'ENTRY',
   currentAreaIds: [161], currentAreaSpeciesIds: [5], revealedAreaBaseIds: [16, 17], observedAreaBaseIdsBySpecies: { 5: [17] },
   settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO' },
   speciesState: { 5: { seen: true, caught: true, team: false, ballId: null }, 6: { seen: false, caught: false, team: false, ballId: null } }, observedMoves: {}, battle: null, catalogReady: true, catalogName: 'Emerald control', error: null,
@@ -53,7 +53,7 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
   let serverState: Omit<typeof state, 'selectedAreaId' | 'selectedSpeciesId'> & { selectedAreaId: number | null; selectedSpeciesId: number | null } = { ...state };
   const actions: Record<string, unknown>[] = [];
   await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog: { ...catalog, worldMaps: serveMaps ? catalog.worldMaps : [] }, state: serverState }) }));
-  await page.route('**/api/state', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(serverState) }));
+  await page.route('**/api/state*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(serverState) }));
   await page.route('**/api/actions', async route => {
     const action = route.request().postDataJSON() as Record<string, unknown>;
     actions.push(action);
@@ -77,11 +77,11 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
   await mapEntry.click();
   const stage = page.getByRole('region', { name: 'Interactive world map' });
   await expect(stage).toBeVisible();
-  const controls = ['Zoom in', 'Zoom out', 'Recenter map', 'Map settings and legend', 'Open Area Pokédex'];
+  const controls = ['Zoom in', 'Zoom out', 'Recenter map', 'Choose map region', 'Open Pokédex'];
   for (const label of controls) await expect(page.getByRole('button', { name: label })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Toggle fog of war' })).toHaveCount(0);
-  await expect(page.locator('.map-utility-rail > button').nth(0).locator('svg')).toHaveAttribute('data-semantic-icon', 'map');
-  await expect(page.locator('.map-utility-rail > button').nth(1).locator('svg')).toHaveAttribute('data-semantic-icon', 'pokedex');
+  await expect(page.locator('.map-utility-rail > button').first().locator('svg')).toHaveAttribute('data-semantic-icon', 'map');
+  await expect(page.locator('.map-dex-action svg')).toHaveAttribute('data-semantic-icon', 'pokedex');
 
   const image = page.locator('.map-plane > img');
   await expect.poll(() => image.evaluate(element => ({ width: (element as HTMLImageElement).naturalWidth, height: (element as HTMLImageElement).naturalHeight }))).toEqual({ width: 224, height: 120 });
@@ -141,14 +141,12 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
   await page.getByRole('button', { name: 'Recenter map' }).click();
   serverState = { ...serverState, version: serverState.version + 1, settings: { ...serverState.settings, knowledgeMode: 'DISCOVERED' } };
   await page.reload();
-  await page.getByRole('button', { name: 'Open Map' }).click();
   await expect(page.locator('.map-fog')).toHaveCount(0);
   await page.screenshot({ path: join(artifactDir, 'fog-off.png') });
   await page.getByRole('button', { name: 'Oldale Town' }).click();
   await expect(stage).toHaveAttribute('data-selected-key', 'section-17');
   serverState = { ...serverState, version: serverState.version + 1, settings: { ...serverState.settings, knowledgeMode: 'ORGANIC' } };
   await page.reload();
-  await page.getByRole('button', { name: 'Open Map' }).click();
   await expect(page.locator('.map-fog')).toHaveCount(1);
   await page.getByRole('button', { name: 'Oldale Town' }).click();
 
@@ -193,13 +191,11 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
   await expect(stage).toHaveAttribute('data-pointer-cancel-seen', 'true');
   await expect(stage).not.toHaveClass(/is-manipulating/);
 
-  await page.getByRole('button', { name: 'Open Area Pokédex' }).click();
-  await expect.poll(() => actions.at(-1)).toEqual({ type: 'MAP_AREA', regionKey: 'gen3-region-0', locationKey: 'section-17' });
+  await page.getByRole('button', { name: 'Open Pokédex' }).click();
+  await expect.poll(() => actions.at(-1)).toEqual({ type: 'SCREEN', screen: 'POKEDEX' });
   await expect(page.getByRole('button', { name: 'Charmeleon' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Unidentified encounter' })).toBeDisabled();
-  await expect(page.getByLabel('Day encounter')).toBeVisible();
-  await expect(page.getByLabel('Night encounter')).toBeVisible();
-  expect(serverState.currentAreaIds).toEqual([171, 181]);
+  await expect(page.getByRole('button', { name: 'Unidentified encounter' })).toHaveCount(0);
+  expect(serverState.currentAreaIds).toEqual([161]);
   await page.getByRole('button', { name: 'Charmeleon' }).click();
   await page.getByRole('tab', { name: 'AREA' }).click();
   await expect(page.getByRole('img', { name: 'Hoenn Charmeleon habitat map' })).toBeVisible();
@@ -243,7 +239,7 @@ test('real 4:3 map presentation, gestures, fog, and no-map fallback', async ({ p
 });
 
 test('local POI controls, labels, and zoom visibility remain coherent at Thor geometry', async ({ page }) => {
-  expect(localRasterSha256).toBe('e83e6007735aef644647fe6fea027132ca79423fe4b8eec9e339cfe61808222c');
+  expect(localRasterSha256).toBe('4676edc9b18887a0b5f86477406c948bdb9a0de47bb22bf1cd26acc93d23d153');
   await page.setViewportSize({ width: 1024, height: 768 });
   const localState = {
     ...state,
@@ -268,7 +264,7 @@ test('local POI controls, labels, and zoom visibility remain coherent at Thor ge
     mapScenes: [],
   };
   await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog: localCatalog, state: localState }) }));
-  await page.route('**/api/state', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(localState) }));
+  await page.route('**/api/state*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(localState) }));
   await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(localState) }));
   await page.route('**/api/maps/**', route => route.fulfill({ contentType: 'image/png', body: localRaster }));
 
@@ -320,4 +316,131 @@ test('local POI controls, labels, and zoom visibility remain coherent at Thor ge
   expect(Number(await stage.getAttribute('data-scale'))).toBe(startingScale);
   await expect(page.locator('.map-poi-marker')).toHaveCount(2);
   await expect(page.locator('.map-poi-label')).toHaveCount(2);
+});
+
+test('overlapping Local POIs and a long Area Guide remain fully actionable through one outer scroll owner', async ({ page }) => {
+  const localMapPois = Array.from({ length: 9 }, (_, index) => ({
+    key: `point-${index + 1}`,
+    localMapKey: 'local/0009',
+    baseAreaId: 9,
+    tileX: 7 + index % 3,
+    tileY: 7 + Math.floor(index / 3),
+    category: 'PLACE',
+    state: 'IDENTIFIED',
+    displayName: `Point ${index + 1}`,
+    service: null,
+    itemId: null,
+    itemName: null,
+    destinationBaseAreaId: 0x100 + index,
+  }));
+  const guidePoints = localMapPois.map(point => ({
+    ...point,
+    label: point.displayName,
+  }));
+  const guideSpecies = Array.from({ length: 80 }, (_, index) => ({
+    speciesId: index + 1,
+    name: `Species ${index + 1}`,
+    minimumLevel: 2,
+    maximumLevel: 4,
+    ratePercent: 1,
+    hasSprite: false,
+  }));
+  const clusterState = {
+    ...state,
+    currentAreaBaseId: 9,
+    currentAreaName: 'Oldale Town',
+    revealedAreaBaseIds: [9],
+    currentMapPosition: { x: 8, y: 8 },
+    localMapPois,
+    localMapPoiPreferences: {
+      showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
+      iconZoomThresholdPercent: 0, labelZoomThresholdPercent: 0,
+    },
+    areaGuide: {
+      trackedAreaBaseId: 9,
+      areas: [{
+        baseAreaId: 9,
+        name: 'Oldale Town',
+        overview: {
+          knownPointCount: 9,
+          totalPointCount: 9,
+          collectedItemCount: 0,
+          exits: [
+            { baseAreaId: 16, name: 'Route 101', count: 2 },
+            { baseAreaId: 16, name: 'Route 101', count: 1 },
+            { baseAreaId: 17, name: 'Oldale Town', count: 1 },
+            { baseAreaId: 18, name: 'Oldale Town', count: 1 },
+          ],
+        },
+        encounters: [{ name: 'Grass', windows: ['DAY'], species: guideSpecies }],
+        placesAndServices: guidePoints,
+        trainersAndPeople: [],
+        items: [],
+        objectives: [{ key: 'final-objective', title: 'Final objective' }],
+      }],
+    },
+  };
+  const localCatalog = {
+    ...catalog,
+    localMaps: [
+      { key: 'local/0009', displayName: 'Oldale Town', baseAreaId: 9, pixelWidth: 320, pixelHeight: 320, gridWidth: 20, gridHeight: 20, imageUrl: '/api/maps/local%2F0009%2Fmap.png', dynamicLighting: false },
+    ],
+    mapScenes: [],
+  };
+  await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog: localCatalog, state: clusterState }) }));
+  await page.route('**/api/state*', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(clusterState) }));
+  await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(clusterState) }));
+  await page.route('**/api/maps/**', route => route.fulfill({ contentType: 'image/png', body: localRaster }));
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Open Map' }).click();
+  const stage = page.getByRole('region', { name: 'Interactive local map' });
+  await expect(page.locator('.map-poi-marker')).toHaveCount(1);
+  const cluster = page.getByRole('button', { name: '9 map points' });
+  const clusterBounds = await cluster.boundingBox();
+  expect(clusterBounds!.width).toBeGreaterThanOrEqual(44);
+  expect(clusterBounds!.height).toBeGreaterThanOrEqual(44);
+
+  await cluster.click();
+  const chooser = page.getByRole('region', { name: 'Map point chooser' });
+  const chooserBounds = await chooser.boundingBox();
+  const stageBounds = await stage.boundingBox();
+  expect(chooserBounds!.x).toBeGreaterThanOrEqual(stageBounds!.x);
+  expect(chooserBounds!.x + chooserBounds!.width).toBeLessThanOrEqual(stageBounds!.x + stageBounds!.width);
+  expect(chooserBounds!.y + chooserBounds!.height).toBeLessThanOrEqual(stageBounds!.y + stageBounds!.height);
+  const chooserRows = chooser.locator('.map-poi-cluster-list > button');
+  await expect(chooserRows).toHaveCount(9);
+  expect(await chooserRows.evaluateAll(rows => rows.every(row => row.getBoundingClientRect().height >= 44))).toBe(true);
+  await page.getByRole('button', { name: 'Select Point 9, point 9 of 9' }).click();
+  await expect(page.getByRole('complementary', { name: 'Map point details' })).toContainText('Point 9');
+  await page.getByRole('button', { name: 'Close map point details' }).click();
+
+  for (let index = 0; index < 4; index += 1) await page.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(page.locator('.map-poi-cluster')).toHaveCount(0);
+  await expect(page.locator('.map-poi-marker')).toHaveCount(9);
+
+  await page.getByRole('button', { name: 'Area Guide' }).click();
+  const guide = page.getByRole('complementary', { name: 'Area guide' });
+  const content = guide.locator('.area-guide-content');
+  await expect(guide.getByRole('button', { name: 'Open Route 101 guide, 3 exits' })).toBeVisible();
+  await expect(guide.getByRole('button', { name: 'Open Oldale Town guide, exit 1 of 2' })).toBeVisible();
+  await expect(guide.getByRole('button', { name: 'Open Oldale Town guide, exit 2 of 2' })).toBeVisible();
+  expect(await guide.locator('.area-guide-windowed-list').evaluateAll(lists => lists.every(list => {
+    const overflow = getComputedStyle(list).overflowY;
+    return overflow !== 'auto' && overflow !== 'scroll';
+  }))).toBe(true);
+  await expect(guide.getByText('Species 1', { exact: true })).toHaveCount(1);
+
+  const headerTop = (await guide.locator(':scope > header').boundingBox())!.y;
+  const contentBounds = await content.boundingBox();
+  await page.mouse.move(contentBounds!.x + contentBounds!.width / 2, contentBounds!.y + contentBounds!.height / 2);
+  await page.mouse.wheel(0, 10_000);
+  await expect.poll(() => content.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  await expect(guide.getByText('Species 80', { exact: true })).toHaveCount(1);
+  await expect(guide.getByText('Final objective')).toBeVisible();
+  expect((await guide.locator(':scope > header').boundingBox())!.y).toBe(headerTop);
+
+  await page.getByRole('button', { name: 'Close area guide' }).click();
+  await page.getByRole('button', { name: 'Area Guide' }).click();
+  await expect.poll(() => guide.locator('.area-guide-content').evaluate(element => element.scrollTop)).toBe(0);
 });

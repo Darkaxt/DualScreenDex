@@ -267,6 +267,10 @@ test('uses the fractional visual viewport for touch containment', () => {
   const bounds = { x: 490.102, y: 0, width: 47.995, height: 59.397 };
   const viewport = { x: 0, y: 0, width: 538.103, height: 445.312 };
   assert.deepEqual(assertTouchTargetBounds(bounds, viewport), bounds);
+  assert.doesNotThrow(() => assertTouchTargetBounds(
+    { x: 492.107, y: 0, width: 45.996, height: 59.397 },
+    { ...viewport, width: 538.1029663085938 },
+  ));
   assert.throws(() => assertTouchTargetBounds(bounds, { ...viewport, width: 538 }), /leaves the viewport/);
   assert.doesNotThrow(() => assertTouchTargetBounds({ ...bounds, width: 43.997 }, viewport));
   assert.throws(() => assertTouchTargetBounds({ ...bounds, width: 43.98 }, viewport), /smaller than 44x44/);

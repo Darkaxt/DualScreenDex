@@ -63,6 +63,8 @@ describe('screen layout containment', () => {
     const localPoi = styles.match(/\.map-poi-marker\s*\{([^}]*)\}/)?.[1]
     const atlasMarker = styles.match(/\.atlas-location-marker\s*\{([^}]*)\}/)?.[1]
     const localSceneAction = styles.match(/\.map-local-poi-label:is\(button\)\s*\{([^}]*)\}/)?.[1]
+    const clusterHeader = styles.match(/\.map-poi-cluster-popover > header\s*\{([^}]*)\}/)?.[1]
+    const clusterClose = styles.match(/\.map-poi-cluster-popover > header button\s*\{([^}]*)\}/)?.[1]
     const poiCardClose = styles.match(/\.map-poi-card > button\s*\{([^}]*)\}/)?.[1]
     const habitatMarker = styles.match(/\.pokemon-area-canvas > button:not\(\.pokemon-area-dex\)\s*\{([^}]*)\}/)?.[1]
     const habitatDex = styles.match(/\.pokemon-area-dex\s*\{([^}]*)\}/)?.[1]
@@ -72,6 +74,9 @@ describe('screen layout containment', () => {
     expect(atlasMarker).toMatch(/width\s*:\s*44px/)
     expect(atlasMarker).toMatch(/height\s*:\s*44px/)
     expect(localSceneAction).toMatch(/min-height\s*:\s*44px/)
+    expect(styles).toMatch(/\.map-header-actions \.header-action\s*\{[^}]*min-width\s*:\s*46px/)
+    expect(clusterHeader).toMatch(/min-height\s*:\s*45px/)
+    expect(clusterClose).toMatch(/min-height\s*:\s*44px/)
     expect(poiCardClose).toMatch(/width\s*:\s*44px/)
     expect(poiCardClose).toMatch(/height\s*:\s*44px/)
     expect(habitatMarker).toMatch(/width\s*:\s*44px/)
