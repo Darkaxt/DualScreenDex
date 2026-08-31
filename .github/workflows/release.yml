@@ -297,6 +297,7 @@ jobs:
           jq -e '.v11Rc76PortableChallengeExpansion == true' release/v1-ready.json >/dev/null
           jq -e '.v11Stage7CrossFeatureUiConformance == true' release/v1-ready.json >/dev/null
           jq -e '.v11SaveSynchronizedKnowledgeCheckpoints == true' release/v1-ready.json >/dev/null
+          jq -e '.v11Rc84ThorLowerDisplayRemediation == true and .v11Rc84ReleaseQaIsolation == true' release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
             reports/dualdex-parser-compatibility.md \
