@@ -33,6 +33,18 @@ const SAFE_ACTIONS = new Set([
   'TRAINER_DESTINATION',
 ]);
 const ACTIVE_ATTRIBUTES = new Set(['aria-current', 'aria-pressed', 'aria-selected', 'data-active']);
+const SAFE_KEYS = new Map([
+  ['Tab', { code: 'Tab', virtualKeyCode: 9 }],
+  ['Enter', { code: 'Enter', virtualKeyCode: 13 }],
+  ['Escape', { code: 'Escape', virtualKeyCode: 27 }],
+  [' ', { code: 'Space', virtualKeyCode: 32 }],
+  ['End', { code: 'End', virtualKeyCode: 35 }],
+  ['Home', { code: 'Home', virtualKeyCode: 36 }],
+  ['ArrowLeft', { code: 'ArrowLeft', virtualKeyCode: 37 }],
+  ['ArrowUp', { code: 'ArrowUp', virtualKeyCode: 38 }],
+  ['ArrowRight', { code: 'ArrowRight', virtualKeyCode: 39 }],
+  ['ArrowDown', { code: 'ArrowDown', virtualKeyCode: 40 }],
+]);
 const SAFE_NAME = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 const SHA256 = /^[0-9a-f]{64}$/i;
 const CRC32 = /^[0-9a-f]{8}$/i;
@@ -393,8 +405,14 @@ function validateSteps(steps, captureName) {
       requireSelector(step.selector, `${label}.selector`);
       if (!['up', 'down'].includes(step.direction)) throw new TypeError(`${label}.direction must be up or down`);
       if (!Number.isInteger(step.repeat) || step.repeat < 1 || step.repeat > 8) throw new TypeError(`${label}.repeat must be between 1 and 8`);
+    } else if (step.kind === 'key') {
+      if (!SAFE_KEYS.has(step.key)) throw new TypeError(`${label}.key is not allowed`);
+      if (step.repeat !== undefined && (!Number.isInteger(step.repeat) || step.repeat < 1 || step.repeat > 16)) {
+        throw new TypeError(`${label}.repeat must be between 1 and 16`);
+      }
+      if (step.shift !== undefined && typeof step.shift !== 'boolean') throw new TypeError(`${label}.shift must be boolean`);
     } else {
-      throw new TypeError(`${label}.kind must be action, touch, or swipe`);
+      throw new TypeError(`${label}.kind must be action, touch, swipe, or key`);
     }
     requireSelector(step.waitFor, `${label}.postcondition waitFor`);
   }
@@ -407,13 +425,15 @@ function validateActiveAssertions(assertions, captureName) {
     requireSelector(assertion.selector, `${captureName}.active[${index}].selector`);
     const hasAttribute = assertion.attribute !== undefined || assertion.equals !== undefined;
     const hasText = assertion.textIncludes !== undefined;
-    if (!hasAttribute && !hasText) throw new TypeError(`${captureName}.active[${index}] must assert an attribute or text`);
+    const hasFocus = assertion.focused !== undefined;
+    if (!hasAttribute && !hasText && !hasFocus) throw new TypeError(`${captureName}.active[${index}] must assert an attribute, text, or focus`);
     if (hasAttribute) {
       if (!ACTIVE_ATTRIBUTES.has(assertion.attribute) || typeof assertion.equals !== 'string') throw new TypeError(`${captureName}.active[${index}] has an invalid active attribute assertion`);
     }
     if (hasText && (typeof assertion.textIncludes !== 'string' || assertion.textIncludes.length === 0 || assertion.textIncludes.length > 120)) {
       throw new TypeError(`${captureName}.active[${index}].textIncludes is invalid`);
     }
+    if (hasFocus && typeof assertion.focused !== 'boolean') throw new TypeError(`${captureName}.active[${index}].focused must be boolean`);
   }
 }
 
@@ -567,6 +587,10 @@ async function runSteps(session, steps, expectedOrigin) {
       const target = await inspectTouchTarget(session, step.selector, expectedOrigin);
       await dispatchTouch(session, target.center, target.center);
       result = { kind: 'touch', selector: step.selector, ...target };
+    } else if (step.kind === 'key') {
+      const repeat = step.repeat ?? 1;
+      for (let index = 0; index < repeat; index += 1) await dispatchKey(session, step.key, step.shift === true);
+      result = { kind: 'key', key: step.key, repeat, shift: step.shift === true };
     } else {
       result = {
         kind: 'swipe',
@@ -584,6 +608,20 @@ async function runSteps(session, steps, expectedOrigin) {
     results.push({ ...result, waitFor: step.waitFor });
   }
   return results;
+}
+
+async function dispatchKey(session, key, shift) {
+  const descriptor = SAFE_KEYS.get(key);
+  if (!descriptor) throw new TypeError('key is not allowed');
+  const event = {
+    key,
+    code: descriptor.code,
+    windowsVirtualKeyCode: descriptor.virtualKeyCode,
+    nativeVirtualKeyCode: descriptor.virtualKeyCode,
+    modifiers: shift ? 8 : 0,
+  };
+  await session.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...event });
+  await session.send('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
 }
 
 async function dispatchTouch(session, start, end) {
@@ -944,15 +982,28 @@ async function assertActiveState(session, assertions) {
       const attributeValue = expected.attribute ? element.getAttribute(expected.attribute) : null;
       const textMatched = expected.textIncludes ? (element.textContent ?? '').includes(expected.textIncludes) : true;
       const attributeMatched = expected.attribute ? attributeValue === expected.equals : true;
+      const focusMatched = expected.focused === undefined || (document.activeElement === element) === expected.focused;
       const bounds = element.getBoundingClientRect();
       const style = getComputedStyle(element);
       const visible = bounds.width > 0 && bounds.height > 0 && bounds.bottom > 0 && bounds.right > 0
         && bounds.top < innerHeight && bounds.left < innerWidth && style.display !== 'none'
         && style.visibility !== 'hidden' && Number(style.opacity) !== 0;
-      return { matched: attributeMatched && textMatched && visible, attributeValue, textMatched, visible };
+      return {
+        matched: attributeMatched && textMatched && focusMatched && visible,
+        attributeValue,
+        textMatched,
+        focusMatched,
+        visible,
+      };
     }, assertion);
     if (!result.matched) throw new Error(`active state mismatch for ${assertion.selector}`);
-    results.push({ selector: assertion.selector, attribute: assertion.attribute ?? null, equals: assertion.equals ?? null, textIncludes: assertion.textIncludes ?? null });
+    results.push({
+      selector: assertion.selector,
+      attribute: assertion.attribute ?? null,
+      equals: assertion.equals ?? null,
+      textIncludes: assertion.textIncludes ?? null,
+      focused: assertion.focused ?? null,
+    });
   }
   return results;
 }

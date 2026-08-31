@@ -83,6 +83,19 @@ test('accepts only the dedicated debug package and bounded capture names', () =>
         waitFor: '.danger-action',
         measurements: ['.danger-action'],
       },
+      {
+        name: 'keyboard-path',
+        steps: [{
+          kind: 'key',
+          key: 'Tab',
+          repeat: 2,
+          shift: false,
+          waitFor: '[role="dialog"]',
+        }],
+        waitFor: '[role="dialog"]',
+        measurements: ['[role="dialog"]'],
+        active: [{ selector: '[role="dialog"] button', focused: true }],
+      },
     ],
   }));
   assert.throws(() => validateScenario({
@@ -122,7 +135,7 @@ test('accepts only the dedicated debug package and bounded capture names', () =>
       waitFor: '.trainer-screen',
       measurements: ['.trainer-screen'],
     }],
-  }), /action, touch, or swipe/);
+  }), /action, touch, swipe, or key/);
 });
 
 test('selects one loopback DualDex page and rejects remote or ambiguous targets', () => {
