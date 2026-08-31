@@ -5,10 +5,12 @@ import {
   assertEvidenceBudget,
   assertQaRuntimeIdentity,
   assertRuntimeAuthority,
+  assertScrollAtEnd,
   assertSelectorMatchBudget,
   assertThorGeometry,
   assertTouchTargetBounds,
   assertTouchTargetLayout,
+  assertVisibleTextAudit,
   effectiveContrastRatio,
   inspectPrivacySummary,
   isVisualStateStable,
@@ -81,7 +83,9 @@ test('accepts only the dedicated debug package and bounded capture names', () =>
           waitFor: '.danger-action',
         }],
         waitFor: '.danger-action',
-        measurements: ['.danger-action'],
+        measurements: ['.danger-action', '.settings-content'],
+        textAudit: true,
+        scrollAtEnd: ['.settings-content'],
       },
       {
         name: 'keyboard-path',
@@ -95,6 +99,15 @@ test('accepts only the dedicated debug package and bounded capture names', () =>
         waitFor: '[role="dialog"]',
         measurements: ['[role="dialog"]'],
         active: [{ selector: '[role="dialog"] button', focused: true }],
+      },
+      {
+        name: 'specimen-expansion',
+        steps: [{
+          kind: 'mock-specimen-expansion',
+          waitFor: '.specimens-screen',
+        }],
+        waitFor: '.specimens-screen',
+        measurements: ['.specimens-screen'],
       },
       {
         name: 'error-feedback',
@@ -144,7 +157,51 @@ test('accepts only the dedicated debug package and bounded capture names', () =>
       waitFor: '.trainer-screen',
       measurements: ['.trainer-screen'],
     }],
-  }), /action, touch, swipe, key, or mock-action-failure/);
+  }), /mock-specimen-expansion/);
+  assert.throws(() => validateScenario({
+    name: 'invalid-text-audit',
+    debugPackage: 'com.darkaxt.dualdex.debug',
+    qaScenarioId: 'modern-normal',
+    authority: expectedAuthority,
+    captures: [{
+      name: 'capture',
+      waitFor: '.screen',
+      measurements: ['.screen'],
+      textAudit: 'yes',
+    }],
+  }), /textAudit/);
+  assert.throws(() => validateScenario({
+    name: 'unmeasured-scroll-end',
+    debugPackage: 'com.darkaxt.dualdex.debug',
+    qaScenarioId: 'modern-normal',
+    authority: expectedAuthority,
+    captures: [{
+      name: 'capture',
+      waitFor: '.screen',
+      measurements: ['.screen'],
+      scrollAtEnd: ['.settings-content'],
+    }],
+  }), /scrollAtEnd/);
+});
+
+test('asserts packaged visible-text floors and scroll-end reachability', () => {
+  const text = { count: 4, minimumPx: 11.2, averagePx: 12.5, smallest: ['11.2px .eyebrow'] };
+  assert.deepEqual(assertVisibleTextAudit(text), text);
+  assert.throws(
+    () => assertVisibleTextAudit({ ...text, minimumPx: 11.18 }),
+    /minimum visible text/,
+  );
+  assert.throws(
+    () => assertVisibleTextAudit({ ...text, averagePx: 11.99 }),
+    /average visible text/,
+  );
+
+  const atEnd = { top: 119, maximumTop: 120 };
+  assert.deepEqual(assertScrollAtEnd(atEnd, '.settings-content'), atEnd);
+  assert.throws(
+    () => assertScrollAtEnd({ top: 80, maximumTop: 120 }, '.settings-content'),
+    /did not reach its end/,
+  );
 });
 
 test('selects one loopback DualDex page and rejects remote or ambiguous targets', () => {

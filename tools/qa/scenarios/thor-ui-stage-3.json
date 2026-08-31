@@ -16,6 +16,16 @@
       "steps": [
         {
           "kind": "action",
+          "value": { "type": "SCREEN", "screen": "TRAINER" },
+          "waitFor": ".trainer-screen"
+        },
+        {
+          "kind": "action",
+          "value": { "type": "SCREEN", "screen": "POKEDEX" },
+          "waitFor": ".pokedex-screen"
+        },
+        {
+          "kind": "action",
           "value": { "type": "SETTINGS", "density": "COMFORTABLE", "fontScale": 1 },
           "waitFor": ".production-device[data-density=\"comfortable\"] .pokedex-screen"
         }

@@ -737,6 +737,11 @@ test('Battle rarity fills only the available content region without scrolling', 
     scrollHeight: element.scrollHeight,
   }));
   expect(dimensions.scrollHeight).toBeLessThanOrEqual(dimensions.clientHeight + 1);
+  const cardDimensions = await card.evaluate(element => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(cardDimensions.scrollWidth).toBeLessThanOrEqual(cardDimensions.clientWidth + 1);
 
   const contentBounds = await content.boundingBox();
   const cardBounds = await card.boundingBox();

@@ -222,7 +222,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await expectSurface('.species-row', { backgroundColor: colors.panel, color: colors.text });
   await expectTypography('.search-box span', 12);
   await expectTypography('.species-number', 12);
-  await expectTypography('.species-row-types .type-chip', 11.4);
+  await expectTypography('.species-row-types .type-chip', 12);
   await expect.poll(() => page.locator('.species-window').evaluate(node => getComputedStyle(node).gridTemplateColumns.split(' ').length)).toBe(3);
   await expect.poll(() => page.locator('.species-row').first().evaluate(node => {
     const row = node.getBoundingClientRect();
@@ -465,13 +465,13 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await expect(page.locator('.settings-screen')).toBeVisible();
   await show('setup', { screen: 'SETUP' });
   await expectTypography('.setup-step > header strong', 12.9);
-  await expectTypography('.setup-step p', 12.3);
-  await expectTypography('.setup-step small', 11.3);
-  await expectTypography('.setup-action', 12);
+  await expectTypography('.setup-step p', 12.4);
+  await expectTypography('.setup-step small', 12.4);
+  await expectTypography('.setup-action', 12.4);
   await expectContrast('.setup-action:not(.setup-action-primary)');
   await expectContrast('.setup-action-primary');
   await show('loading', { screen: 'POKEDEX', loading: { active: true, phase: 'ABILITY_DATA', completedUnits: 8, totalUnits: 12 } });
-  await expectTypography('.loading-indicator', 11.3);
+  await expectTypography('.loading-indicator', 12);
 
   serverState = { ...baseState, version: 20 };
   await page.reload();
@@ -504,7 +504,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
     color: colors.accentText,
   });
   await expectTypography('.map-current-location h1', 15.8);
-  await expectTypography('.map-current-location span', 11.3);
+  await expectTypography('.map-current-location span', 12);
   await expect(page.locator('.map-dex-action svg')).toHaveAttribute('data-semantic-icon', 'pokedex');
   await expect.poll(() => page.locator('.map-dex-action .dex-shell').evaluate(node => ({
     fill: getComputedStyle(node).fill,
@@ -532,7 +532,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   await assertGameTheme();
   await expectSurface('.pokemon-area-panel', { backgroundColor: colors.panel, borderTopColor: colors.border, color: colors.text });
   await expectSurface('.pokemon-area-panel > header', { backgroundColor: colors.header });
-  await expectTypography('.pokemon-area-panel > header small', 11.3);
+  await expectTypography('.pokemon-area-panel > header small', 12);
   await capture('pokemon-area');
 
   for (const fixed of ['DARK', 'LIGHT'] as const) {

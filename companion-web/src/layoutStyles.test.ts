@@ -274,9 +274,14 @@ describe('screen layout containment', () => {
   })
 
   it('enforces the physical text floor on the smallest new-route labels', () => {
-    expect(styles).toContain('--ui-min-text: 11.2px')
+    expect(styles).toContain('--ui-min-text: 12px')
+    expect(styles).toMatch(/\.setup-screen\s*\{[^}]*--ui-min-text\s*:\s*12\.4px/)
+    expect(styles).toMatch(/\.settings-screen\s*\{[^}]*--ui-min-text\s*:\s*12\.4px/)
     expect(styles).toMatch(/\.challenge-card > div:first-child span[^{}]*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.6rem\)/)
     expect(styles).toMatch(/\.damage-forecast-grid small[^{}]*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.64em\)/)
     expect(styles).toMatch(/\.area-guide-exits > small[^{}]*\{[^}]*font\s*:\s*900 max\(var\(--ui-min-text\),\s*\.58rem\)/)
+    expect(styles).toMatch(/\.height-comparison-heading strong\s*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.76em\)/)
+    expect(styles).toMatch(/\.height-ruler-line i\s*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.54em\)/)
+    expect(styles).toMatch(/\.setting-note,\s*\.range-setting span\s*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.85em\)/)
   })
 })

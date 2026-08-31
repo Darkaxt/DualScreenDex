@@ -15,6 +15,11 @@
       "name": "local-map",
       "steps": [
         {
+          "kind": "action",
+          "value": { "type": "SCREEN", "screen": "POKEDEX" },
+          "waitFor": ".pokedex-screen"
+        },
+        {
           "kind": "touch",
           "selector": ".map-action[aria-label=\"Open Map\"]",
           "waitFor": ".map-poi-marker"

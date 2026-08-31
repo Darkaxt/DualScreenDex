@@ -1,0 +1,1060 @@
+{
+  "name": "pokedex-detail-entry",
+  "waitFor": "#pokedex-detail-entry-panel",
+  "privacy": {
+    "safe": true,
+    "categories": []
+  },
+  "steps": [
+    {
+      "kind": "action",
+      "type": "SETTINGS",
+      "waitFor": ".settings-screen"
+    },
+    {
+      "kind": "action",
+      "type": "SCREEN",
+      "waitFor": ".pokedex-screen"
+    },
+    {
+      "kind": "action",
+      "type": "OPEN_SPECIES",
+      "waitFor": ".detail-screen"
+    },
+    {
+      "kind": "touch",
+      "selector": "#pokedex-detail-entry-tab",
+      "bounds": {
+        "x": 239.993,
+        "y": 71.999,
+        "width": 92.033,
+        "height": 43.997
+      },
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "width": 538.103,
+        "height": 445.312
+      },
+      "center": {
+        "x": 286.009,
+        "y": 93.997
+      },
+      "hitTag": "button",
+      "waitFor": "#pokedex-detail-entry-panel"
+    }
+  ],
+  "measurements": [
+    {
+      "selector": ".detail-screen",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "section",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 538.103,
+            "height": 445.312
+          },
+          "client": {
+            "width": 538,
+            "height": 445
+          },
+          "scroll": {
+            "width": 538,
+            "height": 445,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "hidden",
+            "y": "hidden",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(22, 40, 31)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(22, 40, 31)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 13.78,
+            "borderContrast": 13.78
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".detail-screen > .app-header",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "header",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 538.103,
+            "height": 61.999
+          },
+          "client": {
+            "width": 538,
+            "height": 59
+          },
+          "scroll": {
+            "width": 538,
+            "height": 59,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgb(49, 91, 67)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(49, 91, 67)"
+            ],
+            "borderTop": "rgb(255, 255, 255)",
+            "effectiveBackground": "rgba(49, 91, 67, 1)",
+            "textContrast": 7.755,
+            "borderContrast": 7.755
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".detail-screen .back-action",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 53.997,
+            "height": 59.397
+          },
+          "client": {
+            "width": 54,
+            "height": 59
+          },
+          "scroll": {
+            "width": 54,
+            "height": 59,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(165, 62, 47)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(49, 91, 67)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(165, 62, 47)",
+            "effectiveBackground": "rgba(49, 91, 67, 1)",
+            "textContrast": 1.23,
+            "borderContrast": 1.23
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".header-title",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 53.997,
+            "y": 13.015,
+            "width": 73.991,
+            "height": 33.36
+          },
+          "client": {
+            "width": 74,
+            "height": 33
+          },
+          "scroll": {
+            "width": 74,
+            "height": 33,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(49, 91, 67)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(255, 255, 255)",
+            "effectiveBackground": "rgba(49, 91, 67, 1)",
+            "textContrast": 7.755,
+            "borderContrast": 7.755
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".header-game-clock",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "span",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 231.054,
+            "y": 4.695,
+            "width": 75.996,
+            "height": 50
+          },
+          "client": {
+            "width": 76,
+            "height": 50
+          },
+          "scroll": {
+            "width": 76,
+            "height": 50,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(49, 91, 67)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(255, 255, 255)",
+            "effectiveBackground": "rgba(49, 91, 67, 1)",
+            "textContrast": 7.755,
+            "borderContrast": 7.755
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".identity-card",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 61.999,
+            "width": 538.103,
+            "height": 112.995
+          },
+          "client": {
+            "width": 538,
+            "height": 113
+          },
+          "scroll": {
+            "width": 538,
+            "height": 113,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(226, 215, 172)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(226, 215, 172)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(226, 215, 172, 1)",
+            "textContrast": 11.359,
+            "borderContrast": 6.443
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": "[role=\"tablist\"]",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": "tablist",
+          "visible": true,
+          "bounds": {
+            "x": 239.993,
+            "y": 71.999,
+            "width": 286.111,
+            "height": 92.995
+          },
+          "client": {
+            "width": 286,
+            "height": 93
+          },
+          "scroll": {
+            "width": 286,
+            "height": 93,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(226, 215, 172)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(226, 215, 172)",
+              "rgb(226, 215, 172)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(226, 215, 172, 1)",
+            "textContrast": 11.359,
+            "borderContrast": 6.443
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": "[role=\"tab\"]",
+      "matchCount": 5,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "button",
+          "role": "tab",
+          "visible": true,
+          "bounds": {
+            "x": 239.993,
+            "y": 71.999,
+            "width": 92.033,
+            "height": 43.997
+          },
+          "client": {
+            "width": 90,
+            "height": 42
+          },
+          "scroll": {
+            "width": 90,
+            "height": 42,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgb(165, 62, 47)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(226, 215, 172)",
+              "rgb(226, 215, 172)",
+              "rgb(165, 62, 47)"
+            ],
+            "borderTop": "rgb(255, 253, 232)",
+            "effectiveBackground": "rgba(165, 62, 47, 1)",
+            "textContrast": 6.306,
+            "borderContrast": 6.146
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": "true",
+            "checked": null,
+            "dataActive": null
+          }
+        },
+        {
+          "index": 1,
+          "tag": "button",
+          "role": "tab",
+          "visible": true,
+          "bounds": {
+            "x": 337.026,
+            "y": 71.999,
+            "width": 92.039,
+            "height": 43.997
+          },
+          "client": {
+            "width": 90,
+            "height": 42
+          },
+          "scroll": {
+            "width": 90,
+            "height": 42,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(226, 215, 172)",
+              "rgb(226, 215, 172)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": "false",
+            "checked": null,
+            "dataActive": null
+          }
+        },
+        {
+          "index": 2,
+          "tag": "button",
+          "role": "tab",
+          "visible": true,
+          "bounds": {
+            "x": 434.065,
+            "y": 71.999,
+            "width": 92.039,
+            "height": 43.997
+          },
+          "client": {
+            "width": 90,
+            "height": 42
+          },
+          "scroll": {
+            "width": 90,
+            "height": 42,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(226, 215, 172)",
+              "rgb(226, 215, 172)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": "false",
+            "checked": null,
+            "dataActive": null
+          }
+        },
+        {
+          "index": 3,
+          "tag": "button",
+          "role": "tab",
+          "visible": true,
+          "bounds": {
+            "x": 239.993,
+            "y": 120.996,
+            "width": 140.556,
+            "height": 43.997
+          },
+          "client": {
+            "width": 139,
+            "height": 42
+          },
+          "scroll": {
+            "width": 139,
+            "height": 42,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(226, 215, 172)",
+              "rgb(226, 215, 172)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": "false",
+            "checked": null,
+            "dataActive": null
+          }
+        },
+        {
+          "index": 4,
+          "tag": "button",
+          "role": "tab",
+          "visible": true,
+          "bounds": {
+            "x": 385.549,
+            "y": 120.996,
+            "width": 140.556,
+            "height": 43.997
+          },
+          "client": {
+            "width": 139,
+            "height": 42
+          },
+          "scroll": {
+            "width": 139,
+            "height": 42,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(226, 215, 172)",
+              "rgb(226, 215, 172)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": "false",
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".detail-content",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": "tabpanel",
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 184.993,
+            "width": 538.103,
+            "height": 491.599
+          },
+          "client": {
+            "width": 538,
+            "height": 492
+          },
+          "scroll": {
+            "width": 538,
+            "height": 492,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(22, 40, 31)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(22, 40, 31)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 13.78,
+            "borderContrast": 13.78
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": "#pokedex-detail-entry-panel",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": "tabpanel",
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 184.993,
+            "width": 538.103,
+            "height": 491.599
+          },
+          "client": {
+            "width": 538,
+            "height": 492
+          },
+          "scroll": {
+            "width": 538,
+            "height": 492,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(22, 40, 31)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(22, 40, 31)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 13.78,
+            "borderContrast": 13.78
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    }
+  ],
+  "scrollAtEnd": [],
+  "textAudit": {
+    "count": 18,
+    "minimumPx": 11.4,
+    "averagePx": 13.11,
+    "smallest": [
+      "11.4px small",
+      "11.4px span.type-chip",
+      "11.4px button.active",
+      "11.4px button",
+      "11.4px button",
+      "11.4px button",
+      "11.4px button",
+      "11.4px p.eyebrow"
+    ]
+  },
+  "touchTargets": [
+    {
+      "selector": ".detail-screen .back-action",
+      "index": 0,
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 53.997,
+        "height": 59.397
+      }
+    },
+    {
+      "selector": "[role=\"tab\"]",
+      "index": 0,
+      "bounds": {
+        "x": 239.993,
+        "y": 71.999,
+        "width": 92.033,
+        "height": 43.997
+      }
+    },
+    {
+      "selector": "[role=\"tab\"]",
+      "index": 1,
+      "bounds": {
+        "x": 337.026,
+        "y": 71.999,
+        "width": 92.039,
+        "height": 43.997
+      }
+    },
+    {
+      "selector": "[role=\"tab\"]",
+      "index": 2,
+      "bounds": {
+        "x": 434.065,
+        "y": 71.999,
+        "width": 92.039,
+        "height": 43.997
+      }
+    },
+    {
+      "selector": "[role=\"tab\"]",
+      "index": 3,
+      "bounds": {
+        "x": 239.993,
+        "y": 120.996,
+        "width": 140.556,
+        "height": 43.997
+      }
+    },
+    {
+      "selector": "[role=\"tab\"]",
+      "index": 4,
+      "bounds": {
+        "x": 385.549,
+        "y": 120.996,
+        "width": 140.556,
+        "height": 43.997
+      }
+    }
+  ],
+  "active": [
+    {
+      "selector": "#pokedex-detail-entry-tab",
+      "attribute": "aria-selected",
+      "equals": "true",
+      "textIncludes": null,
+      "focused": null
+    }
+  ],
+  "contrasts": [],
+  "screenshotBytes": 136354
+}

@@ -17,6 +17,8 @@ const MAX_FINAL_REPORT_BYTES = 4 * 1024 * 1024;
 const VISUAL_STABILITY_TOLERANCE = 0.01;
 const TOUCH_TARGET_TOLERANCE = 0.01;
 const EVIDENCE_ROUNDING_TOLERANCE = 0.001;
+const MIN_VISIBLE_TEXT_PX = 11.19;
+const MIN_AVERAGE_VISIBLE_TEXT_PX = 12;
 const THOR_GEOMETRY = Object.freeze({
   innerWidth: 538,
   innerHeight: 445,
@@ -97,6 +99,38 @@ export function assertSelectorMatchBudget(matchCount, selector) {
   return matchCount;
 }
 
+export function assertVisibleTextAudit(audit) {
+  requireRecord(audit, 'visible text audit');
+  if (!Number.isSafeInteger(audit.count) || audit.count <= 0) {
+    throw new TypeError('visible text audit count must be a positive safe integer');
+  }
+  for (const key of ['minimumPx', 'averagePx']) {
+    if (typeof audit[key] !== 'number' || !Number.isFinite(audit[key]) || audit[key] < 0) {
+      throw new TypeError(`visible text audit ${key} must be a non-negative finite number`);
+    }
+  }
+  if (audit.minimumPx < MIN_VISIBLE_TEXT_PX) {
+    throw new Error(`minimum visible text ${audit.minimumPx}px is below ${MIN_VISIBLE_TEXT_PX}px`);
+  }
+  if (audit.averagePx < MIN_AVERAGE_VISIBLE_TEXT_PX) {
+    throw new Error(`average visible text ${audit.averagePx}px is below ${MIN_AVERAGE_VISIBLE_TEXT_PX}px`);
+  }
+  return audit;
+}
+
+export function assertScrollAtEnd(position, selector) {
+  requireRecord(position, `scroll position for ${selector}`);
+  for (const key of ['top', 'maximumTop']) {
+    if (typeof position[key] !== 'number' || !Number.isFinite(position[key]) || position[key] < 0) {
+      throw new TypeError(`${selector} scroll ${key} must be a non-negative finite number`);
+    }
+  }
+  if (position.top < position.maximumTop - 1) {
+    throw new Error(`${selector} did not reach its end: ${position.top}/${position.maximumTop}`);
+  }
+  return position;
+}
+
 export function validateScenario(scenario) {
   requireRecord(scenario, 'scenario');
   requireSafeName(scenario.name, 'scenario name');
@@ -129,6 +163,20 @@ export function validateScenario(scenario) {
         requireSelector(selector, `${capture.name}.touchTargets[${index}]`);
         if (!capture.measurements.includes(selector)) {
           throw new TypeError(`${capture.name}.touchTargets[${index}] must also be measured`);
+        }
+      });
+    }
+    if (capture.textAudit !== undefined && capture.textAudit !== true) {
+      throw new TypeError(`${capture.name}.textAudit must be true when present`);
+    }
+    if (capture.scrollAtEnd !== undefined) {
+      if (!Array.isArray(capture.scrollAtEnd) || capture.scrollAtEnd.length === 0 || capture.scrollAtEnd.length > 16) {
+        throw new TypeError(`${capture.name}.scrollAtEnd must contain between 1 and 16 selectors`);
+      }
+      capture.scrollAtEnd.forEach((selector, index) => {
+        requireSelector(selector, `${capture.name}.scrollAtEnd[${index}]`);
+        if (!capture.measurements.includes(selector)) {
+          throw new TypeError(`${capture.name}.scrollAtEnd[${index}] must also be measured`);
         }
       });
     }
@@ -317,6 +365,7 @@ async function run() {
     let totalMeasuredElements = 0;
     for (const capture of scenario.captures) {
       const steps = await runSteps(session, capture.steps ?? [], identity.origin);
+      await assertQaFetchMockDisarmed(session, capture.name);
       await waitForCapture(session, capture);
       const captureGeometry = assertThorGeometry(await readGeometry(session));
       assertQaRuntimeIdentity(await readQaRuntimeIdentity(session), scenario);
@@ -332,6 +381,10 @@ async function run() {
       );
       assertEvidenceBudget({ totalMeasuredElements });
       assertMeasuredContainment(capture, measurements);
+      const scrollAtEnd = assertMeasuredScrollEnds(capture, measurements);
+      const textAudit = capture.textAudit
+        ? assertVisibleTextAudit(await measureVisibleText(session))
+        : null;
       const touchTargets = assertMeasuredTouchTargets(capture, measurements, captureGeometry);
       const active = await assertActiveState(session, capture.active ?? []);
       const contrasts = await assertContrasts(session, capture.contrasts ?? []);
@@ -354,6 +407,8 @@ async function run() {
         privacy,
         steps,
         measurements,
+        scrollAtEnd,
+        textAudit,
         touchTargets,
         active,
         contrasts,
@@ -374,6 +429,7 @@ async function run() {
       totalScreenshotBytes,
     });
   } finally {
+    await restoreQaFetchMock(session);
     session.close();
   }
 }
@@ -411,12 +467,12 @@ function validateSteps(steps, captureName) {
         throw new TypeError(`${label}.repeat must be between 1 and 16`);
       }
       if (step.shift !== undefined && typeof step.shift !== 'boolean') throw new TypeError(`${label}.shift must be boolean`);
-    } else if (step.kind === 'mock-action-failure') {
+    } else if (step.kind === 'mock-action-failure' || step.kind === 'mock-specimen-expansion') {
       if (Object.keys(step).some(key => !['kind', 'waitFor'].includes(key))) {
-        throw new TypeError(`${label} has unsupported failure-injection fields`);
+        throw new TypeError(`${label} has unsupported mock fields`);
       }
     } else {
-      throw new TypeError(`${label}.kind must be action, touch, swipe, key, or mock-action-failure`);
+      throw new TypeError(`${label}.kind must be action, touch, swipe, key, mock-action-failure, or mock-specimen-expansion`);
     }
     requireSelector(step.waitFor, `${label}.postcondition waitFor`);
   }
@@ -598,6 +654,9 @@ async function runSteps(session, steps, expectedOrigin) {
     } else if (step.kind === 'mock-action-failure') {
       await installOneShotActionFailure(session);
       result = { kind: 'mock-action-failure' };
+    } else if (step.kind === 'mock-specimen-expansion') {
+      await installOneShotSpecimenExpansion(session);
+      result = { kind: 'mock-specimen-expansion' };
     } else {
       result = {
         kind: 'swipe',
@@ -637,6 +696,60 @@ async function installOneShotActionFailure(session) {
       }
       return originalFetch(...args);
     };
+  });
+}
+
+async function installOneShotSpecimenExpansion(session) {
+  await evaluate(session, () => {
+    if (window.__dualdexQaOriginalFetch) throw new Error('another QA fetch mock is already armed');
+    const originalFetch = window.fetch.bind(window);
+    window.__dualdexQaOriginalFetch = originalFetch;
+    window.fetch = async (...args) => {
+      const input = args[0];
+      const requestUrl = input instanceof Request ? input.url : String(input);
+      const requestMethod = input instanceof Request ? input.method : args[1]?.method ?? 'GET';
+      const url = new URL(requestUrl, location.href);
+      if (url.origin === location.origin && url.pathname === '/api/specimens' && requestMethod.toUpperCase() === 'GET') {
+        window.fetch = originalFetch;
+        delete window.__dualdexQaOriginalFetch;
+        const response = await originalFetch(...args);
+        if (!response.ok) return response;
+        const collection = await response.json();
+        const source = Array.isArray(collection.specimens) ? collection.specimens[0] : null;
+        if (!source || typeof source !== 'object') throw new Error('QA specimen expansion requires one decoded specimen');
+        const specimens = Array.from({ length: 9 }, (_, index) => ({
+          ...source,
+          key: `${source.key}:qa-${index + 1}`,
+          nickname: `QA SPECIMEN ${index + 1}`,
+          location: {
+            ...source.location,
+            label: `QA Storage · Slot ${index + 1}`,
+          },
+        }));
+        return new Response(JSON.stringify({ ...collection, specimens }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return originalFetch(...args);
+    };
+  });
+}
+
+async function assertQaFetchMockDisarmed(session, captureName) {
+  const restored = await restoreQaFetchMock(session);
+  if (restored) {
+    throw new Error(`${captureName} left a QA fetch mock unconsumed`);
+  }
+}
+
+async function restoreQaFetchMock(session) {
+  return evaluate(session, () => {
+    const originalFetch = window.__dualdexQaOriginalFetch;
+    if (typeof originalFetch !== 'function') return false;
+    window.fetch = originalFetch;
+    delete window.__dualdexQaOriginalFetch;
+    return true;
   });
 }
 
@@ -681,6 +794,7 @@ async function dispatchTouch(session, start, end) {
 async function dispatchSwipeStep(session, step) {
   const gestures = [];
   for (let index = 0; index < step.repeat; index += 1) {
+    if (await elementCenterIntersectsViewport(session, step.waitFor)) break;
     const target = await inspectSwipeTarget(session, step.selector, step.direction);
     await dispatchTouch(session, target.start, target.end);
     await waitFor(session, async () => {
@@ -692,7 +806,7 @@ async function dispatchSwipeStep(session, step) {
     }, `${step.selector} scroll`, 3_000);
     const finalScrollTop = await evaluate(session, selector => document.querySelector(selector)?.scrollTop ?? null, step.selector);
     gestures.push({ ...target, finalScrollTop });
-    if (await elementIntersectsViewport(session, step.waitFor)) break;
+    if (await elementCenterIntersectsViewport(session, step.waitFor)) break;
   }
   return gestures;
 }
@@ -774,6 +888,26 @@ async function inspectTouchTarget(session, selector, expectedOrigin) {
   }, { targetSelector: selector, origin: expectedOrigin });
   assertTouchTargetBounds(target.bounds, target.viewport);
   return target;
+}
+
+async function elementCenterIntersectsViewport(session, selector) {
+  return evaluate(session, requestedSelector => {
+    const element = document.querySelector(requestedSelector);
+    if (!(element instanceof HTMLElement)) return false;
+    const bounds = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const centerX = bounds.left + bounds.width / 2;
+    const centerY = bounds.top + bounds.height / 2;
+    return bounds.width > 0
+      && bounds.height > 0
+      && centerX >= 0
+      && centerX < innerWidth
+      && centerY >= 0
+      && centerY < innerHeight
+      && style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && Number(style.opacity) !== 0;
+  }, selector);
 }
 
 async function elementIntersectsViewport(session, selector) {
@@ -933,7 +1067,14 @@ async function measureSelectors(session, selectors) {
             && Number(style.opacity) !== 0,
           bounds: { x: round(bounds.x), y: round(bounds.y), width: round(bounds.width), height: round(bounds.height) },
           client: { width: element.clientWidth, height: element.clientHeight },
-          scroll: { width: element.scrollWidth, height: element.scrollHeight },
+          scroll: {
+            width: element.scrollWidth,
+            height: element.scrollHeight,
+            left: round(element.scrollLeft),
+            top: round(element.scrollTop),
+            maximumLeft: Math.max(0, element.scrollWidth - element.clientWidth),
+            maximumTop: Math.max(0, element.scrollHeight - element.clientHeight),
+          },
           overflow: { x: style.overflowX, y: style.overflowY, scrollsX, scrollsY },
           scrollOwner: {
             x: scrollsX && ['auto', 'scroll'].includes(style.overflowX),
@@ -980,6 +1121,76 @@ function assertMeasuredContainment(capture, measurements) {
       }
     }
   }
+}
+
+function assertMeasuredScrollEnds(capture, measurements) {
+  const selectors = capture.scrollAtEnd ?? [];
+  if (selectors.length === 0) return [];
+  const bySelector = new Map(measurements.map(measurement => [measurement.selector, measurement]));
+  return selectors.flatMap(selector => {
+    const measurement = bySelector.get(selector);
+    if (!measurement) throw new Error(`scroll-end selector was not measured: ${selector}`);
+    return measurement.elements.map(element => {
+      assertScrollAtEnd({
+        top: element.scroll.top,
+        maximumTop: element.scroll.maximumTop,
+      }, `${selector}[${element.index}]`);
+      return {
+        selector,
+        index: element.index,
+        top: element.scroll.top,
+        maximumTop: element.scroll.maximumTop,
+      };
+    });
+  });
+}
+
+async function measureVisibleText(session) {
+  return evaluate(session, () => {
+    const root = document.querySelector('.screen');
+    if (!(root instanceof HTMLElement)) throw new Error('active screen was not found for text audit');
+    const round = value => Math.round(value * 1000) / 1000;
+    const isVisible = (element, bounds) => {
+      if (element.closest('[inert], [aria-hidden="true"]')) return false;
+      for (let current = element; current instanceof HTMLElement; current = current.parentElement) {
+        const style = getComputedStyle(current);
+        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+        if (current === root) break;
+      }
+      return bounds.width > 0 && bounds.height > 0 && bounds.right > 0 && bounds.bottom > 0
+        && bounds.left < innerWidth && bounds.top < innerHeight;
+    };
+    const selector = element => {
+      const classes = [...element.classList].map(name => `.${name}`).join('');
+      return `${element.tagName.toLowerCase()}${classes}`;
+    };
+    const entries = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const element = node.parentElement;
+      if (!node.textContent?.trim() || !(element instanceof HTMLElement)) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      if (!isVisible(element, range.getBoundingClientRect())) continue;
+      const size = Number.parseFloat(getComputedStyle(element).fontSize);
+      if (Number.isFinite(size)) entries.push({ selector: selector(element), size });
+    }
+    root.querySelectorAll('input, select, textarea').forEach(element => {
+      if (!(element instanceof HTMLElement) || !isVisible(element, element.getBoundingClientRect())) return;
+      const size = Number.parseFloat(getComputedStyle(element).fontSize);
+      if (Number.isFinite(size)) entries.push({ selector: selector(element), size });
+    });
+    const sizes = entries.map(entry => entry.size);
+    return {
+      count: sizes.length,
+      minimumPx: round(Math.min(...sizes)),
+      averagePx: round(sizes.reduce((sum, size) => sum + size, 0) / sizes.length),
+      smallest: entries
+        .sort((left, right) => left.size - right.size)
+        .slice(0, 8)
+        .map(entry => `${round(entry.size)}px ${entry.selector}`),
+    };
+  });
 }
 
 function assertMeasuredTouchTargets(capture, measurements, geometry) {

@@ -1,0 +1,473 @@
+{
+  "name": "specimen-dialog-from-scroll",
+  "waitFor": ".specimens-screen .party-detail-window[role=\"dialog\"]",
+  "privacy": {
+    "safe": true,
+    "categories": []
+  },
+  "steps": [
+    {
+      "kind": "touch",
+      "selector": ".specimen-card:last-child",
+      "bounds": {
+        "x": 15.996,
+        "y": 317.568,
+        "width": 506.111,
+        "height": 105.671
+      },
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "width": 538.103,
+        "height": 445.312
+      },
+      "center": {
+        "x": 269.051,
+        "y": 370.403
+      },
+      "hitTag": "span",
+      "waitFor": ".specimens-screen .party-detail-window[role=\"dialog\"]"
+    }
+  ],
+  "measurements": [
+    {
+      "selector": ".specimens-screen",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "section",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 538.103,
+            "height": 445.312
+          },
+          "client": {
+            "width": 538,
+            "height": 445
+          },
+          "scroll": {
+            "width": 538,
+            "height": 445,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "hidden",
+            "y": "hidden",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(22, 40, 31)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(22, 40, 31)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 13.78,
+            "borderContrast": 13.78
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".specimens-content",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 61.999,
+            "width": 538.103,
+            "height": 383.313
+          },
+          "client": {
+            "width": 538,
+            "height": 383
+          },
+          "scroll": {
+            "width": 538,
+            "height": 1067,
+            "left": 0,
+            "top": 683.794,
+            "maximumLeft": 0,
+            "maximumTop": 684
+          },
+          "overflow": {
+            "x": "auto",
+            "y": "auto",
+            "scrollsX": false,
+            "scrollsY": true
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": true
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(226, 215, 172)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(226, 215, 172)"
+            ],
+            "borderTop": "rgb(27, 33, 28)",
+            "effectiveBackground": "rgba(226, 215, 172, 1)",
+            "textContrast": 11.359,
+            "borderContrast": 11.359
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".party-detail-layer",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 538.103,
+            "height": 445.312
+          },
+          "client": {
+            "width": 538,
+            "height": 445
+          },
+          "scroll": {
+            "width": 538,
+            "height": 445,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(22, 40, 31)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(22, 40, 31)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 13.78,
+            "borderContrast": 13.78
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".party-detail-window",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": "dialog",
+          "visible": true,
+          "bounds": {
+            "x": 10,
+            "y": 10,
+            "width": 518.103,
+            "height": 425.312
+          },
+          "client": {
+            "width": 515,
+            "height": 422
+          },
+          "scroll": {
+            "width": 515,
+            "height": 704,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 282
+          },
+          "overflow": {
+            "x": "auto",
+            "y": "auto",
+            "scrollsX": false,
+            "scrollsY": true
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": true
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".party-detail-close",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 475.373,
+            "y": 18.733,
+            "width": 43.997,
+            "height": 43.997
+          },
+          "client": {
+            "width": 41,
+            "height": 41
+          },
+          "scroll": {
+            "width": 41,
+            "height": 41,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgb(165, 62, 47)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(165, 62, 47)"
+            ],
+            "borderTop": "rgb(255, 253, 232)",
+            "effectiveBackground": "rgba(165, 62, 47, 1)",
+            "textContrast": 6.306,
+            "borderContrast": 6.146
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".owned-individual-detail",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "article",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 23.733,
+            "y": 21.734,
+            "width": 490.637,
+            "height": 682.344
+          },
+          "client": {
+            "width": 489,
+            "height": 681
+          },
+          "scroll": {
+            "width": 489,
+            "height": 681,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    }
+  ],
+  "scrollAtEnd": [],
+  "textAudit": {
+    "count": 30,
+    "minimumPx": 11.4,
+    "averagePx": 12.991,
+    "smallest": [
+      "11.4px p.eyebrow",
+      "11.4px strong",
+      "11.4px strong",
+      "11.4px strong",
+      "11.4px strong",
+      "11.4px strong",
+      "11.4px span.type-chip",
+      "11.4px small"
+    ]
+  },
+  "touchTargets": [
+    {
+      "selector": ".party-detail-close",
+      "index": 0,
+      "bounds": {
+        "x": 475.373,
+        "y": 18.733,
+        "width": 43.997,
+        "height": 43.997
+      }
+    }
+  ],
+  "active": [
+    {
+      "selector": ".party-detail-close",
+      "attribute": null,
+      "equals": null,
+      "textIncludes": null,
+      "focused": true
+    }
+  ],
+  "contrasts": [],
+  "screenshotBytes": 70669
+}

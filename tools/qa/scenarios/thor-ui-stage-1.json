@@ -98,33 +98,42 @@
         {
           "kind": "action",
           "value": { "type": "SCREEN", "screen": "SETTINGS" },
-          "waitFor": ".settings-screen"
+          "waitFor": ".settings-category-list"
         }
       ],
-      "waitFor": ".settings-screen",
+      "waitFor": ".settings-category-list",
       "measurements": [
         ".settings-screen",
         ".settings-screen > .app-header",
         ".back-action",
         ".settings-content",
-        ".settings-upload",
-        ".retroarch-setting button",
-        ".display-mode > a"
+        ".settings-view-heading",
+        ".settings-category-list",
+        ".settings-category-row:nth-child(-n + 6)"
       ],
       "touchTargets": [
         ".back-action",
-        ".settings-upload",
-        ".retroarch-setting button",
-        ".display-mode > a"
+        ".settings-category-row:nth-child(-n + 6)"
       ],
       "contrasts": [
-        { "selector": ".settings-upload", "minimum": 4.5 },
-        { "selector": ".retroarch-setting button", "minimum": 4.5 }
+        { "selector": ".settings-category-row:first-child", "minimum": 4.5 }
       ]
     },
     {
       "name": "settings-danger",
       "steps": [
+        {
+          "kind": "swipe",
+          "selector": ".settings-content",
+          "direction": "up",
+          "repeat": 8,
+          "waitFor": ".settings-category-row:nth-child(7)"
+        },
+        {
+          "kind": "touch",
+          "selector": ".settings-category-row:nth-child(7)",
+          "waitFor": ".debug-actions .danger-action"
+        },
         {
           "kind": "swipe",
           "selector": ".settings-content",
@@ -139,6 +148,7 @@
         ".settings-screen > .app-header",
         ".back-action",
         ".settings-content",
+        ".debug-actions",
         ".debug-actions :is(button, a[href])"
       ],
       "touchTargets": [

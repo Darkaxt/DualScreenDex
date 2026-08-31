@@ -1,0 +1,567 @@
+{
+  "name": "specimens-scrolled-list",
+  "waitFor": ".specimen-card:last-child",
+  "privacy": {
+    "safe": true,
+    "categories": []
+  },
+  "steps": [
+    {
+      "kind": "touch",
+      "selector": ".party-analysis-screen .back-action",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 53.997,
+        "height": 59.397
+      },
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "width": 538.103,
+        "height": 445.312
+      },
+      "center": {
+        "x": 26.999,
+        "y": 29.699
+      },
+      "hitTag": "button",
+      "waitFor": ".party-screen"
+    },
+    {
+      "kind": "action",
+      "type": "OPEN_SPECIES",
+      "waitFor": ".detail-screen"
+    },
+    {
+      "kind": "touch",
+      "selector": "#pokedex-detail-more-tab",
+      "bounds": {
+        "x": 385.549,
+        "y": 120.996,
+        "width": 140.556,
+        "height": 43.997
+      },
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "width": 538.103,
+        "height": 445.312
+      },
+      "center": {
+        "x": 455.827,
+        "y": 142.995
+      },
+      "hitTag": "button",
+      "waitFor": ".specimen-entry-section > button"
+    },
+    {
+      "kind": "mock-specimen-expansion",
+      "waitFor": ".specimen-entry-section > button"
+    },
+    {
+      "kind": "touch",
+      "selector": ".specimen-entry-section > button",
+      "bounds": {
+        "x": 362.507,
+        "y": 211.592,
+        "width": 135,
+        "height": 43.997
+      },
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "width": 538.103,
+        "height": 445.312
+      },
+      "center": {
+        "x": 430.007,
+        "y": 233.591
+      },
+      "hitTag": "button",
+      "waitFor": ".specimens-screen"
+    },
+    {
+      "kind": "swipe",
+      "selector": ".specimens-content",
+      "direction": "down",
+      "gestures": [],
+      "waitFor": ".specimen-card:first-child"
+    },
+    {
+      "kind": "swipe",
+      "selector": ".specimens-content",
+      "direction": "up",
+      "gestures": [
+        {
+          "start": {
+            "x": 269.051,
+            "y": 421
+          },
+          "end": {
+            "x": 269.051,
+            "y": 85.999
+          },
+          "scrollTop": 0,
+          "maximumScrollTop": 684,
+          "hitTag": "div",
+          "finalScrollTop": 327.80487060546875
+        },
+        {
+          "start": {
+            "x": 269.051,
+            "y": 421
+          },
+          "end": {
+            "x": 269.051,
+            "y": 85.999
+          },
+          "scrollTop": 327.805,
+          "maximumScrollTop": 684,
+          "hitTag": "button",
+          "finalScrollTop": 683.7940063476562
+        }
+      ],
+      "waitFor": ".specimen-card:last-child"
+    }
+  ],
+  "measurements": [
+    {
+      "selector": ".specimens-screen",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "section",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 538.103,
+            "height": 445.312
+          },
+          "client": {
+            "width": 538,
+            "height": 445
+          },
+          "scroll": {
+            "width": 538,
+            "height": 445,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "hidden",
+            "y": "hidden",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(22, 40, 31)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(22, 40, 31)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 13.78,
+            "borderContrast": 13.78
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".specimens-screen > .app-header",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "header",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 538.103,
+            "height": 61.999
+          },
+          "client": {
+            "width": 538,
+            "height": 59
+          },
+          "scroll": {
+            "width": 538,
+            "height": 59,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgb(49, 91, 67)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(49, 91, 67)"
+            ],
+            "borderTop": "rgb(255, 255, 255)",
+            "effectiveBackground": "rgba(49, 91, 67, 1)",
+            "textContrast": 7.755,
+            "borderContrast": 7.755
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".header-game-clock",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "span",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 231.054,
+            "y": 4.695,
+            "width": 75.996,
+            "height": 50
+          },
+          "client": {
+            "width": 76,
+            "height": 50
+          },
+          "scroll": {
+            "width": 76,
+            "height": 50,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(255, 255, 255)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(49, 91, 67)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(255, 255, 255)",
+            "effectiveBackground": "rgba(49, 91, 67, 1)",
+            "textContrast": 7.755,
+            "borderContrast": 7.755
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".specimens-content",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 61.999,
+            "width": 538.103,
+            "height": 383.313
+          },
+          "client": {
+            "width": 538,
+            "height": 383
+          },
+          "scroll": {
+            "width": 538,
+            "height": 1067,
+            "left": 0,
+            "top": 683.794,
+            "maximumLeft": 0,
+            "maximumTop": 684
+          },
+          "overflow": {
+            "x": "auto",
+            "y": "auto",
+            "scrollsX": false,
+            "scrollsY": true
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": true
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(226, 215, 172)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(226, 215, 172)"
+            ],
+            "borderTop": "rgb(27, 33, 28)",
+            "effectiveBackground": "rgba(226, 215, 172, 1)",
+            "textContrast": 11.359,
+            "borderContrast": 11.359
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".specimens-grid",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 15.996,
+            "y": -607.798,
+            "width": 506.111,
+            "height": 1031.037
+          },
+          "client": {
+            "width": 506,
+            "height": 1031
+          },
+          "scroll": {
+            "width": 506,
+            "height": 1031,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(226, 215, 172)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(27, 33, 28)",
+            "effectiveBackground": "rgba(226, 215, 172, 1)",
+            "textContrast": 11.359,
+            "borderContrast": 11.359
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".specimen-card:last-child",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 15.996,
+            "y": 317.568,
+            "width": 506.111,
+            "height": 105.671
+          },
+          "client": {
+            "width": 503,
+            "height": 102
+          },
+          "scroll": {
+            "width": 503,
+            "height": 102,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(226, 215, 172)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": "false",
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    }
+  ],
+  "scrollAtEnd": [
+    {
+      "selector": ".specimens-content",
+      "index": 0,
+      "top": 683.794,
+      "maximumTop": 684
+    }
+  ],
+  "textAudit": {
+    "count": 23,
+    "minimumPx": 11.4,
+    "averagePx": 12.402,
+    "smallest": [
+      "11.4px small",
+      "11.4px small",
+      "11.4px span",
+      "11.4px b",
+      "11.4px b",
+      "11.4px small",
+      "11.4px span",
+      "11.4px b"
+    ]
+  },
+  "touchTargets": [
+    {
+      "selector": ".specimen-card:last-child",
+      "index": 0,
+      "bounds": {
+        "x": 15.996,
+        "y": 317.568,
+        "width": 506.111,
+        "height": 105.671
+      }
+    }
+  ],
+  "active": [],
+  "contrasts": [],
+  "screenshotBytes": 93783
+}
