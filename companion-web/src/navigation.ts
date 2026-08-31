@@ -4,6 +4,7 @@ export type UiRoute =
   | { kind: 'MAP'; originScreen: Screen }
   | { kind: 'MAPPER' }
   | { kind: 'CAPABILITIES' }
+  | { kind: 'SETTINGS'; category: 'INFORMATION'; control: 'MOVE_LIST'; catalogHash: string }
   | { kind: 'PARTY_ANALYSIS'; catalogHash: string }
   | { kind: 'PARTY_MEMBER'; slot: number; catalogHash: string }
   | { kind: 'SPECIMENS'; speciesId: number; catalogHash: string }
@@ -74,6 +75,17 @@ function validRoute(value: unknown, catalog: Catalog, capabilities: RouteCapabil
       return capabilities.mapperAvailable === true ? { kind: 'MAPPER' } : null;
     case 'CAPABILITIES':
       return { kind: 'CAPABILITIES' };
+    case 'SETTINGS':
+      return value.category === 'INFORMATION' &&
+        value.control === 'MOVE_LIST' &&
+        validCatalogHash(value.catalogHash, catalog)
+        ? {
+            kind: 'SETTINGS',
+            category: 'INFORMATION',
+            control: 'MOVE_LIST',
+            catalogHash: value.catalogHash,
+          }
+        : null;
     case 'PARTY_ANALYSIS':
       return validCatalogHash(value.catalogHash, catalog)
         ? { kind: 'PARTY_ANALYSIS', catalogHash: value.catalogHash }
@@ -147,6 +159,7 @@ export function sameRoute(left: UiRoute | undefined, right: UiRoute | undefined)
   if (!left || !right || left.kind !== right.kind) return false;
   switch (left.kind) {
     case 'MAP': return right.kind === 'MAP' && left.originScreen === right.originScreen;
+    case 'SETTINGS': return right.kind === 'SETTINGS' && left.category === right.category && left.control === right.control && left.catalogHash === right.catalogHash;
     case 'PARTY_ANALYSIS': return right.kind === 'PARTY_ANALYSIS' && left.catalogHash === right.catalogHash;
     case 'PARTY_MEMBER': return right.kind === 'PARTY_MEMBER' && left.slot === right.slot && left.catalogHash === right.catalogHash;
     case 'SPECIMENS': return right.kind === 'SPECIMENS' && left.speciesId === right.speciesId && left.catalogHash === right.catalogHash;

@@ -8,6 +8,7 @@ import android.util.Log
 import com.darkaxt.dualdex.performance.PrivacySafeDiagnostics
 import com.darkaxt.dualdex.retroarch.ConfigInstallResult
 import com.darkaxt.dualdex.retroarch.NetworkCommandClient
+import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.retroarch.RetroArchConfigInstaller
 import com.darkaxt.dualdex.retroarch.RetroArchConnection
 import com.darkaxt.dualdex.retroarch.RetroArchStatus
@@ -74,7 +75,8 @@ class RetroArchSetupCoordinator(
     ),
     private val sharedStorage: SharedStorageGateway = SharedStorageGateway.android(context),
     private val guideLoadFault: GuideLoadFault = NoGuideLoadFault,
-    private val sessionMonitorFactory: (() -> SessionMonitor)? = null,
+    private val networkCommandTransportFactory: () -> NetworkCommandTransport =
+        { UdpNetworkCommandTransport(commandPort) },
 ) : AutoCloseable {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val indexStore = RomIndexStore(File(context.filesDir, "retroarch/rom-index.json"))
@@ -92,15 +94,15 @@ class RetroArchSetupCoordinator(
     private val heartbeat: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "dualdex-retroarch-heartbeat").apply { isDaemon = true }
     }
-    private val commandMonitor = CommandMonitorLifecycle(
-        sessionMonitorFactory ?: { SessionMonitor(NetworkCommandClient(UdpNetworkCommandTransport(commandPort))) },
-    )
+    private val commandMonitor = CommandMonitorLifecycle {
+        SessionMonitor(NetworkCommandClient(networkCommandTransportFactory()))
+    }
     private var heartbeatTask: ScheduledFuture<*>? = null
     @Volatile private var closed = false
     private val battleMemory = BattleMemoryCoordinator(
         catalogProvider = runtime::battleCatalogContext,
         transientGameState = transientGameState,
-        transportFactory = { UdpNetworkCommandTransport(commandPort) },
+        transportFactory = networkCommandTransportFactory,
         pollingIntervalProvider = runtime::battlePollingIntervalMs,
     )
     private val restartVerifier = RestartVerifier()

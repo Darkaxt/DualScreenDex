@@ -2,6 +2,8 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import type { CatalogTheme } from '../src/models';
+import { deriveSemanticTheme, semanticThemeCssVariables } from '../src/themeContrast';
 import { baseState, battle, boundedForecast, catalog, emptyArea, exactForecast, specimens, themeControls } from './passive-insights-ui-fixture';
 
 interface RouteControl {
@@ -55,6 +57,8 @@ const artifactRoot = process.env.DUALDEX_UI_CONFORMANCE_DIR ?? 'D:/Temp/dualdex-
 const tinyPng = readFileSync(join(process.cwd(), '..', 'app', 'src', 'main', 'assets', 'icon-lowest.png'));
 const diagnosticPattern = /\b(?:ROM identity|CRC32|SHA-?256|parser|capability|provenance|raw offset|memory address|compiled source|SaveRAM|recovery source|cache invalidation|NO_CONTENT|UNVERIFIED)\b/i;
 const themeTokenNames = ['field', 'field-pattern', 'header', 'header-shadow', 'menu', 'menu-shadow', 'panel', 'border', 'text', 'text-shadow', 'accent', 'accent-text'];
+const themeTokenKeys = ['field', 'fieldPattern', 'header', 'headerShadow', 'menu', 'menuShadow', 'panel', 'border', 'text', 'textShadow', 'accent', 'accentText'] as const;
+const semanticTokenNames = Object.keys(semanticThemeCssVariables(deriveSemanticTheme(catalog.theme.tokens as CatalogTheme['tokens'])));
 
 test('freezes the complete Stage 7 route, theme, and font-scale contract', () => {
   const routeIds = new Set(manifest.routes.map(route => route.id));
@@ -223,14 +227,22 @@ function scenarioFor(routeId: string): { state: Record<string, any>; specimenMod
 }
 
 async function applyVisualControl(page: Page, themeId: string, fontScale: number) {
+  const rawTokens = themeControls[themeId as keyof typeof themeControls] ?? null;
+  const semanticTokens = rawTokens == null
+    ? null
+    : semanticThemeCssVariables(deriveSemanticTheme(Object.fromEntries(
+      themeTokenKeys.map((key, index) => [key, rawTokens[index]]),
+    ) as CatalogTheme['tokens']));
   await page.locator('.production-device').evaluate((node, control) => {
     const element = node as HTMLElement;
     element.style.setProperty('--font-scale', String(control.fontScale));
     for (const token of control.tokenNames) element.style.removeProperty(`--theme-${token}`);
+    for (const token of control.semanticTokenNames) element.style.removeProperty(token);
     if (control.themeId.startsWith('game-')) {
       element.dataset.theme = 'game';
       element.dataset.contrast = 'normal';
       control.tokens!.forEach((value, index) => element.style.setProperty(`--theme-${control.tokenNames[index]}`, value));
+      Object.entries(control.semanticTokens!).forEach(([name, value]) => element.style.setProperty(name, value));
     } else if (control.themeId === 'dark') {
       element.dataset.theme = 'dark'; element.dataset.contrast = 'normal';
     } else if (control.themeId === 'high-contrast') {
@@ -238,7 +250,7 @@ async function applyVisualControl(page: Page, themeId: string, fontScale: number
     } else {
       element.dataset.theme = 'light'; element.dataset.contrast = 'normal';
     }
-  }, { themeId, fontScale, tokenNames: themeTokenNames, tokens: themeControls[themeId as keyof typeof themeControls] ?? null });
+  }, { themeId, fontScale, tokenNames: themeTokenNames, tokens: rawTokens, semanticTokenNames, semanticTokens });
   await page.locator('.screen').evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
 }
 

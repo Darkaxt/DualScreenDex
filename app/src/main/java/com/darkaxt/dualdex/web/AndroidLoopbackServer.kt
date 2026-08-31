@@ -9,6 +9,7 @@ import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonIOException
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import java.io.BufferedInputStream
@@ -74,6 +75,7 @@ class AndroidLoopbackServer(
     private val requestReadTimeoutMillis: Int = DEFAULT_REQUEST_READ_TIMEOUT_MILLIS,
     private val requestLifetimeMillis: Long = DEFAULT_REQUEST_LIFETIME_MILLIS,
     private val responseWriteTimeoutMillis: Long = DEFAULT_RESPONSE_WRITE_TIMEOUT_MILLIS,
+    private val additionalGetRoutes: Map<String, () -> Any> = emptyMap(),
     private val assetLoader: (String) -> ByteArray?,
 ) : AutoCloseable {
     private val gson: Gson = GsonBuilder().serializeNulls().create()
@@ -109,6 +111,9 @@ class AndroidLoopbackServer(
         require(requestReadTimeoutMillis > 0)
         require(requestLifetimeMillis > 0)
         require(responseWriteTimeoutMillis > 0)
+        require(additionalGetRoutes.keys.all { path ->
+            path.startsWith("/api/") && path.length <= 160 && '?' !in path && '#' !in path
+        }) { "additional GET route path is invalid" }
     }
 
     val address: InetSocketAddress
@@ -248,6 +253,8 @@ class AndroidLoopbackServer(
                 )
             } catch (_: IOException) {
                 // The deadline or peer closed the socket while the bounded response was being written.
+            } catch (failure: JsonIOException) {
+                if (!failure.hasIoCause()) throw failure
             } finally {
                 releaseClient(connection)
             }
@@ -269,6 +276,8 @@ class AndroidLoopbackServer(
                 writeResponse(BufferedOutputStream(connection.getOutputStream()), response)
             } catch (_: IOException) {
                 // The deadline, server close, or peer disconnect ended this bounded connection.
+            } catch (failure: JsonIOException) {
+                if (!failure.hasIoCause()) throw failure
             } finally {
                 releaseClient(connection)
             }
@@ -277,6 +286,8 @@ class AndroidLoopbackServer(
 
     private fun route(request: Request): Response = when {
         request.method == "GET" && request.path == "/api/health" -> jsonResponse(mapOf("ok" to true))
+        request.method == "GET" && request.path in additionalGetRoutes ->
+            jsonResponse(requireNotNull(additionalGetRoutes[request.path]).invoke())
         request.method == "GET" && request.path == "/api/bootstrap" -> jsonResponse(runtime.bootstrap())
         request.method == "GET" && request.path == "/api/state" -> stateResponse(request)
         request.method == "GET" && request.path == "/api/specimens" -> jsonResponse(
@@ -308,7 +319,8 @@ class AndroidLoopbackServer(
         else -> textResponse("method not allowed", 405)
     }
 
-    private fun isApiEndpoint(path: String): Boolean = path in API_ENDPOINTS || API_PREFIXES.any(path::startsWith)
+    private fun isApiEndpoint(path: String): Boolean =
+        path in API_ENDPOINTS || path in additionalGetRoutes || API_PREFIXES.any(path::startsWith)
 
     private fun handleAction(request: Request): Response {
         val (type, values) = parseAction(request)
@@ -816,6 +828,15 @@ class AndroidLoopbackServer(
         }
 
         override fun flush() = delegate.flush()
+    }
+
+    private fun JsonIOException.hasIoCause(): Boolean {
+        var current: Throwable? = cause
+        while (current != null) {
+            if (current is IOException) return true
+            current = current.cause
+        }
+        return false
     }
 
     private fun emptyResponse(status: Int): Response = Response(

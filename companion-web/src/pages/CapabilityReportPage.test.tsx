@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityReportPage } from './CapabilityReportPage';
 
@@ -96,6 +96,32 @@ describe('loaded ROM capability report', () => {
     expect(copied).not.toContain('content://');
     expect(copied).toContain('[path omitted]');
     expect(await screen.findByText('REPORT COPIED')).toBeTruthy();
+  });
+
+  it('bounds a stalled report request and retries the same ROM identity', async () => {
+    vi.useFakeTimers();
+    const load = vi.fn()
+      .mockReturnValueOnce(new Promise(() => undefined))
+      .mockResolvedValueOnce(diagnosticFixture);
+    try {
+      render(<CapabilityReportPage
+        romHash={diagnosticFixture.sha256}
+        refreshMarker="COMPLETE:5:5"
+        onBack={vi.fn()}
+        load={load}
+        requestTimeoutMillis={25}
+      />);
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(25); });
+      expect(screen.getByRole('alert').textContent).toContain('took too long');
+      vi.useRealTimers();
+      fireEvent.click(screen.getByRole('button', { name: 'RETRY' }));
+
+      expect(await screen.findByText("Celia's Stupid Romhack (1.1.4).gba")).toBeTruthy();
+      expect(load).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('never shows the previous ROM evidence while a different ROM snapshot loads', async () => {

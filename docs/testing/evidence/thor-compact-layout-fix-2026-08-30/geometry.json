@@ -1,0 +1,109 @@
+{
+  "checkpoint": {
+    "baseCommit": "b33db3cb",
+    "apk": "D:/Temp/dualdex-qa-hardening/app/build/outputs/apk/debug/app-debug.apk",
+    "apkSha256": "f078c6afbd4dfb2636df95f8d6c1c764d5ef530fe85d654acca3fc501271c2cb",
+    "package": "com.darkaxt.dualdex.debug",
+    "catalogCache": "warm-cache reopen; Task #294 separately tracks clean QA catalog provisioning"
+  },
+  "authority": {
+    "catalogReady": true,
+    "gameAccessReady": true,
+    "knowledgeMode": "DISCOVERED",
+    "connection": "PAUSED",
+    "resolution": "ACTIVE",
+    "activeSource": "Modern Emerald (v3.5).gba",
+    "contentSha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+    "contentCrc32": "8C7DBECA",
+    "indexedRoms": 1
+  },
+  "android": {
+    "avd": "DualDexThorQaApi35",
+    "serial": "emulator-5556",
+    "appAreaDisplayIdDuringCapture": 3,
+    "physicalRaster": [1240, 1080],
+    "appAreaRaster": [1240, 1025],
+    "densityDpi": 369,
+    "fontScale": 0.95
+  },
+  "webView": {
+    "innerWidth": 538,
+    "innerHeight": 445,
+    "devicePixelRatio": 2.3062500953674316,
+    "visualViewportWidth": 538.1029663085938,
+    "visualViewportHeight": 445.3116455078125,
+    "captureScreenshotRaster": [1241, 1027]
+  },
+  "views": {
+    "pokedexBrowse": {
+      "screenClient": [538, 445],
+      "screenScroll": [538, 445],
+      "speciesListClient": [538, 254],
+      "speciesListScroll": [538, 40232],
+      "rowWidth": 538.1029663085938,
+      "rowHeight": 93.9972915649414,
+      "semanticHorizontalOverflow": false
+    },
+    "pokedexDetail": {
+      "screenClient": [538, 445],
+      "screenScroll": [538, 445],
+      "compactScrollerClient": [538, 383],
+      "compactScrollerScroll": [538, 627],
+      "compactScrollerOverflow": ["hidden", "auto"],
+      "identityCardClient": [538, 113],
+      "identityCardScroll": [538, 113],
+      "detailContentClient": [538, 492],
+      "detailContentScroll": [538, 492],
+      "detailContentOverflow": ["visible", "visible"],
+      "tabs": {
+        "firstRowHeight": 43.997283935546875,
+        "secondRowHeight": 43.99728775024414,
+        "left": 239.99322509765625,
+        "maximumRight": 526.1043243408203
+      },
+      "scrollMotion": {
+        "requestedScrollTop": 100,
+        "actualScrollTop": 99.72899627685547,
+        "headerYBefore": 5.0,
+        "headerYAfter": 4.99929141998291,
+        "identityYBefore": 66.99864196777344,
+        "identityYAfter": -32.73106002807617,
+        "contentYBefore": 189.99322509765625,
+        "contentYAfter": 90.26351928710938
+      },
+      "semanticHorizontalOverflow": false,
+      "sharedCompactScrollOwner": true
+    },
+    "battleRarity": {
+      "screenClient": [538, 445],
+      "screenScroll": [538, 445],
+      "battleContentClient": [538, 203],
+      "battleContentScroll": [538, 203],
+      "rarityCardClientHeight": 182,
+      "rarityCardScrollHeight": 182,
+      "semanticClipping": false
+    },
+    "specimens": {
+      "species": "Poochyena",
+      "nickname": "QA MON",
+      "source": "Party · Slot 2",
+      "screenClient": [538, 445],
+      "screenScroll": [538, 445],
+      "contentClient": [538, 383],
+      "contentScroll": [538, 383],
+      "cardClient": [503, 101],
+      "cardScroll": [503, 101],
+      "copyClient": [393, 53],
+      "copyScroll": [393, 53],
+      "metaClient": [393, 19],
+      "metaScroll": [393, 19],
+      "semanticClipping": false
+    }
+  },
+  "screenshots": {
+    "pokedex-browse.png": "3cd5c64401b2d6cb96011f55b911a51701c36dab4de5879cf4a117c1c4d789b4",
+    "pokedex-detail.png": "56c23b37195445db8235a0da1c0d7808a329ff5a251da0788ab4d683600154cf",
+    "battle-rarity.png": "e7aa7e8ac8e665c5bee84cad6973fa0beec6036fa3f816165a1cb3ea4288003a",
+    "specimens.png": "ccb44c7a166d795927c1396c1d7780f98a7ee07d14da3e0ca175bda8d24d663f"
+  }
+}

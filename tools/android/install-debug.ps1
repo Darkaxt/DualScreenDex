@@ -9,7 +9,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $adb = Join-Path $SdkRoot 'platform-tools\adb.exe'
-. (Join-Path $PSScriptRoot 'resolve-dualdex-device.ps1')
+. (Join-Path $PSScriptRoot 'resolve-dualdex-device.ps1') -AvdName $AvdName -AdbPath $adb
 $serial = Resolve-DualDexDevice -AvdName $AvdName -AdbPath $adb
 $resolvedApk = (Resolve-Path -LiteralPath $ApkPath).Path
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DualDex RetroArch-Free UI QA</string>
+    <string name="raw_memory_control_name">DualDex QA memory controls</string>
+    <string name="raw_memory_title">Raw live-memory simulator</string>
+    <string name="raw_memory_status">Scenario: %1$s\nFrame: %2$s (%3$d/%4$d)\nPlayback: %5$s</string>
+    <string name="raw_memory_unavailable">Simulator unavailable. The QA marker and a valid packaged scenario asset are required.</string>
+    <string name="raw_memory_scenario_label">Scenario</string>
+    <string name="raw_memory_paused">Paused</string>
+    <string name="raw_memory_playing">Playing</string>
+    <string name="raw_memory_pause">Pause</string>
+    <string name="raw_memory_play">Play</string>
+    <string name="raw_memory_step">Step</string>
+    <string name="raw_memory_open_companion">Open companion</string>
+</resources>

@@ -1,0 +1,211 @@
+{
+  "name": "thor-ui-stage-2",
+  "debugPackage": "com.darkaxt.dualdex.debug",
+  "qaScenarioId": "modern-normal",
+  "authority": {
+    "source": "Modern Emerald (v3.5).gba",
+    "sha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+    "crc32": "8C7DBECA",
+    "knowledgeMode": "DISCOVERED",
+    "resolution": "ACTIVE",
+    "indexedRoms": 1
+  },
+  "captures": [
+    {
+      "name": "local-map",
+      "steps": [
+        {
+          "kind": "action",
+          "value": { "type": "SCREEN", "screen": "POKEDEX" },
+          "waitFor": ".pokedex-screen"
+        },
+        {
+          "kind": "touch",
+          "selector": ".map-action[aria-label=\"Open Map\"]",
+          "waitFor": ".map-poi-marker"
+        }
+      ],
+      "waitFor": ".map-poi-marker",
+      "measurements": [
+        ".map-screen",
+        ".map-page-header",
+        ".map-stage",
+        ".map-plane",
+        ".map-poi-marker",
+        ".map-area-guide-control",
+        ".map-poi-filter-control",
+        ".map-zoom-rail .map-control",
+        ".map-dex-action",
+        ".settings-action"
+      ],
+      "touchTargets": [
+        ".map-poi-marker",
+        ".map-area-guide-control",
+        ".map-poi-filter-control",
+        ".map-zoom-rail .map-control",
+        ".map-dex-action",
+        ".settings-action"
+      ],
+      "active": [
+        {
+          "selector": ".map-current-location",
+          "textIncludes": "Oldale Town"
+        }
+      ],
+      "allowHorizontalOverflow": [
+        ".map-stage",
+        ".map-poi-marker"
+      ]
+    },
+    {
+      "name": "west-map-point-chooser",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".map-poi-marker[data-poi-cluster-key=\"cluster/local/000a/warp/2/3\"]",
+          "waitFor": ".map-poi-cluster-popover"
+        }
+      ],
+      "waitFor": ".map-poi-cluster-popover",
+      "measurements": [
+        ".map-screen",
+        ".map-stage",
+        ".map-poi-cluster-popover",
+        ".map-poi-cluster-popover > header",
+        ".map-poi-cluster-popover > header button",
+        ".map-poi-cluster-list",
+        ".map-poi-cluster-list > button"
+      ],
+      "touchTargets": [
+        ".map-poi-cluster-popover > header button",
+        ".map-poi-cluster-list > button"
+      ],
+      "active": [
+        {
+          "selector": ".map-poi-cluster-popover",
+          "textIncludes": "3 MAP POINTS"
+        }
+      ],
+      "allowHorizontalOverflow": [
+        ".map-stage"
+      ]
+    },
+    {
+      "name": "east-map-point-chooser",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".map-poi-cluster-list > button:nth-child(3)",
+          "waitFor": ".map-poi-card"
+        },
+        {
+          "kind": "touch",
+          "selector": ".map-poi-card > button",
+          "waitFor": ".map-poi-marker[data-poi-cluster-key=\"cluster/local/000a/warp/3/3\"]"
+        },
+        {
+          "kind": "touch",
+          "selector": ".map-poi-marker[data-poi-cluster-key=\"cluster/local/000a/warp/3/3\"]",
+          "waitFor": ".map-poi-cluster-popover"
+        }
+      ],
+      "waitFor": ".map-poi-cluster-popover",
+      "measurements": [
+        ".map-screen",
+        ".map-stage",
+        ".map-poi-cluster-popover",
+        ".map-poi-cluster-popover > header",
+        ".map-poi-cluster-popover > header button",
+        ".map-poi-cluster-list",
+        ".map-poi-cluster-list > button"
+      ],
+      "touchTargets": [
+        ".map-poi-cluster-popover > header button",
+        ".map-poi-cluster-list > button"
+      ],
+      "active": [
+        {
+          "selector": ".map-poi-cluster-popover",
+          "textIncludes": "3 MAP POINTS"
+        }
+      ],
+      "allowHorizontalOverflow": [
+        ".map-stage"
+      ]
+    },
+    {
+      "name": "area-guide-top",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".map-poi-cluster-list > button:nth-child(3)",
+          "waitFor": ".map-poi-card"
+        },
+        {
+          "kind": "touch",
+          "selector": ".map-poi-card > button",
+          "waitFor": ".map-area-guide-control"
+        },
+        {
+          "kind": "touch",
+          "selector": ".map-area-guide-control",
+          "waitFor": ".area-guide-exits > button:nth-of-type(3)"
+        }
+      ],
+      "waitFor": ".area-guide-exits > button:nth-of-type(3)",
+      "measurements": [
+        ".map-screen",
+        ".area-guide-drawer",
+        ".area-guide-drawer > header",
+        ".area-guide-drawer > header button",
+        ".area-guide-content",
+        ".area-guide-section:first-child",
+        ".area-guide-summary",
+        ".area-guide-exits",
+        ".area-guide-exits > button:nth-of-type(-n + 3)"
+      ],
+      "touchTargets": [
+        ".area-guide-drawer > header button",
+        ".area-guide-exits > button:nth-of-type(-n + 3)"
+      ],
+      "active": [
+        {
+          "selector": ".area-guide-exits > button:nth-of-type(1)",
+          "textIncludes": "Oldale Town · EXIT 1 OF 4"
+        },
+        {
+          "selector": ".area-guide-exits > button:nth-of-type(3)",
+          "textIncludes": "Oldale Town · EXIT 3 OF 4"
+        }
+      ]
+    },
+    {
+      "name": "area-guide-final-section",
+      "steps": [
+        {
+          "kind": "swipe",
+          "selector": ".area-guide-content",
+          "direction": "up",
+          "repeat": 8,
+          "waitFor": ".area-guide-section:last-child .area-guide-windowed-item:last-child"
+        }
+      ],
+      "waitFor": ".area-guide-section:last-child .area-guide-windowed-item:last-child",
+      "measurements": [
+        ".map-screen",
+        ".area-guide-drawer",
+        ".area-guide-drawer > header",
+        ".area-guide-drawer > header button",
+        ".area-guide-content",
+        ".area-guide-section:last-child",
+        ".area-guide-section:last-child .area-guide-windowed-list",
+        ".area-guide-section:last-child .area-guide-windowed-item:last-child",
+        ".area-guide-section:last-child .area-guide-windowed-item:last-child .area-guide-point-row"
+      ],
+      "touchTargets": [
+        ".area-guide-drawer > header button",
+        ".area-guide-section:last-child .area-guide-windowed-item:last-child .area-guide-point-row"
+      ]
+    }
+  ]
+}

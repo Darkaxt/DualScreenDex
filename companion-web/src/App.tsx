@@ -2,11 +2,13 @@ import type { ComponentType, JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { action, bootstrap, events, uploadRom, type ConnectionStatus } from './gateway';
 import type { Bootstrap, Catalog, State } from './models';
+import { deriveSemanticTheme, semanticThemeCssVariables } from './themeContrast';
 import { decodeRouteHash, encodeRouteHash, popRoute, pushRoute, type UiRoute } from './navigation';
+import { RouteHeadingFocusContext } from './components';
 import { PokedexBrowse } from './pages/PokedexBrowse';
 import { PokedexDetail } from './pages/PokedexDetail';
 import { BattlePage } from './pages/BattlePage';
-import { SettingsPage } from './pages/SettingsPage';
+import { SettingsPage, type SettingsCategory } from './pages/SettingsPage';
 import { MoveDetail } from './pages/MoveDetail';
 import { AbilityDetail } from './pages/AbilityDetail';
 import { NatureDetail } from './pages/NatureDetail';
@@ -47,9 +49,16 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [state, setState] = useState<State>(emptyState);
   const [error, setError] = useState<string | null>(null);
+  const [errorRetry, setErrorRetry] = useState<(() => void) | null>(null);
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
+  const [pendingFocusReturn, setPendingFocusReturn] = useState<FocusReturn | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('CONNECTED');
   const [busy, setBusy] = useState(true);
   const [routes, setRoutes] = useState<UiRoute[]>([]);
+  const [settingsNavigation, setSettingsNavigation] = useState<{
+    ownerKey: string;
+    category: SettingsCategory | null;
+  }>({ ownerKey: '', category: null });
   const [detailTab, setDetailTab] = useState<'ENTRY' | 'STATS' | 'MOVES' | 'AREA' | 'MORE'>('ENTRY');
   const [partySelection, setPartySelection] = useState<{ catalogHash: string; slot: number | null }>({ catalogHash: '', slot: null });
   const [partyScroll, setPartyScroll] = useState<{ catalogHash: string; top: number }>({ catalogHash: '', top: 0 });
@@ -65,16 +74,64 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const screenRef = useRef(state.screen);
   const stateVersionRef = useRef(state.version);
   const stateRef = useRef(state);
+  const settingsNavigationRef = useRef<{
+    ownerKey: string | null;
+    category: SettingsCategory | null;
+  }>({ ownerKey: null, category: null });
+  const routeFocusReturnsRef = useRef(new Map<number, FocusReturn>());
+  const screenFocusReturnsRef = useRef(new Map<string, FocusReturn>());
+  const focusRestoreTimerRef = useRef<number | null>(null);
+  const routeTriggerRef = useRef<HTMLElement | null>(null);
   routesRef.current = routes;
   catalogRef.current = catalog;
   screenRef.current = state.screen;
   stateVersionRef.current = state.version;
   stateRef.current = state;
+  const settingsOwnerKey = activeRoute?.kind === 'SETTINGS'
+    ? `route:${activeRoute.catalogHash}:${activeRoute.category}:${activeRoute.control}`
+    : activeRoute == null && catalog && state.screen === 'SETTINGS'
+      ? `screen:${catalog.hash}`
+      : null;
+  const defaultSettingsCategory = activeRoute?.kind === 'SETTINGS'
+    ? activeRoute.category
+    : null;
+  const displayedSettingsCategory = settingsOwnerKey != null && settingsNavigation.ownerKey === settingsOwnerKey
+    ? settingsNavigation.category
+    : defaultSettingsCategory;
+  settingsNavigationRef.current = {
+    ownerKey: settingsOwnerKey,
+    category: displayedSettingsCategory,
+  };
 
-  const reportFailure = (failure: unknown, message: string) => {
+  useEffect(() => {
+    if (!pendingFocusReturn) return;
+    const focusReturn = pendingFocusReturn;
+    setPendingFocusReturn(null);
+    if (focusRestoreTimerRef.current != null) window.clearTimeout(focusRestoreTimerRef.current);
+    focusRestoreTimerRef.current = window.setTimeout(() => {
+      focusRestoreTimerRef.current = window.setTimeout(() => {
+        focusRestoreTimerRef.current = null;
+        if (viewFocusKey(screenRef.current, routesRef.current) === focusReturn.viewKey) {
+          findFocusReturnTarget(focusReturn)?.focus();
+        }
+      }, 0);
+    }, 0);
+  }, [pendingFocusReturn, routes, state.screen]);
+
+  useEffect(() => () => {
+    if (focusRestoreTimerRef.current != null) window.clearTimeout(focusRestoreTimerRef.current);
+  }, []);
+
+  const reportFailure = (failure: unknown, message: string, retry?: () => void) => {
     console.error(failure);
     setError(message);
+    setErrorRetry(() => retry ?? null);
   };
+
+  function setDisplayedSettingsCategory(category: SettingsCategory | null) {
+    const ownerKey = settingsNavigationRef.current.ownerKey;
+    if (ownerKey) setSettingsNavigation({ ownerKey, category });
+  }
 
   function setClientRoutes(next: UiRoute[]) {
     routesRef.current = next;
@@ -106,6 +163,9 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     const next = pushRoute(routesRef.current, route);
     if (next === routesRef.current) return;
     const routeIndex = routeHistoryIndexRef.current + 1;
+    const focusReturn = activeFocusReturn(viewFocusKey(screenRef.current, routesRef.current), routeTriggerRef.current);
+    routeTriggerRef.current = null;
+    if (focusReturn) routeFocusReturnsRef.current.set(next.length, focusReturn);
     routeHistoryIndexRef.current = routeIndex;
     window.history.pushState(
       { dualdexRouteIndex: routeIndex },
@@ -116,7 +176,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   }
 
   function closeClientRoute() {
-    if (routesRef.current.length === 0) return;
+    const depth = routesRef.current.length;
+    if (depth === 0) return;
+    setPendingFocusReturn(routeFocusReturnsRef.current.get(depth) ?? null);
+    routeFocusReturnsRef.current.delete(depth);
     if (routeHistoryIndexRef.current > 0) {
       routeHistoryIndexRef.current -= 1;
       setClientRoutes(popRoute(routesRef.current));
@@ -135,6 +198,11 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         mapperAvailable: stateRef.current.mapperAvailable === true,
         worldMapsAvailable: (activeCatalog.worldMaps?.length ?? 0) > 0,
       });
+      if (restored.length < routesRef.current.length) {
+        const depth = routesRef.current.length;
+        setPendingFocusReturn(routeFocusReturnsRef.current.get(depth) ?? null);
+        routeFocusReturnsRef.current.delete(depth);
+      }
       routeHistoryIndexRef.current = routeIndex;
       setClientRoutes(restored);
       if (restored.length === 0 && window.location.hash.startsWith('#dualdex=')) {
@@ -179,6 +247,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     const refreshMarker = catalogRefreshMarker(value.state);
     if (refreshMarker) lastCatalogRefresh.current = refreshMarker;
     setError(null);
+    setErrorRetry(null);
   }
 
   function requestLatestBootstrap(
@@ -196,13 +265,30 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     };
   }
 
+  function retryBootstrap(message: string, resetStateVersion = false, showBusy = false) {
+    if (showBusy) setBusy(true);
+    const retry = requestLatestBootstrap(bootstrap, resetStateVersion);
+    void retry.promise.then(
+      () => { if (showBusy && retry.id === bootstrapRequestRef.current) setBusy(false); },
+      failure => {
+        if (retry.id !== bootstrapRequestRef.current) return;
+        reportFailure(failure, message, () => retryBootstrap(message, resetStateVersion, showBusy));
+        if (showBusy) setBusy(false);
+      },
+    );
+  }
+
   useEffect(() => {
     const initial = requestLatestBootstrap(bootstrap);
     void initial.promise.then(
       committed => { if (committed) setBusy(false); },
       failure => {
         if (initial.id !== bootstrapRequestRef.current) return;
-        reportFailure(failure, 'The companion could not start. Please try again.');
+        reportFailure(
+          failure,
+          'The companion could not start. Please try again.',
+          () => retryBootstrap('The companion could not start. Please try again.', false, true),
+        );
         setBusy(false);
       },
     );
@@ -218,7 +304,11 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         const refresh = requestLatestBootstrap(bootstrap);
         void refresh.promise.catch(failure => {
           if (refresh.id === bootstrapRequestRef.current) {
-            reportFailure(failure, 'Your game guide could not be refreshed. Please try again.');
+            reportFailure(
+              failure,
+              'Your game guide could not be refreshed. Please try again.',
+              () => retryBootstrap('Your game guide could not be refreshed. Please try again.'),
+            );
           }
         });
       }
@@ -228,19 +318,56 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         () => undefined,
         failure => {
           if (reconnect.id !== bootstrapRequestRef.current) return;
-          reportFailure(failure, 'The companion could not reconnect. It will keep trying.');
+          reportFailure(
+            failure,
+            'The companion could not reconnect. It will keep trying.',
+            () => retryBootstrap('The companion could not reconnect. It will keep trying.', true),
+          );
           throw failure;
         },
       );
     });
   }, []);
 
-  const send = async (type: string, values: Record<string, string | number | boolean | null> = {}) => {
+  const send = async (
+    type: string,
+    values: Record<string, string | number | boolean | null> = {},
+    focusOverride?: FocusReturn | null,
+  ) => {
+    if (type === 'SCREEN' && values.screen === 'SETTINGS' && catalogRef.current) {
+      setSettingsNavigation({
+        ownerKey: `screen:${catalogRef.current.hash}`,
+        category: null,
+      });
+    }
+    const sourceScreen = screenRef.current;
+    const sourceFocus = focusOverride ?? activeFocusReturn(
+      viewFocusKey(sourceScreen, routesRef.current),
+      routeTriggerRef.current,
+    );
+    routeTriggerRef.current = null;
     try {
-      setState(await action(type, values));
+      const next = await action(type, values);
+      if (next.screen !== sourceScreen) {
+        const focusReturn = screenFocusReturnsRef.current.get(sourceScreen);
+        if (focusReturn?.viewKey === viewFocusKey(next.screen, routesRef.current)) {
+          setPendingFocusReturn(focusReturn);
+          screenFocusReturnsRef.current.delete(sourceScreen);
+        } else if (sourceFocus) {
+          screenFocusReturnsRef.current.set(next.screen, sourceFocus);
+        }
+      }
+      stateRef.current = next;
+      screenRef.current = next.screen;
+      setState(next);
       setError(null);
+      setErrorRetry(null);
     } catch (failure) {
-      reportFailure(failure, 'That action could not be completed. Please try again.');
+      reportFailure(
+        failure,
+        'That action could not be completed. Please try again.',
+        () => { void send(type, values, sourceFocus); },
+      );
     }
   };
 
@@ -251,7 +378,11 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       await request.promise;
     } catch (failure) {
       if (request.id === bootstrapRequestRef.current) {
-        reportFailure(failure, 'This game could not be opened. Try another file or retry.');
+        reportFailure(
+          failure,
+          'This game could not be opened. Try another file or retry.',
+          () => { void onUpload(file); },
+        );
       }
     } finally {
       if (request.id === bootstrapRequestRef.current) setBusy(false);
@@ -260,9 +391,16 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 
   const loadingLabel = loadingModuleLabel(state.loading.phase);
   const waitingForGame = shouldWaitForGameAccess(state);
-  const displayedError = error
+  const rawDisplayedError = error
     ?? state.error
     ?? (state.retroArch?.resolution === 'FAILED' ? state.retroArch.message : null);
+  const displayedError = rawDisplayedError === dismissedError ? null : rawDisplayedError;
+  const displayedErrorRetry = errorRetry ?? (rawDisplayedError == null
+    ? null
+    : () => retryBootstrap('The companion could not refresh. Please try again.'));
+  useEffect(() => {
+    if (rawDisplayedError == null) setDismissedError(null);
+  }, [rawDisplayedError]);
   const connectionMessage = connectionStatus === 'RECONNECTING'
     ? 'Reconnecting to the companion…'
     : connectionStatus === 'FAILED'
@@ -278,7 +416,13 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         const currentRoutes = routesRef.current;
         const currentRoute = currentRoutes.at(-1);
         const currentScreen = screenRef.current;
-        if (currentRoutes.length > 0) {
+        const currentSettingsNavigation = settingsNavigationRef.current;
+        if (currentSettingsNavigation.ownerKey && currentSettingsNavigation.category) {
+          setSettingsNavigation({
+            ownerKey: currentSettingsNavigation.ownerKey,
+            category: null,
+          });
+        } else if (currentRoutes.length > 0) {
           if (currentRoute?.kind === 'PARTY_MEMBER' && currentScreen !== 'PARTY') void send('BACK');
           else closeClientRoute();
         }
@@ -306,6 +450,22 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   }
 
   function openRoute(route: UiRoute) {
+    pushClientRoute(route);
+  }
+
+  function openMoveListSettings() {
+    const activeCatalog = catalogRef.current;
+    if (!activeCatalog) return;
+    const route = {
+      kind: 'SETTINGS',
+      category: 'INFORMATION',
+      control: 'MOVE_LIST',
+      catalogHash: activeCatalog.hash,
+    } satisfies UiRoute;
+    setSettingsNavigation({
+      ownerKey: `route:${route.catalogHash}:${route.category}:${route.control}`,
+      category: route.category,
+    });
     pushClientRoute(route);
   }
 
@@ -340,11 +500,24 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       }}
       onUpdatePoiPreferences={values => void send('MAP_POI_SETTINGS', values)}
     />;
+    if (activeRoute?.kind === 'SETTINGS' && activeRoute.catalogHash === catalog.hash) return <SettingsPage
+      catalog={catalog}
+      state={state}
+      send={send}
+      onUpload={onUpload}
+      initialControl={activeRoute.control}
+      category={displayedSettingsCategory}
+      onCategoryChange={setDisplayedSettingsCategory}
+      onBack={closeRoute}
+      onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })}
+      mapperAvailable={state.mapperAvailable === true}
+      onOpenMapper={() => openRoute({ kind: 'MAPPER' })}
+    />;
     if (activeRoute?.kind === 'MOVE') return <MoveDetail catalog={catalog} state={state} moveId={activeRoute.id} onBack={closeRoute} />;
     if (activeRoute?.kind === 'ABILITY') return <AbilityDetail catalog={catalog} state={state} abilityId={activeRoute.id} onBack={closeRoute} />;
     if (activeRoute?.kind === 'NATURE') {
       const nature = catalog.natures?.find(candidate => candidate.id === activeRoute.id);
-      if (nature) return <NatureDetail nature={nature} onBack={closeRoute} />;
+      if (nature) return <NatureDetail nature={nature} gameTime={state.gameTime} onBack={closeRoute} />;
     }
     if (activeRoute?.kind === 'SPECIMENS' || activeRoute?.kind === 'SPECIMEN') {
       const speciesId = activeRoute.speciesId;
@@ -355,6 +528,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
           catalog={catalog}
           speciesId={speciesId}
           stateVersion={state.version}
+          gameTime={state.gameTime}
           detailKey={activeRoute.kind === 'SPECIMEN' ? activeRoute.specimenKey : null}
           initialScrollTop={specimenScroll.key === scrollKey ? specimenScroll.top : 0}
           onScrollTopChange={top => setSpecimenScroll({ key: scrollKey, top })}
@@ -384,6 +558,8 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       openMove={id => openRoute({ kind: 'MOVE', id })}
       openAbility={id => openRoute({ kind: 'ABILITY', id })}
       openSpecimens={speciesId => openRoute({ kind: 'SPECIMENS', speciesId, catalogHash: catalog.hash })}
+      openMoveListSettings={openMoveListSettings}
+      openAtlas={(catalog.worldMaps?.length ?? 0) > 0 ? openMap : undefined}
     />;
     if (activeRoute?.kind === 'PARTY_ANALYSIS' && activeRoute.catalogHash === catalog.hash && state.partyAnalysis) return <PartyAnalysisPage
       catalog={catalog}
@@ -399,7 +575,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       }}
     />;
     switch (state.screen) {
-      case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={id => openRoute({ kind: 'MOVE', id })} openAbility={id => openRoute({ kind: 'ABILITY', id })} openSpecimens={speciesId => openRoute({ kind: 'SPECIMENS', speciesId, catalogHash: catalog.hash })} />;
+      case 'DETAIL': return <PokedexDetail catalog={catalog} state={state} send={send} tab={detailTab} setTab={setDetailTab} openMove={id => openRoute({ kind: 'MOVE', id })} openAbility={id => openRoute({ kind: 'ABILITY', id })} openSpecimens={speciesId => openRoute({ kind: 'SPECIMENS', speciesId, catalogHash: catalog.hash })} openMoveListSettings={openMoveListSettings} openAtlas={(catalog.worldMaps?.length ?? 0) > 0 ? openMap : undefined} />;
       case 'BATTLE': return state.battle ? <BattlePage catalog={catalog} state={state} send={send} openMove={id => openRoute({ kind: 'MOVE', id })} openSpecies={speciesId => {
         setDetailTab('ENTRY');
         void send('OPEN_SPECIES', { speciesId });
@@ -433,24 +609,85 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
           }}
         />;
       }
-      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })} mapperAvailable={state.mapperAvailable === true} onOpenMapper={() => openRoute({ kind: 'MAPPER' })} />;
+      case 'SETTINGS': return <SettingsPage catalog={catalog} state={state} send={send} onUpload={onUpload} category={displayedSettingsCategory} onCategoryChange={setDisplayedSettingsCategory} onOpenCapabilities={() => openRoute({ kind: 'CAPABILITIES' })} mapperAvailable={state.mapperAvailable === true} onOpenMapper={() => openRoute({ kind: 'MAPPER' })} />;
       default: return <PokedexBrowse catalog={catalog} state={state} send={send} onOpenMap={openMap} />;
     }
-  }, [catalog, state, busy, error, detailTab, routes, partySelection, partyScroll, specimenScroll, waitingForGame]);
+  }, [catalog, state, busy, error, detailTab, routes, partySelection, partyScroll, specimenScroll, settingsNavigation, waitingForGame]);
   return <main class={showDevelopmentTools ? 'lab-shell' : 'production-shell'}>
     {DevelopmentTools && <DevelopmentTools catalog={catalog} state={state} onUpload={onUpload} send={send} />}
     <div class={showDevelopmentTools ? 'device-shell' : 'production-device'} style={applicationThemeStyle(catalog, state.settings)} data-density={state.settings.density.toLowerCase()} data-contrast={state.settings.highContrast ? 'high' : 'normal'} data-theme={(state.settings.theme ?? 'GAME').toLowerCase()}>
       {showDevelopmentTools && <div class="device-sensor" />}
       <div class="device-screen">
-        <div class="screen-host">{screen}</div>
-        {connectionMessage && <div
-          class={`connection-toast is-${connectionStatus.toLowerCase()}`}
-          role={connectionStatus === 'FAILED' ? 'alert' : 'status'}
-        >{connectionMessage}</div>}
-        {catalog && state.loading.active && <div class={`loading-indicator ${loadingOriginClass(state.loading)}`} role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}{displayedError && catalog && <div class="error-toast" role="alert">{displayedError}</div>}
+        <div class="screen-host" onClickCapture={event => {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          const control = target.closest<HTMLElement>('button, a, input, select, textarea, [tabindex]');
+          routeTriggerRef.current = control;
+          queueMicrotask(() => {
+            if (routeTriggerRef.current === control) routeTriggerRef.current = null;
+          });
+        }}><RouteHeadingFocusContext.Provider value={pendingFocusReturn == null}>{screen}</RouteHeadingFocusContext.Provider></div>
+        <div class="global-feedback" aria-label="Application status">
+          {connectionMessage && <div
+            class={`connection-toast is-${connectionStatus.toLowerCase()}`}
+            role={connectionStatus === 'FAILED' ? 'alert' : 'status'}
+          >{connectionMessage}</div>}
+          {catalog && state.loading.active && <div class={`loading-indicator ${loadingOriginClass(state.loading)}`} role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}
+          {displayedError && catalog && <div class="error-toast" role="alert"><span>{displayedError}</span><div class="error-toast-actions"><button type="button" onClick={() => displayedErrorRetry?.()}>RETRY</button><button type="button" onClick={() => setDismissedError(displayedError)}>DISMISS</button></div></div>}
+        </div>
       </div>
     </div>
   </main>;
+}
+
+interface FocusReturn {
+  selector: string;
+  tagName: string;
+  ariaLabel: string | null;
+  text: string;
+  viewKey: string;
+}
+
+function viewFocusKey(screen: string, routes: UiRoute[]): string {
+  return `${screen}:${JSON.stringify(routes)}`;
+}
+
+function activeFocusReturn(viewKey: string, preferred?: HTMLElement | null): FocusReturn | null {
+  const root = document.querySelector('.screen-host');
+  const active = preferred && root?.contains(preferred) ? preferred : document.activeElement;
+  if (!(root instanceof HTMLElement) || !(active instanceof HTMLElement) || !root.contains(active)) return null;
+  const parts: string[] = [];
+  let element: HTMLElement | null = active;
+  while (element && element !== root) {
+    const parent: HTMLElement | null = element.parentElement;
+    if (!parent) return null;
+    const index = Array.from(parent.children).indexOf(element) + 1;
+    parts.unshift(`${element.tagName.toLowerCase()}:nth-child(${index})`);
+    element = parent;
+  }
+  return {
+    selector: `.screen-host > ${parts.join(' > ')}`,
+    tagName: active.tagName.toLowerCase(),
+    ariaLabel: active.getAttribute('aria-label'),
+    text: active.textContent?.trim() ?? '',
+    viewKey,
+  };
+}
+
+function findFocusReturnTarget(focusReturn: FocusReturn): HTMLElement | null {
+  const structuralTarget = document.querySelector<HTMLElement>(focusReturn.selector);
+  if (structuralTarget && matchesFocusReturn(structuralTarget, focusReturn)) return structuralTarget;
+  const root = document.querySelector('.screen-host');
+  if (!(root instanceof HTMLElement)) return null;
+  const candidates = Array.from(root.querySelectorAll<HTMLElement>(focusReturn.tagName))
+    .filter(candidate => matchesFocusReturn(candidate, focusReturn));
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+function matchesFocusReturn(candidate: HTMLElement, focusReturn: FocusReturn): boolean {
+  if (candidate.tagName.toLowerCase() !== focusReturn.tagName) return false;
+  if (focusReturn.ariaLabel != null) return candidate.getAttribute('aria-label') === focusReturn.ariaLabel;
+  return candidate.textContent?.trim() === focusReturn.text;
 }
 
 export function applicationThemeStyle(catalog: Catalog | null, settings: State['settings']): JSX.CSSProperties {
@@ -470,7 +707,7 @@ export function applicationThemeStyle(catalog: Catalog | null, settings: State['
     '--theme-text-shadow': tokens.textShadow,
     '--theme-accent': tokens.accent,
     '--theme-accent-text': tokens.accentText,
-  });
+  }, semanticThemeCssVariables(deriveSemanticTheme(tokens)));
   return style;
 }
 

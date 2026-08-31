@@ -22,7 +22,7 @@ export function OwnedIndividualDetail({ individual, catalog, locationLabel, open
   return <article class="owned-individual-detail party-detail paper-panel" data-condition={individualCondition(individual)}>
     <header>
       <OwnedIndividualSprite individual={individual} large />
-      <div><p class="eyebrow">{locationLabel}</p><h1>{individual.nickname || individual.speciesName || 'UNKNOWN PARTNER'}</h1>
+      <div><p class="eyebrow">{locationLabel}</p><h2>{individual.nickname || individual.speciesName || 'UNKNOWN PARTNER'}</h2>
         <div class="party-detail-meta">
           {individual.rarity && <RarityStars rarity={individual.rarity} />}
           {individual.level != null && <strong>Lv {individual.level}</strong>}

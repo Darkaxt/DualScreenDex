@@ -43,6 +43,7 @@ import java.lang.reflect.InvocationTargetException
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.URI
 import java.nio.file.Files
@@ -188,6 +189,64 @@ class AndroidLoopbackServerTest {
     }
 
     @Test
+    fun containsAGsonWrappedPeerDisconnectDuringStreamedJson() {
+        val request = "GET /api/large-json HTTP/1.1\r\n\r\n".toByteArray(Charsets.US_ASCII)
+        val brokenPipe = object : OutputStream() {
+            override fun write(value: Int) = throw SocketException("Broken pipe")
+            override fun write(bytes: ByteArray, offset: Int, length: Int) = throw SocketException("Broken pipe")
+        }
+        val client = object : Socket() {
+            override fun getInputStream() = ByteArrayInputStream(request)
+            override fun getOutputStream() = brokenPipe
+            override fun close() = Unit
+        }
+        val server = AndroidLoopbackServer(
+            ProductionCompanionRuntime(),
+            additionalGetRoutes = mapOf(
+                "/api/large-json" to { mapOf("payload" to "x".repeat(16 * 1_024)) },
+            ),
+            assetLoader = { null },
+        )
+        try {
+            val handle = AndroidLoopbackServer::class.java
+                .getDeclaredMethod("handle", Socket::class.java)
+                .apply { isAccessible = true }
+
+            handle.invoke(server, client)
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun responseProgrammingFailuresStillEscapeTheClientWorker() {
+        val request = "GET /api/health HTTP/1.1\r\n\r\n".toByteArray(Charsets.US_ASCII)
+        val failedOutput = object : OutputStream() {
+            override fun write(value: Int) = throw IllegalStateException("synthetic writer defect")
+            override fun write(bytes: ByteArray, offset: Int, length: Int) =
+                throw IllegalStateException("synthetic writer defect")
+        }
+        val client = object : Socket() {
+            override fun getInputStream() = ByteArrayInputStream(request)
+            override fun getOutputStream() = failedOutput
+            override fun close() = Unit
+        }
+        val server = AndroidLoopbackServer(ProductionCompanionRuntime()) { null }
+        try {
+            val handle = AndroidLoopbackServer::class.java
+                .getDeclaredMethod("handle", Socket::class.java)
+                .apply { isAccessible = true }
+
+            val failure = assertThrows(InvocationTargetException::class.java) {
+                handle.invoke(server, client)
+            }
+            assertTrue(failure.cause is IllegalStateException)
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
     fun boundsAResponseWriteWhenTheClientDoesNotRead() {
         val largeAsset = ByteArray(16 * 1024 * 1024) { 1 }
         val server = AndroidLoopbackServer(
@@ -292,6 +351,58 @@ class AndroidLoopbackServerTest {
             assertFalse(internalMessage.contains("private mapper"))
         } finally {
             server.close()
+        }
+    }
+
+    @Test
+    fun exposesAdditionalGetRouteOnlyWhenConfigured() {
+        val productionServer = AndroidLoopbackServer(ProductionCompanionRuntime()) { null }
+        val extendedServer = AndroidLoopbackServer(
+            ProductionCompanionRuntime(),
+            additionalGetRoutes = mapOf(
+                "/api/test/runtime-identity" to {
+                    mapOf(
+                        "applicationId" to "test.application",
+                        "transport" to "TEST_TRANSPORT",
+                        "scenarioId" to "test-scenario",
+                    )
+                },
+            ),
+            assetLoader = { null },
+        )
+        try {
+            productionServer.start()
+            extendedServer.start()
+
+            assertApiError(
+                URI("http://127.0.0.1:${productionServer.address.port}/api/test/runtime-identity")
+                    .toURL().openConnection() as HttpURLConnection,
+                status = 404,
+                code = "NOT_FOUND",
+                retryable = false,
+            )
+
+            val identityConnection = URI(
+                "http://127.0.0.1:${extendedServer.address.port}/api/test/runtime-identity",
+            ).toURL().openConnection() as HttpURLConnection
+            assertEquals(200, identityConnection.responseCode)
+            assertEquals("no-store", identityConnection.getHeaderField("Cache-Control"))
+            val identity = JsonParser.parseString(identityConnection.inputStream.reader().readText()).asJsonObject
+            assertEquals(setOf("applicationId", "transport", "scenarioId"), identity.keySet())
+            assertEquals("test.application", identity.get("applicationId").asString)
+            assertEquals("TEST_TRANSPORT", identity.get("transport").asString)
+            assertEquals("test-scenario", identity.get("scenarioId").asString)
+
+            assertApiError(
+                (URI("http://127.0.0.1:${extendedServer.address.port}/api/test/runtime-identity")
+                    .toURL().openConnection() as HttpURLConnection).apply { requestMethod = "POST" },
+                status = 405,
+                code = "METHOD_NOT_ALLOWED",
+                retryable = false,
+            )
+        } finally {
+            productionServer.close()
+            extendedServer.close()
         }
     }
 

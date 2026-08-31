@@ -13,29 +13,30 @@ The game remains on the primary display. DualDex detects the active GB, GBC, or 
 
 DualDex targets the AYN Thor's 3.92-inch lower display as a physically small companion surface, not as a high-resolution tablet. Browsing and species details are separate pages, battle tabs show one question at a time, and redundant global bottom navigation is omitted. Settings stay in the header; battle context opens and closes automatically.
 
-## Live feature tour
+## Packaged feature tour
 
-These captures come from the signed RC66 APK running a real Modern Emerald session on an AYN Thor. They are grouped by feature so each supported tab and drill-down is visible rather than represented by a single promotional screen.
+These captures come from the debug QA APK running on the owned Thor-profile emulator at the exact 538 × 445 CSS-pixel companion viewport. The catalog is parsed from an externally staged, exact Modern Emerald ROM, while sanitized raw-memory replay supplies deterministic live state. No ROM is bundled. These screenshots validate the packaged WebView layout; they are not signed-production or physical-Thor evidence.
 
 ### Local Map
 
 DualDex reconstructs local maps from ROM graphics and event data, then combines them with live player coordinates. The map preserves Organic discovery and fog of war, exposes discovered POIs through category filters, follows the trainer until manual navigation takes control, and keeps the in-game clock visible for future day/night rendering.
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-local-map.webp" width="46%" alt="DualDex local map tracking the trainer on Route 101 with the live clock and discovered location">
+  <img src="docs/images/live/dualdex-thor-qa-local-map.webp" width="46%" alt="DualDex Local Map tracking the trainer in Oldale Town with live clock, controls, and ROM-derived points of interest">
+  <img src="docs/images/live/dualdex-thor-qa-area-guide.webp" width="46%" alt="DualDex Area Guide showing the current map overview and four connected exits">
 </p>
 
 <p align="center">
-  <sub><strong>Local Map</strong> — trainer tracking, live clock, map controls, and a discovered POI</sub>
+  <sub><strong>Local Map</strong> — trainer tracking, clock, controls, and POIs · <strong>Area Guide</strong> — current-area summary and exits</sub>
 </p>
 
 ### Wild Encounter
 
-The encounter page opens automatically from validated live battle state and resolves the current opponent without OCR. Entry follows the active information policy; Attack explains the selected move and known effectiveness; Rarity evaluates recruitment from relative level and IV quality; and Moves remembers only attacks actually observed in Organic mode instead of exposing the opponent's hidden loadout.
+The encounter page opens automatically from validated live battle state and resolves the current opponent without OCR. Entry follows the active information policy; Attack explains the selected move and known effectiveness; Rarity evaluates recruitment from relative level and IV quality; and Moves remembers only attacks actually observed instead of exposing the opponent's hidden loadout. In this deterministic `move-selected` frame, the player has selected Leer but the opponent has not used a move yet, so the empty Moves tab is intentional.
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-wild-entry.webp" width="46%" alt="DualDex Wild Encounter Entry tab with Organic Pokédex knowledge locked">
-  <img src="docs/images/live/dualdex-rc66-wild-attack.webp" width="46%" alt="DualDex Wild Encounter Attack tab showing Scratch metadata and effectiveness">
+  <img src="docs/images/live/dualdex-thor-qa-battle-entry.webp" width="46%" alt="DualDex Wild Encounter Entry tab showing the ROM-derived Pokédex entry for Poochyena">
+  <img src="docs/images/live/dualdex-thor-qa-battle-attack.webp" width="46%" alt="DualDex Wild Encounter Attack tab showing Leer metadata and neutral effectiveness">
 </p>
 
 <p align="center">
@@ -43,12 +44,12 @@ The encounter page opens automatically from validated live battle state and reso
 </p>
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-wild-rarity.webp" width="46%" alt="DualDex Wild Encounter Rarity tab rating a Zigzagoon as Ordinary Standard">
-  <img src="docs/images/live/dualdex-rc66-wild-moves.webp" width="46%" alt="DualDex Wild Encounter Moves tab showing the observed move Growl and its frequency">
+  <img src="docs/images/live/dualdex-thor-qa-battle-rarity.webp" width="46%" alt="DualDex Wild Encounter Rarity tab rating a Poochyena as Ordinary Trained">
+  <img src="docs/images/live/dualdex-thor-qa-battle-moves.webp" width="46%" alt="DualDex Wild Encounter Moves tab truthfully showing that no opponent moves have been recorded yet">
 </p>
 
 <p align="center">
-  <sub><strong>Rarity</strong> — IV and level recruitment signal · <strong>Moves</strong> — observed attacks only</sub>
+  <sub><strong>Rarity</strong> — IV and level recruitment signal · <strong>Moves</strong> — no opponent attack observed yet</sub>
 </p>
 
 ### Pokédex
@@ -56,7 +57,7 @@ The encounter page opens automatically from validated live battle state and reso
 The Pokédex joins the ROM-derived species catalog with live seen, caught, and team knowledge. Its browser and counters adapt to the selected list; Entry includes the ROM text and trainer-relative height; Stats combines base values with a Level 50 projection; Moves exposes the validated learnset; Area renders known habitats; and More surfaces parsed ability conditions, evolutions, and locations when Organic discovery permits them.
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-pokedex-browser.webp" width="46%" alt="DualDex Pokédex browser with All Caught Team and Area tabs plus the adaptive counter">
+  <img src="docs/images/live/dualdex-thor-qa-pokedex-browser.webp" width="46%" alt="DualDex Discovered Pokédex browser showing the 428-species Modern Emerald catalog and available knowledge filters">
 </p>
 
 <p align="center">
@@ -64,38 +65,12 @@ The Pokédex joins the ROM-derived species catalog with live seen, caught, and t
 </p>
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-pokedex-entry.webp" width="46%" alt="DualDex Pokédex Entry tab showing Torchic description height and weight">
-  <img src="docs/images/live/dualdex-rc66-height-comparison.webp" width="46%" alt="DualDex Pokédex Entry height comparison using the current trainer sprite">
+  <img src="docs/images/live/dualdex-thor-qa-pokedex-entry.webp" width="46%" alt="DualDex Pokédex Entry tab showing Treecko description, measurements, and height comparison">
+  <img src="docs/images/live/dualdex-thor-qa-pokedex-more.webp" width="46%" alt="DualDex Pokédex More tab showing the owned specimen shortcut and parsed Overgrow ability details">
 </p>
 
 <p align="center">
-  <sub><strong>Entry</strong> — ROM description and measurements · <strong>Height</strong> — trainer-relative scale</sub>
-</p>
-
-<p align="center">
-  <img src="docs/images/live/dualdex-rc66-pokedex-stats.webp" width="46%" alt="DualDex Pokédex Stats tab showing base stats and Level 50 innate ranges">
-  <img src="docs/images/live/dualdex-rc66-pokedex-moves.webp" width="46%" alt="DualDex Pokédex Moves tab showing Torchic level-up moves">
-</p>
-
-<p align="center">
-  <sub><strong>Stats</strong> — base values and projected ranges · <strong>Moves</strong> — parsed learnset</sub>
-</p>
-
-<p align="center">
-  <img src="docs/images/live/dualdex-rc66-pokedex-area.webp" width="46%" alt="DualDex Pokédex Area tab rendering Zigzagoon habitat locations">
-  <img src="docs/images/live/dualdex-rc66-ability-behavior.webp" width="46%" alt="DualDex Pokédex More tab showing parsed Blaze activation and power conditions">
-</p>
-
-<p align="center">
-  <sub><strong>Area</strong> — known habitat map · <strong>More: Ability</strong> — parsed activation and effect</sub>
-</p>
-
-<p align="center">
-  <img src="docs/images/live/dualdex-rc66-pokedex-evolutions.webp" width="46%" alt="DualDex Pokédex More tab showing Torchic evolution and discovered locations">
-</p>
-
-<p align="center">
-  <sub><strong>More: Evolution</strong> — evolution method and discovered locations</sub>
+  <sub><strong>Entry</strong> — ROM description, measurements, and scale · <strong>More</strong> — owned specimens and parsed mechanics</sub>
 </p>
 
 ### Party
@@ -103,8 +78,8 @@ The Pokédex joins the ROM-derived species catalog with live seen, caught, and t
 Party pages consume the same unified live snapshot as battle and the Trainer Card. The overview uses the six-slot game layout, while each Pokémon opens a detail view with rarity, HP, experience, held item, and current stats. Nature and Ability drill-downs add ROM-resolved stat effects, temperament, activation conditions, and mechanical power without duplicating hardcoded UI tables.
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-party-overview.webp" width="46%" alt="DualDex Party overview using a three-row two-column team layout">
-  <img src="docs/images/live/dualdex-rc66-party-detail.webp" width="46%" alt="DualDex Party Pokémon detail showing Torchic rarity nature ability experience and stats">
+  <img src="docs/images/live/dualdex-thor-qa-party-overview.webp" width="46%" alt="DualDex Party overview showing two sanitized live-memory party members in the compact grid">
+  <img src="docs/images/live/dualdex-thor-qa-party-detail.webp" width="46%" alt="DualDex Party Pokémon detail showing rarity, nature, ability, experience, and current stats">
 </p>
 
 <p align="center">
@@ -112,8 +87,8 @@ Party pages consume the same unified live snapshot as battle and the Trainer Car
 </p>
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-nature-detail.webp" width="46%" alt="DualDex Nature detail showing Timid stat profile and flavor preferences">
-  <img src="docs/images/live/dualdex-rc66-party-ability-detail.webp" width="46%" alt="DualDex Party Ability detail showing Blaze effect activation power and known captures">
+  <img src="docs/images/live/dualdex-thor-qa-nature-detail.webp" width="46%" alt="DualDex Nature detail showing Modest stat changes and flavor preferences">
+  <img src="docs/images/live/dualdex-thor-qa-ability-detail.webp" width="46%" alt="DualDex Ability detail showing Overgrow effect, activation, power, and known captures">
 </p>
 
 <p align="center">
@@ -125,14 +100,28 @@ Party pages consume the same unified live snapshot as battle and the Trainer Car
 The Trainer Card is a live-memory view rather than a separately maintained profile. It presents trainer identity and sprite, money, play time, Pokédex seen/caught totals, card progression, and badge state through the same snapshot used by the rest of DualDex, with validated recovery reserved for fields that are temporarily unavailable live.
 
 <p align="center">
-  <img src="docs/images/live/dualdex-rc66-trainer-card.webp" width="46%" alt="DualDex Trainer Card showing live trainer identity money play time Pokédex totals sprite and badges">
+  <img src="docs/images/live/dualdex-thor-qa-trainer-card.webp" width="46%" alt="DualDex Trainer Card showing sanitized identity, play time, Pokédex totals, sprite, and badge state">
+  <img src="docs/images/live/dualdex-thor-qa-trainer-progress.webp" width="46%" alt="DualDex Trainer Progress metrics showing game totals and tracked journey counters">
 </p>
 
 <p align="center">
-  <sub><strong>Trainer Card</strong> — live identity, progress, Pokédex totals, and badges</sub>
+  <sub><strong>Trainer Card</strong> — live identity, totals, and badges · <strong>Progress</strong> — game and journey metrics</sub>
 </p>
 
-Every shown map, Pokémon name and sprite, type, move, rarity input, party field, Trainer Card value, nature, ability condition, and evolution comes from the ROM-derived catalog or unified live snapshot. No bundled Pokédex database or synthetic Pokémon artwork is used.
+### Thor controls
+
+Readability controls include 85–135% font scaling, three density modes, and high contrast. Setup and recovery remain ordinary packaged routes with the same touch-target and text-floor requirements as the game views.
+
+<p align="center">
+  <img src="docs/images/live/dualdex-thor-qa-accessibility.webp" width="46%" alt="DualDex Accessibility settings showing font scale, density, and high-contrast controls">
+  <img src="docs/images/live/dualdex-thor-qa-setup.webp" width="46%" alt="DualDex RetroArch setup route showing shared-storage and folder-fallback actions">
+</p>
+
+<p align="center">
+  <sub><strong>Accessibility</strong> — scale, density, and contrast · <strong>Setup</strong> — bounded connection and folder recovery</sub>
+</p>
+
+Every species, sprite, type, move, map tile, ability, and nature shown comes from the ROM-derived catalog. Live-route values come from the sanitized QA snapshot; no bundled Pokédex database, ROM, or synthetic Pokémon artwork is used.
 
 ## Why this fork is different
 

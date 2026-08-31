@@ -6,26 +6,28 @@ import { SettingsPage } from './SettingsPage';
 afterEach(cleanup);
 
 describe('production settings copy', () => {
-  it('keeps the normal settings surface concise and confines ROM diagnostics to Debug', () => {
+  it('keeps the normal settings surface concise and confines ROM diagnostics to Advanced', () => {
     const { container } = render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'General' }));
     expect(screen.queryByText('PRESENTATION & KNOWLEDGE')).toBeNull();
     expect(screen.queryByText('ACTIVE GAME')).toBeNull();
     expect(container.querySelector('.rom-setting .eyebrow')?.textContent).toBe('GAME');
     expect(screen.getByLabelText('Change ROM or ZIP')).toBeTruthy();
+    expect(container.textContent).not.toContain('fixture.gba');
+    expect(container.textContent).not.toContain('CRC32');
+    expect(container.textContent).not.toMatch(/ROM SETTINGS|SaveRAM|catalog|polling|AMBIGUOUS|UNVERIFIED/i);
+    expect(container.textContent).not.toMatch(/debug/i);
 
-    const debug = container.querySelector('.mapper-setting');
-    expect(debug?.textContent).toContain('fixture.gba');
-    expect(debug?.textContent).toContain('CRC32 1234ABCD');
-    const normalCopy = Array.from(container.querySelectorAll('.setting-group:not(.mapper-setting)')).map(item => item.textContent).join(' ');
-    expect(normalCopy).not.toContain('fixture.gba');
-    expect(normalCopy).not.toContain('CRC32');
-    expect(normalCopy).not.toMatch(/ROM SETTINGS|SaveRAM|catalog|polling|AMBIGUOUS|UNVERIFIED/i);
-    expect(normalCopy).not.toMatch(/debug/i);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
+    const advanced = container.querySelector('.mapper-setting');
+    expect(advanced?.textContent).toContain('fixture.gba');
+    expect(advanced?.textContent).toContain('CRC32 1234ABCD');
   });
 
   it('describes save-detected level-up Auto and manual recovery without claiming a full movepool switch', () => {
-    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
+    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} initialCategory="INFORMATION" />);
 
     expect(screen.queryByText(/browser POC/i)).toBeNull();
     expect(screen.queryByText(/memory mapper will/i)).toBeNull();
@@ -37,13 +39,16 @@ describe('production settings copy', () => {
   it('distinguishes loaded-ROM choices from global device ownership', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'General' }));
     expect(screen.getByText(/saved for the current game/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Display' }));
     expect(screen.getByText(/screen choice and overlay size apply to every game/i)).toBeTruthy();
   });
 
   it('can replace the active ROM without exposing simulator controls', () => {
     const onUpload = vi.fn();
-    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={onUpload} />);
+    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={onUpload} initialCategory="GENERAL" />);
     const rom = new File([new Uint8Array([1, 2, 3])], 'next.gba');
 
     fireEvent.change(screen.getByLabelText('Change ROM or ZIP'), { target: { files: [rom] } });
@@ -55,7 +60,7 @@ describe('production settings copy', () => {
 
   it('opens the RetroArch connection wizard from production settings', () => {
     const send = vi.fn();
-    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} />);
+    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} initialCategory="CONNECTION" />);
 
     fireEvent.click(screen.getByRole('button', { name: 'RETROARCH SETUP' }));
 
@@ -63,7 +68,7 @@ describe('production settings copy', () => {
   });
 
   it('offers docked and overlay display modes without enabling overlay automatically', () => {
-    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
+    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} initialCategory="DISPLAY" />);
 
     expect(screen.getByRole('link', { name: 'DOCKED' }).getAttribute('href')).toBe('dualdex://overlay/dock');
     expect(screen.getByRole('link', { name: 'OVERLAY' }).getAttribute('href')).toBe('dualdex://overlay/show');
@@ -74,10 +79,10 @@ describe('production settings copy', () => {
 
   it('exposes persisted theme and companion-display targeting', () => {
     const send = vi.fn();
-    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} />);
+    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} initialCategory="DISPLAY" />);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'DARK' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'EXTERNAL' }));
+    fireEvent.click(screen.getByRole('button', { name: 'DARK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'EXTERNAL' }));
 
     expect(send).toHaveBeenCalledWith('SETTINGS', { theme: 'DARK' });
     expect(send).toHaveBeenCalledWith('SETTINGS', { displayTarget: 'EXTERNAL' });
@@ -91,7 +96,7 @@ describe('production settings copy', () => {
         showPlaces: true, showServices: true, showAvailableItems: true, showCollectedItems: true, showUnknownPois: true,
         iconZoomThresholdPercent: 0, labelZoomThresholdPercent: 0,
       },
-    }} send={send} onUpload={vi.fn()} />);
+    }} send={send} onUpload={vi.fn()} initialCategory="INFORMATION" />);
 
     expect(screen.getByLabelText('Map detail icons')).toHaveProperty('value', '0');
     expect(screen.getByLabelText('Map detail labels')).toHaveProperty('value', '0');
@@ -108,7 +113,7 @@ describe('production settings copy', () => {
     render(<SettingsPage catalog={catalog} state={{
       ...state,
       settings: { ...state.settings, mapFollowSmoothingPercent: 25 },
-    }} send={send} onUpload={vi.fn()} />);
+    }} send={send} onUpload={vi.fn()} initialCategory="INFORMATION" />);
 
     const slider = screen.getByRole('slider', { name: 'Map follow smoothing' });
     expect(slider).toHaveProperty('value', '25');
@@ -119,7 +124,7 @@ describe('production settings copy', () => {
   });
 
   it('does not expose the retired Thor focus setting or status', () => {
-    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
+    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} initialCategory="ACCESSIBILITY" />);
 
     expect(screen.queryByRole('checkbox', { name: 'Keep controls on top screen' })).toBeNull();
     expect(screen.queryByText(/Thor focus/i)).toBeNull();
@@ -132,13 +137,15 @@ describe('production settings copy', () => {
       status: 'AMBIGUOUS', sourceName: null, sourceLastModifiedEpochMs: null, refreshedAtEpochMs: null,
       autosaveStatus: 'UNVERIFIED', capabilities: {}, message: 'Choose one.',
       candidates: [{ id: 'content://save/1', path: 'RetroArch/saves/game.srm', lastModifiedEpochMs: 10 }]
-    } }} send={send} onUpload={vi.fn()} />);
+    } }} send={send} onUpload={vi.fn()} initialCategory="CONNECTION" />);
 
     const saveSection = document.querySelector('.save-setting')!;
     expect(saveSection.textContent).not.toMatch(/AMBIGUOUS|UNVERIFIED|RetroArch\/saves|Choose one/i);
     fireEvent.click(screen.getByRole('button', { name: /SAVE 1.*game.srm/i }));
 
     expect(send).toHaveBeenCalledWith('SELECT_SAVE', { documentId: 'content://save/1' });
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
     expect(document.querySelector('.mapper-setting')?.textContent).toMatch(/AMBIGUOUS|UNVERIFIED|RetroArch\/saves\/game.srm/i);
   });
 
@@ -148,6 +155,7 @@ describe('production settings copy', () => {
       state={{ ...state, mapperAvailable: false } as State}
       send={vi.fn()}
       onUpload={vi.fn()}
+      initialCategory="ADVANCED"
       onOpenMapper={vi.fn()}
     />);
 
@@ -157,7 +165,7 @@ describe('production settings copy', () => {
   it('opens the isolated mapper and clears only inactive catalog caches', () => {
     const send = vi.fn();
     const onOpenMapper = vi.fn();
-    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} mapperAvailable onOpenMapper={onOpenMapper} />);
+    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} mapperAvailable onOpenMapper={onOpenMapper} initialCategory="ADVANCED" />);
 
     fireEvent.click(screen.getByRole('button', { name: 'CAPTURE MEMORY REPORT' }));
     fireEvent.click(screen.getByRole('button', { name: 'REMOVE UNUSED GAME DATA' }));
@@ -170,7 +178,7 @@ describe('production settings copy', () => {
   it('keeps the capability report beside but independent from memory capture', () => {
     const onOpenCapabilities = vi.fn();
     const onOpenMapper = vi.fn();
-    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} onOpenCapabilities={onOpenCapabilities} mapperAvailable onOpenMapper={onOpenMapper} />);
+    render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} onOpenCapabilities={onOpenCapabilities} mapperAvailable onOpenMapper={onOpenMapper} initialCategory="ADVANCED" />);
 
     expect(screen.getByText('DEBUG')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'COMPATIBILITY REPORT' }));
@@ -182,7 +190,7 @@ describe('production settings copy', () => {
   });
 
   it('confines performance-log export to the Debug section', () => {
-    const { container } = render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
+    const { container } = render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} initialCategory="ADVANCED" />);
 
     const exportLink = screen.getByRole('link', { name: 'EXPORT PERFORMANCE LOG' });
     expect(exportLink.getAttribute('href')).toBe('dualdex://performance/export');
@@ -194,8 +202,11 @@ describe('production settings copy', () => {
   it('disables the capability report when no ROM is loaded', () => {
     render(<SettingsPage catalog={null} state={{ ...state, catalogReady: false, catalogName: null }} send={vi.fn()} onUpload={vi.fn()} />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
     const button = screen.getByRole('button', { name: 'NO GAME LOADED' });
     expect((button as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'General' }));
     expect(screen.getByText(/No game is open.*choices become your defaults/i)).toBeTruthy();
   });
 });

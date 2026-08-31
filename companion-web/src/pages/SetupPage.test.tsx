@@ -76,6 +76,16 @@ describe('RetroArch setup', () => {
     expect(screen.getByText(/12 games found/i)).toBeTruthy();
   });
 
+  it('offers a direct folder reselect when RetroArch configuration cannot be verified', () => {
+    render(<SetupPage state={{
+      ...state,
+      retroArch: { ...state.retroArch, configState: 'FAILED' },
+    }} send={vi.fn()} />);
+
+    expect(screen.getByRole('alert').textContent).toContain('could not be verified');
+    expect(screen.getByRole('link', { name: 'RESELECT RETROARCH FOLDER' }).getAttribute('href')).toBe('dualdex://grant/retroarch');
+  });
+
   it('offers an explicit guide retry only after a failed activation', () => {
     const failed = { ...state, retroArch: { ...state.retroArch, resolution: 'FAILED' } };
     const { rerender } = render(<SetupPage state={failed} send={vi.fn()} />);

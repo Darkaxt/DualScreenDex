@@ -1,0 +1,131 @@
+{
+  "checkpoint": {
+    "branchCommit": "4b7122ca53cbd82b6fbdad8472a29a2ecb284b00",
+    "apkSha256": "f078c6afbd4dfb2636df95f8d6c1c764d5ef530fe85d654acca3fc501271c2cb",
+    "package": "com.darkaxt.dualdex.debug",
+    "productionUiChangedDuringAudit": false
+  },
+  "authority": {
+    "catalogReady": true,
+    "gameAccessReady": true,
+    "knowledgeMode": "DISCOVERED",
+    "resolution": "ACTIVE",
+    "activeSource": "Modern Emerald (v3.5).gba",
+    "contentSha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+    "contentCrc32": "8C7DBECA",
+    "indexedRoms": 1
+  },
+  "android": {
+    "avd": "DualDexThorQaApi35",
+    "serial": "emulator-5556",
+    "emulatorConsoleMultidisplayId": 1,
+    "androidDisplayIdDuringCapture": 4,
+    "physicalRaster": [1240, 1080],
+    "appAreaRaster": [1240, 1025],
+    "densityDpi": 369,
+    "fontScale": 0.95
+  },
+  "webView": {
+    "innerWidth": 538,
+    "innerHeight": 445,
+    "devicePixelRatio": 2.3062500953674316,
+    "visualViewportWidth": 538.1029663085938,
+    "visualViewportHeight": 445.3116455078125,
+    "captureScreenshotRaster": [1241, 1027]
+  },
+  "measurements": {
+    "trainer": {
+      "screenClient": [538, 445],
+      "screenScroll": [588, 445],
+      "headerClient": [538, 59],
+      "headerScroll": [588, 59],
+      "headerActionsClient": [46, 59],
+      "headerActionsScroll": [96, 59],
+      "destinationSwitcherClient": [46, 59],
+      "destinationSwitcherScroll": [96, 59],
+      "result": "The Card control is visible; the Progress destination is fully outside the clipped viewport."
+    },
+    "map": {
+      "visiblePoiButtons": 9,
+      "poiButtonCssSize": [24, 24],
+      "adjacentPoiCenterSpacingCssPx": 19.17,
+      "result": "Adjacent targets overlap by approximately 4.83 CSS px before any 44 px touch-halo expansion."
+    },
+    "areaGuide": {
+      "contentClient": [396, 310],
+      "contentScroll": [396, 785],
+      "duplicateVisibleConnectedAreaLabels": "Oldale Town",
+      "duplicateVisibleCountAtTop": 4,
+      "virtualListRowHeightCssPx": 56,
+      "virtualListMaximumViewportCssPx": 280
+    },
+    "settings": {
+      "contentClient": [538, 383],
+      "contentScroll": [538, 2085],
+      "changeRomControlHeightCssPx": 38.27,
+      "retroArchSetupControlHeightCssPx": 37.99,
+      "displayModeControlHeightCssPx": 36.0
+    },
+    "retroArchSetup": {
+      "contentClient": [538, 383],
+      "contentScroll": [538, 715],
+      "actionControlHeightCssPx": 37.99
+    },
+    "themeContrast": [
+      {
+        "foreground": "#fcfcfc",
+        "background": "#dcdc02",
+        "contrastRatio": 1.43,
+        "sample": "Settings action labels"
+      },
+      {
+        "foreground": "#dcdc02",
+        "background": "#e3e8cc",
+        "contrastRatio": 1.17,
+        "sample": "RetroArch Setup action labels"
+      }
+    ],
+    "pokedexBrowse": {
+      "screenClient": [538, 445],
+      "screenScroll": [538, 445],
+      "listClient": [538, 254],
+      "listScroll": [538, 40232],
+      "rowHeightCssPx": 94,
+      "approximatelyVisibleRows": 2.7
+    },
+    "pokedexEntry": {
+      "activeTab": "ENTRY",
+      "screenClient": [538, 445],
+      "compactScrollerClient": [538, 383],
+      "compactScrollerScroll": [538, 627],
+      "contentClient": [538, 492],
+      "contentScroll": [538, 492],
+      "semanticHorizontalOverflow": false
+    },
+    "battleAttack": {
+      "contentClient": [538, 203],
+      "contentScroll": [538, 222],
+      "avoidableScrollExtentCssPx": 19
+    }
+  },
+  "screenCaptureNotes": {
+    "scriptedNamedStates": 25,
+    "targetedCorrectedCaptures": 1,
+    "excludedCapture": "The initial scripted 02-detail-entry capture retained MORE as the active tab. It was excluded and replaced by pokedex-detail-entry.png with activeTab=ENTRY."
+  },
+  "screenshots": {
+    "battle-attack.png": "49be727efd594868d87eff65f286f9d9914b5f97b3974e00c35378e71e24dc7f",
+    "battle-entry.png": "6c8e63693c04f3b3be5cecc66154d9684b01586751f0f87a4d5bf5a46a9c9254",
+    "battle-rarity.png": "e7aa7e8ac8e665c5bee84cad6973fa0beec6036fa3f816165a1cb3ea4288003a",
+    "map-area-guide.png": "62f4c6f6ef482a378f518d85041d3a34c95652d550fca51e1ccd6c3fc7c0f686",
+    "map-local.png": "d721bf16dfc63591d5ed39a31dc73e851fad803e12ff9ac483e77b496f6f4a3d",
+    "party-overview.png": "f8dc92e567cd04959dd257ab3b2a93dc430d9a146aa2552e07e718ffed0763b6",
+    "pokedex-browse.png": "3cd5c64401b2d6cb96011f55b911a51701c36dab4de5879cf4a117c1c4d789b4",
+    "pokedex-detail-entry.png": "73faff2c02bd19b883e86d51f3df5c434299aedcfc019465891dece899160d47",
+    "retroarch-setup.png": "156588e3dea1d6b159ed559c38dca0521cf677b396ff786bfeb13067abb60c45",
+    "settings.png": "eff4ec051d73b2f3d1435892c84033e23d4205b71ca8a4aaced31cd70490cbb8",
+    "specimens-list.png": "ccb44c7a166d795927c1396c1d7780f98a7ee07d14da3e0ca175bda8d24d663f",
+    "trainer-card.png": "b2145d39930da55221290dce306f45cdfa7e2f15e739dcf6d72151357b2f0ad3",
+    "trainer-progress.png": "c40bfddcc09c9f4c395a352b5c246615c1e36604f28c1612c14310491f94c34f"
+  }
+}

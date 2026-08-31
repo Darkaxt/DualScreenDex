@@ -1,5 +1,5 @@
 import type { Catalog, Move, Rarity as RarityModel, State } from '../models';
-import { DexIcon, Header, Segmented, Sprite, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
+import { DexIcon, Header, Sprite, StatusMarks, tabPanelAttributes, Tabs, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
 
 export function BattlePage({ catalog, state, send, openMove, openSpecies }: { catalog: Catalog; state: State; send: (type: string, values?: Record<string, string | number | boolean | null>) => void; openMove: (moveId: number) => void; openSpecies: (speciesId: number) => void }) {
@@ -9,28 +9,34 @@ export function BattlePage({ catalog, state, send, openMove, openSpecies }: { ca
   const species = catalog.species.find(item => item.id === opponent.speciesId)!;
   const status = state.speciesState[species.id];
   const selectedMove = catalog.moves.find(move => move.id === battle.selectedMoveId);
-  const tabs = ['ENTRY', state.settings.attackEnabled ? 'ATTACK' : null, state.settings.rarityEnabled ? 'RARITY' : null, state.settings.movesEnabled ? 'MOVES' : null].filter(Boolean) as string[];
+  const tabs = ['ENTRY', 'ATTACK', 'RARITY', 'MOVES'];
+  const disabledTabs = [
+    !state.settings.attackEnabled ? 'ATTACK' : null,
+    !state.settings.rarityEnabled ? 'RARITY' : null,
+    !state.settings.movesEnabled ? 'MOVES' : null,
+  ].filter(Boolean) as string[];
   const hidden = state.settings.knowledgeMode === 'HIDDEN';
+  const displayTab = hidden || disabledTabs.includes(state.battleTab) ? 'ENTRY' : state.battleTab;
   const manualTargets = battle.opponents.length > 1 && battle.targetMode === 'MANUAL_TARGET_FALLBACK';
   const title = battle.encounterKind === 'WILD'
     ? 'WILD ENCOUNTER'
     : battle.encounterKind === 'TRAINER' ? 'TRAINER BATTLE' : 'ENCOUNTER';
   return <section class={`screen battle-screen ${manualTargets ? 'battle-double' : 'battle-single'}`}>
-    <Header title={title} onSettings={() => send('SCREEN', { screen: 'SETTINGS' })} />
+    <Header title={title} gameTime={state.gameTime} onSettings={() => send('SCREEN', { screen: 'SETTINGS' })} />
     {manualTargets && <div class="target-switch">{battle.opponents.map((target, index) => {
       const targetSpecies = catalog.species.find(item => item.id === target.speciesId);
-      return <button key={`${target.speciesId}-${index}`} class={index === battle.targetIndex ? 'active' : ''} onClick={() => send('TARGET', { index })}>{targetSpecies?.name}<span>LV {target.level}</span></button>;
+      return <button key={`${target.speciesId}-${index}`} aria-pressed={index === battle.targetIndex} class={index === battle.targetIndex ? 'active' : ''} onClick={() => send('TARGET', { index })}>{targetSpecies?.name}<span>LV {target.level}</span></button>;
     })}</div>}
     <div class="battle-identity">
       <Sprite speciesId={species.id} name={species.name} available={species.hasSprite} catalogHash={catalog.hash} large />
-      <div class="battle-identity-copy"><small>TARGET · LV {opponent.level}{battle.opponents.length > 1 && battle.targetMode === 'AUTOMATIC' && <span class="automatic-target">AUTOMATIC TARGET</span>}</small><div class="battle-name-row"><h1>{species.name}</h1><RarityStars rarity={opponent.rarity} /><button class="battle-dex-link" aria-label={`Open ${species.name} in Pokédex`} onClick={() => openSpecies(species.id)}><DexIcon /></button></div><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(opponent.typeIds?.length ? opponent.typeIds : species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
+      <div class="battle-identity-copy"><small>TARGET · LV {opponent.level}{battle.opponents.length > 1 && battle.targetMode === 'AUTOMATIC' && <span class="automatic-target">AUTOMATIC TARGET</span>}</small><div class="battle-name-row"><h2>{species.name}</h2><RarityStars rarity={opponent.rarity} /><button class="battle-dex-link" aria-label={`Open ${species.name} in Pokédex`} onClick={() => openSpecies(species.id)}><DexIcon /></button></div><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(opponent.typeIds?.length ? opponent.typeIds : species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
     </div>
-    {!hidden && <Segmented values={tabs} active={state.battleTab} onSelect={tab => send('TAB', { tab })} label="Battle information" />}
-    <div class="battle-content" data-scroll-region>
-      {(hidden || state.battleTab === 'ENTRY') && <Entry catalog={catalog} species={species} unlocked={state.settings.knowledgeMode === 'DISCOVERED' || status?.caught} />}
-      {!hidden && state.battleTab === 'ATTACK' && <Attack catalog={catalog} move={selectedMove} state={state} openMove={openMove} />}
-      {!hidden && state.battleTab === 'RARITY' && <Rarity rarity={opponent.rarity} />}
-      {!hidden && state.battleTab === 'MOVES' && <Moves catalog={catalog} moves={opponent.moves} showFrequency={!status?.caught} openMove={openMove} />}
+    {!hidden && <Tabs values={tabs} active={displayTab} disabledValues={disabledTabs} panelPrefix="battle-information" onSelect={tab => send('TAB', { tab })} label="Battle information" />}
+    <div class="battle-content" data-scroll-region {...(!hidden ? tabPanelAttributes('battle-information', displayTab) : {})}>
+      {(hidden || displayTab === 'ENTRY') && <Entry catalog={catalog} species={species} unlocked={state.settings.knowledgeMode === 'DISCOVERED' || status?.caught} />}
+      {!hidden && displayTab === 'ATTACK' && <Attack catalog={catalog} move={selectedMove} state={state} openMove={openMove} />}
+      {!hidden && displayTab === 'RARITY' && <Rarity rarity={opponent.rarity} />}
+      {!hidden && displayTab === 'MOVES' && <Moves catalog={catalog} moves={opponent.moves} showFrequency={!status?.caught} openMove={openMove} />}
     </div>
   </section>;
 }

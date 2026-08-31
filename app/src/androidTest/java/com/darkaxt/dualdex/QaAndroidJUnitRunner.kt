@@ -5,12 +5,9 @@ import android.content.Context
 import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.test.runner.AndroidJUnitRunner
-import com.darkaxt.dualdex.retroarch.ConfigParameter
-import com.darkaxt.dualdex.retroarch.NetworkResponse
-import com.darkaxt.dualdex.retroarch.RetroArchCommandPort
+import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.retroarch.RetroArchStatus
 import com.darkaxt.dualdex.retroarch.RomIndexEntry
-import com.darkaxt.dualdex.retroarch.SessionMonitor
 import com.darkaxt.dualdex.setup.GuideLoadFault
 import com.darkaxt.dualdex.setup.SetupPickerActivityResultLauncher
 import com.darkaxt.dualdex.setup.SetupPickerActivityResultRegistry
@@ -18,6 +15,7 @@ import com.darkaxt.dualdex.storage.RomIndexStore
 import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import java.io.File
+import java.util.ArrayDeque
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -132,18 +130,57 @@ class QaDualDexApplication : DualDexApplication() {
         synchronized(pickerCallbacks) { pickerCallbacks += "rom" }
     }
 
-    protected override fun sessionMonitorFactory(): () -> SessionMonitor = {
-        SessionMonitor(object : RetroArchCommandPort {
-            override fun requestStatus() = Unit
+    protected override fun networkCommandTransportFactory(): () -> NetworkCommandTransport =
+        { QaGuideNetworkCommandTransport(guideStatus::get) }
 
-            override fun requestVersion() = Unit
+    private class QaGuideNetworkCommandTransport(
+        private val status: () -> RetroArchStatus,
+    ) : NetworkCommandTransport {
+        private val replies = ArrayDeque<ByteArray>()
+        private var closed = false
 
-            override fun requestConfig(parameter: ConfigParameter) = Unit
+        @Synchronized
+        override fun send(payload: ByteArray) {
+            check(!closed) { "network command transport is closed" }
+            val command = payload.toString(Charsets.US_ASCII).trim()
+            val response = when {
+                command == "GET_STATUS" -> status().wirePacket()
+                command == "VERSION" -> "1.0.0-dualdex-qa".toByteArray(Charsets.US_ASCII)
+                command.startsWith("GET_CONFIG_PARAM ") -> command.toByteArray(Charsets.US_ASCII)
+                command.startsWith("READ_CORE_MEMORY ") ->
+                    "READ_CORE_MEMORY ${command.substringAfter("READ_CORE_MEMORY ").substringBefore(' ')} ERROR"
+                        .toByteArray(Charsets.US_ASCII)
+                else -> return
+            }
+            replies.add(response)
+        }
 
-            override fun poll(): List<NetworkResponse> = listOf(NetworkResponse.Status(guideStatus.get()))
+        @Synchronized
+        override fun poll(): ByteArray? {
+            check(!closed) { "network command transport is closed" }
+            return replies.pollFirst()
+        }
 
-            override fun close() = Unit
-        })
+        @Synchronized
+        override fun close() {
+            closed = true
+            replies.clear()
+        }
+
+        private fun RetroArchStatus.wirePacket(): ByteArray = when (this) {
+            RetroArchStatus.Contentless -> "GET_STATUS CONTENTLESS"
+            is RetroArchStatus.Running -> buildString {
+                append(if (paused) "GET_STATUS PAUSED " else "GET_STATUS PLAYING ")
+                append(systemId)
+                append(',')
+                append(gameBasename)
+                crc32?.let {
+                    append(",crc32=")
+                    append(it)
+                }
+            }
+            is RetroArchStatus.Malformed -> raw
+        }.toByteArray(Charsets.US_ASCII)
     }
 
     private data class GuideFixture(

@@ -7,7 +7,7 @@ afterEach(cleanup);
 
 describe('Nature detail', () => {
   it('explains a stat-changing nature without diagnostic copy', () => {
-    render(<NatureDetail nature={changing} onBack={() => undefined} />);
+    render(<NatureDetail nature={changing} gameTime={gameTime} onBack={() => undefined} />);
 
     expect(screen.getByText('RESOLUTE')).toBeTruthy();
     expect(screen.getByText('ATTACK ×1.12')).toBeTruthy();
@@ -18,7 +18,7 @@ describe('Nature detail', () => {
   });
 
   it('explains a neutral nature without inventing a boost', () => {
-    render(<NatureDetail nature={neutral} onBack={() => undefined} />);
+    render(<NatureDetail nature={neutral} gameTime={gameTime} onBack={() => undefined} />);
 
     expect(screen.getByText('No stat changes')).toBeTruthy();
     expect(screen.getByText('No flavor preference')).toBeTruthy();
@@ -26,6 +26,7 @@ describe('Nature detail', () => {
   });
 });
 
+const gameTime = { hours: 12, minutes: 34, phase: 'DAY', phaseProgress: .5 } as const;
 const changing: NatureInfo = {
   id: 7, name: 'Resolute',
   statMultipliers: { ATTACK: 112, DEFENSE: 100, SPEED: 100, SPECIAL_ATTACK: 88, SPECIAL_DEFENSE: 100 },

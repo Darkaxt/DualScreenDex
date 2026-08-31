@@ -10,7 +10,7 @@ export function AbilityDetail({ catalog, state, abilityId, onBack }: { catalog: 
   );
   const mechanics = userFacingAbilityMechanics(ability.mechanics);
   return <section class="screen ability-detail-screen">
-    <Header title={ability.name} onBack={onBack} />
+    <Header title={ability.name} gameTime={state.gameTime} onBack={onBack} />
     <div class="ability-detail-content" data-scroll-region>
       <div class="paper-panel"><p class="eyebrow">EFFECT</p><p class="entry-copy">{ability.description || gameplayCopy.abilityUnavailable}</p></div>
       {mechanics.length > 0 && <div class="paper-panel"><p class="eyebrow">BATTLE EFFECTS</p><AbilityMechanics mechanics={mechanics} /></div>}

@@ -3,9 +3,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const styles = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8')
+const componentsSource = readFileSync(join(process.cwd(), 'src', 'components.tsx'), 'utf8')
 const areaGuideSource = readFileSync(join(process.cwd(), 'src', 'pages', 'AreaGuideDrawer.tsx'), 'utf8')
 const battleSource = readFileSync(join(process.cwd(), 'src', 'pages', 'BattlePage.tsx'), 'utf8')
 const pokemonAreaSource = readFileSync(join(process.cwd(), 'src', 'pages', 'PokemonAreaMap.tsx'), 'utf8')
+const settingsSource = readFileSync(join(process.cwd(), 'src', 'pages', 'SettingsPage.tsx'), 'utf8')
 
 describe('screen layout containment', () => {
   it('keeps root titles left aligned when the header also has actions', () => {
@@ -58,17 +60,46 @@ describe('screen layout containment', () => {
     expect(styles).not.toContain('[data-map-navigation-row]')
   })
 
+  it('keeps every Stage 2 map action at the touch floor while preserving small marker artwork', () => {
+    const localPoi = styles.match(/\.map-poi-marker\s*\{([^}]*)\}/)?.[1]
+    const atlasMarker = styles.match(/\.atlas-location-marker\s*\{([^}]*)\}/)?.[1]
+    const localSceneAction = styles.match(/\.map-local-poi-label:is\(button\)\s*\{([^}]*)\}/)?.[1]
+    const clusterHeader = styles.match(/\.map-poi-cluster-popover > header\s*\{([^}]*)\}/)?.[1]
+    const clusterClose = styles.match(/\.map-poi-cluster-popover > header button\s*\{([^}]*)\}/)?.[1]
+    const poiCardClose = styles.match(/\.map-poi-card > button\s*\{([^}]*)\}/)?.[1]
+    const habitatMarker = styles.match(/\.pokemon-area-canvas > button:not\(\.pokemon-area-dex\)\s*\{([^}]*)\}/)?.[1]
+    const habitatDex = styles.match(/\.pokemon-area-dex\s*\{([^}]*)\}/)?.[1]
+
+    expect(localPoi).toMatch(/width\s*:\s*44px/)
+    expect(localPoi).toMatch(/height\s*:\s*44px/)
+    expect(atlasMarker).toMatch(/width\s*:\s*44px/)
+    expect(atlasMarker).toMatch(/height\s*:\s*44px/)
+    expect(localSceneAction).toMatch(/min-height\s*:\s*44px/)
+    expect(styles).toMatch(/\.map-header-actions \.header-action\s*\{[^}]*min-width\s*:\s*46px/)
+    expect(clusterHeader).toMatch(/min-height\s*:\s*45px/)
+    expect(clusterClose).toMatch(/min-height\s*:\s*44px/)
+    expect(poiCardClose).toMatch(/width\s*:\s*44px/)
+    expect(poiCardClose).toMatch(/height\s*:\s*44px/)
+    expect(habitatMarker).toMatch(/width\s*:\s*44px/)
+    expect(habitatMarker).toMatch(/height\s*:\s*44px/)
+    expect(habitatDex).toMatch(/width\s*:\s*44px/)
+    expect(habitatDex).toMatch(/height\s*:\s*44px/)
+    expect(styles).toMatch(/\.map-poi-symbol[^{}]*\{[^}]*width\s*:\s*24px[^}]*height\s*:\s*24px/)
+    expect(styles).toMatch(/\.atlas-location-marker span[^{}]*\{[^}]*width\s*:\s*11px[^}]*height\s*:\s*11px/)
+  })
+
   it('bounds the Area Guide over the map and gives long guide sections one windowed scroll region', () => {
     const drawerRule = styles.match(/\.area-guide-drawer\s*\{([^}]*)\}/)?.[1]
     const contentRule = styles.match(/\.area-guide-content\s*\{([^}]*)\}/)?.[1]
-    const listRule = styles.match(/\.area-guide-windowed-list\.is-virtual\s*\{([^}]*)\}/)?.[1]
+    const listRule = styles.match(/\.area-guide-windowed-list\.is-windowed\s*\{([^}]*)\}/)?.[1]
 
     expect(drawerRule).toMatch(/position\s*:\s*absolute/)
     expect(drawerRule).toMatch(/bottom\s*:\s*12px/)
     expect(drawerRule).toMatch(/overflow\s*:\s*hidden/)
     expect(contentRule).toMatch(/min-height\s*:\s*0/)
     expect(contentRule).toMatch(/overflow-y\s*:\s*auto/)
-    expect(listRule).toMatch(/overflow-y\s*:\s*auto/)
+    expect(listRule).toMatch(/overflow\s*:\s*hidden/)
+    expect(listRule).not.toMatch(/overflow-y\s*:\s*auto/)
   })
 
   it('does not give the Area Guide its own polling or animation loop', () => {
@@ -132,12 +163,15 @@ describe('screen layout containment', () => {
     expect(metaRule).toMatch(/justify-content\s*:\s*space-between/)
   })
 
-  it('keeps Trainer destination switching in compact header controls', () => {
+  it('allocates the complete Trainer destination switcher inside the compact header', () => {
     const trainerRule = styles.match(/\.trainer-screen\s*\{([^}]*)\}/)?.[1]
+    const hostRule = styles.match(/\.header-actions:has\(> \.trainer-destination-switcher\)\s*\{([^}]*)\}/)?.[1]
     const switcherRule = styles.match(/\.trainer-destination-switcher\s*\{([^}]*)\}/)?.[1]
     const actionRule = styles.match(/\.trainer-destination-action\s*\{([^}]*)\}/)?.[1]
 
     expect(trainerRule).toMatch(/grid-template-rows\s*:\s*auto minmax\(0, 1fr\)/)
+    expect(hostRule).toMatch(/grid-auto-columns\s*:\s*auto/)
+    expect(switcherRule).toMatch(/width\s*:\s*96px/)
     expect(switcherRule).toMatch(/grid-auto-columns\s*:\s*48px/)
     expect(actionRule).toMatch(/min-width\s*:\s*48px/)
     expect(actionRule).toMatch(/min-height\s*:\s*48px/)
@@ -165,10 +199,89 @@ describe('screen layout containment', () => {
     expect(specimenRule).toMatch(/box-shadow\s*:.*var\(--ui-raised-shadow\)/)
   })
 
+  it('keeps Stage 1 Settings and Setup actions at the touch floor', () => {
+    const settingsUpload = styles.match(/\.settings-upload\s*\{([^}]*)\}/)?.[1]
+    const retroArchAction = styles.match(/\.retroarch-setting button\s*\{([^}]*)\}/)?.[1]
+    const setupAction = styles.match(/\.setup-action\s*\{([^}]*)\}/)?.[1]
+    const displayModeAction = styles.match(/\.display-mode > a\s*\{([^}]*)\}/)?.[1]
+    const capabilityAction = styles.match(/\.capability-actions button, \.capability-error button\s*\{([^}]*)\}/)?.[1]
+
+    expect(settingsUpload).toMatch(/min-height\s*:\s*44px/)
+    expect(retroArchAction).toMatch(/min-height\s*:\s*44px/)
+    expect(setupAction).toMatch(/min-height\s*:\s*44px/)
+    expect(displayModeAction).toMatch(/min-height\s*:\s*44px/)
+    expect(capabilityAction).toMatch(/min-height\s*:\s*44px/)
+  })
+
+  it('keeps Settings categories, save choices, and toggles touch and keyboard visible', () => {
+    const categoryRule = styles.match(/\.settings-category-row\s*\{([^}]*)\}/)?.[1]
+    const saveRule = styles.match(/\.save-candidates button\s*\{([^}]*)\}/)?.[1]
+    const toggleFocusRule = styles.match(/\.toggle-row input:focus-visible \+ i\s*\{([^}]*)\}/)?.[1]
+
+    expect(categoryRule).toMatch(/min-height\s*:\s*52px/)
+    expect(styles).toMatch(/\.settings-category-row small\s*\{[^}]*color\s*:\s*var\(--semantic-surface-fg\)/)
+    expect(saveRule).toMatch(/min-height\s*:\s*44px/)
+    expect(toggleFocusRule).toMatch(/outline\s*:\s*3px solid var\(--semantic-selected-border\)/)
+    expect(settingsSource).toContain('class="primary-action"')
+    expect(settingsSource).toContain('class="diagnostic-action"')
+    expect(settingsSource).toContain('class="danger-action"')
+  })
+
+  it('routes semantic controls through contrast-safe pairs instead of raw ROM roles', () => {
+    const rootRule = styles.match(/:root\s*\{([^}]*)\}/)?.[1]
+    const focusRule = styles.match(/:where\(button, a\[href\], input, select, textarea\):focus-visible\s*\{([^}]*)\}/)?.[1]
+    const trainerSelection = styles.match(/\.trainer-destination-action\[aria-pressed="true"\]\s*\{([^}]*)\}/)?.[1]
+    const settingsUpload = styles.match(/\.settings-upload\s*\{([^}]*)\}/)?.[1]
+    const setupAction = styles.match(/\.setup-action\s*\{([^}]*)\}/)?.[1]
+    const setupPrimary = styles.match(/\.setup-action-primary\s*\{([^}]*)\}/)?.[1]
+
+    expect(rootRule).toMatch(/--semantic-primary-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-secondary-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-selected-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-surface-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-danger-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-status-bg\s*:/)
+    expect(rootRule).toMatch(/--semantic-focus\s*:/)
+    expect(focusRule).toMatch(/var\(--semantic-focus\)/)
+    expect(trainerSelection).toMatch(/color\s*:\s*var\(--semantic-selected-fg\)/)
+    expect(trainerSelection).toMatch(/background\s*:\s*var\(--semantic-selected-bg\)/)
+    expect(settingsUpload).toMatch(/color\s*:\s*var\(--semantic-secondary-fg\)/)
+    expect(settingsUpload).toMatch(/background\s*:\s*var\(--semantic-secondary-bg\)/)
+    expect(setupAction).toMatch(/color\s*:\s*var\(--semantic-secondary-fg\)/)
+    expect(setupPrimary).toMatch(/color\s*:\s*var\(--semantic-primary-fg\)/)
+    expect(styles).toMatch(/\.capability-actions button[^{}]*\{[^}]*color\s*:\s*var\(--semantic-primary-fg\)/)
+    expect(styles).toMatch(/\.debug-actions \.danger-action[^{}]*\{[^}]*background\s*:\s*var\(--semantic-danger-bg\)/)
+    expect(settingsSource).toContain('class="danger-action"')
+    expect(settingsSource).toContain('REMOVE UNUSED GAME DATA')
+  })
+
+  it('keeps canonical route headings in the header and avoids a nested Map main landmark', () => {
+    expect(componentsSource).toContain('<h1 ref={headingRef} tabIndex={-1}>{title}</h1>')
+    expect(pokemonAreaSource).not.toContain('<h1')
+    expect(battleSource).not.toContain('<h1')
+    expect(readFileSync(join(process.cwd(), 'src', 'pages', 'MapPage.tsx'), 'utf8')).not.toMatch(/<main[\s>]/)
+  })
+
+  it('reserves global feedback below the screen instead of overlaying route controls', () => {
+    const deviceRule = styles.match(/(?:^|\n)\.device-screen\s*\{([^}]*)\}/)?.[1]
+    const hostRule = styles.match(/\.screen-host\s*\{([^}]*)\}/)?.[1]
+    const feedbackRule = styles.match(/\.global-feedback\s*\{([^}]*)\}/)?.[1]
+
+    expect(deviceRule).toMatch(/grid-template-rows\s*:\s*minmax\(0, 1fr\) auto/)
+    expect(hostRule).toMatch(/position\s*:\s*relative/)
+    expect(feedbackRule).toMatch(/pointer-events\s*:\s*none/)
+    expect(styles).toMatch(/\.error-toast button\s*\{[^}]*pointer-events\s*:\s*auto/)
+  })
+
   it('enforces the physical text floor on the smallest new-route labels', () => {
-    expect(styles).toContain('--ui-min-text: 11.2px')
+    expect(styles).toContain('--ui-min-text: 12px')
+    expect(styles).toMatch(/\.setup-screen\s*\{[^}]*--ui-min-text\s*:\s*12\.4px/)
+    expect(styles).toMatch(/\.settings-screen\s*\{[^}]*--ui-min-text\s*:\s*12\.4px/)
     expect(styles).toMatch(/\.challenge-card > div:first-child span[^{}]*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.6rem\)/)
     expect(styles).toMatch(/\.damage-forecast-grid small[^{}]*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.64em\)/)
     expect(styles).toMatch(/\.area-guide-exits > small[^{}]*\{[^}]*font\s*:\s*900 max\(var\(--ui-min-text\),\s*\.58rem\)/)
+    expect(styles).toMatch(/\.height-comparison-heading strong\s*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.76em\)/)
+    expect(styles).toMatch(/\.height-ruler-line i\s*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.54em\)/)
+    expect(styles).toMatch(/\.setting-note,\s*\.range-setting span\s*\{[^}]*font-size\s*:\s*max\(var\(--ui-min-text\),\s*\.85em\)/)
   })
 })

@@ -116,6 +116,12 @@ describe('production application shell', () => {
     expect(gameShell.dataset.theme).toBe('game');
     expect(gameShell.style.getPropertyValue('--theme-field')).toBe('#123456');
     expect(gameShell.style.getPropertyValue('--theme-accent-text')).toBe('#ffffff');
+    expect(gameShell.style.getPropertyValue('--semantic-primary-bg')).toBe('#9d302a');
+    expect(gameShell.style.getPropertyValue('--semantic-primary-fg')).toBe('#ffffff');
+    expect(gameShell.style.getPropertyValue('--semantic-secondary-bg')).toBe('#345678');
+    expect(gameShell.style.getPropertyValue('--semantic-secondary-fg')).toBe('#ffffff');
+    expect(gameShell.style.getPropertyValue('--semantic-surface-bg')).toBe('#fff7db');
+    expect(gameShell.style.getPropertyValue('--semantic-surface-fg')).toBe('#1c201d');
     first.unmount();
 
     vi.mocked(bootstrap).mockResolvedValueOnce({
@@ -192,6 +198,37 @@ describe('production application shell', () => {
     expect(action).toHaveBeenCalledWith('OPEN_TRAINER', {});
   });
 
+  it('restores the initiating control after a server-driven screen Back', async () => {
+    vi.mocked(action)
+      .mockResolvedValueOnce({ ...fixture.state, screen: 'SETTINGS', settingsReturnScreen: 'POKEDEX' })
+      .mockResolvedValueOnce({ ...fixture.state, screen: 'POKEDEX' });
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'SETTINGS' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Settings' })));
+  });
+
+  it('retries a failed action with the same destination identity', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.mocked(action)
+      .mockRejectedValueOnce(new Error('temporary action failure'))
+      .mockResolvedValueOnce({ ...fixture.state, screen: 'SETTINGS', settingsReturnScreen: 'POKEDEX' });
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('That action could not be completed');
+    fireEvent.click(screen.getByRole('button', { name: 'RETRY' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'SETTINGS' })).toBeTruthy();
+    expect(action).toHaveBeenNthCalledWith(1, 'SCREEN', { screen: 'SETTINGS' });
+    expect(action).toHaveBeenNthCalledWith(2, 'SCREEN', { screen: 'SETTINGS' });
+    consoleError.mockRestore();
+  });
+
   it('drives the Trainer Card shortcut only from the first Pokemon license', async () => {
     vi.mocked(bootstrap).mockResolvedValueOnce({
       ...fixture,
@@ -235,9 +272,12 @@ describe('production application shell', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Party slot 1: SPARK/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Overgrow' }));
     expect(screen.getByText('Powers up Grass-type moves when HP is low.')).toBeTruthy();
+    expect(document.querySelectorAll('.screen h1')).toHaveLength(1);
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Overgrow' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(screen.getByRole('dialog', { name: 'SPARK details' })).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Overgrow' })));
 
     fireEvent.click(screen.getByRole('button', { name: 'Close SPARK details' }));
     expect(screen.queryByRole('dialog', { name: 'SPARK details' })).toBeNull();
@@ -524,6 +564,27 @@ describe('production application shell', () => {
     expect(window.history.state).toEqual({ dualdexRouteIndex: 2 });
   });
 
+  it('unwinds a restored Move List recovery route through the Settings index', async () => {
+    window.history.replaceState({ dualdexRouteIndex: 0 }, '', encodeRouteHash([{
+      kind: 'SETTINGS',
+      category: 'INFORMATION',
+      control: 'MOVE_LIST',
+      catalogHash: fixture.catalog!.hash,
+    }], fixture.catalog!.hash));
+    render(<App />);
+
+    const moveList = await screen.findByRole('combobox', { name: 'Move list' });
+    expect(document.activeElement).toBe(moveList);
+
+    window.dispatchEvent(new Event('dualdexback', { cancelable: true }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Information' })).toBeTruthy());
+    expect(window.location.hash).toContain('dualdex=');
+
+    window.dispatchEvent(new Event('dualdexback', { cancelable: true }));
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
+    expect(window.location.hash).toBe('');
+  });
+
   it('publishes opened routes and follows browser history', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: 'Open Map' }));
@@ -582,6 +643,28 @@ describe('production application shell', () => {
     expect(screen.getByText('POKÉDEX')).toBeTruthy();
   });
 
+  it('uses system Back to unwind a Settings category before exiting Settings', async () => {
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Advanced' }));
+    expect(screen.getByText('DEBUG')).toBeTruthy();
+    vi.mocked(action).mockClear();
+
+    const categoryBack = new Event('dualdexback', { cancelable: true });
+    window.dispatchEvent(categoryBack);
+    await waitFor(() => expect(screen.queryByText('DEBUG')).toBeNull());
+    expect(screen.getByRole('button', { name: 'Advanced' })).toBeTruthy();
+    expect(categoryBack.defaultPrevented).toBe(true);
+    expect(action).not.toHaveBeenCalledWith('BACK', {});
+
+    const settingsBack = new Event('dualdexback', { cancelable: true });
+    window.dispatchEvent(settingsBack);
+    await waitFor(() => expect(screen.getByText('POKÉDEX')).toBeTruthy());
+    expect(settingsBack.defaultPrevented).toBe(true);
+    expect(action).toHaveBeenCalledWith('BACK', {});
+  });
+
   it('lets an auto-opened battle replace an already open map', async () => {
     let publishState: ((state: Bootstrap['state']) => void) | undefined;
     vi.mocked(events).mockImplementationOnce((_currentVersion, listener) => {
@@ -634,10 +717,14 @@ describe('production application shell', () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Advanced' }));
     fireEvent.click(await screen.findByRole('button', { name: 'COMPATIBILITY REPORT' }));
 
     expect(await screen.findByText('LOADED ROM · READ ONLY')).toBeTruthy();
     expect(screen.queryByText('ISSUE REPORT MEMORY CAPTURE')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('DEBUG')).toBeTruthy();
   });
 
   it('opens the normalized Map locally and returns to the retained Pokédex view', async () => {
@@ -658,7 +745,7 @@ describe('production application shell', () => {
     const clock = await screen.findByText('16:48');
     expect(clock.tagName).toBe('TIME');
     expect(clock.closest('.app-header')).toBeTruthy();
-    expect(document.querySelector('.app-header-root .header-title strong')?.textContent).toBe('POKÉDEX');
+    expect(document.querySelector('.app-header-root .header-title h1')?.textContent).toBe('POKÉDEX');
   });
 });
 
@@ -730,6 +817,7 @@ describe('bootstrap authority fencing', () => {
 
     render(<App />);
     await screen.findByText('SETTINGS');
+    fireEvent.click(screen.getByRole('button', { name: 'General' }));
     const rom = new File([new Uint8Array([1])], 'catalog-b.gba');
     fireEvent.change(screen.getByLabelText('Change ROM or ZIP'), { target: { files: [rom] } });
 

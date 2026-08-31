@@ -1,0 +1,538 @@
+{
+  "name": "party-analysis-nearby-moves",
+  "waitFor": ".party-nearby-move-card:last-child",
+  "privacy": {
+    "safe": true,
+    "categories": []
+  },
+  "steps": [
+    {
+      "kind": "touch",
+      "selector": ".ability-detail-screen .back-action",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 53.997,
+        "height": 59.397
+      },
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "width": 538.103,
+        "height": 445.312
+      },
+      "center": {
+        "x": 26.999,
+        "y": 29.699
+      },
+      "hitTag": "button",
+      "waitFor": ".party-detail-window[role=\"dialog\"]"
+    },
+    {
+      "kind": "touch",
+      "selector": ".party-detail-close",
+      "bounds": {
+        "x": 475.373,
+        "y": 18.733,
+        "width": 43.997,
+        "height": 43.997
+      },
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "width": 538.103,
+        "height": 445.312
+      },
+      "center": {
+        "x": 497.371,
+        "y": 40.732
+      },
+      "hitTag": "button",
+      "waitFor": ".party-screen"
+    },
+    {
+      "kind": "touch",
+      "selector": ".analysis-action",
+      "bounds": {
+        "x": 492.107,
+        "y": 0,
+        "width": 45.996,
+        "height": 59.397
+      },
+      "viewport": {
+        "x": 0,
+        "y": 0,
+        "width": 538.103,
+        "height": 445.312
+      },
+      "center": {
+        "x": 515.105,
+        "y": 29.699
+      },
+      "hitTag": "svg",
+      "waitFor": ".party-analysis-screen"
+    },
+    {
+      "kind": "swipe",
+      "selector": ".party-analysis-content",
+      "direction": "up",
+      "gestures": [
+        {
+          "start": {
+            "x": 269.051,
+            "y": 421
+          },
+          "end": {
+            "x": 269.051,
+            "y": 85.999
+          },
+          "scrollTop": 0,
+          "maximumScrollTop": 2542,
+          "hitTag": "article",
+          "finalScrollTop": 327.80487060546875
+        },
+        {
+          "start": {
+            "x": 269.051,
+            "y": 421
+          },
+          "end": {
+            "x": 269.051,
+            "y": 85.999
+          },
+          "scrollTop": 395.447,
+          "maximumScrollTop": 2542,
+          "hitTag": "strong",
+          "finalScrollTop": 790.460693359375
+        },
+        {
+          "start": {
+            "x": 269.051,
+            "y": 421
+          },
+          "end": {
+            "x": 269.051,
+            "y": 85.999
+          },
+          "scrollTop": 790.461,
+          "maximumScrollTop": 2542,
+          "hitTag": "strong",
+          "finalScrollTop": 1249.647705078125
+        },
+        {
+          "start": {
+            "x": 269.051,
+            "y": 421
+          },
+          "end": {
+            "x": 269.051,
+            "y": 85.999
+          },
+          "scrollTop": 1445.637,
+          "maximumScrollTop": 2542,
+          "hitTag": "article",
+          "finalScrollTop": 1968.9971923828125
+        },
+        {
+          "start": {
+            "x": 269.051,
+            "y": 421
+          },
+          "end": {
+            "x": 269.051,
+            "y": 85.999
+          },
+          "scrollTop": 2257.778,
+          "maximumScrollTop": 2542,
+          "hitTag": "article",
+          "finalScrollTop": 2541.35498046875
+        }
+      ],
+      "waitFor": ".party-nearby-move-card:last-child"
+    }
+  ],
+  "measurements": [
+    {
+      "selector": ".party-analysis-screen",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "section",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 0,
+            "width": 538.103,
+            "height": 445.312
+          },
+          "client": {
+            "width": 538,
+            "height": 445
+          },
+          "scroll": {
+            "width": 538,
+            "height": 445,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "hidden",
+            "y": "hidden",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(22, 40, 31)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(22, 40, 31)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 13.78,
+            "borderContrast": 13.78
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".party-analysis-content",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "div",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 0,
+            "y": 61.999,
+            "width": 538.103,
+            "height": 383.313
+          },
+          "client": {
+            "width": 538,
+            "height": 383
+          },
+          "scroll": {
+            "width": 538,
+            "height": 2925,
+            "left": 0,
+            "top": 2541.355,
+            "maximumLeft": 0,
+            "maximumTop": 2542
+          },
+          "overflow": {
+            "x": "auto",
+            "y": "auto",
+            "scrollsX": false,
+            "scrollsY": true
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": true
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(27, 33, 28)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 14.603
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".party-nearby-move-card:last-child",
+      "matchCount": 1,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "article",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 21.728,
+            "y": 345.725,
+            "width": 494.648,
+            "height": 63.767
+          },
+          "client": {
+            "width": 493,
+            "height": 62
+          },
+          "scroll": {
+            "width": 493,
+            "height": 62,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    },
+    {
+      "selector": ".party-nearby-move-card:last-child > button",
+      "matchCount": 2,
+      "elements": [
+        {
+          "index": 0,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 30.589,
+            "y": 355.61,
+            "width": 234.465,
+            "height": 43.997
+          },
+          "client": {
+            "width": 234,
+            "height": 44
+          },
+          "scroll": {
+            "width": 234,
+            "height": 44,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgba(0, 0, 0, 0)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)"
+            ],
+            "borderTop": "rgb(27, 33, 28)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 14.603
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        },
+        {
+          "index": 1,
+          "tag": "button",
+          "role": null,
+          "visible": true,
+          "bounds": {
+            "x": 273.049,
+            "y": 354.587,
+            "width": 234.465,
+            "height": 46.043
+          },
+          "client": {
+            "width": 233,
+            "height": 44
+          },
+          "scroll": {
+            "width": 233,
+            "height": 44,
+            "left": 0,
+            "top": 0,
+            "maximumLeft": 0,
+            "maximumTop": 0
+          },
+          "overflow": {
+            "x": "visible",
+            "y": "visible",
+            "scrollsX": false,
+            "scrollsY": false
+          },
+          "scrollOwner": {
+            "x": false,
+            "y": false
+          },
+          "colors": {
+            "foreground": "rgb(27, 33, 28)",
+            "background": "rgb(248, 242, 218)",
+            "backgroundLayers": [
+              "rgb(17, 21, 20)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgba(0, 0, 0, 0)",
+              "rgb(248, 242, 218)",
+              "rgb(248, 242, 218)"
+            ],
+            "borderTop": "rgb(81, 69, 56)",
+            "effectiveBackground": "rgba(248, 242, 218, 1)",
+            "textContrast": 14.603,
+            "borderContrast": 8.283
+          },
+          "active": {
+            "ariaCurrent": null,
+            "ariaPressed": null,
+            "ariaSelected": null,
+            "checked": null,
+            "dataActive": null
+          }
+        }
+      ]
+    }
+  ],
+  "scrollAtEnd": [
+    {
+      "selector": ".party-analysis-content",
+      "index": 0,
+      "top": 2541.355,
+      "maximumTop": 2542
+    }
+  ],
+  "textAudit": {
+    "count": 27,
+    "minimumPx": 11.4,
+    "averagePx": 12.077,
+    "smallest": [
+      "11.4px span.type-chip",
+      "11.4px span.type-chip",
+      "11.4px small",
+      "11.4px small",
+      "11.4px small",
+      "11.4px small",
+      "11.4px small",
+      "11.4px small"
+    ]
+  },
+  "touchTargets": [
+    {
+      "selector": ".party-nearby-move-card:last-child > button",
+      "index": 0,
+      "bounds": {
+        "x": 30.589,
+        "y": 355.61,
+        "width": 234.465,
+        "height": 43.997
+      }
+    },
+    {
+      "selector": ".party-nearby-move-card:last-child > button",
+      "index": 1,
+      "bounds": {
+        "x": 273.049,
+        "y": 354.587,
+        "width": 234.465,
+        "height": 46.043
+      }
+    }
+  ],
+  "active": [],
+  "contrasts": [],
+  "screenshotBytes": 85035
+}

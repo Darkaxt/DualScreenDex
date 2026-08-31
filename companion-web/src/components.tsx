@@ -1,4 +1,5 @@
-import type { ComponentChildren } from 'preact';
+import { createContext, type ComponentChildren } from 'preact';
+import { useContext, useEffect, useRef } from 'preact/hooks';
 import { GameClockIndicator } from './GameClockIndicator';
 import { catalogMediaUrl } from './media';
 import type { Catalog, GameTime, KnowledgeMode, SpeciesState, TypeInfo } from './models';
@@ -144,7 +145,9 @@ function AnalysisIcon() {
   </svg>;
 }
 
-export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty, onAnalysis, actions }: {
+export const RouteHeadingFocusContext = createContext(true);
+
+export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty, onAnalysis, actions, focusKey, focusHeading = true }: {
   title: string;
   kicker?: string;
   gameTime?: GameTime | null;
@@ -155,12 +158,29 @@ export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onT
   onParty?: () => void;
   onAnalysis?: () => void;
   actions?: ComponentChildren;
+  focusKey?: string | number;
+  focusHeading?: boolean;
 }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const mountedRef = useRef(false);
+  const previousFocusKeyRef = useRef(focusKey);
+  const allowRouteHeadingFocus = useContext(RouteHeadingFocusContext);
   const hasActions = Boolean(actions || onTrainer || onParty || onMap || onSettings || onAnalysis);
+
+  useEffect(() => {
+    const firstRender = !mountedRef.current;
+    const focusKeyChanged = mountedRef.current && previousFocusKeyRef.current !== focusKey;
+    if (allowRouteHeadingFocus && focusHeading && (firstRender || focusKeyChanged)) {
+      headingRef.current?.focus();
+    }
+    mountedRef.current = true;
+    previousFocusKeyRef.current = focusKey;
+  }, [allowRouteHeadingFocus, focusHeading, focusKey]);
+
   return (
-    <header class={`app-header ${onBack ? '' : 'app-header-root'}`}>
+    <header class={`app-header ${onBack ? '' : 'app-header-root'} ${gameTime ? 'has-game-clock' : ''}`}>
       {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
-      <div class="header-title"><strong>{title}</strong>{kicker && <small>{kicker}</small>}</div>
+      <div class="header-title"><h1 ref={headingRef} tabIndex={-1}>{title}</h1>{kicker && <small>{kicker}</small>}</div>
       {gameTime && <GameClockIndicator clock={gameTime} />}
       {hasActions ? <div class="header-actions">
         {actions}
@@ -174,8 +194,172 @@ export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onT
   );
 }
 
-export function Segmented({ values, active, onSelect, label, disabledValues = [] }: { values: string[]; active: string; onSelect: (value: string) => void; label: string; disabledValues?: string[] }) {
-  return <div class="segmented" role="tablist" aria-label={label}>{values.map(value => (
-    <button key={value} role="tab" aria-selected={active === value} class={active === value ? 'active' : ''} disabled={disabledValues.includes(value)} onClick={() => onSelect(value)}>{value}</button>
-  ))}</div>;
+interface ChoiceProps {
+  values: string[];
+  active: string;
+  onSelect: (value: string) => void;
+  label: string;
+  disabledValues?: string[];
+}
+
+export function SegmentedChoice({ values, active, onSelect, label, disabledValues = [] }: ChoiceProps) {
+  return <div class="segmented" role="group" aria-label={label}>{values.map(value => {
+    const disabled = disabledValues.includes(value);
+    return <button
+      type="button"
+      key={value}
+      aria-pressed={active === value}
+      aria-disabled={disabled || undefined}
+      class={active === value ? 'active' : ''}
+      onClick={() => { if (!disabled) onSelect(value); }}
+    >{value}</button>;
+  })}</div>;
+}
+
+export function Segmented(props: ChoiceProps) {
+  return <SegmentedChoice {...props} />;
+}
+
+export function Tabs({ values, active, onSelect, label, disabledValues = [], columns = values.length, panelPrefix }: ChoiceProps & {
+  columns?: number;
+  panelPrefix: string;
+}) {
+  const buttonsRef = useRef<Array<HTMLButtonElement | null>>([]);
+  const enabledIndexes = values.flatMap((value, index) => disabledValues.includes(value) ? [] : [index]);
+
+  const activate = (index: number) => {
+    if (!enabledIndexes.includes(index)) return;
+    buttonsRef.current[index]?.focus();
+    onSelect(values[index]);
+  };
+  const move = (current: number, delta: number) => {
+    if (enabledIndexes.length === 0) return;
+    let index = current;
+    do index = (index + delta + values.length) % values.length;
+    while (!enabledIndexes.includes(index) && index !== current);
+    activate(index);
+  };
+  const onKeyDown = (event: KeyboardEvent, index: number) => {
+    let handled = true;
+    if (event.key === 'ArrowRight') move(index, 1);
+    else if (event.key === 'ArrowLeft') move(index, -1);
+    else if (event.key === 'ArrowDown') move(index, Math.max(1, columns));
+    else if (event.key === 'ArrowUp') move(index, -Math.max(1, columns));
+    else if (event.key === 'Home') activate(enabledIndexes[0]);
+    else if (event.key === 'End') activate(enabledIndexes.at(-1)!);
+    else handled = false;
+    if (handled) event.preventDefault();
+  };
+
+  return <div class="segmented" role="tablist" aria-label={label}>{values.map((value, index) => {
+    const id = tabId(panelPrefix, value);
+    const disabled = disabledValues.includes(value);
+    return <button
+      type="button"
+      key={value}
+      id={`${id}-tab`}
+      ref={element => { buttonsRef.current[index] = element; }}
+      role="tab"
+      tabIndex={active === value ? 0 : -1}
+      aria-selected={active === value}
+      aria-disabled={disabled || undefined}
+      disabled={disabled}
+      aria-controls={`${id}-panel`}
+      class={active === value ? 'active' : ''}
+      onClick={() => { if (!disabled) onSelect(value); }}
+      onKeyDown={event => onKeyDown(event, index)}
+    >{value}</button>;
+  })}</div>;
+}
+
+export function tabPanelAttributes(panelPrefix: string, value: string) {
+  const id = tabId(panelPrefix, value);
+  return {
+    id: `${id}-panel`,
+    role: 'tabpanel' as const,
+    'aria-labelledby': `${id}-tab`,
+    tabIndex: 0,
+  };
+}
+
+function tabId(prefix: string, value: string) {
+  return `${prefix}-${value.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+}
+
+export function Dialog({ label, closeLabel, onClose, restoreFocus, children }: {
+  label: string;
+  closeLabel: string;
+  onClose: () => void;
+  restoreFocus?: HTMLElement | null;
+  children: ComponentChildren;
+}) {
+  const layerRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    const layer = layerRef.current;
+    const host = layer?.parentElement;
+    if (!layer || !host) return;
+    const background = Array.from(host.children).filter(element => element !== layer);
+    const feedback = host.closest('.device-screen')?.querySelector(':scope > .global-feedback');
+    if (feedback && !background.includes(feedback)) background.push(feedback);
+    const prior = background.map(element => ({
+      element,
+      inert: element.getAttribute('inert'),
+      ariaHidden: element.getAttribute('aria-hidden'),
+    }));
+    for (const element of background) {
+      element.setAttribute('inert', '');
+      element.setAttribute('aria-hidden', 'true');
+    }
+    closeRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = dialogFocusableElements(layer);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable.at(-1)!;
+      if (event.shiftKey && (document.activeElement === first || !layer.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !layer.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      for (const { element, inert, ariaHidden } of prior) {
+        if (inert == null) element.removeAttribute('inert'); else element.setAttribute('inert', inert);
+        if (ariaHidden == null) element.removeAttribute('aria-hidden'); else element.setAttribute('aria-hidden', ariaHidden);
+      }
+      if (restoreFocus?.isConnected) restoreFocus.focus();
+    };
+  }, [restoreFocus]);
+
+  return <div ref={layerRef} class="party-detail-layer">
+    <div class="party-detail-backdrop" onClick={onClose} />
+    <div class="party-detail-window" role="dialog" aria-modal="true" aria-label={label}>
+      <button ref={closeRef} type="button" class="party-detail-close" aria-label={closeLabel} onClick={onClose}>×</button>
+      {children}
+    </div>
+  </div>;
+}
+
+function dialogFocusableElements(host: HTMLElement) {
+  return Array.from(host.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+  )).filter(element => !element.hasAttribute('aria-hidden'));
 }

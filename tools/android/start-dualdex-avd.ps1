@@ -11,7 +11,7 @@ $ErrorActionPreference = 'Stop'
 $adb = Join-Path $SdkRoot 'platform-tools\adb.exe'
 $emulator = Join-Path $SdkRoot 'emulator\emulator.exe'
 $resolver = Join-Path $PSScriptRoot 'resolve-dualdex-device.ps1'
-. $resolver
+. $resolver -AvdName $AvdName -AdbPath $adb
 
 $serial = $null
 $process = $null
@@ -57,7 +57,8 @@ while ($true) {
     if ($null -ne $process -and $process.HasExited) {
         throw "DualDex emulator exited with code $($process.ExitCode) before becoming ready."
     }
-    $state = (& $adb -s $serial get-state 2>$null | Select-Object -First 1)
+    $serialPattern = '^' + [regex]::Escape($serial) + '\s+device$'
+    $state = if (@(& $adb devices | Where-Object { $_ -match $serialPattern }).Count -eq 1) { 'device' } else { $null }
     if ($state -eq 'device') {
         $bootComplete = (& $adb -s $serial shell getprop sys.boot_completed 2>$null | Select-Object -First 1).Trim()
         if ($bootComplete -eq '1') {

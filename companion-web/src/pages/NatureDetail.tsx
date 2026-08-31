@@ -1,11 +1,11 @@
 import { Header } from '../components';
-import type { NatureInfo } from '../models';
+import type { NatureInfo, State } from '../models';
 import { NATURE_STATS, natureFlavorLabel, natureStatLabel } from '../natureDetails';
 
-export function NatureDetail({ nature, onBack }: { nature: NatureInfo; onBack: () => void }) {
+export function NatureDetail({ nature, gameTime, onBack }: { nature: NatureInfo; gameTime: State['gameTime']; onBack: () => void }) {
   const neutral = nature.raisedStat == null && nature.loweredStat == null;
   return <section class="screen ability-detail-screen nature-detail-screen">
-    <Header title={nature.name.toUpperCase()} onBack={onBack} />
+    <Header title={nature.name.toUpperCase()} gameTime={gameTime} onBack={onBack} />
     <div class="ability-detail-content nature-detail-content" data-scroll-region>
       <div class="paper-panel nature-overview">
         <p class="eyebrow">STAT PROFILE</p>
