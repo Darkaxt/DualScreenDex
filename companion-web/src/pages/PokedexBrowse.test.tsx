@@ -56,19 +56,20 @@ describe('Pokédex knowledge modes', () => {
     expect(screen.queryByText(/EMERALD|ORGANIC/)).toBeNull();
   });
 
-  it('shows a compact owned versus found count for the current results', () => {
+  it('counts the entries exposed by the active policy and filter', () => {
     const rendered = render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
 
-    expect(screen.getByLabelText('0 owned, 1 found').textContent).toBe('0 / 1');
+    expect(screen.getByLabelText('ALL list: 1 Pokémon').textContent).toBe('1');
 
     rendered.rerender(<PokedexBrowse catalog={catalog} state={{
       ...state,
+      settings: { ...state.settings, knowledgeMode: 'DISCOVERED' },
       speciesState: {
         1: { ...state.speciesState[1], caught: true, team: true },
         4: { ...state.speciesState[4], seen: true },
       },
     }} send={vi.fn()} />);
-    expect(screen.getByLabelText('1 owned, 2 found').textContent).toBe('1 / 2');
+    expect(screen.getByLabelText('ALL list: 2 Pokémon').textContent).toBe('2');
 
     rendered.rerender(<PokedexBrowse catalog={catalog} state={{
       ...state,
@@ -78,10 +79,10 @@ describe('Pokédex knowledge modes', () => {
         4: { ...state.speciesState[4], seen: true },
       },
     }} send={vi.fn()} />);
-    expect(screen.getByLabelText('1 caught').textContent).toBe('1');
+    expect(screen.getByLabelText('CAUGHT list: 1 Pokémon').textContent).toBe('1');
 
     fireEvent.input(screen.getByPlaceholderText('NAME OR NUMBER'), { target: { value: 'Charmander' } });
-    expect(screen.getByLabelText('0 caught').textContent).toBe('0');
+    expect(screen.getByLabelText('CAUGHT list: 0 Pokémon').textContent).toBe('0');
   });
 
   it('omits search and the counter from the Team tab', () => {
@@ -208,9 +209,26 @@ describe('Pokédex knowledge modes', () => {
     expect(screen.queryByText('Charmander')).toBeNull();
   });
 
-  it('disables save-backed filters when their capabilities are unavailable', () => {
+  it('enables truthfully populated filters without comprehensive save capabilities', () => {
+    render(<PokedexBrowse catalog={catalog} state={{
+      ...state,
+      settings: { ...state.settings, knowledgeMode: 'DISCOVERED' },
+      speciesState: {
+        1: { seen: true, caught: true, team: true, ballId: null },
+        4: { seen: true, caught: false, team: false, ballId: null },
+      },
+    }} send={vi.fn()} />);
+
+    expect((screen.getByRole('button', { name: 'CAUGHT' }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('button', { name: 'SEEN' }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('button', { name: 'TEAM' }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('button', { name: 'AREA' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('disables empty filters when their capabilities are unavailable', () => {
     render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
 
+    expect(screen.getByRole('button', { name: 'CAUGHT' }).hasAttribute('disabled')).toBe(true);
     expect(screen.getByRole('button', { name: 'TEAM' }).hasAttribute('disabled')).toBe(true);
     expect(screen.getByRole('button', { name: 'AREA' }).hasAttribute('disabled')).toBe(true);
   });
@@ -454,7 +472,7 @@ describe('Pokédex knowledge modes', () => {
     />);
 
     expect(rendered.container.querySelectorAll('.species-row').length).toBeLessThanOrEqual(60);
-    expect(screen.getByLabelText('10 owned, 100 found').textContent).toBe('10 / 100');
+    expect(screen.getByLabelText('ALL list: 900 Pokémon').textContent).toBe('900');
     expect([...rendered.container.querySelectorAll<HTMLImageElement>('.species-row img')]
       .every(image => image.getAttribute('loading') === 'lazy' && image.getAttribute('decoding') === 'async')).toBe(true);
 
@@ -467,6 +485,7 @@ describe('Pokédex knowledge modes', () => {
 
     fireEvent.input(screen.getByPlaceholderText('NAME OR NUMBER'), { target: { value: 'MON 0899' } });
     expect(rendered.container.querySelectorAll('.species-row')).toHaveLength(1);
+    expect(screen.getByLabelText('ALL list: 1 Pokémon').textContent).toBe('1');
     expect(screen.getByText('MON 0899')).toBeTruthy();
   });
 });

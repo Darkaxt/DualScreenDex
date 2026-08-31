@@ -25,11 +25,23 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
     : (['ALL', 'CAUGHT', 'SEEN', 'TEAM', 'AREA'] as const);
   const capabilities = state.saveRam?.capabilities ?? {};
   const available = (name: string) => capabilities[name] === 'AVAILABLE' || capabilities[name] === 'PARTIAL';
+  const projectedAvailability = useMemo(() => {
+    let caught = false;
+    let seen = false;
+    let team = false;
+    for (const species of catalog.species) {
+      const status = state.speciesState[species.id];
+      caught ||= Boolean(status?.caught);
+      seen ||= Boolean(status?.seen || status?.caught);
+      team ||= Boolean(status?.team);
+    }
+    return { caught, seen, team };
+  }, [catalog.species, state.speciesState]);
   const filterEnabled = {
     ALL: true,
-    CAUGHT: available('CAUGHT'),
-    SEEN: available('SEEN'),
-    TEAM: available('PARTY') && available('SPECIES'),
+    CAUGHT: available('CAUGHT') || projectedAvailability.caught,
+    SEEN: available('SEEN') || projectedAvailability.seen,
+    TEAM: (available('PARTY') && available('SPECIES')) || projectedAvailability.team,
     AREA: (state.currentAreaIds?.length ?? 0) > 0,
   } as const;
   const areaSpeciesIds = useMemo(() => new Set(catalog.areas
@@ -44,7 +56,7 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
     if (policy === 'HIDDEN' && !status?.caught) return false;
     if (search && (organicArea && !identityKnown || (!species.name.toLowerCase().includes(search.toLowerCase()) && !String(species.dex).includes(search)))) return false;
     if (activeFilter === 'CAUGHT' && !status?.caught) return false;
-    if (activeFilter === 'SEEN' && !status?.seen) return false;
+    if (activeFilter === 'SEEN' && !status?.seen && !status?.caught) return false;
     if (activeFilter === 'TEAM' && !status?.team) return false;
     if (activeFilter === 'AREA' && !areaSpeciesIds.has(species.id)) return false;
     return true;
@@ -54,10 +66,6 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
     const rightKnown = Boolean(state.speciesState[right.id]?.seen || state.speciesState[right.id]?.caught);
     return Number(rightKnown) - Number(leftKnown);
   }), [activeFilter, areaSpeciesIds, catalog.species, policy, search, state.speciesState]);
-  const ownedCount = visible.filter(species => Boolean(state.speciesState[species.id]?.caught)).length;
-  const foundCount = visible.filter(species => Boolean(
-    state.speciesState[species.id]?.seen || state.speciesState[species.id]?.caught,
-  )).length;
   const columnCount = pokedexColumnCount(viewport.width);
   const virtualWindow = useMemo(
     () => pokedexVirtualWindow(visible.length, columnCount, viewport.scrollTop, viewport.height, rowHeight),
@@ -152,9 +160,9 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
         <label class="search-box"><span>SEARCH</span><input aria-label="Search Pokémon" value={search} onInput={event => setSearch(event.currentTarget.value)} placeholder="NAME OR NUMBER" /></label>
         <output
           class="pokedex-result-count"
-          aria-label={activeFilter === 'CAUGHT' ? `${ownedCount} caught` : `${ownedCount} owned, ${foundCount} found`}
+          aria-label={`${activeFilter} list: ${visible.length} Pokémon`}
         >
-          {activeFilter === 'CAUGHT' ? ownedCount : `${ownedCount} / ${foundCount}`}
+          {visible.length}
         </output>
       </div>
     </div>}
