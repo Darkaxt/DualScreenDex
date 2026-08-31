@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/preact';
+import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
 import { BattlePage, rarityAssessment } from './BattlePage';
@@ -41,6 +41,22 @@ describe('battle layout', () => {
     expect(rarityAssessment(stars)).toBe(assessment);
   });
 
+  it('keeps optional tabs announced but disabled and associates the active tab panel', () => {
+    const { catalog, state } = fixture(1);
+    state.settings = { ...state.settings, attackEnabled: false, movesEnabled: false };
+    render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    const entry = screen.getByRole('tab', { name: 'ENTRY' });
+    const attack = screen.getByRole('tab', { name: 'ATTACK' });
+    const moves = screen.getByRole('tab', { name: 'MOVES' });
+    expect(attack.getAttribute('aria-disabled')).toBe('true');
+    expect(moves.getAttribute('aria-disabled')).toBe('true');
+    expect(entry.getAttribute('aria-controls')).toBe('battle-information-entry-panel');
+    expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe(entry.id);
+    fireEvent.keyDown(entry, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'RARITY' }));
+  });
+
   it('opens the targeted species in the full Pokédex from the identity header', () => {
     const { catalog, state } = fixture(1);
     const send = vi.fn();
@@ -70,6 +86,7 @@ describe('battle layout', () => {
 
     expect(container.querySelector('.battle-screen')?.classList.contains('battle-double')).toBe(true);
     expect(container.querySelectorAll('.target-switch button')).toHaveLength(2);
+    expect(container.querySelectorAll('.target-switch button')[0].getAttribute('aria-pressed')).toBe('true');
     container.querySelectorAll('.target-switch button')[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(send).toHaveBeenCalledWith('TARGET', { index: 1 });
   });
@@ -183,7 +200,7 @@ describe('battle layout', () => {
     const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
     const identityChildren = container.querySelector('.battle-name-row')?.children;
 
-    expect(identityChildren?.[0].tagName).toBe('H1');
+    expect(identityChildren?.[0].tagName).toBe('H2');
     expect(identityChildren?.[1].classList.contains('rarity-stars')).toBe(true);
     expect(identityChildren?.[2].classList.contains('battle-dex-link')).toBe(true);
     expect(container.querySelectorAll('.rarity-star')).toHaveLength(5);

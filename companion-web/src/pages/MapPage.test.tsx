@@ -138,7 +138,7 @@ describe('normalized world map presentation', () => {
     expect(container.querySelector('.map-page-title')).toBeNull();
     expect(screen.queryByText('EMERALD')).toBeNull();
     expect(screen.queryByText('WORLD MAP')).toBeNull();
-    expect(container.querySelector('.map-current-location strong')?.textContent).toBe('Route 101');
+    expect(container.querySelector('.map-current-location h1')?.textContent).toBe('Route 101');
     expect(container.querySelectorAll('.map-marker.is-current')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Current location: Route 101' }).classList.contains('atlas-location-marker')).toBe(true);
     expect(screen.getByRole('button', { name: 'Oldale Town' }).classList.contains('atlas-location-marker')).toBe(true);
@@ -199,7 +199,7 @@ describe('normalized world map presentation', () => {
       onOpenSettings={vi.fn()}
     />);
 
-    expect(container.querySelector('.map-current-location strong')?.textContent).toBe('Oldale Town');
+    expect(container.querySelector('.map-current-location h1')?.textContent).toBe('Oldale Town');
     expect(screen.getByText('MAP POINT')).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Interactive world map' }).dataset.selectedKey).toBe('section-17');
   });

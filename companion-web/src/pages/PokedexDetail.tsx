@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Catalog, State } from '../models';
-import { Header, identitySpriteClass, maskIdentityName, PokedexAvatar, Segmented, speciesIdentityKnowledge, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
+import { Header, identitySpriteClass, maskIdentityName, PokedexAvatar, speciesIdentityKnowledge, StatusMarks, tabPanelAttributes, Tabs, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
 import { catalogMediaUrl } from '../media';
 import { AbilityMechanics } from './AbilityDetail';
@@ -18,6 +18,7 @@ export function PokedexDetail({
   openAbility: _openAbility,
   openSpecimens,
   openMoveListSettings,
+  openAtlas,
 }: {
   catalog: Catalog;
   state: State;
@@ -28,6 +29,7 @@ export function PokedexDetail({
   openAbility: (abilityId: number) => void;
   openSpecimens?: (speciesId: number) => void;
   openMoveListSettings?: () => void;
+  openAtlas?: () => void;
 }) {
   const species = catalog.species.find(item => item.id === state.selectedSpeciesId) ?? catalog.species[0];
   if (!species) return null;
@@ -48,14 +50,14 @@ export function PokedexDetail({
     return slots.length ? [{ area, slots }] : [];
   });
   return <section class="screen detail-screen">
-    <Header title="POKÉDEX" kicker={`#${String(species.dex).padStart(3, '0')}`} onBack={() => send('BACK')} />
+    <Header title="POKÉDEX" kicker={`#${String(species.dex).padStart(3, '0')}`} focusKey={species.id} onBack={() => send('BACK')} />
     <div class="detail-scroll">
       <div class="identity-card">
         <PokedexAvatar speciesId={species.id} name={species.name} available={species.hasSprite} large knowledge={identityKnowledge} state={status} catalog={catalog} />
-        <div class="identity-copy"><h1>{species.name}</h1><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
-        <Segmented values={['ENTRY', 'STATS', 'MOVES', 'AREA', 'MORE']} active={displayTab} disabledValues={unlocked ? [] : ['STATS', 'MORE']} onSelect={value => setTab(value as DetailTab)} label="Pokédex detail" />
+        <div class="identity-copy"><h2>{species.name}</h2><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
+        <Tabs values={['ENTRY', 'STATS', 'MOVES', 'AREA', 'MORE']} active={displayTab} disabledValues={unlocked ? [] : ['STATS', 'MORE']} columns={3} panelPrefix="pokedex-detail" onSelect={value => setTab(value as DetailTab)} label="Pokédex detail" />
       </div>
-      <div class="detail-content" data-scroll-region>
+      <div class="detail-content" data-scroll-region {...tabPanelAttributes('pokedex-detail', displayTab)}>
       {!unlocked && !observedOnly && displayTab !== 'AREA' && <div class="paper-panel withheld"><strong>{gameplayCopy.dataUnavailable}</strong><p>{gameplayCopy.catchForFullData}</p></div>}
       {unlocked && displayTab === 'ENTRY' && <>
         <div class="paper-panel"><p class="eyebrow">POKÉDEX ENTRY</p><p class="entry-copy">{species.description || gameplayCopy.pokedexUnavailable}</p><div class="fact-grid"><span><small>HEIGHT</small><strong>{formatHeight(species.height, catalog.platform)}</strong></span><span><small>WEIGHT</small><strong>{formatWeight(species.weight, catalog.platform)}</strong></span></div></div>
@@ -102,7 +104,7 @@ export function PokedexDetail({
           return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>FREQUENCY · {item.frequency}×</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
         })}</div> : <div class="empty-state"><strong>{gameplayCopy.noMovesRecorded}</strong><p>{gameplayCopy.movesWillAppear}</p></div>}
       </div>}
-      {displayTab === 'AREA' && <PokemonAreaMap catalog={catalog} state={state} speciesId={species.id} send={send} />}
+      {displayTab === 'AREA' && <PokemonAreaMap catalog={catalog} state={state} speciesId={species.id} send={send} onOpenAtlas={openAtlas} />}
       {unlocked && displayTab === 'MORE' && <div class="paper-panel more-sections">
         {(status?.specimenCount ?? 0) > 0 && <section class="specimen-entry-section">
           <div><p class="eyebrow">YOUR POKÉMON</p><strong>{status?.specimenCount} {status?.specimenCount === 1 ? 'specimen' : 'specimens'}</strong></div>

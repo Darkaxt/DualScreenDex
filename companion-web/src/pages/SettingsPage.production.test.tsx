@@ -81,8 +81,8 @@ describe('production settings copy', () => {
     const send = vi.fn();
     render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} initialCategory="DISPLAY" />);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'DARK' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'EXTERNAL' }));
+    fireEvent.click(screen.getByRole('button', { name: 'DARK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'EXTERNAL' }));
 
     expect(send).toHaveBeenCalledWith('SETTINGS', { theme: 'DARK' });
     expect(send).toHaveBeenCalledWith('SETTINGS', { displayTarget: 'EXTERNAL' });

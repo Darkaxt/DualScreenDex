@@ -96,6 +96,15 @@ test('accepts only the dedicated debug package and bounded capture names', () =>
         measurements: ['[role="dialog"]'],
         active: [{ selector: '[role="dialog"] button', focused: true }],
       },
+      {
+        name: 'error-feedback',
+        steps: [{
+          kind: 'mock-action-failure',
+          waitFor: '.pokedex-screen',
+        }],
+        waitFor: '.pokedex-screen',
+        measurements: ['.pokedex-screen'],
+      },
     ],
   }));
   assert.throws(() => validateScenario({
@@ -135,7 +144,7 @@ test('accepts only the dedicated debug package and bounded capture names', () =>
       waitFor: '.trainer-screen',
       measurements: ['.trainer-screen'],
     }],
-  }), /action, touch, swipe, or key/);
+  }), /action, touch, swipe, key, or mock-action-failure/);
 });
 
 test('selects one loopback DualDex page and rejects remote or ambiguous targets', () => {

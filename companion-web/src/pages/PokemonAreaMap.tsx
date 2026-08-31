@@ -5,7 +5,7 @@ import { paintFog } from './MapPage';
 
 type Send = (type: string, values?: Record<string, string | number | boolean | null>) => void;
 
-export function PokemonAreaMap({ catalog, state, speciesId, send }: { catalog: Catalog; state: State; speciesId: number; send: Send }) {
+export function PokemonAreaMap({ catalog, state, speciesId, send, onOpenAtlas }: { catalog: Catalog; state: State; speciesId: number; send: Send; onOpenAtlas?: () => void }) {
   const habitatBaseIds = useMemo(() => new Set(catalog.areas
     .filter(area => area.speciesIds.includes(speciesId))
     .map(area => area.baseAreaId ?? Math.floor(area.id / 10))), [catalog.areas, speciesId]);
@@ -31,7 +31,7 @@ export function PokemonAreaMap({ catalog, state, speciesId, send }: { catalog: C
     if (region && fogRef.current) paintFog(fogRef.current, region, visibleLocations);
   }, [region?.key, visibleLocations]);
 
-  if (!region) return <div class="pokemon-area-empty"><strong>{organic && habitatBaseIds.size > 0 ? 'NO KNOWN LOCATIONS' : 'NO HABITAT MAP'}</strong><p>{organic && habitatBaseIds.size > 0 ? 'Discover this Pokémon in the wild to reveal its habitat.' : 'No habitat map is available for this game.'}</p></div>;
+  if (!region) return <div class="pokemon-area-empty"><strong>{organic && habitatBaseIds.size > 0 ? 'NO KNOWN LOCATIONS' : 'NO HABITAT MAP'}</strong><p>{organic && habitatBaseIds.size > 0 ? 'Discover this Pokémon in the wild to reveal its habitat.' : 'No habitat map is available for this game.'}</p>{onOpenAtlas && <button type="button" class="primary-button" onClick={onOpenAtlas}>OPEN ATLAS</button>}</div>;
 
   return <section class="pokemon-area-panel" aria-label="Pokémon habitat atlas">
     <header>
@@ -55,12 +55,13 @@ export function PokemonAreaMap({ catalog, state, speciesId, send }: { catalog: C
           class={selected?.key === location.key ? 'is-selected' : ''}
           style={{ left: `${position.x}%`, top: `${position.y}%` }}
           aria-label={`Observed at ${location.displayName}`}
+          aria-pressed={selected?.key === location.key}
           onClick={() => setSelectedKey(location.key)}
         ><span /></button>;
       })}
       {selected && <button class="pokemon-area-dex" aria-label="Open selected Area Pokédex" onClick={() => send('MAP_AREA', { regionKey: region.key, locationKey: selected.key })}><DexIcon /></button>}
     </div>
-    {visibleLocations.length === 0 && <p class="pokemon-area-undiscovered">No organically observed habitat yet. Undiscovered locations stay masked.</p>}
+    {visibleLocations.length === 0 && <div class="pokemon-area-undiscovered"><p>No organically observed habitat yet. Undiscovered locations stay masked.</p>{onOpenAtlas && <button type="button" class="primary-button" onClick={onOpenAtlas}>OPEN ATLAS</button>}</div>}
   </section>;
 }
 

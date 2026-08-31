@@ -435,11 +435,18 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
   }
   await show('settings', { screen: 'SETTINGS' });
   await expectSurface('.settings-content', { backgroundColor: colors.menu, color: colors.text });
+  await page.getByRole('button', { name: 'Display' }).click();
   await expectSurface('.settings-content .segmented button:not(.active)', { backgroundColor: colors.panel, borderTopColor: colors.border });
   await expectTypography('.setting-note', 12.8);
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'General' }).click();
   await expectTypography('.settings-upload', 12);
   await expectContrast('.settings-upload');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Connection' }).click();
   await expectContrast('.retroarch-setting button');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Advanced' }).click();
   await page.getByRole('button', { name: 'COMPATIBILITY REPORT' }).click();
   await expect(page.locator('.capability-screen')).toBeVisible();
   await assertGameTheme();
@@ -496,7 +503,7 @@ test('ROM-derived GAME theme remains stable across companion screens and fixed a
     boxShadow: 'rgb(0, 0, 0) 0px 4px 0px 0px',
     color: colors.accentText,
   });
-  await expectTypography('.map-current-location strong', 15.8);
+  await expectTypography('.map-current-location h1', 15.8);
   await expectTypography('.map-current-location span', 11.3);
   await expect(page.locator('.map-dex-action svg')).toHaveAttribute('data-semantic-icon', 'pokedex');
   await expect.poll(() => page.locator('.map-dex-action .dex-shell').evaluate(node => ({

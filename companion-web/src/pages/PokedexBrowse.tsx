@@ -118,7 +118,7 @@ export function PokedexBrowse({ catalog, state, send, onOpenMap }: { catalog: Ca
     />
     <div class="browse-tools">
       <div class="filter-strip" aria-label="Pokédex filters">
-        {filters.map(filter => <button key={filter} disabled={!filterEnabled[filter]} title={!filterEnabled[filter] ? `${filter} filter unavailable` : undefined} class={activeFilter === filter ? 'active' : ''} onClick={() => send('FILTER', { filter, areaId: null })}>{filter}</button>)}
+        {filters.map(filter => <button key={filter} disabled={!filterEnabled[filter]} aria-pressed={activeFilter === filter} title={!filterEnabled[filter] ? `${filter} filter unavailable` : undefined} class={activeFilter === filter ? 'active' : ''} onClick={() => send('FILTER', { filter, areaId: null })}>{filter}</button>)}
       </div>
     </div>
     <div

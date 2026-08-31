@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const styles = readFileSync(join(process.cwd(), 'src', 'styles.css'), 'utf8')
+const componentsSource = readFileSync(join(process.cwd(), 'src', 'components.tsx'), 'utf8')
 const areaGuideSource = readFileSync(join(process.cwd(), 'src', 'pages', 'AreaGuideDrawer.tsx'), 'utf8')
 const battleSource = readFileSync(join(process.cwd(), 'src', 'pages', 'BattlePage.tsx'), 'utf8')
 const pokemonAreaSource = readFileSync(join(process.cwd(), 'src', 'pages', 'PokemonAreaMap.tsx'), 'utf8')
@@ -252,6 +253,24 @@ describe('screen layout containment', () => {
     expect(styles).toMatch(/\.debug-actions \.danger-action[^{}]*\{[^}]*background\s*:\s*var\(--semantic-danger-bg\)/)
     expect(settingsSource).toContain('class="danger-action"')
     expect(settingsSource).toContain('REMOVE UNUSED GAME DATA')
+  })
+
+  it('keeps canonical route headings in the header and avoids a nested Map main landmark', () => {
+    expect(componentsSource).toContain('<h1 ref={headingRef} tabIndex={-1}>{title}</h1>')
+    expect(pokemonAreaSource).not.toContain('<h1')
+    expect(battleSource).not.toContain('<h1')
+    expect(readFileSync(join(process.cwd(), 'src', 'pages', 'MapPage.tsx'), 'utf8')).not.toMatch(/<main[\s>]/)
+  })
+
+  it('reserves global feedback below the screen instead of overlaying route controls', () => {
+    const deviceRule = styles.match(/(?:^|\n)\.device-screen\s*\{([^}]*)\}/)?.[1]
+    const hostRule = styles.match(/\.screen-host\s*\{([^}]*)\}/)?.[1]
+    const feedbackRule = styles.match(/\.global-feedback\s*\{([^}]*)\}/)?.[1]
+
+    expect(deviceRule).toMatch(/grid-template-rows\s*:\s*minmax\(0, 1fr\) auto/)
+    expect(hostRule).toMatch(/position\s*:\s*relative/)
+    expect(feedbackRule).toMatch(/pointer-events\s*:\s*none/)
+    expect(styles).toMatch(/\.error-toast button\s*\{[^}]*pointer-events\s*:\s*auto/)
   })
 
   it('enforces the physical text floor on the smallest new-route labels', () => {

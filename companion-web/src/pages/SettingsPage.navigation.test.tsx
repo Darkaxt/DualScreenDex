@@ -45,6 +45,7 @@ describe('Settings navigation', () => {
 
     expect(onBack).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Display' })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Display' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(onBack).toHaveBeenCalledOnce();
@@ -54,7 +55,7 @@ describe('Settings navigation', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Accessibility' }));
-    expect(screen.getByRole('tab', { name: 'COMPACT' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('button', { name: 'COMPACT' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('checkbox', { name: 'High contrast' })).toHaveProperty('checked', true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));

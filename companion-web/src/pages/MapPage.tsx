@@ -79,7 +79,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
   const [selectedPoiKey, setSelectedPoiKey] = useState<string | null>(null);
   const [selectedPoiClusterKey, setSelectedPoiClusterKey] = useState<string | null>(null);
   const [followingPlayer, setFollowingPlayer] = useState(false);
-  const stageRef = useRef<HTMLElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const fogRef = useRef<HTMLCanvasElement>(null);
   const gestureRef = useRef(new GestureTracker(HOME_VIEWPORT));
   const maximumScaleRef = useRef(MAX_MAP_SCALE);
@@ -532,10 +532,13 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       ? 'CURRENT'
       : selectedLocation ? 'MAP POINT' : 'ATLAS';
 
+  const routeHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => routeHeadingRef.current?.focus(), []);
+
   return <section class="screen map-screen">
     <header class="map-page-header">
       <div class="map-current-location">
-        <strong>{headerAreaName}</strong>
+        <h1 ref={routeHeadingRef} tabIndex={-1}>{headerAreaName}</h1>
         <span>{headerAreaContext}</span>
       </div>
       {state.gameTime && <GameClockIndicator clock={state.gameTime} />}
@@ -544,7 +547,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
         <button class="header-action settings-action" aria-label="Settings" onClick={onOpenSettings}><SettingsIcon /></button>
       </div>
     </header>
-    <main
+    <div
       ref={stageRef}
       class="map-stage"
       role="region"
@@ -631,6 +634,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
             data-marker-key={location.key}
             style={{ left: `${position.x}%`, top: `${position.y}%` }}
             aria-label={location.key === currentLocation?.key ? `Current location: ${location.displayName}` : location.displayName}
+            aria-pressed={location.key === selectedLocation?.key}
             onClick={event => {
               if (event.detail !== 0 && !allowMarkerSelectionRef.current) {
                 event.preventDefault();
@@ -665,6 +669,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
             data-poi-cluster-key={clustered ? cluster.key : undefined}
             style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
             aria-label={clustered ? `${cluster.members.length} map points` : poiAriaLabel(marker.poi)}
+            aria-pressed={clustered ? selectedPoiCluster?.key === cluster.key : selected}
             aria-expanded={clustered ? selectedPoiCluster?.key === cluster.key : undefined}
             onClick={() => {
               if (clustered) {
@@ -764,7 +769,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
         <button class="map-control" aria-label="Zoom out" onClick={() => zoom(0.8)}>−</button>
         <button class="map-control recenter-control" aria-label="Recenter map" onClick={recenter}><span /></button>
       </nav>
-    </main>
+    </div>
   </section>;
 }
 

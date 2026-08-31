@@ -411,8 +411,12 @@ function validateSteps(steps, captureName) {
         throw new TypeError(`${label}.repeat must be between 1 and 16`);
       }
       if (step.shift !== undefined && typeof step.shift !== 'boolean') throw new TypeError(`${label}.shift must be boolean`);
+    } else if (step.kind === 'mock-action-failure') {
+      if (Object.keys(step).some(key => !['kind', 'waitFor'].includes(key))) {
+        throw new TypeError(`${label} has unsupported failure-injection fields`);
+      }
     } else {
-      throw new TypeError(`${label}.kind must be action, touch, swipe, or key`);
+      throw new TypeError(`${label}.kind must be action, touch, swipe, key, or mock-action-failure`);
     }
     requireSelector(step.waitFor, `${label}.postcondition waitFor`);
   }
@@ -591,6 +595,9 @@ async function runSteps(session, steps, expectedOrigin) {
       const repeat = step.repeat ?? 1;
       for (let index = 0; index < repeat; index += 1) await dispatchKey(session, step.key, step.shift === true);
       result = { kind: 'key', key: step.key, repeat, shift: step.shift === true };
+    } else if (step.kind === 'mock-action-failure') {
+      await installOneShotActionFailure(session);
+      result = { kind: 'mock-action-failure' };
     } else {
       result = {
         kind: 'swipe',
@@ -608,6 +615,29 @@ async function runSteps(session, steps, expectedOrigin) {
     results.push({ ...result, waitFor: step.waitFor });
   }
   return results;
+}
+
+async function installOneShotActionFailure(session) {
+  await evaluate(session, () => {
+    if (window.__dualdexQaOriginalFetch) throw new Error('QA action failure is already armed');
+    const originalFetch = window.fetch.bind(window);
+    window.__dualdexQaOriginalFetch = originalFetch;
+    window.fetch = async (...args) => {
+      const input = args[0];
+      const requestUrl = input instanceof Request ? input.url : String(input);
+      const requestMethod = input instanceof Request ? input.method : args[1]?.method ?? 'GET';
+      const url = new URL(requestUrl, location.href);
+      if (url.origin === location.origin && url.pathname === '/api/actions' && requestMethod.toUpperCase() === 'POST') {
+        window.fetch = originalFetch;
+        delete window.__dualdexQaOriginalFetch;
+        return new Response(JSON.stringify({ error: 'QA injected action failure' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return originalFetch(...args);
+    };
+  });
 }
 
 async function dispatchKey(session, key, shift) {

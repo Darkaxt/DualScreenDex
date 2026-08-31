@@ -16,7 +16,7 @@ export function TrainerCardContent({ state }: { state: State }) {
           <header class="trainer-card-strip"><strong>TRAINER CARD</strong><span>ID {trainer.publicTrainerId == null ? '—' : String(trainer.publicTrainerId).padStart(5, '0')}</span></header>
           <div class="trainer-card-body">
             <div class="trainer-card-copy">
-              <div class="trainer-card-name"><small>NAME</small><h1>{trainer.name}</h1><span>{trainer.gender}</span></div>
+              <div class="trainer-card-name"><small>NAME</small><h2>{trainer.name}</h2><span>{trainer.gender}</span></div>
               <dl class="trainer-card-facts">
                 <div><dt>MONEY</dt><dd>{trainer.money == null ? '—' : `₽${trainer.money.toLocaleString('en-US')}`}</dd></div>
                 <div><dt>PLAY TIME</dt><dd>{trainer.playTimeHours == null || trainer.playTimeMinutes == null ? '—' : `${trainer.playTimeHours}:${String(trainer.playTimeMinutes).padStart(2, '0')}`}</dd></div>

@@ -83,7 +83,7 @@ describe('Pokédex evolution navigation', () => {
       openAbility={vi.fn()}
     />);
 
-    expect(document.querySelector('.app-header .header-title strong')?.textContent).toBe('POKÉDEX');
+    expect(document.querySelector('.app-header .header-title h1')?.textContent).toBe('POKÉDEX');
     expect(screen.getAllByText('Charmeleon')).toHaveLength(1);
     expect(screen.getByText('No Pokédex entry is available for this Pokémon.')).toBeTruthy();
     expect(screen.queryByText(/resolved from this ROM/i)).toBeNull();
@@ -220,6 +220,27 @@ describe('Pokédex evolution navigation', () => {
     expect(openMoveListSettings).toHaveBeenCalledOnce();
   });
 
+  it('offers Atlas recovery when maps exist but the habitat cannot be placed', () => {
+    const openAtlas = vi.fn();
+    render(<PokedexDetail
+      catalog={{
+        ...catalog,
+        areas: catalog.areas.map(area => ({ ...area, baseAreaId: 0x99 })),
+      }}
+      state={state}
+      send={vi.fn()}
+      tab="AREA"
+      setTab={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+      openAtlas={openAtlas}
+    />);
+
+    expect(screen.getByText('NO HABITAT MAP')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'OPEN ATLAS' }));
+    expect(openAtlas).toHaveBeenCalledOnce();
+  });
+
   it('keeps AREA safe when the catalog has no normalized map', () => {
     render(<PokedexDetail
       catalog={{ ...catalog, worldMaps: [] }}
@@ -233,6 +254,7 @@ describe('Pokédex evolution navigation', () => {
 
     expect(screen.getByText('NO HABITAT MAP')).toBeTruthy();
     expect(screen.getByText('No habitat map is available for this game.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'OPEN ATLAS' })).toBeNull();
     expect(screen.queryByText(/ROM|normalized world map/i)).toBeNull();
   });
 });

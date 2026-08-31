@@ -1,0 +1,409 @@
+{
+  "name": "thor-ui-stage-3",
+  "debugPackage": "com.darkaxt.dualdex.debug",
+  "qaScenarioId": "modern-normal",
+  "authority": {
+    "source": "Modern Emerald (v3.5).gba",
+    "sha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+    "crc32": "8C7DBECA",
+    "knowledgeMode": "DISCOVERED",
+    "resolution": "ACTIVE",
+    "indexedRoms": 1
+  },
+  "captures": [
+    {
+      "name": "browse-comfortable",
+      "steps": [
+        {
+          "kind": "action",
+          "value": { "type": "SETTINGS", "density": "COMFORTABLE", "fontScale": 1 },
+          "waitFor": ".production-device[data-density=\"comfortable\"] .pokedex-screen"
+        }
+      ],
+      "waitFor": ".production-device[data-density=\"comfortable\"] .pokedex-screen",
+      "measurements": [
+        ".pokedex-screen",
+        ".pokedex-screen > .app-header",
+        ".browse-tools",
+        ".filter-strip",
+        ".filter-strip > button",
+        ".species-list",
+        ".species-row:first-child",
+        ".pokedex-search-dock"
+      ],
+      "touchTargets": [
+        ".filter-strip > button"
+      ],
+      "active": [
+        {
+          "selector": ".filter-strip > button:first-child",
+          "attribute": "aria-pressed",
+          "equals": "true"
+        }
+      ]
+    },
+    {
+      "name": "browse-compact",
+      "steps": [
+        {
+          "kind": "action",
+          "value": { "type": "SETTINGS", "density": "COMPACT" },
+          "waitFor": ".production-device[data-density=\"compact\"] .pokedex-screen"
+        }
+      ],
+      "waitFor": ".production-device[data-density=\"compact\"] .pokedex-screen",
+      "measurements": [
+        ".pokedex-screen",
+        ".pokedex-screen > .app-header",
+        ".browse-tools",
+        ".filter-strip",
+        ".filter-strip > button",
+        ".species-list",
+        ".species-row:first-child",
+        ".pokedex-search-dock"
+      ],
+      "touchTargets": [
+        ".filter-strip > button"
+      ],
+      "active": [
+        {
+          "selector": ".filter-strip > button:first-child",
+          "attribute": "aria-pressed",
+          "equals": "true"
+        }
+      ]
+    },
+    {
+      "name": "settings-index",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".pokedex-screen .settings-action",
+          "waitFor": ".settings-category-list"
+        }
+      ],
+      "waitFor": ".settings-category-list",
+      "measurements": [
+        ".settings-screen",
+        ".settings-screen > .app-header",
+        ".settings-screen .back-action",
+        ".settings-content",
+        ".settings-view-heading",
+        ".settings-category-list",
+        ".settings-category-row:nth-child(-n + 6)"
+      ],
+      "touchTargets": [
+        ".settings-screen .back-action",
+        ".settings-category-row:nth-child(-n + 6)"
+      ]
+    },
+    {
+      "name": "settings-accessibility",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".settings-category-row:nth-child(5)",
+          "waitFor": ".segmented[aria-label=\"Density\"]"
+        }
+      ],
+      "waitFor": ".segmented[aria-label=\"Density\"]",
+      "measurements": [
+        ".settings-screen",
+        ".settings-screen > .app-header",
+        ".settings-screen .back-action",
+        ".settings-content",
+        ".settings-view-heading",
+        ".setting-group",
+        ".range-setting",
+        ".segmented[aria-label=\"Density\"]",
+        ".segmented[aria-label=\"Density\"] > button",
+        ".toggle-row"
+      ],
+      "touchTargets": [
+        ".settings-screen .back-action",
+        ".segmented[aria-label=\"Density\"] > button",
+        ".toggle-row"
+      ],
+      "active": [
+        {
+          "selector": ".segmented[aria-label=\"Density\"] > button:last-child",
+          "attribute": "aria-pressed",
+          "equals": "true"
+        }
+      ]
+    },
+    {
+      "name": "party-detail",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".settings-screen .back-action",
+          "waitFor": ".settings-category-list"
+        },
+        {
+          "kind": "touch",
+          "selector": ".settings-screen .back-action",
+          "waitFor": ".pokedex-screen"
+        },
+        {
+          "kind": "touch",
+          "selector": ".pokedex-screen .party-action",
+          "waitFor": ".party-screen"
+        },
+        {
+          "kind": "touch",
+          "selector": ".party-slot:not([disabled]):first-child",
+          "waitFor": ".party-detail-window[role=\"dialog\"]"
+        }
+      ],
+      "waitFor": ".party-detail-window[role=\"dialog\"]",
+      "measurements": [
+        ".party-screen",
+        ".party-detail-layer",
+        ".party-detail-window",
+        ".party-detail-close",
+        ".owned-individual-detail"
+      ],
+      "touchTargets": [
+        ".party-detail-close"
+      ],
+      "active": [
+        {
+          "selector": ".party-detail-close",
+          "focused": true
+        }
+      ]
+    },
+    {
+      "name": "pokedex-keyboard-tabs",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".party-detail-close",
+          "waitFor": ".party-screen"
+        },
+        {
+          "kind": "touch",
+          "selector": ".party-screen .back-action",
+          "waitFor": ".pokedex-screen"
+        },
+        {
+          "kind": "action",
+          "value": { "type": "OPEN_SPECIES", "speciesId": 277 },
+          "waitFor": ".detail-screen"
+        },
+        {
+          "kind": "touch",
+          "selector": "#pokedex-detail-entry-tab",
+          "waitFor": "#pokedex-detail-entry-panel"
+        },
+        {
+          "kind": "key",
+          "key": "ArrowRight",
+          "waitFor": ".stat-list"
+        }
+      ],
+      "waitFor": ".stat-list",
+      "measurements": [
+        ".detail-screen",
+        ".detail-screen > .app-header",
+        ".identity-card",
+        "[role=\"tablist\"]",
+        "[role=\"tab\"]",
+        "#pokedex-detail-stats-panel",
+        ".stat-list"
+      ],
+      "touchTargets": [
+        "[role=\"tab\"]"
+      ],
+      "active": [
+        {
+          "selector": "#pokedex-detail-stats-tab",
+          "attribute": "aria-selected",
+          "equals": "true"
+        },
+        {
+          "selector": "#pokedex-detail-stats-tab",
+          "focused": true
+        }
+      ]
+    },
+    {
+      "name": "move-list-recovery",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": "#pokedex-detail-moves-tab",
+          "waitFor": ".move-sections .empty-state .primary-button"
+        }
+      ],
+      "waitFor": ".move-sections .empty-state .primary-button",
+      "measurements": [
+        ".detail-screen",
+        "[role=\"tablist\"]",
+        "[role=\"tab\"]",
+        "#pokedex-detail-moves-panel",
+        ".move-sections",
+        ".move-sections .empty-state",
+        ".move-sections .empty-state .primary-button"
+      ],
+      "touchTargets": [
+        "[role=\"tab\"]",
+        ".move-sections .empty-state .primary-button"
+      ],
+      "active": [
+        {
+          "selector": "#pokedex-detail-moves-tab",
+          "attribute": "aria-selected",
+          "equals": "true"
+        }
+      ]
+    },
+    {
+      "name": "move-list-settings",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".move-sections .empty-state .primary-button",
+          "waitFor": ".ruleset-setting select[aria-label=\"Move list\"]"
+        }
+      ],
+      "waitFor": ".ruleset-setting select[aria-label=\"Move list\"]",
+      "measurements": [
+        ".settings-screen",
+        ".settings-screen > .app-header",
+        ".settings-screen .back-action",
+        ".settings-content",
+        ".ruleset-setting",
+        ".ruleset-setting select[aria-label=\"Move list\"]"
+      ],
+      "touchTargets": [
+        ".settings-screen .back-action",
+        ".ruleset-setting select[aria-label=\"Move list\"]"
+      ],
+      "active": [
+        {
+          "selector": ".ruleset-setting select[aria-label=\"Move list\"]",
+          "focused": true
+        }
+      ]
+    },
+    {
+      "name": "specimens-list",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".settings-screen .back-action",
+          "waitFor": ".settings-category-list"
+        },
+        {
+          "kind": "touch",
+          "selector": ".settings-screen .back-action",
+          "waitFor": ".detail-screen"
+        },
+        {
+          "kind": "touch",
+          "selector": "#pokedex-detail-more-tab",
+          "waitFor": ".specimen-entry-section > button"
+        },
+        {
+          "kind": "touch",
+          "selector": ".specimen-entry-section > button",
+          "waitFor": ".specimen-card"
+        }
+      ],
+      "waitFor": ".specimen-card",
+      "measurements": [
+        ".specimens-screen",
+        ".specimens-screen > .app-header",
+        ".specimens-screen .back-action",
+        ".specimens-content",
+        ".specimens-grid",
+        ".specimen-card"
+      ],
+      "touchTargets": [
+        ".specimens-screen .back-action",
+        ".specimen-card"
+      ]
+    },
+    {
+      "name": "specimen-dialog",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".specimen-card",
+          "waitFor": ".specimens-screen .party-detail-window[role=\"dialog\"]"
+        }
+      ],
+      "waitFor": ".specimens-screen .party-detail-window[role=\"dialog\"]",
+      "measurements": [
+        ".specimens-screen",
+        ".specimens-content",
+        ".party-detail-layer",
+        ".party-detail-window",
+        ".party-detail-close",
+        ".owned-individual-detail"
+      ],
+      "touchTargets": [
+        ".party-detail-close"
+      ],
+      "active": [
+        {
+          "selector": ".party-detail-close",
+          "focused": true
+        }
+      ]
+    },
+    {
+      "name": "global-error-feedback",
+      "steps": [
+        {
+          "kind": "touch",
+          "selector": ".party-detail-close",
+          "waitFor": ".specimens-screen"
+        },
+        {
+          "kind": "touch",
+          "selector": ".specimens-screen .back-action",
+          "waitFor": ".detail-screen"
+        },
+        {
+          "kind": "touch",
+          "selector": ".detail-screen .back-action",
+          "waitFor": ".pokedex-screen"
+        },
+        {
+          "kind": "mock-action-failure",
+          "waitFor": ".pokedex-screen"
+        },
+        {
+          "kind": "touch",
+          "selector": ".pokedex-screen .settings-action",
+          "waitFor": ".error-toast"
+        }
+      ],
+      "waitFor": ".error-toast",
+      "measurements": [
+        ".device-screen",
+        ".screen-host",
+        ".pokedex-screen",
+        ".pokedex-screen > .app-header",
+        ".filter-strip > button",
+        ".global-feedback",
+        ".error-toast",
+        ".error-toast-actions",
+        ".error-toast-actions > button"
+      ],
+      "touchTargets": [
+        ".filter-strip > button",
+        ".error-toast-actions > button"
+      ],
+      "active": [
+        {
+          "selector": ".error-toast",
+          "textIncludes": "That action could not be completed"
+        }
+      ]
+    }
+  ]
+}

@@ -43,6 +43,7 @@ describe('Pokédex knowledge modes', () => {
       node.classList.contains('app-header') ? 'header' : node.className,
     )).toEqual(['header', 'browse-tools', 'species-list', 'pokedex-search-dock']);
     expect(container.querySelector('.browse-tools .filter-strip')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'ALL' }).getAttribute('aria-pressed')).toBe('true');
     expect(container.querySelector('.browse-tools .pokedex-search-row')).toBeNull();
     expect(container.querySelector('.pokedex-search-dock .pokedex-search-row')).toBeTruthy();
   });

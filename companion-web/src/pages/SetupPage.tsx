@@ -51,6 +51,10 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
       <SetupStep number="2" title="RETROARCH CONFIG" status={retroArch.configState}>
         <p>Fully close RetroArch before setup. DualDex enables Network Commands and a 10-second SaveRAM autosave interval in the public retroarch.cfg, then verifies the exact edit without changing unrelated settings.</p>
         <small>The command interface is not considered active until DualDex verifies it after a full RetroArch restart.</small>
+        {retroArch.configState === 'FAILED' && <div class="setup-recovery" role="alert">
+          <p>RetroArch configuration could not be verified. The selected folder may not contain the active retroarch.cfg.</p>
+          <a class="setup-action setup-action-primary" href="dualdex://grant/retroarch">RESELECT RETROARCH FOLDER</a>
+        </div>}
         {retroArch.configState !== 'VERIFIED' && <div class="setup-manual-path">
           <strong>MANUAL RETROARCH PATH</strong>
           <p>Settings → Network → Network Commands: enable Network Commands and keep port 55355.</p>

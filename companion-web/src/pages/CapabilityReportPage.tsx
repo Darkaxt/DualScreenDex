@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'preact/hooks';
+import { boundedRequest } from '../boundedRequest';
 import { Header } from '../components';
 import { diagnostics } from '../gateway';
 import type { DiagnosticCapability, DiagnosticView } from '../models';
 
-export function CapabilityReportPage({ romHash, refreshMarker, onBack }: { romHash: string; refreshMarker: string; onBack: () => void }) {
+const CAPABILITY_REQUEST_TIMEOUT_MILLIS = 8_000;
+
+export function CapabilityReportPage({ romHash, refreshMarker, onBack, load = diagnostics, requestTimeoutMillis = CAPABILITY_REQUEST_TIMEOUT_MILLIS }: {
+  romHash: string;
+  refreshMarker: string;
+  onBack: () => void;
+  load?: () => Promise<DiagnosticView>;
+  requestTimeoutMillis?: number;
+}) {
   const [view, setView] = useState<DiagnosticView | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -13,16 +22,21 @@ export function CapabilityReportPage({ romHash, refreshMarker, onBack }: { romHa
 
   useEffect(() => {
     let current = true;
-    diagnostics().then(next => {
+    setView(null);
+    setError(null);
+    void boundedRequest(
+      load(),
+      requestTimeoutMillis,
+      'The compatibility request took too long.',
+    ).then(next => {
       if (!current) return;
       setView(next);
-      setError(null);
       setExpanded(new Set());
     }).catch(failure => {
       if (current) setError(failure instanceof Error ? failure.message : String(failure));
     });
     return () => { current = false; };
-  }, [romHash, refreshMarker, reloadKey]);
+  }, [romHash, refreshMarker, reloadKey, load, requestTimeoutMillis]);
 
   const toggle = (index: number) => setExpanded(current => {
     const next = new Set(current);
@@ -74,7 +88,7 @@ export function CapabilityReportPage({ romHash, refreshMarker, onBack }: { romHa
         </section>
       </>}
       {!currentView && !error && <p class="capability-loading" role="status">LOADING CAPABILITIES</p>}
-      {error && <section class="paper-panel capability-error"><p role="alert">{error}</p><button type="button" onClick={() => setReloadKey(value => value + 1)}>RETRY</button></section>}
+      {error && <section class="paper-panel capability-error" role="alert"><strong>REPORT UNAVAILABLE</strong><p>{error} The active game remains selected.</p><button type="button" onClick={() => setReloadKey(value => value + 1)}>RETRY</button></section>}
     </div>
   </section>;
 }
