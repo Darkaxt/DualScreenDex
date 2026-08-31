@@ -159,7 +159,11 @@ data class AreaGuideOverviewView(
     val exits: List<AreaGuideExitView>,
 )
 
-data class AreaGuideExitView(val baseAreaId: Int, val name: String)
+data class AreaGuideExitView(
+    val baseAreaId: Int,
+    val name: String,
+    val count: Int,
+)
 
 data class AreaGuideEncounterGroupView(
     val name: String?,
@@ -1547,7 +1551,7 @@ object ApiViewBuilder {
         knownPointCount = knownPointCount,
         totalPointCount = totalPointCount,
         collectedItemCount = collectedItemCount,
-        exits = exits.map { AreaGuideExitView(it.baseAreaId, it.name) },
+        exits = exits.map { AreaGuideExitView(it.baseAreaId, it.name, it.count) },
     )
 
     private fun AreaGuideEncounterGroup.toView(catalog: ParsedCatalog?) = AreaGuideEncounterGroupView(

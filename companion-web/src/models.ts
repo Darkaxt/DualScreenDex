@@ -196,7 +196,13 @@ export interface AreaGuideOverviewView {
   knownPointCount: number;
   totalPointCount: number | null;
   collectedItemCount: number;
-  exits: { baseAreaId: number; name: string }[];
+  exits: AreaGuideExitView[];
+}
+
+export interface AreaGuideExitView {
+  baseAreaId: number;
+  name: string;
+  count?: number;
 }
 
 export interface AreaGuideEncounterGroupView {

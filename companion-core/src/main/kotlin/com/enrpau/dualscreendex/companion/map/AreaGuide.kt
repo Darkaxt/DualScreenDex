@@ -46,6 +46,7 @@ data class AreaGuideOverview(
 data class AreaGuideExit(
     val baseAreaId: Int,
     val name: String,
+    val count: Int = 1,
 )
 
 data class AreaGuideEncounterGroup(

@@ -130,6 +130,31 @@ class AreaGuideBuilderTest {
     }
 
     @Test
+    fun repeatedDestinationPointsRemainOneExitWithAnExactCount() {
+        val base = catalog()
+        val house = base.localMaps.pois.single { it.key == HOUSE }
+        val repeated = base.copy(
+            localMaps = base.localMaps.copy(
+                scenes = emptyList(),
+                pois = base.localMaps.pois + house.copy(key = "$HOUSE/rear", tileX = house.tileX + 1),
+            ),
+        )
+
+        val guide = AreaGuideBuilder.build(
+            repeated,
+            AppSnapshot(
+                liveAreaBaseId = ROUTE,
+                settings = CompanionSettings(knowledgeMode = KnowledgeMode.DISCOVERED),
+            ),
+        )
+
+        assertEquals(
+            listOf(AreaGuideExit(TOWN, "Oldale Town", count = 2)),
+            guide.areas.single { it.baseAreaId == ROUTE }.overview.exits,
+        )
+    }
+
+    @Test
     fun organicProjectionContainsOnlyAreaObservedEncountersAndKnowledgeVisiblePoints() {
         val guide = AreaGuideBuilder.build(
             catalog(),

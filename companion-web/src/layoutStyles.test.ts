@@ -59,17 +59,41 @@ describe('screen layout containment', () => {
     expect(styles).not.toContain('[data-map-navigation-row]')
   })
 
+  it('keeps every Stage 2 map action at the touch floor while preserving small marker artwork', () => {
+    const localPoi = styles.match(/\.map-poi-marker\s*\{([^}]*)\}/)?.[1]
+    const atlasMarker = styles.match(/\.atlas-location-marker\s*\{([^}]*)\}/)?.[1]
+    const localSceneAction = styles.match(/\.map-local-poi-label:is\(button\)\s*\{([^}]*)\}/)?.[1]
+    const poiCardClose = styles.match(/\.map-poi-card > button\s*\{([^}]*)\}/)?.[1]
+    const habitatMarker = styles.match(/\.pokemon-area-canvas > button:not\(\.pokemon-area-dex\)\s*\{([^}]*)\}/)?.[1]
+    const habitatDex = styles.match(/\.pokemon-area-dex\s*\{([^}]*)\}/)?.[1]
+
+    expect(localPoi).toMatch(/width\s*:\s*44px/)
+    expect(localPoi).toMatch(/height\s*:\s*44px/)
+    expect(atlasMarker).toMatch(/width\s*:\s*44px/)
+    expect(atlasMarker).toMatch(/height\s*:\s*44px/)
+    expect(localSceneAction).toMatch(/min-height\s*:\s*44px/)
+    expect(poiCardClose).toMatch(/width\s*:\s*44px/)
+    expect(poiCardClose).toMatch(/height\s*:\s*44px/)
+    expect(habitatMarker).toMatch(/width\s*:\s*44px/)
+    expect(habitatMarker).toMatch(/height\s*:\s*44px/)
+    expect(habitatDex).toMatch(/width\s*:\s*44px/)
+    expect(habitatDex).toMatch(/height\s*:\s*44px/)
+    expect(styles).toMatch(/\.map-poi-symbol[^{}]*\{[^}]*width\s*:\s*24px[^}]*height\s*:\s*24px/)
+    expect(styles).toMatch(/\.atlas-location-marker span[^{}]*\{[^}]*width\s*:\s*11px[^}]*height\s*:\s*11px/)
+  })
+
   it('bounds the Area Guide over the map and gives long guide sections one windowed scroll region', () => {
     const drawerRule = styles.match(/\.area-guide-drawer\s*\{([^}]*)\}/)?.[1]
     const contentRule = styles.match(/\.area-guide-content\s*\{([^}]*)\}/)?.[1]
-    const listRule = styles.match(/\.area-guide-windowed-list\.is-virtual\s*\{([^}]*)\}/)?.[1]
+    const listRule = styles.match(/\.area-guide-windowed-list\.is-windowed\s*\{([^}]*)\}/)?.[1]
 
     expect(drawerRule).toMatch(/position\s*:\s*absolute/)
     expect(drawerRule).toMatch(/bottom\s*:\s*12px/)
     expect(drawerRule).toMatch(/overflow\s*:\s*hidden/)
     expect(contentRule).toMatch(/min-height\s*:\s*0/)
     expect(contentRule).toMatch(/overflow-y\s*:\s*auto/)
-    expect(listRule).toMatch(/overflow-y\s*:\s*auto/)
+    expect(listRule).toMatch(/overflow\s*:\s*hidden/)
+    expect(listRule).not.toMatch(/overflow-y\s*:\s*auto/)
   })
 
   it('does not give the Area Guide its own polling or animation loop', () => {

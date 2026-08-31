@@ -230,21 +230,20 @@ object AreaGuideBuilder {
         sceneAdjacency: Map<Int, Set<Int>>,
         outputBudget: OutputBudget,
     ): List<AreaGuideExit> {
-        val destinationIds = buildSet {
-            addAll(points.mapNotNull(AreaGuidePoint::destinationBaseAreaId))
-            addAll(sceneAdjacency[baseAreaId].orEmpty())
+        val destinationCounts = linkedMapOf<Int, Int>()
+        points.mapNotNull(AreaGuidePoint::destinationBaseAreaId).forEach { destination ->
+            destinationCounts[destination] = destinationCounts.getOrDefault(destination, 0) + 1
         }
-        return destinationIds
-            .asSequence()
-            .filter { it != baseAreaId && it in visibleAreaIds }
-            .mapNotNull { destination -> names[destination]?.let { destination to it } }
-            .distinctBy { it.first }
-            .sortedWith(compareBy({ it.second }, { it.first }))
-            .map { (destination, name) ->
-                outputBudget.retain()
-                AreaGuideExit(destination, name)
+        sceneAdjacency[baseAreaId].orEmpty().forEach { destination ->
+            destinationCounts[destination] = destinationCounts.getOrDefault(destination, 0) + 1
+        }
+        return destinationCounts
+            .mapNotNull { (destination, count) ->
+                if (destination == baseAreaId || destination !in visibleAreaIds) return@mapNotNull null
+                names[destination]?.let { name -> AreaGuideExit(destination, name, count) }
             }
-            .toList()
+            .sortedWith(compareBy({ it.name }, { it.baseAreaId }))
+            .onEach { outputBudget.retain() }
     }
 
     private data class SceneEdge(

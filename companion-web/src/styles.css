@@ -1001,7 +1001,7 @@ button { cursor: pointer; }
 .area-guide-exits button { min-height: 44px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 5px 9px; border: 1px solid var(--line); color: var(--ink); background: var(--paper); font-size: max(var(--ui-min-text), .75rem); font-weight: 900; text-align: left; }
 .area-guide-exits button span { color: var(--theme-accent, var(--forest-700)); font-size: 1.3rem; }
 .area-guide-windowed-list { min-height: 0; overflow: hidden; border: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 92%, transparent); }
-.area-guide-windowed-list.is-virtual { overflow-y: auto; overscroll-behavior: contain; }
+.area-guide-windowed-list.is-windowed { overflow: hidden; }
 .area-guide-windowed-spacer { position: relative; }
 .area-guide-windowed-content { width: 100%; }
 .area-guide-windowed-item { height: 56px; border-bottom: 1px solid color-mix(in srgb, var(--line) 58%, transparent); }
