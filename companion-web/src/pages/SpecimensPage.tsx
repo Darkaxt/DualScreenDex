@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { boundedRequest } from '../boundedRequest';
-import type { Catalog, SpecimenCollectionView } from '../models';
+import type { Catalog, SpecimenCollectionView, State } from '../models';
 import { Dialog, Header } from '../components';
 import { specimens as loadSpecimens } from '../gateway';
 import { RarityStars } from './BattlePage';
@@ -8,10 +8,11 @@ import { OwnedIndividualDetail, OwnedIndividualSprite } from './OwnedIndividualD
 
 const SPECIMEN_REQUEST_TIMEOUT_MILLIS = 8_000;
 
-export function SpecimensPage({ catalog, speciesId, stateVersion, detailKey, onBack, onOpenDetail, onCloseDetail, openMove, openAbility, openNature, openSpecies, initialScrollTop = 0, onScrollTopChange, load = loadSpecimens, requestTimeoutMillis = SPECIMEN_REQUEST_TIMEOUT_MILLIS }: {
+export function SpecimensPage({ catalog, speciesId, stateVersion, gameTime, detailKey, onBack, onOpenDetail, onCloseDetail, openMove, openAbility, openNature, openSpecies, initialScrollTop = 0, onScrollTopChange, load = loadSpecimens, requestTimeoutMillis = SPECIMEN_REQUEST_TIMEOUT_MILLIS }: {
   catalog: Catalog;
   speciesId: number;
   stateVersion: number;
+  gameTime: State['gameTime'];
   detailKey: string | null;
   onBack: () => void;
   onOpenDetail: (key: string) => void;
@@ -77,7 +78,7 @@ export function SpecimensPage({ catalog, speciesId, stateVersion, detailKey, onB
   };
 
   return <section class="screen specimens-screen">
-    <Header title="SPECIMENS" kicker={collection?.speciesName ?? catalog.species.find(species => species.id === speciesId)?.name} onBack={onBack} />
+    <Header title="SPECIMENS" kicker={collection?.speciesName ?? catalog.species.find(species => species.id === speciesId)?.name} gameTime={gameTime} onBack={onBack} />
     <div ref={contentRef} class="specimens-content" data-scroll-region onScroll={event => onScrollTopChange?.(event.currentTarget.scrollTop)}>
       {!collection && !error && <div class="specimens-loading" role="status"><span />Preparing your Pokémon…</div>}
       {error && <div class="empty-state specimens-error" role="alert">

@@ -9,7 +9,7 @@ export function MoveDetail({ catalog, state, moveId, onBack }: { catalog: Catalo
     state.speciesState[species.id]?.caught && speciesKnowsMove(species, state.activeRulesetId, moveId),
   );
   return <section class="screen move-detail-screen">
-    <Header title={move.name} onBack={onBack} />
+    <Header title={move.name} gameTime={state.gameTime} onBack={onBack} />
     <div class="move-detail-content" data-scroll-region>
       <div class="move-hero">
         <TypeChip type={catalog.types.find(type => type.id === move.typeId)} />

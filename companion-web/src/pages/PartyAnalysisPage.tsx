@@ -15,7 +15,7 @@ interface PartyAnalysisPageProps {
 export function PartyAnalysisPage({ catalog, state, analysis, onBack, openMember, openMove, openAbility, openSpecies }: PartyAnalysisPageProps) {
   const members = new Map((state.party ?? []).filter(member => member.occupied).map(member => [member.slot, member]));
   return <section class="screen party-analysis-screen">
-    <Header title="PARTY ANALYSIS" onBack={onBack} />
+    <Header title="PARTY ANALYSIS" gameTime={state.gameTime} onBack={onBack} />
     <div class="party-analysis-content" data-scroll-region>
       <TeamSummary analysis={analysis} />
       {analysis.offensiveCoverage && <OffensiveCoverage catalog={catalog} analysis={analysis.offensiveCoverage} members={members} openMember={openMember} />}
@@ -107,7 +107,7 @@ function Development({ catalog, state, analysis, members, openMember, openMove, 
       })}
       {analysis.nearbyMoves.map(item => {
         const move = catalog.moves.find(candidate => candidate.id === item.moveId);
-        return <article class="party-development-card" key={`move-${item.slot}-${item.moveId}-${item.level}`}>
+        return <article class="party-development-card party-nearby-move-card" key={`move-${item.slot}-${item.moveId}-${item.level}`}>
           <button type="button" class="party-analysis-member compact" aria-label={`Open ${memberName(members.get(item.slot))} details`} onClick={() => openMember(item.slot)}><MemberPortrait member={members.get(item.slot)} /><span><small>In {item.levelsAway} {item.levelsAway === 1 ? 'level' : 'levels'}</small><strong>{memberName(members.get(item.slot))}</strong></span></button>
           <button type="button" class="party-development-target" aria-label={`Open ${move?.name ?? 'move'} move`} onClick={() => openMove(item.moveId)}><strong>{move?.name ?? 'Move'}</strong><small>Lv {item.level}</small></button>
         </article>;

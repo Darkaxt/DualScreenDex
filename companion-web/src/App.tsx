@@ -517,7 +517,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     if (activeRoute?.kind === 'ABILITY') return <AbilityDetail catalog={catalog} state={state} abilityId={activeRoute.id} onBack={closeRoute} />;
     if (activeRoute?.kind === 'NATURE') {
       const nature = catalog.natures?.find(candidate => candidate.id === activeRoute.id);
-      if (nature) return <NatureDetail nature={nature} onBack={closeRoute} />;
+      if (nature) return <NatureDetail nature={nature} gameTime={state.gameTime} onBack={closeRoute} />;
     }
     if (activeRoute?.kind === 'SPECIMENS' || activeRoute?.kind === 'SPECIMEN') {
       const speciesId = activeRoute.speciesId;
@@ -528,6 +528,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
           catalog={catalog}
           speciesId={speciesId}
           stateVersion={state.version}
+          gameTime={state.gameTime}
           detailKey={activeRoute.kind === 'SPECIMEN' ? activeRoute.specimenKey : null}
           initialScrollTop={specimenScroll.key === scrollKey ? specimenScroll.top : 0}
           onScrollTopChange={top => setSpecimenScroll({ key: scrollKey, top })}

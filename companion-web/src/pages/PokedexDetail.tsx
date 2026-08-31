@@ -50,7 +50,7 @@ export function PokedexDetail({
     return slots.length ? [{ area, slots }] : [];
   });
   return <section class="screen detail-screen">
-    <Header title="POKÉDEX" kicker={`#${String(species.dex).padStart(3, '0')}`} focusKey={species.id} onBack={() => send('BACK')} />
+    <Header title="POKÉDEX" kicker={`#${String(species.dex).padStart(3, '0')}`} gameTime={state.gameTime} focusKey={species.id} onBack={() => send('BACK')} />
     <div class="detail-scroll">
       <div class="identity-card">
         <PokedexAvatar speciesId={species.id} name={species.name} available={species.hasSprite} large knowledge={identityKnowledge} state={status} catalog={catalog} />

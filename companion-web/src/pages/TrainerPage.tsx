@@ -15,7 +15,7 @@ export function TrainerPage({
   const progress = state.trainerProgress;
   const destination = progress?.selectedDestination ?? 'CARD';
   return <section class="screen trainer-screen">
-    <Header title="TRAINER" onBack={onBack} actions={<nav class="trainer-destination-switcher" aria-label="Trainer pages">
+    <Header title="TRAINER" gameTime={state.gameTime} onBack={onBack} actions={<nav class="trainer-destination-switcher" aria-label="Trainer pages">
       <button type="button" class="header-action trainer-destination-action" aria-label="Card" aria-pressed={destination === 'CARD'} onClick={() => send('TRAINER_DESTINATION', { value: 'CARD' })}><TrainerCardIcon /></button>
       {progress && <button type="button" class="header-action trainer-destination-action" aria-label="Progress" aria-pressed={destination === 'PROGRESS'} onClick={() => send('TRAINER_DESTINATION', { value: 'PROGRESS' })}><ProgressTrophyIcon /></button>}
     </nav>} />

@@ -178,7 +178,7 @@ export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onT
   }, [allowRouteHeadingFocus, focusHeading, focusKey]);
 
   return (
-    <header class={`app-header ${onBack ? '' : 'app-header-root'}`}>
+    <header class={`app-header ${onBack ? '' : 'app-header-root'} ${gameTime ? 'has-game-clock' : ''}`}>
       {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
       <div class="header-title"><h1 ref={headingRef} tabIndex={-1}>{title}</h1>{kicker && <small>{kicker}</small>}</div>
       {gameTime && <GameClockIndicator clock={gameTime} />}

@@ -3,7 +3,7 @@ import { Header } from '../components';
 
 export function TrainerCardPage({ state, onBack }: { state: State; onBack: () => void }) {
   return <section class="screen trainer-screen trainer-card-screen">
-    <Header title="TRAINER CARD" onBack={onBack} />
+    <Header title="TRAINER CARD" gameTime={state.gameTime} onBack={onBack} />
     <TrainerCardContent state={state} />
   </section>;
 }

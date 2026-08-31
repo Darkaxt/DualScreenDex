@@ -37,6 +37,7 @@ describe('Pokédex specimens', () => {
       catalog={catalog}
       speciesId={25}
       stateVersion={7}
+      gameTime={gameTime}
       detailKey={null}
       onBack={vi.fn()}
       onOpenDetail={openDetail}
@@ -60,6 +61,7 @@ describe('Pokédex specimens', () => {
       catalog={catalog}
       speciesId={25}
       stateVersion={7}
+      gameTime={gameTime}
       detailKey="individual:1"
       onBack={vi.fn()}
       onOpenDetail={openDetail}
@@ -81,6 +83,7 @@ describe('Pokédex specimens', () => {
       catalog={catalog}
       speciesId={25}
       stateVersion={8}
+      gameTime={gameTime}
       detailKey={null}
       onBack={vi.fn()}
       onOpenDetail={vi.fn()}
@@ -112,6 +115,7 @@ describe('Pokédex specimens', () => {
         catalog={catalog}
         speciesId={25}
         stateVersion={10}
+        gameTime={gameTime}
         detailKey={detailKey}
         onBack={vi.fn()}
         onOpenDetail={setDetailKey}
@@ -150,6 +154,7 @@ describe('Pokédex specimens', () => {
     const props = {
       catalog,
       speciesId: 25,
+      gameTime,
       detailKey: 'individual:1',
       onBack: vi.fn(),
       onOpenDetail: vi.fn(),
@@ -188,6 +193,7 @@ describe('Pokédex specimens', () => {
         catalog={catalog}
         speciesId={25}
         stateVersion={8}
+        gameTime={gameTime}
         detailKey={null}
         onBack={vi.fn()}
         onOpenDetail={vi.fn()}
@@ -219,6 +225,7 @@ describe('Pokédex specimens', () => {
       catalog={catalog}
       speciesId={25}
       stateVersion={9}
+      gameTime={gameTime}
       detailKey={null}
       onBack={vi.fn()}
       onOpenDetail={vi.fn()}
@@ -243,6 +250,7 @@ describe('Pokédex specimens', () => {
   });
 });
 
+const gameTime = { hours: 12, minutes: 34, phase: 'DAY', phaseProgress: .5 } as const;
 const catalog = {
   hash: 'sha', crc32: '1234', family: 'EMERALD', platform: 'GBA', rulesets: [], areas: [], balls: [], capabilities: {},
   species: [], moves: [{ id: 85, name: 'Thunderbolt', typeId: 13, category: 'SPECIAL', power: 90, accuracy: 100, pp: 15, priority: 0, effectId: null, description: null }],
