@@ -19,8 +19,10 @@ class RetroArchFreeUiQaIsolationTest {
         val controls = File("src/debug/java/com/darkaxt/dualdex/RawLiveMemoryControlActivity.kt")
 
         assertTrue("debug manifest overlay must exist", manifest.isFile)
-        assertTrue("debug application class must be selected", manifest.readText().contains("android:name=\".RetroArchFreeUiQaApplication\""))
-        assertTrue("debug raw-memory controls must be registered", manifest.readText().contains("android:name=\".RawLiveMemoryControlActivity\""))
+        val debugManifest = manifest.readText()
+        assertTrue("debug application class must be selected", debugManifest.contains("android:name=\".RetroArchFreeUiQaApplication\""))
+        assertTrue("debug QA provisioning must request a large heap", debugManifest.contains("android:largeHeap=\"true\""))
+        assertTrue("debug raw-memory controls must be registered", debugManifest.contains("android:name=\".RawLiveMemoryControlActivity\""))
         assertTrue("debug string overlay must exist", strings.isFile)
         assertTrue(strings.readText().contains(">DualDex RetroArch-Free UI QA<"))
         assertTrue("debug raw-memory controls must exist", controls.isFile)
@@ -65,6 +67,7 @@ class RetroArchFreeUiQaIsolationTest {
         )
 
         assertTrue(productionManifest.contains("android:name=\".DualDexApplication\""))
+        assertFalse("production manifest must not request a large heap", productionManifest.contains("android:largeHeap"))
         productionRoot.walkTopDown().filter(File::isFile).forEach { file ->
             val text = file.readText()
             forbidden.forEach { value ->
@@ -87,7 +90,9 @@ class RetroArchFreeUiQaIsolationTest {
         val debugManifest = mergedManifest("debug")
         val releaseManifest = mergedManifest("release")
         assertEquals("com.darkaxt.dualdex.RetroArchFreeUiQaApplication", applicationName(debugManifest))
+        assertTrue("merged debug manifest must request a large heap", largeHeapEnabled(debugManifest))
         assertEquals("com.darkaxt.dualdex.DualDexApplication", applicationName(releaseManifest))
+        assertFalse("merged release manifest must not request a large heap", largeHeapEnabled(releaseManifest))
 
         val debugApk = singleApk("debug")
         val releaseApk = singleApk("release")
@@ -110,11 +115,17 @@ class RetroArchFreeUiQaIsolationTest {
     }
 
     private fun applicationName(manifest: String): String {
-        val applicationTag = Regex("<application\\b[^>]*>", setOf(RegexOption.DOT_MATCHES_ALL)).find(manifest)?.value
-            ?: error("merged manifest has no application element")
+        val applicationTag = applicationTag(manifest)
         return Regex("android:name=\"([^\"]+)\"").find(applicationTag)?.groupValues?.get(1)
             ?: error("merged application has no android:name")
     }
+
+    private fun largeHeapEnabled(manifest: String): Boolean =
+        Regex("android:largeHeap=\"true\"").containsMatchIn(applicationTag(manifest))
+
+    private fun applicationTag(manifest: String): String =
+        Regex("<application\\b[^>]*>", setOf(RegexOption.DOT_MATCHES_ALL)).find(manifest)?.value
+            ?: error("merged manifest has no application element")
 
     private fun singleApk(variant: String): File {
         val apks = File("build/outputs/apk/$variant").listFiles()

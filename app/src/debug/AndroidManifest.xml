@@ -4,6 +4,7 @@
 
     <application
         android:name=".RetroArchFreeUiQaApplication"
+        android:largeHeap="true"
         tools:replace="android:name">
         <activity
             android:name=".RawLiveMemoryControlActivity"
