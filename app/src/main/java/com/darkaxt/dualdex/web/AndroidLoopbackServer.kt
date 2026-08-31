@@ -9,6 +9,7 @@ import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonIOException
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import java.io.BufferedInputStream
@@ -252,6 +253,8 @@ class AndroidLoopbackServer(
                 )
             } catch (_: IOException) {
                 // The deadline or peer closed the socket while the bounded response was being written.
+            } catch (failure: JsonIOException) {
+                if (!failure.hasIoCause()) throw failure
             } finally {
                 releaseClient(connection)
             }
@@ -273,6 +276,8 @@ class AndroidLoopbackServer(
                 writeResponse(BufferedOutputStream(connection.getOutputStream()), response)
             } catch (_: IOException) {
                 // The deadline, server close, or peer disconnect ended this bounded connection.
+            } catch (failure: JsonIOException) {
+                if (!failure.hasIoCause()) throw failure
             } finally {
                 releaseClient(connection)
             }
@@ -823,6 +828,15 @@ class AndroidLoopbackServer(
         }
 
         override fun flush() = delegate.flush()
+    }
+
+    private fun JsonIOException.hasIoCause(): Boolean {
+        var current: Throwable? = cause
+        while (current != null) {
+            if (current is IOException) return true
+            current = current.cause
+        }
+        return false
     }
 
     private fun emptyResponse(status: Int): Response = Response(
