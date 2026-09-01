@@ -160,6 +160,7 @@
   "v11SaveSynchronizedKnowledgeCheckpoints": true,
   "v11Rc84ThorLowerDisplayRemediation": true,
   "v11Rc84ReleaseQaIsolation": true,
+  "v11Rc85ActiveHeaderDestinations": true,
   "gen1CompiledEvolutionCoveragePercent": 96.62,
   "gen1CompiledLearnsetCoveragePercent": 93.56,
   "gen1CompiledTypeChartCoveragePercent": 95.79,
