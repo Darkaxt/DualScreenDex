@@ -123,6 +123,18 @@ describe('production settings copy', () => {
     expect(send).toHaveBeenCalledWith('SETTINGS', { mapFollowSmoothingPercent: 70 });
   });
 
+  it('keeps the enhanced Local player marker off by default and exposes it under Accessibility', () => {
+    const send = vi.fn();
+    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} initialCategory="ACCESSIBILITY" />);
+
+    const toggle = screen.getByRole('checkbox', { name: 'High-visibility map player' });
+    expect(toggle).toHaveProperty('checked', false);
+    expect(screen.getByText(/adds a pulsing outline around the Local map player/i)).toBeTruthy();
+
+    fireEvent.click(toggle);
+    expect(send).toHaveBeenCalledWith('SETTINGS', { highVisibilityMapPlayer: true });
+  });
+
   it('does not expose the retired Thor focus setting or status', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} initialCategory="ACCESSIBILITY" />);
 

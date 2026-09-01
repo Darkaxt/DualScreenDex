@@ -512,9 +512,25 @@ describe('optional local map presentation', () => {
     expect(playerMarker?.getAttribute('aria-label')).toBe('Player position 12, 7');
     expect(playerMarker?.classList.contains('atlas-location-marker')).toBe(false);
     expect(playerMarker?.classList.contains('has-sprite')).toBe(false);
+    expect(playerMarker?.classList.contains('is-high-visibility')).toBe(false);
     expect(playerMarker?.querySelector('.map-player-dot')).not.toBeNull();
     expect(screen.queryByRole('button', { name: 'Show Atlas' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Show Local map' })).toBeNull();
+  });
+
+  it('adds the player pulse only when the Accessibility preference is enabled', () => {
+    const { container } = render(<MapPage
+      catalog={localCatalog}
+      state={{
+        ...state,
+        currentMapPosition: { x: 12, y: 7 },
+        settings: { ...state.settings, highVisibilityMapPlayer: true },
+      }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    expect(container.querySelector('.map-player-marker')?.classList.contains('is-high-visibility')).toBe(true);
   });
 
   it('uses the gender-selected ROM overworld sprite at its ROM-derived native map scale', () => {

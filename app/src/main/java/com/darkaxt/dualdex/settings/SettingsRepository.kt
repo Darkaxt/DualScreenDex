@@ -75,6 +75,7 @@ class SettingsRepository(
             overlayScale = sanitized.overlayScale,
             battlePollingIntervalMs = sanitized.battlePollingIntervalMs,
             mapFollowSmoothingPercent = sanitized.mapFollowSmoothingPercent,
+            highVisibilityMapPlayer = sanitized.highVisibilityMapPlayer,
         )
         val override = StoredSettings.difference(sanitized, globals)
         val overrides = LinkedHashMap(state.romOverrides)
@@ -194,6 +195,7 @@ class SettingsRepository(
         },
         battlePollingIntervalMs = if (includeDeviceFields) objectValue.intValue("battlePollingIntervalMs")?.coerceIn(1, 20) else null,
         mapFollowSmoothingPercent = if (includeDeviceFields) objectValue.intValue("mapFollowSmoothingPercent")?.coerceIn(0, 100) else null,
+        highVisibilityMapPlayer = if (includeDeviceFields) objectValue.booleanValue("highVisibilityMapPlayer") else null,
     )
 
     private fun sanitize(settings: CompanionSettings): CompanionSettings {
@@ -268,6 +270,7 @@ class SettingsRepository(
         val overlayScale: Double? = null,
         val battlePollingIntervalMs: Int? = null,
         val mapFollowSmoothingPercent: Int? = null,
+        val highVisibilityMapPlayer: Boolean? = null,
     ) {
         fun applyTo(fallback: CompanionSettings): CompanionSettings = CompanionSettings(
             knowledgeMode = knowledgeMode?.let(KnowledgeMode::valueOf) ?: fallback.knowledgeMode,
@@ -285,6 +288,7 @@ class SettingsRepository(
             overlayScale = overlayScale ?: fallback.overlayScale,
             battlePollingIntervalMs = battlePollingIntervalMs ?: fallback.battlePollingIntervalMs,
             mapFollowSmoothingPercent = mapFollowSmoothingPercent ?: fallback.mapFollowSmoothingPercent,
+            highVisibilityMapPlayer = highVisibilityMapPlayer ?: fallback.highVisibilityMapPlayer,
         )
 
         fun isEmpty(): Boolean = this == StoredSettings()
@@ -306,6 +310,7 @@ class SettingsRepository(
                 overlayScale = settings.overlayScale,
                 battlePollingIntervalMs = settings.battlePollingIntervalMs,
                 mapFollowSmoothingPercent = settings.mapFollowSmoothingPercent,
+                highVisibilityMapPlayer = settings.highVisibilityMapPlayer,
             )
 
             fun difference(settings: CompanionSettings, globals: CompanionSettings) = StoredSettings(

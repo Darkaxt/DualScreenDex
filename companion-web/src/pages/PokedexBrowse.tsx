@@ -4,7 +4,7 @@ import type { Catalog, EncounterWindow, State } from '../models';
 import { Header, maskIdentityName, PokedexAvatar, speciesIdentityKnowledge, StatusMarks, TypeChip, uniqueTypeIds } from '../components';
 
 const DEFAULT_SPECIES_ROW_HEIGHT = 94;
-const COMPACT_SPECIES_ROW_HEIGHT = 68;
+const COMPACT_SPECIES_ROW_HEIGHT = 76;
 const MAX_MOUNTED_SPECIES = 60;
 const OVERSCAN_ROWS = 3;
 

@@ -1754,7 +1754,12 @@ class ProductionCompanionRuntimeTest {
 
         val state = runtime.action(
             "SETTINGS",
-            mapOf("displayTarget" to "EXTERNAL", "theme" to "LIGHT", "fontScale" to "1.2"),
+            mapOf(
+                "displayTarget" to "EXTERNAL",
+                "theme" to "LIGHT",
+                "fontScale" to "1.2",
+                "highVisibilityMapPlayer" to "true",
+            ),
         )
 
         val settings = state.settings as CompanionSettings
@@ -1762,6 +1767,7 @@ class ProductionCompanionRuntimeTest {
         assertEquals(DisplayTarget.EXTERNAL, settings.displayTarget)
         assertEquals(Theme.LIGHT, settings.theme)
         assertEquals(1.2, settings.fontScale, 0.0)
+        assertTrue(settings.highVisibilityMapPlayer)
         assertEquals(settings, persisted)
         runtime.close()
     }

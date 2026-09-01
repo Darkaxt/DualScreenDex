@@ -36,6 +36,7 @@ class SettingsRepositoryTest {
             overlayScale = 0.65,
             battlePollingIntervalMs = 1,
             mapFollowSmoothingPercent = 70,
+            highVisibilityMapPlayer = true,
         )
 
         repository.write(settings)
@@ -107,6 +108,28 @@ class SettingsRepositoryTest {
         assertEquals(80, repository.readForRom(romA).mapFollowSmoothingPercent)
         assertEquals(80, repository.readForRom(romB).mapFollowSmoothingPercent)
         assertFalse(requireNotNull(document).substringAfter("\"romOverrides\"").contains("mapFollowSmoothingPercent"))
+    }
+
+    @Test
+    fun keepsTheHighVisibilityMapPlayerPreferenceDeviceGlobalAcrossRomProfiles() {
+        var document: String? = null
+        val repository = SettingsRepository({ document }, { document = it })
+        repository.writeForRom(
+            romA,
+            CompanionSettings(theme = Theme.DARK, highVisibilityMapPlayer = true),
+        )
+        repository.writeForRom(
+            romB,
+            repository.readForRom(romB).copy(theme = Theme.LIGHT),
+        )
+
+        assertTrue(repository.readForRom(romA).highVisibilityMapPlayer)
+        assertTrue(repository.readForRom(romB).highVisibilityMapPlayer)
+        assertFalse(
+            requireNotNull(document)
+                .substringAfter("\"romOverrides\"")
+                .contains("highVisibilityMapPlayer"),
+        )
     }
 
     @Test
