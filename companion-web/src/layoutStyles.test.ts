@@ -10,6 +10,20 @@ const pokemonAreaSource = readFileSync(join(process.cwd(), 'src', 'pages', 'Poke
 const settingsSource = readFileSync(join(process.cwd(), 'src', 'pages', 'SettingsPage.tsx'), 'utf8')
 
 describe('screen layout containment', () => {
+  it('keeps header shortcuts readable against ROM-derived header colors', () => {
+    const actionRule = styles.match(/\.header-action\s*\{([^}]*)\}/)?.[1]
+
+    expect(actionRule).toMatch(/color\s*:\s*var\(--semantic-header-fg\)/)
+    expect(actionRule).not.toMatch(/color\s*:\s*var\(--acid\)/)
+  })
+
+  it('keeps Party card copy inside the full padded card height', () => {
+    const copyRule = styles.match(/\.party-slot-copy\s*\{([^}]*)\}/)?.[1]
+
+    expect(copyRule).toMatch(/height\s*:\s*100%/)
+    expect(copyRule).toMatch(/align-self\s*:\s*stretch/)
+  })
+
   it('keeps root titles left aligned when the header also has actions', () => {
     const rootRule = styles.match(/\.app-header\.app-header-root\s*\{([^}]*)\}/)?.[1]
     const actionRule = styles.match(/\.app-header:not\(\.app-header-root\):has\(\.header-actions\)\s*\{([^}]*)\}/)?.[1]

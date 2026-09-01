@@ -24,6 +24,25 @@ describe('Party', () => {
     expect(screen.queryByText(/LIVE|OWNED POKÉMON/)).toBeNull();
   });
 
+  it('shows exactly one roster identity for nicknamed and unnamed Pokémon', () => {
+    const props = { catalog, onBack: vi.fn(), openMove: vi.fn(), openAbility: vi.fn() };
+    const state = partyState('ORGANIC');
+    const rendered = render(<PartyPage {...props} state={state} />);
+    let occupied = rendered.container.querySelector('.party-slot:not(.empty)')!;
+
+    expect(occupied.querySelector('.party-slot-heading strong')?.textContent).toBe('SPARK');
+    expect(occupied.querySelector('.party-slot-species')).toBeNull();
+    expect(screen.queryByText('PIKACHU')).toBeNull();
+
+    state.party![0].nickname = null;
+    rendered.rerender(<PartyPage {...props} state={state} />);
+    occupied = rendered.container.querySelector('.party-slot:not(.empty)')!;
+
+    expect(occupied.querySelector('.party-slot-heading strong')?.textContent).toBe('PIKACHU');
+    expect(occupied.querySelector('.party-slot-species')).toBeNull();
+    expect(screen.getAllByText('PIKACHU')).toHaveLength(1);
+  });
+
   it('renders a six-slot 2x3 roster and opens details only after selecting a member', () => {
     const openMove = vi.fn();
     const openAbility = vi.fn();
@@ -39,7 +58,7 @@ describe('Party', () => {
     expect(occupied.querySelector('.party-slot-heading strong')?.textContent).toBe('SPARK');
     expect(occupied.querySelector('.party-slot-gender')?.textContent).toBe('♀');
     expect(occupied.querySelector('.party-slot-level')?.textContent).toBe('Lv 18');
-    expect(occupied.querySelector('.party-slot-species')?.textContent).toBe('PIKACHU');
+    expect(occupied.querySelector('.party-slot-species')).toBeNull();
     expect(occupied.querySelector('[aria-label="4 of 5 stars; ELITE"]')).toBeTruthy();
     const bars = occupied.querySelector('.party-slot-bars')!;
     expect(bars).toBeTruthy();

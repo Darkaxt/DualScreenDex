@@ -77,7 +77,6 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
         {members.map(member => {
           const accessibleName = member.nickname || member.speciesName || 'Unknown partner';
           const displayName = member.nickname || member.speciesName || 'UNKNOWN PARTNER';
-          const nicknameDiffers = Boolean(member.nickname && member.speciesName && member.nickname !== member.speciesName);
           const gender = partyGenderMark(member.gender);
           return <button
             type="button"
@@ -97,7 +96,6 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
                 {member.level != null && <small class="party-slot-level">Lv {member.level}</small>}
                 {member.rarity && <RarityStars rarity={member.rarity} />}
               </span>
-              {nicknameDiffers && <span class="party-slot-species">{member.speciesName}</span>}
               <span class="party-slot-bars">
                 {partyExperiencePercent(member) != null && <span class="party-exp-track" aria-label={`Experience ${partyExperiencePercent(member)}%`}><b class="party-exp-fill" style={{ width: `${partyExperiencePercent(member)}%` }} /></span>}
                 <span class="party-hp-line"><b>HP</b>{partyHpPercent(member) != null && <span class="party-hp-track" aria-label={`HP ${partyHpValue(member)}`}><b class="party-hp-fill" style={{ width: `${partyHpPercent(member)}%` }} /></span>}</span>
