@@ -1,0 +1,337 @@
+{
+  "schema": 1,
+  "candidateTag": "v1.1.0-rc.86",
+  "sourceCommit": "71ca059514c88d55a6eec815a63e756defdcf83a",
+  "candidateProvenanceSha256": "95E7B38E9A082739C950A7A2F1F6E7F35700A6504FFEB81B1EF938D755F4E59A",
+  "releaseAssets": [
+    {
+      "name": "canonical-corpus.json",
+      "id": 539286615,
+      "sha256": "7BFD517A85F4A69096CE45350421B4FED896C7A99C44A1D5EBBE7CEFE7395555"
+    },
+    {
+      "name": "compatibility-evidence.json",
+      "id": 539286605,
+      "sha256": "725BD42733E80BB157C32227D711F55B92696EE8233BE7A6E7759831BFB87996"
+    },
+    {
+      "name": "dualdex-area-guide-audit.md",
+      "id": 539286739,
+      "sha256": "6C79829F16413D708A1C6124D33B213A1E1F6E38B7D204B8D3C8804227336643"
+    },
+    {
+      "name": "dualdex-area-guide-compatibility.json",
+      "id": 539286737,
+      "sha256": "AD9E22EC1E9A890CF3F771ADD137BA7B243618E3107ECA3E446CCFDCA2ACE643"
+    },
+    {
+      "name": "dualdex-arm7-first50-compatibility.md",
+      "id": 539286669,
+      "sha256": "CA515F23BF906746C42502365F9838B9AD6C049449C756F1357C09891309FABF"
+    },
+    {
+      "name": "dualdex-base-first50-release-gate.json",
+      "id": 539286640,
+      "sha256": "B9B36008629FAA0CAD18346ED991424DBB54DDF2A6E4F0314F52906D31E4E1B4"
+    },
+    {
+      "name": "dualdex-base-first50-release-gate.md",
+      "id": 539286643,
+      "sha256": "3F402D3696E420F42CB6B005269D21DEE3D70DEEC14B438309B318D7DAF19EF1"
+    },
+    {
+      "name": "dualdex-base-full332-compatibility-summary.json",
+      "id": 539286650,
+      "sha256": "6EE146487DDC357667DE8B794BD5A03E3C1E1F2AF4574BB9777D2DEAE9ACFCE7"
+    },
+    {
+      "name": "dualdex-base-full332-compatibility.md",
+      "id": 539286658,
+      "sha256": "E812817D0097DD68753A6A431022849AFC18930FABEB776AA6BAC71B9ACC12A5"
+    },
+    {
+      "name": "dualdex-challenge-expansion-audit.md",
+      "id": 539286753,
+      "sha256": "E14D9973352BE2BAE9733FB05D6AC942EECC544E4BD4F269680276B6B704501B"
+    },
+    {
+      "name": "dualdex-challenge-expansion-compatibility.json",
+      "id": 539286750,
+      "sha256": "0479E0D2BE46E9139BB85ECE502475BE2C9928C6F9E2954660650FBDD2666DCA"
+    },
+    {
+      "name": "dualdex-damage-forecast-audit.md",
+      "id": 539286751,
+      "sha256": "4B41E3646203815D1A94E4936579EF4F95E3E8E666B03CAAAC779E72200B0189"
+    },
+    {
+      "name": "dualdex-damage-forecast-compatibility.json",
+      "id": 539286749,
+      "sha256": "ECFB54E064B8DF764AF256DACE5B712AE0D3EB271D9B15574DBE3B9E3E736AE4"
+    },
+    {
+      "name": "dualdex-evolution-first50-release-gate.json",
+      "id": 539286664,
+      "sha256": "7F811711F518EBA4A388BD693128A919CE50130C07FAF9F308977C46E9729A64"
+    },
+    {
+      "name": "dualdex-evolution-first50-release-gate.md",
+      "id": 539286666,
+      "sha256": "EDF6F69A3148C7FD7CC7B94E522A6B3671B16821E87FBC36588FF39B0219DBE4"
+    },
+    {
+      "name": "dualdex-gen1-gen3-table-coverage.json",
+      "id": 539286699,
+      "sha256": "A048F07B87C26D1C7C8FCB9FF5092967D2FD1DB8B1E1E5CE94983CB82BED5DAA"
+    },
+    {
+      "name": "dualdex-gen1-gen3-table-coverage.md",
+      "id": 539286709,
+      "sha256": "EAAEFD5F54665A724377CF0B2458FD6C3343D42FD7CCEE8AD5BEFD6A79857E37"
+    },
+    {
+      "name": "dualdex-gen2-gen3-dynamic-local-map-lighting.md",
+      "id": 539286698,
+      "sha256": "E12856E94747A6F2CDB247C042B82854C6CC6BD1B1E9B23B766DA77B1040B9DB"
+    },
+    {
+      "name": "dualdex-map-first50-release-gate.json",
+      "id": 539286662,
+      "sha256": "B4ED3F4729AD370BEA4F7A953911ADB7564F43506259A01A2853834AF77D030A"
+    },
+    {
+      "name": "dualdex-map-first50-release-gate.md",
+      "id": 539286660,
+      "sha256": "20DC5F0214E8FC349FA80D65A300376B274FEBAA847869751A615772962D6A2D"
+    },
+    {
+      "name": "dualdex-parser-compatibility.json",
+      "id": 539286618,
+      "sha256": "21CE1B525895A87F8E3CF0DDB07199B2464D2F9DFDA447D73807F433B4C9D3A8"
+    },
+    {
+      "name": "dualdex-parser-compatibility.md",
+      "id": 539286642,
+      "sha256": "46AE9B3262CFC4506580922F82C821CC1BF664AFE68AA7D6610DD7EFE23E0CCF"
+    },
+    {
+      "name": "dualdex-party-analysis-audit.md",
+      "id": 539286726,
+      "sha256": "EDD5FE2BB3652A05893B556891214A8322169399224AB5B90A928489B8B223E1"
+    },
+    {
+      "name": "dualdex-party-analysis-compatibility.json",
+      "id": 539286727,
+      "sha256": "F442DC801D8E00075239083D54D030D3D8FA6F9EDCFD516726BB8948361FC447"
+    },
+    {
+      "name": "dualdex-progress-timeline-audit.md",
+      "id": 539286740,
+      "sha256": "F6C1B21C3E9E13033A359AF86686565BA6C895B788B8E1CABA4D058F21CD86A7"
+    },
+    {
+      "name": "dualdex-progress-timeline-compatibility.json",
+      "id": 539286738,
+      "sha256": "A4CD6E496B01CC1A6C728444A4D5144343AA9C85E80A70430CE35D3B3F90D854"
+    },
+    {
+      "name": "dualdex-qa-hardening-convergence.md",
+      "id": 539286791,
+      "sha256": "6503571AC2FADF3E43F7D29868A111D2B3E31E82DFAD58881373136484243040"
+    },
+    {
+      "name": "dualdex-release-cert.pem",
+      "id": 539286600,
+      "sha256": "54B94840D5F3E851F9B8534E00CC4D092DCBFD18EF6BF466E08775D5D94B8000"
+    },
+    {
+      "name": "dualdex-rom-derived-companion-theme.md",
+      "id": 539286713,
+      "sha256": "B25084E3172F61D5EF474A7694BFB5FCDC7E5E21A73F216D3DEA7A0EF2FD00B9"
+    },
+    {
+      "name": "dualdex-rom-hacks-compatibility.json",
+      "id": 539286633,
+      "sha256": "7C6AB0C90D62832C6F8DF381566D4AF33F3E7407C600D553C7988DEA78C23AE1"
+    },
+    {
+      "name": "dualdex-rom-hacks-compatibility.md",
+      "id": 539286636,
+      "sha256": "0C988BEFD2290E662491788E9AA4E5497C6F021DE49719A0EFB3D68A48C102D5"
+    },
+    {
+      "name": "dualdex-save-synchronized-knowledge-checkpoints.md",
+      "id": 539286794,
+      "sha256": "416A2E5538D6B9CA673B71D4D31A7E85AA99FB3E0DEC58311EF354D793DC03AD"
+    },
+    {
+      "name": "dualdex-specimens-audit.md",
+      "id": 539286748,
+      "sha256": "A7AB54D98711474CEEFC45344C0F83ED093CBCD2678B0E2EE189BC62EF770923"
+    },
+    {
+      "name": "dualdex-specimens-compatibility.json",
+      "id": 539286745,
+      "sha256": "EDDB21249A51F1B70F95EDE3F741991D30540E2F60BA1CCAB5236456EAF9125A"
+    },
+    {
+      "name": "dualdex-stage-07-closure.json",
+      "id": 539286810,
+      "sha256": "9A237C0F28638A17C9EC99AA78ACD0A0084D5590DB6A32591764017C0F3C98B5"
+    },
+    {
+      "name": "dualdex-stage-07-closure.md",
+      "id": 539286811,
+      "sha256": "1A8324CF6F6AAE1782C3941249CC447A4011A9B61EBF64C1495638832A2C0299"
+    },
+    {
+      "name": "dualdex-stage-07-corpus-evidence.json",
+      "id": 539286801,
+      "sha256": "679C9EE26F8065B0E5AA1E90313F0DBEBBD66184649F8B5BA704F3ACB403A5D3"
+    },
+    {
+      "name": "dualdex-stage-07-corpus-evidence.md",
+      "id": 539286805,
+      "sha256": "3BAF5B8E50BEFED8C261E0128AE282DAAD7EA5E2ACC1C829F15B97434F3B248E"
+    },
+    {
+      "name": "dualdex-stage-07-corpus-execution.json",
+      "id": 539286806,
+      "sha256": "4CE0D643E27C6E7D9C5F381E56725AA5C80AD52649E7C4953D0F27393FA8F33C"
+    },
+    {
+      "name": "dualdex-stage-08-closure.json",
+      "id": 539286812,
+      "sha256": "18456A8FC27EB1442786CCD311ACC4081633D4C3D2C6B4A28164F2D17D431C78"
+    },
+    {
+      "name": "dualdex-stage-08-closure.md",
+      "id": 539286816,
+      "sha256": "F887EB4C1D5D87FDEE4314732120EFB4757383738BA42F55117C42FF999B557E"
+    },
+    {
+      "name": "dualdex-storage-guide-load-hardening.md",
+      "id": 539286792,
+      "sha256": "8323A066894183BA73F0E8E8D763AB588AFD2839AEFAC6456EBEDB74C3D08047"
+    },
+    {
+      "name": "dualdex-ui-conformance-audit.md",
+      "id": 539286764,
+      "sha256": "2A843A5B5F2A50B13D88A5AC17A7085FC8A83EED2681665B87A3388C7FF869D2"
+    },
+    {
+      "name": "dualdex-ui-conformance-computed-styles.json",
+      "id": 539286771,
+      "sha256": "77C9EC20CEA45C7D6C7DBFE2DEDC7D983A7CC39DE925E3DEB7BA0EFD06CC42B1"
+    },
+    {
+      "name": "dualdex-ui-conformance-font-matrix.json",
+      "id": 539286775,
+      "sha256": "22C7078B284CF377326D15FC85B1E9AC3F882841F78EEB950F3979BAE5BA8182"
+    },
+    {
+      "name": "dualdex-ui-conformance-font-matrix.md",
+      "id": 539286772,
+      "sha256": "809151A0ABE3E3711659EB336E205B8A53915442E9BD3256C1EFEF6EA31160F5"
+    },
+    {
+      "name": "dualdex-ui-conformance-route-matrix.json",
+      "id": 539286769,
+      "sha256": "B4D4977E50C6E4C09CDE066831531E2641CD75775DBCF46C0C006782A9407CFE"
+    },
+    {
+      "name": "dualdex-ui-conformance-screenshots.json",
+      "id": 539286778,
+      "sha256": "A9BD4950739A38ED60074F6169E42EDFF761EE2EB38AD0FE5EA00A5BD89E7D4C"
+    },
+    {
+      "name": "dualdex-ui-conformance-summary.json",
+      "id": 539286781,
+      "sha256": "57B9FFFD295B2F94DA8EAD62F05D6B96B1B3383A5F46A9EA64C82C5B1B52D77D"
+    },
+    {
+      "name": "dualdex-ui-conformance-summary.md",
+      "id": 539286788,
+      "sha256": "5504816780A755E2176F110C930BF7FE48CE67153B7D8728CFF28FB186D67687"
+    },
+    {
+      "name": "dualdex-unbound-odyssey-map-completion.md",
+      "id": 539286692,
+      "sha256": "42449894BF96754032CF76C19A54597A3D1C03D2BB34211038220EF78EAE2E0D"
+    },
+    {
+      "name": "dualdex-unbound-odyssey-parser-completion.md",
+      "id": 539286696,
+      "sha256": "81198F151DC72E8B401008BC9DE71C98E684C977697523E0DC5DB7A2BA3CB752"
+    },
+    {
+      "name": "dualdex-unbound-odyssey-save-runtime-completion.md",
+      "id": 539286695,
+      "sha256": "3EED4455244AD83E7FD87646F3A50B39486C6E337B7600A5A19F3EDB2FD6FFC2"
+    },
+    {
+      "name": "dualdex-unbound-odyssey-static-completion.md",
+      "id": 539286691,
+      "sha256": "4064EC8769C3816214E613657C962850F564231F6D93FAC98C0BFBEB51972FB1"
+    },
+    {
+      "name": "dualdex-unified-game-state-compatibility.json",
+      "id": 539286714,
+      "sha256": "41BC6BA0D209FAB3155CF1DDD307E2B1F00CEDF8BA0C5516130E8599C0DD6100"
+    },
+    {
+      "name": "dualdex-unified-game-state-final-audit.md",
+      "id": 539286715,
+      "sha256": "6C87D384C32FFDDDE016C23944A14F8402F1083A7EE4CDF43B9E6242663A8A8D"
+    },
+    {
+      "name": "dualdex-v1.1-player-state-verification.md",
+      "id": 539286682,
+      "sha256": "ECA6B34C6763D0D62B25C1A5534CD8368C0B430CE77CE1A87659A7876B784479"
+    },
+    {
+      "name": "DualDex-v1.1.0-rc.86.apk",
+      "id": 539286602,
+      "sha256": "9D08681C6097ADEE54328A8FDD5054EDADE1861E744CBF5C1C793263C9304DDA"
+    },
+    {
+      "name": "provenance.json",
+      "id": 539286604,
+      "sha256": "95E7B38E9A082739C950A7A2F1F6E7F35700A6504FFEB81B1EF938D755F4E59A"
+    },
+    {
+      "name": "release-evidence-validation.json",
+      "id": 539286614,
+      "sha256": "9A0CF7A0B7D28C786EFB6E680AE3D7C2C8CFF288593A359765F6B116F88B76B1"
+    },
+    {
+      "name": "RELEASE_NOTES.md",
+      "id": 539286821,
+      "sha256": "20F45E14E0817BD3EA07DA7719BEC4BEBA2F9CFAB758DD43AE835AD7B7846128"
+    },
+    {
+      "name": "repository-policy.json",
+      "id": 539286616,
+      "sha256": "BC0FAA2353D01E08382CD1A51CD2607B247562D95A9E441E389EA01DB174EA42"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "id": 539286601,
+      "sha256": "C99FB0E1977BCA0AF7D6E281A147DF352127D90263C79E2FD4D3E68CB24278B2"
+    }
+  ],
+  "apkSha256": "9D08681C6097ADEE54328A8FDD5054EDADE1861E744CBF5C1C793263C9304DDA",
+  "validatedSignerSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
+  "releaseWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/33489974463",
+  "validationMode": "automated-passive-catalog",
+  "releaseCiValidated": true,
+  "userAuthorizedAutomatedPromotion": true,
+  "gameplayRuntimeChanged": false,
+  "exactRomControls": 5,
+  "catalogPersistenceValidated": true,
+  "runtimeApiValidated": true,
+  "webPresentationValidated": true,
+  "automatedValidationWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/33489906587",
+  "automatedEvidencePath": "docs/reports/candidate-promotions/v1.1.0-rc.86.json",
+  "automatedEvidenceSha256": "9D6D596EBC133FE086505891EAF4F015DED4799F77088487D61C707B5A832D65"
+}
