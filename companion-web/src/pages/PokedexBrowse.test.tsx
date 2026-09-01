@@ -52,6 +52,7 @@ describe('Pokédex knowledge modes', () => {
     const { container } = render(<PokedexBrowse catalog={catalog} state={state} send={vi.fn()} />);
 
     expect(screen.getByText('POKÉDEX')).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Pokédex, current page' }).getAttribute('aria-current')).toBe('page');
     expect(container.querySelector('.header-title small')).toBeNull();
     expect(screen.queryByText(/EMERALD|ORGANIC/)).toBeNull();
   });

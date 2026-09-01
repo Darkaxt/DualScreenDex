@@ -9,6 +9,7 @@ describe('Settings navigation', () => {
   it('shows exactly seven categories and only the selected category content', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
 
+    expect(screen.getByRole('img', { name: 'Settings, current page' }).getAttribute('aria-current')).toBe('page');
     expect(screen.getAllByRole('button', { name: /^(General|Connection|Display|Information|Accessibility|Behavior|Advanced)$/ })).toHaveLength(7);
     expect(SETTINGS_CATEGORIES.map(category => category.label)).toEqual([
       'General',

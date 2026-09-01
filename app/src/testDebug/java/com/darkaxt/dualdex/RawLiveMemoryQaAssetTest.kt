@@ -127,7 +127,7 @@ class RawLiveMemoryQaAssetTest {
         repeat(count) { index ->
             val record = base + index * recordSize
             assertArrayEquals(
-                qaText("QA MON", nicknameSize),
+                qaText("", nicknameSize),
                 memory.copyOfRange(record + nicknameOffset, record + nicknameOffset + nicknameSize),
             )
             assertArrayEquals(
@@ -172,7 +172,7 @@ class RawLiveMemoryQaAssetTest {
         const val STORAGE_POINTER = 0x030036F8L
         const val PLAYER_PARTY = 0x0201D9C8
         const val BATTLE_MONS = 0x0200143C
-        const val EXPECTED_ASSET_SHA256 = "5b63d3f863602be42e0d0b86b4d6b2bc34dcb37ad49dc59bdc61dee54b9a3cb5"
+        const val EXPECTED_ASSET_SHA256 = "e7d4337b3a456a26b3c69219983742883aed42626de1f493fe95bf2c97babfd0"
         const val EXPECTED_SOURCE_SHA256 = "40958796e0acd76bac20aef3c484d451685fffa255c45a5eec57df6a0511f5a5"
         const val EXPECTED_ROM_SHA256 = "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895"
     }

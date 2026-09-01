@@ -17,6 +17,15 @@ describe('application header icons', () => {
     expect(container.querySelectorAll('.party-ball-body')).toHaveLength(1);
   });
 
+  it('marks the current root destination with its semantic icon', () => {
+    render(<Header title="POKÉDEX" currentDestination="POKEDEX" onParty={vi.fn()} />);
+
+    const current = screen.getByRole('img', { name: 'Pokédex, current page' });
+    expect(current.getAttribute('aria-current')).toBe('page');
+    expect(current.querySelector('[data-semantic-icon="pokedex"]')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Party' }).hasAttribute('aria-current')).toBe(false);
+  });
+
   it('provides the route programmatic heading', () => {
     render(<Header title="POKÉDEX" />);
 

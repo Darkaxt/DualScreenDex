@@ -145,9 +145,35 @@ function AnalysisIcon() {
   </svg>;
 }
 
+export type HeaderDestination = 'POKEDEX' | 'PARTY' | 'MAP' | 'SETTINGS';
+
+export function CurrentHeaderDestination({ destination }: { destination: HeaderDestination }) {
+  const label = destination === 'POKEDEX'
+    ? 'Pokédex'
+    : destination === 'PARTY'
+      ? 'Party'
+      : destination === 'MAP'
+        ? 'Map'
+        : 'Settings';
+  const icon = destination === 'POKEDEX'
+    ? <DexIcon />
+    : destination === 'PARTY'
+      ? <PartyIcon />
+      : destination === 'MAP'
+        ? <MapIcon />
+        : <SettingsIcon />;
+
+  return <span
+    class={`header-action header-destination-action ${destination.toLowerCase()}-action`}
+    role="img"
+    aria-label={`${label}, current page`}
+    aria-current="page"
+  >{icon}</span>;
+}
+
 export const RouteHeadingFocusContext = createContext(true);
 
-export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty, onAnalysis, actions, focusKey, focusHeading = true }: {
+export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onTrainer, onParty, onAnalysis, currentDestination, actions, focusKey, focusHeading = true }: {
   title: string;
   kicker?: string;
   gameTime?: GameTime | null;
@@ -157,6 +183,7 @@ export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onT
   onTrainer?: () => void;
   onParty?: () => void;
   onAnalysis?: () => void;
+  currentDestination?: HeaderDestination;
   actions?: ComponentChildren;
   focusKey?: string | number;
   focusHeading?: boolean;
@@ -165,7 +192,7 @@ export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onT
   const mountedRef = useRef(false);
   const previousFocusKeyRef = useRef(focusKey);
   const allowRouteHeadingFocus = useContext(RouteHeadingFocusContext);
-  const hasActions = Boolean(actions || onTrainer || onParty || onMap || onSettings || onAnalysis);
+  const hasActions = Boolean(currentDestination || actions || onTrainer || onParty || onMap || onSettings || onAnalysis);
 
   useEffect(() => {
     const firstRender = !mountedRef.current;
@@ -183,6 +210,7 @@ export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onT
       <div class="header-title"><h1 ref={headingRef} tabIndex={-1}>{title}</h1>{kicker && <small>{kicker}</small>}</div>
       {gameTime && <GameClockIndicator clock={gameTime} />}
       {hasActions ? <div class="header-actions">
+        {currentDestination && <CurrentHeaderDestination destination={currentDestination} />}
         {actions}
         {onAnalysis && <button class="header-action analysis-action" onClick={onAnalysis} aria-label="Party Analysis"><AnalysisIcon /></button>}
         {onTrainer && <button class="header-action trainer-action" onClick={onTrainer} aria-label="Trainer Card"><TrainerCardIcon /></button>}

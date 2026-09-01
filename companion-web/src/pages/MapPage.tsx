@@ -1,6 +1,6 @@
 import type { JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { AreaGuideIcon, DexIcon, FilterIcon, MapIcon, SettingsIcon } from '../components';
+import { AreaGuideIcon, CurrentHeaderDestination, DexIcon, FilterIcon, MapIcon, SettingsIcon } from '../components';
 import { GameClockIndicator } from '../GameClockIndicator';
 import { clusterMapTargets } from '../mapClustering';
 import { AcceleratedMapFollower, anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, shouldGlideCamera, type MapViewport } from '../mapEngine';
@@ -543,6 +543,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       </div>
       {state.gameTime && <GameClockIndicator clock={state.gameTime} />}
       <div class="header-actions map-header-actions">
+        <CurrentHeaderDestination destination="MAP" />
         <button class="header-action map-dex-action" aria-label="Open Pokédex" onClick={onOpenPokedex}><DexIcon /></button>
         <button class="header-action settings-action" aria-label="Settings" onClick={onOpenSettings}><SettingsIcon /></button>
       </div>

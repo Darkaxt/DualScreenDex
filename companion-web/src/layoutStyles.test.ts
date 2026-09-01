@@ -10,6 +10,34 @@ const pokemonAreaSource = readFileSync(join(process.cwd(), 'src', 'pages', 'Poke
 const settingsSource = readFileSync(join(process.cwd(), 'src', 'pages', 'SettingsPage.tsx'), 'utf8')
 
 describe('screen layout containment', () => {
+  it('keeps header shortcuts readable against ROM-derived header colors', () => {
+    const actionRule = styles.match(/\.header-action\s*\{([^}]*)\}/)?.[1]
+
+    expect(actionRule).toMatch(/color\s*:\s*var\(--semantic-header-fg\)/)
+    expect(actionRule).not.toMatch(/color\s*:\s*var\(--acid\)/)
+  })
+
+  it('uses the selected semantic palette for the current header destination', () => {
+    const currentDestinationRule = styles.match(/\.header-destination-action\[aria-current="page"\]\s*\{([^}]*)\}/)?.[1]
+
+    expect(currentDestinationRule).toMatch(/color\s*:\s*var\(--semantic-selected-fg\)/)
+    expect(currentDestinationRule).toMatch(/background\s*:\s*var\(--semantic-selected-bg\)/)
+    expect(styles).toContain('.header-action:hover:not([aria-current="page"])')
+  })
+
+  it('keeps the active Party Poké Ball upright on its red destination background', () => {
+    expect(styles).toMatch(/\.header-destination-action\.party-action \.party-ball-body\s*\{[^}]*fill\s*:\s*currentColor/)
+    expect(styles).toMatch(/\.header-destination-action\.party-action \.party-ball-upper\s*\{[^}]*fill\s*:\s*var\(--semantic-selected-bg\)/)
+    expect(styles).toMatch(/\.header-destination-action\.party-action \.party-ball-button-ring\s*\{[^}]*fill\s*:\s*var\(--semantic-selected-bg\)/)
+  })
+
+  it('keeps Party card copy inside the full padded card height', () => {
+    const copyRule = styles.match(/\.party-slot-copy\s*\{([^}]*)\}/)?.[1]
+
+    expect(copyRule).toMatch(/height\s*:\s*100%/)
+    expect(copyRule).toMatch(/align-self\s*:\s*stretch/)
+  })
+
   it('keeps root titles left aligned when the header also has actions', () => {
     const rootRule = styles.match(/\.app-header\.app-header-root\s*\{([^}]*)\}/)?.[1]
     const actionRule = styles.match(/\.app-header:not\(\.app-header-root\):has\(\.header-actions\)\s*\{([^}]*)\}/)?.[1]

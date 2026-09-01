@@ -105,7 +105,7 @@ def replacement_for(size: int, label: str) -> bytes:
     if label == "box":
         return encode_gen3("QA BOX", size)
     if label == "pokemon":
-        return encode_gen3("QA MON", size)
+        return encode_gen3("", size)
     return encode_gen3("QA", size)
 
 
