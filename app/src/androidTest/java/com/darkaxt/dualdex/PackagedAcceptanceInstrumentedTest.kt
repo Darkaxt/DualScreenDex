@@ -65,7 +65,7 @@ class PackagedAcceptanceInstrumentedTest {
             application.setSharedStorage(granted = true, rootsAvailable = false)
             scenario.moveToState(Lifecycle.State.CREATED)
             scenario.moveToState(Lifecycle.State.RESUMED)
-            waitFor("failed index projection") {
+            waitFor("failed index projection", STORAGE_TIMEOUT_MS) {
                 application.retroArchSetup?.snapshot()?.message ==
                     "Game discovery could not finish. The folder fallback remains available."
             }
