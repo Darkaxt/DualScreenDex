@@ -14,7 +14,8 @@ test("current reviewer entry points agree on source-bound zero-gap closure", () 
   const marker = JSON.parse(read("release/v1-ready.json"));
   const canonical = JSON.parse(read("release/canonical-corpus.json"));
 
-  assert.match(index, /v1\.1\.0-rc\.77/);
+  assert.match(index, /v1\.1\.0-rc\.86/);
+  assert.equal(existsSync(join(repositoryRoot, "release/RELEASE_NOTES_1.1.0-rc.86.md")), true);
   assert.match(index, /Stages 7[–-]8 are closed with zero blockers and zero referrals/i);
   assert.match(index, /333 scanner-eligible.*334-file physical inventory/i);
   assert.equal(canonical.schemaVersion, 2);
