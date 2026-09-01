@@ -71,7 +71,7 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
   };
 
   return <section class="screen party-screen">
-    <Header title="PARTY" gameTime={state.gameTime} onBack={onBack} onAnalysis={onOpenAnalysis} />
+    <Header title="PARTY" gameTime={state.gameTime} onBack={onBack} currentDestination="PARTY" onAnalysis={onOpenAnalysis} />
     <div ref={contentRef} class="party-content" data-scroll-region onScroll={event => onScrollTopChange?.(event.currentTarget.scrollTop)}>
       <div class="party-grid" data-layout="2x3" aria-label="Party slots">
         {members.map(member => {

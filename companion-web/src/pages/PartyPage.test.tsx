@@ -10,6 +10,7 @@ describe('Party', () => {
     const onOpenAnalysis = vi.fn();
     const { container } = render(<PartyPage catalog={catalog} state={partyState('ORGANIC')} onBack={vi.fn()} onOpenAnalysis={onOpenAnalysis} openMove={vi.fn()} openAbility={vi.fn()} />);
 
+    expect(screen.getByRole('img', { name: 'Party, current page' }).getAttribute('aria-current')).toBe('page');
     fireEvent.click(screen.getByRole('button', { name: 'Party Analysis' }));
     expect(onOpenAnalysis).toHaveBeenCalledOnce();
     expect(container.querySelector('.party-grid')?.getAttribute('data-layout')).toBe('2x3');

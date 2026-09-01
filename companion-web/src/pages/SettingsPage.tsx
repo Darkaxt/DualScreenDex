@@ -107,7 +107,7 @@ export function SettingsPage({
   };
 
   return <section class="screen settings-screen">
-    <Header title={activeCategory?.label.toUpperCase() ?? 'SETTINGS'} gameTime={state.gameTime} focusHeading={initialControl == null} onBack={handleBack} />
+    <Header title={activeCategory?.label.toUpperCase() ?? 'SETTINGS'} gameTime={state.gameTime} focusHeading={initialControl == null} onBack={handleBack} currentDestination="SETTINGS" />
     <div ref={contentRef} class="settings-content" data-scroll-region>
       <h2 ref={viewHeadingRef} class="settings-view-heading" tabIndex={-1}>{activeCategory?.label ?? 'Settings categories'}</h2>
       {category == null && <nav class="settings-category-list" aria-label="Settings categories">

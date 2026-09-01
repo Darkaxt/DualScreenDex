@@ -45,6 +45,16 @@ const state: State = {
 };
 
 describe('normalized world map presentation', () => {
+  it('marks Map as the current header destination beside navigation utilities', () => {
+    render(<MapPage catalog={catalog} state={state} onOpenPokedex={vi.fn()} onOpenSettings={vi.fn()} />);
+
+    const current = screen.getByRole('img', { name: 'Map, current page' });
+    expect(current.getAttribute('aria-current')).toBe('page');
+    expect(current.querySelector('[data-semantic-icon="map"]')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Open Pokédex' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
+  });
+
   it('opens the Area Guide for the tracked or manually selected Atlas area without changing map state', () => {
     const guideState: State = {
       ...state,

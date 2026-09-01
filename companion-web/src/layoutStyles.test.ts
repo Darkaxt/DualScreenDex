@@ -17,6 +17,20 @@ describe('screen layout containment', () => {
     expect(actionRule).not.toMatch(/color\s*:\s*var\(--acid\)/)
   })
 
+  it('uses the selected semantic palette for the current header destination', () => {
+    const currentDestinationRule = styles.match(/\.header-destination-action\[aria-current="page"\]\s*\{([^}]*)\}/)?.[1]
+
+    expect(currentDestinationRule).toMatch(/color\s*:\s*var\(--semantic-selected-fg\)/)
+    expect(currentDestinationRule).toMatch(/background\s*:\s*var\(--semantic-selected-bg\)/)
+    expect(styles).toContain('.header-action:hover:not([aria-current="page"])')
+  })
+
+  it('keeps the active Party Poké Ball upright on its red destination background', () => {
+    expect(styles).toMatch(/\.header-destination-action\.party-action \.party-ball-body\s*\{[^}]*fill\s*:\s*currentColor/)
+    expect(styles).toMatch(/\.header-destination-action\.party-action \.party-ball-upper\s*\{[^}]*fill\s*:\s*var\(--semantic-selected-bg\)/)
+    expect(styles).toMatch(/\.header-destination-action\.party-action \.party-ball-button-ring\s*\{[^}]*fill\s*:\s*var\(--semantic-selected-bg\)/)
+  })
+
   it('keeps Party card copy inside the full padded card height', () => {
     const copyRule = styles.match(/\.party-slot-copy\s*\{([^}]*)\}/)?.[1]
 
