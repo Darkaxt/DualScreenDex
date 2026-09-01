@@ -323,7 +323,7 @@ class CatalogStoreTest {
         val factory = CatalogDatabaseFactory { file ->
             if (file.name == "$shaA.sqlite" && blockAOnce.compareAndSet(true, false)) {
                 aEntered.countDown()
-                check(releaseA.await(15, TimeUnit.SECONDS)) { "timed out releasing SHA A" }
+                check(releaseA.await(5, TimeUnit.SECONDS)) { "timed out releasing SHA A" }
             }
             JdbcCatalogDatabaseFactory.open(file)
         }
@@ -343,7 +343,7 @@ class CatalogStoreTest {
             }
             assertTrue(bStarted.await(2, TimeUnit.SECONDS))
 
-            assertTrue("SHA B remained blocked behind SHA A", bFinished.await(10, TimeUnit.SECONDS))
+            assertTrue("SHA B remained blocked behind SHA A", bFinished.await(500, TimeUnit.MILLISECONDS))
             b.get(2, TimeUnit.SECONDS)
             releaseA.countDown()
             a.get(2, TimeUnit.SECONDS)
