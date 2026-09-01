@@ -1531,6 +1531,8 @@ class ProductionCompanionRuntime(
                         ?: current.battlePollingIntervalMs,
                     mapFollowSmoothingPercent = values["mapFollowSmoothingPercent"]?.toIntOrNull()?.coerceIn(0, 100)
                         ?: current.mapFollowSmoothingPercent,
+                    highVisibilityMapPlayer = values["highVisibilityMapPlayer"]?.toBooleanStrictOrNull()
+                        ?: current.highVisibilityMapPlayer,
                 )
         gateway.dispatch(
             CompanionAction.UpdateSettings(updated),

@@ -273,6 +273,7 @@ export interface Settings {
   overlayScale?: number;
   battlePollingIntervalMs?: number;
   mapFollowSmoothingPercent?: number;
+  highVisibilityMapPlayer?: boolean;
 }
 
 export interface SpeciesState {

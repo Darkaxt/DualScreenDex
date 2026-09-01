@@ -429,13 +429,13 @@ describe('Pokédex knowledge modes', () => {
   it('shares density row geometry across virtualization and scroll rebasing', () => {
     expect(pokedexRowHeight('AUTO')).toBe(94);
     expect(pokedexRowHeight('COMFORTABLE')).toBe(94);
-    expect(pokedexRowHeight('COMPACT')).toBe(68);
-    expect(pokedexRowHeight('COMPACT', 1.35)).toBe(92);
+    expect(pokedexRowHeight('COMPACT')).toBe(76);
+    expect(pokedexRowHeight('COMPACT', 1.35)).toBe(103);
     expect(pokedexRowHeight('COMFORTABLE', 1.35)).toBe(127);
-    expect(pokedexRowHeight('COMPACT', 0.85)).toBe(68);
+    expect(pokedexRowHeight('COMPACT', 0.85)).toBe(76);
     expect(() => pokedexRowHeight('COMPACT', 0)).toThrow(/font scale/i);
 
-    for (const rowHeight of [94, 68]) {
+    for (const rowHeight of [94, 76]) {
       for (const scrollTop of [0, rowHeight * 400, Number.MAX_SAFE_INTEGER]) {
         const window = pokedexVirtualWindow(900, 1, scrollTop, 254, rowHeight);
         const mountedRows = window.endIndex - window.startIndex;
@@ -446,8 +446,8 @@ describe('Pokédex knowledge modes', () => {
       expect(end.paddingBottom).toBe(0);
     }
 
-    expect(rebasePokedexScrollTop(94 * 123 + 47, 94, 68, 900 * 68 - 254)).toBe(68 * 123 + 34);
-    expect(rebasePokedexScrollTop(94 * 899, 94, 68, 900 * 68 - 254)).toBe(900 * 68 - 254);
+    expect(rebasePokedexScrollTop(94 * 123 + 47, 94, 76, 900 * 76 - 254)).toBe(76 * 123 + 38);
+    expect(rebasePokedexScrollTop(94 * 899, 94, 76, 900 * 76 - 254)).toBe(900 * 76 - 254);
   });
 
   it('keeps a nine-hundred-entry catalog within sixty mounted rows while preserving counts and search', () => {

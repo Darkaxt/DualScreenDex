@@ -217,8 +217,8 @@ button { cursor: pointer; }
 .party-hp-line > b { color: var(--muted); font-size: max(var(--ui-min-text), clamp(9px, 1.84vw, 18.8px)); letter-spacing: .07em; }
 .party-hp-value { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 3px; color: var(--ink); font-size: max(var(--ui-min-text), clamp(9px, 1.76vw, 18px)); font-weight: 900; }
 .party-hp-value > i { font-style: normal; }
-.party-exp-track { height: 8px; display: block; margin-top: 5px; overflow: hidden; border: 1px solid #536379; background: #bcc5cf; box-shadow: inset 0 1px 1px #1f304755; }
-.party-exp-fill { height: 100%; display: block; background: linear-gradient(90deg, #4d86bc, #75b8e8); }
+.party-exp-track { height: 8px; display: block; margin-top: 5px; overflow: hidden; border: 1px solid #36495d; background: #d8dde2; box-shadow: inset 0 1px 1px #1f304755; }
+.party-exp-fill { height: 100%; display: block; background: linear-gradient(90deg, #0b6fbe, #2ca7f0); }
 .party-hp-track { height: 16px; display: block; margin-top: 4px; overflow: hidden; border: 1px solid #556154; background: #c3c8b2; box-shadow: inset 0 1px 2px #24312655; }
 .party-hp-fill { height: 100%; display: block; background: linear-gradient(90deg, #4b9a5f, #79c26b); }
 .party-status-dot { padding: 1px 4px; border-radius: 2px; color: #fff; background: #875637; font-style: normal; }
@@ -348,7 +348,7 @@ button { cursor: pointer; }
   .party-sprite { width: 52px; height: 52px; }
   .party-slot-heading { gap: 4px; }
   .party-slot-bars { margin-top: 5px; }
-  .party-exp-track { height: 3px; margin-top: 4px; }
+  .party-exp-track { height: 7px; margin-top: 4px; }
   .party-hp-track { height: 6px; margin-top: 4px; }
   .trainer-card-content { padding: 8px; }
   .trainer-card-body { grid-template-columns: minmax(0, 1fr) 112px; gap: 9px; padding: 10px; }
@@ -947,7 +947,7 @@ button { cursor: pointer; }
 [data-theme="dark"] .section-heading > strong { color: #f1f5e3; }
 [data-theme="dark"] .mapper-export .danger-button { color: #fff4e8; }
 [data-theme="light"] { --paper: #fbf8e8; --paper-deep: #e9ecd7; }
-[data-density="compact"] .species-row { min-height: 68px; grid-template-columns: 54px minmax(0, 1fr) auto; padding: 6px 10px; gap: 4px 8px; } [data-density="compact"] .pokedex-avatar { width: 54px; height: 54px; } [data-density="compact"] .sprite-frame:not(.sprite-large) { width: 40px; height: 40px; }
+[data-density="compact"] .species-row { min-height: 76px; grid-template-columns: 54px minmax(0, 1fr) auto; padding: 6px 10px; gap: 4px 8px; } [data-density="compact"] .pokedex-avatar { width: 54px; height: 54px; } [data-density="compact"] .sprite-frame:not(.sprite-large) { width: 40px; height: 40px; }
 
 .map-screen { grid-template-rows: auto 1fr; color: #e8ecd5; background: #000; }
 .map-page-header { position: relative; min-height: 62px; z-index: 5; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding-left: 16px; color: #edf1d7; background: linear-gradient(90deg, #0a2a20, #143e2d 68%, #0c291f); border-bottom: 3px solid #90ae53; box-shadow: 0 5px 20px #0008; }
@@ -969,7 +969,7 @@ button { cursor: pointer; }
 .map-mode-control { position: absolute; z-index: 6; left: 12px; bottom: 12px; width: 34px; height: 34px; font: 950 .72em/1 var(--font-sans); letter-spacing: .05em; }
 .map-zoom-rail .map-control { font: 900 1.45em/1 Georgia, serif; }.recenter-control span { width: 18px; height: 18px; border: 2px solid currentColor; border-radius: 50%; }.recenter-control span::before, .recenter-control span::after { content: ""; position: absolute; background: currentColor; }.recenter-control span::before { left: 21px; top: 10px; width: 2px; height: 26px; }.recenter-control span::after { left: 10px; top: 21px; width: 26px; height: 2px; }
 .map-legend-panel { position: absolute; left: 58px; top: 0; width: min(240px, calc(100vw - 140px)); display: grid; gap: 7px; padding: 12px; color: #e9eed5; background: #0c211aed; border: 1px solid #728d5b; box-shadow: 7px 8px 0 #0007; backdrop-filter: blur(10px); }.map-legend-panel small { color: #9daf90; font-size: .75em; font-weight: 900; letter-spacing: .15em; }.map-legend-panel > strong { color: var(--acid); font-family: Georgia, serif; }.map-legend-panel > button, .map-region-options button { min-height: 36px; padding: 0 9px; border: 1px solid #61785d; color: #e6ecd0; background: #17382a; font-size: .78em; font-weight: 900; text-align: left; }.map-region-options { display: grid; gap: 4px; }.map-region-options button[aria-pressed="true"] { color: #102419; background: var(--acid); }
-.map-marker { position: absolute; z-index: 3; padding: 0; translate: -50% -50%; box-shadow: 0 0 0 3px #0b1f18cc, 0 2px 5px #000; }.atlas-location-marker { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; box-shadow: none; }.atlas-location-marker span { width: 11px; height: 11px; display: block; border: 2px solid #d9ffff; border-radius: 2px; background: #62dfe1; box-shadow: 0 0 0 3px #0b1f18cc, 0 2px 5px #000; }.map-marker.is-current:not(.atlas-location-marker), .atlas-location-marker.is-current span { animation: current-map-point 1.5s ease-out infinite; }.map-marker.is-selected { outline: 2px solid var(--acid); outline-offset: 3px; }
+.map-marker { position: absolute; z-index: 3; padding: 0; translate: -50% -50%; box-shadow: 0 0 0 3px #0b1f18cc, 0 2px 5px #000; }.atlas-location-marker { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; box-shadow: none; }.atlas-location-marker span { width: 11px; height: 11px; display: block; border: 2px solid #d9ffff; border-radius: 2px; background: #62dfe1; box-shadow: 0 0 0 3px #0b1f18cc, 0 2px 5px #000; }.map-marker.is-current:not(.atlas-location-marker):not(.map-player-marker), .atlas-location-marker.is-current span { animation: current-map-point 1.5s ease-out infinite; }.map-marker.is-selected { outline: 2px solid var(--acid); outline-offset: 3px; }
 .map-poi-marker { position: absolute; z-index: 4; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; translate: -50% -50%; border: 0; color: var(--theme-text); background: transparent; }
 .map-poi-marker.is-selected { outline: 2px solid var(--acid); outline-offset: 2px; }
 .map-poi-marker.is-silhouette .map-poi-symbol { color: #050706; background: #d4dbc5; }
@@ -1045,7 +1045,7 @@ button.area-guide-point-row:hover, button.area-guide-point-row:focus-visible, .a
 [data-theme="game"][data-contrast="normal"] .area-guide-encounter-row b,
 [data-theme="game"][data-contrast="normal"] .area-guide-point-row,
 [data-theme="game"][data-contrast="normal"] .area-guide-exits button { color: var(--theme-text); }
-.map-player-marker { pointer-events: none; }.map-player-marker.is-fallback { width: 17px; height: 17px; border: 2px solid #102419; border-radius: 50%; background: var(--acid); }.map-player-marker.is-fallback .map-player-dot { position: absolute; inset: 4px; border-radius: 50%; background: #102419; }.map-player-marker.has-sprite { min-width: 16px; min-height: 32px; translate: -50% -75%; border: 0; background: transparent; box-shadow: none; animation: none; }.map-player-marker.has-sprite img { width: 100%; height: 100%; display: block; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 1px 0 #071e18) drop-shadow(0 0 2px #62dfe1); }
+.map-player-marker { pointer-events: none; }.map-player-marker.is-fallback { width: 17px; height: 17px; border: 2px solid #102419; border-radius: 50%; background: var(--acid); }.map-player-marker.is-fallback .map-player-dot { position: absolute; inset: 4px; border-radius: 50%; background: #102419; }.map-player-marker.has-sprite { min-width: 16px; min-height: 32px; translate: -50% -75%; border: 0; background: transparent; box-shadow: none; animation: none; }.map-player-marker.has-sprite img { width: 100%; height: 100%; display: block; object-fit: contain; image-rendering: pixelated; filter: none; }.map-player-marker.is-high-visibility { animation: current-map-point 1.5s ease-out infinite; }.map-player-marker.has-sprite.is-high-visibility img { filter: drop-shadow(0 1px 0 #071e18) drop-shadow(0 0 2px #62dfe1); }
 @keyframes current-map-point { 0%, 100% { box-shadow: 0 0 0 3px #0b1f18cc, 0 2px 5px #000; } 50% { box-shadow: 0 0 0 7px #d9f47a55, 0 2px 5px #000; } }
 
 @media (prefers-reduced-motion: reduce) {

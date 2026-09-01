@@ -197,11 +197,11 @@ test('Pokédex density uses exact shared row geometry at the Thor viewport', asy
   await page.getByRole('button', { name: 'Back' }).click();
 
   await expect(page.locator('.pokedex-screen')).toBeVisible();
-  expect((await firstRow.boundingBox())?.height).toBe(68);
+  expect((await firstRow.boundingBox())?.height).toBe(76);
   expect(await page.locator('.species-list').evaluate(element => ({
     clientHeight: element.clientHeight,
     scrollHeight: element.scrollHeight,
-  }))).toMatchObject({ scrollHeight: 80 * 68 });
+  }))).toMatchObject({ scrollHeight: 80 * 76 });
 
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('button', { name: 'Accessibility' }).click();
@@ -213,14 +213,14 @@ test('Pokédex density uses exact shared row geometry at the Thor viewport', asy
   const enlargedRows = page.locator('.species-row');
   const firstEnlargedRow = await enlargedRows.nth(0).boundingBox();
   const secondEnlargedRow = await enlargedRows.nth(1).boundingBox();
-  expect(firstEnlargedRow?.height).toBe(92);
+  expect(firstEnlargedRow?.height).toBe(103);
   expect(firstEnlargedRow!.y + firstEnlargedRow!.height).toBeLessThanOrEqual(secondEnlargedRow!.y);
   const enlargedContentExtent = await enlargedRows.nth(0).evaluate(element => ({
     clientHeight: element.clientHeight,
     scrollHeight: element.scrollHeight,
   }));
   expect(enlargedContentExtent.scrollHeight).toBe(enlargedContentExtent.clientHeight);
-  expect(await page.locator('.species-list').evaluate(element => element.scrollHeight)).toBe(80 * 92);
+  expect(await page.locator('.species-list').evaluate(element => element.scrollHeight)).toBe(80 * 103);
 });
 
 test('shared tabs and route headings keep one keyboard focus path at the Thor viewport', async ({ page }) => {

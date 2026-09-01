@@ -241,6 +241,45 @@ describe('Pokédex evolution navigation', () => {
     expect(openAtlas).toHaveBeenCalledOnce();
   });
 
+  it('does not offer Atlas when the species has no catalogued habitat', () => {
+    render(<PokedexDetail
+      catalog={{
+        ...catalog,
+        areas: catalog.areas.map(area => ({ ...area, speciesIds: [] })),
+      }}
+      state={state}
+      send={vi.fn()}
+      tab="AREA"
+      setTab={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+      openAtlas={vi.fn()}
+    />);
+
+    expect(screen.getByText('NO HABITAT MAP')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'OPEN ATLAS' })).toBeNull();
+  });
+
+  it('does not offer Atlas before Organic mode has observed a known habitat', () => {
+    render(<PokedexDetail
+      catalog={catalog}
+      state={{
+        ...state,
+        settings: { ...state.settings, knowledgeMode: 'ORGANIC' },
+        observedAreaBaseIdsBySpecies: {},
+      }}
+      send={vi.fn()}
+      tab="AREA"
+      setTab={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+      openAtlas={vi.fn()}
+    />);
+
+    expect(screen.getByText('NO KNOWN LOCATIONS')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'OPEN ATLAS' })).toBeNull();
+  });
+
   it('keeps AREA safe when the catalog has no normalized map', () => {
     render(<PokedexDetail
       catalog={{ ...catalog, worldMaps: [] }}

@@ -31,6 +31,30 @@ describe('screen layout containment', () => {
     expect(styles).toMatch(/\.header-destination-action\.party-action \.party-ball-button-ring\s*\{[^}]*fill\s*:\s*var\(--semantic-selected-bg\)/)
   })
 
+  it('gives compact Pokédex cards enough height for identity and type labels', () => {
+    const compactRowRule = styles.match(/\[data-density="compact"\] \.species-row\s*\{([^}]*)\}/)?.[1]
+
+    expect(compactRowRule).toMatch(/min-height\s*:\s*76px/)
+  })
+
+  it('keeps the compact Party experience bar thick and visibly blue against gray', () => {
+    const trackRule = styles.match(/\.party-exp-track\s*\{([^}]*)\}/)?.[1]
+    const fillRule = styles.match(/\.party-exp-fill\s*\{([^}]*)\}/)?.[1]
+    const compactRule = styles.match(/@media \(max-width: 650px\)[\s\S]*?\.party-exp-track\s*\{([^}]*)\}/)?.[1]
+
+    expect(trackRule).toMatch(/border\s*:\s*1px solid #36495d/)
+    expect(trackRule).toMatch(/background\s*:\s*#d8dde2/)
+    expect(fillRule).toMatch(/linear-gradient\(90deg, #0b6fbe, #2ca7f0\)/)
+    expect(compactRule).toMatch(/height\s*:\s*7px/)
+  })
+
+  it('keeps the Local player pulse behind the Accessibility preference', () => {
+    expect(styles).toMatch(/\.map-marker\.is-current:not\(\.atlas-location-marker\):not\(\.map-player-marker\)/)
+    expect(styles).toMatch(/\.map-player-marker\.is-high-visibility\s*\{[^}]*animation\s*:\s*current-map-point/)
+    expect(styles).toMatch(/\.map-player-marker\.has-sprite img\s*\{[^}]*filter\s*:\s*none/)
+    expect(styles).toMatch(/\.map-player-marker\.has-sprite\.is-high-visibility img\s*\{[^}]*drop-shadow/)
+  })
+
   it('keeps Party card copy inside the full padded card height', () => {
     const copyRule = styles.match(/\.party-slot-copy\s*\{([^}]*)\}/)?.[1]
 

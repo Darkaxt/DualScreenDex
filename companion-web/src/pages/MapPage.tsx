@@ -646,7 +646,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           ><span /></button>;
         })}
         {playerPosition && <span
-          class={`map-marker map-player-marker is-current ${playerMapSpriteUrl ? 'has-sprite' : 'is-fallback'}`}
+          class={`map-marker map-player-marker is-current ${playerMapSpriteUrl ? 'has-sprite' : 'is-fallback'} ${state.settings.highVisibilityMapPlayer ? 'is-high-visibility' : ''}`}
           style={{
             left: `${((playerPosition.sceneX + 0.5) / activeMap.gridWidth) * 100}%`,
             top: `${((playerPosition.sceneY + 0.5) / activeMap.gridHeight) * 100}%`,

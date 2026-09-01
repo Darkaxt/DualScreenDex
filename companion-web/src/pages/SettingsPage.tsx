@@ -7,7 +7,7 @@ export const SETTINGS_CATEGORIES = [
   { id: 'CONNECTION', label: 'Connection', description: 'RetroArch and save data' },
   { id: 'DISPLAY', label: 'Display', description: 'Theme, mode, and companion screen' },
   { id: 'INFORMATION', label: 'Information', description: 'Guide, map, move, and battle data' },
-  { id: 'ACCESSIBILITY', label: 'Accessibility', description: 'Text, density, and contrast' },
+  { id: 'ACCESSIBILITY', label: 'Accessibility', description: 'Text, contrast, and map visibility' },
   { id: 'BEHAVIOR', label: 'Behavior', description: 'Automatic companion actions' },
   { id: 'ADVANCED', label: 'Advanced', description: 'Diagnostics and maintenance' },
 ] as const;
@@ -151,7 +151,10 @@ export function SettingsPage({
         <section class="setting-group"><p class="eyebrow">BATTLE TABS</p><Toggle label="Selected attack" checked={settings.attackEnabled} onChange={attackEnabled => update({ attackEnabled })} /><Toggle label="Recruitment rarity" checked={settings.rarityEnabled} onChange={rarityEnabled => update({ rarityEnabled })} /><Toggle label="Observed moves" checked={settings.movesEnabled} onChange={movesEnabled => update({ movesEnabled })} /></section>
       </>}
 
-      {category === 'ACCESSIBILITY' && <section class="setting-group"><p class="eyebrow">READABILITY</p><label class="range-setting"><span>FONT SCALE <b>{Math.round(settings.fontScale * 100)}%</b></span><input aria-label="Font scale" type="range" min="0.85" max="1.35" step="0.05" value={settings.fontScale} onInput={event => update({ fontScale: Number(event.currentTarget.value) })} /></label><SegmentedChoice values={['AUTO', 'COMFORTABLE', 'COMPACT']} active={settings.density} onSelect={density => update({ density })} label="Density" /><Toggle label="High contrast" checked={settings.highContrast} onChange={highContrast => update({ highContrast })} /></section>}
+      {category === 'ACCESSIBILITY' && <>
+        <section class="setting-group"><p class="eyebrow">READABILITY</p><label class="range-setting"><span>FONT SCALE <b>{Math.round(settings.fontScale * 100)}%</b></span><input aria-label="Font scale" type="range" min="0.85" max="1.35" step="0.05" value={settings.fontScale} onInput={event => update({ fontScale: Number(event.currentTarget.value) })} /></label><SegmentedChoice values={['AUTO', 'COMFORTABLE', 'COMPACT']} active={settings.density} onSelect={density => update({ density })} label="Density" /><Toggle label="High contrast" checked={settings.highContrast} onChange={highContrast => update({ highContrast })} /></section>
+        <section class="setting-group"><p class="eyebrow">LOCAL MAP</p><Toggle label="High-visibility map player" checked={settings.highVisibilityMapPlayer ?? false} onChange={highVisibilityMapPlayer => update({ highVisibilityMapPlayer })} /><p class="setting-note">Adds a pulsing outline around the Local map player. This choice applies to every game.</p></section>
+      </>}
 
       {category === 'BEHAVIOR' && <section class="setting-group"><p class="eyebrow">BEHAVIOR</p><Toggle label="Open target automatically" checked={settings.autoOpenTarget} onChange={autoOpenTarget => update({ autoOpenTarget })} /></section>}
 

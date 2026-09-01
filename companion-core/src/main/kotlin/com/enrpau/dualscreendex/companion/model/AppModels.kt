@@ -32,6 +32,7 @@ data class CompanionSettings(
     val overlayScale: Double = 1.0,
     val battlePollingIntervalMs: Int = 5,
     val mapFollowSmoothingPercent: Int = 25,
+    val highVisibilityMapPlayer: Boolean = false,
 )
 
 data class OwnedPokemon(
