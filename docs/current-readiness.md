@@ -4,10 +4,10 @@ This is the canonical reviewer entry point for DualDex release readiness.
 
 ## Active marker
 
-- **Latest published repository release marker:** `v1.1.0-rc.77`
-- **Release notes:** [`release/RELEASE_NOTES_1.1.0-rc.77.md`](../release/RELEASE_NOTES_1.1.0-rc.77.md)
+- **Final signed candidate marker:** `v1.1.0-rc.86`
+- **Release notes:** [`release/RELEASE_NOTES_1.1.0-rc.86.md`](../release/RELEASE_NOTES_1.1.0-rc.86.md)
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json)
-- **Current state:** project-wide QA Stages 7–8 are closed with zero blockers and zero referrals; source-bound compatibility evidence is tracked and the repository is ready for protected stable-release preparation.
+- **Current state:** project-wide QA Stages 7–8 are closed with zero blockers and zero referrals; RC86 completes the Thor lower-display usability pass and is the exact candidate source for protected signing, promotion, and stable `v1.1.0` authorization.
 
 ## Final QA evidence
 
@@ -19,7 +19,7 @@ The final corpus evaluated all 333 scanner-eligible mainline/hack inputs in the 
 - [Stage 7 closure](reports/qa-hardening/stage-07-closure.md)
 - [Stage 8 integrated closure](reports/qa-hardening/stage-08-closure.md)
 
-The release workflow validates source lineage, generator and raw-report digests, the canonical denominator/multiset digest, cache decision, exact closure state, protected tag rules, and both protected GitHub environments before signing can begin. No stable tag or signed artifact has been created by QA closure.
+The release workflow validates source lineage, generator and raw-report digests, the canonical denominator/multiset digest, cache decision, exact closure state, protected tag rules, and both protected GitHub environments before signing can begin. Stable `v1.1.0` may be authorized only from the exact promoted RC86 source, APK digest, signer, provenance, and immutable release asset set.
 
 ## Historical records
 

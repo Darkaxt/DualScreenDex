@@ -46,11 +46,34 @@ test("keeps candidates draft until protected exact-artifact promotion", () => {
   assert.match(promotionWorkflow, /--apk-signer-verification/);
   assert.match(promotionWorkflow, /actions\/runs\/\$run_id/);
   assert.match(promotionWorkflow, /\.conclusion == "success"/);
-  assert.match(promotionWorkflow, /gh release download/);
+  assert.match(promotionWorkflow, /gh api --paginate "repos\/\$GITHUB_REPOSITORY\/releases\?per_page=100"/);
+  assert.match(promotionWorkflow, /\[\.\[\]\[\] \| select\(\.tag_name == \$tag\)\]/);
+  assert.match(promotionWorkflow, /if length == 1 then \.\[0\] else error\("expected exactly one release for candidate tag"\) end/);
+  assert.match(promotionWorkflow, /\.draft == true and \.prerelease == true/);
+  assert.match(promotionWorkflow, /map\(\.name\) \| unique \| length/);
+  assert.match(promotionWorkflow, /all\(\.name \| test\("\^\[A-Za-z0-9\._-\]\+\$"\)\)/);
+  assert.match(promotionWorkflow, /releases\/assets\/\$asset_id/);
+  assert.match(promotionWorkflow, /--header "Accept: application\/octet-stream"/);
+  assert.match(promotionWorkflow, /releases\/\$RELEASE_ID/);
+  assert.match(promotionWorkflow, /--arg release_tag "\$RELEASE_TAG"/);
+  assert.match(promotionWorkflow, /\.id == \$release_id and \.tag_name == \$release_tag/);
+  assert.doesNotMatch(promotionWorkflow, /releases\/tags\/\$RELEASE_TAG/);
   assert.match(promotionWorkflow, /initial-release-assets\.json/);
   assert.match(promotionWorkflow, /current-release-assets\.json/);
   assert.match(promotionWorkflow, /-F draft=false/);
   assert.match(promotionWorkflow, /-F prerelease=true/);
+});
+
+test("requires every RC86 release readiness gate", () => {
+  for (const field of [
+    "v11Rc86MapPlayerAccessibility",
+    "v11Rc86TruthfulHabitatAtlas",
+    "v11Rc86PartyExperienceContrast",
+    "v11Rc86CompactPokedexAlignment",
+    "v11Rc86DraftCandidatePromotion",
+  ]) {
+    assert.match(workflow, new RegExp(`\\.${field} == true`));
+  }
 });
 
 test("runs reusable installed-app acceptance before signing or promotion", () => {
