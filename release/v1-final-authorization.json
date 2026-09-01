@@ -1,8 +1,11 @@
 {
-  "schema": 1,
-  "versionName": "1.0.0",
-  "sourceCandidateTag": "v1.0.0-rc.30",
-  "githubSignedCandidateSha256": "C619F229952D4211D79E3BF5679DF22250845C7E7E7D8BF06E965BAB1426F607",
+  "schema": 2,
+  "versionName": "1.1.0",
+  "sourceCandidateTag": "v1.1.0-rc.86",
+  "sourceCandidateCommit": "71ca059514c88d55a6eec815a63e756defdcf83a",
+  "sourceCandidateTree": "3d1000be27b56ded34c11b74a476a304bd8525e7",
+  "candidateProvenanceSha256": "95E7B38E9A082739C950A7A2F1F6E7F35700A6504FFEB81B1EF938D755F4E59A",
+  "githubSignedCandidateSha256": "9D08681C6097ADEE54328A8FDD5054EDADE1861E744CBF5C1C793263C9304DDA",
   "validatedSignerSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
   "validationMode": "automated-passive-catalog",
   "userAuthorizedAutomatedPromotion": true,
@@ -14,5 +17,5 @@
   "releaseCiValidated": true,
   "avdValidated": false,
   "thorValidated": false,
-  "authorizedDate": "2026-08-15"
+  "authorizedDate": "2026-09-01"
 }
