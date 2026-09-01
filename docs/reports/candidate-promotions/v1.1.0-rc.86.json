@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "candidateTag": "v1.1.0-rc.86",
+  "apkSha256": "9D08681C6097ADEE54328A8FDD5054EDADE1861E744CBF5C1C793263C9304DDA",
+  "sourceCommit": "71ca059514c88d55a6eec815a63e756defdcf83a",
+  "validationMode": "automated-passive-catalog",
+  "automatedValidationWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/33489906587",
+  "userAuthorizedAutomatedPromotion": true,
+  "gameplayRuntimeChanged": false,
+  "catalogPersistenceValidated": true,
+  "runtimeApiValidated": true,
+  "webPresentationValidated": true,
+  "releaseCiValidated": true,
+  "changeClassification": {
+    "parserChanged": false,
+    "catalogSchemaChanged": false,
+    "gameplayMemoryOrCommandRuntimeChanged": false,
+    "presentationAndDeviceSettingsOnly": true,
+    "authorizationDate": "2026-09-01"
+  },
+  "evidenceSources": {
+    "catalogPersistence": "docs/reports/2026-08-13-base-first50-release-gate.json",
+    "runtimeApiAndWebPresentation": "https://github.com/Darkaxt/DualScreenDex/actions/runs/33489906587",
+    "packagedAndroidAcceptance": "https://github.com/Darkaxt/DualScreenDex/actions/runs/33489974463"
+  },
+  "controls": [
+    {
+      "romSha256": "2005275fc54ae63f3d1bc50c49980e87dcd9ecae5e4733d322bb2a2c99270916",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "736af8f701690c59bf174593c7ea60aa1a531405eac1d69f459ae1e338a36829",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "75ca054238d41b38df5113ccb89af765561ce8963f78f7eb1befab6310306600",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "80e96000eb82963777d87a76baf05ecf50712961dcfc51dc5bd86493796f4270",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "7f01d5ffd8b2e597be313f4d8e5f425a3f0abf50689274564001cd9e51ef2b0c",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    }
+  ]
+}
