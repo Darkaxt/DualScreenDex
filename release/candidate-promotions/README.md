@@ -10,12 +10,19 @@ The `release-promotion` environment must allow only the default branch, require 
 
 ## Packaged Android and physical-device mode
 
-Use this mode after the reusable packaged Android workflow and the physical Thor checklist pass:
+Use this mode after the reusable packaged Android workflow and the physical Thor checklist pass. The JSON below is an abbreviated schema fragment, not a valid promotion record: its `releaseAssets` array deliberately shows only three entries. Generate the committed record from the draft release and include every asset returned by GitHub.
 
 ```json
 {
   "schema": 1,
   "candidateTag": "v1.1.0-rc.73",
+  "sourceCommit": "1111111111111111111111111111111111111111",
+  "candidateProvenanceSha256": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+  "releaseAssets": [
+    { "name": "DualDex-v1.1.0-rc.73.apk", "id": 1001, "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" },
+    { "name": "provenance.json", "id": 1002, "sha256": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" },
+    { "name": "SHA256SUMS.txt", "id": 1003, "sha256": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC" }
+  ],
   "apkSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   "validatedSignerSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
   "releaseWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/123",
@@ -39,12 +46,19 @@ Replace the sample tag, APK hash, run URL, and artifact digest with the candidat
 
 ## Authorized passive-catalog substitution
 
-A change limited to passive catalog generation and presentation may use the existing user-authorized substitution instead of claiming device validation:
+A change limited to passive catalog generation and presentation may use the existing user-authorized substitution instead of claiming device validation. This is also an abbreviated schema fragment with an intentionally incomplete `releaseAssets` array; it cannot be committed as-is.
 
 ```json
 {
   "schema": 1,
   "candidateTag": "v1.1.0-rc.73",
+  "sourceCommit": "1111111111111111111111111111111111111111",
+  "candidateProvenanceSha256": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+  "releaseAssets": [
+    { "name": "DualDex-v1.1.0-rc.73.apk", "id": 1001, "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" },
+    { "name": "provenance.json", "id": 1002, "sha256": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" },
+    { "name": "SHA256SUMS.txt", "id": 1003, "sha256": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC" }
+  ],
   "apkSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   "validatedSignerSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
   "releaseWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/123",

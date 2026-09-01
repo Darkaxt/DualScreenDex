@@ -299,6 +299,7 @@ jobs:
           jq -e '.v11SaveSynchronizedKnowledgeCheckpoints == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc84ThorLowerDisplayRemediation == true and .v11Rc84ReleaseQaIsolation == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc85ActiveHeaderDestinations == true' release/v1-ready.json >/dev/null
+          jq -e '.v11Rc86MapPlayerAccessibility == true and .v11Rc86TruthfulHabitatAtlas == true and .v11Rc86PartyExperienceContrast == true and .v11Rc86CompactPokedexAlignment == true and .v11Rc86DraftCandidatePromotion == true' release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
             reports/dualdex-parser-compatibility.md \

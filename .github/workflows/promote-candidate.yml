@@ -73,8 +73,13 @@ jobs:
           assets="$RUNNER_TEMP/candidate-assets"
           mkdir -p "$assets"
           release_json_file="$RUNNER_TEMP/initial-release.json"
+          release_pages="$RUNNER_TEMP/release-pages.json"
           initial_release_assets="$RUNNER_TEMP/initial-release-assets.json"
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$release_json_file"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" > "$release_pages"
+          jq -s -e --arg tag "$RELEASE_TAG" '
+            [.[][] | select(.tag_name == $tag)] |
+            if length == 1 then .[0] else error("expected exactly one release for candidate tag") end
+          ' "$release_pages" > "$release_json_file"
           jq -e '.draft == true and .prerelease == true' "$release_json_file" >/dev/null
           release_id="$(jq -r '.id' "$release_json_file")"
           jq -e '[.assets[] | {
@@ -85,8 +90,17 @@ jobs:
             "$release_json_file" > "$initial_release_assets"
           test -n "$release_id"
           test "$(jq 'length' "$initial_release_assets")" -gt 0
-
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir "$assets"
+          jq -e '
+            .assets as $assets |
+            ($assets | map(.name) | length) == ($assets | map(.name) | unique | length) and
+            ($assets | all(.name | test("^[A-Za-z0-9._-]+$")))
+          ' "$release_json_file" >/dev/null
+          while IFS=$'\t' read -r asset_id asset_name; do
+            [[ "$asset_id" =~ ^[1-9][0-9]*$ ]]
+            gh api "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" \
+              --header "Accept: application/octet-stream" > "$assets/$asset_name"
+            test -s "$assets/$asset_name"
+          done < <(jq -r '.assets[] | [.id, .name] | @tsv' "$release_json_file")
 
           echo "assets=$assets" >> "$GITHUB_OUTPUT"
           echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
@@ -269,10 +283,12 @@ jobs:
           set -euo pipefail
           current_release="$RUNNER_TEMP/current-release.json"
           current_release_assets="$RUNNER_TEMP/current-release-assets.json"
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$current_release"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" > "$current_release"
           jq -e \
             --argjson release_id "$RELEASE_ID" \
-            '.id == $release_id and .draft == true and .prerelease == true' \
+            --arg release_tag "$RELEASE_TAG" \
+            '.id == $release_id and .tag_name == $release_tag and
+             .draft == true and .prerelease == true' \
             "$current_release" >/dev/null
           jq -e '[.assets[] | {
             name,
