@@ -15,10 +15,18 @@ import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.TrainerAssetCatalog
+import com.enrpau.dualscreendex.parser.language.LanguageEvidence
+import com.enrpau.dualscreendex.parser.language.LanguageEvidenceKind
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
+import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -333,6 +341,109 @@ private fun InputStream.drain() {
     }
 }
 
+private data class StoredLanguageEvidence(
+    val kind: LanguageEvidenceKind? = null,
+    val summary: String? = null,
+    val confidence: Int? = null,
+) {
+    fun toModel() = LanguageEvidence(
+        kind = requireNotNull(kind) { "persisted language evidence requires a kind" },
+        summary = requireNotNull(summary) { "persisted language evidence requires a summary" },
+        confidence = requireNotNull(confidence) { "persisted language evidence requires confidence" },
+    )
+
+    companion object {
+        fun from(value: LanguageEvidence) = StoredLanguageEvidence(
+            kind = value.kind,
+            summary = value.summary,
+            confidence = value.confidence,
+        )
+    }
+}
+
+private data class StoredLocalizedTableLayout(
+    val speciesNames: TableLayout? = null,
+    val moveNames: TableLayout? = null,
+    val descriptions: TableLayout? = null,
+    val abilities: TableLayout? = null,
+) {
+    fun toModel() = LocalizedTableLayout(
+        speciesNames = speciesNames,
+        moveNames = moveNames,
+        descriptions = descriptions,
+        abilities = abilities,
+    )
+
+    companion object {
+        fun from(value: LocalizedTableLayout) = StoredLocalizedTableLayout(
+            speciesNames = value.speciesNames,
+            moveNames = value.moveNames,
+            descriptions = value.descriptions,
+            abilities = value.abilities,
+        )
+    }
+}
+
+private data class StoredLanguageProjection(
+    val language: String? = null,
+    val codecId: String? = null,
+    val codecVersion: Int? = null,
+    val localizedTables: StoredLocalizedTableLayout? = null,
+    val evidence: List<StoredLanguageEvidence?>? = null,
+    val status: LanguageResolutionStatus? = null,
+) {
+    fun toModel() = RomLanguageProjection(
+        language = LanguageTag.of(requireNotNull(language) { "persisted language projection requires a language" }),
+        codecId = requireNotNull(codecId) { "persisted language projection requires a codec ID" },
+        codecVersion = requireNotNull(codecVersion) { "persisted language projection requires a codec version" },
+        localizedTables = requireNotNull(localizedTables) {
+            "persisted language projection requires localized tables"
+        }.toModel(),
+        evidence = requireNotNull(evidence) { "persisted language projection requires evidence" }.map { item ->
+            requireNotNull(item) { "persisted language projection contains null evidence" }.toModel()
+        },
+        status = requireNotNull(status) { "persisted language projection requires a status" },
+    )
+
+    companion object {
+        fun from(value: RomLanguageProjection) = StoredLanguageProjection(
+            language = value.language.value,
+            codecId = value.codecId,
+            codecVersion = value.codecVersion,
+            localizedTables = StoredLocalizedTableLayout.from(value.localizedTables),
+            evidence = value.evidence.map(StoredLanguageEvidence::from),
+            status = value.status,
+        )
+    }
+}
+
+private data class StoredLanguageManifest(
+    val defaultLanguage: String? = null,
+    val projections: List<StoredLanguageProjection?>? = null,
+    val status: LanguageResolutionStatus? = null,
+    val diagnostics: List<String?>? = null,
+) {
+    fun toModel() = RomLanguageManifest(
+        defaultLanguage = defaultLanguage?.let(LanguageTag::of),
+        projections = requireNotNull(projections) { "persisted language manifest requires projections" }.map { item ->
+            requireNotNull(item) { "persisted language manifest contains a null projection" }.toModel()
+        },
+        status = requireNotNull(status) { "persisted language manifest requires a status" },
+        diagnostics = requireNotNull(diagnostics) { "persisted language manifest requires diagnostics" }.map { item ->
+            requireNotNull(item) { "persisted language manifest contains a null diagnostic" }
+        },
+    )
+
+    companion object {
+        fun from(value: RomLanguageManifest) = StoredLanguageManifest(
+            defaultLanguage = value.defaultLanguage?.value,
+            projections = value.projections.map(StoredLanguageProjection::from),
+            status = value.status,
+            diagnostics = value.diagnostics,
+        )
+    }
+}
+
 internal class CatalogSectionCodec {
     private val gson: Gson = GsonBuilder().serializeNulls().create()
     private val speciesType = type<Map<Int, SpeciesRecord>>()
@@ -351,6 +462,7 @@ internal class CatalogSectionCodec {
     private val themeType = type<CatalogTheme>()
     private val capabilitiesType = type<Map<RomCapability, CapabilityEvidence>>()
     private val diagnosticsType = type<List<String>>()
+    private val languageManifestType = type<StoredLanguageManifest>()
 
     fun encode(catalog: ParsedCatalog, included: Set<String>): Map<String, ByteArray> =
         included.associateWithTo(linkedMapOf()) { name -> encodeSection(catalog, name) }
@@ -378,6 +490,7 @@ internal class CatalogSectionCodec {
         "theme" -> encode(catalog.theme, themeType, output)
         "capabilities" -> encode(catalog.capabilities, capabilitiesType, output)
         "diagnostics" -> encode(catalog.diagnostics, diagnosticsType, output)
+        "language_manifest" -> encode(StoredLanguageManifest.from(catalog.languageManifest), languageManifestType, output)
         else -> error("unknown catalog section: $name")
     }
 
@@ -427,6 +540,10 @@ internal class CatalogSectionCodec {
         theme = decoded<CatalogTheme>("theme", themeType).validate(),
         capabilities = decoded("capabilities", capabilitiesType),
         diagnostics = decoded("diagnostics", diagnosticsType),
+        languageManifest = decoded<StoredLanguageManifest>(
+            "language_manifest",
+            languageManifestType,
+        ).toModel(),
         )
     }
 

@@ -11,8 +11,13 @@ import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionCodec
 import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableLayout
 import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableOutcome
 import com.enrpau.dualscreendex.parser.dataset.descriptions.ResolvedDescriptionLayout
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureCatalog
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
+import com.enrpau.dualscreendex.parser.dataset.natures.NatureResolution
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.resolvedLanguageManifest
+import com.enrpau.dualscreendex.parser.language.textUnavailableLanguageManifests
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -28,17 +33,107 @@ import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.parse.LocalMapResolution
 import com.enrpau.dualscreendex.parser.parse.WorldMapResolution
 import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogParserTest {
+    @Test
+    fun numericOnlyNatureMechanicsAreReportedAsPartialWithoutClaimingDecodedText() {
+        val resolution = NatureResolution.Resolved(
+            NatureCatalog(
+                records = listOf(
+                    NatureRecord(
+                        id = 0,
+                        name = null,
+                        statModifiers = listOf(0, 0, 0, 0, 0),
+                        positivePercent = 110,
+                        negativePercent = 90,
+                        flavorModifiers = null,
+                    ),
+                ),
+                nameTableOffset = null,
+                statTableOffset = 0x100,
+                flavorTableOffset = null,
+            ),
+        )
+
+        val evidence = natureCapabilityEvidence(resolution, generation = 3)
+
+        assertEquals(CapabilityStatus.PARTIAL, evidence.status)
+        assertTrue(evidence.compatible)
+        assertEquals(1, evidence.validRecords)
+        assertEquals(1, evidence.totalRecords)
+        assertTrue(evidence.reasons.any { it.contains("stat effects") })
+        assertTrue(evidence.reasons.any { it.contains("names are unavailable") })
+        assertTrue(evidence.reasons.any { it.contains("flavor affinities are unavailable") })
+        assertFalse(evidence.reasons.any { it.contains("decoded ROM-native Nature names") })
+    }
+
+    @Test
+    fun numericAbilityMechanicsSurviveWhenRomTextIsUnavailable() {
+        val bytes = ByteArray(0x200) { 0xFF.toByte() }
+        bytes[0] = 0xAE.toByte()
+        bytes[1] = 0xFF.toByte()
+        encodeGbaText(bytes, 13, "OVERGROW")
+        val rom = RomImage(bytes)
+        val typedNames = (AbilityNameCodec().decode(
+            RomAnalysisSession(rom, RomHeader(Platform.GBA, "ABILITY TEST")),
+            AbilityNameTableLayout(0, 2, 13),
+            AbilitySemanticDomain(setOf(1)),
+        ) as AbilityNameTableOutcome.Decoded).resolved
+        val expectedMechanic = AbilityMechanic(
+            AbilityMechanicKind.MULTIPLIER,
+            "Power",
+            "Power ×1.5",
+            3,
+            2,
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "ABILITY TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+
+        textUnavailableLanguageManifests.forEach { manifest ->
+            val layout = ResolvedRomLayout(
+                family = EngineFamily.EMERALD,
+                generation = 3,
+                platform = Platform.GBA,
+                speciesCount = 0,
+                moveCount = 0,
+                tables = ProfileTables(abilities = TableLayout(0, 2, 13)),
+                resolvedDatasets = ResolvedDatasetLayouts(abilityNames = typedNames),
+                languageManifest = manifest,
+            )
+
+            val catalog = CatalogMaterializer.materialize(
+                rom = rom,
+                analysis = analysis,
+                layout = layout,
+                resolveAbilityMechanics = { _, abilities, _, _ ->
+                    assertEquals(setOf(1), abilities.keys)
+                    assertEquals(CapabilityStatus.NOT_FOUND, abilities.getValue(1).name.status)
+                    AbilityMechanicsResult(0x100, 1.0, mapOf(1 to listOf(expectedMechanic)))
+                },
+            )
+
+            assertEquals(CapabilityStatus.NOT_FOUND, catalog.abilitiesById.getValue(1).name.status)
+            assertEquals(listOf(expectedMechanic), catalog.abilitiesById.getValue(1).mechanics.value)
+            assertEquals(
+                CapabilityStatus.AVAILABLE,
+                catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status,
+            )
+        }
+    }
+
     @Test
     fun optionalResolverDoesNotConvertParserCancellationIntoUnavailableEvidence() {
         val rom = RomImage(ByteArray(0x200))
@@ -419,6 +514,7 @@ class CatalogParserTest {
             EngineFamily.EMERALD, 3, Platform.GBA, 0, 0,
             ProfileTables(abilities = TableLayout(namesOffset, count, 13)),
             resolvedDatasets = ResolvedDatasetLayouts(abilityNames = typedNames),
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
         )
         val analysis = ParseResult(
             RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
@@ -510,6 +606,7 @@ class CatalogParserTest {
                 sprites = TableLayout(88, names.size, 4, stride = stride),
             ),
             pokeemeraldExpansion = metadata,
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
         )
         val rom = RomImage(bytes)
         val analysis = ParseResult(
@@ -561,6 +658,7 @@ class CatalogParserTest {
                 descriptions = TableLayout(0, 2, stride, stride = stride, pointerOffsets = listOf(76)),
             ),
             pokeemeraldExpansion = metadata,
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
         )
         val rom = RomImage(bytes)
         val analysis = ParseResult(
@@ -616,6 +714,7 @@ class CatalogParserTest {
                 ),
             ),
             pokeemeraldExpansion = metadata,
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
         )
         val rom = RomImage(bytes)
         val analysis = ParseResult(
@@ -685,6 +784,7 @@ class CatalogParserTest {
                 baseStats = TableLayout(0, 3, stride, stride = stride),
             ),
             pokeemeraldExpansion = metadata,
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
         )
         val rom = RomImage(bytes)
         val analysis = ParseResult(
@@ -739,6 +839,7 @@ class CatalogParserTest {
                 baseStats = TableLayout(stats, 2, 28),
                 descriptions = TableLayout(descriptions, 2, 32, pointerOffsets = listOf(16)),
             ),
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
         ).withTypedDescriptions(bytes)
         val rom = RomImage(bytes)
         val analysis = ParseResult(
@@ -853,6 +954,7 @@ class CatalogParserTest {
         bytes[stats + 34] = 12
         bytes[stats + 35] = 3
         putIdentitySpeciesIndexEvidence(bytes, 240, speciesCount = 2)
+        val languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish)
         val layout = ResolvedRomLayout(
             EngineFamily.EMERALD,
             3,
@@ -863,6 +965,7 @@ class CatalogParserTest {
                 speciesNames = TableLayout(0, 2, 11),
                 baseStats = TableLayout(stats, 2, 28),
             ),
+            languageManifest = languageManifest,
         )
         val rom = RomImage(bytes)
         val analysis = ParseResult(
@@ -889,9 +992,11 @@ class CatalogParserTest {
         )
 
         assertEquals(CatalogMaterializationPhase.ESSENTIAL, updates.first().phase)
+        assertSame(languageManifest, updates.first().catalog.languageManifest)
         assertEquals("BULBA", updates.first().catalog.navigableSpecies().single().name.value)
         assertTrue(updates.first().catalog.navigableSpecies().single().description.value == null)
         assertEquals(CatalogMaterializationPhase.COMPLETE, updates.last().phase)
+        assertSame(languageManifest, final.languageManifest)
         assertEquals(final, updates.last().catalog)
         assertEquals(
             listOf(

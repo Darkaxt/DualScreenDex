@@ -8,11 +8,13 @@ internal object Gen1DescriptionTextCodec {
         rom: RomImage,
         offset: Int,
         maximumLength: Int,
+        codec: PokemonTextCodec,
     ): DecodedText? {
         if (offset !in 0 until rom.size || maximumLength <= 0) return null
         val available = minOf(maximumLength, rom.size - offset)
         val end = (0 until available).firstOrNull { index ->
-            rom.u8(offset + index) in TERMINATORS
+            val value = rom.u8(offset + index)
+            value == codec.terminator || value == DONE_COMMAND
         } ?: return null
         val normalized = ByteArray(end + 1)
         var length = 0
@@ -21,18 +23,21 @@ internal object Gen1DescriptionTextCodec {
             when {
                 index == 0 && value == TEXT_COMMAND -> Unit
                 value == PAGE_COMMAND -> normalized[length++] = SPACE
-                value == DONE_COMMAND -> normalized[length++] = PokemonTextCodec.gbEnglish.terminator.toByte()
+                value == DONE_COMMAND -> normalized[length++] = codec.terminator.toByte()
                 else -> normalized[length++] = value.toByte()
             }
         }
-        return PokemonTextCodec.gbEnglish.decodeDetailed(normalized.copyOf(length))
+        return codec.decodeDetailed(normalized.copyOf(length))
             .takeIf { it.terminated && it.text.isNotBlank() }
     }
 
-    fun decode(rom: RomImage, offset: Int, maximumLength: Int): String? =
-        decodeDetailed(rom, offset, maximumLength)?.text
+    fun decode(
+        rom: RomImage,
+        offset: Int,
+        maximumLength: Int,
+        codec: PokemonTextCodec,
+    ): String? = decodeDetailed(rom, offset, maximumLength, codec)?.text
 
-    private val TERMINATORS = setOf(PokemonTextCodec.gbEnglish.terminator, DONE_COMMAND)
     private const val TEXT_COMMAND = 0x00
     private const val PAGE_COMMAND = 0x49
     private const val DONE_COMMAND = 0x57

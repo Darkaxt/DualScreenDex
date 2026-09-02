@@ -29,6 +29,7 @@ class Gen1LocalMapPoiResolverTest {
                 Gen1LocalMapPoiResolver.Source(2, 1, HEADER_2),
             ),
             maps = listOf(localMap(1), localMap(2)),
+            codec = null,
         )
 
         val poi = resolution.pois.single()

@@ -5,16 +5,31 @@ import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.resolvedLanguageManifest
+import com.enrpau.dualscreendex.parser.language.textUnavailableLanguageManifests
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class MoveDescriptionMaterializerTest {
+    @Test
+    fun unknownAndAmbiguousLanguageDisableMoveDescriptions() {
+        textUnavailableLanguageManifests.forEach { manifest ->
+            assertNull(
+                MoveDescriptionMaterializer.materialize(
+                    RomImage(ByteArray(0x100)),
+                    layout(moveCount = 4).copy(languageManifest = manifest),
+                ),
+            )
+        }
+    }
+
     @Test
     fun selectsTheCompiledReferencedTableAndRetainsExplicitBlankDescriptions() {
         val bytes = ByteArray(0x2000)
@@ -160,6 +175,7 @@ class MoveDescriptionMaterializerTest {
         speciesCount = 4,
         moveCount = moveCount,
         tables = ProfileTables(),
+        languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
     )
 
     private fun encodeGbaText(target: ByteArray, offset: Int, value: String) {

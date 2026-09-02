@@ -7,10 +7,21 @@ import com.enrpau.dualscreendex.parser.model.RomHeader
 object RomHeaderReader {
     fun read(rom: RomImage): RomHeader {
         if (rom.size >= 0xC0 && hasGbaLogoArea(rom)) {
-            val title = ascii(rom.slice(0xA0, 12))
-            val gameCode = ascii(rom.slice(0xAC, 4))
+            val rawTitle = rom.slice(0xA0, 12)
+            val rawGameCode = rom.slice(0xAC, 4)
+            val title = ascii(rawTitle)
+            val gameCode = ascii(rawGameCode)
             if (title.isNotBlank() && gameCode.length == 4 && gameCode.all { it.code in 0x20..0x7e }) {
-                return RomHeader(Platform.GBA, title, gameCode, rom.u8(0xBC))
+                return RomHeader(
+                    platform = Platform.GBA,
+                    title = title,
+                    gameCode = gameCode,
+                    revision = rom.u8(0xBC),
+                    rawTitleBytes = rawTitle.toUnsignedList(),
+                    rawGameCodeBytes = rawGameCode.toUnsignedList(),
+                    gbaMakerCode = ascii(rom.slice(0xB0, 2)).ifBlank { null },
+                    gbaUnitCode = rom.u8(0xB3),
+                )
             }
         }
 
@@ -20,7 +31,18 @@ object RomHeaderReader {
             val titleLength = if (platform == Platform.GBC) 15 else 16
             val title = ascii(rom.slice(0x134, titleLength))
             if (title.isNotBlank() || hasValidatedBlankGbTitle(rom)) {
-                return RomHeader(platform, title, revision = rom.u8(0x14C), cgbFlag = cgbFlag)
+                return RomHeader(
+                    platform = platform,
+                    title = title,
+                    revision = rom.u8(0x14C),
+                    cgbFlag = cgbFlag,
+                    rawTitleBytes = rom.slice(0x134, 16).toUnsignedList(),
+                    gbManufacturerCode = if (platform == Platform.GBC) {
+                        ascii(rom.slice(0x13F, 4)).ifBlank { null }
+                    } else {
+                        null
+                    },
+                )
             }
         }
 
@@ -37,6 +59,8 @@ object RomHeaderReader {
             .and(0xFF)
         return checksum == rom.u8(0x14D)
     }
+
+    private fun ByteArray.toUnsignedList(): List<Int> = map { it.toInt() and 0xFF }
 
     private fun ascii(bytes: ByteArray): String = bytes
         .takeWhile { it.toInt() != 0 }

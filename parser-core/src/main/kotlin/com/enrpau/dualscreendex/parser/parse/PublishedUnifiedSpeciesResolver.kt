@@ -51,16 +51,19 @@ internal object PublishedUnifiedSpeciesResolver {
         MEANINGFUL,
     }
 
-    fun resolve(session: RomAnalysisSession): HeaderlessUnifiedSpeciesResolution? {
+    fun resolve(
+        session: RomAnalysisSession,
+        codec: PokemonTextCodec,
+    ): HeaderlessUnifiedSpeciesResolution? {
         val published = GbaPublishedHeaderResolver.resolve(session.rom)
         if (published.publishedDataState != GbaPublishedDataState.RESOLVED ||
             published.speciesNames != null || published.sprites != null
         ) return null
         val root = published.baseStats ?: return null
-        val shape = inferShape(session, root) ?: return null
+        val shape = inferShape(session, root, codec) ?: return null
         val activeCount = shape.activeIds.size
         val descriptionsEvidence = shape.descriptionOffset?.let { offset ->
-            validateDescriptions(session.rom, root, shape, offset)
+            validateDescriptions(session.rom, root, shape, offset, codec)
         } ?: unavailablePresentationEvidence(shape.count, activeCount, "embedded description pointer was not resolved")
         val spritesEvidence = if (shape.frontSpriteOffset != null && shape.paletteOffset != null) {
             validateSprites(session.rom, root, shape, shape.frontSpriteOffset, shape.paletteOffset)
@@ -76,6 +79,7 @@ internal object PublishedUnifiedSpeciesResolver {
             speciesCount = shape.count,
             speciesRecordSize = shape.stride,
             activePredicateOffset = 0,
+            codec = codec,
         )
         val moveAcquisitions = HeaderlessUnifiedMoveAcquisitionResolver.resolve(
             session = session,
@@ -160,12 +164,24 @@ internal object PublishedUnifiedSpeciesResolver {
         )
     }
 
-    private fun inferShape(session: RomAnalysisSession, root: Int): SpeciesShape? {
+    private fun inferShape(
+        session: RomAnalysisSession,
+        root: Int,
+        codec: PokemonTextCodec,
+    ): SpeciesShape? {
         val candidates = (64..384 step 4).mapNotNull { stride ->
-            inferExtent(session, root, stride)?.let { (count, activeIds) ->
+            inferExtent(session, root, stride, codec)?.let { (count, activeIds) ->
                 val nationalDexOffset = inferNationalDexOffset(session.rom, root, stride, activeIds)
                     ?: return@let null
-                if (!validateCoreMetadataFields(session.rom, root, stride, activeIds, nationalDexOffset)) {
+                if (!validateCoreMetadataFields(
+                        session.rom,
+                        root,
+                        stride,
+                        activeIds,
+                        nationalDexOffset,
+                        codec,
+                    )
+                ) {
                     return@let null
                 }
                 val descriptionOffset = inferDescriptionOffset(
@@ -174,6 +190,7 @@ internal object PublishedUnifiedSpeciesResolver {
                     stride,
                     activeIds,
                     nationalDexOffset,
+                    codec,
                 )
                 val frontSpriteOffset = inferFrontSpriteOffset(
                     session.rom,
@@ -205,8 +222,9 @@ internal object PublishedUnifiedSpeciesResolver {
         session: RomAnalysisSession,
         root: Int,
         stride: Int,
+        codec: PokemonTextCodec,
     ): Pair<Int, List<Int>>? {
-        if (!plausibleFallbackRow(session.rom, root, stride)) return null
+        if (!plausibleFallbackRow(session.rom, root, stride, codec)) return null
         val maximumRows = minOf(
             MAXIMUM_SPECIES_RECORDS,
             (session.rom.size - root) / stride,
@@ -223,7 +241,7 @@ internal object PublishedUnifiedSpeciesResolver {
                     trailingEmptyRows++
                     if (trailingEmptyRows > MAXIMUM_TRAILING_EMPTY_ROWS) return null
                 }
-                plausibleActiveRow(session.rom, row) -> {
+                plausibleActiveRow(session.rom, row, codec) -> {
                     activeIds += id
                     trailingEmptyRows = 0
                 }
@@ -275,10 +293,11 @@ internal object PublishedUnifiedSpeciesResolver {
         stride: Int,
         activeIds: List<Int>,
         nationalDexOffset: Int,
+        codec: PokemonTextCodec,
     ): Boolean {
         val valid = activeIds.count { id ->
             val row = root + id * stride
-            plausibleText(rom, row + NAME_OFFSET - CATEGORY_WIDTH, CATEGORY_WIDTH) &&
+            plausibleText(rom, row + NAME_OFFSET - CATEGORY_WIDTH, CATEGORY_WIDTH, codec) &&
                 rom.u16le(row + nationalDexOffset + 2) > 0 &&
                 rom.u16le(row + nationalDexOffset + 4) > 0
         }
@@ -291,6 +310,7 @@ internal object PublishedUnifiedSpeciesResolver {
         stride: Int,
         activeIds: List<Int>,
         nationalDexOffset: Int,
+        codec: PokemonTextCodec,
     ): Int? {
         val sample = sample(activeIds, 32)
         val first = alignToWord(nationalDexOffset + 8)
@@ -299,7 +319,7 @@ internal object PublishedUnifiedSpeciesResolver {
         return (first..last step 4).map { field ->
             val qualities = sample.map { id ->
                 rom.gbaPointer(root + id * stride + field)
-                    ?.let { embeddedTextQuality(rom, it, 512) }
+                    ?.let { embeddedTextQuality(rom, it, 512, codec) }
                     ?: EmbeddedTextQuality.INVALID
             }
             DescriptionCandidate(
@@ -360,12 +380,13 @@ internal object PublishedUnifiedSpeciesResolver {
         root: Int,
         shape: SpeciesShape,
         descriptionOffset: Int,
+        codec: PokemonTextCodec,
     ): ValidationEvidence {
         val valid = shape.activeIds.count { id ->
             val row = root + id * shape.stride
-            plausibleText(rom, row + NAME_OFFSET - CATEGORY_WIDTH, CATEGORY_WIDTH) &&
+            plausibleText(rom, row + NAME_OFFSET - CATEGORY_WIDTH, CATEGORY_WIDTH, codec) &&
                 rom.gbaPointer(row + descriptionOffset)?.let {
-                    embeddedTextQuality(rom, it, 512) != EmbeddedTextQuality.INVALID
+                    embeddedTextQuality(rom, it, 512, codec) != EmbeddedTextQuality.INVALID
                 } == true
         }
         return presentationEvidence(
@@ -436,25 +457,39 @@ internal object PublishedUnifiedSpeciesResolver {
         incompleteRecords = activeCount,
     )
 
-    private fun plausibleFallbackRow(rom: RomImage, root: Int, stride: Int): Boolean {
+    private fun plausibleFallbackRow(
+        rom: RomImage,
+        root: Int,
+        stride: Int,
+        codec: PokemonTextCodec,
+    ): Boolean {
         if (root < 0 || root.toLong() + stride > rom.size) return false
         if ((0 until 6).any { rom.u8(root + it) != 0 }) return false
-        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(root + NAME_OFFSET, NAME_WIDTH))
+        val decoded = codec.decodeDetailed(rom.slice(root + NAME_OFFSET, NAME_WIDTH))
         return decoded.terminated && decoded.validRatio >= 0.8 && decoded.text.isNotEmpty()
     }
 
-    private fun plausibleActiveRow(rom: RomImage, row: Int): Boolean = runCatching {
+    private fun plausibleActiveRow(
+        rom: RomImage,
+        row: Int,
+        codec: PokemonTextCodec,
+    ): Boolean = runCatching {
         (0 until 6).all { rom.u8(row + it) > 0 } &&
             rom.u8(row + 6) in 0..31 && rom.u8(row + 7) in 0..31 &&
-            plausibleText(rom, row + NAME_OFFSET, NAME_WIDTH)
+            plausibleText(rom, row + NAME_OFFSET, NAME_WIDTH, codec)
     }.getOrDefault(false)
 
     private fun isZeroRow(rom: RomImage, row: Int, stride: Int): Boolean =
         (0 until stride).all { rom.u8(row + it) == 0 }
 
-    private fun embeddedTextQuality(rom: RomImage, offset: Int, maximumLength: Int): EmbeddedTextQuality = runCatching {
+    private fun embeddedTextQuality(
+        rom: RomImage,
+        offset: Int,
+        maximumLength: Int,
+        codec: PokemonTextCodec,
+    ): EmbeddedTextQuality = runCatching {
         if (offset < 0 || offset >= rom.size) return@runCatching EmbeddedTextQuality.INVALID
-        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(
+        val decoded = codec.decodeDetailed(
             rom.slice(offset, minOf(maximumLength, rom.size - offset)),
         )
         when {
@@ -466,9 +501,14 @@ internal object PublishedUnifiedSpeciesResolver {
         }
     }.getOrDefault(EmbeddedTextQuality.INVALID)
 
-    private fun plausibleText(rom: RomImage, offset: Int, maximumLength: Int): Boolean = runCatching {
+    private fun plausibleText(
+        rom: RomImage,
+        offset: Int,
+        maximumLength: Int,
+        codec: PokemonTextCodec,
+    ): Boolean = runCatching {
         if (offset < 0 || offset >= rom.size) return@runCatching false
-        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(
+        val decoded = codec.decodeDetailed(
             rom.slice(offset, minOf(maximumLength, rom.size - offset)),
         )
         decoded.terminated && decoded.validRatio >= 0.8 && decoded.text.any(Char::isLetterOrDigit)

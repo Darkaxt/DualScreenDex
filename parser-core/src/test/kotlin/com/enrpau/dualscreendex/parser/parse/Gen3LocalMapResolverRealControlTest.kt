@@ -1,11 +1,15 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
+import com.enrpau.dualscreendex.parser.catalog.EncounterMaterializer
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
 import com.enrpau.dualscreendex.parser.catalog.TimedLocalMapRasterRenderer
+import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
@@ -31,6 +35,11 @@ class Gen3LocalMapResolverRealControlTest {
     fun officialEmeraldResolvesCanonicalEmeraldLocalMaps() { assertControl(controls[2]) }
 
     @Test
+    fun officialEmeraldRetainsStructuralLocalMapsWithoutTextAuthority() {
+        assertStructuralControl(controls[2])
+    }
+
+    @Test
     fun officialFireRedResolvesCanonicalFrlgLocalMaps() { assertControl(controls[3]) }
 
     @Test
@@ -51,6 +60,40 @@ class Gen3LocalMapResolverRealControlTest {
             MapTimeOfDay(23, 0),
         ).map { time -> argbSha256(TimedLocalMapRasterRenderer.render(route102, time).argb) }
         assertEquals(4, timeHashes.toSet().size)
+    }
+
+    private fun assertStructuralControl(control: Control) {
+        val rom = realRom(control)
+        val analysis = ParserOrchestrator.analyze(rom)
+        val layout = requireNotNull(
+            analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout,
+        )
+        val family = requireNotNull(analysis.selectedFamily)
+        val encounterIdDivisor = if (layout.pokeemeraldExpansion == null) 10 else 100
+        val baseAreaIds = EncounterMaterializer.materialize(rom, layout)
+            .mapTo(linkedSetOf()) { it.id / encounterIdDivisor }
+        val session = RomAnalysisSession(rom, RomHeaderReader.read(rom))
+        val named = Gen3LocalMapResolver.resolve(session, baseAreaIds, family, requireNotNull(layout.defaultTextCodec()))
+        val structural = Gen3LocalMapResolver.resolve(session, baseAreaIds, family, null)
+
+        assertTrue("${control.environmentVariable}: $named", named is LocalMapResolution.Resolved)
+        assertTrue("${control.environmentVariable}: $structural", structural is LocalMapResolution.Resolved)
+        val namedCatalog = (named as LocalMapResolution.Resolved).catalog.validate()
+        val structuralCatalog = (structural as LocalMapResolution.Resolved).catalog.validate()
+        assertEquals(namedCatalog.maps.map { it.copy(displayName = null) }, structuralCatalog.maps)
+        assertEquals(namedCatalog.assets, structuralCatalog.assets)
+        assertEquals(namedCatalog.timedAssets, structuralCatalog.timedAssets)
+        assertEquals(namedCatalog.scenes, structuralCatalog.scenes)
+        assertEquals(
+            namedCatalog.pois.map { poi ->
+                poi.copy(
+                    displayName = null,
+                    item = poi.item?.copy(displayName = null),
+                    displayNamesByTrainerGender = emptyMap(),
+                )
+            },
+            structuralCatalog.pois,
+        )
     }
 
     private fun assertControl(control: Control): LocalMapCatalog {

@@ -24,6 +24,14 @@ describe('Nature detail', () => {
     expect(screen.getByText('No flavor preference')).toBeTruthy();
     expect(screen.queryByText(/×1\.1|×0\.9/)).toBeNull();
   });
+
+  it('preserves numeric mechanics when the ROM name is unavailable', () => {
+    render(<NatureDetail nature={{ ...changing, name: null }} gameTime={gameTime} onBack={() => undefined} />);
+
+    expect(screen.getByText('#7')).toBeTruthy();
+    expect(screen.getByText('ATTACK ×1.12')).toBeTruthy();
+    expect(screen.queryByText('RESOLUTE')).toBeNull();
+  });
 });
 
 const gameTime = { hours: 12, minutes: 34, phase: 'DAY', phaseProgress: .5 } as const;

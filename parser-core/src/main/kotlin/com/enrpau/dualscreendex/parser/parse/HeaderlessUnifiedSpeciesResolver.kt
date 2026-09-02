@@ -57,7 +57,10 @@ internal object HeaderlessUnifiedSpeciesResolver {
         val fieldOffset: Int,
     )
 
-    fun resolve(session: RomAnalysisSession): HeaderlessUnifiedSpeciesResolution? {
+    fun resolve(
+        session: RomAnalysisSession,
+        codec: PokemonTextCodec,
+    ): HeaderlessUnifiedSpeciesResolution? {
         val index = session.gbaReferenceIndex ?: return null
         if (index.overflowed) return null
         val fieldRelativeRoots = index.targets.mapNotNullTo(linkedSetOf()) { (target, evidence) ->
@@ -66,11 +69,11 @@ internal object HeaderlessUnifiedSpeciesResolver {
                 return@mapNotNullTo null
             }
             val root = target - NAME_OFFSET
-            if (!plausibleFirstRows(session.rom, root)) return@mapNotNullTo null
+            if (!plausibleFirstRows(session.rom, root, codec)) return@mapNotNullTo null
             root
         }
         val rootRelativeRoots = index.targets.mapNotNullTo(linkedSetOf()) { (target, evidence) ->
-            if (!plausibleFirstRows(session.rom, target)) return@mapNotNullTo null
+            if (!plausibleFirstRows(session.rom, target, codec)) return@mapNotNullTo null
             val sites = if (evidence.siteEvidenceAvailable) {
                 evidence
             } else {
@@ -82,13 +85,14 @@ internal object HeaderlessUnifiedSpeciesResolver {
             addAll(fieldRelativeRoots)
             addAll(rootRelativeRoots)
         }
-        val candidates = nominatedRoots.mapNotNull { root -> resolveRoot(session, root) }
+        val candidates = nominatedRoots.mapNotNull { root -> resolveRoot(session, root, codec) }
         return candidates.singleOrNull()
     }
 
     private fun resolveRoot(
         session: RomAnalysisSession,
         root: Int,
+        codec: PokemonTextCodec,
     ): HeaderlessUnifiedSpeciesResolution? {
         val references = session.nominatedGbaReferenceSites(root)
             ?.takeIf { it.siteEvidenceAvailable } ?: return null
@@ -124,13 +128,14 @@ internal object HeaderlessUnifiedSpeciesResolver {
             is ExtentCheck.Valid -> Unit
             is ExtentCheck.Invalid, is ExtentCheck.BudgetExceeded -> return null
         }
-        val activeCount = validateRows(session.rom, root, speciesCount) ?: return null
+        val activeCount = validateRows(session.rom, root, speciesCount, codec) ?: return null
         val abilities = HeaderlessUnifiedAbilityResolver.resolve(
             session = session,
             speciesRoot = root,
             speciesCount = speciesCount,
             speciesRecordSize = RECORD_SIZE,
             activePredicateOffset = 0,
+            codec = codec,
         )
         val moveAcquisitions = HeaderlessUnifiedMoveAcquisitionResolver.resolve(
             session = session,
@@ -141,7 +146,7 @@ internal object HeaderlessUnifiedSpeciesResolver {
         )
         val presentation = presentationOffsets(nationalDexOffset)
         val descriptionsEvidence = presentation?.let {
-            validateDescriptions(session.rom, root, speciesCount, activeCount, it)
+            validateDescriptions(session.rom, root, speciesCount, activeCount, it, codec)
         } ?: unavailablePresentationEvidence(speciesCount, "unified description fields exceed the record")
         val spritesEvidence = presentation?.let {
             validateSprites(session.rom, root, speciesCount, activeCount, it)
@@ -247,6 +252,7 @@ internal object HeaderlessUnifiedSpeciesResolver {
         count: Int,
         activeCount: Int,
         fields: PresentationOffsets,
+        codec: PokemonTextCodec,
     ): ValidationEvidence {
         var valid = 0
         repeat(count) { id ->
@@ -254,8 +260,8 @@ internal object HeaderlessUnifiedSpeciesResolver {
             if (rom.u8(record) == 0) return@repeat
             val pointer = runCatching { rom.gbaPointer(record + fields.description) }.getOrNull()
             if (
-                plausibleText(rom, record + fields.category, CATEGORY_WIDTH) &&
-                pointer?.let { plausibleText(rom, it, 512) } == true
+                plausibleText(rom, record + fields.category, CATEGORY_WIDTH, codec) &&
+                pointer?.let { plausibleText(rom, it, 512, codec) } == true
             ) {
                 valid++
             }
@@ -340,9 +346,14 @@ internal object HeaderlessUnifiedSpeciesResolver {
         }
     }.getOrDefault(false)
 
-    private fun plausibleText(rom: RomImage, offset: Int, maximumLength: Int): Boolean = runCatching {
+    private fun plausibleText(
+        rom: RomImage,
+        offset: Int,
+        maximumLength: Int,
+        codec: PokemonTextCodec,
+    ): Boolean = runCatching {
         if (offset < 0 || offset >= rom.size) return@runCatching false
-        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(
+        val decoded = codec.decodeDetailed(
             rom.slice(offset, minOf(maximumLength, rom.size - offset)),
         )
         decoded.terminated && decoded.validRatio >= 0.8 && decoded.text.any(Char::isLetterOrDigit)
@@ -356,8 +367,12 @@ internal object HeaderlessUnifiedSpeciesResolver {
         reasons = listOf(reason),
     )
 
-    private fun validateRows(rom: RomImage, root: Int, count: Int): Int? {
-        val codec = PokemonTextCodec.gbaEnglish
+    private fun validateRows(
+        rom: RomImage,
+        root: Int,
+        count: Int,
+        codec: PokemonTextCodec,
+    ): Int? {
         val row0 = root
         if (rom.u8(row0) != 0 || (0 until 6).any { rom.u8(row0 + it) != 0 }) return null
         val fallbackBytes = rom.slice(row0 + NAME_OFFSET, NAME_WIDTH)
@@ -376,12 +391,16 @@ internal object HeaderlessUnifiedSpeciesResolver {
         return active.takeIf { it > 0 }
     }
 
-    private fun plausibleFirstRows(rom: RomImage, root: Int): Boolean {
+    private fun plausibleFirstRows(
+        rom: RomImage,
+        root: Int,
+        codec: PokemonTextCodec,
+    ): Boolean {
         val end = root.toLong() + RECORD_SIZE.toLong() * 2L
         if (root < 0 || end > rom.size.toLong() || rom.u8(root) != 0 || rom.u8(root + RECORD_SIZE) == 0) {
             return false
         }
-        return PokemonTextCodec.gbaEnglish
+        return codec
             .decode(rom.slice(root + RECORD_SIZE + NAME_OFFSET, NAME_WIDTH))
             .any(Char::isLetterOrDigit)
     }

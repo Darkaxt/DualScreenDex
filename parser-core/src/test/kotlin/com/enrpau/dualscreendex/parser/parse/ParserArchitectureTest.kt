@@ -124,7 +124,14 @@ class ParserArchitectureTest {
         )
 
         assertTrue(catalog.contains("resolvedDatasets.descriptions?.catalogDescriptions()"))
-        assertEquals(1, semantic.lineSequence().count { it.contains("DescriptionResolver().resolve") })
+        assertEquals(
+            1,
+            semantic.lineSequence().count {
+                it.contains("DescriptionResolver(DescriptionCodec(codec), codec).resolve")
+            },
+        )
+        assertTrue(semantic.contains("codec = identity.probeCodec"))
+        assertTrue(!semantic.contains("DescriptionResolver().resolve"))
         assertEquals(1, "RelationshipMaterializers.descriptions".toRegex().findAll(orchestrator).count())
     }
 
@@ -193,8 +200,33 @@ class ParserArchitectureTest {
         assertTrue(materializer.contains("resolvedDatasets.abilityNames?.catalogAbilities()"))
         assertTrue(!materializer.contains("referencedAbilityCount"))
         assertTrue(!catalog.contains("maximumReferencedAbilityId"))
-        assertEquals(1, semantic.lineSequence().count { it.contains("AbilityNameResolver().resolve") })
+        assertEquals(
+            1,
+            semantic.lineSequence().count {
+                it.contains("AbilityNameResolver(AbilityNameCodec(identity.probeCodec)).resolve")
+            },
+        )
+        assertTrue(semantic.contains("AbilityNameCodec(codec).decode(session, candidate, semanticDomain)"))
+        assertTrue(!semantic.contains("AbilityNameResolver().resolve"))
+        assertTrue(!semantic.contains("AbilityNameCodec().decode"))
         assertTrue(semantic.contains("selectedLayout = selected"))
+    }
+
+    @Test
+    fun specializedMapTextPathsConsumeCodecTokensInsteadOfLegacyBytes() {
+        listOf(
+            "Gen1WorldMapResolver.kt",
+            "Gen1LocalMapPoiResolver.kt",
+            "Gen2LandmarkNameCodec.kt",
+            "Gen2LocalMapPoiResolver.kt",
+            "Gen3LocalMapPoiResolver.kt",
+        ).forEach { fileName ->
+            val source = Files.readString(
+                productionSourceRoot().resolve("com/enrpau/dualscreendex/parser/parse/$fileName"),
+            )
+            assertTrue("$fileName still decodes one byte at a time", !source.contains(".decodeByte("))
+            assertTrue("$fileName does not consume codec tokens", source.contains(".decodeToken("))
+        }
     }
 
     private fun productionSourceRoot(): Path {

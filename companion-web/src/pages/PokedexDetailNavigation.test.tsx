@@ -196,6 +196,31 @@ describe('Pokédex evolution navigation', () => {
     expect(send).toHaveBeenCalledWith('MAP_AREA', { regionKey: 'hoenn', locationKey: 'oldale' });
   });
 
+  it('uses structural keys for unnamed habitat marker accessibility labels', () => {
+    const unnamedCatalog: Catalog = {
+      ...catalog,
+      worldMaps: catalog.worldMaps.map(region => ({
+        ...region,
+        locations: region.locations.map(location => (
+          location.key === 'oldale' ? { ...location, displayName: null } : location
+        )),
+      })),
+    };
+
+    render(<PokedexDetail
+      catalog={unnamedCatalog}
+      state={{ ...state, observedAreaBaseIdsBySpecies: { 5: [0x11] } }}
+      send={vi.fn()}
+      tab="AREA"
+      setTab={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+    />);
+
+    expect(screen.getByRole('button', { name: 'Observed at oldale' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /null/i })).toBeNull();
+  });
+
   it('routes unresolved level-up moves directly to the Move List setting', () => {
     const openMoveListSettings = vi.fn();
     render(<PokedexDetail

@@ -20,10 +20,12 @@ import com.enrpau.dualscreendex.parser.dataset.natures.NatureResolution
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.family.FamilyProbeCoordinator
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.RomHeader
@@ -36,9 +38,9 @@ import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 internal data class CatalogAnalysisContext(
     val analysis: ParseResult,
     val resolveMoveDescriptions: (ResolvedRomLayout) -> MoveDescriptionResult?,
-    val resolveGen3AreaNames: (Set<Int>) -> Map<Int, String>,
-    val resolveWorldMap: (Int, Set<Int>) -> WorldMapResolution,
-    val resolveLocalMaps: (Int, Set<Int>) -> LocalMapResolution,
+    val resolveGen3AreaNames: (ResolvedRomLayout, Set<Int>) -> Map<Int, String>,
+    val resolveWorldMap: (ResolvedRomLayout, Set<Int>) -> WorldMapResolution,
+    val resolveLocalMaps: (ResolvedRomLayout, Set<Int>) -> LocalMapResolution,
     val resolveAbilityMechanics: (ResolvedRomLayout, Map<Int, AbilityRecord>, Map<Int, TypeRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?,
     val resolveNatures: (ResolvedRomLayout) -> NatureResolution,
 )
@@ -86,58 +88,82 @@ object ParserOrchestrator {
             },
             resolveNatures = { layout ->
                 sharedSession.cancellation.throwIfCancellationRequested()
-                if (layout.generation == 3) {
-                    Gen3NatureResolver.resolve(sharedSession)
-                } else {
-                    NatureResolution.Unavailable("Natures are not part of this engine")
-                }
+                resolveNatures(sharedSession, layout)
             },
-            resolveGen3AreaNames = { baseAreaIds ->
+            resolveGen3AreaNames = { layout, baseAreaIds ->
                 sharedSession.cancellation.throwIfCancellationRequested()
                 val references = sharedSession.gbaReferenceIndex
-                if (references == null || references.overflowed) {
+                val codec = layout.defaultTextCodec()
+                if (references == null || references.overflowed || codec == null) {
                     emptyMap()
                 } else {
-                    Gen3MapLocationResolver.resolve(sharedSession.rom, baseAreaIds, references)
-                }
-            },
-            resolveLocalMaps = { generation, baseAreaIds ->
-                sharedSession.cancellation.throwIfCancellationRequested()
-                when (generation) {
-                    1 -> Gen1LocalMapResolver.resolve(
-                        sharedSession,
+                    Gen3MapLocationResolver.resolve(
+                        sharedSession.rom,
                         baseAreaIds,
-                        requireNotNull(analysis.selectedFamily),
-                    )
-                    2 -> Gen2LocalMapResolver.resolve(
-                        sharedSession,
-                        baseAreaIds,
-                        requireNotNull(analysis.selectedFamily),
-                    )
-                    3 -> Gen3LocalMapResolver.resolve(
-                        sharedSession,
-                        baseAreaIds,
-                        requireNotNull(analysis.selectedFamily),
-                    )
-                    else -> LocalMapResolution.Unavailable(
-                        "generation",
-                        "local maps are not part of this engine's normalized parser path",
+                        references,
+                        codec,
+                        sharedSession.cancellation,
                     )
                 }
             },
-            resolveWorldMap = { generation, baseAreaIds ->
+            resolveLocalMaps = { layout, baseAreaIds ->
                 sharedSession.cancellation.throwIfCancellationRequested()
-                when (generation) {
-                    1 -> Gen1WorldMapResolver.resolve(sharedSession, baseAreaIds)
-                    2 -> Gen2WorldMapResolver.resolve(sharedSession, baseAreaIds)
-                    3 -> Gen3WorldMapResolver.resolve(sharedSession, baseAreaIds)
-                    else -> WorldMapResolution.Unavailable(
-                        "generation",
-                        "world maps are not part of this engine's normalized parser path",
-                    )
-                }
+                resolveLocalMaps(
+                    sharedSession,
+                    layout,
+                    analysis.selectedFamily,
+                    baseAreaIds,
+                )
+            },
+            resolveWorldMap = { layout, baseAreaIds ->
+                sharedSession.cancellation.throwIfCancellationRequested()
+                resolveWorldMap(sharedSession, layout, baseAreaIds)
             },
         )
+    }
+
+    internal fun resolveNatures(
+        session: RomAnalysisSession,
+        layout: ResolvedRomLayout,
+    ): NatureResolution = if (layout.generation == 3) {
+        Gen3NatureResolver.resolve(session, layout.defaultTextCodec())
+    } else {
+        NatureResolution.Unavailable("Natures are not part of this engine")
+    }
+
+    internal fun resolveLocalMaps(
+        session: RomAnalysisSession,
+        layout: ResolvedRomLayout,
+        selectedFamily: EngineFamily?,
+        baseAreaIds: Set<Int>,
+    ): LocalMapResolution {
+        val codec = layout.defaultTextCodec()
+        return when (layout.generation) {
+            1 -> Gen1LocalMapResolver.resolve(session, baseAreaIds, requireNotNull(selectedFamily), codec)
+            2 -> Gen2LocalMapResolver.resolve(session, baseAreaIds, requireNotNull(selectedFamily), codec)
+            3 -> Gen3LocalMapResolver.resolve(session, baseAreaIds, requireNotNull(selectedFamily), codec)
+            else -> LocalMapResolution.Unavailable(
+                "generation",
+                "local maps are not part of this engine's normalized parser path",
+            )
+        }
+    }
+
+    internal fun resolveWorldMap(
+        session: RomAnalysisSession,
+        layout: ResolvedRomLayout,
+        baseAreaIds: Set<Int>,
+    ): WorldMapResolution {
+        val codec = layout.defaultTextCodec()
+        return when (layout.generation) {
+            1 -> Gen1WorldMapResolver.resolve(session, baseAreaIds, codec)
+            2 -> Gen2WorldMapResolver.resolve(session, baseAreaIds, codec)
+            3 -> Gen3WorldMapResolver.resolve(session, baseAreaIds, codec)
+            else -> WorldMapResolution.Unavailable(
+                "generation",
+                "world maps are not part of this engine's normalized parser path",
+            )
+        }
     }
 
     internal fun analyze(

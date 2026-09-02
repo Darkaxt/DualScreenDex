@@ -521,11 +521,14 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
 
   const manuallySelectedGuide = selectedGuideAreaBaseId != null
     && selectedGuideAreaBaseId !== state.areaGuide?.trackedAreaBaseId;
+  const atlasHeaderName = selectedLocation
+    ? selectedLocation.displayName ?? (selectedIsCurrent ? state.currentAreaName : null) ?? selectedLocation.key
+    : state.currentAreaName ?? 'Atlas';
   const headerAreaName = manuallySelectedGuide && activeGuideArea
     ? activeGuideArea.name
     : activeMode === 'LOCAL'
       ? displayName
-      : selectedLocation?.displayName ?? state.currentAreaName ?? 'Atlas';
+      : atlasHeaderName;
   const headerAreaContext = manuallySelectedGuide
     ? 'MAP POINT'
     : activeMode === 'LOCAL' || selectedIsCurrent
@@ -634,7 +637,9 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
             class={`map-marker atlas-location-marker ${location.key === currentLocation?.key ? 'is-current' : ''} ${location.key === selectedLocation?.key ? 'is-selected' : ''}`}
             data-marker-key={location.key}
             style={{ left: `${position.x}%`, top: `${position.y}%` }}
-            aria-label={location.key === currentLocation?.key ? `Current location: ${location.displayName}` : location.displayName}
+            aria-label={location.key === currentLocation?.key
+              ? `Current location: ${location.displayName ?? location.key}`
+              : location.displayName ?? `Map location: ${location.key}`}
             aria-pressed={location.key === selectedLocation?.key}
             onClick={event => {
               if (event.detail !== 0 && !allowMarkerSelectionRef.current) {

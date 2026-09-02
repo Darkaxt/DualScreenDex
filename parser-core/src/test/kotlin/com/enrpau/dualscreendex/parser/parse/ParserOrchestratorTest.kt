@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.dataset.learnsets.ResolvedLearnsetSet
 import com.enrpau.dualscreendex.parser.dataset.learnsets.ResolvedSelectedLearnsetTable
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.resolvedEnglishLayout
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -18,7 +19,6 @@ import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedDatasetLayouts
-import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
@@ -254,7 +254,7 @@ class ParserOrchestratorTest {
             putPointer(bytes, learnsetTableOffset + speciesId * 4, target)
             if (speciesId != 4) putU16(bytes, target, 0xFFFF)
         }
-        val rawLayout = ResolvedRomLayout(
+        val rawLayout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,

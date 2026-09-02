@@ -1,6 +1,9 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
@@ -15,8 +18,14 @@ data class AbilityDescriptionResult(
 
 object AbilityDescriptionMaterializer {
 
-    fun materialize(rom: RomImage, layout: ResolvedRomLayout): AbilityDescriptionResult? {
+    fun materialize(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): AbilityDescriptionResult? {
+        cancellation.throwIfCancellationRequested()
         if (layout.generation != 3) return null
+        val codec = layout.defaultTextCodec() ?: return null
         val names = layout.tables.abilities ?: return null
         if (names.count < 2) return null
         val pointerTableBytes = names.count.toLong() * 4
@@ -34,13 +43,18 @@ object AbilityDescriptionMaterializer {
         embeddedDescription?.let { (recordSize, pointerOffset) ->
             val descriptions = buildMap {
                 repeat(names.count - 1) { index ->
+                    cancellation.throwIfCancellationRequested()
                     val id = index + 1
                     val record = names.offset + id * (names.stride ?: recordSize)
                     val textOffset = rom.gbaPointer(record + pointerOffset) ?: return@repeat
                     val length = minOf(192, rom.size - textOffset)
-                    val decoded = runCatching {
-                        PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(textOffset, length))
-                    }.getOrNull() ?: return@repeat
+                    val decoded = decodeDetailedOrNull(
+                        codec = codec,
+                        rom = rom,
+                        offset = textOffset,
+                        maximumBytes = length,
+                        cancellation = cancellation,
+                    ) ?: return@repeat
                     val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
                     if (decoded.terminated && decoded.validRatio >= 0.85 && looksLikeNaturalDescription(normalized)) {
                         put(id, normalized)
@@ -64,21 +78,30 @@ object AbilityDescriptionMaterializer {
         if (publishedRoot == null) {
             var eligibleCandidates = 0
             references.keys.forEach { offset ->
+                cancellation.throwIfCancellationRequested()
                 if (!isCompletePointerSpanCandidate(rom, offset, names.count)) return@forEach
                 eligibleCandidates++
                 if (eligibleCandidates > MAX_DESCRIPTION_CANDIDATES) return null
                 candidates += offset
             }
         }
-        val prefix = abilityNamePrefix(rom, names)
+        val prefix = abilityNamePrefix(rom, names, codec, cancellation)
 
         return candidates.asSequence()
             .mapNotNull { offset ->
+                cancellation.throwIfCancellationRequested()
                 val published = offset == publishedRoot
                 val referenceCount = references[offset] ?: 0
                 if (!published && referenceCount == 0) return@mapNotNull null
                 val minimumCoverage = if (published) 0.70 else 0.80
-                decodeCandidate(rom, offset, names.count, minimumCoverage)?.let { result ->
+                decodeCandidate(
+                    rom = rom,
+                    codec = codec,
+                    offset = offset,
+                    count = names.count,
+                    minimumCoverage = minimumCoverage,
+                    cancellation = cancellation,
+                )?.let { result ->
                     DescriptionCandidate(
                         result = result,
                         references = referenceCount,
@@ -99,22 +122,36 @@ object AbilityDescriptionMaterializer {
 
     private fun decodeCandidate(
         rom: RomImage,
+        codec: PokemonTextCodec,
         offset: Int,
         count: Int,
         minimumCoverage: Double,
+        cancellation: ParserCancellationToken,
     ): AbilityDescriptionResult? {
-        val codec = PokemonTextCodec.gbaEnglish
         val noneOffset = runCatching { rom.gbaPointer(offset) }.getOrNull() ?: return null
         val noneLength = minOf(64, rom.size - noneOffset)
-        val none = runCatching { codec.decodeDetailed(rom.slice(noneOffset, noneLength)) }.getOrNull() ?: return null
+        val none = decodeDetailedOrNull(
+            codec = codec,
+            rom = rom,
+            offset = noneOffset,
+            maximumBytes = noneLength,
+            cancellation = cancellation,
+        ) ?: return null
         val validNone = none.text.isBlank() || (none.validRatio >= 0.85 && none.text.length >= 5)
         if (!none.terminated || !validNone) return null
 
         val descriptions = linkedMapOf<Int, String>()
         for (id in 1 until count) {
+            cancellation.throwIfCancellationRequested()
             val textOffset = runCatching { rom.gbaPointer(offset + id * 4) }.getOrNull() ?: break
             val length = minOf(192, rom.size - textOffset)
-            val decoded = runCatching { codec.decodeDetailed(rom.slice(textOffset, length)) }.getOrNull() ?: break
+            val decoded = decodeDetailedOrNull(
+                codec = codec,
+                rom = rom,
+                offset = textOffset,
+                maximumBytes = length,
+                cancellation = cancellation,
+            ) ?: break
             if (!decoded.terminated || decoded.validRatio < 0.85) break
             val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
             if (normalized.length >= 5) {
@@ -133,15 +170,39 @@ object AbilityDescriptionMaterializer {
         }
     }
 
-    private fun abilityNamePrefix(rom: RomImage, names: TableLayout): AbilityNamePrefix? {
+    private fun decodeDetailedOrNull(
+        codec: PokemonTextCodec,
+        rom: RomImage,
+        offset: Int,
+        maximumBytes: Int,
+        cancellation: ParserCancellationToken,
+    ) = try {
+        codec.decodeDetailed(rom, offset, maximumBytes, cancellation)
+    } catch (failure: ParserCancellationException) {
+        throw failure
+    } catch (_: RuntimeException) {
+        null
+    }
+
+    private fun abilityNamePrefix(
+        rom: RomImage,
+        names: TableLayout,
+        codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
+    ): AbilityNamePrefix? {
         if (names.count < 2 || names.variableLength) return null
-        val codec = PokemonTextCodec.gbaEnglish
         fun read(index: Int): String {
             val record = names.offset + index * (names.stride ?: names.recordSize)
             val value = if (names.valuesArePointers) rom.gbaPointer(record) else record
             if (value == null || value < 0 || value >= rom.size) return ""
             val width = if (names.valuesArePointers) minOf(64, rom.size - value) else names.recordSize
-            return runCatching { codec.decode(rom.slice(value, width)) }.getOrDefault("")
+            return decodeDetailedOrNull(
+                codec = codec,
+                rom = rom,
+                offset = value,
+                maximumBytes = width,
+                cancellation = cancellation,
+            )?.text.orEmpty()
         }
         val sentinel = read(0)
         val first = read(1)

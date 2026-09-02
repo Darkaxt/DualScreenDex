@@ -1,6 +1,8 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
@@ -13,28 +15,78 @@ internal data class SpeciesMaterialization(
 )
 
 object RecordMaterializers {
-    fun species(rom: RomImage, layout: ResolvedRomLayout): Map<Int, SpeciesRecord> =
-        speciesWithIndexResolution(rom, layout).records
+    fun species(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): Map<Int, SpeciesRecord> = speciesWithIndexResolution(rom, layout, cancellation).records
 
-    internal fun speciesWithIndexResolution(rom: RomImage, layout: ResolvedRomLayout): SpeciesMaterialization {
-        val names = layout.tables.speciesNames ?: return SpeciesMaterialization(
-            emptyMap(),
-            SpeciesIndexResolution.Unavailable(emptyMap(), "species-name table is unavailable"),
-        )
+    internal fun speciesWithIndexResolution(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): SpeciesMaterialization {
+        val names = layout.tables.speciesNames
         val stats = layout.tables.baseStats
-        val codec = codecFor(layout.generation)
+        if (names == null && stats == null) {
+            return SpeciesMaterialization(
+                emptyMap(),
+                SpeciesIndexResolution.Unavailable(emptyMap(), "species tables are unavailable"),
+            )
+        }
+        val codec = layout.defaultTextCodec()
         val firstId = if (layout.generation == 3) 0 else 1
-        val indexResolution = SpeciesIndexResolver.resolveWithEvidence(rom, layout)
-        if (indexResolution.values.values.none { it > 0 } && names.count > 1) {
-            return SpeciesMaterialization(emptyMap(), indexResolution)
+        val indexResolution = if (names != null) {
+            SpeciesIndexResolver.resolveWithEvidence(rom, layout)
+        } else {
+            SpeciesIndexResolution.Unavailable(emptyMap(), "species-name table is unavailable")
         }
         val dexNumbers = indexResolution.values
-        val nonPokedexSpeciesIds = compiledNonPokedexSpeciesIds(
-            rom = rom,
-            layout = layout,
-            names = names,
-            indexResolution = indexResolution,
-        )
+        val hasResolvedDexNumbers = dexNumbers.values.any { it > 0 }
+        val rows = if (names != null && (hasResolvedDexNumbers || names.count <= 1)) {
+            val expansion = layout.pokeemeraldExpansion
+            val unified = layout.headerlessUnifiedSpecies
+            val nameIndexes = when {
+                expansion != null -> (1 until names.count).filter { id ->
+                    (dexNumbers[id] ?: 0) > 0
+                }
+                unified != null -> {
+                    val table = requireNotNull(stats)
+                    val stride = table.stride ?: unified.speciesRecordSize
+                    (1 until names.count).filter { id ->
+                        rom.u8(table.offset + id * stride + unified.activePredicateOffset) != 0
+                    }
+                }
+                else -> (0 until names.count).toList()
+            }
+            nameIndexes.map { nameIndex ->
+                val id = firstId + nameIndex
+                val dexNumber = dexNumbers[id] ?: id
+                SpeciesRow(
+                    id = id,
+                    nameIndex = nameIndex,
+                    statsIndex = when (layout.generation) {
+                        1 -> dexNumber - 1
+                        2 -> id - 1
+                        else -> id
+                    },
+                    dexNumber = dexNumber,
+                )
+            }
+        } else {
+            numericSpeciesRows(rom, layout, stats, dexNumbers)
+        }
+        if (rows.isEmpty()) return SpeciesMaterialization(emptyMap(), indexResolution)
+        val nonPokedexSpeciesIds = if (names != null) {
+            compiledNonPokedexSpeciesIds(
+                rom = rom,
+                layout = layout,
+                names = names,
+                indexResolution = indexResolution,
+            )
+        } else {
+            emptySet()
+        }
         val detachedGen1 = if (layout.generation == 1 && stats != null) {
             Gen1DetachedSpeciesResolver.resolve(rom, stats)
         } else {
@@ -42,28 +94,15 @@ object RecordMaterializers {
         }
         val expansion = layout.pokeemeraldExpansion
         val unified = layout.headerlessUnifiedSpecies
-        val nameIndexes = when {
-            expansion != null -> (1 until names.count).filter { id ->
-                (dexNumbers[id] ?: 0) > 0
+        val records = rows.associate { row ->
+            val id = row.id
+            val dexNumber = row.dexNumber
+            val name = if (names != null && row.nameIndex in 0 until names.count) {
+                codec?.let { readName(rom, names, row.nameIndex, it, cancellation) }
+            } else {
+                null
             }
-            unified != null -> {
-                val table = requireNotNull(stats)
-                val stride = table.stride ?: unified.speciesRecordSize
-                (1 until names.count).filter { id ->
-                    rom.u8(table.offset + id * stride + unified.activePredicateOffset) != 0
-                }
-            }
-            else -> (0 until names.count).toList()
-        }
-        val records = nameIndexes.associate { nameIndex ->
-            val id = firstId + nameIndex
-            val dexNumber = dexNumbers[id] ?: id
-            val name = readName(rom, names, nameIndex, codec)
-            val statsIndex = when (layout.generation) {
-                1 -> dexNumber - 1
-                2 -> id - 1
-                else -> id
-            }
+            val statsIndex = row.statsIndex
             val ordinaryStatsOffset = stats?.let {
                 validatedRecordOffset(rom, it, statsIndex, baseStatBytes(layout.generation))
             }
@@ -71,7 +110,7 @@ object RecordMaterializers {
             val statsOffset = if (ordinaryBaseStats != null) {
                 ordinaryStatsOffset
             } else {
-                detachedGen1[dexNumber]?.offset
+                dexNumber?.let(detachedGen1::get)?.offset
             }
             val baseStats = statsOffset?.let { readBaseStats(rom, it, layout.generation) }
             val typeIds = baseStats?.second
@@ -141,17 +180,17 @@ object RecordMaterializers {
             }
             id to SpeciesRecord(
                 id = id,
-                dexNumber = if (
-                    id in nonPokedexSpeciesIds ||
-                    layout.generation == 1 && dexNumber == 0
-                ) {
-                    CatalogField.notApplicable(
-                        "compiled species record is outside the ROM's complete Pokédex-entry domain",
-                    )
-                } else {
-                    CatalogField.available(dexNumber)
+                dexNumber = when {
+                    id in nonPokedexSpeciesIds || layout.generation == 1 && dexNumber == 0 -> {
+                        CatalogField.notApplicable(
+                            "compiled species record is outside the ROM's complete Pokédex-entry domain",
+                        )
+                    }
+                    dexNumber != null -> CatalogField.available(dexNumber)
+                    else -> CatalogField.notFound("species-to-Dex mapping is unavailable")
                 },
-                name = CatalogField.available(name),
+                name = name?.takeIf(String::isNotBlank)?.let(CatalogField.Companion::available)
+                    ?: CatalogField.notFound(TEXT_CODEC_UNAVAILABLE_REASON),
                 typeIds = typeIds?.let(CatalogField.Companion::available)
                     ?: CatalogField.notFound("base stats were not resolved for species $id"),
                 baseStats = baseStats?.first?.let(CatalogField.Companion::available)
@@ -162,6 +201,49 @@ object RecordMaterializers {
             )
         }
         return SpeciesMaterialization(records, indexResolution)
+    }
+
+    private fun numericSpeciesRows(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        stats: TableLayout?,
+        dexNumbers: Map<Int, Int>,
+    ): List<SpeciesRow> {
+        stats ?: return emptyList()
+        return when (layout.generation) {
+            1 -> (0 until stats.count).mapNotNull { statsIndex ->
+                val offset = validatedRecordOffset(rom, stats, statsIndex, baseStatBytes(1))
+                    ?: return@mapNotNull null
+                if (readBaseStats(rom, offset, 1) == null) return@mapNotNull null
+                val id = rom.u8(offset)
+                if (id <= 0) return@mapNotNull null
+                SpeciesRow(id, id - 1, statsIndex, statsIndex + 1)
+            }.distinctBy(SpeciesRow::id)
+            2 -> (0 until stats.count).mapNotNull { statsIndex ->
+                val offset = validatedRecordOffset(rom, stats, statsIndex, baseStatBytes(2))
+                    ?: return@mapNotNull null
+                if (readBaseStats(rom, offset, 2) == null) return@mapNotNull null
+                val id = statsIndex + 1
+                SpeciesRow(id, statsIndex, statsIndex, id)
+            }
+            else -> (1 until stats.count).mapNotNull { statsIndex ->
+                val offset = validatedRecordOffset(rom, stats, statsIndex, baseStatBytes(3))
+                    ?: return@mapNotNull null
+                if (readBaseStats(rom, offset, 3) == null) return@mapNotNull null
+                val activePredicateOffset = layout.headerlessUnifiedSpecies?.activePredicateOffset
+                if (activePredicateOffset != null) {
+                    val predicate = validatedFieldOffset(offset, stats.recordSize, activePredicateOffset, 1)
+                        ?: return@mapNotNull null
+                    if (rom.u8(predicate) == 0) return@mapNotNull null
+                }
+                SpeciesRow(
+                    id = statsIndex,
+                    nameIndex = statsIndex,
+                    statsIndex = statsIndex,
+                    dexNumber = dexNumbers[statsIndex]?.takeIf { it > 0 },
+                )
+            }
+        }
     }
 
     /**
@@ -222,9 +304,13 @@ object RecordMaterializers {
         return overflowIds.toSet()
     }
 
-    fun moves(rom: RomImage, layout: ResolvedRomLayout): Map<Int, MoveRecord> {
-        val names = layout.tables.moveNames ?: return emptyMap()
-        val codec = codecFor(layout.generation)
+    fun moves(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): Map<Int, MoveRecord> {
+        val names = layout.tables.moveNames
+        val codec = layout.defaultTextCodec()
         val firstId = if (layout.generation == 3) 0 else 1
         if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
             val details = layout.resolvedDatasets.moveDetails?.catalogDetails().orEmpty()
@@ -236,19 +322,33 @@ object RecordMaterializers {
                 ?.map(LearnsetEntry::moveId)
                 ?.toSet()
                 .orEmpty()
-            return (0 until names.count).mapNotNull { index ->
+            val count = maxOf(
+                names?.count ?: 0,
+                layout.tables.moveData?.count ?: 0,
+                details.keys.maxOrNull()?.plus(1) ?: 0,
+                referencedMoveIds.maxOrNull()?.plus(1) ?: 0,
+            )
+            return (0 until count).mapNotNull { index ->
                 val id = firstId + index
                 if (id == 0) return@mapNotNull null
-                val name = readName(rom, names, index, codec)
+                val name = if (names != null && index in 0 until names.count) {
+                    codec?.let { readName(rom, names, index, it, cancellation) }
+                } else {
+                    null
+                }
                 val detail = details[index]
-                val named = name.any(Char::isLetterOrDigit)
-                if (!named && (id !in referencedMoveIds || detail == null)) return@mapNotNull null
+                val named = name?.any(Char::isLetterOrDigit) == true
+                if (!named && codec != null && (id !in referencedMoveIds || detail == null)) return@mapNotNull null
+                if (codec == null && id !in referencedMoveIds && detail == null) return@mapNotNull null
                 id to MoveRecord(
                     id = id,
                     name = if (named) {
-                        CatalogField.available(name)
+                        CatalogField.available(requireNotNull(name))
                     } else {
-                        CatalogField.notFound("referenced move has no decoded ROM name")
+                        CatalogField.notFound(
+                            if (codec == null) TEXT_CODEC_UNAVAILABLE_REASON
+                            else "referenced move has no decoded ROM name",
+                        )
                     },
                     typeId = detail?.typeId?.let(CatalogField.Companion::available)
                         ?: CatalogField.notFound("move details were not resolved from the ROM"),
@@ -267,24 +367,29 @@ object RecordMaterializers {
                 )
             }.toMap()
         }
-        val data = layout.tables.moveData ?: return (0 until names.count).mapNotNull { index ->
-            val id = firstId + index
-            if (id == 0) return@mapNotNull null
-            val name = readName(rom, names, index, codec)
-            if (name.none(Char::isLetterOrDigit)) return@mapNotNull null
-            id to MoveRecord(
-                id = id,
-                name = CatalogField.available(name),
-                typeId = CatalogField.notFound("move details were not resolved from the ROM"),
-                category = CatalogField.notFound("move details were not resolved from the ROM"),
-                power = CatalogField.notFound("move details were not resolved from the ROM"),
-                accuracy = CatalogField.notFound("move details were not resolved from the ROM"),
-                pp = CatalogField.notFound("move details were not resolved from the ROM"),
-                priority = CatalogField.notFound("move details were not resolved from the ROM"),
-                effectId = CatalogField.notFound("move details were not resolved from the ROM"),
-            )
-        }.toMap()
-        val count = minOf(names.count, data.count)
+        val data = layout.tables.moveData ?: run {
+            val nameTable = names ?: return emptyMap()
+            val selectedCodec = codec ?: return emptyMap()
+            return (0 until nameTable.count).mapNotNull { index ->
+                val id = firstId + index
+                if (id == 0) return@mapNotNull null
+                val name = readName(rom, nameTable, index, selectedCodec, cancellation)
+                    ?: return@mapNotNull null
+                if (name.none(Char::isLetterOrDigit)) return@mapNotNull null
+                id to MoveRecord(
+                    id = id,
+                    name = CatalogField.available(name),
+                    typeId = CatalogField.notFound("move details were not resolved from the ROM"),
+                    category = CatalogField.notFound("move details were not resolved from the ROM"),
+                    power = CatalogField.notFound("move details were not resolved from the ROM"),
+                    accuracy = CatalogField.notFound("move details were not resolved from the ROM"),
+                    pp = CatalogField.notFound("move details were not resolved from the ROM"),
+                    priority = CatalogField.notFound("move details were not resolved from the ROM"),
+                    effectId = CatalogField.notFound("move details were not resolved from the ROM"),
+                )
+            }.toMap()
+        }
+        val count = names?.let { minOf(it.count, data.count) } ?: data.count
         val expansion = layout.pokeemeraldExpansion
         return (0 until count).associate { index ->
             val id = firstId + index
@@ -302,7 +407,7 @@ object RecordMaterializers {
                 val priority = if (rawPriority >= 8) rawPriority - 16 else rawPriority
                 return@associate id to MoveRecord(
                     id = id,
-                    name = CatalogField.available(readName(rom, names, index, codec)),
+                    name = nameField(rom, names, index, codec, cancellation),
                     typeId = CatalogField.available(packed and 0x1F),
                     category = CatalogField.available(category),
                     power = CatalogField.available(packed ushr 7),
@@ -323,7 +428,7 @@ object RecordMaterializers {
                 }
                 return@associate id to MoveRecord(
                     id = id,
-                    name = CatalogField.available(readName(rom, names, index, codec)),
+                    name = nameField(rom, names, index, codec, cancellation),
                     typeId = CatalogField.available(typeId),
                     category = CatalogField.available(category),
                     power = CatalogField.available(rom.u16le(base + 2)),
@@ -344,7 +449,7 @@ object RecordMaterializers {
                 }
                 return@associate id to MoveRecord(
                     id = id,
-                    name = CatalogField.available(readName(rom, names, index, codec)),
+                    name = nameField(rom, names, index, codec, cancellation),
                     typeId = CatalogField.available(typeId),
                     category = CatalogField.available(category),
                     power = CatalogField.available(rom.u16le(base + 2)),
@@ -363,7 +468,7 @@ object RecordMaterializers {
             val typeId = rom.u8(base + typeOffset)
             id to MoveRecord(
                 id = id,
-                name = CatalogField.available(readName(rom, names, index, codec)),
+                name = nameField(rom, names, index, codec, cancellation),
                 typeId = CatalogField.available(typeId),
                 category = CatalogField.available(category(layout.generation, typeId, power)),
                 power = CatalogField.available(power),
@@ -384,14 +489,22 @@ object RecordMaterializers {
     fun abilities(
         rom: RomImage,
         layout: ResolvedRomLayout,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Map<Int, AbilityRecord> {
+        val codec = layout.defaultTextCodec()
         if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
-            return layout.resolvedDatasets.abilityNames?.catalogAbilities().orEmpty()
+            val abilities = layout.resolvedDatasets.abilityNames?.catalogAbilities().orEmpty()
+            return if (codec == null) {
+                abilities.mapValues { (_, ability) ->
+                    ability.copy(name = CatalogField.notFound(TEXT_CODEC_UNAVAILABLE_REASON))
+                }
+            } else {
+                abilities
+            }
         }
         val table = layout.tables.abilities ?: return emptyMap()
-        val codec = codecFor(layout.generation)
         return (0 until table.count).associateWith { id ->
-            AbilityRecord(id, CatalogField.available(readName(rom, table, id, codec)))
+            AbilityRecord(id, nameField(rom, table, id, codec, cancellation))
         }
     }
 
@@ -441,8 +554,16 @@ object RecordMaterializers {
                 add(it.defendingTypeId)
             }
         }
+        val textAvailable = layout.defaultTextCodec() != null
         return ids.sorted().associateWith { id ->
-            TypeRecord(id, CatalogField.available(TypeMappings.name(layout.generation, id)))
+            TypeRecord(
+                id,
+                if (textAvailable) {
+                    CatalogField.available(TypeMappings.name(layout.generation, id))
+                } else {
+                    CatalogField.notFound(TEXT_CODEC_UNAVAILABLE_REASON)
+                },
+            )
         }
     }
 
@@ -501,35 +622,88 @@ object RecordMaterializers {
 
     private fun baseStatBytes(generation: Int): Int = if (generation == 2) 9 else 8
 
+    private const val TEXT_CODEC_UNAVAILABLE_REASON =
+        "default ROM language codec is unavailable"
+    private const val MALFORMED_NAME_REASON =
+        "ROM name is malformed or unterminated within its byte bound"
+    private const val MAX_VARIABLE_NAME_BYTES = 64
+
+    private fun nameField(
+        rom: RomImage,
+        table: TableLayout?,
+        index: Int,
+        codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
+    ): CatalogField<String> {
+        if (codec == null || table == null || index !in 0 until table.count) {
+            return CatalogField.notFound(TEXT_CODEC_UNAVAILABLE_REASON)
+        }
+        return readName(rom, table, index, codec, cancellation)
+            ?.takeIf(String::isNotBlank)
+            ?.let(CatalogField.Companion::available)
+            ?: CatalogField.notFound(MALFORMED_NAME_REASON)
+    }
+
     internal fun readName(
         rom: RomImage,
         table: TableLayout,
         index: Int,
         codec: PokemonTextCodec,
-    ): String {
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): String? {
+        if (index !in 0 until table.count) return null
         if (!table.variableLength) {
-            val record = table.offset + index * (table.stride ?: table.recordSize)
-            if (!table.valuesArePointers) return codec.decode(rom.slice(record, table.recordSize))
-            val value = rom.gbaPointer(record) ?: return ""
-            val length = (0 until minOf(64, rom.size - value))
-                .firstOrNull { rom.u8(value + it) == codec.terminator }
-                ?.plus(1) ?: minOf(64, rom.size - value)
-            return codec.decode(rom.slice(value, length))
-        }
-        var cursor = table.offset
-        repeat(index) {
-            while (rom.u8(cursor++) != codec.terminator) {
-                // Advance to the next terminated record.
+            val stride = table.stride ?: table.recordSize
+            if (table.recordSize <= 0 || stride < table.recordSize) return null
+            val record = table.offset.toLong() + index.toLong() * stride
+            if (record !in 0..Int.MAX_VALUE.toLong() ||
+                record + table.recordSize > rom.size.toLong()
+            ) return null
+            val recordOffset = record.toInt()
+            if (!table.valuesArePointers) {
+                val decoded = codec.decodeDetailed(
+                    rom,
+                    recordOffset,
+                    table.recordSize,
+                    cancellation,
+                )
+                return decoded.text.takeIf { decoded.invalidUnits == 0 }
             }
+            if (table.recordSize < Int.SIZE_BYTES) return null
+            val value = rom.gbaPointer(recordOffset) ?: return null
+            val decoded = codec.decodeDetailed(
+                rom,
+                value,
+                minOf(MAX_VARIABLE_NAME_BYTES, rom.size - value),
+                cancellation,
+            )
+            return decoded.text.takeIf { decoded.terminated && decoded.invalidUnits == 0 }
         }
-        val bytes = ArrayList<Byte>()
-        while (true) {
-            val value = rom.u8(cursor++)
-            bytes += value.toByte()
-            if (value == codec.terminator) break
+
+        var cursor = table.offset
+        for (rowIndex in 0..index) {
+            if (cursor !in 0 until rom.size) return null
+            val decoded = codec.decodeDetailed(
+                rom,
+                cursor,
+                minOf(MAX_VARIABLE_NAME_BYTES, rom.size - cursor),
+                cancellation,
+            )
+            if (!decoded.terminated || decoded.invalidUnits > 0 || decoded.consumedBytes <= 0) return null
+            if (rowIndex == index) return decoded.text
+            val next = cursor.toLong() + decoded.consumedBytes
+            if (next !in 0..Int.MAX_VALUE.toLong()) return null
+            cursor = next.toInt()
         }
-        return codec.decode(bytes.toByteArray())
+        return null
     }
+
+    private data class SpeciesRow(
+        val id: Int,
+        val nameIndex: Int,
+        val statsIndex: Int,
+        val dexNumber: Int?,
+    )
 
     private fun category(generation: Int, typeId: Int, power: Int): MoveCategory {
         if (power == 0) return MoveCategory.STATUS
@@ -541,7 +715,4 @@ object RecordMaterializers {
             else -> MoveCategory.UNKNOWN
         }
     }
-
-    private fun codecFor(generation: Int): PokemonTextCodec =
-        if (generation == 3) PokemonTextCodec.gbaEnglish else PokemonTextCodec.gbEnglish
 }

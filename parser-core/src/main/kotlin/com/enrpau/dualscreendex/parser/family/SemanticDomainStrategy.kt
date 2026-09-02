@@ -19,6 +19,7 @@ import com.enrpau.dualscreendex.parser.dataset.types.ResolvedTypeChartLayout
 import com.enrpau.dualscreendex.parser.dataset.types.TypeChartAbi
 import com.enrpau.dualscreendex.parser.dataset.types.TypeChartResolver
 import com.enrpau.dualscreendex.parser.dataset.types.TypeChartTableLayout
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionCodec
 import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionResolver
 import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableLayout
 import com.enrpau.dualscreendex.parser.dataset.descriptions.ResolvedDescriptionLayout
@@ -120,13 +121,13 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         return when (definition.formatGeneration) {
             1 -> tables.descriptions?.let {
                 PokemonDatasetValidators.gen1Descriptions(
-                    rom, it.offset, it.count, it.bank ?: 0, identity.codec,
+                    rom, it.offset, it.count, it.bank ?: 0, identity.probeCodec,
                     expectedDexCount = core.baseStats.expectedRecords ?: core.baseStats.totalRecords,
                 )
             } ?: missingEvidence("Gen 1 Pokédex description table not resolved")
             2 -> tables.descriptions?.let {
                 PokemonDatasetValidators.gen2Descriptions(
-                    rom, it.offset, it.count, it.banks.toIntArray(), codec = identity.codec,
+                    rom, it.offset, it.count, it.banks.toIntArray(), codec = identity.probeCodec,
                 )
             } ?: missingEvidence("Gen 2 Pokédex description table not resolved")
             else -> identity.headerlessUnifiedSpecies?.descriptionsEvidence
@@ -140,7 +141,7 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                     core.speciesCount ?: identity.baseProfile?.internalSpeciesCount ?: 412
                 },
                 tables.descriptions,
-                identity.codec,
+                identity.probeCodec,
             )
         }
     }
@@ -173,6 +174,7 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                 session = session,
                 expectedSpeciesCount = core.speciesCount ?: selected.count.toInt(),
                 selectedLayout = selected,
+                codec = identity.probeCodec,
             )
             return if (selectedResolved != null) {
                 ResolvedDescriptionEvidence(legacyEvidence, selectedResolved)
@@ -194,13 +196,14 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         val resolved = resolveTypedDescriptions(
             session = session,
             expectedSpeciesCount = expectedCount,
+            codec = identity.probeCodec,
         ) ?: return ResolvedDescriptionEvidence(legacyEvidence, null)
         val typedTable = resolved.table.toTableLayout()
         val evidence = DatasetResolvers.gen3Descriptions(
             session = session,
             speciesCount = typedTable.count,
             inherited = typedTable,
-            codec = identity.codec,
+            codec = identity.probeCodec,
         )
         val selected = resolvedLayout(typedTable, evidence)
         val agreesWithTypedSelection = selected?.let {
@@ -246,8 +249,9 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         session: RomAnalysisSession,
         expectedSpeciesCount: Int,
         selectedLayout: DescriptionTableLayout? = null,
+        codec: PokemonTextCodec,
     ): ResolvedDescriptionLayout? = when (
-        val resolution = DescriptionResolver().resolve(
+        val resolution = DescriptionResolver(DescriptionCodec(codec), codec).resolve(
             session = session,
             expectedSpeciesCount = expectedSpeciesCount,
             selectedLayout = selectedLayout,
@@ -285,6 +289,7 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                 descriptions = descriptionsLayout,
             ),
             compiledGbaReferences = identity.compiledGbaReferences,
+            languageManifest = core.languageManifest,
         )
         return Gen3PublishedPartialBaseStatsResolver.confirmCandidate(
             rom = session.rom,
@@ -419,18 +424,18 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                         rom,
                         layout,
                         layout.count,
-                        identity.codec,
+                        identity.probeCodec,
                     )
                     identity.expansion != null -> TableValidators.names(
                         rom,
                         layout,
                         identity.expansion.abilityCount,
-                        identity.codec,
+                        identity.probeCodec,
                     )
                     else -> resolveAbilityNames(
                         session = session,
                         layout = layout,
-                        codec = identity.codec,
+                        codec = identity.probeCodec,
                         profile = identity.baseProfile,
                         exact = identity.exactProfile != null,
                         baseStats = core.baseStatsLayout,
@@ -457,7 +462,7 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                     "selected ability-name ABI could not be represented by the typed codec"),
                 null,
             )
-        val resolution = AbilityNameResolver().resolve(
+        val resolution = AbilityNameResolver(AbilityNameCodec(identity.probeCodec)).resolve(
             session = session,
             semanticDomain = domain,
             selectedLayout = selected,
@@ -561,7 +566,7 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
             val candidate = runCatching {
                 AbilityNameTableLayout(offset.toLong(), evidence.totalRecords.toLong(), width)
             }.getOrNull() ?: return@mapNotNull null
-            val decoded = AbilityNameCodec().decode(session, candidate, semanticDomain)
+            val decoded = AbilityNameCodec(codec).decode(session, candidate, semanticDomain)
                 as? com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableOutcome.Decoded
                 ?: return@mapNotNull null
             evidence to decoded.resolved

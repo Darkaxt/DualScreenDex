@@ -214,7 +214,7 @@ data class WorldMapRegionView(
 
 data class WorldMapLocationView(
     val key: String,
-    val displayName: String,
+    val displayName: String?,
     val baseAreaIds: List<Int>,
     val geometry: List<WorldMapCellView>,
 )
@@ -303,7 +303,7 @@ data class AreaView(
 data class BallView(val id: Int, val name: String, val generic: Boolean, val hasSprite: Boolean)
 data class NatureView(
     val id: Int,
-    val name: String,
+    val name: String?,
     val statMultipliers: Map<String, Int>,
     val raisedStat: String?,
     val loweredStat: String?,
@@ -552,7 +552,7 @@ data class OwnedIndividualView(
     val location: OwnedIndividualLocationView,
     val speciesId: Int,
     val formId: Int?,
-    val speciesName: String,
+    val speciesName: String?,
     val spriteUrl: String?,
     val typeIds: List<Int>,
     val nickname: String?,
@@ -1231,7 +1231,7 @@ object ApiViewBuilder {
         return SpecimenCollectionView(
             version = snapshot.version,
             speciesId = speciesId,
-            speciesName = selected.name.value?.takeIf(String::isNotBlank) ?: "Pokémon",
+            speciesName = selected.name.value?.takeIf(String::isNotBlank) ?: "Pokémon #$speciesId",
             specimens = specimens,
         )
     }
@@ -1281,12 +1281,13 @@ object ApiViewBuilder {
     ): OwnedIndividualView? {
         val individual = resolved.individual
         val species = catalog.speciesById[individual.speciesId] ?: return null
-        val speciesName = species.name.value?.takeIf(String::isNotBlank) ?: return null
+        val speciesName = species.name.value?.takeIf(String::isNotBlank)
         val details = individual.details
         val abilityId = details?.abilityId ?: details?.abilitySlot?.let { slot ->
             species.abilityIds.value?.getOrNull(slot)
         }
-        val abilityName = abilityId?.let { catalog.abilitiesById[it]?.name?.value?.takeIf(String::isNotBlank) }
+        val ability = abilityId?.let(catalog.abilitiesById::get)
+        val abilityName = ability?.name?.value?.takeIf(String::isNotBlank)
         val nature = details?.natureId?.let(catalog.naturesById::get)
         val generation = when (catalog.platform.name) {
             "GBA" -> 3
@@ -1337,7 +1338,7 @@ object ApiViewBuilder {
             gender = details?.gender?.let(::partyGender),
             natureId = nature?.id,
             nature = nature?.name,
-            abilityId = abilityId.takeIf { abilityName != null },
+            abilityId = ability?.id,
             abilityName = abilityName,
             heldItemId = details?.heldItemId,
             hasHeldItem = details?.let { it.heldItemId != null },
@@ -1365,13 +1366,12 @@ object ApiViewBuilder {
             moves = (0 until MOVE_SLOT_COUNT).map { slot ->
                 val moveId = details?.moveIds?.getOrNull(slot)?.takeIf { it > 0 }
                 val move = moveId?.let(catalog.movesById::get)
-                val name = move?.name?.value?.takeIf(String::isNotBlank)
                 PartyMoveView(
                     slot = slot,
-                    moveId = moveId.takeIf { name != null },
-                    name = name,
-                    currentPp = details?.movePp?.getOrNull(slot).takeIf { name != null },
-                    maximumPp = move?.pp?.value.takeIf { name != null },
+                    moveId = move?.id,
+                    name = move?.name?.value?.takeIf(String::isNotBlank),
+                    currentPp = details?.movePp?.getOrNull(slot).takeIf { move != null },
+                    maximumPp = move?.pp?.value,
                 )
             },
             ivs = individual.ivs.orEmpty(),
@@ -1426,10 +1426,11 @@ object ApiViewBuilder {
             val species = catalog?.speciesById?.get(individual.speciesId)
             val speciesName = species?.name?.value?.takeIf(String::isNotBlank)
             val details = individual.details
-            val resolvedAbility = details?.abilityId?.let { abilityId ->
-                catalog?.abilitiesById?.get(abilityId)?.name?.value
-                    ?.takeIf(String::isNotBlank)
-                    ?.let { abilityId to it }
+            val resolvedAbilityId = details?.abilityId?.takeIf { abilityId ->
+                catalog?.abilitiesById?.containsKey(abilityId) == true
+            }
+            val resolvedAbilityName = resolvedAbilityId?.let { abilityId ->
+                catalog?.abilitiesById?.get(abilityId)?.name?.value?.takeIf(String::isNotBlank)
             }
             val resolvedNature = details?.natureId?.let { catalog?.naturesById?.get(it) }
             val quality = individual.level?.takeIf { it > 0 }?.let { level ->
@@ -1454,7 +1455,7 @@ object ApiViewBuilder {
             PartyMemberView(
                 slot = slot,
                 occupied = true,
-                speciesId = individual.speciesId.takeIf { speciesName != null },
+                speciesId = species?.id,
                 speciesName = speciesName,
                 spriteUrl = individual.speciesId.takeIf { species?.sprite?.value != null }
                     ?.let { catalogMediaUrl("/api/sprites/species/$it.png", catalog?.romSha256) },
@@ -1465,8 +1466,8 @@ object ApiViewBuilder {
                 gender = details?.gender?.let(::partyGender),
                 natureId = resolvedNature?.id,
                 nature = resolvedNature?.name,
-                abilityId = resolvedAbility?.first,
-                abilityName = resolvedAbility?.second,
+                abilityId = resolvedAbilityId,
+                abilityName = resolvedAbilityName,
                 heldItemId = null,
                 heldItemName = null,
                 hasHeldItem = details?.let { it.heldItemId != null },
@@ -1494,13 +1495,12 @@ object ApiViewBuilder {
                 moves = (0 until MOVE_SLOT_COUNT).map { moveSlot ->
                     val moveId = details?.moveIds?.getOrNull(moveSlot)?.takeIf { it > 0 }
                     val move = moveId?.let { catalog?.movesById?.get(it) }
-                    val name = move?.name?.value?.takeIf(String::isNotBlank)
                     PartyMoveView(
                         slot = moveSlot,
-                        moveId = moveId.takeIf { name != null },
-                        name = name,
-                        currentPp = details?.movePp?.getOrNull(moveSlot).takeIf { name != null },
-                        maximumPp = move?.pp?.value.takeIf { name != null },
+                        moveId = move?.id,
+                        name = move?.name?.value?.takeIf(String::isNotBlank),
+                        currentPp = details?.movePp?.getOrNull(moveSlot).takeIf { move != null },
+                        maximumPp = move?.pp?.value,
                     )
                 },
             )

@@ -198,13 +198,13 @@ internal object SpeciesSemanticDomainResolver {
         val materialization = RecordMaterializers.speciesWithIndexResolution(rom, layout)
         when (val indexResolution = materialization.indexResolution) {
             is SpeciesIndexResolution.Resolved -> Unit
-            is SpeciesIndexResolution.Unavailable -> if (materialization.records.isEmpty()) {
+            is SpeciesIndexResolution.Unavailable -> {
                 return SpeciesSemanticDomainResolution.Unavailable(
                     indexResolution.reason,
                     indexResolution.ambiguous,
                 )
             }
-            is SpeciesIndexResolution.BudgetExceeded -> if (materialization.records.isEmpty()) {
+            is SpeciesIndexResolution.BudgetExceeded -> {
                 return SpeciesSemanticDomainResolution.BudgetExceeded(
                     indexResolution.reason,
                     indexResolution.budgetKind,
@@ -214,9 +214,8 @@ internal object SpeciesSemanticDomainResolver {
             }
         }
         val species = materialization.records.values
-        val navigable = species.filter { record ->
-            (record.dexNumber.value ?: 0) > 0 && record.name.value?.any(Char::isLetterOrDigit) == true
-        }
+        val mapped = species.filter { record -> (record.dexNumber.value ?: 0) > 0 }
+        val navigable = mapped.filter { record -> record.name.value?.any(Char::isLetterOrDigit) == true }
         val expansionDomain = layout.pokeemeraldExpansion != null
         val expansionActive = if (expansionDomain) {
             species.filter { record ->
@@ -232,7 +231,7 @@ internal object SpeciesSemanticDomainResolver {
         val regionalOrder = resolveStrongRegionalDexOrder(
             rom = rom,
             rawSpeciesCount = rawCount,
-            navigableDexNumbers = navigable.associate { it.id to (it.dexNumber.value ?: 0) },
+            navigableDexNumbers = mapped.associate { it.id to (it.dexNumber.value ?: 0) },
             references = compiledReferences,
         )
         val compiledSpeciesToDexMap = if (regionalOrder != null || expansionDomain) {
@@ -250,9 +249,9 @@ internal object SpeciesSemanticDomainResolver {
             ?.takeIf { count -> layout.tables.descriptions?.count == count }
         val publishedPokedexDomain = if (
             regionalOrder == null && compiledSpeciesToDexMap == null && !expansionDomain &&
-            materialization.indexResolution is SpeciesIndexResolution.Resolved && publishedPokedexCount != null
+            publishedPokedexCount != null
         ) {
-            navigable.filter { record -> (record.dexNumber.value ?: 0) in 1 until publishedPokedexCount }
+            mapped.filter { record -> (record.dexNumber.value ?: 0) in 1 until publishedPokedexCount }
                 .takeIf { records -> records.map { it.dexNumber.value }.distinct().size == records.size }
         } else {
             null
@@ -264,8 +263,16 @@ internal object SpeciesSemanticDomainResolver {
             expansionActive
         } else if (publishedPokedexDomain != null) {
             publishedPokedexDomain
+        } else if (compiledSpeciesToDexMap != null) {
+            mapped.filterNot { it.id in compiledSpeciesToDexMap.reservedOverflowSpeciesIds }
         } else {
-            navigable.filterNot { it.id in compiledSpeciesToDexMap?.reservedOverflowSpeciesIds.orEmpty() }
+            navigable
+        }
+        if (expected.isEmpty()) {
+            return SpeciesSemanticDomainResolution.Unavailable(
+                "no authoritative non-empty species semantic domain was resolved",
+                false,
+            )
         }
         val covered = expected.count { record ->
             record.baseStats.status == CapabilityStatus.AVAILABLE &&
@@ -282,7 +289,7 @@ internal object SpeciesSemanticDomainResolver {
                     "${(rawCount - it.speciesIds.size).coerceAtLeast(0)} installed expansion slots outside " +
                     "the ROM's active Pokédex domain"
             } ?: compiledSpeciesToDexMap?.let {
-                "selected ${expected.size} navigable species through the complete compiled-referenced " +
+                "selected ${expected.size} mapped species through the complete compiled-referenced " +
                     "species-to-Dex map at 0x${it.tableOffset.toString(16).uppercase()}; excluded " +
                     "${(rawCount - expected.size).coerceAtLeast(0)} reserved or zero-Dex structural slots" +
                     if (it.reservedOverflowSpeciesIds.isNotEmpty()) {
@@ -292,7 +299,7 @@ internal object SpeciesSemanticDomainResolver {
                         ""
                     }
             } ?: publishedPokedexDomain?.let {
-                "selected ${it.size} navigable species inside the structurally published " +
+                "selected ${it.size} mapped species inside the structurally published " +
                     "Pokédex count $publishedPokedexCount; excluded " +
                     "${(rawCount - it.size).coerceAtLeast(0)} internal or out-of-domain slots"
             } ?: if (expansionDomain) {

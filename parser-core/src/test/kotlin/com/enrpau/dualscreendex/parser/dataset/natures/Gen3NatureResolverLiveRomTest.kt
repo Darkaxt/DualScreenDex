@@ -1,17 +1,58 @@
 package com.enrpau.dualscreendex.parser.dataset.natures
 
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndexFactory
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.RomHeader
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class Gen3NatureResolverLiveRomTest {
+    @Test
+    fun missingLanguageCodecDoesNotPreemptNatureMechanicsResolution() {
+        val rom = RomImage(ByteArray(0x100))
+
+        val result = Gen3NatureResolver.resolve(
+            RomAnalysisSession(rom, RomHeader(Platform.GBA, "TEST", "TEST")),
+            null,
+        )
+
+        assertTrue(result is NatureResolution.Unavailable)
+        assertFalse((result as NatureResolution.Unavailable).reason.contains("language codec"))
+    }
+
+    @Test
+    fun cancellationInterruptsNatureWholeRomScanning() {
+        val rom = RomImage(ByteArray(0x10_000))
+        val cancellation = CancelAfterChecks(successfulChecks = 3)
+        val session = RomAnalysisSession(
+            rom = rom,
+            header = RomHeader(Platform.GBA, "TEST", "TEST"),
+            gbaReferenceIndexFactory = GbaReferenceIndexFactory { _, _ ->
+                GbaReferenceIndex.countsOnlyForTesting(emptyMap())
+            },
+            cancellation = cancellation,
+        )
+
+        assertThrows(ParserCancellationException::class.java) {
+            Gen3NatureResolver.resolve(session, PokemonTextCodec.gbaEnglish)
+        }
+        assertEquals(4, cancellation.checks)
+    }
+
     @Test
     fun `real Emerald FireRed Modern and Classic resolve ROM-native Nature catalogs`() {
         controls.forEach { control ->
@@ -20,7 +61,10 @@ class Gen3NatureResolverLiveRomTest {
             val rom = Files.newInputStream(path).use(RomImage::from)
             assertEquals(control.sha256, rom.sha256)
 
-            val result = Gen3NatureResolver.resolve(RomAnalysisSession(rom, RomHeaderReader.read(rom)))
+            val result = Gen3NatureResolver.resolve(
+                RomAnalysisSession(rom, RomHeaderReader.read(rom)),
+                PokemonTextCodec.gbaEnglish,
+            )
             assertTrue("${control.label}: $result", result is NatureResolution.Resolved)
             val catalog = (result as NatureResolution.Resolved).catalog
 
@@ -36,6 +80,21 @@ class Gen3NatureResolverLiveRomTest {
             assertEquals(listOf(-1, 1, 0, 0, 0), catalog.records[15].flavorModifiers)
             assertEquals(110, catalog.records[3].positivePercent)
             assertEquals(90, catalog.records[3].negativePercent)
+
+            val numericOnly = Gen3NatureResolver.resolve(
+                RomAnalysisSession(rom, RomHeaderReader.read(rom)),
+                null,
+            ) as NatureResolution.Resolved
+            assertNull(numericOnly.catalog.nameTableOffset)
+            assertTrue(numericOnly.catalog.records.all { it.name == null })
+            assertEquals(
+                catalog.records.map(NatureRecord::statModifiers),
+                numericOnly.catalog.records.map(NatureRecord::statModifiers),
+            )
+            assertEquals(
+                catalog.records.map(NatureRecord::flavorModifiers),
+                numericOnly.catalog.records.map(NatureRecord::flavorModifiers),
+            )
         }
     }
 
@@ -47,7 +106,10 @@ class Gen3NatureResolverLiveRomTest {
             val rom = Files.newInputStream(path).use(RomImage::from)
             assertEquals(control.sha256, rom.sha256)
 
-            val result = Gen3NatureResolver.resolve(RomAnalysisSession(rom, RomHeaderReader.read(rom)))
+            val result = Gen3NatureResolver.resolve(
+                RomAnalysisSession(rom, RomHeaderReader.read(rom)),
+                PokemonTextCodec.gbaEnglish,
+            )
             assertTrue("${control.label}: $result", result is NatureResolution.Resolved)
             val catalog = (result as NatureResolution.Resolved).catalog
 
@@ -62,6 +124,17 @@ class Gen3NatureResolverLiveRomTest {
             assertEquals(listOf(-1, 0, 0, 1, 0), catalog.records[15].statModifiers)
             assertEquals(110, catalog.records[3].positivePercent)
             assertEquals(90, catalog.records[3].negativePercent)
+
+            val numericOnly = Gen3NatureResolver.resolve(
+                RomAnalysisSession(rom, RomHeaderReader.read(rom)),
+                null,
+            ) as NatureResolution.Resolved
+            assertNull(numericOnly.catalog.nameTableOffset)
+            assertTrue(numericOnly.catalog.records.all { it.name == null })
+            assertEquals(
+                catalog.records.map(NatureRecord::statModifiers),
+                numericOnly.catalog.records.map(NatureRecord::statModifiers),
+            )
         }
     }
 
@@ -77,13 +150,16 @@ class Gen3NatureResolverLiveRomTest {
         val rom = Files.newInputStream(path).use(RomImage::from)
         assertEquals(control.sha256, rom.sha256)
 
-        val result = Gen3NatureResolver.resolve(RomAnalysisSession(rom, RomHeaderReader.read(rom)))
+        val result = Gen3NatureResolver.resolve(
+                RomAnalysisSession(rom, RomHeaderReader.read(rom)),
+                PokemonTextCodec.gbaEnglish,
+            )
         assertTrue("${control.label}: $result", result is NatureResolution.Resolved)
         val catalog = (result as NatureResolution.Resolved).catalog
         assertEquals(25, catalog.records.size)
         assertTrue("${control.label} flavor table", catalog.flavorTableOffset != null)
         assertTrue(catalog.records.all { it.flavorModifiers != null })
-        assertTrue(catalog.records.all { it.name.isNotBlank() })
+        assertTrue(catalog.records.all { !it.name.isNullOrBlank() })
         assertTrue(catalog.records.any { it.raisedStat != null && it.loweredStat != null })
     }
 
@@ -152,6 +228,18 @@ class Gen3NatureResolverLiveRomTest {
             "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
         ),
     )
+
+    private class CancelAfterChecks(
+        private val successfulChecks: Int,
+    ) : ParserCancellationToken {
+        var checks: Int = 0
+            private set
+
+        override fun throwIfCancellationRequested() {
+            checks += 1
+            if (checks > successfulChecks) throw ParserCancellationException()
+        }
+    }
 
     private data class IntegratedControl(
         val label: String,

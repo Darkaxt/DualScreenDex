@@ -1,8 +1,14 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.resolvedLanguageManifest
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.ProfileTables
+import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -32,8 +38,15 @@ class EncounterReferencedSpeciesClosureTest {
 
         val closed = EncounterReferencedSpeciesClosure.close(
             rom = RomImage(bytes),
-            generation = 3,
-            names = TableLayout(0x40, 3, 11),
+            layout = ResolvedRomLayout(
+                family = EngineFamily.EMERALD,
+                generation = 3,
+                platform = Platform.GBA,
+                speciesCount = 3,
+                moveCount = 0,
+                tables = ProfileTables(speciesNames = TableLayout(0x40, 3, 11)),
+                languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
+            ),
             namesStatus = CapabilityStatus.PARTIAL,
             species = mapOf(1 to existing),
             encounters = encounters,

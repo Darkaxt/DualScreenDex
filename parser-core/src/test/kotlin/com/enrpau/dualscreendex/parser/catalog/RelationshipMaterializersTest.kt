@@ -18,6 +18,8 @@ import com.enrpau.dualscreendex.parser.dataset.learnsets.ResolvedLearnsetSet
 import com.enrpau.dualscreendex.parser.dataset.learnsets.ResolvedSelectedLearnsetTable
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.resolvedLanguageManifest
+import com.enrpau.dualscreendex.parser.language.textUnavailableLanguageManifests
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
@@ -26,6 +28,7 @@ import com.enrpau.dualscreendex.parser.model.ResolvedDatasetLayouts
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.validate.PokemonDatasetValidators
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,6 +36,32 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RelationshipMaterializersTest {
+    @Test
+    fun unknownAndAmbiguousLanguagePreserveDescriptionDimensionsOnly() {
+        val bytes = ByteArray(256)
+        encodeGbaText(bytes, 0, "SEED")
+        putU16(bytes, 12, 7)
+        putU16(bytes, 14, 69)
+        putGbaPointer(bytes, 16, 128)
+        encodeGbaText(bytes, 128, "A STRANGE SEED")
+
+        textUnavailableLanguageManifests.forEach { manifest ->
+            val unresolved = layout(
+                descriptions = TableLayout(0, 1, 32, pointerOffsets = listOf(16)),
+            ).withTypedDescriptions(bytes).copy(languageManifest = manifest)
+
+            val description = RelationshipMaterializers.descriptions(
+                RomImage(bytes),
+                unresolved,
+            ).getValue(0)
+
+            assertEquals(null, description.text)
+            assertEquals(null, description.category)
+            assertEquals(7, description.height)
+            assertEquals(69, description.weight)
+        }
+    }
+
     @Test
     fun ordinaryGenThreeEvolutionsFailClosedWithoutTheTypedPhaseResult() {
         val bytes = ByteArray(128)
@@ -509,6 +538,7 @@ class RelationshipMaterializersTest {
                 learnsets = TableLayout(species + 148, 2, 4, stride = stride, valuesArePointers = true, elementSize = 4),
             ),
             pokeemeraldExpansion = metadata,
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
         )
 
         val description = RelationshipMaterializers.descriptions(RomImage(bytes), layout).getValue(1)
@@ -695,6 +725,7 @@ class RelationshipMaterializersTest {
             speciesCount = 1,
             moveCount = 1,
             tables = ProfileTables(descriptions = TableLayout(0, 1, 2, bank = 1)),
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbEnglish),
         )
 
         val description = RelationshipMaterializers.descriptions(RomImage(bytes), layout).getValue(1)
@@ -723,6 +754,7 @@ class RelationshipMaterializersTest {
             speciesCount = 1,
             moveCount = 1,
             tables = ProfileTables(descriptions = TableLayout(0, 1, 2, bank = 1)),
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbEnglish),
         )
 
         val description = RelationshipMaterializers.descriptions(RomImage(bytes), layout).getValue(1)
@@ -745,6 +777,7 @@ class RelationshipMaterializersTest {
             evolutions = evolutions,
             learnsets = learnsets,
         ),
+        languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
     )
 
     private fun ResolvedRomLayout.withTypedDescriptions(bytes: ByteArray): ResolvedRomLayout {

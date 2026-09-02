@@ -103,6 +103,20 @@ describe('Party', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('keeps a named runtime nature action accessible when catalog text is unavailable', () => {
+    const openNature = vi.fn();
+    const unnamedCatalog = {
+      ...catalog,
+      natures: catalog.natures?.map(nature => ({ ...nature, name: null })) ?? [],
+    };
+    render(<PartyPage catalog={unnamedCatalog} state={partyState('ORGANIC')} onBack={vi.fn()} openMove={vi.fn()} openAbility={vi.fn()} openNature={openNature} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: SPARK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Adamant' }));
+
+    expect(openNature).toHaveBeenCalledWith(3);
+  });
+
   it('closes selected details with Escape and when the live slot disappears', () => {
     const props = { catalog, onBack: vi.fn(), openMove: vi.fn(), openAbility: vi.fn() };
     const rendered = render(<PartyPage {...props} state={partyState('ORGANIC')} />);
@@ -171,6 +185,37 @@ describe('Party', () => {
     expect(container.querySelector('.party-detail img.identity-silhouette')).toBeTruthy();
     expect(container.querySelector('.party-detail .party-type-art')).toBeNull();
     expect(screen.queryByText(/999/)).toBeNull();
+  });
+
+  it('keeps numeric species, ability, move, and PP actions when localized names are unavailable', () => {
+    const state = partyState('ORGANIC');
+    state.party = [{
+      ...state.party![0],
+      nickname: null,
+      speciesName: null,
+      abilityName: null,
+      moves: [
+        { slot: 0, moveId: 85, name: null, currentPp: 12, maximumPp: 15 },
+        { slot: 1, moveId: null, name: null, currentPp: null, maximumPp: null },
+        { slot: 2, moveId: null, name: null, currentPp: null, maximumPp: null },
+        { slot: 3, moveId: null, name: null, currentPp: null, maximumPp: null },
+      ],
+    }];
+    const openSpecies = vi.fn();
+    const openAbility = vi.fn();
+    const openMove = vi.fn();
+
+    render(<PartyPage catalog={catalog} state={state} onBack={vi.fn()} openMove={openMove} openAbility={openAbility} openSpecies={openSpecies} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Party slot 1: Pokémon #25' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Pokémon #25 in Pokédex' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ability #9' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move #85' }));
+    expect(screen.getAllByAltText('Pokémon #25 sprite').length).toBeGreaterThan(0);
+    expect(screen.getByText('PP 12/15')).toBeTruthy();
+    expect(openSpecies).toHaveBeenCalledWith(25);
+    expect(openAbility).toHaveBeenCalledWith(9);
+    expect(openMove).toHaveBeenCalledWith(85);
   });
 
   it('renders partial and engine-specific fields without inventing missing artwork', () => {

@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -22,6 +23,7 @@ class Gen2WorldMapResolverTest {
         val result = Gen2WorldMapResolver.resolve(
             RomAnalysisSession(mutated, RomHeaderReader.read(mutated)),
             setOf(JOHTO_BASE_ID, KANTO_BASE_ID),
+            PokemonTextCodec.gbEnglish,
         )
 
         assertTrue("expected unavailable join, got $result", result is WorldMapResolution.Unavailable)

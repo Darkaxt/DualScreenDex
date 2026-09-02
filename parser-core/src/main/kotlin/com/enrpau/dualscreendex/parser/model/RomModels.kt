@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.dataset.learnsets.ResolvedLearnsetSet
 import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
 import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityNameLayout
 import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityMechanicsLayout
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
 
 enum class Platform { GB, GBC, GBA, UNKNOWN }
 
@@ -59,6 +60,11 @@ data class RomHeader(
     val gameCode: String? = null,
     val revision: Int = 0,
     val cgbFlag: Int? = null,
+    val rawTitleBytes: List<Int> = emptyList(),
+    val rawGameCodeBytes: List<Int> = emptyList(),
+    val gbManufacturerCode: String? = null,
+    val gbaMakerCode: String? = null,
+    val gbaUnitCode: Int? = null,
 )
 
 data class TableLayout(
@@ -157,6 +163,7 @@ data class ResolvedRomLayout(
     val learnsetTables: List<Gen3LearnsetTableLayout> = emptyList(),
     val learnsetSelector: Gen3LearnsetSelectorEvidence? = null,
     val resolvedDatasets: ResolvedDatasetLayouts = ResolvedDatasetLayouts(),
+    val languageManifest: RomLanguageManifest = RomLanguageManifest.UNKNOWN,
 )
 
 /** Compiled-authorized expanded capture-ball tables and their ROM-native item relationship. */

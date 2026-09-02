@@ -75,8 +75,9 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
     <div ref={contentRef} class="party-content" data-scroll-region onScroll={event => onScrollTopChange?.(event.currentTarget.scrollTop)}>
       <div class="party-grid" data-layout="2x3" aria-label="Party slots">
         {members.map(member => {
-          const accessibleName = member.nickname || member.speciesName || 'Unknown partner';
-          const displayName = member.nickname || member.speciesName || 'UNKNOWN PARTNER';
+          const speciesLabel = member.speciesName ?? (member.speciesId != null ? `Pokémon #${member.speciesId}` : null);
+          const accessibleName = member.nickname || speciesLabel || 'Unknown partner';
+          const displayName = member.nickname || speciesLabel || 'UNKNOWN PARTNER';
           const gender = partyGenderMark(member.gender);
           return <button
             type="button"
@@ -109,8 +110,8 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
     </div>
     {active && <Dialog
       key={active.slot}
-      label={`${active.nickname || active.speciesName || 'Party member'} details`}
-      closeLabel={`Close ${active.nickname || active.speciesName || 'party member'} details`}
+      label={`${active.nickname || active.speciesName || (active.speciesId != null ? `Pokémon #${active.speciesId}` : 'Party member')} details`}
+      closeLabel={`Close ${active.nickname || active.speciesName || (active.speciesId != null ? `Pokémon #${active.speciesId}` : 'party member')} details`}
       onClose={closeDetails}
       restoreFocus={lastTriggerRef.current}
     >

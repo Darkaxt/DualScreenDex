@@ -817,7 +817,7 @@ class ApiViewBuilderTest {
                         locations = listOf(
                             WorldMapLocation(
                                 key = "section-16",
-                                displayName = "Route 101",
+                                displayName = null,
                                 baseAreaIds = setOf(0x10, 0x11),
                                 geometry = listOf(WorldMapCell(3, 11, 2, 1)),
                             ),
@@ -872,6 +872,7 @@ class ApiViewBuilderTest {
         assertEquals(15, map.gridHeight)
         assertEquals("/api/maps/world%2Fgen3-region-0.png?catalog=${catalog.romSha256}", map.imageUrl)
         assertEquals(listOf(0x10, 0x11), map.locations.single().baseAreaIds)
+        assertNull(map.locations.single().displayName)
         assertEquals(WorldMapCellView(3, 11, 2, 1), map.locations.single().geometry.single())
         val localMaps = ApiViewBuilder.catalog(catalog).localMaps
         val local = localMaps.single { it.baseAreaId == 0x10 }

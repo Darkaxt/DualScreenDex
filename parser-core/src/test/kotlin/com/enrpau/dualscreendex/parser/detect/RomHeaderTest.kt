@@ -13,9 +13,15 @@ class RomHeaderTest {
         putGbaLogoPrefix(bytes)
         "POKEMON EMER".toByteArray().copyInto(bytes, 0xA0)
         "BPEE".toByteArray().copyInto(bytes, 0xAC)
+        "01".toByteArray().copyInto(bytes, 0xB0)
+        bytes[0xB3] = 0x02
         val header = RomHeaderReader.read(RomImage(bytes))
         assertEquals(Platform.GBA, header.platform)
         assertEquals("BPEE", header.gameCode)
+        assertEquals("POKEMON EMER".toByteArray().map { it.toInt() and 0xFF }, header.rawTitleBytes)
+        assertEquals("BPEE".toByteArray().map { it.toInt() and 0xFF }, header.rawGameCodeBytes)
+        assertEquals("01", header.gbaMakerCode)
+        assertEquals(2, header.gbaUnitCode)
     }
 
     @Test
@@ -42,10 +48,15 @@ class RomHeaderTest {
     @Test
     fun detectsGbcHeader() {
         val bytes = ByteArray(0x150)
-        "POKEMON_GLDAAUE".toByteArray().copyInto(bytes, 0x134)
+        "POKEMON_GLD".toByteArray().copyInto(bytes, 0x134)
+        "01PX".toByteArray().copyInto(bytes, 0x13F)
         bytes[0x143] = 0x80.toByte()
         val header = RomHeaderReader.read(RomImage(bytes))
         assertEquals(Platform.GBC, header.platform)
+        assertEquals("POKEMON_GLD01PX", header.title)
+        assertEquals("01PX", header.gbManufacturerCode)
+        assertEquals(16, header.rawTitleBytes.size)
+        assertEquals(0x80, header.rawTitleBytes.last())
     }
 
     @Test

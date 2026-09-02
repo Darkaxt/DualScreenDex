@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
 import kotlin.math.abs
 
 internal object Gen1LocalMapPoiResolver {
@@ -14,6 +15,7 @@ internal object Gen1LocalMapPoiResolver {
         rom: RomImage,
         sources: List<Source>,
         maps: List<LocalMap>,
+        codec: PokemonTextCodec?,
     ): Resolution {
         val mapsByBaseArea = maps.associateBy(LocalMap::baseAreaId)
         val sourcesByBaseArea = sources.associateBy(Source::baseAreaId)
@@ -21,7 +23,7 @@ internal object Gen1LocalMapPoiResolver {
         val skipped = mutableListOf<String>()
         mapsByBaseArea.toSortedMap().forEach { (baseAreaId, map) ->
             val source = sourcesByBaseArea[baseAreaId] ?: return@forEach
-            runCatching { readMapPois(rom, source, map, mapsByBaseArea.keys) }
+            runCatching { readMapPois(rom, source, map, mapsByBaseArea.keys, codec) }
                 .onSuccess(pois::addAll)
                 .onFailure { failure -> skipped += "map 0x${baseAreaId.hex4()} POIs: ${failure.message}" }
         }
@@ -39,6 +41,7 @@ internal object Gen1LocalMapPoiResolver {
         source: Source,
         map: LocalMap,
         acceptedAreaIds: Set<Int>,
+        codec: PokemonTextCodec?,
     ): List<LocalMapPoi> {
         val bankLimit = bankEnd(rom, source.headerBank)
         val connectionCount = Integer.bitCount(rom.u8(source.header + CONNECTION_FLAGS_OFFSET) and CONNECTION_MASK)
@@ -141,7 +144,9 @@ internal object Gen1LocalMapPoiResolver {
                         tileY = background.y,
                         kind = LocalMapPoiKind.PLACE,
                         organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
-                        displayName = readSignHeadline(rom, source, background.textId),
+                        displayName = codec?.let {
+                            readSignHeadline(rom, source, background.textId, it)
+                        },
                         destinationBaseAreaId = destination?.destinationBaseAreaId,
                     ),
                 )
@@ -165,7 +170,12 @@ internal object Gen1LocalMapPoiResolver {
             .associate { it.single() }
     }
 
-    private fun readSignHeadline(rom: RomImage, source: Source, textId: Int): String? = runCatching {
+    private fun readSignHeadline(
+        rom: RomImage,
+        source: Source,
+        textId: Int,
+        codec: PokemonTextCodec,
+    ): String? = runCatching {
         if (textId == 0) return@runCatching null
         val table = requireNotNull(rom.gbBankAddress(source.headerBank, rom.u16le(source.header + TEXT_POINTER_OFFSET)))
         val pointerField = table + (textId - 1) * 2
@@ -179,27 +189,53 @@ internal object Gen1LocalMapPoiResolver {
             }
             else -> return@runCatching null
         }
-        decodeHeadline(rom, text)
+        decodeHeadline(rom, text, codec)
     }.getOrNull()
 
-    private fun decodeHeadline(rom: RomImage, offset: Int): String? {
+    private fun decodeHeadline(rom: RomImage, offset: Int, codec: PokemonTextCodec): String? {
         if (rom.u8(offset) != TEXT_START) return null
         val output = StringBuilder()
         val limit = minOf(rom.size, offset + MAX_SIGN_TEXT_BYTES)
         var cursor = offset + 1
         var terminated = false
         while (cursor < limit) {
-            val value = rom.u8(cursor++)
+            val value = rom.u8(cursor)
             if (value in SIGN_HEADLINE_ENDS) {
                 terminated = true
                 break
             }
             when (value) {
-                TEXT_PLAYER -> output.append("{PLAYER}")
-                TEXT_RIVAL -> output.append("{RIVAL}")
-                TEXT_POKEMON -> output.append("POKé")
-                TEXT_ELLIPSIS -> output.append("……")
-                else -> output.append(PokemonTextCodec.gbEnglish.decodeByte(value) ?: return null)
+                TEXT_PLAYER -> {
+                    output.append("{PLAYER}")
+                    cursor++
+                }
+                TEXT_RIVAL -> {
+                    output.append("{RIVAL}")
+                    cursor++
+                }
+                TEXT_POKEMON -> {
+                    output.append("POKé")
+                    cursor++
+                }
+                TEXT_ELLIPSIS -> {
+                    output.append("……")
+                    cursor++
+                }
+                else -> {
+                    val token = codec.decodeToken(rom, cursor, limit)
+                    cursor += token.byteCount
+                    when (token) {
+                        is PokemonTextToken.Glyph -> output.append(token.text)
+                        is PokemonTextToken.Whitespace -> output.append(token.text)
+                        is PokemonTextToken.Substitution -> output.append(token.text)
+                        is PokemonTextToken.Control -> output.append(token.replacement)
+                        is PokemonTextToken.Invalid -> return null
+                        is PokemonTextToken.Terminator -> {
+                            terminated = true
+                            break
+                        }
+                    }
+                }
             }
         }
         if (!terminated) return null

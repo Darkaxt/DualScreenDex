@@ -17,12 +17,15 @@ export function OwnedIndividualDetail({ individual, catalog, locationLabel, open
   const moves = Array.from({ length: 4 }, (_, slot) => individual.moves.find(move => move.slot === slot) ?? { slot, moveId: null, name: null, currentPp: null, maximumPp: null });
   const types = uniqueTypeIds(individual.typeIds).map(typeId => catalog.types.find(type => type.id === typeId)).filter((type): type is TypeInfo => type != null);
   const knownNature = natureDetailFor(catalog.natures, individual.natureId);
+  const natureLabel = knownNature?.name ?? individual.nature ?? (knownNature ? `Nature #${knownNature.id}` : null);
+  const speciesLabel = individual.speciesName ?? (individual.speciesId != null ? `Pokémon #${individual.speciesId}` : null);
+  const abilityLabel = individual.abilityName ?? (individual.abilityId != null ? `Ability #${individual.abilityId}` : null);
   const ivs = 'ivs' in individual ? individual.ivs : [];
   const dvs = 'dvs' in individual ? individual.dvs : [];
   return <article class="owned-individual-detail party-detail paper-panel" data-condition={individualCondition(individual)}>
     <header>
       <OwnedIndividualSprite individual={individual} large />
-      <div><p class="eyebrow">{locationLabel}</p><h2>{individual.nickname || individual.speciesName || 'UNKNOWN PARTNER'}</h2>
+      <div><p class="eyebrow">{locationLabel}</p><h2>{individual.nickname || speciesLabel || 'UNKNOWN PARTNER'}</h2>
         <div class="party-detail-meta">
           {individual.rarity && <RarityStars rarity={individual.rarity} />}
           {individual.level != null && <strong>Lv {individual.level}</strong>}
@@ -32,11 +35,11 @@ export function OwnedIndividualDetail({ individual, catalog, locationLabel, open
         </div>
         {types.length > 0 && <div class="party-types" aria-label="Types">{types.map(type => <IndividualTypeArtwork key={type.id} type={type} />)}</div>}
       </div>
-      {individual.speciesId != null && openSpecies && <button type="button" class="party-dex-link" aria-label={`Open ${individual.speciesName ?? 'partner'} in Pokédex`} onClick={() => openSpecies(individual.speciesId!)}><DexIcon /></button>}
+      {individual.speciesId != null && openSpecies && <button type="button" class="party-dex-link" aria-label={`Open ${speciesLabel ?? 'partner'} in Pokédex`} onClick={() => openSpecies(individual.speciesId!)}><DexIcon /></button>}
     </header>
     <div class="party-summary-grid">
-      <span><small>NATURE</small>{knownNature && openNature ? <button type="button" onClick={() => openNature(knownNature.id)}>{knownNature.name}</button> : <strong>{individual.nature ?? '—'}</strong>}</span>
-      <span><small>ABILITY</small>{individual.abilityId != null && individual.abilityName ? <button type="button" onClick={() => openAbility(individual.abilityId!)}>{individual.abilityName}</button> : <strong>—</strong>}</span>
+      <span><small>NATURE</small>{knownNature && openNature ? <button type="button" onClick={() => openNature(knownNature.id)}>{natureLabel}</button> : <strong>{natureLabel ?? '—'}</strong>}</span>
+      <span><small>ABILITY</small>{individual.abilityId != null ? <button type="button" onClick={() => openAbility(individual.abilityId!)}>{abilityLabel}</button> : <strong>—</strong>}</span>
       <span><small>HELD ITEM</small><HeldItemArtwork individual={individual} /></span>
       <span><small>EXP TO NEXT</small><strong>{individual.experienceProgress == null ? '—' : `${Math.round(individual.experienceProgress * 100)}%`}</strong></span>
     </div>
@@ -47,17 +50,18 @@ export function OwnedIndividualDetail({ individual, catalog, locationLabel, open
       {dvs.length > 0 && <span><small>DVs</small><strong>{dvs.join(' / ')}</strong></span>}
     </div>}
     <section class="party-moves"><p class="eyebrow">MOVES</p>{moves.map(move => <div class="party-move-row" key={move.slot}>
-      {move.moveId != null && move.name ? <button type="button" onClick={() => openMove(move.moveId!)}>{move.name}</button> : <strong>—</strong>}
+      {move.moveId != null ? <button type="button" onClick={() => openMove(move.moveId!)}>{move.name ?? `Move #${move.moveId}`}</button> : <strong>—</strong>}
       <span>PP {move.currentPp == null ? '—' : move.maximumPp == null ? move.currentPp : `${move.currentPp}/${move.maximumPp}`}</span>
     </div>)}</section>
   </article>;
 }
 
 export function OwnedIndividualSprite({ individual, large = false }: { individual: IndividualDetailModel; large?: boolean }) {
-  const identified = individual.speciesId != null && individual.speciesName != null;
+  const identified = individual.speciesId != null;
+  const speciesLabel = individual.speciesName ?? (individual.speciesId != null ? `Pokémon #${individual.speciesId}` : null);
   const occupied = 'occupied' in individual ? individual.occupied : true;
   return <span class={`party-sprite ${large ? 'large' : ''}`} data-artwork={individual.spriteUrl ? identified ? 'portrait' : 'silhouette' : identified ? 'missing' : occupied ? 'silhouette' : 'empty'}>{individual.spriteUrl
-    ? <img class={identified ? '' : 'identity-silhouette'} src={individual.spriteUrl} alt={identified ? `${individual.speciesName} sprite` : 'Unidentified Pokémon'} />
+    ? <img class={identified ? '' : 'identity-silhouette'} src={individual.spriteUrl} alt={identified ? `${speciesLabel} sprite` : 'Unidentified Pokémon'} />
     : !occupied ? <i class="party-empty-mark" aria-label="Empty party slot" />
       : identified ? <i class="party-art-missing" role="img" aria-label="Party artwork unavailable" />
         : <i class="party-silhouette" role="img" aria-label="Unidentified Pokémon"><span /><b /></i>}</span>;

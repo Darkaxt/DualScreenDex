@@ -9,12 +9,14 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.sprite.Lz3Decoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 /** Resolves the Gen II Town Map through compiled asset, map-header, and landmark consumers. */
 object Gen2WorldMapResolver {
     internal fun resolveLandmarkNames(
         session: RomAnalysisSession,
         mapIds: Set<Int>,
+        codec: PokemonTextCodec,
         landmarkIds: Set<Int> = emptySet(),
     ): Map<Int, String> {
         val requiredMaps = mapIds.filterTo(sortedSetOf()) { base ->
@@ -23,22 +25,28 @@ object Gen2WorldMapResolver {
             group in 1..MAX_MAP_GROUPS && map in 1..MAX_MAPS_PER_GROUP
         }
         if (requiredMaps.isEmpty()) return emptyMap()
-        val binding = findBindingChains(session.rom, requiredMaps).chains.singleOrNull() ?: return emptyMap()
-        val known = (binding.johto + binding.kanto).associate { it.id to it.name }
+        val binding = findBindingChains(session.rom, requiredMaps, codec).chains.singleOrNull() ?: return emptyMap()
+        val known = (binding.johto + binding.kanto)
+            .mapNotNull { landmark -> landmark.name?.let { landmark.id to it } }
+            .toMap()
         val requestedIds = (known.keys + landmarkIds.filter { it in FIRST_STATIC_LANDMARK..MAX_STATIC_LANDMARK })
             .toSet()
         val candidates = findLandmarkAuthorities(session.rom).mapNotNull { authority ->
-            val encoding = resolveLandmarkNameEncoding(session.rom, authority, requestedIds)
+            val encoding = resolveLandmarkNameEncoding(session.rom, authority, requestedIds, codec)
                 ?: return@mapNotNull null
             val names = requestedIds.associateWith { id ->
-                decodeLandmarkName(session.rom, authority, id, encoding) ?: return@mapNotNull null
+                decodeLandmarkName(session.rom, authority, id, encoding, codec) ?: return@mapNotNull null
             }
             names.takeIf { decoded -> known.all { (id, name) -> decoded[id] == name } }
         }
         return candidates.singleOrNull() ?: known
     }
 
-    fun resolve(session: RomAnalysisSession, encounterBaseIds: Set<Int>): WorldMapResolution {
+    fun resolve(
+        session: RomAnalysisSession,
+        encounterBaseIds: Set<Int>,
+        codec: PokemonTextCodec?,
+    ): WorldMapResolution {
         val requiredMaps = encounterBaseIds.filterTo(sortedSetOf()) { base ->
             val group = base ushr 8
             val map = base and 0xff
@@ -57,7 +65,7 @@ object Gen2WorldMapResolver {
         if (assets.size != 1) {
             return WorldMapResolution.Ambiguous("asset-loader", "${assets.size} complete Gen II asset chains remained")
         }
-        val bindingSearch = findBindingChains(session.rom, requiredMaps)
+        val bindingSearch = findBindingChains(session.rom, requiredMaps, codec)
         val bindings = bindingSearch.chains
         if (bindings.isEmpty()) {
             return WorldMapResolution.Unavailable(
@@ -75,8 +83,18 @@ object Gen2WorldMapResolver {
         val binding = bindings.single()
         val hasBothEncounterRegions = binding.johto.isNotEmpty() && binding.kanto.isNotEmpty()
         val regionInputs = listOf(
-            RegionInput("gen2-johto", "Johto".takeIf { hasBothEncounterRegions }, asset.johtoMap, binding.johto),
-            RegionInput("gen2-kanto", "Kanto".takeIf { hasBothEncounterRegions }, asset.kantoMap, binding.kanto),
+            RegionInput(
+                "gen2-johto",
+                codec?.let { "Johto" }?.takeIf { hasBothEncounterRegions },
+                asset.johtoMap,
+                binding.johto,
+            ),
+            RegionInput(
+                "gen2-kanto",
+                codec?.let { "Kanto" }?.takeIf { hasBothEncounterRegions },
+                asset.kantoMap,
+                binding.kanto,
+            ),
         ).filter { it.landmarks.isNotEmpty() }
         val regions = regionInputs.map { input ->
             val assetKey = "world/${input.key}"
@@ -529,7 +547,11 @@ object Gen2WorldMapResolver {
         PaletteAuthority(paletteCount, colors)
     }.getOrNull()
 
-    private fun findBindingChains(rom: RomImage, requiredMaps: Set<Int>): BindingSearch {
+    private fun findBindingChains(
+        rom: RomImage,
+        requiredMaps: Set<Int>,
+        codec: PokemonTextCodec?,
+    ): BindingSearch {
         val groupRoots = findMapGroupRoots(rom, requiredMaps)
         val landmarkAuthorities = findLandmarkAuthorities(rom)
         val classifiers = findRegionClassifiers(rom)
@@ -545,7 +567,7 @@ object Gen2WorldMapResolver {
             for (groupRoot in groupRoots) {
                 for (landmarks in landmarkAuthorities) {
                     for (classifier in classifiers) {
-                        buildBindings(rom, requiredMaps, groupRoot, landmarks, classifier)?.let(::add)
+                        buildBindings(rom, requiredMaps, groupRoot, landmarks, classifier, codec)?.let(::add)
                     }
                 }
             }
@@ -832,6 +854,7 @@ object Gen2WorldMapResolver {
         groups: MapGroupAuthority,
         landmarks: LandmarkAuthority,
         classifier: RegionClassifier,
+        codec: PokemonTextCodec?,
     ): BindingChain? = runCatching {
         val grouped = linkedMapOf<Int, MutableSet<Int>>()
         for (base in requiredMaps) {
@@ -846,14 +869,15 @@ object Gen2WorldMapResolver {
             grouped.getOrPut(landmark) { linkedSetOf() } += base
         }
         val landmarkIds = grouped.keys + setOf(FIRST_STATIC_LANDMARK, classifier.kanto)
-        val nameEncoding = resolveLandmarkNameEncoding(rom, landmarks, landmarkIds)
-            ?: return@runCatching null
+        val nameEncoding = codec?.let {
+            resolveLandmarkNameEncoding(rom, landmarks, landmarkIds, it) ?: return@runCatching null
+        }
         if (
-            decodeLandmark(rom, landmarks, FIRST_STATIC_LANDMARK, emptySet(), nameEncoding) == null ||
-            decodeLandmark(rom, landmarks, classifier.kanto, emptySet(), nameEncoding) == null
+            decodeLandmark(rom, landmarks, FIRST_STATIC_LANDMARK, emptySet(), nameEncoding, codec) == null ||
+            decodeLandmark(rom, landmarks, classifier.kanto, emptySet(), nameEncoding, codec) == null
         ) return@runCatching null
         val decoded = grouped.map { (id, baseIds) ->
-            decodeLandmark(rom, landmarks, id, baseIds, nameEncoding) ?: return@runCatching null
+            decodeLandmark(rom, landmarks, id, baseIds, nameEncoding, codec) ?: return@runCatching null
         }
         BindingChain(
             johto = decoded.filter { landmark ->
@@ -873,11 +897,12 @@ object Gen2WorldMapResolver {
         rom: RomImage,
         landmarks: LandmarkAuthority,
         ids: Set<Int>,
+        codec: PokemonTextCodec,
     ): Gen2LandmarkNameEncoding? {
         val candidates = Gen2LandmarkNameEncoding.entries.mapNotNull { encoding ->
             val names = mutableListOf<String>()
             for (id in ids.sorted()) {
-                val name = decodeLandmarkName(rom, landmarks, id, encoding)
+                val name = decodeLandmarkName(rom, landmarks, id, encoding, codec)
                 if (name == null) {
                     traceBindingFailure("$encoding landmark $id has undecodable name")
                     return@mapNotNull null
@@ -901,6 +926,7 @@ object Gen2WorldMapResolver {
         landmarks: LandmarkAuthority,
         id: Int,
         encoding: Gen2LandmarkNameEncoding,
+        codec: PokemonTextCodec,
     ): String? = runCatching {
         val row = landmarks.tableOffset + id * landmarks.recordSize
         if (row + landmarks.recordSize > rom.size) return@runCatching null
@@ -909,6 +935,7 @@ object Gen2WorldMapResolver {
         Gen2LandmarkNameCodec.decode(
             rom.slice(nameRoot, minOf(MAX_NAME_BYTES, rom.size - nameRoot)),
             encoding,
+            codec,
         )
     }.getOrNull()
 
@@ -917,7 +944,8 @@ object Gen2WorldMapResolver {
         landmarks: LandmarkAuthority,
         id: Int,
         baseAreaIds: Set<Int>,
-        nameEncoding: Gen2LandmarkNameEncoding,
+        nameEncoding: Gen2LandmarkNameEncoding?,
+        codec: PokemonTextCodec?,
     ): Landmark? = runCatching {
         val row = landmarks.tableOffset + id * landmarks.recordSize
         if (row + landmarks.recordSize > rom.size) {
@@ -936,10 +964,17 @@ object Gen2WorldMapResolver {
             traceBindingFailure("landmark $id has off-map cell $x,$y")
             return@runCatching null
         }
-        val name = decodeLandmarkName(rom, landmarks, id, nameEncoding)
-        if (name == null) {
-            traceBindingFailure("landmark $id has undecodable name")
-            return@runCatching null
+        if ((nameEncoding == null) != (codec == null)) return@runCatching null
+        val name = if (codec == null) {
+            val namePointer = rom.u16le(row + landmarks.namePointerOffset)
+            if (rom.gbBankAddress(landmarks.bank, namePointer) == null) return@runCatching null
+            null
+        } else {
+            decodeLandmarkName(rom, landmarks, id, requireNotNull(nameEncoding), codec)
+                ?: run {
+                    traceBindingFailure("landmark $id has undecodable name")
+                    return@runCatching null
+                }
         }
         Landmark(id, x, y, name, baseAreaIds.toSet())
     }.getOrNull()
@@ -1033,7 +1068,7 @@ object Gen2WorldMapResolver {
     )
     private data class RegionClassifier(val kanto: Int, val johtoReturn: Int?, val ship: Int?)
     private data class RegionClassifierPrefix(val ship: Int, val shipTarget: Int, val checkOffset: Int)
-    private data class Landmark(val id: Int, val x: Int, val y: Int, val name: String, val baseAreaIds: Set<Int>)
+    private data class Landmark(val id: Int, val x: Int, val y: Int, val name: String?, val baseAreaIds: Set<Int>)
     private data class BindingChain(val johto: List<Landmark>, val kanto: List<Landmark>)
     private data class BindingSearch(
         val chains: List<BindingChain>,

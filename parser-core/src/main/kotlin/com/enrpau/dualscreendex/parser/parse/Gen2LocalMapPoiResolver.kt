@@ -9,6 +9,7 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiService
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
 import kotlin.math.abs
 
 internal object Gen2LocalMapPoiResolver {
@@ -17,6 +18,7 @@ internal object Gen2LocalMapPoiResolver {
         sources: List<Source>,
         maps: List<LocalMap>,
         family: EngineFamily,
+        codec: PokemonTextCodec?,
     ): Resolution {
         val mapsByBaseArea = maps.associateBy(LocalMap::baseAreaId)
         val sourcesByBaseArea = sources.associateBy(Source::baseAreaId)
@@ -24,7 +26,7 @@ internal object Gen2LocalMapPoiResolver {
         val skipped = mutableListOf<String>()
         mapsByBaseArea.toSortedMap().forEach { (baseAreaId, map) ->
             val source = sourcesByBaseArea[baseAreaId] ?: return@forEach
-            runCatching { readMapPois(rom, source, map, mapsByBaseArea.keys, family) }
+            runCatching { readMapPois(rom, source, map, mapsByBaseArea.keys, family, codec) }
                 .onSuccess(pois::addAll)
                 .onFailure { failure -> skipped += "map 0x${baseAreaId.hex4()} POIs: ${failure.message}" }
         }
@@ -37,6 +39,7 @@ internal object Gen2LocalMapPoiResolver {
         map: LocalMap,
         acceptedAreaIds: Set<Int>,
         family: EngineFamily,
+        codec: PokemonTextCodec?,
     ): List<LocalMapPoi> {
         val scriptsBank = rom.u8(source.attributes + SCRIPTS_BANK_OFFSET)
         val events = requireNotNull(
@@ -169,7 +172,7 @@ internal object Gen2LocalMapPoiResolver {
                         )
                     }
                 } else if (background.kind in SIGN_KINDS) {
-                    val semantics = readSignSemantics(rom, scriptsBank, background.data, family)
+                    val semantics = readSignSemantics(rom, scriptsBank, background.data, family, codec)
                     val destination = backgroundWarps[background.index]
                     add(
                         LocalMapPoi(
@@ -222,12 +225,13 @@ internal object Gen2LocalMapPoiResolver {
         scriptsBank: Int,
         script: Int,
         family: EngineFamily,
+        codec: PokemonTextCodec?,
     ): SignSemantics {
         if (script + 3 > bankEnd(rom, scriptsBank)) return SignSemantics()
         if (rom.u8(script) == JUMP_STD_COMMAND) {
             return when (rom.u16le(script + 1)) {
-                POKECENTER_SIGN_STD_INDEX -> SignSemantics("POKéMON CENTER", LocalMapPoiService.POKEMON_CENTER)
-                MART_SIGN_STD_INDEX -> SignSemantics("MART", LocalMapPoiService.MART)
+                POKECENTER_SIGN_STD_INDEX -> SignSemantics(service = LocalMapPoiService.POKEMON_CENTER)
+                MART_SIGN_STD_INDEX -> SignSemantics(service = LocalMapPoiService.MART)
                 else -> SignSemantics()
             }
         }
@@ -238,27 +242,53 @@ internal object Gen2LocalMapPoiResolver {
         }
         if (rom.u8(script) != jumpTextCommand) return SignSemantics()
         val text = rom.gbBankAddress(scriptsBank, rom.u16le(script + 1)) ?: return SignSemantics()
-        return SignSemantics(displayName = decodeHeadline(rom, text))
+        return SignSemantics(displayName = codec?.let { decodeHeadline(rom, text, it) })
     }
 
-    private fun decodeHeadline(rom: RomImage, offset: Int): String? {
+    private fun decodeHeadline(rom: RomImage, offset: Int, codec: PokemonTextCodec): String? {
         if (rom.u8(offset) != TEXT_START) return null
         val output = StringBuilder()
         val limit = minOf(rom.size, offset + MAX_SIGN_TEXT_BYTES)
         var cursor = offset + 1
         var terminated = false
         while (cursor < limit) {
-            val value = rom.u8(cursor++)
+            val value = rom.u8(cursor)
             if (value in SIGN_HEADLINE_ENDS) {
                 terminated = true
                 break
             }
             when (value) {
-                TEXT_PLAYER -> output.append("{PLAYER}")
-                TEXT_RIVAL -> output.append("{RIVAL}")
-                TEXT_POKEMON -> output.append("POKé")
-                TEXT_ELLIPSIS -> output.append("……")
-                else -> output.append(PokemonTextCodec.gbEnglish.decodeByte(value) ?: return null)
+                TEXT_PLAYER -> {
+                    output.append("{PLAYER}")
+                    cursor++
+                }
+                TEXT_RIVAL -> {
+                    output.append("{RIVAL}")
+                    cursor++
+                }
+                TEXT_POKEMON -> {
+                    output.append("POKé")
+                    cursor++
+                }
+                TEXT_ELLIPSIS -> {
+                    output.append("……")
+                    cursor++
+                }
+                else -> {
+                    val token = codec.decodeToken(rom, cursor, limit)
+                    cursor += token.byteCount
+                    when (token) {
+                        is PokemonTextToken.Glyph -> output.append(token.text)
+                        is PokemonTextToken.Whitespace -> output.append(token.text)
+                        is PokemonTextToken.Substitution -> output.append(token.text)
+                        is PokemonTextToken.Control -> output.append(token.replacement)
+                        is PokemonTextToken.Invalid -> return null
+                        is PokemonTextToken.Terminator -> {
+                            terminated = true
+                            break
+                        }
+                    }
+                }
             }
         }
         if (!terminated) return null

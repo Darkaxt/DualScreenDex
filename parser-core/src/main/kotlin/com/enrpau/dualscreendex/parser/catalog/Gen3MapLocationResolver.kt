@@ -1,51 +1,75 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 /** Resolves semantic map identities from compiled map-header consumers and region-map data. */
 object Gen3MapLocationResolver {
-    fun resolve(rom: RomImage, encounterBaseIds: Set<Int>): Map<Int, String> {
+    fun resolve(
+        rom: RomImage,
+        encounterBaseIds: Set<Int>,
+        codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): Map<Int, String> {
+        cancellation.throwIfCancellationRequested()
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return emptyMap()
-        val compiled = findCompiledMapGroupsConsumerRoots(rom).filter { layout ->
-            enumerateRequiredMapHeaders(rom, layout, requiredMaps) != null
+        val compiled = findCompiledMapGroupsConsumerRoots(rom, cancellation).filter { layout ->
+            enumerateRequiredMapHeaders(rom, layout, requiredMaps, cancellation) != null
         }
         val layout = if (compiled.isNotEmpty()) {
             compiled.singleOrNull()
         } else {
-            findMapGroupsRoots(rom, requiredMaps).singleOrNull()?.let(::MapGroupsLayout)
+            findMapGroupsRoots(rom, requiredMaps, cancellation).singleOrNull()?.let(::MapGroupsLayout)
         } ?: return emptyMap()
-        return resolveFromRoot(rom, layout).namesByBaseArea
+        return resolveFromRoot(rom, layout, codec, cancellation).namesByBaseArea
     }
 
     fun resolve(
         rom: RomImage,
         encounterBaseIds: Set<Int>,
         references: GbaReferenceIndex,
-    ): Map<Int, String> = resolveDetailed(rom, encounterBaseIds, references)?.namesByBaseArea.orEmpty()
+        codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): Map<Int, String> = resolveDetailed(
+        rom,
+        encounterBaseIds,
+        references,
+        codec,
+        cancellation,
+    )?.namesByBaseArea.orEmpty()
 
     internal fun resolveDetailed(
         rom: RomImage,
         encounterBaseIds: Set<Int>,
         references: GbaReferenceIndex,
+        codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Gen3MapLocationResolution? {
+        cancellation.throwIfCancellationRequested()
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return null
-        val requiredSections = resolveMapSections(rom, requiredMaps, references) ?: return null
+        val requiredSections = resolveMapSections(rom, requiredMaps, references, cancellation) ?: return null
         mapTrace(
             "map-sections count=${requiredSections.values.toSet().size} ids=${requiredSections.values.toSortedSet()}",
         )
-        val regionEntries = findRegionEntryResolution(rom, requiredSections.values.toSet()) ?: return null
-        val preferredSections = resolveHeaderByBaseArea(rom, encounterBaseIds, references)
+        val regionEntries = findRegionEntryResolution(
+            rom,
+            requiredSections.values.toSet(),
+            codec,
+            cancellation,
+        ) ?: return null
+        val preferredSections = resolveHeaderByBaseArea(rom, encounterBaseIds, references, cancellation)
             .mapValues { (_, header) -> rom.u8(header + REGION_SECTION_OFFSET) }
         val enrichedSections = preferredSections.filterValues { section ->
-            decodeRegionEntry(rom, regionEntries.root, section) != null
+            decodeRegionEntry(rom, regionEntries.root, section, codec, cancellation) != null
         }
         val sections = enrichedSections.takeIf { it.keys.containsAll(requiredSections.keys) } ?: requiredSections
         val entries = sections.values.toSet().mapNotNull { section ->
-            decodeRegionEntry(rom, regionEntries.root, section)?.let { section to it }
+            cancellation.throwIfCancellationRequested()
+            decodeRegionEntry(rom, regionEntries.root, section, codec, cancellation)?.let { section to it }
         }.toMap(linkedMapOf())
         return Gen3MapLocationResolution(sections, entries).takeIf { it.entriesBySection.isNotEmpty() }
     }
@@ -54,36 +78,42 @@ object Gen3MapLocationResolver {
         rom: RomImage,
         encounterBaseIds: Set<Int>,
         references: GbaReferenceIndex,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Map<Int, Int> {
+        cancellation.throwIfCancellationRequested()
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return emptyMap()
-        return resolveMapSections(rom, requiredMaps, references).orEmpty()
+        return resolveMapSections(rom, requiredMaps, references, cancellation).orEmpty()
     }
 
     internal fun resolveHeaderByBaseArea(
         rom: RomImage,
         encounterBaseIds: Set<Int>,
         references: GbaReferenceIndex,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Map<Int, Int> {
+        cancellation.throwIfCancellationRequested()
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return emptyMap()
-        val layout = selectMapGroupsLayout(rom, requiredMaps, references) ?: return emptyMap()
-        return enumeratePreferredMapHeaders(rom, layout, requiredMaps).orEmpty()
+        val layout = selectMapGroupsLayout(rom, requiredMaps, references, cancellation) ?: return emptyMap()
+        return enumeratePreferredMapHeaders(rom, layout, requiredMaps, cancellation).orEmpty()
     }
 
     internal fun resolveReachableHeaderByBaseArea(
         rom: RomImage,
         encounterBaseIds: Set<Int>,
         references: GbaReferenceIndex,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Map<Int, Int> {
+        cancellation.throwIfCancellationRequested()
         val requiredMaps = requiredMaps(encounterBaseIds)
         if (requiredMaps.isEmpty()) return emptyMap()
-        val layout = selectMapGroupsLayout(rom, requiredMaps, references) ?: return emptyMap()
-        val required = enumerateRequiredMapHeaders(rom, layout, requiredMaps) ?: return emptyMap()
-        val complete = enumerateMapHeaders(rom, layout)
+        val layout = selectMapGroupsLayout(rom, requiredMaps, references, cancellation) ?: return emptyMap()
+        val required = enumerateRequiredMapHeaders(rom, layout, requiredMaps, cancellation) ?: return emptyMap()
+        val complete = enumerateMapHeaders(rom, layout, cancellation)
             ?.takeIf { headers -> headers.keys.containsAll(required.keys) }
             ?: return required
-        return enumerateReachableMapHeaders(rom, complete, required.keys).orEmpty().also { reachable ->
+        return enumerateReachableMapHeaders(rom, complete, required.keys, cancellation).orEmpty().also { reachable ->
             mapTrace(
                 "map-groups root=0x${layout.root.toString(16)} reachable=${reachable.size}/${complete.size} " +
                     "from=${required.size} encounter maps",
@@ -95,14 +125,15 @@ object Gen3MapLocationResolver {
         rom: RomImage,
         requiredMaps: Map<Int, Set<Int>>,
         references: GbaReferenceIndex,
+        cancellation: ParserCancellationToken,
     ): MapGroupsLayout? {
-        val compiledRoots = findCompiledMapGroupsConsumerRoots(rom)
+        val compiledRoots = findCompiledMapGroupsConsumerRoots(rom, cancellation)
         if (compiledRoots.isNotEmpty()) {
             return compiledRoots.filter { candidate ->
-                enumerateRequiredMapHeaders(rom, candidate, requiredMaps) != null
+                enumerateRequiredMapHeaders(rom, candidate, requiredMaps, cancellation) != null
             }.singleOrNull()
         }
-        val roots = findMapGroupsRoots(rom, requiredMaps)
+        val roots = findMapGroupsRoots(rom, requiredMaps, cancellation)
         val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return null
         return roots.filter { references.referenceCount(it) == maximumReferences }
             .singleOrNull()
@@ -113,12 +144,14 @@ object Gen3MapLocationResolver {
         rom: RomImage,
         requiredMaps: Map<Int, Set<Int>>,
         references: GbaReferenceIndex,
+        cancellation: ParserCancellationToken,
     ): Map<Int, Int>? {
-        val compiledRoots = findCompiledMapGroupsConsumerRoots(rom)
+        val compiledRoots = findCompiledMapGroupsConsumerRoots(rom, cancellation)
         if (compiledRoots.isNotEmpty()) {
             val requiredCount = requiredMaps.values.sumOf { maps -> maps.size }
             val resolved = compiledRoots.mapNotNull { layout ->
-                enumerateRequiredMapSections(rom, layout, requiredMaps)?.also { sections ->
+                cancellation.throwIfCancellationRequested()
+                enumerateRequiredMapSections(rom, layout, requiredMaps, cancellation)?.also { sections ->
                     mapTrace(
                         "map-groups root=0x${layout.root.toString(16)} " +
                             "resolved=${sections.size} required=$requiredCount",
@@ -132,10 +165,10 @@ object Gen3MapLocationResolver {
             )
             return resolved.singleOrNull()
         }
-        val roots = findMapGroupsRoots(rom, requiredMaps)
+        val roots = findMapGroupsRoots(rom, requiredMaps, cancellation)
         val maximumReferences = roots.maxOfOrNull(references::referenceCount)?.takeIf { it > 0 } ?: return null
         val root = roots.filter { references.referenceCount(it) == maximumReferences }.singleOrNull() ?: return null
-        return enumerateMapSections(rom, MapGroupsLayout(root))
+        return enumerateMapSections(rom, MapGroupsLayout(root), cancellation)
     }
 
     /**
@@ -146,9 +179,10 @@ object Gen3MapLocationResolver {
         rom: RomImage,
         layout: MapGroupsLayout,
         requiredMaps: Map<Int, Set<Int>>,
+        cancellation: ParserCancellationToken,
     ): Map<Int, Int>? {
-        val required = enumerateRequiredMapHeaders(rom, layout, requiredMaps) ?: return null
-        val complete = enumerateMapHeaders(rom, layout)
+        val required = enumerateRequiredMapHeaders(rom, layout, requiredMaps, cancellation) ?: return null
+        val complete = enumerateMapHeaders(rom, layout, cancellation)
         return complete?.takeIf { headers -> headers.keys.containsAll(required.keys) } ?: required
     }
 
@@ -161,6 +195,7 @@ object Gen3MapLocationResolver {
         rom: RomImage,
         headers: Map<Int, Int>,
         startingMaps: Set<Int>,
+        cancellation: ParserCancellationToken,
     ): Map<Int, Int>? {
         if (startingMaps.isEmpty() || !headers.keys.containsAll(startingMaps)) return null
         val reached = linkedSetOf<Int>()
@@ -170,8 +205,14 @@ object Gen3MapLocationResolver {
             pending += baseAreaId
         }
         while (pending.isNotEmpty()) {
+            cancellation.throwIfCancellationRequested()
             val baseAreaId = pending.removeFirst()
-            val destinations = staticMapDestinations(rom, headers.getValue(baseAreaId), headers.keys) ?: return null
+            val destinations = staticMapDestinations(
+                rom,
+                headers.getValue(baseAreaId),
+                headers.keys,
+                cancellation,
+            ) ?: return null
             destinations.sorted().forEach { destination ->
                 if (reached.add(destination)) pending += destination
             }
@@ -183,7 +224,9 @@ object Gen3MapLocationResolver {
         rom: RomImage,
         header: Int,
         knownMaps: Set<Int>,
+        cancellation: ParserCancellationToken,
     ): Set<Int>? {
+        cancellation.throwIfCancellationRequested()
         val destinations = linkedSetOf<Int>()
         val events = rom.gbaPointer(header + MAP_EVENTS_OFFSET)
         if (events != null) {
@@ -193,6 +236,7 @@ object Gen3MapLocationResolver {
                 val warps = rom.gbaPointer(events + MAP_EVENTS_WARPS_OFFSET) ?: return null
                 if (warps.toLong() + warpCount.toLong() * WARP_EVENT_BYTES > rom.size.toLong()) return null
                 repeat(warpCount) { index ->
+                    cancellation.throwIfCancellationRequested()
                     val warp = warps + index * WARP_EVENT_BYTES
                     val destination = (rom.u8(warp + WARP_EVENT_GROUP_OFFSET) shl 8) or
                         rom.u8(warp + WARP_EVENT_MAP_OFFSET)
@@ -209,6 +253,7 @@ object Gen3MapLocationResolver {
                 val entries = rom.gbaPointer(connections + MAP_CONNECTIONS_ENTRIES_OFFSET) ?: return null
                 if (entries.toLong() + count * MAP_CONNECTION_BYTES > rom.size.toLong()) return null
                 repeat(count.toInt()) { index ->
+                    cancellation.throwIfCancellationRequested()
                     val connection = entries + index * MAP_CONNECTION_BYTES
                     val destination = (rom.u8(connection + MAP_CONNECTION_GROUP_OFFSET) shl 8) or
                         rom.u8(connection + MAP_CONNECTION_MAP_OFFSET)
@@ -223,25 +268,30 @@ object Gen3MapLocationResolver {
         rom: RomImage,
         layout: MapGroupsLayout,
         requiredMaps: Map<Int, Set<Int>>,
-    ): Map<Int, Int>? = enumerateRequiredMapHeaders(rom, layout, requiredMaps)?.mapValues { (_, header) ->
-        rom.u8(header + REGION_SECTION_OFFSET)
-    }
+        cancellation: ParserCancellationToken,
+    ): Map<Int, Int>? = enumerateRequiredMapHeaders(rom, layout, requiredMaps, cancellation)
+        ?.mapValues { (_, header) ->
+            rom.u8(header + REGION_SECTION_OFFSET)
+        }
 
     private fun enumerateRequiredMapHeaders(
         rom: RomImage,
         layout: MapGroupsLayout,
         requiredMaps: Map<Int, Set<Int>>,
+        cancellation: ParserCancellationToken,
     ): Map<Int, Int>? {
         val requiredCount = requiredMaps.values.sumOf(Set<Int>::size)
         val headers = linkedMapOf<Int, Int>()
         var unbindableHeaders = 0
         requiredMaps.toSortedMap().forEach groupLoop@{ (group, maps) ->
+            cancellation.throwIfCancellationRequested()
             val groupPointerOffset = layout.root.toLong() + group.toLong() * 4L
             if (groupPointerOffset < 0 || groupPointerOffset + 4L > rom.size.toLong()) {
                 return@groupLoop
             }
             val groupRoot = decodeGroupRoot(rom, layout, group) ?: return@groupLoop
             maps.sorted().forEach mapLoop@{ map ->
+                cancellation.throwIfCancellationRequested()
                 val headerPointerOffset = groupRoot.toLong() + map.toLong() * 4L
                 if (headerPointerOffset < 0 || headerPointerOffset + 4L > rom.size.toLong()) {
                     return@mapLoop
@@ -270,9 +320,15 @@ object Gen3MapLocationResolver {
      * zero-extension and four-byte pointer indexing. The data arrays may be sparse or relocated;
      * only the required encounter keys are authoritative.
      */
-    private fun findCompiledMapGroupsConsumerRoots(rom: RomImage): List<MapGroupsLayout> = buildList {
+    private fun findCompiledMapGroupsConsumerRoots(
+        rom: RomImage,
+        cancellation: ParserCancellationToken,
+    ): List<MapGroupsLayout> = buildList {
         var offset = 0
         while (offset.toLong() + MAP_GROUP_LOOKUP_NARROW_BYTES <= rom.size.toLong()) {
+            if (offset % CANCELLATION_CHECK_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
             val u16Arguments = offset.toLong() + MAP_GROUP_LOOKUP_U16_BYTES <= rom.size.toLong() &&
                 rom.u16le(offset) == THUMB_LSL_R0_16 &&
                 rom.u16le(offset + 2) == THUMB_LSL_R1_16 &&
@@ -374,18 +430,30 @@ object Gen3MapLocationResolver {
         .groupBy({ it ushr 8 }, { it and 0xFF })
         .mapValues { (_, maps) -> maps.toSet() }
 
-    private fun resolveFromRoot(rom: RomImage, layout: MapGroupsLayout): Gen3MapLocationResolution {
-        val sections = enumerateMapSections(rom, layout).orEmpty()
-        val entries = findRegionEntries(rom, sections.values.toSet()).orEmpty()
+    private fun resolveFromRoot(
+        rom: RomImage,
+        layout: MapGroupsLayout,
+        codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
+    ): Gen3MapLocationResolution {
+        val sections = enumerateMapSections(rom, layout, cancellation).orEmpty()
+        val entries = findRegionEntries(rom, sections.values.toSet(), codec, cancellation).orEmpty()
         return Gen3MapLocationResolution(sections, entries)
     }
 
-    private fun findMapGroupsRoots(rom: RomImage, requiredMaps: Map<Int, Set<Int>>): List<Int> {
+    private fun findMapGroupsRoots(
+        rom: RomImage,
+        requiredMaps: Map<Int, Set<Int>>,
+        cancellation: ParserCancellationToken,
+    ): List<Int> {
         val maxGroup = requiredMaps.keys.maxOrNull() ?: return emptyList()
         val roots = mutableListOf<Int>()
         var root = 0
         val last = rom.size - (maxGroup + 1) * 4
         while (root <= last) {
+            if (root % CANCELLATION_CHECK_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
             val valid = requiredMaps.all { (group, maps) ->
                 val groupRoot = rom.gbaPointer(root + group * 4) ?: return@all false
                 maps.all { map ->
@@ -394,20 +462,30 @@ object Gen3MapLocationResolver {
                         rom.gbaPointer(pointerOffset.toInt())?.let { validMapHeader(rom, it) } == true
                 }
             }
-            if (valid && enumerateMapSections(rom, MapGroupsLayout(root)) != null) roots += root
+            if (valid && enumerateMapSections(rom, MapGroupsLayout(root), cancellation) != null) roots += root
             root += 4
         }
         return roots
     }
 
-    private fun enumerateMapSections(rom: RomImage, layout: MapGroupsLayout): Map<Int, Int>? =
-        enumerateMapHeaders(rom, layout)?.mapValues { (_, header) -> rom.u8(header + REGION_SECTION_OFFSET) }
+    private fun enumerateMapSections(
+        rom: RomImage,
+        layout: MapGroupsLayout,
+        cancellation: ParserCancellationToken,
+    ): Map<Int, Int>? = enumerateMapHeaders(rom, layout, cancellation)
+        ?.mapValues { (_, header) -> rom.u8(header + REGION_SECTION_OFFSET) }
 
-    private fun enumerateMapHeaders(rom: RomImage, layout: MapGroupsLayout): Map<Int, Int>? {
-        if (layout.groupPointerXor != 0L) return enumerateEncodedMapHeaders(rom, layout)
+    private fun enumerateMapHeaders(
+        rom: RomImage,
+        layout: MapGroupsLayout,
+        cancellation: ParserCancellationToken,
+    ): Map<Int, Int>? {
+        cancellation.throwIfCancellationRequested()
+        if (layout.groupPointerXor != 0L) return enumerateEncodedMapHeaders(rom, layout, cancellation)
         val groupRoots = mutableListOf<Int>()
         var cursor = layout.root
         while (cursor + 4 <= rom.size) {
+            cancellation.throwIfCancellationRequested()
             val groupRoot = rom.gbaPointer(cursor) ?: break
             groupRoots += groupRoot
             cursor += 4
@@ -416,11 +494,13 @@ object Gen3MapLocationResolver {
         val boundaries = (groupRoots + layout.root).distinct().sorted()
         val headers = linkedMapOf<Int, Int>()
         groupRoots.forEachIndexed { group, groupRoot ->
+            cancellation.throwIfCancellationRequested()
             val end = boundaries.firstOrNull { it > groupRoot } ?: return null
             if (end <= groupRoot || (end - groupRoot) % 4 != 0) return null
             val mapCount = (end - groupRoot) / 4
             if (mapCount <= 0) return null
             repeat(mapCount) { map ->
+                cancellation.throwIfCancellationRequested()
                 val header = rom.gbaPointer(groupRoot + map * 4) ?: return null
                 if (!validMapHeader(rom, header)) return null
                 headers[(group shl 8) or map] = header
@@ -429,24 +509,31 @@ object Gen3MapLocationResolver {
         return headers
     }
 
-    private fun enumerateEncodedMapHeaders(rom: RomImage, layout: MapGroupsLayout): Map<Int, Int>? {
+    private fun enumerateEncodedMapHeaders(
+        rom: RomImage,
+        layout: MapGroupsLayout,
+        cancellation: ParserCancellationToken,
+    ): Map<Int, Int>? {
         val groupRoots = mutableListOf<Pair<Int, Int>>()
         var group = 0
         while (group < MAX_MAP_GROUPS) {
+            cancellation.throwIfCancellationRequested()
             val groupRoot = decodeGroupRoot(rom, layout, group) ?: break
             groupRoots += group to groupRoot
             group++
         }
         if (groupRoots.isEmpty() || groupRoots.map { it.second }.distinct().size != groupRoots.size) return null
         val headers = linkedMapOf<Int, Int>()
-        groupRoots.forEach { (group, groupRoot) ->
+        groupRoots.forEach { (groupIndex, groupRoot) ->
+            cancellation.throwIfCancellationRequested()
             var added = 0
             for (map in 0 until MAX_MAPS_PER_GROUP) {
+                cancellation.throwIfCancellationRequested()
                 val pointerOffset = groupRoot.toLong() + map.toLong() * 4L
                 if (pointerOffset < 0 || pointerOffset + 4L > rom.size.toLong()) break
                 val header = rom.gbaPointer(pointerOffset.toInt()) ?: break
                 if (!validMapHeader(rom, header)) break
-                headers[(group shl 8) or map] = header
+                headers[(groupIndex shl 8) or map] = header
                 added++
             }
             if (added == 0) return null
@@ -466,13 +553,21 @@ object Gen3MapLocationResolver {
         return rom.u16le(offset + 0x12) != 0
     }
 
-    private fun findRegionEntries(rom: RomImage, sectionIds: Set<Int>): Map<Int, Gen3RegionMapEntry>? =
-        findRegionEntryResolution(rom, sectionIds)?.entries
+    private fun findRegionEntries(
+        rom: RomImage,
+        sectionIds: Set<Int>,
+        codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
+    ): Map<Int, Gen3RegionMapEntry>? =
+        findRegionEntryResolution(rom, sectionIds, codec, cancellation)?.entries
 
     private fun findRegionEntryResolution(
         rom: RomImage,
         sectionIds: Set<Int>,
+        codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
     ): RegionEntryResolution? {
+        cancellation.throwIfCancellationRequested()
         if (sectionIds.isEmpty()) return null
         val maxSection = sectionIds.maxOrNull() ?: return null
         val requiredAnchorCount = minOf(REGION_ENTRY_ANCHORS, sectionIds.size)
@@ -481,22 +576,26 @@ object Gen3MapLocationResolver {
         var root = 0
         val last = rom.size - (maxSection + 1) * REGION_ENTRY_BYTES
         while (root <= last) {
+            if (root % CANCELLATION_CHECK_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
             if (provisionalAnchors.all {
                     emptyRegionEntry(rom, root, it) ||
-                        decodableRegionEntry(rom, root, it)
+                        decodableRegionEntry(rom, root, it, codec, cancellation)
                 } &&
                 sectionIds.all {
                     emptyRegionEntry(rom, root, it) ||
-                        validRegionEntryShell(rom, root, it)
+                        validRegionEntryShell(rom, root, it, codec, cancellation)
                 }
             ) {
                 val authoritativeAnchors = sectionIds.asSequence()
-                    .filter { validRegionEntry(rom, root, it) }
+                    .filter { validRegionEntry(rom, root, it, codec, cancellation) }
                     .take(requiredAnchorCount)
                     .toList()
                 if (authoritativeAnchors.size == requiredAnchorCount) {
                     candidates[root] = sectionIds.mapNotNull { section ->
-                        decodeRegionEntry(rom, root, section)?.let { section to it }
+                        cancellation.throwIfCancellationRequested()
+                        decodeRegionEntry(rom, root, section, codec, cancellation)?.let { section to it }
                     }.toMap()
                 }
             }
@@ -506,6 +605,9 @@ object Gen3MapLocationResolver {
         val referenceCounts = candidates.keys.associateWith { 0 }.toMutableMap()
         var pointerOffset = 0
         while (pointerOffset <= rom.size - 4) {
+            if (pointerOffset % CANCELLATION_CHECK_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
             val target = (rom.u32le(pointerOffset) - GBA_ROM_BASE).toInt()
             if (target in referenceCounts) referenceCounts[target] = referenceCounts.getValue(target) + 1
             pointerOffset += 4
@@ -528,23 +630,41 @@ object Gen3MapLocationResolver {
         }
     }
 
-    private fun decodableRegionEntry(rom: RomImage, root: Int, sectionId: Int): Boolean =
-        validRegionEntryShell(rom, root, sectionId) &&
-            decodeRegionEntry(rom, root, sectionId) != null
+    private fun decodableRegionEntry(
+        rom: RomImage,
+        root: Int,
+        sectionId: Int,
+        codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
+    ): Boolean = validRegionEntryShell(rom, root, sectionId, codec, cancellation) &&
+        decodeRegionEntry(rom, root, sectionId, codec, cancellation) != null
 
-    private fun validRegionEntry(rom: RomImage, root: Int, sectionId: Int): Boolean {
+    private fun validRegionEntry(
+        rom: RomImage,
+        root: Int,
+        sectionId: Int,
+        codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
+    ): Boolean {
         val offset = root + sectionId * REGION_ENTRY_BYTES
-        return validRegionEntryShell(rom, root, sectionId) &&
+        return validRegionEntryShell(rom, root, sectionId, codec, cancellation) &&
             !offMapCoordinates(
                 rom.u8(offset),
                 rom.u8(offset + 1),
             ) &&
-            decodeRegionEntry(rom, root, sectionId)
+            (codec == null || decodeRegionEntry(rom, root, sectionId, codec, cancellation)
                 ?.displayName
-                ?.any(Char::isLetterOrDigit) == true
+                ?.any(Char::isLetterOrDigit) == true)
     }
 
-    private fun validRegionEntryShell(rom: RomImage, root: Int, sectionId: Int): Boolean {
+    private fun validRegionEntryShell(
+        rom: RomImage,
+        root: Int,
+        sectionId: Int,
+        codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
+    ): Boolean {
+        cancellation.throwIfCancellationRequested()
         val offset = root + sectionId * REGION_ENTRY_BYTES
         val x = rom.u8(offset)
         val y = rom.u8(offset + 1)
@@ -564,22 +684,40 @@ object Gen3MapLocationResolver {
         ) return false
         val text = rom.gbaPointer(offset + 4) ?: return false
         val available = minOf(MAX_REGION_NAME_BYTES, rom.size - text)
-        return available > 0 && PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(text, available)).terminated
+        return available > 0 && (codec == null || codec.decodeDetailed(
+            rom = rom,
+            offset = text,
+            maximumBytes = available,
+            cancellation = cancellation,
+        ).terminated)
     }
 
     private fun offMapCoordinates(x: Int, y: Int): Boolean =
         x == OFF_MAP_COORDINATE &&
             y == OFF_MAP_COORDINATE
 
-    private fun decodeRegionEntry(rom: RomImage, root: Int, sectionId: Int): Gen3RegionMapEntry? {
+    private fun decodeRegionEntry(
+        rom: RomImage,
+        root: Int,
+        sectionId: Int,
+        codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
+    ): Gen3RegionMapEntry? {
+        if (!validRegionEntryShell(rom, root, sectionId, codec, cancellation)) return null
         val offset = root + sectionId * REGION_ENTRY_BYTES
-        val text = rom.gbaPointer(offset + 4) ?: return null
-        val available = minOf(MAX_REGION_NAME_BYTES, rom.size - text)
-        if (available <= 0) return null
-        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(text, available))
-        val name = decoded.text.takeIf {
-            decoded.terminated && decoded.validRatio >= MIN_TEXT_RATIO && it.isNotBlank()
-        } ?: return null
+        val name = codec?.let {
+            val text = rom.gbaPointer(offset + 4) ?: return null
+            val available = minOf(MAX_REGION_NAME_BYTES, rom.size - text)
+            val decoded = it.decodeDetailed(
+                rom = rom,
+                offset = text,
+                maximumBytes = available,
+                cancellation = cancellation,
+            )
+            decoded.text.takeIf { value ->
+                decoded.terminated && decoded.validRatio >= MIN_TEXT_RATIO && value.isNotBlank()
+            }
+        }
         return Gen3RegionMapEntry(
             sectionId,
             rom.u8(offset),
@@ -611,6 +749,7 @@ object Gen3MapLocationResolver {
     private const val MAP_CONNECTION_GROUP_OFFSET = 8
     private const val MAP_CONNECTION_MAP_OFFSET = 9
     private const val MAX_MAP_CONNECTIONS = 256
+    private const val CANCELLATION_CHECK_INTERVAL_BYTES = 4096
     private const val GBA_ROM_BASE = 0x08000000L
     private const val REGION_SECTION_OFFSET = 0x14
     private const val REGION_ENTRY_BYTES = 8
@@ -661,7 +800,7 @@ internal data class Gen3MapLocationResolution(
     val entriesBySection: Map<Int, Gen3RegionMapEntry>,
 ) {
     val namesByBaseArea: Map<Int, String> = sectionByBaseArea.mapNotNull { (baseId, sectionId) ->
-        entriesBySection[sectionId]?.let { baseId to it.displayName }
+        entriesBySection[sectionId]?.displayName?.let { baseId to it }
     }.toMap(linkedMapOf())
 }
 
@@ -671,5 +810,5 @@ internal data class Gen3RegionMapEntry(
     val y: Int,
     val width: Int,
     val height: Int,
-    val displayName: String,
+    val displayName: String?,
 )

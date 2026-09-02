@@ -55,6 +55,52 @@ describe('normalized world map presentation', () => {
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
   });
 
+  it('uses structural keys for unnamed map-marker accessibility labels', () => {
+    const unnamedCatalog: Catalog = {
+      ...catalog,
+      worldMaps: (catalog.worldMaps ?? []).map(region => ({
+        ...region,
+        locations: region.locations.map(location => (
+          location.key === 'section-16' ? { ...location, displayName: null } : location
+        )),
+      })),
+    };
+
+    render(<MapPage
+      catalog={unnamedCatalog}
+      state={{ ...state, currentAreaName: null }}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    expect(screen.getByRole('button', { name: 'Current location: section-16' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /null/i })).toBeNull();
+  });
+
+  it('does not borrow the current-area name for an unnamed selected map point', () => {
+    const unnamedCatalog: Catalog = {
+      ...catalog,
+      worldMaps: (catalog.worldMaps ?? []).map(region => ({
+        ...region,
+        locations: region.locations.map(location => (
+          location.key === 'section-17' ? { ...location, displayName: null } : location
+        )),
+      })),
+    };
+    const { container } = render(<MapPage
+      catalog={unnamedCatalog}
+      state={state}
+      onOpenPokedex={vi.fn()}
+      onOpenSettings={vi.fn()}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Map location: section-17' }));
+
+    expect(container.querySelector('.map-current-location h1')?.textContent).toBe('section-17');
+    expect(container.querySelector('.map-current-location span')?.textContent).toBe('MAP POINT');
+    expect(container.querySelector('.map-current-location h1')?.textContent).not.toBe('Route 101');
+  });
+
   it('opens the Area Guide for the tracked or manually selected Atlas area without changing map state', () => {
     const guideState: State = {
       ...state,

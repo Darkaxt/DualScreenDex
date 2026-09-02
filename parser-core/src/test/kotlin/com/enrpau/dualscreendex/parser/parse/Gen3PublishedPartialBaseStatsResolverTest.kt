@@ -278,7 +278,23 @@ class Gen3PublishedPartialBaseStatsResolverTest {
             if (id in 1..activeStatCount) putValidStats(bytes, STATS_OFFSET + id * recordSize)
         }
         repeat(MOVE_COUNT) { id ->
-            putFixedName(bytes, MOVE_NAMES_OFFSET, id, 13, if (id == 0) "NONE" else "MOVE")
+            putFixedName(
+                bytes,
+                MOVE_NAMES_OFFSET,
+                id,
+                13,
+                when (id) {
+                    0 -> "NONE"
+                    1 -> "POUND"
+                    2 -> "KARATE CHOP"
+                    3 -> "DOUBLESLAP"
+                    else -> when (id % 3) {
+                        0 -> "SMOLDER JAB"
+                        1 -> "DUSKY BREAK"
+                        else -> "BROOK WARD"
+                    }
+                },
+            )
             if (id > 0) {
                 val base = MOVE_DATA_OFFSET + id * 12
                 bytes[base + 1] = 40
@@ -326,7 +342,10 @@ class Gen3PublishedPartialBaseStatsResolverTest {
     private fun putFixedName(bytes: ByteArray, tableOffset: Int, index: Int, width: Int, value: String) {
         val offset = tableOffset + index * width
         value.forEachIndexed { characterIndex, character ->
-            bytes[offset + characterIndex] = (0xBB + character.code - 'A'.code).toByte()
+            bytes[offset + characterIndex] = when (character) {
+                ' ' -> 0
+                else -> (0xBB + character.code - 'A'.code).toByte()
+            }
         }
         bytes[offset + value.length] = 0xFF.toByte()
     }

@@ -5,7 +5,7 @@ import { NATURE_STATS, natureFlavorLabel, natureStatLabel } from '../natureDetai
 export function NatureDetail({ nature, gameTime, onBack }: { nature: NatureInfo; gameTime: State['gameTime']; onBack: () => void }) {
   const neutral = nature.raisedStat == null && nature.loweredStat == null;
   return <section class="screen ability-detail-screen nature-detail-screen">
-    <Header title={nature.name.toUpperCase()} gameTime={gameTime} onBack={onBack} />
+    <Header title={nature.name?.toUpperCase() ?? `#${nature.id}`} gameTime={gameTime} onBack={onBack} />
     <div class="ability-detail-content nature-detail-content" data-scroll-region>
       <div class="paper-panel nature-overview">
         <p class="eyebrow">STAT PROFILE</p>

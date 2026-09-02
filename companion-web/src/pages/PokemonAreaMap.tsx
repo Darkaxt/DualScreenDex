@@ -58,7 +58,7 @@ export function PokemonAreaMap({ catalog, state, speciesId, send, onOpenAtlas }:
           key={location.key}
           class={selected?.key === location.key ? 'is-selected' : ''}
           style={{ left: `${position.x}%`, top: `${position.y}%` }}
-          aria-label={`Observed at ${location.displayName}`}
+          aria-label={`Observed at ${location.displayName ?? location.key}`}
           aria-pressed={selected?.key === location.key}
           onClick={() => setSelectedKey(location.key)}
         ><span /></button>;

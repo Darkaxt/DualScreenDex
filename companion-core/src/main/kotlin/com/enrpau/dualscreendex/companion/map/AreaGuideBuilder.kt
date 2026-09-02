@@ -332,7 +332,9 @@ object AreaGuideBuilder {
         }
         catalog.worldMaps.regions.forEach { region ->
             region.locations.forEach { location ->
-                location.baseAreaIds.forEach { put(it, location.displayName) }
+                location.displayName?.let { name ->
+                    location.baseAreaIds.forEach { put(it, name) }
+                }
             }
         }
         catalog.localMaps.maps.forEach { map ->

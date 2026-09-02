@@ -24,6 +24,7 @@ import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 /** Discovery, validation, and evidence selection for ordinary/dynamic Gen III descriptions. */
 class DescriptionResolver(
     private val decoder: DescriptionTableDecoder = DescriptionCodec(),
+    private val textCodec: PokemonTextCodec = PokemonTextCodec.gbaEnglish,
 ) {
     fun resolve(
         session: RomAnalysisSession,
@@ -469,9 +470,9 @@ class DescriptionResolver(
             return@runCatching false
         }
         val category = rom.slice(offset, CATEGORY_BYTES)
-        val terminator = category.indexOf(PokemonTextCodec.gbaEnglish.terminator.toByte())
+        val terminator = category.indexOf(textCodec.terminator.toByte())
         terminator >= 0 &&
-            PokemonTextCodec.gbaEnglish.decode(category.copyOfRange(0, terminator + 1))
+            textCodec.decode(category.copyOfRange(0, terminator + 1))
                 .any(Char::isLetterOrDigit) &&
             rom.u16le(offset + 12) == 0 &&
             rom.u16le(offset + 14) == 0

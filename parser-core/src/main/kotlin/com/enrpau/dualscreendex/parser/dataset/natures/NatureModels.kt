@@ -18,7 +18,7 @@ enum class NatureFlavor {
 
 data class NatureRecord(
     val id: Int,
-    val name: String,
+    val name: String?,
     val statModifiers: List<Int>,
     val positivePercent: Int,
     val negativePercent: Int,
@@ -26,7 +26,7 @@ data class NatureRecord(
 ) {
     init {
         require(id >= 0) { "Nature ID must be non-negative" }
-        require(name.isNotBlank()) { "Nature name must not be blank" }
+        require(name == null || name.isNotBlank()) { "Nature name must not be blank" }
         require(statModifiers.size == NatureStat.entries.size) { "Nature stat row must have five values" }
         require(statModifiers.all { it in -1..1 }) { "Nature stat modifiers must be -1, 0, or 1" }
         require(statModifiers.count { it > 0 } <= 1 && statModifiers.count { it < 0 } <= 1) {
@@ -66,7 +66,7 @@ data class NatureRecord(
 
 data class NatureCatalog(
     val records: List<NatureRecord>,
-    val nameTableOffset: Int,
+    val nameTableOffset: Int?,
     val statTableOffset: Int,
     val flavorTableOffset: Int? = null,
 ) {
@@ -75,7 +75,8 @@ data class NatureCatalog(
         require(records.map(NatureRecord::id) == records.indices.toList()) {
             "Nature records must preserve a dense ROM-native ID domain"
         }
-        require(nameTableOffset >= 0 && statTableOffset >= 0) { "Nature roots must be non-negative" }
+        require(nameTableOffset == null || nameTableOffset >= 0) { "Nature name root must be non-negative" }
+        require(statTableOffset >= 0) { "Nature stat root must be non-negative" }
         require(flavorTableOffset == null || flavorTableOffset >= 0) { "Nature flavor root must be non-negative" }
     }
 }

@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.catalog.EncounterMaterializer
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import java.nio.ByteBuffer
 import java.nio.file.Files
@@ -17,6 +18,7 @@ import org.junit.Test
 
 class Gen1WorldMapRealControlTest {
     @Test fun redResolvesItsExactSourceOracle() = assertControl(CONTROLS[0])
+    @Test fun redRetainsStructuralMapWithoutTextAuthority() = assertStructuralControl(CONTROLS[0])
     @Test fun blueResolvesItsExactSourceOracle() = assertControl(CONTROLS[1])
     @Test fun yellowResolvesItsExactSourceOracle() = assertControl(CONTROLS[2])
     @Test fun shinRedResolvesRelocatedCompiledNamesAndMap() = assertControl(CONTROLS[3])
@@ -36,6 +38,7 @@ class Gen1WorldMapRealControlTest {
         val result = Gen1WorldMapResolver.resolve(
             RomAnalysisSession(rom, RomHeaderReader.read(rom)),
             baseAreaIds,
+            requireNotNull(layout.defaultTextCodec()),
         )
 
         assertTrue("${control.env}: $result", result is WorldMapResolution.Resolved)
@@ -62,6 +65,35 @@ class Gen1WorldMapRealControlTest {
         assertEquals(y, cell.y)
     }
 
+    private fun assertStructuralControl(control: Control) {
+        val rom = realRom(control)
+        val analysis = ParserOrchestrator.analyze(rom)
+        val layout = requireNotNull(analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout)
+        val baseAreaIds = EncounterMaterializer.materialize(rom, layout).mapTo(linkedSetOf()) { it.id / 10 }
+        val session = RomAnalysisSession(rom, RomHeaderReader.read(rom))
+        val named = Gen1WorldMapResolver.resolve(session, baseAreaIds, requireNotNull(layout.defaultTextCodec()))
+        val structural = Gen1WorldMapResolver.resolve(session, baseAreaIds, null)
+
+        assertTrue("${control.env}: $named", named is WorldMapResolution.Resolved)
+        assertTrue("${control.env}: $structural", structural is WorldMapResolution.Resolved)
+        val namedCatalog = (named as WorldMapResolution.Resolved).catalog.validate()
+        val structuralCatalog = (structural as WorldMapResolution.Resolved).catalog.validate()
+        val namedRegion = namedCatalog.regions.single()
+        val structuralRegion = structuralCatalog.regions.single()
+        assertEquals(
+            namedRegion.copy(
+                displayName = null,
+                locations = namedRegion.locations.map { it.copy(displayName = null) },
+            ),
+            structuralRegion,
+        )
+        assertTrue(structuralRegion.locations.all { it.displayName == null })
+        assertEquals(
+            sha256(namedCatalog.assets.getValue(namedRegion.imageAssetKey)),
+            sha256(structuralCatalog.assets.getValue(structuralRegion.imageAssetKey)),
+        )
+    }
+
     private fun assertControl(control: Control) {
         val rom = realRom(control)
         val analysis = ParserOrchestrator.analyze(rom)
@@ -75,6 +107,7 @@ class Gen1WorldMapRealControlTest {
         val result = Gen1WorldMapResolver.resolve(
             RomAnalysisSession(rom, RomHeaderReader.read(rom)),
             baseAreaIds,
+            requireNotNull(layout.defaultTextCodec()),
         )
 
         assertTrue("${control.env}: $result", result is WorldMapResolution.Resolved)

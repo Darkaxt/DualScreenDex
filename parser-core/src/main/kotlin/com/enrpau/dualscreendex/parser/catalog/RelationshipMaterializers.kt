@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionRowOutcom
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionRowOutcome
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetRowOutcome
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.text.Gen1DescriptionTextCodec
@@ -35,6 +36,7 @@ object RelationshipMaterializers {
         rom: RomImage,
         layout: ResolvedRomLayout,
     ): RecordMaterialization<DescriptionRecord> {
+        val codec = layout.defaultTextCodec()
         if (layout.generation == 3) {
             val unified = layout.headerlessUnifiedSpecies
             val descriptionOffset = unified?.descriptionPointerOffset
@@ -46,54 +48,64 @@ object RelationshipMaterializers {
                 val categoryWidth = unified.speciesNameOffset - categoryOffset
                 return materializeRecords(table.count) { id ->
                     val base = unified.speciesTableOffset + id * unified.speciesRecordSize
-                    val pointer = rom.gbaPointer(base + descriptionOffset)
-                        ?: error("invalid embedded description pointer")
                     DescriptionRecord(
-                        text = decodeTerminated(
-                            rom,
-                            pointer,
-                            MAX_DESCRIPTION_BYTES,
-                            PokemonTextCodec.gbaEnglish,
-                        ),
+                        text = codec?.let {
+                            val pointer = rom.gbaPointer(base + descriptionOffset)
+                                ?: error("invalid embedded description pointer")
+                            decodeTerminated(
+                                rom,
+                                pointer,
+                                MAX_DESCRIPTION_BYTES,
+                                it,
+                            )
+                        },
                         height = rom.u16le(base + heightOffset),
                         weight = rom.u16le(base + weightOffset),
-                        category = decodeTerminated(
-                            rom,
-                            base + categoryOffset,
-                            categoryWidth,
-                            PokemonTextCodec.gbaEnglish,
-                        ),
-                    ).requireText()
+                        category = codec?.let {
+                            decodeTerminated(
+                                rom,
+                                base + categoryOffset,
+                                categoryWidth,
+                                it,
+                            )
+                        },
+                    ).requireTextWhen(codec != null)
                 }
             }
             if (layout.pokeemeraldExpansion == null) {
-                return typedDescriptions(layout)
+                return typedDescriptions(layout, includeText = codec != null)
             }
         }
         val table = layout.tables.descriptions ?: return emptyMaterialization()
-        if (layout.generation < 3) return gen12Descriptions(rom, layout)
+        if (layout.generation < 3) {
+            return codec?.let { gen12Descriptions(rom, layout, it) } ?: emptyMaterialization()
+        }
         val expansion = layout.pokeemeraldExpansion ?: return emptyMaterialization()
         val stride = table.stride ?: expansion.speciesRecordSize
         return materializeRecords(table.count) { id ->
             val base = table.offset + id * stride
-            val pointer = rom.gbaPointer(base + expansion.descriptionPointerOffset)
-                ?: error("invalid expansion description pointer")
             DescriptionRecord(
-                text = decodeTerminated(
-                    rom,
-                    pointer,
-                    MAX_DESCRIPTION_BYTES,
-                    PokemonTextCodec.gbaEnglish,
-                ),
+                text = codec?.let {
+                    val pointer = rom.gbaPointer(base + expansion.descriptionPointerOffset)
+                        ?: error("invalid expansion description pointer")
+                    decodeTerminated(
+                        rom,
+                        pointer,
+                        MAX_DESCRIPTION_BYTES,
+                        it,
+                    )
+                },
                 height = rom.u16le(base + expansion.heightOffset),
                 weight = rom.u16le(base + expansion.weightOffset),
-                category = decodeTerminated(
-                    rom,
-                    base + expansion.categoryOffset,
-                    expansion.speciesNameOffset - expansion.categoryOffset,
-                    PokemonTextCodec.gbaEnglish,
-                ),
-            ).requireText()
+                category = codec?.let {
+                    decodeTerminated(
+                        rom,
+                        base + expansion.categoryOffset,
+                        expansion.speciesNameOffset - expansion.categoryOffset,
+                        it,
+                    )
+                },
+            ).requireTextWhen(codec != null)
         }
     }
 
@@ -180,9 +192,15 @@ object RelationshipMaterializers {
 
     private fun typedDescriptions(
         layout: ResolvedRomLayout,
+        includeText: Boolean,
     ): RecordMaterialization<DescriptionRecord> {
-        val records = layout.resolvedDatasets.descriptions?.catalogDescriptions()
+        val decodedRecords = layout.resolvedDatasets.descriptions?.catalogDescriptions()
             ?: return emptyMaterialization()
+        val records = if (includeText) {
+            decodedRecords
+        } else {
+            decodedRecords.mapValues { (_, record) -> record.copy(text = null, category = null) }
+        }
         val resolved = requireNotNull(layout.resolvedDatasets.descriptions)
         val failures = resolved.rows.mapNotNull { row ->
             when (row) {
@@ -277,9 +295,9 @@ object RelationshipMaterializers {
     private fun gen12Descriptions(
         rom: RomImage,
         layout: ResolvedRomLayout,
+        codec: PokemonTextCodec,
     ): RecordMaterialization<DescriptionRecord> {
         val table = layout.tables.descriptions ?: return emptyMaterialization()
-        val codec = PokemonTextCodec.gbEnglish
         return materializeRecords(table.count, firstId = 1) { id ->
             val index = id - 1
             val pointerOffset = table.offset + index * table.recordSize
@@ -310,6 +328,7 @@ object RelationshipMaterializers {
                     rom,
                     text,
                     MAX_DESCRIPTION_BYTES,
+                    codec,
                 ) ?: error("Gen I description is not terminated")
                 DescriptionRecord(description, category = category).requireText()
             } else {
@@ -493,8 +512,10 @@ object RelationshipMaterializers {
         }?.plus(1)
     }
 
-    private fun DescriptionRecord.requireText(): DescriptionRecord = also {
-        require(text.isNotBlank()) { "description text is blank" }
+    private fun DescriptionRecord.requireText(): DescriptionRecord = requireTextWhen(true)
+
+    private fun DescriptionRecord.requireTextWhen(required: Boolean): DescriptionRecord = also {
+        require(!required || !text.isNullOrBlank()) { "description text is blank" }
     }
 
     private fun RomImage.contains(offset: Int, length: Int): Boolean =

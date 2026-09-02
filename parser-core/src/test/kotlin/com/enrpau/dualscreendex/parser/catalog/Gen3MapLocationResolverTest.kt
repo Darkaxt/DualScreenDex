@@ -1,8 +1,12 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -26,12 +30,88 @@ class Gen3MapLocationResolverTest {
         val names = Gen3MapLocationResolver.resolve(
             RomImage(bytes),
             setOf(0x0000, 0x0001, 0x0100),
+            PokemonTextCodec.gbaEnglish,
         )
 
         assertEquals("Oldale Town", names[0x0000])
         assertEquals("Route 101", names[0x0001])
         assertEquals("Littleroot Town", names[0x0100])
         assertEquals(3, names.size)
+    }
+
+    @Test
+    fun cancelsDuringFullRomMapAuthorityScanning() {
+        var checks = 0
+        val cancellation = ParserCancellationToken {
+            checks++
+            if (checks == 2) throw ParserCancellationException()
+        }
+
+        assertThrows(ParserCancellationException::class.java) {
+            Gen3MapLocationResolver.resolveDetailed(
+                RomImage(ByteArray(0x20_000)),
+                setOf(0),
+                GbaReferenceIndex.countsOnlyForTesting(emptyMap()),
+                PokemonTextCodec.gbaEnglish,
+                cancellation,
+            )
+        }
+        assertEquals(2, checks)
+    }
+
+    @Test
+    fun resolvesStructuralRegionEntriesWithoutTextAuthority() {
+        val bytes = ByteArray(0x1000)
+        writeIndexedU16CompactConsumer(bytes, 0x40, 0x180)
+        putPointer(bytes, 0x180, 0x240)
+        repeat(3) { map ->
+            val header = 0x300 + map * 0x1C
+            putPointer(bytes, 0x240 + map * 4, header)
+            writeMapHeader(bytes, header, map)
+            writeRegionEntry(bytes, 0x600, map, 0x700 + map * 0x20, "Section $map")
+        }
+        putPointer(bytes, 0x900, 0x600)
+
+        val resolution = Gen3MapLocationResolver.resolveDetailed(
+            RomImage(bytes),
+            setOf(0, 1, 2),
+            GbaReferenceIndex.countsOnlyForTesting(mapOf(0x700 to 1)),
+            null,
+        )
+
+        assertEquals(mapOf(0 to 0, 1 to 1, 2 to 2), resolution?.sectionByBaseArea)
+        assertEquals(setOf(0, 1, 2), resolution?.entriesBySection?.keys)
+        assertTrue(resolution?.entriesBySection?.values?.all { it.displayName == null } == true)
+        assertEquals(1, resolution?.entriesBySection?.getValue(0)?.x)
+        assertEquals(1, resolution?.entriesBySection?.getValue(0)?.width)
+    }
+
+    @Test
+    fun retainsStructuralEntryWhenItsLocalizedNameIsUnreadable() {
+        val bytes = ByteArray(0x1000)
+        writeIndexedU16CompactConsumer(bytes, 0x40, 0x180)
+        putPointer(bytes, 0x180, 0x240)
+        repeat(4) { map ->
+            val header = 0x300 + map * 0x1C
+            putPointer(bytes, 0x240 + map * 4, header)
+            writeMapHeader(bytes, header, map)
+            writeRegionEntry(bytes, 0x600, map, 0x700 + map * 0x20, "Section $map")
+        }
+        bytes[0x760] = 0xBB.toByte()
+        bytes[0x761] = 0x7F
+        bytes[0x762] = 0x7F
+        bytes[0x763] = 0xFF.toByte()
+        putPointer(bytes, 0x900, 0x600)
+
+        val resolution = Gen3MapLocationResolver.resolveDetailed(
+            RomImage(bytes),
+            setOf(0, 1, 2, 3),
+            GbaReferenceIndex.countsOnlyForTesting(mapOf(0x700 to 1)),
+            PokemonTextCodec.gbaEnglish,
+        )
+
+        assertEquals(setOf(0, 1, 2, 3), resolution?.entriesBySection?.keys)
+        assertEquals(null, resolution?.entriesBySection?.getValue(3)?.displayName)
     }
 
     @Test
@@ -58,6 +138,7 @@ class Gen3MapLocationResolverTest {
         val names = Gen3MapLocationResolver.resolve(
             RomImage(bytes),
             setOf(0x0000, 0x0001, 0x0002, 0x0100),
+            PokemonTextCodec.gbaEnglish,
         )
 
         assertEquals("Oldale Town", names[0x0000])
@@ -69,7 +150,13 @@ class Gen3MapLocationResolverTest {
 
     @Test
     fun returnsNoNamesWhenEncounterKeysDoNotProveOneMapGroupsRoot() {
-        assertTrue(Gen3MapLocationResolver.resolve(RomImage(ByteArray(0x400)), setOf(0x0000)).isEmpty())
+        assertTrue(
+            Gen3MapLocationResolver.resolve(
+                RomImage(ByteArray(0x400)),
+                setOf(0x0000),
+                PokemonTextCodec.gbaEnglish,
+            ).isEmpty(),
+        )
     }
 
     @Test
@@ -131,6 +218,7 @@ class Gen3MapLocationResolverTest {
             RomImage(bytes),
             (0..4).toSet(),
             GbaReferenceIndex.countsOnlyForTesting(mapOf(0x700 to 1)),
+            PokemonTextCodec.gbaEnglish,
         )
 
         assertEquals(

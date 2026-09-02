@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities
 
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -20,6 +21,7 @@ internal fun abilitySession(
     referenceIndexOverride: GbaReferenceIndex? = null,
     onReferenceIndexBuild: () -> Unit = {},
     useDefaultReferenceIndex: Boolean = false,
+    cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
 ): RomAnalysisSession {
     val rom = RomImage(bytes)
     val exactTable = exactTableOverride ?: exactLayout?.let { layout ->
@@ -54,6 +56,7 @@ internal fun abilitySession(
             header = RomHeader(Platform.GBA, "ABILITY TEST"),
             exactProfile = exactProfile,
             limits = limits,
+            cancellation = cancellation,
         )
     } else {
         RomAnalysisSession(
@@ -65,6 +68,7 @@ internal fun abilitySession(
                 onReferenceIndexBuild()
                 referenceIndexOverride ?: GbaReferenceIndex.countsOnlyForTesting(references)
             },
+            cancellation = cancellation,
         )
     }
 }

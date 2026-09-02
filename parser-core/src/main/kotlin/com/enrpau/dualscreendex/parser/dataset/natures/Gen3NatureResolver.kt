@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.natures
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Address
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Branch
@@ -26,17 +27,18 @@ import java.util.ArrayDeque
 
 /** Resolves the Gen III Nature domain from ROM tables and their compiled consumers. */
 object Gen3NatureResolver {
-    fun resolve(session: RomAnalysisSession): NatureResolution {
+    fun resolve(session: RomAnalysisSession, codec: PokemonTextCodec?): NatureResolution {
         if (session.header.platform != Platform.GBA) {
             return NatureResolution.Unavailable("Nature resolution requires a GBA ROM")
         }
         val references = session.gbaReferenceIndex
             ?: return NatureResolution.Unavailable("Nature resolution requires compiled reference evidence")
         references.overflowReason?.let(NatureResolution::BudgetExceeded)?.let { return it }
+        session.cancellation.throwIfCancellationRequested()
 
-        val callTargets = decodedThumbCallTargets(session.rom)
-        val integratedCandidates = resolveIntegratedCandidates(session, callTargets)
-        val separate = resolveSeparateTables(session, callTargets)
+        val callTargets = decodedThumbCallTargets(session.rom, session.cancellation)
+        val integratedCandidates = resolveIntegratedCandidates(session, callTargets, codec)
+        val separate = resolveSeparateTables(session, callTargets, codec)
         if (integratedCandidates.isEmpty()) return separate
 
         val separateCandidateCount = when (separate) {
@@ -53,11 +55,13 @@ object Gen3NatureResolver {
     private fun resolveSeparateTables(
         session: RomAnalysisSession,
         callTargets: Set<Int>,
+        codec: PokemonTextCodec?,
     ): NatureResolution {
         val references = requireNotNull(session.gbaReferenceIndex)
         val modifierCandidates = references.targets.keys.asSequence()
             .filter { it in 0 until session.rom.size }
             .mapNotNull { root ->
+                session.cancellation.throwIfCancellationRequested()
                 decodeCompleteModifierTable(session.rom, root)?.let { rows -> root to rows }
             }
             .toList()
@@ -67,7 +71,8 @@ object Gen3NatureResolver {
                 ?.takeIf { it.siteEvidenceAvailable }
                 ?: return@mapNotNull null
             val proofs = evidence.instructionSites.mapNotNull { site ->
-                compiledFunctionContaining(session.rom, site, callTargets)?.let(::statConsumerProof)
+                compiledFunctionContaining(session.rom, site, callTargets, session.cancellation)
+                    ?.let(::statConsumerProof)
             }.distinct()
             val proof = proofs.singleOrNull() ?: return@mapNotNull null
             StatCandidate(root, rows, proof.positivePercent, proof.negativePercent)
@@ -84,7 +89,8 @@ object Gen3NatureResolver {
                 ?.takeIf { it.siteEvidenceAvailable }
                 ?: return@mapNotNull null
             if (evidence.instructionSites.any { site ->
-                    compiledFunctionContaining(session.rom, site, callTargets)?.let(::isFlavorAccessor) == true
+                    compiledFunctionContaining(session.rom, site, callTargets, session.cancellation)
+                        ?.let(::isFlavorAccessor) == true
                 }
             ) {
                 root to rows
@@ -98,20 +104,26 @@ object Gen3NatureResolver {
             return NatureResolution.Ambiguous(statCandidates.size + flavorCandidates.size)
         }
 
-        val nameCandidates = references.targets.mapNotNull { (root, evidence) ->
-            decodeNames(session.rom, root, natureCount)?.let { names ->
-                NameCandidate(root, names, evidence.count)
+        val names = codec?.let { selectedCodec ->
+            val nameCandidates = references.targets.mapNotNull { (root, evidence) ->
+                decodeNames(
+                    session.rom,
+                    root,
+                    natureCount,
+                    selectedCodec,
+                    session.cancellation,
+                )?.let { decodedNames ->
+                    NameCandidate(root, decodedNames, evidence.count)
+                }
             }
+            val maxNameReferences = nameCandidates.maxOfOrNull(NameCandidate::references)
+            nameCandidates.filter { it.references == maxNameReferences }.singleOrNull()
         }
-        val maxNameReferences = nameCandidates.maxOfOrNull(NameCandidate::references)
-            ?: return NatureResolution.Unavailable("no compiled Nature name table was proven")
-        val names = nameCandidates.filter { it.references == maxNameReferences }.singleOrNull()
-            ?: return NatureResolution.Ambiguous(nameCandidates.count { it.references == maxNameReferences })
 
         val records = (0 until natureCount).map { id ->
             NatureRecord(
                 id = id,
-                name = names.names[id],
+                name = names?.names?.get(id),
                 statModifiers = stat.rows[id],
                 positivePercent = stat.positivePercent,
                 negativePercent = stat.negativePercent,
@@ -121,7 +133,7 @@ object Gen3NatureResolver {
         return NatureResolution.Resolved(
             NatureCatalog(
                 records = records,
-                nameTableOffset = names.root,
+                nameTableOffset = names?.root,
                 statTableOffset = stat.root,
                 flavorTableOffset = flavor?.first,
             ),
@@ -131,13 +143,20 @@ object Gen3NatureResolver {
     private fun resolveIntegratedCandidates(
         session: RomAnalysisSession,
         callTargets: Set<Int>,
+        codec: PokemonTextCodec?,
     ): List<IntegratedCandidate> = requireNotNull(session.gbaReferenceIndex).targets.keys.mapNotNull { root ->
-        val candidate = decodeIntegratedTable(session.rom, root) ?: return@mapNotNull null
+        session.cancellation.throwIfCancellationRequested()
+        val candidate = decodeIntegratedTable(
+            session.rom,
+            root,
+            codec,
+            session.cancellation,
+        ) ?: return@mapNotNull null
         val evidence = session.nominatedGbaReferenceSites(root)
             ?.takeIf { it.siteEvidenceAvailable }
             ?: return@mapNotNull null
         if (evidence.instructionSites.none { site ->
-                compiledFunctionContaining(session.rom, site, callTargets)
+                compiledFunctionContaining(session.rom, site, callTargets, session.cancellation)
                     ?.let(::isIntegratedStatConsumer) == true
             }
         ) {
@@ -146,9 +165,13 @@ object Gen3NatureResolver {
         candidate
     }
 
-    private fun decodeIntegratedTable(rom: RomImage, root: Int): IntegratedCandidate? {
+    private fun decodeIntegratedTable(
+        rom: RomImage,
+        root: Int,
+        codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
+    ): IntegratedCandidate? {
         if (root < 0 || root and 3 != 0 || root.toLong() + INTEGRATED_TABLE_BYTES > rom.size) return null
-        val names = mutableListOf<String>()
         val rows = mutableListOf<List<Int>>()
         repeat(INTEGRATED_NATURES) { id ->
             val row = root + id * INTEGRATED_RECORD_BYTES
@@ -157,7 +180,6 @@ object Gen3NatureResolver {
             if (raised != id / MODIFIERS_PER_NATURE + 1 || lowered != id % MODIFIERS_PER_NATURE + 1) {
                 return null
             }
-            names += decodeName(rom, row) ?: return null
             rows += List(MODIFIERS_PER_NATURE) { column ->
                 when (column + 1) {
                     raised -> if (raised == lowered) 0 else 1
@@ -166,11 +188,20 @@ object Gen3NatureResolver {
                 }
             }
         }
-        if (names.distinct().size != INTEGRATED_NATURES) return null
-        val records = names.indices.map { id ->
+        val names = codec?.let { selectedCodec ->
+            (0 until INTEGRATED_NATURES).map { id ->
+                decodeName(
+                    rom,
+                    root + id * INTEGRATED_RECORD_BYTES,
+                    selectedCodec,
+                    cancellation,
+                ) ?: return@let null
+            }.takeIf { it.distinct().size == INTEGRATED_NATURES }
+        }
+        val records = rows.indices.map { id ->
             NatureRecord(
                 id = id,
-                name = names[id],
+                name = names?.get(id),
                 statModifiers = rows[id],
                 positivePercent = 110,
                 negativePercent = 90,
@@ -179,7 +210,7 @@ object Gen3NatureResolver {
         return IntegratedCandidate(
             NatureCatalog(
                 records = records,
-                nameTableOffset = root,
+                nameTableOffset = root.takeIf { names != null },
                 statTableOffset = root,
             ),
         )
@@ -210,18 +241,29 @@ object Gen3NatureResolver {
             values.count { it < 0 } <= 1 &&
             ((values.all { it == 0 }) || (values.count { it > 0 } == 1 && values.count { it < 0 } == 1))
 
-    private fun decodeNames(rom: RomImage, root: Int, count: Int): List<String>? {
+    private fun decodeNames(
+        rom: RomImage,
+        root: Int,
+        count: Int,
+        codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
+    ): List<String>? {
         if (root and 3 != 0 || root < 0 || root.toLong() + count.toLong() * 4L > rom.size) return null
         val names = (0 until count).map { id ->
-            decodeName(rom, root + id * 4) ?: return null
+            decodeName(rom, root + id * 4, codec, cancellation) ?: return null
         }
         return names.takeIf { it.distinct().size >= maxOf(MIN_NATURES, count * 4 / 5) }
     }
 
-    private fun decodeName(rom: RomImage, pointerOffset: Int): String? {
+    private fun decodeName(
+        rom: RomImage,
+        pointerOffset: Int,
+        codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
+    ): String? {
         val textRoot = rom.gbaPointer(pointerOffset) ?: return null
         val available = minOf(MAX_NAME_BYTES, rom.size - textRoot)
-        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(textRoot, available))
+        val decoded = codec.decodeDetailed(rom, textRoot, available, cancellation)
         return decoded.text.takeIf { name ->
             decoded.terminated && decoded.validRatio == 1.0 &&
                 name.length in 1..MAX_NAME_LENGTH && name.any(Char::isLetter) &&
@@ -229,9 +271,15 @@ object Gen3NatureResolver {
         }
     }
 
-    private fun decodedThumbCallTargets(rom: RomImage): Set<Int> = buildSet {
+    private fun decodedThumbCallTargets(
+        rom: RomImage,
+        cancellation: ParserCancellationToken,
+    ): Set<Int> = buildSet {
         var offset = 0
         while (offset + 3 < rom.size) {
+            if (offset % CANCELLATION_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
             val high = rom.u16le(offset)
             val low = rom.u16le(offset + 2)
             if (high and 0xF800 == 0xF000 && low and 0xF800 == 0xF800) {
@@ -248,21 +296,37 @@ object Gen3NatureResolver {
         rom: RomImage,
         site: Int,
         callTargets: Set<Int>,
-    ): FunctionBody? = findFunctionContaining(rom, site, callTargets, requireCallTarget = true)
-        ?: findFunctionContaining(rom, site, callTargets, requireCallTarget = false)
+        cancellation: ParserCancellationToken,
+    ): FunctionBody? = findFunctionContaining(
+        rom,
+        site,
+        callTargets,
+        requireCallTarget = true,
+        cancellation,
+    ) ?: findFunctionContaining(
+        rom,
+        site,
+        callTargets,
+        requireCallTarget = false,
+        cancellation,
+    )
 
     private fun findFunctionContaining(
         rom: RomImage,
         site: Int,
         callTargets: Set<Int>,
         requireCallTarget: Boolean,
+        cancellation: ParserCancellationToken,
     ): FunctionBody? {
         var offset = site and -2
         while (offset >= 0) {
+            if ((site - offset) % CANCELLATION_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
             val raw = rom.u16le(offset)
             val pushesLinkRegister = raw and 0xFE00 == 0xB400 && raw and 0x0100 != 0
             if (pushesLinkRegister && (!requireCallTarget || offset in callTargets)) {
-                val body = decodeReachableFunction(rom, offset)
+                val body = decodeReachableFunction(rom, offset, cancellation)
                 if (body != null && site in body.offsets) return body
             }
             offset -= 2
@@ -270,11 +334,16 @@ object Gen3NatureResolver {
         return null
     }
 
-    private fun decodeReachableFunction(rom: RomImage, start: Int): FunctionBody? {
+    private fun decodeReachableFunction(
+        rom: RomImage,
+        start: Int,
+        cancellation: ParserCancellationToken,
+    ): FunctionBody? {
         val pending = ArrayDeque<Int>()
         val decoded = linkedMapOf<Int, Arm7Instruction>()
         pending += start
         while (pending.isNotEmpty() && decoded.size < MAX_FUNCTION_INSTRUCTIONS) {
+            cancellation.throwIfCancellationRequested()
             val offset = pending.removeFirst()
             if (offset in decoded || offset and 1 != 0 || offset !in 0 until rom.size) continue
             val instruction = (ThumbDecoder.decode(rom, offset) as? Arm7DecodeResult.Decoded)?.instruction
@@ -533,4 +602,5 @@ object Gen3NatureResolver {
     private const val MAX_NAME_BYTES = 32
     private const val MAX_NAME_LENGTH = 24
     private const val MAX_FUNCTION_INSTRUCTIONS = 1_024
+    private const val CANCELLATION_INTERVAL_BYTES = 4_096
 }

@@ -8,23 +8,33 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
 
 /** Resolves a Gen I Town Map from one structurally complete loader and entry-lookup chain. */
 object Gen1WorldMapResolver {
-    internal fun resolveNames(session: RomAnalysisSession, mapIds: Set<Int>): Map<Int, String> {
+    internal fun resolveNames(
+        session: RomAnalysisSession,
+        mapIds: Set<Int>,
+        codec: PokemonTextCodec,
+    ): Map<Int, String> {
         val requiredMaps = mapIds.filterTo(sortedSetOf()) { it in 0..MAX_MAP_ID }
         if (requiredMaps.isEmpty()) return emptyMap()
-        return findChains(session.rom, requiredMaps).singleOrNull()?.entries
-            ?.mapValues { (_, entry) -> entry.name }
+        return findChains(session.rom, requiredMaps, codec).singleOrNull()?.entries
+            ?.mapNotNull { (mapId, entry) -> entry.name?.let { mapId to it } }
+            ?.toMap()
             .orEmpty()
     }
 
-    fun resolve(session: RomAnalysisSession, encounterBaseIds: Set<Int>): WorldMapResolution {
+    fun resolve(
+        session: RomAnalysisSession,
+        encounterBaseIds: Set<Int>,
+        codec: PokemonTextCodec?,
+    ): WorldMapResolution {
         val requiredMaps = encounterBaseIds.filterTo(sortedSetOf()) { it in 0..MAX_MAP_ID }
         if (requiredMaps.isEmpty()) {
             return WorldMapResolution.Unavailable("encounter-binding", "no encounter-bound Gen I map IDs")
         }
-        val chains = findChains(session.rom, requiredMaps)
+        val chains = findChains(session.rom, requiredMaps, codec)
         if (chains.isEmpty()) {
             return WorldMapResolution.Unavailable(
                 "asset-loader",
@@ -55,7 +65,7 @@ object Gen1WorldMapResolver {
             regions = listOf(
                 WorldMapRegion(
                     key = regionKey,
-                    displayName = "Kanto",
+                    displayName = codec?.let { "Kanto" },
                     pixelWidth = PIXEL_WIDTH,
                     pixelHeight = PIXEL_HEIGHT,
                     gridWidth = GRID_WIDTH,
@@ -75,12 +85,16 @@ object Gen1WorldMapResolver {
         )
     }
 
-    private fun findChains(rom: RomImage, requiredMaps: Set<Int>): List<TownMapChain> = buildList {
+    private fun findChains(
+        rom: RomImage,
+        requiredMaps: Set<Int>,
+        codec: PokemonTextCodec?,
+    ): List<TownMapChain> = buildList {
         val bankCount = rom.size / BANK_BYTES
         for (bank in 1 until bankCount) {
             val loaders = findLoaders(rom, bank)
             if (loaders.isEmpty()) continue
-            val entryTables = findEntryTables(rom, bank, requiredMaps)
+            val entryTables = findEntryTables(rom, bank, requiredMaps, codec)
             loaders.forEach { loader ->
                 entryTables.forEach { table ->
                     add(TownMapChain(loader.offset, table.offset, loader.tiles, loader.tilemap, table.entries))
@@ -248,13 +262,18 @@ object Gen1WorldMapResolver {
         null
     }.getOrNull()
 
-    private fun findEntryTables(rom: RomImage, bank: Int, requiredMaps: Set<Int>): List<EntryTable> {
+    private fun findEntryTables(
+        rom: RomImage,
+        bank: Int,
+        requiredMaps: Set<Int>,
+        codec: PokemonTextCodec?,
+    ): List<EntryTable> {
         val start = bank * BANK_BYTES
         val end = minOf(start + BANK_BYTES, rom.size)
         return buildList {
             var offset = start
             while (offset + LOOKUP_PREFIX_BYTES < end) {
-                parseEntryLookupAt(rom, bank, offset, end, requiredMaps)?.let(::add)
+                parseEntryLookupAt(rom, bank, offset, end, requiredMaps, codec)?.let(::add)
                 offset++
             }
         }
@@ -266,6 +285,7 @@ object Gen1WorldMapResolver {
         offset: Int,
         bankEnd: Int,
         requiredMaps: Set<Int>,
+        codec: PokemonTextCodec?,
     ): EntryTable? = runCatching {
         if (
             rom.u8(offset) != COMPARE_IMMEDIATE || rom.u8(offset + 2) != JR_C ||
@@ -289,7 +309,7 @@ object Gen1WorldMapResolver {
         }
         val internal = rom.gbBankAddress(bank, rom.u16le(offset + 8)) ?: return@runCatching null
         val external = rom.gbBankAddress(bank, rom.u16le(branchTarget + 1)) ?: return@runCatching null
-        val entries = parseEntryTables(rom, bank, threshold, external, internal, requiredMaps, format)
+        val entries = parseEntryTables(rom, bank, threshold, external, internal, requiredMaps, format, codec)
             ?: return@runCatching null
         EntryTable(offset, entries)
     }.getOrNull()
@@ -316,9 +336,10 @@ object Gen1WorldMapResolver {
         internal: Int,
         requiredMaps: Set<Int>,
         format: EntryFormat,
+        codec: PokemonTextCodec?,
     ): Map<Int, MapEntry>? = runCatching {
         val externalEntries = List(threshold) { mapId ->
-            parseEntry(rom, bank, external + mapId * format.externalBytes, format) ?: return@runCatching null
+            parseEntry(rom, bank, external + mapId * format.externalBytes, format, codec) ?: return@runCatching null
         }
         val internalEntries = mutableListOf<InternalEntry>()
         var cursor = internal
@@ -327,7 +348,7 @@ object Gen1WorldMapResolver {
         // unreachable, but do not make the remaining lookup nondeterministic.
         while (groupCount < MAX_INTERNAL_GROUPS && cursor < rom.size && rom.u8(cursor) != END_MARKER) {
             val limit = rom.u8(cursor)
-            val entry = parseEntry(rom, bank, cursor + 1, format) ?: return@runCatching null
+            val entry = parseEntry(rom, bank, cursor + 1, format, codec) ?: return@runCatching null
             internalEntries += InternalEntry(limit, entry)
             cursor += format.internalBytes
             groupCount++
@@ -349,7 +370,13 @@ object Gen1WorldMapResolver {
         resolved
     }.getOrNull()
 
-    private fun parseEntry(rom: RomImage, bank: Int, offset: Int, format: EntryFormat): MapEntry? = runCatching {
+    private fun parseEntry(
+        rom: RomImage,
+        bank: Int,
+        offset: Int,
+        format: EntryFormat,
+        codec: PokemonTextCodec?,
+    ): MapEntry? = runCatching {
         if (offset + format.externalBytes > rom.size) return@runCatching null
         val x: Int
         val y: Int
@@ -375,32 +402,71 @@ object Gen1WorldMapResolver {
         }
         if (x !in 0 until GRID_WIDTH || y !in 0 until GRID_HEIGHT) return@runCatching null
         val nameOffset = rom.gbBankAddress(bank, rom.u16le(pointerOffset)) ?: return@runCatching null
-        val name = decodeTownMapName(rom, nameOffset) ?: return@runCatching null
+        val name = codec?.let { decodeTownMapName(rom, nameOffset, it) ?: return@runCatching null }
         MapEntry(x, y, name)
     }.getOrNull()
 
-    private fun decodeTownMapName(rom: RomImage, offset: Int): String? = runCatching {
+    private fun decodeTownMapName(
+        rom: RomImage,
+        offset: Int,
+        codec: PokemonTextCodec,
+    ): String? = runCatching {
         val output = StringBuilder()
         var valid = 0
         var content = 0
         var terminated = false
-        val available = minOf(MAX_NAME_BYTES, rom.size - offset)
-        for (index in 0 until available) {
-            val value = rom.u8(offset + index)
-            if (value == PokemonTextCodec.gbEnglish.terminator) {
+        val endExclusive = minOf(rom.size, offset + MAX_NAME_BYTES)
+        var cursor = offset
+        while (cursor < endExclusive) {
+            val value = rom.u8(cursor)
+            if (value == codec.terminator) {
                 terminated = true
                 break
             }
             content++
-            val token = when (value) {
-                GB_LINE_FEED -> " "
-                GB_POKEMON_ABBREVIATION -> "PKMN"
-                GB_POKE_PREFIX -> "POKé"
-                else -> PokemonTextCodec.gbEnglish.decodeByte(value)?.toString()
-            }
-            if (token != null) {
-                output.append(token)
-                valid++
+            when (value) {
+                GB_LINE_FEED -> {
+                    output.append(' ')
+                    valid++
+                    cursor++
+                }
+                GB_POKEMON_ABBREVIATION -> {
+                    output.append("PKMN")
+                    valid++
+                    cursor++
+                }
+                GB_POKE_PREFIX -> {
+                    output.append("POKé")
+                    valid++
+                    cursor++
+                }
+                else -> {
+                    val token = codec.decodeToken(rom, cursor, endExclusive)
+                    cursor += token.byteCount
+                    when (token) {
+                        is PokemonTextToken.Glyph -> {
+                            output.append(token.text)
+                            valid++
+                        }
+                        is PokemonTextToken.Whitespace -> {
+                            output.append(token.text)
+                            valid++
+                        }
+                        is PokemonTextToken.Substitution -> {
+                            output.append(token.text)
+                            valid++
+                        }
+                        is PokemonTextToken.Control -> {
+                            output.append(token.replacement)
+                            valid++
+                        }
+                        is PokemonTextToken.Invalid -> Unit
+                        is PokemonTextToken.Terminator -> {
+                            terminated = true
+                            break
+                        }
+                    }
+                }
             }
         }
         val text = output.toString().replace(WHITESPACE, " ").trim()
@@ -433,7 +499,7 @@ object Gen1WorldMapResolver {
     private data class LoaderAsset(val offset: Int, val tiles: ByteArray, val tilemap: ByteArray)
     private data class DecodedMap(val tiles: ByteArray, val tilemap: ByteArray)
     private data class EntryTable(val offset: Int, val entries: Map<Int, MapEntry>)
-    private data class MapEntry(val x: Int, val y: Int, val name: String)
+    private data class MapEntry(val x: Int, val y: Int, val name: String?)
     private data class InternalEntry(val limit: Int, val entry: MapEntry)
     private enum class EntryFormat(
         val externalBytes: Int,

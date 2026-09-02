@@ -2,11 +2,11 @@ package com.enrpau.dualscreendex.parser.dataset.abilities
 
 import com.enrpau.dualscreendex.parser.catalog.AbilityDescriptionMaterializer
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.resolvedEnglishLayout
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ProfileTables
-import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
 import org.junit.Assert.assertEquals
@@ -31,7 +31,7 @@ class AbilityLegacyParityTest {
             ),
             textBase = 0x800,
         )
-        val legacyLayout = ResolvedRomLayout(
+        val legacyLayout = resolvedEnglishLayout(
             family = EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,

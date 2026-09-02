@@ -1,5 +1,10 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
+import com.enrpau.dualscreendex.parser.text.PokemonTextTokenDecoder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -8,16 +13,16 @@ class Gen2LandmarkNameCodecTest {
     @Test fun doneStopsDisplayButStillRequiresTheCopiedStringTerminator() {
         assertEquals(
             "PEEL",
-            Gen2LandmarkNameCodec.decode(byteArrayOf(0x8f.toByte(), 0x84.toByte(), 0x84.toByte(), 0x8b.toByte(), 0x57, 0x99.toByte(), 0x50)),
+            decode(byteArrayOf(0x8f.toByte(), 0x84.toByte(), 0x84.toByte(), 0x8b.toByte(), 0x57, 0x99.toByte(), 0x50)),
         )
         assertNull(
-            Gen2LandmarkNameCodec.decode(byteArrayOf(0x8f.toByte(), 0x84.toByte(), 0x84.toByte(), 0x8b.toByte(), 0x57)),
+            decode(byteArrayOf(0x8f.toByte(), 0x84.toByte(), 0x84.toByte(), 0x8b.toByte(), 0x57)),
         )
     }
 
     @Test fun nullControlFailsClosedInsteadOfPrefixTruncating() {
         assertNull(
-            Gen2LandmarkNameCodec.decode(
+            decode(
                 byteArrayOf(0x8f.toByte(), 0x84.toByte(), 0x84.toByte(), 0x8b.toByte(), 0x00, 0x57, 0x50),
             ),
         )
@@ -25,14 +30,14 @@ class Gen2LandmarkNameCodecTest {
 
     @Test fun runtimeTextFlowControlFailsClosed() {
         assertNull(
-            Gen2LandmarkNameCodec.decode(byteArrayOf(0x8f.toByte(), 0x84.toByte(), 0x4c, 0x84.toByte(), 0x8b.toByte(), 0x50)),
+            decode(byteArrayOf(0x8f.toByte(), 0x84.toByte(), 0x4c, 0x84.toByte(), 0x8b.toByte(), 0x50)),
         )
     }
 
     @Test fun staticTownMapLineBreakControlsNormalizeToSpaces() {
         assertEquals(
             "LAKE RAGE",
-            Gen2LandmarkNameCodec.decode(
+            decode(
                 byteArrayOf(
                     0x8b.toByte(), 0x80.toByte(), 0x8a.toByte(), 0x84.toByte(),
                     0x1f,
@@ -46,7 +51,7 @@ class Gen2LandmarkNameCodecTest {
     @Test fun expandedDialectDecodesShiftedDigitsAndPunctuation() {
         assertEquals(
             "FUKUHARA №.4",
-            Gen2LandmarkNameCodec.decode(
+            decode(
                 byteArrayOf(
                     0x85.toByte(), 0x94.toByte(), 0x8a.toByte(), 0x94.toByte(),
                     0x87.toByte(), 0x80.toByte(), 0x91.toByte(), 0x80.toByte(), 0x7f,
@@ -60,7 +65,7 @@ class Gen2LandmarkNameCodecTest {
     @Test fun englishContractionGlyphsAreDecodedInFull() {
         assertEquals(
             "DIGLETT's CAVE",
-            Gen2LandmarkNameCodec.decode(
+            decode(
                 byteArrayOf(
                     0x83.toByte(), 0x88.toByte(), 0x86.toByte(), 0x8b.toByte(), 0x84.toByte(), 0x93.toByte(), 0x93.toByte(),
                     0xd4.toByte(), 0x1f,
@@ -69,4 +74,33 @@ class Gen2LandmarkNameCodecTest {
             ),
         )
     }
+
+    @Test fun variableWidthTokensConsumeEveryByteBeforeFindingTheRealTerminator() {
+        val codec = variableWidthCodec()
+
+        assertEquals("AB", decode(byteArrayOf(0x70, 0x50, 0x50), codec = codec))
+        assertNull(decode(byteArrayOf(0x70, 0x50), codec = codec))
+    }
+
+    private fun decode(
+        bytes: ByteArray,
+        encoding: Gen2LandmarkNameEncoding = Gen2LandmarkNameEncoding.STANDARD,
+        codec: PokemonTextCodec = PokemonTextCodec.gbEnglish,
+    ): String? = Gen2LandmarkNameCodec.decode(bytes, encoding, codec)
+
+    private fun variableWidthCodec() = PokemonTextCodec(
+        id = "test-gb-variable",
+        version = 1,
+        language = LanguageTag.ENGLISH,
+        applicableGenerations = setOf(2),
+        applicablePlatforms = setOf(Platform.GBC),
+        terminator = 0x50,
+        tokenDecoder = PokemonTextTokenDecoder { rom, offset, endExclusive ->
+            when {
+                rom.u8(offset) == 0x70 && offset + 1 < endExclusive -> PokemonTextToken.Glyph("AB", 2)
+                rom.u8(offset) == 0x50 -> PokemonTextToken.Terminator()
+                else -> PokemonTextToken.Invalid()
+            }
+        },
+    )
 }

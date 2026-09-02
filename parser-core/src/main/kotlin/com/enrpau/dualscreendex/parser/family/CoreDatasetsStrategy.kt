@@ -21,6 +21,7 @@ import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
 import com.enrpau.dualscreendex.parser.dataset.learnsets.EmbeddedLearnsetPointerResolver
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
 import com.enrpau.dualscreendex.parser.validate.TableValidators
 import java.util.Collections
 
@@ -42,6 +43,7 @@ internal sealed interface CoreDatasetsPhaseResult {
         val headerlessEmbeddedLearnsets: EmbeddedLearnsetPointerResolver.Resolution? = null,
         moveDetailsTypedRejectionReason: String? = null,
         publishedPartialBaseStatsCandidate: PublishedPartialBaseStatsCandidate? = null,
+        val languageManifest: RomLanguageManifest = RomLanguageManifest.UNKNOWN,
     ) : CoreDatasetsPhaseResult {
         val candidateTables = candidateTables.immutableCopy()
         val speciesNames = speciesNames.immutableCopy()
@@ -75,6 +77,7 @@ internal sealed interface CoreDatasetsPhaseResult {
             headerlessEmbeddedLearnsets = headerlessEmbeddedLearnsets,
             moveDetailsTypedRejectionReason = moveDetailsTypedRejectionReason,
             publishedPartialBaseStatsCandidate = publishedPartialBaseStatsCandidate,
+            languageManifest = languageManifest,
         )
     }
 }
@@ -106,7 +109,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         val headerlessUnifiedSpecies = identity.headerlessUnifiedSpecies
         val tableResolution = identity.tableResolution
         val publishedDataEvidence = tableResolution.publishedDataEvidence
-        val codec = identity.codec
+        val probeCodec = identity.probeCodec
         var tables = tableResolution.tables
 
         val headerlessEmbeddedLearnsets = if (generation == 3 && expansion == null) {
@@ -142,7 +145,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         }
 
         var speciesCount = expansion?.speciesCount ?: headerlessUnifiedSpecies?.speciesCount ?: inferSpeciesCount(
-            rom, tables, codec, profile, generation, exactProfile = exact != null,
+            rom, tables, probeCodec, profile, generation, exactProfile = exact != null,
         )
         if (generation == 3 && expansion == null && headerlessUnifiedSpecies == null && exact == null && speciesCount != null) {
             val reconciled = Gen3DynamicTableResolver.reconcileSpeciesExtent(
@@ -156,7 +159,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             tables = reconciled.tables
         }
         val inferredMoveCount = expansion?.moveCount ?: headerlessUnifiedMoves?.moveCount ?: inferMoveCount(
-            rom, tables.moveNames, codec, profile, exactProfile = exact != null,
+            rom, tables.moveNames, probeCodec, profile, exactProfile = exact != null,
         )
         var dynamicBaseStatsEvidence: ValidationEvidence? = null
         var dynamicMoveDataEvidence: ValidationEvidence? = null
@@ -191,10 +194,10 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         var speciesNamesLayout = tables.speciesNames
         var names = expansion?.let { PokeemeraldExpansionResolver.validateSpeciesNames(rom, it) }
             ?: headerlessUnifiedSpecies?.speciesNamesEvidence
-            ?: validateNames(rom, speciesNamesLayout, speciesCount, codec, generation)
+            ?: validateNames(rom, speciesNamesLayout, speciesCount, probeCodec, generation)
         if (generation == 2 && !names.compatible && speciesCount != null) {
             TableValidators.locateFixedNameTable(
-                rom, speciesCount, 8..16, codec, preferredOffset = speciesNamesLayout?.offset,
+                rom, speciesCount, 8..16, probeCodec, preferredOffset = speciesNamesLayout?.offset,
             )?.let { relocated ->
                 speciesNamesLayout = TableLayout(
                     offset = requireNotNull(relocated.offset),
@@ -231,7 +234,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         }
         var moveNamesLayout = tables.moveNames
         var moveNames = headerlessUnifiedMoves?.moveNamesEvidence
-            ?: validateNames(rom, moveNamesLayout, inferredMoveCount, codec, generation)
+            ?: validateNames(rom, moveNamesLayout, inferredMoveCount, probeCodec, generation)
         if (
             generation == 2 && exact == null && inferredMoveCount != null &&
             moveNamesLayout?.variableLength == true &&
@@ -240,10 +243,10 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             TableValidators.locateVariableNameSequenceNear(
                 rom = rom,
                 approximateOffset = moveNamesLayout.offset,
-                codec = codec,
+                codec = probeCodec,
                 expectedNames = listOf("POUND", "KARATE CHOP", "DOUBLESLAP"),
             )?.let { relocatedOffset ->
-                val relocated = TableValidators.variableNames(rom, relocatedOffset, inferredMoveCount, codec)
+                val relocated = TableValidators.variableNames(rom, relocatedOffset, inferredMoveCount, probeCodec)
                 if (relocated.compatible) {
                     moveNamesLayout = moveNamesLayout.copy(offset = relocatedOffset)
                     moveNames = relocated.copy(reasons = listOf("matched leading canonical Gen 2 move records"))
@@ -274,7 +277,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         } ?: missing("move-data table not resolved")
         var effectiveMoveCount = DatasetResolvers.reconciledMoveCount(inferredMoveCount, moveData)
         if (effectiveMoveCount != inferredMoveCount && effectiveMoveCount != null && moveNamesLayout != null) {
-            val reconciledNames = validateNames(rom, moveNamesLayout, effectiveMoveCount, codec, generation)
+            val reconciledNames = validateNames(rom, moveNamesLayout, effectiveMoveCount, probeCodec, generation)
             if (reconciledNames.compatible) {
                 moveNames = reconciledNames.copy(
                     reasons = reconciledNames.reasons +
@@ -289,7 +292,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         ) {
             val selected = resolvedLayout(tables.moveData, moveData)?.toMoveDetailsTableLayout()
             val activeRows = selected?.let { selectedLayout ->
-                activeMoveRows(rom, moveNamesLayout, selectedLayout.count.toInt(), codec)
+                activeMoveRows(rom, moveNamesLayout, selectedLayout.count.toInt(), probeCodec)
             }.orEmpty()
             if (selected != null && activeRows.isNotEmpty()) {
                 MoveDetailsResolver.resolve(
@@ -332,6 +335,18 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 null
             }
 
+        val languageManifest = RomLanguageAuthority.resolve(
+            rom = rom,
+            header = session.header,
+            generation = generation,
+            probeCodec = probeCodec,
+            speciesNamesEvidence = names,
+            moveNamesEvidence = moveNames,
+            speciesNamesLayout = resolvedLayout(speciesNamesLayout, names),
+            moveNamesLayout = resolvedLayout(moveNamesLayout, moveNames),
+            cancellation = session.cancellation,
+        )
+
         return CoreDatasetsPhaseResult.Resolved(
             candidateTables = tables,
             speciesCount = speciesCount,
@@ -349,6 +364,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             headerlessEmbeddedLearnsets = headerlessEmbeddedLearnsets,
             moveDetailsTypedRejectionReason = moveDetailsTypedRejectionReason,
             publishedPartialBaseStatsCandidate = publishedPartialBaseStatsCandidate,
+            languageManifest = languageManifest,
         )
     }
 

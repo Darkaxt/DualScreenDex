@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableOutc
 import com.enrpau.dualscreendex.parser.dataset.descriptions.ResolvedDescriptionLayout
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.resolvedEnglishLayout
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -46,7 +47,7 @@ class SemanticCoverageTest {
         val bytes = ByteArray(0x5000) { 0x7F }
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
         repeat(speciesCount) { id -> putValidGen3Stats(bytes, statsOffset + id * 28) }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -67,10 +68,14 @@ class SemanticCoverageTest {
         val result = ParserOrchestrator.applySpeciesSemanticDomain(RomImage(bytes), layout, raw)
         val byCapability = result.associateBy { it.capability }
 
-        assertEquals(CapabilityStatus.NOT_FOUND, byCapability.getValue(RomCapability.SPECIES_CATALOG).status)
+        val speciesCatalog = byCapability.getValue(RomCapability.SPECIES_CATALOG)
+        assertEquals(
+            speciesCatalog.reasons.joinToString("; "),
+            CapabilityStatus.NOT_FOUND,
+            speciesCatalog.status,
+        )
         assertTrue(
-            byCapability.getValue(RomCapability.SPECIES_CATALOG).reasons
-                .any { it.contains("species-to-Dex") },
+            speciesCatalog.reasons.any { it.contains("species-to-Dex") },
         )
         assertEquals(CapabilityStatus.AVAILABLE, byCapability.getValue(RomCapability.SPECIES_NAMES).status)
         assertFalse(result.flatMap { it.reasons }.any { it.contains("excluded 420") })
@@ -170,7 +175,7 @@ class SemanticCoverageTest {
             putU16(bytes, regionalCountOffset + 2 + index * 2, speciesId)
         }
         putRepeatedThumbLiteralReferences(bytes, regionalCountOffset, regionalCountOffset + 2)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -213,7 +218,7 @@ class SemanticCoverageTest {
         }
         putThumbLiteralReference(bytes, 0x00, 0x40, listCountOffset)
         putThumbLiteralReference(bytes, 0x02, 0x44, listCountOffset + 2)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -273,7 +278,7 @@ class SemanticCoverageTest {
         repeat(speciesCount - 1) { index -> putU16(bytes, 0x500 + index * 2, index + 1) }
         putRepeatedThumbLiteralReferences(bytes, 0x100, 0x102, instructionBase = 0x00, literalBase = 0x40)
         putRepeatedThumbLiteralReferences(bytes, 0x120, 0x122, instructionBase = 0x10, literalBase = 0x60)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -312,7 +317,7 @@ class SemanticCoverageTest {
         listOf(1, 2, 0, 3, 4).forEachIndexed { index, dex ->
             putU16(bytes, dexMapOffset + index * 2, dex)
         }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -650,7 +655,7 @@ class SemanticCoverageTest {
             putPointer(bytes, base + 16, textOffset)
         }
         putGbaText(bytes, textOffset, "DESCRIPTION")
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -711,7 +716,7 @@ class SemanticCoverageTest {
             putPointer(bytes, base + 16, textOffset)
         }
         putGbaText(bytes, textOffset, "DESCRIPTION")
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -774,7 +779,7 @@ class SemanticCoverageTest {
             putPointer(bytes, base + 16, textOffset)
         }
         putGbaText(bytes, textOffset, "DESCRIPTION")
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -831,7 +836,7 @@ class SemanticCoverageTest {
             putPointer(bytes, base + 16, textOffset)
         }
         putGbaText(bytes, textOffset, "DESCRIPTION")
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -1139,7 +1144,7 @@ class SemanticCoverageTest {
             putPointer(bytes, base + 16, textOffset)
         }
         putGbaText(bytes, textOffset, "DESCRIPTION")
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -1200,7 +1205,7 @@ class SemanticCoverageTest {
             0x204, 1, 15, 3, stride, 44, 13, 31, 60, 62, 64, 76, 88, 96,
             24, 21, 148, 152, 156, 160, 64, 28, 20, 20,
         )
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -1283,7 +1288,7 @@ class SemanticCoverageTest {
             putThumbLiteralReference(bytes, 0x40 + index * 2, 0x130 + index * 4, secondMapOffset)
         }
 
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -1344,7 +1349,7 @@ class SemanticCoverageTest {
                 literalBase = 0x40,
             )
         }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -1457,7 +1462,7 @@ class SemanticCoverageTest {
             0x204, 1, 15, 3, stride, 44, 13, 31, 60, 62, 64, 76, 88, 96,
             24, 21, 148, 152, 156, 160, 64, 28, 20, 20,
         )
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             family = EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,

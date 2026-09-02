@@ -13,26 +13,33 @@ import com.enrpau.dualscreendex.parser.validate.Gen3BaseStatAbilitySlots
 internal fun speciesCatalogEvidence(
     names: ValidationEvidence,
     stats: ValidationEvidence,
-): ValidationEvidence = ValidationEvidence(
-    compatible = names.compatible && stats.compatible,
-    validRecords = minOf(names.validRecords, stats.validRecords),
-    totalRecords = maxOf(names.totalRecords, stats.totalRecords),
-    confidence = minOf(names.confidence, stats.confidence),
-    reasons = (names.reasons + stats.reasons).distinct(),
-    offset = names.offset,
-    recordSize = names.recordSize,
-    coveredRecords = minOf(
-        names.coveredRecords ?: names.validRecords,
-        stats.coveredRecords ?: stats.validRecords,
-    ),
-    expectedRecords = minOf(
-        names.expectedRecords ?: names.totalRecords,
-        stats.expectedRecords ?: stats.totalRecords,
-    ),
-    incompleteRecords = maxOf(names.incompleteRecords ?: 0, stats.incompleteRecords ?: 0),
-    reviewRecommended = names.reviewRecommended || stats.reviewRecommended,
-    ambiguous = names.ambiguous || stats.ambiguous,
-)
+): ValidationEvidence {
+    if (names.compatible) {
+        return ValidationEvidence(
+            compatible = stats.compatible,
+            validRecords = minOf(names.validRecords, stats.validRecords),
+            totalRecords = maxOf(names.totalRecords, stats.totalRecords),
+            confidence = minOf(names.confidence, stats.confidence),
+            reasons = (names.reasons + stats.reasons).distinct(),
+            offset = names.offset,
+            recordSize = names.recordSize,
+            coveredRecords = minOf(
+                names.coveredRecords ?: names.validRecords,
+                stats.coveredRecords ?: stats.validRecords,
+            ),
+            expectedRecords = minOf(
+                names.expectedRecords ?: names.totalRecords,
+                stats.expectedRecords ?: stats.totalRecords,
+            ),
+            incompleteRecords = maxOf(names.incompleteRecords ?: 0, stats.incompleteRecords ?: 0),
+            reviewRecommended = names.reviewRecommended || stats.reviewRecommended,
+            ambiguous = names.ambiguous || stats.ambiguous,
+        )
+    }
+    return stats.copy(
+        reasons = (stats.reasons + "species names are unavailable; retained the numeric species domain").distinct(),
+    )
+}
 
 internal fun capabilityEvidence(
     capability: RomCapability,

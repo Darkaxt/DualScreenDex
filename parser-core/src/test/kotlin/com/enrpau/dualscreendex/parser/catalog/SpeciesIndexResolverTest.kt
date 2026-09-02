@@ -3,6 +3,8 @@ package com.enrpau.dualscreendex.parser.catalog
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.resolvedEnglishLayout
+import com.enrpau.dualscreendex.parser.language.textUnavailableLanguageManifests
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -26,7 +28,7 @@ class SpeciesIndexResolverTest {
         val liveWords = Base64.getDecoder().decode(DARK_VIOLET_SPECIES_TO_DEX_BASE64)
         liveWords.copyInto(bytes, tableOffset)
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -62,7 +64,7 @@ class SpeciesIndexResolverTest {
             putU16(bytes, tableOffset + index * 2, dex)
         }
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -87,7 +89,7 @@ class SpeciesIndexResolverTest {
         val bytes = ByteArray(0x4000) { 0x7F }
         Base64.getDecoder().decode(DARK_VIOLET_SPECIES_TO_DEX_BASE64).copyInto(bytes, tableOffset)
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -107,7 +109,7 @@ class SpeciesIndexResolverTest {
     @Test
     fun findsGenOneInternalToDexPermutationWithMissingSlots() {
         val bytes = byteArrayOf(0x7F, 0x7F, 1, 0, 3, 2, 0x7F)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.RED_BLUE,
             generation = 1,
             platform = Platform.GB,
@@ -133,7 +135,7 @@ class SpeciesIndexResolverTest {
             bytes[4 + index * 2] = value.toByte()
             bytes[5 + index * 2] = (value ushr 8).toByte()
         }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -170,7 +172,7 @@ class SpeciesIndexResolverTest {
         }
         speciesToDex.forEachIndexed { index, value -> putU16(bytes, index * 2, value) }
         dexToSpecies.forEachIndexed { index, value -> putU16(bytes, 1000 + index * 2, value) }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -193,7 +195,7 @@ class SpeciesIndexResolverTest {
         for (internalId in 1..276) mapping[internalId] = internalId + 135
         for (internalId in 277..411) mapping[internalId] = internalId - 276
         mapping.forEachIndexed { index, value -> putU16(bytes, 128 + index * 2, value) }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -226,7 +228,7 @@ class SpeciesIndexResolverTest {
         }
         unrelatedPermutation.forEachIndexed { index, value -> putU16(bytes, 64 + index * 2, value) }
         speciesToDex.forEachIndexed { index, value -> putU16(bytes, 1100 + index * 2, value) }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.RUBY_SAPPHIRE,
             generation = 3,
             platform = Platform.GBA,
@@ -247,7 +249,7 @@ class SpeciesIndexResolverTest {
         listOf(1, 2, 3, 4, 5, 6, 1, 2).forEachIndexed { index, value ->
             putU16(bytes, 8 + index * 2, value)
         }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -287,7 +289,7 @@ class SpeciesIndexResolverTest {
             }
         }
         putThumbLiteralReference(bytes, instructionOffset = 0, literalOffset = 4, target = tableOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -303,6 +305,13 @@ class SpeciesIndexResolverTest {
         assertEquals(252, result[277])
         assertEquals(253, result[278])
         assertEquals(253, result[279])
+        textUnavailableLanguageManifests.forEach { manifest ->
+            val withoutText = SpeciesIndexResolver.resolve(
+                RomImage(bytes),
+                layout.copy(languageManifest = manifest),
+            )
+            assertEquals(result, withoutText)
+        }
     }
 
     @Test
@@ -324,7 +333,7 @@ class SpeciesIndexResolverTest {
         mapping.forEachIndexed { index, value -> putU16(bytes, tableOffset + index * 2, value) }
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
         putThumbLiteralReference(bytes, instructionOffset = 0, literalOffset = 4, target = tableOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -364,7 +373,7 @@ class SpeciesIndexResolverTest {
             if (id in 252..276) bytes[namesOffset + id * 11] = 0xFF.toByte()
             else putFixedGbaName(bytes, namesOffset, id, "MON")
         }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -390,7 +399,7 @@ class SpeciesIndexResolverTest {
         }
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
         putThumbLiteralReference(bytes, instructionOffset = 0, literalOffset = 4, target = tableOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -416,7 +425,7 @@ class SpeciesIndexResolverTest {
         }
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x20, literalOffset = 0x40, target = tableOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -435,6 +444,13 @@ class SpeciesIndexResolverTest {
         assertEquals(1, result[4])
         assertEquals(2, result[8])
         assertEquals(7, result[11])
+        textUnavailableLanguageManifests.forEach { manifest ->
+            val withoutText = SpeciesIndexResolver.resolve(
+                RomImage(bytes),
+                layout.copy(languageManifest = manifest),
+            )
+            assertEquals(result, withoutText)
+        }
     }
 
     @Test
@@ -447,7 +463,7 @@ class SpeciesIndexResolverTest {
             putU16(bytes, tableOffset + index * 2, dex)
         }
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -477,7 +493,7 @@ class SpeciesIndexResolverTest {
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x20, literalOffset = 0x40, target = tableOffset)
         putU16(bytes, 0x26, 0x1849) // adds r1, r1, r1; the table base is not used
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -508,7 +524,7 @@ class SpeciesIndexResolverTest {
         repeat(speciesCount - 1) { index -> putU16(bytes, decoyOffset + index * 2, index + 1) }
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x20, literalOffset = 0x40, target = curatedOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -541,7 +557,7 @@ class SpeciesIndexResolverTest {
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x20, literalOffset = 0x60, target = firstOffset)
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x30, literalOffset = 0x64, target = secondOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.FIRERED_LEAFGREEN,
             generation = 3,
             platform = Platform.GBA,
@@ -577,7 +593,7 @@ class SpeciesIndexResolverTest {
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x20, literalOffset = 0x60, target = canonicalOffset)
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x30, literalOffset = 0x64, target = reverseOffset)
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x40, literalOffset = 0x68, target = orderOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -615,7 +631,7 @@ class SpeciesIndexResolverTest {
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x20, literalOffset = 0x60, target = firstCompiledOffset)
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x30, literalOffset = 0x64, target = secondCompiledOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -651,7 +667,7 @@ class SpeciesIndexResolverTest {
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x20, literalOffset = 0x60, target = firstOffset)
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x30, literalOffset = 0x64, target = secondOffset)
         putCompiledIndexedU16Lookup(bytes, instructionOffset = 0x40, literalOffset = 0x68, target = reverseOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -699,7 +715,7 @@ class SpeciesIndexResolverTest {
         putCompiledIndexedU16Lookup(bytes, 0x20, 0x80, firstSpeciesMapOffset)
         putCompiledIndexedU16Lookup(bytes, 0x30, 0x84, aliasedSpeciesMapOffset)
         putCompiledIndexedU16Lookup(bytes, 0x40, 0x88, regionalOrderOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -734,7 +750,7 @@ class SpeciesIndexResolverTest {
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
         putCompiledIndexedU16Lookup(bytes, 0x20, 0x80, firstOffset)
         putCompiledIndexedU16Lookup(bytes, 0x30, 0x84, secondOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -771,7 +787,7 @@ class SpeciesIndexResolverTest {
         repeat(speciesCount) { id -> putFixedGbaName(bytes, namesOffset, id, "MON") }
         putCompiledIndexedU16Lookup(bytes, 0x20, 0x80, firstOffset)
         putCompiledIndexedU16Lookup(bytes, 0x30, 0x84, secondOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -825,7 +841,7 @@ class SpeciesIndexResolverTest {
         putCompiledIndexedU16Lookup(bytes, 0x20, 0x80, nationalOffset)
         putCompiledIndexedU16Lookup(bytes, 0x30, 0x84, regionalOffset)
         putCompiledIndexedU16Lookup(bytes, 0x40, 0x88, regionalToNationalOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -865,7 +881,7 @@ class SpeciesIndexResolverTest {
         putCompiledIndexedU16Lookup(bytes, 0x20, 0x80, nationalOffset)
         putCompiledIndexedU16Lookup(bytes, 0x30, 0x84, regionalOffset)
         putCompiledIndexedU16Lookup(bytes, 0x40, 0x88, regionalToNationalOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -919,7 +935,7 @@ class SpeciesIndexResolverTest {
         putCompiledIndexedU16Lookup(bytes, 0x20, 0x80, defectiveNationalOffset)
         putCompiledIndexedU16Lookup(bytes, 0x30, 0x84, defectiveRegionalOffset)
         putCompiledIndexedU16Lookup(bytes, 0x40, 0x88, regionalToNationalOffset)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -941,7 +957,7 @@ class SpeciesIndexResolverTest {
     fun smallNoEvidenceCompatibilityMapRemainsTypedUnavailable() {
         val speciesCount = 6
         val namesOffset = 0x100
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -987,7 +1003,7 @@ class SpeciesIndexResolverTest {
         val second = intArrayOf(0) + (3 until speciesCount).toList().toIntArray() + intArrayOf(1, 2)
         first.forEachIndexed { index, value -> putU16(bytes, firstOffset + index * 2, value) }
         second.forEachIndexed { index, value -> putU16(bytes, secondOffset + index * 2, value) }
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -1038,7 +1054,7 @@ class SpeciesIndexResolverTest {
         putOrdinalLookupCall(bytes, 0x240, regionalWrapper, counterRegister = 4)
         putOrdinalLookupCall(bytes, 0x260, regionalWrapper, counterRegister = 5)
         putOrdinalLookupCall(bytes, 0x280, regionalWrapper, counterRegister = 6, consumeAsDexNumber = false)
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -1072,7 +1088,7 @@ class SpeciesIndexResolverTest {
             header = RomHeader(Platform.GBA, ""),
             limits = ResolutionLimits(maxCandidatesPerDataset = 1),
         )
-        val layout = ResolvedRomLayout(
+        val layout = resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,
@@ -1138,7 +1154,7 @@ class SpeciesIndexResolverTest {
             rom = rom,
             header = RomHeader(Platform.GBA, ""),
             limits = limits,
-        ) to ResolvedRomLayout(
+        ) to resolvedEnglishLayout(
             EngineFamily.EMERALD,
             generation = 3,
             platform = Platform.GBA,

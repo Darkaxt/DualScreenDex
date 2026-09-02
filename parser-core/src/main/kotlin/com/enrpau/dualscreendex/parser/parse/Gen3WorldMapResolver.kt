@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolver
 import com.enrpau.dualscreendex.parser.catalog.Gen3RegionMapEntry
@@ -12,13 +13,20 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 /**
  * Finds source-family ABI assets through compiled loader references, then terminates that ABI at
  * the normalized compositor/catalog boundary. It deliberately knows no ROM identity or placement.
  */
 object Gen3WorldMapResolver {
-    fun resolve(session: RomAnalysisSession, encounterBaseIds: Set<Int>): WorldMapResolution {
+    fun resolve(
+        session: RomAnalysisSession,
+        encounterBaseIds: Set<Int>,
+        codec: PokemonTextCodec?,
+    ): WorldMapResolution {
+        val cancellation = session.cancellation
+        cancellation.throwIfCancellationRequested()
         val references = session.gbaReferenceIndex
             ?: return WorldMapResolution.Unavailable("asset-loader", "compiled GBA references are unavailable")
         references.overflowReason?.let { return WorldMapResolution.BudgetExceeded("asset-loader", it) }
@@ -50,15 +58,30 @@ object Gen3WorldMapResolver {
             )
         }
         val resolution = when {
-            eightBpp.isNotEmpty() -> resolve8Bpp(session.rom, encounterBaseIds, references, eightBpp)
+            eightBpp.isNotEmpty() -> resolve8Bpp(
+                session.rom,
+                encounterBaseIds,
+                references,
+                eightBpp,
+                codec,
+                cancellation,
+            )
             tableEightBpp.isNotEmpty() -> resolveTableEightBpp(
                 session.rom,
                 encounterBaseIds,
                 references,
                 functionIndex,
                 tableEightBpp,
+                cancellation,
             )
-            text.isNotEmpty() -> resolveText(session.rom, encounterBaseIds, references, functionIndex, text)
+            text.isNotEmpty() -> resolveText(
+                session.rom,
+                encounterBaseIds,
+                references,
+                functionIndex,
+                text,
+                cancellation,
+            )
             else -> WorldMapResolution.Unavailable(
                 "asset-loader",
                 "no compiled-reference tile, tilemap, and BGR555 palette cluster passed a proven loader contract",
@@ -79,6 +102,8 @@ object Gen3WorldMapResolver {
         encounterBaseIds: Set<Int>,
         references: GbaReferenceIndex,
         candidates: List<AssetCandidate>,
+        codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
     ): WorldMapResolution {
         val winners = authoritative(candidates)
         if (winners.size != 1) {
@@ -87,8 +112,13 @@ object Gen3WorldMapResolver {
                 "${winners.size} equally authoritative 8bpp asset clusters remained",
             )
         }
-        val locations = Gen3MapLocationResolver.resolveDetailed(rom, encounterBaseIds, references)
-            ?: return WorldMapResolution.Unavailable(
+        val locations = Gen3MapLocationResolver.resolveDetailed(
+            rom,
+            encounterBaseIds,
+            references,
+            codec,
+            cancellation,
+        ) ?: return WorldMapResolution.Unavailable(
                 "map-header-join",
                 "encounter map headers and region entries did not resolve uniquely",
             )
@@ -127,6 +157,7 @@ object Gen3WorldMapResolver {
         references: GbaReferenceIndex,
         functionIndex: ThumbFunctionIndex,
         candidates: List<TableAssetCandidate>,
+        cancellation: ParserCancellationToken,
     ): WorldMapResolution {
         val winner = candidates.singleOrNull()
             ?: return WorldMapResolution.Ambiguous(
@@ -149,6 +180,7 @@ object Gen3WorldMapResolver {
             rom,
             encounterBaseIds,
             references,
+            cancellation,
         )
         if (sectionByBaseArea.isEmpty()) {
             return WorldMapResolution.Unavailable(
@@ -223,6 +255,7 @@ object Gen3WorldMapResolver {
         references: GbaReferenceIndex,
         functionIndex: ThumbFunctionIndex,
         candidates: List<TextAssetCandidate>,
+        cancellation: ParserCancellationToken,
     ): WorldMapResolution {
         val winnerGroups = authoritativeText(candidates)
         if (winnerGroups.size != 1) {
@@ -244,7 +277,12 @@ object Gen3WorldMapResolver {
             functionIndex,
             winner.regions.map(TextRegionAsset::slot).toSet(),
         )
-        val sectionByBaseArea = Gen3MapLocationResolver.resolveSectionByBaseArea(rom, encounterBaseIds, references)
+        val sectionByBaseArea = Gen3MapLocationResolver.resolveSectionByBaseArea(
+            rom,
+            encounterBaseIds,
+            references,
+            cancellation,
+        )
         if (sectionByBaseArea.isEmpty()) {
             return WorldMapResolution.Unavailable(
                 "map-header-join",
@@ -342,7 +380,7 @@ object Gen3WorldMapResolver {
             ?: return@mapNotNull null
         WorldMapLocation(
             key = "section-$section",
-            displayName = "Map section $section",
+            displayName = null,
             baseAreaIds = baseAreas.toSet(),
             geometry = cells,
         )

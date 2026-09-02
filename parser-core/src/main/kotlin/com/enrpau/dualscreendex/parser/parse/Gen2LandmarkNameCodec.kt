@@ -1,6 +1,8 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
 
 internal enum class Gen2LandmarkNameEncoding {
     STANDARD,
@@ -9,40 +11,145 @@ internal enum class Gen2LandmarkNameEncoding {
 
 /** Decodes the copied Gen II Town Map name buffer with its actual PlaceString controls. */
 internal object Gen2LandmarkNameCodec {
-    fun decode(bytes: ByteArray): String? = decode(bytes, Gen2LandmarkNameEncoding.STANDARD)
+    fun decode(bytes: ByteArray, codec: PokemonTextCodec): String? =
+        decode(bytes, Gen2LandmarkNameEncoding.STANDARD, codec)
 
-    fun decode(bytes: ByteArray, encoding: Gen2LandmarkNameEncoding): String? {
-        val copiedTerminator = bytes.indexOfFirst { (it.toInt() and 0xff) == STRING_TERMINATOR }
-        if (copiedTerminator < 0) return null
-
+    fun decode(
+        bytes: ByteArray,
+        encoding: Gen2LandmarkNameEncoding,
+        codec: PokemonTextCodec,
+    ): String? {
+        val rom = RomImage(bytes)
         val output = StringBuilder()
-        for (index in 0 until copiedTerminator) {
-            when (val value = bytes[index].toInt() and 0xff) {
-                DONE -> break
-                NULL -> return null // PlaceString substitutes runtime debug text; no stable semantic name.
-                BSP, LF, WBR, NEXT, LINE -> output.append(' ')
-                POKE, POKE_GLYPH -> output.append("POKé")
-                PKMN -> output.append("PKMN")
-                SIX_DOTS -> output.append("……")
-                PC -> output.append("PC")
-                TM -> output.append("TM")
-                TRAINER -> output.append("TRAINER")
-                ROCKET -> output.append("ROCKET")
-                0x9a -> output.append('(')
-                0x9b -> output.append(')')
-                0x9c -> output.append(':')
-                0x9d -> output.append(';')
-                0x9e -> output.append('[')
-                0x9f -> output.append(']')
-                in 0xba..0xff -> output.append(decodeDialectGlyph(value, encoding) ?: return null)
-                in 0 until FIRST_FONT_GLYPH -> return null
-                else -> output.append(PokemonTextCodec.gbEnglish.decodeByte(value) ?: return null)
+        var cursor = 0
+        var displayDone = false
+        var terminated = false
+        while (cursor < rom.size) {
+            val value = rom.u8(cursor)
+            if (!displayDone) {
+                when (value) {
+                    codec.terminator -> {
+                        terminated = true
+                        break
+                    }
+                    DONE -> {
+                        displayDone = true
+                        cursor++
+                        continue
+                    }
+                    NULL -> return null // PlaceString substitutes runtime debug text; no stable semantic name.
+                    BSP, LF, WBR, NEXT, LINE -> {
+                        output.append(' ')
+                        cursor++
+                        continue
+                    }
+                    POKE, POKE_GLYPH -> {
+                        output.append("POKé")
+                        cursor++
+                        continue
+                    }
+                    PKMN -> {
+                        output.append("PKMN")
+                        cursor++
+                        continue
+                    }
+                    SIX_DOTS -> {
+                        output.append("……")
+                        cursor++
+                        continue
+                    }
+                    PC -> {
+                        output.append("PC")
+                        cursor++
+                        continue
+                    }
+                    TM -> {
+                        output.append("TM")
+                        cursor++
+                        continue
+                    }
+                    TRAINER -> {
+                        output.append("TRAINER")
+                        cursor++
+                        continue
+                    }
+                    ROCKET -> {
+                        output.append("ROCKET")
+                        cursor++
+                        continue
+                    }
+                    0x9a -> {
+                        output.append('(')
+                        cursor++
+                        continue
+                    }
+                    0x9b -> {
+                        output.append(')')
+                        cursor++
+                        continue
+                    }
+                    0x9c -> {
+                        output.append(':')
+                        cursor++
+                        continue
+                    }
+                    0x9d -> {
+                        output.append(';')
+                        cursor++
+                        continue
+                    }
+                    0x9e -> {
+                        output.append('[')
+                        cursor++
+                        continue
+                    }
+                    0x9f -> {
+                        output.append(']')
+                        cursor++
+                        continue
+                    }
+                    in 0xba..0xff -> {
+                        val dialect = decodeDialectGlyph(value, encoding)
+                        if (dialect != null) {
+                            output.append(dialect)
+                            cursor++
+                            continue
+                        }
+                        if (encoding == Gen2LandmarkNameEncoding.EXPANDED) return null
+                    }
+                    in 0 until FIRST_FONT_GLYPH -> return null
+                }
+            }
+
+            val token = codec.decodeToken(rom, cursor, rom.size)
+            cursor += token.byteCount
+            if (displayDone) {
+                if (token is PokemonTextToken.Terminator) {
+                    terminated = true
+                    break
+                }
+                continue
+            }
+            when (token) {
+                is PokemonTextToken.Glyph -> output.append(token.text)
+                is PokemonTextToken.Whitespace -> output.append(token.text)
+                is PokemonTextToken.Substitution -> output.append(token.text)
+                is PokemonTextToken.Control -> output.append(token.replacement)
+                is PokemonTextToken.Invalid -> return null
+                is PokemonTextToken.Terminator -> {
+                    terminated = true
+                    break
+                }
             }
         }
+        if (!terminated) return null
         return output.toString().replace(WHITESPACE, " ").trim().takeIf(String::isNotBlank)
     }
 
-    private fun decodeDialectGlyph(value: Int, encoding: Gen2LandmarkNameEncoding): String? =
+    private fun decodeDialectGlyph(
+        value: Int,
+        encoding: Gen2LandmarkNameEncoding,
+    ): String? =
         when (encoding) {
             Gen2LandmarkNameEncoding.STANDARD -> when (value) {
                 0xc0 -> "Ä"
@@ -65,7 +172,7 @@ internal object Gen2LandmarkNameCodec {
                 0xf3 -> "/"
                 0xf4 -> ","
                 0xf5 -> "♀"
-                else -> PokemonTextCodec.gbEnglish.decodeByte(value)?.toString()
+                else -> null
             }
             Gen2LandmarkNameEncoding.EXPANDED -> when (value) {
                 0xba -> "′"
@@ -123,7 +230,6 @@ internal object Gen2LandmarkNameCodec {
     private const val PKMN = 0x4a
     private const val NEXT = 0x4e
     private const val LINE = 0x4f
-    private const val STRING_TERMINATOR = 0x50
     private const val POKE_GLYPH = 0x54
     private const val SIX_DOTS = 0x56
     private const val DONE = 0x57

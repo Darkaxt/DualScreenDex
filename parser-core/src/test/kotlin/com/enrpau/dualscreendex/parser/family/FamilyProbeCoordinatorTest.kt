@@ -3,6 +3,8 @@ package com.enrpau.dualscreendex.parser.family
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -138,7 +140,7 @@ class FamilyProbeCoordinatorTest {
                 ProfileTables(),
                 publishedDataEvidence = evidence(true, 0x100, 3, 11).copy(reasons = identityReasons),
             ),
-            codec = PokemonTextCodec.gbaEnglish,
+            probeCodec = PokemonTextCodec.gbaEnglish,
         )
         identityBanks += 2
         identityReasons += "mutated"
@@ -234,6 +236,91 @@ class FamilyProbeCoordinatorTest {
         FamilyProbeCoordinator(strategies).probe(session(), definition())
 
         assertTrue(semanticObservedCore)
+    }
+
+    @Test
+    fun unresolvedLanguageFailsTextCapabilitiesClosedButRetainsNumericCapabilities() {
+        val manifests = listOf(
+            RomLanguageManifest.UNKNOWN to CapabilityStatus.NOT_FOUND,
+            RomLanguageManifest(
+                defaultLanguage = null,
+                projections = emptyList(),
+                status = LanguageResolutionStatus.AMBIGUOUS,
+            ) to CapabilityStatus.AMBIGUOUS,
+        )
+        val names = TableLayout(0x100, 3, 11)
+        val stats = TableLayout(0x200, 3, 28)
+        val moveNames = TableLayout(0x300, 4, 13)
+        val moveData = TableLayout(0x400, 4, 12)
+
+        manifests.forEach { (manifest, textStatus) ->
+            val core = CoreDatasetsPhaseResult.Resolved(
+                candidateTables = ProfileTables(
+                    speciesNames = names,
+                    baseStats = stats,
+                    moveNames = moveNames,
+                    moveData = moveData,
+                ),
+                speciesCount = 3,
+                inferredMoveCount = 4,
+                moveCount = 4,
+                speciesNames = evidence(true, names.offset, names.count, names.recordSize),
+                baseStats = evidence(true, stats.offset, stats.count, stats.recordSize),
+                moveNames = evidence(true, moveNames.offset, moveNames.count, moveNames.recordSize),
+                moveData = evidence(true, moveData.offset, moveData.count, moveData.recordSize),
+                speciesNamesLayout = names,
+                baseStatsLayout = stats,
+                moveNamesLayout = moveNames,
+                moveDataLayout = moveData,
+                languageManifest = manifest,
+            )
+            val semantic = SemanticDomainPhaseResult.Resolved(
+                coreDatasets = core,
+                descriptions = evidence(true, 0x500, 3, 32),
+                descriptionsLayout = TableLayout(0x500, 3, 32),
+                typeChart = evidence(true, 0x600, 18, 3),
+                typeChartLayout = TableLayout(0x600, 18, 3),
+                abilities = evidence(true, 0x700, 4, 13),
+                abilitiesLayout = TableLayout(0x700, 4, 13),
+            )
+            val dependent = DependentDatasetsPhaseResult.Resolved(
+                semanticDomain = semantic,
+                sprites = evidence(true, 0x800, 3, 8),
+                evolutions = evidence(true, 0x900, 3, 8),
+                learnsets = evidence(true, 0xA00, 3, 4),
+                learnsetTables = emptyList(),
+                learnsetSelector = null,
+            )
+            val state = FamilyProbeState.empty()
+                .withIdentityRoots(resolvedIdentity())
+                .withCoreDatasets(core)
+                .withSemanticDomain(semantic)
+                .withDependentDatasets(dependent)
+
+            val probe = requireNotNull(
+                CapabilityAggregationStrategy().execute(session(), definition(), state).probe,
+            )
+            val capabilities = probe.capabilities.associateBy(CapabilityEvidence::capability)
+
+            listOf(
+                RomCapability.SPECIES_CATALOG,
+                RomCapability.BASE_STATS,
+                RomCapability.SPECIES_TYPES,
+                RomCapability.TYPE_CHART,
+                RomCapability.MOVE_CATALOG,
+            ).forEach { capability ->
+                assertEquals(capability.name, CapabilityStatus.AVAILABLE, capabilities.getValue(capability).status)
+            }
+            listOf(
+                RomCapability.SPECIES_NAMES,
+                RomCapability.POKEDEX_DESCRIPTIONS,
+                RomCapability.ABILITIES,
+            ).forEach { capability ->
+                val evidence = capabilities.getValue(capability)
+                assertEquals(capability.name, textStatus, evidence.status)
+                assertTrue(evidence.reasons.any { it.contains(manifest.status.name) })
+            }
+        }
     }
 
     @Test
@@ -674,7 +761,7 @@ class FamilyProbeCoordinatorTest {
         expansion = null,
         compiledGbaReferences = null,
         tableResolution = ProfileTableResolution(ProfileTables()),
-        codec = PokemonTextCodec.gbaEnglish,
+        probeCodec = PokemonTextCodec.gbaEnglish,
     )
 
     private fun evidence(

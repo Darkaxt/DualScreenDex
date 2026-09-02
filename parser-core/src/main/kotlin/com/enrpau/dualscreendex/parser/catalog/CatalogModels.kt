@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
 
 data class CatalogField<T>(
     val status: CapabilityStatus,
@@ -156,7 +157,7 @@ data class AbilityRecord(
 )
 
 data class DescriptionRecord(
-    val text: String,
+    val text: String?,
     val height: Int? = null,
     val weight: Int? = null,
     val category: String? = null,
@@ -938,8 +939,11 @@ data class WorldMapCatalog(
                 "world-map location keys must be unique within a region"
             }
             region.locations.forEach { location ->
-                require(location.key.isNotBlank() && location.displayName.isNotBlank()) {
-                    "world-map location identity must not be blank"
+                require(location.key.isNotBlank()) {
+                    "world-map location keys must not be blank"
+                }
+                require(location.displayName == null || location.displayName.isNotBlank()) {
+                    "world-map location display names must not be blank"
                 }
                 require(location.baseAreaIds.isNotEmpty()) {
                     "world-map locations must bind at least one base area"
@@ -974,7 +978,7 @@ data class WorldMapRegion(
 
 data class WorldMapLocation(
     val key: String,
-    val displayName: String,
+    val displayName: String?,
     val baseAreaIds: Set<Int>,
     val geometry: List<WorldMapCell>,
 )
@@ -1007,8 +1011,10 @@ data class ParsedCatalog(
     val theme: CatalogTheme = CatalogTheme.neutral(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),
+    val languageManifest: RomLanguageManifest = RomLanguageManifest.UNKNOWN,
 ) {
     fun navigableSpecies(): List<SpeciesRecord> = speciesById.values.filter { species ->
-        (species.dexNumber.value ?: 0) > 0 && species.name.value?.any(Char::isLetterOrDigit) == true
+        (species.dexNumber.value ?: 0) > 0 &&
+            (species.name.value == null || species.name.value.any(Char::isLetterOrDigit))
     }
 }

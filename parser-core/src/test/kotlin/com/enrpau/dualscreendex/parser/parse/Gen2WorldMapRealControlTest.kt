@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import java.nio.ByteBuffer
 import java.nio.file.Files
@@ -18,8 +19,35 @@ import org.junit.Test
 
 class Gen2WorldMapRealControlTest {
     @Test fun goldResolvesItsExactSourceOracle() = assertControl(CONTROLS[0])
+    @Test fun goldRetainsStructuralMapsWithoutTextAuthority() = assertStructuralControl(CONTROLS[0])
     @Test fun silverResolvesItsExactSourceOracle() = assertControl(CONTROLS[1])
     @Test fun crystalResolvesItsExactSourceOracle() = assertControl(CONTROLS[2])
+
+    private fun assertStructuralControl(control: Control) {
+        val rom = realRom(control)
+        val analysis = ParserOrchestrator.analyze(rom)
+        val layout = requireNotNull(analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout)
+        val baseAreaIds = EncounterMaterializer.materialize(rom, layout).mapTo(linkedSetOf()) { it.id / 10 }
+        val session = RomAnalysisSession(rom, RomHeaderReader.read(rom))
+        val named = Gen2WorldMapResolver.resolve(session, baseAreaIds, requireNotNull(layout.defaultTextCodec()))
+        val structural = Gen2WorldMapResolver.resolve(session, baseAreaIds, null)
+
+        assertTrue("${control.env}: $named", named is WorldMapResolution.Resolved)
+        assertTrue("${control.env}: $structural", structural is WorldMapResolution.Resolved)
+        val namedCatalog = (named as WorldMapResolution.Resolved).catalog.validate()
+        val structuralCatalog = (structural as WorldMapResolution.Resolved).catalog.validate()
+        val expectedRegions = namedCatalog.regions.map { region ->
+            region.copy(
+                displayName = null,
+                locations = region.locations.map { it.copy(displayName = null) },
+            )
+        }
+        assertEquals(expectedRegions, structuralCatalog.regions)
+        assertTrue(structuralCatalog.regions.flatMap { it.locations }.all { it.displayName == null })
+        namedCatalog.assets.forEach { (assetKey, sprite) ->
+            assertEquals(sha256(sprite), sha256(structuralCatalog.assets.getValue(assetKey)))
+        }
+    }
 
     private fun assertControl(control: Control) {
         val rom = realRom(control)
@@ -31,6 +59,7 @@ class Gen2WorldMapRealControlTest {
         val result = Gen2WorldMapResolver.resolve(
             RomAnalysisSession(rom, RomHeaderReader.read(rom)),
             baseAreaIds,
+            requireNotNull(layout.defaultTextCodec()),
         )
 
         assertTrue("${control.env}: $result", result is WorldMapResolution.Resolved)

@@ -69,16 +69,25 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
+import com.enrpau.dualscreendex.parser.language.LanguageEvidence
+import com.enrpau.dualscreendex.parser.language.LanguageEvidenceKind
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
+import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.google.gson.reflect.TypeToken
 import java.nio.file.Files
 import java.nio.file.Path
@@ -183,6 +192,86 @@ class CatalogStoreTest {
                 sectionName = "inflate-limit",
                 maximumInflatedBytes = 64,
             )
+        }
+    }
+
+    @Test
+    fun `catalog section codec reconstructs and validates persisted language manifests`() {
+        val catalog = completeCatalog("a".repeat(64))
+        val codec = CatalogSectionCodec()
+        val sections = codec.encode(catalog, CatalogSchema.requiredSections).toMutableMap()
+        sections["language_manifest"] = ByteArrayOutputStream().also { output ->
+            GZIPOutputStream(output).use { gzip ->
+                gzip.write(
+                    """{"defaultLanguage":"en","projections":[],"status":"RESOLVED","diagnostics":[]}"""
+                        .toByteArray(Charsets.UTF_8),
+                )
+            }
+        }.toByteArray()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            codec.decode(catalog.romSha256, catalog.romCrc32, catalog.family, catalog.platform, sections)
+        }
+    }
+
+    @Test
+    fun `catalog section codec restores immutable language manifest snapshots`() {
+        val table = TableLayout(
+            offset = 0x100,
+            count = 3,
+            recordSize = 11,
+            banks = listOf(1, 2),
+            pointerOffsets = listOf(0x20, 0x24),
+            bankRemap = mapOf(1 to 2),
+        )
+        val manifest = RomLanguageManifest(
+            defaultLanguage = LanguageTag.ENGLISH,
+            projections = listOf(
+                RomLanguageProjection(
+                    language = LanguageTag.ENGLISH,
+                    codecId = PokemonTextCodec.gbaEnglish.id,
+                    codecVersion = PokemonTextCodec.gbaEnglish.version,
+                    localizedTables = LocalizedTableLayout(speciesNames = table),
+                    evidence = listOf(
+                        LanguageEvidence(LanguageEvidenceKind.TABLE_RELATIONSHIP, "fixture", 100),
+                    ),
+                    status = LanguageResolutionStatus.RESOLVED,
+                ),
+            ),
+            status = LanguageResolutionStatus.RESOLVED,
+            diagnostics = listOf("validated fixture"),
+        )
+        val catalog = completeCatalog("b".repeat(64)).copy(languageManifest = manifest)
+        val codec = CatalogSectionCodec()
+        val sections = codec.encode(catalog, CatalogSchema.requiredSections)
+
+        val reopened = codec.decode(
+            catalog.romSha256,
+            catalog.romCrc32,
+            catalog.family,
+            catalog.platform,
+            sections,
+        ).languageManifest
+
+        assertEquals(manifest, reopened)
+        assertThrows(UnsupportedOperationException::class.java) {
+            (reopened.projections as MutableList<RomLanguageProjection>).clear()
+        }
+        assertThrows(UnsupportedOperationException::class.java) {
+            (reopened.diagnostics as MutableList<String>).clear()
+        }
+        assertThrows(UnsupportedOperationException::class.java) {
+            (reopened.projections.single().evidence as MutableList<LanguageEvidence>).clear()
+        }
+        val reopenedTable = requireNotNull(reopened.defaultProjection()?.localizedTables?.speciesNames)
+        assertThrows(UnsupportedOperationException::class.java) {
+            (reopenedTable.banks as MutableList<Int>).clear()
+        }
+        assertThrows(UnsupportedOperationException::class.java) {
+            (reopenedTable.pointerOffsets as MutableList<Int>).clear()
+        }
+        assertThrows(UnsupportedOperationException::class.java) {
+            (reopenedTable.bankRemap as MutableMap<Int, Int>).clear()
         }
     }
 
@@ -558,7 +647,7 @@ class CatalogStoreTest {
         assertCatalogReferencesClose(reopened)
         assertEquals(second.romSha256, reopened.romSha256)
         assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-        assertEquals(16, stored.committedSections.size)
+        assertEquals(17, stored.committedSections.size)
         assertDatabaseIntegrity(cache.fileFor(second.romSha256))
     }
 
@@ -608,7 +697,7 @@ class CatalogStoreTest {
         }
         assertCatalogReferencesClose(reopened)
         assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-        assertEquals(16, stored.committedSections.size)
+        assertEquals(17, stored.committedSections.size)
         assertDatabaseIntegrity(cache.fileFor(second.romSha256))
     }
 
@@ -661,7 +750,7 @@ class CatalogStoreTest {
                 assertEquals(32, reopened.trainerAssets.assets.getValue(key).height)
             }
             assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-            assertEquals(16, stored.committedSections.size)
+            assertEquals(17, stored.committedSections.size)
             assertCatalogReferencesClose(reopened)
             assertDatabaseIntegrity(cache.fileFor(parsed.romSha256))
         }
@@ -739,7 +828,7 @@ class CatalogStoreTest {
                     locations = listOf(
                         WorldMapLocation(
                             key = "section-0",
-                            displayName = "Region 0",
+                            displayName = null,
                             baseAreaIds = setOf(0x0102),
                             geometry = listOf(WorldMapCell(4, 5, 2, 1)),
                         ),
@@ -821,7 +910,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(46, CatalogSchema.parserSchemaVersion)
+        assertEquals(47, CatalogSchema.parserSchemaVersion)
         assertEquals(worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -1127,7 +1216,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(46, CatalogSchema.parserSchemaVersion)
+        assertEquals(47, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -1269,7 +1358,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 42 caches are invalidated so hybrid move details are rebuilt`() {
-        assertEquals(46, CatalogSchema.parserSchemaVersion)
+        assertEquals(47, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("4".repeat(64)).copy(diagnostics = listOf("pre-hybrid move output"))
@@ -1291,7 +1380,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 43 caches are invalidated so optional relationship evidence is rebuilt`() {
-        assertEquals(46, CatalogSchema.parserSchemaVersion)
+        assertEquals(47, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("5".repeat(64)).copy(diagnostics = listOf("pre-isolation relationship output"))
@@ -1313,7 +1402,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 44 caches are invalidated so bounded detached Gen I evidence is rebuilt`() {
-        assertEquals(46, CatalogSchema.parserSchemaVersion)
+        assertEquals(47, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("6".repeat(64)).copy(diagnostics = listOf("pre-bounded detached Gen I output"))
@@ -1335,7 +1424,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 45 caches are invalidated so Gen I applicability and bounded fallbacks are rebuilt`() {
-        assertEquals(46, CatalogSchema.parserSchemaVersion)
+        assertEquals(47, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("7".repeat(64)).copy(
@@ -1885,6 +1974,22 @@ class CatalogStoreTest {
                 ),
             ),
             diagnostics = listOf("fixture diagnostic"),
+            languageManifest = englishLanguageManifest(),
         )
     }
+
+    private fun englishLanguageManifest(): RomLanguageManifest = RomLanguageManifest(
+        defaultLanguage = LanguageTag.ENGLISH,
+        projections = listOf(
+            RomLanguageProjection(
+                language = LanguageTag.ENGLISH,
+                codecId = PokemonTextCodec.gbaEnglish.id,
+                codecVersion = PokemonTextCodec.gbaEnglish.version,
+                localizedTables = LocalizedTableLayout(),
+                evidence = listOf(LanguageEvidence(LanguageEvidenceKind.TABLE_RELATIONSHIP, "fixture", 100)),
+                status = LanguageResolutionStatus.RESOLVED,
+            ),
+        ),
+        status = LanguageResolutionStatus.RESOLVED,
+    )
 }

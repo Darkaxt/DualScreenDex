@@ -12,12 +12,14 @@ import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.sprite.IndexedSprite
 import com.enrpau.dualscreendex.parser.sprite.Lz3Decoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 internal object Gen2LocalMapResolver {
     fun resolve(
         session: RomAnalysisSession,
         encounterBaseIds: Set<Int>,
         family: EngineFamily,
+        codec: PokemonTextCodec?,
     ): LocalMapResolution {
         val label = when (family) {
             EngineFamily.GOLD_SILVER -> "Gold/Silver"
@@ -107,13 +109,16 @@ internal object Gen2LocalMapResolver {
                 "resolved $totalPixels local-map pixels (limit $MAX_TOTAL_PIXELS)",
             )
         }
-        val landmarkNames = runCatching {
-            Gen2WorldMapResolver.resolveLandmarkNames(
-                session,
-                requiredMaps,
-                authority.descriptors.mapTo(linkedSetOf(), MapDescriptor::landmarkId),
-            )
-        }.getOrDefault(emptyMap())
+        val landmarkNames = codec?.let {
+            runCatching {
+                Gen2WorldMapResolver.resolveLandmarkNames(
+                    session,
+                    requiredMaps,
+                    it,
+                    authority.descriptors.mapTo(linkedSetOf(), MapDescriptor::landmarkId),
+                )
+            }.getOrDefault(emptyMap())
+        }.orEmpty()
         val namedMapCount = authority.descriptors.count { landmarkNames.containsKey(it.landmarkId) }
 
         val maps = mutableListOf<LocalMap>()
@@ -178,6 +183,7 @@ internal object Gen2LocalMapResolver {
                 sources = authority.descriptors.map(MapDescriptor::toPoiSource),
                 maps = maps,
                 family = family,
+                codec = codec,
             ).also { resolution ->
                 LocalMapCatalog(
                     maps = maps,
@@ -204,8 +210,13 @@ internal object Gen2LocalMapResolver {
                 "resolved compiled Gen II map-group, tileset, roof, environment-color, and palette consumers",
                 "rendered ${maps.size} bounded $label maps from 32x32 ROM blocks and LZ3 2bpp tiles",
                 "built ${sceneResolution.scenes.size} bounded Local-map scenes from compiled cardinal connections",
-                "resolved ${poiResolution.pois.size} bounded Local-map POIs from compiled event structures",
-                "resolved $namedMapCount map display names through the compiled landmark lookup",
+                if (codec == null) {
+                    "resolved ${poiResolution.pois.size} bounded structural Local-map POIs; " +
+                        "omitted localized Gen II map and POI names because no ROM text codec was authoritative"
+                } else {
+                    "resolved ${poiResolution.pois.size} bounded Local-map POIs and " +
+                        "$namedMapCount map display names"
+                },
                 "stored time-independent indexed rasters with native morning, day, night, and dark GBC palettes",
                 "bound all ${requiredMaps.size} encounter-authoritative group/map IDs",
             ) + skippedReasons + sceneResolution.skippedReasons + poiResolution.skippedReasons,

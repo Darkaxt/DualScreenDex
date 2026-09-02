@@ -3,9 +3,9 @@ package com.enrpau.dualscreendex.parser.catalog
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.resolution.BudgetKind
-import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 sealed interface SpeciesIndexResolution {
     val values: Map<Int, Int>
@@ -171,12 +171,18 @@ object SpeciesIndexResolver {
                         summary.identityPrefix >= minOf(CANONICAL_IDENTITY_PREFIX, storedCount) &&
                         distinctRatio >= MINIMUM_FORM_MAP_DISTINCT_RATIO &&
                         (compiledReferences[offset] ?: 0) > 0 &&
-                        namedPositiveCoverage(rom, layout, offset, storedCount) >= MINIMUM_NAMED_POSITIVE_COVERAGE
+                        coverageDoesNotReject(
+                            namedPositiveCoverage(rom, layout, offset, storedCount),
+                            MINIMUM_NAMED_POSITIVE_COVERAGE,
+                        )
                 val highDistinctnessReorderedMapIsCredible =
                     summary.canonicalBoundary &&
                         distinctRatio >= MINIMUM_REORDERED_MAP_DISTINCT_RATIO &&
                         (compiledReferences[offset] ?: 0) > 0 &&
-                        namedPositiveCoverage(rom, layout, offset, storedCount) >= MINIMUM_NAMED_POSITIVE_COVERAGE
+                        coverageDoesNotReject(
+                            namedPositiveCoverage(rom, layout, offset, storedCount),
+                            MINIMUM_NAMED_POSITIVE_COVERAGE,
+                        )
                 if (summary.identityPrefix >= minOf(2, storedCount) &&
                     (distinctRatio == 1.0 || duplicateFormsAreCredible || highDistinctnessReorderedMapIsCredible) &&
                     candidates.none { matchesValuesAt(rom, offset, it.values) }
@@ -563,9 +569,13 @@ object SpeciesIndexResolver {
             summary.distinctCount.toDouble() / summary.maximum
         }
         val nameCoverage = mappedNameCoverage(rom, layout, offset, count)
+        val nameCoverageDoesNotReject = coverageDoesNotReject(
+            nameCoverage,
+            MINIMUM_MAPPED_NAME_COVERAGE,
+        )
         val publicationEligible = !oneDefectCompositionSupport &&
             (completePermutation || descriptionCoverage >= MINIMUM_COMPILED_DEX_DENSITY) &&
-            nameCoverage >= MINIMUM_MAPPED_NAME_COVERAGE
+            nameCoverageDoesNotReject
         return CompiledIndexCandidateMetrics(
             completePermutation = completePermutation,
             publicationEligible = publicationEligible,
@@ -573,8 +583,7 @@ object SpeciesIndexResolver {
             descriptionCoverage = descriptionCoverage,
             mappedNameCoverage = nameCoverage,
         ).takeIf {
-            (it.publicationEligible || it.compositionEligible) &&
-                it.mappedNameCoverage >= MINIMUM_MAPPED_NAME_COVERAGE
+            (it.publicationEligible || it.compositionEligible) && nameCoverageDoesNotReject
         }
     }
 
@@ -583,12 +592,12 @@ object SpeciesIndexResolver {
         layout: ResolvedRomLayout,
         tableOffset: Int,
         count: Int,
-    ): Double {
+    ): Double? {
         val names = layout.tables.speciesNames
             ?.takeIf { !it.variableLength && !it.valuesArePointers }
-            ?: return 0.0
+            ?: return null
         val stride = names.stride ?: names.recordSize
-        val codec = PokemonTextCodec.gbaEnglish
+        val codec = layout.defaultTextCodec() ?: return null
         var mapped = 0
         var named = 0
         for (index in 0 until count) {
@@ -647,12 +656,12 @@ object SpeciesIndexResolver {
         layout: ResolvedRomLayout,
         tableOffset: Int,
         count: Int,
-    ): Double {
+    ): Double? {
         val names = layout.tables.speciesNames
             ?.takeIf { !it.variableLength && !it.valuesArePointers }
-            ?: return 0.0
+            ?: return null
         val stride = names.stride ?: names.recordSize
-        val codec = PokemonTextCodec.gbaEnglish
+        val codec = layout.defaultTextCodec() ?: return null
         var named = 0
         var namedPositive = 0
         for (index in 0 until count) {
@@ -668,6 +677,9 @@ object SpeciesIndexResolver {
         }
         return namedPositive.toDouble() / named.coerceAtLeast(1)
     }
+
+    private fun coverageDoesNotReject(coverage: Double?, minimum: Double): Boolean =
+        coverage == null || coverage >= minimum
 
     private fun summarizeU16Values(
         rom: RomImage,
@@ -741,7 +753,7 @@ object SpeciesIndexResolver {
         val publicationEligible: Boolean,
         val compositionEligible: Boolean,
         val descriptionCoverage: Double,
-        val mappedNameCoverage: Double,
+        val mappedNameCoverage: Double?,
         val positiveCount: Int,
         val distinctDexCount: Int,
     ) {
@@ -758,7 +770,7 @@ object SpeciesIndexResolver {
         val publicationEligible: Boolean,
         val compositionEligible: Boolean,
         val descriptionCoverage: Double,
-        val mappedNameCoverage: Double,
+        val mappedNameCoverage: Double?,
     )
 
     private data class CompositionSearch(

@@ -1,9 +1,10 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
-import com.enrpau.dualscreendex.parser.model.TableLayout
-import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 
 /**
  * Closes Gen III encounter relationships only over IDs with an independently decoded name row.
@@ -16,14 +17,16 @@ import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 internal object EncounterReferencedSpeciesClosure {
     fun close(
         rom: RomImage,
-        generation: Int,
-        names: TableLayout?,
+        layout: ResolvedRomLayout,
         namesStatus: CapabilityStatus?,
         species: Map<Int, SpeciesRecord>,
         encounters: List<EncounterArea>,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Map<Int, SpeciesRecord> {
+        val names = layout.tables.speciesNames
+        val codec = layout.defaultTextCodec()
         if (
-            generation != 3 || names == null ||
+            layout.generation != 3 || names == null || codec == null ||
             namesStatus !in setOf(CapabilityStatus.AVAILABLE, CapabilityStatus.PARTIAL)
         ) {
             return species
@@ -41,9 +44,10 @@ internal object EncounterReferencedSpeciesClosure {
                     rom,
                     names,
                     speciesId,
-                    PokemonTextCodec.gbaEnglish,
+                    codec,
+                    cancellation,
                 )
-                if (name.none(Char::isLetterOrDigit)) return@forEach
+                if (name?.any(Char::isLetterOrDigit) != true) return@forEach
                 put(speciesId, identityRecord(speciesId, name))
             }
         }

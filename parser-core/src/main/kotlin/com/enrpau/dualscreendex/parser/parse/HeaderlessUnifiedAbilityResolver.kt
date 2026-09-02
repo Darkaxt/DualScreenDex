@@ -34,6 +34,7 @@ internal object HeaderlessUnifiedAbilityResolver {
         speciesCount: Int,
         speciesRecordSize: Int,
         activePredicateOffset: Int,
+        codec: PokemonTextCodec,
     ): HeaderlessUnifiedAbilityResolution? {
         if (SPECIES_ABILITY_OFFSET + SPECIES_ABILITY_SLOTS * SPECIES_ABILITY_ELEMENT_SIZE > speciesRecordSize) {
             return null
@@ -53,7 +54,7 @@ internal object HeaderlessUnifiedAbilityResolver {
         if (index.overflowed) return null
         val domain = AbilitySemanticDomain(activeAbilityIds)
         val ratedRoots = index.targets.mapNotNull { (root, indexed) ->
-            if (!plausibleAbilityPrefix(session.rom, root)) return@mapNotNull null
+            if (!plausibleAbilityPrefix(session.rom, root, codec)) return@mapNotNull null
             val references = if (indexed.siteEvidenceAvailable && indexed.instructionSites.isNotEmpty()) {
                 indexed
             } else {
@@ -62,7 +63,7 @@ internal object HeaderlessUnifiedAbilityResolver {
             root.takeIf { references.instructionSites.any { site -> hasRatingLeafConsumer(session.rom, site) } }
         }
         val candidates = ratedRoots.mapNotNull { root ->
-            resolveRoot(session, root, abilityCount, domain)
+            resolveRoot(session, root, abilityCount, domain, codec)
         }
         return candidates.singleOrNull()
     }
@@ -72,6 +73,7 @@ internal object HeaderlessUnifiedAbilityResolver {
         root: Int,
         abilityCount: Int,
         domain: AbilitySemanticDomain,
+        codec: PokemonTextCodec,
     ): HeaderlessUnifiedAbilityResolution? {
         when (
             session.limits.checkTableExtent(
@@ -90,12 +92,12 @@ internal object HeaderlessUnifiedAbilityResolver {
             nameWidth = NAME_WIDTH,
             stride = RECORD_SIZE,
         )
-        if (AbilityNameCodec().decode(session, typedLayout, domain) !is AbilityNameTableOutcome.Decoded) {
+        if (AbilityNameCodec(codec).decode(session, typedLayout, domain) !is AbilityNameTableOutcome.Decoded) {
             return null
         }
         val descriptionsCompatible = optionalCoverage(session.rom, root, abilityCount) { record ->
             val pointer = session.rom.gbaPointer(record + DESCRIPTION_POINTER_OFFSET)
-            pointer?.let { plausibleText(session.rom, it, 192) } == true
+            pointer?.let { plausibleText(session.rom, it, 192, codec) } == true
         }
         val mechanicsCompatible = optionalCoverage(session.rom, root, abilityCount) { record ->
             session.rom.u8(record + FLAGS_OFFSET) and 0x80 == 0
@@ -138,14 +140,18 @@ internal object HeaderlessUnifiedAbilityResolver {
         }
     }
 
-    private fun plausibleAbilityPrefix(rom: RomImage, root: Int): Boolean {
+    private fun plausibleAbilityPrefix(
+        rom: RomImage,
+        root: Int,
+        codec: PokemonTextCodec,
+    ): Boolean {
         if (root < 0 || root.toLong() + RECORD_SIZE + NAME_WIDTH > rom.size.toLong()) return false
         val rowZero = rom.slice(root, NAME_WIDTH)
         val terminator = rowZero.indexOfFirst { it.toInt() and 0xFF == 0xFF }
         if (terminator <= 0 || rowZero.take(terminator).any { it.toInt() and 0xFF !in 0xAD..0xB0 }) {
             return false
         }
-        val first = PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(root + RECORD_SIZE, NAME_WIDTH))
+        val first = codec.decodeDetailed(rom.slice(root + RECORD_SIZE, NAME_WIDTH))
         return first.terminated && first.validRatio >= 0.80 && first.text.any(Char::isLetterOrDigit)
     }
 
@@ -161,9 +167,14 @@ internal object HeaderlessUnifiedAbilityResolver {
         return valid.toDouble() / count >= MINIMUM_OPTIONAL_COVERAGE
     }
 
-    private fun plausibleText(rom: RomImage, offset: Int, maximumLength: Int): Boolean {
+    private fun plausibleText(
+        rom: RomImage,
+        offset: Int,
+        maximumLength: Int,
+        codec: PokemonTextCodec,
+    ): Boolean {
         if (offset !in 0 until rom.size) return false
-        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(
+        val decoded = codec.decodeDetailed(
             rom.slice(offset, minOf(maximumLength, rom.size - offset)),
         )
         return decoded.terminated && decoded.validRatio >= 0.80 && decoded.text.any(Char::isLetterOrDigit)

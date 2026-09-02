@@ -15,6 +15,7 @@ import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.util.concurrent.CancellationException
 
 internal object Gen3LocalMapResolver {
@@ -22,6 +23,7 @@ internal object Gen3LocalMapResolver {
         session: RomAnalysisSession,
         encounterBaseIds: Set<Int>,
         family: EngineFamily,
+        codec: PokemonTextCodec?,
     ): LocalMapResolution {
         val cancellation = session.cancellation
         cancellation.throwIfCancellationRequested()
@@ -30,7 +32,12 @@ internal object Gen3LocalMapResolver {
         val references = session.gbaReferenceIndex
             ?.takeUnless { it.overflowed }
             ?: return LocalMapResolution.Unavailable("reference-index", "compiled GBA reference index is unavailable")
-        val completeHeaders = Gen3MapLocationResolver.resolveHeaderByBaseArea(session.rom, encounterBaseIds, references)
+        val completeHeaders = Gen3MapLocationResolver.resolveHeaderByBaseArea(
+            session.rom,
+            encounterBaseIds,
+            references,
+            cancellation,
+        )
         cancellation.throwIfCancellationRequested()
         if (completeHeaders.isEmpty()) {
             return LocalMapResolution.Unavailable("map-groups", "no unique compiled gMapGroups authority was resolved")
@@ -42,7 +49,13 @@ internal object Gen3LocalMapResolver {
             )
         }
 
-        val names = Gen3MapLocationResolver.resolveDetailed(session.rom, encounterBaseIds, references)
+        val names = Gen3MapLocationResolver.resolveDetailed(
+            session.rom,
+            encounterBaseIds,
+            references,
+            codec,
+            cancellation,
+        )
         cancellation.throwIfCancellationRequested()
         var selectedHeaders = completeHeaders
         var descriptorBatch = readDescriptors(session.rom, selectedHeaders, names, cancellation)
@@ -51,6 +64,7 @@ internal object Gen3LocalMapResolver {
                 session.rom,
                 encounterBaseIds,
                 references,
+                cancellation,
             )
             cancellation.throwIfCancellationRequested()
             if (reachableHeaders.isEmpty()) {
@@ -151,7 +165,13 @@ internal object Gen3LocalMapResolver {
             emptyList()
         }
         cancellation.throwIfCancellationRequested()
-        val poiResolution = Gen3LocalMapPoiResolver.resolve(session.rom, selectedHeaders, maps, family)
+        val poiResolution = Gen3LocalMapPoiResolver.resolve(
+            session.rom,
+            selectedHeaders,
+            maps,
+            family,
+            codec,
+        )
         cancellation.throwIfCancellationRequested()
         val catalog = LocalMapCatalog(
             maps = maps,
@@ -175,7 +195,12 @@ internal object Gen3LocalMapResolver {
                 listOf("retained ${timedAssets.size} source-backed natural-light maps as indexed timed rasters")
             } else {
                 emptyList()
-            } + if (poiResolution.pois.isNotEmpty()) {
+            } + if (codec == null) {
+                listOf(
+                    "resolved ${poiResolution.pois.size} bounded structural local-map POIs; " +
+                        "omitted localized Gen III map and POI names because no ROM text codec was authoritative",
+                )
+            } else if (poiResolution.pois.isNotEmpty()) {
                 listOf("resolved ${poiResolution.pois.size} bounded local-map POIs from typed MapEvents records")
             } else {
                 emptyList()

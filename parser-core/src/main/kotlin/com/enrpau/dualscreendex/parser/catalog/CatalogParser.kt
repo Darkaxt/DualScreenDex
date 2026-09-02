@@ -73,6 +73,80 @@ internal fun reportCatalogWork(
     }
 }
 
+internal fun natureCapabilityEvidence(
+    resolution: NatureResolution?,
+    generation: Int,
+): CapabilityEvidence = when (resolution) {
+    is NatureResolution.Resolved -> {
+        val catalog = resolution.catalog
+        val namedRecords = catalog.records.count { it.name != null }
+        val flavorRecords = catalog.records.count { it.flavorModifiers != null }
+        val completeRecords = catalog.records.count { it.name != null && it.flavorModifiers != null }
+        val totalRecords = catalog.records.size
+        val complete = completeRecords == totalRecords
+        CapabilityEvidence(
+            capability = RomCapability.NATURES,
+            compatible = true,
+            confidence = (totalRecords + namedRecords + flavorRecords).toDouble() / (totalRecords * 3),
+            offset = catalog.statTableOffset,
+            count = totalRecords,
+            reasons = buildList {
+                add("decoded ROM-native Nature stat effects")
+                if (namedRecords == totalRecords) {
+                    add("decoded ROM-native Nature names")
+                } else {
+                    add("ROM-native Nature names are unavailable for ${totalRecords - namedRecords}/$totalRecords records")
+                }
+                if (flavorRecords == totalRecords) {
+                    add("decoded ROM-native Nature flavor affinities")
+                } else {
+                    add(
+                        "ROM-native Nature flavor affinities are unavailable for " +
+                            "${totalRecords - flavorRecords}/$totalRecords records",
+                    )
+                }
+            },
+            status = if (complete) CapabilityStatus.AVAILABLE else CapabilityStatus.PARTIAL,
+            validRecords = totalRecords,
+            totalRecords = totalRecords,
+            reviewStatus = if (complete) CapabilityReviewStatus.NONE else CapabilityReviewStatus.MANUAL_REVIEW,
+            coveredRecords = completeRecords,
+            expectedRecords = totalRecords,
+            incompleteRecords = totalRecords - completeRecords,
+        )
+    }
+    is NatureResolution.Ambiguous -> CapabilityEvidence(
+        capability = RomCapability.NATURES,
+        compatible = false,
+        confidence = 0.0,
+        reasons = listOf("multiple compiled Nature table contracts remained (${resolution.candidates})"),
+        status = CapabilityStatus.AMBIGUOUS,
+        reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
+    )
+    is NatureResolution.BudgetExceeded -> CapabilityEvidence(
+        capability = RomCapability.NATURES,
+        compatible = false,
+        confidence = 0.0,
+        reasons = listOf(resolution.reason),
+        status = CapabilityStatus.NOT_FOUND,
+        reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
+    )
+    is NatureResolution.Unavailable -> CapabilityEvidence(
+        capability = RomCapability.NATURES,
+        compatible = false,
+        confidence = 0.0,
+        reasons = listOf(resolution.reason),
+        status = if (generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
+    )
+    null -> CapabilityEvidence(
+        capability = RomCapability.NATURES,
+        compatible = false,
+        confidence = 0.0,
+        reasons = listOf("Natures are not part of this engine"),
+        status = if (generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
+    )
+}
+
 data class CatalogMaterializationProgress(
     val phase: CatalogMaterializationPhase,
     val completedUnits: Int,
@@ -184,9 +258,9 @@ object CatalogMaterializer {
         layout: ResolvedRomLayout,
         onProgress: ((CatalogMaterializationProgress) -> Unit)? = null,
         onWork: ((CatalogWorkProgress) -> Unit)? = null,
-        resolveGen3AreaNames: ((Set<Int>) -> Map<Int, String>)? = null,
-        resolveWorldMap: ((Int, Set<Int>) -> WorldMapResolution)? = null,
-        resolveLocalMaps: ((Int, Set<Int>) -> LocalMapResolution)? = null,
+        resolveGen3AreaNames: ((ResolvedRomLayout, Set<Int>) -> Map<Int, String>)? = null,
+        resolveWorldMap: ((ResolvedRomLayout, Set<Int>) -> WorldMapResolution)? = null,
+        resolveLocalMaps: ((ResolvedRomLayout, Set<Int>) -> LocalMapResolution)? = null,
         resolveMoveDescriptions: ((ResolvedRomLayout) -> MoveDescriptionResult?)? = null,
         resolveAbilityMechanics: ((ResolvedRomLayout, Map<Int, AbilityRecord>, Map<Int, TypeRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?)? = null,
         resolveNatures: ((ResolvedRomLayout) -> NatureResolution)? = null,
@@ -206,7 +280,7 @@ object CatalogMaterializer {
         }
 
         beginWork(CatalogWorkModule.CORE_RECORDS)
-        val rawSpecies = RecordMaterializers.species(rom, layout)
+        val rawSpecies = RecordMaterializers.species(rom, layout, cancellation)
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
             layout.resolvedDatasets.abilityNames?.catalogDirectAbilityIds()?.let { catalogIds ->
                 rawSpecies.mapValues { (_, species) ->
@@ -217,14 +291,14 @@ object CatalogMaterializer {
         } else {
             rawSpecies
         }
-        val rawMoves = RecordMaterializers.moves(rom, layout)
+        val rawMoves = RecordMaterializers.moves(rom, layout, cancellation)
         val chart = if (layout.generation == 3) {
             layout.resolvedDatasets.typeChart?.catalogMatchups().orEmpty()
         } else {
             RecordMaterializers.typeChart(rom, layout)
         }
         val baseTypes = TypePresentationMaterializer.apply(RecordMaterializers.types(layout, baseSpecies, chart, rawMoves))
-        val abilities = RecordMaterializers.abilities(rom, layout)
+        val abilities = RecordMaterializers.abilities(rom, layout, cancellation)
         val natureResolution = if (layout.generation == 3) resolveNatures?.invoke(layout) else null
         val natures = (natureResolution as? NatureResolution.Resolved)?.catalog?.records
             ?.associateBy { it.id }
@@ -236,58 +310,10 @@ object CatalogMaterializer {
                 "family type colors with explicit accessible fallback for custom IDs",
                 "no materialized types were available for presentation",
             )
-            capabilities[RomCapability.NATURES] = when (natureResolution) {
-                is NatureResolution.Resolved -> CapabilityEvidence(
-                    capability = RomCapability.NATURES,
-                    compatible = true,
-                    confidence = 1.0,
-                    offset = natureResolution.catalog.statTableOffset,
-                    count = natureResolution.catalog.records.size,
-                    reasons = listOf(
-                        if (natureResolution.catalog.flavorTableOffset != null) {
-                            "decoded ROM-native Nature names, stat effects, and flavor affinities"
-                        } else {
-                            "decoded ROM-native Nature names and stat effects; flavor affinities were unavailable"
-                        },
-                    ),
-                    status = if (natureResolution.catalog.flavorTableOffset != null) {
-                        CapabilityStatus.AVAILABLE
-                    } else {
-                        CapabilityStatus.PARTIAL
-                    },
-                    validRecords = natureResolution.catalog.records.size,
-                    totalRecords = natureResolution.catalog.records.size,
-                )
-                is NatureResolution.Ambiguous -> CapabilityEvidence(
-                    capability = RomCapability.NATURES,
-                    compatible = false,
-                    confidence = 0.0,
-                    reasons = listOf("multiple compiled Nature table contracts remained (${natureResolution.candidates})"),
-                    status = CapabilityStatus.AMBIGUOUS,
-                    reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
-                )
-                is NatureResolution.BudgetExceeded -> CapabilityEvidence(
-                    capability = RomCapability.NATURES,
-                    compatible = false,
-                    confidence = 0.0,
-                    reasons = listOf(natureResolution.reason),
-                    status = CapabilityStatus.NOT_FOUND,
-                )
-                is NatureResolution.Unavailable -> CapabilityEvidence(
-                    capability = RomCapability.NATURES,
-                    compatible = false,
-                    confidence = 0.0,
-                    reasons = listOf(natureResolution.reason),
-                    status = if (layout.generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
-                )
-                null -> CapabilityEvidence(
-                    capability = RomCapability.NATURES,
-                    compatible = false,
-                    confidence = 0.0,
-                    reasons = listOf("Natures are not part of this engine"),
-                    status = if (layout.generation < 3) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
-                )
-            }
+            capabilities[RomCapability.NATURES] = natureCapabilityEvidence(
+                natureResolution,
+                layout.generation,
+            )
         }
         val essentialCatalog = ParsedCatalog(
             romSha256 = analysis.sha256,
@@ -301,6 +327,7 @@ object CatalogMaterializer {
             naturesById = natures,
             typeChart = chart,
             capabilities = initialCapabilities,
+            languageManifest = layout.languageManifest,
         )
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, essentialCatalog))
 
@@ -333,7 +360,7 @@ object CatalogMaterializer {
                     ?: CatalogField.notFound("sprite could not be decoded for species $id"),
                 description = when {
                     !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's Pokédex domain")
-                    description != null -> CatalogField.available(description.text)
+                    description?.text != null -> CatalogField.available(description.text)
                     else -> CatalogField.notFound("description could not be decoded for species $id")
                 },
                 height = when {
@@ -380,7 +407,7 @@ object CatalogMaterializer {
                     ?: Gen3SaveBlock1PointerResolver.resolve(rom),
                 gen3RuntimeMemoryLayout = runtimeLayout,
                 areaNamesByBaseId = if (layout.pokeemeraldExpansion == null && resolveGen3AreaNames != null) {
-                    resolveGen3AreaNames(rawEncounters.mapTo(linkedSetOf()) { it.id / 10 })
+                    resolveGen3AreaNames(layout, rawEncounters.mapTo(linkedSetOf()) { it.id / 10 })
                 } else {
                     emptyMap()
                 },
@@ -391,11 +418,11 @@ object CatalogMaterializer {
         val encounters = applyResolvedAreaNames(rawEncounters, runtimeMetadata.areaNamesByBaseId)
         val closedMediaSpecies = EncounterReferencedSpeciesClosure.close(
             rom = rom,
-            generation = layout.generation,
-            names = layout.tables.speciesNames,
+            layout = layout,
             namesStatus = initialCapabilities[RomCapability.SPECIES_NAMES]?.status,
             species = mediaSpecies,
             encounters = encounters,
+            cancellation = cancellation,
         )
         val relationshipMaterialization = runCatching {
             RelationshipMaterializers.relationshipsWithEvidence(
@@ -474,7 +501,11 @@ object CatalogMaterializer {
         }
         cancellation.throwIfCancellationRequested()
         beginWork(CatalogWorkModule.ABILITY_DATA)
-        val abilityDescriptions = AbilityDescriptionMaterializer.materialize(rom, layout)
+        val abilityDescriptions = AbilityDescriptionMaterializer.materialize(
+            rom,
+            layout,
+            cancellation = cancellation,
+        )
         val abilityMechanics = resolveAbilityMechanics?.invoke(layout, abilities, baseTypes, abilityDescriptions)
             ?: AbilityMechanicsMaterializer.materialize(rom, layout, abilities, baseTypes, abilityDescriptions)
         val species = relationshipSpecies.mapValues { (id, record) ->
@@ -665,7 +696,7 @@ object CatalogMaterializer {
         val worldMapResolution = if (layout.generation in 1..3 && resolveWorldMap != null) {
             try {
                 resolveWorldMap(
-                    layout.generation,
+                    layout,
                     encounters.mapTo(linkedSetOf()) { it.id / encounterAreaIdStride },
                 ).also { resolution ->
                     if (resolution is WorldMapResolution.Resolved) resolution.catalog.validate()
@@ -735,7 +766,7 @@ object CatalogMaterializer {
             layout.generation in 1..3 && resolveLocalMaps != null
         ) {
             try {
-                resolveLocalMaps(layout.generation, encounterBaseIds).also { resolution ->
+                resolveLocalMaps(layout, encounterBaseIds).also { resolution ->
                     if (resolution is LocalMapResolution.Resolved) resolution.catalog.validate()
                 }
             } catch (failure: CancellationException) {
@@ -881,6 +912,7 @@ object CatalogMaterializer {
                     )
                 }
             },
+            languageManifest = layout.languageManifest,
         )
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.EXTENDED, 4, 5, catalog))
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, catalog))

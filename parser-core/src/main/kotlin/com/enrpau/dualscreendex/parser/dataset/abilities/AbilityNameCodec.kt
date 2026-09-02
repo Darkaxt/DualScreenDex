@@ -12,12 +12,16 @@ fun interface AbilityNameTableDecoder {
 }
 
 /** Sole byte-level interpreter for Gen III fixed-width and direct-record ability names. */
-class AbilityNameCodec : AbilityNameTableDecoder {
+class AbilityNameCodec(
+    private val textCodec: PokemonTextCodec = PokemonTextCodec.gbaEnglish,
+) : AbilityNameTableDecoder {
     override fun decode(
         session: RomAnalysisSession,
         layout: AbilityNameTableLayout,
         semanticDomain: AbilitySemanticDomain,
     ): AbilityNameTableOutcome {
+        val cancellation = session.cancellation
+        cancellation.throwIfCancellationRequested()
         val extent = when (val check = checkStridedExtent(
             offset = layout.offset,
             count = layout.count,
@@ -41,6 +45,7 @@ class AbilityNameCodec : AbilityNameTableDecoder {
         }
 
         val rows = List(layout.count.toInt()) { rowIndex ->
+            cancellation.throwIfCancellationRequested()
             val recordOffset = extent.offset + rowIndex * layout.stride + layout.nameOffset
             decodeRow(session, rowIndex, recordOffset, layout.nameWidth)
         }
@@ -110,14 +115,26 @@ class AbilityNameCodec : AbilityNameTableDecoder {
         offset: Int,
         width: Int,
     ): AbilityNameRowOutcome {
-        val raw = session.rom.slice(offset, width)
-        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(raw)
+        val decoded = textCodec.decodeDetailed(
+            rom = session.rom,
+            offset = offset,
+            maximumBytes = width,
+            cancellation = session.cancellation,
+        )
         if (rowIndex == 0) {
-            val terminator = raw.indexOfFirst { it.toInt() and 0xFF == 0xFF }
-            val blankNone = terminator == 0 && raw.drop(1).all { it.toInt() == 0 }
+            val terminator = (0 until width).indexOfFirst { index ->
+                session.rom.u8(offset + index) == 0xFF
+            }
+            val blankNone = terminator == 0 && (1 until width).all { index ->
+                session.rom.u8(offset + index) == 0
+            }
             val placeholderNone = terminator > 0 &&
-                raw.take(terminator).all { it.toInt() and 0xFF in ROW_ZERO_PLACEHOLDER_BYTES } &&
-                raw.drop(terminator + 1).all { it.toInt() and 0xFF in ROW_ZERO_PADDING_BYTES }
+                (0 until terminator).all { index ->
+                    session.rom.u8(offset + index) in ROW_ZERO_PLACEHOLDER_BYTES
+                } &&
+                (terminator + 1 until width).all { index ->
+                    session.rom.u8(offset + index) in ROW_ZERO_PADDING_BYTES
+                }
             return if (blankNone || placeholderNone) {
                 AbilityNameRowOutcome.StructuralSentinel(rowIndex, decoded.text)
             } else {

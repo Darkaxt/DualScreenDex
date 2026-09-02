@@ -10,12 +10,14 @@ import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.sprite.IndexedSprite
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 internal object Gen1LocalMapResolver {
     fun resolve(
         session: RomAnalysisSession,
         encounterBaseIds: Set<Int>,
         family: EngineFamily,
+        codec: PokemonTextCodec?,
     ): LocalMapResolution {
         val format = Gen1LocalMapFormat.forFamily(family)
             ?: return LocalMapResolution.Unavailable(
@@ -42,12 +44,15 @@ internal object Gen1LocalMapResolver {
         }
 
         val authority = authorities.single()
-        val mapNames = runCatching {
-            Gen1WorldMapResolver.resolveNames(
-                session,
-                authority.descriptors.mapTo(linkedSetOf(), MapDescriptor::mapId),
-            )
-        }.getOrDefault(emptyMap())
+        val mapNames = codec?.let {
+            runCatching {
+                Gen1WorldMapResolver.resolveNames(
+                    session,
+                    authority.descriptors.mapTo(linkedSetOf(), MapDescriptor::mapId),
+                    it,
+                )
+            }.getOrDefault(emptyMap())
+        }.orEmpty()
         val totalPixels = authority.descriptors.sumOf(MapDescriptor::pixelCount)
         if (totalPixels > MAX_TOTAL_PIXELS) {
             return LocalMapResolution.BudgetExceeded(
@@ -104,6 +109,7 @@ internal object Gen1LocalMapResolver {
                 rom = session.rom,
                 sources = authority.descriptors.map(MapDescriptor::toPoiSource),
                 maps = maps,
+                codec = codec,
             ).also { resolution ->
                 LocalMapCatalog(
                     maps = maps,
@@ -130,8 +136,12 @@ internal object Gen1LocalMapResolver {
                 "resolved paired compiled Gen I map-bank, map-pointer, and tileset consumers",
                 "rendered ${maps.size} bounded ${format.label} maps from 32x32 ROM blocks and 2bpp tiles",
                 "built ${sceneResolution.scenes.size} bounded Local-map scenes from compiled cardinal connections",
-                "resolved ${poiResolution.pois.size} bounded Local-map POIs from compiled object and hidden-event structures",
-                "resolved ${mapNames.size} map names through the compiled Town Map lookup",
+                if (codec == null) {
+                    "resolved ${poiResolution.pois.size} bounded structural Local-map POIs; " +
+                        "omitted localized Gen I map and POI names because no ROM text codec was authoritative"
+                } else {
+                    "resolved ${poiResolution.pois.size} bounded Local-map POIs and ${mapNames.size} map names"
+                },
                 "bound all ${requiredMaps.size} encounter-authoritative map IDs",
             ) + skippedReasons + sceneResolution.skippedReasons + poiResolution.skippedReasons,
             skippedMaps = skippedReasons.size,

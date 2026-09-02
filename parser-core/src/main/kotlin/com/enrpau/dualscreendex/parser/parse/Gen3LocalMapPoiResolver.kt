@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
 import kotlin.math.abs
 
 internal object Gen3LocalMapPoiResolver {
@@ -16,13 +17,14 @@ internal object Gen3LocalMapPoiResolver {
         headers: Map<Int, Int>,
         maps: List<LocalMap>,
         family: EngineFamily,
+        codec: PokemonTextCodec?,
     ): Resolution {
         val mapsByBaseArea = maps.associateBy(LocalMap::baseAreaId)
         val pois = mutableListOf<LocalMapPoi>()
         val skipped = mutableListOf<String>()
         mapsByBaseArea.toSortedMap().forEach { (baseAreaId, map) ->
             val header = headers[baseAreaId] ?: return@forEach
-            runCatching { readMapEvents(rom, header, map, family) }
+            runCatching { readMapEvents(rom, header, map, family, codec) }
                 .onSuccess(pois::addAll)
                 .onFailure { failure ->
                     skipped += "map 0x${baseAreaId.hex4()} POIs: ${failure.message}"
@@ -36,6 +38,7 @@ internal object Gen3LocalMapPoiResolver {
         header: Int,
         map: LocalMap,
         family: EngineFamily,
+        codec: PokemonTextCodec?,
     ): List<LocalMapPoi> {
         val events = rom.gbaPointer(header + MAP_EVENTS_OFFSET) ?: return emptyList()
         val objectCount = rom.u8(events + OBJECT_COUNT_OFFSET)
@@ -150,7 +153,11 @@ internal object Gen3LocalMapPoiResolver {
                     val destination = backgroundWarps[background.index]
                     val isSign = background.kind in BG_EVENT_SIGN_KINDS
                     val signHeadline = if (isSign) {
-                        rom.gbaPointer(background.offset + 8)?.let { readSignHeadline(rom, it) }
+                        codec?.let { selectedCodec ->
+                            rom.gbaPointer(background.offset + 8)?.let {
+                                readSignHeadline(rom, it, selectedCodec)
+                            }
+                        }
                     } else {
                         null
                     }
@@ -161,7 +168,7 @@ internal object Gen3LocalMapPoiResolver {
                             baseAreaId = map.baseAreaId,
                             tileX = background.x,
                             tileY = background.y,
-                            kind = if (signHeadline != null || destination != null) {
+                            kind = if (isSign || destination != null) {
                                 LocalMapPoiKind.PLACE
                             } else {
                                 LocalMapPoiKind.UNKNOWN
@@ -181,11 +188,19 @@ internal object Gen3LocalMapPoiResolver {
         }
     }
 
-    private fun readSignHeadline(rom: RomImage, script: Int): SignHeadline? =
-        readSimpleSignHeadline(rom, script)?.let { SignHeadline(displayName = it) }
-            ?: readGenderConditionedSignHeadline(rom, script)
+    private fun readSignHeadline(
+        rom: RomImage,
+        script: Int,
+        codec: PokemonTextCodec,
+    ): SignHeadline? =
+        readSimpleSignHeadline(rom, script, codec)?.let { SignHeadline(displayName = it) }
+            ?: readGenderConditionedSignHeadline(rom, script, codec)
 
-    private fun readGenderConditionedSignHeadline(rom: RomImage, script: Int): SignHeadline? {
+    private fun readGenderConditionedSignHeadline(
+        rom: RomImage,
+        script: Int,
+        codec: PokemonTextCodec,
+    ): SignHeadline? {
         if (script.toLong() + GENDER_SIGN_SCRIPT_BYTES > rom.size.toLong()) return null
         if (rom.u8(script) != SCR_OP_LOCK_ALL || rom.u8(script + 1) != SCR_OP_CHECK_PLAYER_GENDER) return null
         var cursor = script + 2
@@ -197,7 +212,7 @@ internal object Gen3LocalMapPoiResolver {
             cursor += COMPARE_VAR_TO_VALUE_BYTES
             if (rom.u8(cursor) != SCR_OP_CALL_IF || rom.u8(cursor + 1) != COMPARISON_EQUAL) return null
             val target = rom.gbaPointer(cursor + 2) ?: return null
-            names[gender] = readSimpleSignHeadline(rom, target) ?: return null
+            names[gender] = readSimpleSignHeadline(rom, target, codec) ?: return null
             cursor += CALL_IF_BYTES
         }
         if (rom.u8(cursor) != SCR_OP_RELEASE_ALL || rom.u8(cursor + 1) != SCR_OP_END) return null
@@ -207,34 +222,50 @@ internal object Gen3LocalMapPoiResolver {
         )
     }
 
-    private fun readSimpleSignHeadline(rom: RomImage, script: Int): String? {
+    private fun readSimpleSignHeadline(
+        rom: RomImage,
+        script: Int,
+        codec: PokemonTextCodec,
+    ): String? {
         if (script.toLong() + SIMPLE_MSGBOX_BYTES > rom.size.toLong()) return null
         if (rom.u8(script) != SCR_OP_LOAD_WORD || rom.u8(script + 1) != 0) return null
         val text = rom.gbaPointer(script + 2) ?: return null
         if (rom.u8(script + 6) != SCR_OP_CALL_STD || rom.u8(script + 7) !in 0..MAX_MSGBOX_TYPE) return null
         val available = minOf(MAX_SIGN_TEXT_BYTES, rom.size - text)
         if (available <= 0) return null
-        return decodeSignHeadline(rom.slice(text, available))
+        return decodeSignHeadline(rom.slice(text, available), codec)
     }
 
-    private fun decodeSignHeadline(raw: ByteArray): String? {
+    private fun decodeSignHeadline(raw: ByteArray, codec: PokemonTextCodec): String? {
+        val rom = RomImage(raw)
         val output = StringBuilder()
         var cursor = 0
         var terminated = false
-        while (cursor < raw.size) {
-            val byte = raw[cursor].toInt() and 0xFF
-            if (byte == PokemonTextCodec.gbaEnglish.terminator || byte in SIGN_LINE_BREAKS) {
+        while (cursor < rom.size) {
+            val byte = rom.u8(cursor)
+            if (byte == codec.terminator || byte in SIGN_LINE_BREAKS) {
                 terminated = true
                 break
             }
             if (byte == EXT_CTRL_CODE_BEGIN) {
-                if (cursor + 1 >= raw.size || raw[cursor + 1].toInt() and 0xFF != EXT_CTRL_CODE_PLAYER) return null
+                if (cursor + 1 >= rom.size || rom.u8(cursor + 1) != EXT_CTRL_CODE_PLAYER) return null
                 output.append("{PLAYER}")
                 cursor += 2
                 continue
             }
-            output.append(PokemonTextCodec.gbaEnglish.decodeByte(byte) ?: return null)
-            cursor++
+            val token = codec.decodeToken(rom, cursor, rom.size)
+            cursor += token.byteCount
+            when (token) {
+                is PokemonTextToken.Glyph -> output.append(token.text)
+                is PokemonTextToken.Whitespace -> output.append(token.text)
+                is PokemonTextToken.Substitution -> output.append(token.text)
+                is PokemonTextToken.Control -> output.append(token.replacement)
+                is PokemonTextToken.Invalid -> return null
+                is PokemonTextToken.Terminator -> {
+                    terminated = true
+                    break
+                }
+            }
         }
         if (!terminated) return null
         return output.toString().replace(WHITESPACE, " ").trim().takeIf { it.length >= MIN_SIGN_HEADLINE_CHARS }

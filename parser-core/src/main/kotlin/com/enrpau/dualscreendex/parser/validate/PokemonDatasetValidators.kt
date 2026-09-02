@@ -539,7 +539,7 @@ object PokemonDatasetValidators {
         val metadata = categoryEnd + 1
         if (metadata + 9 > rom.size || rom.u8(metadata + 4) != GEN1_TEXT_FAR) return false
         val target = rom.gbBankAddress(rom.u8(metadata + 7), rom.u16le(metadata + 5)) ?: return false
-        val description = Gen1DescriptionTextCodec.decodeDetailed(rom, target, 512) ?: return false
+        val description = Gen1DescriptionTextCodec.decodeDetailed(rom, target, 512, codec) ?: return false
         return decodeAt(rom, offset, 24, codec, 0.70) && description.validRatio >= 0.55
     }
 

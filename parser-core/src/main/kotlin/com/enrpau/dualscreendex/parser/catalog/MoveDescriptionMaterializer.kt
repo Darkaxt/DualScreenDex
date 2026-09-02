@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -24,9 +25,10 @@ object MoveDescriptionMaterializer {
         limits: ResolutionLimits = ResolutionLimits(),
     ): MoveDescriptionResult? {
         cancellation.throwIfCancellationRequested()
+        val codec = layout.defaultTextCodec() ?: return null
         val budget = MoveDescriptionBudget(limits)
         return try {
-            materializeBounded(rom, layout, gbaReferenceIndex, cancellation, budget)
+            materializeBounded(rom, layout, codec, gbaReferenceIndex, cancellation, budget)
         } catch (_: MoveDescriptionBudgetExceededException) {
             null
         }
@@ -35,12 +37,13 @@ object MoveDescriptionMaterializer {
     private fun materializeBounded(
         rom: RomImage,
         layout: ResolvedRomLayout,
+        codec: PokemonTextCodec,
         gbaReferenceIndex: GbaReferenceIndex?,
         cancellation: ParserCancellationToken,
         budget: MoveDescriptionBudget,
     ): MoveDescriptionResult? {
         if (layout.generation == 2) {
-            return materializeGen2(rom, layout.moveCount ?: return null, cancellation, budget)
+            return materializeGen2(rom, codec, layout.moveCount ?: return null, cancellation, budget)
         }
         if (layout.generation != 3) return null
         val table = layout.tables.moveData
@@ -58,7 +61,7 @@ object MoveDescriptionMaterializer {
                     budget.recordWork()
                     val id = index + 1
                     val record = embeddedTable.offset + id * embeddedDescriptionStride
-                    val text = rom.gbaPointer(record + 4)?.let { decodeText(rom, it) } ?: return@repeat
+                    val text = rom.gbaPointer(record + 4)?.let { decodeText(rom, it, codec) } ?: return@repeat
                     put(id, text)
                 }
             }
@@ -71,12 +74,13 @@ object MoveDescriptionMaterializer {
         val moveCount = layout.moveCount ?: return null
         if (moveCount < 4) return null
         val pointerCount = moveCount - 1
-        referencedPointerTable(rom, pointerCount, gbaReferenceIndex, cancellation, budget)?.let { return it }
-        return fallbackPointerTable(rom, pointerCount, cancellation, budget)
+        referencedPointerTable(rom, codec, pointerCount, gbaReferenceIndex, cancellation, budget)?.let { return it }
+        return fallbackPointerTable(rom, codec, pointerCount, cancellation, budget)
     }
 
     private fun referencedPointerTable(
         rom: RomImage,
+        codec: PokemonTextCodec,
         pointerCount: Int,
         references: GbaReferenceIndex?,
         cancellation: ParserCancellationToken,
@@ -105,6 +109,7 @@ object MoveDescriptionMaterializer {
             budget.recordCandidate()
             val candidate = decodeCandidate(
                 rom,
+                codec,
                 offset,
                 pointerCount,
                 cancellation,
@@ -119,6 +124,7 @@ object MoveDescriptionMaterializer {
 
     private fun materializeGen2(
         rom: RomImage,
+        codec: PokemonTextCodec,
         moveCount: Int,
         cancellation: ParserCancellationToken,
         budget: MoveDescriptionBudget,
@@ -146,8 +152,15 @@ object MoveDescriptionMaterializer {
             }
             if (!pointersValid) continue
             budget.recordCandidate()
-            val candidate = decodeGen2Candidate(rom, offset, reference.bank, moveCount, cancellation, budget)
-                ?: continue
+            val candidate = decodeGen2Candidate(
+                rom,
+                codec,
+                offset,
+                reference.bank,
+                moveCount,
+                cancellation,
+                budget,
+            ) ?: continue
             if (selected != null) return null
             selected = candidate
         }
@@ -196,13 +209,13 @@ object MoveDescriptionMaterializer {
 
     private fun decodeGen2Candidate(
         rom: RomImage,
+        codec: PokemonTextCodec,
         offset: Int,
         bank: Int,
         moveCount: Int,
         cancellation: ParserCancellationToken,
         budget: MoveDescriptionBudget,
     ): MoveDescriptionResult? {
-        val codec = PokemonTextCodec.gbEnglish
         val descriptions = linkedMapOf<Int, String>()
         repeat(moveCount) { index ->
             checkCancellation(index, cancellation)
@@ -230,6 +243,7 @@ object MoveDescriptionMaterializer {
 
     private fun fallbackPointerTable(
         rom: RomImage,
+        codec: PokemonTextCodec,
         pointerCount: Int,
         cancellation: ParserCancellationToken,
         budget: MoveDescriptionBudget,
@@ -244,7 +258,7 @@ object MoveDescriptionMaterializer {
         fun inspectCandidate(offset: Int) {
             budget.recordRoot(offset)
             budget.recordCandidate()
-            val candidate = decodeCandidate(rom, offset, pointerCount, cancellation, budget) ?: return
+            val candidate = decodeCandidate(rom, codec, offset, pointerCount, cancellation, budget) ?: return
             val current = best
             if (current == null || MOVE_DESCRIPTION_ORDER.compare(candidate, current) > 0) best = candidate
         }
@@ -279,13 +293,13 @@ object MoveDescriptionMaterializer {
 
     private fun decodeCandidate(
         rom: RomImage,
+        codec: PokemonTextCodec,
         offset: Int,
         pointerCount: Int,
         cancellation: ParserCancellationToken,
         budget: MoveDescriptionBudget,
         allowExplicitPlaceholders: Boolean = false,
     ): MoveDescriptionResult? {
-        val codec = PokemonTextCodec.gbaEnglish
         val descriptions = linkedMapOf<Int, String>()
         repeat(pointerCount) { index ->
             checkCancellation(index, cancellation)
@@ -320,9 +334,9 @@ object MoveDescriptionMaterializer {
 
     private fun isExplicitPlaceholder(value: String): Boolean = value == "-" || value == "—"
 
-    private fun decodeText(rom: RomImage, offset: Int): String? {
+    private fun decodeText(rom: RomImage, offset: Int, codec: PokemonTextCodec): String? {
         val length = minOf(256, rom.size - offset)
-        val decoded = runCatching { PokemonTextCodec.gbaEnglish.decodeDetailed(rom.slice(offset, length)) }.getOrNull()
+        val decoded = runCatching { codec.decodeDetailed(rom.slice(offset, length)) }.getOrNull()
             ?: return null
         val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
         return normalized.takeIf { decoded.terminated && decoded.validRatio >= 0.85 && looksLikeNaturalDescription(it) }

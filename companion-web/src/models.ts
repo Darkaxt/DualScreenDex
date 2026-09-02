@@ -60,7 +60,7 @@ export interface TypeMatchupView {
 
 export interface NatureInfo {
   id: number;
-  name: string;
+  name: string | null;
   statMultipliers: Record<'ATTACK' | 'DEFENSE' | 'SPEED' | 'SPECIAL_ATTACK' | 'SPECIAL_DEFENSE', number>;
   raisedStat: 'ATTACK' | 'DEFENSE' | 'SPEED' | 'SPECIAL_ATTACK' | 'SPECIAL_DEFENSE' | null;
   loweredStat: 'ATTACK' | 'DEFENSE' | 'SPEED' | 'SPECIAL_ATTACK' | 'SPECIAL_DEFENSE' | null;
@@ -252,7 +252,7 @@ export interface WorldMapRegion {
 
 export interface WorldMapLocation {
   key: string;
-  displayName: string;
+  displayName: string | null;
   baseAreaIds: number[];
   geometry: { x: number; y: number; width: number; height: number }[];
 }
@@ -505,7 +505,7 @@ export interface OwnedIndividualView {
   location: OwnedIndividualLocationView;
   speciesId: number;
   formId: number | null;
-  speciesName: string;
+  speciesName: string | null;
   spriteUrl: string | null;
   typeIds: number[];
   nickname: string | null;

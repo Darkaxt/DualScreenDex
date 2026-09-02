@@ -9,7 +9,12 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
+import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
+import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
@@ -38,7 +43,52 @@ class ChallengeCatalogRoleResolverTest {
         assertTrue(bindings.areaCollectibles.isEmpty())
     }
 
-    private fun catalog(areaName: String, runtimeAreaName: String = areaName): ParsedCatalog {
+    @Test
+    fun `unnamed world location does not suppress a structurally named collectible area`() {
+        val bindings = ChallengeCatalogRoleResolver.resolve(
+            catalog(areaName = "Green Path", includeUnnamedWorldLocation = true),
+        )
+
+        assertEquals(
+            listOf(AreaCollectibleBinding("base-7", "Green Path", setOf("item-a", "item-b"), 7)),
+            bindings.areaCollectibles,
+        )
+    }
+
+    @Test
+    fun `unnamed structural world location retains the existing interface fallback label`() {
+        val bindings = ChallengeCatalogRoleResolver.resolve(
+            catalog(
+                areaName = null,
+                runtimeAreaName = null,
+                includeUnnamedWorldLocation = true,
+            ),
+        )
+
+        assertEquals(
+            listOf(AreaCollectibleBinding("base-7", "Map section 7", setOf("item-a", "item-b"), 7)),
+            bindings.areaCollectibles,
+        )
+    }
+
+    @Test
+    fun `regional role retains numeric species whose localized name is unavailable`() {
+        val base = catalog(areaName = "Green Path")
+        val bindings = ChallengeCatalogRoleResolver.resolve(
+            base.copy(
+                speciesById = base.speciesById +
+                    (8 to species(8).copy(name = CatalogField.notFound("localized name unavailable"))),
+            ),
+        )
+
+        assertEquals(setOf(1, 4, 7, 8), bindings.regionalSpeciesIds)
+    }
+
+    private fun catalog(
+        areaName: String?,
+        runtimeAreaName: String? = areaName,
+        includeUnnamedWorldLocation: Boolean = false,
+    ): ParsedCatalog {
         val map = LocalMap("map-7", areaName, 7, 16, 16, 1, 1, "asset-7")
         return ParsedCatalog(
             romSha256 = "a".repeat(64),
@@ -46,7 +96,7 @@ class ChallengeCatalogRoleResolverTest {
             platform = Platform.GBA,
             speciesById = listOf(1, 4, 7).associateWith(::species),
             runtimeMetadata = com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata(
-                areaNamesByBaseId = mapOf(7 to runtimeAreaName),
+                areaNamesByBaseId = runtimeAreaName?.let { mapOf(7 to it) }.orEmpty(),
             ),
             localMaps = LocalMapCatalog(
                 maps = listOf(map),
@@ -57,6 +107,25 @@ class ChallengeCatalogRoleResolverTest {
                     item("unobservable", hidden = false, flag = null),
                 ),
             ),
+            worldMaps = if (includeUnnamedWorldLocation) {
+                WorldMapCatalog(
+                    regions = listOf(
+                        WorldMapRegion(
+                            "region-0",
+                            null,
+                            8,
+                            8,
+                            1,
+                            1,
+                            "world/region-0",
+                            listOf(WorldMapLocation("section-7", null, setOf(7), listOf(WorldMapCell(0, 0, 1, 1)))),
+                        ),
+                    ),
+                    assets = mapOf("world/region-0" to RgbaSprite(8, 8, IntArray(64))),
+                )
+            } else {
+                WorldMapCatalog()
+            },
         )
     }
 

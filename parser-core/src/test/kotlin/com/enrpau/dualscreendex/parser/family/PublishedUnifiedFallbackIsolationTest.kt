@@ -56,7 +56,7 @@ class PublishedUnifiedFallbackIsolationTest {
                     ),
                 ),
             ),
-            codec = identity.codec,
+            probeCodec = identity.probeCodec,
         )
         var state = FamilyProbeState.empty().withIdentityRoots(isolatedIdentity)
         state = CoreDatasetsStrategy().execute(session, definition, state)

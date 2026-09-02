@@ -1,17 +1,35 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.resolvedLanguageManifest
+import com.enrpau.dualscreendex.parser.language.textUnavailableLanguageManifests
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class AbilityDescriptionMaterializerTest {
+    @Test
+    fun unknownAndAmbiguousLanguageDisableAbilityDescriptions() {
+        textUnavailableLanguageManifests.forEach { manifest ->
+            assertNull(
+                AbilityDescriptionMaterializer.materialize(
+                    RomImage(ByteArray(0x100)),
+                    layout(namesOffset = 0).copy(languageManifest = manifest),
+                ),
+            )
+        }
+    }
+
     @Test
     fun decodesAValidatedPointerTableAdjacentToAbilityNames() {
         val bytes = ByteArray(0x1000) { 0xFF.toByte() }
@@ -277,6 +295,44 @@ class AbilityDescriptionMaterializerTest {
         assertEquals("THIRD EFFECT DESCRIPTION", result?.descriptions?.get(3))
     }
 
+    @Test
+    fun cancellationInterruptsCandidateAndRecordDecoding() {
+        val bytes = ByteArray(0x1000) { 0xFF.toByte() }
+        val descriptionsOffset = 0x134
+        listOf(
+            "NO SPECIAL ABILITY",
+            "HELPS REPEL WILD POKEMON",
+            "SUMMONS RAIN IN BATTLE",
+            "BOOSTS SPEED EACH TURN",
+        ).forEachIndexed { id, description ->
+            val textOffset = 0x400 + id * 0x40
+            putGbaPointer(bytes, descriptionsOffset + id * 4, textOffset)
+            encodeGbaText(bytes, textOffset, description)
+        }
+        val cancellation = CancelAfterChecks(successfulChecks = 5)
+
+        assertThrows(ParserCancellationException::class.java) {
+            AbilityDescriptionMaterializer.materialize(
+                RomImage(bytes),
+                layout(0x100, referenceCounts = mapOf(descriptionsOffset to 1)),
+                cancellation,
+            )
+        }
+        assertEquals(6, cancellation.checks)
+    }
+
+    private class CancelAfterChecks(
+        private val successfulChecks: Int,
+    ) : ParserCancellationToken {
+        var checks: Int = 0
+            private set
+
+        override fun throwIfCancellationRequested() {
+            checks++
+            if (checks > successfulChecks) throw ParserCancellationException()
+        }
+    }
+
     private fun layout(
         namesOffset: Int,
         count: Int = 4,
@@ -289,6 +345,7 @@ class AbilityDescriptionMaterializerTest {
         moveCount = count,
         tables = ProfileTables(abilities = TableLayout(namesOffset, count, 13)),
         compiledGbaReferences = referenceCounts?.let(::GbaCompiledReferenceIndex),
+        languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
     )
 
     private fun encodeGbaText(target: ByteArray, offset: Int, value: String, width: Int? = null) {

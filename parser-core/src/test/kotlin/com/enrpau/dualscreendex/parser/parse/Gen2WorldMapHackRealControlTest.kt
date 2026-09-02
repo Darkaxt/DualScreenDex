@@ -12,6 +12,7 @@ import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -321,6 +322,7 @@ class Gen2WorldMapHackRealControlTest {
         Gen2WorldMapResolver.resolve(
             RomAnalysisSession(rom, RomHeaderReader.read(rom)),
             encounters.mapTo(linkedSetOf()) { it.id / 10 },
+            PokemonTextCodec.gbEnglish,
         )
 
     private fun encounters(rom: RomImage): List<EncounterArea> {

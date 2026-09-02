@@ -82,6 +82,50 @@ class SpecimenViewTest {
     }
 
     @Test
+    fun unavailableLocalizedNamesPreserveOwnedNumericAndMechanicalData() {
+        val base = catalog()
+        val unavailable = base.copy(
+            speciesById = base.speciesById.mapValues { (_, species) ->
+                species.copy(name = CatalogField.notFound("localized species name unavailable"))
+            },
+            movesById = base.movesById.mapValues { (_, move) ->
+                move.copy(name = CatalogField.notFound("localized move name unavailable"))
+            },
+            abilitiesById = base.abilitiesById.mapValues { (_, ability) ->
+                ability.copy(name = CatalogField.notFound("localized ability name unavailable"))
+            },
+        )
+        val individual = specimen("party-0", 25, "6666666666666666", "SPARK")
+        val snapshot = AppSnapshot(
+            party = listOf(individual),
+            resolvedOwnedIndividuals = listOf(
+                ResolvedOwnedIndividual(
+                    individual,
+                    OwnedIndividualLocation(OwnedIndividualLocationKind.PARTY, slotIndex = 0),
+                ),
+            ),
+        )
+
+        val party = ApiViewBuilder.state(snapshot, unavailable).party.first()
+        val owned = ApiViewBuilder.specimens(snapshot, unavailable, 25).specimens.single()
+
+        assertEquals(25, party.speciesId)
+        assertEquals(null, party.speciesName)
+        assertEquals(9, party.abilityId)
+        assertEquals(null, party.abilityName)
+        assertEquals(85, party.moves.first().moveId)
+        assertEquals(null, party.moves.first().name)
+        assertEquals(12, party.moves.first().currentPp)
+        assertEquals(15, party.moves.first().maximumPp)
+        assertEquals(25, owned.speciesId)
+        assertEquals(null, owned.speciesName)
+        assertEquals(9, owned.abilityId)
+        assertEquals(85, owned.moves.first().moveId)
+        assertEquals(12, owned.moves.first().currentPp)
+        assertEquals(15, owned.moves.first().maximumPp)
+    }
+
+    @Test
     fun stableIdentitySurvivesPartyToPcAndPcToPartyMovementWithoutDuplication() {
         val identity = "4444444444444444"
         val partyIndividual = specimen("party-0", 25, identity, "SPARK")

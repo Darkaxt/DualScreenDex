@@ -26,12 +26,37 @@ class NatureCatalogMaterializationLiveRomTest {
         val rom = Files.newInputStream(path).use(RomImage::from)
         assertEquals(control.sha256, rom.sha256)
 
-        val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
+        val parsed = CatalogParser.parse(rom)
+        val catalog = requireNotNull(parsed.catalog)
+        val moveNames = parsed.layout?.tables?.moveNames
+        val controls = moveNames?.let { table ->
+            (1..3).map { index ->
+                val codec = com.enrpau.dualscreendex.parser.text.PokemonTextCodec.gbaEnglish
+                val offset = table.offset + index * (table.stride ?: table.recordSize)
+                RecordMaterializers.readName(rom, table, index, codec) to
+                    codec.decodeDetailed(
+                        rom,
+                        offset,
+                        table.recordSize,
+                        com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken.NONE,
+                    )
+            }
+        }
         val evidence = catalog.capabilities.getValue(RomCapability.NATURES)
-        assertEquals(evidence.reasons.joinToString("; "), CapabilityStatus.AVAILABLE, evidence.status)
+        assertEquals(
+            "language=${catalog.languageManifest.status}; diagnostics=${catalog.languageManifest.diagnostics}; " +
+                "moveNames=$moveNames; controls=$controls; capability=${evidence.reasons.joinToString("; ")}",
+            CapabilityStatus.AVAILABLE,
+            evidence.status,
+        )
         assertEquals(25, catalog.naturesById.size)
         assertEquals((0 until 25).toSet(), catalog.naturesById.keys)
-        assertTrue(catalog.naturesById.values.all { it.name.isNotBlank() })
+        assertTrue(
+            "language=${catalog.languageManifest.status}; diagnostics=${catalog.languageManifest.diagnostics}; " +
+                "moveNames=$moveNames; controls=$controls; " +
+                "natureNames=${catalog.naturesById.values.map { it.name }.take(3)}",
+            catalog.naturesById.values.all { !it.name.isNullOrBlank() },
+        )
         assertTrue(catalog.naturesById.values.all { it.flavorModifiers != null })
         assertTrue(catalog.naturesById.values.any { it.raisedStat != null && it.loweredStat != null })
         assertTrue(catalog.naturesById.values.all { it.positivePercent == 110 && it.negativePercent == 90 })

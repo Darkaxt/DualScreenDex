@@ -16,6 +16,8 @@ import com.enrpau.dualscreendex.parser.model.ScoreEvidence
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.parse.capabilityEvidence
 import com.enrpau.dualscreendex.parser.parse.speciesCatalogEvidence
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
 
 /** Aggregates independent phase evidence into the stable public probe and resolved layout. */
 internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
@@ -129,6 +131,14 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                         abilityNames = semantic.resolvedAbilityNames,
                         abilityMechanics = abilityMechanics.layout,
                     ),
+                    languageManifest = core.languageManifest.withDefaultLocalizedTables(
+                        LocalizedTableLayout(
+                            speciesNames = resolvedTables.speciesNames,
+                            moveNames = resolvedTables.moveNames,
+                            descriptions = resolvedTables.descriptions,
+                            abilities = resolvedTables.abilities,
+                        ),
+                    ),
                 ),
             ),
         )
@@ -143,26 +153,53 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
         abilityMechanics: CapabilityEvidence,
     ): List<CapabilityEvidence> {
         val catalog = speciesCatalogEvidence(core.speciesNames, core.baseStats)
+        val speciesNames = authoritativeTextEvidence(core.speciesNames, core.languageManifest.status)
+        val descriptions = authoritativeTextEvidence(semantic.descriptions, core.languageManifest.status)
+        val abilities = authoritativeTextEvidence(semantic.abilities, core.languageManifest.status)
+        val moveCatalog = when {
+            core.moveNames.compatible -> core.moveNames
+            core.moveData.compatible -> core.moveData.copy(
+                reasons = (core.moveData.reasons +
+                    "move names are unavailable; retained the numeric move domain").distinct(),
+            )
+            else -> core.moveNames
+        }
         val discovered = listOf(
             capabilityEvidence(RomCapability.SPECIES_CATALOG, catalog),
-            capabilityEvidence(RomCapability.SPECIES_NAMES, core.speciesNames),
+            capabilityEvidence(RomCapability.SPECIES_NAMES, speciesNames),
             capabilityEvidence(RomCapability.SPECIES_TYPES, core.baseStats),
             capabilityEvidence(RomCapability.TYPE_CHART, semantic.typeChart),
             capabilityEvidence(RomCapability.BASE_STATS, core.baseStats),
             capabilityEvidence(RomCapability.SPRITES, dependent.sprites),
-            capabilityEvidence(RomCapability.POKEDEX_DESCRIPTIONS, semantic.descriptions),
+            capabilityEvidence(RomCapability.POKEDEX_DESCRIPTIONS, descriptions),
             capabilityEvidence(RomCapability.EVOLUTIONS, dependent.evolutions),
-            capabilityEvidence(RomCapability.MOVE_CATALOG, core.moveNames),
+            capabilityEvidence(RomCapability.MOVE_CATALOG, moveCatalog),
             moveDetailsCapability(definition, identity, core),
             capabilityEvidence(RomCapability.LEARNSETS, dependent.learnsets),
             capabilityEvidence(
                 RomCapability.ABILITIES,
-                semantic.abilities,
-                if (semantic.abilities.compatible) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
+                abilities,
+                if (abilities.compatible) CapabilityStatus.AVAILABLE else CapabilityStatus.NOT_FOUND,
             ),
             abilityMechanics,
         )
         return applyCapabilityApplicability(definition, discovered)
+    }
+
+    private fun authoritativeTextEvidence(
+        evidence: ValidationEvidence,
+        languageStatus: LanguageResolutionStatus,
+    ): ValidationEvidence {
+        if (languageStatus == LanguageResolutionStatus.RESOLVED) return evidence
+        return evidence.copy(
+            compatible = false,
+            validRecords = 0,
+            confidence = 0.0,
+            reasons = (evidence.reasons + "ROM text language authority is $languageStatus").distinct(),
+            ambiguous = evidence.ambiguous || languageStatus == LanguageResolutionStatus.AMBIGUOUS,
+            coveredRecords = 0,
+            incompleteRecords = evidence.expectedRecords ?: evidence.totalRecords,
+        )
     }
 
     private fun resolveAbilityMechanics(

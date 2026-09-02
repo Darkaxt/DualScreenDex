@@ -1,13 +1,37 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.dataset.core.basestats.Gen3BaseStatsRecord
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AbilityNameCodecTest {
+    @Test
+    fun cancelsWhileDecodingAbilityNameRows() {
+        val layout = AbilityNameTableLayout(0x100, 3, 13)
+        val bytes = ByteArray(0x100 + 3 * 13)
+        putAbilityNames(bytes, layout, listOf("-------", "STENCH", "DRIZZLE"))
+        var checks = 0
+        val cancellation = ParserCancellationToken {
+            checks++
+            if (checks == 2) throw ParserCancellationException()
+        }
+
+        assertThrows(ParserCancellationException::class.java) {
+            AbilityNameCodec().decode(
+                abilitySession(bytes, cancellation = cancellation),
+                layout,
+                AbilitySemanticDomain(setOf(1, 2)),
+            )
+        }
+        assertEquals(2, checks)
+    }
+
     @Test
     fun acceptsRetailBlankAndTerminatedPlaceholderRowZeroButRejectsContamination() {
         val layout = AbilityNameTableLayout(0x100, 3, 13)

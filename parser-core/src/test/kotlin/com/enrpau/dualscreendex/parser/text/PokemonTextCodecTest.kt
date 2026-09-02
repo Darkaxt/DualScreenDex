@@ -1,6 +1,12 @@
 package com.enrpau.dualscreendex.parser.text
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -57,4 +63,145 @@ class PokemonTextCodecTest {
             ),
         )
     }
+
+    @Test
+    fun decodesDirectlyFromABoundedRomWindow() {
+        val rom = RomImage(
+            byteArrayOf(0x00, 0xBB.toByte(), 0xBC.toByte(), 0xFF.toByte(), 0xBD.toByte()),
+        )
+
+        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(
+            rom = rom,
+            offset = 1,
+            maximumBytes = 3,
+            cancellation = ParserCancellationToken.NONE,
+        )
+
+        assertEquals("AB", decoded.text)
+        assertTrue(decoded.terminated)
+        assertEquals(3, decoded.consumedBytes)
+        assertEquals(2, decoded.glyphUnits)
+        assertEquals(0, decoded.controlUnits)
+        assertEquals(0, decoded.invalidUnits)
+    }
+
+    @Test
+    fun reportsControlsInvalidUnitsAndTruncation() {
+        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(
+            rom = RomImage(byteArrayOf(0xBB.toByte(), 0xFE.toByte(), 0x7F, 0xBC.toByte(), 0xFF.toByte())),
+            offset = 0,
+            maximumBytes = 4,
+            cancellation = ParserCancellationToken.NONE,
+        )
+
+        assertEquals("A B", decoded.text)
+        assertTrue(!decoded.terminated)
+        assertEquals(4, decoded.consumedBytes)
+        assertEquals(2, decoded.glyphUnits)
+        assertEquals(1, decoded.controlUnits)
+        assertEquals(1, decoded.invalidUnits)
+    }
+
+    @Test
+    fun measuresVariableWidthTokensByUnitsAndKinds() {
+        val codec = variableWidthCodec()
+
+        val decoded = codec.decodeDetailed(
+            byteArrayOf(0x10, 0x11, 0x20, 0x30, 0x40, 0xFF.toByte()),
+        )
+
+        assertEquals("字 ?", decoded.text)
+        assertTrue(decoded.terminated)
+        assertEquals(6, decoded.consumedBytes)
+        assertEquals(4, decoded.validBytes)
+        assertEquals(5, decoded.contentBytes)
+        assertEquals(3, decoded.validUnits)
+        assertEquals(4, decoded.contentUnits)
+        assertEquals(0.75, decoded.validRatio, 0.001)
+        assertEquals(1, decoded.glyphUnits)
+        assertEquals(1, decoded.whitespaceUnits)
+        assertEquals(1, decoded.substitutionUnits)
+        assertEquals(0, decoded.controlUnits)
+        assertEquals(1, decoded.invalidUnits)
+    }
+
+    @Test
+    fun rejectsATruncatedVariableWidthTokenWithoutCrossingTheWindow() {
+        val decoded = variableWidthCodec().decodeDetailed(
+            rom = RomImage(byteArrayOf(0x10, 0x11)),
+            offset = 0,
+            maximumBytes = 1,
+            cancellation = ParserCancellationToken.NONE,
+        )
+
+        assertEquals("", decoded.text)
+        assertEquals(1, decoded.consumedBytes)
+        assertEquals(0, decoded.validUnits)
+        assertEquals(1, decoded.contentUnits)
+        assertEquals(1, decoded.invalidUnits)
+    }
+
+    @Test
+    fun checksCancellationBetweenVariableWidthTokens() {
+        var checks = 0
+
+        assertThrows(ParserCancellationException::class.java) {
+            variableWidthCodec().decodeDetailed(
+                rom = RomImage(byteArrayOf(0x10, 0x11, 0x10, 0x11, 0xFF.toByte())),
+                offset = 0,
+                maximumBytes = 5,
+                cancellation = ParserCancellationToken {
+                    checks++
+                    if (checks == 2) throw ParserCancellationException()
+                },
+            )
+        }
+        assertEquals(2, checks)
+    }
+
+    @Test
+    fun stopsAtEofAndHonorsCancellation() {
+        val eof = PokemonTextCodec.gbEnglish.decodeDetailed(
+            rom = RomImage(byteArrayOf(0x80.toByte())),
+            offset = 0,
+            maximumBytes = 10,
+            cancellation = ParserCancellationToken.NONE,
+        )
+        assertEquals("A", eof.text)
+        assertEquals(1, eof.consumedBytes)
+        assertTrue(!eof.terminated)
+
+        assertThrows(ParserCancellationException::class.java) {
+            PokemonTextCodec.gbEnglish.decodeDetailed(
+                rom = RomImage(byteArrayOf(0x80.toByte(), 0x50)),
+                offset = 0,
+                maximumBytes = 2,
+                cancellation = ParserCancellationToken { throw ParserCancellationException() },
+            )
+        }
+    }
+
+    private fun variableWidthCodec(): PokemonTextCodec = PokemonTextCodec(
+        id = "test-variable",
+        version = 1,
+        language = LanguageTag.JAPANESE,
+        applicableGenerations = setOf(2),
+        applicablePlatforms = setOf(Platform.GBC),
+        terminator = 0xFF,
+        tokenDecoder = PokemonTextTokenDecoder { rom, offset, endExclusive ->
+            when (rom.u8(offset)) {
+                0x10 -> {
+                    if (offset + 1 < endExclusive && rom.u8(offset + 1) == 0x11) {
+                        PokemonTextToken.Glyph("字", byteCount = 2)
+                    } else {
+                        PokemonTextToken.Invalid(byteCount = 2)
+                    }
+                }
+                0x20 -> PokemonTextToken.Whitespace()
+                0x30 -> PokemonTextToken.Substitution("?")
+                0xFF -> PokemonTextToken.Terminator()
+                else -> PokemonTextToken.Invalid()
+            }
+        },
+    )
 }

@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.moves.MoveDetailsAbi
 import com.enrpau.dualscreendex.parser.dataset.moves.MoveDetailsCodec
@@ -15,6 +17,12 @@ import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableLayo
 import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableOutcome
 import com.enrpau.dualscreendex.parser.dataset.descriptions.ResolvedDescriptionLayout
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
+import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
+import com.enrpau.dualscreendex.parser.language.textUnavailableLanguageManifests
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
@@ -26,12 +34,118 @@ import com.enrpau.dualscreendex.parser.model.ResolvedDatasetLayouts
 import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
+import com.enrpau.dualscreendex.parser.text.PokemonTextTokenDecoder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RecordMaterializersTest {
+    @Test
+    fun mismatchedCodecPlatformFailsTextClosedDuringMaterialization() {
+        val bytes = ByteArray(64)
+        bytes[0] = 0xBB.toByte()
+        bytes[1] = 0xFF.toByte()
+        bytes[2] = 0xBC.toByte()
+        bytes[3] = 0xFF.toByte()
+        putGen2BaseStats(bytes, 16, 2)
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.GOLD_SILVER,
+            generation = 2,
+            platform = Platform.GBC,
+            speciesCount = 2,
+            moveCount = 0,
+            tables = ProfileTables(
+                speciesNames = TableLayout(0, 2, 2),
+                baseStats = TableLayout(16, 2, 9),
+            ),
+            languageManifest = resolvedManifest(PokemonTextCodec.gbaEnglish),
+        )
+
+        val records = RecordMaterializers.species(RomImage(bytes), layout)
+
+        assertEquals(setOf(1, 2), records.keys)
+        records.values.forEach { record ->
+            assertEquals(CapabilityStatus.NOT_FOUND, record.name.status)
+            assertNull(record.name.value)
+            assertTrue(record.baseStats.value != null)
+        }
+    }
+
+    @Test
+    fun unknownLanguageDisablesTextWhilePreservingNumericSpeciesData() {
+        val bytes = ByteArray(64)
+        bytes[0] = 0x80.toByte()
+        bytes[1] = 0x50
+        bytes[2] = 0x81.toByte()
+        bytes[3] = 0x50
+        putGen2BaseStats(bytes, 16, 2)
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.GOLD_SILVER,
+            generation = 2,
+            platform = Platform.GBC,
+            speciesCount = 2,
+            moveCount = 0,
+            tables = ProfileTables(
+                speciesNames = TableLayout(0, 2, 2),
+                baseStats = TableLayout(16, 2, 9),
+            ),
+        )
+
+        val records = RecordMaterializers.species(RomImage(bytes), layout)
+
+        assertEquals(setOf(1, 2), records.keys)
+        records.values.forEach { record ->
+            assertEquals(CapabilityStatus.NOT_FOUND, record.name.status)
+            assertNull(record.name.value)
+            assertTrue(record.baseStats.value != null)
+            assertTrue(record.typeIds.value != null)
+        }
+    }
+
+    @Test
+    fun unknownAndAmbiguousLanguagePreserveNumericCatalogsWithoutNameTables() {
+        val bytes = ByteArray(64)
+        putGen2BaseStats(bytes, 0, 2)
+        repeat(2) { index ->
+            val row = 24 + index * 6
+            bytes[row] = index.toByte()
+            bytes[row + 2] = (40 + index).toByte()
+            bytes[row + 3] = (1 + index).toByte()
+            bytes[row + 4] = 90.toByte()
+            bytes[row + 5] = 15.toByte()
+        }
+
+        textUnavailableLanguageManifests.forEach { manifest ->
+            val layout = ResolvedRomLayout(
+                family = EngineFamily.GOLD_SILVER,
+                generation = 2,
+                platform = Platform.GBC,
+                speciesCount = 2,
+                moveCount = 2,
+                tables = ProfileTables(
+                    baseStats = TableLayout(0, 2, 9),
+                    moveData = TableLayout(24, 2, 6),
+                ),
+                languageManifest = manifest,
+            )
+
+            val species = RecordMaterializers.species(RomImage(bytes), layout)
+            val moves = RecordMaterializers.moves(RomImage(bytes), layout)
+            val types = RecordMaterializers.types(layout, species, emptyList(), moves)
+
+            assertEquals(setOf(1, 2), species.keys)
+            assertTrue(species.values.all { it.name.value == null && it.baseStats.value != null })
+            assertEquals(setOf(1, 2), moves.keys)
+            assertTrue(moves.values.all { it.name.value == null && it.power.value != null })
+            assertTrue(types.isNotEmpty())
+            assertTrue(types.values.all { it.name.value == null })
+        }
+    }
+
     @Test
     fun completeCompiledPokedexDomainExcludesOnlyItsConsecutiveOverflowBlock() {
         val speciesCount = 8
@@ -86,6 +200,7 @@ class RecordMaterializersTest {
             resolvedDatasets = ResolvedDatasetLayouts(
                 descriptions = ResolvedDescriptionLayout(descriptionTable, decoded.rows),
             ),
+            languageManifest = resolvedManifest(PokemonTextCodec.gbaEnglish),
         )
 
         val records = RecordMaterializers.species(rom, layout)
@@ -604,6 +719,84 @@ class RecordMaterializersTest {
     }
 
     @Test
+    fun malformedVariableMoveNameFailsTextClosedWithoutDroppingNumericMoves() {
+        val bytes = ByteArray(192)
+        bytes[0] = 0x80.toByte()
+        bytes[1] = 0x50
+        repeat(64) { index -> bytes[2 + index] = 0x80.toByte() }
+        repeat(3) { index ->
+            val row = 128 + index * 6
+            bytes[row + 1] = index.toByte()
+            bytes[row + 2] = (40 + index).toByte()
+            bytes[row + 3] = 1
+            bytes[row + 4] = 100
+            bytes[row + 5] = 35
+        }
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.RED_BLUE,
+            generation = 1,
+            platform = Platform.GB,
+            speciesCount = 1,
+            moveCount = 3,
+            tables = ProfileTables(
+                moveNames = TableLayout(0, 3, 0, variableLength = true),
+                moveData = TableLayout(128, 3, 6),
+            ),
+            languageManifest = resolvedManifest(PokemonTextCodec.gbEnglish),
+        )
+
+        val moves = RecordMaterializers.moves(RomImage(bytes), layout)
+
+        assertEquals(setOf(1, 2, 3), moves.keys)
+        assertEquals("A", moves.getValue(1).name.value)
+        listOf(2, 3).forEach { id ->
+            assertEquals(CapabilityStatus.NOT_FOUND, moves.getValue(id).name.status)
+            assertNull(moves.getValue(id).name.value)
+        }
+        assertEquals(listOf(40, 41, 42), moves.values.mapNotNull { it.power.value })
+    }
+
+    @Test
+    fun variableNameBoundariesFollowCodecTokenConsumption() {
+        val codec = PokemonTextCodec(
+            id = "two-byte-boundary-test",
+            version = 1,
+            language = LanguageTag.ENGLISH,
+            applicableGenerations = setOf(1),
+            applicablePlatforms = setOf(Platform.GB),
+            terminator = 0x50,
+            tokenDecoder = PokemonTextTokenDecoder { rom, offset, endExclusive ->
+                when {
+                    rom.u8(offset) == 0x01 && offset + 1 < endExclusive && rom.u8(offset + 1) == 0x50 ->
+                        PokemonTextToken.Glyph("Ω", byteCount = 2)
+                    rom.u8(offset) == 0x50 -> PokemonTextToken.Terminator()
+                    else -> PokemonTextToken.Invalid()
+                }
+            },
+        )
+        val rom = RomImage(byteArrayOf(0x01, 0x50, 0x50, 0x01, 0x50, 0x50))
+        val table = TableLayout(0, 2, 0, variableLength = true)
+
+        assertEquals("Ω", RecordMaterializers.readName(rom, table, 1, codec))
+    }
+
+    @Test
+    fun variableNameDecodeObservesCancellationBetweenTokens() {
+        val rom = RomImage(byteArrayOf(0x80.toByte(), 0x81.toByte(), 0x82.toByte(), 0x50))
+        val table = TableLayout(0, 1, 0, variableLength = true)
+        var checks = 0
+        val cancellation = ParserCancellationToken {
+            checks++
+            if (checks == 2) throw ParserCancellationException()
+        }
+
+        assertThrows(ParserCancellationException::class.java) {
+            RecordMaterializers.readName(rom, table, 0, PokemonTextCodec.gbEnglish, cancellation)
+        }
+        assertEquals(2, checks)
+    }
+
+    @Test
     fun materializesTerminatedTypeChartWithoutSentinel() {
         val bytes = byteArrayOf(10, 12, 20, 13, 12, 5, 0xFF.toByte(), 0xFF.toByte(), 0)
         val layout = gbaLayout(0).copy(
@@ -713,6 +906,17 @@ class RecordMaterializersTest {
         val abilities = RecordMaterializers.abilities(RomImage(bytes), layout)
 
         assertEquals("OVERGROW", abilities.getValue(1).name.value)
+        textUnavailableLanguageManifests.forEach { manifest ->
+            val withoutText = RecordMaterializers.abilities(
+                RomImage(bytes),
+                layout.copy(languageManifest = manifest),
+            )
+            assertEquals(setOf(1), withoutText.keys)
+            val name = withoutText.getValue(1).name
+            assertEquals(CapabilityStatus.NOT_FOUND, name.status)
+            assertEquals(null, name.value)
+            assertEquals(listOf("default ROM language codec is unavailable"), name.reasons)
+        }
     }
 
     @Test
@@ -862,6 +1066,7 @@ class RecordMaterializersTest {
                 abilities = TableLayout(abilities, 2, 20, stride = 28),
             ),
             pokeemeraldExpansion = metadata,
+            languageManifest = resolvedManifest(PokemonTextCodec.gbaEnglish),
         )
 
         val speciesRecords = RecordMaterializers.species(RomImage(bytes), layout)
@@ -902,6 +1107,7 @@ class RecordMaterializersTest {
                 baseStats = TableLayout(species, 4, stride, stride = stride),
             ),
             pokeemeraldExpansion = expansionMetadata(stride),
+            languageManifest = resolvedManifest(PokemonTextCodec.gbaEnglish),
         )
 
         val records = RecordMaterializers.species(RomImage(bytes), layout)
@@ -936,6 +1142,7 @@ class RecordMaterializersTest {
                 speciesNames = TableLayout(namesOffset, internalCount, 10),
                 baseStats = TableLayout(statsOffset, dexCount, 28),
             ),
+            languageManifest = resolvedManifest(PokemonTextCodec.gbEnglish),
         )
 
         val records = RecordMaterializers.species(RomImage(bytes), layout)
@@ -975,6 +1182,7 @@ class RecordMaterializersTest {
                 speciesNames = TableLayout(100, 4, 10),
                 baseStats = TableLayout(200, 3, 28),
             ),
+            languageManifest = resolvedManifest(PokemonTextCodec.gbEnglish),
         )
 
         val records = RecordMaterializers.species(RomImage(bytes), layout)
@@ -997,6 +1205,31 @@ class RecordMaterializersTest {
             speciesNames = TableLayout(0, 3, 11),
             baseStats = TableLayout(statsOffset, 3, baseStatRecordSize),
         ),
+        languageManifest = resolvedManifest(PokemonTextCodec.gbaEnglish),
+    )
+
+    private fun putGen2BaseStats(target: ByteArray, offset: Int, count: Int) {
+        repeat(count) { index ->
+            val row = offset + index * 9
+            repeat(6) { stat -> target[row + 1 + stat] = (40 + stat).toByte() }
+            target[row + 7] = 1
+            target[row + 8] = 2
+        }
+    }
+
+    private fun resolvedManifest(codec: PokemonTextCodec) = RomLanguageManifest(
+        defaultLanguage = LanguageTag.ENGLISH,
+        projections = listOf(
+            RomLanguageProjection(
+                language = LanguageTag.ENGLISH,
+                codecId = codec.id,
+                codecVersion = codec.version,
+                localizedTables = LocalizedTableLayout(),
+                evidence = emptyList(),
+                status = LanguageResolutionStatus.RESOLVED,
+            ),
+        ),
+        status = LanguageResolutionStatus.RESOLVED,
     )
 
     private fun encodeGbaName(target: ByteArray, offset: Int, value: String) {

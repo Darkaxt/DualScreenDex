@@ -22,6 +22,11 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
+import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
+import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
@@ -107,6 +112,42 @@ class AreaGuideBuilderTest {
         assertEquals(65_537L, failure.observed)
         assertEquals(65_536L, failure.limit)
         assertEquals(ROUTE, AreaGuideBuilder.project(catalog(), AppSnapshot(liveAreaBaseId = ROUTE)).guide.trackedAreaBaseId)
+    }
+
+    @Test
+    fun unnamedStructuralWorldLocationsDoNotInventAreaGuideNames() {
+        val assetKey = "world/region"
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            worldMaps = WorldMapCatalog(
+                regions = listOf(
+                    WorldMapRegion(
+                        key = "region",
+                        displayName = null,
+                        pixelWidth = 8,
+                        pixelHeight = 8,
+                        gridWidth = 1,
+                        gridHeight = 1,
+                        imageAssetKey = assetKey,
+                        locations = listOf(
+                            WorldMapLocation(
+                                key = "section-1",
+                                displayName = null,
+                                baseAreaIds = setOf(1),
+                                geometry = listOf(WorldMapCell(0, 0, 1, 1)),
+                            ),
+                        ),
+                    ),
+                ),
+                assets = mapOf(assetKey to RgbaSprite(8, 8, IntArray(64))),
+            ),
+        )
+
+        val guide = AreaGuideBuilder.build(catalog, AppSnapshot(liveAreaBaseId = 1))
+
+        assertEquals(emptyList<AreaGuideArea>(), guide.areas)
     }
 
     @Test

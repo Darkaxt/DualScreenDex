@@ -13,13 +13,11 @@ object ChallengeCatalogRoleResolver {
             ?.size
             ?.takeIf { it > 0 }
         val regionalSpeciesIds = catalog.navigableSpecies()
-            .mapNotNull { species -> species.dexNumber.value?.takeIf { it > 0 }?.let { species.id } }
-            .toSet()
-            .takeIf { candidates ->
-                candidates.isNotEmpty() && candidates.all(catalog.speciesById::containsKey)
-            }
-            .orEmpty()
+            .mapTo(linkedSetOf()) { it.id }
         val mapsByArea = catalog.localMaps.maps.groupBy { it.baseAreaId }
+        val allWorldLocations = catalog.worldMaps.regions.flatMap { it.locations }
+        val useStructuralWorldLabels = allWorldLocations.isNotEmpty() &&
+            allWorldLocations.none { !it.displayName.isNullOrBlank() }
         val areaCollectibles = catalog.localMaps.pois
             .asSequence()
             .filter { poi ->
@@ -30,7 +28,8 @@ object ChallengeCatalogRoleResolver {
             .entries
             .sortedBy { it.key }
             .mapNotNull { (baseAreaId, pois) ->
-                val names = buildSet {
+                val matchingWorldLocations = allWorldLocations.filter { baseAreaId in it.baseAreaIds }
+                val localizedNames = buildSet {
                     catalog.runtimeMetadata.areaNamesByBaseId[baseAreaId]
                         ?.trim()
                         ?.takeIf(String::isNotEmpty)
@@ -38,14 +37,20 @@ object ChallengeCatalogRoleResolver {
                     mapsByArea[baseAreaId].orEmpty()
                         .mapNotNull { it.displayName?.trim()?.takeIf(String::isNotEmpty) }
                         .forEach(::add)
-                    catalog.worldMaps.regions.asSequence()
-                        .flatMap { it.locations.asSequence() }
-                        .filter { baseAreaId in it.baseAreaIds }
-                        .map { it.displayName.trim() }
+                    matchingWorldLocations
+                        .mapNotNull { it.displayName?.trim() }
                         .filter(String::isNotEmpty)
                         .forEach(::add)
                 }
-                val displayName = names.singleOrNull() ?: return@mapNotNull null
+                val displayName = localizedNames.singleOrNull()
+                    ?: localizedNames.takeIf { it.isEmpty() && useStructuralWorldLabels }?.let {
+                        matchingWorldLocations.mapNotNull { location ->
+                            location.key.removePrefix(WORLD_SECTION_KEY_PREFIX)
+                                .toIntOrNull()
+                                ?.let { section -> "Map section $section" }
+                        }.distinct().singleOrNull()
+                    }
+                    ?: return@mapNotNull null
                 val keys = pois.mapTo(sortedSetOf()) { it.key }
                 AreaCollectibleBinding(
                     key = "base-$baseAreaId",
@@ -63,4 +68,6 @@ object ChallengeCatalogRoleResolver {
             provenAdapters = emptySet(),
         )
     }
+
+    private const val WORLD_SECTION_KEY_PREFIX = "section-"
 }

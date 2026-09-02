@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertTrue
@@ -18,6 +19,7 @@ class Gen1WorldMapResolverTest {
         val result = Gen1WorldMapResolver.resolve(
             RomAnalysisSession(mutated, RomHeaderReader.read(mutated)),
             setOf(EXTERNAL_MAP, INTERNAL_MAP),
+            PokemonTextCodec.gbEnglish,
         )
 
         assertTrue("expected ambiguity, got $result", result is WorldMapResolution.Ambiguous)

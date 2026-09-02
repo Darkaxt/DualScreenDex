@@ -143,6 +143,36 @@ class CatalogModelsTest {
     }
 
     @Test
+    fun worldMapLocationsPermitMissingTextButRequireStructuralIdentity() {
+        fun catalog(key: String, displayName: String?) = WorldMapCatalog(
+            regions = listOf(
+                WorldMapRegion(
+                    key = "region",
+                    displayName = null,
+                    pixelWidth = 8,
+                    pixelHeight = 8,
+                    gridWidth = 1,
+                    gridHeight = 1,
+                    imageAssetKey = "world/region",
+                    locations = listOf(
+                        WorldMapLocation(
+                            key = key,
+                            displayName = displayName,
+                            baseAreaIds = setOf(1),
+                            geometry = listOf(WorldMapCell(0, 0, 1, 1)),
+                        ),
+                    ),
+                ),
+            ),
+            assets = mapOf("world/region" to RgbaSprite(8, 8, IntArray(64))),
+        )
+
+        assertEquals(null, catalog("location", null).regions.single().locations.single().displayName)
+        assertThrows(IllegalArgumentException::class.java) { catalog("location", "") }
+        assertThrows(IllegalArgumentException::class.java) { catalog("", null) }
+    }
+
+    @Test
     fun navigableSpeciesExcludesNoneAndReservedInternalSlots() {
         fun species(id: Int, dex: Int, name: String = if (dex == 0) "RESERVED" else "MON$dex") = SpeciesRecord(
             id = id,
@@ -159,11 +189,12 @@ class CatalogModelsTest {
             speciesById = mapOf(
                 0 to species(0, 0),
                 1 to species(1, 1),
+                2 to species(2, 2).copy(name = CatalogField.notFound("localized name unavailable")),
                 252 to species(252, 0),
                 440 to species(440, 437, "?"),
             ),
         )
 
-        assertEquals(listOf(1), catalog.navigableSpecies().map { it.id })
+        assertEquals(listOf(1, 2), catalog.navigableSpecies().map { it.id })
     }
 }

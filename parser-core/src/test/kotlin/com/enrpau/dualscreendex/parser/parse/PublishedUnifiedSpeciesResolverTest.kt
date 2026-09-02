@@ -2,8 +2,12 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomHeader
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
+import com.enrpau.dualscreendex.parser.text.PokemonTextTokenDecoder
 import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -16,7 +20,7 @@ class PublishedUnifiedSpeciesResolverTest {
         val rom = RomImage(bytes)
         val session = RomAnalysisSession(rom, RomHeader(Platform.GBA, "POKEMON EMER", "BPEE"))
 
-        val resolved = PublishedUnifiedSpeciesResolver.resolve(session)
+        val resolved = PublishedUnifiedSpeciesResolver.resolve(session, PokemonTextCodec.gbaEnglish)
 
         assertNotNull(resolved)
         requireNotNull(resolved)
@@ -40,6 +44,32 @@ class PublishedUnifiedSpeciesResolverTest {
     }
 
     @Test
+    fun usesTheSuppliedCodecForEveryEmbeddedTextField() {
+        val bytes = fixture()
+        rewriteText(bytes, SPECIES_ROOT + 44, 13)
+        for (id in 1 until 40) {
+            if (id in 30..33) continue
+            val row = SPECIES_ROOT + id * 152
+            rewriteText(bytes, row + 31, 13)
+            rewriteText(bytes, row + 44, 13)
+        }
+        rewriteText(bytes, DESCRIPTION_ROOT, 32)
+        val session = RomAnalysisSession(
+            RomImage(bytes),
+            RomHeader(Platform.GBA, "POKEMON EMER", "BPEE"),
+        )
+
+        assertEquals(
+            null,
+            PublishedUnifiedSpeciesResolver.resolve(session, PokemonTextCodec.gbaEnglish),
+        )
+        val resolved = requireNotNull(PublishedUnifiedSpeciesResolver.resolve(session, alternateCodec()))
+
+        assertEquals(40, resolved.speciesCount)
+        assertEquals(true, resolved.descriptionsEvidence.compatible)
+    }
+
+    @Test
     fun acceptsStructurallyValidEmptyDescriptions() {
         val bytes = fixture().also { target ->
             target[EMPTY_DESCRIPTION_ROOT] = 0xFF.toByte()
@@ -50,7 +80,7 @@ class PublishedUnifiedSpeciesResolverTest {
         val rom = RomImage(bytes)
         val session = RomAnalysisSession(rom, RomHeader(Platform.GBA, "POKEMON EMER", "BPEE"))
 
-        val resolved = requireNotNull(PublishedUnifiedSpeciesResolver.resolve(session))
+        val resolved = requireNotNull(PublishedUnifiedSpeciesResolver.resolve(session, PokemonTextCodec.gbaEnglish))
 
         assertNotNull(resolved.tables.descriptions)
         assertEquals(72, resolved.metadata.descriptionPointerOffset)
@@ -67,7 +97,7 @@ class PublishedUnifiedSpeciesResolverTest {
         val rom = RomImage(bytes)
         val session = RomAnalysisSession(rom, RomHeader(Platform.GBA, "POKEMON EMER", "BPEE"))
 
-        assertEquals(null, PublishedUnifiedSpeciesResolver.resolve(session))
+        assertEquals(null, PublishedUnifiedSpeciesResolver.resolve(session, PokemonTextCodec.gbaEnglish))
     }
 
     @Test
@@ -80,7 +110,7 @@ class PublishedUnifiedSpeciesResolverTest {
         val rom = RomImage(bytes)
         val session = RomAnalysisSession(rom, RomHeader(Platform.GBA, "POKEMON EMER", "BPEE"))
 
-        val resolved = requireNotNull(PublishedUnifiedSpeciesResolver.resolve(session))
+        val resolved = requireNotNull(PublishedUnifiedSpeciesResolver.resolve(session, PokemonTextCodec.gbaEnglish))
 
         assertEquals(null, resolved.tables.descriptions)
         assertEquals(null, resolved.metadata.descriptionPointerOffset)
@@ -100,7 +130,7 @@ class PublishedUnifiedSpeciesResolverTest {
         val rom = RomImage(bytes)
         val session = RomAnalysisSession(rom, RomHeader(Platform.GBA, "POKEMON EMER", "BPEE"))
 
-        val resolved = requireNotNull(PublishedUnifiedSpeciesResolver.resolve(session))
+        val resolved = requireNotNull(PublishedUnifiedSpeciesResolver.resolve(session, PokemonTextCodec.gbaEnglish))
 
         assertEquals(null, resolved.tables.descriptions)
         assertEquals(null, resolved.metadata.descriptionPointerOffset)
@@ -122,7 +152,7 @@ class PublishedUnifiedSpeciesResolverTest {
         val rom = RomImage(bytes)
         val session = RomAnalysisSession(rom, RomHeader(Platform.GBA, "POKEMON EMER", "BPEE"))
 
-        val resolved = requireNotNull(PublishedUnifiedSpeciesResolver.resolve(session))
+        val resolved = requireNotNull(PublishedUnifiedSpeciesResolver.resolve(session, PokemonTextCodec.gbaEnglish))
 
         assertEquals(null, resolved.tables.sprites)
         assertEquals(null, resolved.metadata.frontSpritePointerOffset)
@@ -131,6 +161,30 @@ class PublishedUnifiedSpeciesResolverTest {
         assertNotNull(resolved.tables.baseStats)
         assertNotNull(resolved.tables.descriptions)
         assertEquals(72, resolved.metadata.descriptionPointerOffset)
+    }
+
+    private fun alternateCodec() = PokemonTextCodec(
+        id = "test-gba-alternate",
+        version = 1,
+        language = LanguageTag.ENGLISH,
+        applicableGenerations = setOf(3),
+        applicablePlatforms = setOf(Platform.GBA),
+        terminator = 0xFF,
+        tokenDecoder = PokemonTextTokenDecoder { rom, offset, _ ->
+            when (rom.u8(offset)) {
+                ALTERNATE_GLYPH -> PokemonTextToken.Glyph("X")
+                0xFF -> PokemonTextToken.Terminator()
+                else -> PokemonTextToken.Invalid()
+            }
+        },
+    )
+
+    private fun rewriteText(target: ByteArray, offset: Int, maximumLength: Int) {
+        for (index in 0 until maximumLength) {
+            val position = offset + index
+            if (target[position].toInt() and 0xFF == 0xFF) return
+            target[position] = ALTERNATE_GLYPH.toByte()
+        }
     }
 
     private fun fixture(): ByteArray {
@@ -194,5 +248,6 @@ class PublishedUnifiedSpeciesResolverTest {
         const val EMPTY_DESCRIPTION_ROOT = 0x7100
         const val GRAPHICS_ROOT = 0xE000
         const val PALETTE_ROOT = 0xF000
+        const val ALTERNATE_GLYPH = 0x40
     }
 }

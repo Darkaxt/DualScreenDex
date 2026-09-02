@@ -41,6 +41,26 @@ class NatureModelsTest {
     }
 
     @Test
+    fun `Nature mechanics may be authoritative without ROM text`() {
+        val record = NatureRecord(
+            id = 0,
+            name = null,
+            statModifiers = List(5) { 0 },
+            positivePercent = 110,
+            negativePercent = 90,
+        )
+        val catalog = NatureCatalog(
+            records = listOf(record),
+            nameTableOffset = null,
+            statTableOffset = 128,
+        )
+
+        assertEquals(null, record.name)
+        assertEquals(null, catalog.nameTableOffset)
+        assertEquals(100, record.multiplierPercent(NatureStat.ATTACK))
+    }
+
+    @Test
     fun `invalid Nature shapes and modifier values fail closed`() {
         assertThrows(IllegalArgumentException::class.java) {
             NatureRecord(0, "Hardy", listOf(0, 0), 110, 90, null)

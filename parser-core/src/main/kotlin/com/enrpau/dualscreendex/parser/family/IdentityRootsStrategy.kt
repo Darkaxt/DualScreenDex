@@ -34,6 +34,8 @@ import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.parse.PublishedUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.language.LanguageRegistry
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.validate.TableValidators
 import java.util.Collections
 
@@ -52,7 +54,7 @@ internal sealed interface IdentityRootsPhaseResult {
         expandedSplitCaptureBalls: ExpandedSplitCaptureBallMetadata? = null,
         compiledGbaReferences: GbaCompiledReferenceIndex?,
         tableResolution: ProfileTableResolution,
-        val codec: PokemonTextCodec,
+        val probeCodec: PokemonTextCodec,
     ) : IdentityRootsPhaseResult {
         val exactProfile = exactProfile
         val baseProfile = baseProfile?.immutableCopy()
@@ -120,6 +122,9 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             ),
         )
         val generation = definition.formatGeneration
+        val probeCodec = requireNotNull(LanguageRegistry.candidateCodec(LanguageTag.ENGLISH, header.platform)) {
+            "${header.platform} has no registered English text codec candidate"
+        }
         val expansion = if (generation == 3 && identityMatched) {
             PokeemeraldExpansionResolver.resolve(session.rom)
         } else {
@@ -129,8 +134,8 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             generation == 3 && identityMatched && expansion == null &&
             definition.family == com.enrpau.dualscreendex.parser.model.EngineFamily.EMERALD
         ) {
-            HeaderlessUnifiedSpeciesResolver.resolve(session)
-                ?: PublishedUnifiedSpeciesResolver.resolve(session)
+            HeaderlessUnifiedSpeciesResolver.resolve(session, probeCodec)
+                ?: PublishedUnifiedSpeciesResolver.resolve(session, probeCodec)
         } else {
             null
         }
@@ -204,7 +209,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                     session.rom,
                     inherited,
                     inherited.count,
-                    PokemonTextCodec.gbEnglish,
+                    probeCodec,
                     minimumRatio = 0.70,
                 ).compatible
             } == true
@@ -324,7 +329,6 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                 ),
             )
         } ?: compiledSpriteTableResolution
-        val codec = if (generation == 3) PokemonTextCodec.gbaEnglish else PokemonTextCodec.gbEnglish
         return IdentityRootsPhaseResult.Resolved(
             exactProfile = exact,
             baseProfile = baseProfile,
@@ -346,7 +350,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             expandedSplitCaptureBalls = expandedSplitCaptureBalls,
             compiledGbaReferences = compiledGbaReferences,
             tableResolution = tableResolution,
-            codec = codec,
+            probeCodec = probeCodec,
         )
     }
 
