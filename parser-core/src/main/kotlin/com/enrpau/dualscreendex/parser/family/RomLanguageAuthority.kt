@@ -7,9 +7,9 @@ import com.enrpau.dualscreendex.parser.language.LanguageEvidenceKind
 import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
 import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.language.OfficialLanguageResolver
 import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
 import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
-import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
@@ -28,11 +28,11 @@ internal object RomLanguageAuthority {
         moveNamesLayout: TableLayout?,
         cancellation: ParserCancellationToken,
     ): RomLanguageManifest {
-        if (probeCodec.language != LanguageTag.ENGLISH) {
-            return unknown("probe codec language is not a ratified Stage 1 language")
-        }
         if (!probeCodec.supports(generation, header.platform)) {
             return unknown("probe codec does not support the selected generation and platform")
+        }
+        if (probeCodec.language !in LANGUAGE_CHARACTER_PROFILES) {
+            return unknown("probe codec language is not a ratified Western language")
         }
         if (!speciesNamesEvidence.compatible || speciesNamesLayout == null) {
             return unknown("selected species-name table lacks compatible structural evidence")
@@ -40,23 +40,28 @@ internal object RomLanguageAuthority {
         if (!moveNamesEvidence.compatible || moveNamesLayout == null) {
             return unknown("selected move-name table lacks compatible structural evidence")
         }
-        val headerEvidence = englishHeaderEvidence(header)
-        val matchesEnglishControls = matchesEnglishMoveControls(
+        val language = probeCodec.language
+        val headerEvidence = OfficialLanguageResolver.headerCandidate(header, generation)
+            ?.takeIf { it.language == language }
+            ?.evidence
+        val matchesRetailControls = language == LanguageTag.ENGLISH && matchesEnglishMoveControls(
             rom,
             moveNamesLayout,
             generation,
             probeCodec,
             cancellation,
         )
-        val englishPlausibility = englishMovePlausibility(
+        val plausibility = moveLanguagePlausibility(
             rom,
             moveNamesLayout,
             generation,
             probeCodec,
             cancellation,
         )
-        if (!englishPlausibility.compatible) {
-            return unknown("selected tables lack bounded language-specific English content corroboration")
+        if (!plausibility.compatible) {
+            return unknown(
+                "selected tables lack bounded ${language.value} language-specific content corroboration",
+            )
         }
 
         val evidence = buildList {
@@ -78,15 +83,15 @@ internal object RomLanguageAuthority {
             add(
                 LanguageEvidence(
                     kind = LanguageEvidenceKind.CODEC_PLAUSIBILITY,
-                    summary = "bounded move-name sample contains distinct English language markers",
+                    summary = "bounded move-name sample contains distinct ${language.value} language markers",
                     confidence = minOf(
-                        englishPlausibility.confidence,
+                        plausibility.confidence,
                         speciesNamesEvidence.confidence.toConfidencePercent(),
                         moveNamesEvidence.confidence.toConfidencePercent(),
                     ),
                 ),
             )
-            if (matchesEnglishControls) {
+            if (matchesRetailControls) {
                 add(
                     LanguageEvidence(
                         kind = LanguageEvidenceKind.RETAIL_VALIDATION_CONTROL,
@@ -97,10 +102,10 @@ internal object RomLanguageAuthority {
             }
         }
         return RomLanguageManifest(
-            defaultLanguage = LanguageTag.ENGLISH,
+            defaultLanguage = language,
             projections = listOf(
                 RomLanguageProjection(
-                    language = LanguageTag.ENGLISH,
+                    language = language,
                     codecId = probeCodec.id,
                     codecVersion = probeCodec.version,
                     localizedTables = LocalizedTableLayout(
@@ -113,38 +118,38 @@ internal object RomLanguageAuthority {
             ),
             status = LanguageResolutionStatus.RESOLVED,
             diagnostics = listOf(
-                if (matchesEnglishControls) {
-                    "resolved en from structurally selected tables and optional locale-scoped controls"
+                if (matchesRetailControls) {
+                    "resolved ${language.value} from structurally selected tables and optional locale-scoped controls"
                 } else {
-                    "resolved en from structurally selected tables and bounded language-specific content evidence"
+                    "resolved ${language.value} from structurally selected tables and bounded language-specific content evidence"
                 },
             ),
         )
     }
 
-    private data class EnglishMovePlausibility(
+    private data class LanguagePlausibility(
         val sampledTrigrams: Int,
-        val englishCoverage: Double,
+        val languageCoverage: Double,
         val competingCoverage: Double,
     ) {
-        private val margin: Double get() = englishCoverage - competingCoverage
+        private val margin: Double get() = languageCoverage - competingCoverage
         val compatible: Boolean
             get() = sampledTrigrams >= MINIMUM_PLAUSIBILITY_TRIGRAMS &&
-                englishCoverage >= MINIMUM_ENGLISH_COVERAGE &&
-                margin >= MINIMUM_ENGLISH_MARGIN
+                languageCoverage >= MINIMUM_LANGUAGE_COVERAGE &&
+                margin >= MINIMUM_LANGUAGE_MARGIN
         val confidence: Int
-            get() = ((englishCoverage + margin.coerceAtLeast(0.0)) * 100.0)
+            get() = ((languageCoverage + margin.coerceAtLeast(0.0)) * 100.0)
                 .toInt()
                 .coerceIn(0, 100)
     }
 
-    private fun englishMovePlausibility(
+    private fun moveLanguagePlausibility(
         rom: RomImage,
         layout: TableLayout,
         generation: Int,
         codec: PokemonTextCodec,
         cancellation: ParserCancellationToken,
-    ): EnglishMovePlausibility {
+    ): LanguagePlausibility {
         val firstIndex = if (generation == 3) 1 else 0
         val names = when {
             layout.variableLength -> sampleVariableNames(
@@ -172,14 +177,16 @@ internal object RomLanguageAuthority {
             normalizeEnglishText(normalizedName) in ENGLISH_CONTROL_NAMES
         }
         val trigrams = names.flatMap(::characterTrigrams)
-        if (trigrams.isEmpty()) return EnglishMovePlausibility(0, 0.0, 0.0)
-        val englishCoverage = trigrams.count(ENGLISH_CHARACTER_PROFILE::contains).toDouble() / trigrams.size
-        val competingCoverage = COMPETING_LATIN_CHARACTER_PROFILES.maxOf { profile ->
-            trigrams.count(profile::contains).toDouble() / trigrams.size
-        }
-        return EnglishMovePlausibility(
+        if (trigrams.isEmpty()) return LanguagePlausibility(0, 0.0, 0.0)
+        val languageProfile = requireNotNull(LANGUAGE_CHARACTER_PROFILES[codec.language])
+        val languageCoverage = trigrams.count(languageProfile::contains).toDouble() / trigrams.size
+        val competingCoverage = LANGUAGE_CHARACTER_PROFILES
+            .filterKeys { it != codec.language }
+            .values
+            .maxOf { profile -> trigrams.count(profile::contains).toDouble() / trigrams.size }
+        return LanguagePlausibility(
             sampledTrigrams = trigrams.size,
-            englishCoverage = englishCoverage,
+            languageCoverage = languageCoverage,
             competingCoverage = competingCoverage,
         )
     }
@@ -402,26 +409,6 @@ internal object RomLanguageAuthority {
             text.equals(expected, ignoreCase = true)
         }
 
-    private fun englishHeaderEvidence(header: RomHeader): LanguageEvidence? {
-        val summary = when {
-            header.platform == Platform.GBA && header.gameCode?.takeIf { it.length == 4 }
-                ?.last()?.uppercaseChar() == 'E' ->
-                "GBA regional game-code marker seeds an English candidate"
-            header.platform == Platform.GBC && header.gbManufacturerCode?.takeIf { it.length == 4 }
-                ?.last()?.uppercaseChar() == 'E' ->
-                "GBC manufacturer/game identifier marker seeds an English candidate"
-            header.platform in setOf(Platform.GB, Platform.GBC) &&
-                ENGLISH_HEADER_TITLES.any { header.title.uppercase().startsWith(it) } ->
-                "recognized GB/GBC header title seeds an English candidate"
-            else -> null
-        } ?: return null
-        return LanguageEvidence(
-            kind = LanguageEvidenceKind.HEADER_REGION_HINT,
-            summary = summary,
-            confidence = 60,
-        )
-    }
-
     private fun unknown(reason: String) = RomLanguageManifest(
         defaultLanguage = null,
         projections = emptyList(),
@@ -442,16 +429,16 @@ internal object RomLanguageAuthority {
     private val ENGLISH_CONTROL_NAMES = ENGLISH_MOVE_CONTROLS
         .flatten()
         .mapTo(linkedSetOf(), ::normalizeEnglishText)
-    private val ENGLISH_CHARACTER_PROFILE = languageCharacterProfile(
-        "burn burning blaze flame fiery spark lightning thunder storm wind breeze frost frozen icy snow " +
-            "water river wave tidal stone rocky earth muddy sand iron steel shadow dark night bright light " +
-            "solar lunar mind dream sleep waking poison toxic venom healing restore guard shield strike " +
-            "crush slash jab sweep throw spinning rising falling hidden ancient wild fierce gentle swift " +
-            "slow sharp heavy mighty focus echo roar song dance power energy claw fang wing tail beam burst " +
-            "punch kick tackle growl whip",
-    )
-    private val COMPETING_LATIN_CHARACTER_PROFILES = listOf(
-        languageCharacterProfile(
+    private val LANGUAGE_CHARACTER_PROFILES = mapOf(
+        LanguageTag.ENGLISH to languageCharacterProfile(
+            "burn burning blaze flame fiery spark lightning thunder storm wind breeze frost frozen icy snow " +
+                "water river wave tidal stone rocky earth muddy sand iron steel shadow dark night bright light " +
+                "solar lunar mind dream sleep waking poison toxic venom healing restore guard shield strike " +
+                "crush slash jab sweep throw spinning rising falling hidden ancient wild fierce gentle swift " +
+                "slow sharp heavy mighty focus echo roar song dance power energy claw fang wing tail beam burst " +
+                "punch kick tackle growl whip",
+        ),
+        LanguageTag.FRENCH to languageCharacterProfile(
             "bruler brulant flamme ardent etincelle eclair tonnerre tempete vent brise gel gele glace neige " +
                 "eau riviere vague maree pierre roche terre boue sable fer acier ombre sombre nuit clair " +
                 "lumiere solaire lunaire esprit reve sommeil reveil poison toxique venin soin restaurer garde " +
@@ -459,7 +446,7 @@ internal object RomLanguageAuthority {
                 "sauvage feroce doux rapide lent aigu lourd puissant concentration echo rugissement chanson " +
                 "danse puissance energie griffe croc aile queue rayon explosion poing pied charge force claque",
         ),
-        languageCharacterProfile(
+        LanguageTag.GERMAN to languageCharacterProfile(
             "brennen brennend flamme feurig funke blitz donner sturm wind brise frost gefroren eis schnee " +
                 "wasser fluss welle gezeiten stein fels erde schlamm sand eisen stahl schatten dunkel nacht " +
                 "hell licht sonne mond geist traum schlaf wach gift toxisch heilung heilen wache schild schlag " +
@@ -467,7 +454,7 @@ internal object RomLanguageAuthority {
                 "schnell langsam scharf schwer macht fokus echo brullen lied tanz kraft energie kralle zahn " +
                 "flugel schwanz strahl ausbruch faust tritt",
         ),
-        languageCharacterProfile(
+        LanguageTag.SPANISH to languageCharacterProfile(
             "quemar ardiente llama fuego chispa relampago trueno tormenta viento brisa escarcha helado hielo " +
                 "nieve agua rio ola marea piedra roca tierra barro arena hierro acero sombra oscuro noche claro " +
                 "luz solar lunar mente sueno dormir despertar veneno toxico curar restaurar guardia escudo golpe " +
@@ -475,7 +462,7 @@ internal object RomLanguageAuthority {
                 "lento afilado pesado poderoso enfoque eco rugido cancion baile poder energia garra colmillo ala " +
                 "cola rayo estallido puno patada",
         ),
-        languageCharacterProfile(
+        LanguageTag.ITALIAN to languageCharacterProfile(
             "bruciare ardente fiamma fuoco scintilla fulmine tuono tempesta vento brezza gelo gelato ghiaccio " +
                 "neve acqua fiume onda marea pietra roccia terra fango sabbia ferro acciaio ombra scuro notte " +
                 "chiaro luce solare lunare mente sogno sonno sveglio veleno tossico guarire ristoro guardia " +
@@ -484,20 +471,10 @@ internal object RomLanguageAuthority {
                 "potere energia artiglio zanna ala coda raggio esplosione calcio",
         ),
     )
-    private val ENGLISH_HEADER_TITLES = setOf(
-        "POKEMON RED",
-        "POKEMON BLUE",
-        "POKEMON YELLOW",
-        "POKEMON_GLD",
-        "POKEMON_SLV",
-        "POKEMON GOLD",
-        "POKEMON SILVER",
-        "PM_CRYSTAL",
-    )
     private const val CHARACTER_TRIGRAM_WIDTH = 3
     private const val MINIMUM_PLAUSIBILITY_TRIGRAMS = 18
-    private const val MINIMUM_ENGLISH_COVERAGE = 0.35
-    private const val MINIMUM_ENGLISH_MARGIN = 0.08
+    private const val MINIMUM_LANGUAGE_COVERAGE = 0.35
+    private const val MINIMUM_LANGUAGE_MARGIN = 0.08
     private const val MAXIMUM_PLAUSIBILITY_RECORDS = 128
     private const val MAXIMUM_CONTROL_BYTES = 24
 }

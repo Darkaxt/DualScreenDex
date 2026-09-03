@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -52,6 +53,50 @@ class RomLanguageAuthorityTest {
             ),
             manifest.defaultProjection()?.evidence?.map { it.kind }?.toSet(),
         )
+    }
+
+    @Test
+    fun resolvesEveryRatifiedWesternLanguageFromBoundedContentEvidence() {
+        val cases = mapOf(
+            LanguageTag.FRENCH to listOf(
+                "BRULER FLAMME", "ECLAIR TONNERRE", "PIERRE ROCHE", "OMBRE SOMBRE", "GRIFFE CROC",
+            ),
+            LanguageTag.GERMAN to listOf(
+                "BRENNEN FUNKE", "BLITZ DONNER", "WASSER FLUSS", "SCHATTEN DUNKEL", "KRALLE ZAHN",
+            ),
+            LanguageTag.ITALIAN to listOf(
+                "BRUCIARE FIAMMA", "SCINTILLA FULMINE", "ACQUA FIUME", "OMBRA SCURO", "ARTIGLIO ZANNA",
+            ),
+            LanguageTag.SPANISH to listOf(
+                "QUEMAR LLAMA", "CHISPA TRUENO", "AGUA MAREA", "SOMBRA OSCURO", "GARRA COLMILLO",
+            ),
+        )
+        val markerByLanguage = mapOf(
+            LanguageTag.FRENCH to 'F',
+            LanguageTag.GERMAN to 'D',
+            LanguageTag.ITALIAN to 'I',
+            LanguageTag.SPANISH to 'S',
+        )
+
+        for ((language, names) in cases) {
+            val codec = requireNotNull(WesternPokemonTextCodecs.forLanguage(language, generation = 2))
+            val manifest = resolve(
+                rom = RomImage(encodeGbNames(*names.toTypedArray())),
+                header = RomHeader(
+                    platform = Platform.GBC,
+                    title = "POKEMON_GLD",
+                    cgbFlag = 0x80,
+                    gbManufacturerCode = "AAU${markerByLanguage.getValue(language)}",
+                ),
+                generation = 2,
+                codec = codec,
+                moveNames = TableLayout(0, names.size, 0, variableLength = true),
+            )
+
+            assertEquals(language.value, LanguageResolutionStatus.RESOLVED, manifest.status)
+            assertEquals(language.value, language, manifest.defaultLanguage)
+            assertEquals(language.value, codec.id, manifest.defaultProjection()?.codecId)
+        }
     }
 
     @Test
