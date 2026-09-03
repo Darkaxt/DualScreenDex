@@ -33,7 +33,7 @@ class ExecutionReceiptTest {
             val encoded = ReportWriter.executionReceiptJson(receipt)
 
             assertEquals(1, receipt.schemaVersion)
-            assertEquals(13, receipt.generator.schemaVersion)
+            assertEquals(14, receipt.generator.schemaVersion)
             assertEquals(identity.sourceCommit, receipt.sourceCommit)
             assertEquals(identity.generatorSha256, receipt.generator.sha256)
             assertEquals(sha256(Files.readAllBytes(rawReport)), receipt.rawReportSha256)
