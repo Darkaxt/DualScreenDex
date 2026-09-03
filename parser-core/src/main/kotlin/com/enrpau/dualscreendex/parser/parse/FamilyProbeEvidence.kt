@@ -106,6 +106,16 @@ internal fun compiledAbilityNameStride(session: RomAnalysisSession, root: Int): 
     return strides.distinct().singleOrNull()
 }
 
+/** Enumerates only roots whose complete compiled consumers prove one fixed name stride. */
+internal fun compiledAbilityNameCandidates(session: RomAnalysisSession): Map<Int, Int> {
+    val index = session.gbaReferenceIndex?.takeUnless { it.overflowed } ?: return emptyMap()
+    return buildMap {
+        index.targets.keys.forEach { root ->
+            compiledAbilityNameStride(session, root)?.let { stride -> put(root, stride) }
+        }
+    }
+}
+
 private fun compiledFixedStrideConsumer(rom: RomImage, rootLoadSite: Int): Int? {
     if (rootLoadSite < 4 || rootLoadSite + 4 > rom.size) return null
     val move = rom.u16le(rootLoadSite - 4)

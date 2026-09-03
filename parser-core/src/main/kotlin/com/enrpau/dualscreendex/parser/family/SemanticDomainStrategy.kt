@@ -13,6 +13,7 @@ import com.enrpau.dualscreendex.parser.parse.Gen3PublishedPartialBaseStatsResolv
 import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
 import com.enrpau.dualscreendex.parser.parse.selectAbilityNameEvidence
+import com.enrpau.dualscreendex.parser.parse.compiledAbilityNameCandidates
 import com.enrpau.dualscreendex.parser.parse.compiledAbilityNameStride
 import com.enrpau.dualscreendex.parser.parse.semanticAbilityNameBoundary
 import com.enrpau.dualscreendex.parser.dataset.types.ResolvedTypeChartLayout
@@ -546,21 +547,31 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
             minimumRatio = 0.85,
         )
         val requiredDirectCount = (semanticDomain.maximumDirectAbilityId + 1).takeIf { it > 1 }
-        val consumerStride = compiledAbilityNameStride(session, layout.offset)
-        val dynamicCandidates = (8..32).flatMap { recordSize ->
-            val inferredCount = TableValidators.inferFixedNameCount(
-                rom, layout.offset, recordSize, codec, minimumCount = 10, maximumCount = 512,
-            )
-            buildSet {
-                inferredCount?.let(::add)
-                requiredDirectCount?.takeIf {
-                    consumerStride == recordSize && (inferredCount == null || it > inferredCount)
-                }?.let(::add)
-            }.map { count ->
-                TableValidators.fixedNames(rom, layout.offset, count, recordSize, codec)
+        val candidateRoots = buildMap {
+            put(layout.offset, compiledAbilityNameStride(session, layout.offset)?.takeIf { it in 8..32 })
+            if (!exact) {
+                compiledAbilityNameCandidates(session)
+                    .filterValues { it in 8..32 }
+                    .forEach(::put)
             }
         }
-        val typedCandidates = if (exact) emptyList() else dynamicCandidates.mapNotNull { evidence ->
+        val dynamicCandidates = candidateRoots.flatMap { (root, consumerStride) ->
+            val widths = consumerStride?.let(::listOf) ?: (8..32).toList()
+            widths.flatMap { recordSize ->
+                val inferredCount = TableValidators.inferFixedNameCount(
+                    rom, root, recordSize, codec, minimumCount = 10, maximumCount = 512,
+                )
+                buildSet {
+                    inferredCount?.let(::add)
+                    requiredDirectCount?.takeIf {
+                        consumerStride == recordSize && (inferredCount == null || it > inferredCount)
+                    }?.let(::add)
+                }.map { count ->
+                    TableValidators.fixedNames(rom, root, count, recordSize, codec) to consumerStride
+                }
+            }
+        }
+        val typedCandidates = if (exact) emptyList() else dynamicCandidates.mapNotNull { (evidence, stride) ->
             val offset = evidence.offset ?: return@mapNotNull null
             val width = evidence.recordSize ?: return@mapNotNull null
             val candidate = runCatching {
@@ -569,16 +580,12 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
             val decoded = AbilityNameCodec(codec).decode(session, candidate, semanticDomain)
                 as? com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableOutcome.Decoded
                 ?: return@mapNotNull null
-            evidence to decoded.resolved
+            Triple(evidence, decoded.resolved, stride)
         }
-        val consumerBoundCandidates = consumerStride?.let { stride ->
-            typedCandidates.filter { (_, resolved) -> resolved.table.stride == stride }
-        }.orEmpty()
-        val eligibleTypedCandidates = if (consumerStride == null) typedCandidates else consumerBoundCandidates
         val selected = when {
             exact -> inherited
-            eligibleTypedCandidates.size == 1 -> {
-                val (evidence, resolved) = eligibleTypedCandidates.single()
+            typedCandidates.size == 1 -> {
+                val (evidence, resolved, consumerStride) = typedCandidates.single()
                 val decodedIds = resolved.decodedDirectAbilityIds()
                 val covered = semanticDomain.activeAbilityIds.count(decodedIds::contains)
                 val expected = semanticDomain.activeAbilityIds.size
@@ -601,19 +608,19 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                         ),
                 )
             }
-            eligibleTypedCandidates.size > 1 -> inherited.copy(
+            typedCandidates.size > 1 -> inherited.copy(
                 compatible = false,
                 ambiguous = true,
                 reasons = inherited.reasons +
                     (
                         "multiple typed ability-name ABIs are coherent with compiled base-stat ability IDs: " +
-                            eligibleTypedCandidates.joinToString { (_, resolved) ->
+                            typedCandidates.joinToString { (_, resolved, _) ->
                                 "${resolved.table.nameWidth}x${resolved.table.count}/base${resolved.baseRowCount}"
                             }
                         ),
             )
             else -> selectAbilityNameEvidence(exact, inherited) {
-                dynamicCandidates
+                dynamicCandidates.map { it.first }
             }
         }
         val offset = selected.offset ?: return selected

@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.dataset.core.basestats.Gen3BaseStatsRecord
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -89,6 +90,26 @@ class AbilityNameCodecTest {
             AbilitySemanticDomain(setOf(1, 2)),
         )
         assertTrue(contaminatedRowZero is AbilityNameTableOutcome.Rejected)
+    }
+
+    @Test
+    fun acceptsLocalizedPunctuationAsTheStructuralNoneSentinel() {
+        val layout = AbilityNameTableLayout(0x100, 3, 13)
+        val bytes = ByteArray(0x100 + 3 * 13)
+        bytes[0x100] = 0x5C
+        bytes[0x101] = 0xAC.toByte()
+        bytes[0x102] = 0x5D
+        bytes[0x103] = 0xFF.toByte()
+        putGbaText(bytes, 0x100 + 13, "HEDOR", 13)
+        putGbaText(bytes, 0x100 + 26, "LLOVIZNA", 13)
+
+        val decoded = AbilityNameCodec(WesternPokemonTextCodecs.gen3Spanish).decode(
+            abilitySession(bytes),
+            layout,
+            AbilitySemanticDomain(setOf(1, 2)),
+        ) as AbilityNameTableOutcome.Decoded
+
+        assertTrue(decoded.resolved.rows[0] is AbilityNameRowOutcome.StructuralSentinel)
     }
 
     @Test

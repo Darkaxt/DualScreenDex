@@ -33,10 +33,12 @@ class FamilyParsersAbilityResolutionTest {
         val session = RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBA, "ABILITY TEST"))
 
         assertEquals(13, compiledAbilityNameStride(session, root))
+        assertEquals(mapOf(root to 13), compiledAbilityNameCandidates(session))
 
         writeU16(bytes, 0x120, 0x200C)
         val inconsistent = RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBA, "ABILITY TEST"))
         assertEquals(null, compiledAbilityNameStride(inconsistent, root))
+        assertTrue(compiledAbilityNameCandidates(inconsistent).isEmpty())
     }
 
     @Test

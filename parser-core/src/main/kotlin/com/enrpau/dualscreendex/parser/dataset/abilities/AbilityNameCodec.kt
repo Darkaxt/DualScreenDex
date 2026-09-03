@@ -123,19 +123,15 @@ class AbilityNameCodec(
         )
         if (rowIndex == 0) {
             val terminator = (0 until width).indexOfFirst { index ->
-                session.rom.u8(offset + index) == 0xFF
+                session.rom.u8(offset + index) == textCodec.terminator
             }
-            val blankNone = terminator == 0 && (1 until width).all { index ->
-                session.rom.u8(offset + index) == 0
-            }
-            val placeholderNone = terminator > 0 &&
-                (0 until terminator).all { index ->
-                    session.rom.u8(offset + index) in ROW_ZERO_PLACEHOLDER_BYTES
-                } &&
+            val structuralNone = terminator >= 0 && decoded.invalidUnits == 0 &&
+                decoded.text.none(Char::isLetterOrDigit) &&
                 (terminator + 1 until width).all { index ->
-                    session.rom.u8(offset + index) in ROW_ZERO_PADDING_BYTES
+                    val value = session.rom.u8(offset + index)
+                    value == 0 || value == textCodec.terminator
                 }
-            return if (blankNone || placeholderNone) {
+            return if (structuralNone) {
                 AbilityNameRowOutcome.StructuralSentinel(rowIndex, decoded.text)
             } else {
                 AbilityNameRowOutcome.Malformed(
@@ -161,8 +157,6 @@ class AbilityNameCodec(
     private companion object {
         const val MINIMUM_VALID_BYTE_RATIO = 0.80
         const val MINIMUM_BASE_COVERAGE_PERCENT = 85L
-        val ROW_ZERO_PLACEHOLDER_BYTES = setOf(0xAD, 0xAE, 0xAF, 0xB0)
-        val ROW_ZERO_PADDING_BYTES = setOf(0x00, 0xFF)
     }
 }
 
