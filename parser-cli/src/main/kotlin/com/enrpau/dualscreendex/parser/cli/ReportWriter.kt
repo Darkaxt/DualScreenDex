@@ -26,7 +26,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import kotlin.math.round
 
-private const val CORPUS_REPORT_SCHEMA_VERSION = 13
+private const val CORPUS_REPORT_SCHEMA_VERSION = 14
 
 data class CorpusExecutionIdentity(
     val sourceCommit: String,
@@ -337,7 +337,8 @@ data class CatalogSamples(
                     val colors = type.presentation.value?.let {
                         "${it.foregroundArgb.toUInt().toString(16)}/${it.backgroundArgb.toUInt().toString(16)}/${it.borderArgb.toUInt().toString(16)}"
                     } ?: "-"
-                    "id=${type.id}; name=${text.typeName(type.id) ?: "-"}; colors=$colors"
+                    "id=${type.id}; name=${text.typeName(type.id) ?: "-"}; " +
+                        "role=${type.semanticRole.value ?: "-"}; colors=$colors"
                 },
                 typeChart = catalog.typeChart.take(limit).map {
                     "attack=${it.attackingTypeId}; defend=${it.defendingTypeId}; multiplier=${it.multiplierPercent}%"
@@ -439,6 +440,8 @@ data class CatalogMetrics(
     val machineMoveLinks: Int,
     val tutorMoveLinks: Int,
     val types: Int,
+    val namedTypes: Int = 0,
+    val typesWithSemanticRoles: Int = 0,
     val typeMatchups: Int,
     val abilities: Int,
     val abilitiesWithDescriptions: Int,
@@ -481,6 +484,10 @@ data class CatalogMetrics(
                 machineMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.MACHINE },
                 tutorMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.TUTOR },
                 types = catalog.typesById.size,
+                namedTypes = catalog.typesById.values.count { text.typeName(it.id) != null },
+                typesWithSemanticRoles = catalog.typesById.values.count {
+                    it.semanticRole.status == CapabilityStatus.AVAILABLE
+                },
                 typeMatchups = catalog.typeChart.size,
                 abilities = abilities.size,
                 abilitiesWithDescriptions = abilities.count { text.abilityDescription(it.id) != null },

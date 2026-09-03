@@ -96,7 +96,7 @@ class ResolvedLayoutTest {
         val capabilities = probe.capabilities.associateBy { it.capability }
         val layout = requireNotNull(probe.resolvedLayout)
 
-        listOf(RomCapability.BASE_STATS, RomCapability.MOVE_DETAILS, RomCapability.ABILITIES).forEach { capability ->
+        listOf(RomCapability.BASE_STATS, RomCapability.MOVE_DETAILS).forEach { capability ->
             assertEquals(
                 capability.name,
                 CapabilityStatus.AMBIGUOUS,
@@ -104,6 +104,8 @@ class ResolvedLayoutTest {
             )
             assertEquals(CapabilityReviewStatus.MANUAL_REVIEW, capabilities.getValue(capability).reviewStatus)
         }
+        assertEquals(CapabilityStatus.NOT_FOUND, capabilities.getValue(RomCapability.ABILITIES).status)
+        assertEquals(CapabilityReviewStatus.NONE, capabilities.getValue(RomCapability.ABILITIES).reviewStatus)
         assertNull(layout.tables.baseStats)
         assertNull(layout.tables.moveData)
         assertNull(layout.tables.abilities)

@@ -130,7 +130,8 @@ class ParserArchitectureTest {
                 it.contains("DescriptionResolver(DescriptionCodec(codec), codec).resolve")
             },
         )
-        assertTrue(semantic.contains("codec = identity.probeCodec"))
+        assertTrue(semantic.contains("val textCodec = rawCore.languageManifest.defaultTextCodec("))
+        assertTrue(!semantic.contains("codec = identity.probeCodec"))
         assertTrue(!semantic.contains("DescriptionResolver().resolve"))
         assertEquals(1, "RelationshipMaterializers.descriptions".toRegex().findAll(orchestrator).count())
     }
@@ -203,9 +204,10 @@ class ParserArchitectureTest {
         assertEquals(
             1,
             semantic.lineSequence().count {
-                it.contains("AbilityNameResolver(AbilityNameCodec(identity.probeCodec)).resolve")
+                it.contains("AbilityNameResolver(AbilityNameCodec(textCodec)).resolve")
             },
         )
+        assertTrue(!semantic.contains("AbilityNameResolver(AbilityNameCodec(identity.probeCodec)).resolve"))
         assertTrue(semantic.contains("AbilityNameCodec(codec).decode(session, candidate, semanticDomain)"))
         assertTrue(!semantic.contains("AbilityNameResolver().resolve"))
         assertTrue(!semantic.contains("AbilityNameCodec().decode"))

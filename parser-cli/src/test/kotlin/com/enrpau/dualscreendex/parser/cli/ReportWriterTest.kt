@@ -22,6 +22,8 @@ import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
+import com.enrpau.dualscreendex.parser.catalog.TypeRecord
+import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
 import com.enrpau.dualscreendex.parser.catalog.LearnsetEntry
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
@@ -181,6 +183,13 @@ class ReportWriterTest {
             platform = Platform.GBA,
             speciesById = mapOf(1 to species),
             movesById = mapOf(1 to move),
+            typesById = mapOf(
+                10 to TypeRecord(
+                    id = 10,
+                    name = CatalogField.available("FEU"),
+                    semanticRole = CatalogField.available(TypeSemanticRole.FIRE),
+                ),
+            ),
         )
 
         val samples = CatalogSamples.from(catalog)
@@ -188,6 +197,8 @@ class ReportWriterTest {
         assertTrue(samples.species.single().contains("name=Bulbasaur"))
         assertTrue(samples.species.single().contains("stats=45/49/49/45/65/65"))
         assertTrue(samples.moves.single().contains("name=Pound"))
+        assertTrue(samples.types.single().contains("name=FEU"))
+        assertTrue(samples.types.single().contains("role=FIRE"))
         assertTrue(samples.referenceErrors.any { it.contains("species 1 references missing type 12") })
     }
 
@@ -226,6 +237,17 @@ class ReportWriterTest {
                 2 to move(2, CatalogField.available(MoveCategory.UNKNOWN)),
                 3 to move(3, CatalogField.notFound("category missing")),
             ),
+            typesById = mapOf(
+                10 to TypeRecord(
+                    id = 10,
+                    name = CatalogField.available("FIRE"),
+                    semanticRole = CatalogField.available(TypeSemanticRole.FIRE),
+                ),
+                18 to TypeRecord(
+                    id = 18,
+                    name = CatalogField.notFound("custom type name missing"),
+                ),
+            ),
             abilitiesById = mapOf(
                 1 to AbilityRecord(
                     id = 1,
@@ -244,6 +266,9 @@ class ReportWriterTest {
 
         assertEquals(3, metrics.movesWithDetails)
         assertEquals(1, metrics.movesWithCategories)
+        assertEquals(2, metrics.types)
+        assertEquals(1, metrics.namedTypes)
+        assertEquals(1, metrics.typesWithSemanticRoles)
         assertEquals(2, metrics.abilitiesWithMechanics)
         assertEquals(1, metrics.abilitiesWithProvenTypedModifiers)
         assertEquals(1, metrics.provenTypedAbilityModifiers)
@@ -338,7 +363,7 @@ class ReportWriterTest {
     fun jsonIsDeterministicForSameReport() {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
-        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 13"))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 14"))
         assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
     }
 
@@ -383,7 +408,7 @@ class ReportWriterTest {
         val ruleset = catalogJson.getAsJsonArray("rulesetDetails")[0].asJsonObject
         val selector = ruleset.getAsJsonObject("levelUpSelector")
 
-        assertEquals(13, root.get("schemaVersion").asInt)
+        assertEquals(14, root.get("schemaVersion").asInt)
         assertEquals(1, catalogJson.get("learnsetRulesets").asInt)
         assertEquals(
             setOf("id", "label", "sourceOffset", "confidence", "primary", "levelUpSelector"),
@@ -418,7 +443,7 @@ class ReportWriterTest {
 
         val json = ReportWriter.json(report)
 
-        assertTrue(json.contains("\"schemaVersion\": 13"))
+        assertTrue(json.contains("\"schemaVersion\": 14"))
         assertTrue(json.contains("\"validatorReviewRecommended\": true"))
     }
 
