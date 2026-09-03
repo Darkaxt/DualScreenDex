@@ -11,6 +11,7 @@ internal object Gen1CompiledDescriptionResolver {
         rom: RomImage,
         preferredCount: Int,
         fallbackCounts: Collection<Int>,
+        codec: PokemonTextCodec = PokemonTextCodec.gbEnglish,
     ): TableLayout? {
         if (preferredCount !in 1..MAX_SPECIES) return null
         val roots = compiledRoots(rom)
@@ -19,7 +20,7 @@ internal object Gen1CompiledDescriptionResolver {
             .filter { it in 1..MAX_SPECIES && it != preferredCount }
             .distinct()
         counts.forEach { count ->
-            val candidates = roots.mapNotNull { root -> validatedLayout(rom, root, count) }
+            val candidates = roots.mapNotNull { root -> validatedLayout(rom, root, count, codec) }
                 .distinct()
             if (candidates.size > 1) return null
             candidates.singleOrNull()?.let { return it }
@@ -54,14 +55,19 @@ internal object Gen1CompiledDescriptionResolver {
         }
     }
 
-    private fun validatedLayout(rom: RomImage, root: Int, count: Int): TableLayout? {
+    private fun validatedLayout(
+        rom: RomImage,
+        root: Int,
+        count: Int,
+        codec: PokemonTextCodec,
+    ): TableLayout? {
         val bank = root / BANK_BYTES
         val evidence = PokemonDatasetValidators.gen1Descriptions(
             rom = rom,
             pointerTableOffset = root,
             count = count,
             entryBank = bank,
-            codec = PokemonTextCodec.gbEnglish,
+            codec = codec,
             expectedDexCount = count,
         )
         if (!evidence.compatible) return null

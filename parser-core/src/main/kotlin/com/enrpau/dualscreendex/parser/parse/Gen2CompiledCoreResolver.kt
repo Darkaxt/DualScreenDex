@@ -37,21 +37,28 @@ internal object Gen2CompiledCoreResolver {
         val recordSize: Int,
     )
 
-    fun resolve(rom: RomImage): Gen2CompiledCoreResolution? {
+    fun resolve(
+        rom: RomImage,
+        codec: PokemonTextCodec = PokemonTextCodec.gbEnglish,
+    ): Gen2CompiledCoreResolution? {
         val scanEnd = minOf(HOME_BANK_BYTES, rom.size)
         val names = (0..scanEnd - NAME_CONSUMER_BYTES).mapNotNull { offset ->
-            parseNameConsumer(rom, offset)
+            parseNameConsumer(rom, offset, codec)
         }
         val bases = (0..scanEnd - BASE_CONSUMER_BYTES).mapNotNull { offset ->
             parseBaseConsumer(rom, offset) ?: parseVariantBaseConsumer(rom, offset, scanEnd)
         }
         val candidates = names.flatMap { name ->
-            bases.mapNotNull { base -> resolvePair(rom, name, base) }
+            bases.mapNotNull { base -> resolvePair(rom, name, base, codec) }
         }
         return candidates.distinct().singleOrNull()
     }
 
-    private fun parseNameConsumer(rom: RomImage, offset: Int): NameConsumer? = runCatching {
+    private fun parseNameConsumer(
+        rom: RomImage,
+        offset: Int,
+        codec: PokemonTextCodec,
+    ): NameConsumer? = runCatching {
         if (
             rom.u8(offset) != LOAD_A_HIGH ||
             rom.u8(offset + 2) != PUSH_AF ||
@@ -79,7 +86,7 @@ internal object Gen2CompiledCoreResolver {
             rom.u8(offset + 32) != CALL ||
             rom.u8(offset + 35) != LOAD_HL_IMMEDIATE ||
             rom.u8(offset + 38) != LOAD_HL_IMMEDIATE_VALUE ||
-            rom.u8(offset + 39) != PokemonTextCodec.gbEnglish.terminator ||
+            rom.u8(offset + 39) != codec.terminator ||
             rom.u8(offset + 40) != POP_DE ||
             rom.u8(offset + 41) != POP_HL ||
             rom.u8(offset + 42) != POP_AF ||
@@ -197,6 +204,7 @@ internal object Gen2CompiledCoreResolver {
         rom: RomImage,
         names: NameConsumer,
         base: BaseConsumer,
+        codec: PokemonTextCodec,
     ): Gen2CompiledCoreResolution? {
         if (names.bank != base.bank || names.root <= base.root) return null
         val distance = names.root - base.root
@@ -209,7 +217,7 @@ internal object Gen2CompiledCoreResolver {
         }
         val nameLayout = TableLayout(names.root, speciesCount, NAME_RECORD_SIZE)
         val baseLayout = TableLayout(base.root, speciesCount, base.recordSize)
-        if (!TableValidators.names(rom, nameLayout, speciesCount, PokemonTextCodec.gbEnglish, 0.85).compatible) {
+        if (!TableValidators.names(rom, nameLayout, speciesCount, codec, 0.85).compatible) {
             return null
         }
         if (!TableValidators.baseStats(rom, base.root, speciesCount, base.recordSize, 2).compatible) {

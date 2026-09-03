@@ -34,8 +34,7 @@ import com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.parse.PublishedUnifiedSpeciesResolver
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
-import com.enrpau.dualscreendex.parser.language.LanguageRegistry
-import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.language.OfficialLanguageResolver
 import com.enrpau.dualscreendex.parser.validate.TableValidators
 import java.util.Collections
 
@@ -122,9 +121,12 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             ),
         )
         val generation = definition.formatGeneration
-        val probeCodec = requireNotNull(LanguageRegistry.candidateCodec(LanguageTag.ENGLISH, header.platform)) {
-            "${header.platform} has no registered English text codec candidate"
-        }
+        val probeCodec = OfficialLanguageResolver.preferredProbeCodec(
+            rom = session.rom,
+            header = header,
+            generation = generation,
+            cancellation = session.cancellation,
+        )
         val expansion = if (generation == 3 && identityMatched) {
             PokeemeraldExpansionResolver.resolve(session.rom)
         } else {
@@ -147,7 +149,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         // A larger 8-bit boundary is authoritative only when a complete compiled sprite consumer
         // resolves the same expanded species count.
         val gen2CompiledCore = if (generation == 2 && exact == null) {
-            Gen2CompiledCoreResolver.resolve(session.rom)?.takeIf { compiled ->
+            Gen2CompiledCoreResolver.resolve(session.rom, probeCodec)?.takeIf { compiled ->
                 baseProfile != null && when {
                     compiled.speciesCount < baseProfile.internalSpeciesCount -> true
                     compiled.speciesCount > baseProfile.internalSpeciesCount ->
@@ -169,10 +171,10 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             null
         }
         val inheritedTableResolution = expansion?.let { ProfileTableResolution(it.tables) }
-            ?: resolveTables(session.rom, definition, baseProfile)
+            ?: resolveTables(session.rom, definition, baseProfile, probeCodec)
         val compiledGen1Names = if (generation == 1 && exact == null) {
             inheritedTableResolution.tables.speciesNames?.let { inherited ->
-                Gen1CompiledNameResolver.resolve(session.rom, inherited.count)
+                Gen1CompiledNameResolver.resolve(session.rom, inherited.count, probeCodec)
             }
         } else {
             null
@@ -215,7 +217,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             } == true
         val effectiveIdentityMatched = identityMatched || compiledGen1StructuralIdentity
         val compiledGen1Moves = if (generation == 1 && exact == null && effectiveIdentityMatched) {
-            Gen1CompiledMoveResolver.resolve(session.rom)
+            Gen1CompiledMoveResolver.resolve(session.rom, probeCodec)
         } else {
             null
         }
@@ -260,6 +262,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                         candidateTables.baseStats?.count,
                         candidateTables.descriptions?.count,
                     ),
+                    codec = probeCodec,
                 )
             }
         } else {
@@ -370,6 +373,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         rom: RomImage,
         definition: EngineFamilyDefinition,
         profile: FamilyProfileBasis?,
+        probeCodec: PokemonTextCodec,
     ): ProfileTableResolution {
         var inherited = profile?.tables ?: ProfileTables()
         if (definition.formatGeneration != 3) return ProfileTableResolution(inherited)
@@ -378,7 +382,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             definition.family == com.enrpau.dualscreendex.parser.model.EngineFamily.EMERALD ||
             definition.family == com.enrpau.dualscreendex.parser.model.EngineFamily.FIRERED_LEAFGREEN
         ) {
-            GbaPublishedHeaderResolver.resolve(rom)
+            GbaPublishedHeaderResolver.resolve(rom, probeCodec)
         } else {
             val locatedNames = locateRubySapphireNames(rom)
             val expectedNames = inherited.speciesNames?.offset

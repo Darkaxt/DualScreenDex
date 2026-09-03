@@ -12,14 +12,17 @@ internal data class Gen1CompiledMoveResolution(
 
 /** Resolves Gen I move names and details from their compiled name and copy consumers. */
 internal object Gen1CompiledMoveResolver {
-    fun resolve(rom: RomImage): Gen1CompiledMoveResolution? {
+    fun resolve(
+        rom: RomImage,
+        codec: PokemonTextCodec = PokemonTextCodec.gbEnglish,
+    ): Gen1CompiledMoveResolution? {
         val nameRoots = moveNameRoots(rom)
         val dataRoots = moveDataRoots(rom)
         if (nameRoots.isEmpty() || dataRoots.isEmpty()) return null
 
         val candidates = buildSet {
             nameRoots.forEach { nameRoot ->
-                val count = consecutiveNameCount(rom, nameRoot) ?: return@forEach
+                val count = consecutiveNameCount(rom, nameRoot, codec) ?: return@forEach
                 dataRoots.forEach { dataRoot ->
                     val evidence = TableValidators.moveData(
                         rom = rom,
@@ -133,7 +136,11 @@ internal object Gen1CompiledMoveResolver {
         }
     }
 
-    private fun consecutiveNameCount(rom: RomImage, root: Int): Int? {
+    private fun consecutiveNameCount(
+        rom: RomImage,
+        root: Int,
+        codec: PokemonTextCodec,
+    ): Int? {
         var cursor = root
         var count = 0
         while (count < MAX_MOVE_COUNT) {
@@ -143,11 +150,11 @@ internal object Gen1CompiledMoveResolver {
                 if (!terminated && cursor < rom.size) {
                     val value = rom.u8(cursor++)
                     bytes += value.toByte()
-                    terminated = value == PokemonTextCodec.gbEnglish.terminator
+                    terminated = value == codec.terminator
                 }
             }
             if (!terminated) break
-            val decoded = PokemonTextCodec.gbEnglish.decodeDetailed(bytes.toByteArray())
+            val decoded = codec.decodeDetailed(bytes.toByteArray())
             if (decoded.text.isBlank() || decoded.validRatio < MINIMUM_NAME_RATIO) break
             count++
         }

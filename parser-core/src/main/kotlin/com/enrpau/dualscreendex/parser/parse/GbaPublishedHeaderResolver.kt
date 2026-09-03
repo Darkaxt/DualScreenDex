@@ -31,9 +31,12 @@ internal enum class GbaPublishedDataState { RESOLVED, ABSENT, AMBIGUOUS }
  * candidate has semantic evidence; equally credible windows are rejected rather than address-tied.
  */
 internal object GbaPublishedHeaderResolver {
-    fun resolve(rom: RomImage): GbaHeaderPointers {
-        val speciesCount = inferredNameCount(rom, SPECIES_NAMES_SLOT, SPECIES_NAME_WIDTH, 2_048)
-        val moveCount = inferredNameCount(rom, MOVE_NAMES_SLOT, MOVE_NAME_WIDTH, 2_048)
+    fun resolve(
+        rom: RomImage,
+        codec: PokemonTextCodec = PokemonTextCodec.gbaEnglish,
+    ): GbaHeaderPointers {
+        val speciesCount = inferredNameCount(rom, SPECIES_NAMES_SLOT, SPECIES_NAME_WIDTH, 2_048, codec)
+        val moveCount = inferredNameCount(rom, MOVE_NAMES_SLOT, MOVE_NAME_WIDTH, 2_048, codec)
         val candidates = listOf(COMPACT_DATA_ROOT, FREE_SEEN_FLAGS_DATA_ROOT, STANDARD_DATA_ROOT)
             .map { start ->
                 PublishedBlockCandidate(
@@ -101,13 +104,19 @@ internal object GbaPublishedHeaderResolver {
         )
     }
 
-    private fun inferredNameCount(rom: RomImage, slot: Int, width: Int, maximum: Int): Int? =
+    private fun inferredNameCount(
+        rom: RomImage,
+        slot: Int,
+        width: Int,
+        maximum: Int,
+        codec: PokemonTextCodec,
+    ): Int? =
         rom.pointerOrNull(slot)?.let { offset ->
             TableValidators.inferFixedNameCount(
                 rom = rom,
                 offset = offset,
                 width = width,
-                codec = PokemonTextCodec.gbaEnglish,
+                codec = codec,
                 minimumCount = 10,
                 maximumCount = maximum,
             )

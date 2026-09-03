@@ -7,20 +7,29 @@ import com.enrpau.dualscreendex.parser.validate.TableValidators
 
 /** Resolves a Gen I fixed-name table from its complete compiled copy consumer. */
 internal object Gen1CompiledNameResolver {
-    fun resolve(rom: RomImage, count: Int): TableLayout? {
+    fun resolve(
+        rom: RomImage,
+        count: Int,
+        codec: PokemonTextCodec = PokemonTextCodec.gbEnglish,
+    ): TableLayout? {
         if (count !in 1..MAX_NAME_COUNT) return null
         val scanEnd = minOf(BANK_BYTES, rom.size)
         val candidates = buildList {
             var offset = 0
             while (offset + CONSUMER_BYTES <= scanEnd) {
-                parseConsumerAt(rom, offset, count)?.let(::add)
+                parseConsumerAt(rom, offset, count, codec)?.let(::add)
                 offset++
             }
         }
         return candidates.distinct().singleOrNull()
     }
 
-    private fun parseConsumerAt(rom: RomImage, offset: Int, count: Int): TableLayout? = runCatching {
+    private fun parseConsumerAt(
+        rom: RomImage,
+        offset: Int,
+        count: Int,
+        codec: PokemonTextCodec,
+    ): TableLayout? = runCatching {
         val recordSize = rom.u8(offset + 19)
         if (
             rom.u8(offset) != PUSH_HL || rom.u8(offset + 1) != LOAD_A_HIGH ||
@@ -36,7 +45,7 @@ internal object Gen1CompiledNameResolver {
             rom.u8(offset + 32) != CALL || rom.u8(offset + 35) != LOAD_HL_IMMEDIATE ||
             rom.u16le(offset + 36) != ((rom.u16le(offset + 26) + recordSize) and 0xffff) ||
             rom.u8(offset + 38) != STORE_IMMEDIATE_HL ||
-            rom.u8(offset + 39) != PokemonTextCodec.gbEnglish.terminator ||
+            rom.u8(offset + 39) != codec.terminator ||
             rom.u8(offset + 40) != POP_DE || rom.u8(offset + 41) != POP_AF ||
             rom.u8(offset + 42) != STORE_A_HIGH || rom.u8(offset + 43) != rom.u8(offset + 2) ||
             rom.u8(offset + 44) != STORE_A_ABSOLUTE ||
@@ -50,7 +59,7 @@ internal object Gen1CompiledNameResolver {
             rom,
             root,
             recordSize,
-            PokemonTextCodec.gbEnglish,
+            codec,
             minimumCount = count,
             maximumCount = MAX_NAME_COUNT,
         ) ?: count
@@ -59,7 +68,7 @@ internal object Gen1CompiledNameResolver {
             root,
             resolvedCount,
             recordSize,
-            PokemonTextCodec.gbEnglish,
+            codec,
         )
         if (!evidence.compatible) return@runCatching null
         TableLayout(root, resolvedCount, recordSize)

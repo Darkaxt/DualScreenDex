@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.validate
 
 import com.enrpau.dualscreendex.parser.io.RomBoundsException
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -129,7 +130,7 @@ object TableValidators {
                 if (pendingFullWidth) {
                     val fullWidthRunLength = lastFullWidthGood - fullWidthRunStart
                     if (
-                        codec === PokemonTextCodec.gbEnglish &&
+                        codec.applicablePlatforms.any { it == Platform.GB || it == Platform.GBC } &&
                         fullWidthRunLength >= MIN_TRAILING_FULL_WIDTH_NAME_RUN &&
                         lastFullWidthGood >= minimumCount
                     ) {
