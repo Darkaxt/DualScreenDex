@@ -1,8 +1,9 @@
 package com.enrpau.dualscreendex.parser.language
 
-import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
-import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import java.util.Collections
 
 data class LanguageDescriptor(
@@ -22,9 +23,11 @@ object LanguageRegistry {
         LanguageDescriptor(LanguageTag.KOREAN, "Korean", setOf("Kore")),
     )
     private val descriptorsByTag = registeredDescriptors.associateBy(LanguageDescriptor::tag)
-    private val codecsByIdentity = listOf(
-        PokemonTextCodec.gbEnglish,
-        PokemonTextCodec.gbaEnglish,
+    private val codecsByIdentity = (
+        WesternPokemonTextCodecs.all + listOf(
+            PokemonTextCodec.gbEnglish,
+            PokemonTextCodec.gbaEnglish,
+        )
     ).associateBy { it.id to it.version }
 
     val descriptors: List<LanguageDescriptor> = Collections.unmodifiableList(registeredDescriptors)
@@ -33,6 +36,16 @@ object LanguageRegistry {
 
     fun codec(codecId: String, codecVersion: Int): PokemonTextCodec? =
         codecsByIdentity[codecId to codecVersion]
+
+    fun candidateCodec(
+        language: LanguageTag,
+        generation: Int,
+        platform: Platform,
+    ): PokemonTextCodec? = WesternPokemonTextCodecs.forLanguage(language, generation)
+        ?.takeIf { it.supports(generation, platform) }
+
+    fun candidateCodecs(generation: Int, platform: Platform): List<PokemonTextCodec> =
+        WesternPokemonTextCodecs.all.filter { it.supports(generation, platform) }
 
     fun candidateCodec(language: LanguageTag, platform: Platform): PokemonTextCodec? = when (platform) {
         Platform.GB, Platform.GBC -> PokemonTextCodec.gbEnglish.takeIf { language == LanguageTag.ENGLISH }

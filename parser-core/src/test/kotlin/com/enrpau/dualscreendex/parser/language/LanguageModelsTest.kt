@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
@@ -139,6 +140,27 @@ class LanguageModelsTest {
                 platform = Platform.GBA,
                 manifest = resolvedLanguageManifest(PokemonTextCodec.gbEnglish),
             ).defaultTextCodec(),
+        )
+    }
+
+    @Test
+    fun resolvesEveryWesternCodecByExactLanguageGenerationAndPlatform() {
+        WesternPokemonTextCodecs.all.forEach { expected ->
+            val generation = expected.applicableGenerations.single()
+            val platform = if (generation == 3) Platform.GBA else Platform.GBC
+
+            assertSame(
+                expected,
+                LanguageRegistry.candidateCodec(expected.language, generation, platform),
+            )
+            assertSame(expected, LanguageRegistry.codec(expected.id, expected.version))
+        }
+
+        assertNull(LanguageRegistry.candidateCodec(LanguageTag.FRENCH, 1, Platform.GBA))
+        assertNull(LanguageRegistry.candidateCodec(LanguageTag.FRENCH, 3, Platform.GBC))
+        assertEquals(
+            WesternPokemonTextCodecs.all.filter { 2 in it.applicableGenerations },
+            LanguageRegistry.candidateCodecs(2, Platform.GBC),
         )
     }
 
