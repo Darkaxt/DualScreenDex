@@ -47,7 +47,4 @@ internal object TypeMappings {
     } else {
         gbRolesById[typeId]
     }
-
-    fun fallbackName(generation: Int, typeId: Int): String =
-        presentationRole(generation, typeId)?.name ?: "TYPE $typeId"
 }

@@ -68,23 +68,27 @@ class LocalizedTableLayout(
     moveNames: TableLayout? = null,
     descriptions: TableLayout? = null,
     abilities: TableLayout? = null,
+    typeNames: TableLayout? = null,
 ) {
     val speciesNames: TableLayout? = speciesNames?.immutableSnapshot()
     val moveNames: TableLayout? = moveNames?.immutableSnapshot()
     val descriptions: TableLayout? = descriptions?.immutableSnapshot()
     val abilities: TableLayout? = abilities?.immutableSnapshot()
+    val typeNames: TableLayout? = typeNames?.immutableSnapshot()
 
     override fun equals(other: Any?): Boolean = other is LocalizedTableLayout &&
         speciesNames == other.speciesNames &&
         moveNames == other.moveNames &&
         descriptions == other.descriptions &&
-        abilities == other.abilities
+        abilities == other.abilities &&
+        typeNames == other.typeNames
 
     override fun hashCode(): Int {
         var result = speciesNames?.hashCode() ?: 0
         result = 31 * result + (moveNames?.hashCode() ?: 0)
         result = 31 * result + (descriptions?.hashCode() ?: 0)
         result = 31 * result + (abilities?.hashCode() ?: 0)
+        result = 31 * result + (typeNames?.hashCode() ?: 0)
         return result
     }
 }
@@ -102,6 +106,7 @@ class RomLanguageProjection(
         moveNames = localizedTables.moveNames,
         descriptions = localizedTables.descriptions,
         abilities = localizedTables.abilities,
+        typeNames = localizedTables.typeNames,
     )
     val evidence: List<LanguageEvidence> = Collections.unmodifiableList(evidence.toList())
 

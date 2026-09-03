@@ -441,12 +441,14 @@ private data class StoredLocalizedTableLayout(
     val moveNames: TableLayout? = null,
     val descriptions: TableLayout? = null,
     val abilities: TableLayout? = null,
+    val typeNames: TableLayout? = null,
 ) {
     fun toModel() = LocalizedTableLayout(
         speciesNames = speciesNames,
         moveNames = moveNames,
         descriptions = descriptions,
         abilities = abilities,
+        typeNames = typeNames,
     )
 
     companion object {
@@ -455,6 +457,7 @@ private data class StoredLocalizedTableLayout(
             moveNames = value.moveNames,
             descriptions = value.descriptions,
             abilities = value.abilities,
+            typeNames = value.typeNames,
         )
     }
 }

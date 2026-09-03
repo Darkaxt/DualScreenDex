@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
+import com.enrpau.dualscreendex.parser.parse.CompiledTypeNameResolver
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.validate.Gen3BaseStatAbilitySlots
 
@@ -541,10 +542,12 @@ object RecordMaterializers {
     }
 
     fun types(
+        rom: RomImage,
         layout: ResolvedRomLayout,
         species: Map<Int, SpeciesRecord>,
         chart: List<TypeMatchup>,
         moves: Map<Int, MoveRecord> = emptyMap(),
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Map<Int, TypeRecord> {
         val ids = buildSet {
             species.values.flatMap { it.typeIds.value.orEmpty() }.forEach(::add)
@@ -554,15 +557,21 @@ object RecordMaterializers {
                 add(it.defendingTypeId)
             }
         }
-        val textAvailable = layout.defaultTextCodec() != null
+        val codec = layout.defaultTextCodec()
+        val typeNames = layout.languageManifest.defaultProjection()?.localizedTables?.typeNames
+        val decoded = if (codec != null && typeNames != null) {
+            CompiledTypeNameResolver.decode(rom, layout.generation, typeNames, codec, cancellation)
+        } else {
+            null
+        }.orEmpty()
         return ids.sorted().associateWith { id ->
+            val type = decoded[id]
             TypeRecord(
                 id = id,
-                name = if (textAvailable) {
-                    CatalogField.available(TypeMappings.fallbackName(layout.generation, id))
-                } else {
-                    CatalogField.notFound(TEXT_CODEC_UNAVAILABLE_REASON)
-                },
+                name = type?.name?.let(CatalogField.Companion::available)
+                    ?: CatalogField.notFound("compiled localized type name was not resolved"),
+                semanticRole = type?.semanticRole?.let(CatalogField.Companion::available)
+                    ?: CatalogField.notFound("type semantic role was not resolved from compiled localized evidence"),
             )
         }
     }

@@ -64,6 +64,7 @@ class LanguageModelsTest {
                     codecVersion = 1,
                     localizedTables = LocalizedTableLayout(
                         speciesNames = TableLayout(12, 151, 10, banks = mutableListOf(1, 2)),
+                        typeNames = TableLayout(32, 18, 7),
                     ),
                     evidence = evidence,
                     status = LanguageResolutionStatus.RESOLVED,
@@ -80,6 +81,7 @@ class LanguageModelsTest {
         assertEquals(1, projection.evidence.size)
         assertEquals(listOf("resolved"), manifest.diagnostics)
         assertEquals(listOf(1, 2), projection.localizedTables.speciesNames?.banks)
+        assertEquals(TableLayout(32, 18, 7), projection.localizedTables.typeNames)
         assertNotSame(evidence, projection.evidence)
     }
 

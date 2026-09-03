@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
+import com.enrpau.dualscreendex.parser.parse.CompiledTypeNameResolver
 import com.enrpau.dualscreendex.parser.parse.DatasetResolvers
 import com.enrpau.dualscreendex.parser.parse.Gen3PublishedPartialBaseStatsResolver
 import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
@@ -49,6 +50,7 @@ internal sealed interface SemanticDomainPhaseResult {
         abilitiesLayout: TableLayout?,
         resolvedAbilityNames: ResolvedAbilityNameLayout? = null,
         resolvedTypeChart: ResolvedTypeChartLayout? = null,
+        typeNamesLayout: TableLayout? = null,
     ) : SemanticDomainPhaseResult {
         val descriptions = descriptions.immutableCopy()
         val descriptionsLayout = descriptionsLayout?.immutableCopy()
@@ -59,6 +61,7 @@ internal sealed interface SemanticDomainPhaseResult {
         val abilitiesLayout = abilitiesLayout?.immutableCopy()
         val resolvedAbilityNames = resolvedAbilityNames?.immutableSnapshot()
         val resolvedTypeChart = resolvedTypeChart?.immutableSnapshot()
+        val typeNamesLayout = typeNamesLayout?.immutableCopy()
     }
 }
 
@@ -103,6 +106,9 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         )
         val tables = core.candidateTables
         val typeChart = resolveTypeChart(session, definition, identity, core)
+        val typeNamesLayout = textCodec?.let { codec ->
+            CompiledTypeNameResolver.resolve(session, definition.formatGeneration, codec)
+        }
         val abilityResolution = textCodec?.let { codec ->
             resolveAbilities(session, definition, identity, core, codec)
         } ?: ResolvedAbilityEvidence(
@@ -122,6 +128,7 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                     ?: resolvedLayout(tables.abilities, abilityResolution.evidence),
                 resolvedAbilityNames = abilityResolution.resolved,
                 resolvedTypeChart = typeChart.resolved,
+                typeNamesLayout = typeNamesLayout,
             ),
         )
     }

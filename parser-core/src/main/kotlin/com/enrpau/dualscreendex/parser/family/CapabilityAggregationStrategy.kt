@@ -137,6 +137,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                             moveNames = resolvedTables.moveNames,
                             descriptions = resolvedTables.descriptions,
                             abilities = resolvedTables.abilities,
+                            typeNames = semantic.typeNamesLayout,
                         ),
                     ),
                 ),

@@ -297,7 +297,7 @@ object CatalogMaterializer {
         } else {
             RecordMaterializers.typeChart(rom, layout)
         }
-        val rawTypes = RecordMaterializers.types(layout, baseSpecies, chart, rawMoves)
+        val rawTypes = RecordMaterializers.types(rom, layout, baseSpecies, chart, rawMoves, cancellation)
         val baseTypes = TypePresentationMaterializer.apply(rawTypes) { typeId ->
             TypeMappings.presentationRole(layout.generation, typeId)
         }

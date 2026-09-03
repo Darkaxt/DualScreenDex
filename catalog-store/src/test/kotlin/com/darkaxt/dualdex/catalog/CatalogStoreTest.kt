@@ -286,6 +286,11 @@ class CatalogStoreTest {
             pointerOffsets = listOf(0x20, 0x24),
             bankRemap = mapOf(1 to 2),
         )
+        val typeNames = TableLayout(
+            offset = 0x200,
+            count = 18,
+            recordSize = 7,
+        )
         val manifest = RomLanguageManifest(
             defaultLanguage = LanguageTag.ENGLISH,
             projections = listOf(
@@ -293,7 +298,10 @@ class CatalogStoreTest {
                     language = LanguageTag.ENGLISH,
                     codecId = PokemonTextCodec.gbaEnglish.id,
                     codecVersion = PokemonTextCodec.gbaEnglish.version,
-                    localizedTables = LocalizedTableLayout(speciesNames = table),
+                    localizedTables = LocalizedTableLayout(
+                        speciesNames = table,
+                        typeNames = typeNames,
+                    ),
                     evidence = listOf(
                         LanguageEvidence(LanguageEvidenceKind.TABLE_RELATIONSHIP, "fixture", 100),
                     ),
@@ -332,6 +340,7 @@ class CatalogStoreTest {
             (reopened.projections.single().evidence as MutableList<LanguageEvidence>).clear()
         }
         val reopenedTable = requireNotNull(reopened.defaultProjection()?.localizedTables?.speciesNames)
+        assertEquals(typeNames, reopened.defaultProjection()?.localizedTables?.typeNames)
         assertThrows(UnsupportedOperationException::class.java) {
             (reopenedTable.banks as MutableList<Int>).clear()
         }
@@ -359,7 +368,7 @@ class CatalogStoreTest {
             ),
         )
         val english = requireNotNull(base.defaultLocalizedText())
-        val french = overlayForLanguage(english, LanguageTag.FRENCH, "Dracaufeu")
+        val french = overlayForLanguage(english, LanguageTag.FRENCH, "Dracaufeu", "Feu")
         val manifest = RomLanguageManifest(
             defaultLanguage = LanguageTag.ENGLISH,
             projections = listOf(
@@ -400,6 +409,10 @@ class CatalogStoreTest {
             "Dracaufeu",
             reopened.catalog.localizedText(LanguageTag.FRENCH)?.speciesNames?.get(6)?.value,
         )
+        assertEquals("Fire", reopened.catalog.localizedText(LanguageTag.ENGLISH)?.typeNames?.get(10)?.value)
+        assertEquals("Feu", reopened.catalog.localizedText(LanguageTag.FRENCH)?.typeNames?.get(10)?.value)
+        assertEquals(TypeSemanticRole.FIRE, reopened.catalog.typesById.getValue(10).semanticRole.value)
+        assertNull(reopened.catalog.typesById.getValue(10).name.value)
         assertNull(reopened.catalog.localMaps.maps.single().displayName)
         assertEquals(
             "Test Route",
@@ -1100,7 +1113,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(48, CatalogSchema.parserSchemaVersion)
+        assertEquals(49, CatalogSchema.parserSchemaVersion)
         assertEquals(catalog.worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(catalog.localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(catalog.localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -1454,7 +1467,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(48, CatalogSchema.parserSchemaVersion)
+        assertEquals(49, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -1603,7 +1616,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 42 caches are invalidated so hybrid move details are rebuilt`() {
-        assertEquals(48, CatalogSchema.parserSchemaVersion)
+        assertEquals(49, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("4".repeat(64)).copy(diagnostics = listOf("pre-hybrid move output"))
@@ -1625,7 +1638,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 43 caches are invalidated so optional relationship evidence is rebuilt`() {
-        assertEquals(48, CatalogSchema.parserSchemaVersion)
+        assertEquals(49, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("5".repeat(64)).copy(diagnostics = listOf("pre-isolation relationship output"))
@@ -1647,7 +1660,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 44 caches are invalidated so bounded detached Gen I evidence is rebuilt`() {
-        assertEquals(48, CatalogSchema.parserSchemaVersion)
+        assertEquals(49, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("6".repeat(64)).copy(diagnostics = listOf("pre-bounded detached Gen I output"))
@@ -1669,7 +1682,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 45 caches are invalidated so Gen I applicability and bounded fallbacks are rebuilt`() {
-        assertEquals(48, CatalogSchema.parserSchemaVersion)
+        assertEquals(49, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("7".repeat(64)).copy(
@@ -2012,6 +2025,7 @@ class CatalogStoreTest {
         source: CatalogLanguageOverlay,
         language: LanguageTag,
         speciesName: String,
+        typeName: String,
     ) = CatalogLanguageOverlay(
         language = language,
         overlayVersion = source.overlayVersion,
@@ -2022,7 +2036,7 @@ class CatalogStoreTest {
         moveDescriptions = source.moveDescriptions,
         abilityNames = source.abilityNames,
         abilityDescriptions = source.abilityDescriptions,
-        typeNames = source.typeNames,
+        typeNames = source.typeNames.mapValues { CatalogField.available(typeName) },
         natureNames = source.natureNames,
         itemNames = source.itemNames,
         areaNames = source.areaNames,

@@ -135,7 +135,7 @@ class RecordMaterializersTest {
 
             val species = RecordMaterializers.species(RomImage(bytes), layout)
             val moves = RecordMaterializers.moves(RomImage(bytes), layout)
-            val types = RecordMaterializers.types(layout, species, emptyList(), moves)
+            val types = RecordMaterializers.types(RomImage(bytes), layout, species, emptyList(), moves)
 
             assertEquals(setOf(1, 2), species.keys)
             assertTrue(species.values.all { it.name.value == null && it.baseStats.value != null })
@@ -868,8 +868,20 @@ class RecordMaterializersTest {
     }
 
     @Test
-    fun preservesUnknownHackTypeIdsInsteadOfSubstitutingModernData() {
-        val layout = gbaLayout(0)
+    fun materializesOnlyDecodedTypeNamesAndSemantics() {
+        val typeNamesOffset = 0x100
+        val bytes = ByteArray(0x300)
+        val labels = listOf(
+            "NORMAL", "FIGHT", "FLYING", "POISON", "GROUND", "ROCK", "BUG", "GHOST", "STEEL",
+            "???", "FIRE", "WATER", "GRASS", "ELECTR", "PSYCHC", "ICE", "DRAGON", "DARK",
+        )
+        labels.forEachIndexed { id, label -> encodeGbaName(bytes, typeNamesOffset + id * 7, label) }
+        val layout = gbaLayout(0).copy(
+            languageManifest = resolvedManifest(
+                PokemonTextCodec.gbaEnglish,
+                LocalizedTableLayout(typeNames = TableLayout(typeNamesOffset, 18, 7)),
+            ),
+        )
         val species = mapOf(
             1 to SpeciesRecord(
                 id = 1,
@@ -881,11 +893,16 @@ class RecordMaterializersTest {
             ),
         )
 
-        val types = RecordMaterializers.types(layout, species, listOf(TypeMatchup(18, 10, 200)))
+        val types = RecordMaterializers.types(
+            RomImage(bytes),
+            layout,
+            species,
+            listOf(TypeMatchup(18, 10, 200)),
+        )
 
         assertEquals("FIRE", types.getValue(10).name.value)
-        assertNull(types.getValue(10).semanticRole.value)
-        assertEquals("TYPE 18", types.getValue(18).name.value)
+        assertEquals(TypeSemanticRole.FIRE, types.getValue(10).semanticRole.value)
+        assertNull(types.getValue(18).name.value)
         assertNull(types.getValue(18).semanticRole.value)
         assertEquals(18, types.getValue(18).id)
     }
@@ -1219,14 +1236,17 @@ class RecordMaterializersTest {
         }
     }
 
-    private fun resolvedManifest(codec: PokemonTextCodec) = RomLanguageManifest(
+    private fun resolvedManifest(
+        codec: PokemonTextCodec,
+        localizedTables: LocalizedTableLayout = LocalizedTableLayout(),
+    ) = RomLanguageManifest(
         defaultLanguage = LanguageTag.ENGLISH,
         projections = listOf(
             RomLanguageProjection(
                 language = LanguageTag.ENGLISH,
                 codecId = codec.id,
                 codecVersion = codec.version,
-                localizedTables = LocalizedTableLayout(),
+                localizedTables = localizedTables,
                 evidence = emptyList(),
                 status = LanguageResolutionStatus.RESOLVED,
             ),
